@@ -1,4 +1,6 @@
-bin
+bin/buildout
+bin/django
+bin/test
 build
 develop-eggs
 download-cache
