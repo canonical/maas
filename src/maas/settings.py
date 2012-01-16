@@ -9,6 +9,9 @@ ADMINS = (
 
 MANAGERS = ADMINS
 
+DEBUG = False
+TEMPLATE_DEBUG = DEBUG
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.', # Add 'postgresql_psycopg2', 'postgresql', 'mysql', 'sqlite3' or 'oracle'.
@@ -116,8 +119,8 @@ INSTALLED_APPS = (
     'django.contrib.sites',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    # Uncomment the next line to enable the admin:
-    # 'django.contrib.admin',
+    'django.contrib.admin',
+    'maasserver',
     # Uncomment the next line to enable admin documentation:
     # 'django.contrib.admindocs',
 )

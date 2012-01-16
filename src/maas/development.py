@@ -1,5 +1,7 @@
 
-# Django settings for maas project.
+# Django development settings for maas project.
+
+from maas.settings import *
 
 import os
 
@@ -127,10 +129,9 @@ INSTALLED_APPS = (
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.admin',
+    'django.contrib.admindocs',
     'maasserver',
     'debug_toolbar',
-    # Uncomment the next line to enable admin documentation:
-    # 'django.contrib.admindocs',
 )
 
 # A sample logging configuration. The only tangible logging
