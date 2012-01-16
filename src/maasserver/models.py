@@ -3,16 +3,17 @@ from django.db import models
 from django.contrib import admin
 
 NODE_STATUS_CHOICES = (
-    (u'NE', u'New'),
-    (u'IU', u'In use'),
-    (u'PO', u'In the pool'),
-    (u'RE', u'Reserved'),
+    (u'NEW', u'New'),
+    (u'READY', u'Ready to Commission'),
+    (u'DEPLOYED', u'Deployed'),
+    (u'COMM', u'Commissioned'),
+    (u'DECOMM', u'Decommissioned'),
 )
 
 
 class Node(models.Model):
     name = models.CharField(max_length=30)
-    status = models.CharField(max_length=2, choices=NODE_STATUS_CHOICES)
+    status = models.CharField(max_length=10, choices=NODE_STATUS_CHOICES)
     created = models.DateField(editable=False)
     updated = models.DateTimeField(editable=False)
 
