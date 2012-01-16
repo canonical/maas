@@ -7,6 +7,9 @@ import os
 
 DEBUG = True
 TEMPLATE_DEBUG = DEBUG
+YUI_DEBUG = DEBUG
+YUI_VERSION = '3.4.1'
+STATIC_LOCAL_SERVE = True
 
 ADMINS = (
     # ('Your Name', 'your_email@example.com'),

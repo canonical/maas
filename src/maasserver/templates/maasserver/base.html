@@ -5,6 +5,8 @@
     <meta http-equiv="Content-Language" content="en-us" />
     <link rel="stylesheet" href="{{ STATIC_URL }}css/style.css" />
     <title>{% block title %}MaaS{% endblock %}</title>
+    {% block js-conf %}{% include "maasserver/js-conf.html" %}{% endblock %}
+    {% block header %}{% endblock %}
 </head>
 <body>
   {% block content %}

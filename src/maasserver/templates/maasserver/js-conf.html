@@ -1,0 +1,10 @@
+<script type="text/javascript">
+<!--
+var YUI_config = {
+    debug: {% if YUI_DEBUG %}true{% else %}false{% endif %},
+    combine: {% if YUI_DEBUG %}true{% else %}false{% endif %},
+    base: '{{ STATIC_URL }}js/yui/{{ YUI_VERSION }}/'
+};
+// -->
+</script>
+<script src="{{ STATIC_URL }}js/yui/{{ YUI_VERSION }}/yui-base/yui-base-min.js"></script>
