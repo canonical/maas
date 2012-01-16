@@ -1,0 +1,12 @@
+bin
+build
+develop-eggs
+download-cache
+eggs
+logs
+parts
+tags
+TAGS
+*.egg-info
+*.egg
+.installed.cfg

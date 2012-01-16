@@ -1,0 +1,13 @@
+{% extends "maasserver/base.html" %}
+
+{% block content %}
+  <h2>Nodes</h2>
+  <ul>
+    {% for node in node_list %}
+      <li>{{ node.name }}</li>
+    {% empty %}
+      <li>No nodes</li>
+    {% endfor %}
+  </ul>
+  <a href="{% url node-create %}">Create a node</a>
+{% endblock %}

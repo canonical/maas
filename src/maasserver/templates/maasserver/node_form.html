@@ -1,0 +1,14 @@
+{% extends "maasserver/base.html" %}
+
+{% block content %}
+  <h2>Add a node:</h2>
+    <form action="." method="post">
+      <table>
+        {{ form.as_p }}
+      </table>
+      <tr>
+        <input type="submit" value="save" />
+      </tr>
+    </form>
+{% endblock %}
+
