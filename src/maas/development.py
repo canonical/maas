@@ -19,12 +19,12 @@ MANAGERS = ADMINS
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql_psycopg2', # Add 'postgresql_psycopg2', 'postgresql', 'mysql', 'sqlite3' or 'oracle'.
-        'NAME': 'maas',                      # Or path to database file if using sqlite3.
-        'USER': 'maas',                      # Not used with sqlite3.
-        'PASSWORD': 'maas',                  # Not used with sqlite3.
-        'HOST': '',                      # Set to empty string for localhost. Not used with sqlite3.
-        'PORT': '',                      # Set to empty string for default. Not used with sqlite3.
+        # 'postgresql_psycopg2', 'postgresql', 'mysql', 'sqlite3' etc.
+        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'NAME': 'maas',
+        # For PostgreSQL, a "hostname" starting with a slash indicates a
+        # Unix socket directory.
+        'HOST': '%s/db/development' % os.getcwd(),
     }
 }
 
@@ -35,7 +35,7 @@ DATABASES = {
 # timezone as the operating system.
 # If running in a Windows environment this must be set to the same as your
 # system time zone.
-TIME_ZONE = 'America/Chicago'
+TIME_ZONE = None
 
 # Language code for this installation. All choices can be found here:
 # http://www.i18nguy.com/unicode/language-identifiers.html
