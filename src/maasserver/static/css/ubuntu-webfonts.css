@@ -1,0 +1,29 @@
+/* Web font defintions for the Ubuntu font.
+ *
+ * Retrieved from https://fonts.googleapis.com/css?family=Ubuntu:400,400italic,700,700italic
+ *
+ */
+@font-face {
+  font-family: 'Ubuntu';
+  font-style: italic;
+  font-weight: normal;
+  src: local('Ubuntu Italic'), local('Ubuntu-Italic'), url('https://themes.googleusercontent.com/static/fonts/ubuntu/v3/kbP_6ONYVgE-bLa9ZRbvvvesZW2xOQ-xsNqO47m55DA.woff') format('woff');
+}
+@font-face {
+  font-family: 'Ubuntu';
+  font-style: normal;
+  font-weight: bold;
+  src: local('Ubuntu Bold'), local('Ubuntu-Bold'), url('https://themes.googleusercontent.com/static/fonts/ubuntu/v3/0ihfXUL2emPh0ROJezvraD8E0i7KZn-EPnyo3HZu7kw.woff') format('woff');
+}
+@font-face {
+  font-family: 'Ubuntu';
+  font-style: italic;
+  font-weight: bold;
+  src: local('Ubuntu Bold Italic'), local('Ubuntu-BoldItalic'), url('https://themes.googleusercontent.com/static/fonts/ubuntu/v3/OMD20Sg9RTs7sUORCEN-7YbN6UDyHWBl620a-IRfuBk.woff') format('woff');
+}
+@font-face {
+  font-family: 'Ubuntu';
+  font-style: normal;
+  font-weight: normal;
+  src: local('Ubuntu'), url('https://themes.googleusercontent.com/static/fonts/ubuntu/v3/_xyN3apAT_yRRDeqB3sPRg.woff') format('woff');
+}
