@@ -1,5 +1,6 @@
 bin/buildout
 bin/django
+bin/django-python
 bin/test
 build
 db
