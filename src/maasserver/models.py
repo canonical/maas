@@ -6,8 +6,6 @@ from django.db import models
 from django.contrib import admin
 from django.core.validators import RegexValidator
 
-from maasserver.fields import MACAddressField
-
 
 class CommonInfo(models.Model):
     created = models.DateField(editable=False)
