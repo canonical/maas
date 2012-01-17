@@ -5,6 +5,10 @@ from maas.settings import *
 
 import os
 
+# Use our custom test runner, which makes sure that a local database
+# cluster is running in the branch.
+TEST_RUNNER='maas.testing.runner.CustomTestRunner'
+
 DEBUG = True
 TEMPLATE_DEBUG = DEBUG
 YUI_DEBUG = DEBUG

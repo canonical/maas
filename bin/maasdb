@@ -1,6 +1,6 @@
 #! /bin/bash -e
 #
-# MaaS database control script
+# MaaS database control script.  See main() at the bottom for usage.
 #
 # Most functions take as their first argument a database cluster's data
 # directory.  This is where the database's socket, pidfile, log, and data will
@@ -44,7 +44,7 @@ maasdb_create_cluster() {
     if ! test -d "$DATADIR/base"
     then
         mkdir -p -- "$DATADIR"
-        $PGCTL init -D "$DATADIR" -o '-E utf8'
+        $PGCTL init -D "$DATADIR" -o '-E utf8 -A trust'
     fi
 }
 

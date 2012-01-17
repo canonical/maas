@@ -11,7 +11,7 @@ bin/django bin/django-python bin/test: bin/buildout buildout.cfg setup.py
 dev-db:
 	bin/maasdb start ./db/ disposable
 
-test: bin/test dev-db
+test: bin/test
 	bin/test
 
 lint:

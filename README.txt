@@ -8,9 +8,9 @@ https://launchpad.net/maas
 
 Access to the database is configured in src/maas/development.py.
 
-The Makefile sets up a development database cluster inside your branch.  It
-lives in the "db" directory, which gets created on demand.  You'll want to
-shut it down before deleting a branch; see below.
+The Makefile or the test suite sets up a development database cluster inside
+your branch.  It lives in the "db" directory, which gets created on demand.
+You'll want to shut it down before deleting a branch; see below.
 
 First, set up the project.  This fetches all the required dependencies, and
 creates a local database cluster and development database:
