@@ -3,21 +3,17 @@ MaaS .. Description TODO.
 For more information about MaaS:
 https://launchpad.net/maas
 
+
 = Development MaaS server setup =
 
-You need a database for the maas server.
+Access to the database is configured in src/maas/development.py.
 
-You can choose to use the database of your choice (note that you will
-need to update the default values in src/maas/development.py if you choose
-to do so).
+The Makefile sets up a development database cluster inside your branch.  It
+lives in the "db" directory, which gets created on demand.  You'll want to
+shut it down before deleting a branch; see below.
 
-If you want to use the default for a local development server (postgresql
-database engine, user: 'maas' with 'maas' as password, database name: 'maas'):
-
-    $ echo "CREATE USER maas WITH CREATEDB PASSWORD 'maas';" | psql -U postgres
-    $ createdb -E utf8 -O maas maas
-
-Setup the project (fetch all the required dependencies):
+First, set up the project.  This fetches all the required dependencies, and
+creates a local database cluster and development database:
 
     $ make
 
@@ -30,3 +26,8 @@ Run the development webserver:
     $ make run
 
 Point your browser to http://localhost:8000/
+
+To shut down the database cluster and clean up all other generated files in
+your branch:
+
+    $ make distclean

@@ -24,7 +24,7 @@ DATABASES = {
         'NAME': 'maas',
         # For PostgreSQL, a "hostname" starting with a slash indicates a
         # Unix socket directory.
-        'HOST': '%s/db/development' % os.getcwd(),
+        'HOST': '%s/db' % os.getcwd(),
     }
 }
 

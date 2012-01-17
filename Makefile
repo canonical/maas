@@ -8,22 +8,26 @@ bin/buildout: buildout.cfg setup.py
 	bin/buildout
 	@touch bin/buildout
 
-test:
+dev-db:
+	bin/maasdb start ./db/ disposable
+
+test: dev-db
 	bin/test
 
 lint:
 	pyflakes $(PYTHON_SRC)
 	pylint --rcfile=etc/pylintrc $(PYTHON_SRC)
 
-check: clean bin/buildout
+check: clean bin/buildout dev-db
 	bin/test
 
 clean:
 	find . -type f -name '*.py[co]' -exec rm -f {} \;
-	#rm -f bin/buildout
+	rm -f bin/buildout
 	#bzr clean-tree --unknown --force
 
-realclean: clean
+distclean: clean
+	bin/maasdb delete-cluster ./db/
 	rm -rf download-cache
 	rm -rf eggs
 	rm -rf develop-eggs
@@ -31,12 +35,11 @@ realclean: clean
 tags:
 	bin/tags
 
-run:
+run: build dev-db
 	bin/django runserver 8000
 
-harness:
-	. bin/maasdb.sh ; maasdb_init_db db/development disposable
+harness: build dev-db
 	bin/django shell
 
-syncdb:
+syncdb: build dev-db
 	bin/django syncdb

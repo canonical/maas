@@ -1,15 +1,15 @@
-# MaaS database control functions
+#! /bin/bash -e
 #
-# The control functions take as their first argument a database cluster's data
+# MaaS database control script
+#
+# Most functions take as their first argument a database cluster's data
 # directory.  This is where the database's socket, pidfile, log, and data will
-# reside.  The data directory must start with a slash.
+# reside.
 #
 # Some design choices for this module:
 #
 #  * Everything is PostgreSQL on Ubuntu.
-#  * POSIX shell.  Test your changes in dash, not just in bash.
-#  * Each branch gets its own cluster(s).  Kill & delete when done.
-#  * One database per cluster.  May change this later if it's a problem.
+#  * Each branch gets its own cluster.  Kill & delete when done.
 #  * Databases run under the system user that creates them.  No root required.
 #  * No global configuration apart from a basic PostgreSQL install.
 #  * Connections use Unix sockets.  No TCP port hogging.
@@ -18,10 +18,12 @@ POSTGRES_VERSION=9.1
 PGCTL="/usr/lib/postgresql/${POSTGRES_VERSION}/bin/pg_ctl"
 
 
-# Figure out the full data directory path for a given cluster, even if it's a
-# relative path.
+# Figure out the full absolute data directory path for a given cluster, even
+# if a relative path is given.
 maasdb_locate() {
+    local DATADIR
     DATADIR="$1"
+
     if test -z "$1"
     then
         echo "Specify a data directory for the MaaS database cluster." >&2
@@ -36,7 +38,9 @@ maasdb_locate() {
 
 # Create a database cluster.
 maasdb_create_cluster() {
+    local DATADIR
     DATADIR="`maasdb_locate "$1"`"
+
     if ! test -d "$DATADIR/base"
     then
         mkdir -p -- "$DATADIR"
@@ -47,6 +51,7 @@ maasdb_create_cluster() {
 
 # Start a database cluster.
 maasdb_start_cluster() {
+    local DATADIR DISPOSABLE EXTRA_POSTGRES_OPTS
     DATADIR="`maasdb_locate "$1"`"
     # Pass "disposable" as the second argument if the data in this database
     # is not important at all and you're willing to cut corners for speed.
@@ -80,7 +85,9 @@ maasdb_start_cluster() {
 
 # Stop a database cluster.
 maasdb_stop_cluster() {
+    local DATADIR
     DATADIR="`maasdb_locate "$1"`"
+
     if test -f "$DATADIR/postmaster.pid"
     then
         $PGCTL stop -D "$DATADIR"
@@ -90,12 +97,15 @@ maasdb_stop_cluster() {
 
 # Initialize a MaaS database.
 maasdb_init_db() {
+    local DATADIR DISPOSABLE MARKER
     DATADIR="`maasdb_locate "$1"`"
     # Pass "disposable" as the second argument if the data in this database
     # is not important at all and you're willing to cut corners for speed.
     DISPOSABLE="$2"
-    MARKER="$DATADIR/maas-created"
+
     maasdb_start_cluster "$DATADIR" "$DISPOSABLE"
+
+    MARKER="$DATADIR/maas-created"
     if ! test -f "$MARKER"
     then
         createdb -h "$DATADIR" maas && touch "$MARKER"
@@ -105,7 +115,9 @@ maasdb_init_db() {
 
 # Open a psql shell on a MaaS database.
 maasdb_shell() {
+    local DATADIR
     DATADIR="`maasdb_locate "$1"`"
+
     maasdb_init_db "$DATADIR"
     psql -h "$DATADIR" maas
 }
@@ -113,8 +125,10 @@ maasdb_shell() {
 
 # Execute a query on a MaaS database.
 maasdb_query() {
+    local DATADIR QUERY
     DATADIR="`maasdb_locate "$1"`"
     QUERY="$2"
+
     maasdb_init_db "$DATADIR"
     psql -h "$DATADIR" maas -c "$QUERY"
 }
@@ -122,7 +136,9 @@ maasdb_query() {
 
 # Delete an entire MaaS database and cluster.  Use only with extreme care!
 maasdb_delete_cluster() {
+    local DATADIR
     DATADIR="`maasdb_locate "$1"`"
+
     # Before deleting anything, does this at least look like a MaaS database
     # cluster?
     if test -d "$DATADIR/base"
@@ -131,3 +147,22 @@ maasdb_delete_cluster() {
         rm -rf -- "$DATADIR"
     fi
 }
+
+
+main() {
+    local COMMAND DATADIR
+    COMMAND="$1"
+    DATADIR="$2"
+    shift 2
+
+    case "$COMMAND" in
+        start) maasdb_init_db "$DATADIR" "$@" ;;
+        stop) maasdb_stop_cluster "$DATADIR" "$@" ;;
+        query) maasdb_query "$DATADIR" "$@" ;;
+        shell) maasdb_shell "$DATADIR" "$@" ;;
+        delete-cluster) maasdb_delete_cluster "$DATADIR" "$@" ;;
+    esac
+}
+
+
+main $*

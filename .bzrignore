@@ -2,6 +2,7 @@ bin/buildout
 bin/django
 bin/test
 build
+db
 develop-eggs
 download-cache
 eggs
