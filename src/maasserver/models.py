@@ -22,7 +22,7 @@ class CommonInfo(models.Model):
 
 
 def generate_node_system_id():
-    return 'node-' + str(uuid1())
+    return 'node-%s' % uuid1()
 
 
 NODE_STATUS_CHOICES = (
@@ -45,7 +45,7 @@ class Node(CommonInfo):
         return self.system_id
 
 
-mac_re = re.compile(r'^([0-9a-fA-F]{2}(:|$)){6}$')
+mac_re = re.compile(r'^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$')
 
 
 validate_mac_address = RegexValidator(
