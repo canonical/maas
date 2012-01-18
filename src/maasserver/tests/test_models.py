@@ -21,22 +21,17 @@ class NodeTest(TestCase):
 
 class MACAddressTest(TestCase):
 
-    def test_mac_address_invalid(self):
-        """
-        An invalid MAC address does not pass the model validation phase.
-
-        """
+    def make_MAC(self, address):
+        """Create a MAC address."""
         node = Node()
         node.save()
-        mac = MACAddress(mac_address='AA:BB:CCXDD:EE:FF', node=node)
+        return MACAddress(mac_address=address, node=node)
+
+    def test_stores_to_database(self):
+        mac = self.make_MAC('00:11:22:33:44:55')
+        mac.save()
+        self.assertEqual([mac], list(MACAddress.objects.all()))
+
+    def test_invalid_address_raises_validation_error(self):
+        mac = self.make_MAC('AA:BB:CCXDD:EE:FF')
         self.assertRaises(ValidationError, mac.full_clean)
-
-    def test_mac_address_valid(self):
-        """
-        A valid MAC address passes the model validation phase.
-
-        """
-        node = Node()
-        node.save()
-        mac = MACAddress(mac_address='AA:BB:CC:DD:EE:FF', node=node)
-        mac.full_clean()  # No exception.

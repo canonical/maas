@@ -4,7 +4,8 @@ from uuid import uuid1
 
 from django.db import models
 from django.contrib import admin
-from django.core.validators import RegexValidator
+
+from maasserver.macaddress import MACAddressField
 
 
 class CommonInfo(models.Model):
@@ -48,14 +49,8 @@ class Node(CommonInfo):
 mac_re = re.compile(r'^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$')
 
 
-validate_mac_address = RegexValidator(
-    regex = mac_re,
-    message = u'Enter a valid MAC address (e.g. AA:BB:CC:DD:EE:FF).')
-
-
 class MACAddress(CommonInfo):
-    mac_address = models.CharField(
-        max_length=17, validators=[validate_mac_address])
+    mac_address = MACAddressField()
     node = models.ForeignKey(Node)
 
     def __unicode__(self):
@@ -65,4 +60,3 @@ class MACAddress(CommonInfo):
 # Register the models in the admin site.
 admin.site.register(Node)
 admin.site.register(MACAddress)
-
