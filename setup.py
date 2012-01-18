@@ -10,11 +10,11 @@ from setuptools import setup, find_packages
 def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read().strip()
 
-__version__ = open("src/maas/version.txt").read().strip()
+__version__ = "0.1"
 
 setup(
     name="maas",
-    version=read('src/maas/version.txt'),
+    version=__version__,
     url="https://launchpad.net/maas",
     license="GPL",
     description="Metal as as Service",
