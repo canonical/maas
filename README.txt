@@ -1,33 +1,16 @@
-MaaS .. Description TODO.
+*************************
+MaaS - Metal as a Service
+*************************
 
-For more information about MaaS:
-https://launchpad.net/maas
+MaaS lets you treat a group of physical servers as a cloud-like
+resource to be allocated on demand. Each physical server (“node”) will
+be commissioned automatically on first boot. During the commissioning
+process administrators are able to configure hardware settings
+manually before an automated smoke test and burn-in test are
+done. Once commissioned, a node can be deployed on demand by name, or
+allocated to a queue for dynamic allocation to services being deployed
+on this MaaS.
 
+For more information see `MaaS on Launchpad`_.
 
-= Development MaaS server setup =
-
-Access to the database is configured in src/maas/development.py.
-
-The Makefile or the test suite sets up a development database cluster inside
-your branch.  It lives in the "db" directory, which gets created on demand.
-You'll want to shut it down before deleting a branch; see below.
-
-First, set up the project.  This fetches all the required dependencies, and
-creates a local database cluster and development database:
-
-    $ make
-
-Initialize the database:
-
-    $ make syncdb
-
-Run the development webserver:
-
-    $ make run
-
-Point your browser to http://localhost:8000/
-
-To shut down the database cluster and clean up all other generated files in
-your branch:
-
-    $ make distclean
+.. _MaaS on Launchpad: https://launchpad.net/maas

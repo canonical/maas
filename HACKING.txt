@@ -1,0 +1,72 @@
+************
+Hacking MaaS
+************
+
+
+Coding style
+============
+
+MaaS follows the `Launchpad Python Style Guide`_, except where it gets
+Launchpad specific, and where it talks about `method naming`_. MaaS
+instead adopts `PEP-8`_ naming in all cases, so method names should
+usually use the ``lowercase_with_underscores`` form.
+
+.. _Launchpad Python Style Guide:
+  https://dev.launchpad.net/PythonStyleGuide
+
+.. _method naming:
+  https://dev.launchpad.net/PythonStyleGuide#Naming
+
+.. _PEP-8:
+  http://www.python.org/dev/peps/pep-0008/
+
+
+Development MaaS server setup
+=============================
+
+Access to the database is configured in ``src/maas/development.py``.
+
+The ``Makefile`` or the test suite sets up a development database
+cluster inside your branch. It lives in the ``db`` directory, which
+gets created on demand. You'll want to shut it down before deleting a
+branch; see below.
+
+First, set up the project. This fetches all the required dependencies
+and sets up some useful commands in ``bin/``::
+
+    $ make
+
+Create the database cluster and initialize the development database::
+
+    $ make syncdb
+
+Run the development webserver::
+
+    $ make run
+
+Point your browser to http://localhost:8000/
+
+To shut down the database cluster and clean up all other generated files in
+your branch::
+
+    $ make distclean
+
+
+Adding new source files
+=======================
+
+When creating a new source file, a Python module or test for example,
+always start with the appropriate template from the ``templates``
+directory.
+
+
+Documentation
+=============
+
+Use `reST`_ with the `convention for headings as used in the Python
+documentation`_.
+
+.. _reST: http://sphinx.pocoo.org/rest.html
+
+.. _convention for headings as used in the Python documentation:
+  http://sphinx.pocoo.org/rest.html#sections
