@@ -54,11 +54,14 @@ class Node(CommonInfo):
     system_id = models.CharField(
         max_length=41, unique=True, editable=False,
         default=generate_node_system_id)
-    hostname = models.CharField(max_length=255, default='')
+    hostname = models.CharField(max_length=255, default='', blank=True)
     status = models.CharField(max_length=10, choices=NODE_STATUS_CHOICES)
 
     def __unicode__(self):
-        return self.system_id
+        if self.hostname:
+            return u"%s (%s)" %(self.system_id, self.hostname)
+        else:
+            return self.system_id
 
     def add_mac_address(self, mac_address):
         mac = MACAddress(mac_address=mac_address, node=self)
