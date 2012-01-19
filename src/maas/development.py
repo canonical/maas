@@ -19,6 +19,9 @@ from maas.settings import *
 # cluster is running in the branch.
 TEST_RUNNER = 'maas.testing.runner.TestRunner'
 
+# Location where python-oops should store errors.
+OOPS_REPOSITORY = 'logs'
+
 DEBUG = True
 TEMPLATE_DEBUG = DEBUG
 YUI_DEBUG = DEBUG

@@ -1,6 +1,20 @@
+# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
+from __future__ import print_function
+
 from subprocess import check_call
 
-from django.core.management.base import BaseCommand, CommandError
+from django.core.management.base import (
+    BaseCommand,
+    CommandError,
+    )
+
+
+"""Django command: stop and delete the local database cluster."""
+
+__metaclass__ = type
+__all__ = ['Command']
 
 
 class Command(BaseCommand):

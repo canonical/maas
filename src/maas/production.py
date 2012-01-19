@@ -12,3 +12,6 @@ __metaclass__ = type
 __all__ = []
 
 from maas.settings import *
+
+# Location where python-oops should store errors.
+OOPS_REPOSITORY = '/var/log/maas'
