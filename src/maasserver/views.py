@@ -1,3 +1,16 @@
+# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
+from __future__ import print_function
+
+"""Views."""
+
+__metaclass__ = type
+__all__ = [
+    "NodeView",
+    "NodesCreateView",
+    ]
+
 from django.shortcuts import get_object_or_404
 from django.views.generic import (
     CreateView,

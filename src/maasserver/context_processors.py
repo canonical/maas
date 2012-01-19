@@ -1,3 +1,15 @@
+# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
+from __future__ import print_function
+
+"""Context processors."""
+
+__metaclass__ = type
+__all__ = [
+    "yui",
+    ]
+
 from django.conf import settings
 
 

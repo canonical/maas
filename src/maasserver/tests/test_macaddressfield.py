@@ -10,8 +10,8 @@ __all__ = []
 
 from django.core.exceptions import ValidationError
 from maas.testing import TestCase
-from maasserver.models import MACAddress
 from maasserver.macaddress import validate_mac
+from maasserver.models import MACAddress
 from maasserver.testing.factory import factory
 
 

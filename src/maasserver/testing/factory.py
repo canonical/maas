@@ -1,14 +1,29 @@
-import string
-import random
+# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
 
-from maasserver.models import Node, MACAddress
+from __future__ import print_function
+
+"""Test object factories."""
+
+__metaclass__ = type
+__all__ = [
+    "factory",
+    ]
+
+import random
+import string
+
+from maasserver.models import (
+    MACAddress,
+    Node,
+    )
 
 
 class Factory():
 
     def getRandomString(self, size):
         return "".join(
-            random.choice(string.letters+string.digits)
+            random.choice(string.letters + string.digits)
             for x in xrange(size))
 
     def make_node(self, hostname='', set_hostname=False, status=None,

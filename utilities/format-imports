@@ -1,7 +1,9 @@
-#!/usr/bin/python
+#!/usr/bin/env python2.7
 #
-# Copyright 2010 Canonical Ltd.  This software is licensed under the
+# Copyright 2010-2012 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
+
+from __future__ import print_function
 
 """ Format import sections in python files
 
@@ -376,7 +378,7 @@ def process_file(fpath):
     """Process the file with the given path."""
     changed = reformat_importsection(fpath)
     if changed:
-        print fpath
+        print(fpath)
 
 
 def process_tree(dpath):

@@ -1,10 +1,25 @@
+# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
+from __future__ import print_function
+
+"""API."""
+
+__metaclass__ = type
+__all__ = [
+    "NodeHandler",
+    "NodeMacsHandler",
+    ]
+
 from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404
+from maasserver.macaddress import validate_mac
+from maasserver.models import (
+    MACAddress,
+    Node,
+    )
 from piston.handler import BaseHandler
 from piston.utils import rc
-
-from maasserver.models import Node, MACAddress
-from maasserver.macaddress import validate_mac
 
 
 def bad_request(message):
