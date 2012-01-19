@@ -3,7 +3,10 @@
 # Copyright 2010-2012 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from __future__ import print_function
+from __future__ import (
+    print_function,
+    unicode_literals,
+    )
 
 """ Format import sections in python files
 
@@ -130,6 +133,7 @@ is over the length limit.
 __metaclass__ = type
 
 # SKIP this file when reformatting.
+import operator
 import os
 import re
 import sys
@@ -172,6 +176,9 @@ imports_section_regex = re.compile(
     re.M)
 
 
+lower = operator.methodcaller("lower")
+
+
 def format_import_lines(module, objects):
     """Generate correct from...import strings."""
     if len(objects) == 1:
@@ -210,7 +217,7 @@ class ImportStatement:
         if objects is None:
             self.objects = None
         else:
-            self.objects = sorted(objects, key=str.lower)
+            self.objects = sorted(objects, key=lower)
         self.comment = comment
 
     def addObjects(self, new_objects):
@@ -221,7 +228,7 @@ class ImportStatement:
         else:
             # Use set to eliminate double objects.
             more_objects = set(self.objects + new_objects)
-            self.objects = sorted(list(more_objects), key=str.lower)
+            self.objects = sorted(list(more_objects), key=lower)
 
     def setComment(self, comment):
         """Add a comment to the statement."""
@@ -327,7 +334,7 @@ def format_imports(imports):
         )
     for section in sections:
         import_lines = []
-        for module in sorted(section.keys(), key=str.lower):
+        for module in sorted(section.keys(), key=lower):
             if section[module].comment is not None:
                 import_lines.append(section[module].comment)
             if section[module].import_module:

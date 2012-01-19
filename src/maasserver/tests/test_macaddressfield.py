@@ -3,7 +3,10 @@
 
 """Test MACAddressField."""
 
-from __future__ import print_function
+from __future__ import (
+    print_function,
+    unicode_literals,
+    )
 
 __metaclass__ = type
 __all__ = []
