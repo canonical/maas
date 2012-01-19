@@ -1,12 +1,10 @@
-import os
-import unittest
+# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
 
-_test_suite = unittest.TestSuite()
-for module in os.listdir(os.path.dirname(__file__)):
-    if module == '__init__.py' or module[-3:] != '.py':
-        continue
-    mod = __import__(module[:-3], locals(), globals())
-    _test_suite.addTests(unittest.TestLoader().loadTestsFromModule(mod))
+from os.path import dirname
+
+from django.utils.unittest import defaultTestLoader
+
 
 def suite():
-    return _test_suite
+    return defaultTestLoader.discover(dirname(__file__))

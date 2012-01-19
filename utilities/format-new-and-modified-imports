@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+#
+# Reformat imports in new and modified files. Call without arguments
+# to operate on uncommitted changes. Arguments will be passed to bzr
+# status, so to operate on all new and modified files relative to the
+# submit branch, use:
+#
+#   format-new-and-modified-imports -r submit:
+#
+
+bzr status --short "$@" | \
+    awk '/^.[MN] .*[.]py$/ { print $NF }' | \
+    xargs -r "$(dirname "$0")/format-imports"

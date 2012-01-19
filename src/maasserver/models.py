@@ -2,9 +2,8 @@ import datetime
 import re
 from uuid import uuid1
 
-from django.db import models
 from django.contrib import admin
-
+from django.db import models
 from maasserver.macaddress import MACAddressField
 
 

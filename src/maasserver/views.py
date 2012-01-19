@@ -1,7 +1,8 @@
-from django.http import HttpResponse
-from django.views.generic import ListView, CreateView
 from django.shortcuts import get_object_or_404
-
+from django.views.generic import (
+    CreateView,
+    ListView,
+    )
 from maasserver.models import Node
 
 

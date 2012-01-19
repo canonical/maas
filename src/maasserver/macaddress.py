@@ -8,8 +8,8 @@ import psycopg2.extensions
 mac_re = re.compile(r'^([0-9a-fA-F]{2}[:-]){5}[0-9a-fA-F]{2}$')
 
 validate_mac = RegexValidator(
-    regex = mac_re,
-    message = u"Enter a valid MAC address (e.g. AA:BB:CC:DD:EE:FF).")
+    regex=mac_re,
+    message=u"Enter a valid MAC address (e.g. AA:BB:CC:DD:EE:FF).")
 
 
 class MACAddressField(Field):

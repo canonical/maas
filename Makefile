@@ -14,8 +14,9 @@ dev-db:
 test: bin/test
 	bin/test
 
+lint: sources = setup.py src templates utilities
 lint:
-	pyflakes src
+	@(pyflakes $(sources); pep8 --repeat $(sources)) | sort -g
 
 check: clean test
 

@@ -1,0 +1,406 @@
+#!/usr/bin/python
+#
+# Copyright 2010 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
+""" Format import sections in python files
+
+= Usage =
+
+format-imports <file or directory> ...
+
+= Operation =
+
+The script will process each filename on the command line. If the file is a
+directory it recurses into it an process all *.py files found in the tree.
+It will output the paths of all the files that have been changed.
+
+For Launchpad it was applied to the "lib/canonical/launchpad" and the "lib/lp"
+subtrees. Running it with those parameters on a freshly branched LP tree
+should not produce any output, meaning that all the files in the tree should
+be formatted correctly.
+
+The script identifies the import section of each file as a block of lines
+that start with "import" or "from" or are indented with at least one space or
+are blank lines. Comment lines are also included if they are followed by an
+import statement. An inital __future__ import and a module docstring are
+explicitly skipped.
+
+The import section is rewritten as three subsections, each separated by a
+blank line. Any of the sections may be empty.
+ 1. Standard python library modules
+ 2. Import statements explicitly ordered to the top (see below)
+ 3. Third-party modules, meaning anything not fitting one of the other
+    subsection criteria
+ 4. Local modules that begin with "canonical" or "lp".
+
+Each section is sorted alphabetically by module name. Each module is put
+on its own line, i.e.
+{{{
+  import os, sys
+}}}
+becomes
+{{{
+  import os
+  import sys
+}}}
+Multiple import statements for the same module are conflated into one
+statement, or two if the module was imported alongside an object inside it,
+i.e.
+{{{
+  import sys
+  from sys import stdin
+}}}
+
+Statements that import more than one objects are put on multiple lines in
+list style, i.e.
+{{{
+  from sys import (
+      stdin,
+      stdout,
+      )
+}}}
+Objects are sorted alphabetically and case-insensitively. One-object imports
+are only formatted in this manner if the statement exceeds 78 characters in
+length.
+
+Comments stick with the import statement that followed them. Comments at the
+end of one-line statements are moved to be be in front of it, .i.e.
+{{{
+  from sys import exit # Have a way out
+}}}
+becomes
+{{{
+  # Have a way out
+  from sys import exit
+}}}
+
+= Format control =
+
+Two special comments allow to control the operation of the formatter.
+
+When an import statement is immediately preceded by a comment that starts
+with the word "FIRST", it is placed into the second subsection (see above).
+
+When the first import statement is directly preceded by a comment that starts
+with the word "SKIP", the entire file is exempt from formatting.
+
+= Known bugs =
+
+Make sure to always check the result of the re-formatting to see if you have
+been bitten by one of these.
+
+Comments inside multi-line import statements break the formatter. A statement
+like this will be ignored:
+{{{
+  from lp.app.interfaces import (
+      # Don't do this.
+      IMyInterface,
+      IMyOtherInterface, # Don't do this either
+      )
+}}}
+Actually, this will make the statement and all following to be ignored:
+{{{
+  from lp.app.interfaces import (
+  # Breaks indentation rules anyway.
+      IMyInterface,
+      IMyOtherInterface,
+      )
+}}}
+
+If a single-line statement has both a comment in front of it and at the end
+of the line, only the end-line comment will survive. This could probably
+easily be fixed to concatenate the too.
+{{{
+  # I am a gonner.
+  from lp.app.interfaces import IMyInterface # I will survive!
+}}}
+
+Line continuation characters are recognized and resolved but
+not re-introduced. This may leave the re-formatted text with a line that
+is over the length limit.
+{{{
+    from lp.app.verylongnames.orverlydeep.modulestructure.leavenoroom \
+        import object
+}}}
+"""
+
+__metaclass__ = type
+
+# SKIP this file when reformatting.
+import os
+import re
+import sys
+from textwrap import dedent
+
+sys.path[0:0] = [os.path.dirname(__file__)]
+from python_standard_libs import python_standard_libs
+
+# python_standard_libs is only used for membership tests.
+python_standard_libs = frozenset(python_standard_libs)
+
+# To search for escaped newline chars.
+escaped_nl_regex = re.compile("\\\\\n", re.M)
+import_regex = re.compile("^import +(?P<module>.+)$", re.M)
+from_import_single_regex = re.compile(
+    "^from (?P<module>.+) +import +"
+    "(?P<objects>[*]|[a-zA-Z0-9_, ]+)"
+    "(?P<comment>#.*)?$", re.M)
+from_import_multi_regex = re.compile(
+    "^from +(?P<module>.+) +import *[(](?P<objects>[a-zA-Z0-9_, \n]+)[)]$",
+    re.M)
+comment_regex = re.compile(
+    "(?P<comment>(^#.+\n)+)(^import|^from) +(?P<module>[a-zA-Z0-9_.]+)", re.M)
+split_regex = re.compile(",\s*")
+module_base_regex = re.compile("([^. ]+)")
+
+# Module docstrings are multiline (""") strings that are not indented and are
+# followed at some point by an import .
+module_docstring_regex = re.compile(
+    '(?P<docstring>^["]{3}[^"]+["]{3}\n).*^(import |from .+ import)',
+    re.M | re.S)
+# The imports section starts with an import state that is not a __future__
+# import and consists of import lines, indented lines, empty lines and
+# comments which are followed by an import line. Sometimes we even find
+# lines that contain a single ")"... :-(
+imports_section_regex = re.compile(
+    "(^#.+\n)*^(import|(from ((?!__future__)\S+) import)).*\n"
+    "(^import .+\n|^from .+\n|^[\t ]+.+\n|(^#.+\n)+((^import|^from) "
+    ".+\n)|^\n|^[)]\n)*",
+    re.M)
+
+
+def format_import_lines(module, objects):
+    """Generate correct from...import strings."""
+    if len(objects) == 1:
+        statement = "from %s import %s" % (module, objects[0])
+        if len(statement) < 79:
+            return statement
+    return "from %s import (\n    %s,\n    )" % (
+        module, ",\n    ".join(objects))
+
+
+def find_imports_section(content):
+    """Return that part of the file that contains the import statements."""
+    # Skip module docstring.
+    match = module_docstring_regex.search(content)
+    if match is None:
+        startpos = 0
+    else:
+        startpos = match.end('docstring')
+
+    match = imports_section_regex.search(content, startpos)
+    if match is None:
+        return (None, None)
+    startpos = match.start()
+    endpos = match.end()
+    if content[startpos:endpos].startswith('# SKIP'):
+        # Skip files explicitely.
+        return(None, None)
+    return (startpos, endpos)
+
+
+class ImportStatement:
+    """Holds information about an import statement."""
+
+    def __init__(self, objects=None, comment=None):
+        self.import_module = objects is None
+        if objects is None:
+            self.objects = None
+        else:
+            self.objects = sorted(objects, key=str.lower)
+        self.comment = comment
+
+    def addObjects(self, new_objects):
+        """More objects in this statement; eliminate duplicates."""
+        if self.objects is None:
+            # No objects so far.
+            self.objects = new_objects
+        else:
+            # Use set to eliminate double objects.
+            more_objects = set(self.objects + new_objects)
+            self.objects = sorted(list(more_objects), key=str.lower)
+
+    def setComment(self, comment):
+        """Add a comment to the statement."""
+        self.comment = comment
+
+
+def parse_import_statements(import_section):
+    """Split the import section into statements.
+
+    Returns a dictionary with the module as the key and the objects being
+    imported as a sorted list of strings."""
+    imports = {}
+    # Search for escaped newlines and remove them.
+    searchpos = 0
+    while True:
+        match = escaped_nl_regex.search(import_section, searchpos)
+        if match is None:
+            break
+        start = match.start()
+        end = match.end()
+        import_section = import_section[:start] + import_section[end:]
+        searchpos = start
+    # Search for simple one-line import statements.
+    searchpos = 0
+    while True:
+        match = import_regex.search(import_section, searchpos)
+        if match is None:
+            break
+        # These imports are marked by a "None" value.
+        # Multiple modules in one statement are split up.
+        for module in split_regex.split(match.group('module').strip()):
+            imports[module] = ImportStatement()
+        searchpos = match.end()
+    # Search for "from ... import" statements.
+    for pattern in (from_import_single_regex, from_import_multi_regex):
+        searchpos = 0
+        while True:
+            match = pattern.search(import_section, searchpos)
+            if match is None:
+                break
+            import_objects = split_regex.split(
+                match.group('objects').strip(" \n,"))
+            module = match.group('module').strip()
+            # Only one pattern has a 'comment' group.
+            comment = match.groupdict().get('comment', None)
+            if module in imports:
+                # Catch double import lines.
+                imports[module].addObjects(import_objects)
+            else:
+                imports[module] = ImportStatement(import_objects)
+            if comment is not None:
+                imports[module].setComment(comment)
+            searchpos = match.end()
+    # Search for comments in import section.
+    searchpos = 0
+    while True:
+        match = comment_regex.search(import_section, searchpos)
+        if match is None:
+            break
+        module = match.group('module').strip()
+        comment = match.group('comment').strip()
+        imports[module].setComment(comment)
+        searchpos = match.end()
+
+    return imports
+
+LOCAL_PACKAGES = (
+    'canonical', 'lp', 'launchpad_loggerhead', 'devscripts',
+    # database/* have some implicit relative imports.
+    'fti', 'replication', 'preflight', 'security', 'upgrade',
+    )
+
+def format_imports(imports):
+    """Group and order imports, return the new import statements."""
+    early_section = {}
+    standard_section = {}
+    first_section = {}
+    thirdparty_section = {}
+    local_section = {}
+    # Group modules into sections.
+    for module, statement in imports.iteritems():
+        module_base = module_base_regex.findall(module)[0]
+        comment = statement.comment
+        if module_base == '_pythonpath':
+            early_section[module] = statement
+        elif comment is not None and comment.startswith("# FIRST"):
+            first_section[module] = statement
+        elif module_base in LOCAL_PACKAGES:
+            local_section[module] = statement
+        elif module_base in python_standard_libs:
+            standard_section[module] = statement
+        else:
+            thirdparty_section[module] = statement
+
+    all_import_lines = []
+    # Sort within each section and generate statement strings.
+    sections = (
+        early_section,
+        standard_section,
+        first_section,
+        thirdparty_section,
+        local_section,
+        )
+    for section in sections:
+        import_lines = []
+        for module in sorted(section.keys(), key=str.lower):
+            if section[module].comment is not None:
+                import_lines.append(section[module].comment)
+            if section[module].import_module:
+                import_lines.append("import %s" % module)
+            if section[module].objects is not None:
+                import_lines.append(
+                    format_import_lines(module, section[module].objects))
+        if len(import_lines) > 0:
+            all_import_lines.append('\n'.join(import_lines))
+    # Sections are separated by two blank lines.
+    return '\n\n'.join(all_import_lines)
+
+
+def reformat_importsection(filename):
+    """Replace the given file with a reformatted version of it."""
+    pyfile = file(filename).read()
+    import_start, import_end = find_imports_section(pyfile)
+    if import_start is None:
+        # Skip files with no import section.
+        return False
+    imports_section = pyfile[import_start:import_end]
+    imports = parse_import_statements(imports_section)
+
+    next_char = pyfile[import_end:import_end + 1]
+
+    if next_char == '':
+        number_of_newlines = 1
+    elif next_char != '#':
+        # Two newlines before anything but comments.
+        number_of_newlines = 3
+    else:
+        number_of_newlines = 2
+
+    new_imports = format_imports(imports) + ("\n" * number_of_newlines)
+    if new_imports == imports_section:
+        # No change, no need to write a new file.
+        return False
+
+    new_file = open(filename, "w")
+    new_file.write(pyfile[:import_start])
+    new_file.write(new_imports)
+    new_file.write(pyfile[import_end:])
+
+    return True
+
+
+def process_file(fpath):
+    """Process the file with the given path."""
+    changed = reformat_importsection(fpath)
+    if changed:
+        print fpath
+
+
+def process_tree(dpath):
+    """Walk a directory tree and process all *.py files."""
+    for dirpath, dirnames, filenames in os.walk(dpath):
+        for filename in filenames:
+            if filename.endswith('.py'):
+                process_file(os.path.join(dirpath, filename))
+
+
+if __name__ == "__main__":
+    if len(sys.argv) == 1 or sys.argv[1] in ("-h", "-?", "--help"):
+        sys.stderr.write(dedent("""\
+        usage: format-imports <file or directory> ...
+
+        Type "format-imports --docstring | less" to see the documentation.
+        """))
+        sys.exit(1)
+    if sys.argv[1] == "--docstring":
+        sys.stdout.write(__doc__)
+        sys.exit(2)
+    for filename in sys.argv[1:]:
+        if os.path.isdir(filename):
+            process_tree(filename)
+        else:
+            process_file(filename)
+    sys.exit(0)

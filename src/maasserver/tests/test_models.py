@@ -1,16 +1,25 @@
-"""
-Test maasserver models.
-"""
+# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
+"""Test maasserver models."""
+
+from __future__ import print_function
+
+__metaclass__ = type
+__all__ = []
 
 from django.core.exceptions import ValidationError
-from django.test import TestCase
-
-from maasserver.models import Node, MACAddress
+from maas.testing import TestCase
+from maasserver.models import (
+    MACAddress,
+    Node,
+    )
 
 
 class NodeTest(TestCase):
 
     def setUp(self):
+        super(NodeTest, self).setUp()
         self.node = Node()
         self.node.save()
 

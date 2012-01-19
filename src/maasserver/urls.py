@@ -3,7 +3,10 @@ from django.conf.urls.defaults import *
 from django.views.generic import ListView
 from piston.resource import Resource
 from maasserver.models import Node
-from maasserver.views import NodeView, NodesCreateView
+from maasserver.views import (
+    NodesCreateView,
+    NodeView,
+    )
 from maasserver.api import NodeHandler, NodeMacsHandler
 
 
