@@ -2,21 +2,38 @@
 Test maasserver models.
 """
 
-from django.test import TestCase
-from maasserver.models import Node, MACAddress
 from django.core.exceptions import ValidationError
+from django.test import TestCase
+
+from maasserver.models import Node, MACAddress
 
 
 class NodeTest(TestCase):
+
+    def setUp(self):
+        self.node = Node()
+        self.node.save()
 
     def test_system_id(self):
         """
         The generated system_id looks good.
 
         """
-        node = Node()
-        self.assertEqual(len(node.system_id), 41)
-        self.assertTrue(node.system_id.startswith('node-'))
+        self.assertEqual(len(self.node.system_id), 41)
+        self.assertTrue(self.node.system_id.startswith('node-'))
+
+    def test_add_mac_address(self):
+        self.node.add_mac_address('AA:BB:CC:DD:EE:FF')
+        macs = MACAddress.objects.filter(
+            node=self.node, mac_address='AA:BB:CC:DD:EE:FF').count()
+        self.assertEqual(1, macs)
+
+    def test_remove_mac_address(self):
+        self.node.add_mac_address('AA:BB:CC:DD:EE:FF')
+        self.node.remove_mac_address('AA:BB:CC:DD:EE:FF')
+        macs = MACAddress.objects.filter(
+            node=self.node, mac_address='AA:BB:CC:DD:EE:FF').count()
+        self.assertEqual(0, macs)
 
 
 class MACAddressTest(TestCase):

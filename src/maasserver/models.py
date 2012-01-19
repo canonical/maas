@@ -39,11 +39,21 @@ class Node(CommonInfo):
     system_id = models.CharField(
         max_length=41, unique=True, editable=False,
         default=generate_node_system_id)
-    hostname = models.CharField(max_length=255)
+    hostname = models.CharField(max_length=255, default='')
     status = models.CharField(max_length=10, choices=NODE_STATUS_CHOICES)
 
     def __unicode__(self):
         return self.system_id
+
+    def add_mac_address(self, mac_address):
+        mac = MACAddress(mac_address=mac_address, node=self)
+        mac.full_clean()
+        mac.save()
+        return mac
+
+    def remove_mac_address(self, mac_address):
+        mac = MACAddress.objects.filter(mac_address=mac_address, node=self)
+        mac.delete()
 
 
 mac_re = re.compile(r'^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$')

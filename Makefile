@@ -15,7 +15,7 @@ test: bin/test
 	bin/test
 
 lint:
-	pyflakes .
+	pyflakes src
 
 check: clean test
 
