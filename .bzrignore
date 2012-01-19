@@ -5,6 +5,8 @@ bin/test
 build
 db
 develop-eggs
+docs/api.rst
+docs/_build
 download-cache
 eggs
 logs

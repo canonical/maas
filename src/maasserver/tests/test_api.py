@@ -34,13 +34,8 @@ class NodeAPITest(TestCase):
         parsed_result = json.loads(response.content)
 
         self.assertEqual(200, response.status_code)
-        expected = [
-            {u'macaddress_set': [], "system_id": node1.system_id,
-                "hostname": node1.hostname},
-            {u'macaddress_set': [], "system_id": node2.system_id,
-                "hostname": node2.hostname},
-            ]
-        self.assertEqual(expected, parsed_result)
+        self.assertEqual(node1.system_id, parsed_result[0]['system_id'])
+        self.assertEqual(node2.system_id, parsed_result[1]['system_id'])
 
     def test_node_GET(self):
         """
