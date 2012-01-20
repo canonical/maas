@@ -13,6 +13,11 @@
 
 import sys, os
 
+# Import maas' settings.
+from maas import settings
+from django.core.management import setup_environ
+setup_environ(settings)
+
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.

@@ -21,6 +21,16 @@ Overview
    hacking
    api
 
+MaaS API
+========
+
+Other services interact with a MaaS server using its :doc:`api`.
+
+Code
+====
+
+.. toctree::
+   models
 
 Indices and tables
 ==================

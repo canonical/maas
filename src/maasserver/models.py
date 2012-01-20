@@ -51,6 +51,7 @@ NODE_STATUS_CHOICES = (
 
 
 class Node(CommonInfo):
+    """A `Node` represents a physical machine used by the MaaS Server."""
     system_id = models.CharField(
         max_length=41, unique=True, editable=False,
         default=generate_node_system_id)
@@ -78,6 +79,9 @@ mac_re = re.compile(r'^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$')
 
 
 class MACAddress(CommonInfo):
+    """A `MACAddress` represents a `MAC Address
+    <http://en.wikipedia.org/wiki/MAC_address>`_ attached to a `Node`.
+    """
     mac_address = MACAddressField()
     node = models.ForeignKey(Node)
 

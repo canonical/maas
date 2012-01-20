@@ -18,7 +18,7 @@ test: bin/test
 lint: sources = setup.py src templates utilities
 lint:
 	@bin/flake8 $(sources) | \
-	    (fgrep -v "from maas.settings import *" || true)
+	    (! fgrep -v "from maas.settings import *")
 
 check: clean test
 
