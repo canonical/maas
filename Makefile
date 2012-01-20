@@ -24,7 +24,7 @@ api-doc: bin/django src/maasserver/api.py
 	bin/django gen_rst_api_doc > docs/api.rst
 
 doc: api-doc
-	$(MAKE) -C docs html
+	bin/sphinx
 
 clean:
 	find . -type f -name '*.py[co]' -print0 | xargs -r0 $(RM)

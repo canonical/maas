@@ -1,6 +1,10 @@
 bin/buildout
 bin/django
 bin/django-python
+bin/flake8
+bin/sphinx
+bin/sphinx-build
+bin/sphinx-quickstart
 bin/test
 build
 db
