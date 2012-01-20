@@ -29,5 +29,5 @@ class TestRunner(DjangoTestSuiteRunner):
 
     def setup_databases(self, *args, **kwargs):
         """Fire up the db cluster, then punt to original implementation."""
-        check_call(['bin/maasdb', 'start', './db/', 'disposable'])
+        check_call(['utilities/maasdb', 'start', './db/', 'disposable'])
         return super(TestRunner, self).setup_databases(*args, **kwargs)

@@ -25,4 +25,4 @@ class Command(BaseCommand):
     def handle(self, *args, **kwargs):
         if len(args) != 0:
             raise CommandError("Too many arguments.")
-        check_call(['bin/maasdb', 'delete-cluster', 'db'])
+        check_call(['utilities/maasdb', 'delete-cluster', 'db'])

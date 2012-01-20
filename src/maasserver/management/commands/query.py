@@ -35,4 +35,4 @@ class Command(BaseCommand):
         else:
             subcommand = 'shell'
         check_call(
-            ['bin/maasdb', subcommand, 'db'] + list(args))
+            ['utilities/maasdb', subcommand, 'db'] + list(args))
