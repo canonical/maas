@@ -9,7 +9,6 @@ from __future__ import (
 """Django DEVELOPMENT settings for maas project."""
 
 __metaclass__ = type
-__all__ = []
 
 import os
 
@@ -194,5 +193,3 @@ INTERNAL_IPS = ('127.0.0.1',)
 DEBUG_TOOLBAR_CONFIG = {
     'INTERCEPT_REDIRECTS': False,
     }
-
-PISTON_IGNORE_DUPE_MODELS = True

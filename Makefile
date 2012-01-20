@@ -16,7 +16,7 @@ test: bin/test
 
 lint: sources = setup.py src templates utilities
 lint:
-	@(pyflakes $(sources); pep8 --repeat $(sources)) | sort -g
+	@bin/flake8 $(sources) | grep -v "from maas.settings import *"; exit 0;
 
 check: clean test
 

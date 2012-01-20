@@ -9,7 +9,6 @@ from __future__ import (
 """Django settings for maas project."""
 
 __metaclass__ = type
-__all__ = []
 
 import os
 
