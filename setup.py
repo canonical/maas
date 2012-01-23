@@ -39,8 +39,8 @@ setup(
     author="MaaS Developers",
     author_email="juju@lists.ubuntu.com",
 
-    packages=find_packages('src'),
-    package_dir={'': 'src'},
+    packages=find_packages(b'src'),
+    package_dir={'': b'src'},
 
     install_requires=['setuptools'],
 
