@@ -11,7 +11,7 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
-from maas.testing import TestCase
+from maastesting import TestCase
 
 
 class TestSomething(TestCase):

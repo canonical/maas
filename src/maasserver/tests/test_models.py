@@ -12,11 +12,11 @@ __metaclass__ = type
 __all__ = []
 
 from django.core.exceptions import ValidationError
-from maas.testing import TestCase
 from maasserver.models import (
     MACAddress,
     Node,
     )
+from maastesting import TestCase
 
 
 class NodeTest(TestCase):

@@ -16,7 +16,7 @@ from maas.settings import *
 
 # Use our custom test runner, which makes sure that a local database
 # cluster is running in the branch.
-TEST_RUNNER = 'maas.testing.runner.TestRunner'
+TEST_RUNNER = 'maastesting.runner.TestRunner'
 
 # Location where python-oops should store errors.
 OOPS_REPOSITORY = 'logs'
@@ -162,6 +162,7 @@ INSTALLED_APPS = (
     'django.contrib.admin',
     'django.contrib.admindocs',
     'maasserver',
+    'maastesting',
     'debug_toolbar',
 )
 
