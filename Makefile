@@ -4,6 +4,7 @@ build: bin/buildout bin/django doc
 
 bin/buildout: bootstrap.py distribute_setup.py
 	$(PYTHON) bootstrap.py --distribute --setup-source distribute_setup.py
+	@touch --no-create $@  # Ensure it's newer than its dependencies.
 
 bin/django bin/test: bin/buildout buildout.cfg setup.py
 	bin/buildout install django
