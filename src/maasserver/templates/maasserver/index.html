@@ -1,25 +1,11 @@
 {% extends "maasserver/base.html" %}
 
+{% block nav-active-index %}active{% endblock %}
+
 {% block content %}
-  <h2>{{ node_list|length }} node{{ node_list|length|pluralize }} in this cluster</h2>
-  {% if node_list|length %}
-    <table>
-      <thead>
-        <tr>
-          <td>System ID</td>
-          <td>Hostname</td>
-          <td>MAC</td>
-          <td>Status</td>
-        </tr>
-      </thead>
-      {% for node in node_list %}
-      <tr>
-        <td>{{ node.system_id }}</td>
-        <td>{{ node.hostname }}</td>
-        <td>{{ node.mac_address_set }}</td>
-        <td>{{ node.status }}</td>
-      </tr>
-      {% endfor %}
-    </table>
-  {% endif%}
+  <h2>
+  {{ node_list|length }} node{{ node_list|length|pluralize }} in this cluster
+  </h2>
+
+  <a href="{% url node-create %}">Add Node</a>
 {% endblock %}

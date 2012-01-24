@@ -23,6 +23,10 @@
 #user-nav a {
     color: #333;
     }
+#user-nav li {
+    float: right;
+    padding-right: 15px;
+    }
 #header {
     background-color: #dd4814;
     border-radius: 0 0 8px 8px;
@@ -61,4 +65,4 @@
     margin: 10px;
     padding: 20px;
     background-color: #AEA79F;
-}
+    }

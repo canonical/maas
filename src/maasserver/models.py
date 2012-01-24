@@ -61,6 +61,9 @@ NODE_STATUS_CHOICES = (
 )
 
 
+NODE_STATUS_CHOICES_DICT = dict(NODE_STATUS_CHOICES)
+
+
 class NodeManager(models.Manager):
 
     def visible_nodes(self, user):
@@ -90,6 +93,9 @@ class Node(CommonInfo):
             return u"%s (%s)" % (self.system_id, self.hostname)
         else:
             return self.system_id
+
+    def display_status(self):
+        return NODE_STATUS_CHOICES_DICT[self.status]
 
     def add_mac_address(self, mac_address):
         mac = MACAddress(mac_address=mac_address, node=self)

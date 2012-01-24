@@ -7,30 +7,31 @@
     <link rel="stylesheet" href="{{ STATIC_URL }}css/ubuntu-webfonts.css" />
     <title>{% block title %}MaaS{% endblock %}</title>
     {% block js-conf %}{% include "maasserver/js-conf.html" %}{% endblock %}
-    {% block header %}{% endblock %}
+    {% block head %}{% endblock %}
 </head>
 <body>
-    <div id="page">
-        <div id="wrapper">
-            <ul id="user-nav" class="nav">
-                <li>{{ request.user.username }}</li>
-                <li><a href="">Logout</a></li>
-            </ul>
-            <div id="body">
-                <div id="header">
-                    <ul id="main-nav" class="nav">
-                        <li class="{% block nav-active-dashboard %}{% endblock %}"><a href="{% url index %}">Dashboard</a></li>
-                        <li class="{% block nav-active-nodes %}{% endblock %}"><a href="">Nodes</a></li>
-                    </ul>
-                    <h1>My MaaS</h1>
-                    <div class="clear"></div>
-                </div>
-                <div id="content">
-                    {% block content %}
-                    {% endblock %}
-                </div>
-            </div>
-        </div>
+  <div id="page">
+    <div id="wrapper">
+    {% block user-nav %}
+      {% include "maasserver/user-nav.html" %}
+    {% endblock %}
+    <div id="body">
+      <div id="header">
+      {% block header %}
+        <ul id="main-nav" class="nav">
+          <li class="{% block nav-active-index %}{% endblock %}">
+            <a href="{% url index %}">Dashboard</a>
+          </li>
+          <li class="{% block nav-active-node-list %}{% endblock %}">
+            <a href="{% url node-list %}">Nodes</a>
+         </li>
+        </ul>
+        <h1>MaaS Cluster</h1>
+        <div class="clear"></div>
+      {% endblock %}
+      </div>
+      <div id="content">{% block content %}{% endblock %}</div>
     </div>
+  </div>
 </body>
 </html>
