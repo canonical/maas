@@ -15,8 +15,8 @@
         </tr>
       </thead>
       {% for node in node_list %}
-        <tr>
-        <td>{{ node.system_id }}</td>
+        <tr class="node">
+        <td class="node-system_id">{{ node.system_id }}</td>
         <td>{{ node.hostname }}</td>
         <td>{{ node.mac_address_set }}</td>
         <td>{{ node.display_status }}</td>

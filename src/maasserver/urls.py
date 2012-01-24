@@ -16,22 +16,20 @@ from django.conf.urls.defaults import (
     url,
     )
 from django.contrib.auth.views import login
-from django.views.generic import ListView
 from maasserver.api import (
     api_doc,
     NodeHandler,
-    NodesHandler,
     NodeMacHandler,
     NodeMacsHandler,
+    NodesHandler,
     )
 from maasserver.models import Node
 from maasserver.views import (
     logout,
+    NodeListView,
     NodesCreateView,
-    NodeView,
     )
 from piston.resource import Resource
-
 
 # Urls accessible to anonymous users.
 urlpatterns = patterns('maasserver.views',
@@ -43,12 +41,11 @@ urlpatterns = patterns('maasserver.views',
 urlpatterns += patterns('maasserver.views',
     url(
         r'^$',
-        ListView.as_view(model=Node, template_name="maasserver/index.html"),
+        NodeListView.as_view(template_name="maasserver/index.html"),
         name='index'),
-    url(r'^nodes/$', ListView.as_view(model=Node), name='node-list'),
+    url(r'^nodes/$', NodeListView.as_view(model=Node), name='node-list'),
     url(
         r'^nodes/create/$', NodesCreateView.as_view(), name='node-create'),
-    url(r'^nodes/([\w\-]+)/$', NodeView.as_view(), name='node-view'),
 )
 
 # API.

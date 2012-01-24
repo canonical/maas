@@ -1,0 +1,134 @@
+- fields: {created: 2012-01-24, hostname: sun, owner: null, status: 0, system_id: node-2666dd64-4671-11e1-93b8-00225f89f211,
+    updated: !!timestamp '2012-01-24 10:52:38.735954'}
+  model: maasserver.node
+  pk: 15
+- fields: {created: 2012-01-24, hostname: moon, owner: 6, status: 2, system_id: node-29d7ad70-4671-11e1-93b8-00225f89f211,
+    updated: !!timestamp '2012-01-24 10:52:44.507777'}
+  model: maasserver.node
+  pk: 16
+- fields: {created: 2012-01-24, hostname: mars, owner: 6, status: 3, system_id: node-2d424b28-4671-11e1-93b8-00225f89f211,
+    updated: !!timestamp '2012-01-24 10:52:50.239704'}
+  model: maasserver.node
+  pk: 17
+- fields: {created: 2012-01-24, hostname: jupiter, owner: null, status: 0, system_id: node-2fb4fec8-4671-11e1-93b8-00225f89f211,
+    updated: !!timestamp '2012-01-24 10:52:54.346832'}
+  model: maasserver.node
+  pk: 18
+- fields: {created: 2012-01-24, hostname: saturn, owner: 1, status: 3, system_id: node-33b55e28-4671-11e1-93b8-00225f89f211,
+    updated: !!timestamp '2012-01-24 10:53:01.060176'}
+  model: maasserver.node
+  pk: 19
+- fields: {created: 2012-01-24, mac_address: '08:34:2a:b5:8a:45', node: 15, updated: !!timestamp '2012-01-24
+      11:00:59.951873'}
+  model: maasserver.macaddress
+  pk: 1
+- fields: {created: 2012-01-24, mac_address: '08:05:44:c7:bb:45', node: 16, updated: !!timestamp '2012-01-24
+      11:01:23.998278'}
+  model: maasserver.macaddress
+  pk: 2
+- fields: {created: 2012-01-24, mac_address: '54:67:a4:33:7d:12', node: 17, updated: !!timestamp '2012-01-24
+      11:01:52.489555'}
+  model: maasserver.macaddress
+  pk: 3
+- fields: {created: 2012-01-24, mac_address: 'aa:bb:33:44:f7:13', node: 18, updated: !!timestamp '2012-01-24
+      11:02:11.911591'}
+  model: maasserver.macaddress
+  pk: 4
+- fields: {created: 2012-01-24, mac_address: 'c6:78:43:c3:12:8a', node: 19, updated: !!timestamp '2012-01-24
+      11:02:29.587380'}
+  model: maasserver.macaddress
+  pk: 5
+- fields: {created: 2012-01-24, mac_address: 'dd:67:33:33:1a:bb', node: 15, updated: !!timestamp '2012-01-24
+      11:06:41.632158'}
+  model: maasserver.macaddress
+  pk: 6
+- fields:
+    date_joined: 2012-01-23 11:52:14
+    email: admin@example.com
+    first_name: ''
+    groups: []
+    is_active: true
+    is_staff: true
+    is_superuser: true
+    last_login: 2012-01-24 09:45:50
+    last_name: ''
+    password: sha1$a0be0$0117b50a178c65f4bd5dde6aec8702c4d0165a13
+    user_permissions: []
+    username: admin
+  model: auth.user
+  pk: 1
+- fields:
+    date_joined: 2012-01-24 10:49:41
+    email: gaston@example.com
+    first_name: ''
+    groups: []
+    is_active: true
+    is_staff: false
+    is_superuser: false
+    last_login: 2012-01-24 10:49:41
+    last_name: ''
+    password: sha1$f7c88$8811d5d3e536d1bb5a891dba3a34bfe159d04e93
+    user_permissions: []
+    username: gaston
+  model: auth.user
+  pk: 2
+- fields:
+    date_joined: 2012-01-24 10:50:03
+    email: dave@example.com
+    first_name: ''
+    groups: []
+    is_active: true
+    is_staff: false
+    is_superuser: false
+    last_login: 2012-01-24 10:50:03
+    last_name: ''
+    password: sha1$c61f9$39c9c799284c868d12e9dc7857965df2a5dc547a
+    user_permissions: []
+    username: dave
+  model: auth.user
+  pk: 3
+- fields:
+    date_joined: 2012-01-24 10:50:21
+    email: raph@example.com
+    first_name: ''
+    groups: []
+    is_active: true
+    is_staff: false
+    is_superuser: false
+    last_login: 2012-01-24 10:50:21
+    last_name: ''
+    password: sha1$d1d8d$cb86bba0708102854acd5fcca33d7bc4acdfd6b5
+    user_permissions: []
+    username: raph
+  model: auth.user
+  pk: 4
+- fields:
+    date_joined: 2012-01-24 10:50:38
+    email: diane@example.com
+    first_name: ''
+    groups: []
+    is_active: true
+    is_staff: false
+    is_superuser: false
+    last_login: 2012-01-24 10:50:38
+    last_name: ''
+    password: sha1$9a168$cda4cc93060bd0782a1696b91f664c975934384d
+    user_permissions: []
+    username: diane
+  model: auth.user
+  pk: 5
+- fields:
+    date_joined: 2012-01-24 10:50:53
+    email: test@example.com
+    first_name: ''
+    groups: []
+    is_active: true
+    is_staff: false
+    is_superuser: false
+    last_login: 2012-01-24 10:50:53
+    last_name: ''
+    password: sha1$6c48c$3afe3785b93a5e6a25a819b5ba6c4a8ef5916e7f
+    user_permissions: []
+    username: test
+  model: auth.user
+  pk: 6

@@ -31,6 +31,9 @@ check: clean test
 docs/api.rst: bin/django src/maasserver/api.py
 	bin/django gen_rst_api_doc > $@
 
+sampledata: bin/django
+	bin/django loaddata src/maasserver/fixtures/dev_fixture.yaml
+
 doc: bin/sphinx docs/api.rst
 	bin/sphinx
 
@@ -58,4 +61,4 @@ syncdb: bin/django dev-db
 
 .PHONY: \
     build check clean dev-db distclean doc \
-    harness lint run syncdb test
+    harness lint run syncdb test sampledata

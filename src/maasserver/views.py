@@ -11,12 +11,12 @@ from __future__ import (
 __metaclass__ = type
 __all__ = [
     "logout",
-    "NodeView",
+    "NodeListView",
     "NodesCreateView",
     ]
 
 from django.contrib.auth.views import logout as dj_logout
-from django.shortcuts import get_object_or_404
+from django.core.urlresolvers import reverse
 from django.views.generic import (
     CreateView,
     ListView,
@@ -28,16 +28,17 @@ def logout(request):
     return dj_logout(request, next_page='/')
 
 
-class NodeView(ListView):
+class NodeListView(ListView):
 
     context_object_name = "node_list"
 
     def get_queryset(self):
-        node = get_object_or_404(Node, name__iexact=self.args[0])
-        return Node.get_visible_nodes.filter(node=node)
+        return Node.objects.get_visible_nodes(user=self.request.user)
 
 
 class NodesCreateView(CreateView):
 
     model = Node
-    success_url = '/'
+
+    def get_success_url(self):
+        return reverse('index')
