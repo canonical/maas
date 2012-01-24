@@ -1,7 +1,15 @@
 # Copyright 2012 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from __future__ import print_function
+"""Django command: access the development database directly in SQL."""
+
+from __future__ import (
+    print_function,
+    unicode_literals,
+    )
+
+__metaclass__ = type
+__all__ = ['Command']
 
 from subprocess import check_call
 
@@ -9,12 +17,6 @@ from django.core.management.base import (
     BaseCommand,
     CommandError,
     )
-
-
-"""Django command: access the development database directly in SQL."""
-
-__metaclass__ = type
-__all__ = ['Command']
 
 
 class Command(BaseCommand):

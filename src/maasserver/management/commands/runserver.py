@@ -1,7 +1,15 @@
 # Copyright 2012 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from __future__ import print_function
+"""Django command: run the server.  Overrides the default implementation."""
+
+from __future__ import (
+    print_function,
+    unicode_literals,
+    )
+
+__metaclass__ = type
+__all__ = ['Command']
 
 from django.conf import settings
 from django.core.management.commands.runserver import BaseRunserverCommand
@@ -11,12 +19,6 @@ from oops_wsgi import (
     install_hooks,
     make_app,
     )
-
-
-"""Django command: run the server.  Overrides the default implementation."""
-
-__metaclass__ = type
-__all__ = ['Command']
 
 
 class Command(BaseRunserverCommand):

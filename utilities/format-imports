@@ -3,11 +3,6 @@
 # Copyright 2010-2012 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from __future__ import (
-    print_function,
-    unicode_literals,
-    )
-
 """ Format import sections in python files
 
 = Usage =
@@ -129,6 +124,11 @@ is over the length limit.
         import object
 }}}
 """
+
+from __future__ import (
+    print_function,
+    unicode_literals,
+    )
 
 __metaclass__ = type
 

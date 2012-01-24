@@ -1,10 +1,11 @@
 # Copyright 2010-2012 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-""" A list of top-level standard python library names.
+"""A list of top-level standard python library names.
 
 This list is used by format-imports to determine if a module is in this group
 or not.
+
 The list is taken from http://docs.python.org/release/2.5.4/lib/modindex.html
 but modules specific to other OSs have been taken out. It may need to be
 updated from time to time.
