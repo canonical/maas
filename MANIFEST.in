@@ -1,0 +1,5 @@
+graft src/*/static
+graft src/*/templates
+prune src/*/testing
+prune src/*/tests
+prune src/maastesting

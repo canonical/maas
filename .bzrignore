@@ -5,6 +5,7 @@
 ./build
 ./db
 ./develop-eggs
+./dist
 ./docs/_build
 ./docs/api.rst
 ./download-cache

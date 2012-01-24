@@ -47,7 +47,13 @@ setup(
     author="MaaS Developers",
     author_email="juju@lists.ubuntu.com",
 
-    packages=find_packages(b'src'),
+    packages=find_packages(
+        where=b'src',
+        exclude=[
+            b"maastesting",
+            b"maastesting.*",
+            ]
+        ),
     package_dir={'': b'src'},
 
     install_requires=['setuptools'],
@@ -61,5 +67,5 @@ setup(
         'Operating System :: OS Independent',
         'Programming Language :: Python',
         'Topic :: Internet :: WWW/HTTP',
-    ]
-)
+        ]
+    )
