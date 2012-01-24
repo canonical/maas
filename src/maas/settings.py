@@ -33,6 +33,10 @@ YUI_DEBUG = DEBUG
 YUI_VERSION = '3.4.1'
 STATIC_LOCAL_SERVE = DEBUG
 
+AUTHENTICATION_BACKENDS = (
+    'maasserver.models.MaaSAuthorizationBackend',
+    )
+
 DATABASES = {
     'default': {
         # 'postgresql_psycopg2', 'postgresql', 'mysql', 'sqlite3' etc.

@@ -34,7 +34,7 @@ class NodeView(ListView):
 
     def get_queryset(self):
         node = get_object_or_404(Node, name__iexact=self.args[0])
-        return Node.visible_nodes.filter(node=node)
+        return Node.get_visible_nodes.filter(node=node)
 
 
 class NodesCreateView(CreateView):

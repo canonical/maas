@@ -14,13 +14,16 @@ __all__ = []
 import httplib
 import json
 
-from django.test.client import Client
 from maasserver.models import (
     MACAddress,
     Node,
+    NODE_STATUS,
+    )
+from maasserver.testing import (
+    LoggedInTestCase,
+    TestCase,
     )
 from maasserver.testing.factory import factory
-from maastesting import TestCase
 
 
 class NodeAnonAPITest(TestCase):
@@ -32,28 +35,31 @@ class NodeAnonAPITest(TestCase):
         self.assertEqual(httplib.UNAUTHORIZED, response.status_code)
 
 
-class LoggedInMixin(object):
+class APITestMixin(object):
 
     def setUp(self):
-        super(LoggedInMixin, self).setUp()
-        self.user = factory.make_user(username='user', password='test')
-        self.client = Client()
-        self.client.login(username='user', password='test')
+        super(APITestMixin, self).setUp()
+        self.other_user = factory.make_user()
+        self.other_node = factory.make_node(
+            status=NODE_STATUS.DEPLOYED, owner=self.other_user)
 
 
-class NodeAPITest(LoggedInMixin, TestCase):
+class NodeAPITest(APITestMixin, LoggedInTestCase):
 
     def test_nodes_GET(self):
         """
         The api allows for fetching the list of Nodes.
 
         """
-        node1 = factory.make_node(set_hostname=True)
-        node2 = factory.make_node(set_hostname=True)
+        node1 = factory.make_node()
+        node2 = factory.make_node(
+            set_hostname=True, status=NODE_STATUS.DEPLOYED,
+            owner=self.logged_in_user)
         response = self.client.get('/api/nodes/')
         parsed_result = json.loads(response.content)
 
-        self.assertEqual(200, response.status_code)
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(2, len(parsed_result))
         self.assertEqual(node1.system_id, parsed_result[0]['system_id'])
         self.assertEqual(node2.system_id, parsed_result[1]['system_id'])
 
@@ -66,11 +72,22 @@ class NodeAPITest(LoggedInMixin, TestCase):
         response = self.client.get('/api/nodes/%s/' % node.system_id)
         parsed_result = json.loads(response.content)
 
-        self.assertEqual(200, response.status_code)
+        self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(node.hostname, parsed_result['hostname'])
         self.assertEqual(node.system_id, parsed_result['system_id'])
 
-    def test_node_GET_404(self):
+    def test_node_GET_non_visible_node(self):
+        """
+        The request to fetch a single node is denied if the node isn't visible
+        by the user.
+
+        """
+        response = self.client.get(
+            '/api/nodes/%s/' % self.other_node.system_id)
+
+        self.assertEqual(httplib.UNAUTHORIZED, response.status_code)
+
+    def test_node_GET_not_found(self):
         """
         When fetching a Node, the api returns a 'Not Found' (404) error
         if no node is found.
@@ -89,7 +106,7 @@ class NodeAPITest(LoggedInMixin, TestCase):
             '/api/nodes/', {'hostname': 'diane'})
         parsed_result = json.loads(response.content)
 
-        self.assertEqual(200, response.status_code)
+        self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual('diane', parsed_result['hostname'])
         self.assertEqual(1, Node.objects.filter(hostname='diane').count())
 
@@ -103,12 +120,23 @@ class NodeAPITest(LoggedInMixin, TestCase):
             '/api/nodes/%s/' % node.system_id, {'hostname': 'francis'})
         parsed_result = json.loads(response.content)
 
-        self.assertEqual(200, response.status_code)
+        self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual('francis', parsed_result['hostname'])
         self.assertEqual(0, Node.objects.filter(hostname='diane').count())
         self.assertEqual(1, Node.objects.filter(hostname='francis').count())
 
-    def test_node_PUT_404(self):
+    def test_node_PUT_non_visible_node(self):
+        """
+        The request to update a single node is denied if the node isn't visible
+        by the user.
+
+        """
+        response = self.client.put(
+            '/api/nodes/%s/' % self.other_node.system_id)
+
+        self.assertEqual(httplib.UNAUTHORIZED, response.status_code)
+
+    def test_node_PUT_not_found(self):
         """
         When updating a Node, the api returns a 'Not Found' (404) error
         if no node is found.
@@ -131,6 +159,17 @@ class NodeAPITest(LoggedInMixin, TestCase):
         self.assertEqual(
             'Bad Request: Cannot set the status for a node.', response.content)
 
+    def test_node_DELETE_non_visible_node(self):
+        """
+        The request to delete a single node is denied if the node isn't visible
+        by the user.
+
+        """
+        response = self.client.delete(
+            '/api/nodes/%s/' % self.other_node.system_id)
+
+        self.assertEqual(httplib.UNAUTHORIZED, response.status_code)
+
     def test_node_DELETE(self):
         """
         The api allows to delete a Node.
@@ -144,7 +183,7 @@ class NodeAPITest(LoggedInMixin, TestCase):
         self.assertEqual(
             [], list(Node.objects.filter(system_id=system_id)))
 
-    def test_node_DELETE_404(self):
+    def test_node_DELETE_not_found(self):
         """
         When deleting a Node, the api returns a 'Not Found' (404) error
         if no node is found.
@@ -155,7 +194,7 @@ class NodeAPITest(LoggedInMixin, TestCase):
         self.assertEqual(httplib.NOT_FOUND, response.status_code)
 
 
-class MACAddressAPITest(LoggedInMixin, TestCase):
+class MACAddressAPITest(APITestMixin, LoggedInTestCase):
 
     def setUp(self):
         super(MACAddressAPITest, self).setUp()
@@ -171,14 +210,25 @@ class MACAddressAPITest(LoggedInMixin, TestCase):
         response = self.client.get('/api/nodes/%s/macs/' % self.node.system_id)
         parsed_result = json.loads(response.content)
 
-        self.assertEqual(200, response.status_code)
+        self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(2, len(parsed_result))
         self.assertEqual(
             self.mac1.mac_address, parsed_result[0]['mac_address'])
         self.assertEqual(
             self.mac2.mac_address, parsed_result[1]['mac_address'])
 
-    def test_macs_GET_404(self):
+    def test_macs_GET_forbidden(self):
+        """
+        When fetching MAC Addresses, the api returns a 'Unauthorized' (401)
+        error if the node is not visible to the logged-in user.
+
+        """
+        response = self.client.get(
+            '/api/nodes/%s/macs/' % self.other_node.system_id)
+
+        self.assertEqual(httplib.UNAUTHORIZED, response.status_code)
+
+    def test_macs_GET_not_found(self):
         """
         When fetching MAC Addresses, the api returns a 'Not Found' (404)
         error if no node is found.
@@ -188,7 +238,7 @@ class MACAddressAPITest(LoggedInMixin, TestCase):
 
         self.assertEqual(httplib.NOT_FOUND, response.status_code)
 
-    def test_macs_GET_node_404(self):
+    def test_macs_GET_node_not_found(self):
         """
         When fetching a MAC Address, the api returns a 'Not Found' (404)
         error if the MAC Address does not exist.
@@ -199,7 +249,18 @@ class MACAddressAPITest(LoggedInMixin, TestCase):
 
         self.assertEqual(httplib.NOT_FOUND, response.status_code)
 
-    def test_macs_GET_node_400(self):
+    def test_macs_GET_node_forbidden(self):
+        """
+        When fetching a MAC Address, the api returns a 'Unauthorized' (401)
+        error if the node is not visible to the logged-in user.
+
+        """
+        response = self.client.get(
+            '/api/nodes/%s/macs/0-aa-22-cc-44-dd/' % self.other_node.system_id)
+
+        self.assertEqual(httplib.UNAUTHORIZED, response.status_code)
+
+    def test_macs_GET_node_bad_request(self):
         """
         When fetching a MAC Address, the api returns a 'Bad Request' (400)
         error if the MAC Address is not valid.
@@ -221,7 +282,7 @@ class MACAddressAPITest(LoggedInMixin, TestCase):
             {'mac_address': 'AA:BB:CC:DD:EE:FF'})
         parsed_result = json.loads(response.content)
 
-        self.assertEqual(200, response.status_code)
+        self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual('AA:BB:CC:DD:EE:FF', parsed_result['mac_address'])
         self.assertEqual(
             nb_macs + 1,
@@ -257,7 +318,19 @@ class MACAddressAPITest(LoggedInMixin, TestCase):
             nb_macs - 1,
             self.node.macaddress_set.count())
 
-    def test_macs_DELETE_404(self):
+    def test_macs_DELETE_mac_forbidden(self):
+        """
+        When deleting a MAC Address, the api returns a 'Unauthorized' (401)
+        error if the node is not visible to the logged-in user.
+
+        """
+        response = self.client.delete(
+            '/api/nodes/%s/macs/%s/' % (
+                self.other_node.system_id, self.mac1.mac_address))
+
+        self.assertEqual(httplib.UNAUTHORIZED, response.status_code)
+
+    def test_macs_DELETE_not_found(self):
         """
         When deleting a MAC Address, the api returns a 'Not Found' (404)
         error if no existing MAC Address is found.
@@ -269,7 +342,7 @@ class MACAddressAPITest(LoggedInMixin, TestCase):
 
         self.assertEqual(httplib.NOT_FOUND, response.status_code)
 
-    def test_macs_DELETE_400(self):
+    def test_macs_DELETE_bad_request(self):
         """
         When deleting a MAC Address, the api returns a 'Bad Request' (400)
         error if the provided MAC Address is not valid.

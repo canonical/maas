@@ -20,8 +20,11 @@ import re
 from uuid import uuid1
 
 from django.contrib import admin
+from django.contrib.auth.backends import ModelBackend
 from django.contrib.auth.models import User
+from django.core.exceptions import PermissionDenied
 from django.db import models
+from django.shortcuts import get_object_or_404
 from maasserver.macaddress import MACAddressField
 
 
@@ -65,13 +68,38 @@ NODE_STATUS_CHOICES_DICT = dict(NODE_STATUS_CHOICES)
 
 
 class NodeManager(models.Manager):
+    """A utility to manage collections of Nodes."""
 
-    def visible_nodes(self, user):
+    def get_visible_nodes(self, user):
+        """Fetch all the `Nodes` visible by a User.  Available via
+        `Node.objects`.
+
+        :param user: The user that should be used in the permission check.
+        :type user: django.contrib.auth.models.User
+
+        """
         if user.is_superuser:
             return self.all()
         else:
             return self.filter(
                 models.Q(owner__isnull=True) | models.Q(owner=user))
+
+    def get_visible_node_or_404(self, system_id, user):
+        """Fetch a `Node` by system_id.  Raise exceptions if no `Node` with
+        this system_id exist or if the provided user cannot see this `Node`.
+
+        :param name: The system_id.
+        :type name: str
+        :param user: The user that should be used in the permission check.
+        :type user: django.contrib.auth.models.User
+        :raises: django.http.Http404, django.core.exceptions.PermissionDenied
+
+        """
+        node = get_object_or_404(Node, system_id=system_id)
+        if user.has_perm('access', node):
+            return node
+        else:
+            raise PermissionDenied
 
 
 class Node(CommonInfo):
@@ -118,6 +146,9 @@ class MACAddress(CommonInfo):
     mac_address = MACAddressField()
     node = models.ForeignKey(Node)
 
+    class Meta:
+        verbose_name_plural = "MAC addresses"
+
     def __unicode__(self):
         return self.mac_address
 
@@ -127,7 +158,9 @@ admin.site.register(Node)
 admin.site.register(MACAddress)
 
 
-class MaaSAuthorizationBackend(object):
+class MaaSAuthorizationBackend(ModelBackend):
+
+    supports_object_permissions = True
 
     def has_perm(self, user, perm, obj=None):
         # Only Nodes can be checked. We also don't support perm checking
@@ -140,9 +173,5 @@ class MaaSAuthorizationBackend(object):
         if perm != 'access':
             raise NotImplementedError(
                 'Invalid permission check (invalid permission name).')
-
-        # Admins are granted all permissions.
-        if user.is_superuser:
-            return True
 
         return obj.owner in (None, user)

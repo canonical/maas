@@ -11,6 +11,8 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
+import httplib
+
 from django.core.urlresolvers import reverse
 from maasserver.models import (
     MaaSAuthorizationBackend,
@@ -31,14 +33,14 @@ class LoginLogoutTest(TestCase):
         response = self.client.post(
             reverse('login'), {'username': 'test', 'password': 'test'})
 
-        self.assertEqual(302, response.status_code)
+        self.assertEqual(httplib.FOUND, response.status_code)
         self.assertEqual(self.user.id, self.client.session['_auth_user_id'])
 
     def test_login_failed(self):
         response = self.client.post(
             reverse('login'), {'username': 'test', 'password': 'wrong-pw'})
 
-        self.assertEqual(200, response.status_code)
+        self.assertEqual(httplib.OK, response.status_code)
         self.assertNotIn('_auth_user_id', self.client.session.keys())
 
     def test_logout(self):
@@ -77,10 +79,6 @@ class TestMaaSAuthorizationBackend(AuthTestMixin, TestCase):
             NotImplementedError, self.backend.has_perm,
             self.admin, 'not-access', self.not_owned_node)
 
-    def test_admin_access(self):
-        self.assertTrue(self.backend.has_perm(
-            self.admin, 'access', self.node_user1))
-
     def test_not_owned_status(self):
         # A non-admin user can access a node that is not yet owned.
         self.assertTrue(self.backend.has_perm(
@@ -103,11 +101,11 @@ class TestNodeVisibility(AuthTestMixin, TestCase):
         # An admin sees all the nodes.
         self.assertSequenceEqual(
             [self.node_user1, self.node_user2, self.not_owned_node],
-            Node.objects.visible_nodes(self.admin))
+            Node.objects.get_visible_nodes(self.admin))
 
     def test_nodes_not_owned_status(self):
         # A non-admin user only has access to non-owned nodes and his own
         # nodes.
         self.assertSequenceEqual(
             [self.node_user1, self.not_owned_node],
-            Node.objects.visible_nodes(self.user1))
+            Node.objects.get_visible_nodes(self.user1))
