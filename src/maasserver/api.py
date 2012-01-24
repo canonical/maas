@@ -15,11 +15,11 @@ __all__ = [
     ]
 
 from django.core.exceptions import ValidationError
-from django.template import RequestContext
 from django.shortcuts import (
     get_object_or_404,
-    render_to_response
+    render_to_response,
     )
+from django.template import RequestContext
 from maasserver.macaddress import validate_mac
 from maasserver.models import (
     MACAddress,
@@ -106,7 +106,7 @@ class NodesHandler(BaseHandler):
         if 'status' in request.data:
             return bad_request('Cannot set the status for a node.')
 
-        node = Node(status='NEW', **dict(request.data.items()))
+        node = Node(**dict(request.data.items()))
         return validate_and_save(node)
 
     @classmethod

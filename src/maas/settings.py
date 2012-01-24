@@ -22,6 +22,11 @@ MANAGERS = ADMINS
 # Location where python-oops should store errors.
 OOPS_REPOSITORY = 'logs'
 
+LOGOUT_URL = '/'
+LOGIN_REDIRECT_URL = '/'
+
+API_URL_REGEXP = '^/api/'
+
 DEBUG = False
 TEMPLATE_DEBUG = DEBUG
 YUI_DEBUG = DEBUG
@@ -131,6 +136,7 @@ MIDDLEWARE_CLASSES = (
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
+    'maasserver.middleware.AccessMiddleware',
 )
 
 ROOT_URLCONF = 'maas.urls'

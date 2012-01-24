@@ -1,0 +1,29 @@
+{% extends "maasserver/base.html" %}
+{% load url from future %}
+
+{% block content %}
+
+<h2>Login</h2>
+{% if form.errors %}
+  <p>Your username and password didn't match. Please try again.</p>
+{% endif %}
+
+<form method="post" action="{% url 'django.contrib.auth.views.login' %}">
+  <table>
+    <tr>
+      <td>{{ form.username.label_tag }}</td>
+      <td>{{ form.username }}</td>
+    </tr>
+    <tr>
+      <td>{{ form.password.label_tag }}</td>
+      <td>{{ form.password }}</td>
+    </tr>
+    <tr>
+      <td></td><td><input type="submit" value="login" /></td>
+    </tr>
+  </table>
+
+  <input type="hidden" name="next" value="{{ next }}" />
+</form>
+
+{% endblock %}

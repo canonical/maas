@@ -16,9 +16,11 @@ __all__ = [
 import random
 import string
 
+from django.contrib.auth.models import User
 from maasserver.models import (
     MACAddress,
     Node,
+    NODE_STATUS,
     )
 
 
@@ -35,7 +37,7 @@ class Factory():
         if hostname is '' and set_hostname:
             hostname = self.getRandomString(255)
         if status is None:
-            status = u'NEW'
+            status = NODE_STATUS.DEFAULT_STATUS
         node = Node(hostname=hostname, status=status, **kwargs)
         node.save()
         return node
@@ -46,6 +48,23 @@ class Factory():
         node.save()
         mac = MACAddress(mac_address=address, node=node)
         return mac
+
+    def make_user(self, username=None, password=None, email=None):
+        if username is None:
+            username = self.getRandomString(10)
+        if email is None:
+            email = '%s@example.com' % self.getRandomString(10)
+        if password is None:
+            password = 'test'
+        return User.objects.create_user(
+            username=username, password=password, email=email)
+
+    def make_admin(self, username=None, password=None, email=None):
+        admin = self.make_user(
+            username=username, password=password, email=email)
+        admin.is_superuser = True
+        admin.save()
+        return admin
 
 
 # Create factory singleton.
