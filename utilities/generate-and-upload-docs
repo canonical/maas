@@ -1,0 +1,49 @@
+#!/usr/bin/env python2.7
+# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
+"""Generate and upload MaaS documentation."""
+
+from __future__ import (
+    print_function,
+    unicode_literals,
+    )
+
+__metaclass__ = type
+
+import argparse
+import atexit
+from os import sep
+from os.path import (
+    basename,
+    join,
+    )
+from shutil import rmtree
+from subprocess import check_call
+from tempfile import mkdtemp
+
+
+argument_parser = argparse.ArgumentParser(description=__doc__)
+argument_parser.add_argument(
+    "--source", action="store", type=str, help=(
+        "The source branch that will be exported and used to "
+        "generate documentation (%(default)s by default)."))
+argument_parser.add_argument(
+    "--target", action="store", type=str, required=True, help=(
+        "The target location to which the generated "
+        "documentation will be transferred by rsync. "))
+argument_parser.set_defaults(source="lp:maas")
+
+
+if __name__ == "__main__":
+    args = argument_parser.parse_args()
+    # Create temporary directory, remove it on exit.
+    tempdir = mkdtemp(prefix="%s." % basename(__file__))
+    atexit.register(rmtree, tempdir)
+    # Export, build docs, sync to destination.
+    check_call(("bzr", "export", tempdir, args.source))
+    check_call(("make", "-C", tempdir, "doc"))
+    docsdir = join(tempdir, "docs", "_build", "html")
+    check_call(
+        ("rsync", "--archive", "--verbose", "--rsh", "ssh",
+         "--delete", "--delete-after", docsdir + sep, args.target))
