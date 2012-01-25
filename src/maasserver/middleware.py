@@ -42,8 +42,11 @@ class AccessMiddleware(object):
         self.login_url = reverse('login')
 
     def process_request(self, request):
+        # Public urls.
+        if self.public_urls.match(request.path):
+            return None
         # API views.
-        if self.api_url.match(request.path):
+        elif self.api_url.match(request.path):
             if request.user.is_anonymous():
                 return rc.FORBIDDEN
             else:
@@ -53,8 +56,5 @@ class AccessMiddleware(object):
             return None
         else:
             if request.user.is_anonymous():
-                if self.public_urls.match(request.path):
-                    return None
-                else:
-                    return HttpResponseRedirect("%s?next=%s" % (
-                        self.login_url, urlquote_plus(request.path)))
+                return HttpResponseRedirect("%s?next=%s" % (
+                    self.login_url, urlquote_plus(request.path)))

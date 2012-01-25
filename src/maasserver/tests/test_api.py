@@ -29,10 +29,16 @@ from maasserver.testing.factory import factory
 class NodeAnonAPITest(TestCase):
 
     def test_anon_nodes_GET(self):
-        """Anonymous requests to the API are denied"""
+        """Anonymous requests to the API are denied."""
         response = self.client.get('/api/nodes/')
 
         self.assertEqual(httplib.UNAUTHORIZED, response.status_code)
+
+    def test_anon_api_doc(self):
+        """The documentation is accessible to anon users."""
+        response = self.client.get('/api/doc/')
+
+        self.assertEqual(httplib.OK, response.status_code)
 
 
 class APITestMixin(object):
@@ -124,6 +130,19 @@ class NodeAPITest(APITestMixin, LoggedInTestCase):
         self.assertEqual('francis', parsed_result['hostname'])
         self.assertEqual(0, Node.objects.filter(hostname='diane').count())
         self.assertEqual(1, Node.objects.filter(hostname='francis').count())
+
+    def test_node_PUT_invalid(self):
+        """
+        If the data provided to update a node is invalid, a 'Bad request'
+        response is returned.
+
+        """
+        node = factory.make_node(hostname='diane')
+        response = self.client.put(
+            '/api/nodes/%s/' % node.system_id,
+            {'hostname': 'too long' * 100})
+
+        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
 
     def test_node_PUT_non_visible_node(self):
         """
