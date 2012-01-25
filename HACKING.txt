@@ -52,7 +52,7 @@ Point your browser to http://localhost:8000/
 
 If you've populated your instance with the sample data, you can login as a
 simple user using the test account (username: 'test', password: 'test') or the
-admin account (username: 'admin', password: 'admin').
+admin account (username: 'admin', password: 'test').
 
 To shut down the database cluster and clean up all other generated files in
 your branch::
