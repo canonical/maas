@@ -20,10 +20,10 @@
       {% block header %}
         <ul id="main-nav" class="nav">
           <li class="{% block nav-active-index %}{% endblock %}">
-            <a href="{% url index %}">Dashboard</a>
+            <a href="{% url 'index' %}">Dashboard</a>
           </li>
           <li class="{% block nav-active-node-list %}{% endblock %}">
-            <a href="{% url node-list %}">Nodes</a>
+            <a href="{% url 'node-list' %}">Nodes</a>
          </li>
         </ul>
         <h1>MaaS Cluster</h1>

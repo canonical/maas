@@ -1,8 +1,8 @@
 <ul id="user-nav" class="nav">
   {% if user.is_authenticated %}
-    <li><a href="{% url logout %}">Logout</a></li>
+    <li><a href="{% url 'logout' %}">Logout</a></li>
     <li>{{ user.username }}</li>
   {% else %}
-    <li><a href="{% url login %}">Login</a></li>
+    <li><a href="{% url 'login' %}">Login</a></li>
   {% endif %}
 </ul>

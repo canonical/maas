@@ -1,6 +1,7 @@
 *.egg
 *.egg-info
 ./.installed.cfg
+./.coverage
 ./bin
 ./build
 ./db
