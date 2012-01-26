@@ -8,13 +8,15 @@ from __future__ import (
     unicode_literals,
     )
 
+__metaclass__ = type
+__all__ = []
+
 from cStringIO import StringIO
 from functools import partial
 import os
 
 from fixtures import TempDir
 from oops_twisted import OOPSObserver
-from subunit import IsolatedTestCase
 from testtools import TestCase
 from testtools.content import (
     Content,
@@ -61,8 +63,8 @@ class TestOptions(TestCase):
             Raises(MatchesException(UsageError, message)))
 
     def test_option_brokeruser_required(self):
-       options = Options()
-       self.check_exception(
+        options = Options()
+        self.check_exception(
             options,
             "--brokeruser must be specified")
 
@@ -163,7 +165,7 @@ class TestSetUpOOPSHandler(TestCase):
             observer.config.template)
 
 
-class TestProvisioningServiceMaker(IsolatedTestCase, TestCase):
+class TestProvisioningServiceMaker(TestCase):
     """Tests for `provisioningserver.plugin.ProvisioningServiceMaker`."""
 
     def test_init(self):
@@ -183,10 +185,9 @@ class TestProvisioningServiceMaker(IsolatedTestCase, TestCase):
             self.useFixture(TempDir()).path, "provisioningserver.log")
         options = self.makeOptions({"logfile": logfile})
         service_maker = ProvisioningServiceMaker("Harry", "Hill")
-        service = service_maker.makeService(options)
+        service = service_maker.makeService(options, _set_proc_title=False)
         self.assertIsInstance(service, MultiService)
         self.assertEqual(2, len(service.services))
         client_service, server_service = service.services
         self.assertEqual(options["brokerhost"], client_service.args[0])
         self.assertEqual(options["brokerport"], client_service.args[1])
-

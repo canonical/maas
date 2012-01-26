@@ -18,4 +18,4 @@ from provisioningserver.plugin import ProvisioningServiceMaker
 # these variables is irrelevant, as long as there are *some* names bound
 # to providers of IPlugin and IServiceMaker.
 
-service = ProvisioningServiceMaker(...) # TODO: finish
+service = ProvisioningServiceMaker("maas-pserv", "...")  # TODO: finish

@@ -1,15 +1,17 @@
 # Copyright 2005-2012 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""
-Tests for C{AMQFactory}.
-"""
+"""Tests for C{AMQFactory}."""
 
-from unittest import (
-    defaultTestLoader,
-    TestCase,
+from __future__ import (
+    print_function,
+    unicode_literals,
     )
 
+__metaclass__ = type
+__all__ = []
+
+from testtools import TestCase
 from testtools.deferredruntest import flush_logged_errors
 from twisted.internet.defer import Deferred
 from txamqp.protocol import AMQChannel
@@ -77,4 +79,3 @@ class AMQClosingTest(AMQTest):
         """
         errors = flush_logged_errors()
         self.assertEquals(len(errors), 0)
-

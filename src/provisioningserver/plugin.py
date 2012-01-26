@@ -48,6 +48,7 @@ def getRotatableLogFileObserver(filename):
     if filename != '-':
         logfile = LogFile.fromFullPath(
             filename, rotateLength=None, defaultMode=0644)
+
         def signal_handler(sig, frame):
             reactor.callFromThread(logfile.reopen)
         signal.signal(signal.SIGUSR1, signal_handler)
@@ -104,21 +105,30 @@ class Options(usage.Options):
                 "A reporter must be supplied to identify reports "
                 "from this service from other OOPS reports.")
 
+
 class ProvisioningServiceMaker(object):
     """Create a service for the Twisted plugin."""
 
     implements(IServiceMaker, IPlugin)
 
+    options = Options
+
     def __init__(self, name, description):
         self.tapname = name
         self.description = description
 
-    def makeService(self, options):
-        """Construct a service."""
+    def makeService(self, options, _set_proc_title=True):
+        """Construct a service.
+
+        :param _set_proc_title: For testing; if `False` this will stop the
+            obfuscation of command-line parameters in the process title.
+        """
         # Required to hide the command line options that include a password.
         # There is a small window where it can be seen though, between
-        # invocation and when this code runs.
-        setproctitle.setproctitle("maas provisioning service")
+        # invocation and when this code runs. TODO: Make this optional (so
+        # that we don't override process title in tests).
+        if _set_proc_title:
+            setproctitle.setproctitle("maas provisioning service")
 
         logfile = getRotatableLogFileObserver(options["logfile"])
         setUpOOPSHandler(options, logfile)
