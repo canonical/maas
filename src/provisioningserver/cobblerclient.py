@@ -24,6 +24,7 @@ __all__ = [
 import xmlrpclib
 
 from twisted.internet.defer import (
+    DeferredLock,
     inlineCallbacks,
     returnValue,
     )
@@ -55,6 +56,7 @@ class CobblerSession:
         self.proxy = self._make_twisted_proxy()
         self.token = None
         self.connection_count = 0
+        self.authentication_lock = DeferredLock()
 
     def _make_twisted_proxy(self):
         """Create a Twisted XMRLPC proxy.
@@ -76,16 +78,9 @@ class CobblerSession:
         """
         return (self.connection_count, self.token)
 
-    def _login(self):
-        """Log in."""
-        # Doing this synchronously for simplicity.  The authentication token
-        # can be shared, making this a rare operation that multiple
-        # concurrent requests may be waiting on.
-        self.token = xmlrpclib.Server(self.url).login(
-            self.user, self.password)
-
+    @inlineCallbacks
     def authenticate(self, previous_state=None):
-        """Log in synchronously.
+        """Log in asynchronously.
 
         Call this when starting up, but also when an XMLRPC call result
         indicates that the authentication token used for a request has
@@ -97,11 +92,29 @@ class CobblerSession:
             method will assume that a concurrent authentication request has
             completed and the failed request can be retried without logging
             in again.
+            If no `previous_state` is given, authentication will happen
+            regardless.
+        :return: A `Deferred`.
         """
-        if previous_state is None or self.record_state() == previous_state:
-            # No concurrent login has completed since we last issued a
-            # request that required authentication; try a fresh one.
-            self._login()
+        if previous_state is None:
+            previous_state = self.record_state()
+
+        yield self.authentication_lock.acquire()
+        try:
+            if self.record_state() == previous_state:
+                # If we're here, nobody else is authenticating this
+                # session.  Clear the stale token as a hint to
+                # subsequent calls on the session.  If they see that the
+                # session is unauthenticated they won't issue and fail,
+                # but rather block for this authentication attempt to
+                # complete.
+                self.token = None
+
+                # Now initiate our new authentication.
+                self.token = yield self.proxy.callRemote(
+                    'login', self.user, self.password)
+        finally:
+            self.authentication_lock.release()
 
     def substitute_token(self, arg):
         """Return `arg`, or the current auth token for `token_placeholder`."""
@@ -134,22 +147,28 @@ class CobblerSession:
 
         :param method: Name of XMLRPC method to call.
         :param *args: Positional arguments for the XMLRPC call.
-        :return: The result of the call.
+        :return: A `Deferred` representing the call.
         """
         original_state = self.record_state()
         authenticate = (self.token_placeholder in args)
 
-        authentication_expired = False
-        try:
-            result = yield self._issue_call(method, *args)
-        except xmlrpclib.Fault as e:
-            if authenticate and looks_like_auth_expiry(e):
-                authentication_expired = True
-            else:
-                raise
+        authentication_expired = (authenticate and self.token is None)
+        if not authentication_expired:
+            # It looks like we're authenticated.  Issue the call.  If we
+            # then find out that our authentication token is invalid, we
+            # can retry it later.
+            try:
+                result = yield self._issue_call(method, *args)
+            except xmlrpclib.Fault as e:
+                if authenticate and looks_like_auth_expiry(e):
+                    authentication_expired = True
+                else:
+                    raise
 
         if authentication_expired:
-            self.authenticate(original_state)
+            # We weren't authenticated when we started, but we should be
+            # now.  Make the final attempt.
+            yield self.authenticate(original_state)
             result = yield self._issue_call(method, *args)
         returnValue(result)
 

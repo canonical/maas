@@ -11,8 +11,6 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
-from unittest import TestCase
-
 from provisioningserver.cobblerclient import (
     CobblerSession,
     CobblerSystem,
@@ -21,8 +19,16 @@ from provisioningserver.testing.fakecobbler import (
     FakeCobbler,
     FakeTwistedProxy,
     )
+from testtools.content import text_content
 from testtools.deferredruntest import AsynchronousDeferredRunTest
-from twisted.internet.defer import inlineCallbacks
+from testtools.testcase import (
+    ExpectedException,
+    TestCase,
+    )
+from twisted.internet.defer import (
+    inlineCallbacks,
+    returnValue,
+    )
 
 
 class FakeCobblerSession(CobblerSession):
@@ -39,13 +45,14 @@ class FakeCobblerSession(CobblerSession):
         self.token = self.proxy.fake_cobbler.login(self.user, self.password)
 
 
+@inlineCallbacks
 def fake_cobbler_session(url=None, user=None, password=None,
                          fake_cobbler=None):
     """Fake a CobblerSession."""
     session = FakeCobblerSession(
         url, user, password, fake_cobbler=fake_cobbler)
-    session.authenticate()
-    return session
+    yield session.authenticate()
+    returnValue(session)
 
 
 class TestFakeCobbler(TestCase):
@@ -56,17 +63,18 @@ class TestFakeCobbler(TestCase):
 
     run_tests_with = AsynchronousDeferredRunTest.make_factory()
 
+    @inlineCallbacks
     def test_login_failure_raises_failure(self):
         cobbler = FakeCobbler(passwords={'moi': 'potahto'})
-        self.assertRaises(
-            Exception,
-            fake_cobbler_session,
-            user='moi', password='potayto', fake_cobbler=cobbler)
+        with ExpectedException(Exception):
+            return_value = yield fake_cobbler_session(
+                user='moi', password='potayto', fake_cobbler=cobbler)
+            self.addDetail('return_value', text_content(repr(return_value)))
 
     @inlineCallbacks
     def test_expired_token_triggers_retry(self):
         cobbler = FakeCobbler(passwords={'user': 'pw'})
-        session = fake_cobbler_session(
+        session = yield fake_cobbler_session(
             user='user', password='pw', fake_cobbler=cobbler)
         # When an auth token expires, the server just forgets about it.
         old_token = session.token
@@ -83,7 +91,7 @@ class TestFakeCobbler(TestCase):
     @inlineCallbacks
     def test_valid_token_does_not_raise_auth_error(self):
         cobbler = FakeCobbler(passwords={'user': 'password'})
-        session = fake_cobbler_session(
+        session = yield fake_cobbler_session(
             user='user', password='password', fake_cobbler=cobbler)
         old_token = session.token
         yield CobblerSystem.new(session)
