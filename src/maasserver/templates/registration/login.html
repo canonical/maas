@@ -1,7 +1,20 @@
 {% extends "maasserver/base.html" %}
-{% load url from future %}
+
+{% block header %}
+<ul id="main-nav" class="nav">
+  <h1>MaaS Cluster</h1>
+  <div class="clear"></div>
+</ul>
+{% endblock %}
 
 {% block content %}
+<div id="login-logout">
+
+{% if messages %}
+  {% for message in messages %}
+    <div>{{ message }}</div>
+  {% endfor %}
+{% endif %}
 
 <h2>Login</h2>
 {% if form.errors %}
@@ -9,21 +22,9 @@
 {% endif %}
 
 <form method="post" action="{% url 'django.contrib.auth.views.login' %}">
-  <table>
-    <tr>
-      <td>{{ form.username.label_tag }}</td>
-      <td>{{ form.username }}</td>
-    </tr>
-    <tr>
-      <td>{{ form.password.label_tag }}</td>
-      <td>{{ form.password }}</td>
-    </tr>
-    <tr>
-      <td></td><td><input type="submit" value="login" /></td>
-    </tr>
-  </table>
-
+  {{ form.as_p }}
+  <input type="submit" value="login" />
   <input type="hidden" name="next" value="{{ next }}" />
 </form>
-
+</div>
 {% endblock %}

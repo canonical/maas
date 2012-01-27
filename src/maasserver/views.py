@@ -15,6 +15,7 @@ __all__ = [
     "NodesCreateView",
     ]
 
+from django.contrib import messages
 from django.contrib.auth.views import logout as dj_logout
 from django.core.urlresolvers import reverse
 from django.views.generic import (
@@ -25,7 +26,8 @@ from maasserver.models import Node
 
 
 def logout(request):
-    return dj_logout(request, next_page='/')
+    messages.info(request, 'You have been logged out.')
+    return dj_logout(request, next_page=reverse('login'))
 
 
 class NodeListView(ListView):
