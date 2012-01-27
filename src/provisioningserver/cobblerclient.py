@@ -19,16 +19,21 @@ __all__ = [
     'CobblerImage',
     'CobblerProfile',
     'CobblerSystem',
+    'DEFAULT_TIMEOUT',
     ]
 
 import xmlrpclib
 
+from twisted.internet import reactor as default_reactor
 from twisted.internet.defer import (
     DeferredLock,
     inlineCallbacks,
     returnValue,
     )
 from twisted.web.xmlrpc import Proxy
+
+# Default timeout in seconds for xmlrpc requests to cobbler.
+DEFAULT_TIMEOUT = 30
 
 
 def looks_like_auth_expiry(exception):
@@ -123,6 +128,24 @@ class CobblerSession:
         else:
             return arg
 
+    def _with_timeout(self, d, timeout=DEFAULT_TIMEOUT, reactor=None):
+        """Wrap the xmlrpc call that returns "d" so that it is cancelled if
+        it exceeds a timeout.
+
+        :param d: The Deferred to cancel.
+        :param timeout: timeout in seconds, defaults to 30.
+        :param reactor: override the default reactor, useful for testing.
+        """
+        if reactor is None:
+            reactor = default_reactor
+        delayed_call = reactor.callLater(timeout, d.cancel)
+
+        def cancel_timeout(passthrough):
+            if not delayed_call.called:
+                delayed_call.cancel()
+            return passthrough
+        return d.addBoth(cancel_timeout)
+
     def _issue_call(self, method, *args):
         """Initiate call to XMLRPC method.
 
@@ -133,7 +156,7 @@ class CobblerSession:
         :return: `Deferred`.
         """
         args = map(self.substitute_token, args)
-        d = self.proxy.callRemote(method, *args)
+        d = self._with_timeout(self.proxy.callRemote(method, *args))
         return d
 
     @inlineCallbacks

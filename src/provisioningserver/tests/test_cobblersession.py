@@ -11,21 +11,29 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
+import fixtures
+
 from random import Random
 from xmlrpclib import Fault
 
 from provisioningserver import cobblerclient
 from provisioningserver.testing.fakecobbler import fake_token
 from testtools.content import text_content
-from testtools.deferredruntest import AsynchronousDeferredRunTest
+from testtools.deferredruntest import (
+    assert_fails_with,
+    AsynchronousDeferredRunTest,
+    AsynchronousDeferredRunTestForBrokenTwisted,
+    )
 from testtools.testcase import (
     ExpectedException,
     TestCase,
     )
+from twisted.internet import defer
 from twisted.internet.defer import (
     inlineCallbacks,
     returnValue,
     )
+from twisted.internet.task import Clock
 
 
 randomizer = Random()
@@ -72,10 +80,9 @@ class RecordingFakeProxy:
         """
         self.return_values = values
 
-    @inlineCallbacks
     def callRemote(self, method, *args):
         if method == 'login':
-            returnValue(self.fake_token)
+            return defer.succeed(self.fake_token)
 
         self.calls.append((method, ) + args)
         if self.return_values:
@@ -83,10 +90,16 @@ class RecordingFakeProxy:
         else:
             value = None
         if isinstance(value, Exception):
-            raise value
+            return defer.fail(value)
         else:
-            value = yield value
-            returnValue(value)
+            return defer.succeed(value)
+
+
+class DeadProxy(RecordingFakeProxy):
+    """Fake proxy that returns nothing. Useful for timeout testing."""
+
+    def callRemote(self, method, *args):
+        return defer.Deferred()
 
 
 class RecordingSession(cobblerclient.CobblerSession):
@@ -104,17 +117,19 @@ class RecordingSession(cobblerclient.CobblerSession):
         that the session should pretend it gets from the server on login.
         """
         fake_token = kwargs.pop('fake_token')
-        self.fake_proxy = RecordingFakeProxy(fake_token)
+        proxy_class = kwargs.pop('fake_proxy', RecordingFakeProxy)
+        if proxy_class is None:
+            proxy_class = RecordingFakeProxy
+
+        self.fake_proxy = proxy_class(fake_token)
         super(RecordingSession, self).__init__(*args, **kwargs)
 
     def _make_twisted_proxy(self):
         return self.fake_proxy
 
 
-class TestCobblerSession(TestCase):
-    """Test session management against a fake XMLRPC session."""
-
-    run_tests_with = AsynchronousDeferredRunTest.make_factory()
+class TestCobblerSessionBase:
+    """Base class helpers for testing `CobblerSession`."""
 
     def make_url_user_password(self):
         """Produce arbitrary API URL, username, and password."""
@@ -124,13 +139,21 @@ class TestCobblerSession(TestCase):
             'password%d' % pick_number(),
             )
 
-    def make_recording_session(self, session_args=None, token=None):
+    def make_recording_session(self, session_args=None, token=None,
+                               fake_proxy=RecordingFakeProxy):
         """Create a `RecordingSession`."""
         if session_args is None:
             session_args = self.make_url_user_password()
         if token is None:
             token = fake_token()
-        return RecordingSession(*session_args, fake_token=token)
+        return RecordingSession(
+            *session_args, fake_token=token, fake_proxy=fake_proxy)
+
+
+class TestCobblerSession(TestCase, TestCobblerSessionBase):
+    """Test session management against a fake XMLRPC session."""
+
+    run_tests_with = AsynchronousDeferredRunTest
 
     def test_initializes_but_does_not_authenticate_on_creation(self):
         url, user, password = self.make_url_user_password()
@@ -307,6 +330,55 @@ class TestCobblerSession(TestCase):
             [('authenticate_me_first', session.token)], session.proxy.calls)
 
 
+class TestConnectionTimeouts(TestCase, TestCobblerSessionBase,
+                             fixtures.TestWithFixtures):
+    """Tests for connection timeouts on `CobblerSession`."""
+
+    run_tests_with =  AsynchronousDeferredRunTestForBrokenTwisted
+
+    def test__with_timeout_cancels(self):
+        # Winding a clock reactor past the timeout value should cancel
+        # the original Deferred.
+        clock = Clock()
+        session = self.make_recording_session()
+        d = session._with_timeout(defer.Deferred(), 1, clock)
+        clock.advance(2)
+        return assert_fails_with(d, defer.CancelledError)
+
+    def test__with_timeout_not_cancelled_with_success(self):
+        # Winding a clock reactor past the timeout of a *called*
+        # (defer.succeed() is pre-fired) Deferred should not trigger a
+        # cancellation.
+        clock = Clock()
+        session = self.make_recording_session()
+        d = session._with_timeout(defer.succeed("frobnicle"), 1, clock)
+        clock.advance(2)
+        def result(value):
+            self.assertEqual(value, "frobnicle")
+            self.assertEqual([], clock.getDelayedCalls())
+        return d.addCallback(result)
+
+    def test__with_timeout_not_cancelled_unnecessarily(self):
+        # Winding a clock reactor forwards but not past the timeout
+        # should result in no cancellation.
+        clock = Clock()
+        session = self.make_recording_session()
+        d = session._with_timeout(defer.Deferred(), 5, clock)
+        clock.advance(1)
+        self.assertFalse(d.called)
+
+    def test__issue_call_times_out(self):
+        clock = Clock()
+        patch = fixtures.MonkeyPatch(
+            "provisioningserver.cobblerclient.default_reactor", clock)
+        self.useFixture(patch)
+
+        session = self.make_recording_session(fake_proxy=DeadProxy)
+        d = session._issue_call("login", "foo")
+        clock.advance(cobblerclient.DEFAULT_TIMEOUT+1)
+        return assert_fails_with(d, defer.CancelledError)
+
+
 class CobblerObject(TestCase):
     """Tests for the `CobblerObject` classes."""
 
@@ -319,3 +391,4 @@ class CobblerObject(TestCase):
         self.assertEqual(
             'x_systems_y',
             cobblerclient.CobblerSystem.name_method('x_%s_y', plural=True))
+
