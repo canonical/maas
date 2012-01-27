@@ -16,6 +16,10 @@ from django.conf.urls.defaults import (
     url,
     )
 from django.contrib.auth.views import login
+from django.views.generic.simple import (
+    direct_to_template,
+    redirect_to,
+    )
 from maasserver.api import (
     api_doc,
     NodeHandler,
@@ -35,6 +39,13 @@ from piston.resource import Resource
 urlpatterns = patterns('maasserver.views',
     url(r'^accounts/login/$', login, name='login'),
     url(r'^accounts/logout/$', logout, name='logout'),
+    url(
+        r'^robots\.txt$', direct_to_template,
+        {'template': 'maasserver/robots.txt', 'mimetype': 'text/plain'},
+        name='robots'),
+    url(
+        r'^favicon\.ico$', redirect_to, {'url': '/static/img/favicon.ico'},
+        name='favicon'),
 )
 
 # Urls for logged-in users.

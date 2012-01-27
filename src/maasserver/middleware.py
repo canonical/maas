@@ -36,6 +36,8 @@ class AccessMiddleware(object):
             "|".join(
                 (reverse('login'),
                  reverse('logout'),
+                 reverse('favicon'),
+                 reverse('robots'),
                  reverse('api-doc'))))
         self.api_url = re.compile(settings.API_URL_REGEXP)
         self.static_url = re.compile(settings.STATIC_URL)
