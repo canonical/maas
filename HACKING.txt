@@ -21,6 +21,18 @@ usually use the ``lowercase_with_underscores`` form.
   http://www.python.org/dev/peps/pep-0008/
 
 
+Prerequisites
+=============
+You will need to manually install Postgres 9.1 (postgresql-9.1 and
+postgresql-dev), RabbitMQ (rabbitmq-server) and python-dev.
+
+All other development dependencies are pulled automatically from `PyPI`_
+when buildout runs.
+
+.. _PyPI:
+  http://pypi.python.org/
+
+
 Development MaaS server setup
 =============================
 
