@@ -40,7 +40,7 @@ check: clean test
 docs/api.rst: bin/maas src/maasserver/api.py
 	bin/maas generate_api_doc > $@
 
-sampledata: bin/maas
+sampledata: bin/maas syncdb
 	bin/maas loaddata src/maasserver/fixtures/dev_fixture.yaml
 
 doc: bin/sphinx docs/api.rst
@@ -66,7 +66,7 @@ harness: bin/maas dev-db
 	bin/maas shell
 
 syncdb: bin/maas dev-db
-	bin/maas syncdb
+	bin/maas syncdb --noinput
 
 .PHONY: \
     build check clean dev-db distclean doc \
