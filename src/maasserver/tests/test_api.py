@@ -105,16 +105,41 @@ class NodeAPITest(APITestMixin, LoggedInTestCase):
 
     def test_nodes_POST(self):
         """
-        The api allows to create a Node.
+        The API allows a Node to be created and associated with MAC Addresses.
 
         """
         response = self.client.post(
-            '/api/nodes/', {'hostname': 'diane'})
+                '/api/nodes/',
+                {
+                    'op': 'new',
+                    'hostname': 'diane',
+                    'macaddresses': ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff']
+                })
         parsed_result = json.loads(response.content)
 
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual('diane', parsed_result['hostname'])
+        self.assertEqual(41, len(parsed_result.get('system_id')))
         self.assertEqual(1, Node.objects.filter(hostname='diane').count())
+        node = Node.objects.get(hostname='diane')
+        self.assertSequenceEqual(
+            ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
+            [mac.mac_address for mac in node.macaddress_set.all()])
+
+    def test_nodes_POST_invalid(self):
+        """
+        If the data provided to create a node with MAC Addresse is invalid,
+        a 'Bad request' response is returned.
+
+        """
+        response = self.client.post(
+                '/api/nodes/',
+                {
+                    'hostname': 'diane',
+                    'macaddresses': ['aa:bb:cc:dd:ee:ff', 'invalid']
+                })
+
+        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
 
     def test_node_PUT(self):
         """
@@ -130,6 +155,21 @@ class NodeAPITest(APITestMixin, LoggedInTestCase):
         self.assertEqual('francis', parsed_result['hostname'])
         self.assertEqual(0, Node.objects.filter(hostname='diane').count())
         self.assertEqual(1, Node.objects.filter(hostname='francis').count())
+
+    def test_node_resource_uri(self):
+        """
+        When a Node is returned by the API, the field 'resource_uri' provides
+        the URI for this Node.
+
+        """
+        node = factory.make_node(hostname='diane')
+        response = self.client.put(
+            '/api/nodes/%s/' % node.system_id, {'hostname': 'francis'})
+        parsed_result = json.loads(response.content)
+
+        self.assertEqual(
+            '/api/nodes/%s/' % (parsed_result['system_id']),
+            parsed_result['resource_uri'])
 
     def test_node_PUT_invalid(self):
         """
@@ -164,19 +204,6 @@ class NodeAPITest(APITestMixin, LoggedInTestCase):
         response = self.client.put('/api/nodes/no-node-here/')
 
         self.assertEqual(httplib.NOT_FOUND, response.status_code)
-
-    def test_nodes_POST_set_status_invalid(self):
-        """
-        The status of a newly created Node cannot be set (if will default to
-        0 (new)).
-
-        """
-        response = self.client.post(
-            '/api/nodes/', {'status': 'new'})
-
-        self.assertEqual(400, response.status_code)
-        self.assertEqual(
-            'Bad Request: Cannot set the status for a node.', response.content)
 
     def test_node_DELETE_non_visible_node(self):
         """

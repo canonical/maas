@@ -10,6 +10,7 @@ from __future__ import (
 
 __metaclass__ = type
 __all__ = [
+    "generate_node_system_id",
     "NODE_STATUS",
     "Node",
     "MACAddress",
@@ -105,8 +106,8 @@ class NodeManager(models.Manager):
 class Node(CommonInfo):
     """A `Node` represents a physical machine used by the MaaS Server."""
     system_id = models.CharField(
-        max_length=41, unique=True, editable=False,
-        default=generate_node_system_id)
+        max_length=41, unique=True, default=generate_node_system_id,
+        editable=False)
     hostname = models.CharField(max_length=255, default='', blank=True)
     status = models.IntegerField(
         max_length=10, choices=NODE_STATUS_CHOICES, editable=False,
@@ -144,7 +145,7 @@ class MACAddress(CommonInfo):
     <http://en.wikipedia.org/wiki/MAC_address>`_ attached to a `Node`.
     """
     mac_address = MACAddressField()
-    node = models.ForeignKey(Node)
+    node = models.ForeignKey(Node, editable=False)
 
     class Meta:
         verbose_name_plural = "MAC addresses"

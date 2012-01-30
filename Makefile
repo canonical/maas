@@ -38,7 +38,7 @@ lint: bin/flake8
 check: clean test
 
 docs/api.rst: bin/maas src/maasserver/api.py
-	bin/maas gen_rst_api_doc > $@
+	bin/maas generate_api_doc > $@
 
 sampledata: bin/maas
 	bin/maas loaddata src/maasserver/fixtures/dev_fixture.yaml

@@ -9,20 +9,33 @@ from __future__ import (
     )
 
 __metaclass__ = type
-__all__ = []
+__all__ = [
+    "MACAddressField",
+    "MACAddressFormField",
+    ]
 
 import re
 
 from django.core.validators import RegexValidator
 from django.db.models import Field
+from django.forms import RegexField
 import psycopg2.extensions
 
 
 mac_re = re.compile(r'^([0-9a-fA-F]{2}[:-]){5}[0-9a-fA-F]{2}$')
 
-validate_mac = RegexValidator(
-    regex=mac_re,
-    message=u"Enter a valid MAC address (e.g. AA:BB:CC:DD:EE:FF).")
+
+mac_error_msg = u"Enter a valid MAC address (e.g. AA:BB:CC:DD:EE:FF)."
+
+
+validate_mac = RegexValidator(regex=mac_re, message=mac_error_msg)
+
+
+class MACAddressFormField(RegexField):
+
+    def __init__(self, *args, **kwargs):
+        super(MACAddressFormField, self).__init__(
+            regex=mac_re, error_message=mac_error_msg, *args, **kwargs)
 
 
 class MACAddressField(Field):
