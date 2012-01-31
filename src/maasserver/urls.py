@@ -33,6 +33,7 @@ from maasserver.views import (
     NodeListView,
     NodesCreateView,
     )
+from piston.authentication import HttpBasicAuthentication
 from piston.resource import Resource
 
 # Urls accessible to anonymous users.
@@ -59,19 +60,21 @@ urlpatterns += patterns('maasserver.views',
         r'^nodes/create/$', NodesCreateView.as_view(), name='node-create'),
 )
 
-# API.
-node_handler = Resource(NodeHandler)
-nodes_handler = Resource(NodesHandler)
-node_mac_handler = Resource(NodeMacHandler)
-node_macs_handler = Resource(NodeMacsHandler)
+# API
+auth = HttpBasicAuthentication(realm="MaaS API")
+
+node_handler = Resource(NodeHandler, authentication=auth)
+nodes_handler = Resource(NodesHandler, authentication=auth)
+node_mac_handler = Resource(NodeMacHandler, authentication=auth)
+node_macs_handler = Resource(NodeMacsHandler, authentication=auth)
 
 # API urls accessible to anonymous users.
-urlpatterns += patterns('maasserver.views',
+urlpatterns += patterns('',
     url(r'^api/doc/$', api_doc, name='api-doc'),
 )
 
 # API urls for logged-in users.
-urlpatterns += patterns('maasserver.views',
+urlpatterns += patterns('',
     url(
         r'^api/nodes/(?P<system_id>[\w\-]+)/macs/(?P<mac_address>.+)/$',
         node_mac_handler, name='node_mac_handler'),

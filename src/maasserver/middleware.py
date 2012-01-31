@@ -19,7 +19,6 @@ from django.conf import settings
 from django.core.urlresolvers import reverse
 from django.http import HttpResponseRedirect
 from django.utils.http import urlquote_plus
-from piston.utils import rc
 
 
 class AccessMiddleware(object):
@@ -38,25 +37,18 @@ class AccessMiddleware(object):
                  reverse('logout'),
                  reverse('favicon'),
                  reverse('robots'),
-                 reverse('api-doc'))))
-        self.api_url = re.compile(settings.API_URL_REGEXP)
-        self.static_url = re.compile(settings.STATIC_URL)
+                 reverse('api-doc'),
+                 settings.API_URL_REGEXP,  # API calls are protected by piston.
+                 settings.STATIC_URL)))
         self.login_url = reverse('login')
 
     def process_request(self, request):
         # Public urls.
         if self.public_urls.match(request.path):
             return None
-        # API views.
-        elif self.api_url.match(request.path):
-            if request.user.is_anonymous():
-                return rc.FORBIDDEN
-            else:
-                return None
-        # Static resources.
-        elif self.static_url.match(request.path):
-            return None
         else:
             if request.user.is_anonymous():
                 return HttpResponseRedirect("%s?next=%s" % (
                     self.login_url, urlquote_plus(request.path)))
+            else:
+                return None

@@ -11,18 +11,17 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
+import base64
 import httplib
 import json
 
+from django.test.client import Client
 from maasserver.models import (
     MACAddress,
     Node,
     NODE_STATUS,
     )
-from maasserver.testing import (
-    LoggedInTestCase,
-    TestCase,
-    )
+from maasserver.testing import TestCase
 from maasserver.testing.factory import factory
 
 
@@ -41,16 +40,54 @@ class NodeAnonAPITest(TestCase):
         self.assertEqual(httplib.OK, response.status_code)
 
 
-class APITestMixin(object):
+class AuthenticatedClient(Client):
+
+    def __init__(self, auth):
+        super(AuthenticatedClient, self).__init__()
+        self.extra = {
+            'HTTP_AUTHORIZATION': auth,
+        }
+
+    def get(self, *args, **kwargs):
+        kwargs.update(self.extra)
+        return super(AuthenticatedClient, self).get(*args, **kwargs)
+
+    def put(self, *args, **kwargs):
+        kwargs.update(self.extra)
+        return super(AuthenticatedClient, self).put(*args, **kwargs)
+
+    def post(self, *args, **kwargs):
+        kwargs.update(self.extra)
+        return super(AuthenticatedClient, self).post(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        kwargs.update(self.extra)
+        return super(AuthenticatedClient, self).delete(*args, **kwargs)
+
+
+class APITestMixin(TestCase):
 
     def setUp(self):
         super(APITestMixin, self).setUp()
+        self.logged_in_user = factory.make_user(
+            username='test', password='test')
+        auth = '%s:%s' % ('test', 'test')
+        auth = 'Basic %s' % base64.encodestring(auth)
+        auth = auth.strip()
+        self.extra = {
+            'HTTP_AUTHORIZATION': auth,
+        }
+        self.client = AuthenticatedClient(auth)
+        self.other_user = factory.make_user()
+        self.other_node = factory.make_node(
+            status=NODE_STATUS.DEPLOYED, owner=self.other_user)
+
         self.other_user = factory.make_user()
         self.other_node = factory.make_node(
             status=NODE_STATUS.DEPLOYED, owner=self.other_user)
 
 
-class NodeAPITest(APITestMixin, LoggedInTestCase):
+class NodeAPITest(APITestMixin):
 
     def test_nodes_GET(self):
         """
@@ -282,7 +319,7 @@ class NodeAPITest(APITestMixin, LoggedInTestCase):
         self.assertEqual(httplib.NOT_FOUND, response.status_code)
 
 
-class MACAddressAPITest(APITestMixin, LoggedInTestCase):
+class MACAddressAPITest(APITestMixin):
 
     def setUp(self):
         super(MACAddressAPITest, self).setUp()
