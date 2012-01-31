@@ -20,6 +20,8 @@ from maasserver.macaddress import MACAddressFormField
 from maasserver.models import (
     MACAddress,
     Node,
+    NODE_AFTER_COMMISSIONING_ACTION,
+    NODE_AFTER_COMMISSIONING_ACTION_CHOICES,
     )
 
 
@@ -27,6 +29,9 @@ class NodeForm(ModelForm):
     system_id = forms.CharField(
         widget=forms.TextInput(attrs={'readonly': 'readonly'}),
         required=False)
+    after_commissioning_action = forms.TypedChoiceField(
+        choices=NODE_AFTER_COMMISSIONING_ACTION_CHOICES, required=False,
+        empty_value=NODE_AFTER_COMMISSIONING_ACTION.DEFAULT)
 
     class Meta:
         model = Node
