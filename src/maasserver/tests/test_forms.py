@@ -31,24 +31,53 @@ class NodeWithMACAddressesFormTest(TestCase):
 
         form = NodeWithMACAddressesForm(
             self.get_QueryDict(
-                {'macaddresses': ['aa:bb:cc:dd:ee:ff', '9a:bb:c3:33:e5:7f']}))
+                {'mac_addresses': ['aa:bb:cc:dd:ee:ff', '9a:bb:c3:33:e5:7f']}))
 
         self.assertTrue(form.is_valid())
         self.assertEqual(
             ['aa:bb:cc:dd:ee:ff', '9a:bb:c3:33:e5:7f'],
-            form.cleaned_data['macaddresses'])
+            form.cleaned_data['mac_addresses'])
 
-    def test_NodeWithMACAddressesForm_invalid(self):
+    def test_NodeWithMACAddressesForm_simple_invalid(self):
+        # If the form only has one (invalid) MAC Address field to validate,
+        # the error message in form.errors['mac_addresses'] is the
+        # message from the field's validation error.
         form = NodeWithMACAddressesForm(
             self.get_QueryDict(
-                {'macaddresses': ['aa:bb:cc:dd:ee:ff', 'z_invalid']}))
+                {'mac_addresses': ['invalid']}))
 
         self.assertFalse(form.is_valid())
+        self.assertEqual(['mac_addresses'], form.errors.keys())
+        self.assertEqual(
+            ['Enter a valid MAC address (e.g. AA:BB:CC:DD:EE:FF).'],
+            form.errors['mac_addresses'])
+
+    def test_NodeWithMACAddressesForm_multiple_invalid(self):
+        # If the form has multiple MAC Address fields to validate,
+        # if one or more fields are invalid, a single error message is
+        # present in form.errors['mac_addresses'] after validation.
+        form = NodeWithMACAddressesForm(
+            self.get_QueryDict(
+                {'mac_addresses': ['invalid_1', 'invalid_2']}))
+
+        self.assertFalse(form.is_valid())
+        self.assertEqual(['mac_addresses'], form.errors.keys())
+        self.assertEqual(
+            ['One or more MAC Addresses is invalid.'],
+            form.errors['mac_addresses'])
+
+    def test_NodeWithMACAddressesForm_empty(self):
+        # Empty values in the list of MAC Addresses are simply ignored.
+        form = NodeWithMACAddressesForm(
+            self.get_QueryDict(
+                {'mac_addresses': ['aa:bb:cc:dd:ee:ff', '']}))
+
+        self.assertTrue(form.is_valid())
 
     def test_NodeWithMACAddressesForm_save(self):
         form = NodeWithMACAddressesForm(
             self.get_QueryDict(
-                {'macaddresses': ['aa:bb:cc:dd:ee:ff', '9a:bb:c3:33:e5:7f']}))
+                {'mac_addresses': ['aa:bb:cc:dd:ee:ff', '9a:bb:c3:33:e5:7f']}))
         node = form.save()
 
         self.assertIsNotNone(node.id)  # The node is persisted.

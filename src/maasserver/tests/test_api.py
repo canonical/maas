@@ -113,7 +113,7 @@ class NodeAPITest(APITestMixin, LoggedInTestCase):
                 {
                     'op': 'new',
                     'hostname': 'diane',
-                    'macaddresses': ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff']
+                    'mac_addresses': ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff']
                 })
         parsed_result = json.loads(response.content)
 
@@ -126,6 +126,40 @@ class NodeAPITest(APITestMixin, LoggedInTestCase):
             ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
             [mac.mac_address for mac in node.macaddress_set.all()])
 
+    def test_nodes_POST_no_operation(self):
+        """
+        If there is no operation ('op=operation_name') specified in the
+        request data, a 'Bad request' response is returned.
+
+        """
+        response = self.client.post(
+                '/api/nodes/',
+                {
+                    'hostname': 'diane',
+                    'mac_addresses': ['aa:bb:cc:dd:ee:ff', 'invalid']
+                })
+
+        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+        self.assertEqual('Unknown operation.', response.content)
+
+    def test_nodes_POST_bad_operation(self):
+        """
+        If the operation ('op=operation_name') specified in the
+        request data is unknown, a 'Bad request' response is returned.
+
+        """
+        response = self.client.post(
+                '/api/nodes/',
+                {
+                    'op': 'invalid_operation',
+                    'hostname': 'diane',
+                    'mac_addresses': ['aa:bb:cc:dd:ee:ff', 'invalid']
+                })
+
+        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+        self.assertEqual(
+            "Unknown operation: 'invalid_operation'.", response.content)
+
     def test_nodes_POST_invalid(self):
         """
         If the data provided to create a node with MAC Addresse is invalid,
@@ -135,11 +169,17 @@ class NodeAPITest(APITestMixin, LoggedInTestCase):
         response = self.client.post(
                 '/api/nodes/',
                 {
+                    'op': 'new',
                     'hostname': 'diane',
-                    'macaddresses': ['aa:bb:cc:dd:ee:ff', 'invalid']
+                    'mac_addresses': ['aa:bb:cc:dd:ee:ff', 'invalid']
                 })
+        parsed_result = json.loads(response.content)
 
         self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+        self.assertEqual(['mac_addresses'], list(parsed_result))
+        self.assertEqual(
+            ["One or more MAC Addresses is invalid."],
+            parsed_result['mac_addresses'])
 
     def test_node_PUT(self):
         """
@@ -343,11 +383,13 @@ class MACAddressAPITest(APITestMixin, LoggedInTestCase):
         response = self.client.post(
             '/api/nodes/%s/macs/' % self.node.system_id,
             {'mac_address': 'invalid-mac'})
+        parsed_result = json.loads(response.content)
 
         self.assertEqual(400, response.status_code)
+        self.assertEqual(['mac_address'], list(parsed_result))
         self.assertEqual(
-            'Bad Request: Invalid input: mac_address: Enter a valid MAC '
-            'address (e.g. AA:BB:CC:DD:EE:FF).', response.content)
+            ["Enter a valid MAC address (e.g. AA:BB:CC:DD:EE:FF)."],
+            parsed_result['mac_address'])
 
     def test_macs_DELETE_mac(self):
         """

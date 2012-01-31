@@ -23,6 +23,7 @@ from django.core.exceptions import (
     PermissionDenied,
     ValidationError,
     )
+from django.http import HttpResponseBadRequest
 from django.shortcuts import (
     get_object_or_404,
     render_to_response,
@@ -40,29 +41,14 @@ from piston.handler import BaseHandler
 from piston.utils import rc
 
 
-def bad_request(message):
-    resp = rc.BAD_REQUEST
-    resp.write(': %s' % message)
-    return resp
-
-
-def format_error_message(error_dict):
-    messages = []
-    for k, v in error_dict.iteritems():
-        if isinstance(v, list):
-            messages.append("%s: %s" % (k, "".join(v)))
-        else:
-            messages.append("%s: %s" % (k, v))
-    return "Invalid input: " + " / ".join(messages)
-
-
 def validate_and_save(obj):
     try:
         obj.full_clean()
         obj.save()
         return obj
     except ValidationError, e:
-        return bad_request(format_error_message(e.message_dict))
+        return HttpResponseBadRequest(
+            e.message_dict, content_type='application/json')
 
 
 def validate_mac_address(mac_address):
@@ -70,7 +56,7 @@ def validate_mac_address(mac_address):
         validate_mac(mac_address)
         return True, None
     except ValidationError:
-        return False, bad_request('Invalid MAC Address.')
+        return False, HttpResponseBadRequest('Invalid MAC Address.')
 
 
 def perm_denied_handler(view_func):
@@ -109,9 +95,9 @@ def is_api_exported(thing):
 def perform_api_operation(handler, request, *args, **kwargs):
     op = request.data.get(OP_PARAM, None)
     if not isinstance(op, unicode):
-        return bad_request('Unknown operation.')
+        return HttpResponseBadRequest("Unknown operation.")
     elif op not in handler._available_api_methods:
-        return bad_request('Unknown operation: %s.' % op)
+        return HttpResponseBadRequest("Unknown operation: '%s'." % op)
     else:
         method = handler._available_api_methods[op]
         return method(handler, request, *args, **kwargs)
@@ -222,7 +208,8 @@ class NodesHandler(BaseHandler):
             node = form.save()
             return node
         else:
-            return bad_request(format_error_message(form.errors))
+            return HttpResponseBadRequest(
+                form.errors, content_type='application/json')
 
     @classmethod
     def resource_uri(cls, *args, **kwargs):
@@ -253,7 +240,7 @@ class NodeMacsHandler(BaseHandler):
             mac = node.add_mac_address(request.data.get('mac_address', None))
             return mac
         except ValidationError, e:
-            return bad_request(format_error_message(e.message_dict))
+            return HttpResponseBadRequest(e.message_dict)
 
     @classmethod
     def resource_uri(cls, *args, **kwargs):
