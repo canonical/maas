@@ -68,6 +68,36 @@ NODE_STATUS_CHOICES = (
 NODE_STATUS_CHOICES_DICT = dict(NODE_STATUS_CHOICES)
 
 
+class NODE_AFTER_COMMISSIONING_ACTION:
+    DEFAULT = 0
+    QUEUE = 0
+    CHECK = 1
+    DEPLOY_12_04 = 2
+    DEPLOY_11_10 = 3
+    DEPLOY_11_04 = 4
+    DEPLOY_10_10 = 5
+
+
+NODE_AFTER_COMMISSIONING_ACTION_CHOICES = (
+    (NODE_AFTER_COMMISSIONING_ACTION.QUEUE,
+        "Queue for dynamic allocation to services"),
+    (NODE_AFTER_COMMISSIONING_ACTION.CHECK,
+        "Check compatibility and hold for future decision"),
+    (NODE_AFTER_COMMISSIONING_ACTION.DEPLOY_12_04,
+        "Deploy with Ubuntu 12.04 LTS"),
+    (NODE_AFTER_COMMISSIONING_ACTION.DEPLOY_11_10,
+        "Deploy with Ubuntu 11.10"),
+    (NODE_AFTER_COMMISSIONING_ACTION.DEPLOY_11_04,
+        "Deploy with Ubuntu 11.04"),
+    (NODE_AFTER_COMMISSIONING_ACTION.DEPLOY_10_10,
+        "Deploy with Ubuntu 10.10"),
+)
+
+
+NODE_AFTER_COMMISSIONING_ACTION_CHOICES_DICT = dict(
+    NODE_AFTER_COMMISSIONING_ACTION_CHOICES)
+
+
 class NodeManager(models.Manager):
     """A utility to manage collections of Nodes."""
 
@@ -114,6 +144,9 @@ class Node(CommonInfo):
         default=NODE_STATUS.DEFAULT_STATUS)
     owner = models.ForeignKey(
         User, default=None, blank=True, null=True, editable=False)
+    after_commissioning_action = models.IntegerField(
+        choices=NODE_AFTER_COMMISSIONING_ACTION_CHOICES,
+        default=NODE_AFTER_COMMISSIONING_ACTION.DEFAULT)
 
     objects = NodeManager()
 

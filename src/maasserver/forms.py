@@ -30,7 +30,7 @@ class NodeForm(ModelForm):
 
     class Meta:
         model = Node
-        fields = ('hostname', 'system_id')
+        fields = ('hostname', 'system_id', 'after_commissioning_action')
 
 
 class MACAddressForm(ModelForm):

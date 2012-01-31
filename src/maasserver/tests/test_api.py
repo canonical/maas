@@ -113,6 +113,7 @@ class NodeAPITest(APITestMixin, LoggedInTestCase):
                 {
                     'op': 'new',
                     'hostname': 'diane',
+                    'after_commissioning_action': '2',
                     'mac_addresses': ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff']
                 })
         parsed_result = json.loads(response.content)
@@ -122,6 +123,7 @@ class NodeAPITest(APITestMixin, LoggedInTestCase):
         self.assertEqual(41, len(parsed_result.get('system_id')))
         self.assertEqual(1, Node.objects.filter(hostname='diane').count())
         node = Node.objects.get(hostname='diane')
+        self.assertEqual(2, node.after_commissioning_action)
         self.assertSequenceEqual(
             ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
             [mac.mac_address for mac in node.macaddress_set.all()])
