@@ -11,11 +11,10 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
-import fixtures
-
 from random import Random
 from xmlrpclib import Fault
 
+import fixtures
 from provisioningserver import cobblerclient
 from provisioningserver.testing.fakecobbler import fake_token
 from testtools.content import text_content
@@ -29,10 +28,7 @@ from testtools.testcase import (
     TestCase,
     )
 from twisted.internet import defer
-from twisted.internet.defer import (
-    inlineCallbacks,
-    returnValue,
-    )
+from twisted.internet.defer import inlineCallbacks
 from twisted.internet.task import Clock
 
 
@@ -166,7 +162,7 @@ class TestCobblerSession(TestCase, TestCobblerSessionBase):
         token = fake_token('authenticated')
         session = self.make_recording_session(token=token)
         self.assertEqual(None, session.token)
-        yield session.authenticate()
+        yield session._authenticate()
         self.assertEqual(token, session.token)
 
     @inlineCallbacks
@@ -181,7 +177,7 @@ class TestCobblerSession(TestCase, TestCobblerSessionBase):
     def test_authentication_changes_state_cookie(self):
         session = self.make_recording_session()
         old_cookie = session.record_state()
-        yield session.authenticate()
+        yield session._authenticate()
         self.assertNotEqual(old_cookie, session.record_state())
 
     @inlineCallbacks
@@ -192,12 +188,12 @@ class TestCobblerSession(TestCase, TestCobblerSessionBase):
         cookie_before_request_2 = session.record_state()
         # Request 1 comes back with an authentication failure, and its
         # callback refreshes the session's auth token.
-        yield session.authenticate(cookie_before_request_1)
+        yield session._authenticate(cookie_before_request_1)
         token_for_retrying_request_1 = session.token
         # Request 2 also comes back an authentication failure, and its
         # callback also asks the session to ensure that it is
         # authenticated.
-        yield session.authenticate(cookie_before_request_2)
+        yield session._authenticate(cookie_before_request_2)
         token_for_retrying_request_2 = session.token
 
         # The double authentication does not confuse the session; both
@@ -213,7 +209,7 @@ class TestCobblerSession(TestCase, TestCobblerSessionBase):
     def test_substitute_token_substitutes_only_placeholder(self):
         token = fake_token('for-substitution')
         session = self.make_recording_session(token=token)
-        yield session.authenticate()
+        yield session._authenticate()
         arbitrary_number = pick_number()
         arbitrary_string = 'string-%d' % pick_number()
         inputs = [
@@ -229,7 +225,7 @@ class TestCobblerSession(TestCase, TestCobblerSessionBase):
             None,
             ]
         self.assertEqual(
-            outputs, apply_to_all(session.substitute_token, inputs))
+            outputs, apply_to_all(session._substitute_token, inputs))
 
     @inlineCallbacks
     def test_call_calls_xmlrpc(self):
@@ -247,7 +243,7 @@ class TestCobblerSession(TestCase, TestCobblerSessionBase):
         # If a call triggers an authentication error, call()
         # re-authenticates and then re-issues the call.
         session = self.make_recording_session()
-        yield session.authenticate()
+        yield session._authenticate()
         successful_return_value = pick_number()
         session.proxy.set_return_values([
             make_auth_failure(),
@@ -275,13 +271,13 @@ class TestCobblerSession(TestCase, TestCobblerSessionBase):
         # call.  This ensures that it will always notice a concurrent
         # re-authentication that it needs to back off from.
         session = self.make_recording_session()
-        yield session.authenticate()
+        yield session._authenticate()
         authenticate_cookies = []
 
         def fake_authenticate(previous_state):
             authenticate_cookies.append(previous_state)
 
-        session.authenticate = fake_authenticate
+        session._authenticate = fake_authenticate
         session.proxy.set_return_values([make_auth_failure()])
         state_before_call = session.record_state()
         yield session.call(
@@ -291,7 +287,7 @@ class TestCobblerSession(TestCase, TestCobblerSessionBase):
     @inlineCallbacks
     def test_call_raises_repeated_auth_failure(self):
         session = self.make_recording_session()
-        yield session.authenticate()
+        yield session._authenticate()
         failures = [
             # Initial operation fails: not authenticated.
             make_auth_failure(),
@@ -307,7 +303,7 @@ class TestCobblerSession(TestCase, TestCobblerSessionBase):
     @inlineCallbacks
     def test_call_raises_general_failure(self):
         session = self.make_recording_session()
-        yield session.authenticate()
+        yield session._authenticate()
         failure = Exception("Memory error.  Where did I put it?")
         session.proxy.set_return_values([failure])
         with ExpectedException(Exception, failure.message):
@@ -334,7 +330,7 @@ class TestConnectionTimeouts(TestCase, TestCobblerSessionBase,
                              fixtures.TestWithFixtures):
     """Tests for connection timeouts on `CobblerSession`."""
 
-    run_tests_with =  AsynchronousDeferredRunTestForBrokenTwisted
+    run_tests_with = AsynchronousDeferredRunTestForBrokenTwisted
 
     def test__with_timeout_cancels(self):
         # Winding a clock reactor past the timeout value should cancel
@@ -353,9 +349,11 @@ class TestConnectionTimeouts(TestCase, TestCobblerSessionBase,
         session = self.make_recording_session()
         d = session._with_timeout(defer.succeed("frobnicle"), 1, clock)
         clock.advance(2)
+
         def result(value):
             self.assertEqual(value, "frobnicle")
             self.assertEqual([], clock.getDelayedCalls())
+
         return d.addCallback(result)
 
     def test__with_timeout_not_cancelled_unnecessarily(self):
@@ -375,7 +373,7 @@ class TestConnectionTimeouts(TestCase, TestCobblerSessionBase,
 
         session = self.make_recording_session(fake_proxy=DeadProxy)
         d = session._issue_call("login", "foo")
-        clock.advance(cobblerclient.DEFAULT_TIMEOUT+1)
+        clock.advance(cobblerclient.DEFAULT_TIMEOUT + 1)
         return assert_fails_with(d, defer.CancelledError)
 
 
@@ -385,10 +383,9 @@ class CobblerObject(TestCase):
     def test_name_method_inserts_type_name(self):
         self.assertEqual(
             'foo_system_bar',
-            cobblerclient.CobblerSystem.name_method('foo_%s_bar'))
+            cobblerclient.CobblerSystem._name_method('foo_%s_bar'))
 
     def test_name_method_appends_s_for_plural(self):
         self.assertEqual(
             'x_systems_y',
-            cobblerclient.CobblerSystem.name_method('x_%s_y', plural=True))
-
+            cobblerclient.CobblerSystem._name_method('x_%s_y', plural=True))
