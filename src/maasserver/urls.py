@@ -22,6 +22,7 @@ from django.views.generic.simple import (
     )
 from maasserver.api import (
     api_doc,
+    DjangoHttpBasicAuthentication,
     NodeHandler,
     NodeMacHandler,
     NodeMacsHandler,
@@ -33,7 +34,6 @@ from maasserver.views import (
     NodeListView,
     NodesCreateView,
     )
-from piston.authentication import HttpBasicAuthentication
 from piston.resource import Resource
 
 # Urls accessible to anonymous users.
@@ -61,7 +61,7 @@ urlpatterns += patterns('maasserver.views',
 )
 
 # API
-auth = HttpBasicAuthentication(realm="MaaS API")
+auth = DjangoHttpBasicAuthentication(realm="MaaS API")
 
 node_handler = Resource(NodeHandler, authentication=auth)
 nodes_handler = Resource(NodesHandler, authentication=auth)
