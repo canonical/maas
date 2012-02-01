@@ -8,10 +8,10 @@ from __future__ import (
     unicode_literals,
     )
 
-import setproctitle
 import signal
 import sys
 
+from amqpclient import AMQFactory
 import oops
 from oops_datedir_repo import DateDirRepo
 from oops_twisted import (
@@ -19,6 +19,7 @@ from oops_twisted import (
     defer_publisher,
     OOPSObserver,
     )
+import setproctitle
 from twisted.application.internet import TCPClient
 from twisted.application.service import (
     IServiceMaker,
@@ -30,14 +31,13 @@ from twisted.python import (
     log,
     usage,
     )
-from twisted.python.logfile import LogFile
 from twisted.python.log import (
     addObserver,
     FileLogObserver,
     )
+from twisted.python.logfile import LogFile
 from zope.interface import implements
 
-from amqpclient import AMQFactory
 
 __metaclass__ = type
 __all__ = []
@@ -92,9 +92,6 @@ class Options(usage.Options):
         ]
 
     def postOptions(self):
-        for arg in ('brokeruser', 'brokerpassword'):
-            if not self[arg]:
-                raise usage.UsageError("--%s must be specified." % arg)
         for int_arg in ('brokerport',):
             try:
                 self[int_arg] = int(self[int_arg])
@@ -133,28 +130,26 @@ class ProvisioningServiceMaker(object):
         logfile = getRotatableLogFileObserver(options["logfile"])
         setUpOOPSHandler(options, logfile)
 
+        services = MultiService()
+
         broker_port = options["brokerport"]
         broker_host = options["brokerhost"]
         broker_user = options["brokeruser"]
         broker_password = options["brokerpassword"]
         broker_vhost = options["brokervhost"]
 
-        # TODO: define callbacks for Rabbit connectivity.
-        # e.g. construct a manager object.
-        client_factory = AMQFactory(
-            broker_user, broker_password, broker_vhost,
-            CONNECTED_CALLBACK, DISCONNECTED_CALLBACK,
-            lambda (connector, reason): log.err(reason, "Connection failed"))
+        # Connecting to RabbitMQ is optional; it is not yet a required
+        # component of a running MaaS installation.
+        if broker_user is not None and broker_password is not None:
+            cb_connected = lambda ignored: None  # TODO
+            cb_disconnected = lambda ignored: None  # TODO
+            cb_failed = lambda (connector, reason): (
+                log.err(reason, "Connection failed"))
+            client_factory = AMQFactory(
+                broker_user, broker_password, broker_vhost,
+                cb_connected, cb_disconnected, cb_failed)
+            client_service = TCPClient(
+                broker_host, broker_port, client_factory)
+            services.addService(client_service)
 
-        # TODO: Create services here, e.g.
-        # service1 = thing
-        # service2 = thing2
-        # services = MultiService()
-        # services.addService(service1)
-        # services.addService(service2)
-        # return services
-
-        client_service = TCPClient(broker_host, broker_port, client_factory)
-        services = MultiService()
-        services.addService(client_service)
         return services

@@ -14,9 +14,15 @@ __all__ = []
 from cStringIO import StringIO
 from functools import partial
 import os
+from unittest import skip
 
 from fixtures import TempDir
 from oops_twisted import OOPSObserver
+from provisioningserver.plugin import (
+    Options,
+    ProvisioningServiceMaker,
+    setUpOOPSHandler,
+    )
 from testtools import TestCase
 from testtools.content import (
     Content,
@@ -32,11 +38,6 @@ from twisted.python.log import (
     theLogPublisher,
     )
 from twisted.python.usage import UsageError
-from provisioningserver.plugin import (
-    ProvisioningServiceMaker,
-    Options,
-    setUpOOPSHandler,
-    )
 
 
 class TestOptions(TestCase):
@@ -62,12 +63,18 @@ class TestOptions(TestCase):
             partial(options.parseOptions, arguments),
             Raises(MatchesException(UsageError, message)))
 
+    @skip(
+        "RabbitMQ is not yet a required component "
+        "of a running MaaS installation.")
     def test_option_brokeruser_required(self):
         options = Options()
         self.check_exception(
             options,
             "--brokeruser must be specified")
 
+    @skip(
+        "RabbitMQ is not yet a required component "
+        "of a running MaaS installation.")
     def test_option_brokerpassword_required(self):
         options = Options()
         self.check_exception(
@@ -187,7 +194,7 @@ class TestProvisioningServiceMaker(TestCase):
         service_maker = ProvisioningServiceMaker("Harry", "Hill")
         service = service_maker.makeService(options, _set_proc_title=False)
         self.assertIsInstance(service, MultiService)
-        self.assertEqual(2, len(service.services))
-        client_service, server_service = service.services
+        self.assertEqual(1, len(service.services))
+        [client_service] = service.services
         self.assertEqual(options["brokerhost"], client_service.args[0])
         self.assertEqual(options["brokerport"], client_service.args[1])

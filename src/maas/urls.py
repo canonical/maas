@@ -13,11 +13,12 @@ __all__ = []
 
 from django.conf import settings
 from django.conf.urls.defaults import (
-    patterns,
     include,
+    patterns,
     url,
     )
 from django.contrib.staticfiles.urls import staticfiles_urlpatterns
+
 
 urlpatterns = patterns('',
     url(r'^', include('maasserver.urls')),

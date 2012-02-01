@@ -1,6 +1,17 @@
 # Copyright 2005-2011 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+"""Tests for `provisioningserver.amqpclient`."""
+
+from __future__ import (
+    print_function,
+    unicode_literals,
+    )
+
+__metaclass__ = type
+__all__ = []
+
+from provisioningserver.amqpclient import AMQFactory
 from rabbitfixture.server import RabbitServer
 from testresources import (
     FixtureResource,
@@ -17,7 +28,6 @@ from twisted.internet.defer import (
     inlineCallbacks,
     )
 from txamqp.client import Closed
-from provisioningserver.amqpclient import AMQFactory
 
 
 class QueueWrapper(object):

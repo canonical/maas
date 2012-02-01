@@ -11,14 +11,14 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
+from provisioningserver.amqpclient import AMQFactory
+from provisioningserver.testing.amqpclient import AMQTest
 from testtools import TestCase
 from testtools.deferredruntest import flush_logged_errors
 from twisted.internet.defer import Deferred
 from txamqp.protocol import AMQChannel
 from txamqp.queue import Closed
 from txamqp.spec import Spec
-from provisioningserver.amqpclient import AMQFactory
-from provisioningserver.testing.amqpclient import AMQTest
 
 
 class AMQFactoryTest(TestCase):

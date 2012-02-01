@@ -12,6 +12,11 @@ from __future__ import (
     unicode_literals,
     )
 
+__metaclass__ = type
+__all__ = [
+    "AMQFactory",
+    ]
+
 import os.path
 
 from twisted.internet.defer import maybeDeferred
@@ -20,11 +25,6 @@ from txamqp.client import TwistedDelegate
 from txamqp.protocol import AMQClient
 from txamqp.queue import Closed
 from txamqp.spec import load as load_spec
-
-__metaclass__ = type
-__all__ = [
-    "AMQFactory",
-    ]
 
 
 class AMQClientWithCallback(AMQClient):

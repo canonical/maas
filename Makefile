@@ -1,6 +1,10 @@
 PYTHON = python2.7
 
-build: bin/buildout bin/maas bin/test.maas bin/test.pserv bin/py bin/ipy
+build: \
+    bin/buildout \
+    bin/maas bin/test.maas \
+    bin/twistd.pserv bin/test.pserv \
+    bin/py bin/ipy
 
 all: build doc
 
@@ -10,18 +14,27 @@ bin/buildout: bootstrap.py distribute_setup.py
 
 bin/maas bin/test.maas: bin/buildout buildout.cfg setup.py
 	bin/buildout install maas
+	@touch --no-create $@
+
+bin/twistd.pserv: bin/buildout buildout.cfg setup.py
+	bin/buildout install pserv
+	@touch --no-create $@
 
 bin/test.pserv: bin/buildout buildout.cfg setup.py
 	bin/buildout install pserv-test
+	@touch --no-create $@
 
 bin/flake8: bin/buildout buildout.cfg setup.py
 	bin/buildout install flake8
+	@touch --no-create $@
 
 bin/sphinx: bin/buildout buildout.cfg setup.py
 	bin/buildout install sphinx
+	@touch --no-create $@
 
 bin/py bin/ipy: bin/buildout buildout.cfg setup.py
 	bin/buildout install repl
+	@touch --no-create $@
 
 dev-db:
 	utilities/maasdb start ./db/ disposable
