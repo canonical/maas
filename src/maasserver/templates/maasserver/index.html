@@ -2,10 +2,25 @@
 
 {% block nav-active-index %}active{% endblock %}
 
+{% block html_includes %}{% include "maasserver/snippets.html" %}
+{% endblock %}
+
+{% block head %}
+  <script type="text/javascript">
+  <!--
+  YUI().use('maas.add_node', function (Y) {
+    Y.on('load', function() {
+      Y.one('#addnode').on('click', Y.maas.add_node.showAddNodeWidget);
+    });
+  });
+  // -->
+  </script>
+{% endblock %}
+
 {% block content %}
   <h2>
   {{ node_list|length }} node{{ node_list|length|pluralize }} in this cluster
   </h2>
 
-  <a href="{% url 'node-create' %}">Add Node</a>
+  <a id="addnode" href="#">Add Node</a>
 {% endblock %}

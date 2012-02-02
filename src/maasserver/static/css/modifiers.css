@@ -6,3 +6,16 @@
 .clear {
     clear: both;
     }
+
+.yui3-overlay {
+    background-color: #FFF;
+    padding: 10px;
+    border: 1px solid #000;
+    }
+.overlay {
+    }
+.overlay-close {
+    float: right;
+    }
+.overlay-header {
+    }

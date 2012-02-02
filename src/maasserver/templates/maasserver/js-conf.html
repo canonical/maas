@@ -5,6 +5,17 @@ var YUI_config = {
     combine: {% if YUI_DEBUG %}true{% else %}false{% endif %},
     base: '{{ STATIC_URL }}js/yui/{{ YUI_VERSION }}/'
 };
+var MAAS_config = {
+    uris: {
+        statics: '{{ STATIC_URL }}',
+        nodes_handler: '{% url "nodes_handler" %}'
+        },
+    debug: {% if YUI_DEBUG %}true{% else %}false{% endif %}
+};
 // -->
 </script>
-<script src="{{ STATIC_URL }}js/yui/{{ YUI_VERSION }}/yui-base/yui-base-min.js"></script>
+<script
+  src="{{ STATIC_URL }}js/yui/{{ YUI_VERSION }}/yui-base/yui-base-min.js">
+</script>
+<script src="{{ STATIC_URL }}js/add_node.js">
+</script>
