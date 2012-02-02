@@ -79,3 +79,13 @@ class AMQClosingTest(AMQTest):
         """
         errors = flush_logged_errors()
         self.assertEquals(len(errors), 0)
+
+
+# TODO: Get testresources working with nose. These tests are way too slow
+# because testresources does not work with nose. Disabling for now until we
+# have testresources support. Assigning None to the test classes seems to be
+# the only sure-fire way of preventing all test collectors from finding them
+# and satisfying lint tools at the same time.
+AMQFactoryTest = None
+AMQFactoryConnectedTest = None
+AMQClosingTest = None
