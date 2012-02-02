@@ -124,50 +124,48 @@ class RecordingSession(cobblerclient.CobblerSession):
         return self.fake_proxy
 
 
-class TestCobblerSessionBase:
-    """Base class helpers for testing `CobblerSession`."""
-
-    def make_url_user_password(self):
-        """Produce arbitrary API URL, username, and password."""
-        return (
-            'http://api.example.com/%d' % pick_number(),
-            'username%d' % pick_number(),
-            'password%d' % pick_number(),
-            )
-
-    def make_recording_session(self, session_args=None, token=None,
-                               fake_proxy=RecordingFakeProxy):
-        """Create a `RecordingSession`."""
-        if session_args is None:
-            session_args = self.make_url_user_password()
-        if token is None:
-            token = fake_token()
-        return RecordingSession(
-            *session_args, fake_token=token, fake_proxy=fake_proxy)
+def make_url_user_password():
+    """Produce arbitrary API URL, username, and password."""
+    return (
+        'http://api.example.com/%d' % pick_number(),
+        'username%d' % pick_number(),
+        'password%d' % pick_number(),
+        )
 
 
-class TestCobblerSession(TestCase, TestCobblerSessionBase):
+def make_recording_session(session_args=None, token=None,
+                           fake_proxy=RecordingFakeProxy):
+    """Create a `RecordingSession`."""
+    if session_args is None:
+        session_args = make_url_user_password()
+    if token is None:
+        token = fake_token()
+    return RecordingSession(
+        *session_args, fake_token=token, fake_proxy=fake_proxy)
+
+
+class TestCobblerSession(TestCase):
     """Test session management against a fake XMLRPC session."""
 
     run_tests_with = AsynchronousDeferredRunTest
 
     def test_initializes_but_does_not_authenticate_on_creation(self):
-        url, user, password = self.make_url_user_password()
-        session = self.make_recording_session(
+        url, user, password = make_url_user_password()
+        session = make_recording_session(
             token=fake_token(user, 'not-yet-authenticated'))
         self.assertEqual(None, session.token)
 
     @inlineCallbacks
     def test_authenticate_authenticates_initially(self):
         token = fake_token('authenticated')
-        session = self.make_recording_session(token=token)
+        session = make_recording_session(token=token)
         self.assertEqual(None, session.token)
         yield session._authenticate()
         self.assertEqual(token, session.token)
 
     @inlineCallbacks
     def test_state_cookie_stays_constant_during_normal_use(self):
-        session = self.make_recording_session()
+        session = make_recording_session()
         state = session.record_state()
         self.assertEqual(state, session.record_state())
         yield session.call("some_method")
@@ -175,14 +173,14 @@ class TestCobblerSession(TestCase, TestCobblerSessionBase):
 
     @inlineCallbacks
     def test_authentication_changes_state_cookie(self):
-        session = self.make_recording_session()
+        session = make_recording_session()
         old_cookie = session.record_state()
         yield session._authenticate()
         self.assertNotEqual(old_cookie, session.record_state())
 
     @inlineCallbacks
     def test_authenticate_backs_off_from_overwriting_concurrent_auth(self):
-        session = self.make_recording_session()
+        session = make_recording_session()
         # Two requests are made concurrently.
         cookie_before_request_1 = session.record_state()
         cookie_before_request_2 = session.record_state()
@@ -207,8 +205,7 @@ class TestCobblerSession(TestCase, TestCobblerSessionBase):
 
     @inlineCallbacks
     def test_substitute_token_substitutes_only_placeholder(self):
-        token = fake_token('for-substitution')
-        session = self.make_recording_session(token=token)
+        session = make_recording_session(token=fake_token('for-subst'))
         yield session._authenticate()
         arbitrary_number = pick_number()
         arbitrary_string = 'string-%d' % pick_number()
@@ -220,7 +217,7 @@ class TestCobblerSession(TestCase, TestCobblerSessionBase):
             ]
         outputs = [
             arbitrary_number,
-            token,
+            session.token,
             arbitrary_string,
             None,
             ]
@@ -229,7 +226,7 @@ class TestCobblerSession(TestCase, TestCobblerSessionBase):
 
     @inlineCallbacks
     def test_call_calls_xmlrpc(self):
-        session = self.make_recording_session()
+        session = make_recording_session()
         return_value = 'returnval-%d' % pick_number()
         method = 'method_%d' % pick_number()
         arg = 'arg-%d' % pick_number()
@@ -242,7 +239,7 @@ class TestCobblerSession(TestCase, TestCobblerSessionBase):
     def test_call_reauthenticates_and_retries_on_auth_failure(self):
         # If a call triggers an authentication error, call()
         # re-authenticates and then re-issues the call.
-        session = self.make_recording_session()
+        session = make_recording_session()
         yield session._authenticate()
         successful_return_value = pick_number()
         session.proxy.set_return_values([
@@ -270,7 +267,7 @@ class TestCobblerSession(TestCase, TestCobblerSessionBase):
         # is called just once, with the state cookie from before the
         # call.  This ensures that it will always notice a concurrent
         # re-authentication that it needs to back off from.
-        session = self.make_recording_session()
+        session = make_recording_session()
         yield session._authenticate()
         authenticate_cookies = []
 
@@ -286,7 +283,7 @@ class TestCobblerSession(TestCase, TestCobblerSessionBase):
 
     @inlineCallbacks
     def test_call_raises_repeated_auth_failure(self):
-        session = self.make_recording_session()
+        session = make_recording_session()
         yield session._authenticate()
         failures = [
             # Initial operation fails: not authenticated.
@@ -302,7 +299,7 @@ class TestCobblerSession(TestCase, TestCobblerSessionBase):
 
     @inlineCallbacks
     def test_call_raises_general_failure(self):
-        session = self.make_recording_session()
+        session = make_recording_session()
         yield session._authenticate()
         failure = Exception("Memory error.  Where did I put it?")
         session.proxy.set_return_values([failure])
@@ -315,7 +312,7 @@ class TestCobblerSession(TestCase, TestCobblerSessionBase):
         # If there is no auth token, and authentication is required,
         # call() authenticates right away rather than waiting for the
         # first call attempt to fail.
-        session = self.make_recording_session()
+        session = make_recording_session()
         session.token = None
         session.proxy.set_return_values([pick_number()])
         yield session.call(
@@ -326,8 +323,7 @@ class TestCobblerSession(TestCase, TestCobblerSessionBase):
             [('authenticate_me_first', session.token)], session.proxy.calls)
 
 
-class TestConnectionTimeouts(TestCase, TestCobblerSessionBase,
-                             fixtures.TestWithFixtures):
+class TestConnectionTimeouts(TestCase, fixtures.TestWithFixtures):
     """Tests for connection timeouts on `CobblerSession`."""
 
     run_tests_with = AsynchronousDeferredRunTestForBrokenTwisted
@@ -336,7 +332,7 @@ class TestConnectionTimeouts(TestCase, TestCobblerSessionBase,
         # Winding a clock reactor past the timeout value should cancel
         # the original Deferred.
         clock = Clock()
-        session = self.make_recording_session()
+        session = make_recording_session()
         d = session._with_timeout(defer.Deferred(), 1, clock)
         clock.advance(2)
         return assert_fails_with(d, defer.CancelledError)
@@ -346,7 +342,7 @@ class TestConnectionTimeouts(TestCase, TestCobblerSessionBase,
         # (defer.succeed() is pre-fired) Deferred should not trigger a
         # cancellation.
         clock = Clock()
-        session = self.make_recording_session()
+        session = make_recording_session()
         d = session._with_timeout(defer.succeed("frobnicle"), 1, clock)
         clock.advance(2)
 
@@ -360,7 +356,7 @@ class TestConnectionTimeouts(TestCase, TestCobblerSessionBase,
         # Winding a clock reactor forwards but not past the timeout
         # should result in no cancellation.
         clock = Clock()
-        session = self.make_recording_session()
+        session = make_recording_session()
         d = session._with_timeout(defer.Deferred(), 5, clock)
         clock.advance(1)
         self.assertFalse(d.called)
@@ -371,7 +367,7 @@ class TestConnectionTimeouts(TestCase, TestCobblerSessionBase,
             "provisioningserver.cobblerclient.default_reactor", clock)
         self.useFixture(patch)
 
-        session = self.make_recording_session(fake_proxy=DeadProxy)
+        session = make_recording_session(fake_proxy=DeadProxy)
         d = session._issue_call("login", "foo")
         clock.advance(cobblerclient.DEFAULT_TIMEOUT + 1)
         return assert_fails_with(d, defer.CancelledError)
@@ -389,3 +385,11 @@ class CobblerObject(TestCase):
         self.assertEqual(
             'x_systems_y',
             cobblerclient.CobblerSystem._name_method('x_%s_y', plural=True))
+
+    def test_new_checks_required_attributes(self):
+        # CobblerObject.new asserts that all required attributes for a
+        # type of object are provided.
+        session = make_recording_session()
+        with ExpectedException(AssertionError):
+            yield cobblerclient.CobblerSystem.new(
+                session, 'incomplete_system', {})

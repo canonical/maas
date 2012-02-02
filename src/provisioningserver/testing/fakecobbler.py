@@ -202,7 +202,7 @@ class FakeCobbler:
         # Assumption: these operations look only at saved objects.
         location = self.store[None].get(object_type, {})
         return [
-            dict(candidate)
+            candidate.copy()
             for candidate in location.values()
                 if self._matches(candidate, criteria)]
 
@@ -215,7 +215,7 @@ class FakeCobbler:
         """
         # Assumption: these operations look only at saved objects.
         location = self.store[None].get(object_type, {})
-        return list(map(dict, location.values()))
+        return [obj.copy() for obj in location.values()]
 
     def _api_modify_object(self, token, object_type, handle, key, value):
         """Set an attribute on an object.
@@ -232,7 +232,7 @@ class FakeCobbler:
             saved_obj = self._get_object_if_present(None, object_type, handle)
             if saved_obj is None:
                 self._raise_bad_handle(object_type, handle)
-            session_obj = dict(saved_obj)
+            session_obj = saved_obj.copy()
             self._add_object_to_session(
                 token, object_type, handle, session_obj)
 

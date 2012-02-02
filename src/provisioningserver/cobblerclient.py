@@ -69,8 +69,12 @@ class CobblerSession:
 
         For internal use only, but overridable for test purposes.
         """
-# TODO: Is the /RPC2 needed?
-        return Proxy(self.url + '/RPC2')
+        # Twisted does not encode the URL, and breaks with "Data must
+        # not be unicode" if it's in Unicode.  We'll have to decode it
+        # here, and hope it doesn't lead to breakage in Twisted.  We'll
+        # figure out what to do about non-ASCII characters in URLs
+        # later.
+        return Proxy(self.url.encode('ascii'))
 
     def record_state(self):
         """Return a cookie representing the session's current state.
@@ -118,7 +122,7 @@ class CobblerSession:
                 self.token = None
 
                 # Now initiate our new authentication.
-                self.token = yield self.proxy.callRemote(
+                self.token = yield self._issue_call(
                     'login', self.user, self.password)
         finally:
             self.authentication_lock.release()
@@ -157,6 +161,10 @@ class CobblerSession:
             substituted in its place.
         :return: `Deferred`.
         """
+        # Twisted XMLRPC does not encode the method name, but breaks if
+        # we give it in Unicode.  Encode it here; thankfully we're
+        # dealing with ASCII only in method names.
+        method = method.encode('ascii')
         args = map(self._substitute_token, args)
         d = self._with_timeout(self.proxy.callRemote(method, *args))
         return d
@@ -225,6 +233,9 @@ class CobblerObject:
     # Some attributes in Cobbler uses dashes as separators, others use
     # underscores.  In MaaS, use only underscores.
     known_attributes = []
+
+    # What attributes does Cobbler require for this type of object?
+    required_attributes = []
 
     def __init__(self, session, name=None, values=None):
         """Reference an object in Cobbler.
@@ -319,6 +330,12 @@ class CobblerObject:
         :param name: Identifying name for the new object.
         :param attributes: Dict mapping attribute names to values.
         """
+        missing_attributes = (
+            set(cls.required_attributes) - set(attributes.keys()))
+        assert len(missing_attributes) == 0, (
+            "Required attributes for %s missing: %s"
+            % (cls.object_type, missing_attributes))
+
         args = dict(
             (cls._normalize_attribute(key), value)
             for key, value in attributes.items())
@@ -371,6 +388,10 @@ class CobblerProfile(CobblerObject):
         'virt_path',
         'virt_ram',
         ]
+    required_attributes = [
+        'name',
+        'distro',
+        ]
 
 
 class CobblerImage(CobblerObject):
@@ -416,6 +437,11 @@ class CobblerDistro(CobblerObject):
         'owners',
         'template-files',
         ]
+    required_attributes = [
+        'initrd',
+        'kernel',
+        'name',
+        ]
 
 
 class CobblerRepo(CobblerObject):
@@ -432,6 +458,10 @@ class CobblerRepo(CobblerObject):
         'name',
         'owners',
         'priority',
+        ]
+    required_attributes = [
+        'name',
+        'mirror',
         ]
 
 
@@ -473,6 +503,10 @@ class CobblerSystem(CobblerObject):
         'uid',
         'virt_path',
         'virt_type',
+        ]
+    required_attributes = [
+        'name',
+        'profile',
         ]
 
     # The modify_interface dict can contain:
