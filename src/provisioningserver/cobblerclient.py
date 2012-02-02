@@ -345,9 +345,13 @@ class CobblerObject:
         # stored along with them.  Its value doesn't matter.
         args.setdefault('clobber', True)
 
-        yield session.call(
+        success = yield session.call(
             'xapi_object_edit', cls.object_type, name, 'add', args,
             session.token_placeholder)
+        if not success:
+            raise RuntimeError(
+                "Cobbler refused to create %s '%s'.  Attributes: %s"
+                % (cls.object_type, name, args))
         returnValue(cls(session, name=name, values=args))
 
     @inlineCallbacks

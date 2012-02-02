@@ -168,6 +168,17 @@ class CobblerObjectTestScenario:
         self.assertEqual(name, obj.name)
 
     @inlineCallbacks
+    def test_create_object_fails_if_cobbler_returns_False(self):
+
+        def return_false(*args):
+            return False
+
+        session = yield fake_cobbler_session()
+        session.fake_proxy.fake_cobbler.xapi_object_edit = return_false
+        with ExpectedException(RuntimeError):
+            yield fake_cobbler_object(session, self.cobbler_class)
+
+    @inlineCallbacks
     def test_find_returns_empty_list_if_no_match(self):
         session = yield fake_cobbler_session()
         name = self.make_name()

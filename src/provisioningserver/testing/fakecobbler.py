@@ -310,7 +310,7 @@ class FakeCobbler:
             obj_dict = self.store[token][object_type][handle]
             obj_dict.update(attrs)
             obj_dict['name'] = name
-            self._api_save_object(token, object_type, handle)
+            return self._api_save_object(token, object_type, handle)
         else:
             raise NotImplemented(
                 "xapi_object_edit(%s, ..., %s, ...)"
