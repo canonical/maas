@@ -11,32 +11,21 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
-from cStringIO import StringIO
 from functools import partial
 import os
 from unittest import skip
 
 from fixtures import TempDir
-from oops_twisted import OOPSObserver
 from provisioningserver.plugin import (
     Options,
     ProvisioningServiceMaker,
-    setUpOOPSHandler,
     )
 from testtools import TestCase
-from testtools.content import (
-    Content,
-    UTF8_TEXT,
-    )
 from testtools.matchers import (
     MatchesException,
     Raises,
     )
 from twisted.application.service import MultiService
-from twisted.python.log import (
-    FileLogObserver,
-    theLogPublisher,
-    )
 from twisted.python.usage import UsageError
 
 
@@ -85,10 +74,7 @@ class TestOptions(TestCase):
     def test_parse_minimal_options(self):
         options = Options()
         # The minimal set of options that must be provided.
-        arguments = [
-            "--brokerpassword", "Hoskins",
-            "--brokeruser", "Bob",
-            ]
+        arguments = []
         options.parseOptions(arguments)  # No error.
 
     def test_parse_int_options(self):
@@ -129,72 +115,53 @@ class TestOptions(TestCase):
             Raises(expected))
 
 
-class TestSetUpOOPSHandler(TestCase):
-    """Tests for `provisioningserver.plugin.setUpOOPSHandler`."""
-
-    def setUp(self):
-        super(TestSetUpOOPSHandler, self).setUp()
-        self.observers = theLogPublisher.observers[:]
-        self.logfile = StringIO()
-        self.addDetail("log", Content(UTF8_TEXT, self.logfile.getvalue))
-        self.log = FileLogObserver(self.logfile)
-
-    def tearDown(self):
-        super(TestSetUpOOPSHandler, self).tearDown()
-        theLogPublisher.observers[:] = self.observers
-
-    def makeObserver(self, settings):
-        options = Options()
-        options["brokerpassword"] = "Hoskins"
-        options["brokeruser"] = "Bob"
-        options.update(settings)
-        observer = setUpOOPSHandler(options, self.log)
-        return options, observer
-
-    def test_minimal(self):
-        options, observer = self.makeObserver({})
-        self.assertIsInstance(observer, OOPSObserver)
-        self.assertEqual([], observer.config.publishers)
-        self.assertEqual(
-            {"reporter": options.defaults["oops-reporter"]},
-            observer.config.template)
-
-    def test_with_all_params(self):
-        settings = {
-            "oops-reporter": "Sidebottom",
-            "oops-dir": self.useFixture(TempDir()).path,
-            }
-        options, observer = self.makeObserver(settings)
-        self.assertIsInstance(observer, OOPSObserver)
-        self.assertEqual(1, len(observer.config.publishers))
-        self.assertEqual(
-            {"reporter": "Sidebottom"},
-            observer.config.template)
-
-
 class TestProvisioningServiceMaker(TestCase):
     """Tests for `provisioningserver.plugin.ProvisioningServiceMaker`."""
+
+    def get_log_file(self):
+        return os.path.join(
+            self.useFixture(TempDir()).path,
+            "provisioningserver.log")
 
     def test_init(self):
         service_maker = ProvisioningServiceMaker("Harry", "Hill")
         self.assertEqual("Harry", service_maker.tapname)
         self.assertEqual("Hill", service_maker.description)
 
-    def makeOptions(self, settings):
-        options = Options()
-        options["brokerpassword"] = "Hoskins"
-        options["brokeruser"] = "Bob"
-        options.update(settings)
-        return options
-
     def test_makeService(self):
-        logfile = os.path.join(
-            self.useFixture(TempDir()).path, "provisioningserver.log")
-        options = self.makeOptions({"logfile": logfile})
+        """
+        Only the log and oops services are created when no options are given.
+        """
+        options = Options()
+        options["logfile"] = self.get_log_file()
         service_maker = ProvisioningServiceMaker("Harry", "Hill")
         service = service_maker.makeService(options, _set_proc_title=False)
         self.assertIsInstance(service, MultiService)
-        self.assertEqual(1, len(service.services))
-        [client_service] = service.services
-        self.assertEqual(options["brokerhost"], client_service.args[0])
-        self.assertEqual(options["brokerport"], client_service.args[1])
+        self.assertSequenceEqual(
+            ["log", "oops"],
+            sorted(service.namedServices))
+        self.assertEqual(
+            len(service.namedServices), len(service.services),
+            "Not all services are named.")
+
+    def test_makeService_with_broker(self):
+        """
+        The log, oops and amqp services are created when the broker user and
+        password options are given.
+        """
+        options = Options()
+        options["brokerpassword"] = "Hoskins"
+        options["brokeruser"] = "Bob"
+        options["logfile"] = self.get_log_file()
+        service_maker = ProvisioningServiceMaker("Harry", "Hill")
+        service = service_maker.makeService(options, _set_proc_title=False)
+        self.assertIsInstance(service, MultiService)
+        self.assertSequenceEqual(
+            ["amqp", "log", "oops"],
+            sorted(service.namedServices))
+        self.assertEqual(
+            len(service.namedServices), len(service.services),
+            "Not all services are named.")
+        amqp_client_service = service.getServiceNamed("amqp")
+        self.assertEqual(options["brokerhost"], amqp_client_service.args[0])
+        self.assertEqual(options["brokerport"], amqp_client_service.args[1])

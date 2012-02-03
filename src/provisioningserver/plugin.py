@@ -8,16 +8,13 @@ from __future__ import (
     unicode_literals,
     )
 
-import signal
-import sys
+__metaclass__ = type
+__all__ = []
 
 from amqpclient import AMQFactory
-import oops
-from oops_datedir_repo import DateDirRepo
-from oops_twisted import (
-    Config as oops_config,
-    defer_publisher,
-    OOPSObserver,
+from provisioningserver.services import (
+    LogService,
+    OOPSService,
     )
 import setproctitle
 from twisted.application.internet import TCPClient
@@ -25,56 +22,12 @@ from twisted.application.service import (
     IServiceMaker,
     MultiService,
     )
-from twisted.internet import reactor
 from twisted.plugin import IPlugin
 from twisted.python import (
     log,
     usage,
     )
-from twisted.python.log import (
-    addObserver,
-    FileLogObserver,
-    )
-from twisted.python.logfile import LogFile
 from zope.interface import implements
-
-
-__metaclass__ = type
-__all__ = []
-
-
-def getRotatableLogFileObserver(filename):
-    """Setup a L{LogFile} for the given application."""
-    if filename != '-':
-        logfile = LogFile.fromFullPath(
-            filename, rotateLength=None, defaultMode=0644)
-
-        def signal_handler(sig, frame):
-            reactor.callFromThread(logfile.reopen)
-        signal.signal(signal.SIGUSR1, signal_handler)
-    else:
-        logfile = sys.stdout
-    return FileLogObserver(logfile)
-
-
-def setUpOOPSHandler(options, logfile):
-    """Add OOPS handling based on the passed command line options."""
-    config = oops_config()
-
-    # Add the oops publisher that writes files in the configured place
-    # if the command line option was set.
-
-    if options["oops-dir"]:
-        repo = DateDirRepo(options["oops-dir"])
-        config.publishers.append(
-            defer_publisher(oops.publish_new_only(repo.publish)))
-
-    if options["oops-reporter"]:
-        config.template['reporter'] = options["oops-reporter"]
-
-    observer = OOPSObserver(config, logfile.emit)
-    addObserver(observer.emit)
-    return observer
 
 
 class Options(usage.Options):
@@ -127,10 +80,14 @@ class ProvisioningServiceMaker(object):
         if _set_proc_title:
             setproctitle.setproctitle("maas provisioning service")
 
-        logfile = getRotatableLogFileObserver(options["logfile"])
-        setUpOOPSHandler(options, logfile)
-
         services = MultiService()
+
+        logging_service = LogService(options["logfile"])
+        logging_service.setServiceParent(services)
+
+        oops_service = OOPSService(
+            logging_service, options["oops-dir"], options["oops-reporter"])
+        oops_service.setServiceParent(services)
 
         broker_port = options["brokerport"]
         broker_host = options["brokerhost"]
@@ -150,6 +107,7 @@ class ProvisioningServiceMaker(object):
                 cb_connected, cb_disconnected, cb_failed)
             client_service = TCPClient(
                 broker_host, broker_port, client_factory)
-            services.addService(client_service)
+            client_service.setName("amqp")
+            client_service.setServiceParent(services)
 
         return services
