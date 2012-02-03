@@ -147,7 +147,9 @@ def make_recording_session(session_args=None, token=None,
 class TestCobblerSession(TestCase):
     """Test session management against a fake XMLRPC session."""
 
-    run_tests_with = AsynchronousDeferredRunTest
+    # Use a slightly longer timeout so that we can run these tests
+    # against a real Cobbler.
+    run_tests_with = AsynchronousDeferredRunTest.make_factory(timeout=5)
 
     def test_initializes_but_does_not_authenticate_on_creation(self):
         url, user, password = make_url_user_password()
