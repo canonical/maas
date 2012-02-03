@@ -13,6 +13,7 @@ __all__ = []
 
 from itertools import count
 from random import randint
+from tempfile import NamedTemporaryFile
 import xmlrpclib
 
 from provisioningserver.cobblerclient import (
@@ -74,6 +75,37 @@ def fake_cobbler_session(url=None, user=None, password=None,
     returnValue(session)
 
 
+def make_file():
+    """Make a temporary file."""
+    temp_file = NamedTemporaryFile()
+    temp_file.write("Data here.")
+    temp_file.flush()
+    return temp_file
+
+
+def default_to_file(attributes, attribute, required_attrs):
+    """If `attributes[attribute]` is required but not set, make a file.
+
+    :return: A temporary file.  Keep this alive as long as you need the file.
+    """
+    if attribute in required_attrs and attribute not in attributes:
+        temp_file = make_file()
+        attributes[attribute] = temp_file.name
+        return temp_file
+    else:
+        return None
+
+
+@inlineCallbacks
+def default_to_object(attributes, attribute, required_attrs, session,
+                      cobbler_class):
+    """If `attributes[attribute]` is required but not set, make an object."""
+    if attribute in required_attrs and attribute not in attributes:
+        other_obj = yield fake_cobbler_object(session, cobbler_class)
+        attributes[attribute] = other_obj.name
+
+
+@inlineCallbacks
 def fake_cobbler_object(session, object_class, name=None, attributes=None):
     """Create a fake Cobbler object.
 
@@ -85,16 +117,30 @@ def fake_cobbler_object(session, object_class, name=None, attributes=None):
     if attributes is None:
         attributes = {}
     else:
-        attributes = dict(attributes)
+        attributes = attributes.copy()
     unique_int = next(unique_ints)
     if name is None:
         name = 'name-%s-%d' % (object_class.object_type, unique_int)
     attributes['name'] = name
+    temp_files = [
+        default_to_file(
+            attributes, 'kernel', object_class.required_attributes),
+        default_to_file(
+            attributes, 'initrd', object_class.required_attributes),
+        ]
+    yield default_to_object(
+        attributes, 'profile', object_class.required_attributes, session,
+        CobblerProfile)
+    yield default_to_object(
+        attributes, 'distro', object_class.required_attributes, session,
+        CobblerDistro)
     for attr in object_class.required_attributes:
         if attr not in attributes:
             attributes[attr] = '%s-%d' % (attr, unique_int)
-    d = object_class.new(session, name, attributes)
-    return d
+    new_object = yield object_class.new(session, name, attributes)
+    # Keep the temporary files alive for the lifetime of the object.
+    new_object._hold_these_files_please = temp_files
+    returnValue(new_object)
 
 
 class TestFakeCobbler(TestCase):
@@ -123,7 +169,7 @@ class TestFakeCobbler(TestCase):
         # Use of the token will now fail with an "invalid token"
         # error.  The Cobbler client notices this, re-authenticates, and
         # re-runs the method.
-        yield fake_cobbler_object(session, CobblerSystem)
+        yield fake_cobbler_object(session, CobblerRepo)
 
         # The re-authentication results in a fresh token.
         self.assertNotEqual(old_token, session.token)
@@ -132,7 +178,7 @@ class TestFakeCobbler(TestCase):
     def test_valid_token_does_not_raise_auth_error(self):
         session = yield fake_cobbler_session()
         old_token = session.token
-        yield fake_cobbler_object(session, CobblerSystem)
+        yield fake_cobbler_object(session, CobblerRepo)
         self.assertEqual(old_token, session.token)
 
 
@@ -183,32 +229,56 @@ class CobblerObjectTestScenario:
         session = yield fake_cobbler_session()
         name = self.make_name()
         matches = yield self.cobbler_class.find(session, name=name)
-        self.assertEqual([], matches)
+        self.assertSequenceEqual([], matches)
 
     @inlineCallbacks
     def test_find_matches_name(self):
         session = yield fake_cobbler_session()
         name = self.make_name()
         yield fake_cobbler_object(session, self.cobbler_class, name)
-        [by_comment] = yield self.cobbler_class.find(session, name=name)
-        self.assertEqual(name, by_comment.name)
+        by_name = yield self.cobbler_class.find(session, name=name)
+        self.assertSequenceEqual([name], [obj.name for obj in by_name])
 
     @inlineCallbacks
     def test_find_matches_attribute(self):
         session = yield fake_cobbler_session()
         name = self.make_name()
+        comment = "This is comment #%d" % next(unique_ints)
         yield fake_cobbler_object(
-            session, self.cobbler_class, name, {'comment': 'Hi'})
-        [by_comment] = yield self.cobbler_class.find(session, comment='Hi')
-        self.assertEqual(name, by_comment.name)
+            session, self.cobbler_class, name, {'comment': comment})
+        by_comment = yield self.cobbler_class.find(session, comment=comment)
+        self.assertSequenceEqual([name], [obj.name for obj in by_comment])
 
     @inlineCallbacks
     def test_find_without_args_finds_everything(self):
         session = yield fake_cobbler_session()
         name = self.make_name()
         yield fake_cobbler_object(session, self.cobbler_class, name)
-        found_items = yield self.cobbler_class.find(session)
-        self.assertEqual([name], [item.name for item in found_items])
+        found_objects = yield self.cobbler_class.find(session)
+        self.assertIn(name, [obj.name for obj in found_objects])
+
+    @inlineCallbacks
+    def test_get_object_retrieves_attributes(self):
+        session = yield fake_cobbler_session()
+        comment = "This is comment #%d" % next(unique_ints)
+        name = self.make_name()
+        obj = yield fake_cobbler_object(
+            session, self.cobbler_class, name, {'comment': comment})
+        attributes = yield obj.get_values()
+        self.assertEqual(name, attributes['name'])
+        self.assertEqual(comment, attributes['comment'])
+
+    @inlineCallbacks
+    def test_get_objects_retrieves_attributes_for_all_objects(self):
+        session = yield fake_cobbler_session()
+        comment = "This is comment #%d" % next(unique_ints)
+        name = self.make_name()
+        yield fake_cobbler_object(
+            session, self.cobbler_class, name, {'comment': comment})
+        all_objects = yield self.cobbler_class.get_all_values(session)
+        found_obj = all_objects[name]
+        self.assertEqual(name, found_obj['name'])
+        self.assertEqual(comment, found_obj['comment'])
 
     @inlineCallbacks
     def test_get_handle_finds_handle(self):
@@ -240,9 +310,9 @@ class CobblerObjectTestScenario:
         session = yield fake_cobbler_session()
         name = self.make_name()
         obj = yield fake_cobbler_object(session, self.cobbler_class, name)
-        obj.delete()
+        yield obj.delete()
         matches = yield self.cobbler_class.find(session, name=name)
-        self.assertEqual([], matches)
+        self.assertSequenceEqual([], matches)
 
 
 class TestCobblerDistro(CobblerObjectTestScenario, TestCase):
@@ -259,9 +329,9 @@ class TestCobblerDistro(CobblerObjectTestScenario, TestCase):
             'mgmt-classes',
             'mgmt_classes',
             ]
-        self.assertEqual(
+        self.assertSequenceEqual(
             ['mgmt-classes'] * 2,
-            list(map(self.cobbler_class._normalize_attribute, inputs)))
+            map(self.cobbler_class._normalize_attribute, inputs))
 
 
 class TestCobblerImage(CobblerObjectTestScenario, TestCase):
@@ -278,9 +348,9 @@ class TestCobblerImage(CobblerObjectTestScenario, TestCase):
             'image-type',
             'image_type',
             ]
-        self.assertEqual(
+        self.assertSequenceEqual(
             ['image_type'] * 2,
-            list(map(self.cobbler_class._normalize_attribute, inputs)))
+            map(self.cobbler_class._normalize_attribute, inputs))
 
 
 class TestCobblerProfile(CobblerObjectTestScenario, TestCase):
@@ -305,9 +375,9 @@ class TestCobblerProfile(CobblerObjectTestScenario, TestCase):
             'name_servers',
             'name_servers',
             ]
-        self.assertEqual(
+        self.assertSequenceEqual(
             expected_outputs,
-            list(map(self.cobbler_class._normalize_attribute, inputs)))
+            map(self.cobbler_class._normalize_attribute, inputs))
 
 
 class TestCobblerRepo(CobblerObjectTestScenario, TestCase):
@@ -433,7 +503,7 @@ class TestCobblerPreseeds(TestCase):
     def test_get_templates_lists_templates(self):
         preseeds = yield self.make_preseeds_api()
         unique_int = next(unique_ints)
-        path = '/var/lib/cobbler/template/template-%d' % unique_int
+        path = '/var/lib/cobbler/kickstarts/template-%d' % unique_int
         yield preseeds.write_template(path, "Text")
         templates = yield preseeds.get_templates()
         self.assertIn(path, templates)
@@ -445,16 +515,16 @@ class TestCobblerPreseeds(TestCase):
         path = '/var/lib/cobbler/snippets/snippet-%d' % unique_int
         yield preseeds.write_snippet(path, "Text")
         snippets = yield preseeds.get_snippets()
-        self.assertEqual([path], snippets)
+        self.assertIn(path, snippets)
 
     @inlineCallbacks
     def test_templates_do_not_show_up_as_snippets(self):
         preseeds = yield self.make_preseeds_api()
         unique_int = next(unique_ints)
-        path = '/var/lib/cobbler/template/template-%d' % unique_int
+        path = '/var/lib/cobbler/kickstarts/template-%d' % unique_int
         yield preseeds.write_template(path, "Text")
         snippets = yield preseeds.get_snippets()
-        self.assertEqual([], snippets)
+        self.assertNotIn(path, snippets)
 
     @inlineCallbacks
     def test_snippets_do_not_show_up_as_templates(self):
@@ -463,4 +533,4 @@ class TestCobblerPreseeds(TestCase):
         path = '/var/lib/cobbler/snippets/snippet-%d' % unique_int
         yield preseeds.write_snippet(path, "Text")
         templates = yield preseeds.get_templates()
-        self.assertEqual([], templates)
+        self.assertNotIn(path, templates)

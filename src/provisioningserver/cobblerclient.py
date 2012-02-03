@@ -237,20 +237,17 @@ class CobblerObject:
     # What attributes does Cobbler require for this type of object?
     required_attributes = []
 
-    def __init__(self, session, name=None, values=None):
+    def __init__(self, session, name):
         """Reference an object in Cobbler.
 
         :param session: A `CobblerSession`.
-        :param name: Name for this object, if known.
-        :param values: Attribute values for this object, if known.
+        :param name: Name for this object.
         """
-        if values is None:
-            values = {}
         self.session = session
-        # Cache the name; we need it when deleting objects.
-        self.name = name or values.get('name')
+        self.name = name
 
     def _get_handle(self):
+        """Retrieve the object's handle."""
         method = self._name_method('get_%s_handle')
         return self.session.call(
             method, self.name, self.session.token_placeholder)
@@ -308,18 +305,35 @@ class CobblerObject:
         :param **kwargs: Optional search criteria, e.g.
             hostname="*.maas3.example.com" to limit the search to items with
             a hostname attribute that ends in ".maas3.example.com".
-        :return: A list of `cls` objects.
+        :return: A list of matching `cls` objects.
         """
-        if kwargs:
-            method = cls._name_method("find_%s")
-            criteria = dict(
-                (cls._normalize_attribute(key), value)
-                for key, value in kwargs.items())
-            result = yield session.call(method, criteria)
-        else:
-            method = cls._name_method("get_%s", plural=True)
-            result = yield session.call(method)
-        returnValue([cls(session, values=item) for item in result])
+        method = cls._name_method("find_%s")
+        criteria = dict(
+            (cls._normalize_attribute(key), value)
+            for key, value in kwargs.items())
+        result = yield session.call(method, criteria)
+        returnValue([cls(session, name) for name in result])
+
+    @classmethod
+    @inlineCallbacks
+    def get_all_values(cls, session):
+        """Load the attributes for all objects of this type.
+
+        :return: A `Deferred` that delivers a dict, mapping objects' names
+            to dicts containing their respective attributes.
+        """
+        method = cls._name_method("get_%s", plural=True)
+        result = yield session.call(method)
+        returnValue(dict((obj['name'], obj) for obj in result))
+
+    def get_values(self):
+        """Load the object's attributes as a dict.
+
+        :return: A `Deferred` that delivers a dict containing the object's
+            attribute names and values.
+        """
+        d = self.session.call(self._name_method("get_%s"), self.name)
+        return d
 
     @classmethod
     @inlineCallbacks
@@ -352,7 +366,7 @@ class CobblerObject:
             raise RuntimeError(
                 "Cobbler refused to create %s '%s'.  Attributes: %s"
                 % (cls.object_type, name, args))
-        returnValue(cls(session, name=name, values=args))
+        returnValue(cls(session, name))
 
     @inlineCallbacks
     def delete(self, recurse=True):

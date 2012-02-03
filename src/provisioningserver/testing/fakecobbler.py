@@ -193,18 +193,27 @@ class FakeCobbler:
         return handle
 
     def _api_find_objects(self, object_type, criteria):
-        """Find objects in the saved store that match `criteria`.
+        """Find names of objects in the saved store that match `criteria`.
 
-        :return: A list of object dicts.  The dicts are copied from the
-            saved store; they are not references to the originals in the
-            store.
+        :return: A list of object names.
         """
         # Assumption: these operations look only at saved objects.
         location = self.store[None].get(object_type, {})
         return [
-            candidate.copy()
+            candidate['name']
             for candidate in location.values()
                 if self._matches(candidate, criteria)]
+
+    def _api_get_object(self, object_type, name):
+        """Get object's attributes by name."""
+        location = self.store[None][object_type]
+        matches = [obj for obj in location.values() if obj['name'] == name]
+        assert len(matches) <= 1, (
+            "Multiple %s objects are called '%s'." % (object_type, name))
+        if len(matches) == 0:
+            return None
+        else:
+            return matches[0]
 
     def _api_get_objects(self, object_type):
         """Return all saved objects of type `object_type`.
@@ -328,6 +337,9 @@ class FakeCobbler:
     def find_distro(self, criteria):
         return self._api_find_objects('distro', criteria)
 
+    def get_distro(self, name):
+        return self._api_get_object('distro', name)
+
     def get_distros(self):
         return self._api_get_objects('distro')
 
@@ -348,6 +360,9 @@ class FakeCobbler:
 
     def find_image(self, criteria):
         return self._api_find_objects('image', criteria)
+
+    def get_image(self, name):
+        return self._api_get_object('image', name)
 
     def get_images(self):
         return self._api_get_objects('image')
@@ -370,6 +385,9 @@ class FakeCobbler:
     def find_profile(self, criteria):
         return self._api_find_objects('profile', criteria)
 
+    def get_profile(self, name):
+        return self._api_get_object('profile', name)
+
     def get_profiles(self):
         return self._api_get_objects('profile')
 
@@ -390,6 +408,9 @@ class FakeCobbler:
 
     def find_repo(self, criteria):
         return self._api_find_objects('repo', criteria)
+
+    def get_repo(self, name):
+        return self._api_get_object('repo', name)
 
     def get_repos(self):
         return self._api_get_objects('repo')
@@ -424,6 +445,9 @@ class FakeCobbler:
 
     def find_system(self, criteria):
         return self._api_find_objects('system', criteria)
+
+    def get_system(self, name):
+        return self._api_get_object('system', name)
 
     def get_systems(self):
         return self._api_get_objects('system')
