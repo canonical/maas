@@ -10,12 +10,6 @@
 {% block content %}
 <div id="login-logout">
 
-{% if messages %}
-  {% for message in messages %}
-    <div>{{ message }}</div>
-  {% endfor %}
-{% endif %}
-
 <h2>Login</h2>
 {% if form.errors %}
   <p>Your username and password didn't match. Please try again.</p>

@@ -29,9 +29,6 @@ p {
     width: auto;
     margin-bottom: 0.8em;
     }
-p, li, dt, dd, blockquote {
-    max-width: 45em;
-    }
 pre, code, samp, tt, .console {
     font-family: 'Ubuntu Mono', monospace;
     margin-bottom: 0.8em;

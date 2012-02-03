@@ -1,0 +1,25 @@
+#flash-messages {
+    margin: 0;
+    padding: 0;
+    }
+#flash-messages li {
+    list-style: none;
+    padding: 5px 20px;
+    border-radius: 6px;
+    box-shadow: 1px 1px 1px rgba(0,0,0,.2);
+    font-weight: bold;
+    color: #FFF;
+    margin: 5px 10px;
+    }
+#flash-messages li.info {
+    background-color: #19B6EE;
+    }
+#flash-messages li.success {
+    background-color: #38B44A;
+    }
+#flash-messages li.warning {
+    background-color: #ECA918;
+    }
+#flash-messages li.error {
+    background-color: #DF382C;
+    }

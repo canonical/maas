@@ -3,3 +3,5 @@
 @import url("forms.css");
 @import url("layout.css");
 @import url("modifiers.css");
+/* components */
+@import url("components/flash_messages.css");
