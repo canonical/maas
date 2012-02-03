@@ -10,6 +10,13 @@ from __future__ import (
 
 The API looks synchronous, but under the covers, calls yield to the Twisted
 reactor so that it can service other callbacks.
+
+To use Cobbler, create a `CobblerSession` (which connects and authenticates
+as appropriate).  Create, query, or manipulate cobbler objects through the
+various classes derived from `CobblerObject`: `CobblerDistro` for a distro,
+`CobblerImage` for an image, `CobblerProfile` for a profile, `CobblerSystem`
+for a node system, and so on.  In addition, `CobblerPreseeds` manages
+preseeds.
 """
 
 __metaclass__ = type
@@ -50,6 +57,12 @@ class CobblerSession:
 
     The session can be used for many asynchronous requests, all of them
     sharing a single authentication token.
+
+    If you're just using Cobbler's services, treat this class as a
+    "connection" class: create it with the right service url, user name,
+    and password, and pass it around for the various other Cobbler* classes
+    to use.  After creation it's a black box except to the Cobbler client
+    code.
     """
 
     # In an arguments list, this means "insert security token here."
@@ -173,6 +186,10 @@ class CobblerSession:
     def call(self, method, *args):
         """Initiate call to XMLRPC `method` by name, through Twisted.
 
+        This is for use by the Cobbler wrapper API only.  Don't call it
+        directly; instead, ensure that the wrapper API supports the
+        method you want to call.
+
         Initiates XMLRPC call, yields back to the reactor until it's ready
         with a response, then returns the response.  Use this as if it were
         a synchronous XMLRPC call; but be aware that it lets the reactor run
@@ -208,16 +225,9 @@ class CobblerSession:
 class CobblerObject:
     """Abstract base class: a type of object in Cobbler's XMLRPC API.
 
-    Cobbler's API exposes several types of object, but they all conform
-    to a very basic standard API.  Implement a type by inheriting from
-    this class.
-
-    :ivar object_type: The identifier for the kind of object represented.
-        Must be set in concrete derived classes.
-    :ivar object_type_plural: Optional plural for the type's identifier.
-        If not given, is derived by suffixing `object_type` with an "s".
-    :ivar known_attributes: Attributes that this type of object is known
-        to have.
+    This defines the common interface to cobbler's distros, profiles,
+    systems, and other objects it stores in its database and exposes
+    through its API.  Implement a new type by inheriting from this class.
     """
 
     # What are objects of this type called in the Cobbler API?
@@ -388,7 +398,10 @@ class CobblerObject:
 
 
 class CobblerProfile(CobblerObject):
-    """A profile."""
+    """A profile.
+
+    See `CobblerObject` for common object-management properties.
+    """
     object_type = 'profile'
     known_attributes = [
         'distro',
@@ -419,7 +432,10 @@ class CobblerProfile(CobblerObject):
 
 
 class CobblerImage(CobblerObject):
-    """An operating system image."""
+    """An operating system image.
+
+    See `CobblerObject` for common object-management properties.
+    """
     object_type = "image"
     known_attributes = [
         'arch',
@@ -443,7 +459,10 @@ class CobblerImage(CobblerObject):
 
 
 class CobblerDistro(CobblerObject):
-    """A distribution."""
+    """A distribution.
+
+    See `CobblerObject` for common object-management properties.
+    """
     object_type = 'distro'
     known_attributes = [
         'breed',
@@ -469,7 +488,10 @@ class CobblerDistro(CobblerObject):
 
 
 class CobblerRepo(CobblerObject):
-    """A repository."""
+    """A repository.
+
+    See `CobblerObject` for common object-management properties.
+    """
     object_type = 'repo'
     known_attributes = [
         'arch',
@@ -490,7 +512,10 @@ class CobblerRepo(CobblerObject):
 
 
 class CobblerSystem(CobblerObject):
-    """A computer on the network."""
+    """A computer (node) on the network.
+
+    See `CobblerObject` for common object-management properties.
+    """
     object_type = 'system'
     known_attributes = [
         'boot_files',
@@ -611,7 +636,7 @@ class CobblerSystem(CobblerObject):
 
 
 class CobblerPreseeds:
-    """Deal with preseeds."""
+    """Manage preseeds."""
 
     def __init__(self, session):
         self.session = session
