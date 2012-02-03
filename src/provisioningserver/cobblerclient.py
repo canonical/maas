@@ -344,6 +344,12 @@ class CobblerObject:
         :param name: Identifying name for the new object.
         :param attributes: Dict mapping attribute names to values.
         """
+        if 'name' in attributes:
+            assert attributes['name'] == name, (
+                "Creating %s called '%s', but 'name' attribute is '%s'."
+                % (cls.object_type, name, attributes['name']))
+        else:
+            attributes['name'] = name
         missing_attributes = (
             set(cls.required_attributes) - set(attributes.keys()))
         assert len(missing_attributes) == 0, (
