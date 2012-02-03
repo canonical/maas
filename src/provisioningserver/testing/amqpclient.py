@@ -12,11 +12,6 @@ __metaclass__ = type
 __all__ = []
 
 from provisioningserver.amqpclient import AMQFactory
-from rabbitfixture.server import RabbitServer
-from testresources import (
-    FixtureResource,
-    ResourcedTestCase,
-    )
 from testtools import TestCase
 from testtools.deferredruntest import (
     AsynchronousDeferredRunTestForBrokenTwisted,
@@ -46,16 +41,32 @@ class QueueWrapper(object):
         return self._real_queue_get(timeout)
 
 
-class AMQTest(ResourcedTestCase, TestCase):
+class AMQTest(TestCase):
 
     run_tests_with = AsynchronousDeferredRunTestForBrokenTwisted.make_factory(
         timeout=5)
 
-    resources = [('rabbit', FixtureResource(RabbitServer()))]
-
     VHOST = "/"
     USER = "guest"
     PASSWORD = "guest"
+
+    @property
+    def rabbit(self):
+        """A set-up `rabbitfixture.server.RabbitServer` instance.
+
+        This is a compatibility shim in case we ever revert to using
+        `testresources`_ here. At the moment the `RabbitServer` is being
+        managed by `package-level fixture hooks`_ that nose recognizes.
+
+        .. testresources_:
+          https://launchpad.net/testresources
+
+        .. package-level fixture hooks_:
+          http://readthedocs.org/docs/nose/en/latest/writing_tests.html
+
+        """
+        from provisioningserver import tests
+        return tests.rabbit
 
     def setUp(self):
         """
