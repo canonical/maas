@@ -222,6 +222,27 @@ class CobblerSession:
         returnValue(result)
 
 
+class CobblerObjectType(type):
+    """Metaclass of Cobbler objects."""
+
+    def __new__(mtype, name, bases, attributes):
+        """Build a new `CobblerObject` class.
+
+        Ensure that `known_attributes` and `required_attributes` are both
+        frozensets. This indicates that they should not be modified at
+        run-time, and it also improves performance of several methods, most
+        notably `_trim_attributes`.
+        """
+        if "known_attributes" in attributes:
+            attributes["known_attributes"] = frozenset(
+                attributes["known_attributes"])
+        if "required_attributes" in attributes:
+            attributes["required_attributes"] = frozenset(
+                attributes["required_attributes"])
+        return super(CobblerObjectType, mtype).__new__(
+            mtype, name, bases, attributes)
+
+
 class CobblerObject:
     """Abstract base class: a type of object in Cobbler's XMLRPC API.
 
@@ -229,6 +250,8 @@ class CobblerObject:
     systems, and other objects it stores in its database and exposes
     through its API.  Implement a new type by inheriting from this class.
     """
+
+    __metaclass__ = CobblerObjectType
 
     # What are objects of this type called in the Cobbler API?
     object_type = None

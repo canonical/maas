@@ -449,3 +449,21 @@ class TestCobblerObject(TestCase):
         values_observed_for_alice = values_observed["alice"]
         self.assertIn("initrd", values_observed_for_alice)
         self.assertNotIn("likes", values_observed_for_alice)
+
+    def test_known_attributes(self):
+        # known_attributes, a class attribute, is always a frozenset.
+        self.assertIsInstance(
+            cobblerclient.CobblerObject.known_attributes,
+            frozenset)
+        self.assertIsInstance(
+            cobblerclient.CobblerProfile.known_attributes,
+            frozenset)
+
+    def test_required_attributes(self):
+        # required_attributes, a class attribute, is always a frozenset.
+        self.assertIsInstance(
+            cobblerclient.CobblerObject.required_attributes,
+            frozenset)
+        self.assertIsInstance(
+            cobblerclient.CobblerDistro.required_attributes,
+            frozenset)
