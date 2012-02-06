@@ -375,8 +375,10 @@ class TestConnectionTimeouts(TestCase, fixtures.TestWithFixtures):
         return assert_fails_with(d, defer.CancelledError)
 
 
-class CobblerObject(TestCase):
+class TestCobblerObject(TestCase):
     """Tests for the `CobblerObject` classes."""
+
+    run_tests_with = AsynchronousDeferredRunTest
 
     def test_name_method_inserts_type_name(self):
         self.assertEqual(
@@ -395,3 +397,55 @@ class CobblerObject(TestCase):
         with ExpectedException(AssertionError):
             yield cobblerclient.CobblerSystem.new(
                 session, 'incomplete_system', {})
+
+    @inlineCallbacks
+    def test_get_values_returns_only_known_attributes(self):
+        session = make_recording_session()
+        # Create a new CobblerDistro. The True return value means the faked
+        # call to xapi_object_edit was successful.
+        session.proxy.set_return_values([True])
+        distro = yield cobblerclient.CobblerDistro.new(
+            session, name="fred", attributes={
+                "initrd": "an_initrd", "kernel": "a_kernel"})
+        # Fake that Cobbler holds the following attributes about the distro
+        # just created.
+        values_stored = {
+            "clobber": True,
+            "initrd": "an_initrd",
+            "kernel": "a_kernel",
+            "likes": u"cabbage",
+            "name": u"fred",
+            }
+        session.proxy.set_return_values([values_stored])
+        # However, CobblerObject.get_values() only returns attributes that are
+        # in known_attributes.
+        values_observed = yield distro.get_values()
+        self.assertIn("initrd", values_observed)
+        self.assertNotIn("likes", values_observed)
+
+    @inlineCallbacks
+    def test_get_all_values_returns_only_known_attributes(self):
+        session = make_recording_session()
+        # Create some new CobblerDistros. The True return values mean the
+        # faked calls to xapi_object_edit were successful.
+        session.proxy.set_return_values([True])
+        yield cobblerclient.CobblerDistro.new(
+            session, name="alice", attributes={
+                "initrd": "an_initrd", "kernel": "a_kernel"})
+        # Fake that Cobbler holds the following attributes about the distros
+        # just created.
+        values_stored = [
+            {"clobber": True,
+             "initrd": "an_initrd",
+             "kernel": "a_kernel",
+             "likes": u"cabbage",
+             "name": u"alice"},
+            ]
+        session.proxy.set_return_values([values_stored])
+        # However, CobblerObject.get_all_values() only returns attributes that
+        # are in known_attributes.
+        values_observed = yield (
+            cobblerclient.CobblerDistro.get_all_values(session))
+        values_observed_for_alice = values_observed["alice"]
+        self.assertIn("initrd", values_observed_for_alice)
+        self.assertNotIn("likes", values_observed_for_alice)
