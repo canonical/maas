@@ -3,14 +3,14 @@
  *
  * Widget to add a Node.
  *
- * @module Y.mass.add_node
+ * @module Y.mass.node_add
  */
 
-YUI.add('maas.add_node', function(Y) {
+YUI.add('maas.node_add', function(Y) {
 
-Y.log('loading mass.add_node');
+Y.log('loading mass.node_add');
 
-var module = Y.namespace('maas.add_node');
+var module = Y.namespace('maas.node_add');
 
 module.NODE_ADDED_EVENT = 'nodeAdded';
 
@@ -21,7 +21,7 @@ var AddNodeWidget = function() {
     AddNodeWidget.superclass.constructor.apply(this, arguments);
 };
 
-AddNodeWidget.NAME = 'add-node-widget';
+AddNodeWidget.NAME = 'node-add-widget';
 
 AddNodeWidget.ATTRS = {
 
@@ -118,10 +118,10 @@ Y.extend(AddNodeWidget, Y.Overlay, {
      },
 
    /**
-     * Show the spinner.
-     *
-     * @method showSpinner
-     */
+    * Show the spinner.
+    *
+    * @method showSpinner
+    */
     showSpinner: function() {
         var button = this.get('srcNode').one('.add-node-button');
         button.insert(this.spinnerNode, 'after');

@@ -8,9 +8,24 @@
 {% block head %}
   <script type="text/javascript">
   <!--
-  YUI().use('maas.add_node', function (Y) {
+  YUI().use('maas.node_add', 'maas.node','maas.node_views', function (Y) {
     Y.on('load', function() {
-      Y.one('#addnode').on('click', Y.maas.add_node.showAddNodeWidget);
+      // Create Dashboard view.
+      var view_container = Y.Node.create('<div />')
+          .set('id', 'dashboard');
+      Y.one('#content').append(view_container);
+      var view = new Y.maas.node_views.NodesDashboard(
+          {'append': '#dashboard'});
+      view.render(view_container);
+      // Create 'Add Node' link.
+      var add_node_link = Y.Node.create('<a />')
+          .set('id', 'addnode')
+          .set('text', "Add Node")
+          .set('href', '#');
+      Y.one('#content').append(add_node_link);
+      add_node_link.on('click', Y.maas.node_add.showAddNodeWidget);
+      // Wire up the view to the 'nodeAdded' event.
+      Y.one('#addnode').on('click', Y.maas.node_add.showAddNodeWidget);
     });
   });
   // -->
@@ -18,9 +33,4 @@
 {% endblock %}
 
 {% block content %}
-  <h2>
-  {{ node_list|length }} node{{ node_list|length|pluralize }} in this cluster
-  </h2>
-
-  <a id="addnode" href="#">Add Node</a>
 {% endblock %}

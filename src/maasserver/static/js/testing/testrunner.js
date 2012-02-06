@@ -1,3 +1,7 @@
+/* Copyright 2012 Canonical Ltd.  This software is licensed under the
+ * GNU Affero General Public License version 3 (see the file LICENSE).
+ */
+
 /**
  * Merely loading this script into a page will cause it to look for a
  * single suite using the selector span#suite. If found, the text

@@ -1,8 +1,16 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
   <head>
-    <title>Test maas.add_node</title>
+    <title>Test maas.node_add</title>
 
+    <!-- YUI and test setup -->
+    <script type="text/javascript" src="../yui/tests/yui/yui-min.js"></script>
+    <script type="text/javascript" src="../testing/testrunner.js"></script>
+    <script type="text/javascript" src="../testing/testing.js"></script>
+    <!-- The module under test -->
+    <script type="text/javascript" src="../node_add.js"></script>
+    <!-- The test suite -->
+    <script type="text/javascript" src="test_node_add.js"></script>
     <script type="text/javascript">
     <!--
     var MAAS_config = {
@@ -13,13 +21,6 @@
     };
     // -->
     </script>
-    <!-- YUI and test setup -->
-    <script type="text/javascript" src="../yui/tests/yui/yui-min.js"></script>
-    <script type="text/javascript" src="../testing/testrunner.js"></script>
-    <!-- The module under test -->
-    <script type="text/javascript" src="../add_node.js"></script>
-    <!-- The test suite -->
-    <script type="text/javascript" src="test_add_node.js"></script>
   </head>
   <body>
   <script type="text/x-template" id="add-macaddress">
@@ -34,6 +35,6 @@
     </p>
   </script>
 
-  <span id="suite">maas.add_node.tests</span>
+  <span id="suite">maas.node_add.tests</span>
   </body>
 </html>
