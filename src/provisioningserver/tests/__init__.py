@@ -13,7 +13,6 @@ __all__ = []
 
 from rabbitfixture.server import RabbitServer
 
-
 # Set setUp() and tearDown().
 rabbit = None
 

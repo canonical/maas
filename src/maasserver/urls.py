@@ -36,7 +36,7 @@ from maasserver.views import (
     )
 from piston.resource import Resource
 
-# Urls accessible to anonymous users.
+# URLs accessible to anonymous users.
 urlpatterns = patterns('maasserver.views',
     url(r'^accounts/login/$', login, name='login'),
     url(r'^accounts/logout/$', logout, name='logout'),
@@ -49,7 +49,7 @@ urlpatterns = patterns('maasserver.views',
         name='favicon'),
 )
 
-# Urls for logged-in users.
+# URLs for logged-in users.
 urlpatterns += patterns('maasserver.views',
     url(
         r'^$',
@@ -60,7 +60,7 @@ urlpatterns += patterns('maasserver.views',
         r'^nodes/create/$', NodesCreateView.as_view(), name='node-create'),
 )
 
-# API
+# API.
 auth = DjangoHttpBasicAuthentication(realm="MaaS API")
 
 node_handler = Resource(NodeHandler, authentication=auth)
@@ -68,12 +68,12 @@ nodes_handler = Resource(NodesHandler, authentication=auth)
 node_mac_handler = Resource(NodeMacHandler, authentication=auth)
 node_macs_handler = Resource(NodeMacsHandler, authentication=auth)
 
-# API urls accessible to anonymous users.
+# API URLs accessible to anonymous users.
 urlpatterns += patterns('',
     url(r'^api/doc/$', api_doc, name='api-doc'),
 )
 
-# API urls for logged-in users.
+# API URLs for logged-in users.
 urlpatterns += patterns('',
     url(
         r'^api/nodes/(?P<system_id>[\w\-]+)/macs/(?P<mac_address>.+)/$',
