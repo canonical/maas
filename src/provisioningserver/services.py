@@ -51,9 +51,8 @@ class LogService(Service):
         if self.filename != '-':
             self.logfile = LogFile.fromFullPath(
                 self.filename, rotateLength=None, defaultMode=0644)
-            assert signal.getsignal(signal.SIGUSR1) is signal.SIG_DFL, (
-                "A signal handler is already installed for SIGUSR1.")
-            signal.signal(signal.SIGUSR1, self._signal_handler)
+            self.__previous_signal_handler = signal.signal(
+                signal.SIGUSR1, self._signal_handler)
         else:
             self.logfile = sys.stdout
         self.observer = FileLogObserver(self.logfile)
@@ -61,15 +60,18 @@ class LogService(Service):
 
     def stopService(self):
         Service.stopService(self)
-        # Must use == here; the handler returned from getsignal() is not the
-        # same object as self._signal_handler, even though im_class, im_func,
-        # and im_self *are* all identical. Don't know why this should be.
-        if signal.getsignal(signal.SIGUSR1) == self._signal_handler:
-            signal.signal(signal.SIGUSR1, signal.SIG_DFL)
-        self.observer.stop()
-        self.observer = None
-        self.logfile.close()
-        self.logfile = None
+        if self.filename != '-':
+            signal.signal(signal.SIGUSR1, self.__previous_signal_handler)
+            del self.__previous_signal_handler
+            self.observer.stop()
+            self.observer = None
+            self.logfile.close()
+            self.logfile = None
+        else:
+            self.observer.stop()
+            self.observer = None
+            # Don't close stdout.
+            self.logfile = None
 
 
 class OOPSService(Service):

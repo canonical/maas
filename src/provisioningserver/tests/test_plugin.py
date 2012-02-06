@@ -43,6 +43,7 @@ class TestOptions(TestCase):
             "logfile": "provisioningserver.log",
             "oops-dir": None,
             "oops-reporter": "MAAS-PS",
+            "port": 8001,
             }
         self.assertEqual(expected, options.defaults)
 
@@ -84,9 +85,11 @@ class TestOptions(TestCase):
             "--brokerpassword", "Hoskins",
             "--brokerport", "4321",
             "--brokeruser", "Bob",
+            "--port", "3456",
             ]
         options.parseOptions(arguments)
         self.assertEqual(4321, options["brokerport"])
+        self.assertEqual(3456, options["port"])
 
     def test_parse_broken_int_options(self):
         # An error is raised if the integer options do not contain integers.
@@ -130,7 +133,7 @@ class TestProvisioningServiceMaker(TestCase):
 
     def test_makeService(self):
         """
-        Only the log and oops services are created when no options are given.
+        Only the site service is created when no options are given.
         """
         options = Options()
         options["logfile"] = self.get_log_file()
@@ -138,16 +141,18 @@ class TestProvisioningServiceMaker(TestCase):
         service = service_maker.makeService(options, _set_proc_title=False)
         self.assertIsInstance(service, MultiService)
         self.assertSequenceEqual(
-            ["log", "oops"],
+            ["log", "oops", "site"],
             sorted(service.namedServices))
         self.assertEqual(
             len(service.namedServices), len(service.services),
             "Not all services are named.")
+        site_service = service.getServiceNamed("site")
+        self.assertEqual(options["port"], site_service.args[0])
 
     def test_makeService_with_broker(self):
         """
-        The log, oops and amqp services are created when the broker user and
-        password options are given.
+        The log, oops, site, and amqp services are created when the broker
+        user and password options are given.
         """
         options = Options()
         options["brokerpassword"] = "Hoskins"
@@ -157,7 +162,7 @@ class TestProvisioningServiceMaker(TestCase):
         service = service_maker.makeService(options, _set_proc_title=False)
         self.assertIsInstance(service, MultiService)
         self.assertSequenceEqual(
-            ["amqp", "log", "oops"],
+            ["amqp", "log", "oops", "site"],
             sorted(service.namedServices))
         self.assertEqual(
             len(service.namedServices), len(service.services),
@@ -165,3 +170,5 @@ class TestProvisioningServiceMaker(TestCase):
         amqp_client_service = service.getServiceNamed("amqp")
         self.assertEqual(options["brokerhost"], amqp_client_service.args[0])
         self.assertEqual(options["brokerport"], amqp_client_service.args[1])
+        site_service = service.getServiceNamed("site")
+        self.assertEqual(options["port"], site_service.args[0])

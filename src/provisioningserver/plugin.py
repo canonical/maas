@@ -12,12 +12,21 @@ __metaclass__ = type
 __all__ = []
 
 from amqpclient import AMQFactory
+from provisioningserver.cobblerclient import CobblerSession
+from provisioningserver.remote import ProvisioningAPI
 from provisioningserver.services import (
     LogService,
     OOPSService,
     )
+from provisioningserver.testing.fakecobbler import (
+    FakeCobbler,
+    FakeTwistedProxy,
+    )
 import setproctitle
-from twisted.application.internet import TCPClient
+from twisted.application.internet import (
+    TCPClient,
+    TCPServer,
+    )
 from twisted.application.service import (
     IServiceMaker,
     MultiService,
@@ -27,6 +36,8 @@ from twisted.python import (
     log,
     usage,
     )
+from twisted.web.resource import Resource
+from twisted.web.server import Site
 from zope.interface import implements
 
 
@@ -34,6 +45,7 @@ class Options(usage.Options):
     """Command line options for the provisioning server."""
 
     optParameters = [
+        ["port", None, 8001, "Port to serve on."],
         ["logfile", "l", "provisioningserver.log", "Logfile name."],
         ["brokerport", "p", 5672, "Broker port"],
         ["brokerhost", "h", '127.0.0.1', "Broker host"],
@@ -45,7 +57,7 @@ class Options(usage.Options):
         ]
 
     def postOptions(self):
-        for int_arg in ('brokerport',):
+        for int_arg in ('port', 'brokerport'):
             try:
                 self[int_arg] = int(self[int_arg])
             except (TypeError, ValueError):
@@ -82,11 +94,12 @@ class ProvisioningServiceMaker(object):
 
         services = MultiService()
 
-        logging_service = LogService(options["logfile"])
-        logging_service.setServiceParent(services)
+        log_service = LogService(options["logfile"])
+        log_service.setServiceParent(services)
 
-        oops_service = OOPSService(
-            logging_service, options["oops-dir"], options["oops-reporter"])
+        oops_dir = options["oops-dir"]
+        oops_reporter = options["oops-reporter"]
+        oops_service = OOPSService(log_service, oops_dir, oops_reporter)
         oops_service.setServiceParent(services)
 
         broker_port = options["brokerport"]
@@ -109,5 +122,22 @@ class ProvisioningServiceMaker(object):
                 broker_host, broker_port, client_factory)
             client_service.setName("amqp")
             client_service.setServiceParent(services)
+
+        session = CobblerSession(
+            # TODO: Get these values from command-line arguments.
+            "http://localhost/does/not/exist", "user", "password")
+
+        # TODO: Remove this.
+        fake_cobbler = FakeCobbler({"user": "password"})
+        fake_cobbler_proxy = FakeTwistedProxy(fake_cobbler)
+        session.proxy = fake_cobbler_proxy
+
+        site_root = Resource()
+        site_root.putChild("api", ProvisioningAPI(session))
+        site = Site(site_root)
+        site_port = options["port"]
+        site_service = TCPServer(site_port, site)
+        site_service.setName("site")
+        site_service.setServiceParent(services)
 
         return services
