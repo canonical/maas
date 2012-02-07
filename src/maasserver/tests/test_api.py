@@ -95,7 +95,7 @@ class NodeAPILoggedInTest(LoggedInTestCase):
     def test_nodes_GET_logged_in(self):
         # A (Django) logged-in user can access the API.
         node = factory.make_node()
-        response = self.client.get('/api/nodes/')
+        response = self.client.get('/api/nodes/', {'op': 'list'})
         parsed_result = json.loads(response.content)
 
         self.assertEqual(httplib.OK, response.status_code)
@@ -111,7 +111,7 @@ class NodeAPITest(APITestMixin):
         node2 = factory.make_node(
             set_hostname=True, status=NODE_STATUS.DEPLOYED,
             owner=self.logged_in_user)
-        response = self.client.get('/api/nodes/')
+        response = self.client.get('/api/nodes/', {'op': 'list'})
         parsed_result = json.loads(response.content)
 
         self.assertEqual(httplib.OK, response.status_code)

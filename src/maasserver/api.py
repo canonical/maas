@@ -84,11 +84,23 @@ def perm_denied_handler(view_func):
     return wraps(view_func)(_decorator)
 
 
-def api_exported(operation_name=True):
+dispatch_methods = {
+    'GET': 'read',
+    'POST': 'create',
+    'PUT': 'update',
+    'DELETE': 'delete',
+    }
+
+
+def api_exported(operation_name=True, method='POST'):
     def _decorator(func):
-        if operation_name == 'create':
-            raise Exception("Cannot define a 'create' operation.")
-        func._api_exported = operation_name
+        if method not in dispatch_methods:
+            raise ValueError("Invalid method: '%s'" % method)
+        if operation_name == dispatch_methods.get(method):
+            raise ValueError(
+                "Cannot define a '%s' operation." % dispatch_methods.get(
+                    method))
+        func._api_exported = {method: operation_name}
         return func
     return _decorator
 
@@ -97,70 +109,101 @@ def api_exported(operation_name=True):
 OP_PARAM = 'op'
 
 
-def is_api_exported(thing):
+def is_api_exported(thing, method='POST'):
     # Check for functions and methods; the latter may be from base classes.
     op_types = types.FunctionType, types.MethodType
     return (
         isinstance(thing, op_types) and
-        getattr(thing, "_api_exported", None) is not None)
+        getattr(thing, "_api_exported", None) is not None and
+        getattr(thing, "_api_exported", None).get(method, None) is not None)
 
 
 # Define a method that will route requests to the methods registered in
 # handler._available_api_methods.
-def perform_api_operation(handler, request, *args, **kwargs):
-    op = request.data.get(OP_PARAM, None)
+def perform_api_operation(handler, request, method='POST', *args, **kwargs):
+    if method == 'POST':
+        data = request.POST
+    else:
+        data = request.GET
+    op = data.get(OP_PARAM, None)
     if not isinstance(op, unicode):
         return HttpResponseBadRequest("Unknown operation.")
-    elif op not in handler._available_api_methods:
+    elif method not in handler._available_api_methods:
+        return HttpResponseBadRequest("Unknown operation: '%s'." % op)
+    elif op not in handler._available_api_methods[method]:
         return HttpResponseBadRequest("Unknown operation: '%s'." % op)
     else:
-        method = handler._available_api_methods[op]
+        method = handler._available_api_methods[method][op]
         return method(handler, request, *args, **kwargs)
 
 
 def api_operations(cls):
     """Class decorator (PEP 3129) to be used on piston-based handler classes
-    (i.e. classes inheriting from piston.handler.BaseHandler).  It will add a
-    'create' method to the class.  That method (called by piston to handle
-    POST requests), will route requests to methods decorated with
-    @api_exported depending on the operation requested using the 'op'
-    parameter.
+    (i.e. classes inheriting from piston.handler.BaseHandler).  It will add
+    the required methods {'create','read','update','delete} to the class.
+    These methods (called by piston to handle POST/GET/PUT/DELETE requests),
+    will route requests to methods decorated with
+    @api_exported(method={'POST','GET','PUT','DELETE'} depending on the
+    operation requested using the 'op' parameter.
 
     E.g.:
 
     >>> @api_operations
     >>> class MyHandler(BaseHandler):
     >>>
-    >>>    @api_exported('exported_name')
+    >>>    @api_exported('exported_post_name', method='POST')
     >>>    def do_x(self, request):
+    >>>        # process request...
+    >>>
+    >>>    @api_exported('exported_get_name', method='GET')
+    >>>    def do_y(self, request):
     >>>        # process request...
 
     MyHandler's method 'do_x' will service POST requests with
-    'op=exported_name' in its request parameters.
+    'op=exported_post_name' in its request parameters.
 
     POST /api/path/to/MyHandler/
-    op=exported_name&param1=1
+    op=exported_post_name&param1=1
+
+    MyHandler's method 'do_y' will service GET requests with
+    'op=exported_get_name' in its request parameters.
+
+    GET /api/path/to/MyHandler/?op=exported_get_name&param1=1
 
     """
-    operations = {
-        name: value for name, value in vars(cls).iteritems()
-        if is_api_exported(value)}
-    cls._available_api_methods = {
-        (name if op._api_exported is True else op._api_exported): op
-        for name, op in operations.iteritems()}
+    # Compute the list of methods ('GET', 'POST', etc.) that need to be
+    # overriden.
+    overriden_methods = set()
+    for name, value in vars(cls).iteritems():
+        overriden_methods.update(getattr(value, '_api_exported', {}))
+    # Override the appropriate methods with a 'dispatcher' method.
+    for method in overriden_methods:
+        operations = {
+            name: value for name, value in vars(cls).iteritems()
+            if is_api_exported(value, method)}
+        cls._available_api_methods = getattr(
+            cls, "_available_api_methods", {}).copy()
+        cls._available_api_methods[method] = {
+            (name if op._api_exported[method] is True
+                else op._api_exported[method]): op
+            for name, op in operations.iteritems()
+            if method in op._api_exported}
 
-    def create(self, request, *args, **kwargs):
-        return perform_api_operation(self, request, *args, **kwargs)
+        def dispatcher(self, request, *args, **kwargs):
+            return perform_api_operation(
+                self, request, request.method, *args, **kwargs)
 
-    create.__doc__ = (
-        "The actual operation to execute depends on the value of the '%s' "
-        "parameter.\n\n" % OP_PARAM)
-    create.__doc__ += "\n- ".join(
-        "Operation '%s' (op=%s):\n\t%s" % (name, name, op.__doc__)
-        for name, op in cls._available_api_methods.iteritems())
+        method_name = str(dispatch_methods[method])
+        dispatcher.__name__ = method_name
+        dispatcher.__doc__ = (
+            "The actual operation to execute depends on the value of the '%s' "
+            "parameter:\n\n" % OP_PARAM)
+        dispatcher.__doc__ += "\n- ".join(
+            "- Operation '%s' (op=%s):\n\t%s" % (name, name, op.__doc__)
+            for name, op in cls._available_api_methods[method].iteritems())
 
-    # Add 'create' method.
-    setattr(cls, 'create', create)
+        # Add {'create','read','update','delete'} method.
+        setattr(cls, method_name, dispatcher)
     return cls
 
 
@@ -211,11 +254,12 @@ class NodesHandler(BaseHandler):
     """Manage collection of Nodes / Create Nodes."""
     allowed_methods = ('GET', 'POST',)
 
-    def read(self, request):
+    @api_exported('list', 'GET')
+    def list(self, request):
         """Read all Nodes."""
         return Node.objects.get_visible_nodes(request.user).order_by('id')
 
-    @api_exported('new')
+    @api_exported('new', 'POST')
     def new(self, request):
         """Create a new Node."""
         form = NodeWithMACAddressesForm(request.data)

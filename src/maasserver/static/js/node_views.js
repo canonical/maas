@@ -70,6 +70,7 @@ module.NodeListLoader = Y.Base.create('nodeListLoader', Y.View, [], {
         var self = this;
         var cfg = {
             method: 'GET',
+            data: 'op=list',
             sync: false,
             on: {
                 start: Y.bind(self.loadNodesStarted, self),
