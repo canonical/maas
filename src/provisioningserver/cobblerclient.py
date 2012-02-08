@@ -44,6 +44,47 @@ from twisted.web.xmlrpc import Proxy
 DEFAULT_TIMEOUT = 30
 
 
+def tilde_to_None(data):
+    """Repair Cobbler's XML-RPC response.
+
+    Cobbler has an annoying function, `cobbler.utils.strip_none`, that is
+    applied to every data structure that it sends back through its XML-RPC API
+    service. It "encodes" `None` as `"~"`, and does so recursively in `list`s
+    and `dict`s. It also forces all dictionary keys to be `str`, so `None`
+    keys become `"None"`.
+
+    This function attempts to repair this damage. Sadly, it may get things
+    wrong - it will "repair" genuine tildes to `None` - but it's likely to be
+    more correct than doing nothing - and having tildes everwhere.
+
+    This also does not attempt to repair `"None"` dictionary keys.
+    """
+    if data == "~":
+        return None
+    elif isinstance(data, list):
+        return [tilde_to_None(value) for value in data]
+    elif isinstance(data, dict):
+        return {key: tilde_to_None(value) for key, value in data.iteritems()}
+    else:
+        return data
+
+
+class CobblerXMLRPCProxy(Proxy):
+    """An XML-RPC proxy that attempts to repair Cobbler's broken responses.
+
+    See `tilde_to_None` for an explanation.
+    """
+
+    def callRemote(self, method, *args):
+        """See `Proxy.callRemote`.
+
+        Uses `tilde_to_None` to repair the response.
+        """
+        d = Proxy.callRemote(self, method, *args)
+        d.addCallback(tilde_to_None)
+        return d
+
+
 def looks_like_auth_expiry(exception):
     """Does `exception` look like an authentication token expired?"""
     if not hasattr(exception, 'faultString'):
@@ -87,7 +128,7 @@ class CobblerSession:
         # here, and hope it doesn't lead to breakage in Twisted.  We'll
         # figure out what to do about non-ASCII characters in URLs
         # later.
-        return Proxy(self.url.encode('ascii'))
+        return CobblerXMLRPCProxy(self.url.encode('ascii'))
 
     def record_state(self):
         """Return a cookie representing the session's current state.
