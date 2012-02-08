@@ -44,13 +44,6 @@ class ProvisioningAPI(XMLRPC):
         returnValue(distro.name)
 
     @inlineCallbacks
-    def xmlrpc_get_distros(self):
-        # WARNING: This could return a *huge* number of results. Consider
-        # adding filtering options to this function before using it in anger.
-        distros = yield CobblerDistro.get_all_values(self.session)
-        returnValue(distros)
-
-    @inlineCallbacks
     def xmlrpc_add_profile(self, name, distro):
         assert isinstance(name, basestring)
         assert isinstance(distro, basestring)
@@ -59,19 +52,75 @@ class ProvisioningAPI(XMLRPC):
         returnValue(profile.name)
 
     @inlineCallbacks
-    def xmlrpc_get_profiles(self):
-        # WARNING: This could return a *huge* number of results. Consider
-        # adding filtering options to this function before using it in anger.
-        profiles = yield CobblerProfile.get_all_values(self.session)
-        returnValue(profiles)
-
-    @inlineCallbacks
     def xmlrpc_add_node(self, name, profile):
         assert isinstance(name, basestring)
         assert isinstance(profile, basestring)
         system = yield CobblerSystem.new(
             self.session, name, {"profile": profile})
         returnValue(system.name)
+
+    @inlineCallbacks
+    def get_objects_by_name(self, object_type, names):
+        """Get `object_type` objects by name.
+
+        :param object_type: The type of object to look for.
+        :type object_type: provisioningserver.objectclient.CobblerObjectType
+        :param names: A list of names to search for.
+        :type names: list
+        """
+        objects_by_name = {}
+        for name in names:
+            objects = yield object_type.find(self.session, name=name)
+            for obj in objects:
+                values = yield obj.get_values()
+                objects_by_name[obj.name] = values
+        returnValue(objects_by_name)
+
+    def xmlrpc_get_distros_by_name(self, names):
+        return self.get_objects_by_name(CobblerDistro, names)
+
+    def xmlrpc_get_profiles_by_name(self, names):
+        return self.get_objects_by_name(CobblerProfile, names)
+
+    def xmlrpc_get_nodes_by_name(self, names):
+        return self.get_objects_by_name(CobblerSystem, names)
+
+    @inlineCallbacks
+    def delete_objects_by_name(self, object_type, names):
+        """Delete `object_type` objects by name.
+
+        :param object_type: The type of object to delete.
+        :type object_type: provisioningserver.objectclient.CobblerObjectType
+        :param names: A list of names to search for.
+        :type names: list
+        """
+        for name in names:
+            objects = yield object_type.find(self.session, name=name)
+            for obj in objects:
+                yield obj.delete()
+
+    def xmlrpc_delete_distros_by_name(self, names):
+        return self.delete_objects_by_name(CobblerDistro, names)
+
+    def xmlrpc_delete_profiles_by_name(self, names):
+        return self.delete_objects_by_name(CobblerProfile, names)
+
+    def xmlrpc_delete_nodes_by_name(self, names):
+        return self.delete_objects_by_name(CobblerSystem, names)
+
+    @inlineCallbacks
+    def xmlrpc_get_distros(self):
+        # WARNING: This could return a *huge* number of results. Consider
+        # adding filtering options to this function before using it in anger.
+        distros = yield CobblerDistro.get_all_values(self.session)
+        returnValue(distros)
+
+    @inlineCallbacks
+    def xmlrpc_get_profiles(self):
+        # WARNING: This could return a *huge* number of results. Consider
+        # adding filtering options to this function before using it in anger.
+        profiles = yield CobblerProfile.get_all_values(self.session)
+        returnValue(profiles)
 
     @inlineCallbacks
     def xmlrpc_get_nodes(self):

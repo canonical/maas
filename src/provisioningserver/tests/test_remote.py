@@ -35,19 +35,79 @@ class TestProvisioningAPI(TestCase):
         cobbler_session.proxy = cobbler_proxy
         return cobbler_session
 
+    def get_provisioning_api(self):
+        cobbler_session = self.get_cobbler_session()
+        return ProvisioningAPI(cobbler_session)
+
     @inlineCallbacks
     def test_add_distro(self):
-        cobbler_session = self.get_cobbler_session()
         # Create a distro via the Provisioning API.
-        prov = ProvisioningAPI(cobbler_session)
+        prov = self.get_provisioning_api()
         distro = yield prov.xmlrpc_add_distro(
             "distro", "an_initrd", "a_kernel")
         self.assertEqual("distro", distro)
 
     @inlineCallbacks
+    def test_add_profile(self):
+        # Create a profile via the Provisioning API.
+        prov = self.get_provisioning_api()
+        distro = yield prov.xmlrpc_add_distro(
+            "distro", "an_initrd", "a_kernel")
+        profile = yield prov.xmlrpc_add_profile("profile", distro)
+        self.assertEqual("profile", profile)
+
+    @inlineCallbacks
+    def test_add_node(self):
+        # Create a system/node via the Provisioning API.
+        prov = self.get_provisioning_api()
+        distro = yield prov.xmlrpc_add_distro(
+            "distro", "an_initrd", "a_kernel")
+        profile = yield prov.xmlrpc_add_profile("profile", distro)
+        node = yield prov.xmlrpc_add_node("node", profile)
+        self.assertEqual("node", node)
+
+    @inlineCallbacks
+    def test_delete_distros_by_name(self):
+        # Create a distro via the Provisioning API.
+        prov = self.get_provisioning_api()
+        distro = yield prov.xmlrpc_add_distro(
+            "distro", "an_initrd", "a_kernel")
+        # Delete it again via the Provisioning API.
+        yield prov.xmlrpc_delete_distros_by_name([distro])
+        # It has gone, checked via the Cobbler session.
+        distros = yield prov.xmlrpc_get_distros_by_name([distro])
+        self.assertEqual({}, distros)
+
+    @inlineCallbacks
+    def test_delete_profiles_by_name(self):
+        # Create a profile via the Provisioning API.
+        prov = self.get_provisioning_api()
+        distro = yield prov.xmlrpc_add_distro(
+            "distro", "an_initrd", "a_kernel")
+        profile = yield prov.xmlrpc_add_profile("profile", distro)
+        # Delete it again via the Provisioning API.
+        yield prov.xmlrpc_delete_profiles_by_name([profile])
+        # It has gone, checked via the Cobbler session.
+        profiles = yield prov.xmlrpc_get_profiles_by_name([profile])
+        self.assertEqual({}, profiles)
+
+    @inlineCallbacks
+    def test_delete_nodes_by_name(self):
+        # Create a node via the Provisioning API.
+        prov = self.get_provisioning_api()
+        distro = yield prov.xmlrpc_add_distro(
+            "distro", "an_initrd", "a_kernel")
+        profile = yield prov.xmlrpc_add_profile("profile", distro)
+        node = yield prov.xmlrpc_add_node("node", profile)
+        # Delete it again via the Provisioning API.
+        yield prov.xmlrpc_delete_nodes_by_name([node])
+        # It has gone, checked via the Cobbler session.
+        nodes = yield prov.xmlrpc_get_nodes_by_name([node])
+        self.assertEqual({}, nodes)
+
+    @inlineCallbacks
     def test_get_distros(self):
-        cobbler_session = self.get_cobbler_session()
-        prov = ProvisioningAPI(cobbler_session)
+        prov = self.get_provisioning_api()
         distros = yield prov.xmlrpc_get_distros()
         self.assertEqual({}, distros)
         # Create some distros via the Provisioning API.
@@ -66,19 +126,8 @@ class TestProvisioningAPI(TestCase):
         self.assertEqual(expected, distros)
 
     @inlineCallbacks
-    def test_add_profile(self):
-        cobbler_session = self.get_cobbler_session()
-        # Create a profile via the Provisioning API.
-        prov = ProvisioningAPI(cobbler_session)
-        distro = yield prov.xmlrpc_add_distro(
-            "distro", "an_initrd", "a_kernel")
-        profile = yield prov.xmlrpc_add_profile("profile", distro)
-        self.assertEqual("profile", profile)
-
-    @inlineCallbacks
     def test_get_profiles(self):
-        cobbler_session = self.get_cobbler_session()
-        prov = ProvisioningAPI(cobbler_session)
+        prov = self.get_provisioning_api()
         distro = yield prov.xmlrpc_add_distro(
             "distro", "an_initrd", "a_kernel")
         profiles = yield prov.xmlrpc_get_profiles()
@@ -93,20 +142,8 @@ class TestProvisioningAPI(TestCase):
         self.assertEqual(expected, profiles)
 
     @inlineCallbacks
-    def test_add_node(self):
-        cobbler_session = self.get_cobbler_session()
-        # Create a system/node via the Provisioning API.
-        prov = ProvisioningAPI(cobbler_session)
-        distro = yield prov.xmlrpc_add_distro(
-            "distro", "an_initrd", "a_kernel")
-        profile = yield prov.xmlrpc_add_profile("profile", distro)
-        node = yield prov.xmlrpc_add_node("node", profile)
-        self.assertEqual("node", node)
-
-    @inlineCallbacks
     def test_get_nodes(self):
-        cobbler_session = self.get_cobbler_session()
-        prov = ProvisioningAPI(cobbler_session)
+        prov = self.get_provisioning_api()
         distro = yield prov.xmlrpc_add_distro(
             "distro", "an_initrd", "a_kernel")
         profile = yield prov.xmlrpc_add_profile("profile", distro)
@@ -120,3 +157,39 @@ class TestProvisioningAPI(TestCase):
             expected[name] = {'name': name, 'profile': 'profile'}
         nodes = yield prov.xmlrpc_get_nodes()
         self.assertEqual(expected, nodes)
+
+    @inlineCallbacks
+    def test_get_nodes_by_name(self):
+        prov = self.get_provisioning_api()
+        nodes = yield prov.xmlrpc_get_nodes_by_name([])
+        self.assertEqual({}, nodes)
+        # Create a node via the Provisioning API.
+        distro = yield prov.xmlrpc_add_distro("distro", "initrd", "kernel")
+        profile = yield prov.xmlrpc_add_profile("profile", distro)
+        yield prov.xmlrpc_add_node("alice", profile)
+        nodes = yield prov.xmlrpc_get_nodes_by_name(["alice", "bob"])
+        # The response contains keys for all systems found.
+        self.assertSequenceEqual(["alice"], sorted(nodes))
+
+    @inlineCallbacks
+    def test_get_distros_by_name(self):
+        prov = self.get_provisioning_api()
+        distros = yield prov.xmlrpc_get_distros_by_name([])
+        self.assertEqual({}, distros)
+        # Create a distro via the Provisioning API.
+        yield prov.xmlrpc_add_distro("alice", "initrd", "kernel")
+        distros = yield prov.xmlrpc_get_distros_by_name(["alice", "bob"])
+        # The response contains keys for all distributions found.
+        self.assertSequenceEqual(["alice"], sorted(distros))
+
+    @inlineCallbacks
+    def test_get_profiles_by_name(self):
+        prov = self.get_provisioning_api()
+        profiles = yield prov.xmlrpc_get_profiles_by_name([])
+        self.assertEqual({}, profiles)
+        # Create a profile via the Provisioning API.
+        distro = yield prov.xmlrpc_add_distro("distro", "initrd", "kernel")
+        yield prov.xmlrpc_add_profile("alice", distro)
+        profiles = yield prov.xmlrpc_get_profiles_by_name(["alice", "bob"])
+        # The response contains keys for all profiles found.
+        self.assertSequenceEqual(["alice"], sorted(profiles))
