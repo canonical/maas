@@ -21,6 +21,28 @@ from oops_wsgi import (
     )
 
 
+error_template = """
+<html>
+<head><title>Oops! - %(id)s</title></head>
+<body>
+<h1>Oops!</h1>
+<p>
+  Something broke while generating this page.
+</p>
+<p>
+  If the problem persists, please
+  <a href="https://bugs.launchpad.net/maas/">file a bug</a>.  Make a note of
+  the "oops id": <strong>%(id)s</strong>
+</p>
+</html>
+""".lstrip()
+
+
+def render_error(report):
+    """Produce an HTML error report, in raw bytes (not unicode)."""
+    return (error_template % report).encode('ascii')
+
+
 class Command(BaseRunserverCommand):
     """Customized "runserver" command that wraps the WSGI handler."""
 
@@ -38,4 +60,4 @@ class Command(BaseRunserverCommand):
         oops_repository = DateDirRepo(settings.OOPS_REPOSITORY, 'maasserver')
         oops_config.publishers.append(oops_repository.publish)
         install_hooks(oops_config)
-        return make_app(wsgi_handler, oops_config)
+        return make_app(wsgi_handler, oops_config, error_render=render_error)
