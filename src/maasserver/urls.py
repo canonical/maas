@@ -22,7 +22,7 @@ from django.views.generic.simple import (
     )
 from maasserver.api import (
     api_doc,
-    DjangoHttpBasicAuthentication,
+    MaasAPIAuthentication,
     NodeHandler,
     NodeMacHandler,
     NodeMacsHandler,
@@ -61,7 +61,7 @@ urlpatterns += patterns('maasserver.views',
 )
 
 # API.
-auth = DjangoHttpBasicAuthentication(realm="MaaS API")
+auth = MaasAPIAuthentication(realm="MaaS API")
 
 node_handler = Resource(NodeHandler, authentication=auth)
 nodes_handler = Resource(NodesHandler, authentication=auth)

@@ -132,3 +132,21 @@
     username: test
   model: auth.user
   pk: 6
+- fields: {description: '', key: RfGASHsLT6XwuRunC6, name: Maas consumer, secret: '', status: accepted,
+    user: 1}
+  model: piston.consumer
+  pk: 1
+- fields: {description: '', key: JcaW54bSSN66wj5M3d, name: Maas consumer, secret: '', status: accepted,
+    user: 5}
+  model: piston.consumer
+  pk: 2
+- fields: {callback: null, callback_confirmed: false, consumer: 1, is_approved: true,
+    key: EswkkXrcungmh4wjgN, secret: Z7xkk6LBjfsEDnXpL93ksTRWn9jMBXDg, timestamp: 1328622205,
+    token_type: 2, user: 1, verifier: ''}
+  model: piston.token
+  pk: 1
+- fields: {callback: null, callback_confirmed: false, consumer: 1, is_approved: true,
+    key: e6jDkAJzAP7SZnpkQq, secret: mkWmXM62Xv6p73sF8uZNdu6kpLcdktpp, timestamp: 1328622494,
+    token_type: 2, user: 5, verifier: ''}
+  model: piston.token
+  pk: 2

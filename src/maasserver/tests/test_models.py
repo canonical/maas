@@ -16,12 +16,19 @@ from django.core.exceptions import (
     ValidationError,
     )
 from maasserver.models import (
+    GENERIC_CONSUMER,
     MACAddress,
     Node,
     NODE_STATUS,
+    UserProfile,
     )
 from maasserver.testing.factory import factory
 from maastesting import TestCase
+from piston.models import (
+    Consumer,
+    KEY_SIZE,
+    Token,
+    )
 
 
 class NodeTest(TestCase):
@@ -120,5 +127,33 @@ class MACAddressTest(TestCase):
         self.assertEqual([mac], list(MACAddress.objects.all()))
 
     def test_invalid_address_raises_validation_error(self):
-        mac = self.make_MAC('AA:BB:CCXDD:EE:FF')
+        mac = self.make_MAC('aa:bb:ccxdd:ee:ff')
         self.assertRaises(ValidationError, mac.full_clean)
+
+
+class UserProfileTest(TestCase):
+
+    def test_profile_creation(self):
+        # A profile is created each time a user is created.
+        user = factory.make_user()
+        self.assertIsInstance(user.get_profile(), UserProfile)
+        self.assertEqual(user, user.get_profile().user)
+
+    def test_consumer_creation(self):
+        # A generic consumer is created each time a user is created.
+        user = factory.make_user()
+        consumers = Consumer.objects.filter(user=user, name=GENERIC_CONSUMER)
+        self.assertEqual([user], [consumer.user for consumer in consumers])
+        self.assertEqual(GENERIC_CONSUMER, consumers[0].name)
+        self.assertEqual(KEY_SIZE, len(consumers[0].key))
+        # The generic consumer has an empty secret.
+        self.assertEqual(0, len(consumers[0].secret))
+
+    def test_token_creation(self):
+        # A token is created each time a user is created.
+        user = factory.make_user()
+        tokens = Token.objects.filter(user=user)
+        self.assertEqual([user], [token.user for token in tokens])
+        self.assertIsInstance(tokens[0].key, unicode)
+        self.assertEqual(KEY_SIZE, len(tokens[0].key))
+        self.assertEqual(Token.ACCESS, tokens[0].token_type)

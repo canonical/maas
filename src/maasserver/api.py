@@ -36,15 +36,15 @@ from maasserver.models import (
     MACAddress,
     Node,
     )
-from piston.authentication import HttpBasicAuthentication
+from piston.authentication import OAuthAuthentication
 from piston.doc import generate_doc
 from piston.handler import BaseHandler
 from piston.utils import rc
 
 
-class DjangoHttpBasicAuthentication(HttpBasicAuthentication):
+class MaasAPIAuthentication(OAuthAuthentication):
     """A piston authentication class that uses the currently logged-in user
-    if there is one, and defaults to piston's HttpBasicAuthentication if not.
+    if there is one, and defaults to piston's OAuthAuthentication if not.
 
     """
 
@@ -53,7 +53,10 @@ class DjangoHttpBasicAuthentication(HttpBasicAuthentication):
             return request.user
         else:
             return super(
-                DjangoHttpBasicAuthentication, self).is_authenticated(request)
+                MaasAPIAuthentication, self).is_authenticated(request)
+
+    def challenge(self):
+        return rc.FORBIDDEN
 
 
 def validate_and_save(obj):

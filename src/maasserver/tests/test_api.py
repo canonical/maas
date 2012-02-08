@@ -11,9 +11,9 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
-import base64
 import httplib
 import json
+import time
 
 from django.test.client import Client
 from maasserver.models import (
@@ -26,6 +26,13 @@ from maasserver.testing import (
     TestCase,
     )
 from maasserver.testing.factory import factory
+from oauth.oauth import (
+    generate_nonce,
+    OAuthConsumer,
+    OAuthRequest,
+    OAuthSignatureMethod_PLAINTEXT,
+    OAuthToken,
+    )
 
 
 class NodeAnonAPITest(TestCase):
@@ -43,29 +50,39 @@ class NodeAnonAPITest(TestCase):
         self.assertEqual(httplib.OK, response.status_code)
 
 
-class AuthenticatedClient(Client):
+class OAuthAuthenticatedClient(Client):
+    def __init__(self, user):
+        super(OAuthAuthenticatedClient, self).__init__()
+        consumer = user.get_profile().get_authorisation_consumer()
+        token = user.get_profile().get_authorisation_token()
+        self.consumer = OAuthConsumer(str(consumer.key), str(consumer.secret))
+        self.token = OAuthToken(str(token.key), str(token.secret))
 
-    def __init__(self, auth):
-        super(AuthenticatedClient, self).__init__()
-        self.extra = {
-            'HTTP_AUTHORIZATION': auth,
+    def get_extra(self, path):
+        params = {
+            'oauth_version': "1.0",
+            'oauth_nonce': generate_nonce(),
+            'oauth_timestamp': int(time.time()),
+            'oauth_token': self.token.key,
+            'oauth_consumer_key': self.consumer.key,
         }
+        req = OAuthRequest(http_url=path, parameters=params)
+        req.sign_request(
+            OAuthSignatureMethod_PLAINTEXT(), self.consumer, self.token)
+        return req.to_header()
 
-    def get(self, *args, **kwargs):
-        kwargs.update(self.extra)
-        return super(AuthenticatedClient, self).get(*args, **kwargs)
+    def request(self, **kwargs):
+        # Get test url.
+        environ = self._base_environ()
+        url = '%s://%s' % (environ['wsgi.url_scheme'], kwargs['PATH_INFO'])
+        # Add OAuth authorization information to the request.
+        extra = self.get_extra(url)
+        # Django uses the 'HTTP_AUTHORIZATION' to look up Authorization
+        # credentials.
+        extra['HTTP_AUTHORIZATION'] = extra['Authorization']
+        kwargs.update(extra)
 
-    def put(self, *args, **kwargs):
-        kwargs.update(self.extra)
-        return super(AuthenticatedClient, self).put(*args, **kwargs)
-
-    def post(self, *args, **kwargs):
-        kwargs.update(self.extra)
-        return super(AuthenticatedClient, self).post(*args, **kwargs)
-
-    def delete(self, *args, **kwargs):
-        kwargs.update(self.extra)
-        return super(AuthenticatedClient, self).delete(*args, **kwargs)
+        return super(OAuthAuthenticatedClient, self).request(**kwargs)
 
 
 class APITestMixin(TestCase):
@@ -74,20 +91,7 @@ class APITestMixin(TestCase):
         super(APITestMixin, self).setUp()
         self.logged_in_user = factory.make_user(
             username='test', password='test')
-        auth = '%s:%s' % ('test', 'test')
-        auth = 'Basic %s' % base64.encodestring(auth)
-        auth = auth.strip()
-        self.extra = {
-            'HTTP_AUTHORIZATION': auth,
-        }
-        self.client = AuthenticatedClient(auth)
-        self.other_user = factory.make_user()
-        self.other_node = factory.make_node(
-            status=NODE_STATUS.DEPLOYED, owner=self.other_user)
-
-        self.other_user = factory.make_user()
-        self.other_node = factory.make_node(
-            status=NODE_STATUS.DEPLOYED, owner=self.other_user)
+        self.client = OAuthAuthenticatedClient(self.logged_in_user)
 
 
 class NodeAPILoggedInTest(LoggedInTestCase):
@@ -132,8 +136,10 @@ class NodeAPITest(APITestMixin):
     def test_node_GET_non_visible_node(self):
         # The request to fetch a single node is denied if the node isn't
         # visible by the user.
-        response = self.client.get(
-            '/api/nodes/%s/' % self.other_node.system_id)
+        other_node = factory.make_node(
+            status=NODE_STATUS.DEPLOYED, owner=factory.make_user())
+
+        response = self.client.get('/api/nodes/%s/' % other_node.system_id)
 
         self.assertEqual(httplib.UNAUTHORIZED, response.status_code)
 
@@ -256,8 +262,10 @@ class NodeAPITest(APITestMixin):
     def test_node_PUT_non_visible_node(self):
         # The request to update a single node is denied if the node isn't
         # visible by the user.
-        response = self.client.put(
-            '/api/nodes/%s/' % self.other_node.system_id)
+        other_node = factory.make_node(
+            status=NODE_STATUS.DEPLOYED, owner=factory.make_user())
+
+        response = self.client.put('/api/nodes/%s/' % other_node.system_id)
 
         self.assertEqual(httplib.UNAUTHORIZED, response.status_code)
 
@@ -271,8 +279,10 @@ class NodeAPITest(APITestMixin):
     def test_node_DELETE_non_visible_node(self):
         # The request to delete a single node is denied if the node isn't
         # visible by the user.
-        response = self.client.delete(
-            '/api/nodes/%s/' % self.other_node.system_id)
+        other_node = factory.make_node(
+            status=NODE_STATUS.DEPLOYED, owner=factory.make_user())
+
+        response = self.client.delete('/api/nodes/%s/' % other_node.system_id)
 
         self.assertEqual(httplib.UNAUTHORIZED, response.status_code)
 
@@ -317,8 +327,10 @@ class MACAddressAPITest(APITestMixin):
     def test_macs_GET_forbidden(self):
         # When fetching MAC Addresses, the api returns a 'Unauthorized' (401)
         # error if the node is not visible to the logged-in user.
+        other_node = factory.make_node(
+            status=NODE_STATUS.DEPLOYED, owner=factory.make_user())
         response = self.client.get(
-            '/api/nodes/%s/macs/' % self.other_node.system_id)
+            '/api/nodes/%s/macs/' % other_node.system_id)
 
         self.assertEqual(httplib.UNAUTHORIZED, response.status_code)
 
@@ -340,8 +352,10 @@ class MACAddressAPITest(APITestMixin):
     def test_macs_GET_node_forbidden(self):
         # When fetching a MAC Address, the api returns a 'Unauthorized' (401)
         # error if the node is not visible to the logged-in user.
+        other_node = factory.make_node(
+            status=NODE_STATUS.DEPLOYED, owner=factory.make_user())
         response = self.client.get(
-            '/api/nodes/%s/macs/0-aa-22-cc-44-dd/' % self.other_node.system_id)
+            '/api/nodes/%s/macs/0-aa-22-cc-44-dd/' % other_node.system_id)
 
         self.assertEqual(httplib.UNAUTHORIZED, response.status_code)
 
@@ -396,9 +410,11 @@ class MACAddressAPITest(APITestMixin):
     def test_macs_DELETE_mac_forbidden(self):
         # When deleting a MAC Address, the api returns a 'Unauthorized' (401)
         # error if the node is not visible to the logged-in user.
+        other_node = factory.make_node(
+            status=NODE_STATUS.DEPLOYED, owner=factory.make_user())
         response = self.client.delete(
             '/api/nodes/%s/macs/%s/' % (
-                self.other_node.system_id, self.mac1.mac_address))
+                other_node.system_id, self.mac1.mac_address))
 
         self.assertEqual(httplib.UNAUTHORIZED, response.status_code)
 

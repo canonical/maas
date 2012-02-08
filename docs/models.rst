@@ -27,3 +27,8 @@ MaaS Objects
     :show-inheritance:
     :members:
 
+.. autoclass:: UserProfile
+    :show-inheritance:
+    :members:
+
+

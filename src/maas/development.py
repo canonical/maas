@@ -166,6 +166,7 @@ INSTALLED_APPS = (
     'maastesting',
     'debug_toolbar',
     'django_nose',
+    'piston',
 )
 
 # A sample logging configuration. The only tangible logging
