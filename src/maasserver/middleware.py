@@ -24,22 +24,29 @@ from django.utils.http import urlquote_plus
 class AccessMiddleware(object):
     """Protect access to views.
 
-    - login/logout/api-doc urls: authorize unconditionally
-    - static resources urls: authorize unconditionally
-    - API urls: deny (Forbidden error - 401) anonymous requests
-    - views urls: redirect anonymous requests to login page
+    Most UI views are visible only to logged-in users, but there are pages
+    that are accessible to anonymous users (e.g. the login page!) or that
+    use other authentication (e.g. the MaaS API, which is managed through
+    piston).
     """
 
     def __init__(self):
-        self.public_urls = re.compile(
-            "|".join(
-                (reverse('login'),
-                 reverse('logout'),
-                 reverse('favicon'),
-                 reverse('robots'),
-                 reverse('api-doc'),
-                 settings.API_URL_REGEXP,  # API calls are protected by piston.
-                 settings.STATIC_URL)))
+        # URL prefixes that do not require authentication by Django.
+        public_url_roots = [
+            # Login/logout pages: must be visible to anonymous users.
+            reverse('login'),
+            reverse('logout'),
+            # Static resources are publicly visible.
+            settings.STATIC_URL,
+            reverse('favicon'),
+            reverse('robots'),
+            reverse('api-doc'),
+            # Metadata service is for use by nodes; no login.
+            reverse('metadata'),
+            # API calls are protected by piston.
+            settings.API_URL_REGEXP,
+            ]
+        self.public_urls = re.compile("|".join(public_url_roots))
         self.login_url = reverse('login')
 
     def process_request(self, request):

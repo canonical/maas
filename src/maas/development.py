@@ -164,6 +164,7 @@ INSTALLED_APPS = (
     'django.contrib.admindocs',
     'maasserver',
     'maastesting',
+    'metadataserver',
     'debug_toolbar',
     'django_nose',
     'piston',
