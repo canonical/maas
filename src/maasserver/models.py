@@ -24,6 +24,7 @@ from django.contrib import admin
 from django.contrib.auth.backends import ModelBackend
 from django.contrib.auth.models import User
 from django.core.exceptions import PermissionDenied
+from django.core.files.base import ContentFile
 from django.db import models
 from django.db.models.signals import post_save
 from django.shortcuts import get_object_or_404
@@ -344,10 +345,43 @@ def create_user(sender, instance, created, **kwargs):
 post_save.connect(create_user, sender=User)
 
 
+class FileStorage(models.Model):
+    """A simple file storage keyed on file name.
+
+    :ivar filename: A unique file name to use for the data being stored.
+    :ivar data: The file's actual data.
+    """
+
+    filename = models.CharField(max_length=255, unique=True, editable=False)
+    data = models.FileField(upload_to="storage")
+
+    def __unicode__(self):
+        return self.filename
+
+    def save_file(self, filename, file_object):
+        """Save the file to the filesystem and persist to the database.
+
+        The file will end up in MEDIA_ROOT/storage/
+        """
+        self.filename = filename
+        # This probably ought to read in chunks but large files are
+        # not expected.  Also note that uploading a file with the same
+        # name as an existing one will cause that file to be written
+        # with a new generated name, and the old one remains where it
+        # is.  See https://code.djangoproject.com/ticket/6157 - the
+        # Django devs consider deleting things dangerous ... ha.
+        # HOWEVER - this operation would need to be atomic anyway so
+        # it's safest left how it is for now (reads can overlap with
+        # writes from Juju).
+        content = ContentFile(file_object.read())
+        self.data.save(filename, content)
+
+
 # Register the models in the admin site.
-admin.site.register(Node)
-admin.site.register(MACAddress)
 admin.site.register(Consumer)
+admin.site.register(FileStorage)
+admin.site.register(MACAddress)
+admin.site.register(Node)
 
 
 class MaaSAuthorizationBackend(ModelBackend):

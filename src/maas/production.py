@@ -15,3 +15,7 @@ from maas.settings import *
 
 # Location where python-oops should store errors.
 OOPS_REPOSITORY = '/var/log/maas'
+
+# You must set this to the root directory where file uploads are to be
+# stored.
+MEDIA_ROOT = ''
