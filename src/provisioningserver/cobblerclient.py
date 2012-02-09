@@ -390,11 +390,19 @@ class CobblerObject:
 
     @classmethod
     def _trim_attributes(cls, attributes):
-        """Return a dict containing only keys from `known_attributes`."""
-        return {
-            name: value for name, value in attributes.iteritems()
-            if name in cls.known_attributes
-            }
+        """Return a dict containing only keys from `known_attributes`.
+
+        If `attributes` is `None` - which can happen when querying a
+        non-existent object - this returns `None`.
+        """
+        if attributes is None:
+            return None
+        else:
+            return {
+                name: value
+                for name, value in attributes.iteritems()
+                if name in cls.known_attributes
+                }
 
     @classmethod
     @inlineCallbacks

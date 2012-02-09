@@ -13,6 +13,7 @@ __all__ = [
     'FakeCobbler',
     'FakeTwistedProxy',
     'fake_token',
+    'make_fake_cobbler_session',
     ]
 
 from fnmatch import fnmatch
@@ -20,6 +21,7 @@ from itertools import count
 from random import randint
 from xmlrpclib import Fault
 
+from provisioningserver.cobblerclient import CobblerSession
 from twisted.internet.defer import (
     inlineCallbacks,
     returnValue,
@@ -480,3 +482,13 @@ class FakeCobbler:
 
     def sync(self, token):
         self._check_token(token)
+
+
+def make_fake_cobbler_session():
+    """Return a :class:`CobblerSession` wired up to a :class:`FakeCobbler`."""
+    cobbler_session = CobblerSession(
+        "http://localhost/does/not/exist", "user", "password")
+    cobbler_fake = FakeCobbler({"user": "password"})
+    cobbler_proxy = FakeTwistedProxy(cobbler_fake)
+    cobbler_session.proxy = cobbler_proxy
+    return cobbler_session
