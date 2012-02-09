@@ -1,7 +1,10 @@
 # Copyright 2012 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for `provisioningserver.api`."""
+"""Tests for `provisioningserver.api`.
+
+Also tests `provisioningserver.testing.fakeapi`.
+"""
 
 from __future__ import (
     print_function,
@@ -13,6 +16,7 @@ __all__ = []
 
 from provisioningserver.api import ProvisioningAPI
 from provisioningserver.interfaces import IProvisioningAPI
+from provisioningserver.testing.fakeapi import FakeAsynchronousProvisioningAPI
 from provisioningserver.testing.fakecobbler import make_fake_cobbler_session
 from testtools import TestCase
 from testtools.deferredruntest import AsynchronousDeferredRunTest
@@ -187,3 +191,10 @@ class TestProvisioningAPI(TestCase):
         profiles = yield papi.get_profiles_by_name(["alice", "bob"])
         # The response contains keys for all profiles found.
         self.assertSequenceEqual(["alice"], sorted(profiles))
+
+
+class TestFakeProvisioningAPI(TestProvisioningAPI):
+    """Test :class:`FakeAsynchronousProvisioningAPI`."""
+
+    def get_provisioning_api(self):
+        return FakeAsynchronousProvisioningAPI()
