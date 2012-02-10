@@ -30,9 +30,6 @@ class UserPrefsViewTest(LoggedInTestCase):
         response = self.client.get('/account/prefs/')
         doc = fromstring(response.content)
         self.assertSequenceEqual(
-            ['User preferences for %s' % user.username],
-            [elem.text for elem in doc.cssselect('h2')])
-        self.assertSequenceEqual(
             ['Bam'],
             [elem.value for elem in
                 doc.cssselect('input#id_profile-last_name')])
