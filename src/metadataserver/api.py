@@ -62,5 +62,5 @@ def meta_data(request, version):
 def user_data(request, version):
     """View: user-data blob for a given version."""
     check_version(version)
-    data = "User data here."
-    return make_text_response(data)
+    data = b"User data here."
+    return HttpResponse(data, mimetype='application/octet-stream')
