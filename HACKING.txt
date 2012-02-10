@@ -24,7 +24,14 @@ usually use the ``lowercase_with_underscores`` form.
 Prerequisites
 =============
 You will need to manually install Postgres 9.1 (postgresql-9.1 and
-postgresql-dev), RabbitMQ (rabbitmq-server) and python-dev.
+libpq-dev), RabbitMQ (rabbitmq-server), python-dev and make::
+
+    $ sudo apt-get install postgresql-9.1 libpq-dev rabbitmq-server python-dev make
+
+Also, you might want to install Bazaar (bzr) to grab the source code directly
+from Launchpad::
+
+    $ sudo apt-get install bzr
 
 All other development dependencies are pulled automatically from `PyPI`_
 when buildout runs.
@@ -32,6 +39,15 @@ when buildout runs.
 .. _PyPI:
   http://pypi.python.org/
 
+
+Getting the latest version of the code
+======================================
+
+You can grab the code manually from Launchpad but Bazaar makes it easy to fetch
+the last version of the code. Go into the directory where you want the code
+to reside and run::
+
+    $ bzr branch lp:maas maas && cd maas
 
 Development MaaS server setup
 =============================

@@ -382,7 +382,7 @@ def generate_api_doc():
         generate_doc(NodeMacHandler),
         )
 
-    messages = ['MaaS API\n========\n\n']
+    messages = []
     for doc in docs:
         for method in doc.get_methods():
             messages.append(
