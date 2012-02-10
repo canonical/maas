@@ -68,13 +68,13 @@ Create the database cluster and initialize the development database::
 
     $ make syncdb
 
-Run the development webserver::
-
-    $ make run
-
 Optionally, populate your database with the sample data::
 
     $ make sampledata
+
+Run the development webserver::
+
+    $ make run
 
 Point your browser to http://localhost:8000/
 
