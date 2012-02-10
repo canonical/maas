@@ -1,9 +1,9 @@
-*************************
-MaaS - Metal as a Service
-*************************
+****
+MaaS
+****
 
-MaaS lets you treat a group of physical servers as a cloud-like
-resource to be allocated on demand. Each physical server (“node”) will
+Maas is the successor to Orchestra. It offers a nice UI to provision your
+Ubuntu servers. Each physical server (“node”) will
 be commissioned automatically on first boot. During the commissioning
 process administrators are able to configure hardware settings
 manually before an automated smoke test and burn-in test are
