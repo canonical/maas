@@ -68,53 +68,74 @@ class NodeTest(TestCase):
 
 class NodeManagerTest(TestCase):
 
-    def make_user_and_node(self, admin=False):
-        if admin:
-            user = factory.make_admin()
+    def make_node(self, user=None):
+        """Create a node, allocated to `user` if given."""
+        if user is None:
+            status = NODE_STATUS.COMMISSIONED
         else:
-            user = factory.make_user()
-        node = factory.make_node(
-            set_hostname=True, status=NODE_STATUS.DEPLOYED,
-            owner=user)
-        return user, node
+            status = NODE_STATUS.DEPLOYED
+        return factory.make_node(set_hostname=True, status=status, owner=user)
 
-    def test_get_visible_nodes_user(self):
-        """get_visible_nodes returns the nodes a user has access to."""
-        anon_node = factory.make_node()
-        admin, admin_node = self.make_user_and_node(admin=True)
-        user, user_node = self.make_user_and_node()
+    def test_get_visible_nodes_for_user_lists_visible_nodes(self):
+        """get_visible_nodes lists the nodes a user has access to.
 
-        visible_nodes = Node.objects.get_visible_nodes(user)
+        When run for a regular user it returns unowned nodes, and nodes
+        owned by that user.
 
-        self.assertSequenceEqual([anon_node, user_node], visible_nodes)
+        """
+        user = factory.make_user()
+        visible_nodes = [self.make_node(owner) for owner in [None, user]]
+        self.make_node(factory.make_user())
+        self.assertItemsEqual(
+            visible_nodes, Node.objects.get_visible_nodes(user))
 
-    def test_get_visible_nodes_admin(self):
-        """get_visible_nodes returns all the nodes if the user used for the
-        permission check is an admin."""
-        anon_node = factory.make_node()
-        user, user_node = self.make_user_and_node()
-        admin, admin_node = self.make_user_and_node(admin=True)
-        visible_nodes = Node.objects.get_visible_nodes(admin)
+    def test_get_visible_nodes_admin_lists_all_nodes(self):
+        """get_visible_nodes for an admin lists all nodes."""
+        admin = factory.make_admin()
+        owners = [
+            None,
+            factory.make_user(),
+            factory.make_admin(),
+            admin,
+            ]
+        nodes = [self.make_node(owner) for owner in owners]
+        self.assertItemsEqual(nodes, Node.objects.get_visible_nodes(admin))
 
-        self.assertSequenceEqual(
-            [anon_node, user_node, admin_node], visible_nodes)
+    def test_get_visible_nodes_filters_by_id(self):
+        """get_visible_nodes optionally filters nodes by system_id."""
+        user = factory.make_user()
+        nodes = [self.make_node(user) for counter in range(5)]
+        ids = [node.system_id for node in nodes]
+        wanted_slice = slice(0, 3)
+        self.assertItemsEqual(
+            nodes[wanted_slice],
+            Node.objects.get_visible_nodes(user, ids=ids[wanted_slice]))
+
+    def test_get_visible_nodes_with_ids_still_hides_invisible_nodes(self):
+        """Even when passing ids, a user won't get nodes they can't see."""
+        user = factory.make_user()
+        visible_nodes = [self.make_node(user), self.make_node()]
+        invisible_nodes = [self.make_node(factory.make_user())]
+        all_ids = [
+            node.system_id for node in (visible_nodes + invisible_nodes)]
+        self.assertItemsEqual(
+            visible_nodes, Node.objects.get_visible_nodes(user, ids=all_ids))
 
     def test_get_visible_node_or_404_ok(self):
         """get_visible_node_or_404 fetches nodes by system_id."""
-        user, user_node = self.make_user_and_node()
-        node = Node.objects.get_visible_node_or_404(user_node.system_id, user)
+        user = factory.make_user()
+        node = self.make_node(user)
+        self.assertEqual(
+            node, Node.objects.get_visible_node_or_404(node.system_id, user))
 
-        self.assertEqual(user_node, node)
-
-    def test_get_visible_node_or_404_raise_PermissionDenied(self):
-        """get_visible_node_or_404 raise PermissionDenied if the provided user
-        cannot access the returned node."""
-        _, user_node = self.make_user_and_node()
-        another_user = factory.make_user()
-
+    def test_get_visible_node_or_404_raises_PermissionDenied(self):
+        """get_visible_node_or_404 raises PermissionDenied if the provided
+        user cannot access the returned node."""
+        user_node = self.make_node(factory.make_user())
         self.assertRaises(
-            PermissionDenied, Node.objects.get_visible_node_or_404,
-            user_node.system_id, another_user)
+            PermissionDenied,
+            Node.objects.get_visible_node_or_404,
+            user_node.system_id, factory.make_user())
 
 
 class MACAddressTest(TestCase):

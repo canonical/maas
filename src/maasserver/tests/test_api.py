@@ -94,6 +94,11 @@ class APITestMixin(TestCase):
         self.client = OAuthAuthenticatedClient(self.logged_in_user)
 
 
+def extract_system_ids(parsed_result):
+    """List the system_ids of the nodes in `parsed_result`."""
+    return [node.get('system_id') for node in parsed_result]
+
+
 class NodeAPILoggedInTest(LoggedInTestCase):
 
     def test_nodes_GET_logged_in(self):
@@ -103,27 +108,13 @@ class NodeAPILoggedInTest(LoggedInTestCase):
         parsed_result = json.loads(response.content)
 
         self.assertEqual(httplib.OK, response.status_code)
-        self.assertEqual(
-            [node.system_id], [node['system_id'] for node in parsed_result])
+        self.assertEqual([node.system_id], extract_system_ids(parsed_result))
 
 
-class NodeAPITest(APITestMixin):
+class TestNodeAPI(APITestMixin):
+    """Tests for /api/nodes/<node>/."""
 
-    def test_nodes_GET(self):
-        # The api allows for fetching the list of Nodes.
-        node1 = factory.make_node()
-        node2 = factory.make_node(
-            set_hostname=True, status=NODE_STATUS.DEPLOYED,
-            owner=self.logged_in_user)
-        response = self.client.get('/api/nodes/', {'op': 'list'})
-        parsed_result = json.loads(response.content)
-
-        self.assertEqual(httplib.OK, response.status_code)
-        self.assertEqual(2, len(parsed_result))
-        self.assertEqual(node1.system_id, parsed_result[0]['system_id'])
-        self.assertEqual(node2.system_id, parsed_result[1]['system_id'])
-
-    def test_node_GET(self):
+    def test_GET_returns_node(self):
         # The api allows for fetching a single Node (using system_id).
         node = factory.make_node(set_hostname=True)
         response = self.client.get('/api/nodes/%s/' % node.system_id)
@@ -133,7 +124,7 @@ class NodeAPITest(APITestMixin):
         self.assertEqual(node.hostname, parsed_result['hostname'])
         self.assertEqual(node.system_id, parsed_result['system_id'])
 
-    def test_node_GET_non_visible_node(self):
+    def test_GET_refuses_to_access_invisible_node(self):
         # The request to fetch a single node is denied if the node isn't
         # visible by the user.
         other_node = factory.make_node(
@@ -143,89 +134,14 @@ class NodeAPITest(APITestMixin):
 
         self.assertEqual(httplib.UNAUTHORIZED, response.status_code)
 
-    def test_node_GET_not_found(self):
+    def test_GET_refuses_to_access_nonexistent_node(self):
         # When fetching a Node, the api returns a 'Not Found' (404) error
         # if no node is found.
         response = self.client.get('/api/nodes/invalid-uuid/')
 
         self.assertEqual(httplib.NOT_FOUND, response.status_code)
 
-    def test_nodes_POST(self):
-        # The API allows a Node to be created and associated with MAC
-        # Addresses.
-        response = self.client.post(
-                '/api/nodes/',
-                {
-                    'op': 'new',
-                    'hostname': 'diane',
-                    'after_commissioning_action': '2',
-                    'mac_addresses': ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff']
-                })
-        parsed_result = json.loads(response.content)
-
-        self.assertEqual(httplib.OK, response.status_code)
-        self.assertEqual(
-            'application/json; charset=utf-8', response['Content-Type'])
-        self.assertEqual('diane', parsed_result['hostname'])
-        self.assertEqual(41, len(parsed_result.get('system_id')))
-        self.assertEqual(1, Node.objects.filter(hostname='diane').count())
-        node = Node.objects.get(hostname='diane')
-        self.assertEqual(2, node.after_commissioning_action)
-        self.assertSequenceEqual(
-            ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
-            [mac.mac_address for mac in node.macaddress_set.all()])
-
-    def test_nodes_POST_no_operation(self):
-        # If there is no operation ('op=operation_name') specified in the
-        # request data, a 'Bad request' response is returned.
-        response = self.client.post(
-                '/api/nodes/',
-                {
-                    'hostname': 'diane',
-                    'mac_addresses': ['aa:bb:cc:dd:ee:ff', 'invalid']
-                })
-
-        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
-        self.assertEqual(
-            'text/html; charset=utf-8', response['Content-Type'])
-        self.assertEqual('Unknown operation.', response.content)
-
-    def test_nodes_POST_bad_operation(self):
-        # If the operation ('op=operation_name') specified in the
-        # request data is unknown, a 'Bad request' response is returned.
-        response = self.client.post(
-                '/api/nodes/',
-                {
-                    'op': 'invalid_operation',
-                    'hostname': 'diane',
-                    'mac_addresses': ['aa:bb:cc:dd:ee:ff', 'invalid']
-                })
-
-        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
-        self.assertEqual(
-            "Unknown operation: 'invalid_operation'.", response.content)
-
-    def test_nodes_POST_invalid(self):
-        # If the data provided to create a node with MAC Addresse is invalid,
-        # a 'Bad request' response is returned.
-        response = self.client.post(
-                '/api/nodes/',
-                {
-                    'op': 'new',
-                    'hostname': 'diane',
-                    'mac_addresses': ['aa:bb:cc:dd:ee:ff', 'invalid']
-                })
-        parsed_result = json.loads(response.content)
-
-        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
-        self.assertEqual(
-            'application/json; charset=utf-8', response['Content-Type'])
-        self.assertEqual(['mac_addresses'], list(parsed_result))
-        self.assertEqual(
-            ["One or more MAC Addresses is invalid."],
-            parsed_result['mac_addresses'])
-
-    def test_node_PUT(self):
+    def test_PUT_updates_node(self):
         # The api allows to update a Node.
         node = factory.make_node(hostname='diane')
         response = self.client.put(
@@ -237,7 +153,7 @@ class NodeAPITest(APITestMixin):
         self.assertEqual(0, Node.objects.filter(hostname='diane').count())
         self.assertEqual(1, Node.objects.filter(hostname='francis').count())
 
-    def test_node_resource_uri(self):
+    def test_resource_uri_points_back_at_node(self):
         # When a Node is returned by the API, the field 'resource_uri'
         # provides the URI for this Node.
         node = factory.make_node(hostname='diane')
@@ -249,7 +165,7 @@ class NodeAPITest(APITestMixin):
             '/api/nodes/%s/' % (parsed_result['system_id']),
             parsed_result['resource_uri'])
 
-    def test_node_PUT_invalid(self):
+    def test_PUT_rejects_invalid_data(self):
         # If the data provided to update a node is invalid, a 'Bad request'
         # response is returned.
         node = factory.make_node(hostname='diane')
@@ -259,7 +175,7 @@ class NodeAPITest(APITestMixin):
 
         self.assertEqual(httplib.BAD_REQUEST, response.status_code)
 
-    def test_node_PUT_non_visible_node(self):
+    def test_PUT_refuses_to_update_invisible_node(self):
         # The request to update a single node is denied if the node isn't
         # visible by the user.
         other_node = factory.make_node(
@@ -269,24 +185,14 @@ class NodeAPITest(APITestMixin):
 
         self.assertEqual(httplib.UNAUTHORIZED, response.status_code)
 
-    def test_node_PUT_not_found(self):
+    def test_PUT_refuses_to_update_nonexistent_node(self):
         # When updating a Node, the api returns a 'Not Found' (404) error
         # if no node is found.
         response = self.client.put('/api/nodes/no-node-here/')
 
         self.assertEqual(httplib.NOT_FOUND, response.status_code)
 
-    def test_node_DELETE_non_visible_node(self):
-        # The request to delete a single node is denied if the node isn't
-        # visible by the user.
-        other_node = factory.make_node(
-            status=NODE_STATUS.DEPLOYED, owner=factory.make_user())
-
-        response = self.client.delete('/api/nodes/%s/' % other_node.system_id)
-
-        self.assertEqual(httplib.UNAUTHORIZED, response.status_code)
-
-    def test_node_DELETE(self):
+    def test_DELETE_deletes_node(self):
         # The api allows to delete a Node.
         node = factory.make_node(set_hostname=True)
         system_id = node.system_id
@@ -296,12 +202,174 @@ class NodeAPITest(APITestMixin):
         self.assertEqual(
             [], list(Node.objects.filter(system_id=system_id)))
 
-    def test_node_DELETE_not_found(self):
+    def test_DELETE_refuses_to_delete_invisible_node(self):
+        # The request to delete a single node is denied if the node isn't
+        # visible by the user.
+        other_node = factory.make_node(
+            status=NODE_STATUS.DEPLOYED, owner=factory.make_user())
+
+        response = self.client.delete('/api/nodes/%s/' % other_node.system_id)
+
+        self.assertEqual(httplib.UNAUTHORIZED, response.status_code)
+
+    def test_DELETE_refuses_to_delete_nonexistent_node(self):
         # When deleting a Node, the api returns a 'Not Found' (404) error
         # if no node is found.
         response = self.client.delete('/api/nodes/no-node-here/')
 
         self.assertEqual(httplib.NOT_FOUND, response.status_code)
+
+
+class TestNodesAPI(APITestMixin):
+    """Tests for /api/nodes/."""
+
+    def test_GET_list_lists_nodes(self):
+        # The api allows for fetching the list of Nodes.
+        node1 = factory.make_node()
+        node2 = factory.make_node(
+            set_hostname=True, status=NODE_STATUS.DEPLOYED,
+            owner=self.logged_in_user)
+        response = self.client.get('/api/nodes/', {'op': 'list'})
+        parsed_result = json.loads(response.content)
+
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertItemsEqual(
+            [node1.system_id, node2.system_id],
+            extract_system_ids(parsed_result))
+
+    def test_GET_list_without_nodes_returns_empty_list(self):
+        # If there are no nodes to list, the "list" op still works but
+        # returns an empty list.
+        response = self.client.get('/api/nodes/', {'op': 'list'})
+        self.assertItemsEqual([], json.loads(response.content))
+
+    def test_GET_list_orders_by_id(self):
+        # Nodes are returned in id order.
+        nodes = [factory.make_node() for counter in range(3)]
+        response = self.client.get('/api/nodes/', {'op': 'list'})
+        parsed_result = json.loads(response.content)
+        self.assertSequenceEqual(
+            [node.system_id for node in nodes],
+            extract_system_ids(parsed_result))
+
+    def test_GET_list_with_id_returns_matching_nodes(self):
+        # The "list" operation takes optional "id" parameters.  Only
+        # nodes with matching ids will be returned.
+        ids = [factory.make_node().system_id for counter in range(3)]
+        matching_id = ids[0]
+        response = self.client.get('/api/nodes/', {
+            'op': 'list',
+            'id': [matching_id],
+        })
+        parsed_result = json.loads(response.content)
+        self.assertItemsEqual(
+            [matching_id], extract_system_ids(parsed_result))
+
+    def test_GET_list_with_nonexistent_id_returns_empty_list(self):
+        # Trying to list a nonexistent node id returns a list containing
+        # no nodes -- even if other (non-matching) nodes exist.
+        existing_id = factory.make_node().system_id
+        nonexistent_id = existing_id + factory.getRandomString()
+        response = self.client.get('/api/nodes/', {
+            'op': 'list',
+            'id': [nonexistent_id],
+        })
+        self.assertItemsEqual([], json.loads(response.content))
+
+    def test_GET_list_with_ids_orders_by_id(self):
+        # Even when ids are passed to "list," nodes are returned in id
+        # order, not necessarily in the order of the id arguments.
+        ids = [factory.make_node().system_id for counter in range(3)]
+        response = self.client.get('/api/nodes/', {
+            'op': 'list',
+            'id': list(reversed(ids)),
+        })
+        parsed_result = json.loads(response.content)
+        self.assertSequenceEqual(ids, extract_system_ids(parsed_result))
+
+    def test_GET_list_with_some_matching_ids_returns_matching_nodes(self):
+        # If some nodes match the requested ids and some don't, only the
+        # matching ones are returned.
+        existing_id = factory.make_node().system_id
+        nonexistent_id = existing_id + factory.getRandomString()
+        response = self.client.get('/api/nodes/', {
+            'op': 'list',
+            'id': [existing_id, nonexistent_id],
+        })
+        parsed_result = json.loads(response.content)
+        self.assertItemsEqual(
+            [existing_id], extract_system_ids(parsed_result))
+
+    def test_POST_new_creates_node(self):
+        # The API allows a Node to be created and associated with MAC
+        # Addresses.
+        response = self.client.post(
+            '/api/nodes/',
+            {
+                'op': 'new',
+                'hostname': 'diane',
+                'after_commissioning_action': '2',
+                'mac_addresses': ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
+            })
+        parsed_result = json.loads(response.content)
+
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertIn('application/json', response['Content-Type'])
+        self.assertEqual('diane', parsed_result['hostname'])
+        self.assertNotEqual(0, len(parsed_result.get('system_id')))
+        [diane] = Node.objects.filter(hostname='diane')
+        self.assertEqual(2, diane.after_commissioning_action)
+        self.assertItemsEqual(
+            ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
+            [mac.mac_address for mac in diane.macaddress_set.all()])
+
+    def test_POST_fails_without_operation(self):
+        # If there is no operation ('op=operation_name') specified in the
+        # request data, a 'Bad request' response is returned.
+        response = self.client.post(
+            '/api/nodes/',
+            {
+                'hostname': 'diane',
+                'mac_addresses': ['aa:bb:cc:dd:ee:ff', 'invalid'],
+            })
+
+        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+        self.assertIn('text/html', response['Content-Type'])
+        self.assertEqual("Unknown operation.", response.content)
+
+    def test_POST_fails_with_bad_operation(self):
+        # If the operation ('op=operation_name') specified in the
+        # request data is unknown, a 'Bad request' response is returned.
+        response = self.client.post(
+            '/api/nodes/',
+            {
+                'op': 'invalid_operation',
+                'hostname': 'diane',
+                'mac_addresses': ['aa:bb:cc:dd:ee:ff', 'invalid'],
+            })
+
+        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+        self.assertEqual(
+            "Unknown operation: 'invalid_operation'.", response.content)
+
+    def test_POST_new_rejects_invalid_data(self):
+        # If the data provided to create a node with an invalid MAC
+        # Address, a 'Bad request' response is returned.
+        response = self.client.post(
+            '/api/nodes/',
+            {
+                'op': 'new',
+                'hostname': 'diane',
+                'mac_addresses': ['aa:bb:cc:dd:ee:ff', 'invalid'],
+            })
+        parsed_result = json.loads(response.content)
+
+        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+        self.assertIn('application/json', response['Content-Type'])
+        self.assertItemsEqual(['mac_addresses'], parsed_result)
+        self.assertEqual(
+            ["One or more MAC Addresses is invalid."],
+            parsed_result['mac_addresses'])
 
 
 class MACAddressAPITest(APITestMixin):

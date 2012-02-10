@@ -134,11 +134,13 @@ NODE_AFTER_COMMISSIONING_ACTION_CHOICES_DICT = dict(
 class NodeManager(models.Manager):
     """A utility to manage the collection of Nodes."""
 
-    def get_visible_nodes(self, user):
+    def get_visible_nodes(self, user, ids=None):
         """Fetch all the Nodes visible by a User_.
 
         :param user: The user that should be used in the permission check.
         :type user: User_
+        :param ids: If given, limit result to nodes with these system_ids.
+        :type ids: Sequence.
 
         .. _User: https://
            docs.djangoproject.com/en/dev/topics/auth/
@@ -146,10 +148,14 @@ class NodeManager(models.Manager):
 
         """
         if user.is_superuser:
-            return self.all()
+            visible_nodes = self.all()
         else:
-            return self.filter(
+            visible_nodes = self.filter(
                 models.Q(owner__isnull=True) | models.Q(owner=user))
+        if ids is None:
+            return visible_nodes
+        else:
+            return visible_nodes.filter(system_id__in=ids)
 
     def get_visible_node_or_404(self, system_id, user):
         """Fetch a `Node` by system_id.  Raise exceptions if no `Node` with

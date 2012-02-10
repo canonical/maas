@@ -28,7 +28,7 @@ from maasserver.models import (
 
 class Factory():
 
-    def getRandomString(self, size):
+    def getRandomString(self, size=10):
         return "".join(
             random.choice(string.letters + string.digits)
             for x in xrange(size))
