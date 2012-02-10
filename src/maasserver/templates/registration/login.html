@@ -1,24 +1,31 @@
 {% extends "maasserver/base.html" %}
 
-{% block header %}
-<ul id="main-nav" class="nav">
-  <h1>MaaS Cluster</h1>
-  <div class="clear"></div>
-</ul>
-{% endblock %}
+{% block title %}Login{% endblock %}
+{% block layout-modifiers %}modal-content login{% endblock %}
+
+{% block head %}
+  <script type="text/javascript">
+  <!--
+  YUI().use('node', function (Y) {
+    Y.on('load', function() {
+      Y.one('input[type=text]').focus();
+    });
+  });
+  // -->
+  </script>
+{% endblock %}
 
 {% block content %}
-<div id="login-logout">
+  <h2>Login</h2>
+  {% if form.errors %}
+    <p>Your username and password didn't match. Please try again.</p>
+  {% endif %}
 
-<h2>Login</h2>
-{% if form.errors %}
-  <p>Your username and password didn't match. Please try again.</p>
-{% endif %}
-
-<form method="post" action="{% url 'django.contrib.auth.views.login' %}">
-  {{ form.as_p }}
-  <input type="submit" value="login" />
-  <input type="hidden" name="next" value="{{ next }}" />
-</form>
-</div>
+  <form method="post" action="{% url 'django.contrib.auth.views.login' %}">
+    <input type="hidden" name="next" value="{{ next }}" />
+    <ul>
+      {{ form.as_ul }}
+      <li class="form-submit"><input type="submit" value="Login" /></li>
+    </ul>
+  </form>
 {% endblock %}

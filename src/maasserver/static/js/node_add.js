@@ -268,5 +268,5 @@ module.showAddNodeWidget = function(event) {
     module._add_node_singleton.render();
 };
 
-}, '0.1', {'requires': ['io', 'node', 'overlay', 'event', 'event-custom']}
+}, '0.1', {'requires': ['io', 'node', 'overlay', 'event', 'event-custom', 'transition']}
 );

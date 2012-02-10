@@ -1,13 +1,12 @@
 /******************************************************************************
     Page
 */
-
-#page{
+.center-page-wrapper {
     text-align: center;
     margin: 0 auto;
     width: 976px;
 	}
-#wrapper {
+.center-page-content {
     text-align: left;
     }
 
@@ -15,42 +14,91 @@
 /******************************************************************************
     Header
 */
-
-#user-nav {
-    float: right;
-    padding: 5px 10px 5px 0;
-    }
-#user-nav a {
-    color: #333;
-    }
-#user-nav li {
-    float: right;
-    padding-right: 15px;
-    }
-#header {
+#header-wrapper {
+    /* Need to set relative so the box shadow appears over content divs */
+    position: relative;
+    min-height: 64px;
     background-color: #dd4814;
-    border-radius: 0 0 8px 8px;
-    clear: both;
+    -webkit-box-shadow: 0 2px 4px 0 rgba(0,0,0,0.2);
+    box-shadow: 0 2px 4px 0 rgba(0,0,0,0.2);
     }
 #header a,
 #header {
     color: #fff;
+    text-decoration: none;
     }
 #header h1 {
-    float: right;
-    font-size: 24px;
-    margin: 15px 30px;
+    float: left;
+    font-size: 18px;
+    margin: 15px 30px 0 20px;
+    }
+#header h1 img {
+    margin-right: 7px;
     }
 #main-nav {
-    margin-left: 20px;
+    float: right;
+    margin-right: 20px;
+    font-size: 14px;
     }
 #main-nav li {
     float: left;
-    padding: 24px 15px;
+    padding: 23px 15px;
     }
 #main-nav li.active {
-    background-color: #B83A10;
+    background-color: #B83A11;
     }
+#user-nav {
+    float: left;
+    }
+#user-nav li {
+    float: left;
+    padding: 25px 15px 0 15px;
+    }
+
+
+/******************************************************************************
+    Header search
+*/
+#header-search {
+    float: right;
+    margin: 24px 20px 0 0;
+    }
+#header-search input {
+    margin: 0;
+    }
+#header-search input[type="text"] {
+    width: 240px;
+    padding: 6px 15px;
+    border: none;
+    color: #aea79f;
+    -moz-border-radius: 14px 0 0 14px;
+    -webkit-border-radius: 14px 0 0 14px;
+    border-radius: 14px 0 0 14px;
+    }
+#header-search input[type="submit"] {
+    padding: 5px 20px 6px 20px;
+    border-left: 1px solid #481e3d;
+    border-top-color: #743062;
+    -moz-border-radius: 0 14px 14px 0;
+    -webkit-border-radius: 0 14px 14px 0;
+    border-radius: 0 14px 14px 0;
+    -webkit-box-shadow: none;
+    box-shadow: none;
+    background: #5E2750 url(../img/header_search_icon.png) no-repeat center center;
+    background-image: url(../img/header_search_icon.png), linear-gradient(bottom, rgb(80,33,68) 0%, rgb(94,39,80) 100%);
+    background-image: url(../img/header_search_icon.png), -o-linear-gradient(bottom, rgb(80,33,68) 0%, rgb(94,39,80) 100%);
+    background-image: url(../img/header_search_icon.png), -moz-linear-gradient(bottom, rgb(80,33,68) 0%, rgb(94,39,80) 100%);
+    background-image: url(../img/header_search_icon.png), -webkit-linear-gradient(bottom, rgb(80,33,68) 0%, rgb(94,39,80) 100%);
+    background-image: url(../img/header_search_icon.png), -ms-linear-gradient(bottom, rgb(80,33,68) 0%, rgb(94,39,80) 100%);
+    }
+#header-search input[type="submit"]:hover {
+    background-image: url(../img/header_search_icon.png), linear-gradient(bottom, rgb(80,33,68) 0%, rgb(117,49,100) 100%);
+    background-image: url(../img/header_search_icon.png), -o-linear-gradient(bottom, rgb(80,33,68) 0%, rgb(117,49,100) 100%);
+    background-image: url(../img/header_search_icon.png), -moz-linear-gradient(bottom, rgb(80,33,68) 0%, rgb(117,49,100) 100%);
+    background-image: url(../img/header_search_icon.png), -webkit-linear-gradient(bottom, rgb(80,33,68) 0%, rgb(117,49,100) 100%);
+    background-image: url(../img/header_search_icon.png), -ms-linear-gradient(bottom, rgb(80,33,68) 0%, rgb(117,49,100) 100%);
+    }
+
 
 /******************************************************************************
     Content
@@ -59,14 +107,48 @@
 #body {
     background-color: #2C001E;
     clear: both;
-    padding-bottom: 20px;
+    }
+#page-title {
+    font-size: 36px;
+    color: #fff;
+    margin: 0 20px;
+    padding: 20px 0;
     }
 #content {
-    margin: 10px;
     padding: 20px;
-    background-color: #AEA79F;
+    background-color: #fff;
+    -moz-border-radius: 4px;
+    -webkit-border-radius: 4px;
+    border-radius: 4px;
     }
 #login-logout {
     width: 300px;
     margin:0px auto;
     }
+
+
+/******************************************************************************
+    Modifier: modal-content
+*/
+.modal-content #body {
+    background-color: transparent;
+    }
+.modal-content #content {
+    margin-top: 20px;
+    }
+
+
+/******************************************************************************
+    Modifier: login
+*/
+.login #content {
+    padding: 30px 40px;
+    width: 360px;
+    margin: 100px auto;
+    -webkit-box-shadow: 0 0 15px 0 rgba(0,0,0,1);
+    box-shadow: 0 0 15px 0 rgba(0,0,0,1);
+    }
+.login #content h2:first-child {
+    margin: 0 0 20px 0;
+    }
+

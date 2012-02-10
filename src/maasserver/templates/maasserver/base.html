@@ -5,39 +5,55 @@
     <meta http-equiv="Content-Language" content="en-us" />
     <link rel="stylesheet" href="{{ STATIC_URL }}css/import.css" />
     <link rel="stylesheet" href="{{ STATIC_URL }}css/ubuntu-webfonts.css" />
-    <title>{% block title %}MaaS{% endblock %}</title>
+    <title>{% block title %}{% endblock %} | MaaS Cluster</title>
     {% block js-conf %}{% include "maasserver/js-conf.html" %}{% endblock %}
     {% block head %}{% endblock %}
 </head>
-<body>
+<body class="{% block layout-modifiers %}{% endblock %}">
   {% block html_includes %}{% endblock %}
-  <div id="page">
-    <div id="wrapper">
-    {% block user-nav %}
-      {% include "maasserver/user-nav.html" %}
-    {% endblock %}
-    <div id="body">
-      <div id="header">
-      {% block header %}
-        <ul id="main-nav" class="nav">
-          <li class="{% block nav-active-index %}{% endblock %}">
-            <a href="{% url 'index' %}">Dashboard</a>
-          </li>
-          <li class="{% block nav-active-node-list %}{% endblock %}">
-            <a href="{% url 'node-list' %}">Nodes</a>
-         </li>
-        </ul>
-        <h1>MaaS Cluster</h1>
+  <div id="header-wrapper">
+    <div class="center-page-wrapper">
+      <div id="header" class="center-page-content">
+        {% block header %}
+          <h1>
+            <a href="{% url 'index' %}" title="Return to dashboard"><img src="{{ STATIC_URL }}img/ubuntu_logo_header.png" alt="Ubuntu logo">
+              MaaS Cluster</a>
+          </h1>
+          {% if user.is_authenticated %}
+            {% block user-nav %}
+              {% include "maasserver/user-nav.html" %}
+            {% endblock %}
+            <ul id="main-nav" class="nav">
+              <li class="{% block nav-active-index %}{% endblock %}">
+                <a href="{% url 'index' %}">Dashboard</a>
+              </li>
+              <li class="{% block nav-active-node-list %}{% endblock %}">
+                <a href="{% url 'node-list' %}">Nodes</a>
+             </li>
+            </ul>
+          {% endif %}
+        {% endblock %}
         <div class="clear"></div>
-      {% endblock %}
       </div>
+    </div>
+  </div>
+  <div class="center-page-wrapper">
+    <div class="center-page-content">
+    <div id="body">
       <ul id="flash-messages">
         {% if messages %}
           {% for message in messages %}
-            <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
+            <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>
+              {{ message }}</li>
           {% endfor %}
         {% endif %}
       </ul>
+      {% if user.is_authenticated %}
+        <form action="" method="get" id="header-search">
+          <input type="text" name="query" value="Search nodes"><input type="submit" value="">
+        </form>
+        <h1 id="page-title">{% block page-title %}{% endblock %}</h1>
+      {% endif %}
       <div id="content">{% block content %}{% endblock %}</div>
     </div>
   </div>

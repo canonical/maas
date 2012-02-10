@@ -4,12 +4,22 @@
     }
 #flash-messages li {
     list-style: none;
-    padding: 5px 20px;
-    border-radius: 6px;
-    box-shadow: 1px 1px 1px rgba(0,0,0,.2);
+    padding: 8px 20px;
+    margin: 0 10px;
+    box-shadow: 1px 1px 4px rgba(0,0,0,0.2);
     font-weight: bold;
+    text-shadow: 0 -1px 0 rgba(0,0,0,0.3);
     color: #FFF;
-    margin: 5px 10px;
+    }
+#flash-messages li:first-child {
+    -webkit-box-shadow: inset 0 2px 2px 0 rgba(0,0,0,0.4);
+    box-shadow: inset 0 2px 2px 0 rgba(0,0,0,0.4);
+    }
+#flash-messages li:last-child {
+    margin-bottom: 5px;
+    -moz-border-radius: 0 0 6px 6px;
+    -webkit-border-radius: 0 0 6px 6px;
+    border-radius: 0 0 6px 6px;
     }
 #flash-messages li.info {
     background-color: #19B6EE;

@@ -1,0 +1,7 @@
+html, body {
+    margin: 0;
+    padding: 0;
+    }
+body {
+    background: #2C001E url(../img/bg_dots.png) repeat top left;
+    }
