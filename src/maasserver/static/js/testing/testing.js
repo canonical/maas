@@ -4,7 +4,7 @@
 
 YUI().add('maas.testing', function(Y) {
 
-Y.log('loading mass.testing');
+Y.log('loading maas.testing');
 
 var module = Y.namespace('maas.testing');
 

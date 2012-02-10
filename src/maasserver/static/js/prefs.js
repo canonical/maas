@@ -3,12 +3,12 @@
  *
  * Utilities for the user preferences page.
  *
- * @module Y.mass.prefs
+ * @module Y.maas.prefs
  */
 
 YUI.add('maas.prefs', function(Y) {
 
-Y.log('loading mass.prefs');
+Y.log('loading maas.prefs');
 var module = Y.namespace('maas.prefs');
 
 // Only used to mockup io in tests.

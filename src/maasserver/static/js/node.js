@@ -3,12 +3,12 @@
  *
  * Node model.
  *
- * @module Y.mass.node
+ * @module Y.maas.node
  */
 
 YUI.add('maas.node', function(Y) {
 
-Y.log('loading mass.node');
+Y.log('loading maas.node');
 var module = Y.namespace('maas.node');
 
 /**

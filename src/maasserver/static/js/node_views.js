@@ -3,12 +3,12 @@
  *
  * Node model.
  *
- * @module Y.mass.node
+ * @module Y.maas.node
  */
 
 YUI.add('maas.node_views', function(Y) {
 
-Y.log('loading mass.node_views');
+Y.log('loading maas.node_views');
 var module = Y.namespace('maas.node_views');
 
 // Only used to mockup io in tests.

@@ -3,12 +3,12 @@
  *
  * Widget to add a Node.
  *
- * @module Y.mass.node_add
+ * @module Y.maas.node_add
  */
 
 YUI.add('maas.node_add', function(Y) {
 
-Y.log('loading mass.node_add');
+Y.log('loading maas.node_add');
 
 var module = Y.namespace('maas.node_add');
 

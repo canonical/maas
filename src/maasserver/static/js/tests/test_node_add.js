@@ -4,7 +4,7 @@
 
 YUI({ useBrowserConsole: true }).add('maas.node_add.tests', function(Y) {
 
-Y.log('loading mass.node_add.tests');
+Y.log('loading maas.node_add.tests');
 var namespace = Y.namespace('maas.node_add.tests');
 
 var module = Y.maas.node_add;
