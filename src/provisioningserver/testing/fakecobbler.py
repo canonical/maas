@@ -208,7 +208,7 @@ class FakeCobbler:
 
     def _api_get_object(self, object_type, name):
         """Get object's attributes by name."""
-        location = self.store[None][object_type]
+        location = self.store[None].get(object_type, {})
         matches = [obj for obj in location.values() if obj['name'] == name]
         assert len(matches) <= 1, (
             "Multiple %s objects are called '%s'." % (object_type, name))

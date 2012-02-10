@@ -282,6 +282,13 @@ class CobblerObjectTestScenario:
         self.assertEqual(comment, found_obj['comment'])
 
     @inlineCallbacks
+    def test_get_values_returns_None_for_non_existent_object(self):
+        session = yield fake_cobbler_session()
+        name = self.make_name()
+        values = yield self.cobbler_class(session, name).get_values()
+        self.assertIsNone(values)
+
+    @inlineCallbacks
     def test_get_handle_finds_handle(self):
         session = yield fake_cobbler_session()
         name = self.make_name()

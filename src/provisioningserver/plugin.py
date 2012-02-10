@@ -46,7 +46,7 @@ class Options(usage.Options):
 
     optParameters = [
         ["port", None, 8001, "Port to serve on."],
-        ["logfile", "l", "provisioningserver.log", "Logfile name."],
+        ["logfile", "l", "pserv.log", "Logfile name."],
         ["brokerport", "p", 5672, "Broker port"],
         ["brokerhost", "h", '127.0.0.1', "Broker host"],
         ["brokeruser", "u", None, "Broker user"],

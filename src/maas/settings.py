@@ -201,3 +201,7 @@ LOGGING = {
         },
     }
 }
+
+# The location of the Provisioning API XML-RPC endpoint. If PSERV_URL is None,
+# use the fake Provisioning API.
+PSERV_URL = None

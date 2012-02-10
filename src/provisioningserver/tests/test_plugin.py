@@ -40,7 +40,7 @@ class TestOptions(TestCase):
             "brokerport": 5672,
             "brokeruser": None,
             "brokervhost": "/",
-            "logfile": "provisioningserver.log",
+            "logfile": "pserv.log",
             "oops-dir": None,
             "oops-reporter": "MAAS-PS",
             "port": 8001,
@@ -123,8 +123,7 @@ class TestProvisioningServiceMaker(TestCase):
 
     def get_log_file(self):
         return os.path.join(
-            self.useFixture(TempDir()).path,
-            "provisioningserver.log")
+            self.useFixture(TempDir()).path, "pserv.log")
 
     def test_init(self):
         service_maker = ProvisioningServiceMaker("Harry", "Hill")

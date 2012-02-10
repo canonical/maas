@@ -1,7 +1,8 @@
 *.egg
 *.egg-info
-./.installed.cfg
 ./.coverage
+./.installed.cfg
+./.noseids
 ./bin
 ./build
 ./db
@@ -13,6 +14,7 @@
 ./eggs
 ./logs
 ./parts
-./tags
+./pserv.log
+./pserv.pid
 ./TAGS
-./.noseids
+./tags

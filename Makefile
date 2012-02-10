@@ -46,7 +46,7 @@ test: bin/test.maas bin/test.pserv
 lint: sources = setup.py src templates utilities
 lint: bin/flake8
 	@bin/flake8 $(sources) | \
-	    (! fgrep -v "from maas.settings import *")
+	    (! egrep -v "from maas[.](settings|development) import [*]")
 
 check: clean test
 
@@ -63,7 +63,7 @@ clean:
 	find . -type f -name '*.py[co]' -print0 | xargs -r0 $(RM)
 	find . -type f -name '*~' -print0 | xargs -r0 $(RM)
 
-distclean: clean
+distclean: clean pserv-stop
 	utilities/maasdb delete-cluster ./db/
 	$(RM) -r eggs develop-eggs
 	$(RM) -r bin build dist logs parts
@@ -72,8 +72,16 @@ distclean: clean
 	$(RM) docs/api.rst
 	$(RM) -r docs/_build/
 
-run: bin/maas dev-db
-	bin/maas runserver 8000
+pserv.pid: bin/twistd.pserv
+	bin/twistd.pserv --pidfile=$@ maas-pserv --port=8001
+
+pserv-start: pserv.pid
+
+pserv-stop:
+	{ test -e pserv.pid && cat pserv.pid; } | xargs --no-run-if-empty kill
+
+run: bin/maas dev-db pserv.pid
+	bin/maas runserver 8000 --settings=maas.demo
 
 harness: bin/maas dev-db
 	bin/maas shell
@@ -83,4 +91,5 @@ syncdb: bin/maas dev-db
 
 .PHONY: \
     build check clean dev-db distclean doc \
-    harness lint run syncdb test sampledata
+    harness lint pserv-start pserv-stop run \
+    syncdb test sampledata
