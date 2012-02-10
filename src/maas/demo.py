@@ -10,9 +10,9 @@ from __future__ import (
 
 __metaclass__ = type
 
+# SKIP, developement settings should override base settings.
 from maas.settings import *
 from maas.development import *
-
 
 # This should match the setting in Makefile:pserv.pid.
 PSERV_URL = "http://localhost:8001/api"
