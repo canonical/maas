@@ -10,8 +10,8 @@ from __future__ import (
 
 __metaclass__ = type
 
-from maas.development import *
 from maas.settings import *
+from maas.development import *
 
 
 # This should match the setting in Makefile:pserv.pid.
