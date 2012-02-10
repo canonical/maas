@@ -14,7 +14,13 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
-from provisioningserver.api import ProvisioningAPI
+from provisioningserver.api import (
+    cobbler_to_papi_distro,
+    cobbler_to_papi_node,
+    cobbler_to_papi_profile,
+    postprocess_mapping,
+    ProvisioningAPI,
+    )
 from provisioningserver.interfaces import IProvisioningAPI
 from provisioningserver.testing.fakeapi import FakeAsynchronousProvisioningAPI
 from provisioningserver.testing.fakecobbler import make_fake_cobbler_session
@@ -22,6 +28,81 @@ from testtools import TestCase
 from testtools.deferredruntest import AsynchronousDeferredRunTest
 from twisted.internet.defer import inlineCallbacks
 from zope.interface.verify import verifyObject
+
+
+class TestFunctions(TestCase):
+    """Tests for the free functions in `provisioningserver.api`."""
+
+    def test_postprocess_mapping(self):
+        data = {
+            "sad": "wings",
+            "of": "destiny",
+            }
+        expected = {
+            "sad": "Wings",
+            "of": "Destiny",
+            }
+        observed = postprocess_mapping(data, unicode.capitalize)
+        self.assertEqual(expected, observed)
+
+    def test_cobbler_to_papi_node(self):
+        data = {
+            "name": "iced",
+            "profile": "earth",
+            "interfaces": {
+                "eth0": {"mac_address": "12:34:56:78:9a:bc"},
+                },
+            "ju": "nk",
+            }
+        expected = {
+            "name": "iced",
+            "profile": "earth",
+            "mac_addresses": ["12:34:56:78:9a:bc"],
+            }
+        observed = cobbler_to_papi_node(data)
+        self.assertEqual(expected, observed)
+
+    def test_cobbler_to_papi_node_without_interfaces(self):
+        data = {
+            "name": "iced",
+            "profile": "earth",
+            "ju": "nk",
+            }
+        expected = {
+            "name": "iced",
+            "profile": "earth",
+            "mac_addresses": [],
+            }
+        observed = cobbler_to_papi_node(data)
+        self.assertEqual(expected, observed)
+
+    def test_cobbler_to_papi_profile(self):
+        data = {
+            "name": "paradise",
+            "distro": "lost",
+            "draconian": "times",
+            }
+        expected = {
+            "name": "paradise",
+            "distro": "lost",
+            }
+        observed = cobbler_to_papi_profile(data)
+        self.assertEqual(expected, observed)
+
+    def test_cobbler_to_papi_distro(self):
+        data = {
+            "name": "strapping",
+            "initrd": "young",
+            "kernel": "lad",
+            "alien": "city",
+            }
+        expected = {
+            "name": "strapping",
+            "initrd": "young",
+            "kernel": "lad",
+            }
+        observed = cobbler_to_papi_distro(data)
+        self.assertEqual(expected, observed)
 
 
 class TestProvisioningAPI(TestCase):
@@ -152,7 +233,11 @@ class TestProvisioningAPI(TestCase):
         for num in xrange(3):
             name = self.getUniqueString()
             yield papi.add_node(name, profile)
-            expected[name] = {'name': name, 'profile': 'profile'}
+            expected[name] = {
+                'name': name,
+                'profile': 'profile',
+                'mac_addresses': [],
+                }
         nodes = yield papi.get_nodes()
         self.assertEqual(expected, nodes)
 

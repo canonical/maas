@@ -85,6 +85,7 @@ class FakeSynchronousProvisioningAPI:
 
     def add_node(self, name, profile):
         self.nodes[name]["profile"] = profile
+        self.nodes[name]["mac_addresses"] = []
         return name
 
     def get_distros_by_name(self, names):

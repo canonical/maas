@@ -168,6 +168,11 @@ class FakeCobbler:
         name = "name-%s-%d" % (object_type, unique_id)
         new_object = {
             'name': name,
+            'comment': (
+                "Cobbler stores lots of things we're not interested in; "
+                "this comment is here to break tests that let Cobbler's "
+                "data leak out of the Provisioning Server."
+                ),
         }
         self._add_object_to_session(token, object_type, handle, new_object)
         return handle
