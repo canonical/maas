@@ -15,6 +15,7 @@ __all__ = [
     ]
 
 from django import forms
+from django.contrib.auth.models import User
 from django.forms import ModelForm
 from maasserver.macaddress import MACAddressFormField
 from maasserver.models import (
@@ -85,3 +86,9 @@ class NodeWithMACAddressesForm(NodeForm):
         for mac in self.cleaned_data['mac_addresses']:
             node.add_mac_address(mac)
         return node
+
+
+class ProfileForm(ModelForm):
+    class Meta:
+        model = User
+        fields = ('first_name', 'last_name', 'email')

@@ -291,8 +291,8 @@ class UserProfile(models.Model):
         """Create (if necessary) and regenerate the keys for the Consumer and
         the related Token of the OAuth authorisation.
 
-        :return: The token that was reset.
-        :rtype: piston.models.Token
+        :return: A tuple containing the Consumer and the Token that were reset.
+        :rtype: tuple
 
         """
         consumer, _ = Consumer.objects.get_or_create(
@@ -307,7 +307,7 @@ class UserProfile(models.Model):
             user=self.user, token_type=Token.ACCESS, consumer=consumer,
             defaults={'is_approved': True})
         token.generate_random_codes()
-        return token
+        return consumer, token
 
     def get_authorisation_consumer(self):
         """Returns the OAuth Consumer attached to the related User_.

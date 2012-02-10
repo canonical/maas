@@ -351,6 +351,29 @@ class NodeMacHandler(BaseHandler):
         return ('node_mac_handler', [node_system_id, mac_address])
 
 
+@api_operations
+class AccountHandler(BaseHandler):
+    """Manage the current logged-in user."""
+    allowed_methods = ('POST',)
+
+    @api_exported('reset_authorisation_token')
+    def reset_authorisation_token(self, request):
+        """Regenerate the token and the secret of the OAuth Token.
+
+        :return: A json dict with three keys: 'token_key',
+            'token_secret' and 'consumer_key' (e.g.
+            {token_key: 's65244576fgqs', token_secret: 'qsdfdhv34',
+             consumer_key: '68543fhj854fg'}).
+
+        """
+        profile = request.user.get_profile()
+        consumer, token = profile.reset_authorisation_token()
+        return {
+            'token_key': token.key, 'token_secret': token.secret,
+            'consumer_key': consumer.key,
+            }
+
+
 def generate_api_doc():
     docs = (
         generate_doc(NodesHandler),

@@ -20,17 +20,19 @@
               MaaS Cluster</a>
           </h1>
           {% if user.is_authenticated %}
-            {% block user-nav %}
-              {% include "maasserver/user-nav.html" %}
-            {% endblock %}
-            <ul id="main-nav" class="nav">
-              <li class="{% block nav-active-index %}{% endblock %}">
-                <a href="{% url 'index' %}">Dashboard</a>
-              </li>
-              <li class="{% block nav-active-node-list %}{% endblock %}">
-                <a href="{% url 'node-list' %}">Nodes</a>
-             </li>
-            </ul>
+          <ul id="user-nav" class="nav">
+            <li class="{% block nav-active-prefs %}{% endblock %}">
+              <a href="{% url 'prefs' %}">{{ user.username }}</a></li>
+            <li><a href="{% url 'logout' %}">Logout</a></li>
+          </ul>
+          <ul id="main-nav" class="nav">
+            <li class="{% block nav-active-index %}{% endblock %}">
+              <a href="{% url 'index' %}">Dashboard</a>
+            </li>
+            <li class="{% block nav-active-node-list %}{% endblock %}">
+              <a href="{% url 'node-list' %}">Nodes</a>
+            </li>
+          </ul>
           {% endif %}
         {% endblock %}
         <div class="clear"></div>

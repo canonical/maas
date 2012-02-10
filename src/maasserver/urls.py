@@ -21,6 +21,7 @@ from django.views.generic.simple import (
     redirect_to,
     )
 from maasserver.api import (
+    AccountHandler,
     api_doc,
     MaasAPIAuthentication,
     NodeHandler,
@@ -33,11 +34,13 @@ from maasserver.views import (
     logout,
     NodeListView,
     NodesCreateView,
+    userprefsview,
     )
 from piston.resource import Resource
 
 # URLs accessible to anonymous users.
 urlpatterns = patterns('maasserver.views',
+    url(r'^account/prefs/$', userprefsview, name='prefs'),
     url(r'^accounts/login/$', login, name='login'),
     url(r'^accounts/logout/$', logout, name='logout'),
     url(
@@ -67,6 +70,7 @@ node_handler = Resource(NodeHandler, authentication=auth)
 nodes_handler = Resource(NodesHandler, authentication=auth)
 node_mac_handler = Resource(NodeMacHandler, authentication=auth)
 node_macs_handler = Resource(NodeMacsHandler, authentication=auth)
+account_handler = Resource(AccountHandler, authentication=auth)
 
 # API URLs accessible to anonymous users.
 urlpatterns += patterns('',
@@ -86,4 +90,5 @@ urlpatterns += patterns('',
         r'^api/nodes/(?P<system_id>[\w\-]+)/$', node_handler,
         name='node_handler'),
     url(r'^api/nodes/$', nodes_handler, name='nodes_handler'),
+    url(r'^api/account/$', account_handler, name='account_handler'),
 )

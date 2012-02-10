@@ -148,6 +148,8 @@ class UserProfileTest(TestCase):
         user = factory.make_user()
         consumers = Consumer.objects.filter(user=user, name=GENERIC_CONSUMER)
         self.assertEqual([user], [consumer.user for consumer in consumers])
+        self.assertEqual(
+            consumers[0], user.get_profile().get_authorisation_consumer())
         self.assertEqual(GENERIC_CONSUMER, consumers[0].name)
         self.assertEqual(KEY_SIZE, len(consumers[0].key))
         # The generic consumer has an empty secret.
@@ -158,6 +160,8 @@ class UserProfileTest(TestCase):
         user = factory.make_user()
         tokens = Token.objects.filter(user=user)
         self.assertEqual([user], [token.user for token in tokens])
+        self.assertEqual(
+            tokens[0], user.get_profile().get_authorisation_token())
         self.assertIsInstance(tokens[0].key, unicode)
         self.assertEqual(KEY_SIZE, len(tokens[0].key))
         self.assertEqual(Token.ACCESS, tokens[0].token_type)

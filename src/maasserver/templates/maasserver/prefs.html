@@ -1,0 +1,97 @@
+{% extends "maasserver/base.html" %}
+
+{% block nav-active-prefs %}active{% endblock %}
+{% block title %}User preferences for {{ user.username }}{% endblock %}
+{% block page-title %}User preferences for {{ user.username }}{% endblock %}
+
+{% block head %}
+  <script type="text/javascript">
+  <!--
+  YUI().use('tabview', 'maas.prefs', function (Y) {
+    var tabview = new Y.TabView({
+      srcNode: '#prefs'
+    });
+    tabview.render();
+    // Select the tab with index {{ tab }} (which is taken from the
+    // query string and set by the Django view).
+    var tab_index = parseInt('{{ tab }}');
+    var valid_tab_index = (
+        Y.Lang.isValue(tab_index) &&
+        tab_index >= 0 &&
+        tab_index < tabview.size());
+    if (valid_tab_index) {
+        tabview.selectChild(tab_index);
+    }
+
+    var profile_widget = new Y.maas.prefs.TokenWidget(
+        {'srcNode': Y.one('#api')});
+    profile_widget.render();
+  });
+  // -->
+  </script>
+{% endblock %}
+
+{% block content %}
+  <div id="prefs">
+    <ul>
+      <li><a href="#profile">Profile</a></li>
+      <li><a href="#api">API access</a></li>
+      <li><a href="#password">Change password</a></li>
+      <li><a href="#keys">Manage keys</a></li>
+    </ul>
+    <div>
+      <div id="profile">
+        <form action="." method="post">
+          {{ profile_form.as_p }}
+         <input type="hidden" name="profile_submit" value="1" />
+         <input type="submit" value="Save" />
+        </form>
+      </div>
+      <div id="api">
+          <p>
+            This is the required information you need to provide to a third
+            party application for it to be able to access the MaaS server
+            <a href="{% url 'api-doc' %}">API</a> on your behalf.
+          </p>
+          <p>
+            <label>API consumer key:
+            <img src="{{ STATIC_URL }}img/maybe.png"
+                 title="Note that the API consumer secret is the empty string"
+             />
+            </label>
+            <div id="consumer_key">
+              {{ user.get_profile.get_authorisation_consumer.key }}
+            </div>
+          </p>
+          <p>
+            <label>API consumer secret:</label>
+            <div>'' (the empty string)</div>
+          </p>
+          <p>
+            <label>API token key:</label>
+            <div id="token_key">
+              {{ user.get_profile.get_authorisation_token.key }}
+            </div>
+          </p>
+          <p>
+            <label>API token secret:</label>
+            <div id="token_secret">
+              {{ user.get_profile.get_authorisation_token.secret }}
+            </div>
+          </p>
+          <p id="tokens_regeneration_placeholder" />
+      </div>
+      <div id="password">
+        <form action="." method="post">
+          {{ password_form.as_p }}
+         <input type="hidden" name="password_submit" value="1" />
+         <input type="submit" value="Change password" />
+        </form>
+      </div>
+      <div id="keys">
+          TODO manage keys.
+      </div>
+    </div>
+  </div>
+
+{% endblock %}

@@ -8,7 +8,8 @@ var YUI_config = {
 var MAAS_config = {
     uris: {
         statics: '{{ STATIC_URL }}',
-        nodes_handler: '{% url "nodes_handler" %}'
+        nodes_handler: '{% url "nodes_handler" %}',
+        account_handler: '{% url "account_handler" %}'
         },
     debug: {% if YUI_DEBUG %}true{% else %}false{% endif %}
 };
@@ -19,4 +20,5 @@ var MAAS_config = {
 </script>
 <script src="{{ STATIC_URL }}js/node_add.js"></script>
 <script src="{{ STATIC_URL }}js/node.js"></script>
+<script src="{{ STATIC_URL }}js/prefs.js"></script>
 <script src="{{ STATIC_URL }}js/node_views.js"></script>

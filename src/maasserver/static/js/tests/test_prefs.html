@@ -1,0 +1,40 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+  <head>
+    <title>Test maas.prefs</title>
+
+    <!-- YUI and test setup -->
+    <script type="text/javascript" src="../yui/tests/yui/yui.js"></script>
+    <script type="text/javascript" src="../testing/testrunner.js"></script>
+    <script type="text/javascript" src="../testing/testing.js"></script>
+    <!-- The module under test -->
+    <script type="text/javascript" src="../prefs.js"></script>
+    <!-- The test suite -->
+    <script type="text/javascript" src="test_prefs.js"></script>
+    <script type="text/javascript">
+    <!--
+    var MAAS_config = {
+      uris: {
+        statics: '/static/',
+        account_handler: '/api/accounts/prefs/'
+      }
+    };
+    // -->
+    </script>
+  </head>
+  <body>
+  <span id="suite">maas.prefs.tests</span>
+  <script type="text/x-template" id="api-template">
+    <div id="placeholder">
+      <div id="consumer_key">
+      </div>
+      <div id="token_key">
+      </div>
+      <div id="token_secret">
+      </div>
+      <div id="tokens_regeneration_placeholder">
+    </div>
+    </div>
+  </script>
+  </body>
+</html>
