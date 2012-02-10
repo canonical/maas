@@ -39,7 +39,7 @@ AddNodeWidget.ATTRS = {
     }
 };
 
-Y.extend(AddNodeWidget, Y.Overlay, {
+Y.extend(AddNodeWidget, Y.Panel, {
 
     /**
      * Create an input field to add a MAC Address.
@@ -53,6 +53,22 @@ Y.extend(AddNodeWidget, Y.Overlay, {
         var field = Y.Node.create(this.add_macaddress).one('input');
         field.set('id', field.get('id') + form_nb);
         return Y.Node.create('<p />').append(field);
+    },
+    /**
+     * Hide the panel.
+     *
+     * @method hidePanel
+     */
+    hidePanel: function() {
+        var self = this;
+        this.get('boundingBox').transition({
+            duration: 0.5,
+            top: '-400px'
+        },
+        function () {
+            self.hide();
+            self.destroy();
+        });
     },
 
     addMacField: function() {
@@ -92,9 +108,6 @@ Y.extend(AddNodeWidget, Y.Overlay, {
             .addClass('add-mac-form')
             .set('href', '#')
             .set('text', "Add additional MAC address");
-        var addnode_button = Y.Node.create('<button />')
-            .addClass('add-node-button')
-            .set('text', "Add node");
         var operation = Y.Node.create('<input />')
             .set('type', 'hidden')
             .set('name', 'op')
@@ -107,8 +120,7 @@ Y.extend(AddNodeWidget, Y.Overlay, {
             .append(operation)
             .append(Y.Node.create(this.add_macaddress))
             .append(macaddress_add_link)
-            .append(Y.Node.create(this.add_node))
-            .append(addnode_button);
+            .append(Y.Node.create(this.add_node));
         return addnodeform;
     },
 
@@ -123,8 +135,8 @@ Y.extend(AddNodeWidget, Y.Overlay, {
     * @method showSpinner
     */
     showSpinner: function() {
-        var button = this.get('srcNode').one('.add-node-button');
-        button.insert(this.spinnerNode, 'after');
+        var buttons = this.get('srcNode').one('.yui3-widget-button-wrapper');
+        buttons.append(this.spinnerNode);
     },
 
     /**
@@ -140,27 +152,8 @@ Y.extend(AddNodeWidget, Y.Overlay, {
         // Load form snippets.
         this.add_macaddress = Y.one('#add-macaddress').getContent();
         this.add_node = Y.one('#add-node').getContent();
-        // Create overlay's content.
-        var closenode = Y.Node.create('<a />')
-            .set('href', '#')
-            .addClass('overlay-close')
-            .set('text', "Close");
-        this.headernode = Y.Node.create('<div />')
-            .addClass('overlay-header')
-            .set('text', "Add Node")
-            .append(closenode)
-            .append(Y.Node.create('<div />')
-                .addClass('clear'));
-        this.set('headerContent', this.headernode);
+        // Create panel's content.
         this.set('bodyContent', this.createForm());
-        this.set('footerContent', "");
-       // Center overlay.
-        this.set(
-            'align',
-            {points: [
-              Y.WidgetPositionAlign.CC,
-              Y.WidgetPositionAlign.CC]
-            });
        // Prepare spinnerNode.
         this.spinnerNode = Y.Node.create('<img />')
             .set('src', MAAS_config.uris.statics + 'img/spinner.gif');
@@ -169,19 +162,9 @@ Y.extend(AddNodeWidget, Y.Overlay, {
     bindUI: function() {
         var self = this;
         this.get(
-            'headerContent').one('.overlay-close').on('click', function(e) {
-            e.preventDefault();
-            self.destroy();
-        });
-        this.get(
             'bodyContent').one('.add-mac-form').on('click', function(e) {
             e.preventDefault();
             self.addMacField();
-        });
-        this.get(
-            'bodyContent').one('.add-node-button').on('click', function(e) {
-            e.preventDefault();
-            self.sendAddNodeRequest();
         });
     },
 
@@ -199,7 +182,7 @@ Y.extend(AddNodeWidget, Y.Overlay, {
                 start:  Y.bind(self.showSpinner, self),
                 success: function(id, out) {
                     self.addNode(JSON.parse(out.response));
-                    self.destroy();
+                    self.hidePanel();
                 },
                 failure: function(id, out) {
                     if (out.status === 400) {
@@ -264,9 +247,45 @@ module.showAddNodeWidget = function(event) {
     if (destroy) {
         module._add_node_singleton.destroy();
     }
-    module._add_node_singleton = new AddNodeWidget();
-    module._add_node_singleton.render();
+    var cfg = {
+        headerContent: "Add node",
+        buttons: [
+                {
+                    value: 'Add node',
+                    section: 'footer',
+                    action: function (e) {
+                        e.preventDefault();
+                        this.sendAddNodeRequest();
+                    }
+                },
+                {
+                    value: 'Cancel',
+                    section: 'footer',
+                    classNames: 'link-button',
+                    action: function (e) {
+                        e.preventDefault();
+                        this.hidePanel();
+                    }
+                }
+            ],
+        align: {node:'',
+                points: [Y.WidgetPositionAlign.BC, Y.WidgetPositionAlign.TC]},
+        modal: true,
+        zIndex: 2,
+        visible: true,
+        render: true,
+        hideOn: []
+        };
+    module._add_node_singleton = new AddNodeWidget(cfg);
+    module._add_node_singleton.get('boundingBox').transition({
+        duration: 0.5,
+        top: '0px'
+    });
+    /* We need to set the focus late as the widget wants to set the focus on 
+       the bounding box.
+    */
+    module._add_node_singleton.get('boundingBox').one('input[type=text]').focus();
 };
 
-}, '0.1', {'requires': ['io', 'node', 'overlay', 'event', 'event-custom', 'transition']}
+}, '0.1', {'requires': ['io', 'node', 'panel', 'event', 'event-custom', 'transition']}
 );

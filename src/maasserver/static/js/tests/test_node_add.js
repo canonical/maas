@@ -34,18 +34,18 @@ suite.add(new Y.maas.testing.TestCase({
 
     testSingletonReCreation: function() {
         module.showAddNodeWidget();
-        var overlay = module._add_node_singleton;
+        var panel = module._add_node_singleton;
 
         // Make sure that a second call to showAddNodeWidget destroys
         // the old widget and creates a new one.
         var destroyed = false;
-        overlay.on("destroy", function(){
+        panel.on("destroy", function(){
             destroyed = true;
         });
         module.showAddNodeWidget();
         Y.Assert.isTrue(destroyed);
         Y.Assert.isNotNull(module._add_node_singleton);
-        Y.Assert.areNotSame(overlay, namespace._add_node_singleton);
+        Y.Assert.areNotSame(panel, namespace._add_node_singleton);
     }
 
 }));
@@ -61,9 +61,9 @@ suite.add(new Y.maas.testing.TestCase({
         });
         this.mockIO(mockXhr, module);
         module.showAddNodeWidget();
-        var overlay = module._add_node_singleton;
-        overlay.get('srcNode').one('#id_hostname').set('value', 'host');
-        var button = overlay.get('srcNode').one('button');
+        var panel = module._add_node_singleton;
+        panel.get('srcNode').one('#id_hostname').set('value', 'host');
+        var button = panel.get('srcNode').one('.yui3-button');
         button.simulate('click');
         Y.Mock.verify(mockXhr);
     },
@@ -75,9 +75,9 @@ suite.add(new Y.maas.testing.TestCase({
         };
         this.mockIO(mockXhr, module);
         module.showAddNodeWidget();
-        var overlay = module._add_node_singleton;
-        overlay.get('srcNode').one('#id_hostname').set('value', 'host');
-        var button = overlay.get('srcNode').one('button');
+        var panel = module._add_node_singleton;
+        panel.get('srcNode').one('#id_hostname').set('value', 'host');
+        var button = panel.get('srcNode').one('.yui3-button');
 
         var fired = false;
         this.registerListener(

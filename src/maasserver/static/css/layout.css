@@ -17,6 +17,7 @@
 #header-wrapper {
     /* Need to set relative so the box shadow appears over content divs */
     position: relative;
+    z-index: 3;
     min-height: 64px;
     background-color: #dd4814;
     -webkit-box-shadow: 0 2px 4px 0 rgba(0,0,0,0.2);

@@ -7,15 +7,27 @@
     clear: both;
     }
 
-.yui3-overlay {
+/* XXX: move this yui stuff somewhere more sensible */
+.yui3-widget-mask {
+    background-color: #000;
+    opacity: 0.3;
+    }
+.yui3-panel {
     background-color: #FFF;
-    padding: 10px;
-    border: 1px solid #000;
+    padding: 104px 80px 50px 80px;
+    -moz-border-radius: 0 0 6px 6px;
+    -webkit-border-radius: 0 0 6px 6px;
+    border-radius: 0 0 6px 6px;
+    -webkit-box-shadow: 0 0 15px 0 rgba(0,0,0,1);
+    box-shadow: 0 0 15px 0 rgba(0,0,0,1);
     }
-.overlay {
+.yui3-widget-hd {
+    margin-bottom: 30px;
+    font-size: 24px;
     }
-.overlay-close {
-    float: right;
+.yui3-widget-ft {
+    margin-top: 30px;
     }
-.overlay-header {
+.yui3-panel .yui3-button {
+    margin-right: 20px;
     }
