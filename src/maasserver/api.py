@@ -16,13 +16,9 @@ __all__ = [
     "NodeMacsHandler",
     ]
 
-from functools import wraps
 import types
 
-from django.core.exceptions import (
-    PermissionDenied,
-    ValidationError,
-    )
+from django.core.exceptions import ValidationError
 from django.http import HttpResponseBadRequest
 from django.shortcuts import (
     get_object_or_404,
@@ -57,34 +53,6 @@ class MaasAPIAuthentication(OAuthAuthentication):
 
     def challenge(self):
         return rc.FORBIDDEN
-
-
-def validate_and_save(obj):
-    try:
-        obj.full_clean()
-        obj.save()
-        return obj
-    except ValidationError, e:
-        return HttpResponseBadRequest(
-            e.message_dict, content_type='application/json')
-
-
-def validate_mac_address(mac_address):
-    try:
-        validate_mac(mac_address)
-        return True, None
-    except ValidationError:
-        return False, HttpResponseBadRequest('Invalid MAC Address.')
-
-
-def perm_denied_handler(view_func):
-    def _decorator(request, *args, **kwargs):
-        try:
-            response = view_func(request, *args, **kwargs)
-            return response
-        except PermissionDenied:
-            return rc.FORBIDDEN
-    return wraps(view_func)(_decorator)
 
 
 dispatch_methods = {
@@ -216,22 +184,21 @@ class NodeHandler(BaseHandler):
     model = Node
     fields = ('system_id', 'hostname', ('macaddress_set', ('mac_address',)))
 
-    @perm_denied_handler
     def read(self, request, system_id):
         """Read a specific Node."""
         return Node.objects.get_visible_node_or_404(
             system_id=system_id, user=request.user)
 
-    @perm_denied_handler
     def update(self, request, system_id):
         """Update a specific Node."""
         node = Node.objects.get_visible_node_or_404(
             system_id=system_id, user=request.user)
         for key, value in request.data.items():
             setattr(node, key, value)
-        return validate_and_save(node)
+        node.full_clean()
+        node.save()
+        return node
 
-    @perm_denied_handler
     def delete(self, request, system_id):
         """Delete a specific Node."""
         node = Node.objects.get_visible_node_or_404(
@@ -290,7 +257,6 @@ class NodeMacsHandler(BaseHandler):
     """
     allowed_methods = ('GET', 'POST',)
 
-    @perm_denied_handler
     def read(self, request, system_id):
         """Read all MAC Addresses related to a Node."""
         node = Node.objects.get_visible_node_or_404(
@@ -319,25 +285,18 @@ class NodeMacHandler(BaseHandler):
     fields = ('mac_address',)
     model = MACAddress
 
-    @perm_denied_handler
     def read(self, request, system_id, mac_address):
         """Read a MAC Address related to a Node."""
         node = Node.objects.get_visible_node_or_404(
             user=request.user, system_id=system_id)
 
-        valid, response = validate_mac_address(mac_address)
-        if not valid:
-            return response
+        validate_mac(mac_address)
         return get_object_or_404(
             MACAddress, node=node, mac_address=mac_address)
 
-    @perm_denied_handler
     def delete(self, request, system_id, mac_address):
         """Delete a specific MAC Address for the specified Node."""
-        valid, response = validate_mac_address(mac_address)
-        if not valid:
-            return response
-
+        validate_mac(mac_address)
         node = Node.objects.get_visible_node_or_404(
             user=request.user, system_id=system_id)
 

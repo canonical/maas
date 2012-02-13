@@ -15,10 +15,8 @@ import os
 import shutil
 
 from django.conf import settings
-from django.core.exceptions import (
-    PermissionDenied,
-    ValidationError,
-    )
+from django.core.exceptions import ValidationError
+from maasserver.exceptions import PermissionDenied
 from maasserver.models import (
     GENERIC_CONSUMER,
     MACAddress,

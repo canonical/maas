@@ -23,11 +23,11 @@ from uuid import uuid1
 from django.contrib import admin
 from django.contrib.auth.backends import ModelBackend
 from django.contrib.auth.models import User
-from django.core.exceptions import PermissionDenied
 from django.core.files.base import ContentFile
 from django.db import models
 from django.db.models.signals import post_save
 from django.shortcuts import get_object_or_404
+from maasserver.exceptions import PermissionDenied
 from maasserver.macaddress import MACAddressField
 from piston.models import (
     Consumer,
@@ -166,14 +166,11 @@ class NodeManager(models.Manager):
         :param user: The user that should be used in the permission check.
         :type user: django.contrib.auth.models.User
         :raises: django.http.Http404_,
-            django.core.exceptions.PermissionDenied_.
+            maasserver.exceptions.PermissionDenied_.
 
         .. _django.http.Http404: https://
            docs.djangoproject.com/en/dev/topics/http/views/
            #the-http404-exception
-        .. _django.core.exceptions.PermissionDenied: https://
-           docs.djangoproject.com/en/dev/ref/exceptions/
-           #django.core.exceptions.PermissionDenied
         """
         node = get_object_or_404(Node, system_id=system_id)
         if user.has_perm('access', node):

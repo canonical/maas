@@ -179,8 +179,14 @@ class TestNodeAPI(APITestCase):
         response = self.client.put(
             '/api/nodes/%s/' % node.system_id,
             {'hostname': 'too long' * 100})
+        parsed_result = json.loads(response.content)
 
         self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+        self.assertEqual(
+            {u'hostname':
+                [u'Ensure this value has at most 255 characters '
+                  '(it has 800).']},
+            parsed_result)
 
     def test_PUT_refuses_to_update_invisible_node(self):
         # The request to update a single node is denied if the node isn't
