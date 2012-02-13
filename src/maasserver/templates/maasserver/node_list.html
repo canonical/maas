@@ -25,18 +25,23 @@
     <table>
       <thead>
         <tr>
-          <td>System ID</td>
-          <td>Hostname</td>
-          <td>MAC</td>
-          <td>Status</td>
+          <th>System ID</th>
+          <th>Hostname</th>
+          <th>MAC</th>
+          <th>Status</th>
         </tr>
       </thead>
       {% for node in node_list %}
-        <tr class="node">
-        <td class="node-system_id">{{ node.system_id }}</td>
-        <td>{{ node.hostname }}</td>
-        <td>{{ node.mac_address_set }}</td>
-        <td>{{ node.display_status }}</td>
+        <tr class="node {% cycle 'even' 'odd' %}">
+          <td class="node-system_id">{{ node.system_id }}</td>
+          <td>{{ node.hostname }}</td>
+          <td>
+            {{ node.macaddress_set.reverse|first }}
+            {% if node.macaddress_set.count > 1 %}
+            ,… ({{ node.macaddress_set.count|add:"-1" }} more MAC Address(es))
+            {% endif %}
+          </td>
+          <td>{{ node.display_status }}</td>
         </tr>
       {% endfor %}
     </table>

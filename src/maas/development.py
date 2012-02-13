@@ -18,6 +18,9 @@ from maas.settings import *
 # cluster is running in the branch.
 TEST_RUNNER = 'maastesting.runner.TestRunner'
 
+# Invalid strings should be visible.
+TEMPLATE_STRING_IF_INVALID = '#### INVALID STRING ####'
+
 # Location where python-oops should store errors.
 OOPS_REPOSITORY = 'logs'
 

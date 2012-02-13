@@ -6,7 +6,9 @@
 .clear {
     clear: both;
     }
-
+table {
+    width: 100%;
+    }
 /* XXX: move this yui stuff somewhere more sensible */
 .yui3-widget-mask {
     background-color: #000;
