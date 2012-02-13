@@ -11,7 +11,9 @@ from __future__ import (
 __metaclass__ = type
 __all__ = [
     "MaasException",
+    "MaasAPIBadRequest",
     "MaasAPIException",
+    "MaasAPINotFound",
     "PermissionDenied",
     ]
 
@@ -31,6 +33,14 @@ class MaasAPIException(Exception):
 
     """
     api_error = httplib.INTERNAL_SERVER_ERROR
+
+
+class MaasAPIBadRequest(MaasAPIException):
+    api_error = httplib.BAD_REQUEST
+
+
+class MaasAPINotFound(MaasAPIException):
+    api_error = httplib.NOT_FOUND
 
 
 class PermissionDenied(MaasAPIException):

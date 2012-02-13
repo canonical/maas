@@ -12,24 +12,37 @@ __metaclass__ = type
 __all__ = [
     "api_doc",
     "generate_api_doc",
+    "FilesHandler",
     "NodeHandler",
     "NodeMacsHandler",
     ]
 
+import httplib
 import types
 
-from django.core.exceptions import ValidationError
-from django.http import HttpResponseBadRequest
+from django.core.exceptions import (
+    ObjectDoesNotExist,
+    ValidationError,
+    )
+from django.http import (
+    HttpResponse,
+    HttpResponseBadRequest,
+    )
 from django.shortcuts import (
     get_object_or_404,
     render_to_response,
     )
 from django.template import RequestContext
 from docutils import core
-from maasserver.exceptions import NodesNotAvailable
+from maasserver.exceptions import (
+    MaasAPIBadRequest,
+    MaasAPINotFound,
+    NodesNotAvailable,
+    )
 from maasserver.forms import NodeWithMACAddressesForm
 from maasserver.macaddress import validate_mac
 from maasserver.models import (
+    FileStorage,
     MACAddress,
     Node,
     )
@@ -326,6 +339,59 @@ class NodeMacHandler(BaseHandler):
 
 
 @api_operations
+class FilesHandler(BaseHandler):
+    """File management operations."""
+    allowed_methods = ('GET', 'POST',)
+
+    @api_exported('get', 'GET')
+    def get(self, request):
+        """Get a named file from the file storage.
+
+        :param filename: The exact name of the file you want to get.
+        :type filename: string
+        :return: The file is returned in the response content.
+        """
+        filename = request.GET.get("filename", None)
+        if not filename:
+            raise MaasAPIBadRequest("Filename not supplied")
+        try:
+            db_file = FileStorage.objects.get(filename=filename)
+        except ObjectDoesNotExist:
+            raise MaasAPINotFound("File not found")
+        return HttpResponse(db_file.data.read(), status=httplib.OK)
+
+    @api_exported('add', 'POST')
+    def add(self, request):
+        """Add a new file to the file storage.
+
+        :param filename: The file name to use in the storage.
+        :type filename: string
+        :param file: Actual file data with content type
+            application/octet-stream
+        """
+        filename = request.data.get("filename", None)
+        if not filename:
+            raise MaasAPIBadRequest("Filename not supplied")
+        files = request.FILES
+        if not files:
+            raise MaasAPIBadRequest("File not supplied")
+        if len(files) != 1:
+            raise MaasAPIBadRequest("Exactly one file must be supplied")
+        uploaded_file = files['file']
+
+        # As per the comment in FileStorage, this ought to deal in
+        # chunks instead of reading the file into memory, but large
+        # files are not expected.
+        storage = FileStorage()
+        storage.save_file(filename, uploaded_file)
+        storage.save()
+        return HttpResponse('', status=httplib.CREATED)
+
+    @classmethod
+    def resource_uri(cls, *args, **kwargs):
+        return ('files_handler', [])
+
+
 class AccountHandler(BaseHandler):
     """Manage the current logged-in user."""
     allowed_methods = ('POST',)
@@ -350,6 +416,7 @@ class AccountHandler(BaseHandler):
 
 def generate_api_doc(add_title=False):
     docs = (
+        generate_doc(FilesHandler),
         generate_doc(NodesHandler),
         generate_doc(NodeHandler),
         generate_doc(NodeMacsHandler),

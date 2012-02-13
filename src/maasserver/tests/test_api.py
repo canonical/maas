@@ -13,8 +13,11 @@ __all__ = []
 
 import httplib
 import json
+import os
+import shutil
 import time
 
+from django.conf import settings
 from django.test.client import Client
 from maasserver.models import (
     MACAddress,
@@ -540,3 +543,108 @@ class MACAddressAPITest(APITestCase):
                 self.node.system_id, 'invalid-mac'))
 
         self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+
+
+class FileStorageAPITest(APITestCase):
+
+    def setUp(self):
+        super(FileStorageAPITest, self).setUp()
+        os.mkdir(settings.MEDIA_ROOT)
+        self.tmpdir = os.path.join(settings.MEDIA_ROOT, "testing")
+        os.mkdir(self.tmpdir)
+        self.addCleanup(shutil.rmtree, settings.MEDIA_ROOT)
+
+    def make_file(self, name="foo", contents="test file contents"):
+        """Make a temp file named `name` with contents `contents`.
+
+        :return: The full file path of the file that was created.
+        """
+        filepath = os.path.join(self.tmpdir, name)
+        with open(filepath, "w") as f:
+            f.write(contents)
+        return filepath
+
+    def _create_API_params(self, op=None, filename=None, fileObj=None):
+        params = {}
+        if op is not None:
+            params["op"] = op
+        if filename is not None:
+            params["filename"] = filename
+        if fileObj is not None:
+            params["file"] = fileObj
+        return params
+
+    def make_API_POST_request(self, op=None, filename=None, fileObj=None):
+        """Make an API POST request and return the response."""
+        params = self._create_API_params(op, filename, fileObj)
+        return self.client.post("/api/files/", params)
+
+    def make_API_GET_request(self, op=None, filename=None, fileObj=None):
+        """Make an API GET request and return the response."""
+        params = self._create_API_params(op, filename, fileObj)
+        return self.client.get("/api/files/", params)
+
+    def test_add_file_succeeds(self):
+        filepath = self.make_file()
+
+        with open(filepath) as f:
+            response = self.make_API_POST_request("add", "foo", f)
+
+        self.assertEqual(httplib.CREATED, response.status_code)
+
+    def test_add_file_fails_with_no_filename(self):
+        filepath = self.make_file()
+
+        with open(filepath) as f:
+            response = self.make_API_POST_request("add", fileObj=f)
+
+        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+        self.assertIn('text/plain', response['Content-Type'])
+        self.assertEqual("Filename not supplied", response.content)
+
+    def test_add_file_fails_with_no_file_attached(self):
+        response = self.make_API_POST_request("add", "foo")
+
+        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+        self.assertIn('text/plain', response['Content-Type'])
+        self.assertEqual("File not supplied", response.content)
+
+    def test_add_file_fails_with_too_many_files(self):
+        filepath = self.make_file(name="foo")
+        filepath2 = self.make_file(name="foo2")
+
+        with open(filepath) as f, open(filepath2) as f2:
+            response = self.client.post(
+                "/api/files/",
+                {
+                    "op": "add",
+                    "filename": "foo",
+                    "file": f,
+                    "file2": f2,
+                })
+
+        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+        self.assertIn('text/plain', response['Content-Type'])
+        self.assertEqual("Exactly one file must be supplied", response.content)
+
+    def test_get_file_succeeds(self):
+        storage = factory.make_file_storage(
+            filename="foofilers", data=b"give me rope")
+        response = self.make_API_GET_request("get", "foofilers")
+
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(b"give me rope", response.content)
+
+    def test_get_file_fails_with_no_filename(self):
+        response = self.make_API_GET_request("get")
+
+        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+        self.assertIn('text/plain', response['Content-Type'])
+        self.assertEqual("Filename not supplied", response.content)
+
+    def test_get_file_fails_with_missing_file(self):
+        response = self.make_API_GET_request("get", filename="missingfilename")
+
+        self.assertEqual(httplib.NOT_FOUND, response.status_code)
+        self.assertIn('text/plain', response['Content-Type'])
+        self.assertEqual("File not found", response.content)
