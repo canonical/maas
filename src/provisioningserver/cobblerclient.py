@@ -30,6 +30,7 @@ __all__ = [
     'DEFAULT_TIMEOUT',
     ]
 
+from functools import partial
 import xmlrpclib
 
 from twisted.internet import reactor as default_reactor
@@ -280,6 +281,9 @@ class CobblerObjectType(type):
         if "required_attributes" in attributes:
             attributes["required_attributes"] = frozenset(
                 attributes["required_attributes"])
+        if "modification_attributes" in attributes:
+            attributes["modification_attributes"] = frozenset(
+                attributes["modification_attributes"])
         return super(CobblerObjectType, mtype).__new__(
             mtype, name, bases, attributes)
 
@@ -311,6 +315,11 @@ class CobblerObject:
     # What attributes does Cobbler require for this type of object?
     required_attributes = []
 
+    # What attributes do we expect to support for modifications to this
+    # object? Cobbler's API accepts some pseudo-attributes, only valid for
+    # making modifications.
+    modification_attributes = []
+
     def __init__(self, session, name):
         """Reference an object in Cobbler.
 
@@ -341,30 +350,36 @@ class CobblerObject:
         return name_template % type_name
 
     @classmethod
-    def _normalize_attribute(cls, attribute_name):
+    def _normalize_attribute(cls, attribute_name, attributes=None):
         """Normalize an attribute name.
 
         Cobbler mixes dashes and underscores in attribute names.  MaaS may
         pass attributes as keyword arguments internally, where dashes are not
         an option.  Hide the distinction by looking up the proper name in
-        `known_attributes`.
+        `known_attributes` by default, but `attributes` can be passed to
+        override that.
 
         :param attribute_name: An attribute name, possibly using underscores
             where Cobbler expects dashes.
+        :param attributes: None, or a set of attributes against which to
+            match.
         :return: A Cobbler-style attribute name, using either dashes or
             underscores as used by Cobbler.
         """
-        if attribute_name in cls.known_attributes:
+        if attributes is None:
+            attributes = cls.known_attributes
+
+        if attribute_name in attributes:
             # Already spelled the way Cobbler likes it.
             return attribute_name
 
         attribute_name = attribute_name.replace('_', '-')
-        if attribute_name in cls.known_attributes:
+        if attribute_name in attributes:
             # Cobbler wants this one with dashes.
             return attribute_name
 
         attribute_name = attribute_name.replace('-', '_')
-        assert attribute_name in cls.known_attributes, (
+        assert attribute_name in attributes, (
             "Unknown attribute for %s: %s."
             % (cls.object_type, attribute_name))
         return attribute_name
@@ -467,6 +482,28 @@ class CobblerObject:
         returnValue(cls(session, name))
 
     @inlineCallbacks
+    def modify(self, delta):
+        """Modify an object in Cobbler.
+
+        :param name: Identifying name for the existing object.
+        :param attributes: Dict mapping attribute names to values.
+        """
+        normalize = partial(
+            self._normalize_attribute,
+            attributes=self.modification_attributes)
+        args = {
+            normalize(key): value
+            for key, value in delta.iteritems()
+            }
+        success = yield self.session.call(
+            'xapi_object_edit', self.object_type, self.name, 'edit', args,
+            self.session.token_placeholder)
+        if not success:
+            raise RuntimeError(
+                "Cobbler refused to modify %s '%s'.  Attributes: %s"
+                % (self.object_type, self.name, args))
+
+    @inlineCallbacks
     def delete(self, recurse=True):
         """Delete this object.  Its name must be known.
 
@@ -566,6 +603,10 @@ class CobblerDistro(CobblerObject):
         'initrd',
         'kernel',
         'name',
+        ]
+    modification_attributes = [
+        'initrd',
+        'kernel',
         ]
 
 

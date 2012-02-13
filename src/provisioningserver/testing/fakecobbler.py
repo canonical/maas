@@ -327,6 +327,11 @@ class FakeCobbler:
             obj_dict.update(attrs)
             obj_dict['name'] = name
             return self._api_save_object(token, object_type, handle)
+        elif operation == 'edit':
+            handle = self._api_get_handle(token, object_type, name)
+            for key, value in attrs.iteritems():
+                self._api_modify_object(token, object_type, handle, key, value)
+            return self._api_save_object(token, object_type, handle)
         else:
             raise NotImplemented(
                 "xapi_object_edit(%s, ..., %s, ...)"

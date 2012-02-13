@@ -399,6 +399,26 @@ class TestCobblerObject(TestCase):
                 session, 'incomplete_system', {})
 
     @inlineCallbacks
+    def test_modify(self):
+        session = make_recording_session()
+        session.proxy.set_return_values([True])
+        distro = cobblerclient.CobblerDistro(session, "fred")
+        yield distro.modify({"kernel": "sanders"})
+        expected_call = (
+            "xapi_object_edit", "distro", distro.name, "edit",
+            {"kernel": "sanders"}, session.token)
+        self.assertEqual([expected_call], session.proxy.calls)
+
+    @inlineCallbacks
+    def test_modify_only_permits_certain_attributes(self):
+        session = make_recording_session()
+        distro = cobblerclient.CobblerDistro(session, "fred")
+        expected = ExpectedException(
+            AssertionError, "Unknown attribute for distro: machine")
+        with expected:
+            yield distro.modify({"machine": "head"})
+
+    @inlineCallbacks
     def test_get_values_returns_only_known_attributes(self):
         session = make_recording_session()
         # Create a new CobblerDistro. The True return value means the faked
@@ -466,4 +486,13 @@ class TestCobblerObject(TestCase):
             frozenset)
         self.assertIsInstance(
             cobblerclient.CobblerDistro.required_attributes,
+            frozenset)
+
+    def test_modification_attributes(self):
+        # modification_attributes, a class attribute, is always a frozenset.
+        self.assertIsInstance(
+            cobblerclient.CobblerObject.modification_attributes,
+            frozenset)
+        self.assertIsInstance(
+            cobblerclient.CobblerDistro.modification_attributes,
             frozenset)

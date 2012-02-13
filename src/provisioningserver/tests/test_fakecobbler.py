@@ -207,6 +207,15 @@ class CobblerObjectTestScenario:
             AssertionError,
             self.cobbler_class._normalize_attribute, 'some-unknown-attribute')
 
+    def test_normalize_attribute_alternative_attributes(self):
+        # _normalize_attribute() can be passed a different set of attributes
+        # against which to normalize.
+        allowed_attributes = set(["some-unknown-attribute"])
+        self.assertEqual(
+            'some-unknown-attribute',
+            self.cobbler_class._normalize_attribute(
+                'some-unknown-attribute', allowed_attributes))
+
     @inlineCallbacks
     def test_create_object(self):
         session = yield fake_cobbler_session()
