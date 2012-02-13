@@ -11,6 +11,7 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
+import codecs
 import os
 import shutil
 
@@ -234,7 +235,7 @@ class FileStorageTest(TestCase):
         self.addCleanup(shutil.rmtree, self.FILEPATH)
 
     def test_creation(self):
-        storage = factory.make_file_storage(filename="myfile", data="mydata")
+        storage = factory.make_file_storage(filename="myfile", data=b"mydata")
         expected = ["myfile", "mydata"]
         actual = [storage.filename, storage.data.read()]
         self.assertEqual(expected, actual)
@@ -243,10 +244,22 @@ class FileStorageTest(TestCase):
         # The development settings say to write a file starting at
         # /var/tmp/maas, so check one is actually written there.  The field
         # itself is hard-coded to make a directory called "storage".
-        factory.make_file_storage(filename="myfile", data="mydata")
+        factory.make_file_storage(filename="myfile", data=b"mydata")
 
         expected_filename = os.path.join(
             self.FILEPATH, "storage", "myfile")
 
         with open(expected_filename) as f:
             self.assertEqual("mydata", f.read())
+
+    def test_stores_binary_data(self):
+        # This horrible binary data could never, ever, under any
+        # encoding known to man be intepreted as text.  Switch the bytes
+        # of the byte-order mark around and by design you get an invalid
+        # codepoint; put a byte with the high bit set between bytes that
+        # have it cleared, and you have a guaranteed non-UTF-8 sequence.
+        binary_data = codecs.BOM64_LE + codecs.BOM64_BE + b'\x00\xff\x00'
+        # And yet, because FileStorage supports binary data, it comes
+        # out intact.
+        storage = factory.make_file_storage(filename="x", data=binary_data)
+        self.assertEqual(binary_data, storage.data.read())
