@@ -20,6 +20,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.urlresolvers import reverse
 from django.http import (
+    HttpResponse,
     HttpResponseBadRequest,
     HttpResponseRedirect,
     )
@@ -27,7 +28,7 @@ from django.utils.http import urlquote_plus
 from maasserver.exceptions import MaasAPIException
 
 
-class AccessMiddleware(object):
+class AccessMiddleware:
     """Protect access to views.
 
     Most UI views are visible only to logged-in users, but there are pages
@@ -67,31 +68,46 @@ class AccessMiddleware(object):
                 return None
 
 
-class APIErrorsMiddleware(object):
-    """Convert exceptions raised in the API into a proper API error.
+class APIErrorsMiddleware:
+    """This middleware_ converts exceptions raised in execution of an API
+    method into proper API errors (like "404 Not Found" errors or
+    "400 Bad Request" errors).
 
-    - Convert MaasAPIException instances into the corresponding error.
-    - Convert ValidationError into Bad Request.
+    .. middleware: https://docs.djangoproject.com
+       /en/dev/topics/http/middleware/
+
+    - Convert MaasAPIException instances into the corresponding error
+      (see maasserver.exceptions).
+    - Convert ValidationError instances into Bad Request error.
     """
     def __init__(self):
         self.api_regexp = re.compile(settings.API_URL_REGEXP)
 
     def process_exception(self, request, exception):
-        if self.api_regexp.match(request.path):
-            # The exception was raised in an API call.
-            if isinstance(exception, MaasAPIException):
-                # The exception is a MaasAPIException: exception.api_error
-                # will give us the proper error type.
-                response = exception.api_error
-                response.write(str(exception))
-                return response
-            if isinstance(exception, ValidationError):
-                if hasattr(exception, 'message_dict'):
-                    # Complex validation error with multiple fields:
-                    # return a json version of the message_dict.
-                    return HttpResponseBadRequest(
-                        json.dumps(exception.message_dict),
-                        content_type='application/json')
-                else:
-                    # Simple validation error: return the error message.
-                    return HttpResponseBadRequest(str(exception))
+        if not self.api_regexp.match(request.path):
+            # The exception was *not* raised in an API call.
+            return None
+
+        if isinstance(exception, MaasAPIException):
+            # The exception is a MaasAPIException: exception.api_error
+            # will give us the proper error type.
+            return HttpResponse(
+                content=unicode(exception).encode('utf-8'),
+                status=exception.api_error,
+                mimetype="text/plain; charset=utf-8")
+        elif isinstance(exception, ValidationError):
+            if hasattr(exception, 'message_dict'):
+                # Complex validation error with multiple fields:
+                # return a json version of the message_dict.
+                return HttpResponseBadRequest(
+                    json.dumps(exception.message_dict),
+                    content_type='application/json')
+            else:
+                # Simple validation error: return the error message.
+                return HttpResponseBadRequest(
+                    unicode(''.join(exception.messages)).encode('utf-8'),
+                    mimetype="text/plain; charset=utf-8")
+        else:
+            # Do not handle the exception, this will result in a
+            # "Internal Server Error" response.
+            return None
