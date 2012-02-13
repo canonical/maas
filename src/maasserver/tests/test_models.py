@@ -22,6 +22,7 @@ from maasserver.models import (
     MACAddress,
     Node,
     NODE_STATUS,
+    NODE_STATUS_CHOICES_DICT,
     UserProfile,
     )
 from maasserver.testing.factory import factory
@@ -62,6 +63,13 @@ class NodeTest(TestCase):
         macs = MACAddress.objects.filter(
             node=node, mac_address='AA:BB:CC:DD:EE:FF').count()
         self.assertEqual(0, macs)
+
+    def test_acquire(self):
+        node = factory.make_node(status=NODE_STATUS.COMMISSIONED)
+        user = factory.make_user()
+        node.acquire(user)
+        self.assertEqual(user, node.owner)
+        self.assertEqual(NODE_STATUS.DEPLOYED, node.status)
 
 
 class NodeManagerTest(TestCase):
@@ -134,6 +142,35 @@ class NodeManagerTest(TestCase):
             PermissionDenied,
             Node.objects.get_visible_node_or_404,
             user_node.system_id, factory.make_user())
+
+    def test_get_available_node_for_acquisition_finds_available_node(self):
+        user = factory.make_user()
+        node = self.make_node(None)
+        self.assertEqual(
+            node, Node.objects.get_available_node_for_acquisition(user))
+
+    def test_get_available_node_for_acquisition_returns_none_if_empty(self):
+        user = factory.make_user()
+        self.assertEqual(
+            None, Node.objects.get_available_node_for_acquisition(user))
+
+    def test_get_available_node_for_acquisition_ignores_taken_nodes(self):
+        user = factory.make_user()
+        available_status = NODE_STATUS.COMMISSIONED
+        unavailable_statuses = (
+            set(NODE_STATUS_CHOICES_DICT.keys()) - set([available_status]))
+        for status in unavailable_statuses:
+            factory.make_node(status=status)
+        self.assertEqual(
+            None, Node.objects.get_available_node_for_acquisition(user))
+
+    def test_get_available_node_for_acquisition_ignores_invisible_nodes(self):
+        user = factory.make_user()
+        node = self.make_node()
+        node.owner = factory.make_user()
+        node.save()
+        self.assertEqual(
+            None, Node.objects.get_available_node_for_acquisition(user))
 
 
 class MACAddressTest(TestCase):

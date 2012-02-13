@@ -178,6 +178,21 @@ class NodeManager(models.Manager):
         else:
             raise PermissionDenied
 
+    def get_available_node_for_acquisition(self, for_user):
+        """Find a `Node` to be acquired by the given user.
+
+        :param for_user: The user who is to acquire the node.
+        :return: A `Node`, or None if none are available.
+        """
+        available_nodes = (
+            self.get_visible_nodes(for_user)
+                .filter(status=NODE_STATUS.COMMISSIONED))
+        available_nodes = list(available_nodes[:1])
+        if len(available_nodes) == 0:
+            return None
+        else:
+            return available_nodes[0]
+
 
 class Node(CommonInfo):
     """A `Node` represents a physical machine used by the MaaS Server.
@@ -251,6 +266,13 @@ class Node(CommonInfo):
         mac = MACAddress.objects.get(mac_address=mac_address, node=self)
         if mac:
             mac.delete()
+
+    def acquire(self, by_user):
+        """Mark commissioned node as acquired by the given user."""
+        assert self.status == NODE_STATUS.COMMISSIONED
+        assert self.owner is None
+        self.status = NODE_STATUS.DEPLOYED
+        self.owner = by_user
 
 
 mac_re = re.compile(r'^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$')

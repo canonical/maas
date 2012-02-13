@@ -26,6 +26,7 @@ from django.shortcuts import (
     )
 from django.template import RequestContext
 from docutils import core
+from maasserver.exceptions import NodesNotAvailable
 from maasserver.forms import NodeWithMACAddressesForm
 from maasserver.macaddress import validate_mac
 from maasserver.models import (
@@ -243,6 +244,16 @@ class NodesHandler(BaseHandler):
         else:
             return HttpResponseBadRequest(
                 form.errors, content_type='application/json')
+
+    @api_exported('acquire', 'POST')
+    def acquire(self, request):
+        """Acquire an available node for deployment."""
+        node = Node.objects.get_available_node_for_acquisition(request.user)
+        if node is None:
+            raise NodesNotAvailable("No node is available.")
+        node.acquire(request.user)
+        node.save()
+        return node
 
     @classmethod
     def resource_uri(cls, *args, **kwargs):
