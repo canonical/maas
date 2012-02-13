@@ -58,10 +58,17 @@ def provision_post_save_Node(sender, instance, created, **kwargs):
     papi.add_node(instance.system_id, profile)
 
 
+def set_node_mac_addresses(node):
+    """Update the Node's MAC addresses in the provisioning server."""
+    mac_addresses = [mac.mac_address for mac in node.macaddress_set.all()]
+    deltas = {node.system_id: {"mac_addresses": mac_addresses}}
+    get_provisioning_api_proxy().modify_nodes(deltas)
+
+
 @receiver(post_save, sender=MACAddress)
 def provision_post_save_MACAddress(sender, instance, created, **kwargs):
     """Create or update MACs in the provisioning server."""
-    # TODO
+    set_node_mac_addresses(instance.node)
 
 
 @receiver(post_delete, sender=Node)
@@ -74,4 +81,4 @@ def provision_post_delete_Node(sender, instance, **kwargs):
 @receiver(post_delete, sender=MACAddress)
 def provision_post_delete_MACAddress(sender, instance, **kwargs):
     """Delete MACs in the provisioning server."""
-    # TODO
+    set_node_mac_addresses(instance.node)

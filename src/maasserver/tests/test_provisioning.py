@@ -14,6 +14,7 @@ __all__ = []
 from fixtures import MonkeyPatch
 from maasserver import provisioning
 from maasserver.models import Node
+from maasserver.testing.factory import factory
 from maastesting import TestCase
 from provisioningserver.testing.fakeapi import FakeSynchronousProvisioningAPI
 
@@ -27,7 +28,7 @@ class ProvisioningTests:
     def test_provision_post_save_Node_create(self):
         # Creating and saving a node automatically creates a dummy distro and
         # profile too, and associates it with the new node.
-        node_model = Node(system_id="frank")
+        node_model = factory.make_node(system_id="frank")
         provisioning.provision_post_save_Node(
             sender=Node, instance=node_model, created=True)
         nodes = self.papi.get_nodes_by_name(["frank"])
@@ -41,10 +42,18 @@ class ProvisioningTests:
         distros = self.papi.get_distros_by_name([distro_name])
         self.assertEqual([distro_name], sorted(distros))
 
+    def test_provision_post_save_MACAddress_create(self):
+        # Creating and saving a MACAddress updates the Node with which it's
+        # associated.
+        node_model = factory.make_node(system_id="frank")
+        node_model.add_mac_address("12:34:56:78:90:12")
+        node = self.papi.get_nodes_by_name(["frank"])["frank"]
+        self.assertEqual(["12:34:56:78:90:12"], node["mac_addresses"])
+
     def test_provision_post_save_Node_update(self):
         # Saving an existing node does not change the profile or distro
         # associated with it.
-        node_model = Node(system_id="frank")
+        node_model = factory.make_node(system_id="frank")
         provisioning.provision_post_save_Node(
             sender=Node, instance=node_model, created=True)
         # Record the current profile name.
@@ -58,8 +67,18 @@ class ProvisioningTests:
         profile_name2 = node["profile"]
         self.assertEqual(profile_name1, profile_name2)
 
+    def test_provision_post_save_MACAddress_update(self):
+        # Saving an existing MACAddress updates the Node with which it's
+        # associated.
+        node_model = factory.make_node(system_id="frank")
+        mac_model = node_model.add_mac_address("12:34:56:78:90:12")
+        mac_model.mac_address = "11:22:33:44:55:66"
+        mac_model.save()
+        node = self.papi.get_nodes_by_name(["frank"])["frank"]
+        self.assertEqual(["11:22:33:44:55:66"], node["mac_addresses"])
+
     def test_provision_post_delete_Node(self):
-        node_model = Node(system_id="frank")
+        node_model = factory.make_node(system_id="frank")
         provisioning.provision_post_save_Node(
             sender=Node, instance=node_model, created=True)
         provisioning.provision_post_delete_Node(
@@ -68,6 +87,14 @@ class ProvisioningTests:
         self.assertNotEqual({}, self.papi.get_distros())
         self.assertNotEqual({}, self.papi.get_profiles())
         self.assertEqual({}, self.papi.get_nodes_by_name(["frank"]))
+
+    def test_provision_post_delete_MACAddress(self):
+        # Deleting a MACAddress updates the Node with which it's associated.
+        node_model = factory.make_node(system_id="frank")
+        node_model.add_mac_address("12:34:56:78:90:12")
+        node_model.remove_mac_address("12:34:56:78:90:12")
+        node = self.papi.get_nodes_by_name(["frank"])["frank"]
+        self.assertEqual([], node["mac_addresses"])
 
 
 def patch_in_fake_papi(test):
