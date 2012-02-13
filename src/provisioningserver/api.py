@@ -117,6 +117,21 @@ class ProvisioningAPI:
         returnValue(system.name)
 
     @inlineCallbacks
+    def modify_distros(self, deltas):
+        for name, delta in deltas.iteritems():
+            yield CobblerDistro(self.session, name).modify(delta)
+
+    @inlineCallbacks
+    def modify_profiles(self, deltas):
+        for name, delta in deltas.iteritems():
+            yield CobblerProfile(self.session, name).modify(delta)
+
+    @inlineCallbacks
+    def modify_nodes(self, deltas):
+        for name, delta in deltas.iteritems():
+            yield CobblerSystem(self.session, name).modify(delta)
+
+    @inlineCallbacks
     def get_objects_by_name(self, object_type, names):
         """Get `object_type` objects by name.
 

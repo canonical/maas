@@ -548,6 +548,9 @@ class CobblerProfile(CobblerObject):
         'name',
         'distro',
         ]
+    modification_attributes = [
+        'distro',
+        ]
 
 
 class CobblerImage(CobblerObject):
@@ -678,6 +681,9 @@ class CobblerSystem(CobblerObject):
         ]
     required_attributes = [
         'name',
+        'profile',
+        ]
+    modification_attributes = [
         'profile',
         ]
 

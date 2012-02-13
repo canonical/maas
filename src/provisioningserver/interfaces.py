@@ -39,22 +39,62 @@ class IProvisioningAPI_Template:
     """
 
     def add_distro(name, initrd, kernel):
-        """Add a distro with the given `name`, `initrd`, and `kernel`."""
+        """Add a distro with the given `name`, `initrd`, and `kernel`.
+
+        :return: The name of the new distro.
+        """
 
     def add_profile(name, distro):
-        """Add a profile with the given `name`, and `distro`."""
+        """Add a profile with the given `name`, and `distro`.
+
+        :return: The name of the new profile.
+        """
 
     def add_node(name, profile):
-        """Add a node with the given `name`, and `profile`."""
+        """Add a node with the given `name`, and `profile`.
+
+        :return: The name of the new node.
+        """
+
+    def modify_distros(deltas):
+        """Apply deltas to existing distros.
+
+        :param deltas: A dict, with each key identifying an existing distro by
+            name, and each value being a dict of modifications to apply to it.
+        """
+
+    def modify_profiles(deltas):
+        """Apply deltas to existing profiles.
+
+        :param deltas: A dict, with each key identifying an existing profile
+            by name, and each value being a dict of modifications to apply to
+            it.
+        """
+
+    def modify_nodes(deltas):
+        """Apply deltas to existing nodes.
+
+        :param deltas: A dict, with each key identifying an existing node by
+            name, and each value being a dict of modifications to apply to it.
+        """
 
     def get_distros_by_name(names):
-        """List distros with the given `names`."""
+        """List distros with the given `names`.
+
+        :return: A dict of distro-names -> distro-values.
+        """
 
     def get_profiles_by_name(names):
-        """List profiles with the given `names`."""
+        """List profiles with the given `names`.
+
+        :return: A dict of profile-names -> profile-values.
+        """
 
     def get_nodes_by_name(names):
-        """List nodes with the given `names`."""
+        """List nodes with the given `names`.
+
+        :return: A dict of node-names -> node-values.
+        """
 
     def delete_distros_by_name(names):
         """Delete distros with the given `names`."""
@@ -66,13 +106,22 @@ class IProvisioningAPI_Template:
         """Delete nodes with the given `names`."""
 
     def get_distros():
-        """List all distros."""
+        """List all distros.
+
+        :return: A dict of distro-names -> distro-values.
+        """
 
     def get_profiles():
-        """List all profiles."""
+        """List all profiles.
+
+        :return: A dict of profile-names -> profile-values.
+        """
 
     def get_nodes():
-        """List all nodes."""
+        """List all nodes.
+
+        :return: A dict of node-names -> node-values.
+        """
 
 
 # All public methods defined in IProvisioningAPI_Template.
