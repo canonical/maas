@@ -14,6 +14,7 @@ __all__ = [
     ]
 
 from functools import partial
+from itertools import count
 
 from provisioningserver.cobblerclient import (
     CobblerDistro,
@@ -80,6 +81,71 @@ cobbler_mapping_to_papi_distros = partial(
     postprocess_mapping, function=cobbler_to_papi_distro)
 
 
+def mac_addresses_to_cobbler_deltas(interfaces, mac_addresses):
+    """Generate `modify_system` dicts for use with `xapi_object_edit`.
+
+    This takes `interfaces` - the current state of a system's interfaces - and
+    generates the operations required to transform it into a list of
+    interfaces containing exactly `mac_addresses`.
+
+    :param interfaces: A dict of interface-names -> interface-configurations.
+    :param mac_addresses: A collection of desired MAC addresses.
+    """
+    # For the sake of this calculation, ignore interfaces without MACs
+    # assigned. We may end up setting the MAC on these interfaces, but whether
+    # or not that happens is undefined (for now).
+    interfaces = {
+        name: configuration
+        for name, configuration in interfaces.iteritems()
+        if configuration["mac_address"]
+        }
+
+    interface_names_by_mac_address = {
+        interface["mac_address"]: interface_name
+        for interface_name, interface in interfaces.iteritems()
+        }
+    mac_addresses_to_remove = set(
+        interface_names_by_mac_address).difference(mac_addresses)
+    mac_addresses_to_add = set(
+        mac_addresses).difference(interface_names_by_mac_address)
+
+    # Keep track of the used interface names.
+    interface_names = set(interfaces)
+    # The following generator will lazily return interface names that can be
+    # used when adding MAC addresses.
+    interface_names_unused = (
+        "eth%d" % num for num in count(0)
+        if "eth%d" % num not in interface_names)
+
+    # Create a delta to remove an interface in Cobbler. We sort the MAC
+    # addresses to provide stability in this function's output (which
+    # facilitates testing).
+    for mac_address in sorted(mac_addresses_to_remove):
+        interface_name = interface_names_by_mac_address[mac_address]
+        # Deallocate this interface name from our records; it can be used when
+        # allocating interfaces later.
+        interface_names.remove(interface_name)
+        yield {
+            "interface": interface_name,
+            "delete_interface": True,
+            }
+
+    # Create a delta to add an interface in Cobbler. We sort the MAC addresses
+    # to provide stability in this function's output (which facilitates
+    # testing).
+    for mac_address in sorted(mac_addresses_to_add):
+        interface_name = next(interface_names_unused)
+        # Allocate this interface name in our records; it's not actually
+        # necessary (interface_names_unused will never go backwards) but we do
+        # it defensively in case of later additions to this function, and
+        # because it has a satifying symmetry.
+        interface_names.add(interface_name)
+        yield {
+            "interface": interface_name,
+            "mac_address": mac_address,
+            }
+
+
 class ProvisioningAPI:
 
     implements(IProvisioningAPI)
@@ -129,7 +195,17 @@ class ProvisioningAPI:
     @inlineCallbacks
     def modify_nodes(self, deltas):
         for name, delta in deltas.iteritems():
-            yield CobblerSystem(self.session, name).modify(delta)
+            system = CobblerSystem(self.session, name)
+            if "mac_addresses" in delta:
+                # This needs to be handled carefully.
+                mac_addresses = delta.pop("mac_addresses")
+                system_state = yield system.get_values()
+                interfaces = system_state.get("interfaces", {})
+                interface_modifications = mac_addresses_to_cobbler_deltas(
+                    interfaces, mac_addresses)
+                for interface_modification in interface_modifications:
+                    yield system.modify(interface_modification)
+            yield system.modify(delta)
 
     @inlineCallbacks
     def get_objects_by_name(self, object_type, names):

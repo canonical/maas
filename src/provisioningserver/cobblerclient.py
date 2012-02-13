@@ -650,6 +650,7 @@ class CobblerSystem(CobblerObject):
         'gateway',
         # FQDN:
         'hostname',
+        'interfaces',
         # Space-separated key=value pairs:
         'kernel_options'
         'kickstart',
@@ -658,8 +659,6 @@ class CobblerSystem(CobblerObject):
         # Space-separated key=value pairs for preseed:
         'ks_meta',
         'mgmt_classes',
-        # A special dict; see below.
-        'modify_interface',
         # Unqualified host name:
         'name',
         'name_servers',
@@ -684,13 +683,11 @@ class CobblerSystem(CobblerObject):
         'profile',
         ]
     modification_attributes = [
+        'delete_interface',
+        'interface',  # Required for mac_address and delete_interface.
+        'mac_address',
         'profile',
         ]
-
-    # The modify_interface dict can contain:
-    #  * "macaddress-eth0" etc.
-    #  * "ipaddress-eth0" etc.
-    #  * "dnsname-eth0" etc.
 
     @classmethod
     def _callPowerMultiple(cls, session, operation, system_names):
