@@ -4,4 +4,4 @@ from maasserver.api import generate_api_doc
 
 class Command(BaseCommand):
     def handle(self, *args, **options):
-        self.stdout.write(generate_api_doc())
+        self.stdout.write(generate_api_doc(add_title=True))
