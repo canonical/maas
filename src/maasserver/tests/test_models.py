@@ -49,7 +49,9 @@ class NodeTest(TestCase):
 
     def test_display_status(self):
         node = factory.make_node()
-        self.assertEqual('New', node.display_status())
+        self.assertEqual(
+            NODE_STATUS_CHOICES_DICT[NODE_STATUS.DECLARED],
+            node.display_status())
 
     def test_add_mac_address(self):
         node = factory.make_node()
@@ -67,11 +69,11 @@ class NodeTest(TestCase):
         self.assertEqual(0, macs)
 
     def test_acquire(self):
-        node = factory.make_node(status=NODE_STATUS.COMMISSIONED)
+        node = factory.make_node(status=NODE_STATUS.READY)
         user = factory.make_user()
         node.acquire(user)
         self.assertEqual(user, node.owner)
-        self.assertEqual(NODE_STATUS.DEPLOYED, node.status)
+        self.assertEqual(NODE_STATUS.ALLOCATED, node.status)
 
 
 class NodeManagerTest(TestCase):
@@ -79,9 +81,9 @@ class NodeManagerTest(TestCase):
     def make_node(self, user=None):
         """Create a node, allocated to `user` if given."""
         if user is None:
-            status = NODE_STATUS.COMMISSIONED
+            status = NODE_STATUS.READY
         else:
-            status = NODE_STATUS.DEPLOYED
+            status = NODE_STATUS.ALLOCATED
         return factory.make_node(set_hostname=True, status=status, owner=user)
 
     def test_filter_by_ids_filters_nodes_by_ids(self):
@@ -191,7 +193,7 @@ class NodeManagerTest(TestCase):
 
     def test_get_available_node_for_acquisition_ignores_taken_nodes(self):
         user = factory.make_user()
-        available_status = NODE_STATUS.COMMISSIONED
+        available_status = NODE_STATUS.READY
         unavailable_statuses = (
             set(NODE_STATUS_CHOICES_DICT.keys()) - set([available_status]))
         for status in unavailable_statuses:

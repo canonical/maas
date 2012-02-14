@@ -148,7 +148,7 @@ class TestNodeAPI(APITestCase):
         # The request to fetch a single node is denied if the node isn't
         # visible by the user.
         other_node = factory.make_node(
-            status=NODE_STATUS.DEPLOYED, owner=factory.make_user())
+            status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
 
         response = self.client.get(self.get_uri(other_node))
 
@@ -239,7 +239,7 @@ class TestNodeAPI(APITestCase):
         # The request to update a single node is denied if the node isn't
         # visible by the user.
         other_node = factory.make_node(
-            status=NODE_STATUS.DEPLOYED, owner=factory.make_user())
+            status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
 
         response = self.client.put(self.get_uri(other_node))
 
@@ -265,7 +265,7 @@ class TestNodeAPI(APITestCase):
         # The request to delete a single node is denied if the node isn't
         # visible by the user.
         other_node = factory.make_node(
-            status=NODE_STATUS.DEPLOYED, owner=factory.make_user())
+            status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
 
         response = self.client.delete(self.get_uri(other_node))
 
@@ -286,7 +286,7 @@ class TestNodesAPI(APITestCase):
         # The api allows for fetching the list of Nodes.
         node1 = factory.make_node()
         node2 = factory.make_node(
-            set_hostname=True, status=NODE_STATUS.DEPLOYED,
+            set_hostname=True, status=NODE_STATUS.ALLOCATED,
             owner=self.logged_in_user)
         response = self.client.get('/api/nodes/', {'op': 'list'})
         parsed_result = json.loads(response.content)
@@ -432,7 +432,7 @@ class TestNodesAPI(APITestCase):
 
     def test_POST_returns_available_node(self):
         # The "acquire" operation returns an available node.
-        available_status = NODE_STATUS.COMMISSIONED
+        available_status = NODE_STATUS.READY
         node = factory.make_node(status=available_status, owner=None)
         response = self.client.post('/api/nodes/', {'op': 'acquire'})
         self.assertEqual(200, response.status_code)
@@ -441,7 +441,7 @@ class TestNodesAPI(APITestCase):
 
     def test_POST_acquire_allocates_node(self):
         # The "acquire" operation allocates the node it returns.
-        available_status = NODE_STATUS.COMMISSIONED
+        available_status = NODE_STATUS.READY
         node = factory.make_node(status=available_status, owner=None)
         self.client.post('/api/nodes/', {'op': 'acquire'})
         node = Node.objects.get(system_id=node.system_id)
@@ -479,7 +479,7 @@ class MACAddressAPITest(APITestCase):
         # When fetching MAC Addresses, the api returns a 'Forbidden' (403)
         # error if the node is not visible to the logged-in user.
         other_node = factory.make_node(
-            status=NODE_STATUS.DEPLOYED, owner=factory.make_user())
+            status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
         response = self.client.get(
             '/api/nodes/%s/macs/' % other_node.system_id)
 
@@ -504,7 +504,7 @@ class MACAddressAPITest(APITestCase):
         # When fetching a MAC Address, the api returns a 'Forbidden' (403)
         # error if the node is not visible to the logged-in user.
         other_node = factory.make_node(
-            status=NODE_STATUS.DEPLOYED, owner=factory.make_user())
+            status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
         response = self.client.get(
             '/api/nodes/%s/macs/0-aa-22-cc-44-dd/' % other_node.system_id)
 
@@ -562,7 +562,7 @@ class MACAddressAPITest(APITestCase):
         # When deleting a MAC Address, the api returns a 'Forbidden' (403)
         # error if the node is not visible to the logged-in user.
         other_node = factory.make_node(
-            status=NODE_STATUS.DEPLOYED, owner=factory.make_user())
+            status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
         response = self.client.delete(
             '/api/nodes/%s/macs/%s/' % (
                 other_node.system_id, self.mac1.mac_address))

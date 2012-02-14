@@ -60,9 +60,9 @@ class AuthTestMixin(object):
         self.user1 = factory.make_user(username='user1')
         self.user2 = factory.make_user(username='user2')
         self.node_user1 = factory.make_node(
-            owner=self.user1, status=NODE_STATUS.DEPLOYED)
+            owner=self.user1, status=NODE_STATUS.ALLOCATED)
         self.node_user2 = factory.make_node(
-            owner=self.user2, status=NODE_STATUS.DEPLOYED)
+            owner=self.user2, status=NODE_STATUS.ALLOCATED)
         self.not_owned_node = factory.make_node()
 
 
