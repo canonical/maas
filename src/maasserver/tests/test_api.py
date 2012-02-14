@@ -103,6 +103,11 @@ class APITestCase(TestCase):
             username='test', password='test')
         self.client = OAuthAuthenticatedClient(self.logged_in_user)
 
+    def become_admin(self):
+        """Promote the logged-in user to admin."""
+        self.logged_in_user.is_superuser = True
+        self.logged_in_user.save()
+
 
 def extract_system_ids(parsed_result):
     """List the system_ids of the nodes in `parsed_result`."""
@@ -124,10 +129,14 @@ class NodeAPILoggedInTest(LoggedInTestCase):
 class TestNodeAPI(APITestCase):
     """Tests for /api/nodes/<node>/."""
 
+    def get_uri(self, node):
+        """Get the API URI for `node`."""
+        return '/api/nodes/%s/' % node.system_id
+
     def test_GET_returns_node(self):
         # The api allows for fetching a single Node (using system_id).
         node = factory.make_node(set_hostname=True)
-        response = self.client.get('/api/nodes/%s/' % node.system_id)
+        response = self.client.get(self.get_uri(node))
         parsed_result = json.loads(response.content)
 
         self.assertEqual(httplib.OK, response.status_code)
@@ -140,7 +149,7 @@ class TestNodeAPI(APITestCase):
         other_node = factory.make_node(
             status=NODE_STATUS.DEPLOYED, owner=factory.make_user())
 
-        response = self.client.get('/api/nodes/%s/' % other_node.system_id)
+        response = self.client.get(self.get_uri(other_node))
 
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
@@ -151,11 +160,29 @@ class TestNodeAPI(APITestCase):
 
         self.assertEqual(httplib.NOT_FOUND, response.status_code)
 
+    def test_POST_stop_checks_permission(self):
+        node = factory.make_node()
+        response = self.client.post(self.get_uri(node), {'op': 'stop'})
+        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+
+    def test_POST_stop_returns_node(self):
+        node = factory.make_node(owner=self.logged_in_user)
+        response = self.client.post(self.get_uri(node), {'op': 'stop'})
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(
+            node.system_id, json.loads(response.content)['system_id'])
+
+    def test_POST_stop_may_be_repeated(self):
+        node = factory.make_node(owner=self.logged_in_user)
+        self.client.post(self.get_uri(node), {'op': 'stop'})
+        response = self.client.post(self.get_uri(node), {'op': 'stop'})
+        self.assertEqual(httplib.OK, response.status_code)
+
     def test_PUT_updates_node(self):
         # The api allows to update a Node.
         node = factory.make_node(hostname='diane')
         response = self.client.put(
-            '/api/nodes/%s/' % node.system_id, {'hostname': 'francis'})
+            self.get_uri(node), {'hostname': 'francis'})
         parsed_result = json.loads(response.content)
 
         self.assertEqual(httplib.OK, response.status_code)
@@ -167,8 +194,7 @@ class TestNodeAPI(APITestCase):
         # When a Node is returned by the API, the field 'resource_uri'
         # provides the URI for this Node.
         node = factory.make_node(hostname='diane')
-        response = self.client.put(
-            '/api/nodes/%s/' % node.system_id, {'hostname': 'francis'})
+        response = self.client.put(self.get_uri(node), {'hostname': 'francis'})
         parsed_result = json.loads(response.content)
 
         self.assertEqual(
@@ -180,8 +206,7 @@ class TestNodeAPI(APITestCase):
         # response is returned.
         node = factory.make_node(hostname='diane')
         response = self.client.put(
-            '/api/nodes/%s/' % node.system_id,
-            {'hostname': 'too long' * 100})
+            self.get_uri(node), {'hostname': 'too long' * 100})
         parsed_result = json.loads(response.content)
 
         self.assertEqual(httplib.BAD_REQUEST, response.status_code)
@@ -197,7 +222,7 @@ class TestNodeAPI(APITestCase):
         other_node = factory.make_node(
             status=NODE_STATUS.DEPLOYED, owner=factory.make_user())
 
-        response = self.client.put('/api/nodes/%s/' % other_node.system_id)
+        response = self.client.put(self.get_uri(other_node))
 
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
@@ -212,11 +237,10 @@ class TestNodeAPI(APITestCase):
         # The api allows to delete a Node.
         node = factory.make_node(set_hostname=True)
         system_id = node.system_id
-        response = self.client.delete('/api/nodes/%s/' % node.system_id)
+        response = self.client.delete(self.get_uri(node))
 
         self.assertEqual(204, response.status_code)
-        self.assertEqual(
-            [], list(Node.objects.filter(system_id=system_id)))
+        self.assertItemsEqual([], Node.objects.filter(system_id=system_id))
 
     def test_DELETE_refuses_to_delete_invisible_node(self):
         # The request to delete a single node is denied if the node isn't
@@ -224,7 +248,7 @@ class TestNodeAPI(APITestCase):
         other_node = factory.make_node(
             status=NODE_STATUS.DEPLOYED, owner=factory.make_user())
 
-        response = self.client.delete('/api/nodes/%s/' % other_node.system_id)
+        response = self.client.delete(self.get_uri(other_node))
 
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 

@@ -422,6 +422,16 @@ class TestProvisioningAPI(TestCase):
         # The response contains keys for all profiles found.
         self.assertSequenceEqual(["alice"], sorted(profiles))
 
+    @inlineCallbacks
+    def test_stop_nodes(self):
+        papi = self.get_provisioning_api()
+        distro = yield papi.add_distro("distro", "initrd", "kernel")
+        profile = yield papi.add_profile("profile", distro)
+        yield papi.add_node("alice", profile)
+        yield papi.stop_nodes(["alice"])
+        # The test is that we get here without error.
+        pass
+
 
 class TestFakeProvisioningAPI(TestProvisioningAPI):
     """Test :class:`FakeAsynchronousProvisioningAPI`."""

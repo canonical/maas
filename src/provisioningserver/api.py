@@ -286,3 +286,13 @@ class ProvisioningAPI:
         # adding filtering options to this function before using it in anger.
         d = CobblerSystem.get_all_values(self.session)
         return d.addCallback(cobbler_mapping_to_papi_nodes)
+
+    @deferred
+    def start_nodes(self, names):
+        d = CobblerSystem.powerOnMultiple(self.session, names)
+        return d
+
+    @deferred
+    def stop_nodes(self, names):
+        d = CobblerSystem.powerOffMultiple(self.session, names)
+        return d

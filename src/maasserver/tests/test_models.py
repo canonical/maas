@@ -83,12 +83,29 @@ class NodeManagerTest(TestCase):
             status = NODE_STATUS.DEPLOYED
         return factory.make_node(set_hostname=True, status=status, owner=user)
 
+    def test_filter_by_ids_filters_nodes_by_ids(self):
+        nodes = [factory.make_node() for counter in range(5)]
+        ids = [node.system_id for node in nodes]
+        selection = slice(1, 3)
+        self.assertItemsEqual(
+            nodes[selection],
+            Node.objects.filter_by_ids(Node.objects.all(), ids[selection]))
+
+    def test_filter_by_ids_with_empty_list_returns_empty(self):
+        factory.make_node()
+        self.assertItemsEqual(
+            [], Node.objects.filter_by_ids(Node.objects.all(), []))
+
+    def test_filter_by_ids_without_ids_returns_full(self):
+        node = factory.make_node()
+        self.assertItemsEqual(
+            [node], Node.objects.filter_by_ids(Node.objects.all(), None))
+
     def test_get_visible_nodes_for_user_lists_visible_nodes(self):
         """get_visible_nodes lists the nodes a user has access to.
 
         When run for a regular user it returns unowned nodes, and nodes
         owned by that user.
-
         """
         user = factory.make_user()
         visible_nodes = [self.make_node(owner) for owner in [None, user]]
@@ -97,7 +114,6 @@ class NodeManagerTest(TestCase):
             visible_nodes, Node.objects.get_visible_nodes(user))
 
     def test_get_visible_nodes_admin_lists_all_nodes(self):
-        """get_visible_nodes for an admin lists all nodes."""
         admin = factory.make_admin()
         owners = [
             None,
@@ -109,7 +125,6 @@ class NodeManagerTest(TestCase):
         self.assertItemsEqual(nodes, Node.objects.get_visible_nodes(admin))
 
     def test_get_visible_nodes_filters_by_id(self):
-        """get_visible_nodes optionally filters nodes by system_id."""
         user = factory.make_user()
         nodes = [self.make_node(user) for counter in range(5)]
         ids = [node.system_id for node in nodes]
@@ -118,15 +133,33 @@ class NodeManagerTest(TestCase):
             nodes[wanted_slice],
             Node.objects.get_visible_nodes(user, ids=ids[wanted_slice]))
 
-    def test_get_visible_nodes_with_ids_still_hides_invisible_nodes(self):
-        """Even when passing ids, a user won't get nodes they can't see."""
+    def test_get_editable_nodes_for_user_lists_owned_nodes(self):
         user = factory.make_user()
-        visible_nodes = [self.make_node(user), self.make_node()]
-        invisible_nodes = [self.make_node(factory.make_user())]
-        all_ids = [
-            node.system_id for node in (visible_nodes + invisible_nodes)]
+        visible_node = self.make_node(user)
+        self.make_node(None)
+        self.make_node(factory.make_user())
         self.assertItemsEqual(
-            visible_nodes, Node.objects.get_visible_nodes(user, ids=all_ids))
+            [visible_node], Node.objects.get_editable_nodes(user))
+
+    def test_get_editable_nodes_admin_lists_all_nodes(self):
+        admin = factory.make_admin()
+        owners = [
+            None,
+            factory.make_user(),
+            factory.make_admin(),
+            admin,
+            ]
+        nodes = [self.make_node(owner) for owner in owners]
+        self.assertItemsEqual(nodes, Node.objects.get_editable_nodes(admin))
+
+    def test_get_editable_nodes_filters_by_id(self):
+        user = factory.make_user()
+        nodes = [self.make_node(user) for counter in range(5)]
+        ids = [node.system_id for node in nodes]
+        wanted_slice = slice(0, 3)
+        self.assertItemsEqual(
+            nodes[wanted_slice],
+            Node.objects.get_editable_nodes(user, ids=ids[wanted_slice]))
 
     def test_get_visible_node_or_404_ok(self):
         """get_visible_node_or_404 fetches nodes by system_id."""
@@ -172,6 +205,24 @@ class NodeManagerTest(TestCase):
         node.save()
         self.assertEqual(
             None, Node.objects.get_available_node_for_acquisition(user))
+
+    def test_stop_nodes_stops_nodes(self):
+        user = factory.make_user()
+        node = self.make_node(user)
+        output = Node.objects.stop_nodes([node.system_id], user)
+
+        self.assertItemsEqual([node], output)
+        self.assertEqual(
+            'stop',
+            Node.objects.provisioning_proxy.power_status[node.system_id])
+
+    def test_stop_nodes_ignores_uneditable_nodes(self):
+        nodes = [self.make_node(factory.make_user()) for counter in range(3)]
+        ids = [node.system_id for node in nodes]
+        stoppable_node = nodes[0]
+        self.assertItemsEqual(
+            [stoppable_node],
+            Node.objects.stop_nodes(ids, stoppable_node.owner))
 
 
 class MACAddressTest(TestCase):

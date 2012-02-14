@@ -9,7 +9,9 @@ from __future__ import (
     )
 
 __metaclass__ = type
-__all__ = []
+__all__ = [
+    'get_provisioning_api_proxy',
+    ]
 
 from uuid import uuid1
 import xmlrpclib

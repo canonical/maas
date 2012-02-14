@@ -38,6 +38,7 @@ from maasserver.exceptions import (
     MaasAPIBadRequest,
     MaasAPINotFound,
     NodesNotAvailable,
+    PermissionDenied,
     )
 from maasserver.forms import NodeWithMACAddressesForm
 from maasserver.macaddress import validate_mac
@@ -192,9 +193,10 @@ def api_operations(cls):
     return cls
 
 
+@api_operations
 class NodeHandler(BaseHandler):
     """Manage individual Nodes."""
-    allowed_methods = ('GET', 'DELETE', 'PUT')
+    allowed_methods = ('GET', 'DELETE', 'POST', 'PUT')
     model = Node
     fields = ('system_id', 'hostname', ('macaddress_set', ('mac_address',)))
 
@@ -231,6 +233,15 @@ class NodeHandler(BaseHandler):
         if node is not None:
             node_system_id = node.system_id
         return ('node_handler', (node_system_id, ))
+
+    @api_exported('stop', 'POST')
+    def stop(self, request, system_id):
+        """Shut down a node."""
+        nodes = Node.objects.stop_nodes([system_id], request.user)
+        if len(nodes) == 0:
+            raise PermissionDenied(
+                "You are not allowed to shut down this node.")
+        return nodes[0]
 
 
 @api_operations

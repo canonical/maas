@@ -134,8 +134,34 @@ NODE_AFTER_COMMISSIONING_ACTION_CHOICES_DICT = dict(
 class NodeManager(models.Manager):
     """A utility to manage the collection of Nodes."""
 
+    # Twisted XMLRPC proxy for talking to the provisioning API.  Created
+    # on demand.
+    provisioning_proxy = None
+
+    def _set_provisioning_proxy(self):
+        """Set up the provisioning-API proxy if needed."""
+        # Avoid circular imports.
+        from maasserver.provisioning import get_provisioning_api_proxy
+        if self.provisioning_proxy is None:
+            self.provisioning_proxy = get_provisioning_api_proxy()
+
+    def filter_by_ids(self, query, ids=None):
+        """Filter `query` result set by system_id values.
+
+        :param query: A queryset of Nodes.
+        :type query: QuerySet_
+        :param ids: Optional set of ids to filter by.  If given, nodes whose
+            system_ids are not in `ids` will be ignored.
+        :type param_ids: Sequence
+        :return: A filtered version of `query`.
+        """
+        if ids is None:
+            return query
+        else:
+            return query.filter(system_id__in=ids)
+
     def get_visible_nodes(self, user, ids=None):
-        """Fetch all the Nodes visible by a User_.
+        """Fetch Nodes visible by a User_.
 
         :param user: The user that should be used in the permission check.
         :type user: User_
@@ -152,10 +178,23 @@ class NodeManager(models.Manager):
         else:
             visible_nodes = self.filter(
                 models.Q(owner__isnull=True) | models.Q(owner=user))
-        if ids is None:
-            return visible_nodes
+        return self.filter_by_ids(visible_nodes, ids)
+
+    def get_editable_nodes(self, user, ids=None):
+        """Fetch Nodes a User_ has ownership privileges on.
+
+        An admin has ownership privileges on all nodes.
+
+        :param user: The user that should be used in the permission check.
+        :type user: User_
+        :param ids: If given, limit result to nodes with these system_ids.
+        :type ids: Sequence.
+        """
+        if user.is_superuser:
+            visible_nodes = self.all()
         else:
-            return visible_nodes.filter(system_id__in=ids)
+            visible_nodes = self.filter(owner=user)
+        return self.filter_by_ids(visible_nodes, ids)
 
     def get_visible_node_or_404(self, system_id, user):
         """Fetch a `Node` by system_id.  Raise exceptions if no `Node` with
@@ -193,6 +232,24 @@ class NodeManager(models.Manager):
         else:
             return available_nodes[0]
 
+    def stop_nodes(self, ids, by_user):
+        """Request on given user's behalf that the given nodes be shut down.
+
+        Shutdown is only requested for nodes that the user has ownership
+        privileges for; any other nodes in the request are ignored.
+
+        :param ids: Sequence of `system_id` values for nodes to shut down.
+        :type ids: QuerySet
+        :param by_user: Requesting user.
+        :type by_user: User_
+        :return: Those Nodes for which shutdown was actually requested.
+        :rtype: list
+        """
+        self._set_provisioning_proxy()
+        nodes = self.get_editable_nodes(by_user, ids=ids)
+        self.provisioning_proxy.stop_nodes([node.system_id for node in nodes])
+        return nodes
+
 
 class Node(CommonInfo):
     """A `Node` represents a physical machine used by the MaaS Server.
@@ -207,7 +264,6 @@ class Node(CommonInfo):
         commissioning. See vocabulary
         :class:`NODE_AFTER_COMMISSIONING_ACTION`.
     :ivar objects: The :class:`NodeManager`.
-    :ivar hostname: This `Node`'s hostname.
 
     """
 
