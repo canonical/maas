@@ -142,7 +142,7 @@ class TestNodeAPI(APITestCase):
 
         response = self.client.get('/api/nodes/%s/' % other_node.system_id)
 
-        self.assertEqual(httplib.UNAUTHORIZED, response.status_code)
+        self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
     def test_GET_refuses_to_access_nonexistent_node(self):
         # When fetching a Node, the api returns a 'Not Found' (404) error
@@ -199,7 +199,7 @@ class TestNodeAPI(APITestCase):
 
         response = self.client.put('/api/nodes/%s/' % other_node.system_id)
 
-        self.assertEqual(httplib.UNAUTHORIZED, response.status_code)
+        self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
     def test_PUT_refuses_to_update_nonexistent_node(self):
         # When updating a Node, the api returns a 'Not Found' (404) error
@@ -226,7 +226,7 @@ class TestNodeAPI(APITestCase):
 
         response = self.client.delete('/api/nodes/%s/' % other_node.system_id)
 
-        self.assertEqual(httplib.UNAUTHORIZED, response.status_code)
+        self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
     def test_DELETE_refuses_to_delete_nonexistent_node(self):
         # When deleting a Node, the api returns a 'Not Found' (404) error
@@ -433,14 +433,14 @@ class MACAddressAPITest(APITestCase):
             self.mac2.mac_address, parsed_result[1]['mac_address'])
 
     def test_macs_GET_forbidden(self):
-        # When fetching MAC Addresses, the api returns a 'Unauthorized' (401)
+        # When fetching MAC Addresses, the api returns a 'Forbidden' (403)
         # error if the node is not visible to the logged-in user.
         other_node = factory.make_node(
             status=NODE_STATUS.DEPLOYED, owner=factory.make_user())
         response = self.client.get(
             '/api/nodes/%s/macs/' % other_node.system_id)
 
-        self.assertEqual(httplib.UNAUTHORIZED, response.status_code)
+        self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
     def test_macs_GET_not_found(self):
         # When fetching MAC Addresses, the api returns a 'Not Found' (404)
@@ -458,14 +458,14 @@ class MACAddressAPITest(APITestCase):
         self.assertEqual(httplib.NOT_FOUND, response.status_code)
 
     def test_macs_GET_node_forbidden(self):
-        # When fetching a MAC Address, the api returns a 'Unauthorized' (401)
+        # When fetching a MAC Address, the api returns a 'Forbidden' (403)
         # error if the node is not visible to the logged-in user.
         other_node = factory.make_node(
             status=NODE_STATUS.DEPLOYED, owner=factory.make_user())
         response = self.client.get(
             '/api/nodes/%s/macs/0-aa-22-cc-44-dd/' % other_node.system_id)
 
-        self.assertEqual(httplib.UNAUTHORIZED, response.status_code)
+        self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
     def test_macs_GET_node_bad_request(self):
         # When fetching a MAC Address, the api returns a 'Bad Request' (400)
@@ -516,7 +516,7 @@ class MACAddressAPITest(APITestCase):
             self.node.macaddress_set.count())
 
     def test_macs_DELETE_mac_forbidden(self):
-        # When deleting a MAC Address, the api returns a 'Unauthorized' (401)
+        # When deleting a MAC Address, the api returns a 'Forbidden' (403)
         # error if the node is not visible to the logged-in user.
         other_node = factory.make_node(
             status=NODE_STATUS.DEPLOYED, owner=factory.make_user())
@@ -524,7 +524,7 @@ class MACAddressAPITest(APITestCase):
             '/api/nodes/%s/macs/%s/' % (
                 other_node.system_id, self.mac1.mac_address))
 
-        self.assertEqual(httplib.UNAUTHORIZED, response.status_code)
+        self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
     def test_macs_DELETE_not_found(self):
         # When deleting a MAC Address, the api returns a 'Not Found' (404)
