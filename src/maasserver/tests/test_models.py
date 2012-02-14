@@ -225,6 +225,24 @@ class NodeManagerTest(TestCase):
             [stoppable_node],
             Node.objects.stop_nodes(ids, stoppable_node.owner))
 
+    def test_start_nodes_starts_nodes(self):
+        user = factory.make_user()
+        node = self.make_node(user)
+        output = Node.objects.start_nodes([node.system_id], user)
+
+        self.assertItemsEqual([node], output)
+        self.assertEqual(
+            'start',
+            Node.objects.provisioning_proxy.power_status[node.system_id])
+
+    def test_start_nodes_ignores_uneditable_nodes(self):
+        nodes = [self.make_node(factory.make_user()) for counter in range(3)]
+        ids = [node.system_id for node in nodes]
+        startable_node = nodes[0]
+        self.assertItemsEqual(
+            [startable_node],
+            Node.objects.start_nodes(ids, startable_node.owner))
+
 
 class MACAddressTest(TestCase):
 

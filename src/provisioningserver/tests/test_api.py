@@ -432,6 +432,16 @@ class TestProvisioningAPI(TestCase):
         # The test is that we get here without error.
         pass
 
+    @inlineCallbacks
+    def test_start_nodes(self):
+        papi = self.get_provisioning_api()
+        distro = yield papi.add_distro("distro", "initrd", "kernel")
+        profile = yield papi.add_profile("profile", distro)
+        yield papi.add_node("alice", profile)
+        yield papi.start_nodes(["alice"])
+        # The test is that we get here without error.
+        pass
+
 
 class TestFakeProvisioningAPI(TestProvisioningAPI):
     """Test :class:`FakeAsynchronousProvisioningAPI`."""

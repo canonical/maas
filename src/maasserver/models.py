@@ -238,8 +238,8 @@ class NodeManager(models.Manager):
         Shutdown is only requested for nodes that the user has ownership
         privileges for; any other nodes in the request are ignored.
 
-        :param ids: Sequence of `system_id` values for nodes to shut down.
-        :type ids: QuerySet
+        :param ids: The `system_id` values for nodes to be shut down.
+        :type ids: Sequence
         :param by_user: Requesting user.
         :type by_user: User_
         :return: Those Nodes for which shutdown was actually requested.
@@ -248,6 +248,25 @@ class NodeManager(models.Manager):
         self._set_provisioning_proxy()
         nodes = self.get_editable_nodes(by_user, ids=ids)
         self.provisioning_proxy.stop_nodes([node.system_id for node in nodes])
+        return nodes
+
+    def start_nodes(self, ids, by_user):
+        """Request on given user's behalf that the given nodes be started up.
+
+        Power-on is only requested for nodes that the user has ownership
+        privileges for; any other nodes in the request are ignored.
+
+        :param ids: The `system_id` values for nodes to be started.
+        :type ids: Sequence
+        :param by_user: Requesting user.
+        :type by_user: User_
+        :return: Those Nodes for which power-on was actually requested.
+        :rtype: list
+        """
+        self._set_provisioning_proxy()
+        nodes = self.get_editable_nodes(by_user, ids=ids)
+        self.provisioning_proxy.start_nodes(
+            [node.system_id for node in nodes])
         return nodes
 
 

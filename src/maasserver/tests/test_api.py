@@ -179,6 +179,24 @@ class TestNodeAPI(APITestCase):
         response = self.client.post(self.get_uri(node), {'op': 'stop'})
         self.assertEqual(httplib.OK, response.status_code)
 
+    def test_POST_start_checks_permission(self):
+        node = factory.make_node()
+        response = self.client.post(self.get_uri(node), {'op': 'start'})
+        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+
+    def test_POST_start_returns_node(self):
+        node = factory.make_node(owner=self.logged_in_user)
+        response = self.client.post(self.get_uri(node), {'op': 'start'})
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(
+            node.system_id, json.loads(response.content)['system_id'])
+
+    def test_POST_start_may_be_repeated(self):
+        node = factory.make_node(owner=self.logged_in_user)
+        self.client.post(self.get_uri(node), {'op': 'start'})
+        response = self.client.post(self.get_uri(node), {'op': 'start'})
+        self.assertEqual(httplib.OK, response.status_code)
+
     def test_PUT_updates_node(self):
         # The api allows to update a Node.
         node = factory.make_node(hostname='diane')
