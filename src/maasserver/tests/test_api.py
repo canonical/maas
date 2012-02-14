@@ -628,8 +628,7 @@ class FileStorageAPITest(APITestCase):
         self.assertEqual("Exactly one file must be supplied", response.content)
 
     def test_get_file_succeeds(self):
-        storage = factory.make_file_storage(
-            filename="foofilers", data=b"give me rope")
+        factory.make_file_storage(filename="foofilers", data=b"give me rope")
         response = self.make_API_GET_request("get", "foofilers")
 
         self.assertEqual(httplib.OK, response.status_code)
