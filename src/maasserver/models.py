@@ -368,48 +368,53 @@ class UserProfile(models.Model):
 
     user = models.OneToOneField(User)
 
-    def reset_authorisation_token(self):
-        """Create (if necessary) and regenerate the keys for the Consumer and
-        the related Token of the OAuth authorisation.
+    def get_authorisation_tokens(self):
+        """Fetches all the user's OAuth tokens.
 
-        :return: A tuple containing the Consumer and the Token that were reset.
+        :return: A QuerySet of the tokens.
+        :rtype: django.db.models.query.QuerySet_
+
+        .. _django.db.models.query.QuerySet: https://docs.djangoproject.com/
+           en/dev/ref/models/querysets/
+
+        """
+        return Token.objects.select_related().filter(
+            user=self.user, token_type=Token.ACCESS,
+            is_approved=True).order_by('id')
+
+    def create_authorisation_token(self):
+        """Create a new Token and its related Consumer (OAuth authorisation).
+
+        :return: A tuple containing the Consumer and the Token that were
+            created.
         :rtype: tuple
 
         """
-        consumer, _ = Consumer.objects.get_or_create(
-            user=self.user, name=GENERIC_CONSUMER,
-            defaults={'status': 'accepted'})
+        consumer = Consumer.objects.create(
+            user=self.user, name=GENERIC_CONSUMER, status='accepted')
         consumer.generate_random_codes()
         # This is a 'generic' consumer aimed to service many clients, hence
         # we don't authenticate the consumer with key/secret key.
         consumer.secret = ''
         consumer.save()
-        token, _ = Token.objects.get_or_create(
+        token = Token.objects.create(
             user=self.user, token_type=Token.ACCESS, consumer=consumer,
-            defaults={'is_approved': True})
+            is_approved=True)
         token.generate_random_codes()
         return consumer, token
 
-    def get_authorisation_consumer(self):
-        """Returns the OAuth Consumer attached to the related User_.
+    def delete_authorisation_token(self, token_key):
+        """Delete the user's OAuth token wich key token_key.
 
-        :return: The attached Consumer.
-        :rtype: piston.models.Consumer
-
-        """
-        return Consumer.objects.get(user=self.user, name=GENERIC_CONSUMER)
-
-    def get_authorisation_token(self):
-        """Returns the OAuth authorisation token attached to the related User_.
-
-        :return: The attached Token.
-        :rtype: piston.models.Token
+        :param token_key: The key of the token to be deleted.
+        :type token_key: str
+        :raises: django.http.Http404_
 
         """
-        consumer = self.get_authorisation_consumer()
-        token = Token.objects.get(
-            user=self.user, token_type=Token.ACCESS, consumer=consumer)
-        return token
+        token = get_object_or_404(
+            Token, user=self.user, token_type=Token.ACCESS, key=token_key)
+        token.consumer.delete()
+        token.delete()
 
 
 # When a user is created: create the related profile and the default
@@ -420,7 +425,7 @@ def create_user(sender, instance, created, **kwargs):
         profile = UserProfile.objects.create(user=instance)
 
         # Create initial authorisation token.
-        profile.reset_authorisation_token()
+        profile.create_authorisation_token()
 
 # Connect the 'create_user' method to the post save signal of User.
 post_save.connect(create_user, sender=User)

@@ -41,23 +41,20 @@ class UserPrefsViewTest(LoggedInTestCase):
     def test_prefs_GET_api(self):
         # The preferences page (api tab) displays the API access tokens.
         user = self.logged_in_user
+        # Create a few tokens.
+        for i in xrange(3):
+            user.get_profile().create_authorisation_token()
         response = self.client.get('/account/prefs/?tab=1')
         doc = fromstring(response.content)
-        # The consumer key and the token key/secret are displayed.
-        consumer = user.get_profile().get_authorisation_consumer()
-        token = user.get_profile().get_authorisation_token()
-        self.assertSequenceEqual(
-            [consumer.key],
-            [elem.text.strip() for elem in
-                doc.cssselect('div#consumer_key')])
-        self.assertSequenceEqual(
-            [token.key],
-            [elem.text.strip() for elem in
-                doc.cssselect('div#token_key')])
-        self.assertSequenceEqual(
-            [token.secret],
-            [elem.text.strip() for elem in
-                doc.cssselect('div#token_secret')])
+        # The OAuth tokens are displayed.
+        for token in user.get_profile().get_authorisation_tokens():
+            consumer = token.consumer
+            # The token string is a compact representation of the keys.
+            token_string = '%s:%s:%s' % (consumer.key, token.key, token.secret)
+            self.assertSequenceEqual(
+                [token_string],
+                [elem.text.strip() for elem in
+                    doc.cssselect('td#%s' % token.key)])
 
     def test_prefs_POST_profile(self):
         # The preferences page allows the user the update its profile

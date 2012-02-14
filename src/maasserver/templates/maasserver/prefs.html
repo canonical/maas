@@ -49,37 +49,36 @@
       </div>
       <div id="api">
           <p>
-            This is the required information you need to provide to a third
+            An API token is the information you need to provide to a third
             party application for it to be able to access the MaaS server
             <a href="{% url 'api-doc' %}">API</a> on your behalf.
           </p>
           <p>
-            <label>API consumer key:
-            <img src="{{ STATIC_URL }}img/maybe.png"
-                 title="Note that the API consumer secret is the empty string"
-             />
-            </label>
-            <div id="consumer_key">
-              {{ user.get_profile.get_authorisation_consumer.key }}
-            </div>
+            You can create as much API tokens as you require.
           </p>
-          <p>
-            <label>API consumer secret:</label>
-            <div>'' (the empty string)</div>
-          </p>
-          <p>
-            <label>API token key:</label>
-            <div id="token_key">
-              {{ user.get_profile.get_authorisation_token.key }}
-            </div>
-          </p>
-          <p>
-            <label>API token secret:</label>
-            <div id="token_secret">
-              {{ user.get_profile.get_authorisation_token.secret }}
-            </div>
-          </p>
-          <p id="tokens_regeneration_placeholder" />
+          <table>
+            <thead>
+              <tr>
+                <th>API tokens</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for token in user.get_profile.get_authorisation_tokens %}
+              <tr class="bundle">
+                <td id="{{ token.key }}">
+                  {{ token.consumer.key }}:{{ token.key }}:{{ token.secret }}</td>
+                <td>
+                  <a href="#" class="delete-link">
+                    <img title="Delete token"
+                         src="{{ STATIC_URL }}img/delete.png" />
+                  </a>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          <p id="token_creation_placeholder" />
       </div>
       <div id="password">
         <form action="." method="post">

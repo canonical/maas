@@ -12,12 +12,16 @@ __metaclass__ = type
 __all__ = [
     "api_doc",
     "generate_api_doc",
+    "AccountHandler",
     "FilesHandler",
     "NodeHandler",
+    "NodesHandler",
+    "NodeMacHandler",
     "NodeMacsHandler",
     ]
 
 import httplib
+import sys
 import types
 
 from django.core.exceptions import (
@@ -49,7 +53,10 @@ from maasserver.models import (
     )
 from piston.authentication import OAuthAuthentication
 from piston.doc import generate_doc
-from piston.handler import BaseHandler
+from piston.handler import (
+    BaseHandler,
+    HandlerMetaClass,
+    )
 from piston.utils import rc
 
 
@@ -184,7 +191,7 @@ def api_operations(cls):
         dispatcher.__doc__ = (
             "The actual operation to execute depends on the value of the '%s' "
             "parameter:\n\n" % OP_PARAM)
-        dispatcher.__doc__ += "\n- ".join(
+        dispatcher.__doc__ += "\n".join(
             "- Operation '%s' (op=%s):\n\t%s" % (name, name, op.__doc__)
             for name, op in cls._available_api_methods[method].iteritems())
 
@@ -403,36 +410,66 @@ class FilesHandler(BaseHandler):
         return ('files_handler', [])
 
 
+@api_operations
 class AccountHandler(BaseHandler):
     """Manage the current logged-in user."""
     allowed_methods = ('POST',)
 
-    @api_exported('reset_authorisation_token')
-    def reset_authorisation_token(self, request):
-        """Regenerate the token and the secret of the OAuth Token.
+    @api_exported('create_authorisation_token', method='POST')
+    def create_authorisation_token(self, request):
+        """Create an authorisation OAuth token and OAuth consumer.
 
-        :return: A json dict with three keys: 'token_key',
+        :return: a json dict with three keys: 'token_key',
             'token_secret' and 'consumer_key' (e.g.
             {token_key: 's65244576fgqs', token_secret: 'qsdfdhv34',
-             consumer_key: '68543fhj854fg'}).
+            consumer_key: '68543fhj854fg'}).
+        :rtype: string (json)
 
         """
         profile = request.user.get_profile()
-        consumer, token = profile.reset_authorisation_token()
+        consumer, token = profile.create_authorisation_token()
         return {
             'token_key': token.key, 'token_secret': token.secret,
             'consumer_key': consumer.key,
             }
 
+    @api_exported('delete_authorisation_token', method='POST')
+    def delete_authorisation_token(self, request):
+        """Delete an authorisation OAuth token and the related OAuth consumer.
+
+        :param token_key: The key of the token to be deleted.
+        :type token_key: str
+
+        """
+        profile = request.user.get_profile()
+        token_key = request.data.get('token_key', None)
+        if token_key is None:
+            raise ValidationError('No provided token_key!')
+        profile.delete_authorisation_token(token_key)
+        return rc.DELETED
+
+    @classmethod
+    def resource_uri(cls, *args, **kwargs):
+        return ('account_handler', [])
+
 
 def generate_api_doc(add_title=False):
-    docs = (
-        generate_doc(FilesHandler),
-        generate_doc(NodesHandler),
-        generate_doc(NodeHandler),
-        generate_doc(NodeMacsHandler),
-        generate_doc(NodeMacHandler),
-        )
+    # Fetch all the API Handlers (objects with the class
+    # HandlerMetaClass).
+    module = sys.modules[__name__]
+
+    all = [getattr(module, name) for name in module.__all__]
+    handlers = [obj for obj in all if isinstance(obj, HandlerMetaClass)]
+
+    # Make sure each handler defines a 'resource_uri' method (this is
+    # easily forgotten and essential to have a proper documentation).
+    for handler in handlers:
+        sentinel = object()
+        resource_uri = getattr(handler, "resource_uri", sentinel)
+        assert resource_uri is not sentinel, "Missing resource_uri in %s" % (
+            handler.__name__)
+
+    docs = [generate_doc(handler) for handler in handlers]
 
     messages = []
     if add_title:

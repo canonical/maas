@@ -31,6 +31,7 @@ from maastesting import TestCase
 from piston.models import (
     Consumer,
     KEY_SIZE,
+    SECRET_SIZE,
     Token,
     )
 
@@ -245,6 +246,17 @@ class MACAddressTest(TestCase):
 
 class UserProfileTest(TestCase):
 
+    def assertTokenValid(self, token):
+        self.assertIsInstance(token.key, basestring)
+        self.assertEqual(KEY_SIZE, len(token.key))
+        self.assertIsInstance(token.secret, basestring)
+        self.assertEqual(SECRET_SIZE, len(token.secret))
+
+    def assertConsumerValid(self, consumer):
+        self.assertIsInstance(consumer.key, basestring)
+        self.assertEqual(KEY_SIZE, len(consumer.key))
+        self.assertEqual('', consumer.secret)
+
     def test_profile_creation(self):
         # A profile is created each time a user is created.
         user = factory.make_user()
@@ -256,23 +268,37 @@ class UserProfileTest(TestCase):
         user = factory.make_user()
         consumers = Consumer.objects.filter(user=user, name=GENERIC_CONSUMER)
         self.assertEqual([user], [consumer.user for consumer in consumers])
-        self.assertEqual(
-            consumers[0], user.get_profile().get_authorisation_consumer())
-        self.assertEqual(GENERIC_CONSUMER, consumers[0].name)
-        self.assertEqual(KEY_SIZE, len(consumers[0].key))
-        # The generic consumer has an empty secret.
-        self.assertEqual(0, len(consumers[0].secret))
+        self.assertConsumerValid(consumers[0])
 
     def test_token_creation(self):
         # A token is created each time a user is created.
         user = factory.make_user()
         tokens = Token.objects.filter(user=user)
         self.assertEqual([user], [token.user for token in tokens])
-        self.assertEqual(
-            tokens[0], user.get_profile().get_authorisation_token())
-        self.assertIsInstance(tokens[0].key, unicode)
-        self.assertEqual(KEY_SIZE, len(tokens[0].key))
-        self.assertEqual(Token.ACCESS, tokens[0].token_type)
+        self.assertTokenValid(tokens[0])
+
+    def test_create_authorisation_token(self):
+        user = factory.make_user()
+        profile = user.get_profile()
+        consumer, token = profile.create_authorisation_token()
+        self.assertEqual(consumer, token.consumer)
+        self.assertEqual(user, token.user)
+        self.assertEqual(user, consumer.user)
+        self.assertConsumerValid(consumer)
+        self.assertTokenValid(token)
+
+    def test_get_authorisation_tokens(self):
+        user = factory.make_user()
+        other_user = factory.make_user()
+        profile = user.get_profile()
+        other_profile = other_user.get_profile()
+        _, token = profile.create_authorisation_token()
+        other_profile.create_authorisation_token()
+        tokens = profile.get_authorisation_tokens()
+        # This user has 2 tokens: the one that was created automatically
+        # when the user was created plus the one we've created manually.
+        self.assertEqual(2, tokens.count())
+        self.assertEqual(token, list(tokens.order_by('id'))[1])
 
 
 class FileStorageTest(TestCase):

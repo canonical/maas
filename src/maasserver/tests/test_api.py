@@ -54,10 +54,11 @@ class NodeAnonAPITest(TestCase):
 
 
 class OAuthAuthenticatedClient(Client):
+
     def __init__(self, user):
         super(OAuthAuthenticatedClient, self).__init__()
-        consumer = user.get_profile().get_authorisation_consumer()
-        token = user.get_profile().get_authorisation_token()
+        token = user.get_profile().get_authorisation_tokens()[0]
+        consumer = token.consumer
         self.consumer = OAuthConsumer(str(consumer.key), str(consumer.secret))
         self.token = OAuthToken(str(token.key), str(token.secret))
 
@@ -565,6 +566,41 @@ class MACAddressAPITest(APITestCase):
         response = self.client.delete(
             '/api/nodes/%s/macs/%s/' % (
                 self.node.system_id, 'invalid-mac'))
+
+        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+
+
+class AccountAPITest(APITestCase):
+
+    def test_create_authorisation_token(self):
+        # The api operation create_authorisation_token returns a json dict
+        # with the consumer_key, the token_key and the token_secret in it.
+        response = self.client.post(
+            '/api/account/', {'op': 'create_authorisation_token'})
+        parsed_result = json.loads(response.content)
+
+        self.assertEqual(
+            ['consumer_key', 'token_key', 'token_secret'],
+            sorted(parsed_result.keys()))
+        self.assertIsInstance(parsed_result['consumer_key'], basestring)
+        self.assertIsInstance(parsed_result['token_key'], basestring)
+        self.assertIsInstance(parsed_result['token_secret'], basestring)
+
+    def test_delete_authorisation_token_not_found(self):
+        # If the provided token_key does not exist (for the currently
+        # logged-in user), the api returns a 'Not Found' (404) error.
+        response = self.client.post(
+            '/api/account/',
+            {'op': 'delete_authorisation_token', 'token_key': 'no-such-token'})
+
+        self.assertEqual(httplib.NOT_FOUND, response.status_code)
+
+    def test_delete_authorisation_token_bad_request_no_token(self):
+        # token_key is a mandatory parameter when calling
+        # delete_authorisation_token. It it is not present in the request's
+        # parameters, the api returns a 'Bad Request' (400) error.
+        response = self.client.post(
+            '/api/account/', {'op': 'delete_authorisation_token'})
 
         self.assertEqual(httplib.BAD_REQUEST, response.status_code)
 

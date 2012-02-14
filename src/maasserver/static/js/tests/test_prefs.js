@@ -23,49 +23,161 @@ suite.add(new Y.maas.testing.TestCase({
         var widget = new module.TokenWidget({srcNode: '#placeholder'});
         this.addCleanup(function() { widget.destroy(); });
         widget.render();
-        var regenerate_link = widget.get('srcNode').one('#regenerate_tokens');
-        Y.Assert.isNotNull(regenerate_link);
+        // The "create a new API token" has been created.
+        var create_link = widget.get('srcNode').one('#create_token');
+        Y.Assert.isNotNull(create_link);
         Y.Assert.areEqual(
-            "Regenerate the tokens", regenerate_link.get('text'));
-        var status_node = widget.get('srcNode').one('#regenerate_error');
+            "Create a new API token", create_link.get('text'));
+        // The placeholder node for errors has been created.
+        var status_node = widget.get('srcNode').one('#create_error');
         Y.Assert.isNotNull(status_node);
+        Y.Assert.areEqual(
+            '',
+            widget.get('srcNode').one('#create_error').get('text'));
     },
 
-    testRegenerateTokensCall: function() {
-        var mockXhr = Y.Mock();
-        Y.Mock.expect(mockXhr, {
-            method: 'io',
-            args: [MAAS_config.uris.account_handler, Y.Mock.Value.Any]
-        });
+    test_nb_tokens: function() {
+        var widget = new module.TokenWidget({srcNode: '#placeholder'});
+        this.addCleanup(function() { widget.destroy(); });
+        widget.render();
+        Y.Assert.areEqual(2, widget.get('nb_tokens'));
+     },
+
+    testDeleteTokenCall: function() {
+        // A click on the delete link calls the API to delete a token.
+        var mockXhr = new Y.Base();
+        var fired = false;
+        mockXhr.io = function(url, cfg) {
+            fired = true;
+            Y.Assert.areEqual(MAAS_config.uris.account_handler, url);
+            Y.Assert.areEqual(
+                "op=delete_authorisation_token&token_key=tokenkey1",
+                cfg.data);
+        };
         this.mockIO(mockXhr, module);
         var widget = new module.TokenWidget({srcNode: '#placeholder'});
         this.addCleanup(function() { widget.destroy(); });
         widget.render();
-        var link = widget.get('srcNode').one('#regenerate_tokens');
+        var link = widget.get('srcNode').one('.delete-link');
         link.simulate('click');
-        Y.Mock.verify(mockXhr);
+        Y.Assert.isTrue(fired);
     },
 
-    testRegenerateTokensUpdatesTokens: function() {
+    testDeleteTokenFail: function() {
+        // If the API call to delete a token fails, an error is displayed.
         var mockXhr = new Y.Base();
+        var fired = false;
         mockXhr.io = function(url, cfg) {
+            fired = true;
+            cfg.on.failure(3);
+        };
+        this.mockIO(mockXhr, module);
+        var widget = new module.TokenWidget({srcNode: '#placeholder'});
+        this.addCleanup(function() { widget.destroy(); });
+        widget.render();
+        var link = widget.get('srcNode').one('.delete-link');
+        link.simulate('click');
+        Y.Assert.isTrue(fired);
+        Y.Assert.areEqual(
+            'Unable to delete the token.',
+            widget.get('srcNode').one('#create_error').get('text'));
+    },
+
+    testDeleteTokenDisplay: function() {
+        // When the token is successfully deleted by the API, the
+        // corresponding row is deleted.
+        var mockXhr = new Y.Base();
+        var fired = false;
+        mockXhr.io = function(url, cfg) {
+            fired = true;
+            cfg.on.success(3);
+        };
+        this.mockIO(mockXhr, module);
+        var widget = new module.TokenWidget({srcNode: '#placeholder'});
+        this.addCleanup(function() { widget.destroy(); });
+        widget.render();
+        var link = widget.get('srcNode').one('.delete-link');
+        Y.Assert.isNotNull(Y.one('#tokenkey1'));
+        link.simulate('click');
+        Y.Assert.isTrue(fired);
+        Y.Assert.isNull(Y.one('#tokenkey1'));
+        Y.Assert.isNotNull(Y.one('#tokenkey2'));
+        Y.Assert.areEqual(1, widget.get('nb_tokens'));
+    },
+
+    test_createTokenFromKeys: function() {
+        var widget = new module.TokenWidget({srcNode: '#placeholder'});
+        this.addCleanup(function() { widget.destroy(); });
+        var token = widget.createTokenFromKeys(
+            'consumer_key', 'token_key', 'token_secret');
+        Y.Assert.areEqual('consumer_key:token_key:token_secret', token);
+    },
+
+    testCreateTokenCall: function() {
+        // A click on the "create a new token" link calls the API to
+        // create a token.
+        var mockXhr = new Y.Base();
+        var fired = false;
+        mockXhr.io = function(url, cfg) {
+            fired = true;
+            Y.Assert.areEqual(MAAS_config.uris.account_handler, url);
+            Y.Assert.areEqual(
+                "op=create_authorisation_token",
+                cfg.data);
+        };
+        this.mockIO(mockXhr, module);
+        var widget = new module.TokenWidget({srcNode: '#placeholder'});
+        this.addCleanup(function() { widget.destroy(); });
+        widget.render();
+        var create_link = widget.get('srcNode').one('#create_token');
+        create_link.simulate('click');
+        Y.Assert.isTrue(fired);
+    },
+
+    testCreateTokenFail: function() {
+        // If the API call to create a token fails, an error is displayed.
+        var mockXhr = new Y.Base();
+        var fired = false;
+        mockXhr.io = function(url, cfg) {
+            fired = true;
+            cfg.on.failure(3);
+        };
+        this.mockIO(mockXhr, module);
+        var widget = new module.TokenWidget({srcNode: '#placeholder'});
+        this.addCleanup(function() { widget.destroy(); });
+        widget.render();
+        var create_link = widget.get('srcNode').one('#create_token');
+        create_link.simulate('click');
+        Y.Assert.isTrue(fired);
+        Y.Assert.areEqual(
+            'Unable to create a new token.',
+            widget.get('srcNode').one('#create_error').get('text'));
+    },
+
+    testCreateTokenDisplay: function() {
+        // When a new token is successfully created by the API, a new
+        // corresponding row is added.
+        var mockXhr = new Y.Base();
+        var fired = false;
+        mockXhr.io = function(url, cfg) {
+            fired = true;
             var response = {
-                token_key: 'token_key', token_secret: 'token_secret',
-                consumer_key: 'consumer_key'};
+                consumer_key: 'consumer_key',
+                token_key: 'token_key',
+                token_secret: 'token_secret'
+            };
             cfg.on.success(3, {response: Y.JSON.stringify(response)});
         };
         this.mockIO(mockXhr, module);
         var widget = new module.TokenWidget({srcNode: '#placeholder'});
+        this.addCleanup(function() { widget.destroy(); });
         widget.render();
-        var link = widget.get('srcNode').one('#regenerate_tokens');
-        link.simulate('click');
-        var src_node = widget.get('srcNode');
-        Y.Assert.areEqual('token_key', src_node.one('#token_key').get('text'));
-        Y.Assert.areEqual(
-            'token_secret', src_node.one('#token_secret').get('text'));
-        Y.Assert.areEqual(
-            'consumer_key', src_node.one('#consumer_key').get('text'));
-     }
+        var create_link = widget.get('srcNode').one('#create_token');
+        create_link.simulate('click');
+        Y.Assert.isTrue(fired);
+        Y.Assert.areEqual(3, widget.get('nb_tokens'));
+        Y.Assert.isNotNull(Y.one('#token_key'));
+    }
 
 }));
 

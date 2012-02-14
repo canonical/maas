@@ -25,12 +25,12 @@ AddNodeWidget.NAME = 'node-add-widget';
 
 AddNodeWidget.ATTRS = {
 
-    /**
-     * The number MAC Addresses fields on the form.
-     *
-     * @attribute nb_mac_fields
-     * @type integer
-     */
+   /**
+    * The number MAC Addresses fields on the form.
+    *
+    * @attribute nb_mac_fields
+    * @type integer
+    */
     nb_mac_fields: {
         getter: function() {
             return this.get(
