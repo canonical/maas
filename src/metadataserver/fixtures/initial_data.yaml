@@ -1,0 +1,13 @@
+- model: auth.user
+  pk: 1
+  fields:
+    username: 'maas-init-node'
+    first_name: 'Node initializer'
+    last_name: 'Special user'
+    email: ''
+    password: '!'
+    is_staff: false
+    is_active: true
+    is_superuser: false
+    last_login: 2012-02-16
+    date_joined: 2012-02-16

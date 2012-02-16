@@ -30,10 +30,16 @@ from django.db.models.signals import post_save
 from django.shortcuts import get_object_or_404
 from maasserver.exceptions import PermissionDenied
 from maasserver.macaddress import MACAddressField
+from metadataserver import nodeinituser
 from piston.models import (
     Consumer,
     Token,
     )
+
+# Special users internal to MaaS.
+SYSTEM_USERS = [
+    nodeinituser.user_name,
+    ]
 
 
 class CommonInfo(models.Model):
@@ -384,6 +390,30 @@ class MACAddress(CommonInfo):
 GENERIC_CONSUMER = 'Maas consumer'
 
 
+def create_auth_token(user):
+    """Create new Token and Consumer (OAuth authorisation) for `user`.
+
+    :param user: The user to create a token for.
+    :type user: User
+    :return: A tuple containing the Consumer and the Token that were
+        created.
+    :rtype: tuple
+
+    """
+    consumer = Consumer.objects.create(
+        user=user, name=GENERIC_CONSUMER, status='accepted')
+    consumer.generate_random_codes()
+    # This is a 'generic' consumer aimed to service many clients, hence
+    # we don't authenticate the consumer with key/secret key.
+    consumer.secret = ''
+    consumer.save()
+    token = Token.objects.create(
+        user=user, token_type=Token.ACCESS, consumer=consumer,
+        is_approved=True)
+    token.generate_random_codes()
+    return consumer, token
+
+
 class UserProfile(models.Model):
     """A User profile to store Maas specific methods and fields.
 
@@ -419,18 +449,7 @@ class UserProfile(models.Model):
         :rtype: tuple
 
         """
-        consumer = Consumer.objects.create(
-            user=self.user, name=GENERIC_CONSUMER, status='accepted')
-        consumer.generate_random_codes()
-        # This is a 'generic' consumer aimed to service many clients, hence
-        # we don't authenticate the consumer with key/secret key.
-        consumer.secret = ''
-        consumer.save()
-        token = Token.objects.create(
-            user=self.user, token_type=Token.ACCESS, consumer=consumer,
-            is_approved=True)
-        token.generate_random_codes()
-        return consumer, token
+        return create_auth_token(self.user)
 
     def delete_authorisation_token(self, token_key):
         """Delete the user's OAuth token wich key token_key.
@@ -449,7 +468,8 @@ class UserProfile(models.Model):
 # When a user is created: create the related profile and the default
 # consumer/token.
 def create_user(sender, instance, created, **kwargs):
-    if created:
+    # System users do not have profiles.
+    if created and instance.username not in SYSTEM_USERS:
         # Create related UserProfile.
         profile = UserProfile.objects.create(user=instance)
 
