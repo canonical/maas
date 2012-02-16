@@ -705,6 +705,23 @@ class FileStorageAPITest(APITestCase):
         self.assertIn('text/plain', response['Content-Type'])
         self.assertEqual("Exactly one file must be supplied", response.content)
 
+    def test_add_file_can_overwrite_existing_file_of_same_name(self):
+        # Write file one.
+        filepath = self.make_file(contents="file one")
+        with open(filepath) as f:
+            response = self.make_API_POST_request("add", "foo", f)
+        self.assertEqual(httplib.CREATED, response.status_code)
+
+        # Write file two with the same name but different contents.
+        filepath = self.make_file(contents="file two")
+        with open(filepath) as f:
+            response = self.make_API_POST_request("add", "foo", f)
+        self.assertEqual(httplib.CREATED, response.status_code)
+
+        # Retrieve the file and check its contents are the new contents.
+        response = self.make_API_GET_request("get", "foo")
+        self.assertEqual("file two", response.content)
+
     def test_get_file_succeeds(self):
         factory.make_file_storage(filename="foofilers", data=b"give me rope")
         response = self.make_API_GET_request("get", "foofilers")

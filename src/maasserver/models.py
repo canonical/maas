@@ -11,6 +11,7 @@ from __future__ import (
 __metaclass__ = type
 __all__ = [
     "generate_node_system_id",
+    "FileStorage",
     "NODE_STATUS",
     "Node",
     "MACAddress",

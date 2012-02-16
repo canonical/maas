@@ -25,7 +25,6 @@ import sys
 import types
 
 from django.core.exceptions import (
-    ObjectDoesNotExist,
     ValidationError,
     )
 from django.http import (
@@ -383,7 +382,7 @@ class FilesHandler(BaseHandler):
             raise MaasAPIBadRequest("Filename not supplied")
         try:
             db_file = FileStorage.objects.get(filename=filename)
-        except ObjectDoesNotExist:
+        except FileStorage.DoesNotExist:
             raise MaasAPINotFound("File not found")
         return HttpResponse(db_file.data.read(), status=httplib.OK)
 
@@ -409,9 +408,12 @@ class FilesHandler(BaseHandler):
         # As per the comment in FileStorage, this ought to deal in
         # chunks instead of reading the file into memory, but large
         # files are not expected.
-        storage = FileStorage()
+        try:
+            storage = FileStorage.objects.get(filename=filename)
+        except FileStorage.DoesNotExist:
+            storage = FileStorage()
+
         storage.save_file(filename, uploaded_file)
-        storage.save()
         return HttpResponse('', status=httplib.CREATED)
 
     @classmethod
