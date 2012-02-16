@@ -2,11 +2,11 @@
     updated: !!timestamp '2012-01-24 10:52:38.735954'}
   model: maasserver.node
   pk: 15
-- fields: {created: 2012-01-24, hostname: moon, owner: 6, status: 2, system_id: node-29d7ad70-4671-11e1-93b8-00225f89f211,
+- fields: {created: 2012-01-24, hostname: moon, owner: 106, status: 2, system_id: node-29d7ad70-4671-11e1-93b8-00225f89f211,
     updated: !!timestamp '2012-01-24 10:52:44.507777'}
   model: maasserver.node
   pk: 16
-- fields: {created: 2012-01-24, hostname: mars, owner: 6, status: 3, system_id: node-2d424b28-4671-11e1-93b8-00225f89f211,
+- fields: {created: 2012-01-24, hostname: mars, owner: 106, status: 3, system_id: node-2d424b28-4671-11e1-93b8-00225f89f211,
     updated: !!timestamp '2012-01-24 10:52:50.239704'}
   model: maasserver.node
   pk: 17
@@ -14,7 +14,7 @@
     updated: !!timestamp '2012-01-24 10:52:54.346832'}
   model: maasserver.node
   pk: 18
-- fields: {created: 2012-01-24, hostname: saturn, owner: 1, status: 3, system_id: node-33b55e28-4671-11e1-93b8-00225f89f211,
+- fields: {created: 2012-01-24, hostname: saturn, owner: 101, status: 3, system_id: node-33b55e28-4671-11e1-93b8-00225f89f211,
     updated: !!timestamp '2012-01-24 10:53:01.060176'}
   model: maasserver.node
   pk: 19
@@ -56,7 +56,7 @@
     user_permissions: []
     username: admin
   model: auth.user
-  pk: 1
+  pk: 101
 - fields:
     date_joined: 2012-01-24 10:49:41
     email: gaston@example.com
@@ -71,7 +71,7 @@
     user_permissions: []
     username: gaston
   model: auth.user
-  pk: 2
+  pk: 102
 - fields:
     date_joined: 2012-01-24 10:50:03
     email: dave@example.com
@@ -86,7 +86,7 @@
     user_permissions: []
     username: dave
   model: auth.user
-  pk: 3
+  pk: 103
 - fields:
     date_joined: 2012-01-24 10:50:21
     email: raph@example.com
@@ -101,7 +101,7 @@
     user_permissions: []
     username: raph
   model: auth.user
-  pk: 4
+  pk: 104
 - fields:
     date_joined: 2012-01-24 10:50:38
     email: diane@example.com
@@ -116,7 +116,7 @@
     user_permissions: []
     username: diane
   model: auth.user
-  pk: 5
+  pk: 105
 - fields:
     date_joined: 2012-01-24 10:50:53
     email: test@example.com
@@ -131,22 +131,22 @@
     user_permissions: []
     username: test
   model: auth.user
-  pk: 6
+  pk: 106
 - fields: {description: '', key: RfGASHsLT6XwuRunC6, name: Maas consumer, secret: '', status: accepted,
-    user: 1}
+    user: 101}
   model: piston.consumer
   pk: 1
 - fields: {description: '', key: JcaW54bSSN66wj5M3d, name: Maas consumer, secret: '', status: accepted,
-    user: 5}
+    user: 105}
   model: piston.consumer
   pk: 2
 - fields: {callback: null, callback_confirmed: false, consumer: 1, is_approved: true,
     key: EswkkXrcungmh4wjgN, secret: Z7xkk6LBjfsEDnXpL93ksTRWn9jMBXDg, timestamp: 1328622205,
-    token_type: 2, user: 1, verifier: ''}
+    token_type: 2, user: 101, verifier: ''}
   model: piston.token
   pk: 1
 - fields: {callback: null, callback_confirmed: false, consumer: 1, is_approved: true,
     key: e6jDkAJzAP7SZnpkQq, secret: mkWmXM62Xv6p73sF8uZNdu6kpLcdktpp, timestamp: 1328622494,
-    token_type: 2, user: 5, verifier: ''}
+    token_type: 2, user: 105, verifier: ''}
   model: piston.token
   pk: 2
