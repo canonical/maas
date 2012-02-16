@@ -28,7 +28,7 @@ from metadataserver.api import (
 urlpatterns = patterns(
     '',
     url(
-        r'(?P<version>[^/]+)/meta-data/$', meta_data,
+        r'(?P<version>[^/]+)/meta-data/(?P<item>.*)$', meta_data,
         name='metadata_meta_data'),
     url(
         r'(?P<version>[^/]+)/user-data$', user_data,

@@ -38,6 +38,7 @@ from piston.models import (
 
 # Special users internal to MaaS.
 SYSTEM_USERS = [
+    # For nodes' access to the metadata API:
     nodeinituser.user_name,
     ]
 
