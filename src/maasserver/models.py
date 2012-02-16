@@ -49,11 +49,11 @@ class CommonInfo(models.Model):
     class Meta:
         abstract = True
 
-    def save(self):
+    def save(self, *args, **kwargs):
         if not self.id:
             self.created = datetime.date.today()
         self.updated = datetime.datetime.today()
-        super(CommonInfo, self).save()
+        super(CommonInfo, self).save(*args, **kwargs)
 
 
 def generate_node_system_id():
