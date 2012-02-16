@@ -17,7 +17,7 @@ suite.add(new Y.maas.testing.TestCase({
         // Silence io.
         var mockXhr = Y.Mock();
         Y.Mock.expect(mockXhr, {
-            method: 'io',
+            method: 'send',
             args: [MAAS_config.uris.nodes_handler, Y.Mock.Value.Any]
         });
         this.mockIO(mockXhr, module);
@@ -56,7 +56,7 @@ suite.add(new Y.maas.testing.TestCase({
     testAddNodeAPICall: function() {
         var mockXhr = Y.Mock();
         Y.Mock.expect(mockXhr, {
-            method: 'io',
+            method: 'send',
             args: [MAAS_config.uris.nodes_handler, Y.Mock.Value.Any]
         });
         this.mockIO(mockXhr, module);
@@ -70,7 +70,7 @@ suite.add(new Y.maas.testing.TestCase({
 
     testNodeidPopulation: function() {
         var mockXhr = new Y.Base();
-        mockXhr.io = function(url, cfg) {
+        mockXhr.send = function(url, cfg) {
             cfg.on.success(3, {response: Y.JSON.stringify({system_id: 3})});
         };
         this.mockIO(mockXhr, module);

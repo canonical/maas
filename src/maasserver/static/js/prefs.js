@@ -12,7 +12,7 @@ Y.log('loading maas.prefs');
 var module = Y.namespace('maas.prefs');
 
 // Only used to mockup io in tests.
-module._io = Y;
+module._io = new Y.IO();
 
 var TokenWidget = function() {
     TokenWidget.superclass.constructor.apply(this, arguments);
@@ -97,7 +97,7 @@ Y.extend(TokenWidget, Y.Widget, {
                 }
             }
         };
-        var request = module._io.io(
+        var request = module._io.send(
             MAAS_config.uris.account_handler, cfg);
     },
 
@@ -182,7 +182,7 @@ Y.extend(TokenWidget, Y.Widget, {
                 }
             }
         };
-        var request = module._io.io(
+        var request = module._io.send(
             MAAS_config.uris.account_handler, cfg);
     }
 });

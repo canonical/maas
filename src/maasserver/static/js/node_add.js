@@ -15,7 +15,7 @@ var module = Y.namespace('maas.node_add');
 module.NODE_ADDED_EVENT = 'nodeAdded';
 
 // Only used to mockup io in tests.
-module._io = Y;
+module._io = new Y.IO();
 
 var AddNodeWidget = function() {
     AddNodeWidget.superclass.constructor.apply(this, arguments);
@@ -207,7 +207,7 @@ Y.extend(AddNodeWidget, Y.Panel, {
                 useDisabled: true
             }
         };
-        var request = module._io.io(
+        var request = module._io.send(
             MAAS_config.uris.nodes_handler, cfg);
     }
 
@@ -281,9 +281,8 @@ module.showAddNodeWidget = function(event) {
         duration: 0.5,
         top: '0px'
     });
-    /* We need to set the focus late as the widget wants to set the focus on 
-       the bounding box.
-    */
+    // We need to set the focus late as the widget wants to set the focus
+    // on the bounding box.
     module._add_node_singleton.get('boundingBox').one('input[type=text]').focus();
 };
 

@@ -60,7 +60,7 @@ module.TestCase = Y.Base.create('ioMockableTestCase', Y.Test.Case, [], {
 
     mockSuccess: function(response, module) {
         var mockXhr = {};
-        mockXhr.io = function(url, cfg) {
+        mockXhr.send = function(url, cfg) {
            var out = {};
            out.response = response;
            cfg.on.success('4', out);

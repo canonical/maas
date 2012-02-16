@@ -12,8 +12,7 @@ Y.log('loading mass.sample');
 var module = Y.namespace('maas.sample');
 
 // Only used to mockup io in tests.
-module._io = Y;
-
+module._io = new Y.IO();
 
 }, '0.1', {'requires': ['view', 'io', 'maas.node' ]}
 );

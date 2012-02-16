@@ -47,7 +47,7 @@ suite.add(new Y.maas.testing.TestCase({
         // A click on the delete link calls the API to delete a token.
         var mockXhr = new Y.Base();
         var fired = false;
-        mockXhr.io = function(url, cfg) {
+        mockXhr.send = function(url, cfg) {
             fired = true;
             Y.Assert.areEqual(MAAS_config.uris.account_handler, url);
             Y.Assert.areEqual(
@@ -67,7 +67,7 @@ suite.add(new Y.maas.testing.TestCase({
         // If the API call to delete a token fails, an error is displayed.
         var mockXhr = new Y.Base();
         var fired = false;
-        mockXhr.io = function(url, cfg) {
+        mockXhr.send = function(url, cfg) {
             fired = true;
             cfg.on.failure(3);
         };
@@ -88,7 +88,7 @@ suite.add(new Y.maas.testing.TestCase({
         // corresponding row is deleted.
         var mockXhr = new Y.Base();
         var fired = false;
-        mockXhr.io = function(url, cfg) {
+        mockXhr.send = function(url, cfg) {
             fired = true;
             cfg.on.success(3);
         };
@@ -118,7 +118,7 @@ suite.add(new Y.maas.testing.TestCase({
         // create a token.
         var mockXhr = new Y.Base();
         var fired = false;
-        mockXhr.io = function(url, cfg) {
+        mockXhr.send = function(url, cfg) {
             fired = true;
             Y.Assert.areEqual(MAAS_config.uris.account_handler, url);
             Y.Assert.areEqual(
@@ -138,7 +138,7 @@ suite.add(new Y.maas.testing.TestCase({
         // If the API call to create a token fails, an error is displayed.
         var mockXhr = new Y.Base();
         var fired = false;
-        mockXhr.io = function(url, cfg) {
+        mockXhr.send = function(url, cfg) {
             fired = true;
             cfg.on.failure(3);
         };
@@ -159,7 +159,7 @@ suite.add(new Y.maas.testing.TestCase({
         // corresponding row is added.
         var mockXhr = new Y.Base();
         var fired = false;
-        mockXhr.io = function(url, cfg) {
+        mockXhr.send = function(url, cfg) {
             fired = true;
             var response = {
                 consumer_key: 'consumer_key',
