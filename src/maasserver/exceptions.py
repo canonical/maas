@@ -53,6 +53,11 @@ class PermissionDenied(MaasAPIException):
     api_error = httplib.FORBIDDEN
 
 
+class Unauthorized(MaasAPIException):
+    """HTTP error 401: Unauthorized.  Login required."""
+    api_error = httplib.UNAUTHORIZED
+
+
 class NodesNotAvailable(MaasAPIException):
     """Requested node(s) are not available to be acquired."""
     api_error = httplib.CONFLICT
