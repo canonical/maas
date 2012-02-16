@@ -91,7 +91,7 @@ maasdb_stop_cluster() {
 
     if test -f "$DATADIR/postmaster.pid"
     then
-        $PGCTL stop -D "$DATADIR"
+        $PGCTL stop -W -m fast -D "$DATADIR"
     fi
 }
 
@@ -150,11 +150,40 @@ maasdb_delete_cluster() {
 }
 
 
+usage() {
+    cat <<EOF >&2
+Usage: maasdb <command> <cluster-path>
+
+Where <command> is one of:
+  start
+  stop
+  query
+  shell
+  delete-cluster
+
+And <cluster-path> is the path to the MaaS development database cluster,
+typically "./db"
+EOF
+}
+
+
+unknown_command() {
+    echo >&2 "** Unknown command: $1 **"
+    echo
+    usage
+    exit 1
+}
+
+
 main() {
     local COMMAND DATADIR
     COMMAND="$1"
     DATADIR="$2"
-    shift 2
+    if ! shift 2
+    then
+        usage
+        exit 1
+    fi
 
     case "$COMMAND" in
         start) maasdb_init_db "$DATADIR" "$@" ;;
@@ -162,6 +191,7 @@ main() {
         query) maasdb_query "$DATADIR" "$@" ;;
         shell) maasdb_shell "$DATADIR" "$@" ;;
         delete-cluster) maasdb_delete_cluster "$DATADIR" "$@" ;;
+        *) unknown_command "$COMMAND" ;;
     esac
 }
 
