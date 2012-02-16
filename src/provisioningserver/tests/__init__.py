@@ -9,23 +9,28 @@ from __future__ import (
     )
 
 __metaclass__ = type
-__all__ = []
+__all__ = [
+    "get_rabbit",
+    ]
 
 from rabbitfixture.server import RabbitServer
 
-# Set setUp() and tearDown().
+# Set get_rabbit() and tearDown().
 rabbit = None
 
 
-def setUp():
-    """Package-level fixture hook, recognized by nose."""
+def get_rabbit():
+    """Return a running `RabbitServer` fixture."""
     global rabbit
-    rabbit = RabbitServer()
-    rabbit.setUp()
+    if rabbit is None:
+        rabbit = RabbitServer()
+        rabbit.setUp()
+    return rabbit
 
 
 def tearDown():
     """Package-level fixture hook, recognized by nose."""
     global rabbit
-    rabbit.cleanUp()
-    rabbit = None
+    if rabbit is not None:
+        rabbit.cleanUp()
+        rabbit = None

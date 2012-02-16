@@ -32,7 +32,12 @@ from twisted.python.usage import UsageError
 class TestOptions(TestCase):
     """Tests for `provisioningserver.plugin.Options`."""
 
-    def test_defaults(self):
+    @skip(
+        "RabbitMQ is not yet a required component "
+        "of a running MaaS installation. Re-enable "
+        "when RabbitMQ is once again needed; remove "
+        "the other similarly named test.")
+    def test_defaults_SKIPPED(self):
         options = Options()
         expected = {
             "brokerhost": "127.0.0.1",
@@ -40,6 +45,16 @@ class TestOptions(TestCase):
             "brokerport": 5672,
             "brokeruser": None,
             "brokervhost": "/",
+            "logfile": "pserv.log",
+            "oops-dir": None,
+            "oops-reporter": "MAAS-PS",
+            "port": 8001,
+            }
+        self.assertEqual(expected, options.defaults)
+
+    def test_defaults(self):
+        options = Options()
+        expected = {
             "logfile": "pserv.log",
             "oops-dir": None,
             "oops-reporter": "MAAS-PS",
@@ -78,7 +93,12 @@ class TestOptions(TestCase):
         arguments = []
         options.parseOptions(arguments)  # No error.
 
-    def test_parse_int_options(self):
+    @skip(
+        "RabbitMQ is not yet a required component "
+        "of a running MaaS installation. Re-enable "
+        "when RabbitMQ is once again needed; remove "
+        "the other similarly named test.")
+    def test_parse_int_options_SKIPPED(self):
         # Some options are converted to ints.
         options = Options()
         arguments = [
@@ -91,7 +111,21 @@ class TestOptions(TestCase):
         self.assertEqual(4321, options["brokerport"])
         self.assertEqual(3456, options["port"])
 
-    def test_parse_broken_int_options(self):
+    def test_parse_int_options(self):
+        # Some options are converted to ints.
+        options = Options()
+        arguments = [
+            "--port", "3456",
+            ]
+        options.parseOptions(arguments)
+        self.assertEqual(3456, options["port"])
+
+    @skip(
+        "RabbitMQ is not yet a required component "
+        "of a running MaaS installation. Re-enable "
+        "when RabbitMQ is once again needed; remove "
+        "the other similarly named test.")
+    def test_parse_broken_int_options_SKIPPED(self):
         # An error is raised if the integer options do not contain integers.
         options = Options()
         arguments = [
@@ -102,12 +136,39 @@ class TestOptions(TestCase):
         self.assertRaises(
             UsageError, options.parseOptions, arguments)
 
-    def test_oops_dir_without_reporter(self):
+    def test_parse_broken_int_options(self):
+        # An error is raised if the integer options do not contain integers.
+        options = Options()
+        arguments = [
+            "--port", "Metallica",
+            ]
+        self.assertRaises(
+            UsageError, options.parseOptions, arguments)
+
+    @skip(
+        "RabbitMQ is not yet a required component "
+        "of a running MaaS installation. Re-enable "
+        "when RabbitMQ is once again needed; remove "
+        "the other similarly named test.")
+    def test_oops_dir_without_reporter_SKIPPED(self):
         # It is an error to omit the OOPS reporter if directory is specified.
         options = Options()
         arguments = [
             "--brokerpassword", "Hoskins",
             "--brokeruser", "Bob",
+            "--oops-dir", "/some/where",
+            "--oops-reporter", "",
+            ]
+        expected = MatchesException(
+            UsageError, "A reporter must be supplied")
+        self.assertThat(
+            partial(options.parseOptions, arguments),
+            Raises(expected))
+
+    def test_oops_dir_without_reporter(self):
+        # It is an error to omit the OOPS reporter if directory is specified.
+        options = Options()
+        arguments = [
             "--oops-dir", "/some/where",
             "--oops-reporter", "",
             ]
@@ -148,6 +209,9 @@ class TestProvisioningServiceMaker(TestCase):
         site_service = service.getServiceNamed("site")
         self.assertEqual(options["port"], site_service.args[0])
 
+    @skip(
+        "RabbitMQ is not yet a required component "
+        "of a running MaaS installation.")
     def test_makeService_with_broker(self):
         """
         The log, oops, site, and amqp services are created when the broker

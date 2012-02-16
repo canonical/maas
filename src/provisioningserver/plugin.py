@@ -47,17 +47,22 @@ class Options(usage.Options):
     optParameters = [
         ["port", None, 8001, "Port to serve on."],
         ["logfile", "l", "pserv.log", "Logfile name."],
+        ["oops-dir", "r", None, "Where to write OOPS reports"],
+        ["oops-reporter", "o", "MAAS-PS", "String identifying this service."],
+        ]
+
+    # Move these back into optParameters when RabbitMQ is a required component
+    # of a running MaaS installation.
+    optParameters_FOR_RABBIT = [
         ["brokerport", "p", 5672, "Broker port"],
         ["brokerhost", "h", '127.0.0.1', "Broker host"],
         ["brokeruser", "u", None, "Broker user"],
         ["brokerpassword", "a", None, "Broker password"],
         ["brokervhost", "v", '/', "Broker vhost"],
-        ["oops-dir", "r", None, "Where to write OOPS reports"],
-        ["oops-reporter", "o", "MAAS-PS", "String identifying this service."],
         ]
 
     def postOptions(self):
-        for int_arg in ('port', 'brokerport'):
+        for int_arg in ('port',):
             try:
                 self[int_arg] = int(self[int_arg])
             except (TypeError, ValueError):
@@ -102,11 +107,11 @@ class ProvisioningServiceMaker(object):
         oops_service = OOPSService(log_service, oops_dir, oops_reporter)
         oops_service.setServiceParent(services)
 
-        broker_port = options["brokerport"]
-        broker_host = options["brokerhost"]
-        broker_user = options["brokeruser"]
-        broker_password = options["brokerpassword"]
-        broker_vhost = options["brokervhost"]
+        broker_port = options.get("brokerport")
+        broker_host = options.get("brokerhost")
+        broker_user = options.get("brokeruser")
+        broker_password = options.get("brokerpassword")
+        broker_vhost = options.get("brokervhost")
 
         # Connecting to RabbitMQ is optional; it is not yet a required
         # component of a running MaaS installation.

@@ -11,6 +11,8 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
+from unittest import skip
+
 from provisioningserver.amqpclient import AMQFactory
 from testtools import TestCase
 from testtools.deferredruntest import (
@@ -66,8 +68,11 @@ class AMQTest(TestCase):
 
         """
         from provisioningserver import tests
-        return tests.rabbit
+        return tests.get_rabbit()
 
+    @skip(
+        "RabbitMQ is not yet a required component "
+        "of a running MaaS installation.")
     def setUp(self):
         """
         At each run, we delete the test vhost and recreate it, to be sure to be
