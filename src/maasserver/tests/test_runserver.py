@@ -12,7 +12,7 @@ __metaclass__ = type
 __all__ = []
 
 from maasserver.management.commands.runserver import render_error
-from maastesting import TestCase
+from maasserver.testing import TestCase
 
 
 class TestRunServer(TestCase):

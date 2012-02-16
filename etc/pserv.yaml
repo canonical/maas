@@ -1,20 +1,40 @@
-# Provisioning Server (pserv) configuration.
+##
+## Provisioning Server (pserv) configuration.
+##
 
-# The port on which the Provisioning API will be made available.
-#port: 8001
-# Where to log. This log can be rotated by sending SIGUSR1 to the
-# running server.
-logfile: "pserv.log"
+## The port on which the Provisioning API will be made available.
+#
+# port: 8001
+#
 
-# OOPS configuration (optional).
+## Where to log. This log can be rotated by sending SIGUSR1 to the
+## running server.
+#
+# logfile: "pserv.log"
+#
+
+## OOPS configuration (optional).
+#
 # oops:
 #   directory: "/tmp/killed/by"
 #   reporter: "death"
+#
 
-# Message broker configuration (optional, not currently used).
+## Message broker configuration (optional, not currently used).
+#
 # broker:
 #   host: "localhost"
 #   port: 1543
 #   username: "lemmy"
 #   password: "overkill"
 #   vhost: "/hammersmith"
+#
+
+## Cobbler configuration.
+#
+# cobbler:
+#   url: "localhost"
+#   username: "admin"
+#   password: "test"
+#   fake: false
+#

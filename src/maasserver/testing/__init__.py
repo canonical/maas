@@ -6,13 +6,43 @@ from __future__ import (
     unicode_literals,
     )
 
-"""Test maasserver API."""
+"""Tests for `maasserver`."""
 
 __metaclass__ = type
-__all__ = []
+__all__ = [
+    "get_fake_provisioning_api_proxy",
+    "LoggedInTestCase",
+    "TestCase",
+    ]
 
+from uuid import uuid1
+
+from fixtures import MonkeyPatch
 from maasserver.testing.factory import factory
-from maastesting import TestCase
+import maastesting
+from provisioningserver.testing import fakeapi
+
+
+def get_fake_provisioning_api_proxy():
+    papi_fake = fakeapi.FakeSynchronousProvisioningAPI()
+    distro = papi_fake.add_distro(
+        "distro-%s" % uuid1().get_hex(),
+        "initrd", "kernel")
+    papi_fake.add_profile(
+        "profile-%s" % uuid1().get_hex(),
+        distro)
+    return papi_fake
+
+
+class TestCase(maastesting.TestCase):
+
+    def setUp(self):
+        super(TestCase, self).setUp()
+        papi_fake = get_fake_provisioning_api_proxy()
+        papi_fake_fixture = MonkeyPatch(
+            "maasserver.provisioning.get_provisioning_api_proxy",
+            lambda: papi_fake)
+        self.useFixture(papi_fake_fixture)
 
 
 class LoggedInTestCase(TestCase):

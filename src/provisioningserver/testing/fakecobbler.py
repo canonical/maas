@@ -20,7 +20,10 @@ from copy import deepcopy
 from fnmatch import fnmatch
 from itertools import count
 from random import randint
-from xmlrpclib import Fault
+from xmlrpclib import (
+    dumps,
+    Fault,
+    )
 
 from provisioningserver.cobblerclient import CobblerSession
 from twisted.internet.defer import (
@@ -53,6 +56,11 @@ class FakeTwistedProxy:
 
     @inlineCallbacks
     def callRemote(self, method, *args):
+        # Dump the call information as an XML-RPC request to ensure that it
+        # will travel over the wire. Cobbler does not allow None so we forbid
+        # it here too.
+        dumps(args, method, allow_none=False)
+        # Continue to forward the call to fake_cobbler.
         callee = getattr(self.fake_cobbler, method, None)
         assert callee is not None, "Unknown Cobbler method: %s" % method
         result = yield callee(*args)

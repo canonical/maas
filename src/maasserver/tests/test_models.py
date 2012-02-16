@@ -26,8 +26,8 @@ from maasserver.models import (
     NODE_STATUS_CHOICES_DICT,
     UserProfile,
     )
+from maasserver.testing import TestCase
 from maasserver.testing.factory import factory
-from maastesting import TestCase
 from piston.models import (
     Consumer,
     KEY_SIZE,

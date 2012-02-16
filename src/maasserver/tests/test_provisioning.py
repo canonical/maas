@@ -11,12 +11,10 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
-from fixtures import MonkeyPatch
 from maasserver import provisioning
 from maasserver.models import Node
+from maasserver.testing import TestCase
 from maasserver.testing.factory import factory
-from maastesting import TestCase
-from provisioningserver.testing.fakeapi import FakeSynchronousProvisioningAPI
 
 
 class ProvisioningTests:
@@ -97,35 +95,9 @@ class ProvisioningTests:
         self.assertEqual([], node["mac_addresses"])
 
 
-def patch_in_fake_papi(test):
-    """Patch in a fake Provisioning API for the duration of the test."""
-    papi_fake = FakeSynchronousProvisioningAPI()
-    patch = MonkeyPatch(
-        "maasserver.provisioning.get_provisioning_api_proxy",
-        lambda: papi_fake)
-    test.useFixture(patch)
-    return papi_fake
-
-
-class TestProvisioningFake(TestCase):
-    """Tests for `patch_in_fake_papi`."""
-
-    def test_patch_in_fake_papi(self):
-        # patch_in_fake_papi() patches in a fake provisioning API so that we
-        # can observe what the signal handlers are doing.
-        papi = provisioning.get_provisioning_api_proxy()
-        papi_fake = patch_in_fake_papi(self)
-        self.assertIsNot(provisioning.get_provisioning_api_proxy(), papi)
-        self.assertIs(provisioning.get_provisioning_api_proxy(), papi_fake)
-        # The fake is pristine; it does not contain sample data.
-        self.assertEqual({}, papi_fake.distros)
-        self.assertEqual({}, papi_fake.profiles)
-        self.assertEqual({}, papi_fake.nodes)
-
-
 class TestProvisioningWithFake(ProvisioningTests, TestCase):
     """Tests for the Provisioning API using a fake."""
 
     def setUp(self):
         super(TestProvisioningWithFake, self).setUp()
-        self.papi = patch_in_fake_papi(self)
+        self.papi = provisioning.get_provisioning_api_proxy()

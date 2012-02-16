@@ -13,7 +13,7 @@ __all__ = [
     'get_provisioning_api_proxy',
     ]
 
-from uuid import uuid1
+import warnings
 import xmlrpclib
 
 from django.conf import settings
@@ -29,14 +29,24 @@ from maasserver.models import (
 
 
 def get_provisioning_api_proxy():
-    """Return a proxy to the Provisioning API."""
-    # FIXME: This is a little ugly.
+    """Return a proxy to the Provisioning API.
+
+    If ``PSERV_URL`` is not set, we attempt to return a handle to a fake proxy
+    implementation. This will not be available in a packaged version of MaaS,
+    in which case an error is raised.
+    """
     url = settings.PSERV_URL
     if url is None:
-        from provisioningserver.testing.fakeapi import (
-            FakeSynchronousProvisioningAPI,
-            )
-        return FakeSynchronousProvisioningAPI()
+        try:
+            from maasserver import testing
+        except ImportError:
+            # This is probably in a package.
+            raise RuntimeError("PSERV_URL must be defined.")
+        else:
+            warnings.warn(
+                "PSERV_URL is None; using the fake Provisioning API.",
+                RuntimeWarning)
+            return testing.get_fake_provisioning_api_proxy()
     else:
         return xmlrpclib.ServerProxy(
             url, allow_none=True, use_datetime=True)
@@ -50,13 +60,12 @@ def provision_post_save_Node(sender, instance, created, **kwargs):
     if instance.system_id in nodes:
         profile = nodes[instance.system_id]["profile"]
     else:
-        # TODO: Get these from somewhere.
-        distro = papi.add_distro(
-            "distro-%s" % uuid1().get_hex(),
-            "initrd", "kernel")
-        profile = papi.add_profile(
-            "profile-%s" % uuid1().get_hex(),
-            distro)
+        # TODO: Choose a sensible profile.
+        profiles = papi.get_profiles()
+        assert len(profiles) >= 1, (
+            "No profiles defined in Cobbler; has "
+            "cobbler-ubuntu-import been run?")
+        profile = sorted(profiles)[0]
     papi.add_node(instance.system_id, profile)
 
 

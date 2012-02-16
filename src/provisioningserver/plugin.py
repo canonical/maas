@@ -11,22 +11,21 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
+from getpass import getuser
+
 from amqpclient import AMQFactory
 from formencode import Schema
 from formencode.validators import (
     Int,
     RequireIfPresent,
     String,
+    URL,
     )
 from provisioningserver.cobblerclient import CobblerSession
 from provisioningserver.remote import ProvisioningAPI_XMLRPC
 from provisioningserver.services import (
     LogService,
     OOPSService,
-    )
-from provisioningserver.testing.fakecobbler import (
-    FakeCobbler,
-    FakeTwistedProxy,
     )
 from twisted.application.internet import (
     TCPClient,
@@ -67,9 +66,22 @@ class ConfigBroker(Schema):
 
     host = String(if_missing=b"localhost")
     port = Int(min=1, max=65535, if_missing=5673)
-    username = String(if_missing=None)
-    password = String(if_missing=None)
+    username = String(if_missing=getuser())
+    password = String(if_missing=b"test")
     vhost = String(if_missing="/")
+
+
+class ConfigCobbler(Schema):
+    """Configuration validator for connecting to Cobbler."""
+
+    if_key_missing = None
+
+    url = URL(
+        add_http=True, require_tld=False,
+        if_missing=b"http://localhost/cobbler_api",
+        )
+    username = String(if_missing=getuser())
+    password = String(if_missing=b"test")
 
 
 class Config(Schema):
@@ -78,9 +90,10 @@ class Config(Schema):
     if_key_missing = None
 
     port = Int(min=1, max=65535, if_missing=8001)
-    logfile = String(not_empty=True)
+    logfile = String(if_empty=b"pserv.log", if_missing=b"pserv.log")
     oops = ConfigOops
     broker = ConfigBroker
+    cobbler = ConfigCobbler
 
     @classmethod
     def parse(cls, stream):
@@ -118,10 +131,7 @@ class ProvisioningServiceMaker(object):
         services = MultiService()
 
         config_file = options["config-file"]
-        if config_file is None:
-            config = Config.parse(b"")
-        else:
-            config = Config.load(config_file)
+        config = Config.load(config_file)
 
         log_service = LogService(config["logfile"])
         log_service.setServiceParent(services)
@@ -139,9 +149,9 @@ class ProvisioningServiceMaker(object):
         broker_password = broker_config["password"]
         broker_vhost = broker_config["vhost"]
 
-        # Connecting to RabbitMQ is optional; it is not yet a required
-        # component of a running MaaS installation.
-        if broker_username is not None and broker_password is not None:
+        # Connecting to RabbitMQ is not yet a required component of a running
+        # MaaS installation; skip unless the password has been set explicitly.
+        if broker_password is not b"test":
             cb_connected = lambda ignored: None  # TODO
             cb_disconnected = lambda ignored: None  # TODO
             cb_failed = lambda (connector, reason): (
@@ -154,17 +164,14 @@ class ProvisioningServiceMaker(object):
             client_service.setName("amqp")
             client_service.setServiceParent(services)
 
-        session = CobblerSession(
-            # TODO: Get these values from command-line arguments.
-            "http://localhost/does/not/exist", "user", "password")
-
-        # TODO: Remove this.
-        fake_cobbler = FakeCobbler({"user": "password"})
-        fake_cobbler_proxy = FakeTwistedProxy(fake_cobbler)
-        session.proxy = fake_cobbler_proxy
+        cobbler_config = config["cobbler"]
+        cobbler_session = CobblerSession(
+            cobbler_config["url"], cobbler_config["username"],
+            cobbler_config["password"])
+        papi_xmlrpc = ProvisioningAPI_XMLRPC(cobbler_session)
 
         site_root = Resource()
-        site_root.putChild("api", ProvisioningAPI_XMLRPC(session))
+        site_root.putChild("api", papi_xmlrpc)
         site = Site(site_root)
         site_port = config["port"]
         site_service = TCPServer(site_port, site)
