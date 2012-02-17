@@ -1,0 +1,18 @@
+{% extends "maasserver/base.html" %}
+
+{% block nav-active-settings %}active{% endblock %}
+{% block title %}View user{% endblock %}
+{% block page-title %}View user{% endblock %}
+
+{% block content %}
+    <p>
+      Username: {{ view_user.username }}
+    </p>
+    <p>
+      Email address: {{ view_user.email }}
+    </p>
+    <p>
+      MaaS Administrator: {{ view_user.is_superuser }}
+    </p>
+{% endblock %}
+

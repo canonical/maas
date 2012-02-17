@@ -1,0 +1,95 @@
+{% extends "maasserver/base.html" %}
+
+{% block nav-active-settings %}active{% endblock %}
+
+{% block title %}Settings{% endblock %}
+{% block page-title %}Settings{% endblock %}
+
+{% block head %}
+  <script type="text/javascript">
+  <!--
+  YUI().use('tabview', 'io-form', function (Y) {
+    var tabview = new Y.TabView({
+      srcNode: '#settings'
+    });
+    tabview.render();
+    // Select the tab with index {{ tab }}.
+    var tab_index = parseInt('{{ tab }}');
+    var valid_tab_index = (
+        Y.Lang.isValue(tab_index) &&
+        tab_index >= 0 &&
+        tab_index < tabview.size());
+    if (valid_tab_index) {
+        tabview.selectChild(tab_index);
+    }
+
+  });
+  // -->
+  </script>
+{% endblock %}
+
+{% block content %}
+  <div id="settings">
+    <ul>
+      <li><a href="#users">Users</a></li>
+      <li><a href="#maas">MaaS</a></li>
+    </ul>
+    <div>
+      <div id="users">
+        <table>
+          <thead>
+            <tr>
+              <th>User</th>
+              <th>Is superuser?</th>
+              <th>Number of nodes in use</th>
+              <th>Last login</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for user_item in user_list %}
+	    <tr class="user" id="{{ user_item.username }}">
+              <td>
+                <a class="user"
+                   href="{% url 'accounts-view' user_item.username %}">
+                  {{ user_item.username }}
+                </a>
+              </td>
+              <td>
+                {% if user_item.is_superuser %}
+                  <img src="{{ STATIC_URL }}img/yes.png" />
+                {% endif %}
+              </td>
+              <td>{{ user_item.node_set.count }}</td>
+              <td>{{ user_item.last_login }}</td>
+              <td>
+                <a href="{% url 'accounts-edit' user_item.username %}"
+        	   title="Edit user {{ user_item.username }}">
+                  <img src="{{ STATIC_URL }}img/edit.png" />
+                </a>
+                {% if user != user_item %}
+          	  <a title="Delete user {{ user_item.username }}"
+                     class="delete-user"
+                     href="{% url 'accounts-del' user_item.username %}">
+                    <img src="{{ STATIC_URL }}img/delete.png" />
+                  </a>
+                  <form method="POST"
+                        action="{% url 'accounts-del' user_item.username %}">
+                    <input type="hidden" name="username"
+                           value="{{ user_item.username }}" />
+                  </form>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+        <a href="{% url 'accounts-add' %}">Add user</a>
+      </div>
+      <div id="maas">
+        #TODO Maas prefs
+      </div>
+    </div>
+  </div>
+
+{% endblock %}

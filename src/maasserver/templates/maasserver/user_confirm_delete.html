@@ -1,0 +1,21 @@
+{% extends "maasserver/base.html" %}
+
+{% block nav-active-settings %}active{% endblock %}
+{% block title %}Delete user confirmation{% endblock %}
+{% block page-title %}Delete user confirmation{% endblock %}
+
+{% block content %}
+    <h2>
+      Are you sure you want to delete user {{ user_to_delete.user.username }}?
+    </h2>
+    <p>
+      <form action="." method="post">
+        <input type="hidden" name="post" value="yes" />
+        <input type="submit"
+               value="Yes, delete user {{ user_to_delete.user.username }}" />
+        &nbsp;&nbsp;
+        <a class="link-button" href="{% url 'settings' %}">Cancel</a>
+      </form>
+    </p>
+{% endblock %}
+

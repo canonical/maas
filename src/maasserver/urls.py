@@ -15,6 +15,7 @@ from django.conf.urls.defaults import (
     patterns,
     url,
     )
+from django.contrib.auth.decorators import user_passes_test
 from django.contrib.auth.views import login
 from django.views.generic.simple import (
     direct_to_template,
@@ -32,12 +33,23 @@ from maasserver.api import (
     )
 from maasserver.models import Node
 from maasserver.views import (
+    AccountsAdd,
+    AccountsDelete,
+    AccountsEdit,
+    AccountsView,
     logout,
     NodeListView,
     NodesCreateView,
+    settings,
     userprefsview,
     )
 from piston.resource import Resource
+
+
+def adminurl(regexp, view, *args, **kwargs):
+    view = user_passes_test(lambda u: u.is_superuser)(view)
+    return url(regexp, view, *args, **kwargs)
+
 
 # URLs accessible to anonymous users.
 urlpatterns = patterns('maasserver.views',
@@ -63,6 +75,22 @@ urlpatterns += patterns('maasserver.views',
     url(
         r'^nodes/create/$', NodesCreateView.as_view(), name='node-create'),
 )
+
+# URLs for admin users.
+urlpatterns += patterns('maasserver.views',
+    adminurl(r'^settings/$', settings, name='settings'),
+    adminurl(r'^accounts/add/$', AccountsAdd.as_view(), name='accounts-add'),
+    adminurl(
+        r'^accounts/(?P<username>\w+)/edit/$', AccountsEdit.as_view(),
+        name='accounts-edit'),
+    adminurl(
+        r'^accounts/(?P<username>\w+)/view/$', AccountsView.as_view(),
+        name='accounts-view'),
+    adminurl(
+        r'^accounts/(?P<username>\w+)/del/$', AccountsDelete.as_view(),
+        name='accounts-del'),
+)
+
 
 # API.
 auth = MaasAPIAuthentication(realm="MaaS API")

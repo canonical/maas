@@ -17,17 +17,32 @@ __all__ = [
 
 from django.contrib import messages
 from django.contrib.auth.forms import PasswordChangeForm as PasswordForm
+from django.contrib.auth.models import User
 from django.contrib.auth.views import logout as dj_logout
 from django.core.urlresolvers import reverse
 from django.http import HttpResponseRedirect
-from django.shortcuts import render_to_response
+from django.shortcuts import (
+    get_object_or_404,
+    render_to_response,
+    )
 from django.template import RequestContext
 from django.views.generic import (
     CreateView,
+    DeleteView,
+    DetailView,
     ListView,
+    UpdateView,
     )
-from maasserver.forms import ProfileForm
-from maasserver.models import Node
+from maasserver.exceptions import CannotDeleteUserException
+from maasserver.forms import (
+    EditUserForm,
+    NewUserCreationForm,
+    ProfileForm,
+    )
+from maasserver.models import (
+    Node,
+    UserProfile,
+    )
 
 
 def logout(request):
@@ -83,6 +98,82 @@ def userprefsview(request):
         {
             'profile_form': profile_form,
             'password_form': password_form,
+            'tab': tab  # Tab index to display.
+        },
+        context_instance=RequestContext(request))
+
+
+class AccountsView(DetailView):
+
+    template_name = 'maasserver/user_view.html'
+
+    context_object_name = 'view_user'
+
+    def get_object(self):
+        username = self.kwargs.get('username', None)
+        user = get_object_or_404(User, username=username)
+        return user
+
+
+class AccountsAdd(CreateView):
+
+    form_class = NewUserCreationForm
+
+    template_name = 'maasserver/user_add.html'
+
+    context_object_name = 'new_user'
+
+    def get_success_url(self):
+        return reverse('settings')
+
+
+class AccountsDelete(DeleteView):
+
+    template_name = 'maasserver/user_confirm_delete.html'
+
+    context_object_name = 'user_to_delete'
+
+    def get_object(self):
+        username = self.kwargs.get('username', None)
+        user = get_object_or_404(User, username=username)
+        return user.get_profile()
+
+    def get_next_url(self):
+        return reverse('settings')
+
+    def delete(self, request, *args, **kwargs):
+        profile = self.get_object()
+        username = profile.user.username
+        try:
+            profile.delete()
+            messages.info(request, "User %s deleted." % username)
+        except CannotDeleteUserException as e:
+            messages.info(request, unicode(e))
+        return HttpResponseRedirect(self.get_next_url())
+
+
+class AccountsEdit(UpdateView):
+
+    form_class = EditUserForm
+
+    template_name = 'maasserver/user_edit.html'
+
+    def get_object(self):
+        username = self.kwargs.get('username', None)
+        user = get_object_or_404(User, username=username)
+        return user
+
+    def get_success_url(self):
+        return reverse('settings')
+
+
+def settings(request):
+    tab = request.GET.get('tab', 0)
+    user_list = UserProfile.objects.all_users().order_by('username')
+    return render_to_response(
+        'maasserver/settings.html',
+        {
+            'user_list': user_list,
             'tab': tab  # Tab index to display.
         },
         context_instance=RequestContext(request))

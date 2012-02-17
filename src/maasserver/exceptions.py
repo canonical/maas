@@ -25,6 +25,10 @@ class MaasException(Exception):
     """Base class for Maas' exceptions."""
 
 
+class CannotDeleteUserException(Exception):
+    """User can't be deleted."""
+
+
 class MaasAPIException(Exception):
     """Base class for Maas' API exceptions.
 

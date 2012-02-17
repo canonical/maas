@@ -16,7 +16,8 @@
       <div id="header" class="center-page-content">
         {% block header %}
           <h1>
-            <a href="{% url 'index' %}" title="Return to dashboard"><img src="{{ STATIC_URL }}img/ubuntu_logo_header.png" alt="Ubuntu logo">
+            <a href="{% url 'index' %}" title="Return to dashboard">
+              <img src="{{ STATIC_URL }}img/ubuntu_logo_header.png" alt="Ubuntu logo" />
               MaaS Cluster</a>
           </h1>
           {% if user.is_authenticated %}
@@ -32,6 +33,11 @@
             <li class="{% block nav-active-node-list %}{% endblock %}">
               <a href="{% url 'node-list' %}">Nodes</a>
             </li>
+            {% if user.is_superuser %}
+            <li class="{% block nav-active-settings %}{% endblock %}">
+              <a href="{% url 'settings' %}">Settings</a>
+            </li>
+            {% endif %}
           </ul>
           {% endif %}
         {% endblock %}

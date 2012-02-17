@@ -15,6 +15,7 @@ __all__ = [
     "NODE_STATUS",
     "Node",
     "MACAddress",
+    "UserProfile",
     ]
 
 import datetime
@@ -28,7 +29,10 @@ from django.core.files.base import ContentFile
 from django.db import models
 from django.db.models.signals import post_save
 from django.shortcuts import get_object_or_404
-from maasserver.exceptions import PermissionDenied
+from maasserver.exceptions import (
+    CannotDeleteUserException,
+    PermissionDenied,
+    )
 from maasserver.macaddress import MACAddressField
 from metadataserver import nodeinituser
 from piston.models import (
@@ -415,6 +419,26 @@ def create_auth_token(user):
     return consumer, token
 
 
+class UserProfileManager(models.Manager):
+    """A utility to manage the collection of UserProfile (or User).
+
+    This should be used when dealing with UserProfiles or Users because it
+    returns only users with a profile attached to them (as opposed to system
+    users who don't have a profile).
+    """
+
+    def all_users(self):
+        """Returns all the "real" users (the users which are not system users
+        and thus have a UserProfile object attached to them).
+
+        :return: A QuerySet of the users.
+        :rtype: django.db.models.query.QuerySet_
+
+        """
+        user_ids = UserProfile.objects.all().values_list('user', flat=True)
+        return User.objects.filter(id__in=user_ids)
+
+
 class UserProfile(models.Model):
     """A User profile to store Maas specific methods and fields.
 
@@ -426,7 +450,19 @@ class UserProfile(models.Model):
 
     """
 
+    objects = UserProfileManager()
     user = models.OneToOneField(User)
+
+    def delete(self):
+        if self.user.node_set.exists():
+            nb_nodes = self.user.node_set.count()
+            msg = (
+                "User %s cannot be deleted: it still has %d node(s) "
+                "deployed." % (self.user.username, nb_nodes))
+            raise CannotDeleteUserException(msg)
+        self.user.consumers.all().delete()
+        self.user.delete()
+        super(UserProfile, self).delete()
 
     def get_authorisation_tokens(self):
         """Fetches all the user's OAuth tokens.
