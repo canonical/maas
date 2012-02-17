@@ -39,6 +39,7 @@ from twisted.internet.defer import (
     inlineCallbacks,
     returnValue,
     )
+from twisted.python.log import msg
 from twisted.web.xmlrpc import Proxy
 
 # Default timeout in seconds for xmlrpc requests to cobbler.
@@ -207,6 +208,22 @@ class CobblerSession:
             return passthrough
         return d.addBoth(cancel_timeout)
 
+    def _log_call(self, method, args):
+        """Log the call.
+
+        If the authentication token placeholder is included in `args`, the
+        string ``<token>`` will be printed in its place; the token itself will
+        not be included.
+
+        :param method: The name of the method.
+        :param args: A sequence of arguments.
+        """
+        args_repr = ", ".join(
+            "<token>" if arg is self.token_placeholder else repr(arg)
+            for arg in args)
+        message = "%s(%s)" % (method, args_repr)
+        msg(message, system=__name__)
+
     def _issue_call(self, method, *args):
         """Initiate call to XMLRPC method.
 
@@ -220,6 +237,7 @@ class CobblerSession:
         # we give it in Unicode.  Encode it here; thankfully we're
         # dealing with ASCII only in method names.
         method = method.encode('ascii')
+        self._log_call(method, args)
         args = map(self._substitute_token, args)
         d = self._with_timeout(self.proxy.callRemote(method, *args))
         return d
