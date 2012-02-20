@@ -18,3 +18,5 @@
 ./pserv.pid
 ./TAGS
 ./tags
+./twistd.log
+./twisted/plugins/dropin.cache

@@ -7,20 +7,16 @@
 {% block head %}
   <script type="text/javascript">
   <!--
-  YUI().use('tabview', 'maas.prefs', function (Y) {
+  YUI().use('tabview', 'maas.prefs', 'maas.utils', function (Y) {
     var tabview = new Y.TabView({
       srcNode: '#prefs'
     });
     tabview.render();
     // Select the tab with index {{ tab }} (which is taken from the
     // query string and set by the Django view).
-    var tab_index = parseInt('{{ tab }}');
-    var valid_tab_index = (
-        Y.Lang.isValue(tab_index) &&
-        tab_index >= 0 &&
-        tab_index < tabview.size());
-    if (valid_tab_index) {
-        tabview.selectChild(tab_index);
+    var valid_tab_index = Y.maas.utils.getTabIndex('{{ tab }}', tabview);
+    if (Y.Lang.isValue(valid_tab_index)) {
+        tabview.selectChild(valid_tab_index);
     }
 
     var profile_widget = new Y.maas.prefs.TokenWidget(

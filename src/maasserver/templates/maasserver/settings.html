@@ -8,19 +8,15 @@
 {% block head %}
   <script type="text/javascript">
   <!--
-  YUI().use('tabview', 'io-form', function (Y) {
+  YUI().use('tabview', 'maas.utils', 'io-form', function (Y) {
     var tabview = new Y.TabView({
       srcNode: '#settings'
     });
     tabview.render();
     // Select the tab with index {{ tab }}.
-    var tab_index = parseInt('{{ tab }}');
-    var valid_tab_index = (
-        Y.Lang.isValue(tab_index) &&
-        tab_index >= 0 &&
-        tab_index < tabview.size());
-    if (valid_tab_index) {
-        tabview.selectChild(tab_index);
+    var valid_tab_index = Y.maas.utils.getTabIndex('{{ tab }}', tabview);
+    if (Y.Lang.isValue(valid_tab_index)) {
+        tabview.selectChild(valid_tab_index);
     }
 
   });
