@@ -25,87 +25,99 @@ from maasserver.testing.factory import factory
 
 class LoginLogoutTest(TestCase):
 
-    def setUp(self):
-        super(LoginLogoutTest, self).setUp()
-        self.user = factory.make_user(username='test', password='test')
+    def make_user(self, name='test', password='test'):
+        """Create a user with a password."""
+        return factory.make_user(username=name, password=password)
 
     def test_login(self):
+        name = factory.getRandomString()
+        password = factory.getRandomString()
+        user = self.make_user(name, password)
         response = self.client.post(
-            reverse('login'), {'username': 'test', 'password': 'test'})
+            reverse('login'), {'username': name, 'password': password})
 
         self.assertEqual(httplib.FOUND, response.status_code)
-        self.assertEqual(self.user.id, self.client.session['_auth_user_id'])
+        self.assertEqual(user.id, self.client.session['_auth_user_id'])
 
     def test_login_failed(self):
         response = self.client.post(
-            reverse('login'), {'username': 'test', 'password': 'wrong-pw'})
+            reverse('login'), {
+                'username': factory.getRandomString(),
+                'password': factory.getRandomString(),
+                })
 
         self.assertEqual(httplib.OK, response.status_code)
         self.assertNotIn('_auth_user_id', self.client.session.keys())
 
     def test_logout(self):
-        self.user = factory.make_user(username='user', password='test')
-        self.client.login(username='user', password='test')
+        name = factory.getRandomString()
+        password = factory.getRandomString()
+        factory.make_user(name, password)
+        self.client.login(username=name, password=password)
         self.client.post(reverse('logout'))
 
         self.assertNotIn('_auth_user_id', self.client.session.keys())
 
 
-class AuthTestMixin(object):
-
-    def setUp(self):
-        super(AuthTestMixin, self).setUp()
-        self.backend = MaaSAuthorizationBackend()
-        self.admin = factory.make_admin()
-        self.user1 = factory.make_user(username='user1')
-        self.user2 = factory.make_user(username='user2')
-        self.node_user1 = factory.make_node(
-            owner=self.user1, status=NODE_STATUS.ALLOCATED)
-        self.node_user2 = factory.make_node(
-            owner=self.user2, status=NODE_STATUS.ALLOCATED)
-        self.not_owned_node = factory.make_node()
+def make_unallocated_node():
+    """Return a node that is not allocated to anyone."""
+    return factory.make_node()
 
 
-class TestMaaSAuthorizationBackend(AuthTestMixin, TestCase):
+def make_allocated_node(owner=None):
+    """Create a node, owned by `owner` (or create owner if not given)."""
+    if owner is None:
+        owner = factory.make_user()
+    return factory.make_node(owner=owner, status=NODE_STATUS.ALLOCATED)
+
+
+class TestMaaSAuthorizationBackend(TestCase):
 
     def test_invalid_check_object(self):
-        mac = self.not_owned_node.add_mac_address('AA:BB:CC:DD:EE:FF')
+        backend = MaaSAuthorizationBackend()
+        mac = make_unallocated_node().add_mac_address('AA:BB:CC:DD:EE:FF')
         self.assertRaises(
-            NotImplementedError, self.backend.has_perm,
-            self.admin, 'access', mac)
+            NotImplementedError, backend.has_perm,
+            factory.make_admin(), 'access', mac)
 
     def test_invalid_check_permission(self):
+        backend = MaaSAuthorizationBackend()
         self.assertRaises(
-            NotImplementedError, self.backend.has_perm,
-            self.admin, 'not-access', self.not_owned_node)
+            NotImplementedError, backend.has_perm,
+            factory.make_admin(), 'not-access', make_unallocated_node())
 
-    def test_not_owned_status(self):
-        # A non-admin user can access a node that is not yet owned.
-        self.assertTrue(self.backend.has_perm(
-            self.user1, 'access', self.not_owned_node))
+    def test_user_can_access_unowned_node(self):
+        backend = MaaSAuthorizationBackend()
+        self.assertTrue(backend.has_perm(
+            factory.make_user(), 'access', make_unallocated_node()))
 
-    def test_owned_status_others(self):
-        # A non-admin user cannot access nodes owned by other people.
-        self.assertFalse(self.backend.has_perm(
-            self.user2, 'access', self.node_user1))
+    def test_user_cannot_access_nodes_owned_by_others(self):
+        backend = MaaSAuthorizationBackend()
+        self.assertFalse(backend.has_perm(
+            factory.make_user(), 'access', make_allocated_node()))
 
     def test_owned_status(self):
         # A non-admin user can access nodes he owns.
-        self.assertTrue(self.backend.has_perm(
-            self.user1, 'access', self.node_user1))
+        backend = MaaSAuthorizationBackend()
+        node = make_allocated_node()
+        self.assertTrue(backend.has_perm(node.owner, 'access', node))
 
 
-class TestNodeVisibility(AuthTestMixin, TestCase):
+class TestNodeVisibility(TestCase):
 
-    def test_nodes_admin_access(self):
-        # An admin sees all the nodes.
-        self.assertSequenceEqual(
-            [self.node_user1, self.node_user2, self.not_owned_node],
-            Node.objects.get_visible_nodes(self.admin))
+    def test_admin_sees_all_nodes(self):
+        nodes = [
+            make_allocated_node(),
+            make_unallocated_node(),
+            ]
+        self.assertItemsEqual(
+            nodes, Node.objects.get_visible_nodes(factory.make_admin()))
 
-    def test_nodes_not_owned_status(self):
-        # A non-admin user only has access to non-owned nodes and his own
-        # nodes.
-        self.assertSequenceEqual(
-            [self.node_user1, self.not_owned_node],
-            Node.objects.get_visible_nodes(self.user1))
+    def test_user_sees_own_nodes_and_unowned_nodes(self):
+        user = factory.make_user()
+        make_allocated_node()
+        own_node = make_allocated_node(owner=user)
+        unowned_node = make_unallocated_node()
+        self.assertItemsEqual(
+            [own_node, unowned_node],
+            Node.objects.get_visible_nodes(own_node.owner))
