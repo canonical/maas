@@ -21,11 +21,11 @@ from django.views.generic.simple import (
     direct_to_template,
     redirect_to,
     )
+from maas.api_auth import api_auth
 from maasserver.api import (
     AccountHandler,
     api_doc,
     FilesHandler,
-    MaasAPIAuthentication,
     NodeHandler,
     NodeMacHandler,
     NodeMacsHandler,
@@ -93,14 +93,12 @@ urlpatterns += patterns('maasserver.views',
 
 
 # API.
-auth = MaasAPIAuthentication(realm="MaaS API")
-
-account_handler = Resource(AccountHandler, authentication=auth)
-files_handler = Resource(FilesHandler, authentication=auth)
-node_handler = Resource(NodeHandler, authentication=auth)
-nodes_handler = Resource(NodesHandler, authentication=auth)
-node_mac_handler = Resource(NodeMacHandler, authentication=auth)
-node_macs_handler = Resource(NodeMacsHandler, authentication=auth)
+account_handler = Resource(AccountHandler, authentication=api_auth)
+files_handler = Resource(FilesHandler, authentication=api_auth)
+node_handler = Resource(NodeHandler, authentication=api_auth)
+nodes_handler = Resource(NodesHandler, authentication=api_auth)
+node_mac_handler = Resource(NodeMacHandler, authentication=api_auth)
+node_macs_handler = Resource(NodeMacsHandler, authentication=api_auth)
 
 # API URLs accessible to anonymous users.
 urlpatterns += patterns('',
