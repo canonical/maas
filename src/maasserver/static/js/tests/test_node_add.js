@@ -68,6 +68,22 @@ suite.add(new Y.maas.testing.TestCase({
         Y.Mock.verify(mockXhr);
     },
 
+    testAddNodeAPICallEnterPressed: function() {
+        var mockXhr = Y.Mock();
+        Y.Mock.expect(mockXhr, {
+            method: 'send',
+            args: [MAAS_config.uris.nodes_handler, Y.Mock.Value.Any]
+        });
+        this.mockIO(mockXhr, module);
+        module.showAddNodeWidget();
+        var panel = module._add_node_singleton;
+        panel.get('srcNode').one('#id_hostname').set('value', 'host');
+        var form = panel.get('srcNode').one('form');
+        // Simulate 'Enter' being pressed.
+        form.simulate("keypress", { keyCode: 13 });
+        Y.Mock.verify(mockXhr);
+    },
+
     testNodeidPopulation: function() {
         var mockXhr = new Y.Base();
         mockXhr.send = function(url, cfg) {

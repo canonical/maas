@@ -166,6 +166,9 @@ Y.extend(AddNodeWidget, Y.Panel, {
             e.preventDefault();
             self.addMacField();
         });
+        this.get('bodyContent').on('key', function() {
+            self.sendAddNodeRequest();
+        }, 'press:enter');
     },
 
     addNode: function(node) {
@@ -283,8 +286,10 @@ module.showAddNodeWidget = function(event) {
     });
     // We need to set the focus late as the widget wants to set the focus
     // on the bounding box.
-    module._add_node_singleton.get('boundingBox').one('input[type=text]').focus();
+    module._add_node_singleton.get(
+        'boundingBox').one('input[type=text]').focus();
 };
 
-}, '0.1', {'requires': ['io', 'node', 'panel', 'event', 'event-custom', 'transition']}
+}, '0.1', {'requires': ['io', 'node', 'panel', 'event', 'event-custom',
+                        'transition']}
 );
