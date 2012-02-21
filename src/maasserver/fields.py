@@ -14,10 +14,18 @@ __all__ = [
     "MACAddressFormField",
     ]
 
+from copy import deepcopy
+from json import (
+    dumps,
+    loads,
+    )
 import re
 
 from django.core.validators import RegexValidator
-from django.db.models import Field
+from django.db.models import (
+    Field,
+    SubfieldBase,
+    )
 from django.forms import RegexField
 import psycopg2.extensions
 
@@ -67,3 +75,37 @@ class MACAddressAdapter:
 
 
 psycopg2.extensions.register_adapter(MACAddressField, MACAddressAdapter)
+
+
+class JSONObjectField(Field):
+    """A field that will store any jsonizable python object."""
+
+    __metaclass__ = SubfieldBase
+
+    def to_python(self, value):
+        """db -> python: json load."""
+        if value is not None:
+            if isinstance(value, basestring):
+                try:
+                    return loads(value)
+                except ValueError:
+                    pass
+            return value
+        else:
+            return None
+
+    def get_db_prep_value(self, value):
+        """python -> db: json dump."""
+        if value is not None:
+            return dumps(deepcopy(value))
+        else:
+            return None
+
+    def get_internal_type(self):
+        return 'TextField'
+
+    def get_prep_lookup(self, lookup_type, value):
+        if lookup_type not in ['exact', 'isnull']:
+            raise TypeError("Lookup type %s is not supported." % lookup_type)
+        return super(JSONObjectField, self).get_prep_lookup(
+            lookup_type, value)

@@ -21,7 +21,7 @@ from django.contrib.auth.forms import (
     )
 from django.contrib.auth.models import User
 from django.forms import ModelForm
-from maasserver.macaddress import MACAddressFormField
+from maasserver.fields import MACAddressFormField
 from maasserver.models import (
     MACAddress,
     Node,

@@ -23,6 +23,7 @@ from maasserver.exceptions import (
     PermissionDenied,
     )
 from maasserver.models import (
+    Config,
     create_auth_token,
     GENERIC_CONSUMER,
     get_auth_tokens,
@@ -430,3 +431,33 @@ class FileStorageTest(TestCase):
         # out intact.
         storage = factory.make_file_storage(filename="x", data=binary_data)
         self.assertEqual(binary_data, storage.data.read())
+
+
+class ConfigTest(TestCase):
+    """Testing of the :class:`Config` model."""
+
+    def test_manager_get_config_found(self):
+        Config.objects.create(name='name', value='config')
+        config = Config.objects.get_config('name')
+        self.assertEqual('config', config)
+
+    def test_manager_get_config_not_found(self):
+        config = Config.objects.get_config('name', 'default value')
+        self.assertEqual('default value', config)
+
+    def test_manager_get_config_not_found_none(self):
+        config = Config.objects.get_config('name')
+        self.assertIsNone(config)
+
+    def test_manager_get_config_list_returns_config_list(self):
+        Config.objects.create(name='name', value='config1')
+        Config.objects.create(name='name', value='config2')
+        config_list = Config.objects.get_config_list('name')
+        self.assertItemsEqual(['config1', 'config2'], config_list)
+
+    def test_manager_set_config_creates_config(self):
+        Config.objects.set_config('name', 'config1')
+        Config.objects.set_config('name', 'config2')
+        self.assertSequenceEqual(
+            ['config2'],
+            [config.value for config in Config.objects.filter(name='name')])

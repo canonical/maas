@@ -45,6 +45,10 @@ class TestCase(maastesting.TestCase):
         self.useFixture(papi_fake_fixture)
 
 
+class TestModelTestCase(TestCase, maastesting.TestModelTestCase):
+    pass
+
+
 class LoggedInTestCase(TestCase):
 
     def setUp(self):

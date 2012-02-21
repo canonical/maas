@@ -9,8 +9,14 @@ from __future__ import (
     )
 
 __metaclass__ = type
-__all__ = []
+__all__ = [
+    'TestCase',
+    'TestModelTestCase',
+    ]
 
+from django.conf import settings
+from django.core.management import call_command
+from django.db.models import loading
 import django.test
 import testresources
 import testtools
@@ -45,3 +51,35 @@ class TestCase(testtools.TestCase, django.test.TestCase):
     def tearDownResources(self):
         testresources.tearDownResources(
             self, self.resources, testresources._get_result())
+
+
+class TestModelTestCase(TestCase):
+    """A custom test case that adds support for test-only models.
+
+    For instance, if you want to have a model object used solely for testing
+    in your application 'myapp1' you would create a test case that uses
+    TestModelTestCase as its base class and:
+    - initialize self.app with 'myapp1.tests'
+    - define the models used for testing in myapp1.tests.models
+
+    This way the models defined in myapp1.tests.models will be available in
+    this test case (and this test case only).
+    """
+
+    # Set the appropriate application to be loaded.
+    app = None
+
+    def _pre_setup(self):
+        # Add the models to the db.
+        self._original_installed_apps = list(settings.INSTALLED_APPS)
+        assert self.app is not None, "TestCase.app must be defined!"
+        settings.INSTALLED_APPS.append(self.app)
+        loading.cache.loaded = False
+        call_command('syncdb', interactive=False, verbosity=0)
+        super(TestModelTestCase, self)._pre_setup()
+
+    def _post_teardown(self):
+        super(TestModelTestCase, self)._post_teardown()
+        # Restore the settings.
+        settings.INSTALLED_APPS = self._original_installed_apps
+        loading.cache.loaded = False
