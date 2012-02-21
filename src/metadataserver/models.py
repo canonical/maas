@@ -39,14 +39,14 @@ class NodeKeyManager(Manager):
         :param node: The system that is to be allowed access to the metadata
             service.
         :type node: Node
-        :return: Consumer and Token for the node to use, attached to the
+        :return: Token for the node to use.  It will belong to the
             maas-init-node user.  If passed the token's key,
             `get_node_for_key` will return `node`.
-        :rtype tuple:
+        :rtype: Token
         """
-        consumer, token = create_auth_token(get_node_init_user())
+        token = create_auth_token(get_node_init_user())
         self.create(node=node, key=token.key)
-        return consumer, token
+        return token
 
     def get_node_for_key(self, key):
         """Find the Node that `key` was created for.

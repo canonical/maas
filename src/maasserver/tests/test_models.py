@@ -23,12 +23,14 @@ from maasserver.exceptions import (
     PermissionDenied,
     )
 from maasserver.models import (
+    create_auth_token,
     GENERIC_CONSUMER,
-    SYSTEM_USERS,
+    get_auth_tokens,
     MACAddress,
     Node,
     NODE_STATUS,
     NODE_STATUS_CHOICES_DICT,
+    SYSTEM_USERS,
     UserProfile,
     )
 from maasserver.testing import TestCase
@@ -269,7 +271,8 @@ class MACAddressTest(TestCase):
         self.assertRaises(ValidationError, mac.full_clean)
 
 
-class UserProfileTest(TestCase):
+class AuthTokensTest(TestCase):
+    """Test creation and retrieval of auth tokens."""
 
     def assertTokenValid(self, token):
         self.assertIsInstance(token.key, basestring)
@@ -282,6 +285,35 @@ class UserProfileTest(TestCase):
         self.assertEqual(KEY_SIZE, len(consumer.key))
         self.assertEqual('', consumer.secret)
 
+    def test_create_auth_token(self):
+        user = factory.make_user()
+        token = create_auth_token(user)
+        self.assertEqual(user, token.user)
+        self.assertEqual(user, token.consumer.user)
+        self.assertTrue(token.is_approved)
+        self.assertConsumerValid(token.consumer)
+        self.assertTokenValid(token)
+
+    def test_get_auth_tokens_finds_tokens_for_user(self):
+        user = factory.make_user()
+        token = create_auth_token(user)
+        self.assertIn(token, get_auth_tokens(user))
+
+    def test_get_auth_tokens_ignores_other_users(self):
+        user, other_user = factory.make_user(), factory.make_user()
+        unrelated_token = create_auth_token(other_user)
+        self.assertNotIn(unrelated_token, get_auth_tokens(user))
+
+    def test_get_auth_tokens_ignores_unapproved_tokens(self):
+        user = factory.make_user()
+        token = create_auth_token(user)
+        token.is_approved = False
+        token.save()
+        self.assertNotIn(token, get_auth_tokens(user))
+
+
+class UserProfileTest(TestCase):
+
     def test_profile_creation(self):
         # A profile is created each time a user is created.
         user = factory.make_user()
@@ -293,37 +325,26 @@ class UserProfileTest(TestCase):
         user = factory.make_user()
         consumers = Consumer.objects.filter(user=user, name=GENERIC_CONSUMER)
         self.assertEqual([user], [consumer.user for consumer in consumers])
-        self.assertConsumerValid(consumers[0])
 
     def test_token_creation(self):
         # A token is created each time a user is created.
         user = factory.make_user()
-        tokens = Token.objects.filter(user=user)
-        self.assertEqual([user], [token.user for token in tokens])
-        self.assertTokenValid(tokens[0])
+        [token] = get_auth_tokens(user)
+        self.assertEqual(user, token.user)
 
     def test_create_authorisation_token(self):
+        # UserProfile.create_authorisation_token calls create_auth_token.
         user = factory.make_user()
         profile = user.get_profile()
         consumer, token = profile.create_authorisation_token()
-        self.assertEqual(consumer, token.consumer)
         self.assertEqual(user, token.user)
         self.assertEqual(user, consumer.user)
-        self.assertConsumerValid(consumer)
-        self.assertTokenValid(token)
 
     def test_get_authorisation_tokens(self):
+        # UserProfile.get_authorisation_tokens calls get_auth_tokens.
         user = factory.make_user()
-        other_user = factory.make_user()
-        profile = user.get_profile()
-        other_profile = other_user.get_profile()
-        _, token = profile.create_authorisation_token()
-        other_profile.create_authorisation_token()
-        tokens = profile.get_authorisation_tokens()
-        # This user has 2 tokens: the one that was created automatically
-        # when the user was created plus the one we've created manually.
-        self.assertEqual(2, tokens.count())
-        self.assertEqual(token, list(tokens.order_by('id'))[1])
+        consumer, token = user.get_profile().create_authorisation_token()
+        self.assertIn(token, user.get_profile().get_authorisation_tokens())
 
     def test_delete(self):
         # Deleting a profile also deletes the related user.

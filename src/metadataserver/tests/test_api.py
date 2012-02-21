@@ -57,7 +57,7 @@ class TestViews(TestCase):
 
     def make_node_and_auth_header(self):
         node = factory.make_node()
-        consumer, token = NodeKey.objects.create_token(node)
+        token = NodeKey.objects.create_token(node)
         header = 'oauth_token=%s' % token.key
         return node, header
 
