@@ -14,46 +14,60 @@
 /******************************************************************************
     Header
 */
-#header-wrapper {
-    /* Need to set relative so the box shadow appears over content divs */
-    position: relative;
-    z-index: 3;
-    min-height: 64px;
-    background-color: #dd4814;
-    -webkit-box-shadow: 0 2px 4px 0 rgba(0,0,0,0.2);
-    box-shadow: 0 2px 4px 0 rgba(0,0,0,0.2);
+#global-header {
+    background-color: #2c001e;
+    padding: 6px 8px;
     }
+#user-nav {
+    float: right;
+    }
+#user-nav li {
+    padding: 0;
+    }
+#header {
+    min-height: 64px;
+    background: #dd4814 url(../img/header_stripes.png) repeat-x top left;
+    -moz-border-radius: 0 0 4px 4px;
+    -webkit-border-radius: 0 0 4px 4px;
+    border-radius: 0 0 4px 4px;
+    }
+#global-header,
+#global-header a,
 #header a,
 #header {
     color: #fff;
     text-decoration: none;
     }
-#header h1 {
-    float: left;
-    font-size: 18px;
-    margin: 15px 30px 0 20px;
-    }
-#header h1 img {
-    margin-right: 7px;
-    }
 #main-nav {
-    float: right;
-    margin-right: 20px;
+    margin-left: 10px;
     font-size: 14px;
     }
-#main-nav li {
-    float: left;
-    padding: 23px 15px;
+#right-nav li a,
+#main-nav li a {
+    display: block;
+    height: 41px;
+    padding: 23px 15px 0 15px;
     }
-#main-nav li.active {
-    background-color: #B83A11;
+#right-nav li.icon a,
+#main-nav li.icon a {
+    padding-top: 18px;
+    height: 46px;
     }
-#user-nav {
-    float: left;
+#right-nav li.active a,
+#main-nav li.active a {
+    background: rgba(0,0,0,0.2) url(../img/header_tail.png) no-repeat bottom center;
     }
-#user-nav li {
-    float: left;
-    padding: 25px 15px 0 15px;
+#right-nav {
+    float: right;
+    margin-right: 5px;
+    }
+#right-nav li.active a {
+    background-color: transparent;
+    }
+#right-nav li.divider {
+    height: 30px;
+    margin-top: 17px;
+    border-left: 1px solid #c53f11;
     }
 
 
@@ -61,8 +75,7 @@
     Header search
 */
 #header-search {
-    float: right;
-    margin: 24px 20px 0 0;
+    margin: 18px 15px 0 0;
     }
 #header-search input {
     margin: 0;
@@ -72,17 +85,17 @@
     padding: 6px 15px;
     border: none;
     color: #aea79f;
-    -moz-border-radius: 14px 0 0 14px;
-    -webkit-border-radius: 14px 0 0 14px;
-    border-radius: 14px 0 0 14px;
+    -moz-border-radius: 6px 0 0 16px;
+    -webkit-border-radius: 6px 0 0 6px;
+    border-radius: 6px 0 0 6px;
     }
 #header-search input[type="submit"] {
     padding: 5px 20px 6px 20px;
     border-left: 1px solid #481e3d;
     border-top-color: #743062;
-    -moz-border-radius: 0 14px 14px 0;
-    -webkit-border-radius: 0 14px 14px 0;
-    border-radius: 0 14px 14px 0;
+    -moz-border-radius: 0 6px 6px 0;
+    -webkit-border-radius: 0 6px 6px 0;
+    border-radius: 0 6px 6px 0;
     -webkit-box-shadow: none;
     box-shadow: none;
     background: #5E2750 url(../img/header_search_icon.png) no-repeat center center;
@@ -108,15 +121,18 @@
 #body {
     background-color: #2C001E;
     clear: both;
+    margin: 0;
+    padding-top: 1px;
     }
 #page-title {
     font-size: 36px;
     color: #fff;
     margin: 0 20px;
-    padding: 20px 0;
+    padding: 14px 0 20px 0;
+    background: transparent url(../img/content_tail.png) no-repeat 50px bottom;
     }
 #content {
-    padding: 20px;
+    padding: 20px 20px 40px 20px;
     background-color: #fff;
     -moz-border-radius: 4px;
     -webkit-border-radius: 4px;
@@ -151,5 +167,18 @@
     }
 .login #content h2:first-child {
     margin: 0 0 20px 0;
+    }
+
+
+/******************************************************************************
+    Footer
+*/
+#footer {
+    padding: 12px 20px;
+    color: #aea79f;
+    font-size: 12px;
+    }
+#footer img {
+    float: right;
     }
 

@@ -5,64 +5,82 @@
     <meta http-equiv="Content-Language" content="en-us" />
     <link rel="stylesheet" href="{{ STATIC_URL }}css/import.css" />
     <link rel="stylesheet" href="{{ STATIC_URL }}css/ubuntu-webfonts.css" />
-    <title>{% block title %}{% endblock %} | MaaS Cluster</title>
+    <title>{% block title %}{% endblock %} | {% include "maasserver/site_title.html" %}</title>
     {% block js-conf %}{% include "maasserver/js-conf.html" %}{% endblock %}
     {% block head %}{% endblock %}
 </head>
 <body class="{% block layout-modifiers %}{% endblock %}">
   {% block html_includes %}{% endblock %}
-  <div id="header-wrapper">
-    <div class="center-page-wrapper">
-      <div id="header" class="center-page-content">
-        {% block header %}
-          <h1>
-            <a href="{% url 'index' %}" title="Return to dashboard">
-              <img src="{{ STATIC_URL }}img/ubuntu_logo_header.png" alt="Ubuntu logo" />
-              MaaS Cluster</a>
-          </h1>
-          {% if user.is_authenticated %}
-          <ul id="user-nav" class="nav">
-            <li class="{% block nav-active-prefs %}{% endblock %}">
-              <a href="{% url 'prefs' %}">{{ user.username }}</a></li>
-            <li><a href="{% url 'logout' %}">Logout</a></li>
-          </ul>
-          <ul id="main-nav" class="nav">
-            <li class="{% block nav-active-index %}{% endblock %}">
-              <a href="{% url 'index' %}">Dashboard</a>
-            </li>
-            <li class="{% block nav-active-node-list %}{% endblock %}">
-              <a href="{% url 'node-list' %}">Nodes</a>
-            </li>
-            {% if user.is_superuser %}
-            <li class="{% block nav-active-settings %}{% endblock %}">
-              <a href="{% url 'settings' %}">Settings</a>
-            </li>
-            {% endif %}
-          </ul>
-          {% endif %}
-        {% endblock %}
-        <div class="clear"></div>
-      </div>
-    </div>
-  </div>
   <div class="center-page-wrapper">
     <div class="center-page-content">
-    <div id="body">
-      <ul id="flash-messages">
-        {% if messages %}
-          {% for message in messages %}
-            <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>
-              {{ message }}</li>
-          {% endfor %}
-        {% endif %}
-      </ul>
       {% if user.is_authenticated %}
-        <form action="" method="get" id="header-search">
-          <input type="text" name="query" value="Search nodes"><input type="submit" value="">
-        </form>
-        <h1 id="page-title">{% block page-title %}{% endblock %}</h1>
-      {% endif %}
-      <div id="content">{% block content %}{% endblock %}</div>
+        <div class="center-page-wrapper">
+          <div id="global-header" class="center-page-content">
+            <ul id="user-nav" class="nav">
+              <li class="{% block nav-active-prefs %}{% endblock %}">
+                <a href="{% url 'prefs' %}">{{ user.username }}</a></li>
+              <li><a href="{% url 'logout' %}">Logout</a></li>
+            </ul>
+            {% block site-switcher %}
+              <a href="{% url 'index' %}" title="Return to dashboard">
+                {% include "maasserver/site_title.html" %}
+              </a>
+            {% endblock %}
+            <div class="clear"></div>
+          </div>
+          <div id="header" class="center-page-content">
+              <ul id="right-nav" class="nav">
+                <li class="search">
+                  {% block header-search %}
+                    <form action="" method="get" id="header-search">
+                      <input type="text" name="query" value="Search nodes" /><input type="submit" value="" />
+                    </form>
+                  {% endblock %}
+                </li>
+                {% if user.is_superuser %}
+                  <li class="divider"></li>
+                  <li class="icon {% block nav-active-settings %}{% endblock %}">
+                    <a href="{% url 'settings' %}">
+                      <img src="{{ STATIC_URL }}img/settings.png" alt="Settings" />
+                    </a>
+                  </li>
+                {% endif %}
+              </ul>
+              <ul id="main-nav" class="nav">
+                <li class="icon {% block nav-active-index %}{% endblock %}">
+                  <a href="{% url 'index' %}">
+                    <img src="{{ STATIC_URL }}img/home.png" alt="MaaS home" />
+                  </a>
+                </li>
+                <li class="{% block nav-active-node-list %}{% endblock %}">
+                  <a href="{% url 'node-list' %}">Nodes</a>
+                </li>
+              </ul>
+            <div class="clear"></div>
+          </div>
+        </div>
+      {% endif %}
+      <div id="body">
+        <ul id="flash-messages">
+          {% if messages %}
+            {% for message in messages %}
+              <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>
+                {{ message }}</li>
+            {% endfor %}
+          {% endif %}
+        </ul>
+        {% if user.is_authenticated %}
+          <h1 id="page-title">{% block page-title %}{% endblock %}</h1>
+        {% endif %}
+        <div id="content">{% block content %}{% endblock %}</div>
+      </div>
+      <div id="footer">
+        <img src="{{ STATIC_URL }}img/ubuntu_logo_footer.png" alt="Ubuntu" />
+        {% block footer-copyright %}
+          &copy; 2012 Canonical Ltd. Ubuntu and Canonical are registered 
+          trademarks of Canonical Ltd.
+        {% endblock %}
+      </div>
     </div>
   </div>
 </body>

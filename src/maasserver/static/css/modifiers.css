@@ -3,6 +3,9 @@
     margin: 0;
     padding: 0;
     }
+.nav li {
+    float: left;
+    }
 .clear {
     clear: both;
     }
@@ -16,7 +19,7 @@ table {
     }
 .yui3-panel {
     background-color: #FFF;
-    padding: 104px 80px 50px 80px;
+    padding: 50px 80px 50px 80px;
     -moz-border-radius: 0 0 6px 6px;
     -webkit-border-radius: 0 0 6px 6px;
     border-radius: 0 0 6px 6px;
@@ -28,8 +31,23 @@ table {
     font-size: 24px;
     }
 .yui3-widget-ft {
-    margin-top: 30px;
+    margin-top: 50px;
+    }
+.yui3-widget-button-wrapper {
+    width: 100%;
     }
 .yui3-panel .yui3-button {
-    margin-right: 20px;
+    float: right;
+    }
+.yui3-panel .yui3-button.link-button {
+    float: left;
+    padding-left: 0;
+    padding-right: 0;
+    color: #dd4814;
+    border: none;
+    background: none;
+    text-shadow: none;
+    -webkit-box-shadow: none;
+    box-shadow: none;
+    font-size: 13px;
     }

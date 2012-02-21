@@ -146,6 +146,7 @@ TEMPLATE_CONTEXT_PROCESSORS = (
     #"django.core.context_processors.tz",
     "django.contrib.messages.context_processors.messages",
     "maasserver.context_processors.yui",
+    "maasserver.context_processors.global_options",
 )
 
 MIDDLEWARE_CLASSES = (

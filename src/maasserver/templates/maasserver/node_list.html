@@ -2,7 +2,8 @@
 
 {% block nav-active-node-list %}active{% endblock %}
 {% block title %}Nodes{% endblock %}
-{% block page-title %}Nodes{% endblock %}
+{% block page-title %}{{ node_list|length }} nodes in {% include "maasserver/site_title.html" %}{% endblock %}
+{% block site-switcher %}{% endblock %}
 
 {% block html_includes %}{% include "maasserver/snippets.html" %}
 {% endblock %}
