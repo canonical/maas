@@ -109,6 +109,41 @@ suite.add(new Y.maas.testing.TestCase({
         );
         button.simulate('click');
         Y.Assert.isTrue(fired);
+    },
+
+    testGenericErrorMessage: function() {
+        var mockXhr = new Y.Base();
+        mockXhr.send = function(url, cfg) {
+            cfg.on.failure(3, {status: 500});
+        };
+        this.mockIO(mockXhr, module);
+        module.showAddNodeWidget();
+        var panel = module._add_node_singleton;
+        panel.get('srcNode').one('#id_hostname').set('value', 'host');
+        var button = panel.get('srcNode').one('.yui3-button');
+        button.simulate('click');
+        var error_message = panel.get(
+            'srcNode').one('.form-global-errors').get('innerHTML');
+        var message_position = error_message.search("Unable to create Node.");
+        Y.Assert.areNotEqual(-1, error_message);
+    },
+
+    testLoggedOffErrorMessage: function() {
+        var mockXhr = new Y.Base();
+        mockXhr.send = function(url, cfg) {
+            cfg.on.failure(3, {status: 401});
+        };
+        this.mockIO(mockXhr, module);
+        module.showAddNodeWidget();
+        var panel = module._add_node_singleton;
+        panel.get('srcNode').one('#id_hostname').set('value', 'host');
+        var button = panel.get('srcNode').one('.yui3-button');
+        button.simulate('click');
+        var error_message = panel.get(
+            'srcNode').one('.form-global-errors').get('innerHTML');
+        // The link to the login page is present in the error message.
+        var link_position = error_message.search(MAAS_config.uris.login);
+        Y.Assert.areNotEqual(-1, link_position);
     }
 
 }));

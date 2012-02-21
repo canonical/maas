@@ -7,6 +7,7 @@ var YUI_config = {
 };
 var MAAS_config = {
     uris: {
+        login: '{% url "login" %}',
         statics: '{{ STATIC_URL }}',
         nodes_handler: '{% url "nodes_handler" %}',
         account_handler: '{% url "account_handler" %}'

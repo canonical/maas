@@ -54,6 +54,7 @@ Y.extend(AddNodeWidget, Y.Panel, {
         field.set('id', field.get('id') + form_nb);
         return Y.Node.create('<p />').append(field);
     },
+
     /**
      * Hide the panel.
      *
@@ -124,9 +125,27 @@ Y.extend(AddNodeWidget, Y.Panel, {
         return addnodeform;
     },
 
-    displayFormError: function(error_message) {
+    /**
+     * Display an error message.  The passed-in parameter can be a string or 
+     * a Node (in which case it will be appended to the error node).
+     *
+     * @method displayFormError
+     */
+    displayFormError: function(error) {
+        var error_node;
+        if (typeof error === 'string') {
+            // 'error' is a string, create a simple node with the error
+            // message in it.
+            error_node = Y.Node.create('<span />')
+                .set('text', error);
+        }
+        else {
+            // We assume error is a Y.Node.
+            error_node = error;
+        }
+
         this.get(
-            'srcNode').one('.form-global-errors').set('text', error_message);
+            'srcNode').one('.form-global-errors').empty().append(error_node);
      },
 
    /**
@@ -154,9 +173,26 @@ Y.extend(AddNodeWidget, Y.Panel, {
         this.add_node = Y.one('#add-node').getContent();
         // Create panel's content.
         this.set('bodyContent', this.createForm());
-       // Prepare spinnerNode.
+        this.initializeNodes();
+    },
+
+    /**
+     * Initialize the nodes this widget will use.
+     *
+     * @method initializeNodes
+     */
+    initializeNodes: function() {
+        // Prepare spinnerNode.
         this.spinnerNode = Y.Node.create('<img />')
             .set('src', MAAS_config.uris.statics + 'img/spinner.gif');
+        // Prepare logged-off error message.
+        this.loggedOffNode = Y.Node.create('<span />')
+            .set('text', "You have been logged out, please ")
+            .append(Y.Node.create('<a />')
+                .set('text', 'log in')
+                .set('href', MAAS_config.uris.login))
+            .append(Y.Node.create('<span />')
+                .set('text', ' again.'));
     },
 
     bindUI: function() {
@@ -188,6 +224,7 @@ Y.extend(AddNodeWidget, Y.Panel, {
                     self.hidePanel();
                 },
                 failure: function(id, out) {
+                    Y.log(out);
                     if (out.status === 400) {
                         try {
                             // Validation error: display the errors in the
@@ -195,12 +232,16 @@ Y.extend(AddNodeWidget, Y.Panel, {
                             self.displayFieldErrors(JSON.parse(out.response));
                         }
                         catch (e) {
-                            self.displayFormError('Unable to create Node.');
+                            self.displayFormError("Unable to create Node.");
                         }
+                    }
+                    else if (out.status === 401) {
+                        // Unauthorized error: the user has been logged out.
+                        self.displayFormError(self.loggedOffNode);
                     }
                     else {
                         // Unexpected error.
-                        self.displayFormError('Unable to create Node.');
+                        self.displayFormError("Unable to create Node.");
                     }
                 },
                 end: Y.bind(self.hideSpinner, self)
