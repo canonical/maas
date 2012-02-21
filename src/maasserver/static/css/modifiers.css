@@ -9,10 +9,14 @@
 .clear {
     clear: both;
     }
+.hidden {
+    display: none;
+    }
 table {
     width: 100%;
     }
 /* XXX: move this yui stuff somewhere more sensible */
+/* panel */
 .yui3-widget-mask {
     background-color: #000;
     opacity: 0.3;
@@ -50,4 +54,33 @@ table {
     -webkit-box-shadow: none;
     box-shadow: none;
     font-size: 13px;
+    }
+/* overlay */
+.yui3-overlay {
+    background-color: #fff;
+    -moz-border-radius: 0 0 6px 6px;
+    -webkit-border-radius: 0 0 6px 6px;
+    border-radius: 0 0 6px 6px;
+    -webkit-box-shadow: 0 0 10px 0 rgba(0,0,0,0.5);
+    box-shadow: 0 0 10px 0 rgba(0,0,0,0.5);
+    }
+.yui3-overlay ul {
+    padding: 5px 0;
+    -webkit-box-shadow: inset 0 2px 2px 0 rgba(0,0,0,0.4);
+    box-shadow: inset 0 2px 2px 0 rgba(0,0,0,0.4);
+    }
+.yui3-overlay li {
+    float: none;
+    }
+.yui3-overlay a {
+    display: block;
+    padding: 6px 20px;
+    color: #dd4814 !important;
+    border-bottom: 1px solid #e5e2e0;
+    }
+.yui3-overlay li:last-child a {
+    border-bottom: none;
+    }
+.yui3-overlay-hidden{
+    display: none;
     }

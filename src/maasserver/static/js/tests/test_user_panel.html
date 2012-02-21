@@ -1,0 +1,28 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+  <head>
+    <title>Test maas.user_panel</title>
+
+    <!-- YUI and test setup -->
+    <script type="text/javascript" src="../yui/tests/yui/yui-min.js"></script>
+    <script type="text/javascript" src="../testing/testrunner.js"></script>
+    <script type="text/javascript" src="../testing/testing.js"></script>
+    <!-- The module under test -->
+    <script type="text/javascript" src="../user_panel.js"></script>
+    <!-- The test suite -->
+    <script type="text/javascript" src="test_user_panel.js"></script>
+  </head>
+  <body>
+  <div id="user-nav">
+    <a href="#" id="user-options-link">charliename
+      <img src="../../img/down_arrow_light.png" alt="Options arrow" />
+    </a>
+    <ul id="user-options" class="nav hidden">
+      <li><a href="/account/prefs/">Preferences</a></li>
+      <li><a href="/account/logout/">Logout</a></li>
+    </ul>
+  </div>
+
+  <span id="suite">maas.user_panel.tests</span>
+  </body>
+</html>

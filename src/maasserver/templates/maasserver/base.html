@@ -8,6 +8,18 @@
     <title>{% block title %}{% endblock %} | {% include "maasserver/site_title.html" %}</title>
     {% block js-conf %}{% include "maasserver/js-conf.html" %}{% endblock %}
     {% block head %}{% endblock %}
+    {% if user.is_authenticated %}
+        <script type="text/javascript">
+        <!--
+        YUI().use('maas.user_panel', function (Y) {
+          Y.on('load', function() {
+            var panel = Y.maas.user_panel.createUserPanelWidget()
+            Y.one('#user-options-link').on('click', Y.maas.user_panel.showUserPanelWidget);
+          });
+        });
+        // -->
+        </script>
+    {% endif %}
 </head>
 <body class="{% block layout-modifiers %}{% endblock %}">
   {% block html_includes %}{% endblock %}
@@ -16,11 +28,15 @@
       {% if user.is_authenticated %}
         <div class="center-page-wrapper">
           <div id="global-header" class="center-page-content">
-            <ul id="user-nav" class="nav">
-              <li class="{% block nav-active-prefs %}{% endblock %}">
-                <a href="{% url 'prefs' %}">{{ user.username }}</a></li>
-              <li><a href="{% url 'logout' %}">Logout</a></li>
-            </ul>
+            <div id="user-nav">
+              <a href="#" id="user-options-link">{{ user.username }}
+                <img src="{{ STATIC_URL }}img/down_arrow_light.png" alt="Options arrow" />
+              </a>
+              <ul id="user-options" class="nav hidden">
+                <li><a href="{% url 'prefs' %}">Preferences</a></li>
+                <li><a href="{% url 'logout' %}">Logout</a></li>
+              </ul>
+            </div>
             {% block site-switcher %}
               <a href="{% url 'index' %}" title="Return to dashboard">
                 {% include "maasserver/site_title.html" %}
