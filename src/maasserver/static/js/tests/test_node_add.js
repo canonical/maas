@@ -91,6 +91,10 @@ suite.add(new Y.maas.testing.TestCase({
         };
         this.mockIO(mockXhr, module);
         module.showAddNodeWidget();
+        this.addCleanup(
+            Y.bind(
+                module._add_node_singleton.destroy,
+                module._add_node_singleton));
         var panel = module._add_node_singleton;
         panel.get('srcNode').one('#id_hostname').set('value', 'host');
         var button = panel.get('srcNode').one('.yui3-button');

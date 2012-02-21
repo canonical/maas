@@ -253,26 +253,28 @@ module.showAddNodeWidget = function(event) {
     var cfg = {
         headerContent: "Add node",
         buttons: [
-                {
-                    value: 'Add node',
-                    section: 'footer',
-                    action: function (e) {
-                        e.preventDefault();
-                        this.sendAddNodeRequest();
-                    }
-                },
-                {
-                    value: 'Cancel',
-                    section: 'footer',
-                    classNames: 'link-button',
-                    action: function (e) {
-                        e.preventDefault();
-                        this.hidePanel();
-                    }
+            {
+                value: 'Add node',
+                section: 'footer',
+                action: function (e) {
+                    e.preventDefault();
+                    this.sendAddNodeRequest();
                 }
-            ],
-        align: {node:'',
-                points: [Y.WidgetPositionAlign.BC, Y.WidgetPositionAlign.TC]},
+            },
+            {
+                value: 'Cancel',
+                section: 'footer',
+                classNames: 'link-button',
+                action: function (e) {
+                    e.preventDefault();
+                    this.hidePanel();
+                }
+            }],
+        align: {
+            node:'',
+            points:
+                [Y.WidgetPositionAlign.BC, Y.WidgetPositionAlign.TC]
+            },
         modal: true,
         zIndex: 2,
         visible: true,

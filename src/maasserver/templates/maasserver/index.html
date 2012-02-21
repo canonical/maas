@@ -26,8 +26,6 @@
           .set('href', '#');
       Y.one('#content').append(add_node_link);
       add_node_link.on('click', Y.maas.node_add.showAddNodeWidget);
-      // Wire up the view to the 'nodeAdded' event.
-      Y.one('#addnode').on('click', Y.maas.node_add.showAddNodeWidget);
     });
   });
   // -->
