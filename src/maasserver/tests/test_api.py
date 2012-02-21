@@ -15,10 +15,8 @@ import httplib
 import json
 import os
 import shutil
-import time
 
 from django.conf import settings
-from django.test.client import Client
 from maasserver.models import (
     MACAddress,
     Node,
@@ -29,13 +27,7 @@ from maasserver.testing import (
     TestCase,
     )
 from maasserver.testing.factory import factory
-from oauth.oauth import (
-    generate_nonce,
-    OAuthConsumer,
-    OAuthRequest,
-    OAuthSignatureMethod_PLAINTEXT,
-    OAuthToken,
-    )
+from maasserver.testing.oauthclient import OAuthAuthenticatedClient
 
 
 class NodeAnonAPITest(TestCase):
@@ -51,42 +43,6 @@ class NodeAnonAPITest(TestCase):
         response = self.client.get('/api/doc/')
 
         self.assertEqual(httplib.OK, response.status_code)
-
-
-class OAuthAuthenticatedClient(Client):
-
-    def __init__(self, user):
-        super(OAuthAuthenticatedClient, self).__init__()
-        token = user.get_profile().get_authorisation_tokens()[0]
-        consumer = token.consumer
-        self.consumer = OAuthConsumer(str(consumer.key), str(consumer.secret))
-        self.token = OAuthToken(str(token.key), str(token.secret))
-
-    def get_extra(self, path):
-        params = {
-            'oauth_version': "1.0",
-            'oauth_nonce': generate_nonce(),
-            'oauth_timestamp': int(time.time()),
-            'oauth_token': self.token.key,
-            'oauth_consumer_key': self.consumer.key,
-        }
-        req = OAuthRequest(http_url=path, parameters=params)
-        req.sign_request(
-            OAuthSignatureMethod_PLAINTEXT(), self.consumer, self.token)
-        return req.to_header()
-
-    def request(self, **kwargs):
-        # Get test url.
-        environ = self._base_environ()
-        url = '%s://%s' % (environ['wsgi.url_scheme'], kwargs['PATH_INFO'])
-        # Add OAuth authorization information to the request.
-        extra = self.get_extra(url)
-        # Django uses the 'HTTP_AUTHORIZATION' to look up Authorization
-        # credentials.
-        extra['HTTP_AUTHORIZATION'] = extra['Authorization']
-        kwargs.update(extra)
-
-        return super(OAuthAuthenticatedClient, self).request(**kwargs)
 
 
 class APITestCase(TestCase):
