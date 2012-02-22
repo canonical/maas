@@ -20,9 +20,13 @@ from django.contrib.auth.forms import (
     UserCreationForm,
     )
 from django.contrib.auth.models import User
-from django.forms import ModelForm
+from django.forms import (
+    Form,
+    ModelForm,
+    )
 from maasserver.fields import MACAddressFormField
 from maasserver.models import (
+    Config,
     MACAddress,
     Node,
     NODE_AFTER_COMMISSIONING_ACTION,
@@ -120,3 +124,30 @@ class EditUserForm(UserChangeForm):
         model = User
         fields = (
             'username', 'first_name', 'last_name', 'email', 'is_superuser')
+
+
+class ConfigForm(Form):
+    """A base class for forms that save the content of their fields into
+    Config objects.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super(ConfigForm, self).__init__(*args, **kwargs)
+        if 'initial' not in kwargs:
+            configs = Config.objects.filter(name__in=list(self.fields))
+            self.initial = {config.name: config.value for config in configs}
+
+    def save(self):
+        """Save the content of the fields into the database.
+
+        :return: Whether or not the content of the fields was valid and hence
+            sucessfully saved into the detabase.
+        :rtype: boolean
+        """
+        self.full_clean()
+        if self._errors:
+            return False
+        else:
+            for name, value in self.cleaned_data.items():
+                Config.objects.set_config(name, value)
+            return True

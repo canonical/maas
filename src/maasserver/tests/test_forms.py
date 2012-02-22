@@ -11,9 +11,17 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
+from django import forms
 from django.http import QueryDict
-from maasserver.forms import NodeWithMACAddressesForm
-from maasserver.testing import TestCase
+from maasserver.forms import (
+    ConfigForm,
+    NodeWithMACAddressesForm,
+    )
+from maasserver.models import Config
+from maasserver.testing import (
+    factory,
+    TestCase,
+    )
 
 
 class NodeWithMACAddressesFormTest(TestCase):
@@ -84,3 +92,38 @@ class NodeWithMACAddressesFormTest(TestCase):
         self.assertSequenceEqual(
             ['aa:bb:cc:dd:ee:ff', '9a:bb:c3:33:e5:7f'],
             [mac.mac_address for mac in node.macaddress_set.all()])
+
+
+class TestOptionForm(ConfigForm):
+    field1 = forms.CharField(label="Field 1", max_length=10)
+    field2 = forms.BooleanField(label="Field 2", required=False)
+
+
+class ConfigFormTest(TestCase):
+
+    def test_form_valid_saves_into_db(self):
+        value = factory.getRandomString(10)
+        form = TestOptionForm({'field1': value, 'field2': False})
+        result = form.save()
+
+        self.assertTrue(result)
+        self.assertEqual(value, Config.objects.get_config('field1'))
+        self.assertFalse(Config.objects.get_config('field2'))
+
+    def test_form_invalid_does_not_save_into_db(self):
+        value_too_long = factory.getRandomString(20)
+        form = TestOptionForm({'field1': value_too_long, 'field2': False})
+        result = form.save()
+
+        self.assertFalse(result)
+        self.assertIn('field1', form._errors)
+        self.assertIsNone(Config.objects.get_config('field1'))
+        self.assertIsNone(Config.objects.get_config('field2'))
+
+    def test_form_loads_initial_values(self):
+        value = factory.getRandomString()
+        Config.objects.set_config('field1', value)
+        form = TestOptionForm()
+
+        self.assertItemsEqual(['field1'], form.initial)
+        self.assertEqual(value, form.initial['field1'])
