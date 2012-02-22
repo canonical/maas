@@ -72,14 +72,20 @@ Optionally, populate your database with the sample data::
 
     $ make sampledata
 
-Install Cobbler:
+Install Cobbler, and import at least one distro and profile::
 
-    $ sudo apt-get install cobbler
+    $ sudo apt-get install apache2 cobbler
+    $ sudo cobbler-ubuntu-import precise-i386  # For example.
 
 Add yourself as a user in Cobbler. For convenience, give yourself the
 password ``test``::
 
     $ sudo htdigest /etc/cobbler/users.digest Cobbler $USER
+
+Alternatively, if you're not interested in the Provisioning Server or
+Cobbler, set ``PSERV_URL`` to ``None`` in one of ``maas``'s settings
+files (typically ``src/maas/demo.py``), and a fake Provisioning Server
+will be used instead.
 
 Run the development webserver::
 
