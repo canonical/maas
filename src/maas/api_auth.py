@@ -31,7 +31,7 @@ class MaasAPIAuthentication(OAuthAuthentication):
                 MaasAPIAuthentication, self).is_authenticated(request)
 
     def challenge(self):
-        # Beware: this returns 401: Unauthenticated, not 403: Forbidden
+        # Beware: this returns 401: Unauthorized, not 403: Forbidden
         # as the name implies.
         return rc.FORBIDDEN
 

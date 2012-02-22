@@ -142,6 +142,7 @@ MIDDLEWARE_CLASSES = (
     'debug_toolbar.middleware.DebugToolbarMiddleware',
     'maasserver.middleware.AccessMiddleware',
     'maasserver.middleware.APIErrorsMiddleware',
+    'metadataserver.middleware.MetadataErrorsMiddleware',
 )
 
 ROOT_URLCONF = 'maas.urls'

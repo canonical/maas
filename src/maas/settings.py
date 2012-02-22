@@ -33,7 +33,9 @@ OOPS_REPOSITORY = 'logs'
 LOGOUT_URL = '/'
 LOGIN_REDIRECT_URL = '/'
 
-API_URL_REGEXP = '^/(api|metadata)/'
+API_URL_REGEXP = '^/api/'
+METADATA_URL_REGEXP = '^/metadata/'
+
 
 # We handle exceptions ourselves (in
 # maasserver.middleware.APIErrorsMiddleware)
@@ -157,6 +159,7 @@ MIDDLEWARE_CLASSES = (
     'django.contrib.messages.middleware.MessageMiddleware',
     'maasserver.middleware.AccessMiddleware',
     'maasserver.middleware.APIErrorsMiddleware',
+    'metadataserver.middleware.MetadataErrorsMiddleware',
 )
 
 ROOT_URLCONF = 'maas.urls'

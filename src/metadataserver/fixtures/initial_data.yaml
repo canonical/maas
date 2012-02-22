@@ -7,7 +7,7 @@
     email: ''
     password: '!'
     is_staff: false
-    is_active: true
+    is_active: false
     is_superuser: false
     last_login: 2012-02-16
     date_joined: 2012-02-16

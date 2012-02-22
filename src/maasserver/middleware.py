@@ -15,6 +15,10 @@ __all__ = [
     "ExceptionMiddleware",
     ]
 
+from abc import (
+    ABCMeta,
+    abstractproperty,
+    )
 import json
 import re
 
@@ -77,23 +81,22 @@ class ExceptionMiddleware:
     based on this class will result in an http 404 response to the client.
     Validation errors become "bad request" responses.
 
-    This is an abstract base class.  Subclass it for each sub-tree of the
-    http path tree that needs exceptions handled in this way, and provide a
-    `path_regex`.  Then register your concrete class in
-    settings.MIDDLEWARE_CLASSES.
+    Use this as a base class for middleware_ classes that apply to
+    sub-trees of the http path tree.  Subclass this class, provide a
+    `path_regex`, and register your concrete class in
+    settings.MIDDLEWARE_CLASSES.  Exceptions in that sub-tree will then
+    come out as HttpResponses, insofar as they map neatly.
 
     .. middleware: https://docs.djangoproject.com
        /en/dev/topics/http/middleware/
-
-    :ivar path_regex: A regular expression matching any path that needs
-        its exceptions handled.
     """
 
-    path_regex = None
+    __metaclass__ = ABCMeta
+
+    path_regex = abstractproperty(
+        "Regular expression for the paths that this should apply to.")
 
     def __init__(self):
-        assert self.path_regex is not None, (
-            "%s needs a path_regex." % self.__class__)
         self.path_matcher = re.compile(self.path_regex)
 
     def process_exception(self, request, exception):

@@ -29,9 +29,20 @@ class OAuthAuthenticatedClient(Client):
     """OAuth-authenticated client for Piston API testing.
     """
 
-    def __init__(self, user):
+    def __init__(self, user, token=None):
+        """Initialize an oauth-authenticated test client.
+
+        :param user: The user to authenticate.
+        :type user: django.contrib.auth.models.User
+        :param token: Optional token to authenticate `user` with.  If
+            no `token` is given, the user's first token will be used.
+        :type token: oauth.oauth.OAuthToken
+        """
         super(OAuthAuthenticatedClient, self).__init__()
-        token = user.get_profile().get_authorisation_tokens()[0]
+        if token is None:
+            # Get the user's first token.
+            token = user.get_profile().get_authorisation_tokens()[0]
+        assert token.user == user, "Token does not match User."
         consumer = token.consumer
         self.consumer = OAuthConsumer(str(consumer.key), str(consumer.secret))
         self.token = OAuthToken(str(token.key), str(token.secret))

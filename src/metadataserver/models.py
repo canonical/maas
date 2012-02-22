@@ -42,7 +42,7 @@ class NodeKeyManager(Manager):
         :return: Token for the node to use.  It will belong to the
             maas-init-node user.  If passed the token's key,
             `get_node_for_key` will return `node`.
-        :rtype: Token
+        :rtype: piston.models.Token
         """
         token = create_auth_token(get_node_init_user())
         self.create(node=node, key=token.key)
