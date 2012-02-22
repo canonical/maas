@@ -11,6 +11,8 @@ from __future__ import (
 __metaclass__ = type
 __all__ = [
     "AccessMiddleware",
+    "APIErrorsMiddleware",
+    "ExceptionMiddleware",
     ]
 
 import json
@@ -68,33 +70,46 @@ class AccessMiddleware:
                 return None
 
 
-class APIErrorsMiddleware:
-    """This middleware_ converts exceptions raised in execution of an API
-    method into proper API errors (like "404 Not Found" errors or
-    "400 Bad Request" errors).
+class ExceptionMiddleware:
+    """Convert exceptions into appropriate HttpResponse responses.
+
+    For example, a MaasAPINotFound exception processed by a middleware
+    based on this class will result in an http 404 response to the client.
+    Validation errors become "bad request" responses.
+
+    This is an abstract base class.  Subclass it for each sub-tree of the
+    http path tree that needs exceptions handled in this way, and provide a
+    `path_regex`.  Then register your concrete class in
+    settings.MIDDLEWARE_CLASSES.
 
     .. middleware: https://docs.djangoproject.com
        /en/dev/topics/http/middleware/
 
-    - Convert MaasAPIException instances into the corresponding error
-      (see maasserver.exceptions).
-    - Convert ValidationError instances into Bad Request error.
+    :ivar path_regex: A regular expression matching any path that needs
+        its exceptions handled.
     """
+
+    path_regex = None
+
     def __init__(self):
-        self.api_regexp = re.compile(settings.API_URL_REGEXP)
+        assert self.path_regex is not None, (
+            "%s needs a path_regex." % self.__class__)
+        self.path_matcher = re.compile(self.path_regex)
 
     def process_exception(self, request, exception):
-        if not self.api_regexp.match(request.path):
-            # The exception was *not* raised in an API call.
+        """Django middleware callback."""
+        if not self.path_matcher.match(request.path):
+            # Not a path we're handling exceptions for.
             return None
 
+        encoding = b'utf-8'
         if isinstance(exception, MaasAPIException):
             # The exception is a MaasAPIException: exception.api_error
             # will give us the proper error type.
             return HttpResponse(
-                content=unicode(exception).encode('utf-8'),
+                content=unicode(exception).encode(encoding),
                 status=exception.api_error,
-                mimetype="text/plain; charset=utf-8")
+                mimetype=b"text/plain; charset=%s" % encoding)
         elif isinstance(exception, ValidationError):
             if hasattr(exception, 'message_dict'):
                 # Complex validation error with multiple fields:
@@ -105,12 +120,18 @@ class APIErrorsMiddleware:
             else:
                 # Simple validation error: return the error message.
                 return HttpResponseBadRequest(
-                    unicode(''.join(exception.messages)).encode('utf-8'),
-                    mimetype="text/plain; charset=utf-8")
+                    unicode(''.join(exception.messages)).encode(encoding),
+                    mimetype=b"text/plain; charset=%s" % encoding)
         else:
             # Do not handle the exception, this will result in a
             # "Internal Server Error" response.
             return None
+
+
+class APIErrorsMiddleware(ExceptionMiddleware):
+    """Report exceptions from API requests as HTTP error responses."""
+
+    path_regex = settings.API_URL_REGEXP
 
 
 class ConsoleExceptionMiddleware:
