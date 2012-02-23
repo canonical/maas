@@ -14,7 +14,6 @@ __all__ = [
     ]
 
 from django.conf import settings
-from django.contrib.sites.models import Site
 
 
 def yui(context):
@@ -22,6 +21,7 @@ def yui(context):
         'YUI_DEBUG': settings.YUI_DEBUG,
         'YUI_VERSION': settings.YUI_VERSION,
     }
+
 
 def global_options(context):
     return {'global_options': {'site_name': 'Temporary Cluster Name'}}

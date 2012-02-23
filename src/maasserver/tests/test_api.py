@@ -30,6 +30,106 @@ from maasserver.testing.factory import factory
 from maasserver.testing.oauthclient import OAuthAuthenticatedClient
 
 
+class AnonymousEnlistmentAPITest(TestCase):
+    # Nodes can be enlisted anonymously.
+
+    def test_POST_new_creates_node(self):
+        # The API allows a Node to be created.
+        response = self.client.post(
+            '/api/nodes/',
+            {
+                'op': 'new',
+                'hostname': 'diane',
+                'after_commissioning_action': '2',
+                'mac_addresses': ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
+            })
+        parsed_result = json.loads(response.content)
+
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertIn('application/json', response['Content-Type'])
+        self.assertEqual('diane', parsed_result['hostname'])
+        self.assertNotEqual(0, len(parsed_result.get('system_id')))
+        [diane] = Node.objects.filter(hostname='diane')
+        self.assertEqual(2, diane.after_commissioning_action)
+
+    def test_POST_new_associates_mac_addresses(self):
+        # The API allows a Node to be created and associated with MAC
+        # Addresses.
+        self.client.post(
+            '/api/nodes/',
+            {
+                'op': 'new',
+                'hostname': 'diane',
+                'after_commissioning_action': '2',
+                'mac_addresses': ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
+            })
+        [diane] = Node.objects.filter(hostname='diane')
+        self.assertItemsEqual(
+            ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
+            [mac.mac_address for mac in diane.macaddress_set.all()])
+
+    def test_POST_returns_limited_fields(self):
+        response = self.client.post(
+            '/api/nodes/',
+            {
+                'op': 'new',
+                'hostname': 'diane',
+                'after_commissioning_action': '2',
+                'mac_addresses': ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
+            })
+        parsed_result = json.loads(response.content)
+        self.assertItemsEqual(
+            ['hostname', 'system_id', 'macaddress_set'], parsed_result.keys())
+
+    def test_POST_fails_without_operation(self):
+        # If there is no operation ('op=operation_name') specified in the
+        # request data, a 'Bad request' response is returned.
+        response = self.client.post(
+            '/api/nodes/',
+            {
+                'hostname': 'diane',
+                'mac_addresses': ['aa:bb:cc:dd:ee:ff', 'invalid'],
+            })
+
+        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+        self.assertIn('text/html', response['Content-Type'])
+        self.assertEqual("Unknown operation.", response.content)
+
+    def test_POST_fails_with_bad_operation(self):
+        # If the operation ('op=operation_name') specified in the
+        # request data is unknown, a 'Bad request' response is returned.
+        response = self.client.post(
+            '/api/nodes/',
+            {
+                'op': 'invalid_operation',
+                'hostname': 'diane',
+                'mac_addresses': ['aa:bb:cc:dd:ee:ff', 'invalid'],
+            })
+
+        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+        self.assertEqual(
+            "Unknown operation: 'invalid_operation'.", response.content)
+
+    def test_POST_new_rejects_invalid_data(self):
+        # If the data provided to create a node with an invalid MAC
+        # Address, a 'Bad request' response is returned.
+        response = self.client.post(
+            '/api/nodes/',
+            {
+                'op': 'new',
+                'hostname': 'diane',
+                'mac_addresses': ['aa:bb:cc:dd:ee:ff', 'invalid'],
+            })
+        parsed_result = json.loads(response.content)
+
+        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+        self.assertIn('application/json', response['Content-Type'])
+        self.assertItemsEqual(['mac_addresses'], parsed_result)
+        self.assertEqual(
+            ["One or more MAC Addresses is invalid."],
+            parsed_result['mac_addresses'])
+
+
 class NodeAnonAPITest(TestCase):
 
     def test_anon_nodes_GET(self):
@@ -314,77 +414,6 @@ class TestNodesAPI(APITestCase):
         parsed_result = json.loads(response.content)
         self.assertItemsEqual(
             [existing_id], extract_system_ids(parsed_result))
-
-    def test_POST_new_creates_node(self):
-        # The API allows a Node to be created and associated with MAC
-        # Addresses.
-        response = self.client.post(
-            '/api/nodes/',
-            {
-                'op': 'new',
-                'hostname': 'diane',
-                'after_commissioning_action': '2',
-                'mac_addresses': ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
-            })
-        parsed_result = json.loads(response.content)
-
-        self.assertEqual(httplib.OK, response.status_code)
-        self.assertIn('application/json', response['Content-Type'])
-        self.assertEqual('diane', parsed_result['hostname'])
-        self.assertNotEqual(0, len(parsed_result.get('system_id')))
-        [diane] = Node.objects.filter(hostname='diane')
-        self.assertEqual(2, diane.after_commissioning_action)
-        self.assertItemsEqual(
-            ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
-            [mac.mac_address for mac in diane.macaddress_set.all()])
-
-    def test_POST_fails_without_operation(self):
-        # If there is no operation ('op=operation_name') specified in the
-        # request data, a 'Bad request' response is returned.
-        response = self.client.post(
-            '/api/nodes/',
-            {
-                'hostname': 'diane',
-                'mac_addresses': ['aa:bb:cc:dd:ee:ff', 'invalid'],
-            })
-
-        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
-        self.assertIn('text/html', response['Content-Type'])
-        self.assertEqual("Unknown operation.", response.content)
-
-    def test_POST_fails_with_bad_operation(self):
-        # If the operation ('op=operation_name') specified in the
-        # request data is unknown, a 'Bad request' response is returned.
-        response = self.client.post(
-            '/api/nodes/',
-            {
-                'op': 'invalid_operation',
-                'hostname': 'diane',
-                'mac_addresses': ['aa:bb:cc:dd:ee:ff', 'invalid'],
-            })
-
-        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
-        self.assertEqual(
-            "Unknown operation: 'invalid_operation'.", response.content)
-
-    def test_POST_new_rejects_invalid_data(self):
-        # If the data provided to create a node with an invalid MAC
-        # Address, a 'Bad request' response is returned.
-        response = self.client.post(
-            '/api/nodes/',
-            {
-                'op': 'new',
-                'hostname': 'diane',
-                'mac_addresses': ['aa:bb:cc:dd:ee:ff', 'invalid'],
-            })
-        parsed_result = json.loads(response.content)
-
-        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
-        self.assertIn('application/json', response['Content-Type'])
-        self.assertItemsEqual(['mac_addresses'], parsed_result)
-        self.assertEqual(
-            ["One or more MAC Addresses is invalid."],
-            parsed_result['mac_addresses'])
 
     def test_POST_returns_available_node(self):
         # The "acquire" operation returns an available node.
