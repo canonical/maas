@@ -33,6 +33,10 @@ from Launchpad::
 
     $ sudo apt-get install bzr
 
+If you intend to run the test suite, you also need libxslt1-dev and libxml2-dev::
+
+    $ sudo apt-get install libxslt1-dev libxml2-dev
+
 All other development dependencies are pulled automatically from `PyPI`_
 when buildout runs.
 
