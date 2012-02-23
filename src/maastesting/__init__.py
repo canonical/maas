@@ -14,6 +14,8 @@ __all__ = [
     'TestModelTestCase',
     ]
 
+import unittest
+
 from django.conf import settings
 from django.core.management import call_command
 from django.db.models import loading
@@ -51,6 +53,10 @@ class TestCase(testtools.TestCase, django.test.TestCase):
     def tearDownResources(self):
         testresources.tearDownResources(
             self, self.resources, testresources._get_result())
+
+    # Django's implementation for this seems to be broken and was
+    # probably only added to support compatibility with python 2.6.
+    assertItemsEqual = unittest.TestCase.assertItemsEqual
 
 
 class TestModelTestCase(TestCase):
