@@ -77,7 +77,7 @@ class MetadataViewHandler(BaseHandler):
     allowed_methods = ('GET',)
 
     def read(self, request):
-        return make_list_response(self.fields)
+        return make_list_response(sorted(self.fields))
 
 
 class IndexHandler(MetadataViewHandler):
@@ -99,7 +99,7 @@ class VersionIndexHandler(MetadataViewHandler):
 class MetaDataHandler(VersionIndexHandler):
     """Meta-data listing for a given version."""
 
-    fields = ('local-hostname',)
+    fields = ('instance-id', 'local-hostname',)
 
     def get_attribute_producer(self, item):
         """Return a callable to deliver a given metadata item.
@@ -118,23 +118,29 @@ class MetaDataHandler(VersionIndexHandler):
 
         producers = {
             'local-hostname': self.local_hostname,
+            'instance-id': self.instance_id,
         }
 
         return producers[field]
 
     def read(self, request, version, item=None):
-        check_version(version)
         if item is None or len(item) == 0:
             # Requesting the list of attributes, not any particular
             # attribute.
-            return super(MetaDataHandler, self).read(request)
+            return super(MetaDataHandler, self).read(request, version)
 
+        check_version(version)
         node = get_node_for_request(request)
         producer = self.get_attribute_producer(item)
         return producer(node, version, item)
 
     def local_hostname(self, node, version, item):
+        """Produce local-hostname attribute."""
         return make_text_response(node.hostname)
+
+    def instance_id(self, node, version, item):
+        """Produce instance-id attribute."""
+        return make_text_response(node.system_id)
 
 
 class UserDataHandler(MetadataViewHandler):

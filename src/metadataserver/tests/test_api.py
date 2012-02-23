@@ -26,6 +26,7 @@ from metadataserver.api import (
     get_node_for_request,
     make_list_response,
     make_text_response,
+    MetaDataHandler,
     UnknownMetadataVersion,
     )
 from metadataserver.models import NodeKey
@@ -150,22 +151,44 @@ class TestViews(TestCase):
         self.assertIn('meta-data', items)
         self.assertIn('user-data', items)
 
-    def test_meta_data_view_returns_text_response(self):
+    def test_meta_data_view_lists_fields(self):
         client = self.make_node_client()
         response = self.get('/latest/meta-data/', client)
         self.assertIn('text/plain', response['Content-Type'])
+        self.assertItemsEqual(
+            MetaDataHandler.fields, response.content.split())
+
+    def test_meta_data_view_is_sorted(self):
+        client = self.make_node_client()
+        response = self.get('/latest/meta-data/', client)
+        attributes = response.content.split()
+        self.assertEqual(sorted(attributes), attributes)
 
     def test_meta_data_unknown_item_is_not_found(self):
         client = self.make_node_client()
         response = self.get('/latest/meta-data/UNKNOWN-ITEM-HA-HA-HA', client)
         self.assertEqual(httplib.NOT_FOUND, response.status_code)
 
-    def test_meta_data_local_hostname(self):
+    def test_get_attribute_producer_supports_all_fields(self):
+        handler = MetaDataHandler()
+        producers = map(handler.get_attribute_producer, handler.fields)
+        self.assertNotIn(None, producers)
+
+    def test_meta_data_local_hostname_returns_hostname(self):
         hostname = factory.getRandomString()
         client = self.make_node_client(factory.make_node(hostname=hostname))
         response = self.get('/latest/meta-data/local-hostname', client)
         self.assertEqual(
             (httplib.OK, hostname),
+            (response.status_code, response.content.decode('ascii')))
+        self.assertIn('text/plain', response['Content-Type'])
+
+    def test_meta_data_instance_id_returns_system_id(self):
+        node = factory.make_node()
+        client = self.make_node_client(node)
+        response = self.get('/latest/meta-data/instance-id', client)
+        self.assertEqual(
+            (httplib.OK, node.system_id),
             (response.status_code, response.content.decode('ascii')))
         self.assertIn('text/plain', response['Content-Type'])
 
