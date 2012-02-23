@@ -653,6 +653,11 @@ class MaaSAuthorizationBackend(ModelBackend):
     supports_object_permissions = True
 
     def has_perm(self, user, perm, obj=None):
+        if not user.is_active:
+            # Deactivated users, and in particular the node-init user,
+            # are prohibited from accessing maasserver services.
+            return False
+
         # Only Nodes can be checked. We also don't support perm checking
         # when obj = None.
         if not isinstance(obj, Node):

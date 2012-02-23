@@ -14,7 +14,6 @@ __all__ = [
     ]
 
 from django.conf import settings
-
 from maasserver.middleware import ExceptionMiddleware
 
 

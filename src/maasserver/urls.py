@@ -30,6 +30,7 @@ from maasserver.api import (
     NodeMacHandler,
     NodeMacsHandler,
     NodesHandler,
+    RestrictedResource,
     )
 from maasserver.models import Node
 from maasserver.views import (
@@ -43,7 +44,6 @@ from maasserver.views import (
     settings,
     userprefsview,
     )
-from piston.resource import Resource
 
 
 def adminurl(regexp, view, *args, **kwargs):
@@ -93,17 +93,20 @@ urlpatterns += patterns('maasserver.views',
 
 
 # API.
-account_handler = Resource(AccountHandler, authentication=api_auth)
-files_handler = Resource(FilesHandler, authentication=api_auth)
-node_handler = Resource(NodeHandler, authentication=api_auth)
-nodes_handler = Resource(NodesHandler, authentication=api_auth)
-node_mac_handler = Resource(NodeMacHandler, authentication=api_auth)
-node_macs_handler = Resource(NodeMacsHandler, authentication=api_auth)
+account_handler = RestrictedResource(AccountHandler, authentication=api_auth)
+files_handler = RestrictedResource(FilesHandler, authentication=api_auth)
+node_handler = RestrictedResource(NodeHandler, authentication=api_auth)
+nodes_handler = RestrictedResource(NodesHandler, authentication=api_auth)
+node_mac_handler = RestrictedResource(NodeMacHandler, authentication=api_auth)
+node_macs_handler = RestrictedResource(
+    NodeMacsHandler, authentication=api_auth)
+
 
 # API URLs accessible to anonymous users.
 urlpatterns += patterns('',
     url(r'^api/doc/$', api_doc, name='api-doc'),
 )
+
 
 # API URLs for logged-in users.
 urlpatterns += patterns('',

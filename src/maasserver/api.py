@@ -55,6 +55,7 @@ from piston.handler import (
     BaseHandler,
     HandlerMetaClass,
     )
+from piston.resource import Resource
 from piston.utils import rc
 
 
@@ -64,6 +65,17 @@ dispatch_methods = {
     'PUT': 'update',
     'DELETE': 'delete',
     }
+
+
+class RestrictedResource(Resource):
+
+    def authenticate(self, request, rm):
+        actor, anonymous = super(
+            RestrictedResource, self).authenticate(request, rm)
+        if not anonymous and not request.user.is_active:
+            raise PermissionDenied("User is not allowed access to this API.")
+        else:
+            return actor, anonymous
 
 
 def api_exported(operation_name=True, method='POST'):

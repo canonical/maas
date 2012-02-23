@@ -16,6 +16,7 @@ __all__ = [
 from time import time
 
 from django.test.client import Client
+from maasserver.models import get_auth_tokens
 from oauth.oauth import (
     generate_nonce,
     OAuthConsumer,
@@ -41,7 +42,7 @@ class OAuthAuthenticatedClient(Client):
         super(OAuthAuthenticatedClient, self).__init__()
         if token is None:
             # Get the user's first token.
-            token = user.get_profile().get_authorisation_tokens()[0]
+            token = get_auth_tokens(user)[0]
         assert token.user == user, "Token does not match User."
         consumer = token.consumer
         self.consumer = OAuthConsumer(str(consumer.key), str(consumer.secret))

@@ -21,6 +21,7 @@ from maasserver.models import (
     )
 from maasserver.testing import TestCase
 from maasserver.testing.factory import factory
+from metadataserver.nodeinituser import get_node_init_user
 
 
 class LoginLogoutTest(TestCase):
@@ -85,6 +86,11 @@ class TestMaaSAuthorizationBackend(TestCase):
         self.assertRaises(
             NotImplementedError, backend.has_perm,
             factory.make_admin(), 'not-access', make_unallocated_node())
+
+    def test_node_init_user_cannot_access(self):
+        backend = MaaSAuthorizationBackend()
+        self.assertFalse(backend.has_perm(
+            get_node_init_user(), 'access', make_unallocated_node()))
 
     def test_user_can_access_unowned_node(self):
         backend = MaaSAuthorizationBackend()
