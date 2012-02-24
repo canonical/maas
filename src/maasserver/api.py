@@ -253,6 +253,16 @@ class NodeHandler(BaseHandler):
         return nodes[0]
 
 
+def create_node(request):
+    form = NodeWithMACAddressesForm(request.data)
+    if form.is_valid():
+        node = form.save()
+        return node
+    else:
+        return HttpResponseBadRequest(
+            form.errors, content_type='application/json')
+
+
 @api_operations
 class AnonNodesHandler(AnonymousBaseHandler):
     """Create Nodes."""
@@ -262,13 +272,7 @@ class AnonNodesHandler(AnonymousBaseHandler):
     @api_exported('new', 'POST')
     def new(self, request):
         """Create a new Node."""
-        form = NodeWithMACAddressesForm(request.data)
-        if form.is_valid():
-            node = form.save()
-            return node
-        else:
-            return HttpResponseBadRequest(
-                form.errors, content_type='application/json')
+        return create_node(request)
 
     @classmethod
     def resource_uri(cls, *args, **kwargs):
@@ -280,6 +284,11 @@ class NodesHandler(BaseHandler):
     """Manage collection of Nodes."""
     allowed_methods = ('GET', 'POST',)
     anonymous = AnonNodesHandler
+
+    @api_exported('new', 'POST')
+    def new(self, request):
+        """Create a new Node."""
+        return create_node(request)
 
     @api_exported('list', 'GET')
     def list(self, request):

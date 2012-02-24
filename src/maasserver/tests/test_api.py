@@ -346,6 +346,19 @@ class TestNodeAPI(APITestCase):
 class TestNodesAPI(APITestCase):
     """Tests for /api/nodes/."""
 
+    def test_POST_new_creates_node(self):
+        # The API allows a Node to be created, even as a logged-in user.
+        response = self.client.post(
+            '/api/nodes/',
+            {
+                'op': 'new',
+                'hostname': 'diane',
+                'after_commissioning_action': '2',
+                'mac_addresses': ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
+            })
+
+        self.assertEqual(httplib.OK, response.status_code)
+
     def test_GET_list_lists_nodes(self):
         # The api allows for fetching the list of Nodes.
         node1 = factory.make_node()
