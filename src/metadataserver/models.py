@@ -11,6 +11,7 @@ from __future__ import (
 __metaclass__ = type
 __all__ = [
     'NodeKey',
+    'NodeUserData',
     ]
 
 from django.db.models import (
@@ -22,6 +23,10 @@ from django.db.models import (
 from maasserver.models import (
     create_auth_token,
     Node,
+    )
+from metadataserver.fields import (
+    Bin,
+    BinaryField,
     )
 from metadataserver.nodeinituser import get_node_init_user
 from piston.models import KEY_SIZE
@@ -69,3 +74,40 @@ class NodeKey(Model):
 
     node = ForeignKey(Node, null=False, editable=False)
     key = CharField(max_length=KEY_SIZE, null=False, editable=False)
+
+
+class NodeUserDataManager(Manager):
+    """Utility for the collection of NodeUserData items."""
+
+    def set_user_data(self, node, data):
+        """Set user data for the given node."""
+        existing_entries = self.filter(node=node)
+        if len(existing_entries) == 1:
+            [entry] = existing_entries
+            entry.data = Bin(data)
+            entry.save()
+        elif len(existing_entries) == 0:
+            self.create(node=node, data=Bin(data))
+        else:
+            raise AssertionError("More than one user-data entry matches.")
+
+    def get_user_data(self, node):
+        """Retrieve user data for the given node."""
+        return self.get(node=node).data
+
+
+class NodeUserData(Model):
+    """User-data portion of a node's metadata.
+
+    When cloud-init sets up a node, it retrieves specific data for that node
+    from the metadata service.  One portion of that is the "user-data" binary
+    blob.
+
+    :ivar node: Node that this is for.
+    :ivar data: base64-encoded data.
+    """
+
+    objects = NodeUserDataManager()
+
+    node = ForeignKey(Node, null=False, editable=False, unique=True)
+    data = BinaryField(null=False)
