@@ -95,6 +95,10 @@ class NodeUserDataManager(Manager):
         """Retrieve user data for the given node."""
         return self.get(node=node).data
 
+    def has_user_data(self, node):
+        """Do we have user data registered for node?"""
+        return self.filter(node=node).exists()
+
 
 class NodeUserData(Model):
     """User-data portion of a node's metadata.

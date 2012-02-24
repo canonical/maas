@@ -29,7 +29,10 @@ from metadataserver.api import (
     MetaDataHandler,
     UnknownMetadataVersion,
     )
-from metadataserver.models import NodeKey
+from metadataserver.models import (
+    NodeKey,
+    NodeUserData,
+    )
 from metadataserver.nodeinituser import get_node_init_user
 
 
@@ -145,10 +148,21 @@ class TestViews(TestCase):
         # The test is that we get here without exception.
         pass
 
-    def test_version_index_shows_meta_data_and_user_data(self):
+    def test_version_index_shows_meta_data(self):
         client = self.make_node_client()
         items = self.get('/latest/', client).content.splitlines()
         self.assertIn('meta-data', items)
+
+    def test_version_index_does_not_show_user_data_if_not_available(self):
+        client = self.make_node_client()
+        items = self.get('/latest/', client).content.splitlines()
+        self.assertNotIn('user-data', items)
+
+    def test_version_index_shows_user_data_if_available(self):
+        node = factory.make_node()
+        NodeUserData.objects.set_user_data(node, b"User data for node")
+        client = self.make_node_client(node)
+        items = self.get('/latest/', client).content.splitlines()
         self.assertIn('user-data', items)
 
     def test_meta_data_view_lists_fields(self):
@@ -192,8 +206,17 @@ class TestViews(TestCase):
             (response.status_code, response.content.decode('ascii')))
         self.assertIn('text/plain', response['Content-Type'])
 
-    def test_user_data_view_returns_binary_blob(self):
-        client = self.make_node_client()
+    def test_user_data_view_returns_binary_data(self):
+        data = b"\x00\xff\xff\xfe\xff"
+        node = factory.make_node()
+        NodeUserData.objects.set_user_data(node, data)
+        client = self.make_node_client(node)
         response = self.get('/latest/user-data', client)
         self.assertEqual('application/octet-stream', response['Content-Type'])
         self.assertIsInstance(response.content, str)
+        self.assertEqual(
+            (httplib.OK, data), (response.status_code, response.content))
+
+    def test_user_data_for_node_without_user_data_returns_not_found(self):
+        response = self.get('/latest/user-data', self.make_node_client())
+        self.assertEqual(httplib.NOT_FOUND, response.status_code)

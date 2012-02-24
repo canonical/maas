@@ -22,7 +22,10 @@ from maasserver.exceptions import (
     PermissionDenied,
     Unauthorized,
     )
-from metadataserver.models import NodeKey
+from metadataserver.models import (
+    NodeKey,
+    NodeUserData,
+    )
 from piston.handler import BaseHandler
 
 
@@ -93,7 +96,12 @@ class VersionIndexHandler(MetadataViewHandler):
 
     def read(self, request, version):
         check_version(version)
-        return super(VersionIndexHandler, self).read(request)
+        if NodeUserData.objects.has_user_data(get_node_for_request(request)):
+            shown_fields = self.fields
+        else:
+            shown_fields = list(self.fields)
+            shown_fields.remove('user-data')
+        return make_list_response(sorted(shown_fields))
 
 
 class MetaDataHandler(VersionIndexHandler):
@@ -127,7 +135,7 @@ class MetaDataHandler(VersionIndexHandler):
         if item is None or len(item) == 0:
             # Requesting the list of attributes, not any particular
             # attribute.
-            return super(MetaDataHandler, self).read(request, version)
+            return make_list_response(sorted(self.fields))
 
         check_version(version)
         node = get_node_for_request(request)
@@ -148,5 +156,10 @@ class UserDataHandler(MetadataViewHandler):
 
     def read(self, request, version):
         check_version(version)
-        data = b"User data here."
-        return HttpResponse(data, mimetype='application/octet-stream')
+        node = get_node_for_request(request)
+        try:
+            return HttpResponse(
+                NodeUserData.objects.get_user_data(node),
+                mimetype='application/octet-stream')
+        except NodeUserData.DoesNotExist:
+            raise MaasAPINotFound("No user data available for this node.")

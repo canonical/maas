@@ -79,3 +79,12 @@ class TestNodeUserDataManager(TestCase):
         NodeUserData.objects.set_user_data(node, data)
         NodeUserData.objects.set_user_data(factory.make_node(), b'unrelated')
         self.assertEqual(data, NodeUserData.objects.get_user_data(node))
+
+    def test_has_user_data_returns_False_if_node_has_no_user_data(self):
+        self.assertFalse(
+            NodeUserData.objects.has_user_data(factory.make_node()))
+
+    def test_has_user_data_returns_True_if_node_has_user_data(self):
+        node = factory.make_node()
+        NodeUserData.objects.set_user_data(node, b"This node has user data.")
+        self.assertTrue(NodeUserData.objects.has_user_data(node))
