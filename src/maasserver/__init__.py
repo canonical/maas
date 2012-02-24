@@ -10,9 +10,3 @@ from __future__ import (
 
 __metaclass__ = type
 __all__ = []
-
-from maasserver import provisioning
-
-# This has been imported so that it can register its signal handlers early on,
-# before it misses anything. (Mentioned below to silence lint warnings.)
-provisioning

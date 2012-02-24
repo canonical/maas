@@ -22,9 +22,23 @@ YUI().use("event", function(Y) {
             Y.use(suite_name, "test", function(y) {
                 var module = y, parts = suite_name.split(".");
                 while (parts.length > 0) { module = module[parts.shift()]; }
-                y.Test.Runner.add(module.suite);
-                y.Test.Runner.run();
-            });
+                var Runner = y.Test.Runner;
+                Runner.add(module.suite);
+
+                var testsFinished = function(){
+                    var results = y.Test.Runner.getResults(y.Test.Format.JSON);
+                    // Publish the results in a new node.
+                    var result_node = Y.Node.create('<div />')
+                        .set('id', 'test_results')
+                        .set('text', results);
+                    Y.one('body').append(result_node);
+                    // Set the suite_node content to 'done'.
+                    suite_node.set('text', 'done');
+                };
+                Runner.subscribe(Runner.COMPLETE_EVENT, testsFinished);
+
+                Runner.run();
+           });
         }
     });
 });

@@ -670,3 +670,10 @@ class MaaSAuthorizationBackend(ModelBackend):
                 'Invalid permission check (invalid permission name).')
 
         return obj.owner in (None, user)
+
+
+# 'provisioning' is imported so that it can register its signal handlers early
+# on, before it misses anything.
+from maasserver import provisioning
+# We mention 'provisioning' here to silence lint warnings.
+provisioning
