@@ -49,7 +49,7 @@ suite.add(new Y.maas.testing.TestCase({
         var fired = false;
         mockXhr.send = function(url, cfg) {
             fired = true;
-            Y.Assert.areEqual(MAAS_config.uris.account_handler, url);
+            Y.Assert.areEqual(MaaS_config.uris.account_handler, url);
             Y.Assert.areEqual(
                 "op=delete_authorisation_token&token_key=tokenkey1",
                 cfg.data);
@@ -120,7 +120,7 @@ suite.add(new Y.maas.testing.TestCase({
         var fired = false;
         mockXhr.send = function(url, cfg) {
             fired = true;
-            Y.Assert.areEqual(MAAS_config.uris.account_handler, url);
+            Y.Assert.areEqual(MaaS_config.uris.account_handler, url);
             Y.Assert.areEqual(
                 "op=create_authorisation_token",
                 cfg.data);

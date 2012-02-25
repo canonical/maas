@@ -44,7 +44,7 @@ Y.extend(TokenWidget, Y.Widget, {
         this.status_node = Y.Node.create('<div />')
             .set('id','create_error');
         this.spinnerNode = Y.Node.create('<img />')
-            .set('src', MAAS_config.uris.statics + 'img/spinner.gif');
+            .set('src', MaaS_config.uris.statics + 'img/spinner.gif');
         this.get('srcNode').one('#token_creation_placeholder')
             .append(this.create_link)
             .append(this.status_node);
@@ -98,7 +98,7 @@ Y.extend(TokenWidget, Y.Widget, {
             }
         };
         var request = module._io.send(
-            MAAS_config.uris.account_handler, cfg);
+            MaaS_config.uris.account_handler, cfg);
     },
 
     showSpinner: function() {
@@ -142,7 +142,7 @@ Y.extend(TokenWidget, Y.Widget, {
                         .set('title', 'Delete token')
                         .set(
                             'src',
-                            MAAS_config.uris.statics + 'img/delete.png'))));
+                            MaaS_config.uris.statics + 'img/delete.png'))));
        tbody.append(row);
        this.bindDeleteRow(row);
     },
@@ -183,7 +183,7 @@ Y.extend(TokenWidget, Y.Widget, {
             }
         };
         var request = module._io.send(
-            MAAS_config.uris.account_handler, cfg);
+            MaaS_config.uris.account_handler, cfg);
     }
 });
 

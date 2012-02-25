@@ -18,7 +18,7 @@ suite.add(new Y.maas.testing.TestCase({
         var mockXhr = Y.Mock();
         Y.Mock.expect(mockXhr, {
             method: 'send',
-            args: [MAAS_config.uris.nodes_handler, Y.Mock.Value.Any]
+            args: [MaaS_config.uris.nodes_handler, Y.Mock.Value.Any]
         });
         this.mockIO(mockXhr, module);
     },
@@ -57,7 +57,7 @@ suite.add(new Y.maas.testing.TestCase({
         var mockXhr = Y.Mock();
         Y.Mock.expect(mockXhr, {
             method: 'send',
-            args: [MAAS_config.uris.nodes_handler, Y.Mock.Value.Any]
+            args: [MaaS_config.uris.nodes_handler, Y.Mock.Value.Any]
         });
         this.mockIO(mockXhr, module);
         module.showAddNodeWidget();
@@ -72,7 +72,7 @@ suite.add(new Y.maas.testing.TestCase({
         var mockXhr = Y.Mock();
         Y.Mock.expect(mockXhr, {
             method: 'send',
-            args: [MAAS_config.uris.nodes_handler, Y.Mock.Value.Any]
+            args: [MaaS_config.uris.nodes_handler, Y.Mock.Value.Any]
         });
         this.mockIO(mockXhr, module);
         module.showAddNodeWidget();
@@ -142,7 +142,7 @@ suite.add(new Y.maas.testing.TestCase({
         var error_message = panel.get(
             'srcNode').one('.form-global-errors').get('innerHTML');
         // The link to the login page is present in the error message.
-        var link_position = error_message.search(MAAS_config.uris.login);
+        var link_position = error_message.search(MaaS_config.uris.login);
         Y.Assert.areNotEqual(-1, link_position);
     }
 

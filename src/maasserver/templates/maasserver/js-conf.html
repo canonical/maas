@@ -5,7 +5,7 @@ var YUI_config = {
     combine: {% if YUI_DEBUG %}true{% else %}false{% endif %},
     base: '{{ STATIC_URL }}js/yui/{{ YUI_VERSION }}/'
 };
-var MAAS_config = {
+var MaaS_config = {
     uris: {
         login: '{% url "login" %}',
         statics: '{{ STATIC_URL }}',

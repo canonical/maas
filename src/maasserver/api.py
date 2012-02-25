@@ -37,8 +37,8 @@ from django.shortcuts import (
 from django.template import RequestContext
 from docutils import core
 from maasserver.exceptions import (
-    MaasAPIBadRequest,
-    MaasAPINotFound,
+    MaaSAPIBadRequest,
+    MaaSAPINotFound,
     NodesNotAvailable,
     PermissionDenied,
     )
@@ -394,11 +394,11 @@ class FilesHandler(BaseHandler):
         """
         filename = request.GET.get("filename", None)
         if not filename:
-            raise MaasAPIBadRequest("Filename not supplied")
+            raise MaaSAPIBadRequest("Filename not supplied")
         try:
             db_file = FileStorage.objects.get(filename=filename)
         except FileStorage.DoesNotExist:
-            raise MaasAPINotFound("File not found")
+            raise MaaSAPINotFound("File not found")
         return HttpResponse(db_file.data.read(), status=httplib.OK)
 
     @api_exported('add', 'POST')
@@ -412,12 +412,12 @@ class FilesHandler(BaseHandler):
         """
         filename = request.data.get("filename", None)
         if not filename:
-            raise MaasAPIBadRequest("Filename not supplied")
+            raise MaaSAPIBadRequest("Filename not supplied")
         files = request.FILES
         if not files:
-            raise MaasAPIBadRequest("File not supplied")
+            raise MaaSAPIBadRequest("File not supplied")
         if len(files) != 1:
-            raise MaasAPIBadRequest("Exactly one file must be supplied")
+            raise MaaSAPIBadRequest("Exactly one file must be supplied")
         uploaded_file = files['file']
 
         # As per the comment in FileStorage, this ought to deal in

@@ -26,7 +26,7 @@ suite.add(new Y.maas.testing.TestCase({
         var mockXhr = Y.Mock();
         Y.Mock.expect(mockXhr, {
             method: 'send',
-            args: [MAAS_config.uris.nodes_handler, Y.Mock.Value.Any]
+            args: [MaaS_config.uris.nodes_handler, Y.Mock.Value.Any]
         });
         this.mockIO(mockXhr, module);
 

@@ -10,10 +10,10 @@ from __future__ import (
 
 __metaclass__ = type
 __all__ = [
-    "MaasException",
-    "MaasAPIBadRequest",
-    "MaasAPIException",
-    "MaasAPINotFound",
+    "MaaSException",
+    "MaaSAPIBadRequest",
+    "MaaSAPIException",
+    "MaaSAPINotFound",
     "PermissionDenied",
     ]
 
@@ -21,16 +21,16 @@ __all__ = [
 import httplib
 
 
-class MaasException(Exception):
-    """Base class for Maas' exceptions."""
+class MaaSException(Exception):
+    """Base class for MaaS' exceptions."""
 
 
 class CannotDeleteUserException(Exception):
     """User can't be deleted."""
 
 
-class MaasAPIException(Exception):
-    """Base class for Maas' API exceptions.
+class MaaSAPIException(Exception):
+    """Base class for MaaS' API exceptions.
 
     :ivar api_error: The HTTP code that should be returned when this error
         is raised in the API (defaults to 500: "Internal Server Error").
@@ -39,15 +39,15 @@ class MaasAPIException(Exception):
     api_error = httplib.INTERNAL_SERVER_ERROR
 
 
-class MaasAPIBadRequest(MaasAPIException):
+class MaaSAPIBadRequest(MaaSAPIException):
     api_error = httplib.BAD_REQUEST
 
 
-class MaasAPINotFound(MaasAPIException):
+class MaaSAPINotFound(MaaSAPIException):
     api_error = httplib.NOT_FOUND
 
 
-class PermissionDenied(MaasAPIException):
+class PermissionDenied(MaaSAPIException):
     """HTTP error 403: Forbidden.  User is logged in, but lacks permission.
 
     Do not confuse this with 401: Unauthorized ("you need to be logged in
@@ -57,11 +57,11 @@ class PermissionDenied(MaasAPIException):
     api_error = httplib.FORBIDDEN
 
 
-class Unauthorized(MaasAPIException):
+class Unauthorized(MaaSAPIException):
     """HTTP error 401: Unauthorized.  Login required."""
     api_error = httplib.UNAUTHORIZED
 
 
-class NodesNotAvailable(MaasAPIException):
+class NodesNotAvailable(MaaSAPIException):
     """Requested node(s) are not available to be acquired."""
     api_error = httplib.CONFLICT

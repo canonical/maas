@@ -17,7 +17,7 @@ from piston.authentication import OAuthAuthentication
 from piston.utils import rc
 
 
-class MaasAPIAuthentication(OAuthAuthentication):
+class MaaSAPIAuthentication(OAuthAuthentication):
     """A piston authentication class that uses the currently logged-in user
     if there is one, and defaults to piston's OAuthAuthentication if not.
 
@@ -28,7 +28,7 @@ class MaasAPIAuthentication(OAuthAuthentication):
             return request.user
         else:
             return super(
-                MaasAPIAuthentication, self).is_authenticated(request)
+                MaaSAPIAuthentication, self).is_authenticated(request)
 
     def challenge(self):
         # Beware: this returns 401: Unauthorized, not 403: Forbidden
@@ -37,4 +37,4 @@ class MaasAPIAuthentication(OAuthAuthentication):
 
 
 # OAuth authentication for the APIs.
-api_auth = MaasAPIAuthentication(realm="MaaS API")
+api_auth = MaaSAPIAuthentication(realm="MaaS API")

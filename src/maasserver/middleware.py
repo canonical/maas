@@ -31,7 +31,7 @@ from django.http import (
     HttpResponseRedirect,
     )
 from django.utils.http import urlquote_plus
-from maasserver.exceptions import MaasAPIException
+from maasserver.exceptions import MaaSAPIException
 
 
 class AccessMiddleware:
@@ -77,7 +77,7 @@ class AccessMiddleware:
 class ExceptionMiddleware:
     """Convert exceptions into appropriate HttpResponse responses.
 
-    For example, a MaasAPINotFound exception processed by a middleware
+    For example, a MaaSAPINotFound exception processed by a middleware
     based on this class will result in an http 404 response to the client.
     Validation errors become "bad request" responses.
 
@@ -106,8 +106,8 @@ class ExceptionMiddleware:
             return None
 
         encoding = b'utf-8'
-        if isinstance(exception, MaasAPIException):
-            # The exception is a MaasAPIException: exception.api_error
+        if isinstance(exception, MaaSAPIException):
+            # The exception is a MaaSAPIException: exception.api_error
             # will give us the proper error type.
             return HttpResponse(
                 content=unicode(exception).encode(encoding),

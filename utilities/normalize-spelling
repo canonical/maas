@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
+# Exit immediately if a command exits with a non-zero status.
+set -o errexit
+# Treat unset variables as an error when substituting.
+set -o nounset
+
+# Normalize the spelling of MaaS to either MaaS or maas, depending on
+# the capitalization of the first letter.
+bzr ls -VR --kind=file --null \
+    | xargs -r0 grep -Iil maas --null \
+    | xargs -r0 sed -i 's/M[Aa][Aa][Ss]/MaaS/g;s/m[Aa][Aa][Ss]/maas/g'

@@ -132,11 +132,11 @@
     username: test
   model: auth.user
   pk: 106
-- fields: {description: '', key: RfGASHsLT6XwuRunC6, name: Maas consumer, secret: '', status: accepted,
+- fields: {description: '', key: RfGASHsLT6XwuRunC6, name: MaaS consumer, secret: '', status: accepted,
     user: 101}
   model: piston.consumer
   pk: 1
-- fields: {description: '', key: JcaW54bSSN66wj5M3d, name: Maas consumer, secret: '', status: accepted,
+- fields: {description: '', key: JcaW54bSSN66wj5M3d, name: MaaS consumer, secret: '', status: accepted,
     user: 105}
   model: piston.consumer
   pk: 2

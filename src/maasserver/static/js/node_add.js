@@ -184,13 +184,13 @@ Y.extend(AddNodeWidget, Y.Panel, {
     initializeNodes: function() {
         // Prepare spinnerNode.
         this.spinnerNode = Y.Node.create('<img />')
-            .set('src', MAAS_config.uris.statics + 'img/spinner.gif');
+            .set('src', MaaS_config.uris.statics + 'img/spinner.gif');
         // Prepare logged-off error message.
         this.loggedOffNode = Y.Node.create('<span />')
             .set('text', "You have been logged out, please ")
             .append(Y.Node.create('<a />')
                 .set('text', 'log in')
-                .set('href', MAAS_config.uris.login))
+                .set('href', MaaS_config.uris.login))
             .append(Y.Node.create('<span />')
                 .set('text', ' again.'));
     },
@@ -252,7 +252,7 @@ Y.extend(AddNodeWidget, Y.Panel, {
             }
         };
         var request = module._io.send(
-            MAAS_config.uris.nodes_handler, cfg);
+            MaaS_config.uris.nodes_handler, cfg);
     }
 
 });

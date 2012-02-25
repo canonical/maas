@@ -398,7 +398,7 @@ class MACAddress(CommonInfo):
         return self.mac_address
 
 
-GENERIC_CONSUMER = 'Maas consumer'
+GENERIC_CONSUMER = 'MaaS consumer'
 
 
 def create_auth_token(user):
@@ -459,7 +459,7 @@ class UserProfileManager(models.Manager):
 
 
 class UserProfile(models.Model):
-    """A User profile to store Maas specific methods and fields.
+    """A User profile to store MaaS specific methods and fields.
 
     :ivar user: The related User_.
 

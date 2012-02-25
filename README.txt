@@ -2,7 +2,7 @@
 MaaS
 ****
 
-Maas is the successor to Orchestra. It offers a nice UI to provision your
+MaaS is the successor to Orchestra. It offers a nice UI to provision your
 Ubuntu servers. Each physical server (“node”) will
 be commissioned automatically on first boot. During the commissioning
 process administrators are able to configure hardware settings
