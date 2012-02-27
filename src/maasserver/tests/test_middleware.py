@@ -116,7 +116,7 @@ class APIErrorsMiddlewareTest(TestCase):
 
     def test_handles_error_on_API(self):
         middleware = APIErrorsMiddleware()
-        non_api_request = fake_request("/api/hello")
+        non_api_request = fake_request("/api/1.0/hello")
         exception = MaaSAPINotFound("Have you looked under the couch?")
         response = middleware.process_exception(non_api_request, exception)
         self.assertEqual(

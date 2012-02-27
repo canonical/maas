@@ -33,7 +33,7 @@ OOPS_REPOSITORY = 'logs'
 LOGOUT_URL = '/'
 LOGIN_REDIRECT_URL = '/'
 
-API_URL_REGEXP = '^/api/'
+API_URL_REGEXP = '^/api/1[.]0/'
 METADATA_URL_REGEXP = '^/metadata/'
 
 
