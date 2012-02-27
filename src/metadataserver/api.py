@@ -162,4 +162,4 @@ class UserDataHandler(MetadataViewHandler):
                 NodeUserData.objects.get_user_data(node),
                 mimetype='application/octet-stream')
         except NodeUserData.DoesNotExist:
-            raise MaasAPINotFound("No user data available for this node.")
+            raise MaaSAPINotFound("No user data available for this node.")
