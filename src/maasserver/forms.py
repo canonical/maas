@@ -52,11 +52,6 @@ class MACAddressForm(ModelForm):
         model = MACAddress
 
 
-class MACAddressForm(ModelForm):
-    class Meta:
-        model = MACAddress
-
-
 class MultipleMACAddressField(forms.MultiValueField):
     def __init__(self, nb_macs=1, *args, **kwargs):
         fields = [MACAddressFormField() for i in xrange(nb_macs)]
