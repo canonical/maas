@@ -26,8 +26,8 @@ from maasserver.testing import (
 class UserPrefsViewTest(LoggedInTestCase):
 
     def test_prefs_GET_profile(self):
-        # The preferences page (profile tab) displays a form with the
-        # user's personal information.
+        # The preferences page displays a form with the user's personal
+        # information.
         user = self.logged_in_user
         user.first_name = 'Steve'
         user.last_name = 'Bam'
@@ -44,12 +44,12 @@ class UserPrefsViewTest(LoggedInTestCase):
                 doc.cssselect('input#id_profile-first_name')])
 
     def test_prefs_GET_api(self):
-        # The preferences page (api tab) displays the API access tokens.
+        # The preferences page displays the API access tokens.
         user = self.logged_in_user
         # Create a few tokens.
         for i in xrange(3):
             user.get_profile().create_authorisation_token()
-        response = self.client.get('/account/prefs/?tab=1')
+        response = self.client.get('/account/prefs/')
         doc = fromstring(response.content)
         # The OAuth tokens are displayed.
         for token in user.get_profile().get_authorisation_tokens():
@@ -107,9 +107,9 @@ class AdminLoggedInTestCase(LoggedInTestCase):
 class SettingsTest(AdminLoggedInTestCase):
 
     def test_settings_list_users(self):
-        # The settings page (users tab) displays a list of the users with
-        # links to view, delete or edit each user.
-        # Note that the link to delete the the logged-in user is not display.
+        # The settings page displays a list of the users with links to view,
+        # delete or edit each user. Note that the link to delete the the
+        # logged-in user is not display.
         [factory.make_user() for i in range(3)]
         users = UserProfile.objects.all_users()
         response = self.client.get('/settings/')

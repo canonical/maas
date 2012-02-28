@@ -68,28 +68,25 @@ class NodesCreateView(CreateView):
 
 def userprefsview(request):
     user = request.user
-    tab = request.GET.get('tab', 0)
     # Process the profile update form.
     if 'profile_submit' in request.POST:
-        tab = 0
         profile_form = ProfileForm(
             request.POST, instance=user, prefix='profile')
         if profile_form.is_valid():
             messages.info(request, "Profile updated.")
             profile_form.save()
-            return HttpResponseRedirect('%s?tab=%d' % (reverse('prefs'), tab))
+            return HttpResponseRedirect(reverse('prefs'))
     else:
         profile_form = ProfileForm(instance=user, prefix='profile')
 
     # Process the password change form.
     if 'password_submit' in request.POST:
-        tab = 2
         password_form = PasswordForm(
             data=request.POST, user=user, prefix='password')
         if password_form.is_valid():
             messages.info(request, "Password updated.")
             password_form.save()
-            return HttpResponseRedirect('%s?tab=%d' % (reverse('prefs'), tab))
+            return HttpResponseRedirect(reverse('prefs'))
     else:
         password_form = PasswordForm(user=user, prefix='password')
 
@@ -98,7 +95,6 @@ def userprefsview(request):
         {
             'profile_form': profile_form,
             'password_form': password_form,
-            'tab': tab  # Tab index to display.
         },
         context_instance=RequestContext(request))
 
@@ -168,12 +164,10 @@ class AccountsEdit(UpdateView):
 
 
 def settings(request):
-    tab = request.GET.get('tab', 0)
     user_list = UserProfile.objects.all_users().order_by('username')
     return render_to_response(
         'maasserver/settings.html',
         {
             'user_list': user_list,
-            'tab': tab  # Tab index to display.
         },
         context_instance=RequestContext(request))

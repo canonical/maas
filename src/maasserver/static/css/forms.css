@@ -44,6 +44,9 @@ li.error input[type="password"],
 li.error input[type="text"] {
     background-color: #F2CFCE;
     }
+a.button:hover {
+    text-decoration: none;
+    }
 .yui3-button,
 .button,
 button,

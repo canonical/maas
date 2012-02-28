@@ -3,22 +3,12 @@
 {% block nav-active-prefs %}active{% endblock %}
 {% block title %}User preferences for {{ user.username }}{% endblock %}
 {% block page-title %}User preferences for {{ user.username }}{% endblock %}
+{% block layout-modifiers %}sidebar{% endblock %}
 
 {% block head %}
   <script type="text/javascript">
   <!--
-  YUI().use('tabview', 'maas.prefs', 'maas.utils', function (Y) {
-    var tabview = new Y.TabView({
-      srcNode: '#prefs'
-    });
-    tabview.render();
-    // Select the tab with index {{ tab }} (which is taken from the
-    // query string and set by the Django view).
-    var valid_tab_index = Y.maas.utils.getTabIndex('{{ tab }}', tabview);
-    if (Y.Lang.isValue(valid_tab_index)) {
-        tabview.selectChild(valid_tab_index);
-    }
-
+  YUI().use('maas.prefs', function (Y) {
     var profile_widget = new Y.maas.prefs.TokenWidget(
         {'srcNode': Y.one('#api')});
     profile_widget.render();
@@ -29,64 +19,65 @@
 
 {% block content %}
   <div id="prefs">
-    <ul>
-      <li><a href="#profile">Profile</a></li>
-      <li><a href="#api">API access</a></li>
-      <li><a href="#password">Change password</a></li>
-      <li><a href="#keys">Manage keys</a></li>
-    </ul>
-    <div>
-      <div id="profile">
-        <form action="." method="post">
-          {{ profile_form.as_p }}
-         <input type="hidden" name="profile_submit" value="1" />
-         <input type="submit" value="Save" />
-        </form>
-      </div>
-      <div id="api">
-          <p>
-            An API token is the information you need to provide to a third
-            party application for it to be able to access the MaaS server
-            <a href="{% url 'api-doc' %}">API</a> on your behalf.
-          </p>
-          <p>
-            You can create as many API tokens as you require.
-          </p>
-          <table>
-            <thead>
-              <tr>
-                <th>API tokens</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for token in user.get_profile.get_authorisation_tokens %}
-              <tr class="bundle">
-                <td id="{{ token.key }}">
-                  {{ token.consumer.key }}:{{ token.key }}:{{ token.secret }}</td>
-                <td>
-                  <a href="#" class="delete-link">
-                    <img title="Delete token"
-                         src="{{ STATIC_URL }}img/delete.png" />
-                  </a>
-                </td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-          <p id="token_creation_placeholder" />
-      </div>
-      <div id="password">
-        <form action="." method="post">
-          {{ password_form.as_p }}
-         <input type="hidden" name="password_submit" value="1" />
-         <input type="submit" value="Change password" />
-        </form>
-      </div>
-      <div id="keys">
-          TODO manage keys.
-      </div>
+    <div id="api">
+      <h2>MaaS keys</h2>
+      <p>
+        An API token is the information you need to provide to a third
+        party application for it to be able to access the MaaS server
+        <a href="{% url 'api-doc' %}">API</a> on your behalf.
+      </p>
+      <p>
+        You can create as many API tokens as you require.
+      </p>
+      <table class="list">
+        <thead>
+          <tr>
+            <th>API tokens</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for token in user.get_profile.get_authorisation_tokens %}
+          <tr class="bundle">
+            <td id="{{ token.key }}">
+              {{ token.consumer.key }}:{{ token.key }}:{{ token.secret }}</td>
+            <td>
+              <a href="#" class="delete-link">
+                <img title="Delete token"
+                     src="{{ STATIC_URL }}img/delete.png" />
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <p id="token_creation_placeholder" />
+    </div>
+    <div id="profile">
+      <h2>User details</h2>
+      <form action="." method="post">
+        <ul>
+          {% for field in profile_form %}
+            {% include "maasserver/form_field.html" %}
+	  {% endfor %}
+	</ul>
+        <input type="hidden" name="profile_submit" value="1" />
+        <input type="submit" class="button right" value="Save" />
+        <div class="clear" />
+      </form>
+    </div>
+    <div id="password">
+      <h2>Password</h2>
+      <form action="." method="post">
+        <ul>
+          {% for field in password_form %}
+            {% include "maasserver/form_field.html" %}
+          {% endfor %}
+        </ul>
+        <input type="hidden" name="password_submit" value="1" />
+        <input type="submit" class="button right" value="Change password" />
+        <div class="clear" />
+      </form>
     </div>
   </div>
-
 {% endblock %}
