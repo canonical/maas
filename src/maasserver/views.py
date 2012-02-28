@@ -36,6 +36,7 @@ from django.views.generic import (
 from maasserver.exceptions import CannotDeleteUserException
 from maasserver.forms import (
     EditUserForm,
+    MaaSAndNetworkForm,
     NewUserCreationForm,
     ProfileForm,
     )
@@ -165,9 +166,22 @@ class AccountsEdit(UpdateView):
 
 def settings(request):
     user_list = UserProfile.objects.all_users().order_by('username')
+    # Process the MaaS & network form.
+    if 'maas_and_network_submit' in request.POST:
+        maas_and_network_form = MaaSAndNetworkForm(
+            request.POST, prefix='maas_and_network')
+        if maas_and_network_form.is_valid():
+            messages.info(request, "Configuration updated.")
+            maas_and_network_form.save()
+            return HttpResponseRedirect(reverse('settings'))
+    else:
+        maas_and_network_form = MaaSAndNetworkForm(
+            prefix='maas_and_network')
+
     return render_to_response(
         'maasserver/settings.html',
         {
             'user_list': user_list,
+            'maas_and_network_form': maas_and_network_form,
         },
         context_instance=RequestContext(request))

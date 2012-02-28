@@ -33,6 +33,9 @@ class Factory():
             random.choice(string.letters + string.digits)
             for x in xrange(size))
 
+    def getRandomBoolean(self):
+        random.choice((True, False))
+
     def make_node(self, hostname='', set_hostname=False, status=None,
                   **kwargs):
         # hostname=None is a valid value, hence the set_hostname trick.

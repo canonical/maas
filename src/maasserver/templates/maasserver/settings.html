@@ -66,6 +66,19 @@
         <button class="button right">Add user</button>
       </a>
       <div class="clear"></div>
-    </div>      
+    </div>
+    <div id="maas_and_network">
+      <h2>Network Configuration</h2>
+      <form action="{% url "settings" %}" method="post">
+        <ul>
+        {% for field in maas_and_network_form %}
+          {% include "maasserver/form_field.html" %}
+        {% endfor %}
+        </ul>
+        <input type="hidden" name="maas_and_network_submit" value="1" />
+        <input type="submit" class="button right" value="Save" />
+        <div class="clear"></div>
+      </form>
+    </div>
   </div>
 {% endblock %}

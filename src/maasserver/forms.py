@@ -157,3 +157,9 @@ class ConfigForm(Form):
             for name, value in self.cleaned_data.items():
                 Config.objects.set_config(name, value)
             return True
+
+
+class MaaSAndNetworkForm(ConfigForm):
+    maas_name = forms.CharField(label="MaaS name")
+    provide_dhcp = forms.BooleanField(
+        label="Provide DHCP on this subnet", required=False)

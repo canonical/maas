@@ -16,11 +16,20 @@ import httplib
 from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse
 from lxml.html import fromstring
-from maasserver.models import UserProfile
+from maasserver.models import (
+    Config,
+    UserProfile,
+    )
 from maasserver.testing import (
     factory,
     LoggedInTestCase,
     )
+
+
+def get_prefixed_form_data(prefix, data):
+    result = {'%s-%s' % (prefix, key): value for key, value in data.items()}
+    result.update({'%s_submit' % prefix: 1})
+    return result
 
 
 class UserPrefsViewTest(LoggedInTestCase):
@@ -66,10 +75,13 @@ class UserPrefsViewTest(LoggedInTestCase):
         # information.
         response = self.client.post(
             '/account/prefs/',
-            {
-                'profile_submit': 1, 'profile-first_name': 'John',
-                'profile-last_name': 'Doe', 'profile-email': 'jon@example.com'
-            })
+            get_prefixed_form_data(
+                'profile',
+                {
+                    'first_name': 'John',
+                    'last_name': 'Doe',
+                    'email': 'jon@example.com',
+                }))
 
         self.assertEqual(httplib.FOUND, response.status_code)
         user = User.objects.get(id=self.logged_in_user.id)
@@ -83,12 +95,14 @@ class UserPrefsViewTest(LoggedInTestCase):
         old_pw = self.logged_in_user.password
         response = self.client.post(
             '/account/prefs/',
-            {
-                'password_submit': 1,
-                'password-old_password': 'test',
-                'password-new_password1': 'new',
-                'password-new_password2': 'new',
-            })
+            get_prefixed_form_data(
+                'password',
+                {
+                    'old_password': 'test',
+                    'new_password1': 'new',
+                    'new_password2': 'new',
+                }))
+
         self.assertEqual(httplib.FOUND, response.status_code)
         user = User.objects.get(id=self.logged_in_user.id)
         # The password is SHA1ized, we just make sure that it has changed.
@@ -144,6 +158,23 @@ class SettingsTest(AdminLoggedInTestCase):
                 # logged-in user.
                 self.assertNotIn(
                     reverse('accounts-del', args=[user.username]), links)
+
+    def test_settings_maas_and_network_POST(self):
+        new_name = factory.getRandomString()
+        new_provide_dhcp = factory.getRandomBoolean()
+        response = self.client.post(
+            '/settings/',
+            get_prefixed_form_data(
+                prefix='maas_and_network',
+                data={
+                    'maas_name': new_name,
+                    'provide_dhcp': new_provide_dhcp,
+                }))
+
+        self.assertEqual(httplib.FOUND, response.status_code)
+        self.assertEqual(new_name, Config.objects.get_config('maas_name'))
+        self.assertEqual(
+            new_provide_dhcp, Config.objects.get_config('new_provide_dhcp'))
 
 
 class UserManagementTest(AdminLoggedInTestCase):
