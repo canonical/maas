@@ -32,13 +32,14 @@
     </ul>
     <div>
       <div id="users">
-        <table>
+        <h2>Users and keys</h2>
+        <table class="list">
           <thead>
             <tr>
-              <th>User</th>
-              <th>Is superuser?</th>
+              <th>ID</th>
               <th>Number of nodes in use</th>
-              <th>Last login</th>
+              <th>Last seen</th>
+              <th>MaaS Admin</th>
               <th></th>
             </tr>
           </thead>
@@ -51,13 +52,13 @@
                   {{ user_item.username }}
                 </a>
               </td>
+              <td>{{ user_item.node_set.count }}</td>
+              <td>{{ user_item.last_login }}</td>
               <td>
                 {% if user_item.is_superuser %}
                   <img src="{{ STATIC_URL }}img/yes.png" />
                 {% endif %}
               </td>
-              <td>{{ user_item.node_set.count }}</td>
-              <td>{{ user_item.last_login }}</td>
               <td>
                 <a href="{% url 'accounts-edit' user_item.username %}"
         	   title="Edit user {{ user_item.username }}">

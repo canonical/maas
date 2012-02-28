@@ -2,8 +2,10 @@
 
 {% block nav-active-node-list %}active{% endblock %}
 {% block title %}Nodes{% endblock %}
-{% block page-title %}{{ node_list|length }} nodes in {% include "maasserver/site_title.html" %}{% endblock %}
+{% block page-title %}{{ node_list|length }} node{{ node_list|length|pluralize }} in {% include "maasserver/site_title.html" %}{% endblock %}
 {% block site-switcher %}{% endblock %}
+{% block layout-modifiers %}sidebar{% endblock %}
+{% block header-search %}{% endblock %}
 
 {% block html_includes %}{% include "maasserver/snippets.html" %}
 {% endblock %}
@@ -20,32 +22,60 @@
   </script>
 {% endblock %}
 
+
+{% block sidebar %}
+  <h3>Filters</h3>
+  <form action="" method="get">
+  <ul>
+    <li><label for=""><input type="checkbox" checked="checked" id="" /> Pooled</label></li>
+    <li><label for=""><input type="checkbox" checked="checked" id="" /> Reserved</label></li>
+    <li><label for=""><input type="checkbox" checked="checked" id="" /> Allocated</label></li>
+    <li><label for=""><input type="checkbox" checked="checked" id="" /> Declared</label></li>
+    <li><label for=""><input type="checkbox" checked="checked" id="" /> Retired</label></li>
+  </ul>
+  </form>
+{% endblock %}
+
 {% block content %}
-  <h2>{{ node_list|length }} node{{ node_list|length|pluralize }} in this cluster</h2>
+  <form action="" method="get" class="block full-width inline-form">
+    <label for="list-search">Search nodes</label> <input type="text" name="query" id="list-search" value="" /><input type="submit" value="Search" />
+  </form>
   {% if node_list|length %}
-    <table>
-      <thead>
-        <tr>
-          <th>System ID</th>
-          <th>Hostname</th>
-          <th>MAC</th>
-          <th>Status</th>
-        </tr>
-      </thead>
-      {% for node in node_list %}
-        <tr class="node {% cycle 'even' 'odd' %}">
-          <td class="node-system_id">{{ node.system_id }}</td>
-          <td>{{ node.hostname }}</td>
-          <td>
-            {{ node.macaddress_set.reverse|first }}
-            {% if node.macaddress_set.count > 1 %}
-            ,… ({{ node.macaddress_set.count|add:"-1" }} more MAC Address(es))
-            {% endif %}
+    <form action="{% url 'node-list' %}" method="post">
+      <table class="list">
+        <thead>
+          <tr>
+            <th></th>
+            <th>Hostname</th>
+            <th>MAC</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tr class="actions">
+          <td colspan="4">
+            Action
+            <select>
+              <option>Lorem ipsum</option>
+            </select>
+            <input type="submit" value="Go" />
           </td>
-          <td>{{ node.display_status }}</td>
         </tr>
-      {% endfor %}
-    </table>
+        {% for node in node_list %}
+          <tr class="node {% cycle 'even' 'odd' %}">
+            <td><input type="checkbox" />
+            <td><a href="{{ node.get_absolute_url }}">{{ node.hostname }}</a></td>
+            <td>
+              {{ node.macaddress_set.reverse|first }}
+              {% if node.macaddress_set.count > 1 %}
+                ({{ node.macaddress_set.count|add:"-1" }} more MAC Address{{ node.macaddress_set.count|add:"-1"|pluralize }})
+              {% endif %}
+            </td>
+            <td><a href="">{{ node.display_status }}</a></td>
+          </tr>
+        {% endfor %}
+      </table>
+    </form>
   {% endif%}
-  <a id="addnode" href="#">Add node</a>
+  {% include "maasserver/pagination.html" %}
+  <a id="addnode" href="#" class="button right">Add node</a>
 {% endblock %}

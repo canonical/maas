@@ -2,7 +2,6 @@
 
 {% block nav-active-index %}active{% endblock %}
 {% block title %}Dashboard{% endblock %}
-{% block page-title %}Dashboard{% endblock %}
 
 {% block html_includes %}{% include "maasserver/snippets.html" %}
 {% endblock %}
@@ -23,13 +22,25 @@
       var add_node_link = Y.Node.create('<a />')
           .set('id', 'addnode')
           .set('text', "Add node")
-          .set('href', '#');
+          .set('href', '#')
+          .addClass('button');
       Y.one('#content').append(add_node_link);
       add_node_link.on('click', Y.maas.node_add.showAddNodeWidget);
     });
   });
   // -->
   </script>
+{% endblock %}
+
+{% block page-title-block %}
+  {% if user.is_superuser %}
+    {% comment %}TODO: wire this up so that it changes the MaaS title{% endcomment %}
+    <form action="" method="" class="page-title-form">
+      <input type="text" value="{{ global_options.site_name }}" title="Edit the name of this MaaS" />
+    </form>
+  {% else %}
+    <h1 id="page-title">{% include "maasserver/site_title.html" %}</h1>
+  {% endif %}
 {% endblock %}
 
 {% block content %}

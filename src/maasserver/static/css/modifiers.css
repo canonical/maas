@@ -12,8 +12,11 @@
 .hidden {
     display: none;
     }
-table {
-    width: 100%;
+.left {
+    float: left;
+    }
+.right {
+    float: right;
     }
 /* XXX: move this yui stuff somewhere more sensible */
 /* panel */
@@ -39,6 +42,10 @@ table {
     }
 .yui3-widget-button-wrapper {
     width: 100%;
+    }
+.yui3-widget-button-wrapper .spinner {
+    float: right;
+    margin: 8px 10px 0 0;
     }
 .yui3-panel .yui3-button {
     float: right;

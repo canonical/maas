@@ -1,0 +1,9 @@
+.block {
+    border: 0 solid #e5e2e0;
+    padding-bottom: 15px;
+    margin-bottom: 15px;
+    }
+.block.full-width {
+    width: 100%;
+    border-bottom-width: 1px;
+    }

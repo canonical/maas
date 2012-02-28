@@ -1,0 +1,19 @@
+.page-title-form {
+    background: transparent url(../../img/content_tail.png) no-repeat 50px bottom;
+    }
+.page-title-form input {
+    border: 2px solid transparent;
+    background-color: transparent;
+    font-size: 36px;
+    line-height: 26px;
+    color: #fff;
+    margin: 6px 10px;
+    padding: 4px;
+    width: 97%;
+    }
+.page-title-form input:focus,
+.page-title-form input:hover {
+    border: 2px solid #5E2750;
+    background-color: #3b1832;
+    outline: none;
+    }

@@ -1,0 +1,11 @@
+.pagination {
+    margin: 10px 0;
+    text-align: center;
+    }
+.pagination .inactive {
+    color: #AEA79F;
+    }
+.pagination a,
+.pagination span {
+    margin: 0 5px;
+    }

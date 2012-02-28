@@ -5,3 +5,8 @@ html, body {
 body {
     background: #2C001E url(../img/bg_dots.png) repeat top center;
     }
+table {
+    width: 100%;
+    border-collapse: collapse;
+    border-spacing: 0;
+    }

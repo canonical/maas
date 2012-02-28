@@ -145,7 +145,7 @@
 
 
 /******************************************************************************
-    Modifier: modal-content
+    Content modifier: modal-content
 */
 .modal-content #body {
     background-color: transparent;
@@ -156,7 +156,7 @@
 
 
 /******************************************************************************
-    Modifier: login
+    Content modifier: login
 */
 .login #content {
     padding: 30px 40px;
@@ -167,6 +167,26 @@
     }
 .login #content h2:first-child {
     margin: 0 0 20px 0;
+    }
+
+
+/******************************************************************************
+    Content modifier: sidebar
+*/
+.sidebar #content {
+    padding-right: 250px;
+    }
+
+
+/******************************************************************************
+    Sidebar
+*/
+.sidebar #sidebar {
+    float: right;
+    width: 180px;
+    margin-right: -250px;
+    padding: 0 20px 10px 20px;
+    border-left: 1px solid #e5e2e0;
     }
 
 

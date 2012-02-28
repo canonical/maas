@@ -48,7 +48,7 @@
               <ul id="right-nav" class="nav">
                 <li class="search">
                   {% block header-search %}
-                    <form action="" method="get" id="header-search">
+                    <form action="{% url 'node-list' %}" method="get" id="header-search">
                       <input type="text" name="query" value="Search nodes" /><input type="submit" value="" />
                     </form>
                   {% endblock %}
@@ -86,9 +86,15 @@
           {% endif %}
         </ul>
         {% if user.is_authenticated %}
-          <h1 id="page-title">{% block page-title %}{% endblock %}</h1>
+          {% block page-title-block %}
+            <h1 id="page-title">{% block page-title %}{% endblock %}</h1>
+          {% endblock %}
         {% endif %}
-        <div id="content">{% block content %}{% endblock %}</div>
+        <div id="content">
+            <div id="sidebar">{% block sidebar %}{% endblock %}</div>
+            {% block content %}{% endblock %}
+            <div class="clear"></div>
+        </div>
       </div>
       <div id="footer">
         <img src="{{ STATIC_URL }}img/ubuntu_logo_footer.png" alt="Ubuntu" />
