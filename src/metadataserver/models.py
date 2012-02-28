@@ -66,7 +66,7 @@ class NodeKeyManager(Manager):
         :rtype: piston.models.Token
         """
         token = create_auth_token(get_node_init_user())
-        self.create(node=node, key=token.key)
+        self.create(node=node, token=token, key=token.key)
         return token
 
     def get_token_for_node(self, node):
@@ -94,7 +94,7 @@ class NodeKeyManager(Manager):
             return self.create_token(node)
         else:
             [nodekey] = existing_nodekey
-            return Token.objects.get(key=nodekey.key)
+            return nodekey.token
 
     def get_node_for_key(self, key):
         """Find the Node that `key` was created for.
@@ -121,8 +121,10 @@ class NodeKey(Model):
 
     objects = NodeKeyManager()
 
-    node = ForeignKey(Node, null=False, editable=False)
-    key = CharField(max_length=KEY_SIZE, null=False, editable=False)
+    node = ForeignKey(Node, null=False, editable=False, unique=True)
+    token = ForeignKey(Token, null=False, editable=False, unique=True)
+    key = CharField(
+        max_length=KEY_SIZE, null=False, editable=False, unique=True)
 
 
 class NodeUserDataManager(Manager):
