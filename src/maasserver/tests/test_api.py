@@ -150,7 +150,7 @@ class AnonymousEnlistmentAPITest(APIv10TestMixin, TestCase):
         # If the architecture name provided to create a node is not a valid
         # architecture name, a 'Bad request' response is returned.
         response = self.client.post(
-            '/api/nodes/',
+            self.get_uri('nodes/'),
             {
                 'op': 'new',
                 'hostname': 'diane',
