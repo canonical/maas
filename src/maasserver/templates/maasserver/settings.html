@@ -45,7 +45,7 @@
                 <img src="{{ STATIC_URL }}img/edit.png" />
               </a>
               {% if user != user_item %}
-          	    <a title="Delete user {{ user_item.username }}"
+                <a title="Delete user {{ user_item.username }}"
                    class="delete-user"
                    href="{% url 'accounts-del' user_item.username %}">
                   <img src="{{ STATIC_URL }}img/delete.png" />
@@ -63,7 +63,9 @@
       </table>
       <br />
       <a class="button" href="{% url 'accounts-add' %}">
-        <button class="button right">Add user</button></a>
-    </div>
+        <button class="button right">Add user</button>
+      </a>
+      <div class="clear" />
+    </div>      
   </div>
 {% endblock %}
