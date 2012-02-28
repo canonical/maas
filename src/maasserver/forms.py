@@ -26,12 +26,18 @@ from django.forms import (
     )
 from maasserver.fields import MACAddressFormField
 from maasserver.models import (
+    ARCHITECTURE_CHOICES,
     Config,
     MACAddress,
     Node,
     NODE_AFTER_COMMISSIONING_ACTION,
     NODE_AFTER_COMMISSIONING_ACTION_CHOICES,
     )
+
+
+INVALID_ARCHITECTURE_MESSAGE = (
+    "%(value)s is not a valid architecture. " +
+    "It should be one of: %s." % ", ".join(dict(ARCHITECTURE_CHOICES).keys()))
 
 
 class NodeForm(ModelForm):
@@ -41,10 +47,15 @@ class NodeForm(ModelForm):
     after_commissioning_action = forms.TypedChoiceField(
         choices=NODE_AFTER_COMMISSIONING_ACTION_CHOICES, required=False,
         empty_value=NODE_AFTER_COMMISSIONING_ACTION.DEFAULT)
+    architecture = forms.ChoiceField(
+        choices=ARCHITECTURE_CHOICES, required=False,
+        error_messages={'invalid_choice': INVALID_ARCHITECTURE_MESSAGE})
 
     class Meta:
         model = Node
-        fields = ('hostname', 'system_id', 'after_commissioning_action')
+        fields = (
+            'hostname', 'system_id', 'after_commissioning_action',
+            'architecture')
 
 
 class MACAddressForm(ModelForm):

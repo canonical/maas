@@ -193,12 +193,17 @@ def api_operations(cls):
     return cls
 
 
+NODE_FIELDS = (
+    'system_id', 'hostname', ('macaddress_set', ('mac_address',)),
+    'architecture')
+
+
 @api_operations
 class NodeHandler(BaseHandler):
     """Manage individual Nodes."""
     allowed_methods = ('GET', 'DELETE', 'POST', 'PUT')
     model = Node
-    fields = ('system_id', 'hostname', ('macaddress_set', ('mac_address',)))
+    fields = NODE_FIELDS
 
     def read(self, request, system_id):
         """Read a specific Node."""
@@ -267,7 +272,7 @@ def create_node(request):
 class AnonNodesHandler(AnonymousBaseHandler):
     """Create Nodes."""
     allowed_methods = ('POST',)
-    fields = ('system_id', 'hostname', ('macaddress_set', ('mac_address',)))
+    fields = NODE_FIELDS
 
     @api_exported('new', 'POST')
     def new(self, request):

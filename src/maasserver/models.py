@@ -158,6 +158,19 @@ NODE_AFTER_COMMISSIONING_ACTION_CHOICES_DICT = dict(
     NODE_AFTER_COMMISSIONING_ACTION_CHOICES)
 
 
+# List of supported architectures.
+class ARCHITECTURE:
+    i386 = 'i386'
+    amd64 = 'amd64'
+
+
+# Architecture names.
+ARCHITECTURE_CHOICES = (
+    (ARCHITECTURE.i386, "i386"),
+    (ARCHITECTURE.amd64, "amd64"),
+)
+
+
 class NodeManager(models.Manager):
     """A utility to manage the collection of Nodes."""
 
@@ -329,6 +342,9 @@ class Node(CommonInfo):
     after_commissioning_action = models.IntegerField(
         choices=NODE_AFTER_COMMISSIONING_ACTION_CHOICES,
         default=NODE_AFTER_COMMISSIONING_ACTION.DEFAULT)
+
+    architecture = models.CharField(max_length=10,
+        choices=ARCHITECTURE_CHOICES, blank=True)
 
     objects = NodeManager()
 
