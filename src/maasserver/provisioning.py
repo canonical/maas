@@ -13,6 +13,7 @@ __all__ = [
     'get_provisioning_api_proxy',
     ]
 
+from urllib import urlencode
 import warnings
 import xmlrpclib
 
@@ -23,9 +24,11 @@ from django.db.models.signals import (
     )
 from django.dispatch import receiver
 from maasserver.models import (
+    Config,
     MACAddress,
     Node,
     )
+from metadataserver.models import NodeKey
 
 
 def get_provisioning_api_proxy():
@@ -52,6 +55,31 @@ def get_provisioning_api_proxy():
             url, allow_none=True, use_datetime=True)
 
 
+def get_metadata_server_url():
+    """Return the URL where nodes can reach the metadata service."""
+    return "http://%s/metadata/" % Config.objects.get_config('metadata-host')
+
+
+def compose_metadata(node):
+    """Put together metadata information for `node`.
+
+    :param node: The node to provide with metadata.
+    :type node: Node
+    :return: A dict containing metadata information that will be seeded to
+        the node, so that it can access the metadata service.
+    """
+    token = NodeKey.objects.get_token_for_node(node)
+    credentials = urlencode({
+        'oauth_consumer_key': token.consumer.key,
+        'oauth_token_key': token.key,
+        'oauth_token_secret': token.secret,
+        })
+    return {
+        'maas-metadata-url': get_metadata_server_url(),
+        'maas-metadata-credentials': credentials,
+    }
+
+
 @receiver(post_save, sender=Node)
 def provision_post_save_Node(sender, instance, created, **kwargs):
     """Create or update nodes in the provisioning server."""
@@ -66,7 +94,7 @@ def provision_post_save_Node(sender, instance, created, **kwargs):
             "No profiles defined in Cobbler; has "
             "cobbler-ubuntu-import been run?")
         profile = sorted(profiles)[0]
-    papi.add_node(instance.system_id, profile)
+    papi.add_node(instance.system_id, profile, compose_metadata(instance))
 
 
 def set_node_mac_addresses(node):

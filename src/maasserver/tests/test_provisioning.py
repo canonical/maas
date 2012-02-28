@@ -11,10 +11,20 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
+from urlparse import parse_qs
+
 from maasserver import provisioning
-from maasserver.models import Node
+from maasserver.models import (
+    Config,
+    Node,
+    )
+from maasserver.provisioning import (
+    compose_metadata,
+    get_metadata_server_url,
+    )
 from maasserver.testing import TestCase
 from maasserver.testing.factory import factory
+from metadataserver.models import NodeKey
 
 
 class ProvisioningTests:
@@ -93,6 +103,29 @@ class ProvisioningTests:
         node_model.remove_mac_address("12:34:56:78:90:12")
         node = self.papi.get_nodes_by_name(["frank"])["frank"]
         self.assertEqual([], node["mac_addresses"])
+
+    def test_metadata_server_url_refers_to_own_metadata_service(self):
+        self.assertEqual(
+            "http://%s/metadata/"
+            % Config.objects.get_config('metadata-host'),
+            get_metadata_server_url())
+
+    def test_compose_metadata_includes_metadata_url(self):
+        node = factory.make_node()
+        self.assertEqual(
+            get_metadata_server_url(),
+            compose_metadata(node)['maas-metadata-url'])
+
+    def test_compose_metadata_includes_node_oauth_token(self):
+        node = factory.make_node()
+        metadata = compose_metadata(node)
+        token = NodeKey.objects.get_token_for_node(node)
+        self.assertEqual({
+            'oauth_consumer_key': [token.consumer.key],
+            'oauth_token_key': [token.key],
+            'oauth_token_secret': [token.secret],
+            },
+            parse_qs(metadata['maas-metadata-credentials']))
 
 
 class TestProvisioningWithFake(ProvisioningTests, TestCase):

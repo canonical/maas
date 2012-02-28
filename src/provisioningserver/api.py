@@ -146,6 +146,18 @@ def mac_addresses_to_cobbler_deltas(interfaces, mac_addresses):
             }
 
 
+# Preseed data to send to cloud-init.  We set this as MAAS_PRESEED in
+# ks_meta, and it gets fed straight into debconf.
+metadata_preseed_items = [
+    ('datasources', 'multiselect', 'MaaS'),
+    ('maas-metadata-url', 'string', '%(maas-metadata-url)s'),
+    ('maas-metadata-credentials', 'string', '%(maas-metadata-credentials)s'),
+    ]
+metadata_preseed = '\n'.join(
+    "cloud-init   cloud-init/%s  %s %s" % (item_name, item_type, item_value)
+    for item_name, item_type, item_value in metadata_preseed_items)
+
+
 class ProvisioningAPI:
 
     implements(IProvisioningAPI)
@@ -175,11 +187,15 @@ class ProvisioningAPI:
         returnValue(profile.name)
 
     @inlineCallbacks
-    def add_node(self, name, profile):
+    def add_node(self, name, profile, metadata):
         assert isinstance(name, basestring)
         assert isinstance(profile, basestring)
-        system = yield CobblerSystem.new(
-            self.session, name, {"profile": profile})
+        assert isinstance(metadata, dict)
+        attributes = {
+            "profile": profile,
+            "ks_meta": {"MAAS_PRESEED": metadata_preseed % metadata},
+            }
+        system = yield CobblerSystem.new(self.session, name, attributes)
         returnValue(system.name)
 
     @inlineCallbacks

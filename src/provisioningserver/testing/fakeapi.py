@@ -88,9 +88,10 @@ class FakeSynchronousProvisioningAPI:
         self.profiles[name]["distro"] = distro
         return name
 
-    def add_node(self, name, profile):
+    def add_node(self, name, profile, metadata):
         self.nodes[name]["profile"] = profile
         self.nodes[name]["mac_addresses"] = []
+        self.nodes[name]["metadata"] = metadata
         return name
 
     def modify_distros(self, deltas):
