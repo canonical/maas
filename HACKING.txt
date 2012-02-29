@@ -23,6 +23,7 @@ usually use the ``lowercase_with_underscores`` form.
 
 Prerequisites
 =============
+
 You will need to manually install Postgres 9.1 (postgresql-9.1 and
 libpq-dev), RabbitMQ (rabbitmq-server), python-dev and make::
 
@@ -45,6 +46,26 @@ when buildout runs.
   http://pypi.python.org/
 
 
+First time using buildout?
+==========================
+
+Buildout is used to develop MaaS. Buildout, if configured so, can
+cache downloaded files and built eggs. If you've not already done
+something similar, the following snippet will massively improve build
+times::
+
+    [buildout]
+    download-cache = /home/<your-user-name>/.buildout/cache
+    eggs-directory = /home/<your-user-name>/.buildout/eggs
+
+Put this in ``~/.buildout/default.cfg`` and create the ``cache``
+directory::
+
+    $ mkdir /home/<your-user-name>/.buildout/cache
+
+The ``eggs`` directory will be created automatically.
+
+
 Getting the latest version of the code
 ======================================
 
@@ -53,6 +74,7 @@ the last version of the code. Go into the directory where you want the code
 to reside and run::
 
     $ bzr branch lp:maas maas && cd maas
+
 
 Development MaaS server setup
 =============================
