@@ -145,7 +145,15 @@ maasdb_delete_cluster() {
     if test -d "$DATADIR/base"
     then
         maasdb_stop_cluster "$DATADIR"
-        rm -rf -- "$DATADIR"
+        # Removing the data directory may fail because of a race condition
+        # where db/global is nonempty because of a statistics write.  Rather
+        # than block on shutdown, be optimistic and spin on retries.
+        while ! rm -rf -- "$DATADIR"
+        do
+            # If this fails for a more persistent reason, too bad.  Ctrl-C.
+            echo "Retrying deletion of $DATADIR." >&2
+            sleep 0.01
+        done
     fi
 }
 
