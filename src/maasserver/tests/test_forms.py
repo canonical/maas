@@ -12,10 +12,13 @@ __metaclass__ = type
 __all__ = []
 
 from django import forms
+from django.core.exceptions import ValidationError
 from django.http import QueryDict
 from maasserver.forms import (
     ConfigForm,
+    HostnameFormField,
     NodeWithMACAddressesForm,
+    validate_hostname,
     )
 from maasserver.models import (
     Config,
@@ -138,3 +141,37 @@ class ConfigFormTest(TestCase):
 
         self.assertItemsEqual(['field1'], form.initial)
         self.assertEqual(value, form.initial['field1'])
+
+
+class FormWithHostname(forms.Form):
+    hostname = HostnameFormField()
+
+
+class TestHostnameFormField(TestCase):
+
+    def test_validate_hostname_validates_valid_hostnames(self):
+        self.assertIsNone(validate_hostname('host.example.com'))
+        self.assertIsNone(validate_hostname('host.my-example.com'))
+        self.assertIsNone(validate_hostname('my-example.com'))
+        #  No ValidationError.
+
+    def test_validate_hostname_does_not_validate_invalid_hostnames(self):
+        self.assertRaises(ValidationError, validate_hostname, 'invalid-host')
+
+    def test_validate_hostname_does_not_validate_too_long_hostnames(self):
+        self.assertRaises(ValidationError, validate_hostname, 'toolong' * 100)
+
+    def test_hostname_field_validation_cleaned_data_if_hostname_valid(self):
+        form = FormWithHostname({'hostname': 'host.example.com'})
+
+        self.assertTrue(form.is_valid())
+        self.assertEqual('host.example.com', form.cleaned_data['hostname'])
+
+    def test_hostname_field_validation_error_if_invalid_hostname(self):
+        form = FormWithHostname({'hostname': 'invalid-host'})
+
+        self.assertFalse(form.is_valid())
+        self.assertItemsEqual(['hostname'], list(form.errors))
+        self.assertEqual(
+            ["Enter a valid hostname (e.g. host.example.com)."],
+            form.errors['hostname'])

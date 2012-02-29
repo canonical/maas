@@ -457,6 +457,14 @@ class ConfigTest(TestCase):
         config = Config.objects.get_config(name, None)
         self.assertEqual(value, config)
 
+    def test_default_config_cannot_be_changed(self):
+        name = factory.getRandomString()
+        DEFAULT_CONFIG[name] = {'key': 'value'}
+        config = Config.objects.get_config(name)
+        config.update({'key2': 'value2'})
+
+        self.assertEqual({'key': 'value'}, Config.objects.get_config(name))
+
     def test_manager_get_config_list_returns_config_list(self):
         Config.objects.create(name='name', value='config1')
         Config.objects.create(name='name', value='config2')

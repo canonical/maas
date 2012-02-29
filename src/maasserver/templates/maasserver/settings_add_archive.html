@@ -1,0 +1,17 @@
+{% extends "maasserver/base.html" %}
+
+{% block nav-active-settings %}active{% endblock %}
+{% block title %}Add archive{% endblock %}
+{% block page-title %}Add archive{% endblock %}
+
+{% block content %}
+  <form action="." method="post">
+    <ul>
+    {% for field in form %}
+      {% include "maasserver/form_field.html" %}
+    {% endfor %}
+    </ul>
+    <input type="submit" value="Add archive" />
+      &nbsp;&nbsp;<a class="link-button" href="{% url 'settings' %}">Cancel</a>
+  </form>
+{% endblock %}

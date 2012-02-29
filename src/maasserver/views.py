@@ -35,11 +35,13 @@ from django.views.generic import (
     )
 from maasserver.exceptions import CannotDeleteUserException
 from maasserver.forms import (
+    AddArchiveForm,
     CommissioningForm,
     EditUserForm,
     MaaSAndNetworkForm,
     NewUserCreationForm,
     ProfileForm,
+    UbuntuForm,
     )
 from maasserver.models import (
     Node,
@@ -189,11 +191,40 @@ def settings(request):
     else:
         commissioning_form = CommissioningForm(prefix='commissioning')
 
+    # Process the Ubuntu form.
+    if 'ubuntu_submit' in request.POST:
+        ubuntu_form = UbuntuForm(
+            request.POST, prefix='ubuntu')
+        if ubuntu_form.is_valid():
+            messages.info(request, "Configuration updated.")
+            ubuntu_form.save()
+            return HttpResponseRedirect(reverse('settings'))
+    else:
+        ubuntu_form = UbuntuForm(
+            prefix='ubuntu')
+
     return render_to_response(
         'maasserver/settings.html',
         {
             'user_list': user_list,
             'maas_and_network_form': maas_and_network_form,
             'commissioning_form': commissioning_form,
+            'ubuntu_form': ubuntu_form,
         },
+        context_instance=RequestContext(request))
+
+
+def settings_add_archive(request):
+    if request.method == 'POST':
+        form = AddArchiveForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.info(request, "Archive added.")
+            return HttpResponseRedirect(reverse('settings'))
+    else:
+        form = AddArchiveForm()
+
+    return render_to_response(
+        'maasserver/settings_add_archive.html',
+        {'form': form},
         context_instance=RequestContext(request))

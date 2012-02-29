@@ -42,6 +42,13 @@ class Factory():
             if not key.startswith('__')]
         return random.choice(enum_choices)
 
+    def getRandomChoice(self, choices):
+        # Get a random choice from the passed-in 'choices'.  'choices'
+        # must use Django form choices format:
+        # [('choice_id_1': "Choice name 1"), ('choice_id_2', "Choice
+        # name 2")].  A random choice id will be returned.
+        return random.choice(choices)[0]
+
     def make_node(self, hostname='', set_hostname=False, status=None,
                   **kwargs):
         # hostname=None is a valid value, hence the set_hostname trick.

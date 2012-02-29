@@ -198,6 +198,49 @@ class SettingsTest(AdminLoggedInTestCase):
             new_check_compatibility,
             Config.objects.get_config('check_compatibility'))
 
+    def test_settings_ubuntu_POST(self):
+        new_fallback_master_archive = factory.getRandomBoolean()
+        new_keep_mirror_list_uptodate = factory.getRandomBoolean()
+        new_fetch_new_releases = factory.getRandomBoolean()
+        choices = Config.objects.get_config('update_from_choice')
+        new_update_from = factory.getRandomChoice(choices)
+        response = self.client.post(
+            '/settings/',
+            get_prefixed_form_data(
+                prefix='ubuntu',
+                data={
+                    'fallback_master_archive': new_fallback_master_archive,
+                    'keep_mirror_list_uptodate': new_keep_mirror_list_uptodate,
+                    'fetch_new_releases': new_fetch_new_releases,
+                    'update_from': new_update_from,
+                }))
+
+        self.assertEqual(httplib.FOUND, response.status_code)
+        self.assertEqual(
+            new_fallback_master_archive,
+            Config.objects.get_config('fallback_master_archive'))
+        self.assertEqual(
+            new_keep_mirror_list_uptodate,
+            Config.objects.get_config('keep_mirror_list_uptodate'))
+        self.assertEqual(
+            new_fetch_new_releases,
+            Config.objects.get_config('fetch_new_releases'))
+        self.assertEqual(
+            new_update_from, Config.objects.get_config('update_from'))
+
+    def test_settings_add_archive_POST(self):
+        choices = Config.objects.get_config('update_from_choice')
+        response = self.client.post(
+            '/settings/archives/add/',
+            data={'archive_name': 'my.hostname.com'}
+        )
+        new_choices = Config.objects.get_config('update_from_choice')
+
+        self.assertEqual(httplib.FOUND, response.status_code)
+        self.assertItemsEqual(
+            choices + [['my.hostname.com', 'my.hostname.com']],
+            new_choices)
+
 
 class UserManagementTest(AdminLoggedInTestCase):
 

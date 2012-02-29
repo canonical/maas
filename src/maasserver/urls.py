@@ -32,6 +32,7 @@ from maasserver.views import (
     NodeListView,
     NodesCreateView,
     settings,
+    settings_add_archive,
     userprefsview,
     )
 
@@ -69,6 +70,9 @@ urlpatterns += patterns('maasserver.views',
 # URLs for admin users.
 urlpatterns += patterns('maasserver.views',
     adminurl(r'^settings/$', settings, name='settings'),
+    adminurl(
+        r'^settings/archives/add/$', settings_add_archive,
+        name='settings-add-archive'),
     adminurl(r'^accounts/add/$', AccountsAdd.as_view(), name='accounts-add'),
     adminurl(
         r'^accounts/(?P<username>\w+)/edit/$', AccountsEdit.as_view(),

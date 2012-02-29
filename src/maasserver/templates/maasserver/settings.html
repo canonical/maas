@@ -80,6 +80,33 @@
         <div class="clear"></div>
       </form>
     </div>
+    <div id="ubuntu">
+      <h2>Ubuntu</h2>
+      <form action="{% url "settings" %}" method="post">
+        <ul>
+        {% with field=ubuntu_form.update_from %}
+          {% include "maasserver/form_field.html" %}
+        {% endwith %}
+        <p>
+          <a href="{% url "settings-add-archive" %}">
+            Add archive for newly provisioned machines
+          </a>
+        </p>
+        {% with field=ubuntu_form.fallback_master_archive %}
+          {% include "maasserver/form_field.html" %}
+        {% endwith %}
+        {% with field=ubuntu_form.keep_mirror_list_uptodate %}
+          {% include "maasserver/form_field.html" %}
+        {% endwith %}
+        {% with field=ubuntu_form.fetch_new_releases %}
+          {% include "maasserver/form_field.html" %}
+        {% endwith %}
+        </ul>
+        <input type="hidden" name="ubuntu_submit" value="1" />
+        <input type="submit" class="button right" value="Save" />
+        <div class="clear"></div>
+      </form>
+    </div>
     <div id="maas_and_network">
       <h2>Network Configuration</h2>
       <form action="{% url "settings" %}" method="post">
