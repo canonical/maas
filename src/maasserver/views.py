@@ -35,6 +35,7 @@ from django.views.generic import (
     )
 from maasserver.exceptions import CannotDeleteUserException
 from maasserver.forms import (
+    CommissioningForm,
     EditUserForm,
     MaaSAndNetworkForm,
     NewUserCreationForm,
@@ -175,13 +176,24 @@ def settings(request):
             maas_and_network_form.save()
             return HttpResponseRedirect(reverse('settings'))
     else:
-        maas_and_network_form = MaaSAndNetworkForm(
-            prefix='maas_and_network')
+        maas_and_network_form = MaaSAndNetworkForm(prefix='maas_and_network')
+
+    # Process the Commissioning form.
+    if 'commissioning_submit' in request.POST:
+        commissioning_form = CommissioningForm(
+            request.POST, prefix='commissioning')
+        if commissioning_form.is_valid():
+            messages.info(request, "Configuration updated.")
+            commissioning_form.save()
+            return HttpResponseRedirect(reverse('settings'))
+    else:
+        commissioning_form = CommissioningForm(prefix='commissioning')
 
     return render_to_response(
         'maasserver/settings.html',
         {
             'user_list': user_list,
             'maas_and_network_form': maas_and_network_form,
+            'commissioning_form': commissioning_form,
         },
         context_instance=RequestContext(request))

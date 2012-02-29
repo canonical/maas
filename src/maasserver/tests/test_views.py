@@ -18,6 +18,7 @@ from django.core.urlresolvers import reverse
 from lxml.html import fromstring
 from maasserver.models import (
     Config,
+    NODE_AFTER_COMMISSIONING_ACTION,
     UserProfile,
     )
 from maasserver.testing import (
@@ -174,7 +175,28 @@ class SettingsTest(AdminLoggedInTestCase):
         self.assertEqual(httplib.FOUND, response.status_code)
         self.assertEqual(new_name, Config.objects.get_config('maas_name'))
         self.assertEqual(
-            new_provide_dhcp, Config.objects.get_config('new_provide_dhcp'))
+            new_provide_dhcp, Config.objects.get_config('provide_dhcp'))
+
+    def test_settings_commissioning_POST(self):
+        new_after_commissioning = factory.getRandomEnum(
+            NODE_AFTER_COMMISSIONING_ACTION)
+        new_check_compatibility = factory.getRandomBoolean()
+        response = self.client.post(
+            '/settings/',
+            get_prefixed_form_data(
+                prefix='commissioning',
+                data={
+                    'after_commissioning': new_after_commissioning,
+                    'check_compatibility': new_check_compatibility,
+                }))
+
+        self.assertEqual(httplib.FOUND, response.status_code)
+        self.assertEqual(
+            new_after_commissioning,
+            Config.objects.get_config('after_commissioning'))
+        self.assertEqual(
+            new_check_compatibility,
+            Config.objects.get_config('check_compatibility'))
 
 
 class UserManagementTest(AdminLoggedInTestCase):
