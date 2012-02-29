@@ -204,7 +204,7 @@ class NodeManagerTest(TestCase):
         user = factory.make_user()
         available_status = NODE_STATUS.READY
         unavailable_statuses = (
-            set(NODE_STATUS_CHOICES_DICT.keys()) - set([available_status]))
+            set(NODE_STATUS_CHOICES_DICT) - set([available_status]))
         for status in unavailable_statuses:
             factory.make_node(status=status)
         self.assertEqual(

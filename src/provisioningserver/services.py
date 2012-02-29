@@ -50,7 +50,7 @@ class LogService(Service):
         Service.startService(self)
         if self.filename != '-':
             self.logfile = LogFile.fromFullPath(
-                self.filename, rotateLength=None, defaultMode=0644)
+                self.filename, rotateLength=None, defaultMode=0o644)
             self.__previous_signal_handler = signal.signal(
                 signal.SIGUSR1, self._signal_handler)
         else:

@@ -26,7 +26,7 @@ class TestBin(TestCase):
         self.assertEqual(str(b"Hello"), Bin(b"Hello"))
 
     def test_refuses_to_construct_from_unicode(self):
-        self.assertRaises(AssertionError, Bin, u"Hello")
+        self.assertRaises(AssertionError, Bin, "Hello")
 
     def test_refuses_to_construct_from_None(self):
         self.assertRaises(AssertionError, Bin, None)

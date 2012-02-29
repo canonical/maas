@@ -351,7 +351,7 @@ class Node(CommonInfo):
 
     def __unicode__(self):
         if self.hostname:
-            return u"%s (%s)" % (self.system_id, self.hostname)
+            return "%s (%s)" % (self.system_id, self.hostname)
         else:
             return self.system_id
 

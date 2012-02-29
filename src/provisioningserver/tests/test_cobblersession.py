@@ -433,8 +433,8 @@ class TestCobblerObject(TestCase):
             "clobber": True,
             "initrd": "an_initrd",
             "kernel": "a_kernel",
-            "likes": u"cabbage",
-            "name": u"fred",
+            "likes": "cabbage",
+            "name": "fred",
             }
         session.proxy.set_return_values([values_stored])
         # However, CobblerObject.get_values() only returns attributes that are
@@ -458,8 +458,8 @@ class TestCobblerObject(TestCase):
             {"clobber": True,
              "initrd": "an_initrd",
              "kernel": "a_kernel",
-             "likes": u"cabbage",
-             "name": u"alice"},
+             "likes": "cabbage",
+             "name": "alice"},
             ]
         session.proxy.set_return_values([values_stored])
         # However, CobblerObject.get_all_values() only returns attributes that

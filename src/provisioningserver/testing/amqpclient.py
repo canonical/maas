@@ -128,12 +128,13 @@ class AMQTest(TestCase):
         factory.stopTrying()
         connector.disconnect()
 
-    def amq_connected(self, (client, channel)):
+    def amq_connected(self, client_and_channel):
         """
         Save the channel and client, and fire C{self.connected_deferred}.
 
         This is the connected_callback that's pased to the L{AMQFactory}.
         """
+        client, channel = client_and_channel
         self.real_queue_declare = channel.queue_declare
         channel.queue_declare = self.queue_declare
         self.real_exchange_declare = channel.exchange_declare
@@ -147,10 +148,11 @@ class AMQTest(TestCase):
         This is the disconnected_callback that's passed to the L{AMQFactory}.
         """
 
-    def amq_failed(self, (connector, reason)):
+    def amq_failed(self, connector_and_reason):
         """
         This is the failed_callback that's passed to the L{AMQFactory}.
         """
+        connector, reason = connector_and_reason
         self.connected_deferred.errback(reason)
 
     def queue_declare(self, queue, **kwargs):

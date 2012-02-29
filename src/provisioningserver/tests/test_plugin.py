@@ -42,7 +42,7 @@ class TestConfig(TestCase):
                 'port': 5673,
                 'username': getuser(),
                 'password': 'test',
-                'vhost': u'/',
+                'vhost': '/',
                 },
             'cobbler': {
                 'url': 'http://localhost/cobbler_api',

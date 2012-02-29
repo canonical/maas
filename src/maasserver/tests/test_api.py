@@ -96,7 +96,7 @@ class AnonymousEnlistmentAPITest(APIv10TestMixin, TestCase):
         parsed_result = json.loads(response.content)
         self.assertItemsEqual(
             ['hostname', 'system_id', 'macaddress_set', 'architecture'],
-            parsed_result.keys())
+            list(parsed_result))
 
     def test_POST_fails_without_operation(self):
         # If there is no operation ('op=operation_name') specified in the
@@ -641,7 +641,7 @@ class AccountAPITest(APITestCase):
 
         self.assertEqual(
             ['consumer_key', 'token_key', 'token_secret'],
-            sorted(parsed_result.keys()))
+            sorted(parsed_result))
         self.assertIsInstance(parsed_result['consumer_key'], basestring)
         self.assertIsInstance(parsed_result['token_key'], basestring)
         self.assertIsInstance(parsed_result['token_secret'], basestring)

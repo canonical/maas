@@ -48,7 +48,7 @@ class LoginLogoutTest(TestCase):
                 })
 
         self.assertEqual(httplib.OK, response.status_code)
-        self.assertNotIn('_auth_user_id', self.client.session.keys())
+        self.assertNotIn('_auth_user_id', self.client.session)
 
     def test_logout(self):
         name = factory.getRandomString()
@@ -57,7 +57,7 @@ class LoginLogoutTest(TestCase):
         self.client.login(username=name, password=password)
         self.client.post(reverse('logout'))
 
-        self.assertNotIn('_auth_user_id', self.client.session.keys())
+        self.assertNotIn('_auth_user_id', self.client.session)
 
 
 def make_unallocated_node():

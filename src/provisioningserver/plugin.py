@@ -154,8 +154,8 @@ class ProvisioningServiceMaker(object):
         if broker_password is not b"test":
             cb_connected = lambda ignored: None  # TODO
             cb_disconnected = lambda ignored: None  # TODO
-            cb_failed = lambda (connector, reason): (
-                log.err(reason, "Connection failed"))
+            cb_failed = lambda connector_and_reason: (
+                log.err(connector_and_reason[1], "Connection failed"))
             client_factory = AMQFactory(
                 broker_username, broker_password, broker_vhost,
                 cb_connected, cb_disconnected, cb_failed)

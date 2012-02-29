@@ -43,7 +43,7 @@ def fake_token(user=None, custom_id=None):
         for ease of debugging.
     """
     elements = ['token', '%s' % next(unique_ints), user, custom_id]
-    return '-'.join(filter(None, elements))
+    return '-'.join(element for element in elements if bool(element))
 
 
 class FakeTwistedProxy:
@@ -511,14 +511,14 @@ class FakeCobbler:
             token, read, self.preseed_templates, path, contents)
 
     def get_kickstart_templates(self, token=None):
-        return self.preseed_templates.keys()
+        return list(self.preseed_templates)
 
     def read_or_write_snippet(self, path, read, contents, token):
         return self._api_access_preseed(
             token, read, self.preseed_snippets, path, contents)
 
     def get_snippets(self, token=None):
-        return self.preseed_snippets.keys()
+        return list(self.preseed_snippets)
 
     def sync(self, token):
         self._check_token(token)

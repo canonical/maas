@@ -39,7 +39,8 @@ from maasserver.models import (
 
 INVALID_ARCHITECTURE_MESSAGE = (
     "%(value)s is not a valid architecture. " +
-    "It should be one of: %s." % ", ".join(dict(ARCHITECTURE_CHOICES).keys()))
+    "It should be one of: %s." % ", ".join(
+        name for name, value in ARCHITECTURE_CHOICES))
 
 
 class NodeForm(ModelForm):

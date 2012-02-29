@@ -387,7 +387,7 @@ class ProvisioningAPITestScenario:
         for num in range(3):
             name = self.getUniqueString()
             yield papi.add_profile(name, distro)
-            expected[name] = {u'distro': u'distro', u'name': name}
+            expected[name] = {'distro': 'distro', 'name': name}
         profiles = yield papi.get_profiles()
         self.assertEqual(expected, profiles)
 
@@ -407,7 +407,7 @@ class ProvisioningAPITestScenario:
         for name in node_names:
             yield papi.add_node(name, profile, self.fake_metadata())
         nodes = yield papi.get_nodes()
-        self.assertItemsEqual(node_names, nodes.keys())
+        self.assertItemsEqual(node_names, nodes)
 
     @inlineCallbacks
     def test_get_nodes_includes_node_attributes(self):
@@ -420,7 +420,7 @@ class ProvisioningAPITestScenario:
         node_name = self.getUniqueString()
         yield papi.add_node(node_name, profile, self.fake_metadata())
         nodes = yield papi.get_nodes()
-        self.assertItemsEqual([node_name], nodes.keys())
+        self.assertItemsEqual([node_name], nodes)
         self.assertIn('name', nodes[node_name])
         self.assertIn('profile', nodes[node_name])
         self.assertIn('mac_addresses', nodes[node_name])

@@ -32,9 +32,9 @@ class TestTestCase(TestCase):
         [distro_name] = papi_fake.distros
         expected_distros = {
             distro_name: {
-                u'initrd': u'initrd',
-                u'kernel': u'kernel',
-                u'name': distro_name,
+                'initrd': 'initrd',
+                'kernel': 'kernel',
+                'name': distro_name,
                 },
             }
         self.assertEqual(expected_distros, papi_fake.distros)
@@ -43,8 +43,8 @@ class TestTestCase(TestCase):
         [profile_name] = papi_fake.profiles
         expected_profiles = {
             profile_name: {
-                u'distro': distro_name,
-                u'name': profile_name,
+                'distro': distro_name,
+                'name': profile_name,
                 },
             }
         self.assertEqual(expected_profiles, papi_fake.profiles)
