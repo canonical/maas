@@ -31,7 +31,7 @@ class Factory():
     def getRandomString(self, size=10):
         return "".join(
             random.choice(string.letters + string.digits)
-            for x in xrange(size))
+            for x in range(size))
 
     def getRandomBoolean(self):
         random.choice((True, False))

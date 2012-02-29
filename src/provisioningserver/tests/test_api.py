@@ -362,7 +362,7 @@ class ProvisioningAPITestScenario:
         self.assertEqual({}, distros)
         # Create some distros via the Provisioning API.
         expected = {}
-        for num in xrange(3):
+        for num in range(3):
             initrd = self.getUniqueString()
             kernel = self.getUniqueString()
             name = self.getUniqueString()
@@ -384,7 +384,7 @@ class ProvisioningAPITestScenario:
         self.assertEqual({}, profiles)
         # Create some profiles via the Provisioning API.
         expected = {}
-        for num in xrange(3):
+        for num in range(3):
             name = self.getUniqueString()
             yield papi.add_profile(name, distro)
             expected[name] = {u'distro': u'distro', u'name': name}

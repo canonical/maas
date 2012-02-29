@@ -366,7 +366,7 @@ class UserProfileTest(TestCase):
         profile = factory.make_user().get_profile()
         token_ids = []
         consumer_ids = []
-        for i in xrange(3):
+        for i in range(3):
             token, consumer = profile.create_authorisation_token()
             token_ids.append(token.id)
             consumer_ids.append(consumer.id)
@@ -381,7 +381,7 @@ class UserProfileTest(TestCase):
         self.assertRaises(CannotDeleteUserException, profile.delete)
 
     def test_manager_all_users(self):
-        users = set(factory.make_user() for i in xrange(3))
+        users = set(factory.make_user() for i in range(3))
         all_users = set(UserProfile.objects.all_users())
         self.assertEqual(users, all_users)
 

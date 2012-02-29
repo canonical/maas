@@ -66,7 +66,7 @@ def tilde_to_None(data):
     elif isinstance(data, list):
         return [tilde_to_None(value) for value in data]
     elif isinstance(data, dict):
-        return {key: tilde_to_None(value) for key, value in data.iteritems()}
+        return {key: tilde_to_None(value) for key, value in data.items()}
     else:
         return data
 
@@ -433,7 +433,7 @@ class CobblerObject:
         else:
             return {
                 name: value
-                for name, value in attributes.iteritems()
+                for name, value in attributes.items()
                 if name in cls.known_attributes
                 }
 
@@ -483,7 +483,7 @@ class CobblerObject:
 
         args = dict(
             (cls._normalize_attribute(key), value)
-            for key, value in attributes.iteritems())
+            for key, value in attributes.items())
 
         # Overwrite any existing object of the same name.  Unfortunately
         # this parameter goes into the "attributes," and seems to be
@@ -511,7 +511,7 @@ class CobblerObject:
             attributes=self.modification_attributes)
         args = {
             normalize(key): value
-            for key, value in delta.iteritems()
+            for key, value in delta.items()
             }
         success = yield self.session.call(
             'xapi_object_edit', self.object_type, self.name, 'edit', args,

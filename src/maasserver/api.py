@@ -160,19 +160,20 @@ def api_operations(cls):
     # Compute the list of methods ('GET', 'POST', etc.) that need to be
     # overriden.
     overriden_methods = set()
-    for name, value in vars(cls).iteritems():
+    for name, value in vars(cls).items():
         overriden_methods.update(getattr(value, '_api_exported', {}))
     # Override the appropriate methods with a 'dispatcher' method.
     for method in overriden_methods:
         operations = {
-            name: value for name, value in vars(cls).iteritems()
+            name: value
+            for name, value in vars(cls).items()
             if is_api_exported(value, method)}
         cls._available_api_methods = getattr(
             cls, "_available_api_methods", {}).copy()
         cls._available_api_methods[method] = {
             (name if op._api_exported[method] is True
                 else op._api_exported[method]): op
-            for name, op in operations.iteritems()
+            for name, op in operations.items()
             if method in op._api_exported}
 
         def dispatcher(self, request, *args, **kwargs):
@@ -186,7 +187,7 @@ def api_operations(cls):
             "parameter:\n\n" % OP_PARAM)
         dispatcher.__doc__ += "\n".join(
             "- Operation '%s' (op=%s):\n\t%s" % (name, name, op.__doc__)
-            for name, op in cls._available_api_methods[method].iteritems())
+            for name, op in cls._available_api_methods[method].items())
 
         # Add {'create','read','update','delete'} method.
         setattr(cls, method_name, dispatcher)
@@ -341,7 +342,7 @@ class NodeMacsHandler(BaseHandler):
                 user=request.user, system_id=system_id)
             mac = node.add_mac_address(request.data.get('mac_address', None))
             return mac
-        except ValidationError, e:
+        except ValidationError as e:
             return HttpResponseBadRequest(e.message_dict)
 
     @classmethod

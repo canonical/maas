@@ -65,7 +65,7 @@ class MACAddressForm(ModelForm):
 
 class MultipleMACAddressField(forms.MultiValueField):
     def __init__(self, nb_macs=1, *args, **kwargs):
-        fields = [MACAddressFormField() for i in xrange(nb_macs)]
+        fields = [MACAddressFormField() for i in range(nb_macs)]
         super(MultipleMACAddressField, self).__init__(fields, *args, **kwargs)
 
     def compress(self, data_list):

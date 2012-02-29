@@ -34,7 +34,7 @@ def postprocess_mapping(mapping, function):
     """Apply `function` to each value in `mapping`, returned in a new dict."""
     return {
         key: function(value)
-        for key, value in mapping.iteritems()
+        for key, value in mapping.items()
         }
 
 
@@ -96,13 +96,13 @@ def mac_addresses_to_cobbler_deltas(interfaces, mac_addresses):
     # or not that happens is undefined (for now).
     interfaces = {
         name: configuration
-        for name, configuration in interfaces.iteritems()
+        for name, configuration in interfaces.items()
         if configuration["mac_address"]
         }
 
     interface_names_by_mac_address = {
         interface["mac_address"]: interface_name
-        for interface_name, interface in interfaces.iteritems()
+        for interface_name, interface in interfaces.items()
         }
     mac_addresses_to_remove = set(
         interface_names_by_mac_address).difference(mac_addresses)
@@ -200,17 +200,17 @@ class ProvisioningAPI:
 
     @inlineCallbacks
     def modify_distros(self, deltas):
-        for name, delta in deltas.iteritems():
+        for name, delta in deltas.items():
             yield CobblerDistro(self.session, name).modify(delta)
 
     @inlineCallbacks
     def modify_profiles(self, deltas):
-        for name, delta in deltas.iteritems():
+        for name, delta in deltas.items():
             yield CobblerProfile(self.session, name).modify(delta)
 
     @inlineCallbacks
     def modify_nodes(self, deltas):
-        for name, delta in deltas.iteritems():
+        for name, delta in deltas.items():
             system = CobblerSystem(self.session, name)
             if "mac_addresses" in delta:
                 # This needs to be handled carefully.

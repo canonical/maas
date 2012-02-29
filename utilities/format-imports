@@ -309,7 +309,7 @@ def format_imports(imports):
     thirdparty_section = {}
     local_section = {}
     # Group modules into sections.
-    for module, statement in imports.iteritems():
+    for module, statement in imports.items():
         module_base = module_base_regex.findall(module)[0]
         comment = statement.comment
         if module_base == '_pythonpath':

@@ -154,7 +154,7 @@ IProvisioningAPI = InterfaceClass(
 # over-the-wire.
 PAPI_XMLRPC_FUNCTIONS = {
     "xmlrpc_%s" % name: value
-    for name, value in PAPI_FUNCTIONS.iteritems()
+    for name, value in PAPI_FUNCTIONS.items()
     }
 
 # Construct an interface containing IProvisioningAPI_Template's functions but

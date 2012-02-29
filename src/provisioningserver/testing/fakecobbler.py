@@ -359,7 +359,7 @@ class FakeCobbler:
             handle = self._api_get_handle(token, object_type, name)
             if object_type == "system" and "interface" in attrs:
                 self._xapi_edit_system_interfaces(token, handle, name, attrs)
-            for key, value in attrs.iteritems():
+            for key, value in attrs.items():
                 self._api_modify_object(token, object_type, handle, key, value)
             return self._api_save_object(token, object_type, handle)
         else:
