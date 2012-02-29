@@ -142,8 +142,14 @@ class ConfigForm(Form):
     def __init__(self, *args, **kwargs):
         super(ConfigForm, self).__init__(*args, **kwargs)
         if 'initial' not in kwargs:
-            configs = Config.objects.filter(name__in=list(self.fields))
-            self.initial = {config.name: config.value for config in configs}
+            self._load_initials()
+
+    def _load_initials(self):
+        self.initial = {}
+        for name in self.fields.keys():
+            conf = Config.objects.get_config(name)
+            if conf is not None:
+                self.initial[name] = conf
 
     def save(self):
         """Save the content of the fields into the database.

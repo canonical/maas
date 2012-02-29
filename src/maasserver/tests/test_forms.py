@@ -17,7 +17,10 @@ from maasserver.forms import (
     ConfigForm,
     NodeWithMACAddressesForm,
     )
-from maasserver.models import Config
+from maasserver.models import (
+    Config,
+    DEFAULT_CONFIG,
+    )
 from maasserver.testing import (
     factory,
     TestCase,
@@ -123,6 +126,14 @@ class ConfigFormTest(TestCase):
     def test_form_loads_initial_values(self):
         value = factory.getRandomString()
         Config.objects.set_config('field1', value)
+        form = TestOptionForm()
+
+        self.assertItemsEqual(['field1'], form.initial)
+        self.assertEqual(value, form.initial['field1'])
+
+    def test_form_loads_initial_values_from_default_value(self):
+        value = factory.getRandomString()
+        DEFAULT_CONFIG['field1'] = value
         form = TestOptionForm()
 
         self.assertItemsEqual(['field1'], form.initial)
