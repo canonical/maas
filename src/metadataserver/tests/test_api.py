@@ -96,7 +96,7 @@ class TestHelpers(TestCase):
 
     def test_get_node_for_request_finds_node(self):
         node = factory.make_node()
-        token = NodeKey.objects.create_token(node)
+        token = NodeKey.objects.get_token_for_node(node)
         request = self.fake_request(
             HTTP_AUTHORIZATION=self.make_oauth_header(oauth_token=token.key))
         self.assertEqual(node, get_node_for_request(request))
@@ -114,7 +114,7 @@ class TestViews(TestCase):
         """Create a test client logged in as if it were `node`."""
         if node is None:
             node = factory.make_node()
-        token = NodeKey.objects.create_token(node)
+        token = NodeKey.objects.get_token_for_node(node)
         return OAuthAuthenticatedClient(get_node_init_user(), token)
 
     def get(self, path, client=None):

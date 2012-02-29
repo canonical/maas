@@ -22,15 +22,16 @@ from metadataserver.models import (
 class TestNodeKeyManager(TestCase):
     """Test NodeKeyManager."""
 
-    def test_create_key_registers_node_key(self):
+    def test_get_token_for_node_registers_node_key(self):
         node = factory.make_node()
-        token = NodeKey.objects.create_token(node)
+        token = NodeKey.objects.get_token_for_node(node)
         nodekey = NodeKey.objects.get(node=node, key=token.key)
         self.assertNotEqual(None, nodekey)
+        self.assertEqual(token, nodekey.token)
 
     def test_get_node_for_key_finds_node(self):
         node = factory.make_node()
-        token = NodeKey.objects.create_token(node)
+        token = NodeKey.objects.get_token_for_node(node)
         self.assertEqual(node, NodeKey.objects.get_node_for_key(token.key))
 
     def test_get_node_for_key_raises_DoesNotExist_if_key_not_found(self):

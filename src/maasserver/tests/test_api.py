@@ -179,7 +179,7 @@ class NodeAnonAPITest(APIv10TestMixin, TestCase):
         self.assertEqual(httplib.OK, response.status_code)
 
     def test_node_init_user_cannot_access(self):
-        token = NodeKey.objects.create_token(factory.make_node())
+        token = NodeKey.objects.get_token_for_node(factory.make_node())
         client = OAuthAuthenticatedClient(get_node_init_user(), token)
         response = client.get(self.get_uri('nodes/'), {'op': 'list'})
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
