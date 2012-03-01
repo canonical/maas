@@ -1,0 +1,39 @@
+.TH maas\-import\-isos 8 "25 May 2011" maas "maas"
+.SH NAME
+\fBmaas\-import\-isos\fP \- sync and import Ubuntu isos into cobbler
+
+.SH DESCRIPTION
+\fBmaas\-import\-isos\fP is a utility useful to automatically download and import Ubuntu ISOs into \fBcobbler\fP(1).
+
+It reads a configuration file  \fI/etc/maas/import_isos\fP in order to determine:
+ - ARCHIVE
+ - RELEASES
+ - ARCHES
+ - CACHE
+ - KSMIRROR
+ - KSDIR
+ - LOCALE
+ - PRIORITY
+
+For each release in RELEASES, and each arch in ARCHES, it will use \fBwget\fP(1) to download the Ubuntu mini.iso for each.  The mini.iso is used because it is a small download, and the rest of the installation is performed over the network and packages are cached using \fBsquid\fP(8).
+
+A loop \fBmount\fP(8) is performed, and "\fBcobbler\fP(1) import" is then executed with the appropriate parameters, in order to update cobbler's knowledge of its available distributions and releases.
+
+A \fBcron\fP(8) job typically runs this import-and-sync at 4am on Sundays.
+
+.SH FILES
+\fI/etc/maas/import_isos\fP, \fI/etc/cron.d/maas-import-isos\fP
+
+.SH "SEE ALSO"
+.PD 0
+.TP
+\fBmount\fP(8), \fBcobbler\fP(1), \fBwget\fP(1), \fBsquid\fP(8)
+
+.TP
+\fIhttp://launchpad.net/maas\fP
+.PD
+
+.SH AUTHOR
+This manpage and the utility were written by Dustin Kirkland <kirkland@canonical.com> for Ubuntu systems (but may be used by others).  Permission is granted to copy, distribute and/or modify this document and the utility under the terms of the GNU General Public License, Version 3 published by the Free Software Foundation.
+
+The complete text of the GNU General Public License can be found in \fI/usr/share/common-licenses/GPL\fP on Debian/Ubuntu systems, or on the web at \fIhttp://www.gnu.org/licenses/gpl.txt\fP.

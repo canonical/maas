@@ -1,0 +1,187 @@
+#!/bin/sh
+#
+#    maas-import-isos - sync and import Ubuntu isos into cobbler
+#
+#    Copyright (C) 2011-2012 Canonical
+#
+#    Authors:
+#		Marc Cluet <marc.cluet@canonical.com>
+#		Dustin Kirkland <kirkland@canonical.com>
+#		Andres Rodriguez <andres.rodriguez@canonical.com>
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU Affero General Public License as
+#    published by the Free Software Foundation, version 3 of the License.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU Affero General Public License for more details.
+#
+#    You should have received a copy of the GNU Affero General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+# Ensure root
+if [ "$(id -u)" != "0" ]; then
+	echo "ERROR: $0 must run as root" 2>&1
+	exit 1
+fi
+
+# Definitions for supported releases and architectures
+[ -r /etc/maas/import_isos ] && . /etc/maas/import_isos
+[ -n "$RELEASES" ] || RELEASES=$(distro-info --supported)
+[ -n "$ARCHES" ] || ARCHES="amd64 i386"
+[ -n "$KSDIR" ] || KSDIR="/var/lib/cobbler/kickstarts"
+[ -n "$PRIORITY" ] || PRIORITY="critical"
+[ -n "$LOCALE" ] || LOCALE="en_US"
+[ -n "$MGMTCLASS_AVAILABLE" ] || MGMTCLASS_AVAILABLE="maas-juju-available"
+[ -n "$MGMTCLASS_ACQUIRED" ] || MGMTCLASS_ACQUIRED="maas-juju-acquired"
+[ -n "$INTERFACE" ] || INTERFACE="auto"
+[ -n "$KOPTS" ] || KOPTS="priority=$PRIORITY locale=$LOCALE netcfg/choose_interface=$INTERFACE"
+[ -n "$ENLIST_PROFILE" ] || ENLIST_PROFILE="ubuntu-enlist"
+if [ -n "$SERVER_IP" ]; then
+	KOPTS="$KOPTS log_host=$SERVER_IP log_port=514"
+else
+	if grep -qs "^server: " /etc/cobbler/settings >/dev/null 2>&1; then
+		SERVER_IP=$(grep "^server: " /etc/cobbler/settings | awk '{print $2}')
+		KOPTS="$KOPTS log_host=$SERVER_IP log_port=514"
+	fi
+fi
+
+update_settings(){
+	# Updates the parent profiles with new settings. Only affects KOPTS
+	for r in $RELEASES; do
+		for a in $ARCHES; do
+			[ "$a" = "amd64" ] && a="x86_64"
+			# If profile exists, update it.
+			if (cobbler profile list | grep -qs " $r-$a$"); then
+				cobbler profile edit --name="$r-$a" --kopts="$KOPTS"
+			fi
+		done
+	done
+}
+
+import_isos(){
+	# Wget and import net install ISOs
+	for r in $RELEASES; do
+		for a in $ARCHES; do
+			[ "$a" = "amd64" ] && a="x86_64"
+			# Skip if cobbler already has this distro/arch combo
+			if ! (cobbler distro list | grep -qs " $r-$a$"); then
+				# Import the iso
+				cobbler-ubuntu-import $r-$a
+				cobbler profile edit --name="$r-$a" --kopts="$KOPTS" --kickstart="$KSDIR/maas.preseed"
+			else
+				# check archive for an updated ISO, update our cache if necessary
+				cobbler-ubuntu-import -c $r-$a && cobbler-ubuntu-import -u $r-$a
+				# Make sure the profile is using the MaaS preseed
+				cobbler profile edit --name="$r-$a" --kickstart="$KSDIR/maas.preseed"
+
+			fi
+			# Skip if cobbler already has this distro/arch profile
+			if ! (cobbler profile list | grep -qs " $r-$a-juju$"); then
+				# Add JuJu sub-profile based on the name of the imported ISO
+				cobbler profile add --name="$r-$a-juju" --parent="$r-$a" --kickstart="$KSDIR/juju.preseed"
+			fi
+		done
+	done
+}
+
+add_mgmt_classes(){
+	# Add Management Classes for JuJu
+	for m in $MGMTCLASS_AVAILABLE $MGMTCLASS_ACQUIRED; do
+		(cobbler mgmtclass list | grep -qs " $m$") || cobbler mgmtclass add --name="$m"
+	done
+}
+
+add_enlist_profile(){
+        STABLE=$(distro-info --stable)
+        DEVEL=$(distro-info --devel)
+        PARENT_PROFILE=""
+
+        # Check what release to use as parent profile
+        if [ `echo $STABLE "precise" | awk '{ print ($1 >= $2) ? "True" : "False" }'` = True ]; then
+                PARENT_PROFILE="$STABLE-i386"
+        else
+                PARENT_PROFILE="$DEVEL-i386"
+        fi
+
+        # Add enlist profile
+        if cobbler profile list | grep -qs " $ENLIST_PROFILE"; then
+                cobbler profile edit --name="$ENLIST_PROFILE" --parent="$PARENT_PROFILE"
+        else
+                cobbler profile add --name="$ENLIST_PROFILE" --parent="$PARENT_PROFILE" --kickstart="$KSDIR/ubuntu-enlist.preseed"
+        fi
+
+        # Add 'default' system if doesn't exist.
+        (cobbler system list | grep -qs " default") || cobbler system add --name="default" --profile="$ENLIST_PROFILE"
+}
+
+Usage() {
+        cat <<EOF
+Usage: ${0##*/} [ options ]
+
+   import Ubuntu releases and update default MaaS settings
+
+   options:
+      -i | --import-isos      Import the Ubuntu ISOs and update default
+                              settings used for MaaS. (default)
+      -u | --update-settings  Updates all profiles based on new settings
+                              in /etc/maas/import_isos.
+
+   The --import process downloads and imports a list of Ubuntu releases,
+   adding the default MaaS settings for each of the profiles.  If a
+   release has already been imported but is out of date, the updated ISO
+   will be downloaded again and reimported.
+
+   If the ISOs have already been imported, update-settings will update all
+   the profiles within cobbler based on the modifications of
+   /etc/maas/import_isos.
+
+   Example:
+    - ${0##*/} -i
+EOF
+}
+
+bad_Usage() { Usage 1>&2; [ $# -eq 0 ] || error "$@"; exit 1; }
+
+short_opts="hiu"
+long_opts="import-isos,update-settings"
+getopt_out=$(getopt --name "${0##*/}" \
+        --options "${short_opts}" --long "${long_opts}" -- "$@") &&
+        eval set -- "${getopt_out}" ||
+        bad_Usage
+
+do_import_isos=false
+do_update_settings=false
+
+while [ $# -ne 0 ]; do
+	cur=${1};
+	case "$cur" in
+		-h|--help) Usage ; exit 0;;
+		-i|--import-isos) do_import_isos=true;;
+		-u|--update-settings) do_update_settings=true;;
+		--) shift; break;;
+	esac
+	shift;
+done
+
+## check arguments here
+[ $# -ne 0 ] && bad_Usage
+
+# if no action specified, import by default
+( ! $do_import_isos && ! $do_update_settings  ) && do_import_isos=true
+# do not allow import + update
+( $do_import_isos && $do_update_settings ) && bad_Usage
+
+$do_import_isos && import_isos 
+$do_update_settings && update_settings 
+
+# Add management classes if new have being defined.
+add_mgmt_classes
+
+# Add enlist profile if doesn't exist
+add_enlist_profile
+
+# Sync changes with cobbler daemon
+cobbler sync
