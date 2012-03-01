@@ -21,6 +21,7 @@ __all__ = [
     "NodeMacsHandler",
     ]
 
+from base64 import b64decode
 import httplib
 import sys
 import types
@@ -251,8 +252,21 @@ class NodeHandler(BaseHandler):
 
     @api_exported('start', 'POST')
     def start(self, request, system_id):
-        """Power up a node."""
-        nodes = Node.objects.start_nodes([system_id], request.user)
+        """Power up a node.
+
+        The user_data parameter, if set in the POST data, is taken as
+        base64-encoded binary data.
+
+        Ideally we'd have MIME multipart and content-transfer-encoding etc.
+        deal with the encapsulation of binary data, but couldn't make it work
+        with the framework in reasonable time so went for a dumb, manual
+        encoding instead.
+        """
+        user_data = request.POST.get('user_data', None)
+        if user_data is not None:
+            user_data = b64decode(user_data)
+        nodes = Node.objects.start_nodes(
+            [system_id], request.user, user_data=user_data)
         if len(nodes) == 0:
             raise PermissionDenied(
                 "You are not allowed to start up this node.")

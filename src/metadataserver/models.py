@@ -138,7 +138,8 @@ class NodeUserDataManager(Manager):
             entry.data = Bin(data)
             entry.save()
         elif len(existing_entries) == 0:
-            self.create(node=node, data=Bin(data))
+            wrapped_data = Bin(data)
+            self.create(node=node, data=wrapped_data)
         else:
             raise AssertionError("More than one user-data entry matches.")
 

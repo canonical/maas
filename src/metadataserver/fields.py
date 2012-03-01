@@ -24,14 +24,14 @@ from django.db.models import (
     )
 
 
-class Bin(str):
+class Bin(bytes):
     """Wrapper class to convince django that a string is really binary.
 
-    This is really just a "str," but gets around an idiosyncracy of Django
+    This is really just a "bytes," but gets around an idiosyncracy of Django
     custom field conversions: they must be able to tell on the fly whether a
     value was retrieved from the database (and needs to be converted to a
     python-side value), or whether it's already a python-side object (which
-    can stay as it is).  The line between str and unicode is dangerously
+    can stay as it is).  The line between bytes and unicode is dangerously
     thin.
 
     So, to store a value in a BinaryField, wrap it in a Bin:
@@ -40,15 +40,15 @@ class Bin(str):
     """
 
     def __init__(self, initializer):
-        """Wrap a str.
+        """Wrap a bytes.
 
         :param initializer: Binary string of data for this Bin.  This must
-            be a str.  Anything else is almost certainly a mistake, so e.g.
+            be a bytes.  Anything else is almost certainly a mistake, so e.g.
             this constructor will refuse to render None as b'None'.
-        :type initializer: str
+        :type initializer: bytes
         """
-        assert isinstance(initializer, str), (
-            "Not a binary string: '%s'" % initializer)
+        assert isinstance(initializer, bytes), (
+            "Not a binary string: '%s'" % repr(initializer))
         super(Bin, self).__init__(initializer)
 
 
@@ -90,7 +90,7 @@ class BinaryField(Field):
         elif isinstance(value, Bin):
             # Python-side form.  Convert to database form.
             return b64encode(value)
-        elif isinstance(value, str):
+        elif isinstance(value, bytes):
             # Binary string.  Require a Bin to make intent explicit.
             raise AssertionError(
                 "Converting a binary string to BinaryField: "

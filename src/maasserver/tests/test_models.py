@@ -37,6 +37,7 @@ from maasserver.models import (
     )
 from maasserver.testing import TestCase
 from maasserver.testing.factory import factory
+from metadataserver.models import NodeUserData
 from piston.models import (
     Consumer,
     KEY_SIZE,
@@ -94,6 +95,10 @@ class NodeManagerTest(TestCase):
         else:
             status = NODE_STATUS.ALLOCATED
         return factory.make_node(set_hostname=True, status=status, owner=user)
+
+    def make_user_data(self):
+        """Create a blob of arbitrary user-data."""
+        return factory.getRandomString().encode('ascii')
 
     def test_filter_by_ids_filters_nodes_by_ids(self):
         nodes = [factory.make_node() for counter in range(5)]
@@ -253,6 +258,38 @@ class NodeManagerTest(TestCase):
         self.assertItemsEqual(
             [startable_node],
             Node.objects.start_nodes(ids, startable_node.owner))
+
+    def test_start_nodes_stores_user_data(self):
+        node = factory.make_node(owner=factory.make_user())
+        user_data = self.make_user_data()
+        Node.objects.start_nodes(
+            [node.system_id], node.owner, user_data=user_data)
+        self.assertEqual(user_data, NodeUserData.objects.get_user_data(node))
+
+    def test_start_nodes_does_not_store_user_data_for_uneditable_nodes(self):
+        node = factory.make_node(owner=factory.make_user())
+        original_user_data = self.make_user_data()
+        NodeUserData.objects.set_user_data(node, original_user_data)
+        Node.objects.start_nodes(
+            [node.system_id], factory.make_user(),
+            user_data=self.make_user_data())
+        self.assertEqual(
+            original_user_data, NodeUserData.objects.get_user_data(node))
+
+    def test_start_nodes_without_user_data_leaves_existing_data_alone(self):
+        node = factory.make_node(owner=factory.make_user())
+        user_data = self.make_user_data()
+        NodeUserData.objects.set_user_data(node, user_data)
+        Node.objects.start_nodes([node.system_id], node.owner, user_data=None)
+        self.assertEqual(user_data, NodeUserData.objects.get_user_data(node))
+
+    def test_start_nodes_with_user_data_overwrites_existing_data(self):
+        node = factory.make_node(owner=factory.make_user())
+        NodeUserData.objects.set_user_data(node, self.make_user_data())
+        user_data = self.make_user_data()
+        Node.objects.start_nodes(
+            [node.system_id], node.owner, user_data=user_data)
+        self.assertEqual(user_data, NodeUserData.objects.get_user_data(node))
 
 
 class MACAddressTest(TestCase):
