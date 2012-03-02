@@ -46,6 +46,7 @@ from maasserver.forms import (
 from maasserver.models import (
     Node,
     UserProfile,
+    SSHKeys,
     )
 
 
@@ -68,6 +69,13 @@ class NodesCreateView(CreateView):
 
     def get_success_url(self):
         return reverse('index')
+
+
+def KeystoreView(request, userid):
+    keys = SSHKeys.objects.filter(user__user__username=userid)
+    return render_to_response(
+        'maasserver/sshkeys.txt', {'keys': keys}, mimetype="text/plain",
+        context_instance=RequestContext(request))
 
 
 def process_form(request, form_class, redirect_url, prefix,

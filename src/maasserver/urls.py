@@ -34,6 +34,7 @@ from maasserver.views import (
     settings,
     settings_add_archive,
     userprefsview,
+    KeystoreView,
     )
 
 
@@ -52,6 +53,7 @@ urlpatterns = patterns('maasserver.views',
     url(
         r'^favicon\.ico$', redirect_to, {'url': '/static/img/favicon.ico'},
         name='favicon'),
+    url(r'^accounts/(?P<userid>\w+)/sshkeys/$', KeystoreView),
 )
 
 # URLs for logged-in users.
