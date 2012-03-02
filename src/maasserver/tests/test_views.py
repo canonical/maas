@@ -13,6 +13,7 @@ __all__ = []
 
 import httplib
 
+from django.conf.urls.defaults import patterns
 from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse
 from lxml.html import fromstring
@@ -31,6 +32,36 @@ def get_prefixed_form_data(prefix, data):
     result = {'%s-%s' % (prefix, key): value for key, value in data.items()}
     result.update({'%s_submit' % prefix: 1})
     return result
+
+
+class Test404500(LoggedInTestCase):
+    """Test pages displayed when an error 404 or an error 500 occur."""
+
+    def test_404(self):
+        response = self.client.get('/no-found-page/')
+        doc = fromstring(response.content)
+        self.assertIn(
+            "Error: Page not found",
+            doc.cssselect('title')[0].text)
+        self.assertSequenceEqual(
+            ['The requested URL /no-found-page/ was not found on this '
+             'server.'],
+            [elem.text.strip() for elem in
+                doc.cssselect('h2')])
+
+    def test_500(self):
+        from maas.urls import urlpatterns
+        urlpatterns += patterns('',
+            (r'^500/$', 'django.views.defaults.server_error'),)
+        response = self.client.get('/500/')
+        doc = fromstring(response.content)
+        self.assertIn(
+            "Internal server error",
+            doc.cssselect('title')[0].text)
+        self.assertSequenceEqual(
+            ['Internal server error.'],
+            [elem.text.strip() for elem in
+                doc.cssselect('h2')])
 
 
 class UserPrefsViewTest(LoggedInTestCase):

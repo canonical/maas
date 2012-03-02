@@ -52,6 +52,7 @@ TEMPLATE_LOADERS = (
 )
 
 INSTALLED_APPS += (
+    'django.contrib.admin',
     'django.contrib.admindocs',
     'maastesting',
     'debug_toolbar',
