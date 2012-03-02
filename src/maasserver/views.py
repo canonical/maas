@@ -70,29 +70,60 @@ class NodesCreateView(CreateView):
         return reverse('index')
 
 
+def process_form(request, form_class, redirect_url, prefix,
+                 success_message=None, form_kwargs=None):
+    """Utility method to process subforms (i.e. forms with a prefix).
+
+    :param request: The request which contains the data to be validated.
+    :type request: django.http.HttpRequest
+    :param form_class: The form class used to perform the validation.
+    :type form_class: django.forms.Form
+    :param redirect_url: The url where the user should be redirected if the
+        form validates successfully.
+    :type redirect_url: basestring
+    :param prefix: The prefix of the form.
+    :type prefix: basestring
+    :param success_message: An optional message that will be displayed if the
+        form validates successfully.
+    :type success_message: basestring
+    :param form_kwargs: An optional dict that will passed to the form creation
+        method.
+    :type form_kwargs: dict or None
+    :return: A tuple of the validated form and a response (the response will
+        not be None only if the form has been validated correctly).
+    :rtype: tuple
+
+    """
+    if form_kwargs is None:
+        form_kwargs = {}
+    if '%s_submit' % prefix in request.POST:
+        form = form_class(
+            data=request.POST, prefix=prefix, **form_kwargs)
+        if form.is_valid():
+            if success_message is not None:
+                messages.info(request, success_message)
+            form.save()
+            return form, HttpResponseRedirect(redirect_url)
+    else:
+        form = form_class(prefix=prefix, **form_kwargs)
+    return form, None
+
+
 def userprefsview(request):
     user = request.user
     # Process the profile update form.
-    if 'profile_submit' in request.POST:
-        profile_form = ProfileForm(
-            request.POST, instance=user, prefix='profile')
-        if profile_form.is_valid():
-            messages.info(request, "Profile updated.")
-            profile_form.save()
-            return HttpResponseRedirect(reverse('prefs'))
-    else:
-        profile_form = ProfileForm(instance=user, prefix='profile')
+    profile_form, response = process_form(
+        request, ProfileForm, reverse('prefs'), 'profile', "Profile updated.",
+        {'instance': user})
+    if response is not None:
+        return response
 
     # Process the password change form.
-    if 'password_submit' in request.POST:
-        password_form = PasswordForm(
-            data=request.POST, user=user, prefix='password')
-        if password_form.is_valid():
-            messages.info(request, "Password updated.")
-            password_form.save()
-            return HttpResponseRedirect(reverse('prefs'))
-    else:
-        password_form = PasswordForm(user=user, prefix='password')
+    password_form, response = process_form(
+        request, PasswordForm, reverse('prefs'), 'password',
+        "Password updated.", {'user': user})
+    if response is not None:
+        return response
 
     return render_to_response(
         'maasserver/prefs.html',
@@ -125,6 +156,10 @@ class AccountsAdd(CreateView):
 
     def get_success_url(self):
         return reverse('settings')
+
+    def form_valid(self, form):
+        messages.info(self.request, "User added.")
+        return super(AccountsAdd, self).form_valid(form)
 
 
 class AccountsDelete(DeleteView):
@@ -170,38 +205,25 @@ class AccountsEdit(UpdateView):
 def settings(request):
     user_list = UserProfile.objects.all_users().order_by('username')
     # Process the MaaS & network form.
-    if 'maas_and_network_submit' in request.POST:
-        maas_and_network_form = MaaSAndNetworkForm(
-            request.POST, prefix='maas_and_network')
-        if maas_and_network_form.is_valid():
-            messages.info(request, "Configuration updated.")
-            maas_and_network_form.save()
-            return HttpResponseRedirect(reverse('settings'))
-    else:
-        maas_and_network_form = MaaSAndNetworkForm(prefix='maas_and_network')
+    maas_and_network_form, response = process_form(
+        request, MaaSAndNetworkForm, reverse('settings'), 'maas_and_network',
+        "Configuration updated.")
+    if response is not None:
+        return response
 
     # Process the Commissioning form.
-    if 'commissioning_submit' in request.POST:
-        commissioning_form = CommissioningForm(
-            request.POST, prefix='commissioning')
-        if commissioning_form.is_valid():
-            messages.info(request, "Configuration updated.")
-            commissioning_form.save()
-            return HttpResponseRedirect(reverse('settings'))
-    else:
-        commissioning_form = CommissioningForm(prefix='commissioning')
+    commissioning_form, response = process_form(
+        request, CommissioningForm, reverse('settings'), 'commissioning',
+        "Configuration updated.")
+    if response is not None:
+        return response
 
     # Process the Ubuntu form.
-    if 'ubuntu_submit' in request.POST:
-        ubuntu_form = UbuntuForm(
-            request.POST, prefix='ubuntu')
-        if ubuntu_form.is_valid():
-            messages.info(request, "Configuration updated.")
-            ubuntu_form.save()
-            return HttpResponseRedirect(reverse('settings'))
-    else:
-        ubuntu_form = UbuntuForm(
-            prefix='ubuntu')
+    ubuntu_form, response = process_form(
+        request, UbuntuForm, reverse('settings'), 'ubuntu',
+        "Configuration updated.")
+    if response is not None:
+        return response
 
     return render_to_response(
         'maasserver/settings.html',

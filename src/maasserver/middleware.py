@@ -61,7 +61,6 @@ class AccessMiddleware:
         public_url_roots = [
             # Login/logout pages: must be visible to anonymous users.
             reverse('login'),
-            reverse('logout'),
             # Static resources are publicly visible.
             settings.STATIC_URL,
             reverse('favicon'),

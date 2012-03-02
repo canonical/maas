@@ -44,9 +44,7 @@ def adminurl(regexp, view, *args, **kwargs):
 
 # URLs accessible to anonymous users.
 urlpatterns = patterns('maasserver.views',
-    url(r'^account/prefs/$', userprefsview, name='prefs'),
     url(r'^accounts/login/$', login, name='login'),
-    url(r'^accounts/logout/$', logout, name='logout'),
     url(
         r'^robots\.txt$', direct_to_template,
         {'template': 'maasserver/robots.txt', 'mimetype': 'text/plain'},
@@ -58,6 +56,8 @@ urlpatterns = patterns('maasserver.views',
 
 # URLs for logged-in users.
 urlpatterns += patterns('maasserver.views',
+    url(r'^account/prefs/$', userprefsview, name='prefs'),
+    url(r'^accounts/logout/$', logout, name='logout'),
     url(
         r'^$',
         NodeListView.as_view(template_name="maasserver/index.html"),
