@@ -66,6 +66,6 @@ DEBUG_TOOLBAR_CONFIG = {
     }
 
 try:
-    from local_settings import * # NOQA
-except:
+    from maas_local_settings import * # NOQA
+except ImportError:
     pass

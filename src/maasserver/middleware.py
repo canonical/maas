@@ -34,6 +34,19 @@ from django.utils.http import urlquote_plus
 from maasserver.exceptions import MaaSAPIException
 
 
+def get_relative_path(path):
+    """If the url prefix settings.FORCE_SCRIPT_NAME is not None: strip the
+    prefix from the given path.
+    """
+    prefix = settings.FORCE_SCRIPT_NAME
+    if prefix is None:
+        return path
+    elif path.startswith(prefix):
+        return path[len(prefix):]
+    else:
+        assert False, "Prefix '%s' not in path '%s'" % (prefix, path)
+
+
 class AccessMiddleware:
     """Protect access to views.
 
@@ -64,12 +77,12 @@ class AccessMiddleware:
 
     def process_request(self, request):
         # Public urls.
-        if self.public_urls.match(request.path):
+        if self.public_urls.match(get_relative_path(request.path)):
             return None
         else:
             if request.user.is_anonymous():
                 return HttpResponseRedirect("%s?next=%s" % (
-                    self.login_url, urlquote_plus(request.path)))
+                    settings.LOGIN_URL, urlquote_plus(request.path)))
             else:
                 return None
 
@@ -101,7 +114,7 @@ class ExceptionMiddleware:
 
     def process_exception(self, request, exception):
         """Django middleware callback."""
-        if not self.path_matcher.match(request.path):
+        if not self.path_matcher.match(get_relative_path(request.path)):
             # Not a path we're handling exceptions for.
             return None
 

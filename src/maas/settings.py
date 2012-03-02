@@ -19,6 +19,18 @@ import django.template
 
 django.template.add_to_builtins('django.templatetags.future')
 
+DEBUG = False
+
+# Used to set a prefix in front of every URL.
+FORCE_SCRIPT_NAME = None
+
+# Allow the user to override DEBUG and FORCE_SCRIPT_NAME in
+# maas_local_settings.
+try:
+    from maas_local_settings import DEBUG, FORCE_SCRIPT_NAME
+except ImportError:
+    pass
+
 ADMINS = (
     # ('Your Name', 'your_email@example.com'),
 )
@@ -30,6 +42,15 @@ OOPS_REPOSITORY = 'logs'
 
 LOGOUT_URL = '/'
 LOGIN_REDIRECT_URL = '/'
+LOGIN_URL = '/accounts/login/'
+
+if FORCE_SCRIPT_NAME is not None:
+    LOGOUT_URL = FORCE_SCRIPT_NAME + LOGOUT_URL
+    LOGIN_REDIRECT_URL = FORCE_SCRIPT_NAME + LOGIN_REDIRECT_URL
+    LOGIN_URL = FORCE_SCRIPT_NAME + LOGIN_URL
+    # ADMIN_MEDIA_PREFIX will be deprecated in Django 1.4.
+    # Admin's media will be served using staticfiles instead.
+    ADMIN_MEDIA_PREFIX = FORCE_SCRIPT_NAME
 
 API_URL_REGEXP = '^/api/1[.]0/'
 METADATA_URL_REGEXP = '^/metadata/'
@@ -38,14 +59,6 @@ METADATA_URL_REGEXP = '^/metadata/'
 # We handle exceptions ourselves (in
 # maasserver.middleware.APIErrorsMiddleware)
 PISTON_DISPLAY_ERRORS = False
-
-DEBUG = False
-
-# Allow the user to override DEBUG in local_settings.
-try:
-    from local_settings import DEBUG
-except:
-    pass
 
 TEMPLATE_DEBUG = DEBUG
 YUI_DEBUG = DEBUG
@@ -113,11 +126,15 @@ STATIC_ROOT = ''
 # URL prefix for static files.
 # Example: "http://media.lawrence.com/static/"
 STATIC_URL = '/static/'
+if FORCE_SCRIPT_NAME is not None:
+    STATIC_URL = FORCE_SCRIPT_NAME + STATIC_URL
 
 # URL prefix for admin static files -- CSS, JavaScript and images.
 # Make sure to use a trailing slash.
 # Examples: "http://foo.com/static/admin/", "/static/admin/".
 ADMIN_MEDIA_PREFIX = '/static/admin/'
+if FORCE_SCRIPT_NAME is not None:
+    ADMIN_MEDIA_PREFIX = FORCE_SCRIPT_NAME + ADMIN_MEDIA_PREFIX
 
 # Additional locations of static files
 STATICFILES_DIRS = (
@@ -185,7 +202,6 @@ INSTALLED_APPS = (
     'django.contrib.sites',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'django.contrib.admin',
     'maasserver',
     'metadataserver',
     'piston',
@@ -193,6 +209,11 @@ INSTALLED_APPS = (
     # 'django.contrib.admindocs',
 )
 
+if DEBUG:
+    INSTALLED_APPS += (
+        'django.contrib.admin',
+        'django.contrib.admindocs',
+    )
 # A sample logging configuration. The only tangible logging
 # performed by this configuration is to send an email to
 # the site admins on every HTTP 500 error.
@@ -221,6 +242,6 @@ LOGGING = {
 PSERV_URL = None
 
 try:
-    from local_settings import * # NOQA
-except:
+    from maas_local_settings import * # NOQA
+except ImportError:
     pass

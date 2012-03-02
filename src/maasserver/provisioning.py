@@ -28,7 +28,6 @@ from maasserver.models import (
     MACAddress,
     Node,
     )
-from metadataserver.models import NodeKey
 
 
 def get_provisioning_api_proxy():
@@ -68,6 +67,8 @@ def compose_metadata(node):
     :return: A dict containing metadata information that will be seeded to
         the node, so that it can access the metadata service.
     """
+    # Circular import.
+    from metadataserver.models import NodeKey
     token = NodeKey.objects.get_token_for_node(node)
     credentials = urlencode({
         'oauth_consumer_key': token.consumer.key,
