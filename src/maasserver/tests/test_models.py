@@ -87,6 +87,12 @@ class NodeTest(TestCase):
         self.assertEqual(user, node.owner)
         self.assertEqual(NODE_STATUS.ALLOCATED, node.status)
 
+    def test_release(self):
+        node = factory.make_node(
+            status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
+        node.release()
+        self.assertEqual((NODE_STATUS.READY, None), (node.status, node.owner))
+
 
 class NodeManagerTest(TestCase):
 

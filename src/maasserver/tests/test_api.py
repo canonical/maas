@@ -28,6 +28,7 @@ from maasserver.testing import (
     LoggedInTestCase,
     TestCase,
     )
+from maasserver.testing.enum import map_enum
 from maasserver.testing.factory import factory
 from maasserver.testing.oauthclient import OAuthAuthenticatedClient
 from metadataserver.models import (
@@ -35,6 +36,44 @@ from metadataserver.models import (
     NodeUserData,
     )
 from metadataserver.nodeinituser import get_node_init_user
+
+
+def reload_object(model_object):
+    """Reload `obj` from the database.
+
+    Use this when a test needs to inspect changes to model objects made by
+    the API.
+
+    If the object has been deleted, this will raise the `DoesNotExist`
+    exception for its model class.
+
+    :param model_object: Model object to reload.
+    :type model_object: Concrete `Model` subtype.
+    :return: Freshly-loaded instance of `model_object`.
+    :rtype: Same as `model_object`.
+    """
+    return model_object.__class__.objects.get(id=model_object.id)
+
+
+def reload_objects(model_class, model_objects):
+    """Reload `model_objects` of type `model_class` from the database.
+
+    Use this when a test needs to inspect changes to model objects made by
+    the API.
+
+    If any of the objects have been deleted, they will not be included in
+    the result.
+
+    :param model_class: `Model` class to reload from.
+    :type model_class: Class.
+    :param model_objects: Objects to reload from the database.
+    :type model_objects: Sequence of `model_class` objects.
+    :return: Reloaded objects, in no particular order.
+    :rtype: Sequence of `model_class` objects.
+    """
+    assert all(isinstance(obj, model_class) for obj in model_objects)
+    return model_class.objects.filter(
+        id__in=[obj.id for obj in model_objects])
 
 
 class APIv10TestMixin:
@@ -297,7 +336,7 @@ class TestNodeAPI(APITestCase):
         response = self.client.post(self.get_node_uri(node), {'op': 'start'})
         self.assertEqual(httplib.OK, response.status_code)
 
-    def test_POST_stores_user_data(self):
+    def test_POST_start_stores_user_data(self):
         node = factory.make_node(owner=self.logged_in_user)
         user_data = (
             b'\xff\x00\xff\xfe\xff\xff\xfe' +
@@ -309,6 +348,93 @@ class TestNodeAPI(APITestCase):
                 })
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(user_data, NodeUserData.objects.get_user_data(node))
+
+    def test_POST_release_releases_owned_node(self):
+        owned_statuses = [
+            NODE_STATUS.RESERVED,
+            NODE_STATUS.ALLOCATED,
+            ]
+        owned_nodes = [
+            factory.make_node(owner=self.logged_in_user, status=status)
+            for status in owned_statuses]
+        responses = [
+            self.client.post(self.get_node_uri(node), {'op': 'release'})
+            for node in owned_nodes]
+        self.assertEqual(
+            [httplib.OK] * len(owned_nodes),
+            [response.status_code for response in responses])
+        self.assertItemsEqual(
+            [NODE_STATUS.READY] * len(owned_nodes),
+            [node.status for node in reload_objects(Node, owned_nodes)])
+
+    def test_POST_release_does_nothing_for_unowned_node(self):
+        node = factory.make_node(status=NODE_STATUS.READY)
+        response = self.client.post(
+            self.get_node_uri(node), {'op': 'release'})
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(NODE_STATUS.READY, reload_object(node).status)
+
+    def test_POST_release_fails_for_other_node_states(self):
+        releasable_statuses = [
+            NODE_STATUS.RESERVED,
+            NODE_STATUS.ALLOCATED,
+            NODE_STATUS.READY,
+            ]
+        unreleasable_statuses = [
+            status
+            for status in map_enum(NODE_STATUS).values()
+                if status not in releasable_statuses]
+        nodes = [
+            factory.make_node(status=status, owner=self.logged_in_user)
+            for status in unreleasable_statuses]
+        responses = [
+            self.client.post(self.get_node_uri(node), {'op': 'release'})
+            for node in nodes]
+        self.assertEqual(
+            [httplib.CONFLICT] * len(unreleasable_statuses),
+            [response.status_code for response in responses])
+        self.assertEqual(
+            unreleasable_statuses,
+            [node.status for node in reload_objects(Node, nodes)])
+
+    def test_POST_release_in_wrong_state_reports_current_state(self):
+        node = factory.make_node(
+            status=NODE_STATUS.RETIRED, owner=self.logged_in_user)
+        response = self.client.post(
+            self.get_node_uri(node), {'op': 'release'})
+        self.assertEqual(
+            (
+                httplib.CONFLICT,
+                "Node cannot be released in its current state ('Retired').",
+            ),
+            (response.status_code, response.content))
+
+    def test_POST_release_rejects_request_from_unauthorized_user(self):
+        node = factory.make_node(
+            status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
+        response = self.client.post(
+            self.get_node_uri(node), {'op': 'release'})
+        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(NODE_STATUS.ALLOCATED, reload_object(node).status)
+
+    def test_POST_release_allows_admin_to_release_anyones_node(self):
+        node = factory.make_node(
+            status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
+        self.become_admin()
+        response = self.client.post(
+            self.get_node_uri(node), {'op': 'release'})
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(NODE_STATUS.READY, reload_object(node).status)
+
+    def test_POST_release_combines_with_acquire(self):
+        node = factory.make_node(status=NODE_STATUS.READY)
+        response = self.client.post(
+            self.get_uri('nodes/'), {'op': 'acquire'})
+        self.assertEqual(NODE_STATUS.ALLOCATED, reload_object(node).status)
+        node_uri = json.loads(response.content)['resource_uri']
+        response = self.client.post(node_uri, {'op': 'release'})
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(NODE_STATUS.READY, reload_object(node).status)
 
     def test_PUT_updates_node(self):
         # The api allows to update a Node.

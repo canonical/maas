@@ -402,6 +402,16 @@ class Node(CommonInfo):
         self.status = NODE_STATUS.ALLOCATED
         self.owner = by_user
 
+    def release(self):
+        """Mark allocated or reserved node as available again."""
+        assert self.status in [
+            NODE_STATUS.READY,
+            NODE_STATUS.ALLOCATED,
+            NODE_STATUS.RESERVED,
+            ]
+        self.status = NODE_STATUS.READY
+        self.owner = None
+
 
 mac_re = re.compile(r'^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$')
 

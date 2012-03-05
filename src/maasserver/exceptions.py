@@ -14,6 +14,7 @@ __all__ = [
     "MaaSAPIBadRequest",
     "MaaSAPIException",
     "MaaSAPINotFound",
+    "NodeStateViolation",
     "PermissionDenied",
     ]
 
@@ -62,6 +63,11 @@ class Unauthorized(MaaSAPIException):
     api_error = httplib.UNAUTHORIZED
 
 
-class NodesNotAvailable(MaaSAPIException):
+class NodeStateViolation(MaaSAPIException):
+    """Operation on node not possible given node's current state."""
+    api_error = httplib.CONFLICT
+
+
+class NodesNotAvailable(NodeStateViolation):
     """Requested node(s) are not available to be acquired."""
     api_error = httplib.CONFLICT
