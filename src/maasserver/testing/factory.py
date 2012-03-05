@@ -94,14 +94,11 @@ class Factory():
 
     def make_file_storage(self, filename=None, data=None):
         if filename is None:
-            filename = self.getRandomString(255)
+            filename = self.getRandomString(100)
         if data is None:
-            data = self.getRandomString(1024)
+            data = self.getRandomString(1024).encode('ascii')
 
-        storage = FileStorage()
-        storage.save_file(filename, BytesIO(data))
-        storage.save()
-        return storage
+        return FileStorage.objects.save_file(filename, BytesIO(data))
 
 
 # Create factory singleton.

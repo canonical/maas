@@ -12,6 +12,7 @@ __metaclass__ = type
 __all__ = []
 
 import codecs
+from io import BytesIO
 import os
 import shutil
 
@@ -26,6 +27,7 @@ from maasserver.models import (
     Config,
     create_auth_token,
     DEFAULT_CONFIG,
+    FileStorage,
     GENERIC_CONSUMER,
     get_auth_tokens,
     MACAddress,
@@ -437,38 +439,89 @@ class FileStorageTest(TestCase):
 
     def setUp(self):
         super(FileStorageTest, self).setUp()
+        # The development settings say to write storage files in a
+        # local subdirectory "tmp".
         os.mkdir(self.FILEPATH)
         self.addCleanup(shutil.rmtree, self.FILEPATH)
 
-    def test_creation(self):
-        storage = factory.make_file_storage(filename="myfile", data=b"mydata")
-        expected = ["myfile", "mydata"]
-        actual = [storage.filename, storage.data.read()]
-        self.assertEqual(expected, actual)
+    def get_storage_path(self, filename):
+        """Get the full path to the storage file of the given name."""
+        # The storage field is hard-coded to write files to a
+        # subdirectory of FILEPATH called "storage".
+        return os.path.join(self.FILEPATH, "storage", filename)
 
-    def test_creation_writes_a_file(self):
-        # The development settings say to write a file starting at
-        # /var/tmp/maas, so check one is actually written there.  The field
-        # itself is hard-coded to make a directory called "storage".
-        factory.make_file_storage(filename="myfile", data=b"mydata")
+    def make_data(self, including_text='data'):
+        """Return arbitrary data.
 
-        expected_filename = os.path.join(
-            self.FILEPATH, "storage", "myfile")
+        :param including_text: Text to include in the data.  Leave something
+            here to make failure messages more recognizable.
+        :type including_text: basestring
+        :return: A string of bytes, including `including_text`.
+        :rtype: bytes
+        """
+        # Note that this won't automatically insert any non-ASCII bytes.
+        # Proper handling of real binary data is tested separately.
+        text = "%s %s" % (including_text, factory.getRandomString())
+        return text.encode('ascii')
 
-        with open(expected_filename) as f:
-            self.assertEqual("mydata", f.read())
+    def test_get_existing_storage_returns_None_if_none_found(self):
+        nonexistent_file = factory.getRandomString()
+        self.assertIsNone(
+            FileStorage.objects.get_existing_storage(nonexistent_file))
+
+    def test_get_existing_storage_finds_FileStorage(self):
+        storage = factory.make_file_storage()
+        self.assertEqual(
+            storage,
+            FileStorage.objects.get_existing_storage(storage.filename))
+
+    def test_save_file_creates_storage(self):
+        filename = factory.getRandomString()
+        data = self.make_data()
+        storage = FileStorage.objects.save_file(filename, BytesIO(data))
+        self.assertEqual(
+            (filename, data),
+            (storage.filename, storage.data.read()))
+
+    def test_storage_can_be_retrieved(self):
+        filename = factory.getRandomString()
+        data = self.make_data()
+        factory.make_file_storage(filename=filename, data=data)
+        storage = FileStorage.objects.get(filename=filename)
+        self.assertEqual(
+            (filename, data),
+            (storage.filename, storage.data.read()))
 
     def test_stores_binary_data(self):
         # This horrible binary data could never, ever, under any
-        # encoding known to man be intepreted as text.  Switch the bytes
-        # of the byte-order mark around and by design you get an invalid
-        # codepoint; put a byte with the high bit set between bytes that
-        # have it cleared, and you have a guaranteed non-UTF-8 sequence.
+        # encoding known to man be interpreted as text(1).  Switch the
+        # bytes of the byte-order mark around and by design you get an
+        # invalid codepoint; put a byte with the high bit set between bytes
+        # that have it cleared, and you have a guaranteed non-UTF-8
+        # sequence.
+        #
+        # (1) Provided, of course, that man know only about ASCII and
+        # UTF.
         binary_data = codecs.BOM64_LE + codecs.BOM64_BE + b'\x00\xff\x00'
+
         # And yet, because FileStorage supports binary data, it comes
         # out intact.
         storage = factory.make_file_storage(filename="x", data=binary_data)
         self.assertEqual(binary_data, storage.data.read())
+
+    def test_overwrites_file(self):
+        # If a file of the same name has already been stored, the
+        # reference to the old data gets overwritten with one to the new
+        # data.  They are actually different files on the filesystem.
+        filename = 'filename-%s' % factory.getRandomString()
+        old_storage = factory.make_file_storage(
+            filename=filename, data=self.make_data('old data'))
+        new_data = self.make_data('new-data')
+        new_storage = factory.make_file_storage(
+            filename=filename, data=new_data)
+        self.assertNotEqual(old_storage.data.name, new_storage.data.name)
+        self.assertEqual(
+            new_data, FileStorage.objects.get(filename=filename).data.read())
 
 
 class ConfigTest(TestCase):

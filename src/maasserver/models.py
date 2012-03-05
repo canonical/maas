@@ -578,25 +578,41 @@ class SSHKeys(models.Model):
         return self.key
 
 
-class FileStorage(models.Model):
-    """A simple file storage keyed on file name.
+class FileStorageManager(models.Manager):
+    """Manager for `FileStorage` objects.
 
-    :ivar filename: A unique file name to use for the data being stored.
-    :ivar data: The file's actual data.
+    Store files by calling `save_file`.  No two `FileStorage` objects can
+    have the same filename at the same time.  Writing new data to a file
+    whose name is already in use, replaces its `FileStorage` with one
+    pointing to the new data.
+
+    Underneath, however, the storage layer will keep the old version of the
+    file around indefinitely.  Thus, if the overwriting transaction rolls
+    back, it may leave the new file as garbage on the filesystem; but the
+    original file will not be affected.  Also, any ongoing reads from the
+    old file will continue without iterruption.
     """
 
-    filename = models.CharField(max_length=255, unique=True, editable=False)
-    data = models.FileField(upload_to="storage")
-
-    def __unicode__(self):
-        return self.filename
+    def get_existing_storage(self, filename):
+        """Return an existing `FileStorage` of this name, or None."""
+        existing_storage = self.filter(filename=filename)
+        if len(existing_storage) == 0:
+            return None
+        elif len(existing_storage) == 1:
+            return existing_storage[0]
+        else:
+            raise AssertionError(
+                "There are %d files called '%s'."
+                % (len(existing_storage), filename))
 
     def save_file(self, filename, file_object):
         """Save the file to the filesystem and persist to the database.
 
         The file will end up in MEDIA_ROOT/storage/
+
+        If a file of that name already existed, it will be replaced by the
+        new contents.
         """
-        self.filename = filename
         # This probably ought to read in chunks but large files are
         # not expected.  Also note that uploading a file with the same
         # name as an existing one will cause that file to be written
@@ -607,7 +623,30 @@ class FileStorage(models.Model):
         # it's safest left how it is for now (reads can overlap with
         # writes from Juju).
         content = ContentFile(file_object.read())
-        self.data.save(filename, content)
+
+        storage = self.get_existing_storage(filename)
+        if storage is None:
+            storage = FileStorage(filename=filename)
+        storage.data.save(filename, content)
+        return storage
+
+
+class FileStorage(models.Model):
+    """A simple file storage keyed on file name.
+
+    :ivar filename: A unique file name to use for the data being stored.
+    :ivar data: The file's actual data.
+    """
+
+    # Unix filenames can be longer than this (e.g. 255 bytes), but leave
+    # some extra room for the full path, as well as a versioning suffix.
+    filename = models.CharField(max_length=100, unique=True, editable=False)
+    data = models.FileField(upload_to="storage", max_length=255)
+
+    objects = FileStorageManager()
+
+    def __unicode__(self):
+        return self.filename
 
 
 # Default values for config options.
