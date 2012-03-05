@@ -53,12 +53,18 @@ Y.extend(TokenWidget, Y.Widget, {
             .append(this.status_node);
     },
 
+    confirm: function(message) {
+        return confirm(message);
+    },
+
     bindDeleteRow: function(row) {
         var self = this;
         var delete_link = row.one('a.delete-link');
         delete_link.on('click', function(e) {
             e.preventDefault();
-            self.deleteToken(row);
+            if (self.confirm("Are you sure you want to delete this key?")) {
+                self.deleteToken(row);
+            }
         });
     },
 
