@@ -12,9 +12,12 @@ __metaclass__ = type
 __all__ = []
 
 import os
+import sys
 
 import django.core.handlers.wsgi
 
+
+sys.path.append('/usr/share/maas/')
 
 os.environ['DJANGO_SETTINGS_MODULE'] = 'maas.settings'
 application = django.core.handlers.wsgi.WSGIHandler()
