@@ -16,7 +16,7 @@
 {% endblock %}
 
 {% block content %}
-  <h2>Login</h2>
+  <h2>Login to {% include "maasserver/site_title.html" %}</h2>
   {% if form.errors %}
     <p class="form-errors">Your username and password didn't match. Please try again.</p>
   {% endif %}

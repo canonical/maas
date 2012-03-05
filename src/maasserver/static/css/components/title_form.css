@@ -10,6 +10,9 @@
     margin: 6px 10px;
     padding: 4px;
     width: 97%;
+    -moz-border-radius: 6px;
+    -webkit-border-radius: 6px;
+    border-radius: 6px;
     }
 .page-title-form input:focus,
 .page-title-form input:hover {

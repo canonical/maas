@@ -2,17 +2,33 @@
 
 {% block nav-active-settings %}active{% endblock %}
 {% block title %}View user{% endblock %}
-{% block page-title %}View user{% endblock %}
+{% block page-title %}View user: {{ view_user.username }}{% endblock %}
 
 {% block content %}
-    <p>
-      Username: {{ view_user.username }}
-    </p>
-    <p>
-      Email address: {{ view_user.email }}
-    </p>
-    <p>
-      MaaS Administrator: {{ view_user.is_superuser }}
-    </p>
+  <ul class="data-list">
+    <li class="block size2 first">
+      <h4>Username</h4>
+      <span>{{ view_user.username }}</span>
+    </li>
+    <li class="block size3">
+      <h4>Full name</h4>
+      <span>{{ view_user.first_name }} {{ view_user.last_name }}</span>
+    </li>
+    <li class="block size3">
+      <h4>Email address</h4>
+      <span>{{ view_user.email }}</span>
+    </li>
+    <li class="block size2 first">
+      <h4>MaaS Keys</h4>
+      <span>
+        {{ user.get_profile.get_authorisation_tokens.count }}
+        key{{ user.get_profile.get_authorisation_tokens.count|pluralize }}
+      </span>
+    </li>
+    <li class="block size3">
+      <h4>MaaS Administrator</h4>
+      <span>{{ view_user.is_superuser }}</span>
+    </li>
+  </ul>
 {% endblock %}
 

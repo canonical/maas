@@ -1,9 +1,56 @@
 .block {
     border: 0 solid #e5e2e0;
-    padding-bottom: 15px;
-    margin-bottom: 15px;
+    margin: 0 10px 10px 10px;
+    float: left;
+    }
+.block.first {
+    clear: left;
+    margin-left: 0;
+    }
+.block.last {
+    clear: right;
+    margin-right: 0;
     }
 .block.full-width {
     width: 100%;
+    margin-left: 0;
+    margin-right: 0;
+    padding-bottom: 10px;
     border-bottom-width: 1px;
+    }
+.size1 {
+    width: 60px;
+    }
+.size2 {
+    width: 120px;
+    }
+.size3 {
+    width: 180px;
+    }
+.size4 {
+    width: 240px;
+    }
+.size5 {
+    width: 300px;
+    }
+.size6 {
+    width: 360px;
+    }
+.size7 {
+    width: 420px;
+    }
+.size8 {
+    width: 480px;
+    }
+.size9 {
+    width: 540px;
+    }
+.size10 {
+    width: 600px;
+    }
+.size11 {
+    width: 660px;
+    }
+.size12 {
+    width: 720px;
     }

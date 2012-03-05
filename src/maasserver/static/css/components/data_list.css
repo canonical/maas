@@ -1,0 +1,11 @@
+.data-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    }
+.data-list h4 {
+    margin-bottom: 5px;
+    }
+.data-list span {
+    font-size: 16px;
+    }

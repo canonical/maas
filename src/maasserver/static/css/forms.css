@@ -53,6 +53,7 @@ button,
 input[type="submit"] {
     padding: 4px 30px;
     color: #fff;
+    font-size: 14px;
     border: 1px solid #ab370f;
     background-color: #DD4814;
     background-image: linear-gradient(bottom, rgb(199,66,18) 0%, rgb(221,74,20) 100%);
@@ -65,7 +66,6 @@ input[type="submit"] {
     -moz-border-radius: 6px;
     -webkit-border-radius: 6px;
     border-radius: 6px;
-    text-shadow: 0 -1px 0 rgba(0,0,0,0.3);
     }
 .yui3-button:hover,
 .button:hover,

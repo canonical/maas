@@ -1,20 +1,32 @@
-table.list tr {
-    border-width: 0 0 1px 0;
-    border-style: solid;
-    border-color: #e5e2e0;
+table.list {
+    border-collapse: separate;
+    margin-bottom: 10px;
     }
 table.list th {
     padding: 5px;
     }
-table.list tr.actions {
+table.list tr.odd {
     background-color: #f2f2f2;
     }
-table.list tr.actions td {
-    padding: 5px 10px;
-    }
-table.list tr.actions input[type="submit"] {
-    padding: 2px 10px;
-    }
 table.list td {
-    padding: 10px 5px;
+    padding: 7px 5px;
+    border-width: 1px 0;
+    border-style: solid;
+    border-color: transparent;
+    }
+table.list.clickable td:first-child {
+    border-left-width: 1px;
+    -moz-border-radius: 4px 0 0 4px;
+    -webkit-border-radius: 4px 0 0 4px;
+    border-radius: 4px 0 0 4px;
+    }
+table.list.clickable td:last-child {
+    border-right-width: 1px;
+    -moz-border-radius: 0 4px 4px 0;
+    -webkit-border-radius: 0 4px 4px 0;
+    border-radius: 0 4px 4px 0;
+    }
+table.list.clickable tr:hover td {
+    border-color: #dd4814;
+    cursor: pointer;
     }

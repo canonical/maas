@@ -46,15 +46,21 @@
           </div>
           <div id="header" class="center-page-content">
               <ul id="right-nav" class="nav">
-                <li class="search">
-                  {% block header-search %}
-                    <form action="{% url 'node-list' %}" method="get" id="header-search">
-                      <input type="text" name="query" value="Search nodes" /><input type="submit" value="" />
-                    </form>
-                  {% endblock %}
-                </li>
+                {% comment %}
+                  <!-- To be enabled when we have search functionality -->
+                  <li class="search">
+                    {% block header-search %}
+                      <form action="{% url 'node-list' %}" method="get" id="header-search">
+                        <input type="text" name="query" value="Search nodes" class="search-box" />
+                      </form>
+                    {% endblock %}
+                  </li>
+                {% endcomment %}
                 {% if user.is_superuser %}
-                  <li class="divider"></li>
+                  {% comment %}
+                    <!-- To be enabled when we have search functionality -->
+                    <li class="divider"></li>
+                  {% endcomment %}
                   <li class="icon {% block nav-active-settings %}{% endblock %}">
                     <a href="{% url 'settings' %}">
                       <img src="{{ STATIC_URL }}img/settings.png" alt="Settings" />
@@ -102,6 +108,7 @@
           &copy; 2012 Canonical Ltd. Ubuntu and Canonical are registered 
           trademarks of Canonical Ltd.
         {% endblock %}
+        <div class="clear"></div>
       </div>
     </div>
   </div>
