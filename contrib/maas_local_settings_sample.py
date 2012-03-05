@@ -7,6 +7,9 @@ STATIC_ROOT = '/var/lib/maas/static/'
 FORCE_SCRIPT_NAME = None
 # FORCE_SCRIPT_NAME = '/MaaS'
 
+# Where to store the user uploaded files.
+MEDIA_ROOT = '/var/tmp/maas'
+
 # Database access configuration.
 DATABASES = {
     'default': {
