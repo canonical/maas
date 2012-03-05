@@ -46,6 +46,10 @@ from piston.models import (
     SECRET_SIZE,
     Token,
     )
+from testtools.matchers import (
+    GreaterThan,
+    LessThan,
+    )
 
 
 class NodeTest(TestCase):
@@ -448,13 +452,18 @@ class FileStorageTest(TestCase):
         # The development settings say to write storage files in a
         # local subdirectory "tmp".
         os.mkdir(self.FILEPATH)
+        os.mkdir(os.path.join(self.FILEPATH, FileStorage.upload_dir))
         self.addCleanup(shutil.rmtree, self.FILEPATH)
 
     def get_storage_path(self, filename):
         """Get the full path to the storage file of the given name."""
         # The storage field is hard-coded to write files to a
         # subdirectory of FILEPATH called "storage".
-        return os.path.join(self.FILEPATH, "storage", filename)
+        return os.path.join(self.FILEPATH, FileStorage.upload_dir, filename)
+
+    def get_media_path(self, filename):
+        """Get the path to a given stored file, relative to MEDIA_ROOT."""
+        return os.path.join(FileStorage.upload_dir, filename)
 
     def make_data(self, including_text='data'):
         """Return arbitrary data.
@@ -469,6 +478,18 @@ class FileStorageTest(TestCase):
         # Proper handling of real binary data is tested separately.
         text = "%s %s" % (including_text, factory.getRandomString())
         return text.encode('ascii')
+
+    def age_file(self, path, seconds=None):
+        """Make the file at `path` look like it hasn't been touched recently.
+
+        Decrements the file's mtime by a bit over a day.
+        """
+        if seconds is None:
+            seconds = FileStorage.objects.grace_time + 1
+        stat_result = os.stat(path)
+        atime = stat_result.st_atime
+        mtime = stat_result.st_mtime
+        os.utime(path, (atime, mtime - seconds))
 
     def test_get_existing_storage_returns_None_if_none_found(self):
         nonexistent_file = factory.getRandomString()
@@ -528,6 +549,96 @@ class FileStorageTest(TestCase):
         self.assertNotEqual(old_storage.data.name, new_storage.data.name)
         self.assertEqual(
             new_data, FileStorage.objects.get(filename=filename).data.read())
+
+    def test_list_stored_files_lists_files(self):
+        filename = factory.getRandomString()
+        path = self.get_storage_path(filename)
+        with open(path, 'w') as f:
+            f.write(self.make_data())
+        self.assertIn(
+            self.get_media_path(filename),
+            FileStorage.objects.list_stored_files())
+
+    def test_list_stored_files_includes_referenced_files(self):
+        storage = factory.make_file_storage()
+        self.assertIn(
+            storage.data.name, FileStorage.objects.list_stored_files())
+
+    def test_list_referenced_files_lists_FileStorage_files(self):
+        storage = factory.make_file_storage()
+        self.assertIn(
+            storage.data.name, FileStorage.objects.list_referenced_files())
+
+    def test_list_referenced_files_excludes_unreferenced_files(self):
+        filename = factory.getRandomString()
+        path = self.get_storage_path(filename)
+        with open(path, 'w') as f:
+            f.write(self.make_data())
+        self.assertNotIn(
+            self.get_media_path(filename),
+            FileStorage.objects.list_referenced_files())
+
+    def test_list_referenced_files_uses_file_name_not_FileStorage_name(self):
+        filename = factory.getRandomString()
+        # The filename we're going to use is already taken.  The file
+        # we'll be looking at will have to have a different name.
+        factory.make_file_storage(filename=filename)
+        storage = factory.make_file_storage(filename=filename)
+        # It's the name of the file, not the FileStorage.filename, that
+        # is in list_referenced_files.
+        self.assertIn(
+            storage.data.name, FileStorage.objects.list_referenced_files())
+
+    def test_is_old_returns_False_for_recent_file(self):
+        filename = factory.getRandomString()
+        path = self.get_storage_path(filename)
+        with open(path, 'w') as f:
+            f.write(self.make_data())
+        self.age_file(path, FileStorage.objects.grace_time - 60)
+        self.assertFalse(
+            FileStorage.objects.is_old(self.get_media_path(filename)))
+
+    def test_is_old_returns_True_for_old_file(self):
+        filename = factory.getRandomString()
+        path = self.get_storage_path(filename)
+        with open(path, 'w') as f:
+            f.write(self.make_data())
+        self.age_file(path, FileStorage.objects.grace_time + 1)
+        self.assertTrue(
+            FileStorage.objects.is_old(self.get_media_path(filename)))
+
+    def test_collect_garbage_deletes_garbage(self):
+        filename = factory.getRandomString()
+        path = self.get_storage_path(filename)
+        with open(path, 'w') as f:
+            f.write(self.make_data())
+        self.age_file(path)
+        FileStorage.objects.collect_garbage()
+        self.assertFalse(
+            FileStorage.storage.exists(self.get_media_path(filename)))
+
+    def test_grace_time_is_generous_but_not_unlimited(self):
+        # Grace time for garbage collection is long enough that it won't
+        # expire while the request that wrote it is still being handled.
+        # But it won't keep a file around for ages.  For instance, it'll
+        # be more than 20 seconds, but less than a day.
+        self.assertThat(FileStorage.objects.grace_time, GreaterThan(20))
+        self.assertThat(FileStorage.objects.grace_time, LessThan(24 * 60 * 60))
+
+    def test_collect_garbage_leaves_recent_files_alone(self):
+        filename = factory.getRandomString()
+        path = self.get_storage_path(filename)
+        with open(path, 'w') as f:
+            f.write(self.make_data())
+        FileStorage.objects.collect_garbage()
+        self.assertTrue(
+            FileStorage.storage.exists(self.get_media_path(filename)))
+
+    def test_collect_garbage_leaves_referenced_files_alone(self):
+        storage = factory.make_file_storage()
+        self.age_file(storage.data.path)
+        FileStorage.objects.collect_garbage()
+        self.assertTrue(FileStorage.storage.exists(storage.data.name))
 
 
 class ConfigTest(TestCase):

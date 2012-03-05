@@ -23,14 +23,18 @@ __all__ = [
 
 import copy
 import datetime
+import os
 import re
 from socket import gethostname
+import time
 from uuid import uuid1
 
+from django.conf import settings
 from django.contrib import admin
 from django.contrib.auth.backends import ModelBackend
 from django.contrib.auth.models import User
 from django.core.files.base import ContentFile
+from django.core.files.storage import FileSystemStorage
 from django.db import models
 from django.db.models.signals import post_save
 from django.shortcuts import get_object_or_404
@@ -602,6 +606,9 @@ class FileStorageManager(models.Manager):
     original file will not be affected.  Also, any ongoing reads from the
     old file will continue without iterruption.
     """
+    # The time, in seconds, that an unreferenced file is allowed to
+    # persist in order to satisfy ongoing requests.
+    grace_time = 12 * 60 * 60
 
     def get_existing_storage(self, filename):
         """Return an existing `FileStorage` of this name, or None."""
@@ -640,6 +647,44 @@ class FileStorageManager(models.Manager):
         storage.data.save(filename, content)
         return storage
 
+    def list_stored_files(self):
+        """Find the files stored in the filesystem."""
+        dirs, files = FileStorage.storage.listdir(FileStorage.upload_dir)
+        return [
+            os.path.join(FileStorage.upload_dir, filename)
+            for filename in files]
+
+    def list_referenced_files(self):
+        """Find the names of files that are referenced from `FileStorage`.
+
+        :return: All file paths within MEDIA ROOT (relative to MEDIA_ROOT)
+            that have `FileStorage` entries referencing them.
+        :rtype: frozenset
+        """
+        return frozenset(
+            file_storage.data.name
+            for file_storage in self.all())
+
+    def is_old(self, storage_filename):
+        """Is the named file in the filesystem storage old enough to be dead?
+
+        :param storage_filename: The name under which the file is stored in
+            the filesystem, relative to MEDIA_ROOT.  This need not be the
+            same name as its filename as stored in the `FileStorage` object.
+            It includes the name of the upload directory.
+        """
+        file_path = os.path.join(settings.MEDIA_ROOT, storage_filename)
+        mtime = os.stat(file_path).st_mtime
+        expiry = mtime + self.grace_time
+        return expiry <= time.time()
+
+    def collect_garbage(self):
+        """Clean up stored files that are no longer accessible."""
+        referenced_files = self.list_referenced_files()
+        for path in self.list_stored_files():
+            if path not in referenced_files and self.is_old(path):
+                FileStorage.storage.delete(path)
+
 
 class FileStorage(models.Model):
     """A simple file storage keyed on file name.
@@ -648,10 +693,15 @@ class FileStorage(models.Model):
     :ivar data: The file's actual data.
     """
 
+    storage = FileSystemStorage()
+
+    upload_dir = "storage"
+
     # Unix filenames can be longer than this (e.g. 255 bytes), but leave
     # some extra room for the full path, as well as a versioning suffix.
     filename = models.CharField(max_length=100, unique=True, editable=False)
-    data = models.FileField(upload_to="storage", max_length=255)
+    data = models.FileField(
+        upload_to=upload_dir, storage=storage, max_length=255)
 
     objects = FileStorageManager()
 
