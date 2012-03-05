@@ -41,16 +41,6 @@ DATABASES = {
 # Example: "/home/media/media.lawrence.com/media/"
 MEDIA_ROOT = os.path.join(os.getcwd(), "tmp")
 
-MIDDLEWARE_CLASSES += (
-    'maasserver.middleware.ConsoleExceptionMiddleware',
-    'debug_toolbar.middleware.DebugToolbarMiddleware',
-)
-
-TEMPLATE_LOADERS = (
-    'django.template.loaders.filesystem.Loader',
-    'django.template.loaders.app_directories.Loader',
-)
-
 INSTALLED_APPS += (
     'django.contrib.admin',
     'django.contrib.admindocs',
