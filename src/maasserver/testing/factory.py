@@ -24,6 +24,7 @@ from maasserver.models import (
     Node,
     NODE_STATUS,
     )
+from maasserver.testing.enum import map_enum
 
 
 class Factory():
@@ -37,16 +38,23 @@ class Factory():
         return random.choice((True, False))
 
     def getRandomEnum(self, enum):
-        enum_choices = [
-            value for key, value in vars(enum).items()
-            if not key.startswith('__')]
-        return random.choice(enum_choices)
+        """Pick a random item from an enumeration class.
+
+        :param enum: An enumeration class such as `NODE_STATUS`.
+        :return: The value of one of its items.
+        """
+        return random.choice(list(map_enum(enum).values()))
 
     def getRandomChoice(self, choices):
-        # Get a random choice from the passed-in 'choices'.  'choices'
-        # must use Django form choices format:
-        # [('choice_id_1': "Choice name 1"), ('choice_id_2', "Choice
-        # name 2")].  A random choice id will be returned.
+        """Pick a random item from `choices`.
+
+        :param choices: A sequence of choices in Django form choices format:
+            [
+                ('choice_id_1', "Choice name 1"),
+                ('choice_id_2', "Choice name 2"),
+            ]
+        :return: The "id" portion of a random choice out of `choices`.
+        """
         return random.choice(choices)[0]
 
     def make_node(self, hostname='', set_hostname=False, status=None,
