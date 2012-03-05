@@ -101,8 +101,8 @@ class UserPrefsViewTest(LoggedInTestCase):
             token_string = '%s:%s:%s' % (consumer.key, token.key, token.secret)
             self.assertSequenceEqual(
                 [token_string],
-                [elem.text.strip() for elem in
-                    doc.cssselect('td#%s' % token.key)])
+                [elem.value.strip() for elem in
+                    doc.cssselect('input#%s' % token.key)])
 
     def test_prefs_POST_profile(self):
         # The preferences page allows the user the update its profile
@@ -297,7 +297,7 @@ class UserManagementTest(AdminLoggedInTestCase):
         response = self.client.get(del_link)
         doc = fromstring(response.content)
         confirmation_message = (
-            'Are you sure you want to delete user %s?' %
+            'Are you sure you want to delete the user "%s"?' %
             user.username)
         self.assertSequenceEqual(
             [confirmation_message],

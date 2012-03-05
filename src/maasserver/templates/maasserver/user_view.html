@@ -3,6 +3,22 @@
 {% block nav-active-settings %}active{% endblock %}
 {% block title %}View user{% endblock %}
 {% block page-title %}View user: {{ view_user.username }}{% endblock %}
+{% block layout-modifiers %}sidebar{% endblock %}
+
+{% block sidebar %}
+  <div class="block size3">
+    <h4>User details</h4>
+    <a href="{% url 'accounts-edit' view_user.username %}" class="button secondary">
+      Edit user
+    </a>
+  </div>
+  <div class="block size3">
+    <h4>Actions</h4>
+    <a href="{% url 'accounts-del' view_user.username %}" class="button secondary">
+      Delete user
+    </a>
+  </div>
+{% endblock %}
 
 {% block content %}
   <ul class="data-list">

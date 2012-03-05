@@ -27,7 +27,7 @@ suite.add(new Y.maas.testing.TestCase({
         var create_link = widget.get('srcNode').one('#create_token');
         Y.Assert.isNotNull(create_link);
         Y.Assert.areEqual(
-            "Create a new API token", create_link.get('text'));
+            "+ Add MaaS key", create_link.get('text'));
         // The placeholder node for errors has been created.
         var status_node = widget.get('srcNode').one('#create_error');
         Y.Assert.isNotNull(status_node);

@@ -30,3 +30,15 @@ table.list.clickable tr:hover td {
     border-color: #dd4814;
     cursor: pointer;
     }
+/* ul list */
+ul.list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    }
+ul.list li {
+    padding: 2px 0;
+    }
+ul.list .icon {
+    padding: 6px 0 0 0;
+    }

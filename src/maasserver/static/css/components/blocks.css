@@ -1,7 +1,6 @@
 .block {
     border: 0 solid #e5e2e0;
     margin: 0 10px 10px 10px;
-    float: left;
     }
 .block.first {
     clear: left;
@@ -17,6 +16,23 @@
     margin-right: 0;
     padding-bottom: 10px;
     border-bottom-width: 1px;
+    }
+.block.auto-width {
+    display: inline-block;
+    }
+.size1,
+.size2,
+.size3,
+.size4,
+.size5,
+.size6,
+.size7,
+.size8,
+.size9,
+.size10,
+.size11,
+.size12 {
+    float: left;
     }
 .size1 {
     width: 60px;

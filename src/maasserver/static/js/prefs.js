@@ -40,10 +40,13 @@ Y.extend(TokenWidget, Y.Widget, {
         this.create_link = Y.Node.create('<a />')
             .set('href', '#')
             .set('id','create_token')
-            .set('text', "Create a new API token");
+            .addClass('button')
+            .addClass('right')
+            .set('text', "+ Add MaaS key");
         this.status_node = Y.Node.create('<div />')
             .set('id','create_error');
         this.spinnerNode = Y.Node.create('<img />')
+            .addClass('spinner')
             .set('src', MaaS_config.uris.statics + 'img/spinner.gif');
         this.get('srcNode').one('#token_creation_placeholder')
             .append(this.create_link)
@@ -77,7 +80,7 @@ Y.extend(TokenWidget, Y.Widget, {
     * @method deleteToken
     */
     deleteToken: function(row) {
-        var token_key = row.one('td').get('id');
+        var token_key = row.one('input').get('id');
         var self = this;
         var cfg = {
             method: 'POST',
@@ -129,21 +132,24 @@ Y.extend(TokenWidget, Y.Widget, {
     * @method addToken
     */
     addToken: function(token, token_key) {
-        var tbody = this.get('srcNode').one('tbody');
-        var row = Y.Node.create('<tr />')
+        var list = this.get('srcNode').one('ul');
+        var row = Y.Node.create('<li />')
             .addClass('bundle')
-            .append(Y.Node.create('<td />')
+            .append(Y.Node.create('<a />')
+                .set('href', '#')
+                .addClass('delete-link')
+                .addClass('right')
+                .append(Y.Node.create('<img />')
+                    .set('title', 'Delete token')
+                    .set(
+                        'src',
+                        MaaS_config.uris.statics + 'img/delete.png')))
+            .append(Y.Node.create('<input />')
+                .set('type', 'text')
+                .addClass('disabled')
                 .set('id', token_key)
-                .set('text', token))
-            .append(Y.Node.create('<td />')
-                .append(Y.Node.create('<a />')
-                    .set('href', '#').addClass('delete-link')
-                    .append(Y.Node.create('<img />')
-                        .set('title', 'Delete token')
-                        .set(
-                            'src',
-                            MaaS_config.uris.statics + 'img/delete.png'))));
-       tbody.append(row);
+                .set('value', token));
+       list.append(row);
        this.bindDeleteRow(row);
     },
 

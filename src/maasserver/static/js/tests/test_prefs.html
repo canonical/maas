@@ -26,18 +26,22 @@
   <span id="suite">maas.prefs.tests</span>
   <script type="text/x-template" id="api-template">
     <div id="placeholder">
-      <table>
-        <tbody>
-          <tr class="bundle">
-            <td id="tokenkey1">Sample token 1</td>
-            <td><a class="delete-link" href="#">Delete</a></td>
-          </tr>
-          <tr class="bundle">
-            <td id="tokenkey2">Sample token 2</td>
-            <td><a class="delete-link" href="#">Delete</a></td>
-          </tr>
-         </tbody>
-      </table>
+      <ul class="list">
+        <li class="bundle">
+          <a class="delete-link right" href="#">Delete</a>
+          <input type="text" 
+                 value="Sample token 1" 
+                 id="tokenkey1"
+                 class="disabled" />
+        </li>
+        <li class="bundle">
+          <a class="delete-link right" href="#">Delete</a>
+          <input type="text" 
+                 value="Sample token 2" 
+                 id="tokenkey2"
+                 class="disabled" />
+        </li>
+      </ul>
       <p id="token_creation_placeholder">
       </p>
     </div>
