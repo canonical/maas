@@ -19,6 +19,10 @@ import shutil
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
+from fixtures import (
+    EnvironmentVariableFixture,
+    TestWithFixtures,
+    )
 from maasserver.exceptions import (
     CannotDeleteUserException,
     PermissionDenied,
@@ -30,6 +34,7 @@ from maasserver.models import (
     FileStorage,
     GENERIC_CONSUMER,
     get_auth_tokens,
+    get_default_config,
     MACAddress,
     Node,
     NODE_STATUS,
@@ -639,6 +644,18 @@ class FileStorageTest(TestCase):
         self.age_file(storage.data.path)
         FileStorage.objects.collect_garbage()
         self.assertTrue(FileStorage.storage.exists(storage.data.name))
+
+
+class ConfigDefaultTest(TestCase, TestWithFixtures):
+    """Test config default values."""
+
+    def test_default_config_maas_name(self):
+        name = factory.getRandomString()
+        fixture = EnvironmentVariableFixture('LOGNAME', name)
+        self.useFixture(fixture)
+        default_config = get_default_config()
+        self.assertEqual(
+            "%s's" % name.capitalize(), default_config['maas_name'])
 
 
 class ConfigTest(TestCase):

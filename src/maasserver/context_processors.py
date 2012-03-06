@@ -14,6 +14,7 @@ __all__ = [
     ]
 
 from django.conf import settings
+from maasserver.models import Config
 
 
 def yui(context):
@@ -24,4 +25,8 @@ def yui(context):
 
 
 def global_options(context):
-    return {'global_options': {'site_name': 'Temporary Cluster Name'}}
+    return {
+        'global_options': {
+            'site_name': Config.objects.get_config('maas_name'),
+        }
+    }
