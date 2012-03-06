@@ -20,6 +20,7 @@ import shutil
 from django.conf import settings
 from maasserver.models import (
     ARCHITECTURE,
+    Config,
     MACAddress,
     Node,
     NODE_STATUS,
@@ -891,3 +892,121 @@ class FileStorageAPITest(APITestCase):
         self.assertEqual(httplib.NOT_FOUND, response.status_code)
         self.assertIn('text/plain', response['Content-Type'])
         self.assertEqual("File not found", response.content)
+
+
+class MaaSAPIAnonTest(APIv10TestMixin, TestCase):
+    # The MaaS' handler is not accessible to anon users.
+
+    def test_anon_get_config_forbidden(self):
+        response = self.client.get(
+            self.get_uri('maas/'),
+            {'op': 'get_config'})
+
+        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+
+    def test_anon_set_config_forbidden(self):
+        response = self.client.post(
+            self.get_uri('maas/'),
+            {'op': 'set_config'})
+
+        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+
+
+class MaaSAPITest(APITestCase):
+
+    def test_simple_user_get_config_forbidden(self):
+        response = self.client.get(
+            self.get_uri('maas/'),
+            {'op': 'get_config'})
+
+        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+
+    def test_simple_user_set_config_forbidden(self):
+        response = self.client.post(
+            self.get_uri('maas/'),
+            {'op': 'set_config'})
+
+        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+
+    def test_get_config_requires_name_param(self):
+        self.become_admin()
+        response = self.client.get(
+            self.get_uri('maas/'),
+            {
+                'op': 'get_config',
+            })
+
+        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+        self.assertEqual("No provided name!", response.content)
+
+    def test_get_config_returns_config(self):
+        self.become_admin()
+        name = factory.getRandomString()
+        value = factory.getRandomString()
+        Config.objects.set_config(name, value)
+        response = self.client.get(
+            self.get_uri('maas/'),
+            {
+                'op': 'get_config',
+                'name': name,
+            })
+
+        self.assertEqual(httplib.OK, response.status_code)
+        parsed_result = json.loads(response.content)
+        self.assertIn('application/json', response['Content-Type'])
+        self.assertEqual(value, parsed_result)
+
+    def test_set_config_requires_name_param(self):
+        self.become_admin()
+        response = self.client.post(
+            self.get_uri('maas/'),
+            {
+                'op': 'set_config',
+                'value': factory.getRandomString(),
+            })
+
+        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+        self.assertEqual("No provided name!", response.content)
+
+    def test_set_config_requires_string_name_param(self):
+        self.become_admin()
+        value = factory.getRandomString()
+        response = self.client.post(
+            self.get_uri('maas/'),
+            {
+                'op': 'set_config',
+                'name': '',  # Invalid empty name.
+                'value': value,
+            })
+
+        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+        self.assertEqual(
+           "Invalid name: Please enter a value", response.content)
+
+    def test_set_config_requires_value_param(self):
+        self.become_admin()
+        response = self.client.post(
+            self.get_uri('maas/'),
+            {
+                'op': 'set_config',
+                'name': factory.getRandomString(),
+            })
+
+        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+        self.assertEqual("No provided value!", response.content)
+
+    def test_admin_set_config(self):
+        self.become_admin()
+        name = factory.getRandomString()
+        value = factory.getRandomString()
+        response = self.client.post(
+            self.get_uri('maas/'),
+            {
+                'op': 'set_config',
+                'name': name,
+                'value': value,
+            })
+
+        self.assertEqual(httplib.OK, response.status_code)
+        stored_value = Config.objects.get_config(name)
+        self.assertEqual(stored_value, value)

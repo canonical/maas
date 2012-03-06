@@ -18,14 +18,18 @@ from django.conf.urls.defaults import (
 from maas.api_auth import api_auth
 from maasserver.api import (
     AccountHandler,
+    AdminRestrictedResource,
     api_doc,
     FilesHandler,
+    MaaSHandler,
     NodeHandler,
     NodeMacHandler,
     NodeMacsHandler,
     NodesHandler,
     RestrictedResource,
     )
+
+
 account_handler = RestrictedResource(AccountHandler, authentication=api_auth)
 files_handler = RestrictedResource(FilesHandler, authentication=api_auth)
 node_handler = RestrictedResource(NodeHandler, authentication=api_auth)
@@ -33,6 +37,10 @@ nodes_handler = RestrictedResource(NodesHandler, authentication=api_auth)
 node_mac_handler = RestrictedResource(NodeMacHandler, authentication=api_auth)
 node_macs_handler = RestrictedResource(
     NodeMacsHandler, authentication=api_auth)
+
+
+# Admin handlers.
+maas_handler = AdminRestrictedResource(MaaSHandler, authentication=api_auth)
 
 
 # API URLs accessible to anonymous users.
@@ -56,4 +64,10 @@ urlpatterns += patterns('',
     url(r'nodes/$', nodes_handler, name='nodes_handler'),
     url(r'files/$', files_handler, name='files_handler'),
     url(r'account/$', account_handler, name='account_handler'),
+)
+
+
+# API URLs for admin users.
+urlpatterns += patterns('',
+    url(r'maas/$', maas_handler, name='maas_handler'),
 )
