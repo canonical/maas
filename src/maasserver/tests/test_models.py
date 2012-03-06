@@ -452,19 +452,24 @@ class FileStorageTest(TestCase):
 
     FILEPATH = settings.MEDIA_ROOT
 
-    def setUp(self):
-        super(FileStorageTest, self).setUp()
-        # The development settings say to write storage files in a
-        # local subdirectory "tmp".
-        os.mkdir(self.FILEPATH)
-        os.mkdir(os.path.join(self.FILEPATH, FileStorage.upload_dir))
-        self.addCleanup(shutil.rmtree, self.FILEPATH)
+    def make_upload_dir(self):
+        """Create the upload directory, and arrange for eventual deletion.
 
-    def get_storage_path(self, filename):
-        """Get the full path to the storage file of the given name."""
-        # The storage field is hard-coded to write files to a
-        # subdirectory of FILEPATH called "storage".
-        return os.path.join(self.FILEPATH, FileStorage.upload_dir, filename)
+        The directory must not already exist.  If it does, this method will
+        fail rather than arrange for deletion of a directory that may
+        contain meaningful data.
+
+        :return: Absolute path to the `FileStorage` upload directory.  This
+            is the directory where the actual files are stored.
+        """
+        # These will blow up if either directory already exists.  Which
+        # is brittle, but probably for the best since we ruthlessly
+        # delete them on cleanup!
+        os.mkdir(self.FILEPATH)
+        upload_dir = os.path.join(self.FILEPATH, FileStorage.upload_dir)
+        os.mkdir(upload_dir)
+        self.addCleanup(shutil.rmtree, self.FILEPATH)
+        return upload_dir
 
     def get_media_path(self, filename):
         """Get the path to a given stored file, relative to MEDIA_ROOT."""
@@ -502,12 +507,14 @@ class FileStorageTest(TestCase):
             FileStorage.objects.get_existing_storage(nonexistent_file))
 
     def test_get_existing_storage_finds_FileStorage(self):
+        self.make_upload_dir()
         storage = factory.make_file_storage()
         self.assertEqual(
             storage,
             FileStorage.objects.get_existing_storage(storage.filename))
 
     def test_save_file_creates_storage(self):
+        self.make_upload_dir()
         filename = factory.getRandomString()
         data = self.make_data()
         storage = FileStorage.objects.save_file(filename, BytesIO(data))
@@ -516,6 +523,7 @@ class FileStorageTest(TestCase):
             (storage.filename, storage.data.read()))
 
     def test_storage_can_be_retrieved(self):
+        self.make_upload_dir()
         filename = factory.getRandomString()
         data = self.make_data()
         factory.make_file_storage(filename=filename, data=data)
@@ -525,6 +533,8 @@ class FileStorageTest(TestCase):
             (storage.filename, storage.data.read()))
 
     def test_stores_binary_data(self):
+        self.make_upload_dir()
+
         # This horrible binary data could never, ever, under any
         # encoding known to man be interpreted as text(1).  Switch the
         # bytes of the byte-order mark around and by design you get an
@@ -545,6 +555,7 @@ class FileStorageTest(TestCase):
         # If a file of the same name has already been stored, the
         # reference to the old data gets overwritten with one to the new
         # data.  They are actually different files on the filesystem.
+        self.make_upload_dir()
         filename = 'filename-%s' % factory.getRandomString()
         old_storage = factory.make_file_storage(
             filename=filename, data=self.make_data('old data'))
@@ -556,34 +567,37 @@ class FileStorageTest(TestCase):
             new_data, FileStorage.objects.get(filename=filename).data.read())
 
     def test_list_stored_files_lists_files(self):
+        upload_dir = self.make_upload_dir()
         filename = factory.getRandomString()
-        path = self.get_storage_path(filename)
-        with open(path, 'w') as f:
+        with open(os.path.join(upload_dir, filename), 'w') as f:
             f.write(self.make_data())
         self.assertIn(
             self.get_media_path(filename),
             FileStorage.objects.list_stored_files())
 
     def test_list_stored_files_includes_referenced_files(self):
+        self.make_upload_dir()
         storage = factory.make_file_storage()
         self.assertIn(
             storage.data.name, FileStorage.objects.list_stored_files())
 
     def test_list_referenced_files_lists_FileStorage_files(self):
+        self.make_upload_dir()
         storage = factory.make_file_storage()
         self.assertIn(
             storage.data.name, FileStorage.objects.list_referenced_files())
 
     def test_list_referenced_files_excludes_unreferenced_files(self):
+        upload_dir = self.make_upload_dir()
         filename = factory.getRandomString()
-        path = self.get_storage_path(filename)
-        with open(path, 'w') as f:
+        with open(os.path.join(upload_dir, filename), 'w') as f:
             f.write(self.make_data())
         self.assertNotIn(
             self.get_media_path(filename),
             FileStorage.objects.list_referenced_files())
 
     def test_list_referenced_files_uses_file_name_not_FileStorage_name(self):
+        self.make_upload_dir()
         filename = factory.getRandomString()
         # The filename we're going to use is already taken.  The file
         # we'll be looking at will have to have a different name.
@@ -595,8 +609,9 @@ class FileStorageTest(TestCase):
             storage.data.name, FileStorage.objects.list_referenced_files())
 
     def test_is_old_returns_False_for_recent_file(self):
+        upload_dir = self.make_upload_dir()
         filename = factory.getRandomString()
-        path = self.get_storage_path(filename)
+        path = os.path.join(upload_dir, filename)
         with open(path, 'w') as f:
             f.write(self.make_data())
         self.age_file(path, FileStorage.objects.grace_time - 60)
@@ -604,8 +619,9 @@ class FileStorageTest(TestCase):
             FileStorage.objects.is_old(self.get_media_path(filename)))
 
     def test_is_old_returns_True_for_old_file(self):
+        upload_dir = self.make_upload_dir()
         filename = factory.getRandomString()
-        path = self.get_storage_path(filename)
+        path = os.path.join(upload_dir, filename)
         with open(path, 'w') as f:
             f.write(self.make_data())
         self.age_file(path, FileStorage.objects.grace_time + 1)
@@ -613,8 +629,9 @@ class FileStorageTest(TestCase):
             FileStorage.objects.is_old(self.get_media_path(filename)))
 
     def test_collect_garbage_deletes_garbage(self):
+        upload_dir = self.make_upload_dir()
         filename = factory.getRandomString()
-        path = self.get_storage_path(filename)
+        path = os.path.join(upload_dir, filename)
         with open(path, 'w') as f:
             f.write(self.make_data())
         self.age_file(path)
@@ -631,19 +648,27 @@ class FileStorageTest(TestCase):
         self.assertThat(FileStorage.objects.grace_time, LessThan(24 * 60 * 60))
 
     def test_collect_garbage_leaves_recent_files_alone(self):
+        upload_dir = self.make_upload_dir()
         filename = factory.getRandomString()
-        path = self.get_storage_path(filename)
-        with open(path, 'w') as f:
+        with open(os.path.join(upload_dir, filename), 'w') as f:
             f.write(self.make_data())
         FileStorage.objects.collect_garbage()
         self.assertTrue(
             FileStorage.storage.exists(self.get_media_path(filename)))
 
     def test_collect_garbage_leaves_referenced_files_alone(self):
+        self.make_upload_dir()
         storage = factory.make_file_storage()
         self.age_file(storage.data.path)
         FileStorage.objects.collect_garbage()
         self.assertTrue(FileStorage.storage.exists(storage.data.name))
+
+    def test_collect_garbage_tolerates_missing_upload_dir(self):
+        # When MaaS is freshly installed, the upload directory is still
+        # missing.  But...
+        FileStorage.objects.collect_garbage()
+        # ...we get through garbage collection without breakage.
+        pass
 
 
 class ConfigDefaultTest(TestCase, TestWithFixtures):
