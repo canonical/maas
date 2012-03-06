@@ -72,19 +72,14 @@ class UserPrefsViewTest(LoggedInTestCase):
         # The preferences page displays a form with the user's personal
         # information.
         user = self.logged_in_user
-        user.first_name = 'Steve'
-        user.last_name = 'Bam'
+        user.last_name = 'Steve Bam'
         user.save()
         response = self.client.get('/account/prefs/')
         doc = fromstring(response.content)
         self.assertSequenceEqual(
-            ['Bam'],
+            ['Steve Bam'],
             [elem.value for elem in
                 doc.cssselect('input#id_profile-last_name')])
-        self.assertSequenceEqual(
-            ['Steve'],
-            [elem.value for elem in
-                doc.cssselect('input#id_profile-first_name')])
 
     def test_prefs_GET_api(self):
         # The preferences page displays the API access tokens.
@@ -112,15 +107,13 @@ class UserPrefsViewTest(LoggedInTestCase):
             get_prefixed_form_data(
                 'profile',
                 {
-                    'first_name': 'John',
-                    'last_name': 'Doe',
+                    'last_name': 'John Doe',
                     'email': 'jon@example.com',
                 }))
 
         self.assertEqual(httplib.FOUND, response.status_code)
         user = User.objects.get(id=self.logged_in_user.id)
-        self.assertEqual('John', user.first_name)
-        self.assertEqual('Doe', user.last_name)
+        self.assertEqual('John Doe', user.last_name)
         self.assertEqual('jon@example.com', user.email)
 
     def test_prefs_POST_password(self):
@@ -278,17 +271,44 @@ class SettingsTest(AdminLoggedInTestCase):
 class UserManagementTest(AdminLoggedInTestCase):
 
     def test_add_user_POST(self):
+        new_last_name = factory.getRandomString(30)
+        new_password = factory.getRandomString()
+        new_admin_status = factory.getRandomBoolean()
         response = self.client.post(
             reverse('accounts-add'),
             {
                 'username': 'my_user',
-                'password1': 'pw',
-                'password2': 'pw',
+                'last_name': new_last_name,
+                'password1': new_password,
+                'password2': new_password,
+                'is_superuser': new_admin_status,
             })
         self.assertEqual(httplib.FOUND, response.status_code)
         users = list(User.objects.filter(username='my_user'))
         self.assertEqual(1, len(users))
-        self.assertTrue(users[0].check_password('pw'))
+        self.assertEqual(new_last_name, users[0].last_name)
+        self.assertEqual(new_admin_status, users[0].is_superuser)
+        self.assertTrue(users[0].check_password(new_password))
+
+    def test_edit_user_POST(self):
+        user = factory.make_user(username='user')
+        user_id = user.id
+        new_last_name = factory.getRandomString(30)
+        new_admin_status = factory.getRandomBoolean()
+        response = self.client.post(
+            reverse('accounts-edit', args=['user']),
+            {
+                'username': 'new_user',
+                'last_name': new_last_name,
+                'email': 'new_test@example.com',
+                'is_superuser': new_admin_status,
+            })
+        self.assertEqual(httplib.FOUND, response.status_code)
+        users = list(User.objects.filter(username='new_user'))
+        self.assertEqual(1, len(users))
+        self.assertEqual(user_id, users[0].id)
+        self.assertEqual(new_last_name, users[0].last_name)
+        self.assertEqual(new_admin_status, users[0].is_superuser)
 
     def test_delete_user_GET(self):
         # The user delete page displays a confirmation page with a form.

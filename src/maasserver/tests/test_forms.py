@@ -17,6 +17,7 @@ from django.http import QueryDict
 from maasserver.forms import (
     ConfigForm,
     HostnameFormField,
+    NewUserCreationForm,
     NodeWithMACAddressesForm,
     validate_hostname,
     )
@@ -175,3 +176,14 @@ class TestHostnameFormField(TestCase):
         self.assertEqual(
             ["Enter a valid hostname (e.g. host.example.com)."],
             form.errors['hostname'])
+
+
+class TestNewUserCreationForm(TestCase):
+
+    def test_fields_order(self):
+        form = NewUserCreationForm()
+
+        self.assertEqual(
+            ['username', u'last_name', 'password1', 'password2',
+                'is_superuser'],
+            list(form.fields))
