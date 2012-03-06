@@ -12,9 +12,9 @@ __metaclass__ = type
 __all__ = []
 
 import os
-from subprocess import check_call
 
 from django.conf import settings
+from django.core.management import call_command
 from maasserver.models import FileStorage
 from maastesting import TestCase
 
@@ -26,14 +26,10 @@ class TestCommands(TestCase):
     in a command's code, it should be extracted and unit-tested separately.
     """
 
-    def run_command(self, command_name, *args):
-        """Run a custom command of the "maas" script."""
-        check_call(("./bin/maas", command_name) + args)
-
     def test_gc(self):
         upload_dir = os.path.join(settings.MEDIA_ROOT, FileStorage.upload_dir)
         os.makedirs(upload_dir)
         self.addCleanup(os.removedirs, upload_dir)
-        self.run_command('gc')
+        call_command('gc')
         # The test is that we get here without errors.
         pass
