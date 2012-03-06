@@ -1,7 +1,7 @@
 # Copyright 2012 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""WSGI Application"""
+"""WSGI Application."""
 
 from __future__ import (
     print_function,
@@ -17,7 +17,8 @@ import sys
 import django.core.handlers.wsgi
 
 
-sys.path.append('/usr/share/maas/')
+current_path = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(current_path)
 
 os.environ['DJANGO_SETTINGS_MODULE'] = 'maas.settings'
 application = django.core.handlers.wsgi.WSGIHandler()

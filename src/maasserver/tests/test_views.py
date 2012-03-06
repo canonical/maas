@@ -20,8 +20,8 @@ from lxml.html import fromstring
 from maasserver.models import (
     Config,
     NODE_AFTER_COMMISSIONING_ACTION,
-    UserProfile,
     SSHKeys,
+    UserProfile,
     )
 from maasserver.testing import (
     factory,
@@ -52,7 +52,7 @@ class Test404500(LoggedInTestCase):
                 doc.cssselect('h2')])
 
     def test_500(self):
-        from maas.urls import urlpatterns
+        from maasserver.urls import urlpatterns
         urlpatterns += patterns('',
             (r'^500/$', 'django.views.defaults.server_error'),)
         response = self.client.get('/500/')
