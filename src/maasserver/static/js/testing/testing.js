@@ -29,8 +29,7 @@ module.TestCase = Y.Base.create('ioMockableTestCase', Y.Test.Case, [], {
 
    /**
     * Mock the '_io' field of the provided module.  This assumes that
-    * the module has a internal reference to its io module named '_io'
-    * and that all its io is done via module._io.io(...).
+    * the module has a internal reference to its io module named '_io'.
     *
     * @method mockIO
     * @param mock the mock object that should replace the module's io
@@ -40,6 +39,41 @@ module.TestCase = Y.Base.create('ioMockableTestCase', Y.Test.Case, [], {
         var io = module._io;
         module._io = mock;
         this.addCleanup(function() { module._io = io; });
+    },
+
+   /**
+    * Mock the '_io' field of the provided module with a silent method that
+    * simply records the call to 'send'.  Returns an array where calls will
+    * be recorded.
+    * This assumes that the module has a internal reference to its io module
+    * named '_io' and that all its io is done via module._io.send(...).
+    *
+    * @method logIO
+    * @param module the module to monkey patch
+    */
+    logIO: function(module) {
+        var log = [];
+        var mockXhr = new Y.Base();
+        mockXhr.send = function(url, cfg) {
+            log.push([url, cfg]);
+        };
+        this.mockIO(mockXhr, module);
+        return log;
+    },
+
+   /**
+    * Mock the '_io' field to silence io.
+    * This assumes that the module has a internal reference to its io module
+    * named '_io' and that all its io is done via module._io.send(...).
+    *
+    * @method silentIO
+    * @param module the module to monkey patch
+    */
+    silentIO: function(module) {
+        var mockXhr = new Y.Base();
+        mockXhr.send = function(url, cfg) {
+        };
+        this.mockIO(mockXhr, module);
     },
 
    /**

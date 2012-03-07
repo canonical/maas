@@ -9,6 +9,7 @@ var MaaS_config = {
     uris: {
         login: '{% url "login" %}',
         statics: '{{ STATIC_URL }}',
+        maas_handler: '{% url "maas_handler" %}',
         nodes_handler: '{% url "nodes_handler" %}',
         account_handler: '{% url "account_handler" %}'
         },

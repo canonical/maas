@@ -10,7 +10,9 @@
 {% block head %}
   <script type="text/javascript">
   <!--
-  YUI().use('maas.node_add', 'maas.node','maas.node_views', function (Y) {
+  YUI().use(
+    'maas.node_add', 'maas.node','maas.node_views', 'maas.utils',
+    function (Y) {
     Y.on('load', function() {
       // Create Dashboard view.
       var view_container = Y.Node.create('<div />')
@@ -27,6 +29,12 @@
           .addClass('button');
       Y.one('#content').append(add_node_link);
       add_node_link.on('click', Y.maas.node_add.showAddNodeWidget);
+
+      // Setup TitleEditWidget.
+      var title_widget = new Y.maas.utils.TitleEditWidget(
+	  {srcNode: '.page-title-form'});
+      title_widget.render();
+
     });
   });
   // -->
@@ -35,9 +43,9 @@
 
 {% block page-title-block %}
   {% if user.is_superuser %}
-    {% comment %}TODO: wire this up so that it changes the MaaS title{% endcomment %}
     <form action="" method="" class="page-title-form">
-      <input type="text" value="{{ global_options.site_name }}" title="Edit the name of this MaaS" />
+      <input type="text" value="{{ global_options.site_name }} MaaS"
+             title="Edit the name of this MaaS" />
     </form>
   {% else %}
     <h1 id="page-title">{% include "maasserver/site_title.html" %}</h1>
