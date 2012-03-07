@@ -184,6 +184,6 @@ class TestNewUserCreationForm(TestCase):
         form = NewUserCreationForm()
 
         self.assertEqual(
-            ['username', u'last_name', 'password1', 'password2',
+            ['username', 'last_name', 'email', 'password1', 'password2',
                 'is_superuser'],
             list(form.fields))

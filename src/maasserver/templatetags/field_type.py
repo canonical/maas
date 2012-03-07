@@ -15,7 +15,9 @@ __all__ = [
 
 from django import template
 
+
 register = template.Library()
+
 
 @register.filter('field_type')
 def field_type(field):

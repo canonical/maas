@@ -273,6 +273,7 @@ class UserManagementTest(AdminLoggedInTestCase):
     def test_add_user_POST(self):
         new_last_name = factory.getRandomString(30)
         new_password = factory.getRandomString()
+        new_email = factory.getRandomEmail()
         new_admin_status = factory.getRandomBoolean()
         response = self.client.post(
             reverse('accounts-add'),
@@ -282,12 +283,14 @@ class UserManagementTest(AdminLoggedInTestCase):
                 'password1': new_password,
                 'password2': new_password,
                 'is_superuser': new_admin_status,
+                'email': new_email,
             })
         self.assertEqual(httplib.FOUND, response.status_code)
         users = list(User.objects.filter(username='my_user'))
         self.assertEqual(1, len(users))
         self.assertEqual(new_last_name, users[0].last_name)
         self.assertEqual(new_admin_status, users[0].is_superuser)
+        self.assertEqual(new_email, users[0].email)
         self.assertTrue(users[0].check_password(new_password))
 
     def test_edit_user_POST(self):

@@ -122,7 +122,6 @@ class ProfileForm(ModelForm):
 
 
 class NewUserCreationForm(UserCreationForm):
-    # Add is_superuser field.
     is_superuser = forms.BooleanField(
         label="MaaS administrator", required=False)
 
@@ -133,6 +132,12 @@ class NewUserCreationForm(UserCreationForm):
         self.fields.insert(
             1, 'last_name',
             forms.CharField(label="Full name", max_length=30, required=False))
+        # Insert 'email' field at the right place (right after
+        # the 'last_name' field).
+        self.fields.insert(
+            2, 'email',
+            forms.EmailField(
+                label="E-mail address", max_length=75, required=False))
 
     def save(self, commit=True):
         user = super(NewUserCreationForm, self).save(commit=False)
@@ -141,6 +146,9 @@ class NewUserCreationForm(UserCreationForm):
         new_last_name = self.cleaned_data.get('last_name', None)
         if new_last_name is not None:
             user.last_name = new_last_name
+        new_email = self.cleaned_data.get('email', None)
+        if new_email is not None:
+            user.email = new_email
         user.save()
         return user
 

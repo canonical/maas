@@ -34,6 +34,9 @@ class Factory():
             random.choice(string.letters + string.digits)
             for x in range(size))
 
+    def getRandomEmail(self, login_size=10):
+        return "%s@example.com" % self.getRandomString(size=login_size)
+
     def getRandomBoolean(self):
         return random.choice((True, False))
 
