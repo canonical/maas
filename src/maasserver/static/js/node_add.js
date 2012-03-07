@@ -126,7 +126,7 @@ Y.extend(AddNodeWidget, Y.Panel, {
     },
 
     /**
-     * Display an error message.  The passed-in parameter can be a string or 
+     * Display an error message.  The passed-in parameter can be a string or
      * a Node (in which case it will be appended to the error node).
      *
      * @method displayFormError

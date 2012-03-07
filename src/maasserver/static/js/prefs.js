@@ -102,7 +102,13 @@ Y.extend(TokenWidget, Y.Widget, {
                     row.remove();
                  },
                 failure: function(id, out) {
-                    self.displayError('Unable to delete the token.');
+                    Y.log(out);
+                    if (out.status === 404) {
+                        self.displayError("The key has already been deleted.");
+                    }
+                    else {
+                        self.displayError("Unable to delete the key.");
+                    }
                 }
             }
         };

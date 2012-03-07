@@ -21,6 +21,7 @@ suite.add(new Y.maas.testing.TestCase({
 
     createWidget: function() {
         var widget = new module.TokenWidget({srcNode: '#placeholder'});
+        this.addCleanup(function() { widget.destroy(); });
         this.patchWidgetConfirm(widget, true);
         return widget;
     },
@@ -34,7 +35,6 @@ suite.add(new Y.maas.testing.TestCase({
 
     testInitializer: function() {
         var widget = this.createWidget();
-        this.addCleanup(function() { widget.destroy(); });
         widget.render();
         // The "create a new API token" has been created.
         var create_link = widget.get('srcNode').one('#create_token');
@@ -51,7 +51,6 @@ suite.add(new Y.maas.testing.TestCase({
 
     test_nb_tokens: function() {
         var widget = this.createWidget();
-        this.addCleanup(function() { widget.destroy(); });
         widget.render();
         Y.Assert.areEqual(2, widget.get('nb_tokens'));
      },
@@ -69,30 +68,51 @@ suite.add(new Y.maas.testing.TestCase({
         };
         this.mockIO(mockXhr, module);
         var widget = this.createWidget();
-        this.addCleanup(function() { widget.destroy(); });
         widget.render();
         var link = widget.get('srcNode').one('.delete-link');
         link.simulate('click');
         Y.Assert.isTrue(fired);
     },
 
-    testDeleteTokenFail: function() {
-        // If the API call to delete a token fails, an error is displayed.
-        var mockXhr = new Y.Base();
-        var fired = false;
-        mockXhr.send = function(url, cfg) {
-            fired = true;
-            cfg.on.failure(3);
-        };
-        this.mockIO(mockXhr, module);
+    testDeleteTokenCallsAPI: function() {
+        var log = this.logIO(module);
         var widget = this.createWidget();
-        this.addCleanup(function() { widget.destroy(); });
         widget.render();
         var link = widget.get('srcNode').one('.delete-link');
         link.simulate('click');
-        Y.Assert.isTrue(fired);
+        Y.Assert.areEqual(1, log.length);
+    },
+
+    testDeleteTokenFail404DisplaysErrorMessage: function() {
+        // If the API call to delete a token fails with a 404 error,
+        // an error saying that the key has already been deleted is displayed.
+        var mockXhr = new Y.Base();
+        mockXhr.send = function(url, cfg) {
+            cfg.on.failure(3, {status: 404});
+        };
+        this.mockIO(mockXhr, module);
+        var widget = this.createWidget();
+        widget.render();
+        var link = widget.get('srcNode').one('.delete-link');
+        link.simulate('click');
         Y.Assert.areEqual(
-            'Unable to delete the token.',
+            "The key has already been deleted.",
+            widget.get('srcNode').one('#create_error').get('text'));
+    },
+
+    testDeleteTokenFailDisplaysErrorMessage: function() {
+        // If the API call to delete a token fails, an error is displayed.
+        var mockXhr = new Y.Base();
+        mockXhr.send = function(url, cfg) {
+            cfg.on.failure(3, {status: 500});
+        };
+        this.mockIO(mockXhr, module);
+        var widget = this.createWidget();
+        widget.render();
+        var link = widget.get('srcNode').one('.delete-link');
+        link.simulate('click');
+        Y.Assert.areEqual(
+            "Unable to delete the key.",
             widget.get('srcNode').one('#create_error').get('text'));
     },
 
@@ -107,7 +127,6 @@ suite.add(new Y.maas.testing.TestCase({
         };
         this.mockIO(mockXhr, module);
         var widget = this.createWidget();
-        this.addCleanup(function() { widget.destroy(); });
         widget.render();
         var link = widget.get('srcNode').one('.delete-link');
         Y.Assert.isNotNull(Y.one('#tokenkey1'));
@@ -122,7 +141,6 @@ suite.add(new Y.maas.testing.TestCase({
         var mockXhr = new Y.Base();
         var widget = this.createWidget();
         this.patchWidgetConfirm(widget, false);
-        this.addCleanup(function() { widget.destroy(); });
         widget.render();
         var link = widget.get('srcNode').one('.delete-link');
         Y.Assert.isNotNull(Y.one('#tokenkey1'));
@@ -133,7 +151,6 @@ suite.add(new Y.maas.testing.TestCase({
 
     test_createTokenFromKeys: function() {
         var widget = this.createWidget();
-        this.addCleanup(function() { widget.destroy(); });
         var token = widget.createTokenFromKeys(
             'consumer_key', 'token_key', 'token_secret');
         Y.Assert.areEqual('consumer_key:token_key:token_secret', token);
@@ -153,7 +170,6 @@ suite.add(new Y.maas.testing.TestCase({
         };
         this.mockIO(mockXhr, module);
         var widget = this.createWidget();
-        this.addCleanup(function() { widget.destroy(); });
         widget.render();
         var create_link = widget.get('srcNode').one('#create_token');
         create_link.simulate('click');
@@ -170,7 +186,6 @@ suite.add(new Y.maas.testing.TestCase({
         };
         this.mockIO(mockXhr, module);
         var widget = this.createWidget();
-        this.addCleanup(function() { widget.destroy(); });
         widget.render();
         var create_link = widget.get('srcNode').one('#create_token');
         create_link.simulate('click');
@@ -196,7 +211,6 @@ suite.add(new Y.maas.testing.TestCase({
         };
         this.mockIO(mockXhr, module);
         var widget = this.createWidget();
-        this.addCleanup(function() { widget.destroy(); });
         widget.render();
         var create_link = widget.get('srcNode').one('#create_token');
         create_link.simulate('click');
