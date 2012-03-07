@@ -4,7 +4,7 @@ form ul {
     padding: 0;
     }
 form li {
-    margin-bottom: 8px;
+    margin-bottom: 16px;
     }
 form li.form-submit {
     padding: 8px 0 0 0;
@@ -19,12 +19,19 @@ label {
     display: block;
     margin-bottom: 4px;
     }
+input,
+select {
+    margin: 0;
+    }
 label .required {
     color: #aea79f;
     }
 form .help {
     display: block;
     color: #aea79f;
+    }
+input[type="checkbox"] {
+    margin-right: 3px;
     }
 textarea,
 input[type="password"],

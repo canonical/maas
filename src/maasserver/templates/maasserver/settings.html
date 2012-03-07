@@ -35,19 +35,19 @@
             <td>{{ user_item.last_login }}</td>
             <td>
               {% if user_item.is_superuser %}
-                <img src="{{ STATIC_URL }}img/yes.png" />
+                <img src="{{ STATIC_URL }}img/yes.png" alt="yes" />
               {% endif %}
             </td>
             <td>
               <a href="{% url 'accounts-edit' user_item.username %}"
                  title="Edit user {{ user_item.username }}">
-                <img src="{{ STATIC_URL }}img/edit.png" />
+                <img src="{{ STATIC_URL }}img/edit.png" alt="edit" />
               </a>
               {% if user != user_item %}
                 <a title="Delete user {{ user_item.username }}"
                    class="delete-user"
                    href="{% url 'accounts-del' user_item.username %}">
-                  <img src="{{ STATIC_URL }}img/delete.png" />
+                  <img src="{{ STATIC_URL }}img/delete.png" alt="delete" />
                 </a>
                 <form method="POST"
                       action="{% url 'accounts-del' user_item.username %}">
@@ -63,6 +63,7 @@
       <a class="button right" href="{% url 'accounts-add' %}">
         Add user
       </a>
+      <div class="clear"></div>
     </div>
     <div id="commissioning" class="block size7 first">
       <h2>Commissioning</h2>
@@ -83,11 +84,14 @@
         {% with field=ubuntu_form.update_from %}
           {% include "maasserver/form_field.html" %}
         {% endwith %}
-        <p>
+        <li>
+          <label>Custom archives</label>
           <a href="{% url "settings-add-archive" %}">
+            <img src="{{ STATIC_URL }}img/inline_add.png" 
+                 alt="Add" class="icon" />
             Add archive for newly provisioned machines
           </a>
-        </p>
+        </li>
         {% with field=ubuntu_form.fallback_master_archive %}
           {% include "maasserver/form_field.html" %}
         {% endwith %}

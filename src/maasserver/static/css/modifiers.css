@@ -18,3 +18,7 @@
 .right {
     float: right;
     }
+img.icon {
+    vertical-align: text-bottom;
+    margin-right: 3px;
+    }
