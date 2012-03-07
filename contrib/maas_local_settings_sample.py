@@ -4,11 +4,10 @@ STATIC_ROOT = '/var/lib/maas/static/'
 # Prefix to use for MaaS's urls.
 # If FORCE_SCRIPT_NAME is None (the default), all the urls will start with
 # '/'.
-FORCE_SCRIPT_NAME = None
-# FORCE_SCRIPT_NAME = '/MaaS'
+FORCE_SCRIPT_NAME = '/MaaS'
 
 # Where to store the user uploaded files.
-MEDIA_ROOT = '/var/tmp/maas'
+MEDIA_ROOT = '/var/lib/maas/media/'
 
 # Database access configuration.
 DATABASES = {
