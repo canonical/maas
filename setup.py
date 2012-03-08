@@ -55,6 +55,7 @@ setup(
             ]
         ),
     package_dir={'': b'src'},
+    include_package_data=True,
 
     install_requires=[
         'setuptools',
