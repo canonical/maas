@@ -206,14 +206,11 @@ INSTALLED_APPS = (
     'maasserver',
     'metadataserver',
     'piston',
-    # Uncomment the next line to enable admin documentation:
-    # 'django.contrib.admindocs',
 )
 
 if DEBUG:
     INSTALLED_APPS += (
         'django.contrib.admin',
-        'django.contrib.admindocs',
     )
 # A sample logging configuration. The only tangible logging
 # performed by this configuration is to send an email to

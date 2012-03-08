@@ -43,7 +43,6 @@ MEDIA_ROOT = os.path.join(os.getcwd(), "tmp")
 
 INSTALLED_APPS += (
     'django.contrib.admin',
-    'django.contrib.admindocs',
     'maastesting',
     'debug_toolbar',
     'django_nose',
