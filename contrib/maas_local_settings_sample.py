@@ -1,3 +1,6 @@
+# Debug/Prod mode.
+DEBUG = False
+
 # Absolute path to the directory static files should be collected to.
 STATIC_ROOT = '/var/lib/maas/static/'
 
