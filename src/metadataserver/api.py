@@ -72,7 +72,7 @@ def make_list_response(items):
 
 def check_version(version):
     """Check that `version` is a supported metadata version."""
-    if version not in ('latest', '2012-03-01')
+    if version not in ('latest', '2012-03-01'):
         raise UnknownMetadataVersion("Unknown metadata version: %s" % version)
 
 
