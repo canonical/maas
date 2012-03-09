@@ -87,6 +87,39 @@ to reside and run::
     $ bzr branch lp:maas maas && cd maas
 
 
+Running tests
+=============
+
+To run the whole suite::
+
+    $ make test
+
+To run tests at a lower level of granularity::
+
+    $ bin/test.maas maasserver.tests.test_api -v
+    $ bin/test.pserv provisioningserver.tests.test_api -v
+
+The test runner is `nose`_, so you can pass in options like
+``--with-coverage`` and ``--nocapture`` (short option: ``-s``). The
+latter is essential when using ``pdb`` so that stdout is not
+adulterated.
+
+.. _nose: http://readthedocs.org/docs/nose/en/latest/
+
+
+Running tests with a real Cobbler
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Once you have a Cobbler instance running somewhere there are some
+tests that can be run against it::
+
+    $ PSERV_TEST_COBBLER_URL=http://user:pass@localhost/cobbler_api \
+        bin/test.pserv provisioningserver.tests.test_api
+
+Adjust ``PSERV_TEST_COBBLER_URL`` as necessary. **Warning:** these
+tests will modify your Cobbler database.
+
+
 Development MaaS server setup
 =============================
 
@@ -140,6 +173,7 @@ your branch::
 
     $ make distclean
 
+
 Adding new dependencies
 =======================
 
@@ -175,4 +209,3 @@ documentation`_.
 
 .. _convention for headings as used in the Python documentation:
   http://sphinx.pocoo.org/rest.html#sections
-
