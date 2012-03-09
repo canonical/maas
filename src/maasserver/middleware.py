@@ -59,8 +59,10 @@ class AccessMiddleware:
     def __init__(self):
         # URL prefixes that do not require authentication by Django.
         public_url_roots = [
-            # Login/logout pages: must be visible to anonymous users.
+            # Login page: must be visible to anonymous users.
             reverse('login'),
+            # The combo loader is publicly accessible.
+            '^/' + re.escape(settings.YUI_COMBO_URL),
             # Static resources are publicly visible.
             settings.STATIC_URL,
             reverse('favicon'),

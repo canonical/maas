@@ -55,6 +55,7 @@ if FORCE_SCRIPT_NAME is not None:
 API_URL_REGEXP = '^/api/1[.]0/'
 METADATA_URL_REGEXP = '^/metadata/'
 
+YUI_COMBO_URL = "combo/"
 
 # We handle exceptions ourselves (in
 # maasserver.middleware.APIErrorsMiddleware)
