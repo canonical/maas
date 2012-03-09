@@ -1,5 +1,6 @@
 graft src/*/static
 graft src/*/templates
+graft vdenv
 prune src/*/testing
 prune src/*/tests
 prune src/maastesting

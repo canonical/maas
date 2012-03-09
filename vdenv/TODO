@@ -1,0 +1,14 @@
+- prefix names with 'odev' (or some prefix)
+- settings.cfg: add 'cobbler' section for auth
+- improve the Domain objects
+- document
+  - vinagre $(virsh vncdisplay node01)
+  - ssh -L 5901:localhost:5901 -L 8000:192.168.123.2:80
+  - start ssh connection to remote system with a bunch of ports
+    forwarded for vnc connections and http to the zimmer box
+     ssh -C home-jimbo \
+     $(t=98; for((i=0;i<5;i++)); do p=$(printf "%02d" "$i"); echo -L $t$p:localhost:59$p; done ; echo -L${t}80:192.168.123.2:80)
+- tell orchestra to point to a different proxy server
+- document or fix annoying ssh key entries (juju prompt for add and change)
+- get serial consoles to log file for domains
+- support i386 (for i386 installs of ubuntu)

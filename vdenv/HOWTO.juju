@@ -1,0 +1,68 @@
+# http://askubuntu.com/questions/65359/how-do-i-configure-juju-for-local-usage
+
+pkgs="libzookeeper-java zookeeper juju bzr"
+
+JUJU_D=$HOME/juju
+JUJU_ORIGIN="lp:juju"
+JUJU_SERIES="precise"
+
+REPO="$HOME/charms"
+CHARMS_D="$CHARMS_D/$JUJU_SERIES"
+
+ZIMMER_IP=192.168.123.2
+
+id_rsa="$HOME/.ssh/id_rsa"
+[ -f "$id_rsa" ] || ssh-keygen -t rsa -N '' -f "$id_rsa"
+read x y z < "$id_rsa"
+grep -q "$y" ~/.ssh/authorized_keys ||
+   cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys
+
+sudo apt-get --assume-yes install $pkgs </dev/null
+
+mkdir -p "${JUJU_D%/*}"
+#( cd ${JUJU_D%/*} && bzr branch lp:juju )
+( cd ${JUJU_D%/*} && bzr branch $JUJU_ORIGIN juju )
+
+mkdir -p "$CHARMS_D"
+( cd "$CHARMS_D" && bzr branch lp:charm/mysql && bzr branch lp:charm/wordpress )
+
+ENAME="odev"
+
+mkdir ~/.juju/
+cat > ~/.juju/environments.yaml <<EOF
+environments:
+  $ENAME:
+    type: orchestra
+    juju-origin: $JUJU_ORIGIN
+    orchestra-server: $ZIMMER_IP
+    orchestra-user: cobbler
+    orchestra-pass: xcobbler
+    acquired-mgmt-class: orchestra-juju-acquired
+    available-mgmt-class: orchestra-juju-available
+    admin-secret: SEEKRIT
+    storage-url: http://$ZIMMER_IP/webdav
+    authorized-keys: $(cat ~/.ssh/id_rsa.pub)
+    data-dir: $HOME/juju-data/$ENAME
+    default-series: $JUJU_SERIES
+EOF
+
+export PATH="$JUJU_D/bin:$HOME/bin:/usr/sbin:/usr/bin:/sbin:/bin" PYTHONPATH=$JUJU_D
+
+# now start your juju bootstrap node.  this will take some time, as we're
+# doing a full install into the VM.
+juju bootstrap --environment $ENAME
+
+# now create the mysql and wordpress units
+# this takes quite a while as full VM install of each
+juju deploy --environment $ENAME --repository $REPO local:mysql
+juju deploy --environment $ENAME --repository $REPO local:wordpress
+
+# now link the two
+juju add-relation --environment $ENAME wordpress mysql
+
+# juju status:
+# FIXME: resolution will try to use dns and will not work for nodes
+#        workaround: can add 192.168.123.1 to /etc/resolv.conf 'server' line
+# FIXME: juju status hangs "connecting to environment" during bootstrap
+#        node installation.  The post should call home and indicate done.  so
+#        juju could/should know that its still installing.

@@ -1,0 +1,23 @@
+<network>
+  <name>$name</name>
+  <forward mode='nat'/>
+  <bridge name='$bridge' stp='off' delay='0' />
+  <dns>
+    <host ip='$ip_pre.1'>
+      <hostname>host-system</hostname>
+    </host>
+    <host ip='$ip_pre.2'>
+      <hostname>zimmer-server</hostname>
+    </host>
+  </dns>
+  <ip address='$ip_pre.1' netmask='$netmask'>
+    <dhcp>
+      <range start='$ip_pre.$dhcp.range.start' end='$ip_pre.$dhcp.range.end' />
+      <bootp server="$all_systems.zimmer.ipaddr" file="pxelinux.0" />
+      #for $sys in $all_systems.itervalues()
+      <host mac="$sys.mac" name="$sys.name" ip="$sys.ipaddr" />
+      #end for
+    </dhcp>
+  </ip>
+</network>
+

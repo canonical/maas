@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
+# Get zimmer and cobbler running, assuming that zimmer has already been set up.
+
+# Exit immediately if a command exits with a non-zero status.
+set -o errexit
+# Treat unset variables as an error when substituting.
+set -o nounset
+
+## create libvirt xml files for nodes, zimmer, network
+./setup.py libvirt-setup
+
+## start odev-net network
+virsh -c qemu:///system net-start odev-net
+
+## create zimmer disk image qcow backing against pristine version
+qemu-img create -f qcow2 -b zimmer-build/zimmer-disk0.img zimmer-disk0.img
+
+## start zimmer instance / orchestra server
+virsh -c qemu:///system start zimmer
+
+cat <<EOF
+Starting orchestra server.
+You can now ssh ubuntu@192.168.123.2 (password: passw0rd).
+If you do that, you may run 'ssh-import-id' to import your ssh key.
+
+Access the cobbler UI on http://192.168.123.2/cobbler_web
+and log in with 'cobbler:xcobbler'.
+EOF
+
+

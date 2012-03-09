@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+#
+# Wait for the virtual cobbler instance's ssh server to start up, and set up
+# passwordless login if desired.
+#
+# Usage:
+#   authorize-ssh <cobbler-ssh-login> <key-owner>
+#
+# Where:
+#  * cobbler-ssh-login is an ssh user/hostname, e.g. ubuntu@192.168.123.2
+#  * key-owner is a Launchpad login name, or * to use local keys, or nothing.
+#
+# If a Launchpad login name is given, import the associated ssh keys into the
+# cobbler instance.  If key-owner is an asterisk, import the local public ssh
+# keys from ~/.ssh/id_*.pub
+
+# Exit immediately if a command exits with a non-zero status.
+set -o errexit
+# Treat unset variables as an error when substituting.
+set -o nounset
+
+cobblerlogin=$1
+keyowner=$2
+
+if test -z "$keyowner"
+then
+    echo "Not setting up ssh keys."
+    echo "I'll still test a login to Cobbler though."
+    inputfiles=/dev/null
+    remotecmd="uptime"
+elif test "$keyowner" = "*"
+then
+    inputfiles=`ls ~/.ssh/id_*.pub`
+    echo "Copying public key(s): $inputfiles"
+    remotecmd="tee .ssh/authorized_keys"
+else
+    inputfiles=/dev/null
+    remotecmd="ssh-import-id $keyowner"
+fi
+
+while ! cat $inputfiles | ssh $cobblerlogin -o StrictHostKeyChecking=no $remotecmd
+do
+    sleep 5
+done

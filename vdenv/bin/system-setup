@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
+#
+# System-wide setup for odev.  This requires sudo.
+
+# Exit immediately if a command exits with a non-zero status.
+set -o errexit
+# Treat unset variables as an error when substituting.
+set -o nounset
+
+## install some dependencies
+pkgs=""
+pkgs="$pkgs genisoimage coreutils" # for cloud-init's 'make-iso'
+pkgs="$pkgs python-libvirt libvirt-bin" # for libvirt interaction
+pkgs="$pkgs socat" # for libvirt-> cobbler
+pkgs="$pkgs python-cheetah" # for setup.py
+pkgs="$pkgs qemu-utils qemu-kvm" # needed generally
+
+new_pkgs=""
+for pkg in ${pkgs}; do
+    dpkg-query --show "$pkg" >/dev/null ||
+        new_pkgs="${new_pkgs:+${new_pkgs} }${pkg}"
+done
+
+if [ -n "$new_pkgs" ]; then
+    sudo apt-get update -qq || /bin/true
+    sudo apt-get install -y $pkgs </dev/null
+fi
+
+new_groups=""
+for group in libvirtd kvm; do
+    groups $USER | grep -q $group && continue
+    sudo adduser $USER $group
+    new_groups="${new_groups:+${new_groups} }${group}"
+done
+
+if [ -n "$new_groups" ]; then
+    cat <<EOF
+Done.
+
+The script just added you to the system group[s] $new_groups
+
+If you were not previously in these groups, you will need to log out and
+log back in again to make the changes take effect.
+EOF
+
+    # The user may need to log out at this point.
+    echo "Ctrl-C if you want to log out now.  Otherwise, press <enter>."
+    read
+fi

@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+#
+# This file documents how to get odev running on your system.  But it's also
+# a script; you may find that you can just run it and get a working setup.
+
+# Exit immediately if a command exits with a non-zero status.
+set -o errexit
+# Treat unset variables as an error when substituting.
+set -o nounset
+
+## System-level setup.  This needs to be done only once.
+./bin/system-setup
+
+## Build a zimmer image in this branch.
+pushd zimmer-build
+./build zimmer-disk0.img --import-keys=auto
+popd
+
+## Get zimmer and cobbler running.
+./bin/start-odev
+
+cobblerlogin=ubuntu@192.168.123.2
+cat <<EOF
+While we're waiting for the server to come up, let's set up ssh login to
+the cobbler server at $cobblerlogin.
+
+Please enter your Launchpad login name to import your ssh keys from Launchpad,
+or an asterisk ("*") to import your local public ssh keys.  Enter nothing to
+skip this step.
+
+(If the server prompts you for a password, the default is "passw0rd")
+EOF
+read keyowner
+./bin/authorize-ssh $cobblerlogin $keyowner
+
+## populate the nodes into the cobbler server
+./setup.py cobbler-setup
+
+## Listen for libvirt requests from the Cobbler server.
+VIRSH_LISTENER_DEBUG=1 ./bin/virsh-listener &
+
+
+## at this point you may want to modify zimmer to provide a proxy
+##  other than itself to things installing from it (LP: #914202).
+##  ssh to zimmer, and then edit :
+##    /var/lib/cobbler/snippets/orchestra_proxy

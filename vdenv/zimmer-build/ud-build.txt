@@ -1,0 +1,70 @@
+#cloud-config
+password: passw0rd
+chpasswd: { expire: False }
+ssh_pwauth: True
+
+#apt_proxy: "http://local-proxy:3128/"
+#apt_mirror: "http://us.archive.ubuntu.com/ubuntu"
+#ssh_import_id: smoser
+
+bucket:
+ - &setup |
+   cd /root
+   (
+   #ONE_TIME_PROXY=http://local-proxy:3128/
+
+   echo === $(date) ====
+   debconf-set-selections <<EOF
+   ubuntu-orchestra-provisioning-server   ubuntu-orchestra-provisioning-server/import-isos   boolean  false
+   ubuntu-orchestra-provisioning-server   ubuntu-orchestra-provisioning-server/dnsmasq-dhcp-range  string   10.10.10.2,10.10.10.254
+   ubuntu-orchestra-provisioning-server   ubuntu-orchestra-provisioning-server/dnsmasq-enabled  boolean  false
+   cobbler  cobbler/server_and_next_server   string   zimmer-server
+   cobbler  cobbler/password  password xcobbler
+   cloud-init	cloud-init/datasources	multiselect	NoCloud, OVF
+
+   EOF
+
+   [ -n "$ONE_TIME_PROXY" ] && export http_proxy="$ONE_TIME_PROXY"
+   export DEBIAN_FRONTEND=noninteractive;
+   dpkg-reconfigure cloud-init
+
+   read oldhost < /etc/hostname
+   sed -i "/$oldhost/d;/zimmer/d" /etc/hosts
+   echo zimmer > /etc/hostname
+   hostname zimmer
+
+   echo "127.0.1.2 zimmer-server" >> /etc/hosts
+   
+   echo === $(date): starting apt ====
+   apt_get() { 
+     DEBIAN_FRONTEND=noninteractive apt-get \
+        --option "Dpkg::Options::=--force-confold" --assume-yes "$@"
+   }
+   apt_get update
+   apt_get install ubuntu-orchestra-provisioning-server libvirt-bin cobbler-web
+   
+   case $(uname -m) in
+      i?86) arches="i386";;
+      *) arches="amd64";;
+   esac
+   cat >> /etc/orchestra/import_isos <<END
+   RELEASES="oneiric precise"
+   ARCHES="${arches}"
+   END
+
+   echo === $(date): starting import ====
+   orchestra-import-isos
+
+   sed -i '/zimmer-server/d' /etc/hosts
+
+   echo === $(date): starting cleanup ====
+   apt_get clean
+   time sh -c 'dd if=/dev/zero of=/out.img; rm /out.img'
+
+   echo === $(date): poweroff ===
+   echo === ZIMMER BUILD FINISHED ===
+   ) 2>&1 | tee out.log
+
+runcmd:
+ - [ sh, -c, *setup ]
+ - [ /sbin/poweroff ]
