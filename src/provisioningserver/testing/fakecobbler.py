@@ -10,6 +10,7 @@ from __future__ import (
 
 __metaclass__ = type
 __all__ = [
+    'fake_auth_failure_string',
     'FakeCobbler',
     'FakeTwistedProxy',
     'fake_token',
@@ -33,6 +34,11 @@ from twisted.internet.defer import (
 
 
 unique_ints = count(randint(0, 99999))
+
+
+def fake_auth_failure_string(token):
+    """Fake a Cobbler authentication failure fault string for `token`."""
+    return "<class 'cobbler.exceptions.CX'>:'invalid token: %s'" % token
 
 
 def fake_token(user=None, custom_id=None):
@@ -127,7 +133,7 @@ class FakeCobbler:
 
     def _check_token(self, token):
         if token not in self.tokens:
-            raise Fault(1, "invalid token: %s" % token)
+            raise Fault(1, fake_auth_failure_string(token))
 
     def _raise_bad_handle(self, object_type, handle):
         raise Fault(1, "Invalid %s handle: %s" % (object_type, handle))

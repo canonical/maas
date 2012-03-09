@@ -16,7 +16,10 @@ from xmlrpclib import Fault
 
 import fixtures
 from provisioningserver import cobblerclient
-from provisioningserver.testing.fakecobbler import fake_token
+from provisioningserver.testing.fakecobbler import (
+    fake_auth_failure_string,
+    fake_token,
+    )
 from testtools.content import text_content
 from testtools.deferredruntest import (
     assert_fails_with,
@@ -49,7 +52,8 @@ class FakeAuthFailure(Fault):
     """Imitated Cobbler authentication failure."""
 
     def __init__(self, token):
-        super(FakeAuthFailure, self).__init__(1, "invalid token: %s" % token)
+        super(FakeAuthFailure, self).__init__(
+            1, fake_auth_failure_string(token))
 
 
 def make_auth_failure(broken_token=None):
@@ -236,6 +240,19 @@ class TestCobblerSession(TestCase):
         actual_return_value = yield session.call(method, arg)
         self.assertEqual(return_value, actual_return_value)
         self.assertEqual([(method, arg)], session.proxy.calls)
+
+    def test_looks_like_auth_expiry_returns_False_for_regular_exception(self):
+        self.assertFalse(
+            cobblerclient.looks_like_auth_expiry(RuntimeError("Error")))
+
+    def test_looks_like_auth_expiry_returns_False_for_other_Fault(self):
+        self.assertFalse(
+            cobblerclient.looks_like_auth_expiry(
+                Fault(1, "Missing sprocket")))
+
+    def test_looks_like_auth_expiry_recognizes_auth_expiry(self):
+        self.assertTrue(
+            cobblerclient.looks_like_auth_expiry(make_auth_failure()))
 
     @inlineCallbacks
     def test_call_reauthenticates_and_retries_on_auth_failure(self):

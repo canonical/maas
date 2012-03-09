@@ -92,7 +92,8 @@ def looks_like_auth_expiry(exception):
     if not hasattr(exception, 'faultString'):
         # An auth failure would come as an xmlrpclib.Fault.
         return False
-    return exception.faultString.startswith("invalid token: ")
+    else:
+        return "invalid token: " in exception.faultString
 
 
 class CobblerSession:
