@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Example: YUI Core</title>
+    <link rel="stylesheet" href="http://yui.yahooapis.com/3.4.0pr3/build/cssgrids/grids-min.css">
+    <link rel="stylesheet" href="../assets/css/main.css">
+    <link rel="stylesheet" href="../assets/vendor/prettify/prettify-min.css">
+    <script src="../../build/yui/yui-min.js"></script>
+</head>
+<body>
+
+<div id="doc">
+    <h1>Example: YUI Core</h1>
+
+    
+        <a href="#toc" class="jump">Jump to Table of Contents</a>
+    
+
+    <div class="yui3-g">
+        <div id="main" class="yui3-u">
+            <div class="content"><div class="intro">
+<p>This example shows how to use the core of YUI.</p>
+</div>
+
+<div class="example">
+    <style>
+    #demo {
+        height: 100px;
+        width: 100px;
+        border: 1px solid black;
+        background-color: #8DD5E7;
+        text-align: center;
+    }
+</style>
+
+<div id="demo"></div>
+
+<script>
+YUI().use('node', function(Y) {
+    var node = Y.one('#demo');
+    Y.log('Found node.. Setting style');
+    node.setStyle('backgroundColor', '#D00050');
+    node.setContent('<strong>Changed!</strong>');
+});
+
+</script>
+
+
+</div>
+
+<h3 id="setting-up-the-yui-instance">Setting up the YUI Instance</h3>
+<p>Here we will create our <code>YUI</code> instance, loading 'node' so we can work with DOM elements in the example.</p>
+
+<pre class="code prettyprint">YUI().use(&#x27;node&#x27;, ...</pre>
+
+
+<h3 id="using-the-callback">Using the callback</h3>
+<p>The <code>use</code> method will dynamically fetch anything required for 'node' if it isn't already on the page.
+If dynamic loading is required, the last parameter supplied to <code>use</code> should be a function to execute when
+the load is complete.  This function will be executed whether or not dynamic loading is required, so it
+is the preferred pattern for using <code>YUI</code>.</p>
+
+<pre class="code prettyprint">YUI().use(&#x27;node&#x27;, function(Y) ...</pre>
+
+
+<p>
+The function is supplied a reference to the <code>YUI</code> instance, so we can wrap all of our implementation code inside of
+the <code>use</code> statement without saving an external reference to the instance somewhere else.
+</p>
+<p>
+Now that we know all of the modules are loaded, we can use node to update DOM nodes.
+</p>
+
+<h3 id="full-javascript">Full Javascript</h3>
+<pre class="code prettyprint">YUI().use(&#x27;node&#x27;, function(Y) {
+    var node = Y.one(&#x27;#demo&#x27;);
+    Y.log(&#x27;Found node.. Setting style&#x27;);
+    node.setStyle(&#x27;backgroundColor&#x27;, &#x27;#D00050&#x27;);
+    node.setContent(&#x27;&lt;strong&gt;Changed!&lt;&#x2F;strong&gt;&#x27;);
+});</pre>
+
+</div>
+        </div>
+
+        <div id="sidebar" class="yui3-u">
+            
+                <div id="toc" class="sidebox">
+                    <div class="hd">
+                        <h2 class="no-toc">Table of Contents</h2>
+                    </div>
+
+                    <div class="bd">
+                        <ul class="toc">
+<li>
+<a href="#setting-up-the-yui-instance">Setting up the YUI Instance</a>
+</li>
+<li>
+<a href="#using-the-callback">Using the callback</a>
+</li>
+<li>
+<a href="#full-javascript">Full Javascript</a>
+</li>
+</ul>
+                    </div>
+                </div>
+            
+
+            
+                <div class="sidebox">
+                    <div class="hd">
+                        <h2 class="no-toc">Examples</h2>
+                    </div>
+
+                    <div class="bd">
+                        <ul class="examples">
+                            
+                                
+                                    <li data-description="Setting up a YUI Instance">
+                                        <a href="yui-core.html">YUI Core</a>
+                                    </li>
+                                
+                            
+                                
+                                    <li data-description="Working with multiple YUI instances.">
+                                        <a href="yui-multi.html">Multiple Instances</a>
+                                    </li>
+                                
+                            
+                                
+                                    <li data-description="On-demand loading of YUI and non-YUI assets">
+                                        <a href="yui-loader-ext.html">YUI Loader - Dynamically Adding YUI and External Modules</a>
+                                    </li>
+                                
+                            
+                                
+                                    <li data-description="Create Class Hierarchies with &#x60;extend&#x60;">
+                                        <a href="yui-extend.html">Create Class Hierarchies with &#x60;extend&#x60;</a>
+                                    </li>
+                                
+                            
+                                
+                                    <li data-description="Creating a composition-based class structure using &#x60;augment&#x60;">
+                                        <a href="yui-augment.html">Compose Classes of Objects with &#x60;augment&#x60;</a>
+                                    </li>
+                                
+                            
+                                
+                                    <li data-description="Add behaviors to objects or static classes with &#x60;mix&#x60;">
+                                        <a href="yui-mix.html">Add Behaviors to Objects with &#x60;mix&#x60;</a>
+                                    </li>
+                                
+                            
+                                
+                                    <li data-description="Combine data sets and create shallow copies of objects with &#x60;merge&#x60;">
+                                        <a href="yui-merge.html">Combine Data Sets with &#x60;merge&#x60;</a>
+                                    </li>
+                                
+                            
+                                
+                                    <li data-description="Check data types with the &#x60;Lang Utilities&#x60;">
+                                        <a href="yui-isa.html">Check Data Types with &#x60;Lang&#x60;</a>
+                                    </li>
+                                
+                            
+                                
+                                    <li data-description="Get information about the current user agent with &#x60;UA&#x60;">
+                                        <a href="yui-ua.html">Browser Detection with &#x60;UA&#x60;</a>
+                                    </li>
+                                
+                            
+                                
+                                    <li data-description="Working with YUI 2 in 3">
+                                        <a href="yui-yui2.html">Working with YUI 2 in 3</a>
+                                    </li>
+                                
+                            
+                                
+                                    <li data-description="Natively use YUI Gallery Modules">
+                                        <a href="yui-gallery.html">Natively use YUI Gallery Modules</a>
+                                    </li>
+                                
+                            
+                        </ul>
+                    </div>
+                </div>
+            
+
+            
+        </div>
+    </div>
+</div>
+
+<script src="../assets/vendor/prettify/prettify-min.js"></script>
+<script>prettyPrint();</script>
+
+</body>
+</html>

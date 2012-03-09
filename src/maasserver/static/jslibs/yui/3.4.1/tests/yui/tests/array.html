@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Y.Array tests (core)</title>
+</head>
+<body class="yui3-skin-sam">
+
+<div id="log"></div>
+
+<div id="tester" style="visibility: hidden;">
+    <span>test</span>
+    <span>test</span>
+    <span>test</span>
+</div>
+
+<script src="../../../build/yui/yui.js"></script>
+<script>
+var Y = YUI({
+    allowRollup: false,
+    filter: (window.location.search.match(/[?&]filter=([^&]+)/) || [])[1] || 'min',
+    modules: {
+        'array-test': {
+            fullpath: 'array-test.js',
+            requires: ['test']
+        },
+
+        'test-console': {
+            fullpath : '../../common/tests/assets/test-console.js',
+            requires : ['console-filters'],
+            skinnable: true
+        },
+
+        'skin-sam-test-console': {
+            fullpath: '../../common/tests/assets/test-console.css',
+            type    : 'css'
+        }
+    },
+    useBrowserConsole: false
+}).use('array-test', 'test-console', function (Y) {
+    Y.Test.Runner.run();
+});
+</script>
+
+</body>
+</html>

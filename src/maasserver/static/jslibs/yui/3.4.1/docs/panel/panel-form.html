@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Example: Creating a modal form</title>
+    <link rel="stylesheet" href="http://yui.yahooapis.com/3.4.0pr3/build/cssgrids/grids-min.css">
+    <link rel="stylesheet" href="../assets/css/main.css">
+    <link rel="stylesheet" href="../assets/vendor/prettify/prettify-min.css">
+    <script src="../../build/yui/yui-min.js"></script>
+</head>
+<body>
+
+<div id="doc">
+    <h1>Example: Creating a modal form</h1>
+
+    
+
+    <div class="yui3-g">
+        <div id="main" class="yui3-u">
+            <div class="content"><div class="intro">
+    <p>This example demonstrates how to set up and instantiate Y.Panel to take advantage of its nested modality and header/footer button support. In this example, we create a simple datatable with some basic information that is updated and removed through a modal form with some custom buttons.</p>
+</div>
+
+<div class="example newwindow">
+    <a href="panel-form-example.html" target="_blank" class="button">
+        View Example in New Window
+    </a>
+</div>
+
+<h2>Creating a modal form using Panels</h2>
+
+<h3>Setting Up The YUI Instance</h3>
+
+<p>To create an instance of a Panel on your page, the only module you need to request is the <code>panel</code> module. The <code>panel</code> module will pull in the <code>widget</code>, <code>widget-stack</code>, <code>widget-position</code>, <code>widget-position-align</code>, <code>widget-position-constrain</code>, <code>widget-stdmod</code>, <code>widget-buttons</code>, <code>widget-modality</code> and <code>widget-autohide</code> extensions it uses.</p>
+
+<p>For this example, we also use the YUI3 Datatable, and the Drag plugin to make the panels draggable. This requires us to also request the <code>datatable-base</code> and <code>dd-plugin</code> modules in our use statement.
+
+<pre class="code prettyprint">YUI({...}).use(&quot;panel&quot;, &quot;datatable-base&quot;, &quot;dd-plugin&quot;, function(Y) {
+    &#x2F;&#x2F; We&#x27;ll write example code here where we have Y.Datatable, Y.Plugin.Drag and Y.Panel available 
+});</pre>
+
+
+<p>Note, using the <code>panel</code> module, will also pull down the default CSS required for panel. The CSS that styles the Panel requires you to have the class <code>yui3-skin-sam</code> on a parent element, commonly the <code>&lt;body&gt;</code> tag.</p>
+
+<h3>Creating a Panel From Markup</h3>
+
+<p>For this example, we'll need two panel instances. The first will be created through markup, while the second will be created through JavaScript (just to illustrate the differences). The code snippet below is the markup for our modal form. It consists of a fieldset with a couple of <code>&lt;input&gt;</code> boxes. The <code>yui3-widget-bd</code> class is not required, but tells the Panel that this content goes in the body of the widget.</p>
+
+<pre class="code prettyprint">&lt;div id=&quot;panelContent&quot;&gt;
+    &lt;div class=&quot;yui3-widget-bd&quot;&gt;
+    &lt;form&gt;
+      &lt;fieldset&gt;
+        &lt;p&gt;&lt;label for=&quot;id&quot;&gt;ID&lt;&#x2F;label&gt;&lt;br&#x2F;&gt;
+        &lt;input type=&quot;text&quot; name=&quot;id&quot; id=&quot;productId&quot; placeholder=&quot;&quot;&gt;&lt;&#x2F;p&gt;
+        &lt;p&gt;&lt;label for=&quot;name&quot;&gt;Name&lt;&#x2F;label&gt;&lt;br&#x2F;&gt;
+        &lt;input type=&quot;text&quot; name=&quot;name&quot; id=&quot;name&quot; value=&quot;&quot; placeholder=&quot;&quot;&gt;&lt;&#x2F;p&gt;
+        &lt;p&gt;&lt;label for=&quot;password&quot;&gt;Price&lt;&#x2F;label&gt;&lt;br&#x2F;&gt;
+        &lt;input type=&quot;text&quot; name=&quot;price&quot; id=&quot;price&quot; value=&quot;&quot; placeholder=&quot;$&quot;&gt;&lt;&#x2F;p&gt;
+      &lt;&#x2F;fieldset&gt;
+      &lt;&#x2F;form&gt;
+  &lt;&#x2F;div&gt;</pre>
+
+
+<p>The container DIV with id="panelContent" is specified as the contentBox for the Panel instance, and during instantiation, the panel will look for DIV's marked with the <code>yui3-widget-hd, yui3-widget-bd, yui3-widget-ft</code> classes to setup the Overlay's header, body and footer content attributes.</p>
+
+<h3>Instantiating the Parent Panel</h3>
+
+<p>To create a panel instance, we use the panel constructor <code>Y.Panel</code>. We can pass in some additional configuration attributes such as <code>modal</code>, <code>headerContent</code>, and <code>centered</code>. We can make the panel draggable by adding the <code>Y.Plugin.Drag</code> plugin.</p>
+
+<p>After creating the panel instance, we invoke <code>panel.render()</code> to update the DOM to reflect the current state of the panel.</p>
+
+<pre class="code prettyprint">var panel = new Y.Panel({
+  srcNode: &quot;#panelContent&quot;,
+  width: 250,
+  centered: true,
+  visible: false,
+  modal:true,
+  headerContent: &quot;Add A New Product&quot;,
+  plugins: [Y.Plugin.Drag]
+});
+
+panel.render();</pre>
+
+
+<h3>Adding Footer buttons to the Panel</h3>
+
+<p>The parent panel has two buttons in the footer, "Add Item" and "Remove All Items". We add these buttons through the <code>addButton()</code> method present on the Y.Panel instance. For each button, we specify an <code>action</code> function, which will be called when the button is clicked, and a <code>section</code> property that specifies whether it should get rendered in the header or the footer.</p>
+
+<pre class="code prettyprint">panel.addButton(
+  {
+      value: &quot;Add Item&quot;,
+      action: function(e) { 
+        e.preventDefault(); 
+        addItem(); &#x2F;&#x2F;this method adds a record to the datatable
+      },
+      section: Y.WidgetStdMod.FOOTER
+  }
+);
+panel.addButton(
+  {
+      value: &quot;Remove All Items&quot;,
+      action: function(e) { 
+        e.preventDefault(); 
+        removeAllItemsConfirm();
+      },
+      section: Y.WidgetStdMod.FOOTER
+  }
+);</pre>
+
+
+
+<h3>Creating the nested Panel through JavaScript</h3>
+
+<p>In the example, clicking the "Remove all items" button renders a nested confirmation panel. Since Y.Panel implements the <code>Y.WidgetStack</code> and <code>Y.WidgetModality</code> extensions, creating nested panels are easy to do for the developer. The nested panel code is as follows:</p>
+
+<pre class="code prettyprint">var nestedPanel = new Y.Panel({
+  bodyContent: &quot;Are you sure you want to remove all items?&quot;,
+  zIndex: 5, &#x2F;&#x2F;We set a z-index higher than the parent&#x27;s z-index
+  centered:true,
+  width:400,
+  modal:true,
+
+  &#x2F;&#x2F;We add the &quot;Yes&quot; and &quot;No&quot; buttons
+  buttons: [
+    {
+        value: &quot;Yes&quot;,
+        action  : function(e) { 
+          e.preventDefault(); 
+          nestedPanel.hide();
+          panel.hide();
+          removeItems(); &#x2F;&#x2F;this method removes all data from the datatable
+        },
+        section: Y.WidgetStdMod.FOOTER
+    },
+    {
+        value: &quot;No&quot;,
+        action: function(e) { 
+          e.preventDefault(); 
+          nestedPanel.hide();
+        },
+        section: Y.WidgetStdMod.FOOTER
+    }
+  ]
+});
+
+nestedPanel.render(&#x27;#nestedPanel&#x27;);</pre>
+
+
+<p>In this case, we pass in an array of buttons to the <code>buttons</code> attribute. As a result, the nested panel does not have the close button in the top-right corner.</p>
+
+<p>
+
+
+<h3>CSS: Panel Look/Feel</h3>
+
+<p>The panel.css Sam Skin file (build/panel/assets/skins/sam/panel.css) provides the default functional CSS for the panel. In addition, an image file (build/panel/assets/skins/sam/sprite_icons.gif) provides the icons for the "close" button.</p>
+
+
+<p><strong>NOTE:</strong> As discussed on the Widget landing page, all widgets are enclosed in 2 containing elements - the boundingBox is the outer(most) element, and the contentBox is the inner element into which the widget's content is added. It is advised to apply any look/feel CSS for the widget to the content box and it's children. This leaves the bounding box without padding/borders, allowing for consistent positioning/sizing across box models.</p>
+
+<h3>Complete Example Source</h3>
+<pre class="code prettyprint">&lt;style type=&quot;text&#x2F;css&quot;&gt;
+    
+#desc {
+  margin-bottom:20px;
+  border-bottom:1px dotted #333;
+}
+#desc span {
+  background:#a3350d;
+  padding:2px;
+  color:#f27243;
+}
+
+.yui3-panel {
+  outline:none;
+
+}
+
+.yui3-panel-content .yui3-widget-hd {
+  font-weight:bold;
+}
+
+.yui3-panel-content .yui3-widget-bd {
+  padding:15px;
+}
+.yui3-panel-content label {
+  margin-right:30px;
+}
+.yui3-panel-content fieldset {
+  border:none;
+  padding:0;
+}
+.yui3-panel-content input[type=&quot;text&quot;] {
+  border:none;
+  border:1px solid #ccc;
+  padding: 3px 7px;
+  -webkit-border-radius:2px;
+  -moz-border-radius:2px;
+  border-radius:2px;
+  font-size:100%;
+  width:200px;
+}
+#addRow {
+  margin-top:10px;
+}
+&lt;&#x2F;style&gt;
+
+
+&lt;h2&gt;Using a panel to show a modal form&lt;&#x2F;h2&gt;
+&lt;div class=&quot;yui3-u-1&quot;&gt;
+&lt;div id=&quot;dt&quot;&gt;&lt;&#x2F;div&gt;
+&lt;p&gt;&lt;input type=&quot;button&quot; id=&quot;addRow&quot; value=&quot;Add&quot;&gt;&lt;&#x2F;p&gt;
+
+&lt;p&gt;Lorem ipsum dolor sit amet, consectetur adipiscing elit. Curabitur non felis dolor. Fusce rutrum velit quis sem luctus ultrices. Vivamus bibendum mollis enim, vel auctor massa convallis accumsan. Curabitur laoreet nunc vel leo laoreet sed feugiat elit tempor. Sed fermentum ligula ut nisi lobortis pretium. Donec ut est at leo rhoncus ultricies eu at nunc. Phasellus semper, lacus ac pulvinar dictum, orci orci iaculis nulla, non condimentum nibh justo eu felis. Nam sed orci a ligula vehicula rutrum. Donec sodales euismod laoreet. Mauris ut augue purus. Nulla porta vehicula ligula, id viverra lacus hendrerit ut. Donec eu est vitae orci ullamcorper pellentesque. Morbi molestie placerat aliquet. Aliquam aliquet consectetur porttitor. Mauris semper tincidunt nisi, in dignissim turpis auctor ac. Sed at enim ligula. Aenean quis dignissim augue.&lt;&#x2F;p&gt;
+
+&lt;p&gt;Nunc quis sem tortor. Quisque lorem quam, auctor sit amet porttitor pretium, accumsan quis arcu. Mauris blandit, enim nec fermentum faucibus, massa lectus posuere massa, eget consequat leo risus in risus. Sed ornare euismod orci sit amet commodo. Suspendisse ultrices dui ut mi venenatis vitae tincidunt dolor pulvinar. Proin at nibh sed libero molestie facilisis. Maecenas magna purus, lacinia eu tempus in, elementum a est. Morbi eget magna sed justo dignissim pulvinar nec vitae justo. Aliquam tincidunt arcu eget orci tempus ornare ullamcorper dolor aliquet. Vestibulum congue posuere porttitor. Pellentesque magna erat, dapibus nec tristique at, posuere sed nisl. In pretium, risus at volutpat pretium, augue nunc commodo metus, vitae ullamcorper risus quam sagittis turpis. Proin eget cursus quam. Sed elit tortor, tempus pharetra lacinia vel, ultrices nec est. Praesent nibh risus, vulputate nec tincidunt eget, lacinia sed eros. Vestibulum vel velit massa. In hac habitasse platea dictumst. Etiam eu magna ligula.&lt;&#x2F;p&gt;
+
+&lt;p&gt;Vivamus vel dui at velit laoreet accumsan. Pellentesque posuere est et urna euismod elementum. Fusce a nibh nisl, vitae iaculis magna. Nulla sit amet odio in elit posuere pellentesque. Nulla sit amet eros eu odio tempus feugiat at vel purus. In vehicula feugiat purus eu ultricies. Aliquam vitae sapien quis augue gravida pretium. Morbi non lectus eu nisi varius mollis. Maecenas eget nisl sit amet turpis cursus gravida at quis odio. Cras viverra eros placerat erat ultricies ultricies.&lt;&#x2F;p&gt;
+
+&lt;p&gt;Aenean malesuada erat vel ipsum iaculis sollicitudin. Class aptent taciti sociosqu ad litora torquent per conubia nostra, per inceptos himenaeos. Sed lectus metus, accumsan in molestie vitae, luctus non nibh. Vestibulum rutrum, nulla vel tristique varius, metus nibh tincidunt erat, at mattis turpis justo quis velit. Donec ac lobortis mauris. Nam nulla tellus, placerat sit amet tempus non, consequat sed nibh. Curabitur eget ligula a sem dictum fringilla. Cras fermentum blandit nulla ut vulputate. Nullam iaculis venenatis orci, et tincidunt lorem pellentesque eget. Morbi sit amet nibh id sapien rhoncus mollis. Vestibulum quis neque massa, eget interdum dolor. Donec rhoncus, metus non dignissim imperdiet, nulla orci eleifend sapien, at interdum augue lacus ac quam. Duis ullamcorper, augue eget semper varius, mi nisi rutrum mi, non sagittis neque quam nec ipsum. Curabitur in mauris lacus. Ut porta porttitor nunc, id elementum quam mattis quis. Donec quis libero eros, at malesuada lectus. Cras lectus tellus, pharetra ut tempor ut, fringilla in turpis.&lt;&#x2F;p&gt;
+
+&lt;p&gt;Quisque tempor turpis non ligula ornare cursus. Vivamus tempus lobortis urna sed vestibulum. Duis id ligula eu dolor feugiat laoreet sit amet in enim. Integer ullamcorper erat at sem mattis quis tempor metus ullamcorper. Praesent sed diam elit. Donec vel lorem libero. Suspendisse nec arcu ac purus interdum mollis congue imperdiet erat. Suspendisse eu tristique enim. Quisque volutpat, leo sit amet iaculis luctus, velit neque suscipit nisi, vitae placerat felis diam laoreet metus. Suspendisse consectetur pulvinar commodo. Nulla magna quam, scelerisque blandit pellentesque sed, euismod nec nulla. Curabitur vitae est quis sem condimentum dictum. Aenean tincidunt dolor ac orci consectetur id pulvinar justo aliquam. Proin ante nulla, ullamcorper sit amet auctor in, pulvinar volutpat quam. Sed vitae dolor dui, sed tincidunt nunc. Phasellus euismod consequat fringilla. Quisque semper dolor eget tellus sagittis porta sit amet quis libero.&lt;&#x2F;p&gt;
+&lt;div id=&quot;panelContent&quot;&gt;
+&lt;div class=&quot;yui3-widget-bd&quot;&gt;
+&lt;form&gt;
+  &lt;fieldset&gt;
+    &lt;p&gt;&lt;label for=&quot;id&quot;&gt;ID&lt;&#x2F;label&gt;&lt;br&#x2F;&gt;
+    &lt;input type=&quot;text&quot; name=&quot;id&quot; id=&quot;productId&quot; placeholder=&quot;&quot;&gt;&lt;&#x2F;p&gt;
+    &lt;p&gt;&lt;label for=&quot;name&quot;&gt;Name&lt;&#x2F;label&gt;&lt;br&#x2F;&gt;
+    &lt;input type=&quot;text&quot; name=&quot;name&quot; id=&quot;name&quot; value=&quot;&quot; placeholder=&quot;&quot;&gt;&lt;&#x2F;p&gt;
+    &lt;p&gt;&lt;label for=&quot;password&quot;&gt;Price&lt;&#x2F;label&gt;&lt;br&#x2F;&gt;
+    &lt;input type=&quot;text&quot; name=&quot;price&quot; id=&quot;price&quot; value=&quot;&quot; placeholder=&quot;$&quot;&gt;&lt;&#x2F;p&gt;
+  &lt;&#x2F;fieldset&gt;
+  &lt;&#x2F;form&gt;
+  &lt;&#x2F;div&gt;
+&lt;&#x2F;div&gt;
+&lt;div id=&quot;nestedPanel&quot;&gt;&lt;&#x2F;div&gt;
+&lt;&#x2F;div&gt;
+
+&lt;script type=&quot;text&#x2F;javascript&quot;&gt;
+    YUI().use(&quot;datatable-base&quot;, &quot;panel&quot;, &quot;dd-plugin&quot;, function(Y) {
+
+
+&#x2F;&#x2F;Create the datatable with some gadget information
+var cols = [&quot;id&quot;,&quot;name&quot;,&quot;price&quot;],
+data = [
+    {id:&quot;ga-3475&quot;, name:&quot;gadget&quot;, price:&quot;$6.99&quot;},
+    {id:&quot;sp-9980&quot;, name:&quot;sprocket&quot;, price:&quot;$3.75&quot;},
+    {id:&quot;wi-0650&quot;, name:&quot;widget&quot;, price:&quot;$4.25&quot;}
+],
+dt = new Y.DataTable.Base({
+    columnset: cols,
+    recordset: data,
+    summary: &quot;Price sheet for inventory parts&quot;,
+    caption: &quot;Price sheet for inventory parts&quot;
+}),
+
+&#x2F;&#x2F;Create the main modal form
+panel = new Y.Panel({
+  srcNode: &quot;#panelContent&quot;,
+  width: 250,
+  centered: true,
+  visible: false,
+  modal:true,
+  zIndex:5,
+  headerContent: &quot;Add A New Product&quot;,
+  plugins: [Y.Plugin.Drag]
+}),
+
+addRowBtn = Y.one(&quot;#addRow&quot;),
+nestedPanel;
+
+
+&#x2F;&#x2F;Render The Datatable
+dt.render(&quot;#dt&quot;);
+
+&#x2F;&#x2F;Add the footer buttons to the modal form
+panel.addButton(
+  {
+      value: &quot;Add Item&quot;,
+      action: function(e) { 
+        e.preventDefault(); 
+        addItem();
+      },
+      section: Y.WidgetStdMod.FOOTER
+  }
+);
+panel.addButton(
+  {
+      value: &quot;Remove All Items&quot;,
+      action: function(e) { 
+        e.preventDefault(); 
+        removeAllItemsConfirm();
+      },
+      section: Y.WidgetStdMod.FOOTER
+  }
+);
+
+&#x2F;&#x2F;Render the modal form
+panel.render();
+
+&#x2F;&#x2F;When the addRowBtn is pressed, show the modal form
+addRowBtn.on(&#x27;click&#x27;, function(e) {
+  panel.show();
+});
+
+&#x2F;&#x2F;Define the addItem function - this will be called 
+&#x2F;&#x2F;when &quot;Add Item&quot; is pressed on the modal form
+var addItem = function() {
+  var o = {}, 
+  id = Y.one(&#x27;#productId&#x27;),
+  name = Y.one(&#x27;#name&#x27;),
+  price = Y.one(&#x27;#price&#x27;);
+
+  o.id = id.get(&quot;value&quot;);
+  o.name = name.get(&quot;value&quot;);
+  o.price = price.get(&quot;value&quot;);
+
+  id.set(&quot;value&quot;, &quot;&quot;);
+  name.set(&quot;value&quot;, &quot;&quot;);
+  price.set(&quot;value&quot;, &quot;&quot;);
+
+
+  data.push(o);
+  dt.set(&#x27;recordset&#x27;, data).render();
+  dt.render();
+  panel.hide();
+};
+
+&#x2F;&#x2F;Define the removeItems function - this will be called 
+&#x2F;&#x2F;when &quot;Remove All Items&quot; is pressed on the modal form
+&#x2F;&#x2F;and is confirmed &quot;yes&quot; by the nested panel.
+var removeItems = function() {
+  data = [];
+  dt.set(&#x27;recordset&#x27;, data).render();
+  dt.render();
+  panel.hide();
+};
+
+
+&#x2F;&#x2F;Instantiate the nested panel if it doesn&#x27;t exist, otherwise just show it.
+var removeAllItemsConfirm = function() {
+  if (!nestedPanel) {
+    nestedPanel = new Y.Panel({
+      bodyContent: &quot;Are you sure you want to remove all items?&quot;,
+      zIndex: 6,
+      centered:true,
+      width:400,
+      modal:true,
+      buttons: [
+        
+        {
+            value: &quot;Yes&quot;,
+            action  : function(e) { 
+              e.preventDefault(); 
+              nestedPanel.hide();
+              panel.hide();
+              removeItems();
+            },
+            section: Y.WidgetStdMod.FOOTER
+        },
+        {
+            value: &quot;No&quot;,
+            action: function(e) { 
+              e.preventDefault(); 
+              nestedPanel.hide();
+            },
+            section: Y.WidgetStdMod.FOOTER
+        }
+      ]
+    }).render(&#x27;#nestedPanel&#x27;);
+  }
+
+  else {
+    nestedPanel.show();
+  }
+
+}
+});
+&lt;&#x2F;script&gt;</pre>
+
+</div>
+        </div>
+
+        <div id="sidebar" class="yui3-u">
+            
+
+            
+                <div class="sidebox">
+                    <div class="hd">
+                        <h2 class="no-toc">Examples</h2>
+                    </div>
+
+                    <div class="bd">
+                        <ul class="examples">
+                            
+                                
+                                    <li data-description="Shows how to instantiate multiple Panel instances, and use nested modality to interact with a Datatable.">
+                                        <a href="panel-form.html">Creating a modal form</a>
+                                    </li>
+                                
+                            
+                                
+                                    <li data-description="Shows how to create a panel that animates as it is shown and hidden">
+                                        <a href="panel-animate.html">Creating an animated panel</a>
+                                    </li>
+                                
+                            
+                        </ul>
+                    </div>
+                </div>
+            
+
+            
+        </div>
+    </div>
+</div>
+
+<script src="../assets/vendor/prettify/prettify-min.js"></script>
+<script>prettyPrint();</script>
+
+</body>
+</html>

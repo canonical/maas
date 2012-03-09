@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Example: Working with YUI 2 in 3</title>
+    <link rel="stylesheet" href="http://yui.yahooapis.com/3.4.0pr3/build/cssgrids/grids-min.css">
+    <link rel="stylesheet" href="../assets/css/main.css">
+    <link rel="stylesheet" href="../assets/vendor/prettify/prettify-min.css">
+    <script src="../../build/yui/yui-min.js"></script>
+</head>
+<body>
+
+<div id="doc">
+    <h1>Example: Working with YUI 2 in 3</h1>
+
+    
+        <a href="#toc" class="jump">Jump to Table of Contents</a>
+    
+
+    <div class="yui3-g">
+        <div id="main" class="yui3-u">
+            <div class="content"><div class="intro">
+<p>This example shows how to use YUI 2 and 3 at the same time as well as interacting with each other.
+We will make a YUI 2 Calendar Control draggable with YUI 3 Drag &amp; Drop and use YUI 3's Node to handle the Calendar's Select Event.</p>
+</div>
+
+<div class="example">
+    <style type="text/css" id="styleoverrides">
+#cal1Cont {
+    width: 305px;
+}
+
+#cal1Cont div.calheader {
+    cursor: move;
+}
+
+#cal1Cont .yui3-calendar {
+    width:auto;
+    background-color:transparent;
+}
+
+#cal1Cont .yui3-calendar tr, #cal1Cont .yui3-calendar th {
+    background-color:transparent;
+    vertical-align:middle;
+    text-transform:none;
+    color:#fff;
+}
+
+#cal1Cont .yui3-calendar a:hover {
+    text-decoration:none;
+}
+
+#results {
+    background: none repeat scroll 0 0 #E2EEFB;
+    border: 1px solid #BDD6F4;
+    position: absolute;
+    top: 15px;
+    right: 5px;
+    width: 300px;
+    padding: 5px;
+}
+.example {
+    position: relative;
+    min-height: 280px;
+    *height: 280px;
+}
+</style>
+
+<div id="cal1Cont"></div>
+<div id="results">Click a date..</div>
+
+<script>
+YUI().use('dd-drag', 'yui2-calendar', 'yui2-logger', function(Y) {
+
+    //This will make your YUI 2 code run unmodified
+    var YAHOO = Y.YUI2,
+    setupDD = function() {
+        var dd = new Y.DD.Drag({
+            node: '#cal1Cont'
+        }).addHandle('div.calheader');
+
+        cal1.renderEvent.unsubscribe(setupDD);
+    },
+    cal1 = new YAHOO.widget.Calendar('cal1', 'cal1Cont');
+    
+    cal1.renderEvent.subscribe(setupDD);
+    
+    cal1.selectEvent.subscribe(function(e, dates) {
+        var d = dates[0][0],
+            dateStr = d[1] + '/' + d[2] + '/' + d[0];
+
+        Y.one('#results').setContent('You clicked on: ' + dateStr);
+    });
+    cal1.render();
+});
+
+</script>
+
+
+</div>
+
+<h3 id="using-yui-2-inside-of-yui-3">Using YUI 2 inside of YUI 3</h3>
+<p>In this example, we are using the new YUI 3 support for loading and sandboxing YUI 2. From the <code>YUI().use()</code> statement, you will be able to load any module/utility/widget from YUI 2 and use it like you would in YUI 2.</p>
+
+<h3 id="creating-your-yui-instance">Creating your YUI instance</h3>
+<p>Now we need to create our YUI instance with the <code>dd-drag</code> and <code>yui2-calendar</code> modules, so we can create a YUI 2 calendar and make it draggable with YUI 3.</p>
+
+<pre class="code prettyprint">YUI().use(&#x27;dd-drag&#x27;, &#x27;yui2-calendar&#x27;, function(Y) {
+});</pre>
+
+
+<h3 id="creating-the-calendar">Creating the Calendar</h3>
+<p>Now that we have our tools in place, let's create the calendar. Using the new support for loading YUI 2 into a YUI 3 instance, you can set up a simple variable to help you cut and paste your YUI 2 based code.</p>
+<p>In the code sample below, we are creating a scoped variable called <code>YAHOO</code> and assigning it from <code>Y.YUI2</code>. The <code>YUI2</code> property of the <code>YUI</code> instance is a scoped version of the YUI 2 <code>YAHOO</code> object. If this page is inspected, you will notice that there is no global <code>YAHOO</code> variable.</p>
+
+<pre class="code prettyprint">YUI().use(&#x27;dd-drag&#x27;, &#x27;yui2-calendar&#x27;, function(Y) {
+    &#x2F;&#x2F;This will make your YUI 2 code run unmodified
+    var YAHOO = Y.YUI2;
+
+    var cal1 = new YAHOO.widget.Calendar(&#x27;cal1&#x27;, &#x27;cal1Cont&#x27;);
+    cal1.render();
+});</pre>
+
+
+<h3 id="making-it-draggable">Making it draggable</h3>
+<p>Now we make the calendar draggable with the YUI 3 <code>dd-drag</code> module.</p>
+<p>First we listen for the renderEvent of the Calendar and set up the DD instance on it. After it's created, we need to remove the renderEvent listener as it's fired on Calendar page change.</p>
+
+<pre class="code prettyprint">YUI().use(&#x27;dd-drag&#x27;, &#x27;yui2-calendar&#x27;, function(Y) {
+
+    &#x2F;&#x2F;This will make your YUI 2 code run unmodified
+    var YAHOO = Y.YUI2,
+    setupDD = function() {
+        var dd = new Y.DD.Drag({
+            node: &#x27;#cal1Cont&#x27;
+        }).addHandle(&#x27;div.calheader&#x27;);
+
+        cal1.renderEvent.unsubscribe(setupDD);
+    },
+    cal1 = new YAHOO.widget.Calendar(&#x27;cal1&#x27;, &#x27;cal1Cont&#x27;);
+    
+    cal1.renderEvent.subscribe(setupDD);
+    cal1.render();
+
+});</pre>
+
+
+<h3 id="handling-the-calendars-select-event-with-node">Handling the Calendar's Select Event with Node</h3>
+<p>Now we need to hook up the <code>selectEvent</code> and handle that with YUI 3's <code>Node</code>.</p>
+
+<pre class="code prettyprint">YUI().use(&#x27;dd-drag&#x27;, &#x27;yui2-calendar&#x27;, &#x27;yui2-logger&#x27;, function(Y) {
+
+    &#x2F;&#x2F;This will make your YUI 2 code run unmodified
+    var YAHOO = Y.YUI2,
+    setupDD = function() {
+        var dd = new Y.DD.Drag({
+            node: &#x27;#cal1Cont&#x27;
+        }).addHandle(&#x27;div.calheader&#x27;);
+
+        cal1.renderEvent.unsubscribe(setupDD);
+    },
+    cal1 = new YAHOO.widget.Calendar(&#x27;cal1&#x27;, &#x27;cal1Cont&#x27;);
+    
+    cal1.renderEvent.subscribe(setupDD);
+    
+    cal1.selectEvent.subscribe(function(e, dates) {
+        var d = dates[0][0],
+            dateStr = d[1] + &#x27;&#x2F;&#x27; + d[2] + &#x27;&#x2F;&#x27; + d[0];
+
+        Y.one(&#x27;#results&#x27;).setContent(&#x27;You clicked on: &#x27; + dateStr);
+    });
+    cal1.render();
+});</pre>
+
+</div>
+        </div>
+
+        <div id="sidebar" class="yui3-u">
+            
+                <div id="toc" class="sidebox">
+                    <div class="hd">
+                        <h2 class="no-toc">Table of Contents</h2>
+                    </div>
+
+                    <div class="bd">
+                        <ul class="toc">
+<li>
+<a href="#using-yui-2-inside-of-yui-3">Using YUI 2 inside of YUI 3</a>
+</li>
+<li>
+<a href="#creating-your-yui-instance">Creating your YUI instance</a>
+</li>
+<li>
+<a href="#creating-the-calendar">Creating the Calendar</a>
+</li>
+<li>
+<a href="#making-it-draggable">Making it draggable</a>
+</li>
+<li>
+<a href="#handling-the-calendars-select-event-with-node">Handling the Calendar's Select Event with Node</a>
+</li>
+</ul>
+                    </div>
+                </div>
+            
+
+            
+                <div class="sidebox">
+                    <div class="hd">
+                        <h2 class="no-toc">Examples</h2>
+                    </div>
+
+                    <div class="bd">
+                        <ul class="examples">
+                            
+                                
+                                    <li data-description="Setting up a YUI Instance">
+                                        <a href="yui-core.html">YUI Core</a>
+                                    </li>
+                                
+                            
+                                
+                                    <li data-description="Working with multiple YUI instances.">
+                                        <a href="yui-multi.html">Multiple Instances</a>
+                                    </li>
+                                
+                            
+                                
+                                    <li data-description="On-demand loading of YUI and non-YUI assets">
+                                        <a href="yui-loader-ext.html">YUI Loader - Dynamically Adding YUI and External Modules</a>
+                                    </li>
+                                
+                            
+                                
+                                    <li data-description="Create Class Hierarchies with &#x60;extend&#x60;">
+                                        <a href="yui-extend.html">Create Class Hierarchies with &#x60;extend&#x60;</a>
+                                    </li>
+                                
+                            
+                                
+                                    <li data-description="Creating a composition-based class structure using &#x60;augment&#x60;">
+                                        <a href="yui-augment.html">Compose Classes of Objects with &#x60;augment&#x60;</a>
+                                    </li>
+                                
+                            
+                                
+                                    <li data-description="Add behaviors to objects or static classes with &#x60;mix&#x60;">
+                                        <a href="yui-mix.html">Add Behaviors to Objects with &#x60;mix&#x60;</a>
+                                    </li>
+                                
+                            
+                                
+                                    <li data-description="Combine data sets and create shallow copies of objects with &#x60;merge&#x60;">
+                                        <a href="yui-merge.html">Combine Data Sets with &#x60;merge&#x60;</a>
+                                    </li>
+                                
+                            
+                                
+                                    <li data-description="Check data types with the &#x60;Lang Utilities&#x60;">
+                                        <a href="yui-isa.html">Check Data Types with &#x60;Lang&#x60;</a>
+                                    </li>
+                                
+                            
+                                
+                                    <li data-description="Get information about the current user agent with &#x60;UA&#x60;">
+                                        <a href="yui-ua.html">Browser Detection with &#x60;UA&#x60;</a>
+                                    </li>
+                                
+                            
+                                
+                                    <li data-description="Working with YUI 2 in 3">
+                                        <a href="yui-yui2.html">Working with YUI 2 in 3</a>
+                                    </li>
+                                
+                            
+                                
+                                    <li data-description="Natively use YUI Gallery Modules">
+                                        <a href="yui-gallery.html">Natively use YUI Gallery Modules</a>
+                                    </li>
+                                
+                            
+                        </ul>
+                    </div>
+                </div>
+            
+
+            
+        </div>
+    </div>
+</div>
+
+<script src="../assets/vendor/prettify/prettify-min.js"></script>
+<script>prettyPrint();</script>
+
+</body>
+</html>
