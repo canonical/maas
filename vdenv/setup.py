@@ -122,7 +122,7 @@ def libvirt_setup(config):
                           searchList=[config['network'],
                                       {'all_systems': allsys }]).respond())
 
-    print "defined network %s " % netname
+    print("defined network %s " % netname)
 
     cob = System(config, "zimmer")
     systems = [ cob ]
@@ -141,7 +141,7 @@ def libvirt_setup(config):
         conn.defineXML(system.toLibVirtXml())
         if isinstance(system,Node):
             subprocess.check_call(qcow_create % system.disk0, shell=True)
-        print "defined domain %s" % system.name
+        print("defined domain %s" % system.name)
 
 def cobbler_addsystem(server, token, system, profile, hostip):
     eth0 = {
@@ -164,7 +164,7 @@ def cobbler_addsystem(server, token, system, profile, hostip):
     if len(server.find_system({"name": system.name})):
         server.remove_system(system.name,token)
         server.update()
-        print "removed existing %s" % system.name
+        print("removed existing %s" % system.name)
 
     sid = server.new_system(token)
     for key, val in items.iteritems():
@@ -175,7 +175,7 @@ def cobbler_addsystem(server, token, system, profile, hostip):
     ret = server.save_system(sid,token)
     if not ret:
         raise Exception("failed to save %s" % system.name)
-    print "added %s" % system.name
+    print("added %s" % system.name)
 
 
 def get_profile_arch():

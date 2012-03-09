@@ -31,17 +31,17 @@ server = xmlrpclib.Server(host)
 token = server.login(user, password)
 
 distros = server.get_distros()
-print "::::::::::: distros :::::::::::"
+print("::::::::::: distros :::::::::::")
 for d in server.get_distros():
     print("%s: breed=%s, os_version=%s, mgmt_classes=%s" %
          (d['name'], d['breed'], d['os_version'], d['mgmt_classes']))
 
 profiles = server.get_profiles() 
-print "\n::::::::::: profiles :::::::::::"
+print("\n::::::::::: profiles :::::::::::")
 for d in server.get_profiles():
     print("%s: distro=%s parent=%s kickstart=%s" %
          (d['name'], d['distro'], d['parent'], d['kickstart']))
 
-print "\n::::::::::: servers :::::::::::"
+print("\n::::::::::: servers :::::::::::")
 for s in server.get_systems():
-    print s['interfaces']
+    print(s['interfaces'])
