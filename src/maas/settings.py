@@ -24,10 +24,9 @@ DEBUG = False
 # Used to set a prefix in front of every URL.
 FORCE_SCRIPT_NAME = None
 
-# Allow the user to override DEBUG and FORCE_SCRIPT_NAME in
-# maas_local_settings.
+# Allow the user to override settings in maas_local_settings.
 try:
-    from maas_local_settings import DEBUG, FORCE_SCRIPT_NAME
+    from maas_local_settings import * # NOQA
 except ImportError:
     pass
 
