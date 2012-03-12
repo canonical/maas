@@ -1,0 +1,5 @@
+This folder contains somewhat ephemeral things: subfolders serve as
+MEDIA_ROOT for maas.demo and maas.development environments. The
+media/demo directory should always exist and not be deleted, though
+its contents can be. The media/development directory should be created
+and destroyed by tests, as needed.

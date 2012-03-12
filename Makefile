@@ -66,6 +66,7 @@ doc: bin/sphinx docs/api.rst
 clean:
 	find . -type f -name '*.py[co]' -print0 | xargs -r0 $(RM)
 	find . -type f -name '*~' -print0 | xargs -r0 $(RM)
+	$(RM) -r media/demo/* media/development
 
 distclean: clean pserv-stop
 	utilities/maasdb delete-cluster ./db/

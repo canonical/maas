@@ -776,10 +776,12 @@ class FileStorageAPITest(APITestCase):
 
     def setUp(self):
         super(FileStorageAPITest, self).setUp()
-        os.mkdir(settings.MEDIA_ROOT)
-        self.tmpdir = os.path.join(settings.MEDIA_ROOT, "testing")
+        media_root = settings.MEDIA_ROOT
+        self.assertFalse(os.path.exists(media_root), "See media/README")
+        self.addCleanup(shutil.rmtree, media_root, ignore_errors=True)
+        os.mkdir(media_root)
+        self.tmpdir = os.path.join(media_root, "testing")
         os.mkdir(self.tmpdir)
-        self.addCleanup(shutil.rmtree, settings.MEDIA_ROOT)
 
     def make_file(self, name="foo", contents="test file contents"):
         """Make a temp file named `name` with contents `contents`.

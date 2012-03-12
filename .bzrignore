@@ -13,6 +13,8 @@
 ./download-cache
 ./eggs
 ./logs
+./media/demo/*
+./media/development
 ./parts
 ./pserv.log
 ./pserv.pid

@@ -449,8 +449,6 @@ class UserProfileTest(TestCase):
 class FileStorageTest(TestCase):
     """Testing of the :class:`FileStorage` model."""
 
-    FILEPATH = settings.MEDIA_ROOT
-
     def make_upload_dir(self):
         """Create the upload directory, and arrange for eventual deletion.
 
@@ -461,13 +459,12 @@ class FileStorageTest(TestCase):
         :return: Absolute path to the `FileStorage` upload directory.  This
             is the directory where the actual files are stored.
         """
-        # These will blow up if either directory already exists.  Which
-        # is brittle, but probably for the best since we ruthlessly
-        # delete them on cleanup!
-        os.mkdir(self.FILEPATH)
-        upload_dir = os.path.join(self.FILEPATH, FileStorage.upload_dir)
+        media_root = settings.MEDIA_ROOT
+        self.assertFalse(os.path.exists(media_root), "See media/README")
+        self.addCleanup(shutil.rmtree, media_root, ignore_errors=True)
+        os.mkdir(media_root)
+        upload_dir = os.path.join(media_root, FileStorage.upload_dir)
         os.mkdir(upload_dir)
-        self.addCleanup(shutil.rmtree, self.FILEPATH)
         return upload_dir
 
     def get_media_path(self, filename):
