@@ -18,6 +18,7 @@ import fixtures
 from provisioningserver import cobblerclient
 from provisioningserver.testing.fakecobbler import (
     fake_auth_failure_string,
+    fake_object_not_found_string,
     fake_token,
     )
 from testtools.content import text_content
@@ -254,6 +255,20 @@ class TestCobblerSession(TestCase):
         self.assertTrue(
             cobblerclient.looks_like_auth_expiry(make_auth_failure()))
 
+    def test_looks_like_object_not_found_for_regular_exception(self):
+        self.assertFalse(
+            cobblerclient.looks_like_object_not_found(RuntimeError("Error")))
+
+    def test_looks_like_object_not_found_for_other_Fault(self):
+        self.assertFalse(
+            cobblerclient.looks_like_object_not_found(
+                Fault(1, "Missing sprocket")))
+
+    def test_looks_like_object_not_found_recognizes_object_not_found(self):
+        error = Fault(1, fake_object_not_found_string("distro", "bob"))
+        self.assertTrue(
+            cobblerclient.looks_like_object_not_found(error))
+
     @inlineCallbacks
     def test_call_reauthenticates_and_retries_on_auth_failure(self):
         # If a call triggers an authentication error, call()
@@ -416,6 +431,29 @@ class TestCobblerObject(TestCase):
                 session, 'incomplete_system', {})
 
     @inlineCallbacks
+    def test_new_attempts_edit_before_creating_new(self):
+        # CobblerObject.new always attempts an extended edit operation on the
+        # given object first, following by an add should the object not yet
+        # exist.
+        session = make_recording_session()
+        not_found_string = fake_object_not_found_string("system", "carcass")
+        not_found = Fault(1, not_found_string)
+        session.proxy.set_return_values([not_found, True])
+        yield cobblerclient.CobblerSystem.new(
+            session, "carcass", {"profile": "heartwork"})
+        expected_calls = [
+            # First an edit is attempted...
+            ("xapi_object_edit", "system", "carcass", "edit",
+             {"name": "carcass", "profile": "heartwork"},
+             session.token),
+            # Followed by an add.
+            ("xapi_object_edit", "system", "carcass", "add",
+             {"name": "carcass", "profile": "heartwork"},
+             session.token),
+            ]
+        self.assertEqual(expected_calls, session.proxy.calls)
+
+    @inlineCallbacks
     def test_modify(self):
         session = make_recording_session()
         session.proxy.set_return_values([True])
@@ -447,7 +485,6 @@ class TestCobblerObject(TestCase):
         # Fake that Cobbler holds the following attributes about the distro
         # just created.
         values_stored = {
-            "clobber": True,
             "initrd": "an_initrd",
             "kernel": "a_kernel",
             "likes": "cabbage",
@@ -472,8 +509,7 @@ class TestCobblerObject(TestCase):
         # Fake that Cobbler holds the following attributes about the distros
         # just created.
         values_stored = [
-            {"clobber": True,
-             "initrd": "an_initrd",
+            {"initrd": "an_initrd",
              "kernel": "a_kernel",
              "likes": "cabbage",
              "name": "alice"},

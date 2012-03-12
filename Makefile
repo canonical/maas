@@ -44,8 +44,8 @@ dev-db:
 	utilities/maasdb start ./db/ disposable
 
 test: bin/test.maas bin/test.pserv
-	bin/test.maas
-	bin/test.pserv
+	bin/test.maas -- -v
+	bin/test.pserv -v
 
 lint: sources = setup.py src templates utilities
 lint: bin/flake8

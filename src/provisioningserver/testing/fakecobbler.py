@@ -11,9 +11,10 @@ from __future__ import (
 __metaclass__ = type
 __all__ = [
     'fake_auth_failure_string',
+    'fake_object_not_found_string',
+    'fake_token',
     'FakeCobbler',
     'FakeTwistedProxy',
-    'fake_token',
     'make_fake_cobbler_session',
     ]
 
@@ -39,6 +40,13 @@ unique_ints = count(randint(0, 99999))
 def fake_auth_failure_string(token):
     """Fake a Cobbler authentication failure fault string for `token`."""
     return "<class 'cobbler.exceptions.CX'>:'invalid token: %s'" % token
+
+
+def fake_object_not_found_string(object_type, object_name):
+    """Fake a Cobbler unknown object fault string."""
+    return (
+        "<class 'cobbler.cexceptions.CX'>:'internal error, "
+        "unknown %s name %s'" % (object_type, object_name))
 
 
 def fake_token(user=None, custom_id=None):
@@ -211,7 +219,7 @@ class FakeCobbler:
         if handle is None:
             handle = self._get_handle_if_present(None, object_type, name)
         if handle is None:
-            raise Fault(1, "Unknown %s: %s." % (object_type, name))
+            raise Fault(1, fake_object_not_found_string(object_type, name))
         return handle
 
     def _api_find_objects(self, object_type, criteria):

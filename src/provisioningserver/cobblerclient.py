@@ -96,6 +96,15 @@ def looks_like_auth_expiry(exception):
         return "invalid token: " in exception.faultString
 
 
+def looks_like_object_not_found(exception):
+    """Does `exception` look like an unknown object failure?"""
+    if not hasattr(exception, 'faultString'):
+        # An unknown object failure would come as an xmlrpclib.Fault.
+        return False
+    else:
+        return "internal error, unknown " in exception.faultString
+
+
 class CobblerSession:
     """A session on the Cobbler XMLRPC API.
 
@@ -486,14 +495,24 @@ class CobblerObject:
             (cls._normalize_attribute(key), value)
             for key, value in attributes.items())
 
-        # Overwrite any existing object of the same name.  Unfortunately
-        # this parameter goes into the "attributes," and seems to be
-        # stored along with them.  Its value doesn't matter.
-        args.setdefault('clobber', True)
+        # Do not clobber under any circumstances.
+        if "clobber" in args:
+            del args["clobber"]
 
-        success = yield session.call(
-            'xapi_object_edit', cls.object_type, name, 'add', args,
-            session.token_placeholder)
+        try:
+            # Attempt to edit an existing object.
+            success = yield session.call(
+                'xapi_object_edit', cls.object_type, name, 'edit', args,
+                session.token_placeholder)
+        except xmlrpclib.Fault as e:
+            # If it was not found, add the object.
+            if looks_like_object_not_found(e):
+                success = yield session.call(
+                    'xapi_object_edit', cls.object_type, name, 'add', args,
+                    session.token_placeholder)
+            else:
+                raise
+
         if not success:
             raise RuntimeError(
                 "Cobbler refused to create %s '%s'.  Attributes: %s"

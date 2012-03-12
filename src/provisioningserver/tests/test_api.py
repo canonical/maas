@@ -266,17 +266,20 @@ class ProvisioningAPITests:
         return d
 
     @inlineCallbacks
-    def add_distro(self, papi):
+    def add_distro(self, papi, name=None):
         """Creates a new distro object via `papi`.
 
-        Arranges for it to be deleted during test clean-up.
+        Arranges for it to be deleted during test clean-up. If `name` is not
+        specified, `fake_name` will be called to obtain one.
         """
+        if name is None:
+            name = fake_name()
         # For the initrd and kernel, use a file that we know will exist for a
         # running Cobbler instance (at least, on Ubuntu) so that we can test
         # against remote instances, like one in odev.
         initrd = "/etc/cobbler/settings"
         kernel = "/etc/cobbler/version"
-        distro_name = yield papi.add_distro(fake_name(), initrd, kernel)
+        distro_name = yield papi.add_distro(name, initrd, kernel)
         self.addCleanup(
             self.cleanup_objects,
             papi.delete_distros_by_name,
@@ -284,15 +287,18 @@ class ProvisioningAPITests:
         returnValue(distro_name)
 
     @inlineCallbacks
-    def add_profile(self, papi, distro_name=None):
+    def add_profile(self, papi, name=None, distro_name=None):
         """Creates a new profile object via `papi`.
 
-        Arranges for it to be deleted during test clean-up. If `distro_name`
+        Arranges for it to be deleted during test clean-up. If `name` is not
+        specified, `fake_name` will be called to obtain one. If `distro_name`
         is not specified, one will be obtained by calling `add_distro`.
         """
+        if name is None:
+            name = fake_name()
         if distro_name is None:
             distro_name = yield self.add_distro(papi)
-        profile_name = yield papi.add_profile(fake_name(), distro_name)
+        profile_name = yield papi.add_profile(name, distro_name)
         self.addCleanup(
             self.cleanup_objects,
             papi.delete_profiles_by_name,
@@ -300,20 +306,23 @@ class ProvisioningAPITests:
         returnValue(profile_name)
 
     @inlineCallbacks
-    def add_node(self, papi, profile_name=None, metadata=None):
+    def add_node(self, papi, name=None, profile_name=None, metadata=None):
         """Creates a new node object via `papi`.
 
-        Arranges for it to be deleted during test clean-up. If `profile_name`
+        Arranges for it to be deleted during test clean-up. If `name` is not
+        specified, `fake_name` will be called to obtain one. If `profile_name`
         is not specified, one will be obtained by calling `add_profile`. If
         `metadata` is not specified, it will be obtained by calling
         `fake_node_metadata`.
         """
+        if name is None:
+            name = fake_name()
         if profile_name is None:
             profile_name = yield self.add_profile(papi)
         if metadata is None:
             metadata = fake_node_metadata()
         node_name = yield papi.add_node(
-            fake_name(), profile_name, metadata)
+            name, profile_name, metadata)
         self.addCleanup(
             self.cleanup_objects,
             papi.delete_nodes_by_name,
@@ -349,6 +358,23 @@ class ProvisioningAPITests:
         self.assertItemsEqual([node_name], nodes)
 
     @inlineCallbacks
+    def _test_add_object_twice(self, method):
+        # Adding an object twice is allowed.
+        papi = self.get_provisioning_api()
+        object_name1 = yield method(papi)
+        object_name2 = yield method(papi, object_name1)
+        self.assertEqual(object_name1, object_name2)
+
+    def test_add_distro_twice(self):
+        return self._test_add_object_twice(self.add_distro)
+
+    def test_add_profile_twice(self):
+        return self._test_add_object_twice(self.add_profile)
+
+    def test_add_node_twice(self):
+        return self._test_add_object_twice(self.add_node)
+
+    @inlineCallbacks
     def test_modify_distros(self):
         papi = self.get_provisioning_api()
         distro_name = yield self.add_distro(papi)
@@ -371,7 +397,7 @@ class ProvisioningAPITests:
         papi = self.get_provisioning_api()
         distro1_name = yield self.add_distro(papi)
         distro2_name = yield self.add_distro(papi)
-        profile_name = yield self.add_profile(papi, distro1_name)
+        profile_name = yield self.add_profile(papi, None, distro1_name)
         yield papi.modify_profiles({profile_name: {"distro": distro2_name}})
         values = yield papi.get_profiles_by_name([profile_name])
         self.assertEqual(distro2_name, values[profile_name]["distro"])
@@ -380,9 +406,9 @@ class ProvisioningAPITests:
     def test_modify_nodes(self):
         papi = self.get_provisioning_api()
         distro_name = yield self.add_distro(papi)
-        profile1_name = yield self.add_profile(papi, distro_name)
-        profile2_name = yield self.add_profile(papi, distro_name)
-        node_name = yield self.add_node(papi, profile1_name)
+        profile1_name = yield self.add_profile(papi, None, distro_name)
+        profile2_name = yield self.add_profile(papi, None, distro_name)
+        node_name = yield self.add_node(papi, None, profile1_name)
         yield papi.modify_nodes({node_name: {"profile": profile2_name}})
         values = yield papi.get_nodes_by_name([node_name])
         self.assertEqual(profile2_name, values[node_name]["profile"])
@@ -468,7 +494,7 @@ class ProvisioningAPITests:
         # Create some profiles via the Provisioning API.
         profiles_expected = set()
         for num in range(3):
-            profile_name = yield self.add_profile(papi, distro_name)
+            profile_name = yield self.add_profile(papi, None, distro_name)
             profiles_expected.add(profile_name)
         profiles_after = yield papi.get_profiles()
         profiles_created = set(profiles_after) - set(profiles_before)
@@ -480,7 +506,7 @@ class ProvisioningAPITests:
         profile_name = yield self.add_profile(papi)
         node_names = set()
         for num in range(3):
-            node_name = yield self.add_node(papi, profile_name)
+            node_name = yield self.add_node(papi, None, profile_name)
             node_names.add(node_name)
         nodes = yield papi.get_nodes()
         self.assertSetEqual(node_names, node_names.intersection(nodes))
