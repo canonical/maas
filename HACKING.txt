@@ -209,3 +209,23 @@ documentation`_.
 
 .. _convention for headings as used in the Python documentation:
   http://sphinx.pocoo.org/rest.html#sections
+
+Acceptance tests
+================
+
+MaaS uses checkbox manual testing infrastructure to verify features
+are implemented according to the spec. They can be found in
+the qa/checkbox/ directory.
+
+You need to install checkbox to use those tests::
+
+    $ sudo apt-get install checkbox
+
+To run them::
+
+    $ checkbox-gtk --config='checkbox/plugins/jobs_info/directories=\
+    /path/to/local/checkbox/jobs/dir' --whitelist-file=
+
+or run from the root of the MaaS tree::
+
+    $ make checkbox

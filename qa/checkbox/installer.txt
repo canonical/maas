@@ -1,0 +1,22 @@
+plugin: manual
+name: installer/enlist
+description:
+ PURPOSE:
+     This will test that the Ubuntu installer has the option to enlist a node from the boot CD.
+ STEPS:
+     1. Boot Ubuntu from the CD
+     2. Find the option to enlist the machine to a cloud
+ VERIFICATION:
+     Did the installer offer an option to enlist the machine to a cloud?
+
+plugin: manual
+name: installer/server
+description:
+ PURPOSE:
+     This will test that the Ubuntu installer has the option to install the MaaS server from the CD.
+ STEPS:
+     1. Boot Ubuntu from the CD
+     2. Find the option to install a new MaaS server.
+ VERIFICATION:
+     Did the installer offer an option to install a MaaS server?
+

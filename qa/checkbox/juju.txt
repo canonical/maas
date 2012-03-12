@@ -1,0 +1,22 @@
+plugin: manual
+name: juju/bootstrap
+description:
+ PURPOSE:
+     This will test that you can bootstrap a Juju environment using a MaaS server.
+ STEPS:
+     1. Bootstrap a new environment using juju pointing to a MaaS server.
+     2. Run juju status
+ VERIFICATION:
+     Can you use juju status and see the available nodes?
+
+plugin: manual
+name: juju/deploy
+description:
+ PURPOSE:
+     This will test that you can succesfully deploy to MaaS nodes using Juju
+ STEPS:
+     1. Bootstrap a new environment using juju pointing to a MaaS server.
+     2. Run juju deploy $someservice
+ VERIFICATION:
+     Can you use juju deploy $someservice and have it deployed in the MaaS
+     node?
