@@ -5,36 +5,36 @@
 ## The port on which the Provisioning API will be made available.
 #
 # port: 8001
-#
 
 ## Where to log. This log can be rotated by sending SIGUSR1 to the
 ## running server.
 #
 # logfile: "pserv.log"
-#
 
 ## OOPS configuration (optional).
 #
-# oops:
-#   directory: "/tmp/killed/by"
-#   reporter: "death"
-#
+oops:
+  # directory:
+  # reporter:
 
 ## Message broker configuration (optional, not currently used).
 #
-# broker:
-#   host: "localhost"
-#   port: 1543
-#   username: "lemmy"
-#   password: "overkill"
-#   vhost: "/hammersmith"
-#
+broker:
+  # host: "localhost"
+  # port: 5673
+  # username: <current user>
+  # password: "test"
+  # vhost: "/"
 
 ## Cobbler configuration.  Defaults to the virtual development environment
 # (vdenv) cobbler.
 #
 cobbler:
-    url: local.cobbler.dev/cobbler_api
-    username: cobbler
-    password: xcobbler
+  # url: http://localhost/cobbler_api
+  # username: <current user>
+  # password: "test"
 
+  # vdenv specific; see vdenv/README.txt.
+  url: http://local.cobbler.dev/cobbler_api
+  username: cobbler
+  password: xcobbler
