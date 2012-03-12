@@ -30,11 +30,11 @@
 #   vhost: "/hammersmith"
 #
 
-## Cobbler configuration.
+## Cobbler configuration.  Defaults to the virtual development environment
+# (vdenv) cobbler.
 #
-# cobbler:
-#   url: "localhost"
-#   username: "admin"
-#   password: "test"
-#   fake: false
-#
+cobbler:
+    url: local.cobbler.dev/cobbler_api
+    username: cobbler
+    password: xcobbler
+
