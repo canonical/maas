@@ -12,6 +12,40 @@ FORCE_SCRIPT_NAME = '/MaaS'
 # Where to store the user uploaded files.
 MEDIA_ROOT = '/var/lib/maas/media/'
 
+# See http://docs.djangoproject.com/en/dev/topics/logging for
+# more details on how to customize the logging configuration.
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'simple': {
+            'format': '%(levelname)s %(asctime)s %(name)s %(message)s'
+        },
+    },
+    'handlers': {
+        'log': {
+            'level': 'ERROR',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': '/var/log/maas/maas.log',
+            'formatter': 'simple',
+        },
+    },
+    'loggers': {
+        'maas': {
+            'handlers': ['log'],
+            'propagate': True,
+        },
+        'django.request': {
+            'handlers': ['log'],
+            'propagate': True,
+        },
+        'django.db.backends': {
+            'handlers': ['log'],
+            'propagate': True,
+        },
+     }
+}
+
 # Database access configuration.
 DATABASES = {
     'default': {
