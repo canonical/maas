@@ -23,5 +23,3 @@ class TestConfiguration(TestCase):
         self.assertIn(
             'django.middleware.transaction.TransactionMiddleware',
             settings.MIDDLEWARE_CLASSES)
-
-
