@@ -33,6 +33,7 @@ from django.forms import (
     )
 from maasserver.fields import MACAddressFormField
 from maasserver.models import (
+    ARCHITECTURE,
     ARCHITECTURE_CHOICES,
     Config,
     MACAddress,
@@ -55,8 +56,13 @@ class NodeForm(ModelForm):
     after_commissioning_action = forms.TypedChoiceField(
         choices=NODE_AFTER_COMMISSIONING_ACTION_CHOICES, required=False,
         empty_value=NODE_AFTER_COMMISSIONING_ACTION.DEFAULT)
-    architecture = forms.ChoiceField(
+    # The architecture field is not visible yet, but requires a choice.
+    # Faking it by setting 'i386' as the representation for "none
+    # selected."  Once this field becomes meaningful, it may simply have
+    # to become mandatory.
+    architecture = forms.TypedChoiceField(
         choices=ARCHITECTURE_CHOICES, required=False,
+        empty_value=ARCHITECTURE.i386,
         error_messages={'invalid_choice': INVALID_ARCHITECTURE_MESSAGE})
 
     class Meta:

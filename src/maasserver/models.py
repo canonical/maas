@@ -363,8 +363,9 @@ class Node(CommonInfo):
         choices=NODE_AFTER_COMMISSIONING_ACTION_CHOICES,
         default=NODE_AFTER_COMMISSIONING_ACTION.DEFAULT)
 
-    architecture = models.CharField(max_length=10,
-        choices=ARCHITECTURE_CHOICES, blank=True)
+    architecture = models.CharField(
+        max_length=10, choices=ARCHITECTURE_CHOICES, blank=False,
+        default=ARCHITECTURE.i386)
 
     objects = NodeManager()
 

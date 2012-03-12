@@ -313,8 +313,7 @@ class MACAddressTest(TestCase):
 
     def make_MAC(self, address):
         """Create a MAC address."""
-        node = Node()
-        node.save()
+        node = factory.make_node()
         return MACAddress(mac_address=address, node=node)
 
     def test_stores_to_database(self):

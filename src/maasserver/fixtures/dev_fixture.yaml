@@ -1,20 +1,35 @@
-- fields: {created: 2012-01-24, hostname: sun, owner: null, status: 0, system_id: node-2666dd64-4671-11e1-93b8-00225f89f211,
+- fields: {
+    created: 2012-01-24, hostname: sun, architecture: i386,
+    owner: null, status: 0,
+    system_id: node-2666dd64-4671-11e1-93b8-00225f89f211,
     updated: !!timestamp '2012-01-24 10:52:38.735954'}
   model: maasserver.node
   pk: 15
-- fields: {created: 2012-01-24, hostname: moon, owner: 106, status: 2, system_id: node-29d7ad70-4671-11e1-93b8-00225f89f211,
+- fields: {
+    created: 2012-01-24, hostname: moon, architecture: i386,
+    owner: 106, status: 2,
+    system_id: node-29d7ad70-4671-11e1-93b8-00225f89f211,
     updated: !!timestamp '2012-01-24 10:52:44.507777'}
   model: maasserver.node
   pk: 16
-- fields: {created: 2012-01-24, hostname: mars, owner: 106, status: 3, system_id: node-2d424b28-4671-11e1-93b8-00225f89f211,
+- fields: {
+    created: 2012-01-24, hostname: mars, architecture: i386,
+    owner: 106, status: 3,
+    system_id: node-2d424b28-4671-11e1-93b8-00225f89f211,
     updated: !!timestamp '2012-01-24 10:52:50.239704'}
   model: maasserver.node
   pk: 17
-- fields: {created: 2012-01-24, hostname: jupiter, owner: null, status: 0, system_id: node-2fb4fec8-4671-11e1-93b8-00225f89f211,
+- fields: {
+    created: 2012-01-24, hostname: jupiter, architecture: i386,
+    owner: null, status: 0,
+    system_id: node-2fb4fec8-4671-11e1-93b8-00225f89f211,
     updated: !!timestamp '2012-01-24 10:52:54.346832'}
   model: maasserver.node
   pk: 18
-- fields: {created: 2012-01-24, hostname: saturn, owner: 101, status: 3, system_id: node-33b55e28-4671-11e1-93b8-00225f89f211,
+- fields: {
+    created: 2012-01-24, hostname: saturn, architecture: i386,
+    owner: 101, status: 3,
+    system_id: node-33b55e28-4671-11e1-93b8-00225f89f211,
     updated: !!timestamp '2012-01-24 10:53:01.060176'}
   model: maasserver.node
   pk: 19

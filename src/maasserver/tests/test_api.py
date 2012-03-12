@@ -149,7 +149,6 @@ class AnonymousEnlistmentAPITest(APIv10TestMixin, TestCase):
 
         self.assertEqual(httplib.BAD_REQUEST, response.status_code)
         self.assertIn('application/json', response['Content-Type'])
-        self.assertItemsEqual(['mac_addresses'], parsed_result)
         self.assertEqual(
             ["One or more MAC Addresses is invalid."],
             parsed_result['mac_addresses'])

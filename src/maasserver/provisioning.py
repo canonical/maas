@@ -81,20 +81,17 @@ def compose_metadata(node):
     }
 
 
+def select_profile_for_node(node, papi):
+    """Select which profile a node should be configured for."""
+    assert node.architecture, "Node's architecture is not known."
+    return "%s-%s" % ("precise", node.architecture)
+
+
 @receiver(post_save, sender=Node)
 def provision_post_save_Node(sender, instance, created, **kwargs):
     """Create or update nodes in the provisioning server."""
     papi = get_provisioning_api_proxy()
-    nodes = papi.get_nodes_by_name([instance.system_id])
-    if instance.system_id in nodes:
-        profile = nodes[instance.system_id]["profile"]
-    else:
-        # TODO: Choose a sensible profile.
-        profiles = papi.get_profiles()
-        assert len(profiles) >= 1, (
-            "No profiles defined in Cobbler; has "
-            "cobbler-ubuntu-import been run?")
-        profile = sorted(profiles)[0]
+    profile = select_profile_for_node(instance, papi)
     papi.add_node(instance.system_id, profile, compose_metadata(instance))
 
 
