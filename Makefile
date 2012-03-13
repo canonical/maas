@@ -89,7 +89,7 @@ run: bin/maas dev-db pserv.pid
 	bin/maas runserver 0.0.0.0:8000 --settings=maas.demo
 
 harness: bin/maas dev-db
-	bin/maas shell
+	bin/maas shell --settings=maas.demo
 
 syncdb: bin/maas dev-db
 	bin/maas syncdb --noinput
