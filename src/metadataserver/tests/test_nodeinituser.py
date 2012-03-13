@@ -13,7 +13,7 @@ __all__ = []
 
 from django.contrib.auth.models import User
 from maasserver.models import UserProfile
-from maastesting import TestCase
+from maastesting.testcase import TestCase
 from metadataserver.nodeinituser import (
     get_node_init_user,
     user_name,

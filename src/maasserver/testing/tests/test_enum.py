@@ -12,7 +12,7 @@ __metaclass__ = type
 __all__ = []
 
 from maasserver.testing.enum import map_enum
-from maastesting import TestCase
+from maastesting.testcase import TestCase
 
 
 class TestEnum(TestCase):

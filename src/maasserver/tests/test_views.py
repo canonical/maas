@@ -23,8 +23,8 @@ from maasserver.models import (
     SSHKeys,
     UserProfile,
     )
-from maasserver.testing import (
-    factory,
+from maasserver.testing.factory import factory
+from maasserver.testing.testcase import (
     LoggedInTestCase,
     TestCase,
     )

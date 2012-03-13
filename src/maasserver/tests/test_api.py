@@ -26,14 +26,16 @@ from maasserver.models import (
     NODE_STATUS,
     )
 from maasserver.testing import (
-    LoggedInTestCase,
     reload_object,
     reload_objects,
-    TestCase,
     )
 from maasserver.testing.enum import map_enum
 from maasserver.testing.factory import factory
 from maasserver.testing.oauthclient import OAuthAuthenticatedClient
+from maasserver.testing.testcase import (
+    LoggedInTestCase,
+    TestCase,
+    )
 from metadataserver.models import (
     NodeKey,
     NodeUserData,

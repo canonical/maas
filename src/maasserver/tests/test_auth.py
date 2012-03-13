@@ -19,8 +19,8 @@ from maasserver.models import (
     Node,
     NODE_STATUS,
     )
-from maasserver.testing import TestCase
 from maasserver.testing.factory import factory
+from maasserver.testing.testcase import TestCase
 from metadataserver.nodeinituser import get_node_init_user
 
 

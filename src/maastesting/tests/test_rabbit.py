@@ -11,8 +11,8 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
-from maastesting import TestCase
 from maastesting.rabbit import RabbitServerResource
+from maastesting.testcase import TestCase
 from rabbitfixture.server import RabbitServer
 
 

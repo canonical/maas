@@ -26,9 +26,9 @@ from maasserver.provisioning import (
     get_metadata_server_url,
     select_profile_for_node,
     )
-from maasserver.testing import TestCase
 from maasserver.testing.enum import map_enum
 from maasserver.testing.factory import factory
+from maasserver.testing.testcase import TestCase
 from metadataserver.models import NodeKey
 
 

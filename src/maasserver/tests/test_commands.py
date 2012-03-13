@@ -19,7 +19,7 @@ from django.contrib.auth.models import User
 from django.core.management import call_command
 from maasserver.models import FileStorage
 from maasserver.testing.factory import factory
-from maastesting import TestCase
+from maastesting.testcase import TestCase
 
 
 class TestCommands(TestCase):

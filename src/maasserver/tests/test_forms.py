@@ -26,10 +26,8 @@ from maasserver.models import (
     Config,
     DEFAULT_CONFIG,
     )
-from maasserver.testing import (
-    factory,
-    TestCase,
-    )
+from maasserver.testing.factory import factory
+from maasserver.testing.testcase import TestCase
 
 
 class NodeWithMACAddressesFormTest(TestCase):

@@ -19,7 +19,7 @@ from time import time
 from maasserver.exceptions import Unauthorized
 from maasserver.testing.factory import factory
 from maasserver.testing.oauthclient import OAuthAuthenticatedClient
-from maastesting import TestCase
+from maastesting.testcase import TestCase
 from metadataserver.api import (
     check_version,
     extract_oauth_key,

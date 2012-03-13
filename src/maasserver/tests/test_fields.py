@@ -14,11 +14,11 @@ __all__ = []
 from django.core.exceptions import ValidationError
 from maasserver.fields import validate_mac
 from maasserver.models import MACAddress
-from maasserver.testing import (
+from maasserver.testing.factory import factory
+from maasserver.testing.testcase import (
     TestCase,
     TestModelTestCase,
     )
-from maasserver.testing.factory import factory
 from maasserver.tests.models import JSONFieldModel
 
 

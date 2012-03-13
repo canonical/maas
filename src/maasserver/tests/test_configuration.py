@@ -13,7 +13,7 @@ __all__ = []
 
 
 from django.conf import settings
-from maasserver.testing import TestCase
+from maasserver.testing.testcase import TestCase
 
 
 class TestConfiguration(TestCase):

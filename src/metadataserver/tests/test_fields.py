@@ -11,7 +11,7 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
-from maasserver.testing import (
+from maasserver.testing.testcase import (
     TestCase,
     TestModelTestCase,
     )

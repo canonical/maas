@@ -13,15 +13,10 @@ __all__ = [
     "get_fake_provisioning_api_proxy",
     "reload_object",
     "reload_objects",
-    "LoggedInTestCase",
-    "TestCase",
     ]
 
 from uuid import uuid1
 
-from fixtures import MonkeyPatch
-from maasserver.testing.factory import factory
-import maastesting
 from provisioningserver.testing import fakeapi
 
 
@@ -34,30 +29,6 @@ def get_fake_provisioning_api_proxy():
         "profile-%s" % uuid1().get_hex(),
         distro)
     return papi_fake
-
-
-class TestCase(maastesting.TestCase):
-
-    def setUp(self):
-        super(TestCase, self).setUp()
-        papi_fake = get_fake_provisioning_api_proxy()
-        papi_fake_fixture = MonkeyPatch(
-            "maasserver.provisioning.get_provisioning_api_proxy",
-            lambda: papi_fake)
-        self.useFixture(papi_fake_fixture)
-
-
-class TestModelTestCase(TestCase, maastesting.TestModelTestCase):
-    pass
-
-
-class LoggedInTestCase(TestCase):
-
-    def setUp(self):
-        super(LoggedInTestCase, self).setUp()
-        self.logged_in_user = factory.make_user(password='test')
-        self.client.login(
-            username=self.logged_in_user.username, password='test')
 
 
 def reload_object(model_object):

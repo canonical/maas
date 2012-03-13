@@ -15,10 +15,12 @@ from maasserver import provisioning
 from maasserver.testing import (
     reload_object,
     reload_objects,
+    )
+from maasserver.testing.models import TestModel
+from maasserver.testing.testcase import (
     TestCase,
     TestModelTestCase,
     )
-from maasserver.testing.models import TestModel
 from provisioningserver.testing import fakeapi
 
 # Horrible kludge.  Works around a bug where delete() does not work on

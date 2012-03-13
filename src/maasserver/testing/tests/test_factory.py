@@ -14,7 +14,7 @@ __all__ = []
 from random import randint
 
 from maasserver.testing.factory import factory
-from maastesting import TestCase
+from maastesting.testcase import TestCase
 
 
 class TestFactory(TestCase):

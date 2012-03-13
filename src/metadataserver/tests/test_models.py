@@ -12,7 +12,7 @@ __metaclass__ = type
 __all__ = []
 
 from maasserver.testing.factory import factory
-from maastesting import TestCase
+from maastesting.testcase import TestCase
 from metadataserver.models import (
     NodeKey,
     NodeUserData,

@@ -27,10 +27,8 @@ from maasserver.middleware import (
     ExceptionLoggerMiddleware,
     ExceptionMiddleware,
     )
-from maasserver.testing import (
-    factory,
-    TestCase,
-    )
+from maasserver.testing.factory import factory
+from maasserver.testing.testcase import TestCase
 
 
 def fake_request(base_path):
