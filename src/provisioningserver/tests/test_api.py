@@ -327,8 +327,7 @@ class ProvisioningAPITests:
         if metadata is None:
             metadata = fake_node_metadata()
         node_name = yield papi.add_node(
-            name=name, profile=profile_name, power_type=power_type,
-            metadata=metadata)
+            name, profile_name, power_type, metadata)
         self.addCleanup(
             self.cleanup_objects,
             papi.delete_nodes_by_name,

@@ -30,6 +30,19 @@ from zope.interface import implementer
 from zope.interface.interface import Method
 
 
+def prevent_keyword_args(func):
+    """Forbid use of keyword arguments.
+
+    The Provisioning API is meant to be used via XML-RPC, at least for now, so
+    we prevent all API methods from being used with keyword arguments, which
+    are not supported via XML-RPC.
+    """
+    @wraps(func)
+    def wrapper(*args):
+        return func(*args)
+    return wrapper
+
+
 class FakeProvisioningDatabase(dict):
 
     def __missing__(self, key):
@@ -84,15 +97,18 @@ class FakeSynchronousProvisioningAPI:
         # happened most recently).
         self.power_status = {}
 
+    @prevent_keyword_args
     def add_distro(self, name, initrd, kernel):
         self.distros[name]["initrd"] = initrd
         self.distros[name]["kernel"] = kernel
         return name
 
+    @prevent_keyword_args
     def add_profile(self, name, distro):
         self.profiles[name]["distro"] = distro
         return name
 
+    @prevent_keyword_args
     def add_node(self, name, profile, power_type, metadata):
         self.nodes[name]["profile"] = profile
         self.nodes[name]["mac_addresses"] = []
@@ -100,52 +116,66 @@ class FakeSynchronousProvisioningAPI:
         self.power_types[name] = power_type
         return name
 
+    @prevent_keyword_args
     def modify_distros(self, deltas):
         for name, delta in deltas.items():
             distro = self.distros[name]
             distro.update(delta)
 
+    @prevent_keyword_args
     def modify_profiles(self, deltas):
         for name, delta in deltas.items():
             profile = self.profiles[name]
             profile.update(delta)
 
+    @prevent_keyword_args
     def modify_nodes(self, deltas):
         for name, delta in deltas.items():
             node = self.nodes[name]
             node.update(delta)
 
+    @prevent_keyword_args
     def get_distros_by_name(self, names):
         return self.distros.select(names)
 
+    @prevent_keyword_args
     def get_profiles_by_name(self, names):
         return self.profiles.select(names)
 
+    @prevent_keyword_args
     def get_nodes_by_name(self, names):
         return self.nodes.select(names)
 
+    @prevent_keyword_args
     def delete_distros_by_name(self, names):
         return self.distros.delete(names)
 
+    @prevent_keyword_args
     def delete_profiles_by_name(self, names):
         return self.profiles.delete(names)
 
+    @prevent_keyword_args
     def delete_nodes_by_name(self, names):
         return self.nodes.delete(names)
 
+    @prevent_keyword_args
     def get_distros(self):
         return self.distros.dump()
 
+    @prevent_keyword_args
     def get_profiles(self):
         return self.profiles.dump()
 
+    @prevent_keyword_args
     def get_nodes(self):
         return self.nodes.dump()
 
+    @prevent_keyword_args
     def start_nodes(self, names):
         for name in names:
             self.power_status[name] = 'start'
 
+    @prevent_keyword_args
     def stop_nodes(self, names):
         for name in names:
             self.power_status[name] = 'stop'
