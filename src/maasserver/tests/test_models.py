@@ -42,6 +42,7 @@ from maasserver.models import (
     SYSTEM_USERS,
     UserProfile,
     )
+from maasserver.testing.enum import map_enum
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
 from metadataserver.models import NodeUserData
@@ -51,6 +52,7 @@ from piston.models import (
     SECRET_SIZE,
     Token,
     )
+from provisioningserver.enum import POWER_TYPE
 from testtools.matchers import (
     GreaterThan,
     LessThan,
@@ -88,6 +90,30 @@ class NodeTest(TestCase):
         macs = MACAddress.objects.filter(
             node=node, mac_address='AA:BB:CC:DD:EE:FF').count()
         self.assertEqual(0, macs)
+
+    def test_get_effective_power_type_defaults_to_config(self):
+        power_types = list(map_enum(POWER_TYPE).values())
+        power_types.remove(POWER_TYPE.DEFAULT)
+        node = factory.make_node(power_type=POWER_TYPE.DEFAULT)
+        effective_types = []
+        for power_type in power_types:
+            Config.objects.set_config('node_power_type', power_type)
+            effective_types.append(node.get_effective_power_type())
+        self.assertEqual(power_types, effective_types)
+
+    def test_get_effective_power_type_reads_node_field(self):
+        power_types = list(map_enum(POWER_TYPE).values())
+        power_types.remove(POWER_TYPE.DEFAULT)
+        nodes = [
+            factory.make_node(power_type=power_type)
+            for power_type in power_types]
+        self.assertEqual(
+            power_types, [node.get_effective_power_type() for node in nodes])
+
+    def test_get_effective_power_type_rejects_default_as_config_value(self):
+        node = factory.make_node(power_type=POWER_TYPE.DEFAULT)
+        Config.objects.set_config('node_power_type', POWER_TYPE.DEFAULT)
+        self.assertRaises(ValueError, node.get_effective_power_type)
 
     def test_acquire(self):
         node = factory.make_node(status=NODE_STATUS.READY)

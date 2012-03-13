@@ -21,6 +21,7 @@ from provisioningserver.cobblerclient import (
     CobblerProfile,
     CobblerSystem,
     )
+from provisioningserver.enum import POWER_TYPE
 from provisioningserver.interfaces import IProvisioningAPI
 from provisioningserver.utils import deferred
 from twisted.internet.defer import (
@@ -187,13 +188,15 @@ class ProvisioningAPI:
         returnValue(profile.name)
 
     @inlineCallbacks
-    def add_node(self, name, profile, metadata):
+    def add_node(self, name, profile, power_type, metadata):
         assert isinstance(name, basestring)
         assert isinstance(profile, basestring)
+        assert power_type in (POWER_TYPE.VIRSH, POWER_TYPE.WAKE_ON_LAN)
         assert isinstance(metadata, dict)
         attributes = {
             "profile": profile,
             "ks_meta": {"MAAS_PRESEED": metadata_preseed % metadata},
+            "power_type": power_type,
             }
         system = yield CobblerSystem.new(self.session, name, attributes)
         returnValue(system.name)

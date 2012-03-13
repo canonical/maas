@@ -30,6 +30,7 @@ from maasserver.testing.enum import map_enum
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
 from metadataserver.models import NodeKey
+from provisioningserver.enum import POWER_TYPE
 
 
 class ProvisioningTests:
@@ -87,6 +88,19 @@ class ProvisioningTests:
         system_id = node.system_id
         pserv_node = self.papi.get_nodes_by_name([system_id])[system_id]
         self.assertEqual("precise-i386", pserv_node["profile"])
+
+    def test_provision_post_save_Node_registers_effective_power_type(self):
+        power_types = list(map_enum(POWER_TYPE).values())
+        nodes = {
+            power_type: factory.make_node(power_type=power_type)
+            for power_type in power_types}
+        effective_power_types = {
+            power_type: node.get_effective_power_type()
+            for power_type, node in nodes.items()}
+        pserv_power_types = {
+            power_type: self.papi.power_types[node.system_id]
+            for power_type, node in nodes.items()}
+        self.assertEqual(effective_power_types, pserv_power_types)
 
     def test_provision_post_save_MACAddress_create(self):
         # Creating and saving a MACAddress updates the Node with which it's

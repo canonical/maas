@@ -54,6 +54,10 @@ from piston.models import (
     Consumer,
     Token,
     )
+from provisioningserver.enum import (
+    POWER_TYPE,
+    POWER_TYPE_CHOICES,
+    )
 
 # Special users internal to MaaS.
 SYSTEM_USERS = [
@@ -342,6 +346,9 @@ class Node(CommonInfo):
     :ivar after_commissioning_action: The action to perform after
         commissioning. See vocabulary
         :class:`NODE_AFTER_COMMISSIONING_ACTION`.
+    :ivar power_type: The :class:`POWER_TYPE` that determines how this
+        node will be powered on.  If not given, the default will be used as
+        configured in the `node_power_type` setting.
     :ivar objects: The :class:`NodeManager`.
 
     """
@@ -366,6 +373,12 @@ class Node(CommonInfo):
     architecture = models.CharField(
         max_length=10, choices=ARCHITECTURE_CHOICES, blank=False,
         default=ARCHITECTURE.i386)
+
+    # For strings, Django insists on abusing the empty string ("blank")
+    # to mean "none."
+    power_type = models.CharField(
+        max_length=10, choices=POWER_TYPE_CHOICES, null=False, blank=True,
+        default=POWER_TYPE.DEFAULT)
 
     objects = NodeManager()
 
@@ -405,6 +418,23 @@ class Node(CommonInfo):
         mac = MACAddress.objects.get(mac_address=mac_address, node=self)
         if mac:
             mac.delete()
+
+    def get_effective_power_type(self):
+        """Get power-type to use for this node.
+
+        If no power type has been set for the node, get the configured
+        default.
+        """
+        if self.power_type == POWER_TYPE.DEFAULT:
+            power_type = Config.objects.get_config('node_power_type')
+            if power_type == POWER_TYPE.DEFAULT:
+                raise ValueError(
+                    "Default power type is configured to the default, but "
+                    "that means to use the configured default.  It needs to "
+                    "be confirued to another, more useful value.")
+        else:
+            power_type = self.power_type
+        return power_type
 
     def acquire(self, by_user):
         """Mark commissioned node as acquired by the given user."""
@@ -731,6 +761,7 @@ def get_default_config():
         # Commissioning section configuration.
         'after_commissioning': NODE_AFTER_COMMISSIONING_ACTION.DEFAULT,
         'check_compatibility': False,
+        'node_power_type': POWER_TYPE.WAKE_ON_LAN,
         # Ubuntu section configuration.
         'fallback_master_archive': False,
         'keep_mirror_list_uptodate': False,

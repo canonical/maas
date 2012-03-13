@@ -28,6 +28,7 @@ from time import time
 from unittest import skipIf
 from urlparse import urlparse
 
+from maasserver.testing.enum import map_enum
 from provisioningserver.api import (
     cobbler_to_papi_distro,
     cobbler_to_papi_node,
@@ -40,6 +41,7 @@ from provisioningserver.cobblerclient import (
     CobblerSession,
     CobblerSystem,
     )
+from provisioningserver.enum import POWER_TYPE
 from provisioningserver.interfaces import IProvisioningAPI
 from provisioningserver.testing.fakeapi import FakeAsynchronousProvisioningAPI
 from provisioningserver.testing.fakecobbler import make_fake_cobbler_session
@@ -306,7 +308,8 @@ class ProvisioningAPITests:
         returnValue(profile_name)
 
     @inlineCallbacks
-    def add_node(self, papi, name=None, profile_name=None, metadata=None):
+    def add_node(self, papi, name=None, profile_name=None, power_type=None,
+                 metadata=None):
         """Creates a new node object via `papi`.
 
         Arranges for it to be deleted during test clean-up. If `name` is not
@@ -319,10 +322,13 @@ class ProvisioningAPITests:
             name = fake_name()
         if profile_name is None:
             profile_name = yield self.add_profile(papi)
+        if power_type is None:
+            power_type = POWER_TYPE.WAKE_ON_LAN
         if metadata is None:
             metadata = fake_node_metadata()
         node_name = yield papi.add_node(
-            name, profile_name, metadata)
+            name=name, profile=profile_name, power_type=power_type,
+            metadata=metadata)
         self.addCleanup(
             self.cleanup_objects,
             papi.delete_nodes_by_name,
@@ -571,6 +577,28 @@ class ProvisioningAPITests:
         pass
 
 
+class ProvisioningAPITestsWithCobbler:
+    """Provisioning API tests that also access a real, or fake, Cobbler."""
+
+    @inlineCallbacks
+    def test_add_node_sets_power_type(self):
+        papi = self.get_provisioning_api()
+        power_types = list(map_enum(POWER_TYPE).values())
+        # The DEFAULT value does not exist as far as the provisioning
+        # server is concerned.
+        power_types.remove(POWER_TYPE.DEFAULT)
+        nodes = {}
+        for power_type in power_types:
+            nodes[power_type] = yield self.add_node(
+                papi, power_type=power_type)
+        cobbler_power_types = {}
+        for power_type, node_id in nodes.items():
+            attrs = yield CobblerSystem(papi.session, node_id).get_values()
+            cobbler_power_types[power_type] = attrs['power_type']
+        self.assertItemsEqual(
+            dict(zip(power_types, power_types)), cobbler_power_types)
+
+
 class TestFakeProvisioningAPI(ProvisioningAPITests, TestCase):
     """Test :class:`FakeAsynchronousProvisioningAPI`.
 
@@ -582,7 +610,9 @@ class TestFakeProvisioningAPI(ProvisioningAPITests, TestCase):
         return FakeAsynchronousProvisioningAPI()
 
 
-class TestProvisioningAPIWithFakeCobbler(ProvisioningAPITests, TestCase):
+class TestProvisioningAPIWithFakeCobbler(ProvisioningAPITests,
+                                         ProvisioningAPITestsWithCobbler,
+                                         TestCase):
     """Test :class:`ProvisioningAPI` with a fake Cobbler instance.
 
     Includes by inheritance all the tests in :class:`ProvisioningAPITests`.
@@ -603,7 +633,9 @@ class TestProvisioningAPIWithFakeCobbler(ProvisioningAPITests, TestCase):
         self.assertIn(metadata['maas-metadata-credentials'], preseed)
 
 
-class TestProvisioningAPIWithRealCobbler(ProvisioningAPITests, TestCase):
+class TestProvisioningAPIWithRealCobbler(ProvisioningAPITests,
+                                         ProvisioningAPITestsWithCobbler,
+                                         TestCase):
     """Test :class:`ProvisioningAPI` with a real Cobbler instance.
 
     The URL for the Cobbler instance must be provided in the

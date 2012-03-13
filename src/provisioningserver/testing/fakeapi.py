@@ -73,6 +73,11 @@ class FakeSynchronousProvisioningAPI:
         self.distros = FakeProvisioningDatabase()
         self.profiles = FakeProvisioningDatabase()
         self.nodes = FakeProvisioningDatabase()
+        # Record power_type settings for nodes (by node name).  This is
+        # not part of the provisioning-server node as returned to the
+        # maasserver, so it's not stored as a regular attribute even if
+        # it works like one internally.
+        self.power_types = {}
         # This records nodes that start/stop commands have been issued
         # for.  If a node has been started, its name maps to 'start'; if
         # it has been stopped, its name maps to 'stop' (whichever
@@ -88,10 +93,11 @@ class FakeSynchronousProvisioningAPI:
         self.profiles[name]["distro"] = distro
         return name
 
-    def add_node(self, name, profile, metadata):
+    def add_node(self, name, profile, power_type, metadata):
         self.nodes[name]["profile"] = profile
         self.nodes[name]["mac_addresses"] = []
         self.nodes[name]["metadata"] = metadata
+        self.power_types[name] = power_type
         return name
 
     def modify_distros(self, deltas):

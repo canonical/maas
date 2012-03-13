@@ -92,7 +92,11 @@ def provision_post_save_Node(sender, instance, created, **kwargs):
     """Create or update nodes in the provisioning server."""
     papi = get_provisioning_api_proxy()
     profile = select_profile_for_node(instance, papi)
-    papi.add_node(instance.system_id, profile, compose_metadata(instance))
+    power_type = instance.get_effective_power_type()
+    metadata = compose_metadata(instance)
+    papi.add_node(
+        name=instance.system_id, profile=profile, power_type=power_type,
+        metadata=metadata)
 
 
 def set_node_mac_addresses(node):

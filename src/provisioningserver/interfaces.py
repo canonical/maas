@@ -50,10 +50,12 @@ class IProvisioningAPI_Template:
         :return: The name of the new profile.
         """
 
-    def add_node(name, profile, metadata):
+    def add_node(name, profile, power_type, metadata):
         """Add a node with the given `name`.
 
         :param profile: Name of profile to associate the node with.
+        :param power_type: A choice of power-control method, as in
+            :class:`POWER_TYPE`.
         :param metadata: Dict of ks_meta items to pre-seed into the node.
             Should include maas-metadata-url (URL for the metadata service)
             and maas-metadata-credentials (OAuth token for accessing the
