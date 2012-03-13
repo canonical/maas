@@ -30,19 +30,6 @@ from zope.interface import implementer
 from zope.interface.interface import Method
 
 
-def prevent_keyword_args(func):
-    """Forbid use of keyword arguments.
-
-    The Provisioning API is meant to be used via XML-RPC, at least for now, so
-    we prevent all API methods from being used with keyword arguments, which
-    are not supported via XML-RPC.
-    """
-    @wraps(func)
-    def wrapper(*args):
-        return func(*args)
-    return wrapper
-
-
 class FakeProvisioningDatabase(dict):
 
     def __missing__(self, key):
@@ -77,12 +64,12 @@ class FakeProvisioningDatabase(dict):
 
 
 @implementer(IProvisioningAPI)
-class FakeSynchronousProvisioningAPI:
+class FakeProvisioningAPIBase:
 
     # TODO: Referential integrity might be a nice thing.
 
     def __init__(self):
-        super(FakeSynchronousProvisioningAPI, self).__init__()
+        super(FakeProvisioningAPIBase, self).__init__()
         self.distros = FakeProvisioningDatabase()
         self.profiles = FakeProvisioningDatabase()
         self.nodes = FakeProvisioningDatabase()
@@ -97,18 +84,15 @@ class FakeSynchronousProvisioningAPI:
         # happened most recently).
         self.power_status = {}
 
-    @prevent_keyword_args
     def add_distro(self, name, initrd, kernel):
         self.distros[name]["initrd"] = initrd
         self.distros[name]["kernel"] = kernel
         return name
 
-    @prevent_keyword_args
     def add_profile(self, name, distro):
         self.profiles[name]["distro"] = distro
         return name
 
-    @prevent_keyword_args
     def add_node(self, name, profile, power_type, metadata):
         self.nodes[name]["profile"] = profile
         self.nodes[name]["mac_addresses"] = []
@@ -116,83 +100,107 @@ class FakeSynchronousProvisioningAPI:
         self.power_types[name] = power_type
         return name
 
-    @prevent_keyword_args
     def modify_distros(self, deltas):
         for name, delta in deltas.items():
             distro = self.distros[name]
             distro.update(delta)
 
-    @prevent_keyword_args
     def modify_profiles(self, deltas):
         for name, delta in deltas.items():
             profile = self.profiles[name]
             profile.update(delta)
 
-    @prevent_keyword_args
     def modify_nodes(self, deltas):
         for name, delta in deltas.items():
             node = self.nodes[name]
             node.update(delta)
 
-    @prevent_keyword_args
     def get_distros_by_name(self, names):
         return self.distros.select(names)
 
-    @prevent_keyword_args
     def get_profiles_by_name(self, names):
         return self.profiles.select(names)
 
-    @prevent_keyword_args
     def get_nodes_by_name(self, names):
         return self.nodes.select(names)
 
-    @prevent_keyword_args
     def delete_distros_by_name(self, names):
         return self.distros.delete(names)
 
-    @prevent_keyword_args
     def delete_profiles_by_name(self, names):
         return self.profiles.delete(names)
 
-    @prevent_keyword_args
     def delete_nodes_by_name(self, names):
         return self.nodes.delete(names)
 
-    @prevent_keyword_args
     def get_distros(self):
         return self.distros.dump()
 
-    @prevent_keyword_args
     def get_profiles(self):
         return self.profiles.dump()
 
-    @prevent_keyword_args
     def get_nodes(self):
         return self.nodes.dump()
 
-    @prevent_keyword_args
     def start_nodes(self, names):
         for name in names:
             self.power_status[name] = 'start'
 
-    @prevent_keyword_args
     def stop_nodes(self, names):
         for name in names:
             self.power_status[name] = 'stop'
 
 
-def async(func):
-    """Decorate a function so that it always return a `defer.Deferred`."""
+PAPI_METHODS = {
+    name: getattr(FakeProvisioningAPIBase, name)
+    for name in IProvisioningAPI.names(all=True)
+    if isinstance(IProvisioningAPI[name], Method)
+    }
+
+
+def sync_xmlrpc_func(func):
+    """Decorate a function so that it acts similarly to a synchronously
+    accessed remote XML-RPC call.
+
+    All method calls return synchronously.
+    """
     @wraps(func)
     def wrapper(*args, **kwargs):
-        return defer.execute(func, *args, **kwargs)
+        assert len(kwargs) == 0, (
+            "The Provisioning API is meant to be used via XML-RPC, "
+            "for now, so its methods are prevented from use with "
+            "keyword arguments, which XML-RPC does not support.")
+        # TODO: Convert exceptions into Faults.
+        return func(*args)
     return wrapper
 
 
-# Generate an asynchronous variant based on the synchronous one.
+# Generate an synchronous variant.
+FakeSynchronousProvisioningAPI = type(
+    b"FakeSynchronousProvisioningAPI", (FakeProvisioningAPIBase,), {
+        name: sync_xmlrpc_func(func) for name, func in PAPI_METHODS.items()
+        })
+
+
+def async_xmlrpc_func(func):
+    """Decorate a function so that it acts similarly to an asynchronously
+    accessed remote XML-RPC call.
+
+    All method calls return asynchronously, via a :class:`defer.Deferred`.
+    """
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        assert len(kwargs) == 0, (
+            "The Provisioning API is meant to be used via XML-RPC, "
+            "for now, so its methods are prevented from use with "
+            "keyword arguments, which XML-RPC does not support.")
+        # TODO: Convert exceptions into Faults.
+        return defer.execute(func, *args)
+    return wrapper
+
+
+# Generate an asynchronous variant.
 FakeAsynchronousProvisioningAPI = type(
-    b"FakeAsynchronousProvisioningAPI", (FakeSynchronousProvisioningAPI,), {
-        name: async(getattr(FakeSynchronousProvisioningAPI, name))
-        for name in IProvisioningAPI.names(all=True)
-        if isinstance(IProvisioningAPI[name], Method)
+    b"FakeAsynchronousProvisioningAPI", (FakeProvisioningAPIBase,), {
+        name: async_xmlrpc_func(func) for name, func in PAPI_METHODS.items()
         })
