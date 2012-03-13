@@ -86,7 +86,7 @@ pserv-stop:
 	{ test -e pserv.pid && cat pserv.pid; } | xargs --no-run-if-empty kill
 
 run: bin/maas dev-db pserv.pid
-	bin/maas runserver 8000 --settings=maas.demo
+	bin/maas runserver 0.0.0.0:8000 --settings=maas.demo
 
 harness: bin/maas dev-db
 	bin/maas shell
