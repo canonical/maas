@@ -15,12 +15,15 @@ __all__ = [
     "NodesCreateView",
     ]
 
+import mimetypes
 import os
+import urllib2
 
 from convoy.combo import (
     combine_files,
     parse_qs,
     )
+from django.conf import settings as django_settings
 from django.contrib import messages
 from django.contrib.auth.forms import PasswordChangeForm as PasswordForm
 from django.contrib.auth.models import User
@@ -54,6 +57,7 @@ from maasserver.forms import (
     ProfileForm,
     UbuntuForm,
     )
+from maasserver.messages import messaging
 from maasserver.models import (
     Node,
     SSHKeys,
@@ -66,12 +70,27 @@ def logout(request):
     return dj_logout(request, next_page=reverse('login'))
 
 
+def get_longpoll_context():
+    if messaging is not None and django_settings.LONGPOLL_URL is not None:
+        return {
+            'longpoll_queue': messaging.getQueue().name,
+            'LONGPOLL_URL': django_settings.LONGPOLL_URL,
+            }
+    else:
+        return {}
+
+
 class NodeListView(ListView):
 
     context_object_name = "node_list"
 
     def get_queryset(self):
         return Node.objects.get_visible_nodes(user=self.request.user)
+
+    def get_context_data(self, **kwargs):
+        context = super(NodeListView, self).get_context_data(**kwargs)
+        context.update(get_longpoll_context())
+        return context
 
 
 class NodesCreateView(CreateView):
@@ -219,6 +238,20 @@ class AccountsEdit(UpdateView):
 
     def get_success_url(self):
         return reverse('settings')
+
+
+def proxy_to_longpoll(request):
+    url = django_settings.LONGPOLL_SERVER_URL
+    assert url is not None, (
+        "LONGPOLL_SERVER_URL should point to a Longpoll server.")
+
+    if 'QUERY_STRING' in request.META:
+        url += '?' + request.META['QUERY_STRING']
+    proxied_request = urllib2.urlopen(url)
+    status_code = proxied_request.code
+    mimetype = proxied_request.headers.typeheader or mimetypes.guess_type(url)
+    content = proxied_request.read()
+    return HttpResponse(content, status=status_code, mimetype=mimetype)
 
 
 def settings(request):

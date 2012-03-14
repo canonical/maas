@@ -36,6 +36,7 @@ from maasserver.views import (
     logout,
     NodeListView,
     NodesCreateView,
+    proxy_to_longpoll,
     settings,
     settings_add_archive,
     userprefsview,
@@ -75,6 +76,13 @@ urlpatterns += patterns('maasserver.views',
     url(
         r'^nodes/create/$', NodesCreateView.as_view(), name='node-create'),
 )
+
+if django_settings.LONGPOLL_SERVER_URL is not None:
+    urlpatterns += patterns('maasserver.views',
+        url(
+            r'^%s$' % re.escape(django_settings.LONGPOLL_URL),
+            proxy_to_longpoll, name='proxy-to-longpoll'),
+        )
 
 # URLs for admin users.
 urlpatterns += patterns('maasserver.views',

@@ -11,8 +11,9 @@ from __future__ import (
 
 __metaclass__ = type
 
-import xmlrpclib
 import sys
+import xmlrpclib
+
 
 host = "192.168.123.2"
 user = "cobbler"

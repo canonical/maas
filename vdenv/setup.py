@@ -11,14 +11,16 @@ from __future__ import (
 
 __metaclass__ = type
 
-import yaml
 import os
 import re
-import sys
-import libvirt
-from Cheetah.Template import Template
 import subprocess
+import sys
 import xmlrpclib
+
+from Cheetah.Template import Template
+import libvirt
+import yaml
+
 
 NODES_RANGE = range(1,4)
 
