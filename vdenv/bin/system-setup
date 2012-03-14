@@ -18,16 +18,7 @@ pkgs="$pkgs socat" # for libvirt-> cobbler
 pkgs="$pkgs python-cheetah" # for setup.py
 pkgs="$pkgs qemu-utils qemu-kvm" # needed generally
 
-new_pkgs=""
-for pkg in ${pkgs}; do
-    dpkg-query --show "$pkg" >/dev/null ||
-        new_pkgs="${new_pkgs:+${new_pkgs} }${pkg}"
-done
-
-if [ -n "$new_pkgs" ]; then
-    sudo apt-get update -qq || /bin/true
-    sudo apt-get install -y $pkgs </dev/null
-fi
+sudo apt-get install -y $pkgs </dev/null
 
 new_groups=""
 for group in libvirtd kvm; do

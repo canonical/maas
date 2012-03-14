@@ -40,7 +40,8 @@ else
     remotecmd="ssh-import-id $keyowner"
 fi
 
-while ! cat $inputfiles | ssh $cobblerlogin -o StrictHostKeyChecking=no $remotecmd
+while ! cat $inputfiles |
+    ssh $cobblerlogin -o CheckHostIP=no -o StrictHostKeyChecking=no $remotecmd
 do
     sleep 5
 done

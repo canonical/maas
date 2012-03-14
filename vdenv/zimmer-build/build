@@ -166,7 +166,7 @@ else
             o_zimg="${zimg}"
             zimg=${save_d}/$(basename "$o_zimg" ".img").zimg
             [ -f "$zimg" ] &&
-                fail "please delete $destfirst or use --zimg|--img"
+                fail "please delete $zimg first or use --zimg|--img"
             download "$o_zimg" "$zimg"
             ;;
         file://*)
