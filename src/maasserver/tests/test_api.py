@@ -41,6 +41,7 @@ from metadataserver.models import (
     NodeUserData,
     )
 from metadataserver.nodeinituser import get_node_init_user
+from provisioningserver.enum import POWER_TYPE
 
 
 class APIv10TestMixin:
@@ -77,6 +78,27 @@ class AnonymousEnlistmentAPITest(APIv10TestMixin, TestCase):
         [diane] = Node.objects.filter(hostname='diane')
         self.assertEqual(2, diane.after_commissioning_action)
         self.assertEqual(ARCHITECTURE.amd64, diane.architecture)
+
+    def test_POST_new_power_type_defaults_to_asking_config(self):
+        response = self.client.post(
+            self.get_uri('nodes/'), {
+                'op': 'new',
+                'mac_addresses': ['00:11:22:33:44:55'],
+                })
+        node = Node.objects.get(
+            system_id=json.loads(response.content)['system_id'])
+        self.assertEqual(POWER_TYPE.DEFAULT, node.power_type)
+
+    def test_POST_new_sets_power_type(self):
+        response = self.client.post(
+            self.get_uri('nodes/'), {
+                'op': 'new',
+                'power_type': POWER_TYPE.VIRSH,
+                'mac_addresses': ['00:11:22:33:44:55'],
+                })
+        node = Node.objects.get(
+            system_id=json.loads(response.content)['system_id'])
+        self.assertEqual(POWER_TYPE.VIRSH, node.power_type)
 
     def test_POST_new_associates_mac_addresses(self):
         # The API allows a Node to be created and associated with MAC
