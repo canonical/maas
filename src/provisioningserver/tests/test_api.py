@@ -103,12 +103,14 @@ class TestFunctions(TestCase):
             "interfaces": {
                 "eth0": {"mac_address": "12:34:56:78:9a:bc"},
                 },
+            "power_type": "virsh",
             "ju": "nk",
             }
         expected = {
             "name": "iced",
             "profile": "earth",
             "mac_addresses": ["12:34:56:78:9a:bc"],
+            "power_type": "virsh",
             }
         observed = cobbler_to_papi_node(data)
         self.assertEqual(expected, observed)
@@ -117,12 +119,14 @@ class TestFunctions(TestCase):
         data = {
             "name": "iced",
             "profile": "earth",
+            "power_type": "ether_wake",
             "ju": "nk",
             }
         expected = {
             "name": "iced",
             "profile": "earth",
             "mac_addresses": [],
+            "power_type": "ether_wake",
             }
         observed = cobbler_to_papi_node(data)
         self.assertEqual(expected, observed)
