@@ -194,9 +194,10 @@ class ProvisioningAPI:
         assert isinstance(profile, basestring)
         assert power_type in (POWER_TYPE.VIRSH, POWER_TYPE.WAKE_ON_LAN)
         assert isinstance(metadata, dict)
+        preseed = b64encode(metadata_preseed % metadata)
         attributes = {
             "profile": profile,
-            "ks_meta": {"MAAS_PRESEED": b64encode(metadata_preseed % metadata)},
+            "ks_meta": {"MAAS_PRESEED": preseed},
             "power_type": power_type,
             }
         system = yield CobblerSystem.new(self.session, name, attributes)
