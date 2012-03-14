@@ -1,0 +1,36 @@
+##
+## txlongpoll configuration.
+##
+
+## The front-end service.
+#
+frontend:
+  ## The port on which to serve.
+  port: 8002
+  ## If specified, queue names requested must have the given prefix.
+  # prefix:
+
+## OOPS configuration.
+#
+oops:
+  ## Directory in which to place OOPS reports.
+  # directory: ""
+  directory: "logs"
+  ## The reporter used when generating OOPS reports.
+  # reporter: "LONGPOLL"
+  reporter: "maas-txlongpoll"
+
+## Message broker configuration.
+#
+broker:
+  # host: "localhost"
+  # port: 5672
+  # username: "guest"
+  # password: "guest"
+  # vhost: "/"
+
+## Where to log. This log can be rotated by sending SIGUSR1 to the
+## running server.
+#
+# logfile: "txlongpoll.log"
+logfile: "logs/txlongpoll.log"

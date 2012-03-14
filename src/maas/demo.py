@@ -24,13 +24,13 @@ MIDDLEWARE_CLASSES += (
 )
 
 # In dev mode: Django should act as a proxy to txlongpoll.
-LONGPOLL_SERVER_URL = "http://localhost:4545/"
+LONGPOLL_SERVER_URL = "http://localhost:8002/"
 
 # Disable longpoll by default for now. Set it back to 'longpoll/' to
 # enable it.
 LONGPOLL_URL = None
 
-# This should match the setting in Makefile:pserv.pid.
+# This should match the setting in /etc/pserv.yaml.
 PSERV_URL = "http://localhost:8001/api"
 
 RABBITMQ_PUBLISH = True

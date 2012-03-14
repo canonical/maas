@@ -12,15 +12,11 @@
 ./docs/api.rst
 ./download-cache
 ./eggs
-./logs
-./longpoll.pid
+./logs/*
 ./media/demo/*
 ./media/development
 ./parts
-./pserv.log
-./pserv.pid
+./run/*.pid
 ./TAGS
 ./tags
-./twistd.log
 ./twisted/plugins/dropin.cache
-./txlongpoll.log

@@ -73,6 +73,7 @@ setup(
         'South',
         'Twisted',
         'txAMQP',
+        'txlongpoll',
         ],
     classifiers=[
         'Development Status :: 4 - Beta',

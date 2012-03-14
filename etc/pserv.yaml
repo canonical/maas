@@ -10,12 +10,15 @@
 ## running server.
 #
 # logfile: "pserv.log"
+logfile: "logs/pserv.log"
 
 ## OOPS configuration (optional).
 #
 oops:
   # directory:
+  directory: "logs"
   # reporter:
+  reporter: "maas-pserv"
 
 ## Message broker configuration (optional, not currently used).
 #
