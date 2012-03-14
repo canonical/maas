@@ -17,22 +17,12 @@
     <label for="id_hostname">Hostname
       <span class="form-optional">(optional)</span>
     </label>
-    <input type="text" maxlength="30" name="hostname" id="id_hostname" />
+    {{ node_form.hostname }}
     <div class="field-help">Default is MAC-based, e.g. "node-aabbccddeeff"
     </div>
   </p>
   <p>
     <label for="id_after_commissioning_action">After commissionning</label>
-    <select id="id_after_commissioning_action"
-            name="after_commissioning_action">
-      <option selected="selected" value="0">Queue for dynamic
-        allocation to services</option>
-      <option value="1">Check compatibility and hold for future
-        decision</option>
-      <option value="2">Deploy with Ubuntu 12.04 LTS</option>
-      <option value="3">Deploy with Ubuntu 11.10</option>
-      <option value="4">Deploy with Ubuntu 11.04</option>
-      <option value="5">Deploy with Ubuntu 10.10</option>
-    </select>
+    {{ node_form.after_commissioning_action }}
   </p>
 </script>

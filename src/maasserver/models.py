@@ -146,12 +146,6 @@ class NODE_AFTER_COMMISSIONING_ACTION:
     CHECK = 1
     #:
     DEPLOY_12_04 = 2
-    #:
-    DEPLOY_11_10 = 3
-    #:
-    DEPLOY_11_04 = 4
-    #:
-    DEPLOY_10_10 = 5
 
 
 NODE_AFTER_COMMISSIONING_ACTION_CHOICES = (
@@ -161,12 +155,6 @@ NODE_AFTER_COMMISSIONING_ACTION_CHOICES = (
         "Check compatibility and hold for future decision"),
     (NODE_AFTER_COMMISSIONING_ACTION.DEPLOY_12_04,
         "Deploy with Ubuntu 12.04 LTS"),
-    (NODE_AFTER_COMMISSIONING_ACTION.DEPLOY_11_10,
-        "Deploy with Ubuntu 11.10"),
-    (NODE_AFTER_COMMISSIONING_ACTION.DEPLOY_11_04,
-        "Deploy with Ubuntu 11.04"),
-    (NODE_AFTER_COMMISSIONING_ACTION.DEPLOY_10_10,
-        "Deploy with Ubuntu 10.10"),
 )
 
 
