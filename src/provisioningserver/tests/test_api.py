@@ -18,6 +18,7 @@ from abc import (
     ABCMeta,
     abstractmethod,
     )
+from base64 import b64decode
 from itertools import (
     count,
     islice,
@@ -628,6 +629,7 @@ class TestProvisioningAPIWithFakeCobbler(ProvisioningAPITests,
         node_name = yield self.add_node(papi, metadata=metadata)
         attrs = yield CobblerSystem(papi.session, node_name).get_values()
         preseed = attrs['ks_meta']['MAAS_PRESEED']
+        preseed = b64decode(preseed)
         self.assertIn(metadata['maas-metadata-url'], preseed)
         self.assertIn(metadata['maas-metadata-credentials'], preseed)
 

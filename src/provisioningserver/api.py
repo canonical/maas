@@ -13,6 +13,7 @@ __all__ = [
     "ProvisioningAPI",
     ]
 
+from base64 import b64encode
 from functools import partial
 from itertools import count
 
@@ -195,7 +196,7 @@ class ProvisioningAPI:
         assert isinstance(metadata, dict)
         attributes = {
             "profile": profile,
-            "ks_meta": {"MAAS_PRESEED": metadata_preseed % metadata},
+            "ks_meta": {"MAAS_PRESEED": b64encode(metadata_preseed % metadata)},
             "power_type": power_type,
             }
         system = yield CobblerSystem.new(self.session, name, attributes)
