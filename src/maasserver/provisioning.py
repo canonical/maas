@@ -14,6 +14,7 @@ __all__ = [
     ]
 
 from urllib import urlencode
+from urlparse import urljoin
 import warnings
 import xmlrpclib
 
@@ -56,7 +57,7 @@ def get_provisioning_api_proxy():
 
 def get_metadata_server_url():
     """Return the URL where nodes can reach the metadata service."""
-    return "http://%s/metadata/" % Config.objects.get_config('metadata-host')
+    return urljoin(Config.objects.get_config('maas_url'), "metadata/")
 
 
 def compose_metadata(node):

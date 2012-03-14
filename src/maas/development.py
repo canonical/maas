@@ -11,8 +11,12 @@ from __future__ import (
 __metaclass__ = type
 
 import os
+from socket import gethostname
 
 from maas.settings import *
+
+# In development, django can be accessed directly on port 8000.
+DEFAULT_MAAS_URL = "http://%s:8000/" % gethostname()
 
 # Use our custom test runner, which makes sure that a local database
 # cluster is running in the branch.

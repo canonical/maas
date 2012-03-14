@@ -158,8 +158,8 @@ class ProvisioningTests:
 
     def test_metadata_server_url_refers_to_own_metadata_service(self):
         self.assertEqual(
-            "http://%s/metadata/"
-            % Config.objects.get_config('metadata-host'),
+            "%s/metadata/"
+            % Config.objects.get_config('maas_url').rstrip('/'),
             get_metadata_server_url())
 
     def test_compose_metadata_includes_metadata_url(self):

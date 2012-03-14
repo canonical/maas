@@ -29,7 +29,6 @@ import getpass
 from logging import getLogger
 import os
 import re
-from socket import gethostname
 import time
 from uuid import uuid1
 
@@ -763,6 +762,9 @@ def get_default_config():
         'after_commissioning': NODE_AFTER_COMMISSIONING_ACTION.DEFAULT,
         'check_compatibility': False,
         'node_power_type': POWER_TYPE.WAKE_ON_LAN,
+        # The host name or address where the nodes can access the metadata
+        # service of this MaaS.
+        'maas_url': settings.DEFAULT_MAAS_URL,
         # Ubuntu section configuration.
         'fallback_master_archive': False,
         'keep_mirror_list_uptodate': False,
@@ -774,9 +776,6 @@ def get_default_config():
         'maas_name': "%s's" % getpass.getuser().capitalize(),
         'provide_dhcp': False,
         ## /settings
-        # The host name or address where the nodes can access the metadata
-        # service.
-        'metadata-host': gethostname(),
         }
 
 

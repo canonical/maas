@@ -11,6 +11,7 @@ from __future__ import (
 __metaclass__ = type
 
 import os
+from socket import gethostname
 
 # Use new style url tag:
 # https://docs.djangoproject.com/en/dev/releases/1.3/#changes-to-url-and-ssi
@@ -43,10 +44,18 @@ LOGOUT_URL = '/'
 LOGIN_REDIRECT_URL = '/'
 LOGIN_URL = '/accounts/login/'
 
+
+# Default URL specifying protocol, host, and (if necessary) port where
+# this MaaS can be found.  Configuration can, and probably should,
+# override this.
+DEFAULT_MAAS_URL = "http://%s/" % gethostname()
+
+
 if FORCE_SCRIPT_NAME is not None:
     LOGOUT_URL = FORCE_SCRIPT_NAME + LOGOUT_URL
     LOGIN_REDIRECT_URL = FORCE_SCRIPT_NAME + LOGIN_REDIRECT_URL
     LOGIN_URL = FORCE_SCRIPT_NAME + LOGIN_URL
+    DEFAULT_MAAS_URL = urljoin(DEFAULT_MAAS_URL, FORCE_SCRIPT_NAME)
     # ADMIN_MEDIA_PREFIX will be deprecated in Django 1.4.
     # Admin's media will be served using staticfiles instead.
     ADMIN_MEDIA_PREFIX = FORCE_SCRIPT_NAME
