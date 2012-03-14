@@ -20,3 +20,7 @@ from maasserver.fields import JSONObjectField
 class JSONFieldModel(models.Model):
     name = models.CharField(max_length=255, unique=False)
     value = JSONObjectField(null=True)
+
+
+class MessagesTestModel(models.Model):
+    name = models.CharField(max_length=255, unique=False)

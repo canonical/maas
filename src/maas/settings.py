@@ -80,6 +80,15 @@ AUTHENTICATION_BACKENDS = (
     'maasserver.models.MaaSAuthorizationBackend',
     )
 
+# Rabbit MQ Configuration.
+RABBITMQ_HOST = 'localhost'
+RABBITMQ_USERID = 'guest'
+RABBITMQ_PASSWORD = 'guest'
+RABBITMQ_VIRTUAL_HOST = '/'
+
+RABBITMQ_PUBLISH = False
+
+
 DATABASES = {
     'default': {
         # 'postgresql_psycopg2', 'postgresql', 'mysql', 'sqlite3' etc.

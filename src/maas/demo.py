@@ -25,6 +25,7 @@ MIDDLEWARE_CLASSES += (
 # This should match the setting in Makefile:pserv.pid.
 PSERV_URL = "http://localhost:8001/api"
 
+RABBITMQ_PUBLISH = True
 
 LOGGING = {
     'version': 1,
