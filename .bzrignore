@@ -13,6 +13,7 @@
 ./download-cache
 ./eggs
 ./logs
+./longpoll.pid
 ./media/demo/*
 ./media/development
 ./parts
@@ -22,3 +23,4 @@
 ./tags
 ./twistd.log
 ./twisted/plugins/dropin.cache
+./txlongpoll.log

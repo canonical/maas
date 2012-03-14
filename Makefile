@@ -4,6 +4,7 @@ build: \
     bin/buildout \
     bin/maas bin/test.maas \
     bin/twistd.pserv bin/test.pserv \
+    bin/twistd.longpoll \
     bin/py bin/ipy
 
 all: build doc
@@ -26,6 +27,10 @@ bin/twistd.pserv: bin/buildout buildout.cfg setup.py
 
 bin/test.pserv: bin/buildout buildout.cfg setup.py
 	bin/buildout install pserv-test
+	@touch --no-create $@
+
+bin/twistd.longpoll: bin/buildout buildout.cfg setup.py
+	bin/buildout install longpoll
 	@touch --no-create $@
 
 bin/flake8: bin/buildout buildout.cfg setup.py
@@ -68,7 +73,7 @@ clean:
 	find . -type f -name '*~' -print0 | xargs -r0 $(RM)
 	$(RM) -r media/demo/* media/development
 
-distclean: clean pserv-stop
+distclean: clean pserv-stop longpoll-stop
 	utilities/maasdb delete-cluster ./db/
 	$(RM) -r eggs develop-eggs
 	$(RM) -r bin build dist logs parts
@@ -85,7 +90,15 @@ pserv-start: pserv.pid
 pserv-stop:
 	{ test -e pserv.pid && cat pserv.pid; } | xargs --no-run-if-empty kill
 
-run: bin/maas dev-db pserv.pid
+longpoll.pid: bin/twistd.longpoll
+	bin/twistd.longpoll --pidfile=$@ txlongpoll -u guest -a guest -f 4545
+
+longpoll-start: longpoll.pid
+
+longpoll-stop:
+	{ test -e longpoll.pid && cat longpoll.pid; } | xargs --no-run-if-empty kill
+
+run: bin/maas dev-db pserv.pid longpoll.pid
 	bin/maas runserver 0.0.0.0:8000 --settings=maas.demo
 
 harness: bin/maas dev-db
@@ -102,4 +115,5 @@ checkbox:
 .PHONY: \
     build check checkbox clean dev-db distclean doc \
     harness lint pserv-start pserv-stop run \
+    longpoll-start longpoll-stop \
     syncdb test sampledata
