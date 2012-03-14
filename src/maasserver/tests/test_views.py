@@ -93,12 +93,12 @@ class TestSnippets(LoggedInTestCase):
 
     def test_hostname(self):
         response = self.client.get('/')
-        self.assertSnippetExistsAndContains(
+        self.assertTemplateExistsAndContains(
             response.content, '#add-node', 'input#id_hostname')
 
     def test_after_commissioning_action_snippet(self):
         response = self.client.get('/')
-        self.assertSnippetExistsAndContains(
+        self.assertTemplateExistsAndContains(
             response.content, '#add-node',
             'select#id_after_commissioning_action')
 

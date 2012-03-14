@@ -81,9 +81,11 @@ class AnonymousEnlistmentAPITest(APIv10TestMixin, TestCase):
         self.assertEqual(architecture, diane.architecture)
 
     def test_POST_new_power_type_defaults_to_asking_config(self):
+        architecture = factory.getRandomChoice(ARCHITECTURE_CHOICES)
         response = self.client.post(
             self.get_uri('nodes/'), {
                 'op': 'new',
+                'architecture': architecture,
                 'mac_addresses': ['00:11:22:33:44:55'],
                 })
         node = Node.objects.get(
@@ -91,9 +93,11 @@ class AnonymousEnlistmentAPITest(APIv10TestMixin, TestCase):
         self.assertEqual(POWER_TYPE.DEFAULT, node.power_type)
 
     def test_POST_new_sets_power_type(self):
+        architecture = factory.getRandomChoice(ARCHITECTURE_CHOICES)
         response = self.client.post(
             self.get_uri('nodes/'), {
                 'op': 'new',
+                'architecture': architecture,
                 'power_type': POWER_TYPE.VIRSH,
                 'mac_addresses': ['00:11:22:33:44:55'],
                 })
