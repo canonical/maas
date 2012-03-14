@@ -12,6 +12,7 @@ __metaclass__ = type
 
 import os
 from socket import gethostname
+from urlparse import urljoin
 
 # Use new style url tag:
 # https://docs.djangoproject.com/en/dev/releases/1.3/#changes-to-url-and-ssi
