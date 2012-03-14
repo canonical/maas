@@ -121,6 +121,7 @@ Y.extend(AddNodeWidget, Y.Panel, {
             .append(operation)
             .append(Y.Node.create(this.add_macaddress))
             .append(macaddress_add_link)
+            .append(Y.Node.create(this.add_architecture))
             .append(Y.Node.create(this.add_node));
         return addnodeform;
     },
@@ -170,6 +171,7 @@ Y.extend(AddNodeWidget, Y.Panel, {
     initializer: function(cfg) {
         // Load form snippets.
         this.add_macaddress = Y.one('#add-macaddress').getContent();
+        this.add_architecture = Y.one('#add-architecture').getContent();
         this.add_node = Y.one('#add-node').getContent();
         // Create panel's content.
         this.set('bodyContent', this.createForm());

@@ -28,6 +28,17 @@
   <script type="text/x-template" id="add-macaddress">
     <p></p>
   </script>
+  <script type="text/x-template" id="add-architecture">
+    <p>
+    <label for="id_architecture">Architecture
+    </label>
+    <select id="id_architecture" name="architecture">
+      <option value="amd64">amd64</option>
+      <option value="i386">i386</option>
+    </select>
+    <input type="text" maxlength="30" name="hostname" id="id_hostname" />
+    </p>
+  </script>
   <script type="text/x-template" id="add-node">
     <p>
     <label for="id_hostname">Hostname

@@ -19,7 +19,7 @@ import shutil
 
 from django.conf import settings
 from maasserver.models import (
-    ARCHITECTURE,
+    ARCHITECTURE_CHOICES,
     Config,
     MACAddress,
     Node,
@@ -60,12 +60,13 @@ class AnonymousEnlistmentAPITest(APIv10TestMixin, TestCase):
 
     def test_POST_new_creates_node(self):
         # The API allows a Node to be created.
+        architecture = factory.getRandomChoice(ARCHITECTURE_CHOICES)
         response = self.client.post(
             self.get_uri('nodes/'),
             {
                 'op': 'new',
                 'hostname': 'diane',
-                'architecture': 'amd64',
+                'architecture': architecture,
                 'after_commissioning_action': '2',
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
             })
@@ -77,7 +78,7 @@ class AnonymousEnlistmentAPITest(APIv10TestMixin, TestCase):
         self.assertNotEqual(0, len(parsed_result.get('system_id')))
         [diane] = Node.objects.filter(hostname='diane')
         self.assertEqual(2, diane.after_commissioning_action)
-        self.assertEqual(ARCHITECTURE.amd64, diane.architecture)
+        self.assertEqual(architecture, diane.architecture)
 
     def test_POST_new_power_type_defaults_to_asking_config(self):
         response = self.client.post(
@@ -103,11 +104,13 @@ class AnonymousEnlistmentAPITest(APIv10TestMixin, TestCase):
     def test_POST_new_associates_mac_addresses(self):
         # The API allows a Node to be created and associated with MAC
         # Addresses.
+        architecture = factory.getRandomChoice(ARCHITECTURE_CHOICES)
         self.client.post(
             self.get_uri('nodes/'),
             {
                 'op': 'new',
                 'hostname': 'diane',
+                'architecture': architecture,
                 'after_commissioning_action': '2',
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
             })
@@ -117,11 +120,13 @@ class AnonymousEnlistmentAPITest(APIv10TestMixin, TestCase):
             [mac.mac_address for mac in diane.macaddress_set.all()])
 
     def test_POST_returns_limited_fields(self):
+        architecture = factory.getRandomChoice(ARCHITECTURE_CHOICES)
         response = self.client.post(
             self.get_uri('nodes/'),
             {
                 'op': 'new',
                 'hostname': 'diane',
+                'architecture': architecture,
                 'after_commissioning_action': '2',
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
             })
@@ -512,11 +517,13 @@ class TestNodesAPI(APITestCase):
 
     def test_POST_new_creates_node(self):
         # The API allows a Node to be created, even as a logged-in user.
+        architecture = factory.getRandomChoice(ARCHITECTURE_CHOICES)
         response = self.client.post(
             self.get_uri('nodes/'),
             {
                 'op': 'new',
                 'hostname': 'diane',
+                'architecture': architecture,
                 'after_commissioning_action': '2',
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
             })
