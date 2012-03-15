@@ -89,7 +89,7 @@ class Config(Schema):
 
     if_key_missing = None
 
-    port = Int(min=1, max=65535, if_missing=8001)
+    port = Int(min=1, max=65535, if_missing=5241)
     logfile = String(if_empty=b"pserv.log", if_missing=b"pserv.log")
     oops = ConfigOops
     broker = ConfigBroker

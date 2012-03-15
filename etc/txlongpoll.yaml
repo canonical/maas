@@ -6,7 +6,7 @@
 #
 frontend:
   ## The port on which to serve.
-  port: 8002
+  port: 5242
   ## If specified, queue names requested must have the given prefix.
   # prefix:
 

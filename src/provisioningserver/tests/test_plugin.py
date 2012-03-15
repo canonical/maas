@@ -54,7 +54,7 @@ class TestConfig(TestCase):
                 'directory': '',
                 'reporter': '',
                 },
-            'port': 8001,
+            'port': 5241,
             }
         observed = Config.to_python({})
         self.assertEqual(expected, observed)

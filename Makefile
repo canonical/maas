@@ -102,7 +102,7 @@ txlongpoll-stop:
 	{ test -e $(pidfile) && cat $(pidfile); } | xargs --no-run-if-empty kill
 
 run: bin/maas dev-db run/pserv.pid run/txlongpoll.pid
-	bin/maas runserver 0.0.0.0:8000 --settings=maas.demo
+	bin/maas runserver 0.0.0.0:5240 --settings=maas.demo
 
 harness: bin/maas dev-db
 	bin/maas shell --settings=maas.demo

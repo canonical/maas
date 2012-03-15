@@ -76,7 +76,7 @@ def fake_name():
 def fake_node_metadata():
     """Produce fake metadata parameters for adding a node."""
     return {
-        'maas-metadata-url': 'http://%s:8000/metadata/' % fake_name(),
+        'maas-metadata-url': 'http://%s:5240/metadata/' % fake_name(),
         'maas-metadata-credentials': 'fake/%s' % fake_name(),
         }
 

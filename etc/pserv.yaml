@@ -4,7 +4,7 @@
 
 ## The port on which the Provisioning API will be made available.
 #
-# port: 8001
+# port: 5241
 
 ## Where to log. This log can be rotated by sending SIGUSR1 to the
 ## running server.

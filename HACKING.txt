@@ -162,7 +162,7 @@ Run the development webserver::
 
     $ make run
 
-Point your browser to http://localhost:8000/
+Point your browser to http://localhost:5240/
 
 If you've populated your instance with the sample data, you can login as a
 simple user using the test account (username: 'test', password: 'test') or the

@@ -26,8 +26,8 @@ INSTALLED_APPS = None
 # Extend base settings.
 import_settings(settings)
 
-# In development, django can be accessed directly on port 8000.
-DEFAULT_MAAS_URL = "http://%s:8000/" % gethostname()
+# In development, django can be accessed directly on port 5240.
+DEFAULT_MAAS_URL = "http://%s:5240/" % gethostname()
 
 # Use our custom test runner, which makes sure that a local database
 # cluster is running in the branch.
