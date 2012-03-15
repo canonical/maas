@@ -25,10 +25,10 @@ from collections import defaultdict
 import copy
 import datetime
 from errno import ENOENT
-import getpass
 from logging import getLogger
 import os
 import re
+from socket import gethostname
 import time
 from uuid import uuid1
 
@@ -761,7 +761,7 @@ def get_default_config():
         'update_from_choice': (
             [['archive.ubuntu.com', 'archive.ubuntu.com']]),
         # Network section configuration.
-        'maas_name': "%s's" % getpass.getuser().capitalize(),
+        'maas_name': gethostname(),
         'provide_dhcp': False,
         ## /settings
         }
