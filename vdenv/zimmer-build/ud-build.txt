@@ -12,6 +12,7 @@ bucket:
    cd /root
    (
    #ONE_TIME_PROXY=http://local-proxy:3128/
+   PROXY_COPY_SYS_TO_COBBLER=1
 
    echo === $(date) ====
    debconf-set-selections <<EOF
@@ -35,13 +36,26 @@ bucket:
 
    echo "127.0.1.2 zimmer-server" >> /etc/hosts
    
+   # if local apt is configured to use a proxy, modify
+   # cobbler to tell nodes to use that proxy. (LP: #914202)
+   if [ "${PROXY_COPY_SYS_TO_COBBLER:-1}" != "0" ] &&
+      apt_proxy="" && out=$(apt-config shell apt_proxy Acquire::HTTP::Proxy) &&
+      eval $out && [ -n "$apt_proxy" ]; then
+      fname=/var/lib/cobbler/snippets/orchestra_proxy
+      [ "${fname}.dist" -ef "$fname" ] || cp "$fname" "$fname.dist"
+      sed "s,\(.*mirror/http/proxy string \).*,\1${apt_proxy}," \
+         "$fname" > "$fname.zimmer"
+      ln -sf ${fname##*/}.zimmer "$fname"
+   fi
+
    echo === $(date): starting apt ====
    apt_get() { 
      DEBIAN_FRONTEND=noninteractive apt-get \
         --option "Dpkg::Options::=--force-confold" --assume-yes "$@"
    }
    apt_get update
-   apt_get install ubuntu-orchestra-provisioning-server libvirt-bin cobbler-web
+   apt_get install ubuntu-orchestra-provisioning-server libvirt-bin \
+      cobbler-web ubuntu-orchestra-logging-server
    
    case $(uname -m) in
       i?86) arches="i386";;
