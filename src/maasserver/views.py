@@ -304,14 +304,18 @@ def settings_add_archive(request):
         {'form': form},
         context_instance=RequestContext(request))
 
-
-YUI_LOCATION = os.path.join(
-    os.path.dirname(__file__), 'static', 'jslibs', 'yui')
-
+def get_yui_location():
+    if django_settings.STATIC_ROOT:
+        return os.path.join(
+            django_settings.STATIC_ROOT, 'jslibs', 'yui')
+    else:
+        return os.path.join(
+            os.path.dirname(__file__), 'static', 'jslibs', 'yui')
 
 def combo_view(request):
     """Handle a request for combining a set of files."""
     fnames = parse_qs(request.META.get("QUERY_STRING", ""))
+    YUI_LOCATION = get_yui_location()
 
     if fnames:
         if fnames[0].endswith('.js'):

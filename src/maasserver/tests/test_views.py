@@ -37,6 +37,7 @@ from maasserver.urls import get_proxy_longpoll_enabled
 from maasserver.views import (
     get_longpoll_context,
     proxy_to_longpoll,
+    get_yui_location,
     )
 
 
@@ -209,6 +210,19 @@ class TestComboLoaderView(TestCase):
 
 class TestUtilities(TestCase):
 
+    def test_get_yui_location_if_static_root_is_none(self):
+        self.patch(settings, 'STATIC_ROOT', None)
+        yui_location = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)),
+            'static', 'jslibs', 'yui')
+        self.assertEqual(yui_location, get_yui_location())
+
+    def test_get_yui_location(self):
+        static_root = factory.getRandomString()
+        self.patch(settings, 'STATIC_ROOT', static_root)
+        yui_location = os.path.join(static_root, 'jslibs', 'yui')
+        self.assertEqual(yui_location, get_yui_location())
+        
     def test_get_longpoll_context_empty_if_rabbitmq_publish_is_none(self):
         self.patch(settings, 'RABBITMQ_PUBLISH', None)
         self.patch(views, 'messaging', get_messaging())
