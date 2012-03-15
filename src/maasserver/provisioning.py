@@ -35,7 +35,7 @@ def get_provisioning_api_proxy():
     """Return a proxy to the Provisioning API.
 
     If ``PSERV_URL`` is not set, we attempt to return a handle to a fake proxy
-    implementation. This will not be available in a packaged version of MaaS,
+    implementation. This will not be available in a packaged version of MAAS,
     in which case an error is raised.
     """
     url = settings.PSERV_URL
@@ -85,10 +85,10 @@ def compose_metadata(node):
 def name_arch_in_cobbler_style(architecture):
     """Give architecture name as used in cobbler.
 
-    MaaS uses Ubuntu-style architecture names, notably including "amd64"
+    MAAS uses Ubuntu-style architecture names, notably including "amd64"
     which in Cobbler terms is "x86_64."
 
-    :param architecture: An architecture name (e.g. as produced by MaaS).
+    :param architecture: An architecture name (e.g. as produced by MAAS).
     :type architecture: basestring
     :return: An architecture name in Cobbler style.
     :rtype: unicode

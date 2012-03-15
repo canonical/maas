@@ -2,9 +2,9 @@ plugin: manual
 name: juju/bootstrap
 description:
  PURPOSE:
-     This will test that you can bootstrap a Juju environment using a MaaS server.
+     This will test that you can bootstrap a Juju environment using a MAAS server.
  STEPS:
-     1. Bootstrap a new environment using juju pointing to a MaaS server.
+     1. Bootstrap a new environment using juju pointing to a MAAS server.
      2. Run juju status
  VERIFICATION:
      Can you use juju status and see the available nodes?
@@ -13,10 +13,10 @@ plugin: manual
 name: juju/deploy
 description:
  PURPOSE:
-     This will test that you can succesfully deploy to MaaS nodes using Juju
+     This will test that you can succesfully deploy to MAAS nodes using Juju
  STEPS:
-     1. Bootstrap a new environment using juju pointing to a MaaS server.
+     1. Bootstrap a new environment using juju pointing to a MAAS server.
      2. Run juju deploy $someservice
  VERIFICATION:
-     Can you use juju deploy $someservice and have it deployed in the MaaS
+     Can you use juju deploy $someservice and have it deployed in the MAAS
      node?

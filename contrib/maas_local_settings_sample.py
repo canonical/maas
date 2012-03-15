@@ -2,17 +2,17 @@
 DEBUG = False
 
 # Default URL specifying protocol, host, and (if necessary) port where
-# this MaaS can be found.  Configuration can, and probably should,
+# this MAAS can be found.  Configuration can, and probably should,
 # override this.
 DEFAULT_MAAS_URL = "http://maas.internal.example.com/"
 
 # Absolute path to the directory static files should be collected to.
 STATIC_ROOT = '/var/lib/maas/static/'
 
-# Prefix to use for MaaS's urls.
+# Prefix to use for MAAS's urls.
 # If FORCE_SCRIPT_NAME is None (the default), all the urls will start with
 # '/'.
-FORCE_SCRIPT_NAME = '/MaaS'
+FORCE_SCRIPT_NAME = '/MAAS'
 
 # Where to store the user uploaded files.
 MEDIA_ROOT = '/var/lib/maas/media/'

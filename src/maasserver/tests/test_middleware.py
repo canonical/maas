@@ -19,8 +19,8 @@ from tempfile import NamedTemporaryFile
 from django.core.exceptions import ValidationError
 from django.test.client import RequestFactory
 from maasserver.exceptions import (
-    MaaSAPIException,
-    MaaSAPINotFound,
+    MAASAPIException,
+    MAASAPINotFound,
     )
 from maasserver.middleware import (
     APIErrorsMiddleware,
@@ -69,7 +69,7 @@ class ExceptionMiddlewareTest(TestCase):
     def test_ignores_paths_outside_path_regex(self):
         middleware = self.make_middleware(self.make_base_path())
         request = fake_request(self.make_base_path())
-        exception = MaaSAPINotFound("Huh?")
+        exception = MAASAPINotFound("Huh?")
         self.assertIsNone(middleware.process_exception(request, exception))
 
     def test_ignores_unknown_exception(self):
@@ -78,8 +78,8 @@ class ExceptionMiddlewareTest(TestCase):
         self.assertIsNone(
             self.process_exception(ValueError("Error occurred!")))
 
-    def test_reports_MaaSAPIException_with_appropriate_api_error(self):
-        class MyException(MaaSAPIException):
+    def test_reports_MAASAPIException_with_appropriate_api_error(self):
+        class MyException(MAASAPIException):
             api_error = httplib.UNAUTHORIZED
 
         exception = MyException("Error occurred!")
@@ -88,8 +88,8 @@ class ExceptionMiddlewareTest(TestCase):
             (httplib.UNAUTHORIZED, "Error occurred!"),
             (response.status_code, response.content))
 
-    def test_renders_MaaSAPIException_as_unicode(self):
-        class MyException(MaaSAPIException):
+    def test_renders_MAASAPIException_as_unicode(self):
+        class MyException(MAASAPIException):
             api_error = httplib.UNAUTHORIZED
 
         error_message = "Error %s" % unichr(233)
@@ -118,7 +118,7 @@ class APIErrorsMiddlewareTest(TestCase):
     def test_handles_error_on_API(self):
         middleware = APIErrorsMiddleware()
         non_api_request = fake_request("/api/1.0/hello")
-        exception = MaaSAPINotFound("Have you looked under the couch?")
+        exception = MAASAPINotFound("Have you looked under the couch?")
         response = middleware.process_exception(non_api_request, exception)
         self.assertEqual(
             (httplib.NOT_FOUND, "Have you looked under the couch?"),
@@ -127,7 +127,7 @@ class APIErrorsMiddlewareTest(TestCase):
     def test_ignores_error_outside_API(self):
         middleware = APIErrorsMiddleware()
         non_api_request = fake_request("/middleware/api/hello")
-        exception = MaaSAPINotFound("Have you looked under the couch?")
+        exception = MAASAPINotFound("Have you looked under the couch?")
         self.assertIsNone(
             middleware.process_exception(non_api_request, exception))
 

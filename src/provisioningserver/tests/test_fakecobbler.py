@@ -383,7 +383,7 @@ class TestCobblerProfile(CobblerObjectTestScenario, TestCase):
 
     def test_normalize_attribute_normalizes_separators(self):
         # Based on the Cobbler source, Profile seems to use a mix of
-        # underscores and dashes in attribute names.  The MaaS Cobbler
+        # underscores and dashes in attribute names.  The MAAS Cobbler
         # wrapper ignores the difference, and uses whatever Cobbler
         # seems to expect in either case.
         inputs = [

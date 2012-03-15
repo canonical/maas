@@ -1,13 +1,13 @@
 ************
-Hacking MaaS
+Hacking MAAS
 ************
 
 
 Coding style
 ============
 
-MaaS follows the `Launchpad Python Style Guide`_, except where it gets
-Launchpad specific, and where it talks about `method naming`_. MaaS
+MAAS follows the `Launchpad Python Style Guide`_, except where it gets
+Launchpad specific, and where it talks about `method naming`_. MAAS
 instead adopts `PEP-8`_ naming in all cases, so method names should
 usually use the ``lowercase_with_underscores`` form.
 
@@ -60,7 +60,7 @@ when buildout runs.
 First time using buildout?
 ==========================
 
-Buildout is used to develop MaaS. Buildout, if configured so, can
+Buildout is used to develop MAAS. Buildout, if configured so, can
 cache downloaded files and built eggs. If you've not already done
 something similar, the following snippet will massively improve build
 times::
@@ -120,7 +120,7 @@ Adjust ``PSERV_TEST_COBBLER_URL`` as necessary. **Warning:** these
 tests will modify your Cobbler database.
 
 
-Development MaaS server setup
+Development MAAS server setup
 =============================
 
 Access to the database is configured in ``src/maas/development.py``.
@@ -177,7 +177,7 @@ your branch::
 Adding new dependencies
 =======================
 
-Since MaaS is distributed mainly as Ubuntu package, all runtime dependencies
+Since MAAS is distributed mainly as Ubuntu package, all runtime dependencies
 should be packaged and we should develop with the packaged version if
 possible. You'll need to add the dependency to the
 ``allowed-eggs-from-site-packages`` option in the ``buildout.cfg`` file. You
@@ -213,7 +213,7 @@ documentation`_.
 Acceptance tests
 ================
 
-MaaS uses checkbox manual testing infrastructure to verify features
+MAAS uses checkbox manual testing infrastructure to verify features
 are implemented according to the spec. They can be found in
 the qa/checkbox/ directory.
 
@@ -226,6 +226,6 @@ To run them::
     $ checkbox-gtk --config='checkbox/plugins/jobs_info/directories=\
     /path/to/local/checkbox/jobs/dir' --whitelist-file=
 
-or run from the root of the MaaS tree::
+or run from the root of the MAAS tree::
 
     $ make checkbox

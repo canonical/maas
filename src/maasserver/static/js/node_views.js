@@ -97,7 +97,7 @@ module.NodeListLoader = Y.Base.create('nodeListLoader', Y.View, [], {
             }
         };
         var request = module._io.send(
-            MaaS_config.uris.nodes_handler, cfg);
+            MAAS_config.uris.nodes_handler, cfg);
     },
 
    /**
@@ -154,7 +154,7 @@ module.NodesDashboard = Y.Base.create(
         this.append = config.append;
        // Prepare spinnerNode.
         this.spinnerNode = Y.Node.create('<img />')
-            .set('src', MaaS_config.uris.statics + 'img/spinner.gif');
+            .set('src', MAAS_config.uris.statics + 'img/spinner.gif');
     },
 
    /**

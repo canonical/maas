@@ -41,8 +41,8 @@ from docutils import core
 from formencode import validators
 from formencode.validators import Invalid
 from maasserver.exceptions import (
-    MaaSAPIBadRequest,
-    MaaSAPINotFound,
+    MAASAPIBadRequest,
+    MAASAPINotFound,
     NodesNotAvailable,
     NodeStateViolation,
     PermissionDenied,
@@ -477,11 +477,11 @@ class FilesHandler(BaseHandler):
         """
         filename = request.GET.get("filename", None)
         if not filename:
-            raise MaaSAPIBadRequest("Filename not supplied")
+            raise MAASAPIBadRequest("Filename not supplied")
         try:
             db_file = FileStorage.objects.get(filename=filename)
         except FileStorage.DoesNotExist:
-            raise MaaSAPINotFound("File not found")
+            raise MAASAPINotFound("File not found")
         return HttpResponse(db_file.data.read(), status=httplib.OK)
 
     @api_exported('add', 'POST')
@@ -495,12 +495,12 @@ class FilesHandler(BaseHandler):
         """
         filename = request.data.get("filename", None)
         if not filename:
-            raise MaaSAPIBadRequest("Filename not supplied")
+            raise MAASAPIBadRequest("Filename not supplied")
         files = request.FILES
         if not files:
-            raise MaaSAPIBadRequest("File not supplied")
+            raise MAASAPIBadRequest("File not supplied")
         if len(files) != 1:
-            raise MaaSAPIBadRequest("Exactly one file must be supplied")
+            raise MAASAPIBadRequest("Exactly one file must be supplied")
         uploaded_file = files['file']
 
         # As per the comment in FileStorage, this ought to deal in
@@ -555,8 +555,8 @@ class AccountHandler(BaseHandler):
 
 
 @api_operations
-class MaaSHandler(BaseHandler):
-    """Manage the MaaS' itself."""
+class MAASHandler(BaseHandler):
+    """Manage the MAAS' itself."""
     allowed_methods = ('POST', 'GET')
 
     @api_exported('set_config', method='POST')
@@ -608,7 +608,7 @@ def generate_api_doc(add_title=False):
     if add_title:
         messages.extend([
             '**********************\n',
-            'MaaS API documentation\n',
+            'MAAS API documentation\n',
             '**********************\n',
             '\n\n']
             )

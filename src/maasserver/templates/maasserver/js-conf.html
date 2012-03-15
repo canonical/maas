@@ -7,7 +7,7 @@ var YUI_config = {
     base: '{{ STATIC_URL }}jslibs/yui/{{ YUI_VERSION }}/build/',
     comboBase: '{% if FORCE_SCRIPT_NAME %}{{ FORCE_SCRIPT_NAME }}{% endif%}/{{ YUI_COMBO_URL }}?',
 };
-var MaaS_config = {
+var MAAS_config = {
     uris: {
         login: '{% url "login" %}',
         statics: '{{ STATIC_URL }}',

@@ -35,14 +35,14 @@
       <span>{{ view_user.email }}</span>
     </li>
     <li class="block size2 first">
-      <h4>MaaS Keys</h4>
+      <h4>MAAS Keys</h4>
       <span>
         {{ user.get_profile.get_authorisation_tokens.count }}
         key{{ user.get_profile.get_authorisation_tokens.count|pluralize }}
       </span>
     </li>
     <li class="block size3">
-      <h4>MaaS Administrator</h4>
+      <h4>MAAS Administrator</h4>
       <span>{{ view_user.is_superuser }}</span>
     </li>
   </ul>

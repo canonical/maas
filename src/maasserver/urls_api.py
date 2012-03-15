@@ -20,7 +20,7 @@ from maasserver.api import (
     AdminRestrictedResource,
     api_doc,
     FilesHandler,
-    MaaSHandler,
+    MAASHandler,
     NodeHandler,
     NodeMacHandler,
     NodeMacsHandler,
@@ -40,7 +40,7 @@ node_macs_handler = RestrictedResource(
 
 
 # Admin handlers.
-maas_handler = AdminRestrictedResource(MaaSHandler, authentication=api_auth)
+maas_handler = AdminRestrictedResource(MAASHandler, authentication=api_auth)
 
 
 # API URLs accessible to anonymous users.

@@ -32,7 +32,7 @@ from django.http import (
     HttpResponseRedirect,
     )
 from django.utils.http import urlquote_plus
-from maasserver.exceptions import MaaSAPIException
+from maasserver.exceptions import MAASAPIException
 
 
 def get_relative_path(path):
@@ -53,7 +53,7 @@ class AccessMiddleware:
 
     Most UI views are visible only to logged-in users, but there are pages
     that are accessible to anonymous users (e.g. the login page!) or that
-    use other authentication (e.g. the MaaS API, which is managed through
+    use other authentication (e.g. the MAAS API, which is managed through
     piston).
     """
 
@@ -93,7 +93,7 @@ class AccessMiddleware:
 class ExceptionMiddleware:
     """Convert exceptions into appropriate HttpResponse responses.
 
-    For example, a MaaSAPINotFound exception processed by a middleware
+    For example, a MAASAPINotFound exception processed by a middleware
     based on this class will result in an http 404 response to the client.
     Validation errors become "bad request" responses.
 
@@ -122,8 +122,8 @@ class ExceptionMiddleware:
             return None
 
         encoding = b'utf-8'
-        if isinstance(exception, MaaSAPIException):
-            # The exception is a MaaSAPIException: exception.api_error
+        if isinstance(exception, MAASAPIException):
+            # The exception is a MAASAPIException: exception.api_error
             # will give us the proper error type.
             return HttpResponse(
                 content=unicode(exception).encode(encoding),

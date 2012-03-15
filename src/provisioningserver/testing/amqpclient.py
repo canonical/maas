@@ -72,7 +72,7 @@ class AMQTest(TestCase):
 
     @skip(
         "RabbitMQ is not yet a required component "
-        "of a running MaaS installation.")
+        "of a running MAAS installation.")
     def setUp(self):
         """
         At each run, we delete the test vhost and recreate it, to be sure to be

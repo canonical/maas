@@ -13,10 +13,10 @@ plugin: manual
 name: installer/server
 description:
  PURPOSE:
-     This will test that the Ubuntu installer has the option to install the MaaS server from the CD.
+     This will test that the Ubuntu installer has the option to install the MAAS server from the CD.
  STEPS:
      1. Boot Ubuntu from the CD
-     2. Find the option to install a new MaaS server.
+     2. Find the option to install a new MAAS server.
  VERIFICATION:
-     Did the installer offer an option to install a MaaS server?
+     Did the installer offer an option to install a MAAS server?
 

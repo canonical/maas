@@ -1,7 +1,7 @@
 /* Copyright 2012 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
- * MaaS utilities.
+ * MAAS utilities.
  *
  * @module Y.mass.utils
  */
@@ -105,12 +105,12 @@ var TitleEditWidget = function() {
 
 TitleEditWidget.NAME = 'title-edit-widget';
 
-TitleEditWidget.TITLE_SUFFIX = ' MaaS';
+TitleEditWidget.TITLE_SUFFIX = ' MAAS';
 
 TitleEditWidget.ATTRS = {
 
    /**
-    * MaaS's title input node.
+    * MAAS's title input node.
     *
     * @attribute input
     * @type Node
@@ -122,7 +122,7 @@ TitleEditWidget.ATTRS = {
     },
 
    /**
-    * MaaS's title.
+    * MAAS's title.
     *
     * @attribute title
     * @type string
@@ -261,7 +261,7 @@ Y.extend(TitleEditWidget, Y.Widget, {
             }
         };
         var request = module._io.send(
-            MaaS_config.uris.maas_handler, cfg);
+            MAAS_config.uris.maas_handler, cfg);
     }
 });
 

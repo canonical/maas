@@ -1,6 +1,6 @@
 #! /bin/bash -e
 #
-# MaaS database control script.  See main() at the bottom for usage.
+# MAAS database control script.  See main() at the bottom for usage.
 #
 # Most functions take as their first argument a database cluster's data
 # directory.  This is where the database's socket, pidfile, log, and data will
@@ -26,7 +26,7 @@ maasdb_locate() {
 
     if test -z "$1"
     then
-        echo "Specify a data directory for the MaaS database cluster." >&2
+        echo "Specify a data directory for the MAAS database cluster." >&2
         return 1
     fi
     if ! echo "$DATADIR" | grep '^/'
@@ -96,7 +96,7 @@ maasdb_stop_cluster() {
 }
 
 
-# Initialize a MaaS database.
+# Initialize a MAAS database.
 maasdb_init_db() {
     local DATADIR DISPOSABLE MARKER
     DATADIR="`maasdb_locate "$1"`"
@@ -114,7 +114,7 @@ maasdb_init_db() {
 }
 
 
-# Open a psql shell on a MaaS database.
+# Open a psql shell on a MAAS database.
 maasdb_shell() {
     local DATADIR
     DATADIR="`maasdb_locate "$1"`"
@@ -124,7 +124,7 @@ maasdb_shell() {
 }
 
 
-# Execute a query on a MaaS database.
+# Execute a query on a MAAS database.
 maasdb_query() {
     local DATADIR QUERY
     DATADIR="`maasdb_locate "$1"`"
@@ -135,12 +135,12 @@ maasdb_query() {
 }
 
 
-# Delete an entire MaaS database and cluster.  Use only with extreme care!
+# Delete an entire MAAS database and cluster.  Use only with extreme care!
 maasdb_delete_cluster() {
     local DATADIR
     DATADIR="`maasdb_locate "$1"`"
 
-    # Before deleting anything, does this at least look like a MaaS database
+    # Before deleting anything, does this at least look like a MAAS database
     # cluster?
     if test -d "$DATADIR/base"
     then
@@ -169,7 +169,7 @@ Where <command> is one of:
   shell
   delete-cluster
 
-And <cluster-path> is the path to the MaaS development database cluster,
+And <cluster-path> is the path to the MAAS development database cluster,
 typically "./db"
 EOF
 }

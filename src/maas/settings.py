@@ -56,7 +56,7 @@ LONGPOLL_SERVER_URL = None
 LONGPOLL_PATH = 'longpoll/'
 
 # Default URL specifying protocol, host, and (if necessary) port where
-# this MaaS can be found.  Configuration can, and probably should,
+# this MAAS can be found.  Configuration can, and probably should,
 # override this.
 DEFAULT_MAAS_URL = "http://%s/" % gethostname()
 
@@ -87,7 +87,7 @@ STATIC_LOCAL_SERVE = DEBUG
 AUTH_PROFILE_MODULE = 'maasserver.UserProfile'
 
 AUTHENTICATION_BACKENDS = (
-    'maasserver.models.MaaSAuthorizationBackend',
+    'maasserver.models.MAASAuthorizationBackend',
     )
 
 # Rabbit MQ Configuration.

@@ -44,7 +44,7 @@ setup(
     description="Metal as as Service",
     long_description=read('README.txt'),
 
-    author="MaaS Developers",
+    author="MAAS Developers",
     author_email="juju@lists.ubuntu.com",
 
     packages=find_packages(

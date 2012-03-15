@@ -1,7 +1,7 @@
 # Copyright 2012 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Additional services that compose the MaaS Provisioning Server."""
+"""Additional services that compose the MAAS Provisioning Server."""
 
 from __future__ import (
     print_function,

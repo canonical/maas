@@ -1,15 +1,15 @@
-.. MaaS documentation master file, created by
+.. MAAS documentation master file, created by
    sphinx-quickstart on Thu Jan 19 14:48:25 2012.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
 =============================
-MaaS developer documentation!
+MAAS developer documentation!
 =============================
 
-Welcome to the MaaS developer documentation.
-This documentation is for people who want to hack on MaaS or create a service
-that communicates with a MaaS server using the API.
+Welcome to the MAAS developer documentation.
+This documentation is for people who want to hack on MAAS or create a service
+that communicates with a MAAS server using the API.
 
 Overview
 ========
@@ -21,10 +21,10 @@ Overview
    hacking
    api
 
-MaaS API
+MAAS API
 ========
 
-Other services interact with a MaaS server using its :doc:`api`.
+Other services interact with a MAAS server using its :doc:`api`.
 
 Code
 ====

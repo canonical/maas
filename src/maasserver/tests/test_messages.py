@@ -14,7 +14,7 @@ __all__ = []
 import json
 
 from maasserver.messages import (
-    MaaSMessenger,
+    MAASMessenger,
     MESSENGER_EVENT,
     MessengerBase,
     )
@@ -98,7 +98,7 @@ class MessengerBaseTest(TestModelTestCase):
             [[MESSENGER_EVENT.DELETED, obj]], producer.messages)
 
 
-class MaaSMessengerTest(TestModelTestCase):
+class MAASMessengerTest(TestModelTestCase):
 
     app = 'maasserver.tests'
 
@@ -106,14 +106,14 @@ class MaaSMessengerTest(TestModelTestCase):
         producer = FakeProducer()
         event_name = factory.getRandomString()
         obj = MessagesTestModel(name=factory.getRandomString())
-        messenger = MaaSMessenger(MessagesTestModel, producer)
+        messenger = MAASMessenger(MessagesTestModel, producer)
         self.assertEqual(
             '%s.%s' % ('MessagesTestModel', event_name),
             messenger.event_key(event_name, obj))
 
     def test_create_msg(self):
         producer = FakeProducer()
-        messenger = MaaSMessenger(Node, producer)
+        messenger = MAASMessenger(Node, producer)
         event_name = factory.getRandomString()
         obj_name = factory.getRandomString()
         obj = MessagesTestModel(name=obj_name)

@@ -65,8 +65,8 @@
 {% block page-title-block %}
   {% if user.is_superuser %}
     <form action="" method="" class="page-title-form">
-      <input type="text" value="{{ global_options.site_name }} MaaS"
-             title="Edit the name of this MaaS" />
+      <input type="text" value="{{ global_options.site_name }} MAAS"
+             title="Edit the name of this MAAS" />
     </form>
   {% else %}
     <h1 id="page-title">{% include "maasserver/site_title.html" %}</h1>

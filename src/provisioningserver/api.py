@@ -152,7 +152,7 @@ def mac_addresses_to_cobbler_deltas(interfaces, mac_addresses):
 # Preseed data to send to cloud-init.  We set this as MAAS_PRESEED in
 # ks_meta, and it gets fed straight into debconf.
 metadata_preseed_items = [
-    ('datasources', 'multiselect', 'MaaS'),
+    ('datasources', 'multiselect', 'MAAS'),
     ('maas-metadata-url', 'string', '%(maas-metadata-url)s'),
     ('maas-metadata-credentials', 'string', '%(maas-metadata-credentials)s'),
     ]

@@ -337,7 +337,7 @@ class CobblerObject:
     # keep an accurate record of which attributes we use for which types
     # of objects.
     # Some attributes in Cobbler uses dashes as separators, others use
-    # underscores.  In MaaS, use only underscores.
+    # underscores.  In MAAS, use only underscores.
     known_attributes = []
 
     # What attributes does Cobbler require for this type of object?
@@ -381,7 +381,7 @@ class CobblerObject:
     def _normalize_attribute(cls, attribute_name, attributes=None):
         """Normalize an attribute name.
 
-        Cobbler mixes dashes and underscores in attribute names.  MaaS may
+        Cobbler mixes dashes and underscores in attribute names.  MAAS may
         pass attributes as keyword arguments internally, where dashes are not
         an option.  Hide the distinction by looking up the proper name in
         `known_attributes` by default, but `attributes` can be passed to

@@ -149,7 +149,7 @@ suite.add(new Y.maas.testing.TestCase({
 
     test_hasSuffix_returns_true_if_suffix: function() {
         var widget = this.createWidget();
-        widget.set('title', "Sample Title MaaS");
+        widget.set('title', "Sample Title MAAS");
         Y.Assert.isTrue(widget.hasSuffix());
     },
 
@@ -161,7 +161,7 @@ suite.add(new Y.maas.testing.TestCase({
 
     test_removeSuffix_removes_suffix: function() {
         var widget = this.createWidget();
-        widget.set('title', "Sample Title MaaS");
+        widget.set('title', "Sample Title MAAS");
         widget.removeSuffix();
         Y.Assert.areEqual(
             "Sample Title", widget.get('title'));
@@ -180,13 +180,13 @@ suite.add(new Y.maas.testing.TestCase({
         widget.set('title', "Sample Title");
         widget.addSuffix();
         Y.Assert.areEqual(
-            "Sample Title MaaS", widget.get('title'));
+            "Sample Title MAAS", widget.get('title'));
     },
 
     test_titleEditStart_starts_editing: function() {
         var widget = this.createWidget();
         widget._editing = false;
-        widget.set('title', "Sample Title MaaS");
+        widget.set('title', "Sample Title MAAS");
         widget.titleEditStart();
         Y.Assert.isTrue(widget._editing);
         Y.Assert.areEqual(
@@ -196,11 +196,11 @@ suite.add(new Y.maas.testing.TestCase({
     test_titleEditStart_does_nothing_if_already_editing: function() {
         var widget = this.createWidget();
         widget._editing = true;
-        widget.set('title', "Sample Title MaaS");
+        widget.set('title', "Sample Title MAAS");
         widget.titleEditStart();
         Y.Assert.isTrue(widget._editing);
         Y.Assert.areEqual(
-            "Sample Title MaaS", widget.get('title'));
+            "Sample Title MAAS", widget.get('title'));
     },
 
     test_titleEditEnd_stops_editing_if_currently_editing: function() {
@@ -211,7 +211,7 @@ suite.add(new Y.maas.testing.TestCase({
         var fired = false;
         mockXhr.send = function(url, cfg) {
             fired = true;
-            Y.Assert.areEqual(MaaS_config.uris.maas_handler, url);
+            Y.Assert.areEqual(MAAS_config.uris.maas_handler, url);
             Y.Assert.areEqual(
                 "op=set_config&name=maas_name&value=SampleTitle",
                 cfg.data);
@@ -221,7 +221,7 @@ suite.add(new Y.maas.testing.TestCase({
         Y.Assert.isTrue(fired);
         Y.Assert.isFalse(widget._editing);
         Y.Assert.areEqual(
-            "SampleTitle MaaS", widget.get('title'));
+            "SampleTitle MAAS", widget.get('title'));
     },
 
     test_titleEditEnd_does_nothing_if_not_editing: function() {

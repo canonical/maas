@@ -1,7 +1,7 @@
 # Copyright 2012 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""MaaS model objects."""
+"""MAAS model objects."""
 
 from __future__ import (
     print_function,
@@ -59,7 +59,7 @@ from provisioningserver.enum import (
     POWER_TYPE_CHOICES,
     )
 
-# Special users internal to MaaS.
+# Special users internal to MAAS.
 SYSTEM_USERS = [
     # For nodes' access to the metadata API:
     nodeinituser.user_name,
@@ -323,7 +323,7 @@ class NodeManager(models.Manager):
 
 
 class Node(CommonInfo):
-    """A `Node` represents a physical machine used by the MaaS Server.
+    """A `Node` represents a physical machine used by the MAAS Server.
 
     :ivar system_id: The unique identifier for this `Node`.
         (e.g. 'node-41eba45e-4cfa-11e1-a052-00225f89f211').
@@ -463,7 +463,7 @@ class MACAddress(CommonInfo):
         return self.mac_address
 
 
-GENERIC_CONSUMER = 'MaaS consumer'
+GENERIC_CONSUMER = 'MAAS consumer'
 
 
 def create_auth_token(user):
@@ -524,7 +524,7 @@ class UserProfileManager(models.Manager):
 
 
 class UserProfile(models.Model):
-    """A User profile to store MaaS specific methods and fields.
+    """A User profile to store MAAS specific methods and fields.
 
     :ivar user: The related User_.
 
@@ -751,7 +751,7 @@ def get_default_config():
         'check_compatibility': False,
         'node_power_type': POWER_TYPE.WAKE_ON_LAN,
         # The host name or address where the nodes can access the metadata
-        # service of this MaaS.
+        # service of this MAAS.
         'maas_url': settings.DEFAULT_MAAS_URL,
         # Ubuntu section configuration.
         'fallback_master_archive': False,
@@ -880,7 +880,7 @@ admin.site.register(Node)
 admin.site.register(SSHKeys)
 
 
-class MaaSAuthorizationBackend(ModelBackend):
+class MAASAuthorizationBackend(ModelBackend):
 
     supports_object_permissions = True
 

@@ -10,7 +10,7 @@ from __future__ import (
 
 __metaclass__ = type
 __all__ = [
-    "MaaSMessenger",
+    "MAASMessenger",
     "MessengerBase",
     "get_messaging",
     ]
@@ -30,9 +30,9 @@ from django.db.models.signals import (
 from maasserver.models import Node
 from maasserver.rabbit import RabbitMessaging
 
-# This is the name of the exchange where changes to MaaS's model objects will
+# This is the name of the exchange where changes to MAAS's model objects will
 # be published.
-MODEL_EXCHANGE_NAME = "MaaS Model Exchange"
+MODEL_EXCHANGE_NAME = "MAAS Model Exchange"
 
 
 class MESSENGER_EVENT:
@@ -80,8 +80,8 @@ class MessengerBase:
             receiver=self.delete_obj, weak=False, sender=self.model_class)
 
 
-class MaaSMessenger(MessengerBase):
-    """A messenger tailored to suit MaaS' UI (JavaScript) requirements.
+class MAASMessenger(MessengerBase):
+    """A messenger tailored to suit MAAS' UI (JavaScript) requirements.
 
     The format of the event's payload will be::
 
@@ -126,7 +126,7 @@ def get_messaging():
     """
     if settings.RABBITMQ_PUBLISH:
         messaging = RabbitMessaging(MODEL_EXCHANGE_NAME)
-        MaaSMessenger(Node, messaging.getExchange()).register()
+        MAASMessenger(Node, messaging.getExchange()).register()
         return messaging
     else:
         return None

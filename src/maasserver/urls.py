@@ -79,7 +79,7 @@ urlpatterns += patterns('maasserver.views',
 
 
 def get_proxy_longpoll_enabled():
-    """Should MaaS act as a proxy to a txlongpoll server?
+    """Should MAAS act as a proxy to a txlongpoll server?
 
     This should only be true if longpoll is enabled (LONGPOLL_PATH) and
     if the url to a txlongpoll is configured (LONGPOLL_SERVER_URL).

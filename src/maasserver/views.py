@@ -52,7 +52,7 @@ from maasserver.forms import (
     AddArchiveForm,
     CommissioningForm,
     EditUserForm,
-    MaaSAndNetworkForm,
+    MAASAndNetworkForm,
     NewUserCreationForm,
     ProfileForm,
     UbuntuForm,
@@ -257,9 +257,9 @@ def proxy_to_longpoll(request):
 
 def settings(request):
     user_list = UserProfile.objects.all_users().order_by('username')
-    # Process the MaaS & network form.
+    # Process the MAAS & network form.
     maas_and_network_form, response = process_form(
-        request, MaaSAndNetworkForm, reverse('settings'), 'maas_and_network',
+        request, MAASAndNetworkForm, reverse('settings'), 'maas_and_network',
         "Configuration updated.")
     if response is not None:
         return response

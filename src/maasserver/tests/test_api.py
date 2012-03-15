@@ -930,8 +930,8 @@ class FileStorageAPITest(APITestCase):
         self.assertEqual("File not found", response.content)
 
 
-class MaaSAPIAnonTest(APIv10TestMixin, TestCase):
-    # The MaaS' handler is not accessible to anon users.
+class MAASAPIAnonTest(APIv10TestMixin, TestCase):
+    # The MAAS' handler is not accessible to anon users.
 
     def test_anon_get_config_forbidden(self):
         response = self.client.get(
@@ -948,7 +948,7 @@ class MaaSAPIAnonTest(APIv10TestMixin, TestCase):
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
 
-class MaaSAPITest(APITestCase):
+class MAASAPITest(APITestCase):
 
     def test_simple_user_get_config_forbidden(self):
         response = self.client.get(

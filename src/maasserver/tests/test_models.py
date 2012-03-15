@@ -686,7 +686,7 @@ class FileStorageTest(TestCase):
         self.assertTrue(FileStorage.storage.exists(storage.data.name))
 
     def test_collect_garbage_tolerates_missing_upload_dir(self):
-        # When MaaS is freshly installed, the upload directory is still
+        # When MAAS is freshly installed, the upload directory is still
         # missing.  But...
         FileStorage.objects.collect_garbage()
         # ...we get through garbage collection without breakage.
