@@ -24,6 +24,7 @@ from maasserver.models import (
 from maasserver.provisioning import (
     compose_metadata,
     get_metadata_server_url,
+    name_arch_in_cobbler_style,
     select_profile_for_node,
     )
 from maasserver.testing.enum import map_enum
@@ -62,6 +63,21 @@ class ProvisioningTests:
         profile_name = 'profile-%s' % shared_name
         return self.papi.add_profile(profile_name, distro)
 
+    def test_name_arch_in_cobbler_style_converts_architecture_names(self):
+        self.assertSequenceEqual(
+            ['i386', 'i386', 'x86_64', 'x86_64'],
+            map(
+                name_arch_in_cobbler_style,
+                ['i386', 'i686', 'amd64', 'x86_64']))
+
+    def test_name_arch_in_cobbler_works_for_both_bytes_and_unicode(self):
+        self.assertEqual(
+            name_arch_in_cobbler_style(u'amd64'),
+            name_arch_in_cobbler_style(b'amd64'))
+
+    def test_name_arch_in_cobbler_returns_unicode(self):
+        self.assertIsInstance(name_arch_in_cobbler_style(b'amd64'), unicode)
+
     def test_select_profile_for_node_ignores_previously_chosen_profile(self):
         node = factory.make_node(architecture='i386')
         self.papi.modify_nodes(
@@ -73,11 +89,18 @@ class ProvisioningTests:
         nodes = {
             arch: self.make_node_without_saving(arch=arch)
             for arch in map_enum(ARCHITECTURE).values()}
-        self.assertItemsEqual(
-            ['precise-%s' % arch for arch in nodes.keys()],
+        self.assertItemsEqual([
+                'precise-%s' % name_arch_in_cobbler_style(arch)
+                for arch in nodes.keys()],
             [
                 select_profile_for_node(node, self.papi)
                 for node in nodes.values()])
+
+    def test_select_profile_for_node_converts_architecture_name(self):
+        node = factory.make_node(architecture='amd64')
+        profile = select_profile_for_node(node, self.papi)
+        self.assertNotIn('amd64', profile)
+        self.assertIn('x86_64', profile)
 
     def test_provision_post_save_Node_create(self):
         # The handler for Node's post-save signal registers the node in

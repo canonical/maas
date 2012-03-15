@@ -82,10 +82,31 @@ def compose_metadata(node):
     }
 
 
+def name_arch_in_cobbler_style(architecture):
+    """Give architecture name as used in cobbler.
+
+    MaaS uses Ubuntu-style architecture names, notably including "amd64"
+    which in Cobbler terms is "x86_64."
+
+    :param architecture: An architecture name (e.g. as produced by MaaS).
+    :type architecture: basestring
+    :return: An architecture name in Cobbler style.
+    :rtype: unicode
+    """
+    conversions = {
+        'amd64': 'x86_64',
+        'i686': 'i386',
+    }
+    if isinstance(architecture, bytes):
+        architecture = architecture.decode('ascii')
+    return conversions.get(architecture, architecture)
+
+
 def select_profile_for_node(node, papi):
     """Select which profile a node should be configured for."""
     assert node.architecture, "Node's architecture is not known."
-    return "%s-%s" % ("precise", node.architecture)
+    cobbler_arch = name_arch_in_cobbler_style(node.architecture)
+    return "%s-%s" % ("precise", cobbler_arch)
 
 
 @receiver(post_save, sender=Node)

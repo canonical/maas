@@ -48,40 +48,50 @@ else
 	fi
 fi
 
+
+name_arch_in_cobbler_style() {
+	echo "$1" | sed -e 's/amd64/x86_64/' -e 's/i686/i386/'
+}
+
+
 update_settings(){
+	local r a profile
 	# Updates the parent profiles with new settings. Only affects KOPTS
 	for r in $RELEASES; do
 		for a in $ARCHES; do
-			[ "$a" = "amd64" ] && a="x86_64"
+			a=$(name_arch_in_cobbler_style "$a")
+			profile="$r-$a"
 			# If profile exists, update it.
-			if (cobbler profile list | grep -qs " $r-$a$"); then
-				cobbler profile edit --name="$r-$a" --kopts="$KOPTS"
+			if (cobbler profile list | grep -qs " $profile$"); then
+				cobbler profile edit --name="$profile" --kopts="$KOPTS"
 			fi
 		done
 	done
 }
 
 import_isos(){
+	local r a profile
 	# Wget and import net install ISOs
 	for r in $RELEASES; do
 		for a in $ARCHES; do
-			[ "$a" = "amd64" ] && a="x86_64"
+			a=$(name_arch_in_cobbler_style "$a")
+			profile="$r-$a"
 			# Skip if cobbler already has this distro/arch combo
-			if ! (cobbler distro list | grep -qs " $r-$a$"); then
+			if ! (cobbler distro list | grep -qs " $profile$"); then
 				# Import the iso
-				cobbler-ubuntu-import $r-$a
-				cobbler profile edit --name="$r-$a" --kopts="$KOPTS" --kickstart="$KSDIR/maas.preseed"
+				cobbler-ubuntu-import $profile
+				cobbler profile edit --name="$profile" --kopts="$KOPTS" --kickstart="$KSDIR/maas.preseed"
 			else
 				# check archive for an updated ISO, update our cache if necessary
-				cobbler-ubuntu-import -c $r-$a && cobbler-ubuntu-import -u $r-$a
+				cobbler-ubuntu-import -c $profile && cobbler-ubuntu-import -u $profile
 				# Make sure the profile is using the MaaS preseed
-				cobbler profile edit --name="$r-$a" --kickstart="$KSDIR/maas.preseed"
+				cobbler profile edit --name="$profile" --kickstart="$KSDIR/maas.preseed"
 
 			fi
 			# Skip if cobbler already has this distro/arch profile
-			if ! (cobbler profile list | grep -qs " $r-$a-juju$"); then
+			if ! (cobbler profile list | grep -qs " $profile-juju$"); then
 				# Add JuJu sub-profile based on the name of the imported ISO
-				cobbler profile add --name="$r-$a-juju" --parent="$r-$a" --kickstart="$KSDIR/juju.preseed"
+				cobbler profile add --name="$profile-juju" --parent="$profile" --kickstart="$KSDIR/juju.preseed"
 			fi
 		done
 	done
