@@ -12,6 +12,8 @@ __metaclass__ = type
 __all__ = []
 
 
+import time
+
 from amqplib import client_0_8 as amqp
 from fixtures import MonkeyPatch
 from maasserver.rabbit import (
@@ -110,6 +112,17 @@ class TestRabbitBase(RabbitTestCase):
 
 class TestRabbitExchange(RabbitTestCase):
 
+    def basic_get(self, channel, queue_name, timeout):
+        endtime = time.time() + timeout
+        while True:
+            message = channel.basic_get(queue_name)
+            if message is None:
+                if time.time() > endtime:
+                    self.fail('Cannot get message.')
+                time.sleep(0.1)
+            else:
+                return message
+
     def test_exchange_publish(self):
         exchange_name = factory.getRandomString()
         message_content = factory.getRandomString()
@@ -119,7 +132,7 @@ class TestRabbitExchange(RabbitTestCase):
         queue_name = channel.queue_declare(auto_delete=True)[0]
         channel.queue_bind(exchange=exchange_name, queue=queue_name)
         exchange.publish(message_content)
-        message = channel.basic_get(queue_name)
+        message = self.basic_get(channel, queue_name, timeout=2)
         self.assertEqual(message_content, message.body)
 
 
