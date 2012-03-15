@@ -11,4 +11,4 @@ set -o nounset
 # the capitalization of the first letter.
 bzr ls -VR --kind=file --null \
     | xargs -r0 grep -Iil maas --null \
-    | xargs -r0 sed -i 's/M[Aa][Aa][Ss]/MaaS/g;s/m[Aa][Aa][Ss]/maas/g'
+    | xargs -r0 sed -i 's/M[Aa][Aa][Ss]/MAAS/g;s/m[Aa][Aa][Ss]/maas/g'
