@@ -11,7 +11,9 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
+from collections import namedtuple
 import httplib
+import urllib2
 
 from django.conf import settings
 from django.conf.urls.defaults import patterns
@@ -31,7 +33,10 @@ from maasserver.testing.testcase import (
     LoggedInTestCase,
     TestCase,
     )
-from maasserver.views import get_longpoll_context
+from maasserver.views import (
+    get_longpoll_context,
+    proxy_to_longpoll,
+    )
 
 
 def get_prefixed_form_data(prefix, data):
@@ -101,6 +106,45 @@ class TestSnippets(LoggedInTestCase):
         self.assertTemplateExistsAndContains(
             response.content, '#add-node',
             'select#id_after_commissioning_action')
+
+
+class TestProxyView(LoggedInTestCase):
+    """Test the (dev) view used to proxy request to a txlongpoll server."""
+
+    def test_proxy_to_longpoll(self):
+        # Set LONGPOLL_SERVER_URL (to a random string).
+        longpoll_server_url = factory.getRandomString()
+        self.patch(settings, 'LONGPOLL_SERVER_URL', longpoll_server_url)
+
+        # Create content of the fake reponse.
+        query_string = factory.getRandomString()
+        mimetype = factory.getRandomString()
+        content = factory.getRandomString()
+        status_code = factory.getRandomStatusCode()
+
+        # Monkey patch urllib2.urlopen to make it return a (fake) response
+        # with status_code=code, headers.typeheader=mimetype and a
+        # 'read' method that will return 'content'.
+        def urlopen(url):
+            # Assert that urlopen is called on the longpoll url (plus
+            # additional parameters taken from the original request's
+            # query string).
+            self.assertEqual(
+                '%s?%s' % (longpoll_server_url, query_string), url)
+            FakeProxiedResponse = namedtuple(
+                'FakeProxiedResponse', 'code headers read')
+            headers = namedtuple('Headers', 'typeheader')(mimetype)
+            return FakeProxiedResponse(status_code, headers, lambda: content)
+        self.patch(urllib2, 'urlopen', urlopen)
+
+        # Create a fake request.
+        request = namedtuple(
+            'FakeRequest', ['META'])({'QUERY_STRING': query_string})
+        response = proxy_to_longpoll(request)
+
+        self.assertEqual(content, response.content)
+        self.assertEqual(mimetype, response['Content-Type'])
+        self.assertEqual(status_code, response.status_code)
 
 
 class TestComboLoaderView(TestCase):

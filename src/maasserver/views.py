@@ -247,10 +247,11 @@ def proxy_to_longpoll(request):
 
     if 'QUERY_STRING' in request.META:
         url += '?' + request.META['QUERY_STRING']
-    proxied_request = urllib2.urlopen(url)
-    status_code = proxied_request.code
-    mimetype = proxied_request.headers.typeheader or mimetypes.guess_type(url)
-    content = proxied_request.read()
+    proxied_response = urllib2.urlopen(url)
+    status_code = proxied_response.code
+    mimetype = (
+        proxied_response.headers.typeheader or mimetypes.guess_type(url))
+    content = proxied_response.read()
     return HttpResponse(content, status=status_code, mimetype=mimetype)
 
 

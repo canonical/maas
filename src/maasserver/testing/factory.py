@@ -13,6 +13,7 @@ __all__ = [
     "factory",
     ]
 
+import httplib
 from io import BytesIO
 import random
 import string
@@ -37,6 +38,9 @@ class Factory():
 
     def getRandomEmail(self, login_size=10):
         return "%s@example.com" % self.getRandomString(size=login_size)
+
+    def getRandomStatusCode(self):
+        return random.choice(list(httplib.responses))
 
     def getRandomBoolean(self):
         return random.choice((True, False))
