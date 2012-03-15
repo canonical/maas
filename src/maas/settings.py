@@ -17,6 +17,7 @@ from urlparse import urljoin
 # Use new style url tag:
 # https://docs.djangoproject.com/en/dev/releases/1.3/#changes-to-url-and-ssi
 import django.template
+from maas import import_local_settings
 
 
 django.template.add_to_builtins('django.templatetags.future')
@@ -26,11 +27,10 @@ DEBUG = False
 # Used to set a prefix in front of every URL.
 FORCE_SCRIPT_NAME = None
 
-# Allow the user to override settings in maas_local_settings.
-try:
-    from maas_local_settings import * # NOQA
-except ImportError:
-    pass
+# Allow the user to override settings in maas_local_settings. Later settings
+# depend on the values of DEBUG and FORCE_SCRIPT_NAME, so we must import local
+# settings now in case those settings have been overridden.
+import_local_settings()
 
 ADMINS = (
     # ('Your Name', 'your_email@example.com'),
@@ -253,7 +253,5 @@ LOGGING = {
 # use the fake Provisioning API.
 PSERV_URL = None
 
-try:
-    from maas_local_settings import * # NOQA
-except ImportError:
-    pass
+# Allow the user to override settings in maas_local_settings.
+import_local_settings()

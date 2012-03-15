@@ -12,11 +12,19 @@ __metaclass__ = type
 
 import os
 
-# FIRST: developement settings should override base settings.
-from maas.settings import *
+from maas import (
+    development,
+    import_settings,
+    settings,
+    )
 
-from maas.development import *
+# We expect the following settings to be overridden. They are mentioned here
+# to silence lint warnings.
+MIDDLEWARE_CLASSES = None
 
+# Extend base and development settings.
+import_settings(settings)
+import_settings(development)
 
 MEDIA_ROOT = os.path.join(os.getcwd(), "media/demo")
 

@@ -13,10 +13,8 @@ __all__ = [
     "factory",
     ]
 
-import httplib
 from io import BytesIO
 import random
-import string
 
 from django.contrib.auth.models import User
 from maasserver.models import (
@@ -27,23 +25,10 @@ from maasserver.models import (
     NODE_STATUS,
     )
 from maasserver.testing.enum import map_enum
+import maastesting.factory
 
 
-class Factory():
-
-    def getRandomString(self, size=10):
-        return "".join(
-            random.choice(string.letters + string.digits)
-            for x in range(size))
-
-    def getRandomEmail(self, login_size=10):
-        return "%s@example.com" % self.getRandomString(size=login_size)
-
-    def getRandomStatusCode(self):
-        return random.choice(list(httplib.responses))
-
-    def getRandomBoolean(self):
-        return random.choice((True, False))
+class Factory(maastesting.factory.Factory):
 
     def getRandomEnum(self, enum):
         """Pick a random item from an enumeration class.

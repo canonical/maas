@@ -19,14 +19,6 @@ from maastesting.testcase import TestCase
 
 class TestFactory(TestCase):
 
-    def test_getRandomString_respects_size(self):
-        sizes = [1, 10, 100]
-        random_strings = [factory.getRandomString(size) for size in sizes]
-        self.assertEqual(sizes, [len(string) for string in random_strings])
-
-    def test_getRandomBoolean_returns_bool(self):
-        self.assertIsInstance(factory.getRandomBoolean(), bool)
-
     def test_getRandomEnum_returns_enum_value(self):
         random_value = randint(0, 99999)
 

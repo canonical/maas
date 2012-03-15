@@ -54,8 +54,7 @@ test: bin/test.maas bin/test.pserv
 
 lint: sources = setup.py src templates utilities
 lint: bin/flake8
-	@bin/flake8 $(sources) | \
-	    (! egrep -v "from maas[.](settings|development) import [*]")
+	@bin/flake8 $(sources)
 
 check: clean test
 

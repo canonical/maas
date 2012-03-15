@@ -13,7 +13,18 @@ __metaclass__ = type
 import os
 from socket import gethostname
 
-from maas.settings import *
+from maas import (
+    import_local_settings,
+    import_settings,
+    settings,
+    )
+
+# We expect the following settings to be overridden. They are mentioned here
+# to silence lint warnings.
+INSTALLED_APPS = None
+
+# Extend base settings.
+import_settings(settings)
 
 # In development, django can be accessed directly on port 8000.
 DEFAULT_MAAS_URL = "http://%s:8000/" % gethostname()
@@ -52,14 +63,11 @@ INSTALLED_APPS += (
     'django_nose',
 )
 
-
 INTERNAL_IPS = ('127.0.0.1',)
 
 DEBUG_TOOLBAR_CONFIG = {
     'INTERCEPT_REDIRECTS': False,
     }
 
-try:
-    from maas_local_settings import * # NOQA
-except ImportError:
-    pass
+# Allow the user to override settings in maas_local_settings.
+import_local_settings()
