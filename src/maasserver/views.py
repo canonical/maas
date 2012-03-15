@@ -71,10 +71,10 @@ def logout(request):
 
 
 def get_longpoll_context():
-    if messaging is not None and django_settings.LONGPOLL_URL is not None:
+    if messaging is not None and django_settings.LONGPOLL_PATH is not None:
         return {
             'longpoll_queue': messaging.getQueue().name,
-            'LONGPOLL_URL': django_settings.LONGPOLL_URL,
+            'LONGPOLL_PATH': django_settings.LONGPOLL_PATH,
             }
     else:
         return {}

@@ -77,10 +77,22 @@ urlpatterns += patterns('maasserver.views',
         r'^nodes/create/$', NodesCreateView.as_view(), name='node-create'),
 )
 
-if django_settings.LONGPOLL_SERVER_URL is not None:
+
+def get_proxy_longpoll_enabled():
+    """Should MaaS act as a proxy to a txlongpoll server?
+
+    This should only be true if longpoll is enabled (LONGPOLL_PATH) and
+    if the url to a txlongpoll is configured (LONGPOLL_SERVER_URL).
+    """
+    return (
+        django_settings.LONGPOLL_SERVER_URL is not None and
+        django_settings.LONGPOLL_PATH is not None)
+
+
+if get_proxy_longpoll_enabled():
     urlpatterns += patterns('maasserver.views',
         url(
-            r'^%s$' % re.escape(django_settings.LONGPOLL_SERVER_URL),
+            r'^%s$' % re.escape(django_settings.LONGPOLL_PATH),
             proxy_to_longpoll, name='proxy-to-longpoll'),
         )
 

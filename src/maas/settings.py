@@ -53,7 +53,7 @@ LONGPOLL_SERVER_URL = None
 
 # The relative path where a proxy to the Longpoll server can be
 # reached.  Longpolling will be disabled in the UI if this is None.
-LONGPOLL_URL = 'longpoll/'
+LONGPOLL_PATH = 'longpoll/'
 
 # Default URL specifying protocol, host, and (if necessary) port where
 # this MaaS can be found.  Configuration can, and probably should,
@@ -65,7 +65,7 @@ if FORCE_SCRIPT_NAME is not None:
     LOGOUT_URL = FORCE_SCRIPT_NAME + LOGOUT_URL
     LOGIN_REDIRECT_URL = FORCE_SCRIPT_NAME + LOGIN_REDIRECT_URL
     LOGIN_URL = FORCE_SCRIPT_NAME + LOGIN_URL
-    LONGPOLL_URL = FORCE_SCRIPT_NAME + LONGPOLL_URL
+    LONGPOLL_PATH = FORCE_SCRIPT_NAME + LONGPOLL_PATH
     DEFAULT_MAAS_URL = urljoin(DEFAULT_MAAS_URL, FORCE_SCRIPT_NAME)
     # ADMIN_MEDIA_PREFIX will be deprecated in Django 1.4.
     # Admin's media will be served using staticfiles instead.

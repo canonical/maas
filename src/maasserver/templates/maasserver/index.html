@@ -50,10 +50,10 @@
       });
 
       // Start longpoll.
-      {% if longpoll_queue and LONGPOLL_URL %}
+      {% if longpoll_queue and LONGPOLL_PATH %}
         Y.later(0, Y.maas.longpoll, function() {
           var longpollmanager = Y.maas.longpoll.setupLongPollManager(
-            '{{ longpoll_queue }}', '/{{ LONGPOLL_URL }}');
+            '{{ longpoll_queue }}', '/{{ LONGPOLL_PATH }}');
         });
       {% endif %}
     });

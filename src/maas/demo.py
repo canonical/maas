@@ -29,7 +29,7 @@ LONGPOLL_SERVER_URL = "http://localhost:8002/"
 
 # Disable longpoll by default for now. Set it back to 'longpoll/' to
 # enable it.
-LONGPOLL_URL = None
+LONGPOLL_PATH = None
 
 # This should match the setting in /etc/pserv.yaml.
 PSERV_URL = "http://localhost:8001/api"
