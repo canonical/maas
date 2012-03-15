@@ -18,14 +18,17 @@ from os import path
 import sys
 from unittest import skipIf
 
-from fixtures import PythonPathEntry, TempDir
+from fixtures import (
+    PythonPathEntry,
+    TempDir,
+    )
 from maas import (
     find_settings,
     import_local_settings,
     import_settings,
     )
-from maastesting.testcase import TestCase
 from maastesting.factory import factory
+from maastesting.testcase import TestCase
 
 
 class TestSettingsHelpers(TestCase):
@@ -50,7 +53,7 @@ class TestSettingsHelpers(TestCase):
         target._source = source
         target._import_settings = import_settings
         eval("_import_settings(_source)", vars(target))
-        expected = {"SETTING": source.SETTING,}
+        expected = {"SETTING": source.SETTING}
         observed = find_settings(target)
         self.assertEqual(expected, observed)
 
