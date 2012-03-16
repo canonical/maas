@@ -23,11 +23,9 @@ from itertools import (
     count,
     islice,
     )
-from os import environ
 from random import randint
 from time import time
 from unittest import skipIf
-from urlparse import urlparse
 
 from maasserver.testing.enum import map_enum
 from provisioningserver.api import (
@@ -38,14 +36,12 @@ from provisioningserver.api import (
     postprocess_mapping,
     ProvisioningAPI,
     )
-from provisioningserver.cobblerclient import (
-    CobblerSession,
-    CobblerSystem,
-    )
+from provisioningserver.cobblerclient import CobblerSystem
 from provisioningserver.enum import POWER_TYPE
 from provisioningserver.interfaces import IProvisioningAPI
 from provisioningserver.testing.fakeapi import FakeAsynchronousProvisioningAPI
 from provisioningserver.testing.fakecobbler import make_fake_cobbler_session
+from provisioningserver.testing.realcobbler import RealCobbler
 from testtools import TestCase
 from testtools.deferredruntest import AsynchronousDeferredRunTest
 from twisted.internet.defer import (
@@ -649,17 +645,9 @@ class TestProvisioningAPIWithRealCobbler(ProvisioningAPITests,
     Includes by inheritance all the tests in :class:`ProvisioningAPITests`.
     """
 
-    url = environ.get("PSERV_TEST_COBBLER_URL")
+    real_cobbler = RealCobbler()
 
-    @skipIf(
-        url is None,
-        "Set PSERV_TEST_COBBLER_URL to the URL for a Cobbler "
-        "instance to test against, e.g. http://username:password"
-        "@localhost/cobbler_api. Warning: this will modify your "
-        "Cobbler database.")
+    @skipIf(not real_cobbler.is_available(), RealCobbler.help_text)
     def get_provisioning_api(self):
         """Return a connected :class:`ProvisioningAPI`."""
-        urlparts = urlparse(self.url)
-        cobbler_session = CobblerSession(
-            self.url, urlparts.username, urlparts.password)
-        return ProvisioningAPI(cobbler_session)
+        return ProvisioningAPI(self.real_cobbler.get_session())
