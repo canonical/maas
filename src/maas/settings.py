@@ -53,13 +53,12 @@ LONGPOLL_SERVER_URL = None
 
 # The relative path where a proxy to the Longpoll server can be
 # reached.  Longpolling will be disabled in the UI if this is None.
-LONGPOLL_PATH = 'longpoll/'
+LONGPOLL_PATH = '/longpoll/'
 
 # Default URL specifying protocol, host, and (if necessary) port where
 # this MAAS can be found.  Configuration can, and probably should,
 # override this.
 DEFAULT_MAAS_URL = "http://%s/" % gethostname()
-
 
 if FORCE_SCRIPT_NAME is not None:
     LOGOUT_URL = FORCE_SCRIPT_NAME + LOGOUT_URL
@@ -96,7 +95,7 @@ RABBITMQ_USERID = 'guest'
 RABBITMQ_PASSWORD = 'guest'
 RABBITMQ_VIRTUAL_HOST = '/'
 
-RABBITMQ_PUBLISH = False
+RABBITMQ_PUBLISH = True
 
 
 DATABASES = {

@@ -53,7 +53,7 @@
       {% if longpoll_queue and LONGPOLL_PATH %}
         Y.later(0, Y.maas.longpoll, function() {
           var longpollmanager = Y.maas.longpoll.setupLongPollManager(
-            '{{ longpoll_queue }}', '/{{ LONGPOLL_PATH }}');
+            '{{ longpoll_queue }}', '{{ LONGPOLL_PATH }}');
         });
       {% endif %}
     });
