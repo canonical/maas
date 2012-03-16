@@ -106,7 +106,7 @@ def select_profile_for_node(node, papi):
     """Select which profile a node should be configured for."""
     assert node.architecture, "Node's architecture is not known."
     cobbler_arch = name_arch_in_cobbler_style(node.architecture)
-    return "%s-%s" % ("precise", cobbler_arch)
+    return "maas-%s-%s" % ("precise", cobbler_arch)
 
 
 @receiver(post_save, sender=Node)

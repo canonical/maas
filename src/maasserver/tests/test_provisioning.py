@@ -83,14 +83,14 @@ class ProvisioningTests:
         self.papi.modify_nodes(
             {node.system_id: {'profile': self.make_papi_profile()}})
         self.assertEqual(
-            'precise-i386', select_profile_for_node(node, self.papi))
+            'maas-precise-i386', select_profile_for_node(node, self.papi))
 
     def test_select_profile_for_node_selects_Precise_and_right_arch(self):
         nodes = {
             arch: self.make_node_without_saving(arch=arch)
             for arch in map_enum(ARCHITECTURE).values()}
         self.assertItemsEqual([
-                'precise-%s' % name_arch_in_cobbler_style(arch)
+                'maas-precise-%s' % name_arch_in_cobbler_style(arch)
                 for arch in nodes.keys()],
             [
                 select_profile_for_node(node, self.papi)
@@ -110,7 +110,7 @@ class ProvisioningTests:
             sender=Node, instance=node, created=True)
         system_id = node.system_id
         pserv_node = self.papi.get_nodes_by_name([system_id])[system_id]
-        self.assertEqual("precise-i386", pserv_node["profile"])
+        self.assertEqual("maas-precise-i386", pserv_node["profile"])
 
     def test_provision_post_save_Node_registers_effective_power_type(self):
         power_types = list(map_enum(POWER_TYPE).values())
