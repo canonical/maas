@@ -8,6 +8,7 @@
 #		Marc Cluet <marc.cluet@canonical.com>
 #		Dustin Kirkland <kirkland@canonical.com>
 #		Andres Rodriguez <andres.rodriguez@canonical.com>
+#		Scott Moser <scott.moser@canonical.com>
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU Affero General Public License as
@@ -34,11 +35,9 @@ fi
 [ -n "$KSDIR" ] || KSDIR="/var/lib/cobbler/kickstarts"
 [ -n "$PRIORITY" ] || PRIORITY="critical"
 [ -n "$LOCALE" ] || LOCALE="en_US"
-[ -n "$MGMTCLASS_AVAILABLE" ] || MGMTCLASS_AVAILABLE="maas-juju-available"
-[ -n "$MGMTCLASS_ACQUIRED" ] || MGMTCLASS_ACQUIRED="maas-juju-acquired"
 [ -n "$INTERFACE" ] || INTERFACE="auto"
 [ -n "$KOPTS" ] || KOPTS="priority=$PRIORITY locale=$LOCALE netcfg/choose_interface=$INTERFACE"
-[ -n "$ENLIST_PROFILE" ] || ENLIST_PROFILE="ubuntu-enlist"
+[ -n "$ENLIST_PROFILE" ] || ENLIST_PROFILE="maas-enlist"
 if [ -n "$SERVER_IP" ]; then
 	KOPTS="$KOPTS log_host=$SERVER_IP log_port=514"
 else
@@ -80,27 +79,17 @@ import_isos(){
 			if ! (cobbler distro list | grep -qs " $profile$"); then
 				# Import the iso
 				cobbler-ubuntu-import $profile
-				cobbler profile edit --name="$profile" --kopts="$KOPTS" --kickstart="$KSDIR/maas.preseed"
 			else
 				# check archive for an updated ISO, update our cache if necessary
 				cobbler-ubuntu-import -c $profile && cobbler-ubuntu-import -u $profile
-				# Make sure the profile is using the MAAS preseed
-				cobbler profile edit --name="$profile" --kickstart="$KSDIR/maas.preseed"
 
 			fi
 			# Skip if cobbler already has this distro/arch profile
-			if ! (cobbler profile list | grep -qs " $profile-juju$"); then
+			if ! (cobbler profile list | grep -qs " maas-$profile$"); then
 				# Add JuJu sub-profile based on the name of the imported ISO
-				cobbler profile add --name="$profile-juju" --parent="$profile" --kickstart="$KSDIR/juju.preseed"
+				cobbler profile add --name="maas-$profile" --parent="$profile" --kopts="$KOPTS" --kickstart="$KSDIR/maas.preseed"
 			fi
 		done
-	done
-}
-
-add_mgmt_classes(){
-	# Add Management Classes for JuJu
-	for m in $MGMTCLASS_AVAILABLE $MGMTCLASS_ACQUIRED; do
-		(cobbler mgmtclass list | grep -qs " $m$") || cobbler mgmtclass add --name="$m"
 	done
 }
 
@@ -120,7 +109,7 @@ add_enlist_profile(){
         if cobbler profile list | grep -qs " $ENLIST_PROFILE"; then
                 cobbler profile edit --name="$ENLIST_PROFILE" --parent="$PARENT_PROFILE"
         else
-                cobbler profile add --name="$ENLIST_PROFILE" --parent="$PARENT_PROFILE" --kickstart="$KSDIR/ubuntu-enlist.preseed"
+                cobbler profile add --name="$ENLIST_PROFILE" --parent="$PARENT_PROFILE" --kickstart="$KSDIR/maas-enlist.preseed"
         fi
 
         # Add 'default' system if doesn't exist.
@@ -186,9 +175,6 @@ done
 
 $do_import_isos && import_isos 
 $do_update_settings && update_settings 
-
-# Add management classes if new have being defined.
-add_mgmt_classes
 
 # Add enlist profile if doesn't exist
 add_enlist_profile

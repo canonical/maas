@@ -1,0 +1,3 @@
+#import base64
+#set $maas_preseed_data = base64.b64decode($getVar("MAAS_PRESEED",""))
+$maas_preseed_data
