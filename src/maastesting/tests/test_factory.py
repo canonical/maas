@@ -24,3 +24,6 @@ class TestFactory(TestCase):
 
     def test_getRandomBoolean_returns_bool(self):
         self.assertIsInstance(factory.getRandomBoolean(), bool)
+
+    def test_getRandomPort_returns_int(self):
+        self.assertIsInstance(factory.getRandomPort(), int)

@@ -11,50 +11,25 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
-from maastesting.rabbit import RabbitServerResource
+from django.conf import settings
+from maastesting.factory import factory
+from maastesting.rabbit import RabbitServerSettings
 from maastesting.testcase import TestCase
-from rabbitfixture.server import RabbitServer
+from rabbitfixture.server import RabbitServerResources
 
 
-class TestRabbitServerResourceBasics(TestCase):
+class TestRabbitServerSettings(TestCase):
 
-    def test_cycle(self):
-        """
-        A RabbitMQ server can be successfully brought up and shut-down.
-        """
-        resource = RabbitServerResource()
-        server = resource.make({})
-        try:
-            self.assertIs(resource.server, server)
-            self.assertIsInstance(server, RabbitServer)
-        finally:
-            resource.clean(server)
-
-    def test_reset(self):
-        """
-        Resetting a RabbitMQ server resource when it has not explicitly been
-        marked as dirty - via `RabbitServerResource.dirtied` - is a no-op; the
-        same server is returned.
-        """
-        resource = RabbitServerResource()
-        server = resource.make({})
-        try:
-            server2 = resource.reset(server)
-            self.assertIs(server, server2)
-        finally:
-            resource.clean(server)
-
-
-class TestRabbitServerResource(TestCase):
-
-    resources = [
-        ("rabbit", RabbitServerResource()),
-        ]
-
-    def test_one(self):
-        """The `self.rabbit` resource is made available here."""
-        self.assertIsInstance(self.rabbit, RabbitServer)
-
-    def test_two(self):
-        """The `self.rabbit resource is also made available here."""
-        self.assertIsInstance(self.rabbit, RabbitServer)
+    def test_patch(self):
+        config = RabbitServerResources(
+            hostname=factory.getRandomString(),
+            port=factory.getRandomPort())
+        self.useFixture(config)
+        self.useFixture(RabbitServerSettings(config))
+        self.assertEqual(
+            "%s:%d" % (config.hostname, config.port),
+            settings.RABBITMQ_HOST)
+        self.assertEqual("guest", settings.RABBITMQ_PASSWORD)
+        self.assertEqual("guest", settings.RABBITMQ_USERID)
+        self.assertEqual("/", settings.RABBITMQ_VIRTUAL_HOST)
+        self.assertTrue(settings.RABBITMQ_PUBLISH)

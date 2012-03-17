@@ -67,12 +67,12 @@ class AMQTest(TestCase):
           http://readthedocs.org/docs/nose/en/latest/writing_tests.html
 
         """
-        from provisioningserver import tests
-        return tests.get_rabbit()
+        from maastesting import rabbit
+        return rabbit.get_rabbit()
 
     @skip(
         "RabbitMQ is not yet a required component "
-        "of a running MAAS installation.")
+        "of a running MAAS pserv instance.")
     def setUp(self):
         """
         At each run, we delete the test vhost and recreate it, to be sure to be
