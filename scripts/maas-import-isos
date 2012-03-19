@@ -29,6 +29,7 @@ if [ "$(id -u)" != "0" ]; then
 fi
 
 # Definitions for supported releases and architectures
+[ -r $(pwd)/etc/maas/import_isos ] && . $(pwd)/etc/maas/import_isos
 [ -r /etc/maas/import_isos ] && . /etc/maas/import_isos
 [ -n "$RELEASES" ] || RELEASES=$(distro-info --supported)
 [ -n "$ARCHES" ] || ARCHES="amd64 i386"
