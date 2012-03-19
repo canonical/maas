@@ -8,11 +8,13 @@
 {% endblock %}
 
 {% block head %}
+  <script type="text/javascript" src="{{ STATIC_URL }}jslibs/raphael/raphael-min.js"></script>
+  <script type="text/javascript" src="{{ STATIC_URL }}js/nodes_chart.js"></script>
   <script type="text/javascript">
   <!--
   YUI().use(
-    'maas.node_add', 'maas.node','maas.node_views', 'maas.utils',
-    'maas.longpoll',
+    'maas.node_add', 'maas.node','maas.node_views', 'maas.utils', 'maas.nodes_chart',
+    'maas.longpoll', 
     function (Y) {
     Y.on('load', function() {
       // Create Dashboard view.
@@ -36,6 +38,14 @@
 	  {srcNode: '.page-title-form'});
       title_widget.render();
 
+
+      // Show the chart
+      var cfg = {
+        node_id: 'chart',
+        width: 300
+        };
+      var chart = new Y.maas.nodes_chart.NodesChartWidget(cfg);
+
       // Sample event listeners.
       Y.on("Node.updated", function() {
 		  Y.log("node updated");
@@ -56,6 +66,7 @@
             '{{ longpoll_queue }}', '{{ LONGPOLL_PATH }}');
         });
       {% endif %}
+
     });
   });
   // -->
@@ -74,4 +85,5 @@
 {% endblock %}
 
 {% block content %}
+    <div id="chart"></div>
 {% endblock %}
