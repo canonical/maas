@@ -136,7 +136,10 @@ class AnonymousEnlistmentAPITest(APIv10TestMixin, TestCase):
             })
         parsed_result = json.loads(response.content)
         self.assertItemsEqual(
-            ['hostname', 'system_id', 'macaddress_set', 'architecture'],
+            [
+                'hostname', 'system_id', 'macaddress_set', 'architecture',
+                'status'
+            ],
             list(parsed_result))
 
     def test_POST_fails_without_operation(self):

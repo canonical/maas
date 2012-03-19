@@ -242,7 +242,7 @@ def get_mandatory_param(data, key, validator=None):
 
 NODE_FIELDS = (
     'system_id', 'hostname', ('macaddress_set', ('mac_address',)),
-    'architecture')
+    'architecture', 'status')
 
 
 @api_operations
