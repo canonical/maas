@@ -89,6 +89,12 @@ class NodeTest(TestCase):
             node=node, mac_address='AA:BB:CC:DD:EE:FF').count()
         self.assertEqual(0, macs)
 
+    def test_set_mac_based_hostname(self):
+        node = factory.make_node()
+        node.set_mac_based_hostname('AA:BB:CC:DD:EE:FF')
+        hostname = 'node-aabbccddeeff'
+        self.assertEqual(hostname, node.hostname)
+
     def test_get_effective_power_type_defaults_to_config(self):
         power_types = list(map_enum(POWER_TYPE).values())
         power_types.remove(POWER_TYPE.DEFAULT)

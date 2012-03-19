@@ -123,6 +123,19 @@ class AnonymousEnlistmentAPITest(APIv10TestMixin, TestCase):
             ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
             [mac.mac_address for mac in diane.macaddress_set.all()])
 
+    def test_POST_with_no_hostname_auto_populates_hostname(self):
+        architecture = factory.getRandomChoice(ARCHITECTURE_CHOICES)
+        response = self.client.post(
+            self.get_uri('nodes/'),
+            {
+                'op': 'new',
+                'architecture': architecture,
+                'mac_addresses': ['aa:BB:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
+            })
+        node = Node.objects.get(
+            system_id=json.loads(response.content)['system_id'])
+        self.assertEqual('node-aabbccddeeff', node.hostname)
+
     def test_POST_returns_limited_fields(self):
         architecture = factory.getRandomChoice(ARCHITECTURE_CHOICES)
         response = self.client.post(

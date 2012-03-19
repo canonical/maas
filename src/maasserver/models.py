@@ -407,6 +407,11 @@ class Node(CommonInfo):
         if mac:
             mac.delete()
 
+    def set_mac_based_hostname(self, mac_address):
+        mac_hostname = mac_address.replace(':', '').lower()
+        self.hostname = "node-%s" % mac_hostname
+        self.save()
+
     def get_effective_power_type(self):
         """Get power-type to use for this node.
 

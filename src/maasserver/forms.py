@@ -124,6 +124,8 @@ class NodeWithMACAddressesForm(NodeForm):
         node = super(NodeWithMACAddressesForm, self).save()
         for mac in self.cleaned_data['mac_addresses']:
             node.add_mac_address(mac)
+        if self.cleaned_data['hostname'] == "":
+            node.set_mac_based_hostname(self.cleaned_data['mac_addresses'][0])
         return node
 
 
