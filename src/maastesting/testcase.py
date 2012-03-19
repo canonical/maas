@@ -17,7 +17,7 @@ __all__ = [
 import unittest
 
 from django.conf import settings
-from django.core.management import call_command
+from django.core.management.commands import syncdb
 from django.db.models import loading
 import django.test
 import testresources
@@ -81,7 +81,8 @@ class TestModelTestCase(TestCase):
         assert self.app is not None, "TestCase.app must be defined!"
         settings.INSTALLED_APPS.append(self.app)
         loading.cache.loaded = False
-        call_command('syncdb', interactive=False, verbosity=0)
+        # Use Django's 'syncdb' rather than South's.
+        syncdb.Command().handle_noargs(verbosity=0, interactive=False)
         super(TestModelTestCase, self)._pre_setup()
 
     def _post_teardown(self):

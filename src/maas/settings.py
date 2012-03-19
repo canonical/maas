@@ -238,6 +238,7 @@ INSTALLED_APPS = (
     'maasserver',
     'metadataserver',
     'piston',
+    'south',
 )
 
 if DEBUG:

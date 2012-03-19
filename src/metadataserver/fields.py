@@ -22,6 +22,7 @@ from django.db.models import (
     Field,
     SubfieldBase,
     )
+from south.modelsinspector import add_introspection_rules
 
 
 class Bin(bytes):
@@ -50,6 +51,13 @@ class Bin(bytes):
         assert isinstance(initializer, bytes), (
             "Not a binary string: '%s'" % repr(initializer))
         super(Bin, self).__init__(initializer)
+
+
+# The BinaryField does not introduce any new parameters compared to its
+# parent's constructor so South will handle it just fine.
+# See http://south.aeracode.org/docs/customfields.html#extending-introspection
+# for details.
+add_introspection_rules([], ["^metadataserver\.fields\.BinaryField"])
 
 
 class BinaryField(Field):
