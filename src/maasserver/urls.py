@@ -20,7 +20,6 @@ from django.conf.urls.defaults import (
     url,
     )
 from django.contrib.auth.decorators import user_passes_test
-from django.contrib.auth.views import login
 from django.views.generic.simple import (
     direct_to_template,
     redirect_to,
@@ -33,6 +32,7 @@ from maasserver.views import (
     AccountsView,
     combo_view,
     KeystoreView,
+    login,
     logout,
     NodeListView,
     NodesCreateView,

@@ -42,6 +42,7 @@ LONGPOLL_PATH = None
 # This should match the setting in /etc/pserv.yaml.
 PSERV_URL = "http://localhost:5241/api"
 
+MAAS_CLI = os.path.join(os.getcwd(), 'bin', 'maas')
 
 LOGGING = {
     'version': 1,

@@ -21,7 +21,7 @@
     <p class="form-errors">Your username and password didn't match. Please try again.</p>
   {% endif %}
 
-  <form method="post" action="{% url 'django.contrib.auth.views.login' %}">
+  <form method="post" action="{% url 'login' %}">
     <input type="hidden" name="next" value="{{ next }}" />
     <ul>
         {% for field in form %}

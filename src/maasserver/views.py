@@ -27,7 +27,10 @@ from django.conf import settings as django_settings
 from django.contrib import messages
 from django.contrib.auth.forms import PasswordChangeForm as PasswordForm
 from django.contrib.auth.models import User
-from django.contrib.auth.views import logout as dj_logout
+from django.contrib.auth.views import (
+    login as dj_login,
+    logout as dj_logout,
+    )
 from django.core.urlresolvers import reverse
 from django.http import (
     HttpResponse,
@@ -40,6 +43,7 @@ from django.shortcuts import (
     render_to_response,
     )
 from django.template import RequestContext
+from django.utils.safestring import mark_safe
 from django.views.generic import (
     CreateView,
     DeleteView,
@@ -63,6 +67,17 @@ from maasserver.models import (
     SSHKeys,
     UserProfile,
     )
+
+
+def login(request):
+    if UserProfile.objects.all_users().count() == 0:
+        message = mark_safe(
+            "No admin user has been created yet. "
+            "Run the following command from the console to create an "
+            "admin user:"
+            "<pre>%s createsuperuser</pre>" % django_settings.MAAS_CLI)
+        messages.error(request, message)
+    return dj_login(request)
 
 
 def logout(request):
