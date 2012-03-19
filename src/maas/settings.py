@@ -11,13 +11,13 @@ from __future__ import (
 __metaclass__ = type
 
 import os
-from socket import gethostname
 from urlparse import urljoin
 
 # Use new style url tag:
 # https://docs.djangoproject.com/en/dev/releases/1.3/#changes-to-url-and-ssi
 import django.template
 from maas import import_local_settings
+from metadataserver.address import guess_server_address
 
 
 django.template.add_to_builtins('django.templatetags.future')
@@ -58,7 +58,7 @@ LONGPOLL_PATH = '/longpoll/'
 # Default URL specifying protocol, host, and (if necessary) port where
 # this MAAS can be found.  Configuration can, and probably should,
 # override this.
-DEFAULT_MAAS_URL = "http://%s/" % gethostname()
+DEFAULT_MAAS_URL = "http://%s/" % guess_server_address()
 
 if FORCE_SCRIPT_NAME is not None:
     LOGOUT_URL = FORCE_SCRIPT_NAME + LOGOUT_URL
