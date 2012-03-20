@@ -39,7 +39,8 @@ This is the list of runtime dependencies that you'll need to install::
         python-django-south python-twisted python-txamqp python-amqplib \
         python-formencode python-oauth python-oops python-oops-datedir-repo \
         python-twisted python-oops-wsgi python-oops-twisted \
-        python-psycopg2 python-yaml python-convoy python-django-south
+        python-psycopg2 python-yaml python-convoy python-django-south \
+        python-avahi python-dbus
 
 Additionally, you need to install the following python libraries
 for development convenience::
