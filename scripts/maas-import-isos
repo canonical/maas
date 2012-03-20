@@ -37,7 +37,8 @@ fi
 [ -n "$PRIORITY" ] || PRIORITY="critical"
 [ -n "$LOCALE" ] || LOCALE="en_US"
 [ -n "$INTERFACE" ] || INTERFACE="auto"
-[ -n "$KOPTS" ] || KOPTS="priority=$PRIORITY locale=$LOCALE netcfg/choose_interface=$INTERFACE"
+[ -n "$CONSOLE" ] || CONSOLE="ttyS0,9600n8"
+[ -n "$KOPTS" ] || KOPTS="priority=$PRIORITY locale=$LOCALE netcfg/choose_interface=$INTERFACE console=$CONSOLE"
 [ -n "$ENLIST_PROFILE" ] || ENLIST_PROFILE="maas-enlist"
 if [ -n "$SERVER_IP" ]; then
 	KOPTS="$KOPTS log_host=$SERVER_IP log_port=514"
@@ -108,9 +109,9 @@ add_enlist_profile(){
 
         # Add enlist profile
         if cobbler profile list | grep -qs " $ENLIST_PROFILE"; then
-                cobbler profile edit --name="$ENLIST_PROFILE" --parent="$PARENT_PROFILE"
+                cobbler profile edit --name="$ENLIST_PROFILE" --parent="$PARENT_PROFILE" --kopts="$KOPTS" --kickstart="$KSDIR/maas-enlist.preseed"
         else
-                cobbler profile add --name="$ENLIST_PROFILE" --parent="$PARENT_PROFILE" --kickstart="$KSDIR/maas-enlist.preseed"
+                cobbler profile add --name="$ENLIST_PROFILE" --parent="$PARENT_PROFILE" --kopts="$KOPTS" --kickstart="$KSDIR/maas-enlist.preseed"
         fi
 
         # Add 'default' system if doesn't exist.
