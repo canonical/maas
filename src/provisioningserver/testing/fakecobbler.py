@@ -39,7 +39,7 @@ unique_ints = count(randint(0, 99999))
 
 def fake_auth_failure_string(token):
     """Fake a Cobbler authentication failure fault string for `token`."""
-    return "<class 'cobbler.exceptions.CX'>:'invalid token: %s'" % token
+    return "<class 'cobbler.cexceptions.CX'>:'invalid token: %s'" % token
 
 
 def fake_object_not_found_string(object_type, object_name):
@@ -277,6 +277,15 @@ class FakeCobbler:
 
         session_obj[key] = value
 
+    def _validate(self, token, object_type, attributes):
+        """Check object for validity.  Raise :class:`Fault` if it's bad."""
+        # Add more checks here as needed for testing realism.
+        if object_type == 'system':
+            profile_name = attributes.get('profile')
+            profile = self._api_get_object('profile', profile_name)
+            if profile is None:
+                raise Fault(1, "invalid profile name: '%s'" % profile_name)
+
     def _api_save_object(self, token, object_type, handle):
         """Save an object's modifications to the saved store."""
         self._check_token(token)
@@ -288,6 +297,8 @@ class FakeCobbler:
         if session_obj is None:
             # Object not modified.  Nothing to do.
             return True
+
+        self._validate(token, object_type, session_obj)
 
         name = session_obj['name']
         other_handle = self._get_handle_if_present(token, object_type, name)
@@ -360,6 +371,7 @@ class FakeCobbler:
 
     def xapi_object_edit(self, object_type, name, operation, attrs, token):
         """Swiss-Army-Knife API: create/rename/copy/edit object."""
+        self._check_token(token)
         if operation == 'remove':
             self._api_remove_object(token, object_type, name)
             return True

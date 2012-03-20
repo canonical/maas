@@ -33,6 +33,8 @@ __all__ = [
 from functools import partial
 import xmlrpclib
 
+from provisioningserver.cobblercatcher import convert_cobbler_exception
+from provisioningserver.enum import PSERV_FAULT
 from twisted.internet import reactor as default_reactor
 from twisted.internet.defer import (
     DeferredLock,
@@ -85,15 +87,6 @@ class CobblerXMLRPCProxy(Proxy):
         d = Proxy.callRemote(self, method, *args)
         d.addCallback(tilde_to_None)
         return d
-
-
-def looks_like_auth_expiry(exception):
-    """Does `exception` look like an authentication token expired?"""
-    if not hasattr(exception, 'faultString'):
-        # An auth failure would come as an xmlrpclib.Fault.
-        return False
-    else:
-        return "invalid token: " in exception.faultString
 
 
 def looks_like_object_not_found(exception):
@@ -234,6 +227,7 @@ class CobblerSession:
         message = "%s(%s)" % (method, args_repr)
         msg(message, system=__name__)
 
+    @inlineCallbacks
     def _issue_call(self, method, *args):
         """Initiate call to XMLRPC method.
 
@@ -249,8 +243,12 @@ class CobblerSession:
         method = method.encode('ascii')
         self._log_call(method, args)
         args = map(self._substitute_token, args)
-        d = self._with_timeout(self.proxy.callRemote(method, *args))
-        return d
+        try:
+            result = yield self._with_timeout(
+                self.proxy.callRemote(method, *args))
+        except xmlrpclib.Fault as e:
+            raise convert_cobbler_exception(e)
+        returnValue(result)
 
     @inlineCallbacks
     def call(self, method, *args):
@@ -279,7 +277,7 @@ class CobblerSession:
             try:
                 result = yield self._issue_call(method, *args)
             except xmlrpclib.Fault as e:
-                if uses_auth and looks_like_auth_expiry(e):
+                if e.faultCode == PSERV_FAULT.COBBLER_AUTH_ERROR:
                     need_auth = True
                 else:
                     raise

@@ -16,6 +16,7 @@ from xmlrpclib import Fault
 
 import fixtures
 from provisioningserver import cobblerclient
+from provisioningserver.cobblercatcher import ProvisioningError
 from provisioningserver.testing.fakecobbler import (
     fake_auth_failure_string,
     fake_object_not_found_string,
@@ -57,11 +58,9 @@ class FakeAuthFailure(Fault):
             1, fake_auth_failure_string(token))
 
 
-def make_auth_failure(broken_token=None):
+def make_auth_failure():
     """Mimick a Cobbler authentication failure."""
-    if broken_token is None:
-        broken_token = fake_token()
-    return FakeAuthFailure(broken_token)
+    return FakeAuthFailure(fake_token())
 
 
 class RecordingFakeProxy:
@@ -242,19 +241,6 @@ class TestCobblerSession(TestCase):
         self.assertEqual(return_value, actual_return_value)
         self.assertEqual([(method, arg)], session.proxy.calls)
 
-    def test_looks_like_auth_expiry_returns_False_for_regular_exception(self):
-        self.assertFalse(
-            cobblerclient.looks_like_auth_expiry(RuntimeError("Error")))
-
-    def test_looks_like_auth_expiry_returns_False_for_other_Fault(self):
-        self.assertFalse(
-            cobblerclient.looks_like_auth_expiry(
-                Fault(1, "Missing sprocket")))
-
-    def test_looks_like_auth_expiry_recognizes_auth_expiry(self):
-        self.assertTrue(
-            cobblerclient.looks_like_auth_expiry(make_auth_failure()))
-
     def test_looks_like_object_not_found_for_regular_exception(self):
         self.assertFalse(
             cobblerclient.looks_like_object_not_found(RuntimeError("Error")))
@@ -326,7 +312,7 @@ class TestCobblerSession(TestCase):
             make_auth_failure(),
             ]
         session.proxy.set_return_values(failures)
-        with ExpectedException(failures[-1].__class__, failures[-1].message):
+        with ExpectedException(ProvisioningError, failures[-1].message):
             return_value = yield session.call(
                 'double_fail', cobblerclient.CobblerSession.token_placeholder)
             self.addDetail('return_value', text_content(repr(return_value)))

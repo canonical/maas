@@ -14,8 +14,8 @@ __all__ = []
 from itertools import count
 from random import randint
 from tempfile import NamedTemporaryFile
-import xmlrpclib
 
+from provisioningserver.cobblercatcher import ProvisioningError
 from provisioningserver.cobblerclient import (
     CobblerDistro,
     CobblerImage,
@@ -155,7 +155,7 @@ class TestFakeCobbler(TestCase):
     @inlineCallbacks
     def test_login_failure_raises_failure(self):
         cobbler = FakeCobbler(passwords={'moi': 'potahto'})
-        with ExpectedException(xmlrpclib.Fault):
+        with ExpectedException(ProvisioningError):
             return_value = yield fake_cobbler_session(
                 user='moi', password='potayto', fake_cobbler=cobbler)
             self.addDetail('return_value', text_content(repr(return_value)))
