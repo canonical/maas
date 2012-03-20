@@ -12,8 +12,10 @@ __metaclass__ = type
 __all__ = []
 
 from urlparse import parse_qs
+from xmlrpclib import Fault
 
 from maasserver import provisioning
+from maasserver.exceptions import MissingProfileException
 from maasserver.models import (
     ARCHITECTURE,
     Config,
@@ -31,7 +33,11 @@ from maasserver.testing.enum import map_enum
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
 from metadataserver.models import NodeKey
-from provisioningserver.enum import POWER_TYPE
+from provisioningserver.enum import (
+    POWER_TYPE,
+    PSERV_FAULT,
+    )
+from testtools.testcase import ExpectedException
 
 
 class ProvisioningTests:
@@ -111,6 +117,33 @@ class ProvisioningTests:
         system_id = node.system_id
         pserv_node = self.papi.get_nodes_by_name([system_id])[system_id]
         self.assertEqual("maas-precise-i386", pserv_node["profile"])
+
+    def test_provision_post_save_Node_checks_for_missing_profile(self):
+        # If the required profile for a node is missing, MaaS reports
+        # that the maas-import-isos script may need running.
+
+        def raise_missing_profile(*args, **kwargs):
+            raise Fault(PSERV_FAULT.NO_SUCH_PROFILE, "Unknown profile.")
+
+        self.papi.add_node = raise_missing_profile
+        expectation = ExpectedException(
+            MissingProfileException, value_re='.*maas-import-isos.*')
+        with expectation:
+            node = factory.make_node(architecture='amd32k')
+            provisioning.provision_post_save_Node(
+                sender=Node, instance=node, created=True)
+
+    def test_provision_post_save_Node_returns_other_pserv_faults(self):
+        error_text = factory.getRandomString()
+
+        def raise_fault(*args, **kwargs):
+            raise Fault(PSERV_FAULT.NO_COBBLER, error_text)
+
+        self.papi.add_node = raise_fault
+        with ExpectedException(Fault, ".*%s.*" % error_text):
+            node = factory.make_node(architecture='amd32k')
+            provisioning.provision_post_save_Node(
+                sender=Node, instance=node, created=True)
 
     def test_provision_post_save_Node_registers_effective_power_type(self):
         power_types = list(map_enum(POWER_TYPE).values())

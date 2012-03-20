@@ -13,6 +13,7 @@ __all__ = [
     'get_provisioning_api_proxy',
     ]
 
+from textwrap import dedent
 from urllib import urlencode
 from urlparse import urljoin
 import warnings
@@ -24,11 +25,13 @@ from django.db.models.signals import (
     post_save,
     )
 from django.dispatch import receiver
+from maasserver.exceptions import MissingProfileException
 from maasserver.models import (
     Config,
     MACAddress,
     Node,
     )
+from provisioningserver.enum import PSERV_FAULT
 
 
 def get_provisioning_api_proxy():
@@ -116,7 +119,18 @@ def provision_post_save_Node(sender, instance, created, **kwargs):
     profile = select_profile_for_node(instance, papi)
     power_type = instance.get_effective_power_type()
     metadata = compose_metadata(instance)
-    papi.add_node(instance.system_id, profile, power_type, metadata)
+    try:
+        papi.add_node(instance.system_id, profile, power_type, metadata)
+    except xmlrpclib.Fault as e:
+        if e.faultCode == PSERV_FAULT.NO_SUCH_PROFILE:
+            raise MissingProfileException(dedent("""
+                System profile %s does not exist.  Has the maas-import-isos
+                script been run?  This will run automatically from time to
+                time, but if it is failing, an administrator may need to run
+                it manually.
+                """ % profile).lstrip('\n'))
+        else:
+            raise
 
 
 def set_node_mac_addresses(node):
