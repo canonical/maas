@@ -80,6 +80,9 @@ d-i     cdrom-detect/eject      boolean true
 d-i     debian-installer/exit/halt      boolean false
 d-i     debian-installer/exit/poweroff  boolean false
 
+# maas client packages
+$SNIPPET('maas_client_packages')
+
 # maas_preseed
 $SNIPPET('maas_preseed')
 
