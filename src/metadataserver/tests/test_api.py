@@ -13,8 +13,6 @@ __all__ = []
 
 from collections import namedtuple
 import httplib
-from random import randint
-from time import time
 
 from maasserver.exceptions import Unauthorized
 from maasserver.testing.factory import factory
@@ -23,7 +21,6 @@ from maastesting.rabbit import uses_rabbit_fixture
 from maastesting.testcase import TestCase
 from metadataserver.api import (
     check_version,
-    extract_oauth_key,
     get_node_for_request,
     make_list_response,
     make_text_response,
@@ -39,26 +36,6 @@ from metadataserver.nodeinituser import get_node_init_user
 
 class TestHelpers(TestCase):
     """Tests for the API helper functions."""
-
-    def make_oauth_header(self, **kwargs):
-        """Fake an OAuth authorization header.
-
-        This will use arbitrary values.  Pass as keyword arguments any
-        header items that you wish to override.
-        """
-        items = {
-            'realm': factory.getRandomString(),
-            'oauth_nonce': randint(0, 99999),
-            'oauth_timestamp': time(),
-            'oauth_consumer_key': factory.getRandomString(18),
-            'oauth_signature_method': 'PLAINTEXT',
-            'oauth_version': '1.0',
-            'oauth_token': factory.getRandomString(18),
-            'oauth_signature': "%%26%s" % factory.getRandomString(32),
-        }
-        items.update(kwargs)
-        return "OAuth " + ", ".join([
-            '%s="%s"' % (key, value) for key, value in items.items()])
 
     def fake_request(self, **kwargs):
         """Produce a cheap fake request, fresh from the sweat shop.
@@ -86,21 +63,13 @@ class TestHelpers(TestCase):
     def test_check_version_reports_unknown_version(self):
         self.assertRaises(UnknownMetadataVersion, check_version, '1.0')
 
-    def test_extract_oauth_key_extracts_oauth_token_from_oauth_header(self):
-        token = factory.getRandomString(18)
-        self.assertEqual(
-            token,
-            extract_oauth_key(self.make_oauth_header(oauth_token=token)))
-
-    def test_extract_oauth_key_rejects_auth_without_oauth_key(self):
-        self.assertRaises(Unauthorized, extract_oauth_key, '')
-
     @uses_rabbit_fixture
     def test_get_node_for_request_finds_node(self):
         node = factory.make_node()
         token = NodeKey.objects.get_token_for_node(node)
         request = self.fake_request(
-            HTTP_AUTHORIZATION=self.make_oauth_header(oauth_token=token.key))
+            HTTP_AUTHORIZATION=factory.make_oauth_header(
+                oauth_token=token.key))
         self.assertEqual(node, get_node_for_request(request))
 
     def test_get_node_for_request_reports_missing_auth_header(self):

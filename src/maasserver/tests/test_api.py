@@ -18,6 +18,7 @@ import os
 import shutil
 
 from django.conf import settings
+from maasserver.api import extract_oauth_key
 from maasserver.models import (
     ARCHITECTURE_CHOICES,
     Config,
@@ -53,6 +54,18 @@ class APIv10TestMixin:
         """
         api_root = '/api/1.0/'
         return api_root + path
+
+
+class TestModuleHelpers(TestCase):
+
+    def test_extract_oauth_key_extracts_oauth_token_from_oauth_header(self):
+        token = factory.getRandomString(18)
+        self.assertEqual(
+            token,
+            extract_oauth_key(factory.make_oauth_header(oauth_token=token)))
+
+    def test_extract_oauth_key_returns_None_without_oauth_key(self):
+        self.assertIs(None, extract_oauth_key(''))
 
 
 class AnonymousEnlistmentAPITest(APIv10TestMixin, TestCase):

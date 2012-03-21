@@ -17,6 +17,7 @@ __all__ = [
     ]
 
 from django.http import HttpResponse
+from maasserver.api import extract_oauth_key
 from maasserver.exceptions import (
     MAASAPINotFound,
     PermissionDenied,
@@ -37,23 +38,14 @@ class UnknownNode(MAASAPINotFound):
     """Not a known node."""
 
 
-def extract_oauth_key(auth_data):
-    """Extract the oauth key from auth data in HTTP header."""
-    for entry in auth_data.split():
-        key_value = entry.split('=', 1)
-        if len(key_value) == 2:
-            key, value = key_value
-            if key == 'oauth_token':
-                return value.rstrip(',').strip('"')
-    raise Unauthorized("No oauth token found for metadata request.")
-
-
 def get_node_for_request(request):
     """Return the `Node` that `request` is authorized to query for."""
     auth_header = request.META.get('HTTP_AUTHORIZATION')
     if auth_header is None:
         raise Unauthorized("No authorization header received.")
     key = extract_oauth_key(auth_header)
+    if key is None:
+        raise Unauthorized("No oauth token found for metadata request.")
     try:
         return NodeKey.objects.get_node_for_key(key)
     except NodeKey.DoesNotExist:

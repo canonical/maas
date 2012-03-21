@@ -15,6 +15,7 @@ __all__ = [
 
 from io import BytesIO
 import random
+import time
 
 from django.contrib.auth.models import User
 from maasserver.models import (
@@ -94,6 +95,26 @@ class Factory(maastesting.factory.Factory):
             data = self.getRandomString(1024).encode('ascii')
 
         return FileStorage.objects.save_file(filename, BytesIO(data))
+
+    def make_oauth_header(self, **kwargs):
+        """Fake an OAuth authorization header.
+
+        This will use arbitrary values.  Pass as keyword arguments any
+        header items that you wish to override.
+        """
+        items = {
+            'realm': self.getRandomString(),
+            'oauth_nonce': random.randint(0, 99999),
+            'oauth_timestamp': time.time(),
+            'oauth_consumer_key': self.getRandomString(18),
+            'oauth_signature_method': 'PLAINTEXT',
+            'oauth_version': '1.0',
+            'oauth_token': self.getRandomString(18),
+            'oauth_signature': "%%26%s" % self.getRandomString(32),
+        }
+        items.update(kwargs)
+        return "OAuth " + ", ".join([
+            '%s="%s"' % (key, value) for key, value in items.items()])
 
 
 # Create factory singleton.

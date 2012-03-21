@@ -11,6 +11,7 @@ from __future__ import (
 __metaclass__ = type
 __all__ = [
     "api_doc",
+    "extract_oauth_key",
     "generate_api_doc",
     "AccountHandler",
     "AnonNodesHandler",
@@ -238,6 +239,22 @@ def get_mandatory_param(data, key, validator=None):
             raise ValidationError("Invalid %s: %s" % (key, e.msg))
     else:
         return value
+
+
+def extract_oauth_key(auth_data):
+    """Extract the oauth key from auth data in HTTP header.
+
+    :param auth_data: {string} The HTTP Authorization header.
+
+    :return: The oauth key from the header, or None.
+    """
+    for entry in auth_data.split():
+        key_value = entry.split('=', 1)
+        if len(key_value) == 2:
+            key, value = key_value
+            if key == 'oauth_token':
+                return value.rstrip(',').strip('"')
+    return None
 
 
 NODE_FIELDS = (
