@@ -11,11 +11,14 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
+from io import BytesIO
 import os
 
 from django.conf import settings
+from django.contrib.auth.models import User
 from django.core.management import call_command
 from maasserver.models import FileStorage
+from maasserver.testing.factory import factory
 from maastesting.testcase import TestCase
 
 
@@ -33,3 +36,56 @@ class TestCommands(TestCase):
         call_command('gc')
         # The test is that we get here without errors.
         pass
+
+    def test_createadmin_requires_username(self):
+        stderr = BytesIO()
+        self.assertRaises(
+            SystemExit, call_command, 'createadmin', stderr=stderr)
+        command_output = stderr.getvalue().strip()
+
+        self.assertIn(
+            "Error: You must provide a username with --username.",
+             command_output)
+
+    def test_createadmin_requires_password(self):
+        username = factory.getRandomString()
+        stderr = BytesIO()
+        self.assertRaises(
+            SystemExit, call_command, 'createadmin', username=username,
+            stderr=stderr)
+        command_output = stderr.getvalue().strip()
+
+        self.assertIn(
+            "Error: You must provide a password with --password.",
+             command_output)
+
+    def test_createadmin_requires_email(self):
+        username = factory.getRandomString()
+        password = factory.getRandomString()
+        stderr = BytesIO()
+        self.assertRaises(
+            SystemExit, call_command, 'createadmin', username=username,
+            password=password, stderr=stderr)
+        command_output = stderr.getvalue().strip()
+
+        self.assertIn(
+            "Error: You must provide an email with --email.",
+             command_output)
+
+    def test_createadmin_creates_admin(self):
+        stderr = BytesIO()
+        stdout = BytesIO()
+        username = factory.getRandomString()
+        password = factory.getRandomString()
+        email = '%s@example.com' % factory.getRandomString()
+        call_command(
+            'createadmin', username=username, password=password,
+            email=email, stderr=stderr, stdout=stdout)
+        users = list(User.objects.filter(username=username))
+
+        self.assertEquals('', stderr.getvalue().strip())
+        self.assertEquals('', stdout.getvalue().strip())
+        self.assertEqual(1, len(users))  # One user with that name.
+        self.assertTrue(users[0].check_password(password))
+        self.assertTrue(users[0].is_superuser)
+        self.assertEqual(email, users[0].email)
