@@ -608,6 +608,10 @@ def create_user(sender, instance, created, **kwargs):
 post_save.connect(create_user, sender=User)
 
 
+# Monkey patch django.contrib.auth.models.User to force email to be unique.
+User._meta.get_field('email')._unique = True
+
+
 class SSHKeys(models.Model):
     """A simple SSH public keystore that can be retrieved, a user
        can have multiple keys.

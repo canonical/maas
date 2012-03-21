@@ -171,6 +171,17 @@ class NewUserCreationForm(UserCreationForm):
         user.save()
         return user
 
+    def clean_email(self):
+        """Validate that the supplied email address is unique for the
+        site.
+        """
+        email = self.cleaned_data['email']
+        email_count = User.objects.filter(email__iexact=email).count()
+        if email_count != 0:
+            raise forms.ValidationError(
+                "User with this E-mail address already exists.")
+        return email
+
 
 class EditUserForm(UserChangeForm):
     # Override the default label.

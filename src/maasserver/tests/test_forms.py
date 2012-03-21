@@ -16,9 +16,11 @@ from django.core.exceptions import ValidationError
 from django.http import QueryDict
 from maasserver.forms import (
     ConfigForm,
+    EditUserForm,
     HostnameFormField,
     NewUserCreationForm,
     NodeWithMACAddressesForm,
+    ProfileForm,
     validate_hostname,
     )
 from maasserver.models import (
@@ -186,6 +188,63 @@ class TestHostnameFormField(TestCase):
         self.assertEqual(
             ["Enter a valid hostname (e.g. host.example.com)."],
             form.errors['hostname'])
+
+
+class TestUniqueEmailForms(TestCase):
+
+    def assertFormFailsValidationBecauseEmailNotUnique(self, form):
+        self.assertFalse(form.is_valid())
+        self.assertIn('email', form._errors)
+        self.assertEqual(
+            ["User with this E-mail address already exists."],
+            form._errors['email'])
+
+    def test_ProfileForm_fails_validation_if_email_taken(self):
+        another_email = '%s@example.com' % factory.getRandomString()
+        factory.make_user(email=another_email)
+        email = '%s@example.com' % factory.getRandomString()
+        user = factory.make_user(email=email)
+        form = ProfileForm(instance=user, data={'email': another_email})
+        self.assertFormFailsValidationBecauseEmailNotUnique(form)
+
+    def test_ProfileForm_validates_if_email_unchanged(self):
+        email = '%s@example.com' % factory.getRandomString()
+        user = factory.make_user(email=email)
+        form = ProfileForm(instance=user, data={'email': email})
+        self.assertTrue(form.is_valid())
+
+    def test_NewUserCreationForm_fails_validation_if_email_taken(self):
+        email = '%s@example.com' % factory.getRandomString()
+        username = factory.getRandomString()
+        password = factory.getRandomString()
+        factory.make_user(email=email)
+        form = NewUserCreationForm(
+            {
+                'email': email,
+                'username': username,
+                'password1': password,
+                'password2': password,
+            })
+        self.assertFormFailsValidationBecauseEmailNotUnique(form)
+
+    def test_EditUserForm_fails_validation_if_email_taken(self):
+        another_email = '%s@example.com' % factory.getRandomString()
+        factory.make_user(email=another_email)
+        email = '%s@example.com' % factory.getRandomString()
+        user = factory.make_user(email=email)
+        form = EditUserForm(instance=user, data={'email': another_email})
+        self.assertFormFailsValidationBecauseEmailNotUnique(form)
+
+    def test_EditUserForm_validates_if_email_unchanged(self):
+        email = '%s@example.com' % factory.getRandomString()
+        user = factory.make_user(email=email)
+        form = EditUserForm(
+            instance=user,
+            data={
+                'email': email,
+                'username': factory.getRandomString(),
+            })
+        self.assertTrue(form.is_valid())
 
 
 class TestNewUserCreationForm(TestCase):
