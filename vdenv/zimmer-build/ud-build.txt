@@ -16,13 +16,9 @@ bucket:
 
    echo === $(date) ====
    debconf-set-selections <<EOF
-   ubuntu-orchestra-provisioning-server   ubuntu-orchestra-provisioning-server/import-isos   boolean  false
-   ubuntu-orchestra-provisioning-server   ubuntu-orchestra-provisioning-server/dnsmasq-dhcp-range  string   10.10.10.2,10.10.10.254
-   ubuntu-orchestra-provisioning-server   ubuntu-orchestra-provisioning-server/dnsmasq-enabled  boolean  false
    cobbler  cobbler/server_and_next_server   string   zimmer-server
    cobbler  cobbler/password  password xcobbler
-   cloud-init	cloud-init/datasources	multiselect	NoCloud, OVF
-
+   cloud-init	cloud-init/datasources	multiselect	NoCloud
    EOF
 
    [ -n "$ONE_TIME_PROXY" ] && export http_proxy="$ONE_TIME_PROXY"
@@ -36,38 +32,39 @@ bucket:
 
    echo "127.0.1.2 zimmer-server" >> /etc/hosts
    
+   echo === $(date): starting apt ====
+   apt_get() { 
+     DEBIAN_FRONTEND=noninteractive apt-get \
+        --option "Dpkg::Options::=--force-confold" --assume-yes "$@"
+   }
+   pkgs=""
+   pkgs="$pkgs distro-info" # (LP: #960142)
+   pkgs="$pkgs libvirt-bin" # for power control via virsh
+   pkgs="$pkgs cobbler-web" # for debugging and ease of use of cobbler
+   pkgs="$pkgs ubuntu-orchestra-logging-server" # (LP: #960149)
+   pkgs="$pkgs maas" # main maas package
+   apt_get update
+   apt_get install ${pkgs}
+   
    # if local apt is configured to use a proxy, modify
    # cobbler to tell nodes to use that proxy. (LP: #914202)
    if [ "${PROXY_COPY_SYS_TO_COBBLER:-1}" != "0" ] &&
       apt_proxy="" && out=$(apt-config shell apt_proxy Acquire::HTTP::Proxy) &&
       eval $out && [ -n "$apt_proxy" ]; then
-      fname=/var/lib/cobbler/snippets/orchestra_proxy
+      fname=/var/lib/cobbler/snippets/maas_proxy
       [ "${fname}.dist" -ef "$fname" ] || cp "$fname" "$fname.dist"
       sed "s,\(.*mirror/http/proxy string \).*,\1${apt_proxy}," \
          "$fname" > "$fname.zimmer"
       ln -sf ${fname##*/}.zimmer "$fname"
    fi
 
-   echo === $(date): starting apt ====
-   apt_get() { 
-     DEBIAN_FRONTEND=noninteractive apt-get \
-        --option "Dpkg::Options::=--force-confold" --assume-yes "$@"
-   }
-   apt_get update
-   apt_get install ubuntu-orchestra-provisioning-server libvirt-bin \
-      cobbler-web ubuntu-orchestra-logging-server
-   
-   case $(uname -m) in
-      i?86) arches="i386";;
-      *) arches="amd64";;
-   esac
-   cat >> /etc/orchestra/import_isos <<END
-   RELEASES="oneiric precise"
-   ARCHES="${arches}"
+   cat >> /etc/maas/import_isos <<END
+   RELEASES="precise"
+   ARCHES="i386 amd64"
    END
 
    echo === $(date): starting import ====
-   orchestra-import-isos
+   maas-import-isos
 
    sed -i '/zimmer-server/d' /etc/hosts
 

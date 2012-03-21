@@ -160,7 +160,6 @@ def cobbler_addsystem(server, token, system, profile, hostip):
         'profile': profile,
         'netboot_enabled': True,
         'modify_interface': eth0,
-        'mgmt_classes': ['orchestra-juju-available'],
     }
 
     if len(server.find_system({"name": system.name})):
@@ -194,7 +193,7 @@ def get_profile_arch():
 def cobbler_setup(config):
     hostip = "%s.1" % config['network']['ip_pre']
     arch = get_profile_arch()
-    profile = "precise-%s-juju" % arch
+    profile = "maas-precise-%s" % arch
     
     cob = System(config, "zimmer")
     cobbler_url = "http://%s/cobbler_api" % cob.ipaddr
