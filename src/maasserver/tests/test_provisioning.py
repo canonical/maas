@@ -119,7 +119,7 @@ class ProvisioningTests:
         self.assertEqual("maas-precise-i386", pserv_node["profile"])
 
     def test_provision_post_save_Node_checks_for_missing_profile(self):
-        # If the required profile for a node is missing, MaaS reports
+        # If the required profile for a node is missing, MAAS reports
         # that the maas-import-isos script may need running.
 
         def raise_missing_profile(*args, **kwargs):

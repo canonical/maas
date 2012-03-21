@@ -1,7 +1,7 @@
 # Copyright 2012 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for the ZeroconfService class"""
+"""Tests for `zeroconfservice`."""
 
 from __future__ import (
     print_function,
@@ -11,22 +11,27 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
-import random
-import select
+import itertools
 import subprocess
-import time
 
 from maasserver.zeroconfservice import ZeroconfService
+from maastesting.factory import factory
 from maastesting.testcase import TestCase
+from testtools.content import text_content
 
-# These tests will actually inject data in the system Avahi system.
-# Would be nice to isolate it from the system Avahi service, but I didn't
-# feel like writing a private DBus session with a mock Avahi service on it.
+
 class TestZeroconfService(TestCase):
+    """Test :class:`ZeroconfService`.
+
+    These tests will actually inject data in the system Avahi service. It
+    would be nice to isolate it from the system Avahi service, but there's a
+    lot of work involved in writing a private DBus session with a mock Avahi
+    service on it, probably more than it's worth.
+    """
 
     STYPE = '_maas_zeroconftest._tcp'
 
-    count = 0
+    count = itertools.count(1)
 
     def avahi_browse(self, service_type, timeout=3):
         """Return the list of published Avahi service through avahi-browse."""
@@ -34,29 +39,24 @@ class TestZeroconfService(TestCase):
         # running a glib mainloop. And stopping one is hard. Much easier to
         # kill an external process. This slows test, and could be fragile,
         # but it's the best I've come with.
+        command = (
+            'avahi-browse', '--no-db-lookup', '--parsable',
+            '--terminate', service_type)
         browser = subprocess.Popen(
-            ['avahi-browse', '-k', '-p', service_type],
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        until = time.time() + timeout
-        while time.time() < until:
-            # Busy loop until there is some input on stdout,
-            # or we give up.
-            ready = select.select([browser.stdout], [], [], 0.10)
-            if ready[0] or browser.poll():
-                break
-        browser.terminate()
+            command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        stdout, stderr = browser.communicate()
+        self.addDetail("stdout", text_content(stdout))
+        self.addDetail("stderr", text_content(stderr))
         names = []
-        for record in browser.stdout.readlines():
+        for record in stdout.splitlines():
             fields = record.split(';')
             names.append(fields[3])
         return names
 
-    @classmethod
     def getUniqueServiceNameAndPort(self):
         # getUniqueString() generates an invalid service name
-        name = 'My-Test-Service-%d' % self.count
-        self.count += 1
-        port = random.randint(30000, 40000)
+        name = 'My-Test-Service-%d' % next(self.count)
+        port = factory.getRandomPort()
         return name, port
 
     def test_publish(self):
@@ -66,7 +66,7 @@ class TestZeroconfService(TestCase):
         service = ZeroconfService(name, port, self.STYPE)
         service.publish()
         # This will unregister the published name from Avahi.
-        self.addCleanup(service.group.Reset)
+        self.addCleanup(service.unpublish)
         services = self.avahi_browse(self.STYPE)
         self.assertIn(name, services)
 

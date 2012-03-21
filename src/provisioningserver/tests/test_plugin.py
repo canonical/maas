@@ -11,8 +11,8 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
-from getpass import getuser
 from functools import partial
+from getpass import getuser
 import os
 
 from fixtures import TempDir

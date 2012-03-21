@@ -1,20 +1,27 @@
 # Copyright 2008 (c) Pierre Duquesne <stackp@online.fr>
 # Copyright 2012 Canonical Ltd.
-# This software is licensed under the GNU Affero General Public
-# License version 3 (see the file LICENSE).
+# This software is licensed under the GNU Affero General Public License
+# version 3 (see the file LICENSE).
 # Example code taken from http://stackp.online.fr/?p=35
 
-import avahi
-import dbus
+"""Work with Zeroconf."""
 
+from __future__ import (
+    print_function,
+    unicode_literals,
+    )
+
+__metaclass__ = type
 __all__ = [
     "ZeroconfService",
     ]
 
+import avahi
+import dbus
+
 
 class ZeroconfService:
-    """A simple class to publish a network service with zeroconf using avahi.
-    """
+    """Publish a network service with Zeroconf using Avahi."""
 
     def __init__(self, name, port, stype="_http._tcp",
                  domain="", host="", text=""):
@@ -37,16 +44,13 @@ class ZeroconfService:
         server = dbus.Interface(
              bus.get_object(avahi.DBUS_NAME, avahi.DBUS_PATH_SERVER),
              avahi.DBUS_INTERFACE_SERVER)
-
         group = dbus.Interface(
             bus.get_object(avahi.DBUS_NAME, server.EntryGroupNew()),
             avahi.DBUS_INTERFACE_ENTRY_GROUP)
-
         group.AddService(
             avahi.IF_UNSPEC, avahi.PROTO_UNSPEC, dbus.UInt32(0),
             self.name, self.stype, self.domain, self.host,
             dbus.UInt16(self.port), self.text)
-
         group.Commit()
         self.group = group
 

@@ -192,12 +192,16 @@ class NodeManager(models.Manager):
     def filter_by_ids(self, query, ids=None):
         """Filter `query` result set by system_id values.
 
-        :param query: A queryset of Nodes.
-        :type query: QuerySet_
+        :param query: A QuerySet of Nodes.
+        :type query: django.db.models.query.QuerySet_
         :param ids: Optional set of ids to filter by.  If given, nodes whose
             system_ids are not in `ids` will be ignored.
         :type param_ids: Sequence
         :return: A filtered version of `query`.
+
+        .. _django.db.models.query.QuerySet: https://docs.djangoproject.com/
+           en/dev/ref/models/querysets/
+
         """
         if ids is None:
             return query
@@ -249,7 +253,7 @@ class NodeManager(models.Manager):
         :param user: The user that should be used in the permission check.
         :type user: django.contrib.auth.models.User
         :raises: django.http.Http404_,
-            maasserver.exceptions.PermissionDenied_.
+            :class:`maasserver.exceptions.PermissionDenied`.
 
         .. _django.http.Http404: https://
            docs.djangoproject.com/en/dev/topics/http/views/
@@ -522,6 +526,9 @@ class UserProfileManager(models.Manager):
 
         :return: A QuerySet of the users.
         :rtype: django.db.models.query.QuerySet_
+
+        .. _django.db.models.query.QuerySet: https://docs.djangoproject.com/
+           en/dev/ref/models/querysets/
 
         """
         user_ids = UserProfile.objects.all().values_list('user', flat=True)

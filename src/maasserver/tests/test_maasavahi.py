@@ -13,8 +13,6 @@ __all__ = []
 
 from collections import defaultdict
 
-from maastesting.testcase import TestCase
-
 import maasserver.maasavahi
 from maasserver.maasavahi import (
     MAASAvahiService,
@@ -24,6 +22,7 @@ from maasserver.models import (
     Config,
     config_manager,
     )
+from maastesting.testcase import TestCase
 
 
 class MockZeroconfServiceFactory:
