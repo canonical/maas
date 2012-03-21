@@ -39,7 +39,11 @@
         </thead>
         {% for node in node_list %}
           <tr class="node {% cycle 'even' 'odd' %}">
-            <td>{{ node.hostname }}</td>
+            <td>
+              <a href="{% url 'node-view' node.id %}">
+                {{ node.hostname }}
+              </a>
+            </td>
             <td>
               {{ node.macaddress_set.reverse|first }}
               {% if node.macaddress_set.count > 1 %}

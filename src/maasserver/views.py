@@ -13,6 +13,7 @@ __all__ = [
     "logout",
     "NodeListView",
     "NodesCreateView",
+    "NodeView",
     ]
 
 import mimetypes
@@ -83,6 +84,17 @@ def login(request):
 def logout(request):
     messages.info(request, "You have been logged out.")
     return dj_logout(request, next_page=reverse('login'))
+
+
+class NodeView(DetailView):
+
+    template_name = 'maasserver/node_view.html'
+
+    context_object_name = 'node'
+
+    def get_object(self):
+        id = self.kwargs.get('id', None)
+        return get_object_or_404(Node, id=id)
 
 
 def get_longpoll_context():

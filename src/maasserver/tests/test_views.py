@@ -357,6 +357,28 @@ class UserPrefsViewTest(LoggedInTestCase):
         self.assertNotEqual(old_pw, user.password)
 
 
+class NodeViewTest(LoggedInTestCase):
+
+    def test_node_list_contains_link_to_node_view(self):
+        node = factory.make_node()
+        response = self.client.get(reverse('node-list'))
+        doc = fromstring(response.content)
+        content_node = doc.cssselect('#content')[0]
+        all_links = [elem.get('href') for elem in content_node.cssselect('a')]
+        node_link = reverse('node-view', args=[node.id])
+        self.assertIn(node_link, all_links)
+
+    def test_view_node_displays_node_info(self):
+        # The node page features the basic information about the node.
+        node = factory.make_node()
+        node_link = reverse('node-view', args=[node.id])
+        response = self.client.get(node_link)
+        doc = fromstring(response.content)
+        content_text = doc.cssselect('#content')[0].text_content()
+        self.assertIn(node.hostname, content_text)
+        self.assertIn(node.display_status(), content_text)
+
+
 class AdminLoggedInTestCase(LoggedInTestCase):
 
     def setUp(self):

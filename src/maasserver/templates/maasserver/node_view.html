@@ -1,0 +1,35 @@
+{% extends "maasserver/base.html" %}
+
+{% block nav-active-settings %}active{% endblock %}
+{% block title %}Node: {{ node.hostname }}{% endblock %}
+{% block page-title %}Node: {{ node.hostname }}{% endblock %}
+{% block layout-modifiers %}sidebar{% endblock %}
+
+{% block sidebar %}
+  <div class="block size3">
+  </div>
+{% endblock %}
+
+{% block content %}
+  <ul class="data-list">
+    <li class="block size2 first">
+      <h4>Hostname</h4>
+      <span>{{ node.hostname }}</span>
+    </li>
+    <li class="block size3">
+      <h4>MAC addresses</h4>
+      <span>
+          {% for mac in node.macaddress_set.all %}
+          {{ mac }}{% if not forloop.last %}, {% endif %}
+          {% endfor %}
+      </span>
+    </li>
+    <li class="block size3">
+      <h4>Status</h4>
+      <span>
+          {{ node.display_status }}
+      </span>
+    </li>
+  </ul>
+{% endblock %}
+
