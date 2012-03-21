@@ -24,9 +24,11 @@ usually use the ``lowercase_with_underscores`` form.
 Prerequisites
 =============
 
-You will need to manually install Postgres 9.1, RabbitMQ, python-dev and make::
+You will need to manually install Postgres 9.1, RabbitMQ, python-dev,
+avahi-daemon and make::
 
-    $ sudo apt-get install postgresql-9.1 rabbitmq-server python-dev make
+    $ sudo apt-get install postgresql-9.1 rabbitmq-server python-dev \
+        avahi-daemon make
 
 Also, you might want to install Bazaar (bzr) to grab the source code directly
 from Launchpad::
@@ -49,7 +51,7 @@ for development convenience::
 
 If you intend to run the test suite, you also need xvfb and firefox::
 
-    $ sudo apt-get install xvfb firefox
+    $ sudo apt-get install xvfb firefox avahi-utils
 
 All other development dependencies are pulled automatically from `PyPI`_
 when buildout runs.
