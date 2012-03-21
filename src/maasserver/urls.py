@@ -129,6 +129,9 @@ urlpatterns += patterns('',
     (r'^api/1\.0/', include('maasserver.urls_api'))
     )
 
-# Code to run once when the server initialized,
-# as suggested in http://stackoverflow.com/questions/6791911/execute-code-when-django-starts-once-only
+# Code to run once when the server is initialized, as suggested in
+# http://stackoverflow.com/
+#   questions/
+#       6791911/
+#           execute-code-when-django-starts-once-only
 setup_maas_avahi_service()

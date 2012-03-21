@@ -16,9 +16,8 @@ import select
 import subprocess
 import time
 
-from maastesting.testcase import TestCase
 from maasserver.zeroconfservice import ZeroconfService
-
+from maastesting.testcase import TestCase
 
 # These tests will actually inject data in the system Avahi system.
 # Would be nice to isolate it from the system Avahi service, but I didn't
@@ -38,7 +37,7 @@ class TestZeroconfService(TestCase):
         browser = subprocess.Popen(
             ['avahi-browse', '-k', '-p', service_type],
             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        until = time.time() + timeout;
+        until = time.time() + timeout
         while time.time() < until:
             # Busy loop until there is some input on stdout,
             # or we give up.
