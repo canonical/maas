@@ -22,3 +22,22 @@ img.icon {
     vertical-align: text-bottom;
     margin-right: 3px;
     }
+/* Spacing */
+.space-top {
+    margin-top: 20px;
+    }
+.space-top-none {
+    margin-top: 0;
+    }
+.space-bottom-none {
+    margin-bottom: 0;
+    }
+.space-bottom-small {
+    margin-bottom: 5px;
+    }
+.pad-top {
+    margin-top: 20px;
+    }
+.pad-top-large {
+    margin-top: 40px;
+    }

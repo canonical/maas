@@ -157,6 +157,8 @@ Y.extend(NodesChartWidget, Y.Widget, {
         var outer_nodes = [
             {
                 nodes: deployed_nodes,
+                name: 'deployed_nodes',
+                colour: OUTER_COLOURS[0],
                 events: {
                     over: 'hover.deployed.over',
                     out: 'hover.deployed.out'
@@ -164,6 +166,8 @@ Y.extend(NodesChartWidget, Y.Widget, {
                 },
             {
                 nodes: commissioned_nodes,
+                name: 'commissioned_nodes',
+                colour: OUTER_COLOURS[2],
                 events: {
                     over: 'hover.commissioned.over',
                     out: 'hover.commissioned.out'
@@ -171,6 +175,8 @@ Y.extend(NodesChartWidget, Y.Widget, {
                 },
             {
                 nodes: queued_nodes,
+                name: 'queued_nodes',
+                colour: OUTER_COLOURS[1],
                 events: {
                     over: 'hover.queued.over',
                     out: 'hover.queued.out'
@@ -203,24 +209,24 @@ Y.extend(NodesChartWidget, Y.Widget, {
                     var slice = r.path();
                     slice.attr({
                         segment: segment,
-                        fill: OUTER_COLOURS[i],
+                        fill: outer_nodes[i].colour,
                         stroke: STROKE_COLOUR,
                         'stroke-width': STROKE_WIDTH
                         });
                     Y.one(slice.node).on(
                         'hover',
+                        function(e, over, out, name, widget) {
+                            widget.fire(over, {nodes: widget.get(name)});
+                        },
                         function(e, over, out, nodes, widget) {
-        			        widget.fire(over, {nodes: nodes});
-		                },
-		                function(e, over, out, nodes, widget) {
-		                    widget.fire(out);
-		                },
-		                null,
-		                outer_nodes[i].events.over,
-		                outer_nodes[i].events.out,
-		                outer_nodes[i].nodes,
-		                this
-		                );
+                            widget.fire(out);
+                        },
+                        null,
+                        outer_nodes[i].events.over,
+                        outer_nodes[i].events.out,
+                        outer_nodes[i].name,
+                        this
+                        );
                     this._outer_paths.push(slice);
                 }
                 else {
@@ -235,7 +241,11 @@ Y.extend(NodesChartWidget, Y.Widget, {
             }
         }
 
-        var offline_circle_width = inner_total / total_nodes * this._radius();
+        var offline_circle_width = 0;
+        if (offline_nodes > 0) {
+            offline_circle_width = inner_total / total_nodes * this._radius();
+        }
+
         if (!this._offline_circle) {
             if (offline_nodes > 0) {
                 this._offline_circle = this._addCircle(
@@ -243,14 +253,15 @@ Y.extend(NodesChartWidget, Y.Widget, {
                 Y.one(this._offline_circle[0].node).on(
                     'hover',
                     function(e, widget) {
-			            widget.fire(
-			                'hover.offline.over', {nodes: offline_nodes});
-		            },
-		            function(e, widget) {
-			            widget.fire('hover.offline.out');
-		            },
-		            null,
-		            this);
+                        widget.fire(
+                            'hover.offline.over',
+                            {nodes: widget.get('offline_nodes')});
+                    },
+                    function(e, widget) {
+                        widget.fire('hover.offline.out');
+                    },
+                    null,
+                    this);
             }
         }
         else {
@@ -259,29 +270,32 @@ Y.extend(NodesChartWidget, Y.Widget, {
                 {r: offline_circle_width}, TRANSITION_TIME, TRANSITION_EASING);
         }
 
-        var added_circle_width = added_nodes / total_nodes * this._radius();
+        var added_circle_width = 0;
+        if (total_nodes == 0) {
+            added_circle_width = this._radius() - STROKE_WIDTH * 2;
+        }
+        else if (added_nodes > 0) {
+            added_circle_width = added_nodes / total_nodes * this._radius();
+        }
+
         if (!this._added_circle) {
-            var width = 0;
-            if (added_nodes > 0) {
-                width = added_circle_width;
-            }
-            else if (total_nodes == 0) {
-                width = this._radius() - STROKE_WIDTH * 2;
-            }
-            this._added_circle = this._addCircle(width, ADDED_COLOUR);
+            this._added_circle = this._addCircle(
+                added_circle_width, ADDED_COLOUR);
             Y.one(this._added_circle[0].node).on(
                 'hover',
                 function(e, widget) {
-			        widget.fire('hover.added.over', {nodes: added_nodes});
-		        },
-		        function(e, widget) {
-			        widget.fire('hover.added.out');
-		        },
-		        null,
-		        this);
+                    widget.fire(
+                        'hover.added.over',
+                        {nodes: widget.get('added_nodes')});
+                },
+                function(e, widget) {
+                    widget.fire('hover.added.out');
+                },
+                null,
+                this);
         }
         else {
-            if (added_nodes != total_nodes) {
+            if (added_nodes != total_nodes || total_nodes == 0) {
                 this._added_circle.toFront();
                 this._added_circle.animate(
                     {r: added_circle_width},
@@ -293,19 +307,8 @@ Y.extend(NodesChartWidget, Y.Widget, {
     },
 
     initializer: function(cfg) {
-        /* Publish the hover events. */
-        this.publish('hover.offline.over');
-        this.publish('hover.offline.out');
-        this.publish('hover.added.over');
-        this.publish('hover.added.out');
-        this.publish('hover.deployed.over');
-        this.publish('hover.deployed.out');
-        this.publish('hover.commissioned.over');
-        this.publish('hover.commissioned.out');
-        this.publish('hover.queued.over');
-        this.publish('hover.queued.out');
-
-        r = Raphael(this.get('node_id'));
+        canvas_size = this.get('width') + STROKE_WIDTH * 2;
+        r = Raphael(this.get('node_id'), canvas_size, canvas_size);
         r.customAttributes.segment = function (x, y, r, a1, a2) {
             var flag = (a2 - a1) > 180;
             if (a1 == 0 && a2 == 360) {

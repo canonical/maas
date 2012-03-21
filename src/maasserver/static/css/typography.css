@@ -17,6 +17,10 @@ h2 {
     font-size: 22px;
     line-height: 26px;
     }
+h2.super-size {
+    font-size: 120px;
+    line-height: 100px;
+    }
 h3 {
     margin-top: 16px;
     margin-bottom: 8px;
@@ -26,6 +30,15 @@ h3 {
 p {
     width: auto;
     margin-bottom: 0.8em;
+    }
+p.large {
+    font-size: 24px;
+    }
+p.medium {
+    font-size: 16px;
+    }
+p.secondary {
+    color: #AEA79F;
     }
 pre, code, samp, tt, .console {
     font-family: 'Ubuntu Mono', monospace;
