@@ -19,16 +19,38 @@ from uuid import uuid1
 
 from provisioningserver.testing import fakeapi
 
+# Current (singleton) fake provisioning API server.
+fake_provisioning_proxy = None
+
 
 def get_fake_provisioning_api_proxy():
-    papi_fake = fakeapi.FakeSynchronousProvisioningAPI()
-    distro = papi_fake.add_distro(
-        "distro-%s" % uuid1().get_hex(),
-        "initrd", "kernel")
-    papi_fake.add_profile(
-        "profile-%s" % uuid1().get_hex(),
-        distro)
-    return papi_fake
+    """Produce a fake provisioning API proxy.
+
+    The fake server is a singleton, so as to provide a realistically coherent
+    fake session.  If you want a clean slate, call
+    `reset_fake_provisioning_api_proxy` and the next call here will create a
+    fresh instance.
+    """
+    global fake_provisioning_proxy
+    if fake_provisioning_proxy is None:
+        fake_provisioning_proxy = fakeapi.FakeSynchronousProvisioningAPI()
+        distro = fake_provisioning_proxy.add_distro(
+            "distro-%s" % uuid1().get_hex(),
+            "initrd", "kernel")
+        fake_provisioning_proxy.add_profile(
+            "profile-%s" % uuid1().get_hex(),
+            distro)
+    return fake_provisioning_proxy
+
+
+def reset_fake_provisioning_api_proxy():
+    """Reset the fake provisioning API server.
+
+    The next call to `get_fake_provisioning_api_proxy` will create a fresh
+    instance.
+    """
+    global fake_provisioning_proxy
+    fake_provisioning_proxy = None
 
 
 def reload_object(model_object):

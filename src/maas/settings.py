@@ -252,9 +252,14 @@ LOGGING = {
     'version': 1,
 }
 
-# The location of the Provisioning API XML-RPC endpoint. If PSERV_URL is None,
-# use the fake Provisioning API.
-PSERV_URL = None
+# The location of the Provisioning API XML-RPC endpoint.  This should
+# match the setting in etc/pserv.yaml.
+PSERV_URL = "http://localhost:5241/api"
+
+# Use a real provisioning server?  If yes, the URL for the provisioning
+# server's API should be set in PSERV_URL.  If this is set to False, for
+# testing or demo purposes, MAAS will use an internal fake service.
+USE_REAL_PSERV = True
 
 # Allow the user to override settings in maas_local_settings.
 import_local_settings()

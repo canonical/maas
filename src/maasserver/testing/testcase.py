@@ -15,8 +15,7 @@ __all__ = [
     'TestModelTestCase',
     ]
 
-from fixtures import MonkeyPatch
-from maasserver.testing import get_fake_provisioning_api_proxy
+from maasserver.testing import reset_fake_provisioning_api_proxy
 from maasserver.testing.factory import factory
 import maastesting.testcase
 
@@ -25,11 +24,7 @@ class TestCase(maastesting.testcase.TestCase):
 
     def setUp(self):
         super(TestCase, self).setUp()
-        papi_fake = get_fake_provisioning_api_proxy()
-        papi_fake_fixture = MonkeyPatch(
-            "maasserver.provisioning.get_provisioning_api_proxy",
-            lambda: papi_fake)
-        self.useFixture(papi_fake_fixture)
+        self.addCleanup(reset_fake_provisioning_api_proxy)
 
 
 class TestModelTestCase(TestCase, maastesting.testcase.TestModelTestCase):

@@ -39,8 +39,8 @@ LONGPOLL_SERVER_URL = "http://localhost:5242/"
 # enable it.
 LONGPOLL_PATH = None
 
-# This should match the setting in /etc/pserv.yaml.
-PSERV_URL = "http://localhost:5241/api"
+# For demo purposes, use a real provisioning server.
+USE_REAL_PSERV = True
 
 MAAS_CLI = os.path.join(os.getcwd(), 'bin', 'maas')
 
