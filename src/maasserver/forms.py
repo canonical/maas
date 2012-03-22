@@ -143,27 +143,19 @@ class NodeWithMACAddressesForm(NodeForm):
                 ['One or more MAC Addresses is invalid.'])
         return valid
 
-    def add_mac(self, node, mac):
-        # Add a mac address to a node.  Raise a ValidationError with key
-        # mac_addresses is the mac address is a duplicate.
-        try:
-            node.add_mac_address(mac)
-        except ValidationError, e:
-            is_unique_validation_error = (
-                'mac_address' in e.message_dict and
-                e.message_dict['mac_address'] == [
-                    'Mac address with this Mac address already exists.'])
-            if is_unique_validation_error:
+    def clean_mac_addresses(self):
+        data = self.cleaned_data['mac_addresses']
+        for mac in data:
+            if MACAddress.objects.filter(mac_address=mac.lower()).count() > 0:
                 raise ValidationError(
                     {'mac_addresses': [
                         'Mac address %s already in use.' % mac]})
-            else:
-                raise
+        return data
 
     def save(self):
         node = super(NodeWithMACAddressesForm, self).save()
         for mac in self.cleaned_data['mac_addresses']:
-            self.add_mac(node, mac)
+            node.add_mac_address(mac)
         if self.cleaned_data['hostname'] == "":
             node.set_mac_based_hostname(self.cleaned_data['mac_addresses'][0])
         return node
