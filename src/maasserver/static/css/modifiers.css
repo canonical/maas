@@ -23,11 +23,17 @@ img.icon {
     margin-right: 3px;
     }
 /* Spacing */
+.space-top-small {
+    margin-top: 10px;
+    }
 .space-top {
     margin-top: 20px;
     }
 .space-top-none {
     margin-top: 0;
+    }
+.space-right-large {
+    margin-right: 40px;
     }
 .space-bottom-none {
     margin-bottom: 0;

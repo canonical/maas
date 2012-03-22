@@ -1,21 +1,30 @@
 {% extends "maasserver/base.html" %}
 
 {% block title %}Login{% endblock %}
-{% block layout-modifiers %}modal-content login{% endblock %}
+{% block layout-modifiers %}modal-content login {% if no_users %}no-users{% endif %}{% endblock %}
 
 {% block head %}
-  <script type="text/javascript">
-  <!--
-  YUI().use('node', function (Y) {
-    Y.on('load', function() {
-      Y.one('input[type=text]').focus();
+  {% if not no_users %}
+    <script type="text/javascript">
+    <!--
+    YUI().use('node', function (Y) {
+      Y.on('load', function() {
+        Y.one('input[type=text]').focus();
+      });
     });
-  });
-  // -->
-  </script>
+    // -->
+    </script>
+  {% endif %}
 {% endblock %}
 
 {% block content %}
+  {% if no_users %}
+      <img src="{{ STATIC_URL }}img/pictogram_no_users.png" alt="No users pictogram" class="left space-right-large" />
+      <h2>No admin user has been created yet</h2>
+      <p>Run the following command from the console to create an admin user:</p>
+      <pre>{{ create_command }} createsuperuser</pre>
+      <a href="{% url 'login' %}" class="button right space-top-small">login</a>
+  {% else %}
   <h2>Login to {% include "maasserver/site_title.html" %}</h2>
   {% if form.errors %}
     <p class="form-errors">Your username and password didn't match. Please try again.</p>
@@ -30,6 +39,7 @@
       <li class="form-submit"><input type="submit" value="Login" /></li>
     </ul>
   </form>
+  {% endif %}
 {% endblock %}
 
 {% block footer-copyright %}{% endblock %}

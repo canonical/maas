@@ -84,9 +84,11 @@ class Test404500(LoggedInTestCase):
 
 class TestLogin(TestCase):
 
-    def test_login_contains_input_tags(self):
+    def test_login_contains_input_tags_if_user(self):
+        factory.make_user()
         response = self.client.get('/accounts/login/')
         doc = fromstring(response.content)
+        self.assertFalse(response.context['no_users'])
         self.assertEqual(1, len(doc.cssselect('input#id_username')))
         self.assertEqual(1, len(doc.cssselect('input#id_password')))
 
@@ -94,19 +96,8 @@ class TestLogin(TestCase):
         path = factory.getRandomString()
         self.patch(settings, 'MAAS_CLI', path)
         response = self.client.get('/accounts/login/')
-        self.assertEqual(
-            [
-                "No admin user has been created yet. "
-                "Run the following command from the console to create an "
-                "admin user:"
-                "<pre>%s createsuperuser</pre>" % path
-            ],
-            [message.message for message in response.context['messages']])
-
-    def test_login_does_not_display_createsuperuser_message_if_user(self):
-        factory.make_user()
-        response = self.client.get('/accounts/login/')
-        self.assertEqual(0, len(response.context['messages']))
+        self.assertTrue(response.context['no_users'])
+        self.assertEqual(path, response.context['create_command'])
 
 
 class TestSnippets(LoggedInTestCase):
