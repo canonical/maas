@@ -921,16 +921,7 @@ class AccountAPITest(APITestCase):
         self.assertEqual(httplib.BAD_REQUEST, response.status_code)
 
 
-class FileStorageAPITest(APITestCase):
-
-    def setUp(self):
-        super(FileStorageAPITest, self).setUp()
-        media_root = settings.MEDIA_ROOT
-        self.assertFalse(os.path.exists(media_root), "See media/README")
-        self.addCleanup(shutil.rmtree, media_root, ignore_errors=True)
-        os.mkdir(media_root)
-        self.tmpdir = os.path.join(media_root, "testing")
-        os.mkdir(self.tmpdir)
+class FileStorageTestMixin:
 
     def make_file(self, name="foo", contents="test file contents"):
         """Make a temp file named `name` with contents `contents`.
@@ -961,6 +952,38 @@ class FileStorageAPITest(APITestCase):
         """Make an API GET request and return the response."""
         params = self._create_API_params(op, filename, fileObj)
         return self.client.get(self.get_uri('files/'), params)
+
+
+class AnonymousFileStorageAPITest(APIv10TestMixin, FileStorageTestMixin,
+                                  TestCase):
+
+    def setUp(self):
+        super(AnonymousFileStorageAPITest, self).setUp()
+        media_root = settings.MEDIA_ROOT
+        self.assertFalse(os.path.exists(media_root), "See media/README")
+        self.addCleanup(shutil.rmtree, media_root, ignore_errors=True)
+        os.mkdir(media_root)
+        self.tmpdir = os.path.join(media_root, "testing")
+        os.mkdir(self.tmpdir)
+
+    def test_get_works_anonymously(self):
+        factory.make_file_storage(filename="foofilers", data=b"give me rope")
+        response = self.make_API_GET_request("get", "foofilers")
+
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(b"give me rope", response.content)
+
+
+class FileStorageAPITest(APITestCase, FileStorageTestMixin):
+
+    def setUp(self):
+        super(FileStorageAPITest, self).setUp()
+        media_root = settings.MEDIA_ROOT
+        self.assertFalse(os.path.exists(media_root), "See media/README")
+        self.addCleanup(shutil.rmtree, media_root, ignore_errors=True)
+        os.mkdir(media_root)
+        self.tmpdir = os.path.join(media_root, "testing")
+        os.mkdir(self.tmpdir)
 
     def test_add_file_succeeds(self):
         filepath = self.make_file()

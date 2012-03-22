@@ -502,10 +502,21 @@ class NodeMacHandler(BaseHandler):
         return ('node_mac_handler', [node_system_id, mac_address])
 
 
+def get_file(request):
+    filename = request.GET.get("filename", None)
+    if not filename:
+        raise MAASAPIBadRequest("Filename not supplied")
+    try:
+        db_file = FileStorage.objects.get(filename=filename)
+    except FileStorage.DoesNotExist:
+        raise MAASAPINotFound("File not found")
+    return HttpResponse(db_file.data.read(), status=httplib.OK)
+
+
 @api_operations
-class FilesHandler(BaseHandler):
-    """File management operations."""
-    allowed_methods = ('GET', 'POST',)
+class AnonFilesHandler(AnonymousBaseHandler):
+    """Anonymous file operations."""
+    allowed_methods = ('GET',)
 
     @api_exported('get', 'GET')
     def get(self, request):
@@ -515,14 +526,24 @@ class FilesHandler(BaseHandler):
         :type filename: string
         :return: The file is returned in the response content.
         """
-        filename = request.GET.get("filename", None)
-        if not filename:
-            raise MAASAPIBadRequest("Filename not supplied")
-        try:
-            db_file = FileStorage.objects.get(filename=filename)
-        except FileStorage.DoesNotExist:
-            raise MAASAPINotFound("File not found")
-        return HttpResponse(db_file.data.read(), status=httplib.OK)
+        return get_file(request)
+
+
+@api_operations
+class FilesHandler(BaseHandler):
+    """File management operations."""
+    allowed_methods = ('GET', 'POST',)
+    anonymous = AnonFilesHandler
+
+    @api_exported('get', 'GET')
+    def get(self, request):
+        """Get a named file from the file storage.
+
+        :param filename: The exact name of the file you want to get.
+        :type filename: string
+        :return: The file is returned in the response content.
+        """
+        return get_file(request)
 
     @api_exported('add', 'POST')
     def add(self, request):
