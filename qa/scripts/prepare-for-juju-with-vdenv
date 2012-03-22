@@ -1,0 +1,83 @@
+#!/usr/bin/env bash
+# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
+# Exit immediately if a command exits with a non-zero status.
+set -o errexit
+# Treat unset variables as an error when substituting.
+set -o nounset
+
+wait_for_user_to_press_n() {
+    local key=
+    until [ "${key}" == "n" ]; do
+        read -s -p 'Press `n` to continue. ' -n 1 key
+        echo
+    done
+    echo
+}
+
+cat <<'EOF'
+
+This script assumes that `vdenv` has been started, and that `zimmer` is
+running. It will then *destroy* your development/demo database, rebuild
+everything, and reconcile with Cobbler.
+
+EOF
+wait_for_user_to_press_n
+
+# After setting up vdenv, do the following:
+
+export DJANGO_SETTINGS_MODULE="maas.demo"
+
+make distclean
+make syncdb
+make pserv-start
+make txlongpoll-start
+bin/maas createadmin \
+    --username "${LOGNAME}" --password test \
+    --email "${LOGNAME}@example.com"
+bin/maas reconcile
+utilities/maasdb shell db <<'EOF'
+UPDATE maasserver_node
+   SET owner_id = NULL, status = 4
+ WHERE hostname LIKE 'odev-node%';
+EOF
+
+cat <<'EOF'
+
+Next the MAAS server will be started, at which point you can Juju.
+
+However, once MAAS is running, Juju needs to be pointed at it, and given
+credentials with which to manipulate it:
+
+  1. Copy an OAuth token from <http://localhost:5240/account/prefs/>.
+
+  2. Interpolate it into the following:
+
+     {{{
+     juju: environments
+     environments:
+       maas:
+         type: maas
+         maas-server: 'http://localhost:5240'
+         maas-oauth: '${OAUTH_TOKEN_FROM_STEP_1}'
+         admin-secret: 'nothing'
+         juju-origin: lp:maas
+     }}}
+
+  3. Customize `juju-origin` as desired.
+
+  4. Put it into `~/.juju/environments.yaml`.
+
+Some tips for productive Juju fun:
+
+  - Check VNC output (via virsh). Go to vt7 for the boot log.
+
+  - Check netboot enabled/disabled (in Cobbler).
+
+Good luck. You'll need it ;)
+
+EOF
+wait_for_user_to_press_n
+
+make run

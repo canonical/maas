@@ -50,9 +50,10 @@ setup(
     packages=find_packages(
         where=b'src',
         exclude=[
+            b"*.testing",
+            b"*.tests",
             b"maastesting",
-            b"maastesting.*",
-            ]
+            ],
         ),
     package_dir={'': b'src'},
     include_package_data=True,
