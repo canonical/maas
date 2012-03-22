@@ -431,6 +431,11 @@ class Node(CommonInfo):
         if mac:
             mac.delete()
 
+    def delete(self):
+        # Delete the related mac addresses first.
+        self.macaddress_set.all().delete()
+        super(Node, self).delete()
+
     def set_mac_based_hostname(self, mac_address):
         mac_hostname = mac_address.replace(':', '').lower()
         self.hostname = "node-%s" % mac_hostname

@@ -95,6 +95,13 @@ class NodeTest(TestCase):
             node=node, mac_address='AA:BB:CC:DD:EE:FF').count()
         self.assertEqual(0, macs)
 
+    def test_delete_node_deletes_related_mac(self):
+        node = factory.make_node()
+        mac = node.add_mac_address('AA:BB:CC:DD:EE:FF')
+        node.delete()
+        self.assertRaises(
+            MACAddress.DoesNotExist, MACAddress.objects.get, id=mac.id)
+
     def test_set_mac_based_hostname(self):
         node = factory.make_node()
         node.set_mac_based_hostname('AA:BB:CC:DD:EE:FF')
