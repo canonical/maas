@@ -96,7 +96,9 @@ def generate_node_system_id():
 
 class NODE_STATUS:
     """The vocabulary of a `Node`'s possible statuses."""
-    DEFAULT_STATUS = 0
+    # A node starts out as READY.
+    DEFAULT_STATUS = 4
+
     #: The node has been created and has a system ID assigned to it.
     DECLARED = 0
     #: Testing and other commissioning steps are taking place.

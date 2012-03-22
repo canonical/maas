@@ -71,7 +71,7 @@ class NodeTest(TestCase):
     def test_display_status(self):
         node = factory.make_node()
         self.assertEqual(
-            NODE_STATUS_CHOICES_DICT[NODE_STATUS.DECLARED],
+            NODE_STATUS_CHOICES_DICT[NODE_STATUS.DEFAULT_STATUS],
             node.display_status())
 
     def test_add_mac_address(self):
