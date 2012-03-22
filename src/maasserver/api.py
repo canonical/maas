@@ -64,6 +64,7 @@ from piston.handler import (
     BaseHandler,
     HandlerMetaClass,
     )
+from piston.models import Token
 from piston.resource import Resource
 from piston.utils import rc
 
@@ -399,13 +400,35 @@ class NodesHandler(BaseHandler):
         nodes = Node.objects.get_visible_nodes(request.user, ids=match_ids)
         return nodes.order_by('id')
 
+    @api_exported('list_allocated', 'GET')
+    def list_allocated(self, request):
+        """Fetch Nodes that were allocated to the User/oauth token."""
+        auth_header = request.META.get("HTTP_AUTHORIZATION")
+        # A plain assertion is fine here because to get this far we
+        # should already have a valid authorization. If the assertion
+        # fails it is a genuine bug in the code and this will return a
+        # 500 response which is appropriate.
+        assert auth_header is not None, (
+            "HTTP_AUTHORIZATION not set on request")
+        key = extract_oauth_key(auth_header)
+        assert key is not None, (
+            "Invalid Authorization header on request.")
+        token = Token.objects.get(key=key)
+        nodes = Node.objects.get_allocated_visible_nodes(token)
+        return nodes.order_by('id')
+
     @api_exported('acquire', 'POST')
     def acquire(self, request):
         """Acquire an available node for deployment."""
         node = Node.objects.get_available_node_for_acquisition(request.user)
         if node is None:
             raise NodesNotAvailable("No node is available.")
-        node.acquire(request.user)
+        auth_header = request.META.get("HTTP_AUTHORIZATION")
+        assert auth_header is not None, (
+            "HTTP_AUTHORIZATION not set on request")
+        key = extract_oauth_key(auth_header)
+        token = Token.objects.get(key=key)
+        node.acquire(token)
         node.save()
         return node
 

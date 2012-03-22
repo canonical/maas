@@ -74,6 +74,12 @@ class NodeTest(TestCase):
             NODE_STATUS_CHOICES_DICT[NODE_STATUS.DEFAULT_STATUS],
             node.display_status())
 
+    def test_add_node_with_token(self):
+        user = factory.make_user()
+        token = create_auth_token(user)
+        node = factory.make_node(token=token)
+        self.assertEqual(token, node.token)
+
     def test_add_mac_address(self):
         node = factory.make_node()
         node.add_mac_address('AA:BB:CC:DD:EE:FF')
@@ -122,7 +128,8 @@ class NodeTest(TestCase):
     def test_acquire(self):
         node = factory.make_node(status=NODE_STATUS.READY)
         user = factory.make_user()
-        node.acquire(user)
+        token = create_auth_token(user)
+        node.acquire(token)
         self.assertEqual(user, node.owner)
         self.assertEqual(NODE_STATUS.ALLOCATED, node.status)
 

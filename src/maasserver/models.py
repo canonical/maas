@@ -230,6 +230,21 @@ class NodeManager(models.Manager):
                 models.Q(owner__isnull=True) | models.Q(owner=user))
         return self.filter_by_ids(visible_nodes, ids)
 
+    def get_allocated_visible_nodes(self, token):
+        """Fetch Nodes that were allocated to the User_/oauth token.
+
+        :param user: The user whose nodes to fetch
+        :type user: User_
+        :param token: The OAuth token associated with the Nodes.
+        :type token: piston.models.Token.
+
+        .. _User: https://
+           docs.djangoproject.com/en/dev/topics/auth/
+           #django.contrib.auth.models.User
+        """
+        nodes = self.filter(token=token)
+        return nodes
+
     def get_editable_nodes(self, user, ids=None):
         """Fetch Nodes a User_ has ownership privileges on.
 
@@ -374,6 +389,9 @@ class Node(CommonInfo):
         max_length=10, choices=POWER_TYPE_CHOICES, null=False, blank=True,
         default=POWER_TYPE.DEFAULT)
 
+    token = models.ForeignKey(
+        Token, db_index=True, null=True, editable=False, unique=False)
+
     objects = NodeManager()
 
     def __unicode__(self):
@@ -435,12 +453,13 @@ class Node(CommonInfo):
             power_type = self.power_type
         return power_type
 
-    def acquire(self, by_user):
-        """Mark commissioned node as acquired by the given user."""
+    def acquire(self, token):
+        """Mark commissioned node as acquired by the given user's token."""
         assert self.status == NODE_STATUS.READY
         assert self.owner is None
         self.status = NODE_STATUS.ALLOCATED
-        self.owner = by_user
+        self.owner = token.user
+        self.token = token
 
     def release(self):
         """Mark allocated or reserved node as available again."""
@@ -451,6 +470,7 @@ class Node(CommonInfo):
             ]
         self.status = NODE_STATUS.READY
         self.owner = None
+        self.token = None
 
 
 mac_re = re.compile(r'^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$')

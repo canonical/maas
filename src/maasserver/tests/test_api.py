@@ -22,6 +22,8 @@ from maasserver.api import extract_oauth_key
 from maasserver.models import (
     ARCHITECTURE_CHOICES,
     Config,
+    create_auth_token,
+    get_auth_tokens,
     MACAddress,
     Node,
     NODE_STATUS,
@@ -393,6 +395,18 @@ class TestNodeAPI(APITestCase):
             [NODE_STATUS.READY] * len(owned_nodes),
             [node.status for node in reload_objects(Node, owned_nodes)])
 
+    def test_POST_release_removes_token_and_user(self):
+        node = factory.make_node(status=NODE_STATUS.READY)
+        self.client.post(self.get_uri('nodes/'), {'op': 'acquire'})
+        node = Node.objects.get(system_id=node.system_id)
+        self.assertEqual(NODE_STATUS.ALLOCATED, node.status)
+        self.assertEqual(self.logged_in_user, node.owner)
+        self.assertEqual(self.client.token.key, node.token.key)
+        self.client.post(self.get_node_uri(node), {'op': 'release'})
+        node = Node.objects.get(system_id=node.system_id)
+        self.assertIs(None, node.owner)
+        self.assertIs(None, node.token)
+
     def test_POST_release_does_nothing_for_unowned_node(self):
         node = factory.make_node(status=NODE_STATUS.READY)
         response = self.client.post(
@@ -463,7 +477,7 @@ class TestNodeAPI(APITestCase):
         self.assertEqual(NODE_STATUS.READY, reload_object(node).status)
 
     def test_PUT_updates_node(self):
-        # The api allows to update a Node.
+        # The api allows the updating of a Node.
         node = factory.make_node(hostname='diane')
         response = self.client.put(
             self.get_node_uri(node), {'hostname': 'francis'})
@@ -640,7 +654,38 @@ class TestNodesAPI(APITestCase):
         self.assertItemsEqual(
             [existing_id], extract_system_ids(parsed_result))
 
-    def test_POST_returns_available_node(self):
+    def test_GET_list_allocated_returns_only_allocated_with_user_token(self):
+        # If the user's allocated nodes have different session tokens,
+        # list_allocated should only return the nodes that have the
+        # current request's token on them.
+        node_1 = factory.make_node(
+            status=NODE_STATUS.ALLOCATED, owner=self.logged_in_user,
+            token=get_auth_tokens(self.logged_in_user)[0])
+        second_token = create_auth_token(self.logged_in_user)
+        factory.make_node(
+            owner=self.logged_in_user, status=NODE_STATUS.ALLOCATED,
+            token=second_token)
+
+        user_2 = factory.make_user()
+        user_2_token = create_auth_token(user_2)
+        factory.make_node(
+            owner=self.logged_in_user, status=NODE_STATUS.ALLOCATED,
+            token=second_token)
+
+        # At this point we have two nodes owned by the same user but
+        # allocated with different tokens, and a third node allocated to
+        # someone else entirely.  We expect list_allocated to
+        # return the node with the same token as the one used in
+        # self.client, which is the one we set on node_1 above.
+
+        response = self.client.get(self.get_uri('nodes/'), {
+            'op': 'list_allocated'})
+        self.assertEqual(httplib.OK, response.status_code)
+        parsed_result = json.loads(response.content)
+        self.assertItemsEqual(
+            [node_1.system_id], extract_system_ids(parsed_result))
+
+    def test_POST_acquire_returns_available_node(self):
         # The "acquire" operation returns an available node.
         available_status = NODE_STATUS.READY
         node = factory.make_node(status=available_status, owner=None)
@@ -663,6 +708,16 @@ class TestNodesAPI(APITestCase):
         response = self.client.post(self.get_uri('nodes/'), {'op': 'acquire'})
         # Fails with Conflict error: resource can't satisfy request.
         self.assertEqual(httplib.CONFLICT, response.status_code)
+
+    def test_POST_acquire_sets_a_token(self):
+        # "acquire" should set the Token being used in the request on
+        # the Node that is allocated.
+        available_status = NODE_STATUS.READY
+        node = factory.make_node(status=available_status, owner=None)
+        self.client.post(self.get_uri('nodes/'), {'op': 'acquire'})
+        node = Node.objects.get(system_id=node.system_id)
+        oauth_key = self.client.token.key
+        self.assertEqual(oauth_key, node.token.key)
 
 
 class MACAddressAPITest(APITestCase):
