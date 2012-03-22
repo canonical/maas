@@ -222,6 +222,27 @@ class NodeEditForms(TestCase):
         self.assertEqual(power_type, node.power_type)
         self.assertEqual(owner, node.owner)
 
+    def test_UIAdminNodeEditForm_changes_node_empty_owner(self):
+        node = factory.make_node()
+        hostname = factory.getRandomString()
+        after_commissioning_action = factory.getRandomChoice(
+            NODE_AFTER_COMMISSIONING_ACTION_CHOICES)
+        power_type = factory.getRandomChoice(POWER_TYPE_CHOICES)
+        form = UIAdminNodeEditForm(
+            data={
+                'hostname': hostname,
+                'after_commissioning_action': after_commissioning_action,
+                'power_type': power_type,
+                },
+            instance=node)
+        form.save()
+
+        self.assertEqual(hostname, node.hostname)
+        self.assertEqual(
+            after_commissioning_action, node.after_commissioning_action)
+        self.assertEqual(power_type, node.power_type)
+        self.assertEqual(None, node.owner)
+
     def test_UIAdminNodeEditForm_owner_choices_contains_active_users(self):
         form = UIAdminNodeEditForm()
         user = factory.make_user()

@@ -98,7 +98,8 @@ class UINodeEditForm(ModelForm):
 class UIAdminNodeEditForm(ModelForm):
     after_commissioning_action = forms.ChoiceField(
         choices=NODE_AFTER_COMMISSIONING_ACTION_CHOICES)
-    owner = forms.ModelChoiceField(queryset=UserProfile.objects.all_users())
+    owner = forms.ModelChoiceField(
+        queryset=UserProfile.objects.all_users(), required=False)
 
     class Meta:
         model = Node
