@@ -69,6 +69,7 @@ class Factory(maastesting.factory.Factory):
         node = Node()
         node.save()
         mac = MACAddress(mac_address=address, node=node)
+        mac.save()
         return mac
 
     def make_user(self, username=None, password=None, email=None):

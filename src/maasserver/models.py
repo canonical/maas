@@ -484,7 +484,7 @@ class MACAddress(CommonInfo):
     :ivar node: The `Node` related to this `MACAddress`.
 
     """
-    mac_address = MACAddressField()
+    mac_address = MACAddressField(unique=True)
     node = models.ForeignKey(Node, editable=False)
 
     class Meta:
