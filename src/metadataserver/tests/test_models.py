@@ -12,7 +12,6 @@ __metaclass__ = type
 __all__ = []
 
 from maasserver.testing.factory import factory
-from maastesting.rabbit import use_rabbit_fixture
 from maastesting.testcase import TestCase
 from metadataserver.models import (
     NodeKey,
@@ -25,7 +24,6 @@ class TestNodeKeyManager(TestCase):
 
     def setUp(self):
         super(TestNodeKeyManager, self).setUp()
-        use_rabbit_fixture(self)
 
     def test_get_token_for_node_registers_node_key(self):
         node = factory.make_node()
@@ -75,7 +73,6 @@ class TestNodeUserDataManager(TestCase):
 
     def setUp(self):
         super(TestNodeUserDataManager, self).setUp()
-        use_rabbit_fixture(self)
 
     def test_set_user_data_creates_new_nodeuserdata_if_needed(self):
         node = factory.make_node()

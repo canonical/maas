@@ -44,6 +44,8 @@ USE_REAL_PSERV = True
 
 MAAS_CLI = os.path.join(os.getcwd(), 'bin', 'maas')
 
+RABBITMQ_PUBLISH = True
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,

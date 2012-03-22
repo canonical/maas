@@ -44,6 +44,8 @@ TEMPLATE_DEBUG = DEBUG
 YUI_DEBUG = DEBUG
 STATIC_LOCAL_SERVE = True
 
+RABBITMQ_PUBLISH = False
+
 DATABASES = {
     'default': {
         # 'postgresql_psycopg2', 'postgresql', 'mysql', 'sqlite3' etc.
