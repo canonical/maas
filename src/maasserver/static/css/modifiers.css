@@ -35,6 +35,9 @@ img.icon {
 .space-right-large {
     margin-right: 40px;
     }
+.space-right-small {
+    margin-right: 10px;
+    }
 .space-bottom-none {
     margin-bottom: 0;
     }

@@ -35,13 +35,15 @@
             <td>{{ user_item.last_login }}</td>
             <td>
               {% if user_item.is_superuser %}
-                <img src="{{ STATIC_URL }}img/yes.png" alt="yes" />
+                Yes
               {% endif %}
             </td>
             <td>
               <a href="{% url 'accounts-edit' user_item.username %}"
                  title="Edit user {{ user_item.username }}">
-                <img src="{{ STATIC_URL }}img/edit.png" alt="edit" />
+                <img src="{{ STATIC_URL }}img/edit.png" 
+                     alt="edit"
+                     class="space-right-small" />
               </a>
               {% if user != user_item %}
                 <a title="Delete user {{ user_item.username }}"
@@ -60,7 +62,7 @@
           {% endfor %}
         </tbody>
       </table>
-      <a class="button right" href="{% url 'accounts-add' %}">
+      <a class="button right space-top-small" href="{% url 'accounts-add' %}">
         Add user
       </a>
       <div class="clear"></div>

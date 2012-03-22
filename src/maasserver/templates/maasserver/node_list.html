@@ -32,7 +32,6 @@
       <table class="list">
         <thead>
           <tr>
-            <th>Hostname</th>
             <th>MAC</th>
             <th>Status</th>
           </tr>
@@ -41,19 +40,16 @@
           <tr class="node {% cycle 'even' 'odd' %}">
             <td>
               <a href="{% url 'node-view' node.id %}">
-                {{ node.hostname }}
+                {% for macaddress in node.macaddress_set.reverse %}
+                  {{ macaddress }}{% if not forloop.last %},{% endif %}
+                {% endfor %}
               </a>
-            </td>
-            <td>
-              {{ node.macaddress_set.reverse|first }}
-              {% if node.macaddress_set.count > 1 %}
-                ({{ node.macaddress_set.count|add:"-1" }} more MAC Address{{ node.macaddress_set.count|add:"-1"|pluralize }})
-              {% endif %}
+              ({{ node.hostname }})
             </td>
             <td>{{ node.display_status }}</td>
           </tr>
         {% endfor %}
       </table>
   {% endif%}
-  <a id="addnode" href="#" class="button right">Add node</a>
+  <a id="addnode" href="#" class="button right space-top">Add node</a>
 {% endblock %}

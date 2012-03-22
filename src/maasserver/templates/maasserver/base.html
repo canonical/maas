@@ -69,7 +69,7 @@
                 {% endif %}
               </ul>
               <ul id="main-nav" class="nav">
-                <li class="icon {% block nav-active-index %}{% endblock %}">
+                <li class="icon large {% block nav-active-index %}{% endblock %}">
                   <a href="{% url 'index' %}">
                     <img src="{{ STATIC_URL }}img/home.png" alt="MAAS home" />
                   </a>
@@ -91,11 +91,9 @@
             {% endfor %}
           {% endif %}
         </ul>
-        {% if user.is_authenticated %}
-          {% block page-title-block %}
-            <h1 id="page-title">{% block page-title %}{% endblock %}</h1>
-          {% endblock %}
-        {% endif %}
+        {% block page-title-block %}
+          <h1 id="page-title">{% block page-title %}{% endblock %}</h1>
+        {% endblock %}
         <div id="content">
             <div id="sidebar">{% block sidebar %}{% endblock %}</div>
             {% block content %}{% endblock %}
@@ -105,8 +103,8 @@
       <div id="footer">
         <img src="{{ STATIC_URL }}img/ubuntu_logo_footer.png" alt="Ubuntu" />
         {% block footer-copyright %}
-          &copy; 2012 Canonical Ltd. Ubuntu and Canonical are registered 
-          trademarks of Canonical Ltd.
+          <p>&copy; 2012 Canonical Ltd. Ubuntu and Canonical are registered 
+          trademarks of Canonical Ltd.</p>
         {% endblock %}
         <div class="clear"></div>
       </div>

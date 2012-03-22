@@ -53,6 +53,10 @@
     padding-top: 18px;
     height: 46px;
     }
+#main-nav li.icon.large a {
+    padding-top: 13px;
+    height: 51px;
+    }
 #right-nav li.active a,
 #main-nav li.active a {
     background: rgba(0,0,0,0.2) url(../img/header_tail.png) no-repeat bottom center;
@@ -97,6 +101,8 @@
     padding-top: 1px;
     }
 #page-title {
+    /* Need to set relative so the tail appears above shadows. */
+    position: relative;
     font-size: 36px;
     color: #fff;
     margin: 0 20px;
@@ -118,9 +124,6 @@
 .modal-content #body {
     background-color: transparent;
     }
-.modal-content #content {
-    margin-top: 20px;
-    }
 
 
 /******************************************************************************
@@ -132,9 +135,14 @@
 .login.no-users .center-page-wrapper {
     width: 670px;
     }
+.login #body {
+    margin-top: 100px;
+    }
+.login #page-title {
+    margin-left: 15px;
+    }
 .login #content {
     padding: 30px 40px;
-    margin-top: 100px;
     -webkit-box-shadow: 0 0 15px 0 rgba(0,0,0,1);
     box-shadow: 0 0 15px 0 rgba(0,0,0,1);
     }
@@ -188,7 +196,7 @@
 */
 #footer {
     margin-bottom: 20px;
-    padding: 12px 20px;
+    padding: 12px 0;
     color: #aea79f;
     font-size: 12px;
     }
