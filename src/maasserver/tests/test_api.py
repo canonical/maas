@@ -212,8 +212,9 @@ class AnonymousEnlistmentAPITest(APIv10TestMixin, TestCase):
         mac = 'aa:bb:cc:dd:ee:ff'
         factory.make_mac_address(mac)
         architecture = factory.getRandomChoice(ARCHITECTURE_CHOICES)
+
         def node_created(sender, instance, created, **kwargs):
-            self.assertFalse(True)
+            self.fail("post_save should not have been called")
         post_save.connect(node_created, sender=Node)
         self.client.post(
             self.get_uri('nodes/'),
@@ -707,7 +708,7 @@ class TestNodesAPI(APITestCase):
             token=second_token)
 
         user_2 = factory.make_user()
-        user_2_token = create_auth_token(user_2)
+        create_auth_token(user_2)
         factory.make_node(
             owner=self.logged_in_user, status=NODE_STATUS.ALLOCATED,
             token=second_token)
@@ -887,7 +888,7 @@ class MACAddressAPITest(APITestCase):
     def test_macs_DELETE_not_found(self):
         # When deleting a MAC Address, the api returns a 'Not Found' (404)
         # error if no existing MAC Address is found.
-        node  = factory.make_node()
+        node = factory.make_node()
         response = self.client.delete(
             self.get_uri('nodes/%s/macs/%s/') % (
                 node.system_id, '00-aa-22-cc-44-dd'))
@@ -897,7 +898,7 @@ class MACAddressAPITest(APITestCase):
     def test_macs_DELETE_bad_request(self):
         # When deleting a MAC Address, the api returns a 'Bad Request' (400)
         # error if the provided MAC Address is not valid.
-        node  = factory.make_node()
+        node = factory.make_node()
         response = self.client.delete(
             self.get_uri('nodes/%s/macs/%s/') % (
                 node.system_id, 'invalid-mac'))
