@@ -7,6 +7,12 @@
 
 {% block sidebar %}
   <div class="block size3">
+    {% if can_edit %}
+      <h4>Node details</h4>
+      <a href="{% url 'node-edit' node.id %}" class="button secondary">
+        Edit node
+      </a>
+    {% endif%}
   </div>
 {% endblock %}
 

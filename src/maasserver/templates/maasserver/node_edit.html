@@ -1,0 +1,17 @@
+{% extends "maasserver/base.html" %}
+
+{% block nav-active-settings %}active{% endblock %}
+{% block title %}Edit node{% endblock %}
+{% block page-title %}Edit node{% endblock %}
+
+{% block content %}
+  <form action="." method="post" class="block auto-width">
+    <ul>
+    {% for field in form %}
+      {% include "maasserver/form_field.html" %}
+    {% endfor %}
+    </ul>
+    <input type="submit" value="Save node" class="right" />
+    <a class="link-button" href="{% url 'node-view' node.id %}">Cancel</a>
+  </form>
+{% endblock %}

@@ -108,6 +108,22 @@ class TestMAASAuthorizationBackend(TestCase):
         node = make_allocated_node()
         self.assertTrue(backend.has_perm(node.owner, 'access', node))
 
+    def test_user_cannot_edit_nodes_owned_by_others(self):
+        backend = MAASAuthorizationBackend()
+        self.assertFalse(backend.has_perm(
+            factory.make_user(), 'edit', make_allocated_node()))
+
+    def test_user_cannot_edit_unowned_node(self):
+        backend = MAASAuthorizationBackend()
+        self.assertFalse(backend.has_perm(
+            factory.make_user(), 'edit', make_unallocated_node()))
+
+    def test_user_can_edit_his_own_nodes(self):
+        backend = MAASAuthorizationBackend()
+        user = factory.make_user()
+        self.assertTrue(backend.has_perm(
+            user, 'edit', make_allocated_node(owner=user)))
+
 
 class TestNodeVisibility(TestCase):
 

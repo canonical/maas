@@ -373,7 +373,7 @@ class Node(CommonInfo):
         default=NODE_STATUS.DEFAULT_STATUS)
 
     owner = models.ForeignKey(
-        User, default=None, blank=True, null=True, editable=False)
+        User, default=None, blank=True, null=True, editable=True)
 
     after_commissioning_action = models.IntegerField(
         choices=NODE_AFTER_COMMISSIONING_ACTION_CHOICES,
@@ -934,12 +934,13 @@ class MAASAuthorizationBackend(ModelBackend):
             raise NotImplementedError(
                 'Invalid permission check (invalid object type).')
 
-        # Only the generic 'access' permission is supported.
-        if perm != 'access':
+        if perm == 'access':
+            return obj.owner in (None, user)
+        elif perm == 'edit':
+            return obj.owner == user
+        else:
             raise NotImplementedError(
                 'Invalid permission check (invalid permission name).')
-
-        return obj.owner in (None, user)
 
 
 # 'provisioning' is imported so that it can register its signal handlers early

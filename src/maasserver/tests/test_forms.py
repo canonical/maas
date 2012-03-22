@@ -11,6 +11,8 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
+import random
+
 from django import forms
 from django.core.exceptions import ValidationError
 from django.http import QueryDict
@@ -21,12 +23,16 @@ from maasserver.forms import (
     NewUserCreationForm,
     NodeWithMACAddressesForm,
     ProfileForm,
+    UIAdminNodeEditForm,
+    UINodeEditForm,
     validate_hostname,
     )
 from maasserver.models import (
     ARCHITECTURE,
     Config,
     DEFAULT_CONFIG,
+    NODE_AFTER_COMMISSIONING_ACTION_CHOICES,
+    POWER_TYPE_CHOICES,
     )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
@@ -158,6 +164,70 @@ class ConfigFormTest(TestCase):
 
 class FormWithHostname(forms.Form):
     hostname = HostnameFormField()
+
+
+class NodeEditForms(TestCase):
+
+    def test_UINodeEditForm_contains_limited_set_of_fields(self):
+        form = UINodeEditForm()
+
+        self.assertEqual(
+            ['hostname', 'after_commissioning_action'], list(form.fields))
+
+    def test_UINodeEditForm_changes_node(self):
+        node = factory.make_node()
+        hostname = factory.getRandomString()
+        after_commissioning_action = factory.getRandomChoice(
+            NODE_AFTER_COMMISSIONING_ACTION_CHOICES)
+
+        form = UINodeEditForm(
+            data={
+                'hostname': hostname,
+                'after_commissioning_action': after_commissioning_action,
+                },
+            instance=node)
+        form.save()
+
+        self.assertEqual(hostname, node.hostname)
+        self.assertEqual(
+            after_commissioning_action, node.after_commissioning_action)
+
+    def test_UIAdminNodeEditForm_contains_limited_set_of_fields(self):
+        form = UIAdminNodeEditForm()
+
+        self.assertSequenceEqual(
+            ['hostname', 'after_commissioning_action', 'power_type', 'owner'],
+            list(form.fields))
+
+    def test_UIAdminNodeEditForm_changes_node(self):
+        node = factory.make_node()
+        hostname = factory.getRandomString()
+        after_commissioning_action = factory.getRandomChoice(
+            NODE_AFTER_COMMISSIONING_ACTION_CHOICES)
+        power_type = factory.getRandomChoice(POWER_TYPE_CHOICES)
+        owner = random.choice([factory.make_user() for i in range(3)])
+        form = UIAdminNodeEditForm(
+            data={
+                'hostname': hostname,
+                'after_commissioning_action': after_commissioning_action,
+                'power_type': power_type,
+                'owner': owner.id,
+                },
+            instance=node)
+        form.save()
+
+        self.assertEqual(hostname, node.hostname)
+        self.assertEqual(
+            after_commissioning_action, node.after_commissioning_action)
+        self.assertEqual(power_type, node.power_type)
+        self.assertEqual(owner, node.owner)
+
+    def test_UIAdminNodeEditForm_owner_choices_contains_active_users(self):
+        form = UIAdminNodeEditForm()
+        user = factory.make_user()
+        user_ids = [choice[0] for choice in form.fields['owner'].choices]
+
+        self.assertItemsEqual(['', user.id], user_ids)
 
 
 class TestHostnameFormField(TestCase):
