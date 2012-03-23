@@ -12,7 +12,9 @@ __metaclass__ = type
 __all__ = []
 
 import json
+import socket
 
+from maasserver.exceptions import NoRabbit
 from maasserver.messages import (
     MAASMessenger,
     MESSENGER_EVENT,
@@ -96,6 +98,41 @@ class MessengerBaseTest(TestModelTestCase):
         obj.delete()
         self.assertEqual(
             [[MESSENGER_EVENT.DELETED, obj]], producer.messages)
+
+    def test_publish_message_publishes_message(self):
+        event = factory.getRandomString()
+        instance = {factory.getRandomString(): factory.getRandomString()}
+        messenger = TestMessenger(MessagesTestModel, FakeProducer())
+        messenger.publish_message(messenger.create_msg(event, instance))
+        self.assertEqual([[event, instance]], messenger.producer.messages)
+
+    def test_publish_message_swallows_missing_rabbit(self):
+        event = factory.getRandomString()
+        instance = {factory.getRandomString(): factory.getRandomString()}
+
+        def fail_for_lack_of_rabbit(*args, **kwargs):
+            raise NoRabbit("I'm pretending not to have a RabbitMQ.")
+
+        messenger = TestMessenger(MessagesTestModel, FakeProducer())
+        messenger.producer.publish = fail_for_lack_of_rabbit
+
+        messenger.publish_message(messenger.create_msg(event, instance))
+        self.assertEqual([], messenger.producer.messages)
+
+    def test_publish_message_propagates_exceptions(self):
+        event = factory.getRandomString()
+        instance = {factory.getRandomString(): factory.getRandomString()}
+
+        def fail_despite_having_a_rabbit(*args, **kwargs):
+            raise socket.error("I have a rabbit but I fail anyway.")
+
+        messenger = TestMessenger(MessagesTestModel, FakeProducer())
+        messenger.producer.publish = fail_despite_having_a_rabbit
+
+        self.assertRaises(
+            socket.error,
+            messenger.publish_message, messenger.create_msg(event, instance))
+        self.assertEqual([], messenger.producer.messages)
 
 
 class MAASMessengerTest(TestModelTestCase):

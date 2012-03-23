@@ -22,8 +22,11 @@ from django.conf.urls.defaults import patterns
 from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse
 from lxml.html import fromstring
-from maasserver import views
-from maasserver.messages import get_messaging
+from maasserver import (
+    messages,
+    views,
+    )
+from maasserver.exceptions import NoRabbit
 from maasserver.models import (
     Config,
     NODE_AFTER_COMMISSIONING_ACTION,
@@ -251,12 +254,23 @@ class TestUtilities(TestCase):
 
     def test_get_longpoll_context_empty_if_rabbitmq_publish_is_none(self):
         self.patch(settings, 'RABBITMQ_PUBLISH', None)
-        self.patch(views, 'messaging', get_messaging())
+        self.patch(views, 'messaging', messages.get_messaging())
+        self.assertEqual({}, get_longpoll_context())
+
+    def test_get_longpoll_context_returns_empty_if_rabbit_not_running(self):
+
+        class FakeMessaging:
+            """Fake :class:`RabbitMessaging`: fail with `NoRabbit`."""
+
+            def getQueue(self, *args, **kwargs):
+                raise NoRabbit("Pretending not to have a rabbit.")
+
+        self.patch(messages, 'messaging', FakeMessaging())
         self.assertEqual({}, get_longpoll_context())
 
     def test_get_longpoll_context_empty_if_longpoll_url_is_None(self):
         self.patch(settings, 'LONGPOLL_PATH', None)
-        self.patch(views, 'messaging', get_messaging())
+        self.patch(views, 'messaging', messages.get_messaging())
         self.assertEqual({}, get_longpoll_context())
 
     @uses_rabbit_fixture
@@ -264,7 +278,7 @@ class TestUtilities(TestCase):
         longpoll = factory.getRandomString()
         self.patch(settings, 'LONGPOLL_PATH', longpoll)
         self.patch(settings, 'RABBITMQ_PUBLISH', True)
-        self.patch(views, 'messaging', get_messaging())
+        self.patch(views, 'messaging', messages.get_messaging())
         context = get_longpoll_context()
         self.assertItemsEqual(
             ['LONGPOLL_PATH', 'longpoll_queue'], list(context))

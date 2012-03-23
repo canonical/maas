@@ -20,6 +20,7 @@ from abc import (
     ABCMeta,
     abstractmethod,
     )
+from logging import getLogger
 
 from django.conf import settings
 from django.core.serializers.json import DjangoJSONEncoder
@@ -27,6 +28,7 @@ from django.db.models.signals import (
     post_delete,
     post_save,
     )
+from maasserver.exceptions import NoRabbit
 from maasserver.models import Node
 from maasserver.rabbit import RabbitMessaging
 
@@ -62,16 +64,26 @@ class MessengerBase:
     def create_msg(self, event_name, instance):
         """Format a message from the given event_name and instance."""
 
+    def publish_message(self, message):
+        """Attempt to publish `message` on the producer.
+
+        If RabbitMQ is not available, log an error message but return
+        normally.
+        """
+        try:
+            self.producer.publish(message)
+        except NoRabbit as e:
+            getLogger('maasserver').warn("Could not reach RabbitMQ: %s", e)
+
     def update_obj(self, sender, instance, created, **kwargs):
         event_name = (
             MESSENGER_EVENT.CREATED if created
             else MESSENGER_EVENT.UPDATED)
-        message = self.create_msg(event_name, instance)
-        self.producer.publish(message)
+        self.publish_message(self.create_msg(event_name, instance))
 
     def delete_obj(self, sender, instance, **kwargs):
         message = self.create_msg(MESSENGER_EVENT.DELETED, instance)
-        self.producer.publish(message)
+        self.publish_message(message)
 
     def register(self):
         post_save.connect(

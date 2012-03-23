@@ -17,20 +17,29 @@ __all__ = [
     ]
 
 
+from errno import ECONNREFUSED
+import socket
 import threading
 
 from amqplib import client_0_8 as amqp
 from django.conf import settings
+from maasserver.exceptions import NoRabbit
 
 
 def connect():
     """Connect to AMQP."""
-    return amqp.Connection(
-        host=settings.RABBITMQ_HOST,
-        userid=settings.RABBITMQ_USERID,
-        password=settings.RABBITMQ_PASSWORD,
-        virtual_host=settings.RABBITMQ_VIRTUAL_HOST,
-        insist=False)
+    try:
+        return amqp.Connection(
+            host=settings.RABBITMQ_HOST,
+            userid=settings.RABBITMQ_USERID,
+            password=settings.RABBITMQ_PASSWORD,
+            virtual_host=settings.RABBITMQ_VIRTUAL_HOST,
+            insist=False)
+    except socket.error as e:
+        if e.errno == ECONNREFUSED:
+            raise NoRabbit(e.message)
+        else:
+            raise
 
 
 class RabbitSession(threading.local):
