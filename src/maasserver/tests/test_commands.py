@@ -11,6 +11,7 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
+from codecs import getwriter
 from io import BytesIO
 import os
 
@@ -36,6 +37,15 @@ class TestCommands(TestCase):
         call_command('gc')
         # The test is that we get here without errors.
         pass
+
+    def test_generate_api_doc(self):
+        out = BytesIO()
+        stdout = getwriter("UTF-8")(out)
+        call_command('generate_api_doc', stdout=stdout)
+        result = stdout.getvalue()
+        # Just check that the documentation looks all right.
+        self.assertIn("POST /api/1.0/account/", result)
+        self.assertIn("MAAS API documentation", result)
 
     def test_createadmin_requires_username(self):
         stderr = BytesIO()

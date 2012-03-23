@@ -59,7 +59,7 @@ lint: bin/flake8
 
 check: clean test
 
-docs/api.rst: bin/maas src/maasserver/api.py
+docs/api.rst: bin/maas src/maasserver/api.py syncdb
 	bin/maas generate_api_doc > $@
 
 sampledata: bin/maas syncdb
