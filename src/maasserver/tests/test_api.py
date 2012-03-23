@@ -19,6 +19,7 @@ import shutil
 
 from django.conf import settings
 from django.db.models.signals import post_save
+from fixtures import Fixture
 from maasserver import api
 from maasserver.api import extract_oauth_key
 from maasserver.models import (
@@ -216,6 +217,7 @@ class AnonymousEnlistmentAPITest(APIv10TestMixin, TestCase):
 
         def node_created(sender, instance, created, **kwargs):
             self.fail("post_save should not have been called")
+
         post_save.connect(node_created, sender=Node)
         self.client.post(
             self.get_uri('nodes/'),
@@ -298,8 +300,12 @@ class NodeAnonAPITest(APIv10TestMixin, TestCase):
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
 
+class AnonAPITestCase(APIv10TestMixin, TestCase):
+    """Base class for anonymous API tests."""
+
+
 class APITestCase(APIv10TestMixin, TestCase):
-    """Extension to `TestCase`: log in first.
+    """Base class for logged-in API tests.
 
     :ivar logged_in_user: A user who is currently logged in and can access
         the API.
@@ -942,7 +948,28 @@ class AccountAPITest(APITestCase):
         self.assertEqual(httplib.BAD_REQUEST, response.status_code)
 
 
-class FileStorageTestMixin:
+class MediaRootFixture(Fixture):
+    """Create and clear-down a `settings.MEDIA_ROOT` directory.
+
+    The directory must not previously exist.
+    """
+
+    def setUp(self):
+        super(MediaRootFixture, self).setUp()
+        self.path = settings.MEDIA_ROOT
+        if os.path.exists(self.path):
+            raise AssertionError("See media/README")
+        self.addCleanup(shutil.rmtree, self.path, ignore_errors=True)
+        os.mkdir(self.path)
+
+
+class FileStorageAPITestMixin:
+
+    def setUp(self):
+        super(FileStorageAPITestMixin, self).setUp()
+        media_root = self.useFixture(MediaRootFixture()).path
+        self.tmpdir = os.path.join(media_root, "testing")
+        os.mkdir(self.tmpdir)
 
     def make_file(self, name="foo", contents="test file contents"):
         """Make a temp file named `name` with contents `contents`.
@@ -975,17 +1002,7 @@ class FileStorageTestMixin:
         return self.client.get(self.get_uri('files/'), params)
 
 
-class AnonymousFileStorageAPITest(APIv10TestMixin, FileStorageTestMixin,
-                                  TestCase):
-
-    def setUp(self):
-        super(AnonymousFileStorageAPITest, self).setUp()
-        media_root = settings.MEDIA_ROOT
-        self.assertFalse(os.path.exists(media_root), "See media/README")
-        self.addCleanup(shutil.rmtree, media_root, ignore_errors=True)
-        os.mkdir(media_root)
-        self.tmpdir = os.path.join(media_root, "testing")
-        os.mkdir(self.tmpdir)
+class AnonymousFileStorageAPITest(FileStorageAPITestMixin, AnonAPITestCase):
 
     def test_get_works_anonymously(self):
         factory.make_file_storage(filename="foofilers", data=b"give me rope")
@@ -995,16 +1012,7 @@ class AnonymousFileStorageAPITest(APIv10TestMixin, FileStorageTestMixin,
         self.assertEqual(b"give me rope", response.content)
 
 
-class FileStorageAPITest(APITestCase, FileStorageTestMixin):
-
-    def setUp(self):
-        super(FileStorageAPITest, self).setUp()
-        media_root = settings.MEDIA_ROOT
-        self.assertFalse(os.path.exists(media_root), "See media/README")
-        self.addCleanup(shutil.rmtree, media_root, ignore_errors=True)
-        os.mkdir(media_root)
-        self.tmpdir = os.path.join(media_root, "testing")
-        os.mkdir(self.tmpdir)
+class FileStorageAPITest(FileStorageAPITestMixin, APITestCase):
 
     def test_add_file_succeeds(self):
         filepath = self.make_file()

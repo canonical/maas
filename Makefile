@@ -52,9 +52,10 @@ test: bin/test.maas bin/test.pserv
 	bin/test.maas
 	bin/test.pserv
 
-lint: sources = setup.py src templates utilities
+lint: sources = contrib setup.py src templates twisted utilities
 lint: bin/flake8
-	@bin/flake8 $(sources)
+	@find $(sources) -name '*.py' ! -path '*/migrations/*' \
+	    -print0 | xargs -r0 bin/flake8
 
 check: clean test
 

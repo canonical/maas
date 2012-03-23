@@ -13,7 +13,6 @@ __metaclass__ = type
 
 import argparse
 
-
 # See http://docs.python.org/release/2.7/library/argparse.html.
 argument_parser = argparse.ArgumentParser(description=__doc__)
 
