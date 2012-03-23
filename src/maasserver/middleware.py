@@ -19,6 +19,7 @@ from abc import (
     ABCMeta,
     abstractproperty,
     )
+import httplib
 import json
 import logging
 import re
@@ -142,9 +143,11 @@ class ExceptionMiddleware:
                     unicode(''.join(exception.messages)).encode(encoding),
                     mimetype=b"text/plain; charset=%s" % encoding)
         else:
-            # Do not handle the exception, this will result in a
-            # "Internal Server Error" response.
-            return None
+            # Return an API-readable "Internal Server Error" response.
+            return HttpResponse(
+                content=unicode(exception).encode(encoding),
+                status=httplib.INTERNAL_SERVER_ERROR,
+                mimetype=b"text/plain; charset=%s" % encoding)
 
 
 class APIErrorsMiddleware(ExceptionMiddleware):

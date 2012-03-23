@@ -72,20 +72,24 @@ class ExceptionMiddlewareTest(TestCase):
         exception = MAASAPINotFound("Huh?")
         self.assertIsNone(middleware.process_exception(request, exception))
 
-    def test_ignores_unknown_exception(self):
-        # An unknown exception is not processed by the middleware
-        # (returns None).
-        self.assertIsNone(
-            self.process_exception(ValueError("Error occurred!")))
+    def test_unknown_exception_generates_internal_server_error(self):
+        # An unknown exception generates an internal server error with the
+        # exception message.
+        error_message = factory.getRandomString()
+        response = self.process_exception(RuntimeError(error_message))
+        self.assertEqual(
+            (httplib.INTERNAL_SERVER_ERROR, error_message),
+            (response.status_code, response.content))
 
     def test_reports_MAASAPIException_with_appropriate_api_error(self):
         class MyException(MAASAPIException):
             api_error = httplib.UNAUTHORIZED
 
-        exception = MyException("Error occurred!")
+        error_message = factory.getRandomString()
+        exception = MyException(error_message)
         response = self.process_exception(exception)
         self.assertEqual(
-            (httplib.UNAUTHORIZED, "Error occurred!"),
+            (httplib.UNAUTHORIZED, error_message),
             (response.status_code, response.content))
 
     def test_renders_MAASAPIException_as_unicode(self):
@@ -99,13 +103,14 @@ class ExceptionMiddlewareTest(TestCase):
             (response.status_code, response.content.decode('utf-8')))
 
     def test_reports_ValidationError_as_Bad_Request(self):
-        response = self.process_exception(ValidationError("Validation Error"))
+        error_message = factory.getRandomString()
+        response = self.process_exception(ValidationError(error_message))
         self.assertEqual(
-            (httplib.BAD_REQUEST, "Validation Error"),
+            (httplib.BAD_REQUEST, error_message),
             (response.status_code, response.content))
 
     def test_returns_ValidationError_message_dict_as_json(self):
-        exception = ValidationError("Error")
+        exception = ValidationError(factory.getRandomString())
         exception_dict = {'hostname': 'invalid'}
         setattr(exception, 'message_dict', exception_dict)
         response = self.process_exception(exception)
@@ -118,16 +123,17 @@ class APIErrorsMiddlewareTest(TestCase):
     def test_handles_error_on_API(self):
         middleware = APIErrorsMiddleware()
         non_api_request = fake_request("/api/1.0/hello")
-        exception = MAASAPINotFound("Have you looked under the couch?")
+        error_message = factory.getRandomString()
+        exception = MAASAPINotFound(error_message)
         response = middleware.process_exception(non_api_request, exception)
         self.assertEqual(
-            (httplib.NOT_FOUND, "Have you looked under the couch?"),
+            (httplib.NOT_FOUND, error_message),
             (response.status_code, response.content))
 
     def test_ignores_error_outside_API(self):
         middleware = APIErrorsMiddleware()
         non_api_request = fake_request("/middleware/api/hello")
-        exception = MAASAPINotFound("Have you looked under the couch?")
+        exception = MAASAPINotFound(factory.getRandomString())
         self.assertIsNone(
             middleware.process_exception(non_api_request, exception))
 
