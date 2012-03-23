@@ -414,7 +414,10 @@ class NodesHandler(BaseHandler):
         assert key is not None, (
             "Invalid Authorization header on request.")
         token = Token.objects.get(key=key)
-        nodes = Node.objects.get_allocated_visible_nodes(token)
+        match_ids = request.GET.getlist('id')
+        if match_ids == []:
+            match_ids = None
+        nodes = Node.objects.get_allocated_visible_nodes(token, match_ids)
         return nodes.order_by('id')
 
     @api_exported('acquire', 'POST')
