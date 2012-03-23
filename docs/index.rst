@@ -19,6 +19,7 @@ Overview
 
    readme
    hacking
+   juju-quick-start
    api
 
 MAAS API
