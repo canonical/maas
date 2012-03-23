@@ -233,12 +233,16 @@ suite.add(new Y.maas.testing.TestCase({
             1,
             view.chart.get('added_nodes'),
             'The old chart status number should also be updated');
+        /* XXX: Bug: 963090 This is timing dependant and causes spurious
+           failures from time to time.
+
         this.wait(function() {
             Y.Assert.areEqual(
                 Y.one('#nodes-number').get('text'),
                 '12',
                 'The total number of nodes should not have been updated');
         }, 500);
+        */
     },
 
     testUpdateNodeDeleting: function() {
