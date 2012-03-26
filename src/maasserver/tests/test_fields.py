@@ -25,7 +25,7 @@ from maasserver.tests.models import JSONFieldModel
 class TestMACAddressField(TestCase):
 
     def test_mac_address_is_stored_normalized_and_loaded(self):
-        stored_mac = factory.make_mac_address('AA-bb-CC-dd-EE-Ff')
+        stored_mac = factory.make_mac_address(' AA-bb-CC-dd-EE-Ff ')
         stored_mac.save()
         loaded_mac = MACAddress.objects.get(id=stored_mac.id)
         self.assertEqual('aa:bb:cc:dd:ee:ff', loaded_mac.mac_address)
@@ -42,6 +42,11 @@ class TestMACAddressField(TestCase):
 
     def test_accepts_upper_and_lower_case(self):
         validate_mac('AA:BB:CC:dd:ee:ff')
+        # No error.
+        pass
+
+    def test_accepts_leading_and_trailing_whitespace(self):
+        validate_mac(' AA:BB:CC:DD:EE:FF ')
         # No error.
         pass
 

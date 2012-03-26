@@ -31,7 +31,7 @@ import psycopg2.extensions
 from south.modelsinspector import add_introspection_rules
 
 
-mac_re = re.compile(r'^([0-9a-fA-F]{2}[:-]){5}[0-9a-fA-F]{2}$')
+mac_re = re.compile(r'^\s*([0-9a-fA-F]{2}[:-]){5}[0-9a-fA-F]{2}\s*$')
 
 
 mac_error_msg = "Enter a valid MAC address (e.g. AA:BB:CC:DD:EE:FF)."
@@ -46,9 +46,10 @@ validate_mac = RegexValidator(regex=mac_re, message=mac_error_msg)
 # See http://south.aeracode.org/docs/customfields.html#extending-introspection
 # for details.
 add_introspection_rules(
-    [],
-    ["^maasserver\.fields\.MACAddressField",
-     "^maasserver\.fields\.JSONObjectField"])
+    [], [
+        "^maasserver\.fields\.MACAddressField",
+        "^maasserver\.fields\.JSONObjectField",
+    ])
 
 
 class MACAddressFormField(RegexField):
