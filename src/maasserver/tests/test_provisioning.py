@@ -14,6 +14,7 @@ __all__ = []
 from urlparse import parse_qs
 from xmlrpclib import Fault
 
+from django.conf import settings
 from maasserver import provisioning
 from maasserver.models import (
     ARCHITECTURE,
@@ -216,6 +217,13 @@ class ProvisioningTests:
     def test_metadata_server_url_refers_to_own_metadata_service(self):
         self.assertEqual(
             "%s/metadata/"
+            % Config.objects.get_config('maas_url').rstrip('/'),
+            get_metadata_server_url())
+
+    def test_metadata_server_url_includes_script_name(self):
+        self.patch(settings, "FORCE_SCRIPT_NAME", "/MAAS")
+        self.assertEqual(
+            "%s/MAAS/metadata/"
             % Config.objects.get_config('maas_url').rstrip('/'),
             get_metadata_server_url())
 

@@ -177,7 +177,12 @@ def get_provisioning_api_proxy():
 
 def get_metadata_server_url():
     """Return the URL where nodes can reach the metadata service."""
-    return urljoin(Config.objects.get_config('maas_url'), "metadata/")
+    maas_url = Config.objects.get_config('maas_url')
+    if settings.FORCE_SCRIPT_NAME is None:
+        path = "metadata/"
+    else:
+        path = "%s/metadata/" % settings.FORCE_SCRIPT_NAME
+    return urljoin(maas_url, path)
 
 
 def compose_metadata(node):
