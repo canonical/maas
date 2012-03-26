@@ -40,6 +40,7 @@ from maasserver.models import (
     SYSTEM_USERS,
     UserProfile,
     )
+from maasserver.provisioning import get_provisioning_api_proxy
 from maasserver.testing.enum import map_enum
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
@@ -290,9 +291,8 @@ class NodeManagerTest(TestCase):
         output = Node.objects.stop_nodes([node.system_id], user)
 
         self.assertItemsEqual([node], output)
-        self.assertEqual(
-            'stop',
-            Node.objects.provisioning_proxy.power_status[node.system_id])
+        power_status = get_provisioning_api_proxy().power_status
+        self.assertEqual('stop', power_status[node.system_id])
 
     def test_stop_nodes_ignores_uneditable_nodes(self):
         nodes = [self.make_node(factory.make_user()) for counter in range(3)]
@@ -308,9 +308,8 @@ class NodeManagerTest(TestCase):
         output = Node.objects.start_nodes([node.system_id], user)
 
         self.assertItemsEqual([node], output)
-        self.assertEqual(
-            'start',
-            Node.objects.provisioning_proxy.power_status[node.system_id])
+        power_status = get_provisioning_api_proxy().power_status
+        self.assertEqual('start', power_status[node.system_id])
 
     def test_start_nodes_ignores_uneditable_nodes(self):
         nodes = [self.make_node(factory.make_user()) for counter in range(3)]

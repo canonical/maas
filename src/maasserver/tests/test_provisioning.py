@@ -15,7 +15,6 @@ from urlparse import parse_qs
 from xmlrpclib import Fault
 
 from maasserver import provisioning
-from maasserver.exceptions import MissingProfileException
 from maasserver.models import (
     ARCHITECTURE,
     Config,
@@ -27,6 +26,8 @@ from maasserver.provisioning import (
     compose_metadata,
     get_metadata_server_url,
     name_arch_in_cobbler_style,
+    present_user_friendly_fault,
+    PRESENTATIONS,
     select_profile_for_node,
     )
 from maasserver.testing.enum import map_enum
@@ -125,9 +126,9 @@ class ProvisioningTests:
         def raise_missing_profile(*args, **kwargs):
             raise Fault(PSERV_FAULT.NO_SUCH_PROFILE, "Unknown profile.")
 
-        self.papi.add_node = raise_missing_profile
+        self.papi.patch('add_node', raise_missing_profile)
         expectation = ExpectedException(
-            MissingProfileException, value_re='.*maas-import-isos.*')
+            Fault, value_re='.*maas-import-isos.*')
         with expectation:
             node = factory.make_node(architecture='amd32k')
             provisioning.provision_post_save_Node(
@@ -139,7 +140,7 @@ class ProvisioningTests:
         def raise_fault(*args, **kwargs):
             raise Fault(PSERV_FAULT.NO_COBBLER, error_text)
 
-        self.papi.add_node = raise_fault
+        self.papi.patch('add_node', raise_fault)
         with ExpectedException(Fault, ".*%s.*" % error_text):
             node = factory.make_node(architecture='amd32k')
             provisioning.provision_post_save_Node(
@@ -234,6 +235,85 @@ class ProvisioningTests:
             'oauth_token_secret': [token.secret],
             },
             parse_qs(metadata['maas-metadata-credentials']))
+
+    def test_papi_xmlrpc_faults_are_reported_helpfully(self):
+
+        def raise_fault(*args, **kwargs):
+            raise Fault(8002, factory.getRandomString())
+
+        self.papi.patch('add_node', raise_fault)
+
+        with ExpectedException(Fault, ".*provisioning server.*"):
+            self.papi.add_node('node', 'profile', 'power', {})
+
+    def test_provisioning_errors_are_reported_helpfully(self):
+
+        def raise_provisioning_error(*args, **kwargs):
+            raise Fault(PSERV_FAULT.NO_COBBLER, factory.getRandomString())
+
+        self.papi.patch('add_node', raise_provisioning_error)
+
+        with ExpectedException(Fault, ".*Cobbler.*"):
+            self.papi.add_node('node', 'profile', 'power', {})
+
+    def test_present_user_friendly_fault_describes_pserv_fault(self):
+        self.assertIn(
+            "provisioning server",
+            present_user_friendly_fault(Fault(8002, 'error')).faultString)
+
+    def test_present_user_friendly_fault_covers_all_pserv_faults(self):
+        all_pserv_faults = set(map_enum(PSERV_FAULT).values())
+        presentable_pserv_faults = set(PRESENTATIONS.keys())
+        self.assertItemsEqual([], all_pserv_faults - presentable_pserv_faults)
+
+    def test_present_user_friendly_fault_rerepresents_all_pserv_faults(self):
+        fault_string = factory.getRandomString()
+        for fault_code in map_enum(PSERV_FAULT).values():
+            original_fault = Fault(fault_code, fault_string)
+            new_fault = present_user_friendly_fault(original_fault)
+            self.assertNotEqual(fault_string, new_fault.faultString)
+
+    def test_present_user_friendly_fault_describes_cobbler_fault(self):
+        friendly_fault = present_user_friendly_fault(
+            Fault(PSERV_FAULT.NO_COBBLER, factory.getRandomString()))
+        friendly_text = friendly_fault.faultString
+        self.assertIn("unable to reach", friendly_text)
+        self.assertIn("Cobbler", friendly_text)
+
+    def test_present_user_friendly_fault_describes_cobbler_auth_fail(self):
+        friendly_fault = present_user_friendly_fault(
+            Fault(PSERV_FAULT.COBBLER_AUTH_FAILED, factory.getRandomString()))
+        friendly_text = friendly_fault.faultString
+        self.assertIn("failed to authenticate", friendly_text)
+        self.assertIn("Cobbler", friendly_text)
+
+    def test_present_user_friendly_fault_describes_cobbler_auth_error(self):
+        friendly_fault = present_user_friendly_fault(
+            Fault(PSERV_FAULT.COBBLER_AUTH_ERROR, factory.getRandomString()))
+        friendly_text = friendly_fault.faultString
+        self.assertIn("authentication token", friendly_text)
+        self.assertIn("Cobbler", friendly_text)
+
+    def test_present_user_friendly_fault_describes_missing_profile(self):
+        profile = factory.getRandomString()
+        friendly_fault = present_user_friendly_fault(
+            Fault(
+                PSERV_FAULT.NO_SUCH_PROFILE,
+                "invalid profile name: %s" % profile))
+        friendly_text = friendly_fault.faultString
+        self.assertIn(profile, friendly_text)
+        self.assertIn("maas-import-isos", friendly_text)
+
+    def test_present_user_friendly_fault_describes_generic_cobbler_fail(self):
+        error_text = factory.getRandomString()
+        friendly_fault = present_user_friendly_fault(
+            Fault(PSERV_FAULT.GENERIC_COBBLER_ERROR, error_text))
+        friendly_text = friendly_fault.faultString
+        self.assertIn("Cobbler", friendly_text)
+        self.assertIn(error_text, friendly_text)
+
+    def test_present_user_friendly_fault_returns_None_for_other_fault(self):
+        self.assertIsNone(present_user_friendly_fault(Fault(9999, "!!!")))
 
 
 class TestProvisioningWithFake(ProvisioningTests, TestCase):

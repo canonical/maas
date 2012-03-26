@@ -40,8 +40,9 @@ class TestTestCase(TestCase):
         # TestCase.setUp() patches in a fake provisioning API so that we can
         # observe what the signal handlers are doing.
         papi_fake = provisioning.get_provisioning_api_proxy()
+        self.assertIsInstance(papi_fake, provisioning.ProvisioningProxy)
         self.assertIsInstance(
-            papi_fake, fakeapi.FakeSynchronousProvisioningAPI)
+            papi_fake.proxy, fakeapi.FakeSynchronousProvisioningAPI)
         # The fake has some limited, automatically generated, sample
         # data. This is required for many tests to run. First there is a
         # sample distro.

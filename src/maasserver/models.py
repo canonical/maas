@@ -177,19 +177,15 @@ ARCHITECTURE_CHOICES = (
 )
 
 
+def get_papi():
+    """Return a provisioning server API proxy."""
+    # Avoid circular imports.
+    from maasserver.provisioning import get_provisioning_api_proxy
+    return get_provisioning_api_proxy()
+
+
 class NodeManager(models.Manager):
     """A utility to manage the collection of Nodes."""
-
-    # Twisted XMLRPC proxy for talking to the provisioning API.  Created
-    # on demand.
-    provisioning_proxy = None
-
-    def _set_provisioning_proxy(self):
-        """Set up the provisioning-API proxy if needed."""
-        # Avoid circular imports.
-        from maasserver.provisioning import get_provisioning_api_proxy
-        if self.provisioning_proxy is None:
-            self.provisioning_proxy = get_provisioning_api_proxy()
 
     def filter_by_ids(self, query, ids=None):
         """Filter `query` result set by system_id values.
@@ -316,9 +312,8 @@ class NodeManager(models.Manager):
         :return: Those Nodes for which shutdown was actually requested.
         :rtype: list
         """
-        self._set_provisioning_proxy()
         nodes = self.get_editable_nodes(by_user, ids=ids)
-        self.provisioning_proxy.stop_nodes([node.system_id for node in nodes])
+        get_papi().stop_nodes([node.system_id for node in nodes])
         return nodes
 
     def start_nodes(self, ids, by_user, user_data=None):
@@ -339,13 +334,11 @@ class NodeManager(models.Manager):
         :rtype: list
         """
         from metadataserver.models import NodeUserData
-        self._set_provisioning_proxy()
         nodes = self.get_editable_nodes(by_user, ids=ids)
         if user_data is not None:
             for node in nodes:
                 NodeUserData.objects.set_user_data(node, user_data)
-        self.provisioning_proxy.start_nodes(
-            [node.system_id for node in nodes])
+        get_papi().start_nodes([node.system_id for node in nodes])
         return nodes
 
 
