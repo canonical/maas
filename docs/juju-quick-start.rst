@@ -14,9 +14,11 @@ A few assumptions are made:
 
 - You're running Juju from the PPA (``ppa:juju/pkgs``) or from a
   branch of ``lp:juju``. At the time of writing MAAS support had not
-  made it into the main Ubuntu archives.
+  made it into the main Ubuntu archives. However, following the
+  release of Ubuntu Precise, all the necessary package revisions will
+  be in main.
 
-  Note that, if you're using a branch, you'll need to set
+  If you're using a branch, note that you'll need to set
   ``PYTHONPATH`` carefully to ensure you use the code in the branch.
 
 
@@ -116,9 +118,12 @@ makes it easy to follow on progress::
   node.
 
 Once the master node has been installed a status command should come
-up with something a bit more interesting::
+up with something a bit more interesting:
 
-  TODO
+  **XXX** `Bug 965101
+  <https://bugs.launchpad.net/maas/+bug/965101>`_ - *MAAS provider
+  does not raise an exception when get_machines(...)  does not find
+  the requested machines* - prevented capturing of output here.
 
 Now it's possible to deploy a charm::
 
