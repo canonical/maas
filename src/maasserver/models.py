@@ -18,6 +18,7 @@ __all__ = [
     "NODE_STATUS",
     "Node",
     "MACAddress",
+    "SSHKey",
     "UserProfile",
     ]
 
@@ -645,15 +646,30 @@ post_save.connect(create_user, sender=User)
 User._meta.get_field('email')._unique = True
 
 
-class SSHKeys(models.Model):
-    """A simple SSH public keystore that can be retrieved, a user
-       can have multiple keys.
+class SSHKeyManager(models.Manager):
+    """A utility to manage the colletion of `SSHKey`s."""
+
+    def get_keys_for_user(self, user):
+        """Return the text of the ssh keys associated with a user."""
+        return SSHKey.objects.filter(user=user).values_list('key', flat=True)
+
+
+class SSHKey(CommonInfo):
+    """A `SSHKey` represents a user public SSH key.
+
+    Users will be able to access `Node`s using any of their registered keys.
 
     :ivar user: The user which owns the key.
     :ivar key: The ssh public key.
     """
-    user = models.ForeignKey(UserProfile)
-    key = models.TextField()
+    class Meta:
+        verbose_name_plural = "SSH keys"
+
+    objects = SSHKeyManager()
+
+    user = models.ForeignKey(User, null=False, editable=False)
+
+    key = models.TextField(null=False, editable=True)
 
     def __unicode__(self):
         return self.key
@@ -919,7 +935,7 @@ admin.site.register(Config)
 admin.site.register(FileStorage)
 admin.site.register(MACAddress)
 admin.site.register(Node)
-admin.site.register(SSHKeys)
+admin.site.register(SSHKey)
 
 
 class MAASAuthorizationBackend(ModelBackend):

@@ -24,6 +24,7 @@ from maasserver.models import (
     MACAddress,
     Node,
     NODE_STATUS,
+    SSHKey,
     )
 from maasserver.testing.enum import map_enum
 import maastesting.factory
@@ -81,6 +82,21 @@ class Factory(maastesting.factory.Factory):
             password = 'test'
         return User.objects.create_user(
             username=username, password=password, email=email)
+
+    def make_user_with_keys(self, n_keys=2, **kwargs):
+        """Create a user with n `SSHKey`.
+
+        Additional keyword arguments are passed to `make_user()`.
+
+        Keys will have a comment of the form: <username>-key-<i> where i
+        is the key index.
+        """
+        user = self.make_user(**kwargs)
+        for i in range(n_keys):
+            SSHKey(
+                user=user,
+                key='ssh-rsa KEY %s-key-%d' % (user.username, i)).save()
+        return user
 
     def make_admin(self, username=None, password=None, email=None):
         admin = self.make_user(

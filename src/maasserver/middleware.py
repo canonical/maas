@@ -74,7 +74,6 @@ class AccessMiddleware:
             reverse('metadata'),
             # API calls are protected by piston.
             settings.API_URL_REGEXP,
-            r'^/accounts/[\w]+/sshkeys/$',
             ]
         self.public_urls = re.compile("|".join(public_url_roots))
         self.login_url = reverse('login')

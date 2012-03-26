@@ -37,6 +37,7 @@ from maasserver.models import (
     Node,
     NODE_STATUS,
     NODE_STATUS_CHOICES_DICT,
+    SSHKey,
     SYSTEM_USERS,
     UserProfile,
     )
@@ -487,6 +488,26 @@ class UserProfileTest(TestCase):
         usernames = set(
             user.username for user in UserProfile.objects.all_users())
         self.assertTrue(set(SYSTEM_USERS).isdisjoint(usernames))
+
+
+class SSHKeyManagerTest(TestCase):
+    """Testing for the :class `SSHKeyManager` model manager."""
+
+    def test_get_keys_for_user_no_keys(self):
+        user = factory.make_user()
+        keys = SSHKey.objects.get_keys_for_user(user)
+        self.assertItemsEqual([], keys)
+
+    def test_get_keys_for_user_with_keys(self):
+        user1 = factory.make_user_with_keys(n_keys=3, username='user1')
+        # user2
+        factory.make_user_with_keys(n_keys=2)
+        keys = SSHKey.objects.get_keys_for_user(user1)
+        self.assertItemsEqual([
+            'ssh-rsa KEY user1-key-0',
+            'ssh-rsa KEY user1-key-1',
+            'ssh-rsa KEY user1-key-2',
+            ], keys)
 
 
 class FileStorageTest(TestCase):
