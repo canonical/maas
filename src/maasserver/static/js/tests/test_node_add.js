@@ -82,7 +82,7 @@ function find_add_button() {
 /* Find the global errors panel at the top of the add-node form.
  */
 function find_global_errors() {
-    return find_widget().one('.form-global-errors');
+    return find_widget().one('.form-errors');
 }
 
 

@@ -12,7 +12,8 @@ form li.form-submit {
     text-align: right;
     }
 .form-errors,
-form .errors {
+form .errors,
+form .field-error {
     color: #DE3E25;
     }
 label {

@@ -122,7 +122,7 @@ Y.extend(AddNodeWidget, Y.Panel, {
             .set('name', 'op')
             .set('value', 'new');
         var global_error = Y.Node.create('<p />')
-            .addClass('form-global-errors');
+            .addClass('form-errors');
         var addnodeform = Y.Node.create('<form />')
             .set('method', 'post')
             .append(global_error)
@@ -153,8 +153,7 @@ Y.extend(AddNodeWidget, Y.Panel, {
             error_node = error;
         }
 
-        this.get(
-            'srcNode').one('.form-global-errors').empty().append(error_node);
+        this.get('srcNode').one('.form-errors').empty().append(error_node);
      },
 
    /**
