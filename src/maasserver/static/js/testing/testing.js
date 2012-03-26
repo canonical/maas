@@ -8,6 +8,29 @@ Y.log('loading maas.testing');
 
 var module = Y.namespace('maas.testing');
 
+
+/**
+ * Create a fake http response.
+ */
+function make_fake_response(response_text, status_code) {
+    var out = {};
+    // status_code defaults to undefined, since it's not always set.
+    if (status_code !== undefined) {
+        out.status = status_code;
+    }
+    out.responseText = response_text;
+
+    /* We probably shouldn't rely on the response attribute: according to
+     * http://yuilibrary.com/yui/docs/io/#the-response-object it doesn't
+     * always have to be populated.  We do get a guarantee for responseText
+     * or responseXML.
+     */
+    out.response = response_text;
+
+    return out;
+}
+
+
 module.TestCase = Y.Base.create('ioMockableTestCase', Y.Test.Case, [], {
 
     _setUp: function() {
@@ -92,12 +115,44 @@ module.TestCase = Y.Base.create('ioMockableTestCase', Y.Test.Case, [], {
         return handle;
     },
 
-    mockSuccess: function(response, module) {
-        var mockXhr = {};
+    /**
+     * Set up mockIO to feign successful I/O completion.
+     *
+     * @method mockSuccess
+     * @param response_text The response text to fake.  It will be available
+     *     as request.responseText in the request passed to the success
+     *     handler.
+     * @param module The module to be instrumented.
+     * @param status_code Optional HTTP status code.  This defaults to
+     *     undefined, since the attribute may not always be available.
+     */
+    mockSuccess: function(response_text, module, status_code) {
+        var mockXhr = new Y.Base();
         mockXhr.send = function(url, cfg) {
-           var out = {};
-           out.response = response;
-           cfg.on.success('4', out);
+            var response = make_fake_response(response_text, status_code);
+            var arbitrary_txn_id = '4';
+            cfg.on.success(arbitrary_txn_id, response);
+        };
+        this.mockIO(mockXhr, module);
+    },
+
+    /**
+     * Set up mockIO to feign I/O failure.
+     *
+     * @method mockFailure
+     * @param response_text The response text to fake.  It will be available
+     *     as request.responseText in the request passed to the failure
+     *     handler.
+     * @param module The module to be instrumented.
+     * @param status_code Optional HTTP status code.  This defaults to
+     *     undefined, since the attribute may not always be available.
+     */
+    mockFailure: function(response_text, module, status_code) {
+        var mockXhr = new Y.Base();
+        mockXhr.send = function(url, cfg) {
+            var response = make_fake_response(response_text, status_code);
+            var arbitrary_txn_id = '4';
+            cfg.on.failure(arbitrary_txn_id, response);
         };
         this.mockIO(mockXhr, module);
     }
