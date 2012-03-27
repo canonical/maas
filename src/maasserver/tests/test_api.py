@@ -15,13 +15,18 @@ from base64 import b64encode
 import httplib
 import json
 import os
+import random
 import shutil
 
 from django.conf import settings
 from django.db.models.signals import post_save
+from django.http import QueryDict
 from fixtures import Fixture
 from maasserver import api
-from maasserver.api import extract_oauth_key
+from maasserver.api import (
+    extract_constraints,
+    extract_oauth_key,
+    )
 from maasserver.models import (
     ARCHITECTURE_CHOICES,
     Config,
@@ -72,6 +77,20 @@ class TestModuleHelpers(TestCase):
 
     def test_extract_oauth_key_returns_None_without_oauth_key(self):
         self.assertIs(None, extract_oauth_key(''))
+
+    def test_extract_constraints_ignores_unknown_parameters(self):
+        unknown_parameter = "%s=%s" % (
+            factory.getRandomString(),
+            factory.getRandomString(),
+            )
+        self.assertEqual(
+            {}, extract_constraints(QueryDict(unknown_parameter)))
+
+    def test_extract_constraints_extracts_name(self):
+        name = factory.getRandomString()
+        self.assertEqual(
+            {'name': name},
+            extract_constraints(QueryDict('name=%s' % name)))
 
 
 class AnonymousEnlistmentAPITest(APIv10TestMixin, TestCase):
@@ -759,7 +778,7 @@ class TestNodesAPI(APITestCase):
         available_status = NODE_STATUS.READY
         node = factory.make_node(status=available_status, owner=None)
         response = self.client.post(self.get_uri('nodes/'), {'op': 'acquire'})
-        self.assertEqual(200, response.status_code)
+        self.assertEqual(httplib.OK, response.status_code)
         parsed_result = json.loads(response.content)
         self.assertEqual(node.system_id, parsed_result['system_id'])
 
@@ -776,6 +795,90 @@ class TestNodesAPI(APITestCase):
         # are available.
         response = self.client.post(self.get_uri('nodes/'), {'op': 'acquire'})
         # Fails with Conflict error: resource can't satisfy request.
+        self.assertEqual(httplib.CONFLICT, response.status_code)
+
+    def test_POST_ignores_already_allocated_node(self):
+        factory.make_node(
+            status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
+        response = self.client.post(self.get_uri('nodes/'), {'op': 'acquire'})
+        self.assertEqual(httplib.CONFLICT, response.status_code)
+
+    def test_POST_acquire_chooses_candidate_matching_constraint(self):
+        # If "acquire" is passed a constraint, it will go for a node
+        # matching that constraint even if there's tons of other nodes
+        # available.
+        # (Creating lots of nodes here to minimize the chances of this
+        # passing by accident).
+        available_nodes = [
+            factory.make_node(status=NODE_STATUS.READY, owner=None)
+            for counter in range(20)]
+        desired_node = random.choice(available_nodes)
+        response = self.client.post(self.get_uri('nodes/'), {
+            'op': 'acquire',
+            'name': desired_node.system_id,
+        })
+        self.assertEqual(httplib.OK, response.status_code)
+        parsed_result = json.loads(response.content)
+        self.assertEqual(desired_node.system_id, parsed_result['system_id'])
+
+    def test_POST_acquire_would_rather_fail_than_disobey_constraint(self):
+        # If "acquire" is passed a constraint, it won't return a node
+        # that does not meet that constraint.  Even if it means that it
+        # can't meet the request.
+        factory.make_node(status=NODE_STATUS.READY, owner=None)
+        desired_node = factory.make_node(
+            status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
+        response = self.client.post(self.get_uri('nodes/'), {
+            'op': 'acquire',
+            'name': desired_node.system_id,
+        })
+        self.assertEqual(httplib.CONFLICT, response.status_code)
+
+    def test_POST_acquire_ignores_unknown_constraint(self):
+        node = factory.make_node(status=NODE_STATUS.READY, owner=None)
+        response = self.client.post(self.get_uri('nodes/'), {
+            'op': 'acquire',
+            factory.getRandomString(): factory.getRandomString(),
+        })
+        self.assertEqual(httplib.OK, response.status_code)
+        parsed_result = json.loads(response.content)
+        self.assertEqual(node.system_id, parsed_result['system_id'])
+
+    def test_POST_acquire_allocates_node_by_name(self):
+        # Positive test for name constraint.
+        # If a name constraint is given, "acquire" attempts to allocate
+        # a node of that name.
+        node = factory.make_node(status=NODE_STATUS.READY, owner=None)
+        system_id = node.system_id
+        response = self.client.post(self.get_uri('nodes/'), {
+            'op': 'acquire',
+            'name': system_id,
+        })
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(system_id, json.loads(response.content)['system_id'])
+
+    def test_POST_acquire_constrains_by_name(self):
+        # Negative test for name constraint.
+        # If a name constraint is given, "acquire" will only consider a
+        # node with that name.
+        factory.make_node(status=NODE_STATUS.READY, owner=None)
+        response = self.client.post(self.get_uri('nodes/'), {
+            'op': 'acquire',
+            'name': factory.getRandomString(),
+        })
+        self.assertEqual(httplib.CONFLICT, response.status_code)
+
+    def test_POST_acquire_treats_unknown_name_as_resource_conflict(self):
+        # A name constraint naming an unknown node produces a resource
+        # conflict: most likely the node existed but has changed or
+        # disappeared.
+        # Certainly it's not a 404, since the resource named in the URL
+        # is "nodes/," which does exist.
+        factory.make_node(status=NODE_STATUS.READY, owner=None)
+        response = self.client.post(self.get_uri('nodes/'), {
+            'op': 'acquire',
+            'name': factory.getRandomString(),
+        })
         self.assertEqual(httplib.CONFLICT, response.status_code)
 
     def test_POST_acquire_sets_a_token(self):

@@ -379,6 +379,21 @@ class AnonNodesHandler(AnonymousBaseHandler):
         return ('nodes_handler', [])
 
 
+def extract_constraints(request_params):
+    """Extract a dict of node allocation constraints from http parameters.
+
+    :param request_params: Parameters submitted with the allocation request.
+    :type request_params: :class:`django.http.QueryDict`
+    :return: A mapping of applicable constraint names to their values.
+    :rtype: :class:`dict`
+    """
+    name = request_params.get('name', None)
+    if name is None:
+        return {}
+    else:
+        return {'name': name}
+
+
 @api_operations
 class NodesHandler(BaseHandler):
     """Manage collection of Nodes."""
@@ -422,9 +437,10 @@ class NodesHandler(BaseHandler):
     @api_exported('acquire', 'POST')
     def acquire(self, request):
         """Acquire an available node for deployment."""
-        node = Node.objects.get_available_node_for_acquisition(request.user)
+        node = Node.objects.get_available_node_for_acquisition(
+            request.user, constraints=extract_constraints(request.data))
         if node is None:
-            raise NodesNotAvailable("No node is available.")
+            raise NodesNotAvailable("No matching node is available.")
         auth_header = request.META.get("HTTP_AUTHORIZATION")
         assert auth_header is not None, (
             "HTTP_AUTHORIZATION not set on request")

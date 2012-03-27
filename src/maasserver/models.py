@@ -290,15 +290,26 @@ class NodeManager(models.Manager):
         else:
             raise PermissionDenied
 
-    def get_available_node_for_acquisition(self, for_user):
+    def get_available_node_for_acquisition(self, for_user, constraints=None):
         """Find a `Node` to be acquired by the given user.
 
         :param for_user: The user who is to acquire the node.
-        :return: A `Node`, or None if none are available.
+        :type for_user: :class:`django.contrib.auth.models.User`
+        :param constraints: Optional selection constraints.  If given, only
+            nodes matching these constraints are considered.
+        :type constraints: :class:`dict`
+        :return: A matching `Node`, or None if none are available.
         """
+        if constraints is None:
+            constraints = {}
         available_nodes = (
             self.get_visible_nodes(for_user)
                 .filter(status=NODE_STATUS.READY))
+
+        if constraints.get('name'):
+            available_nodes = available_nodes.filter(
+                system_id=constraints['name'])
+
         available_nodes = list(available_nodes[:1])
         if len(available_nodes) == 0:
             return None
