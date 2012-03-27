@@ -16,24 +16,18 @@ __all__ = [
     'VersionIndexHandler',
     ]
 
-from django.http import (
-    Http404,
-    HttpResponse,
-    )
+from django.http import HttpResponse
 from maasserver.api import extract_oauth_key
 from maasserver.exceptions import (
     MAASAPINotFound,
     PermissionDenied,
     Unauthorized,
     )
+from maasserver.models import SSHKey
 from metadataserver.models import (
     NodeKey,
     NodeUserData,
     )
-from maasserver.models import (
-    SSHKey,
-    )
-
 from piston.handler import BaseHandler
 
 
