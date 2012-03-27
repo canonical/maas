@@ -26,6 +26,7 @@ from django.db.models.signals import (
     post_save,
     )
 from django.dispatch import receiver
+from maasserver.exceptions import MAASAPIException
 from maasserver.models import (
     Config,
     MACAddress,
@@ -85,7 +86,7 @@ def present_user_friendly_fault(fault):
         Otherwise, this returns None and the original exception should be
         re-raised.  (This is left to the caller in order to minimize
         erosion of the backtrace).
-    :rtype: :class:`Exception`, or None.
+    :rtype: :class:`MAASAPIException`, or None.
     """
     params = {
         'fault_code': fault.faultCode,
@@ -95,8 +96,8 @@ def present_user_friendly_fault(fault):
     if user_friendly_text is None:
         return None
     else:
-        user_friendly_text = dedent(user_friendly_text.lstrip('\n') % params)
-        return xmlrpclib.Fault(fault.faultCode, user_friendly_text)
+        return MAASAPIException(dedent(
+            user_friendly_text.lstrip('\n') % params))
 
 
 class ProvisioningCaller:

@@ -16,6 +16,7 @@ from xmlrpclib import Fault
 
 from django.conf import settings
 from maasserver import provisioning
+from maasserver.exceptions import MAASAPIException
 from maasserver.models import (
     ARCHITECTURE,
     Config,
@@ -128,21 +129,18 @@ class ProvisioningTests:
             raise Fault(PSERV_FAULT.NO_SUCH_PROFILE, "Unknown profile.")
 
         self.papi.patch('add_node', raise_missing_profile)
-        expectation = ExpectedException(
-            Fault, value_re='.*maas-import-isos.*')
-        with expectation:
+        with ExpectedException(MAASAPIException):
             node = factory.make_node(architecture='amd32k')
             provisioning.provision_post_save_Node(
                 sender=Node, instance=node, created=True)
 
     def test_provision_post_save_Node_returns_other_pserv_faults(self):
-        error_text = factory.getRandomString()
 
         def raise_fault(*args, **kwargs):
-            raise Fault(PSERV_FAULT.NO_COBBLER, error_text)
+            raise Fault(PSERV_FAULT.NO_COBBLER, factory.getRandomString())
 
         self.papi.patch('add_node', raise_fault)
-        with ExpectedException(Fault, ".*%s.*" % error_text):
+        with ExpectedException(MAASAPIException):
             node = factory.make_node(architecture='amd32k')
             provisioning.provision_post_save_Node(
                 sender=Node, instance=node, created=True)
@@ -251,7 +249,7 @@ class ProvisioningTests:
 
         self.papi.patch('add_node', raise_fault)
 
-        with ExpectedException(Fault, ".*provisioning server.*"):
+        with ExpectedException(MAASAPIException, ".*provisioning server.*"):
             self.papi.add_node('node', 'profile', 'power', {})
 
     def test_provisioning_errors_are_reported_helpfully(self):
@@ -261,13 +259,13 @@ class ProvisioningTests:
 
         self.papi.patch('add_node', raise_provisioning_error)
 
-        with ExpectedException(Fault, ".*Cobbler.*"):
+        with ExpectedException(MAASAPIException, ".*Cobbler.*"):
             self.papi.add_node('node', 'profile', 'power', {})
 
     def test_present_user_friendly_fault_describes_pserv_fault(self):
         self.assertIn(
             "provisioning server",
-            present_user_friendly_fault(Fault(8002, 'error')).faultString)
+            present_user_friendly_fault(Fault(8002, 'error')).message)
 
     def test_present_user_friendly_fault_covers_all_pserv_faults(self):
         all_pserv_faults = set(map_enum(PSERV_FAULT).values())
@@ -279,26 +277,26 @@ class ProvisioningTests:
         for fault_code in map_enum(PSERV_FAULT).values():
             original_fault = Fault(fault_code, fault_string)
             new_fault = present_user_friendly_fault(original_fault)
-            self.assertNotEqual(fault_string, new_fault.faultString)
+            self.assertNotEqual(fault_string, new_fault.message)
 
     def test_present_user_friendly_fault_describes_cobbler_fault(self):
         friendly_fault = present_user_friendly_fault(
             Fault(PSERV_FAULT.NO_COBBLER, factory.getRandomString()))
-        friendly_text = friendly_fault.faultString
+        friendly_text = friendly_fault.message
         self.assertIn("unable to reach", friendly_text)
         self.assertIn("Cobbler", friendly_text)
 
     def test_present_user_friendly_fault_describes_cobbler_auth_fail(self):
         friendly_fault = present_user_friendly_fault(
             Fault(PSERV_FAULT.COBBLER_AUTH_FAILED, factory.getRandomString()))
-        friendly_text = friendly_fault.faultString
+        friendly_text = friendly_fault.message
         self.assertIn("failed to authenticate", friendly_text)
         self.assertIn("Cobbler", friendly_text)
 
     def test_present_user_friendly_fault_describes_cobbler_auth_error(self):
         friendly_fault = present_user_friendly_fault(
             Fault(PSERV_FAULT.COBBLER_AUTH_ERROR, factory.getRandomString()))
-        friendly_text = friendly_fault.faultString
+        friendly_text = friendly_fault.message
         self.assertIn("authentication token", friendly_text)
         self.assertIn("Cobbler", friendly_text)
 
@@ -308,7 +306,7 @@ class ProvisioningTests:
             Fault(
                 PSERV_FAULT.NO_SUCH_PROFILE,
                 "invalid profile name: %s" % profile))
-        friendly_text = friendly_fault.faultString
+        friendly_text = friendly_fault.message
         self.assertIn(profile, friendly_text)
         self.assertIn("maas-import-isos", friendly_text)
 
@@ -316,7 +314,7 @@ class ProvisioningTests:
         error_text = factory.getRandomString()
         friendly_fault = present_user_friendly_fault(
             Fault(PSERV_FAULT.GENERIC_COBBLER_ERROR, error_text))
-        friendly_text = friendly_fault.faultString
+        friendly_text = friendly_fault.message
         self.assertIn("Cobbler", friendly_text)
         self.assertIn(error_text, friendly_text)
 
