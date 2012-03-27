@@ -12,6 +12,7 @@ __metaclass__ = type
 __all__ = [
     'TestCase',
     'TestModelTestCase',
+    'TransactionTestCase',
     ]
 
 import unittest
@@ -24,12 +25,7 @@ import testresources
 import testtools
 
 
-class TestCase(testtools.TestCase, django.test.TestCase):
-    """`TestCase` for Metal as a Service.
-
-    Supports test resources and fixtures.
-    """
-
+class TestCaseBase(testtools.TestCase):
     # testresources.ResourcedTestCase does something similar to this class
     # (with respect to setUpResources and tearDownResources) but it explicitly
     # up-calls to unittest.TestCase instead of using super() even though it is
@@ -39,7 +35,7 @@ class TestCase(testtools.TestCase, django.test.TestCase):
     resources = ()
 
     def setUp(self):
-        super(TestCase, self).setUp()
+        super(TestCaseBase, self).setUp()
         self.setUpResources()
 
     def setUpResources(self):
@@ -48,7 +44,7 @@ class TestCase(testtools.TestCase, django.test.TestCase):
 
     def tearDown(self):
         self.tearDownResources()
-        super(TestCase, self).tearDown()
+        super(TestCaseBase, self).tearDown()
 
     def tearDownResources(self):
         testresources.tearDownResources(
@@ -57,6 +53,23 @@ class TestCase(testtools.TestCase, django.test.TestCase):
     # Django's implementation for this seems to be broken and was
     # probably only added to support compatibility with python 2.6.
     assertItemsEqual = unittest.TestCase.assertItemsEqual
+
+
+class TestCase(TestCaseBase, django.test.TestCase):
+    """`TestCase` for Metal as a Service.
+
+    Supports test resources and fixtures.
+    """
+
+
+class TransactionTestCase(TestCaseBase, django.test.TransactionTestCase):
+    """`TransactionTestCase` for Metal as a Service.
+
+    A version of TestCase that supports transactions.
+
+    The basic Django TestCase class uses transactions to speed up tests
+    so this class should be used when tests involve transactions.
+    """
 
 
 class TestModelTestCase(TestCase):

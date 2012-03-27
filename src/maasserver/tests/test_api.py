@@ -42,6 +42,7 @@ from maasserver.testing.testcase import (
     LoggedInTestCase,
     TestCase,
     )
+from maastesting.testcase import TransactionTestCase
 from metadataserver.models import (
     NodeKey,
     NodeUserData,
@@ -1234,7 +1235,7 @@ class MAASAPITest(APITestCase):
         self.assertEqual(stored_value, value)
 
 
-class APIErrorsTest(APITestCase):
+class APIErrorsTest(APIv10TestMixin, TransactionTestCase):
 
     def test_internal_error_generate_proper_api_response(self):
         error_message = factory.getRandomString()
@@ -1248,3 +1249,29 @@ class APIErrorsTest(APITestCase):
         self.assertEqual(
             (httplib.INTERNAL_SERVER_ERROR, error_message),
             (response.status_code, response.content))
+
+    def test_Node_post_save_error_rollbacks_transaction(self):
+        # If post_save raises an exception after a Node is added, the
+        # whole transaction is rolledback.
+        error_message = factory.getRandomString()
+
+        def raise_exception(*args, **kwargs):
+            raise RuntimeError(error_message)
+        post_save.connect(raise_exception, sender=Node)
+        self.addCleanup(post_save.disconnect, raise_exception, sender=Node)
+
+        architecture = factory.getRandomChoice(ARCHITECTURE_CHOICES)
+        hostname = factory.getRandomString()
+        response = self.client.post(self.get_uri('nodes/'), {
+            'op': 'new',
+            'hostname': hostname,
+            'architecture': architecture,
+            'after_commissioning_action': '2',
+            'mac_addresses': ['aa:bb:cc:dd:ee:ff'],
+        })
+
+        self.assertEqual(
+            (httplib.INTERNAL_SERVER_ERROR, error_message),
+            (response.status_code, response.content))
+        self.assertRaises(
+            Node.DoesNotExist, Node.objects.get, hostname=hostname)

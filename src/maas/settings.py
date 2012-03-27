@@ -207,6 +207,8 @@ TEMPLATE_CONTEXT_PROCESSORS = (
 MIDDLEWARE_CLASSES = (
     'django.middleware.common.CommonMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'maasserver.middleware.APIErrorsMiddleware',
+    'metadataserver.middleware.MetadataErrorsMiddleware',
     'django.middleware.transaction.TransactionMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.middleware.csrf.CsrfResponseMiddleware',
@@ -214,8 +216,6 @@ MIDDLEWARE_CLASSES = (
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'maasserver.middleware.AccessMiddleware',
-    'maasserver.middleware.APIErrorsMiddleware',
-    'metadataserver.middleware.MetadataErrorsMiddleware',
 )
 
 ROOT_URLCONF = 'maas.urls'
