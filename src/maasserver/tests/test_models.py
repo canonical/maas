@@ -70,10 +70,17 @@ class NodeTest(TestCase):
         self.assertEqual(len(node.system_id), 41)
         self.assertTrue(node.system_id.startswith('node-'))
 
-    def test_display_status(self):
+    def test_display_status_shows_default_status(self):
         node = factory.make_node()
         self.assertEqual(
-            NODE_STATUS_CHOICES_DICT[NODE_STATUS.DEFAULT_STATUS],
+            NODE_STATUS_CHOICES_DICT[node.status],
+            node.display_status())
+
+    def test_display_status_for_allocated_node_shows_owner(self):
+        node = factory.make_node(
+            owner=factory.make_user(), status=NODE_STATUS.ALLOCATED)
+        self.assertEqual(
+            "Allocated to %s" % node.owner.username,
             node.display_status())
 
     def test_add_node_with_token(self):
