@@ -207,18 +207,13 @@ suite.add(new Y.maas.testing.TestCase({
         var widget = this.createWidget();
         widget._editing = true;
         widget.set('title', "SampleTitle");
-        var mockXhr = new Y.Base();
-        var fired = false;
-        mockXhr.send = function(url, cfg) {
-            fired = true;
-            Y.Assert.areEqual(MAAS_config.uris.maas_handler, url);
-            Y.Assert.areEqual(
-                "op=set_config&name=maas_name&value=SampleTitle",
-                cfg.data);
-        };
-        this.mockIO(mockXhr, module);
+        var log = this.logIO(module);
         widget.titleEditEnd();
-        Y.Assert.isTrue(fired);
+        var req_args = log.pop();
+        Y.Assert.areEqual(MAAS_config.uris.maas_handler, req_args[0]);
+        Y.Assert.areEqual(
+            'op=set_config&name=maas_name&value=SampleTitle',
+            req_args[1].data);
         Y.Assert.isFalse(widget._editing);
         Y.Assert.areEqual(
             "SampleTitle MAAS", widget.get('title'));

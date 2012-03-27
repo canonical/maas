@@ -113,17 +113,10 @@ suite.add(new Y.maas.testing.TestCase({
         module.showAddNodeWidget();
         var mockXhr = new Y.Base();
         var form = find_form();
-        var fired = false;
-        var passed_form;
-        mockXhr.send = function(uri, cfg) {
-            fired = true;
-            passed_form = cfg.form;
-        };
-        this.mockIO(mockXhr, module);
+        var log = this.logIO(module);
         find_hostname_input().set('value', 'host');
         find_add_button().simulate('click');
-        Y.Assert.isTrue(fired);
-        Y.Assert.areEqual(form, passed_form.id);
+        Y.Assert.areEqual(form, log.pop()[1].form.id);
     },
 
     testAddNodeAPICall: function() {
@@ -154,11 +147,7 @@ suite.add(new Y.maas.testing.TestCase({
     },
 
     testNodeidPopulation: function() {
-        var mockXhr = new Y.Base();
-        mockXhr.send = function(url, cfg) {
-            cfg.on.success(3, {response: Y.JSON.stringify({system_id: 3})});
-        };
-        this.mockIO(mockXhr, module);
+        this.mockSuccess(Y.JSON.stringify({system_id: 3}), module);
         module.showAddNodeWidget();
         this.addCleanup(
             Y.bind(

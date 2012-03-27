@@ -15,7 +15,7 @@ var module = Y.namespace('maas.testing');
 function make_fake_response(response_text, status_code) {
     var out = {};
     // status_code defaults to undefined, since it's not always set.
-    if (status_code !== undefined) {
+    if (Y.Lang.isValue(status_code)) {
         out.status = status_code;
     }
     out.responseText = response_text;
@@ -116,7 +116,8 @@ module.TestCase = Y.Base.create('ioMockableTestCase', Y.Test.Case, [], {
     },
 
     /**
-     * Set up mockIO to feign successful I/O completion.
+     * Set up mockIO to feign successful I/O completion.  Returns an array
+     * where calls will be recorded.
      *
      * @method mockSuccess
      * @param response_text The response text to fake.  It will be available
@@ -127,17 +128,21 @@ module.TestCase = Y.Base.create('ioMockableTestCase', Y.Test.Case, [], {
      *     undefined, since the attribute may not always be available.
      */
     mockSuccess: function(response_text, module, status_code) {
+        var log = [];
         var mockXhr = new Y.Base();
         mockXhr.send = function(url, cfg) {
+            log.push([url, cfg]);
             var response = make_fake_response(response_text, status_code);
             var arbitrary_txn_id = '4';
             cfg.on.success(arbitrary_txn_id, response);
         };
         this.mockIO(mockXhr, module);
+        return log;
     },
 
     /**
-     * Set up mockIO to feign I/O failure.
+     * Set up mockIO to feign I/O failure.  Returns an array
+     * where calls will be recorded.
      *
      * @method mockFailure
      * @param response_text The response text to fake.  It will be available
@@ -148,13 +153,16 @@ module.TestCase = Y.Base.create('ioMockableTestCase', Y.Test.Case, [], {
      *     undefined, since the attribute may not always be available.
      */
     mockFailure: function(response_text, module, status_code) {
+        var log = [];
         var mockXhr = new Y.Base();
         mockXhr.send = function(url, cfg) {
+            log.push([url, cfg]);
             var response = make_fake_response(response_text, status_code);
             var arbitrary_txn_id = '4';
             cfg.on.failure(arbitrary_txn_id, response);
         };
         this.mockIO(mockXhr, module);
+        return log;
     }
 
 });

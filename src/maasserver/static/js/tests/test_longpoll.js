@@ -34,7 +34,7 @@ suite.add(new Y.maas.testing.TestCase({
     setUp: function() {
         var old_repoll = longpoll._repoll;
         longpoll._repoll = false;
-        this.addCleanup(function() {longpoll._repoll = old_repoll});
+        this.addCleanup(function() {longpoll._repoll = old_repoll; });
     },
 
     tearDown: function() {
@@ -63,14 +63,10 @@ suite.add(new Y.maas.testing.TestCase({
         Y.on(longpoll.longpoll_fail_event, function() {
             fired = true;
         });
-        // Monkeypatch io to simulate failure.
         var manager = longpoll.getLongPollManager();
-        var mockXhr = new Y.Base();
-        mockXhr.send = function(uri, cfg) {
-            cfg.on.failure();
-        };
-        this.mockIO(mockXhr, longpoll);
-        var manager = longpoll.setupLongPollManager('key', '/longpoll/');
+        // Simulate failure.
+        this.mockFailure('unused', longpoll);
+        longpoll.setupLongPollManager('key', '/longpoll/');
         Y.Assert.isTrue(fired, "Failure event not fired.");
     },
 
@@ -113,14 +109,10 @@ suite.add(new Y.maas.testing.TestCase({
             shortdelay_event_fired = true;
         });
         var manager = longpoll.getLongPollManager();
-        // Monkeypatch io to simulate failure.
-        var mockXhr = new Y.Base();
-        mockXhr.send = function(uri, cfg) {
-            cfg.on.failure();
-        };
-        this.mockIO(mockXhr, longpoll);
+        // Simulate failure.
+        this.mockFailure('unused', longpoll);
         Y.Assert.areEqual(0, manager._failed_attempts);
-        var manager = longpoll.setupLongPollManager('key', '/longpoll/');
+        longpoll.setupLongPollManager('key', '/longpoll/');
         Y.Assert.areEqual(1, manager._failed_attempts);
         var i, delay;
         for (i=0; i<longpoll.MAX_SHORT_DELAY_FAILED_ATTEMPTS-2; i++) {
@@ -136,14 +128,10 @@ suite.add(new Y.maas.testing.TestCase({
         Y.Assert.isTrue(longdelay_event_fired);
         Y.Assert.areEqual(delay, longpoll.LONG_DELAY);
 
-        // Monkeypatch io to simulate success.
-        var mockXhr = new Y.Base();
-        mockXhr.send = function(uri, cfg) {
-            var out = {};
-            out.responseText = Y.JSON.stringify({'event_key': 'response'});
-            cfg.on.success(4, out);
-        };
-        this.mockIO(mockXhr, longpoll);
+        // Simulate success.
+        this.mockSuccess(
+            Y.JSON.stringify({'event_key': 'response'}), longpoll);
+
         // After a success, longpoll.longpoll_shortdelay is fired.
         Y.Assert.isFalse(shortdelay_event_fired);
         delay = manager.poll();
@@ -156,26 +144,16 @@ suite.add(new Y.maas.testing.TestCase({
         // /longpoll/?uuid=key&sequence=2
         // /longpoll/?uuid=key&sequence=3
         // ...
-        var count = 0;
-        // Monkeypatch io to simulate failure.
         var manager = longpoll.getLongPollManager();
-        var mockXhr = new Y.Base();
-        mockXhr.send = function(uri, cfg) {
-            Y.Assert.areEqual(
-                '/longpoll/?uuid=key&sequence=' + (count+1),
-                uri);
-            count = count + 1;
-            var response = {
-               responseText: '{"i":2}'
-            };
-            cfg.on.success(2, response);
-        };
-        this.mockIO(mockXhr, longpoll);
+        // Simulate success.
+        var log = this.mockSuccess('{"i":2}', longpoll);
         longpoll.setupLongPollManager('key', '/longpoll/');
         var request;
         for (request=1; request<10; request++) {
-            Y.Assert.isTrue(count === request, "Uri not requested.");
             manager.poll();
+            Y.Assert.areEqual(
+                '/longpoll/?uuid=key&sequence=' + (request + 1),
+                log.pop()[0]);
         }
     },
 
@@ -184,13 +162,8 @@ suite.add(new Y.maas.testing.TestCase({
         // with code error_code, it is not treated as a failed
         // connection attempt.
         var manager = longpoll.getLongPollManager();
-        // Monkeypatch io to simulate a request timeout.
-        var mockXhr = new Y.Base();
-        mockXhr.send = function(uri, cfg) {
-            response = {status: error_code};
-            cfg.on.failure(4, response);
-        };
-        this.mockIO(mockXhr, longpoll);
+        // Simulate a request timeout.
+        this.mockFailure('{"i":2}', longpoll, error_code);
 
         Y.Assert.areEqual(0, manager._failed_attempts);
         longpoll.setupLongPollManager('key', '/longpoll/');
@@ -225,22 +198,19 @@ suite.add(new Y.maas.testing.TestCase({
             'event_key': 'my-event',
             'something': {something_else: 1234}
         };
-        var fired = false;
+        var event_payload = null;
         Y.on(custom_response.event_key, function(data) {
-            fired = true;
-            Y.Assert.areEqual(data, custom_response);
+            event_payload = data;
         });
         var manager = longpoll.getLongPollManager();
-        // Monkeypatch io.
-        var mockXhr = new Y.Base();
-        mockXhr.send = function(uri, cfg) {
-            var out = {};
-            out.responseText = Y.JSON.stringify(custom_response);
-            cfg.on.success(4, out);
-        };
-        this.mockIO(mockXhr, longpoll);
+        // Simulate success.
+        this.mockSuccess(Y.JSON.stringify(custom_response), longpoll);
         longpoll.setupLongPollManager('key', '/longpoll/');
-        Y.Assert.isTrue(fired, "Custom event not fired.");
+        // Note that a utility to compare objects does not yet exist in YUI.
+        // http://yuilibrary.com/projects/yui3/ticket/2529868.
+        Y.Assert.areEqual('my-event', event_payload.event_key);
+        Y.Assert.areEqual(
+            1234, event_payload.something.something_else);
     }
 
 }));
