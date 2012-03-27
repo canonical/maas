@@ -21,7 +21,7 @@ Installing MAAS from the archive
 
 Installing MAAS is straightforward. At the commandline, type::
 
-  sudo apt-get install maas
+    $ sudo apt-get install maas
 
 From a fresh Ubuntu 12.04 LTS install, MAAS will pull down around 200 MB of packages.
 
@@ -32,7 +32,7 @@ Once MAAS is installed, you'll need to create your first administrator account.
 
 At the commandline, type::
 
-  maas createsuperuser
+    $ maas createsuperuser
   
 Follow the prompts and MAAS will create an admin account that you can later use to log in.
 
@@ -45,12 +45,10 @@ with your existing DHCP set-up but for this guide we'll use dnsmasq.
 dnsmasq should already be installed. However, if it is not, enter the 
 following::
 
-  sudo apt-get install dnsmasq
+    $ sudo apt-get install dnsmasq
 
 MAAS enlists nodes using a tool called Cobbler. Cobbler provides a 
-configuration file for dnsmasq that you'll find here::
-
-  /etc/cobbler/dnsmasq.template
+configuration file for dnsmasq: `/etc/cobbler/dnsmasq.template`.
   
 Make the following changes:
 
@@ -60,9 +58,7 @@ Make the following changes:
  * ``dhcp-option=3,next_server``: replace **next_server** with the current 
                                   server's IP address.
  
-Save that file and now edit the Cobbler settings file::
-
-  /etc/cobbler/settings
+Save that file and now edit the Cobbler settings file: `/etc/cobbler/settings`.
 
 You need to change two settings:
 
@@ -71,7 +67,7 @@ You need to change two settings:
  
 Now restart dnsmasq::
 
-  sudo /etc/init.d/dnsmasq restart
+    $ sudo /etc/init.d/dnsmasq restart
 
 
 Import the Ubuntu images
@@ -80,15 +76,15 @@ Import the Ubuntu images
 MAAS will check for and download new Ubuntu images once a week. However, 
 you'll need to download them manually the first time::
 
-  sudo maas-import-isos
+    $ sudo maas-import-isos
 
 
 Next steps
 ==========
 
 Your MAAS is now ready for use. Visit the MAAS web interface in your browser 
-at::
+at `http://localhost/MAAS`_.
 
-  http://localhost/MAAS
+.. _http://localhost/MAAS: http://localhost/MAAS
   
 Now, :doc:`let's prepare your Juju environment <juju-quick-start>`.
