@@ -83,8 +83,10 @@ def convert_cobbler_exception(fault):
     :rtype: :class:`ProvisioningError`
     """
     assert isinstance(fault, Fault)
-    assert not isinstance(fault, ProvisioningError), (
-        "Fault went through double conversion.")
+
+    if isinstance(fault, ProvisioningError):
+        raise AssertionError(
+            "Fault %r went through double conversion." % fault)
 
     err_str = extract_text(fault.faultString)
     if fault.faultCode != 1:

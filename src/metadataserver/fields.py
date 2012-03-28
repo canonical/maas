@@ -48,8 +48,9 @@ class Bin(bytes):
             this constructor will refuse to render None as b'None'.
         :type initializer: bytes
         """
-        assert isinstance(initializer, bytes), (
-            "Not a binary string: '%s'" % repr(initializer))
+        if not isinstance(initializer, bytes):
+            raise AssertionError(
+                "Not a binary string: '%s'" % repr(initializer))
         super(Bin, self).__init__(initializer)
 
 
