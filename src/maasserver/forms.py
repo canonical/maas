@@ -265,8 +265,6 @@ class ConfigForm(Form):
 class MAASAndNetworkForm(ConfigForm):
     """Settings page, MAAS and Network section."""
     maas_name = forms.CharField(label="MAAS name")
-    provide_dhcp = forms.BooleanField(
-        label="Provide DHCP on this subnet", required=False)
 
 
 class CommissioningForm(ConfigForm):

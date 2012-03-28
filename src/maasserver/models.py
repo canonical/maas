@@ -849,7 +849,6 @@ def get_default_config():
             [['archive.ubuntu.com', 'archive.ubuntu.com']]),
         # Network section configuration.
         'maas_name': gethostname(),
-        'provide_dhcp': False,
         ## /settings
         }
 

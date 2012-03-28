@@ -515,20 +515,16 @@ class SettingsTest(AdminLoggedInTestCase):
 
     def test_settings_maas_and_network_POST(self):
         new_name = factory.getRandomString()
-        new_provide_dhcp = factory.getRandomBoolean()
         response = self.client.post(
             '/settings/',
             get_prefixed_form_data(
                 prefix='maas_and_network',
                 data={
                     'maas_name': new_name,
-                    'provide_dhcp': new_provide_dhcp,
                 }))
 
         self.assertEqual(httplib.FOUND, response.status_code)
         self.assertEqual(new_name, Config.objects.get_config('maas_name'))
-        self.assertEqual(
-            new_provide_dhcp, Config.objects.get_config('provide_dhcp'))
 
     def test_settings_commissioning_POST(self):
         new_after_commissioning = factory.getRandomEnum(
