@@ -208,6 +208,67 @@ always start with the appropriate template from the ``templates``
 directory.
 
 
+Database schema changes
+=======================
+
+MAAS uses South_ to manage changes to the database schema.
+
+.. _South: http://south.aeracode.org
+
+Be sure to have a look at `South's documentation`_ before you make any change.
+
+.. _South's documentation: http://south.aeracode.org/docs/
+
+Changing the schema
+^^^^^^^^^^^^^^^^^^^
+
+Once you've made a change to ``src/<application>/models.py`` you have to run  
+South's `schemamigration`_ command to create a migration file that will be
+stored in ``src/<application>/migrations/``.
+
+.. _schemamigration: http://south.aeracode.org/docs/commands.html#schemamigration
+
+For instance if you're making changes to ``src/maasserver/models.py``, you
+will need to run::
+
+    $ ./bin/maas schemamigration maasserver --auto description_of_the_change
+
+This will generate a migration module named
+``src/maasserver/migrations/<auto_number>_description_of_the_change.py``.  Don't
+forget to add that file to the project with::
+
+    $ bzr add \
+        src/maasserver/migrations/<auto_number>_description_of_the_change.py
+
+To apply that migration, run::
+
+    $ make syncdb
+
+Performing data migration
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+If you need to perform data migration, very much in the same way, you will need
+to run South's `datamigration`_ command.  For instance, if you want to perform
+changes to the ``maasserver`` application, run::
+
+    $ ./bin/maas datamigration maasserver --auto description_of_the_change
+
+.. _datamigration: http://south.aeracode.org/docs/commands.html#datamigration
+
+This will generate a migration module named
+``src/maasserver/migrations/<auto_number>_description_of_the_change.py``.
+You will need to edit that file and fill the ``forwards`` and ``backwards``
+methods where data should be actually migrated. Again, don't forget to
+add that file to the project::
+
+    $ bzr add \
+        src/maasserver/migrations/<auto_number>_description_of_the_change.py
+
+Once the methods have been written, apply that migration with::
+
+    $ make syncdb
+
+
 Documentation
 =============
 
@@ -233,7 +294,7 @@ You need to install checkbox to use those tests::
 To run them::
 
     $ checkbox-gtk --config='checkbox/plugins/jobs_info/directories=\
-    /path/to/local/checkbox/jobs/dir' --whitelist-file=
+        /path/to/local/checkbox/jobs/dir' --whitelist-file=
 
 or run from the root of the MAAS tree::
 
