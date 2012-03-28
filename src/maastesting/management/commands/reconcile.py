@@ -34,13 +34,20 @@ from maasserver import (
     )
 
 
+ARCHITECTURE_GUESSES = {
+    "i386": models.ARCHITECTURE.i386,
+    "amd64": models.ARCHITECTURE.amd64,
+    "x86_64": models.ARCHITECTURE.amd64,
+    }
+
+
 def guess_architecture_from_profile(profile_name):
     """
     This attempts to obtain the architecture from a Cobbler profile name. The
     naming convention for profile names is "maas-${series}-${arch}".
     """
-    for architecture, _ in models.ARCHITECTURE_CHOICES:
-        if architecture in profile_name:
+    for guess, architecture in ARCHITECTURE_GUESSES.items():
+        if guess in profile_name:
             return architecture
     else:
         return None
@@ -52,6 +59,7 @@ def reconcile():
     nodes_remote = papi.get_nodes()
 
     missing_local = set(nodes_remote).difference(nodes_local)
+    missing_local.discard("default")
     for name in missing_local:
         print("remote:", name)
         remote_node = nodes_remote[name]
