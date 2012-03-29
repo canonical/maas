@@ -39,8 +39,10 @@ To get the API key:
 #. Go to your `MAAS preferences page`_, or go to your `MAAS home
    page`_ and choose *Preferences* from the drop-down menu that
    appears when clicking your username at the top-right of the page.
+
 #. Optionally add a new MAAS key. Do this if you're setting up another
    environment within the same MAAS cluster.
+
 .. _MAAS preferences page: http://localhost:5240/account/prefs/
 .. _MAAS home page: http://localhost:5240/
 
@@ -79,7 +81,7 @@ command, e.g.::
 
 As you've not bootstrapped you ought to see::
 
-  $ juju environment not found: is the environment bootstrapped?
+  juju environment not found: is the environment bootstrapped?
 
 Bootstrap::
 
