@@ -14,12 +14,14 @@ __all__ = []
 import codecs
 from io import BytesIO
 import os
+import random
 import shutil
 from socket import gethostname
 
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
+from django.utils.safestring import SafeUnicode
 from fixtures import TestWithFixtures
 from maasserver.exceptions import (
     CannotDeleteUserException,
@@ -33,6 +35,8 @@ from maasserver.models import (
     GENERIC_CONSUMER,
     get_auth_tokens,
     get_default_config,
+    get_html_display_for_key,
+    HELLIPSIS,
     MACAddress,
     Node,
     NODE_STATUS,
@@ -559,6 +563,72 @@ class SSHKeyValidatorTest(TestCase):
             ValidationError, validate_ssh_public_key, key_string)
 
 
+class GetHTMLDisplayForKeyTest(TestCase):
+    """Testing for the method `get_html_display_for_key`."""
+
+    def test_display_returns_unchanged_if_unknown_and_small(self):
+        # If the key does not look like a normal key (with three parts
+        # separated by spaces, it's returned unchanged if its size is <=
+        # size.
+        size = random.randint(101, 200)
+        key = factory.getRandomString(size - 100)
+        display = get_html_display_for_key(key, size)
+        self.assertTrue(len(display) < size)
+        self.assertEqual(key, display)
+
+    def test_display_returns_cropped_if_unknown_and_large(self):
+        # If the key does not look like a normal key (with three parts
+        # separated by spaces, it's returned cropped if its size is >
+        # size.
+        size = random.randint(1, 100)
+        key = factory.getRandomString(size + 1)
+        display = get_html_display_for_key(key, size)
+        self.assertEqual(size, len(display))
+        self.assertEqual(
+            '%.*s%s' % (size - len(HELLIPSIS), key, HELLIPSIS), display)
+
+    def test_display_limits_size_with_large_comment(self):
+        # If the key has a large 'comment' part, the key is simply
+        # cropped and HELLIPSIS appended to it.
+        key_type = factory.getRandomString(10)
+        key_string = factory.getRandomString(10)
+        comment = factory.getRandomString(100, spaces=True)
+        key = '%s %s %s' % (key_type, key_string, comment)
+        display = get_html_display_for_key(key, 50)
+        self.assertEqual(50, len(display))
+        self.assertEqual(
+            '%.*s%s' % (50 - len(HELLIPSIS), key, HELLIPSIS), display)
+
+    def test_display_limits_size_with_large_key_type(self):
+        # If the key has a large 'key_type' part, the key is simply
+        # cropped and HELLIPSIS appended to it.
+        key_type = factory.getRandomString(100)
+        key_string = factory.getRandomString(10)
+        comment = factory.getRandomString(10, spaces=True)
+        key = '%s %s %s' % (key_type, key_string, comment)
+        display = get_html_display_for_key(key, 50)
+        self.assertEqual(50, len(display))
+        self.assertEqual(
+            '%.*s%s' % (50 - len(HELLIPSIS), key, HELLIPSIS), display)
+
+    def test_display_cropped_key(self):
+        # If the key has a small key_type, a small comment and a large
+        # key_string (which is the 'normal' case), the key_string part
+        # gets cropped.
+        key_type = factory.getRandomString(10)
+        key_string = factory.getRandomString(100)
+        comment = factory.getRandomString(10, spaces=True)
+        key = '%s %s %s' % (key_type, key_string, comment)
+        display = get_html_display_for_key(key, 50)
+        self.assertEqual(50, len(display))
+        self.assertEqual(
+            '%s %.*s%s %s' % (
+                key_type,
+                50 - (len(key_type) + len(HELLIPSIS) + len(comment) + 2),
+                key_string, HELLIPSIS, comment),
+            display)
+
+
 class SSHKeyTest(TestCase):
     """Testing for the :class:`SSHKey`."""
 
@@ -575,6 +645,22 @@ class SSHKeyTest(TestCase):
         key = SSHKey(key=key_string, user=user)
         self.assertRaises(
             ValidationError, key.full_clean)
+
+    def test_sshkey_display_with_real_life_key(self):
+        # With a real-life ssh-rsa key, the key_string part is cropped.
+        key_string = get_data('data/test_rsa.pub')
+        user = factory.make_user()
+        key = SSHKey(key=key_string, user=user)
+        display = key.display_html()
+        self.assertEqual(
+            'ssh-rsa AAAAB3NzaC1yc2E&hellip; ubuntu@server-7476', display)
+
+    def test_sshkey_display_is_safe(self):
+        key_string = get_data('data/test_rsa.pub')
+        user = factory.make_user()
+        key = SSHKey(key=key_string, user=user)
+        display = key.display_html()
+        self.assertIsInstance(display, SafeUnicode)
 
 
 class SSHKeyManagerTest(TestCase):

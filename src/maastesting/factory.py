@@ -28,11 +28,17 @@ class Factory:
     random_letters = imap(
         random.choice, repeat(string.letters + string.digits))
 
+    random_letters_with_spaces = imap(
+        random.choice, repeat(string.letters + string.digits + ' '))
+
     random_http_responses = imap(
         random.choice, repeat(tuple(httplib.responses)))
 
-    def getRandomString(self, size=10):
-        return "".join(islice(self.random_letters, size))
+    def getRandomString(self, size=10, spaces=False):
+        if spaces:
+            return "".join(islice(self.random_letters_with_spaces, size))
+        else:
+            return "".join(islice(self.random_letters, size))
 
     def getRandomEmail(self, login_size=10):
         return "%s@example.com" % self.getRandomString(size=login_size)
