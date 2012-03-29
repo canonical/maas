@@ -40,6 +40,7 @@ from django.conf import settings
 from django.contrib import admin
 from django.contrib.auth.backends import ModelBackend
 from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
 from django.core.files.base import ContentFile
 from django.core.files.storage import FileSystemStorage
 from django.db import models
@@ -61,6 +62,10 @@ from piston.models import (
 from provisioningserver.enum import (
     POWER_TYPE,
     POWER_TYPE_CHOICES,
+    )
+from twisted.conch.ssh.keys import (
+    BadKeyError,
+    Key,
     )
 
 # Special users internal to MAAS.
@@ -683,6 +688,17 @@ class SSHKeyManager(models.Manager):
         return SSHKey.objects.filter(user=user).values_list('key', flat=True)
 
 
+def validate_ssh_public_key(value):
+    """Validate that the given value contains a valid SSH public key."""
+    try:
+        key = Key.fromString(value)
+        if not key.isPublic():
+            raise ValidationError(
+                "Invalid SSH public key (this key is a private key).")
+    except BadKeyError:
+        raise ValidationError("Invalid SSH public key.")
+
+
 class SSHKey(CommonInfo):
     """A `SSHKey` represents a user public SSH key.
 
@@ -698,7 +714,8 @@ class SSHKey(CommonInfo):
 
     user = models.ForeignKey(User, null=False, editable=False)
 
-    key = models.TextField(null=False, editable=True)
+    key = models.TextField(
+        null=False, editable=True, validators=[validate_ssh_public_key])
 
     def __unicode__(self):
         return self.key

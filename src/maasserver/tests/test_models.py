@@ -40,6 +40,7 @@ from maasserver.models import (
     SSHKey,
     SYSTEM_USERS,
     UserProfile,
+    validate_ssh_public_key,
     )
 from maasserver.provisioning import get_provisioning_api_proxy
 from maasserver.testing.enum import map_enum
@@ -520,8 +521,64 @@ class UserProfileTest(TestCase):
         self.assertTrue(set(SYSTEM_USERS).isdisjoint(usernames))
 
 
+def get_data(filename):
+    """Utility method to read the content of files in
+    src/maasserver/tests.
+
+    Usually used to read files in src/maasserver/tests/data."""
+    path = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), filename)
+    return file(path).read()
+
+
+class SSHKeyValidatorTest(TestCase):
+
+    def test_validates_rsa_public_key(self):
+        key_string = get_data('data/test_rsa.pub')
+        validate_ssh_public_key(key_string)
+        # No ValidationError.
+
+    def test_validates_dsa_public_key(self):
+        key_string = get_data('data/test_dsa.pub')
+        validate_ssh_public_key(key_string)
+        # No ValidationError.
+
+    def test_does_not_validate_random_data(self):
+        key_string = factory.getRandomString()
+        self.assertRaises(
+            ValidationError, validate_ssh_public_key, key_string)
+
+    def test_does_not_validate_rsa_private_key(self):
+        key_string = get_data('data/test_rsa')
+        self.assertRaises(
+            ValidationError, validate_ssh_public_key, key_string)
+
+    def test_does_not_validate_dsa_private_key(self):
+        key_string = get_data('data/test_dsa')
+        self.assertRaises(
+            ValidationError, validate_ssh_public_key, key_string)
+
+
+class SSHKeyTest(TestCase):
+    """Testing for the :class:`SSHKey`."""
+
+    def test_sshkey_validation_with_valid_key(self):
+        key_string = get_data('data/test_rsa.pub')
+        user = factory.make_user()
+        key = SSHKey(key=key_string, user=user)
+        key.full_clean()
+        # No ValidationError.
+
+    def test_sshkey_validation_fails_if_key_is_invalid(self):
+        key_string = factory.getRandomString()
+        user = factory.make_user()
+        key = SSHKey(key=key_string, user=user)
+        self.assertRaises(
+            ValidationError, key.full_clean)
+
+
 class SSHKeyManagerTest(TestCase):
-    """Testing for the :class `SSHKeyManager` model manager."""
+    """Testing for the :class:`SSHKeyManager` model manager."""
 
     def test_get_keys_for_user_no_keys(self):
         user = factory.make_user()
