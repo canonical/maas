@@ -598,7 +598,7 @@ class GetHTMLDisplayForKeyTest(TestCase):
         # If the key does not look like a normal key (with three parts
         # separated by spaces, it's returned cropped if its size is >
         # size.
-        size = random.randint(1, 100)
+        size = random.randint(20, 100)  # size cannot be < len(HELLIPSIS).
         key = factory.getRandomString(size + 1)
         display = get_html_display_for_key(key, size)
         self.assertEqual(size, len(display))
