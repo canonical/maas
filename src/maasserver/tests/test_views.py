@@ -600,16 +600,20 @@ class SettingsTest(AdminLoggedInTestCase):
 
     def test_settings_maas_and_network_POST(self):
         new_name = factory.getRandomString()
+        new_domain = factory.getRandomString()
         response = self.client.post(
             '/settings/',
             get_prefixed_form_data(
                 prefix='maas_and_network',
                 data={
                     'maas_name': new_name,
+                    'enlistment_domain': new_domain,
                 }))
 
         self.assertEqual(httplib.FOUND, response.status_code)
         self.assertEqual(new_name, Config.objects.get_config('maas_name'))
+        self.assertEqual(
+            new_domain, Config.objects.get_config('enlistment_domain'))
 
     def test_settings_commissioning_POST(self):
         new_after_commissioning = factory.getRandomEnum(

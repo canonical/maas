@@ -287,6 +287,10 @@ class ConfigForm(Form):
 class MAASAndNetworkForm(ConfigForm):
     """Settings page, MAAS and Network section."""
     maas_name = forms.CharField(label="MAAS name")
+    enlistment_domain = forms.CharField(
+        label="Default domain for new nodes", required=False, help_text=(
+            "If 'local' is chosen, nodes must be using mDNS. Leave empty to "
+            "use hostnames without a domain for newly enlisted nodes."))
 
 
 class CommissioningForm(ConfigForm):

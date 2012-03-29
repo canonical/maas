@@ -117,7 +117,34 @@ class NodeTest(TestCase):
         self.assertRaises(
             MACAddress.DoesNotExist, MACAddress.objects.get, id=mac.id)
 
-    def test_set_mac_based_hostname(self):
+    def test_set_mac_based_hostname_default_enlistment_domain(self):
+        # The enlistment domain defaults to `local`.
+        node = factory.make_node()
+        node.set_mac_based_hostname('AA:BB:CC:DD:EE:FF')
+        hostname = 'node-aabbccddeeff.local'
+        self.assertEqual(hostname, node.hostname)
+
+    def test_set_mac_based_hostname_alt_enlistment_domain(self):
+        # A non-default enlistment domain can be specified.
+        Config.objects.set_config("enlistment_domain", "example.com")
+        node = factory.make_node()
+        node.set_mac_based_hostname('AA:BB:CC:DD:EE:FF')
+        hostname = 'node-aabbccddeeff.example.com'
+        self.assertEqual(hostname, node.hostname)
+
+    def test_set_mac_based_hostname_cleaning_enlistment_domain(self):
+        # Leading and trailing dots and whitespace are cleaned from the
+        # configured enlistment domain before it's joined to the hostname.
+        Config.objects.set_config("enlistment_domain", " .example.com. ")
+        node = factory.make_node()
+        node.set_mac_based_hostname('AA:BB:CC:DD:EE:FF')
+        hostname = 'node-aabbccddeeff.example.com'
+        self.assertEqual(hostname, node.hostname)
+
+    def test_set_mac_based_hostname_no_enlistment_domain(self):
+        # The enlistment domain can be set to the empty string and
+        # set_mac_based_hostname sets a hostname with no domain.
+        Config.objects.set_config("enlistment_domain", "")
         node = factory.make_node()
         node.set_mac_based_hostname('AA:BB:CC:DD:EE:FF')
         hostname = 'node-aabbccddeeff'
