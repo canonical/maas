@@ -45,7 +45,9 @@ class TestCommands(TestCase):
         result = stdout.getvalue()
         # Just check that the documentation looks all right.
         self.assertIn("POST /api/1.0/account/", result)
-        self.assertIn("MAAS API documentation", result)
+        self.assertIn("MAAS API", result)
+        # The documentation starts with a ReST title (not indented).
+        self.assertEqual('=', result[0])
 
     def test_createadmin_requires_username(self):
         stderr = BytesIO()

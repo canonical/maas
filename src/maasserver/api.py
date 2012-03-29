@@ -1,7 +1,50 @@
 # Copyright 2012 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""API."""
+"""Restful MAAS API.
+
+This is the documentation for the API that lets you control and query MAAS.
+The API is "Restful", which means that you access it through normal HTTP
+requests.
+
+
+API versions
+------------
+
+At any given time, MAAS may support multiple versions of its API.  The version
+number is included in the API's URL, e.g. /api/1.0/
+
+For now, 1.0 is the only supported version.
+
+
+HTTP methods and parameter-passing
+----------------------------------
+
+The following HTTP methods are available for accessing the API:
+ * GET (for information retrieval and queries),
+ * POST (for asking the system to do things),
+ * PUT (for updating objects), and
+ * DELETE (for deleting objects).
+
+All methods except DELETE may take parameters, but they are not all passed in
+the same way.  GET parameters are passed in the URL, as is normal with a GET:
+"/item/?foo=bar" passes parameter "foo" with value "bar".
+
+POST and PUT are different.  Your request should have MIME type
+"multipart/form-data"; each part represents one parameter (for POST) or
+attribute (for PUT).  Each part is named after the parameter or attribute it
+contains, and its contents are the conveyed value.
+
+All parameters are in text form.  If you need to submit binary data to the
+API, don't send it as any MIME binary format; instead, send it as a plain text
+part containing base64-encoded data.
+
+Most resources offer a choice of GET or POST operations.  In those cases these
+methods will take one special parameter, called `op`, to indicate what it is
+you want to do.
+
+For example, to list all nodes, you might GET "/api/1.0/nodes/?op=list".
+"""
 
 from __future__ import (
     print_function,
@@ -11,6 +54,7 @@ from __future__ import (
 __metaclass__ = type
 __all__ = [
     "api_doc",
+    "api_doc_title",
     "extract_oauth_key",
     "generate_api_doc",
     "AccountHandler",
@@ -26,6 +70,7 @@ from base64 import b64decode
 import httplib
 import json
 import sys
+from textwrap import dedent
 import types
 
 from django.core.exceptions import ValidationError
@@ -665,7 +710,26 @@ class MAASHandler(BaseHandler):
         return HttpResponse(json.dumps(value), content_type='application/json')
 
 
-def generate_api_doc(add_title=False):
+# Title section for the API documentation.  Matches in style, format,
+# etc. whatever generate_api_doc() produces, so that you can concatenate
+# the two.
+api_doc_title = dedent("""
+    ========
+    MAAS API
+    ========
+    """.lstrip('\n'))
+
+
+def generate_api_doc():
+    """Generate ReST documentation for the REST API.
+
+    This module's docstring forms the head of the documentation; details of
+    the API methods follow.
+
+    :return: Documentation, in ReST, for the API.
+    :rtype: :class:`unicode`
+    """
+
     # Fetch all the API Handlers (objects with the class
     # HandlerMetaClass).
     module = sys.modules[__name__]
@@ -683,21 +747,21 @@ def generate_api_doc(add_title=False):
 
     docs = [generate_doc(handler) for handler in handlers]
 
-    messages = []
-    if add_title:
-        messages.extend([
-            '**********************\n',
-            'MAAS API documentation\n',
-            '**********************\n',
-            '\n\n']
-            )
+    messages = [
+        __doc__.strip(),
+        '',
+        '',
+        'Operations',
+        '----------',
+        '',
+        ]
     for doc in docs:
         for method in doc.get_methods():
             messages.append(
-                "%s %s\n  %s\n\n" % (
+                "%s %s\n  %s\n" % (
                     method.http_name, doc.resource_uri_template,
                     method.doc))
-    return ''.join(messages)
+    return '\n'.join(messages)
 
 
 def reST_to_html_fragment(a_str):
