@@ -172,7 +172,7 @@ class AnonymousEnlistmentAPITest(APIv10TestMixin, TestCase):
             })
         node = Node.objects.get(
             system_id=json.loads(response.content)['system_id'])
-        self.assertEqual('node-aabbccddeeff', node.hostname)
+        self.assertEqual('node-aabbccddeeff.local', node.hostname)
 
     def test_POST_returns_limited_fields(self):
         architecture = factory.getRandomChoice(ARCHITECTURE_CHOICES)
