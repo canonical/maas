@@ -31,9 +31,13 @@ from maasserver.models import (
     Config,
     NODE_AFTER_COMMISSIONING_ACTION,
     POWER_TYPE_CHOICES,
+    SSHKey,
     UserProfile,
     )
-from maasserver.testing import reload_object
+from maasserver.testing import (
+    get_data,
+    reload_object,
+    )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
     LoggedInTestCase,
@@ -362,6 +366,87 @@ class UserPrefsViewTest(LoggedInTestCase):
         user = User.objects.get(id=self.logged_in_user.id)
         # The password is SHA1ized, we just make sure that it has changed.
         self.assertNotEqual(old_pw, user.password)
+
+    def test_prefs_displays_message_when_no_public_keys_are_configured(self):
+        response = self.client.get('/account/prefs/')
+        self.assertIn("No SSH key configured.", response.content)
+
+    def test_prefs_displays_add_ssh_key_button(self):
+        response = self.client.get('/account/prefs/')
+        add_key_link = reverse('prefs-add-sshkey')
+        self.assertIn(add_key_link, get_content_links(response))
+
+    def create_keys_for_user(self, user):
+        return [factory.make_sshkey(self.logged_in_user) for i in range(3)]
+
+    def test_prefs_displays_compact_representation_of_users_keys(self):
+        keys = self.create_keys_for_user(self.logged_in_user)
+        response = self.client.get('/account/prefs/')
+        for key in keys:
+            self.assertIn(key.display_html(), response.content)
+
+    def test_prefs_displays_link_to_delete_ssh_keys(self):
+        keys = self.create_keys_for_user(self.logged_in_user)
+        response = self.client.get('/account/prefs/')
+        links = get_content_links(response)
+        for key in keys:
+            del_key_link = reverse('prefs-delete-sshkey', args=[key.id])
+            self.assertIn(del_key_link, links)
+
+
+class KeyManagementTest(LoggedInTestCase):
+
+    def test_add_key_GET(self):
+        # The 'Add key' page displays a form to add a key.
+        response = self.client.get(reverse('prefs-add-sshkey'))
+        doc = fromstring(response.content)
+
+        self.assertEqual(1, len(doc.cssselect('textarea#id_key')))
+        # The page features a form that submits to itself.
+        self.assertSequenceEqual(
+            ['.'],
+            [elem.get('action').strip() for elem in doc.cssselect(
+                '#content form')])
+
+    def test_add_key_POST_adds_key(self):
+        key_string = get_data('data/test_rsa.pub')
+        response = self.client.post(
+            reverse('prefs-add-sshkey'), {'key': key_string})
+
+        self.assertEqual(httplib.FOUND, response.status_code)
+        self.assertTrue(SSHKey.objects.filter(key=key_string).exists())
+
+    def test_delete_key_GET(self):
+        # The 'Delete key' page displays a confirmation page with a form.
+        key = factory.make_sshkey(self.logged_in_user)
+        del_link = reverse('prefs-delete-sshkey', args=[key.id])
+        response = self.client.get(del_link)
+        doc = fromstring(response.content)
+
+        self.assertIn(
+            "Are you sure you want to delete the following key?",
+            response.content)
+        # The page features a form that submits to itself.
+        self.assertSequenceEqual(
+            ['.'],
+            [elem.get('action').strip() for elem in doc.cssselect(
+                '#content form')])
+
+    def test_delete_key_GET_cannot_access_someoneelses_key(self):
+        key = factory.make_sshkey(factory.make_user())
+        del_link = reverse('prefs-delete-sshkey', args=[key.id])
+        response = self.client.get(del_link)
+
+        self.assertEqual(httplib.NOT_FOUND, response.status_code)
+
+    def test_delete_key_POST(self):
+        # A POST request deletes the key.
+        key = factory.make_sshkey(self.logged_in_user)
+        del_link = reverse('prefs-delete-sshkey', args=[key.id])
+        response = self.client.post(del_link, {'post': 'yes'})
+
+        self.assertEqual(httplib.FOUND, response.status_code)
+        self.assertFalse(SSHKey.objects.filter(id=key.id).exists())
 
 
 class AdminLoggedInTestCase(LoggedInTestCase):

@@ -10,11 +10,13 @@ from __future__ import (
 
 __metaclass__ = type
 __all__ = [
+    "get_data",
     "get_fake_provisioning_api_proxy",
     "reload_object",
     "reload_objects",
     ]
 
+import os
 from uuid import uuid1
 
 from provisioningserver.testing import fakeapi
@@ -93,3 +95,13 @@ def reload_objects(model_class, model_objects):
     assert all(isinstance(obj, model_class) for obj in model_objects)
     return model_class.objects.filter(
         id__in=[obj.id for obj in model_objects])
+
+
+def get_data(filename):
+    """Utility method to read the content of files in
+    src/maasserver/tests.
+
+    Usually used to read files in src/maasserver/tests/data."""
+    path = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), '..', 'tests', filename)
+    return file(path).read()

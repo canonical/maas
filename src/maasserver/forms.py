@@ -15,6 +15,7 @@ __all__ = [
     "NodeForm",
     "MACAddressForm",
     "MAASAndNetworkForm",
+    "SSHKeyForm",
     "UbuntuForm",
     "UIAdminNodeEditForm",
     "UINodeEditForm",
@@ -42,6 +43,7 @@ from maasserver.models import (
     Node,
     NODE_AFTER_COMMISSIONING_ACTION,
     NODE_AFTER_COMMISSIONING_ACTION_CHOICES,
+    SSHKey,
     UserProfile,
     )
 
@@ -112,7 +114,27 @@ class MACAddressForm(ModelForm):
         model = MACAddress
 
 
+class SSHKeyForm(ModelForm):
+    key = forms.CharField(
+        label="Public key",
+        widget=forms.Textarea(attrs={'rows': '5', 'cols': '30'}),
+        required=True)
+
+    class Meta:
+        model = SSHKey
+
+    def __init__(self, user, *args, **kwargs):
+        super(SSHKeyForm, self).__init__(*args, **kwargs)
+        self.user = user
+
+    def save(self):
+        key = super(SSHKeyForm, self).save(commit=False)
+        key.user = self.user
+        return key.save()
+
+
 class MultipleMACAddressField(forms.MultiValueField):
+
     def __init__(self, nb_macs=1, *args, **kwargs):
         fields = [MACAddressFormField() for i in range(nb_macs)]
         super(MultipleMACAddressField, self).__init__(fields, *args, **kwargs)

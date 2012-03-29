@@ -18,9 +18,10 @@
 
 {% block content %}
   <div id="prefs">
-    <div id="api" class="block size7 first">
+    <div id="keys" class="block size7 first">
       <h2>Keys</h2>
       <h3>MAAS keys</h3>
+      <div id="api">
       <ul class="list">
         {% for token in user.get_profile.get_authorisation_tokens %}
           <li class="bundle">
@@ -28,15 +29,36 @@
               <img title="Delete MAAS key"
                    src="{{ STATIC_URL }}img/delete.png" />
             </a>
-            <input type="text" 
-                   value="{{ token.consumer.key }}:{{ token.key }}:{{ token.secret }}" 
+            <input type="text"
+                   value="{{ token.consumer.key }}:{{ token.key }}:{{ token.secret }}"
                    id="{{ token.key }}"
                    class="disabled" />
           </li>
         {% endfor %}
       </ul>
       <p id="token_creation_placeholder" />
+      </div>
+      <div class="clear"></div>
+      <div id="ssh-keys">
+      <h3>SSH keys</h3>
+      <ul class="list">
+        {% for key in user.sshkey_set.all %}
+          <li>
+          <a href="{% url 'prefs-delete-sshkey' key.id %}" class="icon right">
+              <img title="Delete SSH key"
+                   src="{{ STATIC_URL }}img/delete.png" />
+            </a>
+            {{ key.display_html }}
+          </li>
+	{% empty %}
+	  No SSH key configured.
+        {% endfor %}
+      </ul>
+      <a href="{% url 'prefs-add-sshkey' %}"
+         id="add_ssh_key"
+         class="button right">+ Add SSH key</a>
     </div>
+    <div class="clear"></div>
     <div id="profile" class="block size7 first">
       <h2>User details</h2>
       <form action="." method="post">

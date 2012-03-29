@@ -1,0 +1,22 @@
+{% extends "maasserver/base.html" %}
+
+{% block title %}Delete SSH key{% endblock %}
+{% block page-title %}Delete SSH key{% endblock %}
+
+{% block content %}
+    <div class="block auto-width">
+        <h2>
+          Are you sure you want to delete the following key?<br />
+        </h2>
+	<p style="word-wrap: break-word; width: 700px;">{{ key }}</p>
+        <p>This action is permanent and can not be undone.</p>
+        <p>
+          <form action="." method="post">
+            <input type="hidden" name="post" value="yes" />
+            <input type="submit" value="Delete key" class="right" />
+            <a href="{% url 'prefs' %}">Cancel</a>
+          </form>
+        </p>
+    </div>
+{% endblock %}
+

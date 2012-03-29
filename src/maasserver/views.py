@@ -10,10 +10,21 @@ from __future__ import (
 
 __metaclass__ = type
 __all__ = [
+    "AccountsAdd",
+    "AccountsDelete",
+    "AccountsEdit",
+    "AccountsView",
+    "combo_view",
+    "login",
     "logout",
     "NodeListView",
     "NodesCreateView",
     "NodeView",
+    "NodeEdit",
+    "settings",
+    "settings_add_archive",
+    "SSHKeyCreateView",
+    "SSHKeyDeleteView",
     ]
 
 from logging import getLogger
@@ -64,6 +75,7 @@ from maasserver.forms import (
     MAASAndNetworkForm,
     NewUserCreationForm,
     ProfileForm,
+    SSHKeyForm,
     UbuntuForm,
     UIAdminNodeEditForm,
     UINodeEditForm,
@@ -71,6 +83,7 @@ from maasserver.forms import (
 from maasserver.messages import messaging
 from maasserver.models import (
     Node,
+    SSHKey,
     UserProfile,
     )
 
@@ -160,6 +173,41 @@ class NodesCreateView(CreateView):
 
     def get_success_url(self):
         return reverse('index')
+
+
+class SSHKeyCreateView(CreateView):
+
+    form_class = SSHKeyForm
+    template_name = 'maasserver/prefs_add_sshkey.html'
+
+    def get_form_kwargs(self):
+        kwargs = super(SSHKeyCreateView, self).get_form_kwargs()
+        kwargs['user'] = self.request.user
+        return kwargs
+
+    def form_valid(self, form):
+        messages.info(self.request, "SSH key added.")
+        return super(SSHKeyCreateView, self).form_valid(form)
+
+    def get_success_url(self):
+        return reverse('prefs')
+
+
+class SSHKeyDeleteView(DeleteView):
+
+    template_name = 'maasserver/prefs_confirm_delete_sshkey.html'
+    context_object_name = 'key'
+
+    def get_object(self):
+        keyid = self.kwargs.get('keyid', None)
+        return get_object_or_404(SSHKey, user=self.request.user, id=keyid)
+
+    def form_valid(self, form):
+        messages.info(self.request, "SSH key deleted.")
+        return super(SSHKeyDeleteView, self).form_valid(form)
+
+    def get_success_url(self):
+        return reverse('prefs')
 
 
 def process_form(request, form_class, redirect_url, prefix,

@@ -47,6 +47,7 @@ from maasserver.models import (
     validate_ssh_public_key,
     )
 from maasserver.provisioning import get_provisioning_api_proxy
+from maasserver.testing import get_data
 from maasserver.testing.enum import map_enum
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
@@ -523,16 +524,6 @@ class UserProfileTest(TestCase):
         usernames = set(
             user.username for user in UserProfile.objects.all_users())
         self.assertTrue(set(SYSTEM_USERS).isdisjoint(usernames))
-
-
-def get_data(filename):
-    """Utility method to read the content of files in
-    src/maasserver/tests.
-
-    Usually used to read files in src/maasserver/tests/data."""
-    path = os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), filename)
-    return file(path).read()
 
 
 class SSHKeyValidatorTest(TestCase):

@@ -41,6 +41,8 @@ from maasserver.views import (
     proxy_to_longpoll,
     settings,
     settings_add_archive,
+    SSHKeyCreateView,
+    SSHKeyDeleteView,
     userprefsview,
     )
 
@@ -68,6 +70,12 @@ urlpatterns = patterns('maasserver.views',
 # URLs for logged-in users.
 urlpatterns += patterns('maasserver.views',
     url(r'^account/prefs/$', userprefsview, name='prefs'),
+    url(
+        r'^account/prefs/sshkey/add/$', SSHKeyCreateView.as_view(),
+        name='prefs-add-sshkey'),
+    url(
+        r'^account/prefs/sshkey/delete/(?P<keyid>\d*)/$',
+        SSHKeyDeleteView.as_view(), name='prefs-delete-sshkey'),
     url(r'^accounts/logout/$', logout, name='logout'),
     url(
         r'^$',
