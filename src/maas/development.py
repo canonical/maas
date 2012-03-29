@@ -10,6 +10,7 @@ from __future__ import (
 
 __metaclass__ = type
 
+import logging
 import os
 
 from maas import (
@@ -45,6 +46,9 @@ YUI_DEBUG = DEBUG
 STATIC_LOCAL_SERVE = True
 
 RABBITMQ_PUBLISH = False
+
+# Silent South during tests.
+logging.getLogger('south').setLevel(logging.WARNING)
 
 DATABASES = {
     'default': {
