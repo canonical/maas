@@ -34,12 +34,14 @@ from maasserver.models import (
     FileStorage,
     GENERIC_CONSUMER,
     get_auth_tokens,
+    get_db_state,
     get_default_config,
     get_html_display_for_key,
     HELLIPSIS,
     MACAddress,
     Node,
     NODE_STATUS,
+    NODE_STATUS_CHOICES,
     NODE_STATUS_CHOICES_DICT,
     SSHKey,
     SYSTEM_USERS,
@@ -187,6 +189,62 @@ class NodeTest(TestCase):
             status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
         node.release()
         self.assertEqual((NODE_STATUS.READY, None), (node.status, node.owner))
+
+    def test_full_clean_checks_status_transition_and_raises_if_invalid(self):
+        # RETIRED -> ALLOCATED is an invalid transition.
+        node = factory.make_node(
+            status=NODE_STATUS.RETIRED, owner=factory.make_user())
+        node.status = NODE_STATUS.ALLOCATED
+        self.assertRaisesRegexp(
+            ValidationError,
+            str({'status': u'Invalid transition: Retired -> Allocated.'}),
+            node.full_clean)
+
+    def test_full_clean_passes_if_status_unchanged(self):
+        status = factory.getRandomChoice(NODE_STATUS_CHOICES)
+        node = factory.make_node(status=status)
+        node.status = status
+        node.full_clean()
+        # No ValidationError.
+
+    def test_full_clean_passes_if_status_valid_transition(self):
+        # NODE_STATUS.READY -> NODE_STATUS.ALLOCATED is a valid
+        # transition.
+        status = NODE_STATUS.READY
+        node = factory.make_node(status=status)
+        node.status = NODE_STATUS.ALLOCATED
+        node.full_clean()
+        # No ValidationError.
+
+    def test_save_checks_status_transition_and_raises_if_invalid(self):
+        # RETIRED -> ALLOCATED is an invalid transition.
+        node = factory.make_node(
+            status=NODE_STATUS.RETIRED, owner=factory.make_user())
+        node.status = NODE_STATUS.ALLOCATED
+        self.assertRaisesRegexp(
+            ValidationError,
+            str({'status': u'Invalid transition: Retired -> Allocated.'}),
+            node.save)
+
+    def test_save_does_not_check_status_transition_if_skip_check(self):
+        # RETIRED -> ALLOCATED is an invalid transition.
+        node = factory.make_node(
+            status=NODE_STATUS.RETIRED, owner=factory.make_user())
+        node.status = NODE_STATUS.ALLOCATED
+        node.save(skip_check=True)
+        # No ValidationError.
+
+
+class GetDbStateTest(TestCase):
+    """Testing for the method `get_db_state`."""
+
+    def test_get_db_state_returns_db_state(self):
+        status = factory.getRandomChoice(NODE_STATUS_CHOICES)
+        node = factory.make_node(status=status)
+        another_status = factory.getRandomChoice(
+            NODE_STATUS_CHOICES, but_not=[status])
+        node.status = another_status
+        self.assertEqual(status, get_db_state(node, 'status'))
 
 
 class NodeManagerTest(TestCase):
