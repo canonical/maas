@@ -284,18 +284,19 @@ Acceptance tests
 ================
 
 MAAS uses checkbox manual testing infrastructure to verify features
-are implemented according to the spec. They can be found in
-the qa/checkbox/ directory.
+are implemented according to the spec. They can be found in the official
+checkbox repository:
+https://code.launchpad.net/~nskaggs/checkbox/checkbox-app-testing-qt
+in the jobs/ directory.
 
-You need to install checkbox to use those tests::
+You need to install additional QT dependencies::
 
-    $ sudo apt-get install checkbox
+    $ sudo apt-get install libqt4-dev qt4-qmake
 
-To run them::
+Get a copy of the checkbox repository::
 
-    $ checkbox-gtk --config='checkbox/plugins/jobs_info/directories=\
-        /path/to/local/checkbox/jobs/dir' --whitelist-file=
+    $ bzr branch lp:~nskaggs/checkbox/checkbox-app-testing-qt
 
-or run from the root of the MAAS tree::
+To run them, cd into the directory::
 
-    $ make checkbox
+    $ bin/checbox-app-testing --whitelist-file=
