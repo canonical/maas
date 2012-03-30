@@ -153,8 +153,10 @@ class ProvisioningTests:
         effective_power_types = {
             power_type: node.get_effective_power_type()
             for power_type, node in nodes.items()}
+        pserv_nodes = self.papi.get_nodes_by_name(
+            node.system_id for node in nodes.values())
         pserv_power_types = {
-            power_type: self.papi.power_types[node.system_id]
+            power_type: pserv_nodes[node.system_id]["power_type"]
             for power_type, node in nodes.items()}
         self.assertEqual(effective_power_types, pserv_power_types)
 

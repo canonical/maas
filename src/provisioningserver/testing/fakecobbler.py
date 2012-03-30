@@ -358,13 +358,16 @@ class FakeCobbler:
         if "mac_address" in attrs:
             interface = interfaces.setdefault(interface_name, {})
             interface["mac_address"] = attrs.pop("mac_address")
+        elif "dns_name" in attrs:
+            interface = interfaces.setdefault(interface_name, {})
+            interface["dns_name"] = attrs.pop("dns_name")
         elif "delete_interface" in attrs:
             if interface_name in interfaces:
                 del interfaces[interface_name]
         else:
             raise AssertionError(
-                "Edit operation defined interface but "
-                "not mac_address or delete_interface. "
+                "Edit operation defined interface but not "
+                "mac_address, dns_name, or delete_interface. "
                 "Got: %r" % (attrs,))
         self._api_modify_object(
             token, 'system', handle, "interfaces", interfaces)

@@ -720,10 +720,12 @@ class CobblerSystem(CobblerObject):
         'profile',
         ]
     modification_attributes = [
+        'hostname',
         'delete_interface',
         'interface',  # Required for mac_address and delete_interface.
         'mac_address',
         'profile',
+        'dns_name',
         ]
 
     @classmethod

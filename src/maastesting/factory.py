@@ -13,6 +13,7 @@ __all__ = [
     "factory",
     ]
 
+from functools import partial
 import httplib
 from itertools import (
     imap,
@@ -34,6 +35,10 @@ class Factory:
     random_http_responses = imap(
         random.choice, repeat(tuple(httplib.responses)))
 
+    random_octet = partial(random.randint, 0, 255)
+
+    random_octets = iter(random_octet, None)
+
     def getRandomString(self, size=10, spaces=False):
         if spaces:
             return "".join(islice(self.random_letters_with_spaces, size))
@@ -52,6 +57,10 @@ class Factory:
     def getRandomPort(self, port_min=1024, port_max=65535):
         assert port_min >= 0 and port_max <= 65535
         return random.randint(port_min, port_max)
+
+    def getRandomMACAddress(self):
+        octets = islice(self.random_octets, 6)
+        return b":".join(format(octet, b"02x") for octet in octets)
 
 
 # Create factory singleton.

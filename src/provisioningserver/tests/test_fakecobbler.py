@@ -453,6 +453,19 @@ class TestCobblerSystem(CobblerObjectTestScenario, TestCase):
         self.assertEqual("12:34:56:78:90:12", state_eth0["mac_address"])
 
     @inlineCallbacks
+    def test_interface_set_dns_name(self):
+        session = yield fake_cobbler_session()
+        name = self.make_name()
+        obj = yield fake_cobbler_object(session, self.cobbler_class, name)
+        yield obj.modify(
+            {"interface": "eth0", "dns_name": "epitaph"})
+        state = yield obj.get_values()
+        interfaces = state.get("interfaces", {})
+        self.assertEqual(["eth0"], sorted(interfaces))
+        state_eth0 = interfaces["eth0"]
+        self.assertEqual("epitaph", state_eth0["dns_name"])
+
+    @inlineCallbacks
     def test_interface_delete_interface(self):
         session = yield fake_cobbler_session()
         name = self.make_name()

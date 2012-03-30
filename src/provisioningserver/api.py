@@ -15,7 +15,12 @@ __all__ = [
 
 from base64 import b64encode
 from functools import partial
-from itertools import count
+from itertools import (
+    chain,
+    count,
+    izip,
+    repeat,
+    )
 
 from provisioningserver.cobblerclient import (
     CobblerDistro,
@@ -48,6 +53,7 @@ def cobbler_to_papi_node(data):
         for interface in interfaces.itervalues())
     return {
         "name": data["name"],
+        "hostname": data["hostname"],
         "profile": data["profile"],
         "mac_addresses": [
             mac_address.strip()
@@ -84,7 +90,7 @@ cobbler_mapping_to_papi_distros = partial(
     postprocess_mapping, function=cobbler_to_papi_distro)
 
 
-def mac_addresses_to_cobbler_deltas(interfaces, mac_addresses):
+def gen_cobbler_interface_deltas(interfaces, hostname, mac_addresses):
     """Generate `modify_system` dicts for use with `xapi_object_edit`.
 
     This takes `interfaces` - the current state of a system's interfaces - and
@@ -92,61 +98,58 @@ def mac_addresses_to_cobbler_deltas(interfaces, mac_addresses):
     interfaces containing exactly `mac_addresses`.
 
     :param interfaces: A dict of interface-names -> interface-configurations.
+    :param hostname: The hostname of the system.
     :param mac_addresses: A collection of desired MAC addresses.
     """
-    # For the sake of this calculation, ignore interfaces without MACs
-    # assigned. We may end up setting the MAC on these interfaces, but whether
-    # or not that happens is undefined (for now).
-    interfaces = {
-        name: configuration
-        for name, configuration in interfaces.items()
-        if configuration["mac_address"]
-        }
+    # A lazy list of ethernet interface names, used for constructing the
+    # target configuration. Names will be allocated in order, eth0 for the
+    # first MAC address, eth1 for the second, and so on.
+    eth_names = ("eth%d" % num for num in count(0))
 
-    interface_names_by_mac_address = {
-        interface["mac_address"]: interface_name
-        for interface_name, interface in interfaces.items()
-        }
-    mac_addresses_to_remove = set(
-        interface_names_by_mac_address).difference(mac_addresses)
-    mac_addresses_to_add = set(
-        mac_addresses).difference(interface_names_by_mac_address)
+    # Allocate DNS names in order too, `hostname` for the first interface, and
+    # to the empty string for the rest. Cobbler will complain (in its default
+    # config) if a dns_name is duplicated. Setting the dns_name for only a
+    # single interface and keeping dns_name on the first interface at all
+    # times also makes things slightly easier to reason about.
+    dns_names = chain([hostname], repeat(""))
 
-    # Keep track of the used interface names.
-    interface_names = set(interfaces)
-    # The following generator will lazily return interface names that can be
-    # used when adding MAC addresses.
-    interface_names_unused = (
-        "eth%d" % num for num in count(0)
-        if "eth%d" % num not in interface_names)
-
-    # Create a delta to remove an interface in Cobbler. We sort the MAC
-    # addresses to provide stability in this function's output (which
-    # facilitates testing).
-    for mac_address in sorted(mac_addresses_to_remove):
-        interface_name = interface_names_by_mac_address[mac_address]
-        # Deallocate this interface name from our records; it can be used when
-        # allocating interfaces later.
-        interface_names.remove(interface_name)
-        yield {
+    # Calculate comparable mappings of the current interface configuration and
+    # the desired interface configuration.
+    interfaces_from = {
+        interface_name: {
             "interface": interface_name,
-            "delete_interface": True,
+            "mac_address": interface["mac_address"],
+            "dns_name": interface.get("dns_name", ""),
             }
-
-    # Create a delta to add an interface in Cobbler. We sort the MAC addresses
-    # to provide stability in this function's output (which facilitates
-    # testing).
-    for mac_address in sorted(mac_addresses_to_add):
-        interface_name = next(interface_names_unused)
-        # Allocate this interface name in our records; it's not actually
-        # necessary (interface_names_unused will never go backwards) but we do
-        # it defensively in case of later additions to this function, and
-        # because it has a satifying symmetry.
-        interface_names.add(interface_name)
-        yield {
+        for interface_name, interface
+        in interfaces.items()
+        }
+    interfaces_to = {
+        interface_name: {
             "interface": interface_name,
             "mac_address": mac_address,
+            "dns_name": dns_name,
             }
+        for interface_name, mac_address, dns_name
+        in izip(eth_names, mac_addresses, dns_names)
+        }
+
+    # Go through interfaces, generating deltas from `interfaces_from` to
+    # `interfaces_to`. This is done in sorted order to make testing easier.
+    interface_names = set().union(interfaces_from, interfaces_to)
+    for interface_name in sorted(interface_names):
+        interface_from = interfaces_from.get(interface_name)
+        interface_to = interfaces_to.get(interface_name)
+        if interface_to is None:
+            assert interface_from is not None
+            yield {"interface": interface_name, "delete_interface": True}
+        elif interface_from is None:
+            assert interface_to is not None
+            yield interface_to
+        elif interface_to != interface_from:
+            yield interface_to
+        else:
+            pass  # No change.
 
 
 # Preseed data to send to cloud-init.  We set this as MAAS_PRESEED in
@@ -190,13 +193,15 @@ class ProvisioningAPI:
         returnValue(profile.name)
 
     @inlineCallbacks
-    def add_node(self, name, profile, power_type, metadata):
+    def add_node(self, name, hostname, profile, power_type, metadata):
         assert isinstance(name, basestring)
+        assert isinstance(hostname, basestring)
         assert isinstance(profile, basestring)
         assert power_type in (POWER_TYPE.VIRSH, POWER_TYPE.WAKE_ON_LAN)
         assert isinstance(metadata, dict)
         preseed = b64encode(metadata_preseed % metadata)
         attributes = {
+            "hostname": hostname,
             "profile": profile,
             "ks_meta": {"MAAS_PRESEED": preseed},
             "power_type": power_type,
@@ -222,9 +227,10 @@ class ProvisioningAPI:
                 # This needs to be handled carefully.
                 mac_addresses = delta.pop("mac_addresses")
                 system_state = yield system.get_values()
+                hostname = system_state.get("hostname", "")
                 interfaces = system_state.get("interfaces", {})
-                interface_modifications = mac_addresses_to_cobbler_deltas(
-                    interfaces, mac_addresses)
+                interface_modifications = gen_cobbler_interface_deltas(
+                    interfaces, hostname, mac_addresses)
                 for interface_modification in interface_modifications:
                     yield system.modify(interface_modification)
             yield system.modify(delta)

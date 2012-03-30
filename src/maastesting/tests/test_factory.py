@@ -27,3 +27,10 @@ class TestFactory(TestCase):
 
     def test_getRandomPort_returns_int(self):
         self.assertIsInstance(factory.getRandomPort(), int)
+
+    def test_getRandomMACAddress(self):
+        mac_address = factory.getRandomMACAddress()
+        self.assertIsInstance(mac_address, str)
+        self.assertEqual(17, len(mac_address))
+        for hex_octet in mac_address.split(":"):
+            self.assertTrue(0 <= int(hex_octet, 16) <= 255)

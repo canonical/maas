@@ -19,20 +19,17 @@ from abc import (
     abstractmethod,
     )
 from base64 import b64decode
-from itertools import (
-    count,
-    islice,
-    )
-from random import randint
+from itertools import count
 from time import time
 from unittest import skipIf
 
 from maasserver.testing.enum import map_enum
+from maastesting.factory import factory
 from provisioningserver.api import (
     cobbler_to_papi_distro,
     cobbler_to_papi_node,
     cobbler_to_papi_profile,
-    mac_addresses_to_cobbler_deltas,
+    gen_cobbler_interface_deltas,
     postprocess_mapping,
     ProvisioningAPI,
     )
@@ -53,15 +50,6 @@ from zope.interface.verify import verifyObject
 
 
 names = ("test%d" % num for num in count(int(time())))
-
-random_octet = lambda: randint(0, 255)
-random_octets = iter(random_octet, None)
-
-
-def fake_mac_address():
-    """Return a random MAC address."""
-    octets = islice(random_octets, 6)
-    return ":".join(format(octet, "02x") for octet in octets)
 
 
 def fake_name():
@@ -96,6 +84,7 @@ class TestFunctions(TestCase):
         data = {
             "name": "iced",
             "profile": "earth",
+            "hostname": "dystopia",
             "interfaces": {
                 "eth0": {"mac_address": "12:34:56:78:9a:bc"},
                 },
@@ -105,6 +94,7 @@ class TestFunctions(TestCase):
         expected = {
             "name": "iced",
             "profile": "earth",
+            "hostname": "dystopia",
             "mac_addresses": ["12:34:56:78:9a:bc"],
             "power_type": "virsh",
             }
@@ -115,12 +105,14 @@ class TestFunctions(TestCase):
         data = {
             "name": "iced",
             "profile": "earth",
+            "hostname": "darksaga",
             "power_type": "ether_wake",
             "ju": "nk",
             }
         expected = {
             "name": "iced",
             "profile": "earth",
+            "hostname": "darksaga",
             "mac_addresses": [],
             "power_type": "ether_wake",
             }
@@ -158,42 +150,109 @@ class TestFunctions(TestCase):
 
 class TestInterfaceDeltas(TestCase):
 
-    def test_mac_addresses_to_cobbler_deltas_set_1(self):
+    def test_gen_cobbler_interface_deltas_set_1_mac(self):
+        # Specifying a single MAC address results in a delta to configure
+        # eth0. The dns_name of the interface is also updated.
         current_interfaces = {
             "eth0": {
                 "mac_address": "",
+                "dns_name": "colony",
                 },
             }
-        mac_addresses_desired = ["12:34:56:78:90:12"]
-        expected = [
-            {"interface": "eth0",
-             "mac_address": "12:34:56:78:90:12"},
+        hostname = "clayman"
+        mac_addresses = [
+            "12:34:56:78:90:12",
             ]
-        observed = list(
-            mac_addresses_to_cobbler_deltas(
-                current_interfaces, mac_addresses_desired))
-        self.assertEqual(expected, observed)
+        expected = [
+            {"interface": "eth0",
+             "mac_address": mac_addresses[0],
+             "dns_name": hostname},
+            ]
+        observed = gen_cobbler_interface_deltas(
+            current_interfaces, hostname, mac_addresses)
+        self.assertItemsEqual(expected, observed)
 
-    def test_mac_addresses_to_cobbler_deltas_set_2(self):
+    def test_gen_cobbler_interface_deltas_set_2_macs(self):
+        # Specifying multiple MAC addresses results in deltas to configure a
+        # corresponding number of interfaces. The dns_name of the first
+        # interface is updated to the given hostname; subsequent interfaces
+        # have an empty dns_name.
         current_interfaces = {
             "eth0": {
                 "mac_address": "",
                 },
             }
-        mac_addresses_desired = [
-            "11:11:11:11:11:11", "22:22:22:22:22:22"]
+        hostname = "crowbar"
+        mac_addresses = [
+            "11:11:11:11:11:11",
+            "22:22:22:22:22:22",
+            ]
         expected = [
             {"interface": "eth0",
-             "mac_address": "11:11:11:11:11:11"},
+             "mac_address": mac_addresses[0],
+             "dns_name": hostname},
             {"interface": "eth1",
-             "mac_address": "22:22:22:22:22:22"},
+             "mac_address": mac_addresses[1],
+             "dns_name": ""},
             ]
-        observed = list(
-            mac_addresses_to_cobbler_deltas(
-                current_interfaces, mac_addresses_desired))
-        self.assertEqual(expected, observed)
+        observed = gen_cobbler_interface_deltas(
+            current_interfaces, hostname, mac_addresses)
+        self.assertItemsEqual(expected, observed)
 
-    def test_mac_addresses_to_cobbler_deltas_remove_1(self):
+    def test_gen_cobbler_interface_deltas_remove_first_mac(self):
+        # Removing the first MAC address causes the MAC addressese of
+        # subsequent interfaces to be shifted down (i.e. eth1's mac --> eth0),
+        # and the last interface to be deleted.
+        dns_name = "lifesblood"
+        current_interfaces = {
+            "eth0": {
+                "mac_address": "11:11:11:11:11:11",
+                "dns_name": dns_name,
+                },
+            "eth1": {
+                "mac_address": "22:22:22:22:22:22",
+                },
+            }
+        mac_addresses = [
+            current_interfaces["eth1"]["mac_address"],
+            ]
+        expected = [
+            {"interface": "eth0",
+             "mac_address": mac_addresses[0],
+             "dns_name": "lifesblood"},
+            {"interface": "eth1",
+             "delete_interface": True},
+            ]
+        observed = gen_cobbler_interface_deltas(
+            current_interfaces, dns_name, mac_addresses)
+        self.assertItemsEqual(expected, observed)
+
+    def test_gen_cobbler_interface_deltas_remove_last_mac(self):
+        # Removing the last MAC address causes the last interface to be
+        # deleted.
+        dns_name = "lifesblood"
+        current_interfaces = {
+            "eth0": {
+                "mac_address": "11:11:11:11:11:11",
+                "dns_name": dns_name,
+                },
+            "eth1": {
+                "mac_address": "22:22:22:22:22:22",
+                },
+            }
+        mac_addresses = [
+            current_interfaces["eth0"]["mac_address"],
+            ]
+        expected = [
+            {"interface": "eth1",
+             "delete_interface": True},
+            ]
+        observed = gen_cobbler_interface_deltas(
+            current_interfaces, dns_name, mac_addresses)
+        self.assertItemsEqual(expected, observed)
+
+    def test_gen_cobbler_interface_deltas_modify_first_mac(self):
+        # Changing the first MAC address modifies the eth0 interface.
         current_interfaces = {
             "eth0": {
                 "mac_address": "11:11:11:11:11:11",
@@ -202,37 +261,19 @@ class TestInterfaceDeltas(TestCase):
                 "mac_address": "22:22:22:22:22:22",
                 },
             }
-        mac_addresses_desired = ["22:22:22:22:22:22"]
+        hostname = "necrophagist"
+        mac_addresses = [
+            "33:33:33:33:33:33",
+            current_interfaces["eth1"]["mac_address"],
+            ]
         expected = [
             {"interface": "eth0",
-             "delete_interface": True},
+             "mac_address": mac_addresses[0],
+             "dns_name": hostname},
             ]
-        observed = list(
-            mac_addresses_to_cobbler_deltas(
-                current_interfaces, mac_addresses_desired))
-        self.assertEqual(expected, observed)
-
-    def test_mac_addresses_to_cobbler_deltas_set_1_remove_1(self):
-        current_interfaces = {
-            "eth0": {
-                "mac_address": "11:11:11:11:11:11",
-                },
-            "eth1": {
-                "mac_address": "22:22:22:22:22:22",
-                },
-            }
-        mac_addresses_desired = [
-            "22:22:22:22:22:22", "33:33:33:33:33:33"]
-        expected = [
-            {"interface": "eth0",
-             "delete_interface": True},
-            {"interface": "eth0",
-             "mac_address": "33:33:33:33:33:33"},
-            ]
-        observed = list(
-            mac_addresses_to_cobbler_deltas(
-                current_interfaces, mac_addresses_desired))
-        self.assertEqual(expected, observed)
+        observed = gen_cobbler_interface_deltas(
+            current_interfaces, hostname, mac_addresses)
+        self.assertItemsEqual(expected, observed)
 
 
 class ProvisioningAPITests:
@@ -309,8 +350,8 @@ class ProvisioningAPITests:
         returnValue(profile_name)
 
     @inlineCallbacks
-    def add_node(self, papi, name=None, profile_name=None, power_type=None,
-                 metadata=None):
+    def add_node(self, papi, name=None, hostname=None, profile_name=None,
+                 power_type=None, metadata=None):
         """Creates a new node object via `papi`.
 
         Arranges for it to be deleted during test clean-up. If `name` is not
@@ -321,6 +362,8 @@ class ProvisioningAPITests:
         """
         if name is None:
             name = fake_name()
+        if hostname is None:
+            hostname = fake_name()
         if profile_name is None:
             profile_name = yield self.add_profile(papi)
         if power_type is None:
@@ -328,7 +371,7 @@ class ProvisioningAPITests:
         if metadata is None:
             metadata = fake_node_metadata()
         node_name = yield papi.add_node(
-            name, profile_name, power_type, metadata)
+            name, hostname, profile_name, power_type, metadata)
         self.addCleanup(
             self.cleanup_objects,
             papi.delete_nodes_by_name,
@@ -359,9 +402,13 @@ class ProvisioningAPITests:
     def test_add_node(self):
         # Create a system/node via the Provisioning API.
         papi = self.get_provisioning_api()
-        node_name = yield self.add_node(papi)
+        node_name = yield self.add_node(papi, hostname="enthroned")
         nodes = yield papi.get_nodes_by_name([node_name])
         self.assertItemsEqual([node_name], nodes)
+        node = nodes[node_name]
+        self.assertEqual("enthroned", node["hostname"])
+        self.assertEqual("ether_wake", node["power_type"])
+        self.assertEqual([], node["mac_addresses"])
 
     @inlineCallbacks
     def _test_add_object_twice(self, method):
@@ -423,7 +470,7 @@ class ProvisioningAPITests:
     def test_modify_nodes_set_mac_addresses(self):
         papi = self.get_provisioning_api()
         node_name = yield self.add_node(papi)
-        mac_address = fake_mac_address()
+        mac_address = factory.getRandomMACAddress()
         yield papi.modify_nodes(
             {node_name: {"mac_addresses": [mac_address]}})
         values = yield papi.get_nodes_by_name([node_name])
@@ -434,8 +481,8 @@ class ProvisioningAPITests:
     def test_modify_nodes_remove_mac_addresses(self):
         papi = self.get_provisioning_api()
         node_name = yield self.add_node(papi)
-        mac_address1 = fake_mac_address()
-        mac_address2 = fake_mac_address()
+        mac_address1 = factory.getRandomMACAddress()
+        mac_address2 = factory.getRandomMACAddress()
         mac_addresses_from = [mac_address1, mac_address2]
         mac_addresses_to = [mac_address2]
         yield papi.modify_nodes(

@@ -50,9 +50,10 @@ class IProvisioningAPI_Template:
         :return: The name of the new profile.
         """
 
-    def add_node(name, profile, power_type, metadata):
+    def add_node(name, hostname, profile, power_type, metadata):
         """Add a node with the given `name`.
 
+        :param hostname: The fully-qualified hostname for the node.
         :param profile: Name of profile to associate the node with.
         :param power_type: A choice of power-control method, as in
             :class:`POWER_TYPE`.
