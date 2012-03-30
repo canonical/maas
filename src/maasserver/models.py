@@ -24,6 +24,7 @@ __all__ = [
     "UserProfile",
     ]
 
+from cgi import escape
 from collections import (
     defaultdict,
     OrderedDict,
@@ -836,7 +837,8 @@ def get_html_display_for_key(key, size):
 
     :param key: The key for which we want an HTML representation.
     :type name: basestring
-    :param size: The maximum size of the representation.
+    :param size: The maximum size of the representation.  This may not be
+        met exactly.
     :type size: int
     :return: The HTML representation of this key.
     :rtype: basestring
@@ -852,12 +854,19 @@ def get_html_display_for_key(key, size):
             size - (len(key_type) + len(comment) + len(HELLIPSIS) + 2))
         if room_for_key > 0:
             return '%s %.*s%s %s' % (
-                key_type, room_for_key, key_string, HELLIPSIS, comment)
+                escape(key_type, quote=True),
+                room_for_key,
+                escape(key_string, quote=True),
+                HELLIPSIS,
+                escape(comment, quote=True))
 
     if len(key) > size:
-        return '%.*s%s' % (size - len(HELLIPSIS), key, HELLIPSIS)
+        return '%.*s%s' % (
+            size - len(HELLIPSIS),
+            escape(key, quote=True),
+            HELLIPSIS)
     else:
-        return key
+        return escape(key, quote=True)
 
 
 MAX_KEY_DISPLAY = 50
