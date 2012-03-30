@@ -52,6 +52,7 @@ from django.shortcuts import get_object_or_404
 from django.utils.safestring import mark_safe
 from maasserver.exceptions import (
     CannotDeleteUserException,
+    NodeStateViolation,
     PermissionDenied,
     )
 from maasserver.fields import (
@@ -151,8 +152,7 @@ NODE_STATUS_CHOICES_DICT = OrderedDict(NODE_STATUS_CHOICES)
 
 NODE_TRANSITIONS = {
     None: [
-        NODE_STATUS.DECLARED,  # Authenticated enlistment.
-        NODE_STATUS.READY,  # Anonymous enlistement.
+        NODE_STATUS.DECLARED,
         NODE_STATUS.MISSING,
         NODE_STATUS.RETIRED,
         ],
@@ -505,7 +505,7 @@ class Node(CommonInfo):
                 NODE_STATUS_CHOICES_DICT.get(old_status, "Unknown"),
                 NODE_STATUS_CHOICES_DICT.get(self.status, "Unknown"),
                 )
-            raise ValidationError({'status': error_text})
+            raise NodeStateViolation(error_text)
 
     def clean(self, *args, **kwargs):
         super(Node, self).clean(*args, **kwargs)
@@ -559,6 +559,34 @@ class Node(CommonInfo):
         mac = MACAddress.objects.get(mac_address=mac_address, node=self)
         if mac:
             mac.delete()
+
+    def accept_enlistment(self):
+        """Accept this node's (anonymous) enlistment.
+
+        This call makes sense only on a node in Declared state, i.e. one that
+        has been anonymously enlisted and is now waiting for a MAAS user to
+        accept that enlistment as authentic.  Calling it on a node that is in
+        Ready or Commissioning state, however, is not an error -- it probably
+        just means that somebody else has beaten you to it.
+
+        :return: This node if it has made the transition from Declared, or
+            None if it was already in an accepted state.
+        """
+        # Accepting a node puts it into Ready state.  This will change
+        # once we implement commissioning.
+        target_state = NODE_STATUS.READY
+
+        accepted_states = [NODE_STATUS.READY, NODE_STATUS.COMMISSIONING]
+        if self.status in accepted_states:
+            return None
+        if self.status != NODE_STATUS.DECLARED:
+            raise NodeStateViolation(
+                "Cannot accept node enlistment: node %s is in state %s."
+                % (self.system_id, NODE_STATUS_CHOICES_DICT[self.status]))
+
+        self.status = target_state
+        self.save()
+        return self
 
     def delete(self):
         # Delete the related mac addresses first.

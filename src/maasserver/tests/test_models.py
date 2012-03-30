@@ -25,6 +25,7 @@ from django.utils.safestring import SafeUnicode
 from fixtures import TestWithFixtures
 from maasserver.exceptions import (
     CannotDeleteUserException,
+    NodeStateViolation,
     PermissionDenied,
     )
 from maasserver.models import (
@@ -190,14 +191,77 @@ class NodeTest(TestCase):
         node.release()
         self.assertEqual((NODE_STATUS.READY, None), (node.status, node.owner))
 
+    def test_accept_enlistment_gets_node_out_of_declared_state(self):
+        # If called on a node in Declared state, accept_enlistment()
+        # changes the node's status, and returns the node.
+
+        # This will change when we add commissioning.  Until then,
+        # acceptance gets a node straight to Ready state.
+        target_state = NODE_STATUS.READY
+
+        node = factory.make_node(status=NODE_STATUS.DECLARED)
+        return_value = node.accept_enlistment()
+        self.assertEqual((node, target_state), (return_value, node.status))
+
+    def test_accept_enlistment_does_nothing_if_already_accepted(self):
+        # If a node has already been accepted, but not assigned a role
+        # yet, calling accept_enlistment on it is meaningless but not an
+        # error.  The method returns None in this case.
+        accepted_states = [
+            NODE_STATUS.COMMISSIONING,
+            NODE_STATUS.READY,
+            ]
+        nodes = {
+            status: factory.make_node(status=status)
+            for status in accepted_states}
+
+        return_values = {
+            status: node.accept_enlistment()
+            for status, node in nodes.items()}
+
+        self.assertEqual(
+            {status: None for status in accepted_states}, return_values)
+        self.assertEqual(
+            {status: status for status in accepted_states},
+            {status: node.status for status, node in nodes.items()})
+
+    def test_accept_enlistment_rejects_bad_state_change(self):
+        # If a node is neither Declared nor in one of the "accepted"
+        # states where acceptance is a safe no-op, accept_enlistment
+        # raises a node state violation and leaves the node's state
+        # unchanged.
+        all_states = map_enum(NODE_STATUS).values()
+        acceptable_states = [
+            NODE_STATUS.DECLARED,
+            NODE_STATUS.COMMISSIONING,
+            NODE_STATUS.READY,
+            ]
+        unacceptable_states = set(all_states) - set(acceptable_states)
+        nodes = {
+            status: factory.make_node(status=status)
+            for status in unacceptable_states}
+
+        exceptions = {status: False for status in unacceptable_states}
+        for status, node in nodes.items():
+            try:
+                node.accept_enlistment()
+            except NodeStateViolation:
+                exceptions[status] = True
+
+        self.assertEqual(
+            {status: True for status in unacceptable_states}, exceptions)
+        self.assertEqual(
+            {status: status for status in unacceptable_states},
+            {status: node.status for status, node in nodes.items()})
+
     def test_full_clean_checks_status_transition_and_raises_if_invalid(self):
         # RETIRED -> ALLOCATED is an invalid transition.
         node = factory.make_node(
             status=NODE_STATUS.RETIRED, owner=factory.make_user())
         node.status = NODE_STATUS.ALLOCATED
         self.assertRaisesRegexp(
-            ValidationError,
-            str({'status': u'Invalid transition: Retired -> Allocated.'}),
+            NodeStateViolation,
+            "Invalid transition: Retired -> Allocated.",
             node.full_clean)
 
     def test_full_clean_passes_if_status_unchanged(self):
@@ -205,7 +269,8 @@ class NodeTest(TestCase):
         node = factory.make_node(status=status)
         node.status = status
         node.full_clean()
-        # No ValidationError.
+        # The test is that this does not raise an error.
+        pass
 
     def test_full_clean_passes_if_status_valid_transition(self):
         # NODE_STATUS.READY -> NODE_STATUS.ALLOCATED is a valid
@@ -214,16 +279,17 @@ class NodeTest(TestCase):
         node = factory.make_node(status=status)
         node.status = NODE_STATUS.ALLOCATED
         node.full_clean()
-        # No ValidationError.
+        # The test is that this does not raise an error.
+        pass
 
-    def test_save_checks_status_transition_and_raises_if_invalid(self):
+    def test_save_raises_node_state_violation_on_bad_transition(self):
         # RETIRED -> ALLOCATED is an invalid transition.
         node = factory.make_node(
             status=NODE_STATUS.RETIRED, owner=factory.make_user())
         node.status = NODE_STATUS.ALLOCATED
         self.assertRaisesRegexp(
-            ValidationError,
-            str({'status': u'Invalid transition: Retired -> Allocated.'}),
+            NodeStateViolation,
+            "Invalid transition: Retired -> Allocated.",
             node.save)
 
     def test_save_does_not_check_status_transition_if_skip_check(self):
@@ -232,7 +298,8 @@ class NodeTest(TestCase):
             status=NODE_STATUS.RETIRED, owner=factory.make_user())
         node.status = NODE_STATUS.ALLOCATED
         node.save(skip_check=True)
-        # No ValidationError.
+        # The test is that this does not raise an error.
+        pass
 
 
 class GetDbStateTest(TestCase):

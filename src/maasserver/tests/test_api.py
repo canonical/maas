@@ -35,6 +35,7 @@ from maasserver.models import (
     MACAddress,
     Node,
     NODE_STATUS,
+    NODE_STATUS_CHOICES_DICT,
     )
 from maasserver.testing import (
     reload_object,
@@ -316,6 +317,17 @@ class AnonymousEnlistmentAPITest(APIv10TestMixin, TestCase):
         self.assertEqual(httplib.BAD_REQUEST, response.status_code)
         self.assertIn('application/json', response['Content-Type'])
         self.assertItemsEqual(['architecture'], parsed_result)
+
+    def test_POST_accept_not_allowed(self):
+        # An anonymous user is not allowed to accept an anonymously
+        # enlisted node.  That would defeat the whole purpose of holding
+        # those nodes for approval.
+        node_id = factory.make_node(status=NODE_STATUS.DECLARED).system_id
+        response = self.client.post(
+            self.get_uri('nodes/'), {'op': 'accept', 'nodes': [node_id]})
+        self.assertEqual(
+            (httplib.UNAUTHORIZED, "You must be logged in to accept nodes."),
+            (response.status_code, response.content))
 
 
 class NodeAnonAPITest(APIv10TestMixin, TestCase):
@@ -927,6 +939,106 @@ class TestNodesAPI(APITestCase):
         node = Node.objects.get(system_id=node.system_id)
         oauth_key = self.client.token.key
         self.assertEqual(oauth_key, node.token.key)
+
+    def test_POST_accept_gets_node_out_of_declared_state(self):
+        # This will change when we add provisioning.  Until then,
+        # acceptance gets a node straight to Ready state.
+        target_state = NODE_STATUS.READY
+
+        node = factory.make_node(status=NODE_STATUS.DECLARED)
+        response = self.client.post(
+            self.get_uri('nodes/'),
+            {'op': 'accept', 'nodes': [node.system_id]})
+        accepted_ids = [
+            accepted_node['system_id']
+            for accepted_node in json.loads(response.content)]
+        self.assertEqual(
+            (httplib.OK, [node.system_id]),
+            (response.status_code, accepted_ids))
+        self.assertEqual(target_state, reload_object(node).status)
+
+    def test_POST_quietly_accepts_empty_set(self):
+        response = self.client.post(self.get_uri('nodes/'), {'op': 'accept'})
+        self.assertEqual(
+            (httplib.OK, "[]"), (response.status_code, response.content))
+
+    def test_POST_accept_rejects_impossible_state_changes(self):
+        acceptable_states = set([
+            NODE_STATUS.DECLARED,
+            NODE_STATUS.COMMISSIONING,
+            NODE_STATUS.READY,
+            ])
+        unacceptable_states = (
+            set(map_enum(NODE_STATUS).values()) - acceptable_states)
+        nodes = {
+            status: factory.make_node(status=status)
+            for status in unacceptable_states}
+        responses = {
+            status: self.client.post(
+                self.get_uri('nodes/'), {
+                    'op': 'accept',
+                    'nodes': [node.system_id],
+                    })
+            for status, node in nodes.items()}
+        # All of these attempts are rejected with Conflict errors.
+        self.assertEqual(
+            {status: httplib.CONFLICT for status in unacceptable_states},
+            {
+                status: responses[status].status_code
+                for status in unacceptable_states})
+
+        for status, response in responses.items():
+            # Each error describes the problem.
+            self.assertIn("Cannot accept node enlistment", response.content)
+            # Each error names the node it encountered a problem with.
+            self.assertIn(nodes[status].system_id, response.content)
+            # Each error names the node state that the request conflicted
+            # with.
+            self.assertIn(NODE_STATUS_CHOICES_DICT[status], response.content)
+
+    def test_POST_accept_fails_if_node_does_not_exist(self):
+        node_id = factory.getRandomString()
+        response = self.client.post(
+            self.get_uri('nodes/'), {'op': 'accept', 'nodes': [node_id]})
+        self.assertEqual(
+            (httplib.BAD_REQUEST, "Unknown node(s): %s" % node_id),
+            (response.status_code, response.content))
+
+    def test_POST_accept_accepts_multiple_nodes(self):
+        # This will change when we add provisioning.  Until then,
+        # acceptance gets a node straight to Ready state.
+        target_state = NODE_STATUS.READY
+
+        nodes = [
+            factory.make_node(status=NODE_STATUS.DECLARED)
+            for counter in range(2)]
+        node_ids = [node.system_id for node in nodes]
+        response = self.client.post(self.get_uri('nodes/'), {
+            'op': 'accept',
+            'nodes': node_ids,
+            })
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(
+            [target_state] * len(nodes),
+            [reload_object(node).status for node in nodes])
+
+    def test_POST_accept_returns_actually_accepted_nodes(self):
+        acceptable_nodes = [
+            factory.make_node(status=NODE_STATUS.DECLARED)
+            for counter in range(2)
+            ]
+        accepted_node = factory.make_node(status=NODE_STATUS.READY)
+        nodes = acceptable_nodes + [accepted_node]
+        response = self.client.post(self.get_uri('nodes/'), {
+            'op': 'accept',
+            'nodes': [node.system_id for node in nodes],
+            })
+        self.assertEqual(httplib.OK, response.status_code)
+        accepted_ids = [
+            node['system_id'] for node in json.loads(response.content)]
+        self.assertItemsEqual(
+            [node.system_id for node in acceptable_nodes], accepted_ids)
+        self.assertNotIn(accepted_node.system_id, accepted_ids)
 
 
 class MACAddressAPITest(APITestCase):

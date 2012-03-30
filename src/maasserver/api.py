@@ -92,6 +92,7 @@ from maasserver.exceptions import (
     NodesNotAvailable,
     NodeStateViolation,
     PermissionDenied,
+    Unauthorized,
     )
 from maasserver.fields import validate_mac
 from maasserver.forms import NodeWithMACAddressesForm
@@ -398,12 +399,12 @@ class NodeHandler(BaseHandler):
         return node
 
 
-def create_node(request, initial_status):
+def create_node(request):
     """Service an http request to create a node.
 
+    The node will be in the Declared state.
+
     :param request: The http request for this node to be created.
-    :param initial_status: The state the new node should be in.
-    :type initial_status: A value from enum :class:`NODE_STATUS`.
     :return: A suitable return value for the handler receiving the "new"
         request that this implements.
     :rtype: :class:`maasserver.models.Node` or
@@ -411,10 +412,7 @@ def create_node(request, initial_status):
     """
     form = NodeWithMACAddressesForm(request.data)
     if form.is_valid():
-        node = form.save()
-        node.status = initial_status
-        node.save()
-        return node
+        return form.save()
     else:
         return HttpResponseBadRequest(
             form.errors, content_type='application/json')
@@ -435,7 +433,12 @@ class AnonNodesHandler(AnonymousBaseHandler):
         therefore, the node is held in the "Declared" state for approval by a
         MAAS user.
         """
-        return create_node(request, NODE_STATUS.DECLARED)
+        return create_node(request)
+
+    @api_exported('accept', 'POST')
+    def accept(self, request):
+        """Accept a node's enlistment: not allowed to anonymous users."""
+        raise Unauthorized("You must be logged in to accept nodes.")
 
     @classmethod
     def resource_uri(cls, *args, **kwargs):
@@ -470,7 +473,36 @@ class NodesHandler(BaseHandler):
         When a node has been added to MAAS by a logged-in MAAS user, it is
         ready for allocation to services running on the MAAS.
         """
-        return create_node(request, NODE_STATUS.READY)
+        node = create_node(request)
+        node.accept_enlistment()
+        return node
+
+    @api_exported('accept', 'POST')
+    def accept(self, request):
+        """Accept declared nodes into the MAAS.
+
+        Nodes can be enlisted in the MAAS anonymously, as opposed to by a
+        logged-in user, at the nodes' own request.  These nodes are held in
+        the Declared state; a MAAS user must first verify the authenticity of
+        these enlistments, and accept them.
+
+        Enlistments can be accepted en masse, by passing multiple nodes to
+        this call.  Accepting an already accepted node is not an error, but
+        accepting one that is already allocated, broken, etc. is.
+
+        :param nodes: system_ids of the nodes whose enlistment is to be
+            accepted.  (An empty list is acceptable).
+        :return: The system_ids of any nodes that have their status changed
+            by this call.  Thus, nodes that were already accepted are
+            excluded from the result.
+        """
+        system_ids = set(request.POST.getlist('nodes'))
+        nodes = Node.objects.filter(system_id__in=system_ids)
+        found_ids = set(node.system_id for node in nodes)
+        if len(nodes) < len(system_ids):
+            raise MAASAPIBadRequest(
+                "Unknown node(s): %s" % ', '.join(system_ids - found_ids))
+        return filter(None, [node.accept_enlistment() for node in nodes])
 
     @api_exported('list', 'GET')
     def list(self, request):
