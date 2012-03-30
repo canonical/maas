@@ -118,6 +118,25 @@ class AnonymousEnlistmentAPITest(APIv10TestMixin, TestCase):
         self.assertEqual(2, diane.after_commissioning_action)
         self.assertEqual(architecture, diane.architecture)
 
+    def test_POST_new_anonymous_creates_node_in_declared_state(self):
+        # Upon anonymous enlistment, a node goes into the Declared
+        # state.  Deliberate approval is required before we start
+        # reinstalling the system, wiping its disks etc.
+        response = self.client.post(
+            self.get_uri('nodes/'),
+            {
+                'op': 'new',
+                'hostname': factory.getRandomString(),
+                'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
+                'after_commissioning_action': '2',
+                'mac_addresses': ['aa:bb:cc:dd:ee:ff'],
+            })
+        self.assertEqual(httplib.OK, response.status_code)
+        system_id = json.loads(response.content)['system_id']
+        self.assertEqual(
+            NODE_STATUS.DECLARED,
+            Node.objects.get(system_id=system_id).status)
+
     def test_POST_new_power_type_defaults_to_asking_config(self):
         architecture = factory.getRandomChoice(ARCHITECTURE_CHOICES)
         response = self.client.post(
@@ -644,6 +663,24 @@ class TestNodesAPI(APITestCase):
             })
 
         self.assertEqual(httplib.OK, response.status_code)
+
+    def test_POST_new_when_logged_in_creates_node_in_ready_state(self):
+        # When a logged-in user enlists a node, it goes into the Ready
+        # state.
+        # This will change once we start doing proper commissioning.
+        response = self.client.post(
+            self.get_uri('nodes/'),
+            {
+                'op': 'new',
+                'hostname': factory.getRandomString(),
+                'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
+                'after_commissioning_action': '2',
+                'mac_addresses': ['aa:bb:cc:dd:ee:ff'],
+            })
+        self.assertEqual(httplib.OK, response.status_code)
+        system_id = json.loads(response.content)['system_id']
+        self.assertEqual(
+            NODE_STATUS.READY, Node.objects.get(system_id=system_id).status)
 
     def test_GET_list_lists_nodes(self):
         # The api allows for fetching the list of Nodes.
@@ -1344,7 +1381,7 @@ class APIErrorsTest(APIv10TestMixin, TransactionTestCase):
         error_message = factory.getRandomString()
 
         # Monkey patch api.create_node to have it raise a RuntimeError.
-        def raise_exception(request):
+        def raise_exception(*args, **kwargs):
             raise RuntimeError(error_message)
         self.patch(api, 'create_node', raise_exception)
         response = self.client.post(self.get_uri('nodes/'), {'op': 'new'})

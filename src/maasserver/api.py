@@ -398,10 +398,22 @@ class NodeHandler(BaseHandler):
         return node
 
 
-def create_node(request):
+def create_node(request, initial_status):
+    """Service an http request to create a node.
+
+    :param request: The http request for this node to be created.
+    :param initial_status: The state the new node should be in.
+    :type initial_status: A value from enum :class:`NODE_STATUS`.
+    :return: A suitable return value for the handler receiving the "new"
+        request that this implements.
+    :rtype: :class:`maasserver.models.Node` or
+        :class:`django.http.HttpResponseBadRequest`.
+    """
     form = NodeWithMACAddressesForm(request.data)
     if form.is_valid():
         node = form.save()
+        node.status = initial_status
+        node.save()
         return node
     else:
         return HttpResponseBadRequest(
@@ -416,8 +428,14 @@ class AnonNodesHandler(AnonymousBaseHandler):
 
     @api_exported('new', 'POST')
     def new(self, request):
-        """Create a new Node."""
-        return create_node(request)
+        """Create a new Node.
+
+        Adding a server to a MAAS puts it on a path that will wipe its disks
+        and re-install its operating system.  In anonymous enlistment,
+        therefore, the node is held in the "Declared" state for approval by a
+        MAAS user.
+        """
+        return create_node(request, NODE_STATUS.DECLARED)
 
     @classmethod
     def resource_uri(cls, *args, **kwargs):
@@ -447,8 +465,12 @@ class NodesHandler(BaseHandler):
 
     @api_exported('new', 'POST')
     def new(self, request):
-        """Create a new Node."""
-        return create_node(request)
+        """Create a new Node.
+
+        When a node has been added to MAAS by a logged-in MAAS user, it is
+        ready for allocation to services running on the MAAS.
+        """
+        return create_node(request, NODE_STATUS.READY)
 
     @api_exported('list', 'GET')
     def list(self, request):
