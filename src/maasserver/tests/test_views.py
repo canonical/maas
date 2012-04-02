@@ -27,9 +27,11 @@ from maasserver import (
     views,
     )
 from maasserver.exceptions import NoRabbit
+from maasserver.forms import NodeTransitionForm
 from maasserver.models import (
     Config,
     NODE_AFTER_COMMISSIONING_ACTION,
+    NODE_STATUS,
     POWER_TYPE_CHOICES,
     SSHKey,
     UserProfile,
@@ -540,6 +542,44 @@ class NodeViewsTest(LoggedInTestCase):
         self.assertEqual(hostname, node.hostname)
         self.assertEqual(
             after_commissioning_action, node.after_commissioning_action)
+
+    def test_view_node_admin_has_button_to_accept_enlistement(self):
+        self.logged_in_user.is_superuser = True
+        self.logged_in_user.save()
+        node = factory.make_node(status=NODE_STATUS.DECLARED)
+        node_link = reverse('node-view', args=[node.system_id])
+        response = self.client.get(node_link)
+        doc = fromstring(response.content)
+        inputs = [
+            input for input in doc.cssselect('form#node_actions input')
+            if input.name == NodeTransitionForm.input_name]
+
+        self.assertSequenceEqual(
+            ["Accept Enlisted node"], [input.value for input in inputs])
+
+    def test_view_node_POST_admin_can_enlist_node(self):
+        self.logged_in_user.is_superuser = True
+        self.logged_in_user.save()
+        node = factory.make_node(status=NODE_STATUS.DECLARED)
+        node_link = reverse('node-view', args=[node.system_id])
+        response = self.client.post(
+            node_link,
+            data={
+                NodeTransitionForm.input_name: "Accept Enlisted node",
+            })
+
+        self.assertEqual(httplib.FOUND, response.status_code)
+        self.assertEqual(
+            NODE_STATUS.READY, reload_object(node).status)
+
+    def test_view_node_has_button_to_accept_enlistement_for_user(self):
+        # A simple user can't see the button to enlist a declared node.
+        node = factory.make_node(status=NODE_STATUS.DECLARED)
+        node_link = reverse('node-view', args=[node.system_id])
+        response = self.client.get(node_link)
+        doc = fromstring(response.content)
+
+        self.assertEqual(0, len(doc.cssselect('form#node_actions input')))
 
 
 class AdminNodeViewsTest(AdminLoggedInTestCase):

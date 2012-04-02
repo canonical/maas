@@ -18,6 +18,7 @@ __all__ = [
     "Config",
     "FileStorage",
     "NODE_STATUS",
+    "NODE_TRANSITIONS",
     "Node",
     "MACAddress",
     "SSHKey",
@@ -153,6 +154,17 @@ NODE_STATUS_CHOICES = (
 NODE_STATUS_CHOICES_DICT = OrderedDict(NODE_STATUS_CHOICES)
 
 
+# Information about valid node status transitions.
+# The format is:
+# {
+#  old_status1: [
+#      new_status11,
+#      new_status12,
+#      new_status13,
+#      ],
+# ...
+# }
+#
 NODE_TRANSITIONS = {
     None: [
         NODE_STATUS.DECLARED,
@@ -542,7 +554,7 @@ class Node(CommonInfo):
         """Add a new MAC Address to this `Node`.
 
         :param mac_address: The MAC Address to be added.
-        :type mac_address: str
+        :type mac_address: basestring
         :raises: django.core.exceptions.ValidationError_
 
         .. _django.core.exceptions.ValidationError: https://
@@ -1175,6 +1187,9 @@ class MAASAuthorizationBackend(ModelBackend):
     supports_object_permissions = True
 
     def has_perm(self, user, perm, obj=None):
+        # Note that a check for a superuser will never reach this code
+        # because Django will return True (as an optimization) for every
+        # permission check performed on a superuser.
         if not user.is_active:
             # Deactivated users, and in particular the node-init user,
             # are prohibited from accessing maasserver services.
@@ -1190,6 +1205,9 @@ class MAASAuthorizationBackend(ModelBackend):
             return obj.owner in (None, user)
         elif perm == 'edit':
             return obj.owner == user
+        elif perm == 'admin':
+            # 'admin' permission is solely granted to superusers.
+            return False
         else:
             raise NotImplementedError(
                 'Invalid permission check (invalid permission name: %s).' %

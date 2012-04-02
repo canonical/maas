@@ -12,7 +12,19 @@
       <a href="{% url 'node-edit' node.system_id %}" class="button secondary">
         Edit node
       </a>
-    {% endif%}
+    {% endif %}
+    {% if form.transition_buttons %}
+      <form id="node_actions" method="post" action=".">
+      {% for transition in form.transition_buttons %}
+        {% if forloop.first %}<br /><br /><h4>Actions</h4>{% endif %}
+        <input class="secondary"
+               type="submit"
+               name="{{ form.input_name }}"
+               value="{{ transition.display }}" />
+        {% if not forloop.last %}<br /><br />{% endif %}
+      {% endfor %}
+      </form>
+    {% endif %}
   </div>
 {% endblock %}
 

@@ -46,6 +46,7 @@ from maasserver.models import (
     NODE_STATUS,
     NODE_STATUS_CHOICES,
     NODE_STATUS_CHOICES_DICT,
+    NODE_TRANSITIONS,
     SSHKey,
     SYSTEM_USERS,
     UserProfile,
@@ -303,6 +304,23 @@ class NodeTest(TestCase):
         node.save(skip_check=True)
         # The test is that this does not raise an error.
         pass
+
+
+class NodeTransitionsTests(TestCase):
+    """Test the structure of NODE_TRANSITIONS."""
+
+    def test_NODE_TRANSITIONS_initial_states(self):
+        allowed_states = set(NODE_STATUS_CHOICES_DICT.keys() + [None])
+
+        self.assertTrue(set(NODE_TRANSITIONS.keys()) <= allowed_states)
+
+    def test_NODE_TRANSITIONS_destination_state(self):
+        all_destination_states = []
+        for destination_states in NODE_TRANSITIONS.values():
+            all_destination_states.extend(destination_states)
+        allowed_states = set(NODE_STATUS_CHOICES_DICT.keys())
+
+        self.assertTrue(set(all_destination_states) <= allowed_states)
 
 
 class GetDbStateTest(TestCase):
