@@ -710,6 +710,18 @@ class SSHKeyValidatorTest(TestCase):
 class GetHTMLDisplayForKeyTest(TestCase):
     """Testing for the method `get_html_display_for_key`."""
 
+    def make_comment(self, length):
+        """Create a comment of the desired length.
+
+        The comment may contain spaces, but not begin or end in them.  It
+        will be of the desired length both before and after stripping.
+        """
+        return ''.join([
+            factory.getRandomString(1),
+            factory.getRandomString(max([length - 2, 0]), spaces=True),
+            factory.getRandomString(1),
+            ])[:length]
+
     def make_key(self, type_len=7, key_len=360, comment_len=None):
         """Produce a fake ssh public key containing arbitrary data.
 
@@ -726,7 +738,7 @@ class GetHTMLDisplayForKeyTest(TestCase):
             factory.getRandomString(key_len),
             ]
         if comment_len is not None:
-            fields.append(factory.getRandomString(comment_len, spaces=True))
+            fields.append(self.make_comment(comment_len))
         return " ".join(fields)
 
     def test_display_returns_unchanged_if_unknown_and_small(self):
@@ -819,16 +831,16 @@ class GetHTMLDisplayForKeyTest(TestCase):
         # If the key has a small key_type, a small comment and a large
         # key_string (which is the 'normal' case), the key_string part
         # gets cropped.
-        key_type = factory.getRandomString(10)
-        key_string = factory.getRandomString(100)
-        comment = factory.getRandomString(10, spaces=True)
-        key = '%s %s %s' % (key_type, key_string, comment)
+        type_len = 10
+        comment_len = 10
+        key = self.make_key(type_len, 100, comment_len)
+        key_type, key_string, comment = key.split(' ', 2)
         display = get_html_display_for_key(key, 50)
         self.assertEqual(50, len(display))
         self.assertEqual(
             '%s %.*s%s %s' % (
                 key_type,
-                50 - (len(key_type) + len(HELLIPSIS) + len(comment) + 2),
+                50 - (type_len + len(HELLIPSIS) + comment_len + 2),
                 key_string, HELLIPSIS, comment),
             display)
 
