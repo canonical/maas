@@ -470,13 +470,13 @@ class NodeViewsTest(LoggedInTestCase):
     def test_node_list_contains_link_to_node_view(self):
         node = factory.make_node()
         response = self.client.get(reverse('node-list'))
-        node_link = reverse('node-view', args=[node.id])
+        node_link = reverse('node-view', args=[node.system_id])
         self.assertIn(node_link, get_content_links(response))
 
     def test_view_node_displays_node_info(self):
         # The node page features the basic information about the node.
         node = factory.make_node()
-        node_link = reverse('node-view', args=[node.id])
+        node_link = reverse('node-view', args=[node.system_id])
         response = self.client.get(node_link)
         doc = fromstring(response.content)
         content_text = doc.cssselect('#content')[0].text_content()
@@ -485,33 +485,33 @@ class NodeViewsTest(LoggedInTestCase):
 
     def test_view_node_displays_link_to_edit_if_user_owns_node(self):
         node = factory.make_node(owner=self.logged_in_user)
-        node_link = reverse('node-view', args=[node.id])
+        node_link = reverse('node-view', args=[node.system_id])
         response = self.client.get(node_link)
-        node_edit_link = reverse('node-edit', args=[node.id])
+        node_edit_link = reverse('node-edit', args=[node.system_id])
         self.assertIn(node_edit_link, get_content_links(response))
 
     def test_view_node_no_link_to_edit_someonelses_node(self):
         node = factory.make_node(owner=factory.make_user())
-        node_link = reverse('node-view', args=[node.id])
+        node_link = reverse('node-view', args=[node.system_id])
         response = self.client.get(node_link)
-        node_edit_link = reverse('node-edit', args=[node.id])
+        node_edit_link = reverse('node-edit', args=[node.system_id])
         self.assertNotIn(node_edit_link, get_content_links(response))
 
     def test_user_cannot_edit_someonelses_node(self):
         node = factory.make_node(owner=factory.make_user())
-        node_edit_link = reverse('node-edit', args=[node.id])
+        node_edit_link = reverse('node-edit', args=[node.system_id])
         response = self.client.get(node_edit_link)
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
     def test_user_can_access_the_edition_page_for_his_nodes(self):
         node = factory.make_node(owner=self.logged_in_user)
-        node_edit_link = reverse('node-edit', args=[node.id])
+        node_edit_link = reverse('node-edit', args=[node.system_id])
         response = self.client.get(node_edit_link)
         self.assertEqual(httplib.OK, response.status_code)
 
     def test_user_can_edit_his_nodes(self):
         node = factory.make_node(owner=self.logged_in_user)
-        node_edit_link = reverse('node-edit', args=[node.id])
+        node_edit_link = reverse('node-edit', args=[node.system_id])
         hostname = factory.getRandomString()
         after_commissioning_action = factory.getRandomEnum(
             NODE_AFTER_COMMISSIONING_ACTION)
@@ -533,7 +533,7 @@ class AdminNodeViewsTest(AdminLoggedInTestCase):
 
     def test_admin_can_edit_nodes(self):
         node = factory.make_node(owner=factory.make_user())
-        node_edit_link = reverse('node-edit', args=[node.id])
+        node_edit_link = reverse('node-edit', args=[node.system_id])
         hostname = factory.getRandomString()
         power_type = factory.getRandomChoice(POWER_TYPE_CHOICES)
         after_commissioning_action = factory.getRandomEnum(

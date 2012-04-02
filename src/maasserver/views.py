@@ -108,8 +108,8 @@ class NodeView(DetailView):
     context_object_name = 'node'
 
     def get_object(self):
-        id = self.kwargs.get('id', None)
-        return get_object_or_404(Node, id=id)
+        system_id = self.kwargs.get('system_id', None)
+        return get_object_or_404(Node, system_id=system_id)
 
     def get_context_data(self, **kwargs):
         context = super(NodeView, self).get_context_data(**kwargs)
@@ -123,8 +123,8 @@ class NodeEdit(UpdateView):
     template_name = 'maasserver/node_edit.html'
 
     def get_object(self):
-        id = self.kwargs.get('id', None)
-        node = get_object_or_404(Node, id=id)
+        system_id = self.kwargs.get('system_id', None)
+        node = get_object_or_404(Node, system_id=system_id)
         if not self.request.user.has_perm('edit', node):
             raise PermissionDenied()
         return node
@@ -136,7 +136,7 @@ class NodeEdit(UpdateView):
             return UINodeEditForm
 
     def get_success_url(self):
-        return reverse('node-view', args=[self.get_object().id])
+        return reverse('node-view', args=[self.get_object().system_id])
 
 
 def get_longpoll_context():

@@ -39,7 +39,7 @@
         {% for node in node_list %}
           <tr class="node {% cycle 'even' 'odd' %}">
             <td>
-              <a href="{% url 'node-view' node.id %}">
+              <a href="{% url 'node-view' node.system_id %}">
                 {% for macaddress in node.macaddress_set.reverse %}
                   {{ macaddress }}{% if not forloop.last %},{% endif %}
                 {% endfor %}
