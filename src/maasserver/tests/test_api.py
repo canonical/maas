@@ -507,11 +507,18 @@ class TestNodeAPI(APITestCase):
         self.assertIs(None, node.token)
 
     def test_POST_release_does_nothing_for_unowned_node(self):
-        node = factory.make_node(status=NODE_STATUS.READY)
+        node = factory.make_node(
+            status=NODE_STATUS.READY, owner=self.logged_in_user)
         response = self.client.post(
             self.get_node_uri(node), {'op': 'release'})
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(NODE_STATUS.READY, reload_object(node).status)
+
+    def test_POST_release_forbidden_if_user_cannot_edit_node(self):
+        node = factory.make_node(status=NODE_STATUS.READY)
+        response = self.client.post(
+            self.get_node_uri(node), {'op': 'release'})
+        self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
     def test_POST_release_fails_for_other_node_states(self):
         releasable_statuses = [
@@ -577,7 +584,7 @@ class TestNodeAPI(APITestCase):
 
     def test_PUT_updates_node(self):
         # The api allows the updating of a Node.
-        node = factory.make_node(hostname='diane')
+        node = factory.make_node(hostname='diane', owner=self.logged_in_user)
         response = self.client.put(
             self.get_node_uri(node), {'hostname': 'francis'})
         parsed_result = json.loads(response.content)
@@ -590,7 +597,7 @@ class TestNodeAPI(APITestCase):
     def test_resource_uri_points_back_at_node(self):
         # When a Node is returned by the API, the field 'resource_uri'
         # provides the URI for this Node.
-        node = factory.make_node(hostname='diane')
+        node = factory.make_node(hostname='diane', owner=self.logged_in_user)
         response = self.client.put(
             self.get_node_uri(node), {'hostname': 'francis'})
         parsed_result = json.loads(response.content)
@@ -602,7 +609,7 @@ class TestNodeAPI(APITestCase):
     def test_PUT_rejects_invalid_data(self):
         # If the data provided to update a node is invalid, a 'Bad request'
         # response is returned.
-        node = factory.make_node(hostname='diane')
+        node = factory.make_node(hostname='diane', owner=self.logged_in_user)
         response = self.client.put(
             self.get_node_uri(node), {'hostname': 'too long' * 100})
         parsed_result = json.loads(response.content)
@@ -633,12 +640,19 @@ class TestNodeAPI(APITestCase):
 
     def test_DELETE_deletes_node(self):
         # The api allows to delete a Node.
-        node = factory.make_node(set_hostname=True)
+        node = factory.make_node(set_hostname=True, owner=self.logged_in_user)
         system_id = node.system_id
         response = self.client.delete(self.get_node_uri(node))
 
         self.assertEqual(204, response.status_code)
         self.assertItemsEqual([], Node.objects.filter(system_id=system_id))
+
+    def test_DELETE_forbidden_without_edit_permission(self):
+        # A user without the edit permission cannot delete a Node.
+        node = factory.make_node(set_hostname=True)
+        response = self.client.delete(self.get_node_uri(node))
+
+        self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
     def test_DELETE_refuses_to_delete_invisible_node(self):
         # The request to delete a single node is denied if the node isn't
@@ -1043,8 +1057,8 @@ class TestNodesAPI(APITestCase):
 
 class MACAddressAPITest(APITestCase):
 
-    def createNodeWithMacs(self):
-        node = factory.make_node()
+    def createNodeWithMacs(self, owner=None):
+        node = factory.make_node(owner=owner)
         mac1 = node.add_mac_address('aa:bb:cc:dd:ee:ff')
         mac2 = node.add_mac_address('22:bb:cc:dd:aa:ff')
         return node, mac1, mac2
@@ -1112,7 +1126,7 @@ class MACAddressAPITest(APITestCase):
 
     def test_macs_POST_add_mac(self):
         # The api allows to add a MAC Address to an existing node.
-        node = factory.make_node()
+        node = factory.make_node(owner=self.logged_in_user)
         nb_macs = MACAddress.objects.filter(node=node).count()
         response = self.client.post(
             self.get_uri('nodes/%s/macs/') % node.system_id,
@@ -1125,10 +1139,19 @@ class MACAddressAPITest(APITestCase):
             nb_macs + 1,
             MACAddress.objects.filter(node=node).count())
 
+    def test_macs_POST_add_mac_without_edit_perm(self):
+        # Adding a MAC Address to a node requires the 'edit' permission.
+        node = factory.make_node()
+        response = self.client.post(
+            self.get_uri('nodes/%s/macs/') % node.system_id,
+            {'mac_address': '01:BB:CC:DD:EE:FF'})
+
+        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+
     def test_macs_POST_add_mac_invalid(self):
         # A 'Bad Request' response is returned if one tries to add an invalid
         # MAC Address to a node.
-        node = self.createNodeWithMacs()[0]
+        node = self.createNodeWithMacs(self.logged_in_user)[0]
         response = self.client.post(
             self.get_uri('nodes/%s/macs/') % node.system_id,
             {'mac_address': 'invalid-mac'})
@@ -1142,7 +1165,7 @@ class MACAddressAPITest(APITestCase):
 
     def test_macs_DELETE_mac(self):
         # The api allows to delete a MAC Address.
-        node, mac1, mac2 = self.createNodeWithMacs()
+        node, mac1, mac2 = self.createNodeWithMacs(self.logged_in_user)
         nb_macs = node.macaddress_set.count()
         response = self.client.delete(
             self.get_uri('nodes/%s/macs/%s/') % (
@@ -1168,7 +1191,18 @@ class MACAddressAPITest(APITestCase):
     def test_macs_DELETE_not_found(self):
         # When deleting a MAC Address, the api returns a 'Not Found' (404)
         # error if no existing MAC Address is found.
-        node = factory.make_node()
+        node = factory.make_node(owner=self.logged_in_user)
+        response = self.client.delete(
+            self.get_uri('nodes/%s/macs/%s/') % (
+                node.system_id, '00-aa-22-cc-44-dd'))
+
+        self.assertEqual(httplib.NOT_FOUND, response.status_code)
+
+    def test_macs_DELETE_forbidden(self):
+        # When deleting a MAC Address, the api returns a 'Forbidden'
+        # (403) error if the user does not have the 'edit' permission on the
+        # node.
+        node = factory.make_node(owner=self.logged_in_user)
         response = self.client.delete(
             self.get_uri('nodes/%s/macs/%s/') % (
                 node.system_id, '00-aa-22-cc-44-dd'))

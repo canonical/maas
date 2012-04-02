@@ -44,7 +44,6 @@ from django.contrib.auth.views import (
     login as dj_login,
     logout as dj_logout,
     )
-from django.core.exceptions import PermissionDenied
 from django.core.urlresolvers import reverse
 from django.http import (
     HttpResponse,
@@ -109,7 +108,9 @@ class NodeView(DetailView):
 
     def get_object(self):
         system_id = self.kwargs.get('system_id', None)
-        return get_object_or_404(Node, system_id=system_id)
+        node = Node.objects.get_node_or_404(
+            system_id=system_id, user=self.request.user, perm='access')
+        return node
 
     def get_context_data(self, **kwargs):
         context = super(NodeView, self).get_context_data(**kwargs)
@@ -124,9 +125,8 @@ class NodeEdit(UpdateView):
 
     def get_object(self):
         system_id = self.kwargs.get('system_id', None)
-        node = get_object_or_404(Node, system_id=system_id)
-        if not self.request.user.has_perm('edit', node):
-            raise PermissionDenied()
+        node = Node.objects.get_node_or_404(
+            system_id=system_id, user=self.request.user, perm='edit')
         return node
 
     def get_form_class(self):

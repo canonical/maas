@@ -25,11 +25,15 @@ import logging
 import re
 
 from django.conf import settings
-from django.core.exceptions import ValidationError
+from django.core.exceptions import (
+    PermissionDenied,
+    ValidationError,
+    )
 from django.core.urlresolvers import reverse
 from django.http import (
     HttpResponse,
     HttpResponseBadRequest,
+    HttpResponseForbidden,
     HttpResponseRedirect,
     )
 from django.utils.http import urlquote_plus
@@ -141,6 +145,10 @@ class ExceptionMiddleware:
                 return HttpResponseBadRequest(
                     unicode(''.join(exception.messages)).encode(encoding),
                     mimetype=b"text/plain; charset=%s" % encoding)
+        elif isinstance(exception, PermissionDenied):
+            return HttpResponseForbidden(
+                content=unicode(exception).encode(encoding),
+                mimetype=b"text/plain; charset=%s" % encoding)
         else:
             # Return an API-readable "Internal Server Error" response.
             return HttpResponse(

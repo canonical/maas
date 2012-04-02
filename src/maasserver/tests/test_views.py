@@ -490,18 +490,31 @@ class NodeViewsTest(LoggedInTestCase):
         node_edit_link = reverse('node-edit', args=[node.system_id])
         self.assertIn(node_edit_link, get_content_links(response))
 
-    def test_view_node_no_link_to_edit_someonelses_node(self):
+    def test_user_cannot_view_someone_elses_node(self):
         node = factory.make_node(owner=factory.make_user())
-        node_link = reverse('node-view', args=[node.system_id])
-        response = self.client.get(node_link)
-        node_edit_link = reverse('node-edit', args=[node.system_id])
-        self.assertNotIn(node_edit_link, get_content_links(response))
+        node_view_link = reverse('node-view', args=[node.system_id])
+        response = self.client.get(node_view_link)
+        self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
-    def test_user_cannot_edit_someonelses_node(self):
+    def test_user_cannot_edit_someone_elses_node(self):
         node = factory.make_node(owner=factory.make_user())
         node_edit_link = reverse('node-edit', args=[node.system_id])
         response = self.client.get(node_edit_link)
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
+
+    def test_admin_can_view_someonelses_node(self):
+        self.become_admin()
+        node = factory.make_node(owner=factory.make_user())
+        node_view_link = reverse('node-view', args=[node.system_id])
+        response = self.client.get(node_view_link)
+        self.assertEqual(httplib.OK, response.status_code)
+
+    def test_admin_can_edit_someonelses_node(self):
+        self.become_admin()
+        node = factory.make_node(owner=factory.make_user())
+        node_edit_link = reverse('node-edit', args=[node.system_id])
+        response = self.client.get(node_edit_link)
+        self.assertEqual(httplib.OK, response.status_code)
 
     def test_user_can_access_the_edition_page_for_his_nodes(self):
         node = factory.make_node(owner=self.logged_in_user)

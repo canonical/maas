@@ -16,11 +16,11 @@ __all__ = [
     'VersionIndexHandler',
     ]
 
+from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse
 from maasserver.api import extract_oauth_key
 from maasserver.exceptions import (
     MAASAPINotFound,
-    PermissionDenied,
     Unauthorized,
     )
 from maasserver.models import SSHKey

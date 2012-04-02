@@ -73,7 +73,10 @@ import sys
 from textwrap import dedent
 import types
 
-from django.core.exceptions import ValidationError
+from django.core.exceptions import (
+    PermissionDenied,
+    ValidationError,
+    )
 from django.http import (
     HttpResponse,
     HttpResponseBadRequest,
@@ -91,7 +94,6 @@ from maasserver.exceptions import (
     MAASAPINotFound,
     NodesNotAvailable,
     NodeStateViolation,
-    PermissionDenied,
     Unauthorized,
     )
 from maasserver.fields import validate_mac
@@ -317,23 +319,22 @@ class NodeHandler(BaseHandler):
 
     def read(self, request, system_id):
         """Read a specific Node."""
-        return Node.objects.get_visible_node_or_404(
-            system_id=system_id, user=request.user)
+        return Node.objects.get_node_or_404(
+            system_id=system_id, user=request.user, perm='access')
 
     def update(self, request, system_id):
         """Update a specific Node."""
-        node = Node.objects.get_visible_node_or_404(
-            system_id=system_id, user=request.user)
+        node = Node.objects.get_node_or_404(
+            system_id=system_id, user=request.user, perm='edit')
         for key, value in request.data.items():
             setattr(node, key, value)
-        node.full_clean()
         node.save()
         return node
 
     def delete(self, request, system_id):
         """Delete a specific Node."""
-        node = Node.objects.get_visible_node_or_404(
-            system_id=system_id, user=request.user)
+        node = Node.objects.get_node_or_404(
+            system_id=system_id, user=request.user, perm='edit')
         node.delete()
         return rc.DELETED
 
@@ -383,8 +384,8 @@ class NodeHandler(BaseHandler):
     @api_exported('release', 'POST')
     def release(self, request, system_id):
         """Release a node.  Opposite of `NodesHandler.acquire`."""
-        node = Node.objects.get_visible_node_or_404(
-            system_id=system_id, user=request.user)
+        node = Node.objects.get_node_or_404(
+            system_id=system_id, user=request.user, perm='edit')
         if node.status == NODE_STATUS.READY:
             # Nothing to do.  This may be a redundant retry, and the
             # postcondition is achieved, so call this success.
@@ -564,20 +565,17 @@ class NodeMacsHandler(BaseHandler):
 
     def read(self, request, system_id):
         """Read all MAC Addresses related to a Node."""
-        node = Node.objects.get_visible_node_or_404(
-            user=request.user, system_id=system_id)
+        node = Node.objects.get_node_or_404(
+            user=request.user, system_id=system_id, perm='access')
 
         return MACAddress.objects.filter(node=node).order_by('id')
 
     def create(self, request, system_id):
         """Create a MAC Address for a specified Node."""
-        try:
-            node = Node.objects.get_visible_node_or_404(
-                user=request.user, system_id=system_id)
-            mac = node.add_mac_address(request.data.get('mac_address', None))
-            return mac
-        except ValidationError as e:
-            return HttpResponseBadRequest(e.message_dict)
+        node = Node.objects.get_node_or_404(
+            user=request.user, system_id=system_id, perm='edit')
+        mac = node.add_mac_address(request.data.get('mac_address', None))
+        return mac
 
     @classmethod
     def resource_uri(cls, *args, **kwargs):
@@ -592,8 +590,8 @@ class NodeMacHandler(BaseHandler):
 
     def read(self, request, system_id, mac_address):
         """Read a MAC Address related to a Node."""
-        node = Node.objects.get_visible_node_or_404(
-            user=request.user, system_id=system_id)
+        node = Node.objects.get_node_or_404(
+            user=request.user, system_id=system_id, perm='access')
 
         validate_mac(mac_address)
         return get_object_or_404(
@@ -602,8 +600,8 @@ class NodeMacHandler(BaseHandler):
     def delete(self, request, system_id, mac_address):
         """Delete a specific MAC Address for the specified Node."""
         validate_mac(mac_address)
-        node = Node.objects.get_visible_node_or_404(
-            user=request.user, system_id=system_id)
+        node = Node.objects.get_node_or_404(
+            user=request.user, system_id=system_id, perm='edit')
 
         mac = get_object_or_404(MACAddress, node=node, mac_address=mac_address)
         mac.delete()

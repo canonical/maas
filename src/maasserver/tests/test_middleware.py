@@ -16,7 +16,10 @@ import json
 import logging
 from tempfile import NamedTemporaryFile
 
-from django.core.exceptions import ValidationError
+from django.core.exceptions import (
+    PermissionDenied,
+    ValidationError,
+    )
 from django.test.client import RequestFactory
 from maasserver.exceptions import (
     MAASAPIException,
@@ -116,6 +119,13 @@ class ExceptionMiddlewareTest(TestCase):
         response = self.process_exception(exception)
         self.assertEqual(exception_dict, json.loads(response.content))
         self.assertIn('application/json', response['Content-Type'])
+
+    def test_reports_PermissionDenied_as_Forbidden(self):
+        error_message = factory.getRandomString()
+        response = self.process_exception(PermissionDenied(error_message))
+        self.assertEqual(
+            (httplib.FORBIDDEN, error_message),
+            (response.status_code, response.content))
 
 
 class APIErrorsMiddlewareTest(TestCase):

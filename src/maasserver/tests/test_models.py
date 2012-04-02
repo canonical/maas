@@ -20,13 +20,15 @@ from socket import gethostname
 
 from django.conf import settings
 from django.contrib.auth.models import User
-from django.core.exceptions import ValidationError
+from django.core.exceptions import (
+    PermissionDenied,
+    ValidationError,
+    )
 from django.utils.safestring import SafeUnicode
 from fixtures import TestWithFixtures
 from maasserver.exceptions import (
     CannotDeleteUserException,
     NodeStateViolation,
-    PermissionDenied,
     )
 from maasserver.models import (
     Config,
@@ -408,20 +410,20 @@ class NodeManagerTest(TestCase):
             Node.objects.get_editable_nodes(user, ids=ids[wanted_slice]))
 
     def test_get_visible_node_or_404_ok(self):
-        """get_visible_node_or_404 fetches nodes by system_id."""
+        """get_node_or_404 fetches nodes by system_id."""
         user = factory.make_user()
         node = self.make_node(user)
         self.assertEqual(
-            node, Node.objects.get_visible_node_or_404(node.system_id, user))
+            node, Node.objects.get_node_or_404(node.system_id, user))
 
     def test_get_visible_node_or_404_raises_PermissionDenied(self):
-        """get_visible_node_or_404 raises PermissionDenied if the provided
-        user cannot access the returned node."""
+        """get_node_or_404 raises PermissionDenied if the provided
+        user has not the right permission on the returned node."""
         user_node = self.make_node(factory.make_user())
         self.assertRaises(
             PermissionDenied,
-            Node.objects.get_visible_node_or_404,
-            user_node.system_id, factory.make_user())
+            Node.objects.get_node_or_404,
+            user_node.system_id, factory.make_user(), 'access')
 
     def test_get_available_node_for_acquisition_finds_available_node(self):
         user = factory.make_user()
