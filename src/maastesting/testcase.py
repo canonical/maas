@@ -61,6 +61,16 @@ class TestCase(TestCaseBase, django.test.TestCase):
     Supports test resources and fixtures.
     """
 
+    def assertAttributes(self, tested_object, attributes):
+        """Check multiple attributes of `tested_objects` against a dict.
+
+        :param tested_object: Any object whose attributes should be checked.
+        :param attributes: A dict of attributes to test, and their expected
+            values.  Only these attributes will be checked.
+        """
+        matcher = testtools.matchers.MatchesStructure.byEquality(**attributes)
+        self.assertThat(tested_object, matcher)
+
 
 class TransactionTestCase(TestCaseBase, django.test.TransactionTestCase):
     """`TransactionTestCase` for Metal as a Service.

@@ -5,13 +5,29 @@
 {% block page-title %}Edit User{% endblock %}
 
 {% block content %}
-  <form action="." method="post" class="block auto-width">
-    <ul>
-    {% for field in form %}
-      {% include "maasserver/form_field.html" %}
-    {% endfor %}
-    </ul>
-    <input type="submit" value="Save user" class="right" />
-    <a class="link-button" href="{% url 'settings' %}">Cancel</a>
-  </form>
+  <div id="profile" class="block size7 first">
+    <form action="." method="post" class="block auto-width">
+      <ul>
+      {% for field in profile_form %}
+	{% include "maasserver/form_field.html" %}
+      {% endfor %}
+      </ul>
+      <input type="hidden" name="profile_submit" value="1" />
+      <input type="submit" value="Save user" class="button right" />
+      <a class="link-button" href="{% url 'settings' %}">Cancel</a>
+    </form>
+  </div>
+
+  <div id="password" class="block size7 first">
+    <form action="." method="post" class="block auto-width">
+      <ul>
+      {% for field in password_form %}
+	{% include "maasserver/form_field.html" %}
+      {% endfor %}
+      </ul>
+      <input type="hidden" name="password_submit" value="1" />
+      <input type="submit" value="Change password" class="button right" />
+      <a class="link-button" href="{% url 'settings' %}">Cancel</a>
+    </form>
+  </div>
 {% endblock %}

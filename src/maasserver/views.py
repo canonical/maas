@@ -38,7 +38,10 @@ from convoy.combo import (
     )
 from django.conf import settings as django_settings
 from django.contrib import messages
-from django.contrib.auth.forms import PasswordChangeForm as PasswordForm
+from django.contrib.auth.forms import (
+    AdminPasswordChangeForm,
+    PasswordChangeForm,
+    )
 from django.contrib.auth.models import User
 from django.contrib.auth.views import (
     login as dj_login,
@@ -63,6 +66,9 @@ from django.views.generic import (
     ListView,
     UpdateView,
     )
+from django.views.generic.base import TemplateView
+from django.views.generic.detail import SingleObjectTemplateResponseMixin
+from django.views.generic.edit import ModelFormMixin
 from maasserver.exceptions import (
     CannotDeleteUserException,
     NoRabbit,
@@ -271,7 +277,7 @@ def userprefsview(request):
 
     # Process the password change form.
     password_form, response = process_form(
-        request, PasswordForm, reverse('prefs'), 'password',
+        request, PasswordChangeForm, reverse('prefs'), 'password',
         "Password updated.", {'user': user})
     if response is not None:
         return response
@@ -286,6 +292,7 @@ def userprefsview(request):
 
 
 class AccountsView(DetailView):
+    """Read-only view of user's account information."""
 
     template_name = 'maasserver/user_view.html'
 
@@ -298,6 +305,7 @@ class AccountsView(DetailView):
 
 
 class AccountsAdd(CreateView):
+    """Add-user view."""
 
     form_class = NewUserCreationForm
 
@@ -316,7 +324,6 @@ class AccountsAdd(CreateView):
 class AccountsDelete(DeleteView):
 
     template_name = 'maasserver/user_confirm_delete.html'
-
     context_object_name = 'user_to_delete'
 
     def get_object(self):
@@ -338,19 +345,50 @@ class AccountsDelete(DeleteView):
         return HttpResponseRedirect(self.get_next_url())
 
 
-class AccountsEdit(UpdateView):
+class AccountsEdit(TemplateView, ModelFormMixin,
+                   SingleObjectTemplateResponseMixin):
 
-    form_class = EditUserForm
-
+    model = User
     template_name = 'maasserver/user_edit.html'
 
     def get_object(self):
         username = self.kwargs.get('username', None)
-        user = get_object_or_404(User, username=username)
-        return user
+        return get_object_or_404(User, username=username)
 
-    def get_success_url(self):
-        return reverse('settings')
+    def respond(self, request, profile_form, password_form):
+        """Generate a response."""
+        return self.render_to_response({
+            'profile_form': profile_form,
+            'password_form': password_form,
+            })
+
+    def get(self, request, *args, **kwargs):
+        """Called by `TemplateView`: handle a GET request."""
+        self.object = user = self.get_object()
+        profile_form = EditUserForm(instance=user, prefix='profile')
+        password_form = AdminPasswordChangeForm(user=user, prefix='password')
+        return self.respond(request, profile_form, password_form)
+
+    def post(self, request, *args, **kwargs):
+        """Called by `TemplateView`: handle a POST request."""
+        self.object = user = self.get_object()
+        next_page = reverse('settings')
+
+        # Process the profile-editing form, if that's what was submitted.
+        profile_form, response = process_form(
+            request, EditUserForm, next_page, 'profile', "Profile updated.",
+            {'instance': user})
+        if response is not None:
+            return response
+
+        # Process the password change form, if that's what was submitted.
+        password_form, response = process_form(
+            request, AdminPasswordChangeForm, next_page, 'password',
+            "Password updated.", {'user': user})
+        if response is not None:
+            return response
+
+        return self.respond(request, profile_form, password_form)
 
 
 def proxy_to_longpoll(request):
