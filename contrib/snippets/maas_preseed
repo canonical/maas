@@ -1,3 +1,5 @@
 #import base64
 #set $maas_preseed_data = base64.b64decode($getVar("MAAS_PRESEED",""))
 $maas_preseed_data
+
+cloud-init   cloud-init/local-cloud-config string manage_etc_hosts: localhost
