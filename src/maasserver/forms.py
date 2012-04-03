@@ -51,7 +51,7 @@ from maasserver.models import (
     Node,
     NODE_AFTER_COMMISSIONING_ACTION,
     NODE_AFTER_COMMISSIONING_ACTION_CHOICES,
-    NODE_PERMISSIONS,
+    NODE_PERMISSION,
     NODE_STATUS,
     SSHKey,
     UserProfile,
@@ -211,7 +211,7 @@ NODE_TRANSITIONS_METHODS = {
     NODE_STATUS.DECLARED: [
         {
             'display': "Accept Enlisted node",
-            'permission': NODE_PERMISSIONS.ADMIN,
+            'permission': NODE_PERMISSION.ADMIN,
             'execute': lambda node, user: Node.accept_enlistment(node),
         },
     ],

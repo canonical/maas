@@ -103,7 +103,7 @@ from maasserver.models import (
     FileStorage,
     MACAddress,
     Node,
-    NODE_PERMISSIONS,
+    NODE_PERMISSION,
     NODE_STATUS,
     )
 from piston.doc import generate_doc
@@ -321,12 +321,12 @@ class NodeHandler(BaseHandler):
     def read(self, request, system_id):
         """Read a specific Node."""
         return Node.objects.get_node_or_404(
-            system_id=system_id, user=request.user, perm=NODE_PERMISSIONS.VIEW)
+            system_id=system_id, user=request.user, perm=NODE_PERMISSION.VIEW)
 
     def update(self, request, system_id):
         """Update a specific Node."""
         node = Node.objects.get_node_or_404(
-            system_id=system_id, user=request.user, perm=NODE_PERMISSIONS.EDIT)
+            system_id=system_id, user=request.user, perm=NODE_PERMISSION.EDIT)
         for key, value in request.data.items():
             setattr(node, key, value)
         node.save()
@@ -336,7 +336,7 @@ class NodeHandler(BaseHandler):
         """Delete a specific Node."""
         node = Node.objects.get_node_or_404(
             system_id=system_id, user=request.user,
-            perm=NODE_PERMISSIONS.ADMIN)
+            perm=NODE_PERMISSION.ADMIN)
         node.delete()
         return rc.DELETED
 
@@ -387,7 +387,7 @@ class NodeHandler(BaseHandler):
     def release(self, request, system_id):
         """Release a node.  Opposite of `NodesHandler.acquire`."""
         node = Node.objects.get_node_or_404(
-            system_id=system_id, user=request.user, perm=NODE_PERMISSIONS.EDIT)
+            system_id=system_id, user=request.user, perm=NODE_PERMISSION.EDIT)
         if node.status == NODE_STATUS.READY:
             # Nothing to do.  This may be a redundant retry, and the
             # postcondition is achieved, so call this success.
@@ -568,14 +568,14 @@ class NodeMacsHandler(BaseHandler):
     def read(self, request, system_id):
         """Read all MAC Addresses related to a Node."""
         node = Node.objects.get_node_or_404(
-            user=request.user, system_id=system_id, perm=NODE_PERMISSIONS.VIEW)
+            user=request.user, system_id=system_id, perm=NODE_PERMISSION.VIEW)
 
         return MACAddress.objects.filter(node=node).order_by('id')
 
     def create(self, request, system_id):
         """Create a MAC Address for a specified Node."""
         node = Node.objects.get_node_or_404(
-            user=request.user, system_id=system_id, perm=NODE_PERMISSIONS.EDIT)
+            user=request.user, system_id=system_id, perm=NODE_PERMISSION.EDIT)
         mac = node.add_mac_address(request.data.get('mac_address', None))
         return mac
 
@@ -593,7 +593,7 @@ class NodeMacHandler(BaseHandler):
     def read(self, request, system_id, mac_address):
         """Read a MAC Address related to a Node."""
         node = Node.objects.get_node_or_404(
-            user=request.user, system_id=system_id, perm=NODE_PERMISSIONS.VIEW)
+            user=request.user, system_id=system_id, perm=NODE_PERMISSION.VIEW)
 
         validate_mac(mac_address)
         return get_object_or_404(
@@ -603,7 +603,7 @@ class NodeMacHandler(BaseHandler):
         """Delete a specific MAC Address for the specified Node."""
         validate_mac(mac_address)
         node = Node.objects.get_node_or_404(
-            user=request.user, system_id=system_id, perm=NODE_PERMISSIONS.EDIT)
+            user=request.user, system_id=system_id, perm=NODE_PERMISSION.EDIT)
 
         mac = get_object_or_404(MACAddress, node=node, mac_address=mac_address)
         mac.delete()

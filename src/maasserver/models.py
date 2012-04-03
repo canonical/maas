@@ -18,7 +18,7 @@ __all__ = [
     "Config",
     "FileStorage",
     "NODE_STATUS",
-    "NODE_PERMISSIONS",
+    "NODE_PERMISSION",
     "NODE_TRANSITIONS",
     "Node",
     "MACAddress",
@@ -453,7 +453,7 @@ def get_db_state(instance, field_name):
         return None
 
 
-class NODE_PERMISSIONS:
+class NODE_PERMISSION:
     VIEW = 'view_node'
     EDIT = 'edit_node'
     ADMIN = 'admin_node'
@@ -1209,11 +1209,11 @@ class MAASAuthorizationBackend(ModelBackend):
             raise NotImplementedError(
                 'Invalid permission check (invalid object type).')
 
-        if perm == NODE_PERMISSIONS.VIEW:
+        if perm == NODE_PERMISSION.VIEW:
             return obj.owner in (None, user)
-        elif perm == NODE_PERMISSIONS.EDIT:
+        elif perm == NODE_PERMISSION.EDIT:
             return obj.owner == user
-        elif perm == NODE_PERMISSIONS.ADMIN:
+        elif perm == NODE_PERMISSION.ADMIN:
             # 'admin_node' permission is solely granted to superusers.
             return False
         else:
