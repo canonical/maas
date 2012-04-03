@@ -79,7 +79,7 @@ class Command(BaseRunserverCommand):
         # Django's debug mode causes it to handle exceptions itself, so
         # don't expect oopses when DEBUG is set to True.
         oops_config = oops.Config()
-        oops_repository = DateDirRepo(settings.OOPS_REPOSITORY, 'maasserver')
+        oops_repository = DateDirRepo(settings.OOPS_REPOSITORY)
         oops_config.publishers.append(oops_repository.publish)
         install_hooks(oops_config)
         return make_app(wsgi_handler, oops_config, error_render=render_error)

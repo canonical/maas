@@ -13,9 +13,11 @@ frontend:
 ## OOPS configuration.
 #
 oops:
-  ## Directory in which to place OOPS reports.
+  ## Directory in which to place OOPS reports.  Must not contain any files
+  # or directories other than what the oops machinery creates there.
+  #
   # directory: ""
-  directory: "logs"
+  directory: "logs/oops"
   ## The reporter used when generating OOPS reports.
   # reporter: "LONGPOLL"
   reporter: "maas-txlongpoll"

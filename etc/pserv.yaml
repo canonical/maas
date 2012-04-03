@@ -15,8 +15,11 @@ logfile: "logs/pserv.log"
 ## OOPS configuration (optional).
 #
 oops:
+  ## Directory in which to place OOPS reports.  Must not contain any files
+  # or directories other than what the oops machinery creates there.
+  #
   # directory:
-  directory: "logs"
+  directory: "logs/oops"
   # reporter:
   reporter: "maas-pserv"
 
