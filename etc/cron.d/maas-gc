@@ -1,0 +1,2 @@
+# Runs 'maas gc' every day at midnight
+0 0 * * * root	/usr/sbin/maas gc &> /dev/null
