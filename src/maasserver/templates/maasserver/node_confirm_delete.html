@@ -1,0 +1,24 @@
+{% extends "maasserver/base.html" %}
+
+{% block nav-active-settings %}active{% endblock %}
+{% block title %}Delete node{% endblock %}
+{% block page-title %}Delete node{% endblock %}
+
+{% block content %}
+    <div class="block auto-width">
+        <h2>
+          Are you sure you want to delete the node "{{ node_to_delete }}"?
+          Note that this node will be removed from this MAAS but the machine
+          itself will be left untouched.
+        </h2>
+        <p>This action is permanent and can not be undone.</p>
+        <p>
+          <form action="." method="post">
+            <input type="hidden" name="post" value="yes" />
+            <input type="submit" value="Delete node" class="right" />
+            <a href="{% url 'node-view' node_to_delete.system_id %}">Cancel</a>
+          </form>
+        </p>
+    </div>
+{% endblock %}
+

@@ -129,6 +129,8 @@ class NodeView(UpdateView):
         node = self.get_object()
         context['can_edit'] = self.request.user.has_perm(
             NODE_PERMISSION.EDIT, node)
+        context['can_delete'] = self.request.user.has_perm(
+            NODE_PERMISSION.ADMIN, node)
         return context
 
     def get_success_url(self):
@@ -154,6 +156,29 @@ class NodeEdit(UpdateView):
 
     def get_success_url(self):
         return reverse('node-view', args=[self.get_object().system_id])
+
+
+class NodeDelete(DeleteView):
+
+    template_name = 'maasserver/node_confirm_delete.html'
+
+    context_object_name = 'node_to_delete'
+
+    def get_object(self):
+        system_id = self.kwargs.get('system_id', None)
+        node = Node.objects.get_node_or_404(
+            system_id=system_id, user=self.request.user,
+            perm=NODE_PERMISSION.ADMIN)
+        return node
+
+    def get_next_url(self):
+        return reverse('node-list')
+
+    def delete(self, request, *args, **kwargs):
+        node = self.get_object()
+        node.delete()
+        messages.info(request, "Node %s deleted." % node.system_id)
+        return HttpResponseRedirect(self.get_next_url())
 
 
 def get_longpoll_context():

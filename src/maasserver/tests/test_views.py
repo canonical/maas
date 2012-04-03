@@ -501,6 +501,36 @@ class NodeViewsTest(LoggedInTestCase):
         node_edit_link = reverse('node-edit', args=[node.system_id])
         self.assertIn(node_edit_link, get_content_links(response))
 
+    def test_view_node_does_not_show_link_to_delete_node(self):
+        # Only admin users can delete nodes.
+        node = factory.make_node(owner=self.logged_in_user)
+        node_link = reverse('node-view', args=[node.system_id])
+        response = self.client.get(node_link)
+        node_delete_link = reverse('node-delete', args=[node.system_id])
+        self.assertNotIn(node_delete_link, get_content_links(response))
+
+    def test_user_cannot_delete_node(self):
+        node = factory.make_node(owner=self.logged_in_user)
+        node_delete_link = reverse('node-delete', args=[node.system_id])
+        response = self.client.get(node_delete_link)
+        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+
+    def test_view_node_shows_link_to_delete_node_for_admin(self):
+        self.become_admin()
+        node = factory.make_node(owner=factory.make_user())
+        node_link = reverse('node-view', args=[node.system_id])
+        response = self.client.get(node_link)
+        node_delete_link = reverse('node-delete', args=[node.system_id])
+        self.assertIn(node_delete_link, get_content_links(response))
+
+    def test_admin_can_delete_nodes(self):
+        self.become_admin()
+        node = factory.make_node(owner=factory.make_user())
+        node_delete_link = reverse('node-delete', args=[node.system_id])
+        response = self.client.post(node_delete_link, {'post': 'yes'})
+        self.assertEqual(httplib.FOUND, response.status_code)
+        self.assertFalse(User.objects.filter(id=node.id).exists())
+
     def test_user_cannot_view_someone_elses_node(self):
         node = factory.make_node(owner=factory.make_user())
         node_view_link = reverse('node-view', args=[node.system_id])

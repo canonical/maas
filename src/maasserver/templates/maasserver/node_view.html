@@ -14,19 +14,25 @@
       </a>
     </div>
   {% endif %}
-  {% if form.transition_buttons %}
+  {% if form.transition_buttons or can_delete %}
+    <div class="block size3">
+    <h4>Actions</h4>
+    {% if can_delete %}
+      <a href="{% url 'node-delete' node.system_id %}" class="button secondary">
+        Delete node
+      </a>
+    {% endif %}
     {% for transition in form.transition_buttons %}
       {% if forloop.first %}
-      <div class="block size3">
-        <h4>Actions</h4>
         <form id="node_actions" method="post" action=".">
       {% endif %}
-      <input class="secondary {% if not forloop.first %}space-top{% endif %}"
+      <input class="secondary {% if not forloop.first or can_delete %}space-top{% endif %}"
              type="submit"
              name="{{ form.input_name }}"
              value="{{ transition.display }}" />
-      {% if forloop.last %}</form></div>{% endif %}
+      {% if forloop.last %}</form>{% endif %}
     {% endfor %}
+    </div>
   {% endif %}
 {% endblock %}
 

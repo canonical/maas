@@ -34,6 +34,7 @@ from maasserver.views import (
     combo_view,
     login,
     logout,
+    NodeDelete,
     NodeEdit,
     NodeListView,
     NodesCreateView,
@@ -89,6 +90,9 @@ urlpatterns += patterns('maasserver.views',
         r'^nodes/(?P<system_id>[\w\-]+)/edit/$', NodeEdit.as_view(),
         name='node-edit'),
     url(
+        r'^nodes/(?P<system_id>[\w\-]+)/delete/$', NodeDelete.as_view(),
+        name='node-delete'),
+     url(
         r'^nodes/create/$', NodesCreateView.as_view(), name='node-create'),
 )
 
