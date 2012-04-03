@@ -716,6 +716,13 @@ class SSHKeyValidatorTest(TestCase):
         self.assertRaises(
             ValidationError, validate_ssh_public_key, key_string)
 
+    def test_does_not_validate_wrongly_padded_data(self):
+        key_string = 'ssh-dss %s %s@%s' % (
+            factory.getRandomString(), factory.getRandomString(),
+            factory.getRandomString())
+        self.assertRaises(
+            ValidationError, validate_ssh_public_key, key_string)
+
     def test_does_not_validate_rsa_private_key(self):
         key_string = get_data('data/test_rsa')
         self.assertRaises(

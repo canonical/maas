@@ -25,6 +25,7 @@ __all__ = [
     "UserProfile",
     ]
 
+import binascii
 from cgi import escape
 from collections import (
     defaultdict,
@@ -835,7 +836,7 @@ def validate_ssh_public_key(value):
         if not key.isPublic():
             raise ValidationError(
                 "Invalid SSH public key (this key is a private key).")
-    except BadKeyError:
+    except (BadKeyError, binascii.Error):
         raise ValidationError("Invalid SSH public key.")
 
 
