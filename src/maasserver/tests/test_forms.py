@@ -38,6 +38,7 @@ from maasserver.models import (
     Config,
     DEFAULT_CONFIG,
     NODE_AFTER_COMMISSIONING_ACTION_CHOICES,
+    NODE_PERMISSIONS,
     NODE_STATUS,
     NODE_STATUS_CHOICES_DICT,
     POWER_TYPE_CHOICES,
@@ -294,7 +295,7 @@ class TestNodeTransitionForm(TestCase):
             ["Accept Enlisted node"],
             [transition['display'] for transition in transitions])
         self.assertEqual(
-            ['admin'],
+            [NODE_PERMISSIONS.ADMIN],
             [transition['permission'] for transition in transitions])
 
     def test_available_transition_methods_for_declared_node_simple_user(self):
@@ -325,7 +326,8 @@ class TestNodeTransitionForm(TestCase):
         form = get_transition_form(admin)(node)
 
         self.assertItemsEqual(
-            {"Accept Enlisted node": ('accept_enlistment', 'admin')},
+            {"Accept Enlisted node": (
+                'accept_enlistment', NODE_PERMISSIONS.ADMIN)},
             form.transition_dict)
 
     def test_get_transition_form_for_user(self):

@@ -640,12 +640,20 @@ class TestNodeAPI(APITestCase):
 
     def test_DELETE_deletes_node(self):
         # The api allows to delete a Node.
+        self.become_admin()
         node = factory.make_node(set_hostname=True, owner=self.logged_in_user)
         system_id = node.system_id
         response = self.client.delete(self.get_node_uri(node))
 
         self.assertEqual(204, response.status_code)
         self.assertItemsEqual([], Node.objects.filter(system_id=system_id))
+
+    def test_DELETE_deletes_node_fails_if_not_admin(self):
+        # Only superusers can delete nodes.
+        node = factory.make_node(set_hostname=True, owner=self.logged_in_user)
+        response = self.client.delete(self.get_node_uri(node))
+
+        self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
     def test_DELETE_forbidden_without_edit_permission(self):
         # A user without the edit permission cannot delete a Node.
@@ -1140,7 +1148,8 @@ class MACAddressAPITest(APITestCase):
             MACAddress.objects.filter(node=node).count())
 
     def test_macs_POST_add_mac_without_edit_perm(self):
-        # Adding a MAC Address to a node requires the 'edit' permission.
+        # Adding a MAC Address to a node requires the NODE_PERMISSIONS.EDIT
+        # permission.
         node = factory.make_node()
         response = self.client.post(
             self.get_uri('nodes/%s/macs/') % node.system_id,

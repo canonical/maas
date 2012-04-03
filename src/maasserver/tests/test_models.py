@@ -43,6 +43,7 @@ from maasserver.models import (
     HELLIPSIS,
     MACAddress,
     Node,
+    NODE_PERMISSIONS,
     NODE_STATUS,
     NODE_STATUS_CHOICES,
     NODE_STATUS_CHOICES_DICT,
@@ -432,7 +433,9 @@ class NodeManagerTest(TestCase):
         user = factory.make_user()
         node = self.make_node(user)
         self.assertEqual(
-            node, Node.objects.get_node_or_404(node.system_id, user))
+            node,
+            Node.objects.get_node_or_404(
+                node.system_id, user, NODE_PERMISSIONS.VIEW))
 
     def test_get_visible_node_or_404_raises_PermissionDenied(self):
         """get_node_or_404 raises PermissionDenied if the provided
@@ -441,7 +444,7 @@ class NodeManagerTest(TestCase):
         self.assertRaises(
             PermissionDenied,
             Node.objects.get_node_or_404,
-            user_node.system_id, factory.make_user(), 'access')
+            user_node.system_id, factory.make_user(), NODE_PERMISSIONS.VIEW)
 
     def test_get_available_node_for_acquisition_finds_available_node(self):
         user = factory.make_user()

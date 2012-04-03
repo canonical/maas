@@ -83,6 +83,7 @@ from maasserver.forms import (
 from maasserver.messages import messaging
 from maasserver.models import (
     Node,
+    NODE_PERMISSIONS,
     SSHKey,
     UserProfile,
     )
@@ -110,7 +111,8 @@ class NodeView(UpdateView):
     def get_object(self):
         system_id = self.kwargs.get('system_id', None)
         node = Node.objects.get_node_or_404(
-            system_id=system_id, user=self.request.user, perm='access')
+            system_id=system_id, user=self.request.user,
+            perm=NODE_PERMISSIONS.VIEW)
         return node
 
     def get_form_class(self):
@@ -119,7 +121,8 @@ class NodeView(UpdateView):
     def get_context_data(self, **kwargs):
         context = super(NodeView, self).get_context_data(**kwargs)
         node = self.get_object()
-        context['can_edit'] = self.request.user.has_perm('edit', node)
+        context['can_edit'] = self.request.user.has_perm(
+            NODE_PERMISSIONS.EDIT, node)
         return context
 
     def get_success_url(self):
@@ -133,7 +136,8 @@ class NodeEdit(UpdateView):
     def get_object(self):
         system_id = self.kwargs.get('system_id', None)
         node = Node.objects.get_node_or_404(
-            system_id=system_id, user=self.request.user, perm='edit')
+            system_id=system_id, user=self.request.user,
+            perm=NODE_PERMISSIONS.EDIT)
         return node
 
     def get_form_class(self):

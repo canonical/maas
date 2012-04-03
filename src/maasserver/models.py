@@ -18,6 +18,7 @@ __all__ = [
     "Config",
     "FileStorage",
     "NODE_STATUS",
+    "NODE_PERMISSIONS",
     "NODE_TRANSITIONS",
     "Node",
     "MACAddress",
@@ -344,7 +345,7 @@ class NodeManager(models.Manager):
             visible_nodes = self.filter(owner=user)
         return self.filter_by_ids(visible_nodes, ids)
 
-    def get_node_or_404(self, system_id, user, perm='access'):
+    def get_node_or_404(self, system_id, user, perm):
         """Fetch a `Node` by system_id.  Raise exceptions if no `Node` with
         this system_id exist or if the provided user has not the required
         permission on this `Node`.
@@ -450,6 +451,12 @@ def get_db_state(instance, field_name):
             instance.__class__.objects.get(pk=instance.pk), field_name)
     except instance.DoesNotExist:
         return None
+
+
+class NODE_PERMISSIONS:
+    VIEW = 'view_node'
+    EDIT = 'edit_node'
+    ADMIN = 'admin_node'
 
 
 class Node(CommonInfo):
@@ -1202,12 +1209,12 @@ class MAASAuthorizationBackend(ModelBackend):
             raise NotImplementedError(
                 'Invalid permission check (invalid object type).')
 
-        if perm == 'access':
+        if perm == NODE_PERMISSIONS.VIEW:
             return obj.owner in (None, user)
-        elif perm == 'edit':
+        elif perm == NODE_PERMISSIONS.EDIT:
             return obj.owner == user
-        elif perm == 'admin':
-            # 'admin' permission is solely granted to superusers.
+        elif perm == NODE_PERMISSIONS.ADMIN:
+            # 'admin_node' permission is solely granted to superusers.
             return False
         else:
             raise NotImplementedError(
