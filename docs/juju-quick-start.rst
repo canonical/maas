@@ -22,13 +22,16 @@ A few assumptions are made:
   ``PYTHONPATH`` carefully to ensure you use the code in the branch.
 
 
-Your API key and environments.yaml
-----------------------------------
+Your API key, SSH key, and environments.yaml
+--------------------------------------------
 
 You'll need an API key from MAAS so that the Juju client can access
 it. Each user account in MAAS can have as many API keys as desired.
 One hard and fast rule is that you'll need to use a different API key
 for each Juju *environment* you set up within a single MAAS cluster.
+
+You'll also need to add an SSH key to MAAS so that you, and Juju, can
+SSH into freshly provisioned machines.
 
 
 Getting a key
@@ -45,6 +48,15 @@ To get the API key:
 
 .. _MAAS preferences page: http://localhost:5240/account/prefs/
 .. _MAAS home page: http://localhost:5240/
+
+
+Adding an SSH key
+^^^^^^^^^^^^^^^^^
+
+While you're still on the `MAAS preferences page`_, add your SSH key
+by clicking *Add SSH key*. Use the public half of your SSH key, the
+content of ``~/.ssh/id_rsa.pub`` for example; don't paste the private
+half.
 
 
 Creating environments.yaml
@@ -113,27 +125,30 @@ makes it easy to follow on progress::
 
 ..
 
-  ``zimmer`` is the machine on which MAAS is running. Here
-  ``odev-node02`` is the machine being bootstrapped as the Juju master
-  node.
+  ``zimmer`` is the machine on which Cobbler [#whatiscobbler]_ is
+  running. Here ``odev-node02`` is the machine being bootstrapped as
+  the Juju master node.
 
 Once the master node has been installed a status command should come
-up with something a bit more interesting:
+up with something a bit more interesting::
 
-  **XXX** `Bug 965101
-  <https://bugs.launchpad.net/maas/+bug/965101>`_ - *MAAS provider
-  does not raise an exception when get_machines(...)  does not find
-  the requested machines* - prevented capturing of output here.
+  machines:
+    0:
+      agent-state: running
+      dns-name: odev-node02
+      instance-id: /api/1.0/nodes/odev-node02/
+      instance-state: unknown
+  services: {}
 
 Now it's possible to deploy a charm::
 
-  $ juju deploy --repository /usr/share/doc/juju/examples local:mysql
+  $ juju deploy --repository /usr/share/doc/juju/examples local:oneiric/mysql
   $ juju status
 
 If you have another node free you can finish off the canonical and by
 now familiar example::
 
-  $ juju deploy --repository /usr/share/doc/juju/examples local:wordpress
+  $ juju deploy --repository /usr/share/doc/juju/examples local:oneiric/wordpress
   $ juju add-relation wordpress mysql
   $ juju expose wordpress
   $ juju status
@@ -141,3 +156,11 @@ now familiar example::
 Note that each charm runs on its own host, so each deployment will
 actually take as long as it took to bootstrap. Have a beer, drown your
 sorrows in liquor, or, my preference, have another cup of tea.
+
+----
+
+.. [#whatiscobbler] `Cobbler <http://cobbler.github.com/>`_ is a
+  back-end service used by MAAS; ``vdenv`` provides a Cobbler server
+  host - ``zimmer`` - and three nodes - ``odev-node0{1,2,3}`` - in
+  virtual machines to aid development of MAAS. Cobbler is generally
+  uninteresting for a user of MAAS.
