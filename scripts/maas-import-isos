@@ -86,7 +86,7 @@ update_settings(){
 	for r in $RELEASES; do
 		for a in $ARCHES; do
 			a=$(name_arch_in_cobbler_style "$a")
-			profile="$r-$a"
+			profile="maas-$r-$a"
 			# If profile exists, update it.
 			if (cobbler profile list | grep -qs " $profile$"); then
 				cobbler profile edit --name="$profile" --kopts="$KOPTS"
