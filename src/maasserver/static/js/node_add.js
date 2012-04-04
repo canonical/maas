@@ -36,10 +36,20 @@ AddNodeWidget.ATTRS = {
             return this.get(
                 'srcNode').all('input[name=mac_addresses]').size();
         }
+    },
+
+    /**
+     * The DOM node to be morphed from.
+     *
+     * @attribute targetNode
+     * @type string
+     */
+    targetNode: {
+        value: null
     }
 };
 
-Y.extend(AddNodeWidget, Y.Panel, {
+Y.extend(AddNodeWidget, Y.Widget, {
 
     /**
      * Create an input field to add a MAC Address.
@@ -53,23 +63,6 @@ Y.extend(AddNodeWidget, Y.Panel, {
         var field = Y.Node.create(this.add_macaddress).one('input');
         field.set('id', field.get('id') + form_nb);
         return Y.Node.create('<p />').append(field);
-    },
-
-    /**
-     * Hide the panel.
-     *
-     * @method hidePanel
-     */
-    hidePanel: function() {
-        var self = this;
-        this.get('boundingBox').transition({
-            duration: 0.5,
-            top: '-400px'
-        },
-        function () {
-            self.hide();
-            self.destroy();
-        });
     },
 
     addMacField: function() {
@@ -112,6 +105,15 @@ Y.extend(AddNodeWidget, Y.Panel, {
     },
 
     createForm: function() {
+        var addnode_button = Y.Node.create('<button />')
+            .addClass('add-node-button')
+            .addClass('right')
+            .set('text', "Add node");
+        var cancel_button = Y.Node.create('<a />')
+            .addClass('cancel-button')
+            .set('href', '#')
+            .set('text', "Cancel")
+            .addClass('link-button');
         var macaddress_add_link = Y.Node.create('<a />')
             .addClass('add-link')
             .addClass('add-mac-form')
@@ -123,6 +125,10 @@ Y.extend(AddNodeWidget, Y.Panel, {
             .set('value', 'new');
         var global_error = Y.Node.create('<p />')
             .addClass('form-errors');
+        var buttons = Y.Node.create('<div />')
+            .addClass('buttons')
+            .append(addnode_button)
+            .append(cancel_button);
         var addnodeform = Y.Node.create('<form />')
             .set('method', 'post')
             .append(global_error)
@@ -130,7 +136,8 @@ Y.extend(AddNodeWidget, Y.Panel, {
             .append(Y.Node.create(this.add_macaddress))
             .append(macaddress_add_link)
             .append(Y.Node.create(this.add_architecture))
-            .append(Y.Node.create(this.add_node));
+            .append(Y.Node.create(this.add_node))
+            .append(buttons);
         return addnodeform;
     },
 
@@ -162,8 +169,8 @@ Y.extend(AddNodeWidget, Y.Panel, {
     * @method showSpinner
     */
     showSpinner: function() {
-        var buttons = this.get('srcNode').one('.yui3-widget-button-wrapper');
-        buttons.append(this.spinnerNode);
+        var buttons = this.get('srcNode').one('.add-node-button');
+        buttons.insert(this.spinnerNode, 'after');
     },
 
     /**
@@ -176,13 +183,54 @@ Y.extend(AddNodeWidget, Y.Panel, {
     },
 
     initializer: function(cfg) {
+        if (Y.Lang.isValue(cfg.animate)) {
+            this._animate = cfg.animate;
+        }
+        else {
+            this._animate = true;
+        }
+        this.get('srcNode').addClass('hidden');
+        this.morpher = new Y.maas.morph.Morph({
+            srcNode: cfg.srcNode,
+            targetNode: this.get('targetNode'),
+            animate: this._animate
+            });
+    },
+
+    renderUI: function() {
         // Load form snippets.
         this.add_macaddress = Y.one('#add-macaddress').getContent();
         this.add_architecture = Y.one('#add-architecture').getContent();
         this.add_node = Y.one('#add-node').getContent();
         // Create panel's content.
-        this.set('bodyContent', this.createForm());
+        var heading = Y.Node.create('<h2 />')
+            .set('text', "Add node");
+        this.get('srcNode').append(heading).append(this.createForm());
         this.initializeNodes();
+    },
+
+    /**
+     * Show the widget
+     *
+     * @method showWidget
+     */
+    showWidget: function() {
+        this.morpher.morph();
+        this.morpher.on('morphed', function(e, widget) {
+            widget.get('srcNode').one('input[type=text]').focus();
+        }, null, this);
+    },
+
+    /**
+     * Hide the widget
+     *
+     * @method showWidget
+     */
+    hideWidget: function() {
+        this.morpher.morph(true);
+        this.morpher.on('morphed', function(e, widget) {
+            widget.destroy();
+        }, null, this);
     },
 
     /**
@@ -207,14 +255,22 @@ Y.extend(AddNodeWidget, Y.Panel, {
 
     bindUI: function() {
         var self = this;
-        this.get(
-            'bodyContent').one('.add-mac-form').on('click', function(e) {
+        var srcNode = this.get('srcNode');
+        srcNode.one('.add-mac-form').on('click', function(e) {
             e.preventDefault();
             self.addMacField();
         });
-        this.get('bodyContent').on('key', function() {
+        srcNode.on('key', function() {
             self.sendAddNodeRequest();
         }, 'press:enter');
+        srcNode.one('.add-node-button').on('click', function(e) {
+            e.preventDefault();
+            self.sendAddNodeRequest();
+        });
+        srcNode.one('.cancel-button').on('click', function(e, widget) {
+            e.preventDefault();
+            widget.hideWidget();
+        }, null, this);
     },
 
     addNode: function(node) {
@@ -231,10 +287,10 @@ Y.extend(AddNodeWidget, Y.Panel, {
                 start:  Y.bind(self.showSpinner, self),
                 success: function(id, out) {
                     self.addNode(JSON.parse(out.response));
-                    self.hidePanel();
+                    self.hideWidget();
                 },
                 failure: function(id, out) {
-                    Y.log("Adding a node failed.  Response object follows.")
+                    Y.log("Adding a node failed.  Response object follows.");
                     Y.log(out);
                     if (out.status === 400) {
                         try {
@@ -297,11 +353,7 @@ module._add_node_singleton = null;
  *
  * @method showAddNodeWidget
  */
-module.showAddNodeWidget = function(event) {
-    // Cope with manual calls as well as event calls.
-    if (Y.Lang.isValue(event)) {
-        event.preventDefault();
-    }
+module.showAddNodeWidget = function(cfg) {
     // If a widget is already present, destroy it.
     var destroy = (
         Y.Lang.isValue(module._add_node_singleton) &&
@@ -309,48 +361,16 @@ module.showAddNodeWidget = function(event) {
     if (destroy) {
         module._add_node_singleton.destroy();
     }
-    var cfg = {
-        headerContent: "Add node",
-        buttons: [
-            {
-                value: 'Add node',
-                section: 'footer',
-                action: function (e) {
-                    e.preventDefault();
-                    this.sendAddNodeRequest();
-                }
-            },
-            {
-                value: 'Cancel',
-                section: 'footer',
-                classNames: 'link-button',
-                action: function (e) {
-                    e.preventDefault();
-                    this.hidePanel();
-                }
-            }],
-        align: {
-            node:'',
-            points:
-                [Y.WidgetPositionAlign.BC, Y.WidgetPositionAlign.TC]
-            },
-        modal: true,
-        zIndex: 2,
-        visible: true,
-        render: true,
-        hideOn: []
-        };
+
+    var srcNode = Y.Node.create('<div />')
+        .set('id', 'add-node-widget');
+    cfg.srcNode = srcNode;
+    Y.one(cfg.targetNode).insert(srcNode, 'after');
     module._add_node_singleton = new AddNodeWidget(cfg);
-    module._add_node_singleton.get('boundingBox').transition({
-        duration: 0.5,
-        top: '0px'
-    });
-    // We need to set the focus late as the widget wants to set the focus
-    // on the bounding box.
-    module._add_node_singleton.get(
-        'boundingBox').one('input[type=text]').focus();
+    module._add_node_singleton.render();
+    module._add_node_singleton.showWidget();
 };
 
-}, '0.1', {'requires': ['io', 'node', 'panel', 'event', 'event-custom',
-                        'transition']}
+}, '0.1', {'requires': ['io', 'node', 'widget', 'event', 'event-custom',
+                        'maas.morph']}
 );

@@ -127,6 +127,10 @@ input[type="submit"].secondary:hover {
     background-image: -webkit-linear-gradient(bottom, rgb(51,51,51) 0%, rgb(90,90,90) 100%);
     background-image: -ms-linear-gradient(bottom, rgb(51,51,51) 0%, rgb(90,90,90) 100%);
     }
+.link-button {
+    display: inline-block;
+    padding: 6px 0;
+    }
 .spinner {
     float: right;
     margin: 8px 10px 0 0;

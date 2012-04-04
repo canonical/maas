@@ -14,7 +14,10 @@
   <!--
   YUI().use('maas.node_add', function (Y) {
     Y.on('load', function() {
-      Y.one('#addnode').on('click', Y.maas.node_add.showAddNodeWidget);
+      Y.one('#addnode').on('click', function(e) {
+        e.preventDefault();
+        Y.maas.node_add.showAddNodeWidget({targetNode: '#nodes'});
+      });
     });
   });
   // -->
@@ -22,13 +25,14 @@
 {% endblock %}
 
 {% block content %}
-  {% comment %}
-    <!-- To be enabled when we have search functionality -->
-    <form action="" method="get" class="block full-width inline-form">
-      <input type="text" name="query" class="search-box" value="Search nodes" />
-    </form>
-  {% endcomment %}
-  {% if node_list|length %}
+  <div id="nodes">
+    {% comment %}
+      <!-- To be enabled when we have search functionality -->
+      <form action="" method="get" class="block full-width inline-form">
+        <input type="text" name="query" class="search-box" value="Search nodes" />
+      </form>
+    {% endcomment %}
+    {% if node_list|length %}
       <table class="list">
         <thead>
           <tr>
@@ -50,6 +54,7 @@
           </tr>
         {% endfor %}
       </table>
-  {% endif%}
-  <a id="addnode" href="#" class="button right space-top">Add node</a>
+    {% endif%}
+    <a id="addnode" href="#" class="button right space-top">Add node</a>
+  </div>
 {% endblock %}

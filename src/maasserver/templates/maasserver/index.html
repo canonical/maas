@@ -14,7 +14,7 @@
   <!--
   YUI().use(
     'maas.node_add', 'maas.node','maas.node_views', 'maas.utils',
-    'maas.longpoll', 
+    'maas.longpoll',
     function (Y) {
     Y.on('load', function() {
       // Create Dashboard view.
@@ -26,7 +26,11 @@
           reservedNode: '#reserved-nodes',
           retiredNode: '#retired-nodes'});
       view.render();
-      Y.one('#addnode').on('click', Y.maas.node_add.showAddNodeWidget);
+      
+      Y.one('#addnode').on('click', function(e) {
+        e.preventDefault();
+        Y.maas.node_add.showAddNodeWidget({targetNode: '#dashboard'});
+      });
 
       // Setup TitleEditWidget.
       var title_widget = new Y.maas.utils.TitleEditWidget(
@@ -70,5 +74,6 @@
       <p id="retired-nodes" class="secondary medium space-top-none"></p>
       <a href="#" id="addnode" class="button right space-top">Add node</a>
     </div>
+    <div class="clear"></div>
   </div>
 {% endblock %}

@@ -26,14 +26,14 @@ suite.add(new Y.maas.testing.TestCase({
     testSingletonCreation: function() {
         // module._add_node_singleton is originally null.
         Y.Assert.isNull(module._add_node_singleton);
-        module.showAddNodeWidget();
+        module.showAddNodeWidget({targetNode: '#target_node', animate: false});
         // module._add_node_singleton is populated after the call to
         // module.showAddNodeWidget.
         Y.Assert.isNotNull(module._add_node_singleton);
     },
 
     testSingletonReCreation: function() {
-        module.showAddNodeWidget();
+        module.showAddNodeWidget({targetNode: '#target_node', animate: false});
         var panel = module._add_node_singleton;
 
         // Make sure that a second call to showAddNodeWidget destroys
@@ -42,7 +42,7 @@ suite.add(new Y.maas.testing.TestCase({
         panel.on("destroy", function(){
             destroyed = true;
         });
-        module.showAddNodeWidget();
+        module.showAddNodeWidget({targetNode: '#target_node', animate: false});
         Y.Assert.isTrue(destroyed);
         Y.Assert.isNotNull(module._add_node_singleton);
         Y.Assert.areNotSame(panel, namespace._add_node_singleton);
@@ -75,7 +75,7 @@ function find_hostname_input() {
 /* Find the "Add node" button at the bottom of the add-node form.
  */
 function find_add_button() {
-    return find_widget().one('.yui3-button');
+    return find_widget().one('.add-node-button');
 }
 
 
@@ -89,7 +89,7 @@ function find_global_errors() {
 /* Set up and submit the add-node form.
  */
 function submit_add_node() {
-    module.showAddNodeWidget();
+    module.showAddNodeWidget({targetNode: '#target_node', animate: false});
     find_hostname_input().set('value', 'host');
     find_add_button().simulate('click');
 }
@@ -100,7 +100,7 @@ suite.add(new Y.maas.testing.TestCase({
 
     testFormContainsArchitectureChoice: function() {
         // The generated form contains an 'architecture' field.
-        module.showAddNodeWidget();
+        module.showAddNodeWidget({targetNode: '#target_node', animate: false});
         var arch = find_form().one('#id_architecture');
         Y.Assert.isNotNull(arch);
         var arch_options = arch.all('option');
@@ -110,7 +110,7 @@ suite.add(new Y.maas.testing.TestCase({
     testAddNodeAPICallSubmitsForm: function() {
         // The call to the API triggered by clicking on 'Add a node'
         // submits (via an API call) the panel's form.
-        module.showAddNodeWidget();
+        module.showAddNodeWidget({targetNode: '#target_node', animate: false});
         var mockXhr = new Y.Base();
         var form = find_form();
         var log = this.logIO(module);
@@ -126,7 +126,7 @@ suite.add(new Y.maas.testing.TestCase({
             args: [MAAS_config.uris.nodes_handler, Y.Mock.Value.Any]
         });
         this.mockIO(mockXhr, module);
-        module.showAddNodeWidget();
+        module.showAddNodeWidget({targetNode: '#target_node', animate: false});
         find_hostname_input().set('value', 'host');
         find_add_button().simulate('click');
         Y.Mock.verify(mockXhr);
@@ -139,7 +139,7 @@ suite.add(new Y.maas.testing.TestCase({
             args: [MAAS_config.uris.nodes_handler, Y.Mock.Value.Any]
         });
         this.mockIO(mockXhr, module);
-        module.showAddNodeWidget();
+        module.showAddNodeWidget({targetNode: '#target_node', animate: false});
         find_hostname_input().set('value', 'host');
         // Simulate 'Enter' being pressed.
         find_form().simulate("keypress", { keyCode: 13 });
@@ -148,7 +148,7 @@ suite.add(new Y.maas.testing.TestCase({
 
     testNodeidPopulation: function() {
         this.mockSuccess(Y.JSON.stringify({system_id: 3}), module);
-        module.showAddNodeWidget();
+        module.showAddNodeWidget({targetNode: '#target_node', animate: false});
         this.addCleanup(
             Y.bind(
                 module._add_node_singleton.destroy,

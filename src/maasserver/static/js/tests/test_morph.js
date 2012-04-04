@@ -25,6 +25,10 @@ suite.add(new Y.maas.testing.TestCase({
         Y.Assert.isTrue(
             Y.one('#panel-two').hasClass('hidden'),
             'The source panel should initially be hidden');
+        var morphed_fired = false;
+        morpher.on('morphed', function() {
+            morphed_fired = true;
+        });
         morpher.morph();
         this.wait(function() {
             Y.Assert.isTrue(
@@ -33,6 +37,13 @@ suite.add(new Y.maas.testing.TestCase({
             Y.Assert.isFalse(
                 Y.one(cfg.srcNode).hasClass('hidden'),
                 'The source panel should now be visible');
+            Y.Assert.isTrue(
+                morphed_fired,
+                'The morphed event should have fired');
+            Y.Assert.areEqual(
+                'auto',
+                Y.one(cfg.srcNode).getStyle('height'),
+                'The morpher should set the height back to auto');
             /* Fire this morph again, this time for the reverse. */
             morpher.morph(true);
             this.wait(function() {
