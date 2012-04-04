@@ -648,6 +648,19 @@ class TestNodeAPI(APITestCase):
         self.assertEqual(204, response.status_code)
         self.assertItemsEqual([], Node.objects.filter(system_id=system_id))
 
+    def test_DELETE_cannot_delete_allocated_node(self):
+        # The api allows to delete a Node.
+        self.become_admin()
+        node = factory.make_node(status=NODE_STATUS.ALLOCATED)
+        response = self.client.delete(self.get_node_uri(node))
+
+        self.assertEqual(
+            (httplib.CONFLICT,
+                "Cannot delete node %s: node is in state %s." % (
+                    node.system_id,
+                    NODE_STATUS_CHOICES_DICT[NODE_STATUS.ALLOCATED])),
+            (response.status_code, response.content))
+
     def test_DELETE_deletes_node_fails_if_not_admin(self):
         # Only superusers can delete nodes.
         node = factory.make_node(set_hostname=True, owner=self.logged_in_user)

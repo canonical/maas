@@ -629,6 +629,11 @@ class Node(CommonInfo):
     def delete(self):
         # Delete the related mac addresses first.
         self.macaddress_set.all().delete()
+        # Allocated nodes can't be deleted.
+        if self.status == NODE_STATUS.ALLOCATED:
+            raise NodeStateViolation(
+                "Cannot delete node %s: node is in state %s."
+                % (self.system_id, NODE_STATUS_CHOICES_DICT[self.status]))
         super(Node, self).delete()
 
     def set_mac_based_hostname(self, mac_address):

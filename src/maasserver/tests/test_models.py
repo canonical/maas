@@ -125,6 +125,10 @@ class NodeTest(TestCase):
         self.assertRaises(
             MACAddress.DoesNotExist, MACAddress.objects.get, id=mac.id)
 
+    def test_cannot_delete_allocated_node(self):
+        node = factory.make_node(status=NODE_STATUS.ALLOCATED)
+        self.assertRaises(NodeStateViolation, node.delete)
+
     def test_set_mac_based_hostname_default_enlistment_domain(self):
         # The enlistment domain defaults to `local`.
         node = factory.make_node()
