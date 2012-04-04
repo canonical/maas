@@ -53,7 +53,7 @@ class ProvisioningTests:
 
     __metaclass__ = ABCMeta
 
-    # Must be set to the provisioning server API proxy to test against.
+    # This must be set to the provisioning server API proxy to test against.
     papi = None
 
     def make_node_without_saving(self, arch=ARCHITECTURE.i386):

@@ -18,17 +18,29 @@ __all__ = [
 
 from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse
-from maasserver.api import extract_oauth_key
+from maasserver.api import (
+    api_exported,
+    api_operations,
+    extract_oauth_key,
+    get_mandatory_param,
+    )
 from maasserver.exceptions import (
+    MAASAPIBadRequest,
     MAASAPINotFound,
+    NodeStateViolation,
     Unauthorized,
     )
-from maasserver.models import SSHKey
+from maasserver.models import (
+    NODE_STATUS,
+    NODE_STATUS_CHOICES_DICT,
+    SSHKey,
+    )
 from metadataserver.models import (
     NodeKey,
     NodeUserData,
     )
 from piston.handler import BaseHandler
+from piston.utils import rc
 
 
 class UnknownMetadataVersion(MAASAPINotFound):
@@ -82,12 +94,30 @@ class IndexHandler(MetadataViewHandler):
     fields = ('latest', '2012-03-01')
 
 
+@api_operations
 class VersionIndexHandler(MetadataViewHandler):
     """Listing for a given metadata version."""
-
+    allowed_methods = ('GET', 'POST')
     fields = ('meta-data', 'user-data')
 
+    # States in which a node is allowed to signal commissioning status.
+    # (Only in Commissioning state, however, will it have any effect.)
+    signalable_states = [
+        NODE_STATUS.COMMISSIONING,
+        NODE_STATUS.READY,
+        NODE_STATUS.FAILED_TESTS,
+        ]
+
+    # Statuses that a commissioning node may signal, and the respective
+    # state transitions that they trigger on the node.
+    signaling_statuses = {
+        'OK': NODE_STATUS.READY,
+        'FAILED': NODE_STATUS.FAILED_TESTS,
+        'WORKING': None,
+    }
+
     def read(self, request, version):
+        """Read the metadata index for this version."""
         check_version(version)
         if NodeUserData.objects.has_user_data(get_node_for_request(request)):
             shown_fields = self.fields
@@ -95,6 +125,45 @@ class VersionIndexHandler(MetadataViewHandler):
             shown_fields = list(self.fields)
             shown_fields.remove('user-data')
         return make_list_response(sorted(shown_fields))
+
+    @api_exported('signal', 'POST')
+    def signal(self, request, version=None):
+        """Signal commissioning status.
+
+        A commissioning node can call this to report progress of the
+        commissioning process to the metadata server.
+
+        Calling this from a node that is not Commissioning, Ready, or
+        Failed Tests is an error.  Signaling completion more than once is not
+        an error; all but the first successful call are ignored.
+
+        :param status: A commissioning status code.  This can be "OK" (to
+            signal that commissioning has completed successfully), or "FAILED"
+            (to signal failure), or "WORKING" (for progress reports).
+        """
+        node = get_node_for_request(request)
+        status = request.POST.get('status', None)
+
+        status = get_mandatory_param(request.POST, 'status')
+        if node.status not in self.signalable_states:
+            raise NodeStateViolation(
+                "Node wasn't commissioning (status is %s)"
+                % NODE_STATUS_CHOICES_DICT[node.status])
+
+        if status not in self.signaling_statuses:
+            raise MAASAPIBadRequest(
+                "Unknown commissioning status: '%s'" % status)
+
+        if node.status != NODE_STATUS.COMMISSIONING:
+            # Already registered.  Nothing to be done.
+            return rc.ALL_OK
+
+        target_status = self.signaling_statuses.get(status)
+        if target_status not in (None, node.status):
+            node.status = target_status
+            node.save()
+
+        return rc.ALL_OK
 
 
 class MetaDataHandler(VersionIndexHandler):
