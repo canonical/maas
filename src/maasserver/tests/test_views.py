@@ -27,7 +27,7 @@ from maasserver import (
     views,
     )
 from maasserver.exceptions import NoRabbit
-from maasserver.forms import NodeTransitionForm
+from maasserver.forms import NodeActionForm
 from maasserver.models import (
     Config,
     NODE_AFTER_COMMISSIONING_ACTION,
@@ -586,7 +586,7 @@ class NodeViewsTest(LoggedInTestCase):
         doc = fromstring(response.content)
         inputs = [
             input for input in doc.cssselect('form#node_actions input')
-            if input.name == NodeTransitionForm.input_name]
+            if input.name == NodeActionForm.input_name]
 
         self.assertSequenceEqual(
             ["Accept Enlisted node"], [input.value for input in inputs])
@@ -599,7 +599,7 @@ class NodeViewsTest(LoggedInTestCase):
         response = self.client.post(
             node_link,
             data={
-                NodeTransitionForm.input_name: "Accept Enlisted node",
+                NodeActionForm.input_name: "Accept Enlisted node",
             })
 
         self.assertEqual(httplib.FOUND, response.status_code)

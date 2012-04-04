@@ -22,11 +22,11 @@ from django.http import QueryDict
 from maasserver.forms import (
     ConfigForm,
     EditUserForm,
-    get_transition_form,
+    get_action_form,
     HostnameFormField,
     NewUserCreationForm,
-    NODE_TRANSITIONS_METHODS,
-    NodeTransitionForm,
+    NODE_ACTIONS,
+    NodeActionForm,
     NodeWithMACAddressesForm,
     ProfileForm,
     UIAdminNodeEditForm,
@@ -264,103 +264,100 @@ class NodeEditForms(TestCase):
         self.assertItemsEqual(['', user.id], user_ids)
 
 
-class NodeTransitionsMethodsTests(TestCase):
-    """Test the structure of NODE_TRANSITIONS_METHODS."""
+class NodeActionsTests(TestCase):
+    """Test the structure of NODE_ACTIONS."""
 
-    def test_NODE_TRANSITION_METHODS_initial_states(self):
+    def test_NODE_ACTIONS_initial_states(self):
         allowed_states = set(NODE_STATUS_CHOICES_DICT.keys() + [None])
 
-        self.assertTrue(set(NODE_TRANSITIONS_METHODS.keys()) <= allowed_states)
+        self.assertTrue(set(NODE_ACTIONS.keys()) <= allowed_states)
 
-    def test_NODE_TRANSITION_METHODS_dict(self):
-        transitions = []
-        for transition_list in NODE_TRANSITIONS_METHODS.values():
-            transitions.extend(transition_list)
-
+    def test_NODE_ACTIONS_dict(self):
+        actions = sum(NODE_ACTIONS.values(), [])
         self.assertThat(
-            [sorted(transition.keys()) for transition in transitions],
+            [sorted(action.keys()) for action in actions],
             AllMatch(Equals(sorted(['permission', 'display', 'execute']))))
 
 
-class TestNodeTransitionForm(TestCase):
+class TestNodeActionForm(TestCase):
 
-    def test_available_transition_methods_for_declared_node_admin(self):
-        # An admin has access to the "Enlist node" transition for a
+    def test_available_action_methods_for_declared_node_admin(self):
+        # An admin has access to the "Accept Enlisted node" action for a
         # 'Declared' node.
         admin = factory.make_admin()
         node = factory.make_node(status=NODE_STATUS.DECLARED)
-        form = get_transition_form(admin)(node)
-        transitions = form.available_transition_methods(node, admin)
+        form = get_action_form(admin)(node)
+        actions = form.available_action_methods(node, admin)
         self.assertEqual(
             ["Accept Enlisted node"],
-            [transition['display'] for transition in transitions])
+            [action['display'] for action in actions])
         self.assertEqual(
             [NODE_PERMISSION.ADMIN],
-            [transition['permission'] for transition in transitions])
+            [action['permission'] for action in actions])
 
-    def test_available_transition_methods_for_declared_node_simple_user(self):
-        # A simple user sees no transitions for a 'Declared' node.
+    def test_available_action_methods_for_declared_node_simple_user(self):
+        # A simple user sees no actions for a 'Declared' node.
         user = factory.make_user()
         node = factory.make_node(status=NODE_STATUS.DECLARED)
-        form = get_transition_form(user)(node)
+        form = get_action_form(user)(node)
         self.assertItemsEqual(
-            [], form.available_transition_methods(node, user))
+            [], form.available_action_methods(node, user))
 
-    def test_get_transition_form_creates_form_class_with_attributes(self):
+    def test_get_action_form_creates_form_class_with_attributes(self):
         user = factory.make_admin()
-        form_class = get_transition_form(user)
+        form_class = get_action_form(user)
 
         self.assertEqual(user, form_class.user)
 
-    def test_get_transition_form_creates_form_class(self):
+    def test_get_action_form_creates_form_class(self):
         user = factory.make_admin()
         node = factory.make_node(status=NODE_STATUS.DECLARED)
-        form = get_transition_form(user)(node)
+        form = get_action_form(user)(node)
 
-        self.assertIsInstance(form, NodeTransitionForm)
+        self.assertIsInstance(form, NodeActionForm)
         self.assertEqual(node, form.node)
 
-    def test_get_transition_form_for_admin(self):
+    def test_get_action_form_for_admin(self):
         admin = factory.make_admin()
         node = factory.make_node(status=NODE_STATUS.DECLARED)
-        form = get_transition_form(admin)(node)
+        form = get_action_form(admin)(node)
 
         self.assertItemsEqual(
             {"Accept Enlisted node": (
                 'accept_enlistment', NODE_PERMISSION.ADMIN)},
-            form.transition_dict)
+            form.action_dict)
 
-    def test_get_transition_form_for_user(self):
+    def test_get_action_form_for_user(self):
         user = factory.make_user()
         node = factory.make_node(status=NODE_STATUS.DECLARED)
-        form = get_transition_form(user)(node)
+        form = get_action_form(user)(node)
 
-        self.assertIsInstance(form, NodeTransitionForm)
+        self.assertIsInstance(form, NodeActionForm)
         self.assertEqual(node, form.node)
-        self.assertItemsEqual({}, form.transition_dict)
+        self.assertItemsEqual({}, form.action_dict)
 
-    def test_get_transition_form_node_for_admin_save(self):
+    def test_get_action_form_node_for_admin_save(self):
         admin = factory.make_admin()
         node = factory.make_node(status=NODE_STATUS.DECLARED)
-        form = get_transition_form(admin)(
-            node, {NodeTransitionForm.input_name: "Accept Enlisted node"})
+        form = get_action_form(admin)(
+            node, {NodeActionForm.input_name: "Accept Enlisted node"})
         form.save()
 
         self.assertEqual(NODE_STATUS.READY, node.status)
 
-    def test_get_transition_form_for_user_save(self):
+    def test_get_action_form_for_user_save(self):
         user = factory.make_user()
         node = factory.make_node(status=NODE_STATUS.DECLARED)
-        form = get_transition_form(user)(
-            node, {NodeTransitionForm.input_name: "Enlist node"})
+        form = get_action_form(user)(
+            node, {NodeActionForm.input_name: "Enlist node"})
 
         self.assertRaises(PermissionDenied, form.save)
 
-    def test_get_transition_form_for_user_save_unknown_trans(self):
+    def test_get_action_form_for_user_save_unknown_trans(self):
         user = factory.make_user()
         node = factory.make_node(status=NODE_STATUS.DECLARED)
-        form = get_transition_form(user)(
-            node, {NodeTransitionForm.input_name: factory.getRandomString()})
+        form = get_action_form(user)(
+            node, {NodeActionForm.input_name: factory.getRandomString()})
 
         self.assertRaises(PermissionDenied, form.save)
 

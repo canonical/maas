@@ -11,12 +11,12 @@ from __future__ import (
 __metaclass__ = type
 __all__ = [
     "CommissioningForm",
-    "get_transition_form",
+    "get_action_form",
     "HostnameFormField",
     "NodeForm",
     "MACAddressForm",
     "MAASAndNetworkForm",
-    "NodeTransitionForm",
+    "NodeActionForm",
     "SSHKeyForm",
     "UbuntuForm",
     "UIAdminNodeEditForm",
@@ -194,20 +194,33 @@ class NodeWithMACAddressesForm(NodeForm):
         return node
 
 
-# Node transitions methods.
-# The format is:
-# {
-#     old_status1: [
-#         {
-#             'display': display_string11,  # The name of the transition
-#                                           # (to be displayed in the UI).
-#             'name': transition_name11,  # The name of the transition.
-#             'permission': permission_required11,
-#         },
-#     ]
-# ...
+# Node actions per status.
 #
-NODE_TRANSITIONS_METHODS = {
+# This maps each NODE_STATUS to a list of actions applicable to a node
+# in that state:
+#
+# {
+#     NODE_STATUS.<statusX>: [action1, action2],
+#     NODE_STATUS.<statusY>: [action1],
+#     NODE_STATUS.<statusZ>: [action1, action2, action3],
+# }
+#
+# The available actions (insofar as the user has privileges to use them)
+# show up in the user interface as buttons on the node page.
+#
+# Each action is a dict:
+#
+# {
+#     # Action's display name; will be shown in the button.
+#     'display': "Paint node",
+#     # Permission required to perform action.
+#     'permission': NODE_PERMISSION.EDIT,
+#     # Callable that performs action.  Takes parameters (node, user).
+#     'execute': lambda node, user: paint_node(
+#                    node, favourite_colour(user)),
+# }
+#
+NODE_ACTIONS = {
     NODE_STATUS.DECLARED: [
         {
             'display': "Accept Enlisted node",
@@ -218,55 +231,48 @@ NODE_TRANSITIONS_METHODS = {
 }
 
 
-class NodeTransitionForm(forms.Form):
-    """A form used to perform a status change on a Node.
+class NodeActionForm(forms.Form):
+    """Base form for performing a node action.
 
-    That form class should not be used directly but through subclasses
-    created using `get_transition_form`.
+    This form class should not be used directly but through subclasses
+    created using `get_action_form`.
     """
 
     user = AnonymousUser()
 
     # The name of the input button used with this form.
-    input_name = 'node_transition'
+    input_name = 'node_action'
 
     def __init__(self, instance, *args, **kwargs):
-        super(NodeTransitionForm, self).__init__(*args, **kwargs)
+        super(NodeActionForm, self).__init__(*args, **kwargs)
         self.node = instance
-        self.transition_buttons = self.available_transition_methods(
+        self.action_buttons = self.available_action_methods(
             self.node, self.user)
-        # Create a convenient dict to fetch the transition name and
+        # Create a convenient dict to fetch the action's name and
         # the permission to be checked from the button name.
-        self.transition_dict = {
-            transition['display']: (
-                transition['permission'], transition['execute'])
-            for transition in self.transition_buttons
+        self.action_dict = {
+            action['display']: (action['permission'], action['execute'])
+            for action in self.action_buttons
         }
 
-    def available_transition_methods(self, node, user):
-        """Return the transitions that this user is allowed to perform on
-        a node.
+    def available_action_methods(self, node, user):
+        """Return the actions that this user is allowed to perform on a node.
 
         :param node: The node for which the check should be performed.
         :type node: :class:`maasserver.models.Node`
-        :param user: The user used to perform the permission checks.  Only the
-            transitions available to this user will be returned.
+        :param user: The user who would be performing the action.  Only the
+            actions available to this user will be returned.
         :type user: :class:`django.contrib.auth.models.User`
-        :return: A list of transition dicts (each dict contains 3 values:
-            'name': the name of the transition, 'permission': the permission
-            required to perform this transition, 'method': the name of the
-            method to execute on the node to perform the transition).
+        :return: Any applicable action dicts, as found in NODE_ACTIONS.
         :rtype: Sequence
         """
-        node_transitions = NODE_TRANSITIONS_METHODS.get(node.status, ())
         return [
-            node_transition for node_transition in node_transitions
-            if user.has_perm(node_transition['permission'], node)]
+            action for action in NODE_ACTIONS.get(node.status, ())
+            if user.has_perm(action['permission'], node)]
 
     def save(self):
-        transition_name = self.data.get(self.input_name)
-        permission, execute = self.transition_dict.get(
-            transition_name, (None, None))
+        action_name = self.data.get(self.input_name)
+        permission, execute = self.action_dict.get(action_name, (None, None))
         if execute is not None:
             if not self.user.has_perm(permission, self.node):
                 raise PermissionDenied()
@@ -275,18 +281,17 @@ class NodeTransitionForm(forms.Form):
             raise PermissionDenied()
 
 
-def get_transition_form(user):
-    """Return a class derived from NodeTransitionForm for a specific user.
+def get_action_form(user):
+    """Return a class derived from NodeActionForm for a specific user.
 
     :param user: The user for which to build a form derived from
-        NodeTransitionForm.
+        NodeActionForm.
     :type user: :class:`django.contrib.auth.models.User`
-    :return: A form class derived from NodeTransitionForm.
+    :return: A form class derived from NodeActionForm.
     :rtype: class:`django.forms.Form`
     """
     return type(
-        str("SpecificNodeTransitionForm"), (NodeTransitionForm,),
-        {'user': user})
+        str("SpecificNodeActionForm"), (NodeActionForm,), {'user': user})
 
 
 class ProfileForm(ModelForm):
