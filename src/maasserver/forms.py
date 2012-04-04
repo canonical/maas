@@ -224,6 +224,11 @@ NODE_ACTIONS = {
             'permission': NODE_PERMISSION.ADMIN,
             'execute': lambda node, user: Node.accept_enlistment(node),
         },
+        {
+            'display': "Commission node",
+            'permission': NODE_PERMISSION.ADMIN,
+            'execute': lambda node, user: Node.start_commissioning(node, user),
+        },
     ],
 }
 

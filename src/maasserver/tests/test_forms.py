@@ -249,18 +249,19 @@ class NodeActionsTests(TestCase):
 class TestNodeActionForm(TestCase):
 
     def test_available_action_methods_for_declared_node_admin(self):
-        # An admin has access to the "Accept Enlisted node" action for a
+        # Check which transitions are available for an admin on a
         # 'Declared' node.
         admin = factory.make_admin()
         node = factory.make_node(status=NODE_STATUS.DECLARED)
         form = get_action_form(admin)(node)
         actions = form.available_action_methods(node, admin)
         self.assertEqual(
-            ["Accept Enlisted node"],
+            ["Accept Enlisted node", "Commission node"],
             [action['display'] for action in actions])
+        # All permissions should be ADMIN.
         self.assertEqual(
-            [NODE_PERMISSION.ADMIN],
-            [action['permission'] for action in actions])
+            [NODE_PERMISSION.ADMIN] * len(actions),
+            [action['permission'] for actions in actions])
 
     def test_available_action_methods_for_declared_node_simple_user(self):
         # A simple user sees no actions for a 'Declared' node.
@@ -291,7 +292,10 @@ class TestNodeActionForm(TestCase):
 
         self.assertItemsEqual(
             {"Accept Enlisted node": (
-                'accept_enlistment', NODE_PERMISSION.ADMIN)},
+                'accept_enlistment', NODE_PERMISSION.ADMIN),
+             "Commission node": (
+                'start_commissioning', NODE_PERMISSION.ADMIN),
+            },
             form.action_dict)
 
     def test_get_action_form_for_user(self):

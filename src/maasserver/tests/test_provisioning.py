@@ -19,6 +19,7 @@ from maasserver import provisioning
 from maasserver.exceptions import MAASAPIException
 from maasserver.models import (
     ARCHITECTURE,
+    ARCHITECTURE_CHOICES,
     Config,
     Node,
     NODE_AFTER_COMMISSIONING_ACTION,
@@ -92,7 +93,7 @@ class ProvisioningTests:
         self.papi.modify_nodes(
             {node.system_id: {'profile': self.make_papi_profile()}})
         self.assertEqual(
-            'maas-precise-i386', select_profile_for_node(node, self.papi))
+            'maas-precise-i386', select_profile_for_node(node))
 
     def test_select_profile_for_node_selects_Precise_and_right_arch(self):
         nodes = {
@@ -102,14 +103,23 @@ class ProvisioningTests:
                 'maas-precise-%s' % name_arch_in_cobbler_style(arch)
                 for arch in nodes.keys()],
             [
-                select_profile_for_node(node, self.papi)
+                select_profile_for_node(node)
                 for node in nodes.values()])
 
     def test_select_profile_for_node_converts_architecture_name(self):
         node = factory.make_node(architecture='amd64')
-        profile = select_profile_for_node(node, self.papi)
+        profile = select_profile_for_node(node)
         self.assertNotIn('amd64', profile)
         self.assertIn('x86_64', profile)
+
+    def test_select_profile_for_node_works_for_commissioning(self):
+        # A special profile is chosen for nodes in the commissioning
+        # state.
+        arch = ARCHITECTURE.i386
+        node = factory.make_node(
+            status=NODE_STATUS.COMMISSIONING, architecture=arch)
+        profile = select_profile_for_node(node)
+        self.assertEqual('maas-precise-%s-commissioning' % arch, profile)
 
     def test_provision_post_save_Node_create(self):
         # The handler for Node's post-save signal registers the node in

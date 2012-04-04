@@ -597,8 +597,8 @@ class NodeViewsTest(LoggedInTestCase):
             input for input in doc.cssselect('form#node_actions input')
             if input.name == NodeActionForm.input_name]
 
-        self.assertSequenceEqual(
-            ["Accept Enlisted node"], [input.value for input in inputs])
+        self.assertIn(
+            "Accept Enlisted node", [input.value for input in inputs])
 
     def test_view_node_POST_admin_can_enlist_node(self):
         self.logged_in_user.is_superuser = True
@@ -623,6 +623,21 @@ class NodeViewsTest(LoggedInTestCase):
         doc = fromstring(response.content)
 
         self.assertEqual(0, len(doc.cssselect('form#node_actions input')))
+
+    def test_view_node_POST_admin_can_start_commissioning_node(self):
+        self.logged_in_user.is_superuser = True
+        self.logged_in_user.save()
+        node = factory.make_node(status=NODE_STATUS.DECLARED)
+        node_link = reverse('node-view', args=[node.system_id])
+        response = self.client.post(
+            node_link,
+            data={
+                NodeActionForm.input_name: "Commission node",
+            })
+
+        self.assertEqual(httplib.FOUND, response.status_code)
+        self.assertEqual(
+            NODE_STATUS.COMMISSIONING, reload_object(node).status)
 
 
 class AdminNodeViewsTest(AdminLoggedInTestCase):

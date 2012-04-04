@@ -425,12 +425,19 @@ class NodeManager(models.Manager):
         :return: Those Nodes for which power-on was actually requested.
         :rtype: list
         """
-        # Avoid circular imports.
+        # TODO: File structure needs sorting out to avoid this circular
+        # import dance.
         from metadataserver.models import NodeUserData
+        from maasserver.provisioning import select_profile_for_node
         nodes = self.get_nodes(by_user, NODE_PERMISSION.EDIT, ids=ids)
+        profiles = {}
         for node in nodes:
             NodeUserData.objects.set_user_data(node, user_data)
-        get_papi().start_nodes([node.system_id for node in nodes])
+            profiles[node.system_id] = {
+                'profile': select_profile_for_node(node)}
+        papi = get_papi()
+        papi.modify_nodes(profiles)
+        papi.start_nodes([node.system_id for node in nodes])
         return nodes
 
 
@@ -609,6 +616,15 @@ class Node(CommonInfo):
         self.status = target_state
         self.save()
         return self
+
+    def start_commissioning(self, user):
+        """Install OS and self-test a new node."""
+        self.status = NODE_STATUS.COMMISSIONING
+        self.owner = user
+        self.save()
+        # The commissioning profile is handled in start_nodes.
+        Node.objects.start_nodes(
+            [self.system_id], user, user_data=None)
 
     def delete(self):
         # Delete the related mac addresses first.
