@@ -191,6 +191,14 @@ class NodeWithMACAddressesForm(NodeForm):
         return node
 
 
+def start_node(node, user):
+    """Start a node from the UI.  It will have no meta_data."""
+    # TODO: Provide some kind of feedback to the user.  Starting a node
+    # is fire-and-forget.  From the user's point of view, it's as if all
+    # that happens is the page reloading.
+    Node.objects.start_nodes([node.system_id], user)
+
+
 # Node actions per status.
 #
 # This maps each NODE_STATUS to a list of actions applicable to a node
@@ -228,6 +236,20 @@ NODE_ACTIONS = {
             'display': "Commission node",
             'permission': NODE_PERMISSION.ADMIN,
             'execute': lambda node, user: Node.start_commissioning(node, user),
+        },
+    ],
+    NODE_STATUS.READY: [
+        {
+            'display': "Start node",
+            'permission': NODE_PERMISSION.EDIT,
+            'execute': start_node,
+        },
+    ],
+    NODE_STATUS.ALLOCATED: [
+        {
+            'display': "Start node",
+            'permission': NODE_PERMISSION.EDIT,
+            'execute': start_node,
         },
     ],
 }

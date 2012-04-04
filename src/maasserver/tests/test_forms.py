@@ -41,6 +41,7 @@ from maasserver.models import (
     NODE_STATUS_CHOICES_DICT,
     POWER_TYPE_CHOICES,
     )
+from maasserver.provisioning import get_provisioning_api_proxy
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
 from testtools.matchers import (
@@ -331,6 +332,25 @@ class TestNodeActionForm(TestCase):
             node, {NodeActionForm.input_name: factory.getRandomString()})
 
         self.assertRaises(PermissionDenied, form.save)
+
+    def test_start_action_starts_ready_node_for_admin(self):
+        node = factory.make_node(status=NODE_STATUS.READY)
+        form = get_action_form(factory.make_admin())(
+            node, {NodeActionForm.input_name: "Start node"})
+        form.save()
+
+        power_status = get_provisioning_api_proxy().power_status
+        self.assertEqual('start', power_status.get(node.system_id))
+
+    def test_start_action_starts_allocated_node_for_owner(self):
+        node = factory.make_node(
+            status=NODE_STATUS.READY, owner=factory.make_user())
+        form = get_action_form(node.owner)(
+            node, {NodeActionForm.input_name: "Start node"})
+        form.save()
+
+        power_status = get_provisioning_api_proxy().power_status
+        self.assertEqual('start', power_status.get(node.system_id))
 
 
 class TestHostnameFormField(TestCase):
