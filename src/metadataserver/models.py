@@ -131,17 +131,14 @@ class NodeUserDataManager(Manager):
     """Utility for the collection of NodeUserData items."""
 
     def set_user_data(self, node, data):
-        """Set user data for the given node."""
-        existing_entries = self.filter(node=node)
-        if len(existing_entries) == 1:
-            [entry] = existing_entries
-            entry.data = Bin(data)
-            entry.save()
-        elif len(existing_entries) == 0:
-            wrapped_data = Bin(data)
-            self.create(node=node, data=wrapped_data)
+        """Set user data for the given node.
+
+        If `data` is None, remove user data for the node.
+        """
+        if data is None:
+            self._remove(node)
         else:
-            raise AssertionError("More than one user-data entry matches.")
+            self._set(node, data)
 
     def get_user_data(self, node):
         """Retrieve user data for the given node."""
@@ -150,6 +147,19 @@ class NodeUserDataManager(Manager):
     def has_user_data(self, node):
         """Do we have user data registered for node?"""
         return self.filter(node=node).exists()
+
+    def _set(self, node, data):
+        """Set actual user data for a node.  Not usable if data is None."""
+        wrapped_data = Bin(data)
+        (existing_entry, created) = self.get_or_create(
+            node=node, defaults={'data': wrapped_data})
+        if not created:
+            existing_entry.data = wrapped_data
+            existing_entry.save()
+
+    def _remove(self, node):
+        """Remove metadata from node, if it has any any."""
+        self.filter(node=node).delete()
 
 
 class NodeUserData(Model):

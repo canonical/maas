@@ -560,12 +560,14 @@ class NodeManagerTest(TestCase):
         self.assertEqual(
             original_user_data, NodeUserData.objects.get_user_data(node))
 
-    def test_start_nodes_without_user_data_leaves_existing_data_alone(self):
+    def test_start_nodes_without_user_data_clears_existing_data(self):
         node = factory.make_node(owner=factory.make_user())
         user_data = self.make_user_data()
         NodeUserData.objects.set_user_data(node, user_data)
         Node.objects.start_nodes([node.system_id], node.owner, user_data=None)
-        self.assertEqual(user_data, NodeUserData.objects.get_user_data(node))
+        self.assertRaises(
+            NodeUserData.DoesNotExist,
+            NodeUserData.objects.get_user_data, node)
 
     def test_start_nodes_with_user_data_overwrites_existing_data(self):
         node = factory.make_node(owner=factory.make_user())

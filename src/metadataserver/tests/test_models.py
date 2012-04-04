@@ -93,6 +93,17 @@ class TestNodeUserDataManager(TestCase):
         NodeUserData.objects.set_user_data(factory.make_node(), b'unrelated')
         self.assertEqual(b'intact', NodeUserData.objects.get(node=node).data)
 
+    def test_set_user_data_to_None_removes_user_data(self):
+        node = factory.make_node()
+        NodeUserData.objects.set_user_data(node, b'original')
+        NodeUserData.objects.set_user_data(node, None)
+        self.assertItemsEqual([], NodeUserData.objects.filter(node=node))
+
+    def test_set_user_data_to_None_when_none_exists_does_nothing(self):
+        node = factory.make_node()
+        NodeUserData.objects.set_user_data(node, None)
+        self.assertItemsEqual([], NodeUserData.objects.filter(node=node))
+
     def test_get_user_data_retrieves_data(self):
         node = factory.make_node()
         data = b'splat'
