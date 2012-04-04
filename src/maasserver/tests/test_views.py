@@ -526,7 +526,7 @@ class NodeViewsTest(LoggedInTestCase):
 
     def test_view_node_shows_link_to_delete_node_for_admin(self):
         self.become_admin()
-        node = factory.make_node(owner=factory.make_user())
+        node = factory.make_node()
         node_link = reverse('node-view', args=[node.system_id])
         response = self.client.get(node_link)
         node_delete_link = reverse('node-delete', args=[node.system_id])
@@ -534,11 +534,34 @@ class NodeViewsTest(LoggedInTestCase):
 
     def test_admin_can_delete_nodes(self):
         self.become_admin()
-        node = factory.make_node(owner=factory.make_user())
+        node = factory.make_node()
         node_delete_link = reverse('node-delete', args=[node.system_id])
         response = self.client.post(node_delete_link, {'post': 'yes'})
         self.assertEqual(httplib.FOUND, response.status_code)
         self.assertFalse(User.objects.filter(id=node.id).exists())
+
+    def test_allocated_node_view_page_says_node_cannot_be_deleted(self):
+        self.become_admin()
+        node = factory.make_node(
+            status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
+        node_view_link = reverse('node-view', args=[node.system_id])
+        response = self.client.get(node_view_link)
+        node_delete_link = reverse('node-delete', args=[node.system_id])
+
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertNotIn(node_delete_link, get_content_links(response))
+        self.assertIn(
+            "You cannot delete this node because it's in use.",
+            response.content)
+
+    def test_allocated_node_cannot_be_deleted(self):
+        self.become_admin()
+        node = factory.make_node(
+            status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
+        node_delete_link = reverse('node-delete', args=[node.system_id])
+        response = self.client.get(node_delete_link)
+
+        self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
     def test_user_cannot_view_someone_elses_node(self):
         node = factory.make_node(owner=factory.make_user())

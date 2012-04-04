@@ -18,9 +18,18 @@
     <div class="block size3">
     <h4>Actions</h4>
     {% if can_delete %}
-      <a href="{% url 'node-delete' node.system_id %}" class="button secondary">
-        Delete node
-      </a>
+      {% if node.owner %}
+        <a href="#"
+           title="You cannot delete this node because it's in use."
+           class="disabled button">
+          Delete node
+        </a>
+      {% else %}
+        <a href="{% url 'node-delete' node.system_id %}"
+           class="button secondary">
+          Delete node
+        </a>
+      {% endif %}
     {% endif %}
     {% for action in form.action_buttons %}
       {% if forloop.first %}

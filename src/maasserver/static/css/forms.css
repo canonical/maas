@@ -127,6 +127,18 @@ input[type="submit"].secondary:hover {
     background-image: -webkit-linear-gradient(bottom, rgb(51,51,51) 0%, rgb(90,90,90) 100%);
     background-image: -ms-linear-gradient(bottom, rgb(51,51,51) 0%, rgb(90,90,90) 100%);
     }
+/* Disabled buttons */
+.yui3-button.disabled,
+.button.disabled,
+button.disabled {
+    cursor: not-allowed;
+    border-color: #999;
+    background-image: linear-gradient(bottom, rgb(200,200,200) 0%, rgb(150,150,150) 100%);
+    background-image: -o-linear-gradient(bottom, rgb(200,200,200) 0%, rgb(150,150,150) 100%);
+    background-image: -moz-linear-gradient(bottom, rgb(200,200,200) 0%, rgb(150,150,150) 100%);
+    background-image: -webkit-linear-gradient(bottom, rgb(200,200,200) 0%, rgb(150,150,150) 100%);
+    background-image: -ms-linear-gradient(bottom, rgb(200,200,200) 0%, rgb(150,150,150) 100%);
+    }
 .link-button {
     display: inline-block;
     padding: 6px 0;
