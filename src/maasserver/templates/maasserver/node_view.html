@@ -56,6 +56,12 @@
           {{ node.display_status }}
       </span>
     </li>
+    {% if node.owner %}
+    <li class="block size2 first">
+      <h4>Owner</h4>
+      <span>{{ node.owner }}</span>
+    </li>
+    {% endif %}
   </ul>
 {% endblock %}
 

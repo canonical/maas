@@ -54,7 +54,6 @@ from maasserver.models import (
     NODE_PERMISSION,
     NODE_STATUS,
     SSHKey,
-    UserProfile,
     )
 
 
@@ -110,13 +109,11 @@ class UINodeEditForm(ModelForm):
 class UIAdminNodeEditForm(ModelForm):
     after_commissioning_action = forms.ChoiceField(
         choices=NODE_AFTER_COMMISSIONING_ACTION_CHOICES)
-    owner = forms.ModelChoiceField(
-        queryset=UserProfile.objects.all_users(), required=False)
 
     class Meta:
         model = Node
         fields = (
-            'hostname', 'after_commissioning_action', 'power_type', 'owner')
+            'hostname', 'after_commissioning_action', 'power_type')
 
 
 class MACAddressForm(ModelForm):

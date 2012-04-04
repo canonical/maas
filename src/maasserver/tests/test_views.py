@@ -14,7 +14,6 @@ __all__ = []
 from collections import namedtuple
 import httplib
 import os
-import random
 import urllib2
 
 from django.conf import settings
@@ -486,13 +485,23 @@ class NodeViewsTest(LoggedInTestCase):
 
     def test_view_node_displays_node_info(self):
         # The node page features the basic information about the node.
-        node = factory.make_node()
+        node = factory.make_node(owner=self.logged_in_user)
         node_link = reverse('node-view', args=[node.system_id])
         response = self.client.get(node_link)
         doc = fromstring(response.content)
         content_text = doc.cssselect('#content')[0].text_content()
         self.assertIn(node.hostname, content_text)
         self.assertIn(node.display_status(), content_text)
+        self.assertIn(self.logged_in_user.username, content_text)
+
+    def test_view_node_displays_node_info_no_owner(self):
+        # If the node has no owner, the Owner 'slot' does not exist.
+        node = factory.make_node()
+        node_link = reverse('node-view', args=[node.system_id])
+        response = self.client.get(node_link)
+        doc = fromstring(response.content)
+        content_text = doc.cssselect('#content')[0].text_content()
+        self.assertNotIn('Owner', content_text)
 
     def test_view_node_displays_link_to_edit_if_user_owns_node(self):
         node = factory.make_node(owner=self.logged_in_user)
@@ -621,18 +630,15 @@ class AdminNodeViewsTest(AdminLoggedInTestCase):
     def test_admin_can_edit_nodes(self):
         node = factory.make_node(owner=factory.make_user())
         node_edit_link = reverse('node-edit', args=[node.system_id])
-        owner = random.choice([factory.make_user() for i in range(5)])
         params = {
             'hostname': factory.getRandomString(),
             'after_commissioning_action': factory.getRandomEnum(
                 NODE_AFTER_COMMISSIONING_ACTION),
             'power_type': factory.getRandomChoice(POWER_TYPE_CHOICES),
-            'owner': owner.id,
         }
         response = self.client.post(node_edit_link, params)
 
         node = reload_object(node)
-        params['owner'] = owner
         self.assertEqual(httplib.FOUND, response.status_code)
         self.assertAttributes(node, params)
 

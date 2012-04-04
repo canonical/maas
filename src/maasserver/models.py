@@ -489,7 +489,7 @@ class Node(CommonInfo):
         default=NODE_STATUS.DEFAULT_STATUS)
 
     owner = models.ForeignKey(
-        User, default=None, blank=True, null=True, editable=True)
+        User, default=None, blank=True, null=True, editable=False)
 
     after_commissioning_action = models.IntegerField(
         choices=NODE_AFTER_COMMISSIONING_ACTION_CHOICES,

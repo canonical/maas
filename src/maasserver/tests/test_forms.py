@@ -11,8 +11,6 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
-import random
-
 from django import forms
 from django.core.exceptions import (
     PermissionDenied,
@@ -209,7 +207,7 @@ class NodeEditForms(TestCase):
         form = UIAdminNodeEditForm()
 
         self.assertSequenceEqual(
-            ['hostname', 'after_commissioning_action', 'power_type', 'owner'],
+            ['hostname', 'after_commissioning_action', 'power_type'],
             list(form.fields))
 
     def test_UIAdminNodeEditForm_changes_node(self):
@@ -218,29 +216,6 @@ class NodeEditForms(TestCase):
         after_commissioning_action = factory.getRandomChoice(
             NODE_AFTER_COMMISSIONING_ACTION_CHOICES)
         power_type = factory.getRandomChoice(POWER_TYPE_CHOICES)
-        owner = random.choice([factory.make_user() for i in range(3)])
-        form = UIAdminNodeEditForm(
-            data={
-                'hostname': hostname,
-                'after_commissioning_action': after_commissioning_action,
-                'power_type': power_type,
-                'owner': owner.id,
-                },
-            instance=node)
-        form.save()
-
-        self.assertEqual(hostname, node.hostname)
-        self.assertEqual(
-            after_commissioning_action, node.after_commissioning_action)
-        self.assertEqual(power_type, node.power_type)
-        self.assertEqual(owner, node.owner)
-
-    def test_UIAdminNodeEditForm_changes_node_empty_owner(self):
-        node = factory.make_node()
-        hostname = factory.getRandomString()
-        after_commissioning_action = factory.getRandomChoice(
-            NODE_AFTER_COMMISSIONING_ACTION_CHOICES)
-        power_type = factory.getRandomChoice(POWER_TYPE_CHOICES)
         form = UIAdminNodeEditForm(
             data={
                 'hostname': hostname,
@@ -254,14 +229,6 @@ class NodeEditForms(TestCase):
         self.assertEqual(
             after_commissioning_action, node.after_commissioning_action)
         self.assertEqual(power_type, node.power_type)
-        self.assertEqual(None, node.owner)
-
-    def test_UIAdminNodeEditForm_owner_choices_contains_active_users(self):
-        form = UIAdminNodeEditForm()
-        user = factory.make_user()
-        user_ids = [choice[0] for choice in form.fields['owner'].choices]
-
-        self.assertItemsEqual(['', user.id], user_ids)
 
 
 class NodeActionsTests(TestCase):
