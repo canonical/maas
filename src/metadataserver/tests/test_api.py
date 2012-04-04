@@ -303,9 +303,11 @@ class TestViews(TestCase, ProvisioningFakeFactory):
     def test_signaling_commissioning_success_restores_node_profile(self):
         papi = get_provisioning_api_proxy()
         commissioning_profile = self.add_profile(papi)
-        node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_node(status=NODE_STATUS.DECLARED)
         node_data = papi.get_nodes_by_name([node.system_id])[node.system_id]
         original_profile = node_data['profile']
+        node.status = NODE_STATUS.COMMISSIONING
+        node.save()
         papi.modify_nodes({node.system_id: {'profile': commissioning_profile}})
         client = self.make_node_client(node=node)
         response = client.post(
