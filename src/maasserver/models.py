@@ -511,6 +511,8 @@ class Node(CommonInfo):
     token = models.ForeignKey(
         Token, db_index=True, null=True, editable=False, unique=False)
 
+    error = models.CharField(max_length=255, blank=True, default='')
+
     objects = NodeManager()
 
     def __unicode__(self):

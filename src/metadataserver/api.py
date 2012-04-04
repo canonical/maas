@@ -140,6 +140,9 @@ class VersionIndexHandler(MetadataViewHandler):
         :param status: A commissioning status code.  This can be "OK" (to
             signal that commissioning has completed successfully), or "FAILED"
             (to signal failure), or "WORKING" (for progress reports).
+        :param error: An optional error string.  If given, this will be stored
+            (overwriting any previous error string), and displayed in the MAAS
+            UI.  If not given, any previous error string will be cleared.
         """
         node = get_node_for_request(request)
         status = request.POST.get('status', None)
@@ -159,9 +162,13 @@ class VersionIndexHandler(MetadataViewHandler):
             return rc.ALL_OK
 
         target_status = self.signaling_statuses.get(status)
-        if target_status not in (None, node.status):
-            node.status = target_status
-            node.save()
+        if target_status in (None, node.status):
+            # No status change.  Nothing to be done.
+            return rc.ALL_OK
+
+        node.status = target_status
+        node.error = request.POST.get('error', '')
+        node.save()
 
         return rc.ALL_OK
 
