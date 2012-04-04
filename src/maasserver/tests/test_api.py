@@ -690,7 +690,7 @@ class TestNodesAPI(APITestCase):
             self.get_uri('nodes/'),
             {
                 'op': 'new',
-                'hostname': 'diane',
+                'hostname': factory.getRandomString(),
                 'architecture': architecture,
                 'after_commissioning_action': '2',
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
@@ -698,10 +698,28 @@ class TestNodesAPI(APITestCase):
 
         self.assertEqual(httplib.OK, response.status_code)
 
-    def test_POST_new_when_logged_in_creates_node_in_ready_state(self):
-        # When a logged-in user enlists a node, it goes into the Ready
-        # state.
+    def test_POST_new_when_logged_in_creates_node_in_declared_state(self):
+        # When a user enlists a node, it goes into the Declared state.
         # This will change once we start doing proper commissioning.
+        response = self.client.post(
+            self.get_uri('nodes/'),
+            {
+                'op': 'new',
+                'hostname': factory.getRandomString(),
+                'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
+                'after_commissioning_action': '2',
+                'mac_addresses': ['aa:bb:cc:dd:ee:ff'],
+            })
+        self.assertEqual(httplib.OK, response.status_code)
+        system_id = json.loads(response.content)['system_id']
+        self.assertEqual(
+            NODE_STATUS.DECLARED,
+            Node.objects.get(system_id=system_id).status)
+
+    def test_POST_new_when_admin_creates_node_in_ready_state(self):
+        # When an admin user enlists a node, it goes into the Ready state.
+        # This will change once we start doing proper commissioning.
+        self.become_admin()
         response = self.client.post(
             self.get_uri('nodes/'),
             {
@@ -965,6 +983,7 @@ class TestNodesAPI(APITestCase):
     def test_POST_accept_gets_node_out_of_declared_state(self):
         # This will change when we add provisioning.  Until then,
         # acceptance gets a node straight to Ready state.
+        self.become_admin()
         target_state = NODE_STATUS.READY
 
         node = factory.make_node(status=NODE_STATUS.DECLARED)
@@ -985,6 +1004,7 @@ class TestNodesAPI(APITestCase):
             (httplib.OK, "[]"), (response.status_code, response.content))
 
     def test_POST_accept_rejects_impossible_state_changes(self):
+        self.become_admin()
         acceptable_states = set([
             NODE_STATUS.DECLARED,
             NODE_STATUS.COMMISSIONING,
@@ -1019,16 +1039,29 @@ class TestNodesAPI(APITestCase):
             self.assertIn(NODE_STATUS_CHOICES_DICT[status], response.content)
 
     def test_POST_accept_fails_if_node_does_not_exist(self):
+        self.become_admin()
         node_id = factory.getRandomString()
         response = self.client.post(
             self.get_uri('nodes/'), {'op': 'accept', 'nodes': [node_id]})
         self.assertEqual(
-            (httplib.BAD_REQUEST, "Unknown node(s): %s" % node_id),
+            (httplib.BAD_REQUEST, "Unknown node(s): %s." % node_id),
+            (response.status_code, response.content))
+
+    def test_POST_accept_fails_if_not_admin(self):
+        node = factory.make_node(status=NODE_STATUS.DECLARED)
+        response = self.client.post(
+            self.get_uri('nodes/'),
+            {'op': 'accept', 'nodes': [node.system_id]})
+        self.assertEqual(
+            (httplib.FORBIDDEN,
+                "You don't have the required permission to accept the "
+                "following node(s): %s." % node.system_id),
             (response.status_code, response.content))
 
     def test_POST_accept_accepts_multiple_nodes(self):
         # This will change when we add provisioning.  Until then,
         # acceptance gets a node straight to Ready state.
+        self.become_admin()
         target_state = NODE_STATUS.READY
 
         nodes = [
@@ -1045,6 +1078,7 @@ class TestNodesAPI(APITestCase):
             [reload_object(node).status for node in nodes])
 
     def test_POST_accept_returns_actually_accepted_nodes(self):
+        self.become_admin()
         acceptable_nodes = [
             factory.make_node(status=NODE_STATUS.DECLARED)
             for counter in range(2)
