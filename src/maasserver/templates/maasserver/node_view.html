@@ -65,6 +65,14 @@
           {{ node.display_status }}
       </span>
     </li>
+    {% if node.error %}
+    <li class="block first">
+      <h4>Error output</h4>
+      <span>
+          {{ node.error }}
+      </span>
+    </li>
+    {% endif %}
     {% if node.owner %}
     <li class="block size2 first">
       <h4>Owner</h4>
