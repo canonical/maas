@@ -148,7 +148,9 @@ class TestNodeVisibility(TestCase):
             make_unallocated_node(),
             ]
         self.assertItemsEqual(
-            nodes, Node.objects.get_visible_nodes(factory.make_admin()))
+            nodes,
+            Node.objects.get_nodes(
+                factory.make_admin(), NODE_PERMISSION.VIEW))
 
     def test_user_sees_own_nodes_and_unowned_nodes(self):
         user = factory.make_user()
@@ -157,4 +159,4 @@ class TestNodeVisibility(TestCase):
         unowned_node = make_unallocated_node()
         self.assertItemsEqual(
             [own_node, unowned_node],
-            Node.objects.get_visible_nodes(own_node.owner))
+            Node.objects.get_nodes(own_node.owner, NODE_PERMISSION.VIEW))

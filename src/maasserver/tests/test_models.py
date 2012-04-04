@@ -368,8 +368,9 @@ class NodeManagerTest(TestCase):
         self.assertItemsEqual(
             [node], Node.objects.filter_by_ids(Node.objects.all(), None))
 
-    def test_get_visible_nodes_for_user_lists_visible_nodes(self):
-        """get_visible_nodes lists the nodes a user has access to.
+    def test_get_nodes_for_user_lists_visible_nodes(self):
+        """get_nodes with perm=NODE_PERMISSION.VIEW lists the nodes a user
+        has access to.
 
         When run for a regular user it returns unowned nodes, and nodes
         owned by that user.
@@ -378,9 +379,9 @@ class NodeManagerTest(TestCase):
         visible_nodes = [self.make_node(owner) for owner in [None, user]]
         self.make_node(factory.make_user())
         self.assertItemsEqual(
-            visible_nodes, Node.objects.get_visible_nodes(user))
+            visible_nodes, Node.objects.get_nodes(user, NODE_PERMISSION.VIEW))
 
-    def test_get_visible_nodes_admin_lists_all_nodes(self):
+    def test_get_nodes_admin_lists_all_nodes(self):
         admin = factory.make_admin()
         owners = [
             None,
@@ -389,26 +390,29 @@ class NodeManagerTest(TestCase):
             admin,
             ]
         nodes = [self.make_node(owner) for owner in owners]
-        self.assertItemsEqual(nodes, Node.objects.get_visible_nodes(admin))
+        self.assertItemsEqual(
+            nodes, Node.objects.get_nodes(admin, NODE_PERMISSION.VIEW))
 
-    def test_get_visible_nodes_filters_by_id(self):
+    def test_get_nodes_filters_by_id(self):
         user = factory.make_user()
         nodes = [self.make_node(user) for counter in range(5)]
         ids = [node.system_id for node in nodes]
         wanted_slice = slice(0, 3)
         self.assertItemsEqual(
             nodes[wanted_slice],
-            Node.objects.get_visible_nodes(user, ids=ids[wanted_slice]))
+            Node.objects.get_nodes(
+                user, NODE_PERMISSION.VIEW, ids=ids[wanted_slice]))
 
-    def test_get_editable_nodes_for_user_lists_owned_nodes(self):
+    def test_get_nodes_with_edit_perm_for_user_lists_owned_nodes(self):
         user = factory.make_user()
         visible_node = self.make_node(user)
         self.make_node(None)
         self.make_node(factory.make_user())
         self.assertItemsEqual(
-            [visible_node], Node.objects.get_editable_nodes(user))
+            [visible_node],
+            Node.objects.get_nodes(user, NODE_PERMISSION.EDIT))
 
-    def test_get_editable_nodes_admin_lists_all_nodes(self):
+    def test_get_nodes_with_edit_perm_admin_lists_all_nodes(self):
         admin = factory.make_admin()
         owners = [
             None,
@@ -417,16 +421,23 @@ class NodeManagerTest(TestCase):
             admin,
             ]
         nodes = [self.make_node(owner) for owner in owners]
-        self.assertItemsEqual(nodes, Node.objects.get_editable_nodes(admin))
+        self.assertItemsEqual(
+            nodes, Node.objects.get_nodes(admin, NODE_PERMISSION.EDIT))
 
-    def test_get_editable_nodes_filters_by_id(self):
+    def test_get_nodes_with_admin_perm_returns_empty_list_for_user(self):
+        user = factory.make_user()
+        [self.make_node(user) for counter in range(5)]
+        self.assertItemsEqual(
+            [],
+            Node.objects.get_nodes(user, NODE_PERMISSION.ADMIN))
+
+    def test_get_nodes_with_admin_perm_returns_all_nodes_for_admin(self):
         user = factory.make_user()
         nodes = [self.make_node(user) for counter in range(5)]
-        ids = [node.system_id for node in nodes]
-        wanted_slice = slice(0, 3)
         self.assertItemsEqual(
-            nodes[wanted_slice],
-            Node.objects.get_editable_nodes(user, ids=ids[wanted_slice]))
+            nodes,
+            Node.objects.get_nodes(
+                factory.make_admin(), NODE_PERMISSION.ADMIN))
 
     def test_get_visible_node_or_404_ok(self):
         """get_node_or_404 fetches nodes by system_id."""

@@ -288,11 +288,13 @@ class NodeManager(models.Manager):
         else:
             return query.filter(system_id__in=ids)
 
-    def get_visible_nodes(self, user, ids=None):
-        """Fetch Nodes visible by a User_.
+    def get_nodes(self, user, perm, ids=None):
+        """Fetch Nodes on which the User_ has the given permission.
 
         :param user: The user that should be used in the permission check.
         :type user: User_
+        :param perm: The permission to check.
+        :type perm: a permission string from NODE_PERMISSION
         :param ids: If given, limit result to nodes with these system_ids.
         :type ids: Sequence.
 
@@ -302,11 +304,21 @@ class NodeManager(models.Manager):
 
         """
         if user.is_superuser:
-            visible_nodes = self.all()
+            nodes = self.all()
         else:
-            visible_nodes = self.filter(
-                models.Q(owner__isnull=True) | models.Q(owner=user))
-        return self.filter_by_ids(visible_nodes, ids)
+            if perm == NODE_PERMISSION.VIEW:
+                nodes = self.filter(
+                    models.Q(owner__isnull=True) | models.Q(owner=user))
+            elif perm == NODE_PERMISSION.EDIT:
+                nodes = self.filter(owner=user)
+            elif perm == NODE_PERMISSION.ADMIN:
+                nodes = self.none()
+            else:
+                raise NotImplementedError(
+                    "Invalid permission check (invalid permission name: %s)." %
+                    perm)
+
+        return self.filter_by_ids(nodes, ids)
 
     def get_allocated_visible_nodes(self, token, ids):
         """Fetch Nodes that were allocated to the User_/oauth token.
@@ -328,22 +340,6 @@ class NodeManager(models.Manager):
         else:
             nodes = self.filter(token=token, system_id__in=ids)
         return nodes
-
-    def get_editable_nodes(self, user, ids=None):
-        """Fetch Nodes a User_ has ownership privileges on.
-
-        An admin has ownership privileges on all nodes.
-
-        :param user: The user that should be used in the permission check.
-        :type user: User_
-        :param ids: If given, limit result to nodes with these system_ids.
-        :type ids: Sequence.
-        """
-        if user.is_superuser:
-            visible_nodes = self.all()
-        else:
-            visible_nodes = self.filter(owner=user)
-        return self.filter_by_ids(visible_nodes, ids)
 
     def get_node_or_404(self, system_id, user, perm):
         """Fetch a `Node` by system_id.  Raise exceptions if no `Node` with
@@ -382,7 +378,7 @@ class NodeManager(models.Manager):
         if constraints is None:
             constraints = {}
         available_nodes = (
-            self.get_visible_nodes(for_user)
+            self.get_nodes(for_user, NODE_PERMISSION.VIEW)
                 .filter(status=NODE_STATUS.READY))
 
         if constraints.get('name'):
@@ -408,7 +404,7 @@ class NodeManager(models.Manager):
         :return: Those Nodes for which shutdown was actually requested.
         :rtype: list
         """
-        nodes = self.get_editable_nodes(by_user, ids=ids)
+        nodes = self.get_nodes(by_user, NODE_PERMISSION.EDIT, ids=ids)
         get_papi().stop_nodes([node.system_id for node in nodes])
         return nodes
 
@@ -430,7 +426,7 @@ class NodeManager(models.Manager):
         :rtype: list
         """
         from metadataserver.models import NodeUserData
-        nodes = self.get_editable_nodes(by_user, ids=ids)
+        nodes = self.get_nodes(by_user, NODE_PERMISSION.EDIT, ids=ids)
         if user_data is not None:
             for node in nodes:
                 NodeUserData.objects.set_user_data(node, user_data)

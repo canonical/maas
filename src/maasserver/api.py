@@ -513,7 +513,8 @@ class NodesHandler(BaseHandler):
         match_ids = request.GET.getlist('id')
         if match_ids == []:
             match_ids = None
-        nodes = Node.objects.get_visible_nodes(request.user, ids=match_ids)
+        nodes = Node.objects.get_nodes(
+            request.user, NODE_PERMISSION.VIEW, ids=match_ids)
         return nodes.order_by('id')
 
     @api_exported('list_allocated', 'GET')

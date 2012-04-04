@@ -201,7 +201,8 @@ class NodeListView(ListView):
     context_object_name = "node_list"
 
     def get_queryset(self):
-        return Node.objects.get_visible_nodes(user=self.request.user)
+        return Node.objects.get_nodes(
+            user=self.request.user, perm=NODE_PERMISSION.VIEW)
 
     def get_context_data(self, **kwargs):
         context = super(NodeListView, self).get_context_data(**kwargs)
