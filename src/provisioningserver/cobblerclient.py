@@ -726,6 +726,7 @@ class CobblerSystem(CobblerObject):
         'mac_address',
         'profile',
         'dns_name',
+        'netboot_enabled',
         ]
 
     @classmethod

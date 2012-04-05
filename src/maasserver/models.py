@@ -429,16 +429,10 @@ class NodeManager(models.Manager):
         # TODO: File structure needs sorting out to avoid this circular
         # import dance.
         from metadataserver.models import NodeUserData
-        from maasserver.provisioning import select_profile_for_node
         nodes = self.get_nodes(by_user, NODE_PERMISSION.EDIT, ids=ids)
-        profiles = {}
         for node in nodes:
             NodeUserData.objects.set_user_data(node, user_data)
-            profiles[node.system_id] = {
-                'profile': select_profile_for_node(node)}
-        papi = get_papi()
-        papi.modify_nodes(profiles)
-        papi.start_nodes([node.system_id for node in nodes])
+        get_papi().start_nodes([node.system_id for node in nodes])
         return nodes
 
 

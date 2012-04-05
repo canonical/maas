@@ -24,6 +24,7 @@ from maasserver.models import (
     Node,
     NODE_AFTER_COMMISSIONING_ACTION,
     NODE_STATUS,
+    NODE_STATUS_CHOICES,
     )
 from maasserver.provisioning import (
     compose_metadata,
@@ -335,3 +336,34 @@ class TestProvisioningWithFake(ProvisioningTests, ProvisioningFakeFactory,
     def setUp(self):
         super(TestProvisioningWithFake, self).setUp()
         self.papi = provisioning.get_provisioning_api_proxy()
+
+    def test_provision_post_save_Node_set_netboot_enabled(self):
+        # When a node is under MAAS's control - i.e. not allocated and not
+        # retired - it is always configured for netbooting. When the node is
+        # allocated, netbooting is left alone; its state may change in
+        # response to interactions between the node and the provisioning
+        # server and MAAS ought to leave that alone. When the node is retired
+        # netbooting is disabled.
+        expected = {
+            NODE_STATUS.DECLARED: True,
+            NODE_STATUS.COMMISSIONING: True,
+            NODE_STATUS.FAILED_TESTS: True,
+            NODE_STATUS.MISSING: True,
+            NODE_STATUS.READY: True,
+            NODE_STATUS.RESERVED: True,
+            NODE_STATUS.ALLOCATED: None,  # No setting.
+            NODE_STATUS.RETIRED: False,
+            }
+        nodes = {
+            status: factory.make_node(status=status)
+            for status, title in NODE_STATUS_CHOICES
+            }
+        pserv_nodes = {
+            status: node.system_id
+            for status, node in nodes.items()
+            }
+        observed = {
+            status: self.papi.nodes[pserv_node].get("netboot_enabled")
+            for status, pserv_node in pserv_nodes.items()
+            }
+        self.assertEqual(expected, observed)

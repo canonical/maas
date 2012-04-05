@@ -60,6 +60,7 @@ def cobbler_to_papi_node(data):
             for mac_address in mac_addresses
             if mac_address and not mac_address.isspace()
             ],
+        "netboot_enabled": data.get("netboot_enabled"),
         "power_type": data["power_type"],
         }
 

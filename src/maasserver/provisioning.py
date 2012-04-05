@@ -249,6 +249,22 @@ def provision_post_save_Node(sender, instance, created, **kwargs):
     papi.add_node(
         instance.system_id, instance.hostname,
         profile, power_type, metadata)
+    # When the node is allocated this must not modify the netboot_enabled
+    # parameter. The node, once it has booted and installed itself, asks the
+    # provisioning server to disable netbooting. If this were to enable
+    # netbooting again, the node would reinstall itself the next time it
+    # booted. However, netbooting must be enabled at the point the node is
+    # allocated so that the first install goes ahead, hence why it is set for
+    # all other statuses... with one exception; retired nodes are never
+    # netbooted.
+    if instance.status != NODE_STATUS.ALLOCATED:
+        deltas = {
+            instance.system_id: {
+                "netboot_enabled":
+                    instance.status != NODE_STATUS.RETIRED,
+                }
+            }
+        papi.modify_nodes(deltas)
 
 
 def set_node_mac_addresses(node):
