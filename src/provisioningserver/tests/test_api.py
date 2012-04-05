@@ -598,6 +598,15 @@ class ProvisioningAPITestsWithCobbler:
         self.assertItemsEqual(
             dict(zip(power_types, power_types)), cobbler_power_types)
 
+    @inlineCallbacks
+    def test_add_node_provides_preseed(self):
+        papi = self.get_provisioning_api()
+        preseed_data = factory.getRandomString()
+        node_name = yield self.add_node(papi, preseed_data=preseed_data)
+        attrs = yield CobblerSystem(papi.session, node_name).get_values()
+        self.assertEqual(
+            preseed_data, b64decode(attrs['ks_meta']['MAAS_PRESEED']))
+
 
 class TestFakeProvisioningAPI(ProvisioningAPITests, TestCase):
     """Test :class:`FakeAsynchronousProvisioningAPI`.
@@ -621,15 +630,6 @@ class TestProvisioningAPIWithFakeCobbler(ProvisioningAPITests,
     def get_provisioning_api(self):
         """Return a real ProvisioningAPI, but using a fake Cobbler session."""
         return ProvisioningAPI(make_fake_cobbler_session())
-
-    @inlineCallbacks
-    def test_add_node_provides_preseed(self):
-        papi = self.get_provisioning_api()
-        preseed_data = factory.getRandomString()
-        node_name = yield self.add_node(papi, preseed_data=preseed_data)
-        attrs = yield CobblerSystem(papi.session, node_name).get_values()
-        self.assertEqual(
-            preseed_data, b64decode(attrs['ks_meta']['MAAS_PRESEED']))
 
 
 class TestProvisioningAPIWithRealCobbler(ProvisioningAPITests,

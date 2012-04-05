@@ -22,6 +22,7 @@ __all__ = [
     "FakeSynchronousProvisioningAPI",
     ]
 
+from base64 import b64encode
 from functools import wraps
 
 from provisioningserver.interfaces import IProvisioningAPI
@@ -92,7 +93,9 @@ class FakeProvisioningAPIBase:
         self.nodes[name]["hostname"] = hostname
         self.nodes[name]["profile"] = profile
         self.nodes[name]["mac_addresses"] = []
-        self.nodes[name]["preseed_data"] = preseed_data
+        self.nodes[name]["ks_meta"] = {
+            "MAAS_PRESEED": b64encode(preseed_data),
+            }
         self.nodes[name]["power_type"] = power_type
         return name
 
