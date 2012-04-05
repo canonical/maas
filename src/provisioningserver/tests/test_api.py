@@ -69,6 +69,9 @@ class TestFunctions(TestCase):
             "hostname": "dystopia",
             "interfaces": {
                 "eth0": {"mac_address": "12:34:56:78:9a:bc"},
+                "eth1": {"mac_address": "  "},
+                "eth2": {"mac_address": ""},
+                "eth3": {"mac_address": None},
                 },
             "power_type": "virsh",
             "ju": "nk",
@@ -257,6 +260,31 @@ class TestInterfaceDeltas(TestCase):
             current_interfaces, hostname, mac_addresses)
         self.assertItemsEqual(expected, observed)
 
+    def test_gen_cobbler_interface_deltas_remove_all_macs(self):
+        # Removing all MAC addresses results in a delta to remove all but the
+        # first interface. The first interface is instead deconfigured; this
+        # is necessary to satisfy the Cobbler data model.
+        current_interfaces = {
+            "eth0": {
+                "mac_address": "11:11:11:11:11:11",
+                },
+            "eth1": {
+                "mac_address": "22:22:22:22:22:22",
+                },
+            }
+        hostname = "empiricism"
+        mac_addresses = []
+        expected = [
+            {"interface": "eth0",
+             "mac_address": "",
+             "dns_name": ""},
+            {"interface": "eth1",
+             "delete_interface": True},
+            ]
+        observed = gen_cobbler_interface_deltas(
+            current_interfaces, hostname, mac_addresses)
+        self.assertItemsEqual(expected, observed)
+
 
 class ProvisioningAPITests(ProvisioningFakeFactory):
     """Tests for `provisioningserver.api.ProvisioningAPI`.
@@ -392,6 +420,19 @@ class ProvisioningAPITests(ProvisioningFakeFactory):
         values = yield papi.get_nodes_by_name([node_name])
         self.assertEqual(
             [mac_address2], values[node_name]["mac_addresses"])
+
+    @inlineCallbacks
+    def test_modify_nodes_remove_all_mac_addresses(self):
+        papi = self.get_provisioning_api()
+        node_name = yield self.add_node(papi)
+        mac_address = factory.getRandomMACAddress()
+        yield papi.modify_nodes(
+            {node_name: {"mac_addresses": [mac_address]}})
+        yield papi.modify_nodes(
+            {node_name: {"mac_addresses": []}})
+        values = yield papi.get_nodes_by_name([node_name])
+        self.assertEqual(
+            [], values[node_name]["mac_addresses"])
 
     @inlineCallbacks
     def test_delete_distros_by_name(self):
