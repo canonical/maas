@@ -88,11 +88,11 @@ class FakeProvisioningAPIBase:
         self.profiles[name]["distro"] = distro
         return name
 
-    def add_node(self, name, hostname, profile, power_type, metadata):
+    def add_node(self, name, hostname, profile, power_type, preseed_data):
         self.nodes[name]["hostname"] = hostname
         self.nodes[name]["profile"] = profile
         self.nodes[name]["mac_addresses"] = []
-        self.nodes[name]["metadata"] = metadata
+        self.nodes[name]["preseed_data"] = preseed_data
         self.nodes[name]["power_type"] = power_type
         return name
 

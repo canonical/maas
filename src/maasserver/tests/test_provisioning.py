@@ -12,7 +12,6 @@ __metaclass__ = type
 __all__ = []
 
 from abc import ABCMeta
-from urlparse import parse_qs
 from xmlrpclib import Fault
 
 from django.conf import settings
@@ -27,7 +26,7 @@ from maasserver.models import (
     NODE_STATUS_CHOICES,
     )
 from maasserver.provisioning import (
-    compose_metadata,
+    compose_preseed,
     get_metadata_server_url,
     name_arch_in_cobbler_style,
     present_user_friendly_fault,
@@ -44,8 +43,10 @@ from provisioningserver.enum import (
     )
 from provisioningserver.testing.factory import ProvisioningFakeFactory
 from testtools.deferredruntest import AsynchronousDeferredRunTest
+from testtools.matchers import KeysEqual
 from testtools.testcase import ExpectedException
 from twisted.internet.defer import inlineCallbacks
+import yaml
 
 
 class ProvisioningTests:
@@ -230,22 +231,43 @@ class ProvisioningTests:
             % Config.objects.get_config('maas_url').rstrip('/'),
             get_metadata_server_url())
 
-    def test_compose_metadata_includes_metadata_url(self):
-        node = factory.make_node()
+    def test_compose_preseed_for_commissioning_node_produces_yaml(self):
+        node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
+        preseed = yaml.load(compose_preseed(node))
+        self.assertIn('datasource', preseed)
+        self.assertIn('MAAS', preseed['datasource'])
+        self.assertThat(
+            preseed['datasource']['MAAS'],
+            KeysEqual(
+                'metadata_url', 'consumer_key', 'token_key', 'token_secret'))
+
+    def test_compose_preseed_includes_metadata_url(self):
+        node = factory.make_node(status=NODE_STATUS.READY)
+        self.assertIn(get_metadata_server_url(), compose_preseed(node))
+
+    def test_compose_preseed_for_commissioning_includes_metadata_url(self):
+        node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
+        preseed = yaml.load(compose_preseed(node))
         self.assertEqual(
             get_metadata_server_url(),
-            compose_metadata(node)['maas-metadata-url'])
+            preseed['datasource']['MAAS']['metadata_url'])
 
-    def test_compose_metadata_includes_node_oauth_token(self):
-        node = factory.make_node()
-        metadata = compose_metadata(node)
+    def test_compose_preseed_includes_node_oauth_token(self):
+        node = factory.make_node(status=NODE_STATUS.READY)
+        preseed = compose_preseed(node)
         token = NodeKey.objects.get_token_for_node(node)
-        self.assertEqual({
-            'oauth_consumer_key': [token.consumer.key],
-            'oauth_token_key': [token.key],
-            'oauth_token_secret': [token.secret],
-            },
-            parse_qs(metadata['maas-metadata-credentials']))
+        self.assertIn('oauth_consumer_key=%s' % token.consumer.key, preseed)
+        self.assertIn('oauth_token_key=%s' % token.key, preseed)
+        self.assertIn('oauth_token_secret=%s' % token.secret, preseed)
+
+    def test_compose_preseed_for_commissioning_includes_auth_token(self):
+        node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
+        preseed = yaml.load(compose_preseed(node))
+        maas_dict = preseed['datasource']['MAAS']
+        token = NodeKey.objects.get_token_for_node(node)
+        self.assertEqual(token.consumer.key, maas_dict['consumer_key'])
+        self.assertEqual(token.key, maas_dict['token_key'])
+        self.assertEqual(token.secret, maas_dict['token_secret'])
 
     def test_papi_xmlrpc_faults_are_reported_helpfully(self):
 
@@ -255,7 +277,7 @@ class ProvisioningTests:
         self.papi.patch('add_node', raise_fault)
 
         with ExpectedException(MAASAPIException, ".*provisioning server.*"):
-            self.papi.add_node('node', 'profile', 'power', {})
+            self.papi.add_node('node', 'profile', 'power', '')
 
     def test_provisioning_errors_are_reported_helpfully(self):
 
@@ -265,7 +287,7 @@ class ProvisioningTests:
         self.papi.patch('add_node', raise_provisioning_error)
 
         with ExpectedException(MAASAPIException, ".*Cobbler.*"):
-            self.papi.add_node('node', 'profile', 'power', {})
+            self.papi.add_node('node', 'profile', 'power', '')
 
     def test_present_user_friendly_fault_describes_pserv_fault(self):
         self.assertIn(

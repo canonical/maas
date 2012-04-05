@@ -10,7 +10,6 @@ from __future__ import (
 
 __metaclass__ = type
 __all__ = [
-    'fake_node_metadata',
     'ProvisioningFakeFactory',
     ]
 
@@ -32,14 +31,6 @@ names = ("test%d" % num for num in count(int(time())))
 def fake_name():
     """Return a fake name. Each call returns a different name."""
     return next(names)
-
-
-def fake_node_metadata():
-    """Produce fake metadata parameters for adding a node."""
-    return {
-        'maas-metadata-url': 'http://%s:5240/metadata/' % fake_name(),
-        'maas-metadata-credentials': 'fake/%s' % fake_name(),
-        }
 
 
 class ProvisioningFakeFactory:
@@ -110,14 +101,12 @@ class ProvisioningFakeFactory:
 
     @inlineCallbacks
     def add_node(self, papi, name=None, hostname=None, profile_name=None,
-                 power_type=None, metadata=None):
+                 power_type=None, preseed_data=None):
         """Creates a new node object via `papi`.
 
         Arranges for it to be deleted during test clean-up. If `name` is not
         specified, `fake_name` will be called to obtain one. If `profile_name`
-        is not specified, one will be obtained by calling `add_profile`. If
-        `metadata` is not specified, it will be obtained by calling
-        `fake_node_metadata`.
+        is not specified, one will be obtained by calling `add_profile`.
         """
         if name is None:
             name = fake_name()
@@ -127,10 +116,10 @@ class ProvisioningFakeFactory:
             profile_name = yield self.add_profile(papi)
         if power_type is None:
             power_type = POWER_TYPE.WAKE_ON_LAN
-        if metadata is None:
-            metadata = fake_node_metadata()
+        if preseed_data is None:
+            preseed_data = ""
         node_name = yield papi.add_node(
-            name, hostname, profile_name, power_type, metadata)
+            name, hostname, profile_name, power_type, preseed_data)
         self.addCleanup(
             self.clean_up_objects,
             papi.delete_nodes_by_name,

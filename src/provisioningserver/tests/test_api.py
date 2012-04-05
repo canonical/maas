@@ -34,10 +34,7 @@ from provisioningserver.api import (
 from provisioningserver.cobblerclient import CobblerSystem
 from provisioningserver.enum import POWER_TYPE
 from provisioningserver.interfaces import IProvisioningAPI
-from provisioningserver.testing.factory import (
-    fake_node_metadata,
-    ProvisioningFakeFactory,
-    )
+from provisioningserver.testing.factory import ProvisioningFakeFactory
 from provisioningserver.testing.fakeapi import FakeAsynchronousProvisioningAPI
 from provisioningserver.testing.fakecobbler import make_fake_cobbler_session
 from provisioningserver.testing.realcobbler import RealCobbler
@@ -626,15 +623,13 @@ class TestProvisioningAPIWithFakeCobbler(ProvisioningAPITests,
         return ProvisioningAPI(make_fake_cobbler_session())
 
     @inlineCallbacks
-    def test_add_node_preseeds_metadata(self):
+    def test_add_node_provides_preseed(self):
         papi = self.get_provisioning_api()
-        metadata = fake_node_metadata()
-        node_name = yield self.add_node(papi, metadata=metadata)
+        preseed_data = factory.getRandomString()
+        node_name = yield self.add_node(papi, preseed_data=preseed_data)
         attrs = yield CobblerSystem(papi.session, node_name).get_values()
-        preseed = attrs['ks_meta']['MAAS_PRESEED']
-        preseed = b64decode(preseed)
-        self.assertIn(metadata['maas-metadata-url'], preseed)
-        self.assertIn(metadata['maas-metadata-credentials'], preseed)
+        self.assertEqual(
+            preseed_data, b64decode(attrs['ks_meta']['MAAS_PRESEED']))
 
 
 class TestProvisioningAPIWithRealCobbler(ProvisioningAPITests,

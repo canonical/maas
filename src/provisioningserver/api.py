@@ -162,18 +162,6 @@ def gen_cobbler_interface_deltas(interfaces, hostname, mac_addresses):
             pass  # No change.
 
 
-# Preseed data to send to cloud-init.  We set this as MAAS_PRESEED in
-# ks_meta, and it gets fed straight into debconf.
-metadata_preseed_items = [
-    ('datasources', 'multiselect', 'MAAS'),
-    ('maas-metadata-url', 'string', '%(maas-metadata-url)s'),
-    ('maas-metadata-credentials', 'string', '%(maas-metadata-credentials)s'),
-    ]
-metadata_preseed = '\n'.join(
-    "cloud-init   cloud-init/%s  %s %s" % (item_name, item_type, item_value)
-    for item_name, item_type, item_value in metadata_preseed_items)
-
-
 class ProvisioningAPI:
 
     implements(IProvisioningAPI)
@@ -203,13 +191,13 @@ class ProvisioningAPI:
         returnValue(profile.name)
 
     @inlineCallbacks
-    def add_node(self, name, hostname, profile, power_type, metadata):
+    def add_node(self, name, hostname, profile, power_type, preseed_data):
         assert isinstance(name, basestring)
         assert isinstance(hostname, basestring)
         assert isinstance(profile, basestring)
         assert power_type in (POWER_TYPE.VIRSH, POWER_TYPE.WAKE_ON_LAN)
-        assert isinstance(metadata, dict)
-        preseed = b64encode(metadata_preseed % metadata)
+        assert isinstance(preseed_data, basestring)
+        preseed = b64encode(preseed_data)
         attributes = {
             "hostname": hostname,
             "profile": profile,

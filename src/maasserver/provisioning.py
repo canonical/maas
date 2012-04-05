@@ -187,26 +187,72 @@ def get_metadata_server_url():
     return urljoin(maas_url, path)
 
 
-def compose_metadata(node):
-    """Put together metadata information for `node`.
-
-    :param node: The node to provide with metadata.
-    :type node: Node
-    :return: A dict containing metadata information that will be seeded to
-        the node, so that it can access the metadata service.
-    """
-    # Circular import.
-    from metadataserver.models import NodeKey
-    token = NodeKey.objects.get_token_for_node(node)
+def compose_cloud_init_preseed(token):
+    """Compose the preseed value for a node in any state but Commissioning."""
     credentials = urlencode({
         'oauth_consumer_key': token.consumer.key,
         'oauth_token_key': token.key,
         'oauth_token_secret': token.secret,
         })
-    return {
-        'maas-metadata-url': get_metadata_server_url(),
-        'maas-metadata-credentials': credentials,
-    }
+
+    # Preseed data to send to cloud-init.  We set this as MAAS_PRESEED in
+    # ks_meta, and it gets fed straight into debconf.
+    metadata_preseed_items = [
+        ('datasources', 'multiselect', 'MAAS'),
+        ('maas-metadata-url', 'string', get_metadata_server_url()),
+        ('maas-metadata-credentials', 'string', credentials),
+        ]
+
+    return '\n'.join(
+        "cloud-init   cloud-init/%s  %s %s" % (
+            item_name,
+            item_type,
+            item_value,
+            )
+        for item_name, item_type, item_value in metadata_preseed_items)
+
+
+def compose_commissioning_preseed(token):
+    """Compose the preseed value for a Commissioning node."""
+    template = dedent("""
+        #cloud-config
+        datasource:
+         MAAS:
+          metadata_url: %s
+          consumer_key: %s
+          token_key: %s
+          token_secret: %s
+        """.lstrip('\n'))
+    return template % (
+        get_metadata_server_url(),
+        token.consumer.key,
+        token.key,
+        token.secret,
+        )
+
+
+def compose_preseed(node):
+    """Put together preseed data for `node`.
+
+    This produces preseed data in different formats depending on the node's
+    state: if it's Commissioning, it boots into commissioning mode with its
+    own profile, its own user_data, and also its own preseed format.  It's
+    basically a network boot.
+    Otherwise, it will get a different format that feeds directly into the
+    installer.
+
+    :param node: The node to compose preseed data for.
+    :type node: Node
+    :return: Preseed data containing the information the node needs in order
+        to access the metadata service: its URL and auth token.
+    """
+    # Circular import.
+    from metadataserver.models import NodeKey
+    token = NodeKey.objects.get_token_for_node(node)
+    if node.status == NODE_STATUS.COMMISSIONING:
+        return compose_commissioning_preseed(token)
+    else:
+        return compose_cloud_init_preseed(token)
 
 
 def name_arch_in_cobbler_style(architecture):
@@ -245,10 +291,11 @@ def provision_post_save_Node(sender, instance, created, **kwargs):
     papi = get_provisioning_api_proxy()
     profile = select_profile_for_node(instance)
     power_type = instance.get_effective_power_type()
-    metadata = compose_metadata(instance)
+    preseed_data = compose_preseed(instance)
     papi.add_node(
         instance.system_id, instance.hostname,
-        profile, power_type, metadata)
+        profile, power_type, preseed_data)
+
     # When the node is allocated this must not modify the netboot_enabled
     # parameter. The node, once it has booted and installed itself, asks the
     # provisioning server to disable netbooting. If this were to enable
