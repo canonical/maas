@@ -31,6 +31,7 @@ from maasserver.exceptions import (
     NodeStateViolation,
     )
 from maasserver.models import (
+    commissioning_user_data,
     Config,
     create_auth_token,
     DEFAULT_CONFIG,
@@ -275,6 +276,13 @@ class NodeTest(TestCase):
         self.assertAttributes(node, expected_attrs)
         power_status = get_provisioning_api_proxy().power_status
         self.assertEqual('start', power_status[node.system_id])
+
+    def test_start_commissioning_sets_user_data(self):
+        node = factory.make_node(status=NODE_STATUS.DECLARED)
+        node.start_commissioning(factory.make_admin())
+        self.assertEqual(
+            commissioning_user_data,
+            NodeUserData.objects.get_user_data(node))
 
     def test_full_clean_checks_status_transition_and_raises_if_invalid(self):
         # RETIRED -> ALLOCATED is an invalid transition.

@@ -40,6 +40,7 @@ import os
 import re
 from socket import gethostname
 from string import whitespace
+from textwrap import dedent
 import time
 from uuid import uuid1
 
@@ -462,6 +463,15 @@ class NODE_PERMISSION:
     ADMIN = 'admin_node'
 
 
+# For the commissioning process, a node receives a minimal script as its
+# user_data through the metadata service.  This is the content of that
+# script.
+commissioning_user_data = dedent("""
+    #!/bin/sh
+    echo "Hello world"
+    """.lstrip('\n')).encode('ascii')
+
+
 class Node(CommonInfo):
     """A `Node` represents a physical machine used by the MAAS Server.
 
@@ -626,7 +636,7 @@ class Node(CommonInfo):
         self.save()
         # The commissioning profile is handled in start_nodes.
         Node.objects.start_nodes(
-            [self.system_id], user, user_data=None)
+            [self.system_id], user, user_data=commissioning_user_data)
 
     def delete(self):
         # Delete the related mac addresses first.
