@@ -424,7 +424,7 @@ def create_node(request):
 @api_operations
 class AnonNodesHandler(AnonymousBaseHandler):
     """Create Nodes."""
-    allowed_methods = ('POST',)
+    allowed_methods = ('GET', 'POST',)
     fields = NODE_FIELDS
 
     @api_exported('new', 'POST')
@@ -437,6 +437,21 @@ class AnonNodesHandler(AnonymousBaseHandler):
         "Declared" state for approval by a MAAS admin.
         """
         return create_node(request)
+
+    @api_exported('is_registered', 'GET')
+    def is_registered(self, request):
+        """Returns whether or not the given MAC Address is registered within
+        this MAAS (and attached to a non-retired node).
+
+        :param mac_address: The mac address to be checked.
+        :type mac_address: basestring
+        :return: 'true' or 'false'.
+        :rtype: basestring
+        """
+        mac_address = get_mandatory_param(request.GET, 'mac_address')
+        return MACAddress.objects.filter(
+            mac_address=mac_address).exclude(
+                node__status=NODE_STATUS.RETIRED).exists()
 
     @api_exported('accept', 'POST')
     def accept(self, request):
