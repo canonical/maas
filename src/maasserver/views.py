@@ -124,7 +124,7 @@ class NodeView(UpdateView):
         return node
 
     def get_form_class(self):
-        return get_action_form(self.request.user)
+        return get_action_form(self.request.user, self.request)
 
     def get_context_data(self, **kwargs):
         context = super(NodeView, self).get_context_data(**kwargs)

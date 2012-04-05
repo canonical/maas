@@ -20,7 +20,6 @@ from maasserver import provisioning
 from maasserver.exceptions import MAASAPIException
 from maasserver.models import (
     ARCHITECTURE,
-    ARCHITECTURE_CHOICES,
     Config,
     Node,
     NODE_AFTER_COMMISSIONING_ACTION,

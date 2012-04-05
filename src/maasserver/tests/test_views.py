@@ -610,8 +610,7 @@ class NodeViewsTest(LoggedInTestCase):
         self.assertAttributes(node, params)
 
     def test_view_node_admin_has_button_to_accept_enlistement(self):
-        self.logged_in_user.is_superuser = True
-        self.logged_in_user.save()
+        self.become_admin()
         node = factory.make_node(status=NODE_STATUS.DECLARED)
         node_link = reverse('node-view', args=[node.system_id])
         response = self.client.get(node_link)
@@ -624,8 +623,7 @@ class NodeViewsTest(LoggedInTestCase):
             "Accept Enlisted node", [input.value for input in inputs])
 
     def test_view_node_POST_admin_can_enlist_node(self):
-        self.logged_in_user.is_superuser = True
-        self.logged_in_user.save()
+        self.become_admin()
         node = factory.make_node(status=NODE_STATUS.DECLARED)
         node_link = reverse('node-view', args=[node.system_id])
         response = self.client.post(
@@ -666,8 +664,7 @@ class NodeViewsTest(LoggedInTestCase):
         self.assertNotIn("Error output", content_text)
 
     def test_view_node_POST_admin_can_start_commissioning_node(self):
-        self.logged_in_user.is_superuser = True
-        self.logged_in_user.save()
+        self.become_admin()
         node = factory.make_node(status=NODE_STATUS.DECLARED)
         node_link = reverse('node-view', args=[node.system_id])
         response = self.client.post(
@@ -678,6 +675,52 @@ class NodeViewsTest(LoggedInTestCase):
         self.assertEqual(httplib.FOUND, response.status_code)
         self.assertEqual(
             NODE_STATUS.COMMISSIONING, reload_object(node).status)
+
+    def perform_action_and_get_node_page(self, node, action_name):
+        node_link = reverse('node-view', args=[node.system_id])
+        self.client.post(
+            node_link,
+            data={
+                NodeActionForm.input_name: action_name,
+            })
+        response = self.client.get(node_link)
+        return response
+
+    def test_enlist_action_displays_message(self):
+        self.become_admin()
+        node = factory.make_node(status=NODE_STATUS.DECLARED)
+        response = self.perform_action_and_get_node_page(
+            node, "Accept Enlisted node")
+        self.assertEqual(
+            ["Node accepted into the pool."],
+            [message.message for message in response.context['messages']])
+
+    def test_start_commisionning_displays_message(self):
+        self.become_admin()
+        node = factory.make_node(status=NODE_STATUS.DECLARED)
+        response = self.perform_action_and_get_node_page(
+            node, "Commission node")
+        self.assertEqual(
+            ["Node commissioning started."],
+            [message.message for message in response.context['messages']])
+
+    def test_start_node_from_ready_displays_message(self):
+        node = factory.make_node(
+            status=NODE_STATUS.READY, owner=self.logged_in_user)
+        response = self.perform_action_and_get_node_page(
+            node, "Start node")
+        self.assertEqual(
+            ["Node started."],
+            [message.message for message in response.context['messages']])
+
+    def test_start_node_from_allocated_displays_message(self):
+        node = factory.make_node(
+            status=NODE_STATUS.ALLOCATED, owner=self.logged_in_user)
+        response = self.perform_action_and_get_node_page(
+            node, "Start node")
+        self.assertEqual(
+            ["Node started."],
+            [message.message for message in response.context['messages']])
 
 
 class AdminNodeViewsTest(AdminLoggedInTestCase):

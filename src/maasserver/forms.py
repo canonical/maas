@@ -24,6 +24,7 @@ __all__ = [
     ]
 
 from django import forms
+from django.contrib import messages
 from django.contrib.auth.forms import (
     UserChangeForm,
     UserCreationForm,
@@ -193,9 +194,6 @@ class NodeWithMACAddressesForm(NodeForm):
 
 def start_node(node, user):
     """Start a node from the UI.  It will have no meta_data."""
-    # TODO: Provide some kind of feedback to the user.  Starting a node
-    # is fire-and-forget.  From the user's point of view, it's as if all
-    # that happens is the page reloading.
     Node.objects.start_nodes([node.system_id], user)
 
 
@@ -231,11 +229,13 @@ NODE_ACTIONS = {
             'display': "Accept Enlisted node",
             'permission': NODE_PERMISSION.ADMIN,
             'execute': lambda node, user: Node.accept_enlistment(node),
+            'message': "Node accepted into the pool."
         },
         {
             'display': "Commission node",
             'permission': NODE_PERMISSION.ADMIN,
             'execute': lambda node, user: Node.start_commissioning(node, user),
+            'message': "Node commissioning started."
         },
     ],
     NODE_STATUS.READY: [
@@ -243,6 +243,7 @@ NODE_ACTIONS = {
             'display': "Start node",
             'permission': NODE_PERMISSION.EDIT,
             'execute': start_node,
+            'message': "Node started."
         },
     ],
     NODE_STATUS.ALLOCATED: [
@@ -250,6 +251,7 @@ NODE_ACTIONS = {
             'display': "Start node",
             'permission': NODE_PERMISSION.EDIT,
             'execute': start_node,
+            'message': "Node started."
         },
     ],
 }
@@ -263,6 +265,7 @@ class NodeActionForm(forms.Form):
     """
 
     user = AnonymousUser()
+    request = None
 
     # The name of the input button used with this form.
     input_name = 'node_action'
@@ -275,7 +278,8 @@ class NodeActionForm(forms.Form):
         # Create a convenient dict to fetch the action's name and
         # the permission to be checked from the button name.
         self.action_dict = {
-            action['display']: (action['permission'], action['execute'])
+            action['display']: (
+                action['permission'], action['execute'], action['message'])
             for action in self.action_buttons
         }
 
@@ -294,28 +298,37 @@ class NodeActionForm(forms.Form):
             action for action in NODE_ACTIONS.get(node.status, ())
             if user.has_perm(action['permission'], node)]
 
+    def display_message(self, message):
+        if self.request is not None:
+            messages.add_message(self.request, messages.INFO, message)
+
     def save(self):
         action_name = self.data.get(self.input_name)
-        permission, execute = self.action_dict.get(action_name, (None, None))
+        permission, execute, message = (
+            self.action_dict.get(action_name, (None, None, None)))
         if execute is not None:
             if not self.user.has_perm(permission, self.node):
                 raise PermissionDenied()
             execute(self.node, self.user)
+            self.display_message(message)
         else:
             raise PermissionDenied()
 
 
-def get_action_form(user):
+def get_action_form(user, request=None):
     """Return a class derived from NodeActionForm for a specific user.
 
     :param user: The user for which to build a form derived from
         NodeActionForm.
     :type user: :class:`django.contrib.auth.models.User`
+    :param request: An optional request object to publish action messages.
+    :type request: django.http.HttpRequest
     :return: A form class derived from NodeActionForm.
     :rtype: class:`django.forms.Form`
     """
     return type(
-        str("SpecificNodeActionForm"), (NodeActionForm,), {'user': user})
+        str("SpecificNodeActionForm"), (NodeActionForm,),
+        {'user': user, 'request': request})
 
 
 class ProfileForm(ModelForm):
