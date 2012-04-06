@@ -46,7 +46,10 @@ from provisioningserver.enum import (
     )
 from provisioningserver.testing.factory import ProvisioningFakeFactory
 from testtools.deferredruntest import AsynchronousDeferredRunTest
-from testtools.matchers import KeysEqual
+from testtools.matchers import (
+    KeysEqual,
+    StartsWith,
+    )
 from testtools.testcase import ExpectedException
 from twisted.internet.defer import inlineCallbacks
 import yaml
@@ -77,6 +80,10 @@ class TestHelpers(TestCase):
             preseed['datasource']['MAAS'],
             KeysEqual(
                 'metadata_url', 'consumer_key', 'token_key', 'token_secret'))
+
+    def test_compose_preseed_for_commissioning_node_has_header(self):
+        node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
+        self.assertThat(compose_preseed(node), StartsWith("#cloud-config\n"))
 
     def test_compose_preseed_includes_metadata_url(self):
         node = factory.make_node(status=NODE_STATUS.READY)

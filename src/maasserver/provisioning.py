@@ -34,6 +34,7 @@ from maasserver.models import (
     NODE_STATUS,
     )
 from provisioningserver.enum import PSERV_FAULT
+import yaml
 
 # Presentation templates for various provisioning faults.
 PRESENTATIONS = {
@@ -214,21 +215,16 @@ def compose_cloud_init_preseed(token):
 
 def compose_commissioning_preseed(token):
     """Compose the preseed value for a Commissioning node."""
-    template = dedent("""
-        #cloud-config
-        datasource:
-         MAAS:
-          metadata_url: %s
-          consumer_key: %s
-          token_key: %s
-          token_secret: %s
-        """.lstrip('\n'))
-    return template % (
-        get_metadata_server_url(),
-        token.consumer.key,
-        token.key,
-        token.secret,
-        )
+    return "#cloud-config\n%s" % yaml.dump({
+        'datasource': {
+            'MAAS': {
+                'metadata_url': get_metadata_server_url(),
+                'consumer_key': token.consumer.key,
+                'token_key': token.key,
+                'token_secret': token.secret,
+            }
+        }
+    })
 
 
 def compose_preseed(node):
