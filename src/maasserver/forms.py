@@ -84,6 +84,7 @@ class NodeForm(ModelForm):
         widget=forms.TextInput(attrs={'readonly': 'readonly'}),
         required=False)
     after_commissioning_action = forms.TypedChoiceField(
+        label="After commissioning",
         choices=NODE_AFTER_COMMISSIONING_ACTION_CHOICES, required=False,
         empty_value=NODE_AFTER_COMMISSIONING_ACTION.DEFAULT)
     architecture = forms.ChoiceField(
@@ -100,6 +101,7 @@ class NodeForm(ModelForm):
 
 class UINodeEditForm(ModelForm):
     after_commissioning_action = forms.ChoiceField(
+        label="After commissioning",
         choices=NODE_AFTER_COMMISSIONING_ACTION_CHOICES)
 
     class Meta:
@@ -109,6 +111,7 @@ class UINodeEditForm(ModelForm):
 
 class UIAdminNodeEditForm(ModelForm):
     after_commissioning_action = forms.ChoiceField(
+        label="After commissioning",
         choices=NODE_AFTER_COMMISSIONING_ACTION_CHOICES)
 
     class Meta:
