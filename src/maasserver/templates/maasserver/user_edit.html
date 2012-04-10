@@ -5,8 +5,10 @@
 {% block page-title %}Edit User{% endblock %}
 
 {% block content %}
-  <div id="profile" class="block size7 first">
-    <form action="." method="post" class="block auto-width">
+<div class="block auto-width first">
+  <h2>Settings</h2>
+  <div id="profile" class="size7">
+    <form action="." method="post" class="block">
       <ul>
       {% for field in profile_form %}
 	{% include "maasserver/form_field.html" %}
@@ -17,9 +19,10 @@
       <a class="link-button" href="{% url 'settings' %}">Cancel</a>
     </form>
   </div>
-
-  <div id="password" class="block size7 first">
-    <form action="." method="post" class="block auto-width">
+  <div class="clear"></div>
+  <h2>Change password</h2>
+  <div id="password" class="size7">
+    <form action="." method="post" class="block">
       <ul>
       {% for field in password_form %}
 	{% include "maasserver/form_field.html" %}
@@ -30,4 +33,5 @@
       <a class="link-button" href="{% url 'settings' %}">Cancel</a>
     </form>
   </div>
+</div>
 {% endblock %}
