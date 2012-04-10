@@ -30,6 +30,10 @@ from maasserver.testing import get_data
 from maasserver.testing.enum import map_enum
 import maastesting.factory
 
+# We have a limited number of public keys:
+# src/maasserver/tests/data/test_rsa{0, 1, 2, 3, 4}.pub
+MAX_PUBLIC_KEYS = 5
+
 
 class Factory(maastesting.factory.Factory):
 
@@ -91,25 +95,31 @@ class Factory(maastesting.factory.Factory):
 
     def make_sshkey(self, user, key_string=None):
         if key_string is None:
-            key_string = get_data('data/test_rsa.pub')
+            key_string = get_data('data/test_rsa0.pub')
         key = SSHKey(key=key_string, user=user)
         key.save()
         return key
 
-    def make_user_with_keys(self, n_keys=2, **kwargs):
-        """Create a user with n `SSHKey`.
+    def make_user_with_keys(self, n_keys=2, user=None, **kwargs):
+        """Create a user with n `SSHKey`.  If user is not None, use this user
+        instead of creating one.
 
         Additional keyword arguments are passed to `make_user()`.
-
-        Keys will have a comment of the form: <username>-key-<i> where i
-        is the key index.
         """
-        user = self.make_user(**kwargs)
+        if n_keys > MAX_PUBLIC_KEYS:
+            raise RuntimeError(
+                "Cannot create more than %d public keys.  If you need more: "
+                "add more keys in src/maasserver/tests/data/."
+                % MAX_PUBLIC_KEYS)
+        if user is None:
+            user = self.make_user(**kwargs)
+        keys = []
         for i in range(n_keys):
-            SSHKey(
-                user=user,
-                key='ssh-rsa KEY %s-key-%d' % (user.username, i)).save()
-        return user
+            key_string = get_data('data/test_rsa%d.pub' % i)
+            key = SSHKey(user=user, key=key_string)
+            key.save()
+            keys.append(key)
+        return user, keys
 
     def make_admin(self, username=None, password=None, email=None):
         admin = self.make_user(

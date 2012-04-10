@@ -91,8 +91,9 @@ logger = getLogger('maasserver')
 
 
 class CommonInfo(models.Model):
-    """A base model which records the creation date and the last modification
-    date.
+    """A base model which:
+    - calls full_clean before saving the model (by default).
+    - records the creation date and the last modification date.
 
     :ivar created: The creation date.
     :ivar updated: The last modification date.
@@ -104,11 +105,13 @@ class CommonInfo(models.Model):
     class Meta:
         abstract = True
 
-    def save(self, *args, **kwargs):
+    def save(self, skip_check=False, *args, **kwargs):
         if not self.id:
             self.created = datetime.date.today()
         self.updated = datetime.datetime.today()
-        super(CommonInfo, self).save(*args, **kwargs)
+        if not skip_check:
+            self.full_clean()
+        return super(CommonInfo, self).save(*args, **kwargs)
 
 
 def generate_node_system_id():
@@ -546,11 +549,6 @@ class Node(CommonInfo):
         super(Node, self).clean(*args, **kwargs)
         self.clean_status()
 
-    def save(self, skip_check=False, *args, **kwargs):
-        if not skip_check:
-            self.full_clean()
-        return super(Node, self).save(*args, **kwargs)
-
     def display_status(self):
         """Return status text as displayed to the user.
 
@@ -580,7 +578,6 @@ class Node(CommonInfo):
         """
 
         mac = MACAddress(mac_address=mac_address, node=self)
-        mac.full_clean()
         mac.save()
         return mac
 

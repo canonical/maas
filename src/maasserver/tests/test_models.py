@@ -768,7 +768,7 @@ class UserProfileTest(TestCase):
 class SSHKeyValidatorTest(TestCase):
 
     def test_validates_rsa_public_key(self):
-        key_string = get_data('data/test_rsa.pub')
+        key_string = get_data('data/test_rsa0.pub')
         validate_ssh_public_key(key_string)
         # No ValidationError.
 
@@ -942,7 +942,7 @@ class SSHKeyTest(TestCase):
     """Testing for the :class:`SSHKey`."""
 
     def test_sshkey_validation_with_valid_key(self):
-        key_string = get_data('data/test_rsa.pub')
+        key_string = get_data('data/test_rsa0.pub')
         user = factory.make_user()
         key = SSHKey(key=key_string, user=user)
         key.full_clean()
@@ -957,7 +957,7 @@ class SSHKeyTest(TestCase):
 
     def test_sshkey_display_with_real_life_key(self):
         # With a real-life ssh-rsa key, the key_string part is cropped.
-        key_string = get_data('data/test_rsa.pub')
+        key_string = get_data('data/test_rsa0.pub')
         user = factory.make_user()
         key = SSHKey(key=key_string, user=user)
         display = key.display_html()
@@ -965,14 +965,14 @@ class SSHKeyTest(TestCase):
             'ssh-rsa AAAAB3NzaC1yc2E&hellip; ubuntu@server-7476', display)
 
     def test_sshkey_display_is_marked_as_HTML_safe(self):
-        key_string = get_data('data/test_rsa.pub')
+        key_string = get_data('data/test_rsa0.pub')
         user = factory.make_user()
         key = SSHKey(key=key_string, user=user)
         display = key.display_html()
         self.assertIsInstance(display, SafeUnicode)
 
     def test_sshkey_user_and_key_unique_together(self):
-        key_string = get_data('data/test_rsa.pub')
+        key_string = get_data('data/test_rsa0.pub')
         user = factory.make_user()
         key = SSHKey(key=key_string, user=user)
         key.save()
@@ -981,16 +981,16 @@ class SSHKeyTest(TestCase):
             ValidationError, key2.full_clean)
 
     def test_sshkey_user_and_key_unique_together_db_level(self):
-        key_string = get_data('data/test_rsa.pub')
+        key_string = get_data('data/test_rsa0.pub')
         user = factory.make_user()
         key = SSHKey(key=key_string, user=user)
         key.save()
         key2 = SSHKey(key=key_string, user=user)
         self.assertRaises(
-            IntegrityError, key2.save)
+            IntegrityError, key2.save, skip_check=True)
 
     def test_sshkey_same_key_can_be_used_by_different_users(self):
-        key_string = get_data('data/test_rsa.pub')
+        key_string = get_data('data/test_rsa0.pub')
         user = factory.make_user()
         key = SSHKey(key=key_string, user=user)
         key.save()
@@ -1009,15 +1009,12 @@ class SSHKeyManagerTest(TestCase):
         self.assertItemsEqual([], keys)
 
     def test_get_keys_for_user_with_keys(self):
-        user1 = factory.make_user_with_keys(n_keys=3, username='user1')
+        user1, created_keys = factory.make_user_with_keys(
+            n_keys=3, username='user1')
         # user2
         factory.make_user_with_keys(n_keys=2)
         keys = SSHKey.objects.get_keys_for_user(user1)
-        self.assertItemsEqual([
-            'ssh-rsa KEY user1-key-0',
-            'ssh-rsa KEY user1-key-1',
-            'ssh-rsa KEY user1-key-2',
-            ], keys)
+        self.assertItemsEqual([key.key for key in created_keys], keys)
 
 
 class FileStorageTest(TestCase):

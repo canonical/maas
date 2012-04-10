@@ -13,10 +13,12 @@ __all__ = []
 
 from collections import namedtuple
 import httplib
-from textwrap import dedent
 
 from maasserver.exceptions import Unauthorized
-from maasserver.models import NODE_STATUS
+from maasserver.models import (
+    NODE_STATUS,
+    SSHKey,
+    )
 from maasserver.provisioning import get_provisioning_api_proxy
 from maasserver.testing import reload_object
 from maasserver.testing.factory import factory
@@ -151,7 +153,7 @@ class TestViews(TestCase, ProvisioningFakeFactory):
 
     def test_meta_data_view_lists_fields(self):
         # Some fields only are returned if there is data related to them.
-        user = factory.make_user_with_keys(n_keys=2, username='my-user')
+        user, _ = factory.make_user_with_keys(n_keys=2, username='my-user')
         node = factory.make_node(owner=user)
         client = self.make_node_client(node=node)
         response = self.get('/latest/meta-data/', client)
@@ -214,7 +216,7 @@ class TestViews(TestCase, ProvisioningFakeFactory):
             'public-keys', response.content.decode('ascii').split('\n'))
 
     def test_public_keys_listed_for_node_with_public_keys(self):
-        user = factory.make_user_with_keys(n_keys=2, username='my-user')
+        user, _ = factory.make_user_with_keys(n_keys=2, username='my-user')
         node = factory.make_node(owner=user)
         response = self.get(
             '/latest/meta-data/', self.make_node_client(node=node))
@@ -227,14 +229,15 @@ class TestViews(TestCase, ProvisioningFakeFactory):
         self.assertEqual(httplib.NOT_FOUND, response.status_code)
 
     def test_public_keys_for_node_returns_list_of_keys(self):
-        user = factory.make_user_with_keys(n_keys=2, username='my-user')
+        user, _ = factory.make_user_with_keys(n_keys=2, username='my-user')
         node = factory.make_node(owner=user)
         response = self.get(
             '/latest/meta-data/public-keys', self.make_node_client(node=node))
         self.assertEqual(httplib.OK, response.status_code)
-        self.assertEquals(dedent("""\
-            ssh-rsa KEY my-user-key-0
-            ssh-rsa KEY my-user-key-1"""),
+        keys = SSHKey.objects.filter(user=user).values_list('key', flat=True)
+        expected_response = '\n'.join(keys)
+        self.assertItemsEqual(
+            expected_response,
             response.content.decode('ascii'))
         self.assertIn('text/plain', response['Content-Type'])
 
