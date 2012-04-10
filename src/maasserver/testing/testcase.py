@@ -10,6 +10,7 @@ from __future__ import (
 
 __metaclass__ = type
 __all__ = [
+    'AdminLoggedInTestCase',
     'LoggedInTestCase',
     'TestCase',
     'TestModelTestCase',
@@ -43,3 +44,10 @@ class LoggedInTestCase(TestCase):
         """Promote the logged-in user to admin."""
         self.logged_in_user.is_superuser = True
         self.logged_in_user.save()
+
+
+class AdminLoggedInTestCase(LoggedInTestCase):
+
+    def setUp(self):
+        super(AdminLoggedInTestCase, self).setUp()
+        self.become_admin()

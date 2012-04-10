@@ -408,17 +408,15 @@ def create_node(request):
     The node will be in the Declared state.
 
     :param request: The http request for this node to be created.
-    :return: A suitable return value for the handler receiving the "new"
-        request that this implements.
-    :rtype: :class:`maasserver.models.Node` or
-        :class:`django.http.HttpResponseBadRequest`.
+    :return: A `Node`.
+    :rtype: :class:`maasserver.models.Node`.
+    :raises: ValidationError
     """
     form = NodeWithMACAddressesForm(request.data)
     if form.is_valid():
         return form.save()
     else:
-        return HttpResponseBadRequest(
-            form.errors, content_type='application/json')
+        raise ValidationError(form.errors)
 
 
 @api_operations
