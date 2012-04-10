@@ -28,35 +28,10 @@ if [ "$(id -u)" != "0" ]; then
 	exit 1
 fi
 
-distro_info() {
-   # we would like to use distro-info, but cannot (LP: #960142)
-   # if it is there, we will use it. if not, we have a behave-alike
-   # that will need SRUs to get new release knowledge
-   if command -v distro-info >/dev/null; then
-      distro-info "$@"
-      return
-   fi
-
-   local supported="hardy lucid maverick natty oneiric precise"
-   local devel="precise"
-   local stable="oneiric"
-   [ "$(date +%Y%m%d)" -lt 20120426 ] || stable="precise"
-
-   case "$1" in
-      --devel) echo "$devel";;
-      --stable) echo "$stable";;
-      --supported) 
-         local d;
-         for d in $supported; do echo "$d"; done
-         ;;
-      *) echo "unknown argument $1"; return 1;;
-   esac
-}
-
 # Definitions for supported releases and architectures
 [ -r $(pwd)/etc/maas/import_isos ] && . $(pwd)/etc/maas/import_isos
 [ -r /etc/maas/import_isos ] && . /etc/maas/import_isos
-[ -n "$RELEASES" ] || RELEASES=$(distro_info --supported)
+[ -n "$RELEASES" ] || RELEASES=$(distro-info --supported)
 [ -n "$ARCHES" ] || ARCHES="amd64 i386"
 [ -n "$KSDIR" ] || KSDIR="/var/lib/cobbler/kickstarts"
 [ -n "$PRIORITY" ] || PRIORITY="critical"
@@ -121,8 +96,8 @@ import_isos(){
 }
 
 add_enlist_profile(){
-        STABLE=$(distro_info --stable)
-        DEVEL=$(distro_info --devel)
+        STABLE=$(distro-info --stable)
+        DEVEL=$(distro-info --devel)
         PARENT_PROFILE=""
 
         # Check what release to use as parent profile
