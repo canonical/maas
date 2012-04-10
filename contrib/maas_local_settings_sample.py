@@ -68,3 +68,7 @@ DATABASES = {
         'HOST': 'localhost',
     }
 }
+
+# The location of the Provisioning API XML-RPC endpoint.
+from getpass import getuser
+PSERV_URL = "http://%s:password@localhost:5241/api" % getuser()

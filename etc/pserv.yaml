@@ -6,6 +6,12 @@
 #
 # port: 5241
 
+## The credentials which the Provisioning API will require.
+#
+# username: <current user>
+# password:
+password: "test"
+
 ## Network interface to bind the service on.
 # Keep this pointed at the loopback interface unless you really know what
 # you're doing.

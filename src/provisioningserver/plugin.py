@@ -35,15 +35,71 @@ from twisted.application.service import (
     IServiceMaker,
     MultiService,
     )
+from twisted.cred.checkers import ICredentialsChecker
+from twisted.cred.credentials import IUsernamePassword
+from twisted.cred.error import UnauthorizedLogin
+from twisted.cred.portal import (
+    IRealm,
+    Portal,
+    )
+from twisted.internet.defer import (
+    inlineCallbacks,
+    returnValue,
+    )
 from twisted.plugin import IPlugin
 from twisted.python import (
     log,
     usage,
     )
-from twisted.web.resource import Resource
+from twisted.web.guard import (
+    BasicCredentialFactory,
+    HTTPAuthSessionWrapper,
+    )
+from twisted.web.resource import (
+    IResource,
+    Resource,
+    )
 from twisted.web.server import Site
 import yaml
-from zope.interface import implements
+from zope.interface import implementer
+
+
+@implementer(ICredentialsChecker)
+class SingleUsernamePasswordChecker:
+    """An `ICredentialsChecker` for a single username and password."""
+
+    credentialInterfaces = [IUsernamePassword]
+
+    def __init__(self, username, password):
+        super(SingleUsernamePasswordChecker, self).__init__()
+        self.username = username
+        self.password = password
+
+    @inlineCallbacks
+    def requestAvatarId(self, credentials):
+        """See `ICredentialsChecker`."""
+        if credentials.username == self.username:
+            matched = yield credentials.checkPassword(self.password)
+            if matched:
+                returnValue(credentials.username)
+        raise UnauthorizedLogin(credentials.username)
+
+
+@implementer(IRealm)
+class ProvisioningRealm:
+    """The `IRealm` for the Provisioning API."""
+
+    noop = staticmethod(lambda: None)
+
+    def __init__(self, resource):
+        super(ProvisioningRealm, self).__init__()
+        self.resource = resource
+
+    def requestAvatar(self, avatarId, mind, *interfaces):
+        """See `IRealm`."""
+        if IResource in interfaces:
+            return (IResource, self.resource, self.noop)
+        raise NotImplementedError()
 
 
 class ConfigOops(Schema):
@@ -91,6 +147,8 @@ class Config(Schema):
 
     interface = String(if_empty=b"", if_missing=b"127.0.0.1")
     port = Int(min=1, max=65535, if_missing=5241)
+    username = String(not_empty=True, if_missing=getuser())
+    password = String(not_empty=True)
     logfile = String(if_empty=b"pserv.log", if_missing=b"pserv.log")
     oops = ConfigOops
     broker = ConfigBroker
@@ -99,7 +157,7 @@ class Config(Schema):
     @classmethod
     def parse(cls, stream):
         """Load a YAML configuration from `stream` and validate."""
-        return cls().to_python(yaml.load(stream))
+        return cls.to_python(yaml.load(stream))
 
     @classmethod
     def load(cls, filename):
@@ -116,10 +174,9 @@ class Options(usage.Options):
         ]
 
 
+@implementer(IServiceMaker, IPlugin)
 class ProvisioningServiceMaker(object):
     """Create a service for the Twisted plugin."""
-
-    implements(IServiceMaker, IPlugin)
 
     options = Options
 
@@ -137,12 +194,22 @@ class ProvisioningServiceMaker(object):
         oops_reporter = oops_config["reporter"]
         return OOPSService(log_service, oops_dir, oops_reporter)
 
-    def _makePAPI(self, cobbler_config):
-        """Create the provisioning XMLRPC API."""
-        cobbler_session = CobblerSession(
+    def _makeCobblerSession(self, cobbler_config):
+        """Create a :class:`CobblerSession`."""
+        return CobblerSession(
             cobbler_config["url"], cobbler_config["username"],
             cobbler_config["password"])
-        return ProvisioningAPI_XMLRPC(cobbler_session)
+
+    def _makeProvisioningAPI(self, cobbler_session, config):
+        """Construct an :class:`IResource` for the Provisioning API."""
+        papi_xmlrpc = ProvisioningAPI_XMLRPC(cobbler_session)
+        papi_realm = ProvisioningRealm(papi_xmlrpc)
+        papi_checker = SingleUsernamePasswordChecker(
+            config["username"], config["password"])
+        papi_portal = Portal(papi_realm, [papi_checker])
+        papi_creds = BasicCredentialFactory(b"MAAS Provisioning API")
+        papi_root = HTTPAuthSessionWrapper(papi_portal, [papi_creds])
+        return papi_root
 
     def _makeSiteService(self, papi_xmlrpc, config):
         """Create the site service."""
@@ -189,12 +256,16 @@ class ProvisioningServiceMaker(object):
         broker_config = config["broker"]
         # Connecting to RabbitMQ is not yet a required component of a running
         # MAAS installation; skip unless the password has been set explicitly.
-        if broker_config["password"] is not b"test":
+        if broker_config["password"] != b"test":
             client_service = self._makeBroker(broker_config)
             client_service.setServiceParent(services)
 
-        papi_xmlrpc = self._makePAPI(config["cobbler"])
-        site_service = self._makeSiteService(papi_xmlrpc, config)
+        cobbler_config = config["cobbler"]
+        cobbler_session = self._makeCobblerSession(cobbler_config)
+
+        papi_root = self._makeProvisioningAPI(cobbler_session, config)
+
+        site_service = self._makeSiteService(papi_root, config)
         site_service.setServiceParent(services)
 
         return services

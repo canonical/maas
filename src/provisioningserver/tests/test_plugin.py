@@ -11,24 +11,43 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
+from base64 import b64encode
 from functools import partial
 from getpass import getuser
+import httplib
 import os
+from StringIO import StringIO
+import xmlrpclib
 
 from fixtures import TempDir
 import formencode
+from maastesting.factory import factory
 from provisioningserver.plugin import (
     Config,
     Options,
+    ProvisioningRealm,
     ProvisioningServiceMaker,
+    SingleUsernamePasswordChecker,
     )
 from testtools import TestCase
+from testtools.deferredruntest import (
+    assert_fails_with,
+    AsynchronousDeferredRunTest,
+    )
 from testtools.matchers import (
     MatchesException,
     Raises,
     )
+from twisted.application.internet import TCPServer
 from twisted.application.service import MultiService
+from twisted.cred.credentials import UsernamePassword
+from twisted.cred.error import UnauthorizedLogin
+from twisted.internet.defer import inlineCallbacks
 from twisted.python.usage import UsageError
+from twisted.web.guard import HTTPAuthSessionWrapper
+from twisted.web.resource import IResource
+from twisted.web.server import NOT_DONE_YET
+from twisted.web.test.test_web import DummyRequest
 import yaml
 
 
@@ -36,6 +55,9 @@ class TestConfig(TestCase):
     """Tests for `provisioningserver.plugin.Config`."""
 
     def test_defaults(self):
+        mandatory = {
+            'password': 'killing_joke',
+            }
         expected = {
             'broker': {
                 'host': 'localhost',
@@ -54,15 +76,20 @@ class TestConfig(TestCase):
                 'directory': '',
                 'reporter': '',
                 },
-            'port': 5241,
             'interface': '127.0.0.1',
+            'port': 5241,
+            'username': getuser(),
             }
-        observed = Config.to_python({})
+        expected.update(mandatory)
+        observed = Config.to_python(mandatory)
         self.assertEqual(expected, observed)
 
     def test_parse(self):
         # Configuration can be parsed from a snippet of YAML.
-        observed = Config.parse(b'logfile: "/some/where.log"')
+        observed = Config.parse(
+            b'logfile: "/some/where.log"\n'
+            b'password: "black_sabbath"\n'
+            )
         self.assertEqual("/some/where.log", observed["logfile"])
 
     def test_load(self):
@@ -70,7 +97,8 @@ class TestConfig(TestCase):
         filename = os.path.join(
             self.useFixture(TempDir()).path, "config.yaml")
         with open(filename, "wb") as stream:
-            stream.write(b'logfile: "/some/where.log"')
+            stream.write(b'logfile: "/some/where.log"\n')
+            stream.write(b'password: "megadeth"\n')
         observed = Config.load(filename)
         self.assertEqual("/some/where.log", observed["logfile"])
 
@@ -118,11 +146,14 @@ class TestOptions(TestCase):
 class TestProvisioningServiceMaker(TestCase):
     """Tests for `provisioningserver.plugin.ProvisioningServiceMaker`."""
 
+    run_tests_with = AsynchronousDeferredRunTest.make_factory(timeout=5)
+
     def setUp(self):
         super(TestProvisioningServiceMaker, self).setUp()
         self.tempdir = self.useFixture(TempDir()).path
 
     def write_config(self, config):
+        config.setdefault("password", factory.getRandomString())
         config_filename = os.path.join(self.tempdir, "config.yaml")
         with open(config_filename, "wb") as stream:
             yaml.dump(config, stream)
@@ -166,3 +197,107 @@ class TestProvisioningServiceMaker(TestCase):
         self.assertEqual(
             len(service.namedServices), len(service.services),
             "Not all services are named.")
+
+    def test_makeService_api_requires_credentials(self):
+        """
+        The site service's /api resource requires credentials from clients.
+        """
+        options = Options()
+        options["config-file"] = self.write_config({})
+        service_maker = ProvisioningServiceMaker("Harry", "Hill")
+        service = service_maker.makeService(options)
+        self.assertIsInstance(service, MultiService)
+        site_service = service.getServiceNamed("site")
+        self.assertIsInstance(site_service, TCPServer)
+        port, site = site_service.args
+        self.assertIn("api", site.resource.listStaticNames())
+        api = site.resource.getStaticEntity("api")
+        # HTTPAuthSessionWrapper demands credentials from an HTTP request.
+        self.assertIsInstance(api, HTTPAuthSessionWrapper)
+
+    def exercise_api_credentials(self, config_file, username, password):
+        """
+        Create a new service with :class:`ProvisioningServiceMaker` and
+        attempt to access the API with the given credentials.
+        """
+        options = Options()
+        options["config-file"] = config_file
+        service_maker = ProvisioningServiceMaker("Morecombe", "Wise")
+        service = service_maker.makeService(options)
+        port, site = service.getServiceNamed("site").args
+        api = site.resource.getStaticEntity("api")
+        # Create an XML-RPC request with valid credentials.
+        request = DummyRequest([])
+        request.method = "POST"
+        request.content = StringIO(xmlrpclib.dumps((), "get_nodes"))
+        request.prepath = ["api"]
+        request.headers["authorization"] = (
+            "Basic %s" % b64encode(b"%s:%s" % (username, password)))
+        # The credential check and resource rendering is deferred, but
+        # NOT_DONE_YET is returned from render(). The request signals
+        # completion with the aid of notifyFinish().
+        finished = request.notifyFinish()
+        self.assertEqual(NOT_DONE_YET, api.render(request))
+        return finished.addCallback(lambda ignored: request)
+
+    @inlineCallbacks
+    def test_makeService_api_accepts_valid_credentials(self):
+        """
+        The site service's /api resource accepts valid credentials.
+        """
+        config = {"username": "orange", "password": "goblin"}
+        request = yield self.exercise_api_credentials(
+            self.write_config(config), "orange", "goblin")
+        # A valid XML-RPC response has been written.
+        self.assertEqual(None, request.responseCode)  # None implies 200.
+        xmlrpclib.loads(b"".join(request.written))
+
+    @inlineCallbacks
+    def test_makeService_api_rejects_invalid_credentials(self):
+        """
+        The site service's /api resource rejects invalid credentials.
+        """
+        config = {"username": "orange", "password": "goblin"}
+        request = yield self.exercise_api_credentials(
+            self.write_config(config), "abigail", "williams")
+        # The request has not been authorized.
+        self.assertEqual(httplib.UNAUTHORIZED, request.responseCode)
+
+
+class TestSingleUsernamePasswordChecker(TestCase):
+    """Tests for `SingleUsernamePasswordChecker`."""
+
+    run_tests_with = AsynchronousDeferredRunTest.make_factory(timeout=5)
+
+    @inlineCallbacks
+    def test_requestAvatarId_okay(self):
+        credentials = UsernamePassword("frank", "zappa")
+        checker = SingleUsernamePasswordChecker("frank", "zappa")
+        avatar = yield checker.requestAvatarId(credentials)
+        self.assertEqual("frank", avatar)
+
+    def test_requestAvatarId_bad(self):
+        credentials = UsernamePassword("frank", "zappa")
+        checker = SingleUsernamePasswordChecker("zap", "franka")
+        d = checker.requestAvatarId(credentials)
+        return assert_fails_with(d, UnauthorizedLogin)
+
+
+class TestProvisioningRealm(TestCase):
+    """Tests for `ProvisioningRealm`."""
+
+    def test_requestAvatar_okay(self):
+        resource = object()
+        realm = ProvisioningRealm(resource)
+        avatar = realm.requestAvatar(
+            "irrelevant", "also irrelevant", IResource)
+        self.assertEqual((IResource, resource, realm.noop), avatar)
+
+    def test_requestAvatar_bad(self):
+        # If IResource is not amongst the interfaces passed to requestAvatar,
+        # NotImplementedError is raised.
+        resource = object()
+        realm = ProvisioningRealm(resource)
+        self.assertRaises(
+            NotImplementedError, realm.requestAvatar,
+            "irrelevant", "also irrelevant")

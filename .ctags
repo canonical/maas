@@ -1,5 +1,4 @@
 --python-kinds=-iv
---exclude=*-min.js
---exclude=*-debug.js
+--exclude=*.js
 --extra=+f
---links=no
+--links=yes
