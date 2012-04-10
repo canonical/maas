@@ -387,7 +387,12 @@ class UserPrefsViewTest(LoggedInTestCase):
         self.assertIn(add_key_link, get_content_links(response))
 
     def create_keys_for_user(self, user):
-        return [factory.make_sshkey(self.logged_in_user) for i in range(3)]
+        key_strings = [
+            get_data('data/test_rsa.pub'), get_data('data/test_dsa.pub')]
+        return [
+            factory.make_sshkey(
+                user=self.logged_in_user, key_string=key_string)
+            for key_string in key_strings]
 
     def test_prefs_displays_compact_representation_of_users_keys(self):
         keys = self.create_keys_for_user(self.logged_in_user)
@@ -425,6 +430,31 @@ class KeyManagementTest(LoggedInTestCase):
 
         self.assertEqual(httplib.FOUND, response.status_code)
         self.assertTrue(SSHKey.objects.filter(key=key_string).exists())
+
+    def test_add_key_POST_fails_if_key_already_exists_for_the_user(self):
+        key_string = get_data('data/test_rsa.pub')
+        key = SSHKey(user=self.logged_in_user, key=key_string)
+        key.save()
+        response = self.client.post(
+            reverse('prefs-add-sshkey'), {'key': key_string})
+
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertIn(
+            "This key has already been added for this user.",
+            response.content)
+        self.assertItemsEqual([key], SSHKey.objects.filter(key=key_string))
+
+    def test_key_can_be_added_if_same_key_already_setup_for_other_user(self):
+        key_string = get_data('data/test_rsa.pub')
+        key = SSHKey(user=factory.make_user(), key=key_string)
+        key.save()
+        response = self.client.post(
+            reverse('prefs-add-sshkey'), {'key': key_string})
+        new_key = SSHKey.objects.get(key=key_string, user=self.logged_in_user)
+
+        self.assertEqual(httplib.FOUND, response.status_code)
+        self.assertItemsEqual(
+            [key, new_key], SSHKey.objects.filter(key=key_string))
 
     def test_delete_key_GET(self):
         # The 'Delete key' page displays a confirmation page with a form.

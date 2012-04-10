@@ -89,8 +89,9 @@ class Factory(maastesting.factory.Factory):
         return User.objects.create_user(
             username=username, password=password, email=email)
 
-    def make_sshkey(self, user):
-        key_string = get_data('data/test_rsa.pub')
+    def make_sshkey(self, user, key_string=None):
+        if key_string is None:
+            key_string = get_data('data/test_rsa.pub')
         key = SSHKey(key=key_string, user=user)
         key.save()
         return key

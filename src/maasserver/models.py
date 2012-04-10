@@ -928,15 +928,22 @@ class SSHKey(CommonInfo):
     :ivar user: The user which owns the key.
     :ivar key: The ssh public key.
     """
-    class Meta:
-        verbose_name_plural = "SSH keys"
-
     objects = SSHKeyManager()
 
     user = models.ForeignKey(User, null=False, editable=False)
 
     key = models.TextField(
         null=False, editable=True, validators=[validate_ssh_public_key])
+
+    class Meta:
+        verbose_name_plural = "SSH keys"
+        unique_together = ('user', 'key')
+
+    def unique_error_message(self, model_class, unique_check):
+        if unique_check == ('user', 'key'):
+                return "This key has already been added for this user."
+        return super(
+            SSHKey, self).unique_error_message(model_class, unique_check)
 
     def __unicode__(self):
         return self.key
