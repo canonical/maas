@@ -1,2 +1,8 @@
-# Runs 'maas gc' every day at midnight
+# Perform daily background cleanups in MAAS.
+# 
+# The "maas gc" command is for garbage-collection, such as deleting uploaded
+# files from Juju's file storage API, and in the future commissioning logs,
+# that have been superseded by newer ones.  (This isn't done immediately
+# when the files are overwritten because (1) the transaction that overwrites
+# them may fail, and (2) a file may still be in use when it's overwritten.)
 0 0 * * * root	/usr/sbin/maas gc &> /dev/null
