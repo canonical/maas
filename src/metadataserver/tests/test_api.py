@@ -13,6 +13,7 @@ __all__ = []
 
 from collections import namedtuple
 import httplib
+from io import BytesIO
 
 from maasserver.exceptions import Unauthorized
 from maasserver.models import (
@@ -119,6 +120,29 @@ class TestViews(TestCase, ProvisioningFakeFactory):
         if client is None:
             client = self.client
         return client.get(self.make_url(path))
+
+    def call_signal(self, client=None, version='latest', files={}, **kwargs):
+        """Call the API's signal method.
+
+        :param client: Optional client to POST with.  If omitted, will create
+            one for a commissioning node.
+        :param version: API version to post on.  Defaults to "latest".
+        :param files: Optional dict of files to attach.  Maps file name to
+            file contents.
+        :param **kwargs: Any other keyword parameters are passed on directly
+            to the "signal" call.
+        """
+        if client is None:
+            client = self.make_node_client(factory.make_node(
+                status=NODE_STATUS.COMMISSIONING))
+        params = {
+            'op': 'signal',
+            'status': 'OK',
+        }
+        params.update(kwargs)
+        for name, content in files.items():
+            params[name] = BytesIO(content)
+        return client.post(self.make_url('/%s/' % version), params)
 
     def test_no_anonymous_access(self):
         self.assertEqual(httplib.UNAUTHORIZED, self.get('/').status_code)
@@ -244,8 +268,7 @@ class TestViews(TestCase, ProvisioningFakeFactory):
     def test_other_user_than_node_cannot_signal_commissioning_result(self):
         node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
         client = OAuthAuthenticatedClient(factory.make_user())
-        response = client.post(
-            self.make_url('/latest/'), {'op': 'signal', 'status': 'OK'})
+        response = self.call_signal(client)
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
         self.assertEqual(
             NODE_STATUS.COMMISSIONING, reload_object(node).status)
@@ -254,8 +277,7 @@ class TestViews(TestCase, ProvisioningFakeFactory):
         node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
         client = self.make_node_client(
             node=factory.make_node(status=NODE_STATUS.COMMISSIONING))
-        response = client.post(
-            self.make_url('/latest/'), {'op': 'signal', 'status': 'OK'})
+        response = self.call_signal(client, status='OK')
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(
             NODE_STATUS.COMMISSIONING, reload_object(node).status)
@@ -267,18 +289,13 @@ class TestViews(TestCase, ProvisioningFakeFactory):
         self.assertEqual(httplib.BAD_REQUEST, response.status_code)
 
     def test_signaling_rejects_unknown_status_code(self):
-        node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
-        client = self.make_node_client(node=node)
-        response = client.post(
-            self.make_url('/latest/'),
-            {'op': 'signal', 'status': factory.getRandomString()})
+        response = self.call_signal(status=factory.getRandomString())
         self.assertEqual(httplib.BAD_REQUEST, response.status_code)
 
     def test_signaling_refuses_if_node_in_unexpected_state(self):
         node = factory.make_node(status=NODE_STATUS.DECLARED)
         client = self.make_node_client(node=node)
-        response = client.post(
-            self.make_url('/latest/'), {'op': 'signal', 'status': 'OK'})
+        response = self.call_signal(client)
         self.assertEqual(
             (
                 httplib.CONFLICT,
@@ -289,8 +306,7 @@ class TestViews(TestCase, ProvisioningFakeFactory):
     def test_signaling_accepts_WORKING_status(self):
         node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
         client = self.make_node_client(node=node)
-        response = client.post(
-            self.make_url('/latest/'), {'op': 'signal', 'status': 'WORKING'})
+        response = self.call_signal(client, status='WORKING')
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(
             NODE_STATUS.COMMISSIONING, reload_object(node).status)
@@ -298,8 +314,7 @@ class TestViews(TestCase, ProvisioningFakeFactory):
     def test_signaling_commissioning_success_makes_node_Ready(self):
         node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
         client = self.make_node_client(node=node)
-        response = client.post(
-            self.make_url('/latest/'), {'op': 'signal', 'status': 'OK'})
+        response = self.call_signal(client, status='OK')
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(NODE_STATUS.READY, reload_object(node).status)
 
@@ -313,8 +328,7 @@ class TestViews(TestCase, ProvisioningFakeFactory):
         node.save()
         papi.modify_nodes({node.system_id: {'profile': commissioning_profile}})
         client = self.make_node_client(node=node)
-        response = client.post(
-            self.make_url('/latest/'), {'op': 'signal', 'status': 'OK'})
+        response = self.call_signal(client, status='OK')
         self.assertEqual(httplib.OK, response.status_code)
         node_data = papi.get_nodes_by_name([node.system_id])[node.system_id]
         self.assertEqual(original_profile, node_data['profile'])
@@ -322,28 +336,23 @@ class TestViews(TestCase, ProvisioningFakeFactory):
     def test_signaling_commissioning_success_is_idempotent(self):
         node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
         client = self.make_node_client(node=node)
-        url = self.make_url('/latest/')
-        success_params = {'op': 'signal', 'status': 'OK'}
-        client.post(url, success_params)
-        response = client.post(url, success_params)
+        self.call_signal(client, status='OK')
+        response = self.call_signal(client, status='OK')
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(NODE_STATUS.READY, reload_object(node).status)
 
     def test_signaling_commissioning_failure_makes_node_Failed_Tests(self):
         node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
         client = self.make_node_client(node=node)
-        response = client.post(
-            self.make_url('/latest/'), {'op': 'signal', 'status': 'FAILED'})
+        response = self.call_signal(client, status='FAILED')
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(NODE_STATUS.FAILED_TESTS, reload_object(node).status)
 
     def test_signaling_commissioning_failure_is_idempotent(self):
         node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
         client = self.make_node_client(node=node)
-        url = self.make_url('/latest/')
-        failure_params = {'op': 'signal', 'status': 'FAILED'}
-        client.post(url, failure_params)
-        response = client.post(url, failure_params)
+        self.call_signal(client, status='FAILED')
+        response = self.call_signal(client, status='FAILED')
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(NODE_STATUS.FAILED_TESTS, reload_object(node).status)
 
@@ -351,13 +360,7 @@ class TestViews(TestCase, ProvisioningFakeFactory):
         node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
         client = self.make_node_client(node=node)
         error_text = factory.getRandomString()
-        response = client.post(
-            self.make_url('/latest/'),
-            {
-                'op': 'signal',
-                'status': 'FAILED',
-                'error': error_text,
-            })
+        response = self.call_signal(client, status='FAILED', error=error_text)
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(error_text, reload_object(node).error)
 
@@ -365,7 +368,6 @@ class TestViews(TestCase, ProvisioningFakeFactory):
         node = factory.make_node(
             status=NODE_STATUS.COMMISSIONING, error=factory.getRandomString())
         client = self.make_node_client(node=node)
-        response = client.post(
-            self.make_url('/latest/'), {'op': 'signal', 'status': 'OK'})
+        response = self.call_signal(client)
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual('', reload_object(node).error)
