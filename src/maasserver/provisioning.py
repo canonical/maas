@@ -11,9 +11,11 @@ from __future__ import (
 __metaclass__ = type
 __all__ = [
     'get_provisioning_api_proxy',
+    'present_detailed_user_friendly_fault',
     'ProvisioningProxy',
     ]
 
+from functools import partial
 from logging import getLogger
 from textwrap import dedent
 from urllib import urlencode
@@ -36,8 +38,9 @@ from maasserver.models import (
 from provisioningserver.enum import PSERV_FAULT
 import yaml
 
-# Presentation templates for various provisioning faults.
-PRESENTATIONS = {
+# Presentation templates for various provisioning faults (will be used
+# for long-lasting warnings about failing components).
+DETAILED_PRESENTATIONS = {
     PSERV_FAULT.NO_COBBLER: """
         The provisioning server was unable to reach the Cobbler service:
         %(fault_string)s
@@ -78,12 +81,37 @@ PRESENTATIONS = {
         """,
 }
 
+# Shorter presentation templates for various provisioning faults (will
+# be used for one-off messages).
+SHORT_PRESENTATIONS = {
+    PSERV_FAULT.NO_COBBLER: """
+        Unable to reach the Cobbler server.
+        """,
+    PSERV_FAULT.COBBLER_AUTH_FAILED: """
+        Failed to authenticate with the Cobbler server.
+        """,
+    PSERV_FAULT.COBBLER_AUTH_ERROR: """
+        Failed to authenticate with the Cobbler server.
+        """,
+    PSERV_FAULT.NO_SUCH_PROFILE: """
+        Missing system profile: %(fault_string)s.
+        """,
+    PSERV_FAULT.GENERIC_COBBLER_ERROR: """
+        Unknown problem encountered with the Cobbler server.
+        """,
+    8002: """
+        Unable to reach provisioning server.
+        """,
+}
 
-def present_user_friendly_fault(fault):
+
+def _present_user_friendly_fault(fault, presentations):
     """Return a more user-friendly exception to represent `fault`.
 
     :param fault: An exception raised by, or received across, xmlrpc.
     :type fault: :class:`xmlrpclib.Fault`
+    :param presentations: A mapping error -> message.
+    :type fault: dict
     :return: A more user-friendly exception, if one can be produced.
         Otherwise, this returns None and the original exception should be
         re-raised.  (This is left to the caller in order to minimize
@@ -94,12 +122,40 @@ def present_user_friendly_fault(fault):
         'fault_code': fault.faultCode,
         'fault_string': fault.faultString,
     }
-    user_friendly_text = PRESENTATIONS.get(fault.faultCode)
+    user_friendly_text = presentations.get(fault.faultCode)
     if user_friendly_text is None:
         return None
     else:
         return MAASAPIException(dedent(
             user_friendly_text.lstrip('\n') % params))
+
+
+present_user_friendly_fault = partial(
+    _present_user_friendly_fault, presentations=SHORT_PRESENTATIONS)
+"""Return a concise but user-friendly exception to represent `fault`.
+
+:param fault: An exception raised by, or received across, xmlrpc.
+:type fault: :class:`xmlrpclib.Fault`
+:return: A more user-friendly exception, if one can be produced.
+    Otherwise, this returns None and the original exception should be
+    re-raised.  (This is left to the caller in order to minimize
+    erosion of the backtrace).
+:rtype: :class:`MAASAPIException`, or None.
+"""
+
+
+present_detailed_user_friendly_fault = partial(
+    _present_user_friendly_fault, presentations=DETAILED_PRESENTATIONS)
+"""Return a detailed and user-friendly exception to represent `fault`.
+
+:param fault: An exception raised by, or received across, xmlrpc.
+:type fault: :class:`xmlrpclib.Fault`
+:return: A more user-friendly exception, if one can be produced.
+    Otherwise, this returns None and the original exception should be
+    re-raised.  (This is left to the caller in order to minimize
+    erosion of the backtrace).
+:rtype: :class:`MAASAPIException`, or None.
+"""
 
 
 class ProvisioningCaller:
