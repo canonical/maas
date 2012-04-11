@@ -1,3 +1,5 @@
+.. -*- mode: rst -*-
+
 ************
 Hacking MAAS
 ************
@@ -219,6 +221,7 @@ Be sure to have a look at `South's documentation`_ before you make any change.
 
 .. _South's documentation: http://south.aeracode.org/docs/
 
+
 Changing the schema
 ^^^^^^^^^^^^^^^^^^^
 
@@ -243,6 +246,7 @@ forget to add that file to the project with::
 To apply that migration, run::
 
     $ make syncdb
+
 
 Performing data migration
 ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -280,14 +284,18 @@ documentation`_.
 .. _convention for headings as used in the Python documentation:
   http://sphinx.pocoo.org/rest.html#sections
 
+
 Acceptance tests
 ================
 
-MAAS uses checkbox manual testing infrastructure to verify features
-are implemented according to the spec. They can be found in the official
-checkbox repository:
-https://code.launchpad.net/~nskaggs/checkbox/checkbox-app-testing-qt
-in the jobs/ directory.
+MAAS uses `Checkbox`_ to verify features are implemented according to
+the spec. They can be found in the `official checkbox repository`_, in
+the ``jobs/`` directory.
+
+.. _Checkbox: https://wiki.ubuntu.com/Testing/Automation/Checkbox
+
+.. _official checkbox repository:
+  https://code.launchpad.net/~nskaggs/checkbox/checkbox-app-testing-qt
 
 You need to install additional QT dependencies::
 
@@ -297,6 +305,6 @@ Get a copy of the checkbox repository::
 
     $ bzr branch lp:~nskaggs/checkbox/checkbox-app-testing-qt
 
-To run them, cd into the directory::
+To run them, move into the branch directory and run::
 
     $ bin/checbox-app-testing --whitelist-file=

@@ -1,0 +1,36 @@
+.. -*- mode: rst -*-
+
+**************
+Document Title
+**************
+
+
+Section
+=======
+
+
+Subsection
+----------
+
+Leave two empty lines before section headings.
+
+
+Subsubsection
+^^^^^^^^^^^^^
+
+Typically 2 spaces are used to indent blocks.
+
+  Like this.
+
+Building is simple::
+
+  $ make doc
+
+will do everything, even in a fresh checkout, but on subsequent
+iterations::
+
+  $ bin/sphinx
+
+is quicker.
+
+Also see `the Sphinx docs <http://sphinx.pocoo.org/rest.html>`_.
