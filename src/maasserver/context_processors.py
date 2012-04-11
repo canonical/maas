@@ -14,6 +14,7 @@ __all__ = [
     ]
 
 from django.conf import settings
+from maasserver.components import get_persistent_errors
 from maasserver.forms import NodeForm
 from maasserver.models import Config
 
@@ -29,6 +30,7 @@ def yui(context):
 
 def global_options(context):
     return {
+        'persistent_errors': get_persistent_errors(),
         'node_form': NodeForm(),
         'global_options': {
             'site_name': Config.objects.get_config('maas_name'),
