@@ -16,7 +16,6 @@ bucket:
 
    echo === $(date) ====
    debconf-set-selections <<EOF
-   cobbler  cobbler/server_and_next_server   string   zimmer-server
    cobbler  cobbler/password  password xcobbler
    cloud-init	cloud-init/datasources	multiselect	NoCloud
    EOF
@@ -41,7 +40,6 @@ bucket:
    pkgs="$pkgs distro-info" # (LP: #960142)
    pkgs="$pkgs libvirt-bin" # for power control via virsh
    pkgs="$pkgs cobbler-web" # for debugging and ease of use of cobbler
-   pkgs="$pkgs ubuntu-orchestra-logging-server" # (LP: #960149)
    pkgs="$pkgs maas" # main maas package
    apt_get update
    apt_get install ${pkgs}
@@ -57,6 +55,57 @@ bucket:
          "$fname" > "$fname.zimmer"
       ln -sf ${fname##*/}.zimmer "$fname"
    fi
+
+   # hack /etc/init/cobbler.conf to always update its IP address on start
+   cat >> /etc/init/cobbler.conf <<"ENDCOB"
+   #### added by zimmer-build ######
+   pre-start script
+     #set -x; exec >/tmp/cobbler-pre.out 2>/tmp/cobbler-pre.err
+     found=""
+     fn="/etc/cobbler/cobbler-server"
+   
+     # if user wants to manage this, then just remove that file
+     # it is expected to either have an IP address or 'auto'
+     [ -f "$fn" ] || exit 0
+     read found < "$fn" || :
+     [ -n "$found" -a "$found" != "auto" ] ||
+       found=$(ifconfig eth0 2>/dev/null |
+         awk '$0 ~ /inet addr:/ { sub(/.*:/,"",$2); print $2; }')
+   
+     [ -z "$found" ] && exit 0
+   
+     sed -i.start -e "s/^next_server: .*$/next_server: $found/" \
+        -e "s/^server: *..*..*..*$/server: $found/" \
+        /etc/cobbler/settings
+   
+     # if the above sed did something, then we leave the orig
+     # file around for post-start to cleanup.
+     cmp /etc/cobbler/settings.start /etc/cobbler/settings >/dev/null &&
+       rm -f /etc/cobbler/settings.start || :
+   end script
+   
+   post-start script
+     #set -x; exec >/tmp/cobbler-start.out 2>/tmp/cobbler-start.err
+     set +e  # upstart uses 'set -e' by default
+     [ -f /etc/cobbler/settings.start ] || exit 0
+     rm -f /etc/cobbler/settings.start
+
+     # now basically wait around until cobbler is available
+     while : ; do
+       # will exit 155 if "cobblerd does not appear to be running"
+       cobbler system list >/dev/null
+       [ $? -eq 155 ] || break
+       sleep 1
+     done
+
+     # we're allowing cobbler to start even if these fail
+     cobbler sync
+     maas-import-isos --update
+     exit 0
+   end script
+   ENDCOB
+
+   echo "auto" >> /etc/cobbler/cobbler-server
 
    cat >> /etc/maas/import_isos <<END
    RELEASES="precise"

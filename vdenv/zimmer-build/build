@@ -56,7 +56,7 @@ Usage: ${0##*/} [ options ] output
      --save   D          put pristine copies of things in D
                          default: $DEF_SAVE_D
      --ud-file F         use user-data file F
-                         default: $DEF_USER_DATA
+                         default: $DEF_UD_FILE
      --import-keys K     import ssh keys
                           values are 'auto', 'lp:<id>', or path to file
 EOF

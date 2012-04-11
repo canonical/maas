@@ -17,7 +17,7 @@ import xmlrpclib
 
 host = "192.168.123.2"
 user = "cobbler"
-password = "cobbler"
+password = "xcobbler"
 if len(sys.argv) >= 2:
     host = sys.argv[1]
 if len(sys.argv) >= 3:
