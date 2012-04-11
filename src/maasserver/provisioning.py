@@ -214,7 +214,11 @@ class ProvisioningCaller:
     - Registers failing/working components.
     """
 
-    def __init__(self, method):
+    def __init__(self, method_name, method):
+        # Keep track of the method name; xmlrpclib does not take lightly
+        # to us attempting to look it up as an attribute of the method
+        # object.
+        self.method_name = method_name
         self.method = method
 
     def __call__(self, *args, **kwargs):
@@ -222,7 +226,7 @@ class ProvisioningCaller:
             result = self.method(*args, **kwargs)
             # The call was a success, discard persistent errors for
             # components referenced by this method.
-            register_working_components(self.method.__name__)
+            register_working_components(self.method_name)
             return result
         except xmlrpclib.Fault as e:
             # Register failing component.
@@ -257,7 +261,7 @@ class ProvisioningProxy:
             return attribute
         else:
             # This attribute is callable.  Wrap it in a caller.
-            return ProvisioningCaller(attribute)
+            return ProvisioningCaller(attribute_name, attribute)
 
 
 def get_provisioning_api_proxy():
