@@ -34,6 +34,7 @@ from metadataserver.api import (
     UnknownMetadataVersion,
     )
 from metadataserver.models import (
+    NodeCommissionResult,
     NodeKey,
     NodeUserData,
     )
@@ -142,6 +143,7 @@ class TestViews(TestCase, ProvisioningFakeFactory):
         params.update(kwargs)
         for name, content in files.items():
             params[name] = BytesIO(content)
+            params[name].name = name
         return client.post(self.make_url('/%s/' % version), params)
 
     def test_no_anonymous_access(self):
@@ -371,3 +373,71 @@ class TestViews(TestCase, ProvisioningFakeFactory):
         response = self.call_signal(client)
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual('', reload_object(node).error)
+
+    def test_signalling_stores_files_for_any_status(self):
+        statuses = ['WORKING', 'OK', 'FAILED']
+        filename = factory.getRandomString()
+        nodes = {
+            status: factory.make_node(status=NODE_STATUS.COMMISSIONING)
+            for status in statuses}
+        for status, node in nodes.items():
+            client = self.make_node_client(node=node)
+            self.call_signal(
+                client, status=status,
+                files={filename: factory.getRandomString().encode('ascii')})
+        self.assertEqual(
+            {status: filename for status in statuses},
+            {
+                status: NodeCommissionResult.objects.get(node=node).name
+                for status, node in nodes.items()})
+
+    def test_signal_stores_file_contents(self):
+        node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
+        client = self.make_node_client(node=node)
+        text = factory.getRandomString().encode('ascii')
+        response = self.call_signal(client, files={'file.txt': text})
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(
+            text, NodeCommissionResult.objects.get_data(node, 'file.txt'))
+
+    def test_signal_decodes_file_from_UTF8(self):
+        unicode_text = '<\u2621>'
+        node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
+        client = self.make_node_client(node=node)
+        response = self.call_signal(
+            client, files={'file.txt': unicode_text.encode('utf-8')})
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(
+            unicode_text,
+            NodeCommissionResult.objects.get_data(node, 'file.txt'))
+
+    def test_signal_stores_multiple_files(self):
+        contents = {
+            factory.getRandomString(): factory.getRandomString().encode(
+                'ascii')
+            for counter in range(3)}
+        node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
+        client = self.make_node_client(node=node)
+        response = self.call_signal(client, files=contents)
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(
+            contents,
+            {
+                result.name: result.data
+                for result in NodeCommissionResult.objects.filter(node=node)
+            })
+
+    def test_signal_stores_files_up_to_documented_size_limit(self):
+        # The documented size limit for commissioning result files:
+        # one megabyte.  What happens above this limit is none of
+        # anybody's business, but files up to this size should work.
+        size_limit = 2 ** 20
+        contents = factory.getRandomString(size_limit, spaces=True)
+        node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
+        client = self.make_node_client(node=node)
+        response = self.call_signal(
+            client, files={'output.txt': contents.encode('utf-8')})
+        self.assertEqual(httplib.OK, response.status_code)
+        stored_data = NodeCommissionResult.objects.get_data(
+            node, 'output.txt')
+        self.assertEqual(size_limit, len(stored_data))

@@ -13,7 +13,6 @@ __all__ = []
 
 from django.db import IntegrityError
 from django.http import Http404
-
 from maasserver.testing.factory import factory
 from maastesting.testcase import TestCase
 from metadataserver.models import (

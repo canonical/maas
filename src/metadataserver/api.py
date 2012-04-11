@@ -36,6 +36,7 @@ from maasserver.models import (
     SSHKey,
     )
 from metadataserver.models import (
+    NodeCommissionResult,
     NodeKey,
     NodeUserData,
     )
@@ -126,6 +127,12 @@ class VersionIndexHandler(MetadataViewHandler):
             shown_fields.remove('user-data')
         return make_list_response(sorted(shown_fields))
 
+    def _store_commissioning_results(self, node, request):
+        """Store commissioning result files for `node`."""
+        for name, uploaded_file in request.FILES.items():
+            contents = uploaded_file.read().decode('utf-8')
+            NodeCommissionResult.objects.store_data(node, name, contents)
+
     @api_exported('signal', 'POST')
     def signal(self, request, version=None):
         """Signal commissioning status.
@@ -160,6 +167,8 @@ class VersionIndexHandler(MetadataViewHandler):
         if node.status != NODE_STATUS.COMMISSIONING:
             # Already registered.  Nothing to be done.
             return rc.ALL_OK
+
+        self._store_commissioning_results(node, request)
 
         target_status = self.signaling_statuses.get(status)
         if target_status in (None, node.status):
