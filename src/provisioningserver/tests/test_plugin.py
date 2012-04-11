@@ -29,6 +29,7 @@ from provisioningserver.plugin import (
     ProvisioningServiceMaker,
     SingleUsernamePasswordChecker,
     )
+from provisioningserver.testing.fakecobbler import make_fake_cobbler_session
 from testtools import TestCase
 from testtools.deferredruntest import (
     assert_fails_with,
@@ -223,6 +224,9 @@ class TestProvisioningServiceMaker(TestCase):
         options = Options()
         options["config-file"] = config_file
         service_maker = ProvisioningServiceMaker("Morecombe", "Wise")
+        # Terminate the service in a fake Cobbler session.
+        service_maker._makeCobblerSession = (
+            lambda config: make_fake_cobbler_session())
         service = service_maker.makeService(options)
         port, site = service.getServiceNamed("site").args
         api = site.resource.getStaticEntity("api")
