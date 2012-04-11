@@ -622,6 +622,10 @@ class Node(CommonInfo):
 
     def start_commissioning(self, user):
         """Install OS and self-test a new node."""
+        # Avoid circular imports.
+        from metadataserver.models import NodeCommissionResult
+
+        NodeCommissionResult.objects.clear_results(self)
         self.status = NODE_STATUS.COMMISSIONING
         self.owner = user
         self.save()

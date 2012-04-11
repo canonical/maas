@@ -60,7 +60,10 @@ from maasserver.testing import get_data
 from maasserver.testing.enum import map_enum
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
-from metadataserver.models import NodeUserData
+from metadataserver.models import (
+    NodeCommissionResult,
+    NodeUserData,
+    )
 from piston.models import (
     Consumer,
     KEY_SIZE,
@@ -284,6 +287,23 @@ class NodeTest(TestCase):
         self.assertEqual(
             commissioning_user_data,
             NodeUserData.objects.get_user_data(node))
+
+    def test_start_commissioning_clears_node_commissioning_results(self):
+        node = factory.make_node(status=NODE_STATUS.DECLARED)
+        NodeCommissionResult.objects.store_data(
+            node, factory.getRandomString(), factory.getRandomString())
+        node.start_commissioning(factory.make_admin())
+        self.assertItemsEqual([], node.nodecommissionresult_set.all())
+
+    def test_start_commissioning_ignores_other_commissioning_results(self):
+        node = factory.make_node()
+        filename = factory.getRandomString()
+        text = factory.getRandomString()
+        NodeCommissionResult.objects.store_data(node, filename, text)
+        other_node = factory.make_node(status=NODE_STATUS.DECLARED)
+        other_node.start_commissioning(factory.make_admin())
+        self.assertEqual(
+            text, NodeCommissionResult.objects.get_data(node, filename))
 
     def test_full_clean_checks_status_transition_and_raises_if_invalid(self):
         # RETIRED -> ALLOCATED is an invalid transition.

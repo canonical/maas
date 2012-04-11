@@ -424,7 +424,7 @@ class TestViews(TestCase, ProvisioningFakeFactory):
             contents,
             {
                 result.name: result.data
-                for result in NodeCommissionResult.objects.filter(node=node)
+                for result in node.nodecommissionresult_set.all()
             })
 
     def test_signal_stores_files_up_to_documented_size_limit(self):
