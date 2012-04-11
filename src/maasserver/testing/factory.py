@@ -29,6 +29,7 @@ from maasserver.models import (
 from maasserver.testing import get_data
 from maasserver.testing.enum import map_enum
 import maastesting.factory
+from metadataserver.models import NodeCommissionResult
 
 # We have a limited number of public keys:
 # src/maasserver/tests/data/test_rsa{0, 1, 2, 3, 4}.pub
@@ -74,6 +75,17 @@ class Factory(maastesting.factory.Factory):
             **kwargs)
         node.save(skip_check=True)
         return node
+
+    def make_node_commission_result(self, node=None, name=None, data=None):
+        if node is None:
+            node = self.make_node()
+        if name is None:
+            name = "ncrname-" + self.getRandomString(92)
+        if data is None:
+            data = "ncrdata-" + self.getRandomString(1000)
+        ncr = NodeCommissionResult(node=node, name=name, data=data)
+        ncr.save()
+        return ncr
 
     def make_mac_address(self, address):
         """Create a MAC address."""
