@@ -16,7 +16,15 @@ from base64 import b64decode
 from xmlrpclib import Fault
 
 from django.conf import settings
-from maasserver import provisioning
+from maasserver import (
+    components,
+    provisioning,
+    )
+from maasserver.components import (
+    COMPONENT,
+    get_persistent_errors,
+    register_persistent_error,
+    )
 from maasserver.exceptions import MAASAPIException
 from maasserver.models import (
     ARCHITECTURE,
@@ -419,6 +427,71 @@ class ProvisioningTests:
 
         with ExpectedException(MAASAPIException, ".*Cobbler.*"):
             self.papi.add_node('node', 'profile', 'power', '')
+
+    def patch_and_call_papi_method(self, fault_code, papi_method='add_node'):
+        # Patch papi method to make it raise a Fault of the provided
+        # fault_code.  Then call this method.
+        def raise_provisioning_error(*args, **kwargs):
+            raise Fault(fault_code, factory.getRandomString())
+
+        self.papi.patch(papi_method, raise_provisioning_error)
+
+        try:
+            method = getattr(self.papi, papi_method)
+            method()
+        except MAASAPIException:
+            pass
+
+    def test_error_registered_when_NO_COBBLER_raised(self):
+        self.patch(components, '_PERSISTENT_ERRORS', {})
+        self.patch_and_call_papi_method(PSERV_FAULT.NO_COBBLER)
+        errors = get_persistent_errors()
+        self.assertEqual(1, len(errors))
+        self.assertIn(
+            "The provisioning server was unable to reach the Cobbler",
+            errors[0])
+
+    def test_error_registered_can_handle_all_the_exceptions(self):
+        for fault_code in map_enum(PSERV_FAULT).values():
+            self.patch(components, '_PERSISTENT_ERRORS', {})
+            self.patch_and_call_papi_method(fault_code)
+            errors = get_persistent_errors()
+            self.assertEqual(1, len(errors))
+
+    def test_failing_components_cleared_if_add_node_works(self):
+        self.patch(components, '_PERSISTENT_ERRORS', {})
+        register_persistent_error(COMPONENT.PSERV, factory.getRandomString())
+        register_persistent_error(COMPONENT.COBBLER, factory.getRandomString())
+        register_persistent_error(
+            COMPONENT.IMPORT_ISOS, factory.getRandomString())
+        self.papi.add_node('node', 'hostname', 'profile', 'power', '')
+        self.assertEqual([], get_persistent_errors())
+
+    def test_only_failing_components_are_cleared_if_modify_nodes_works(self):
+        # Only the components listed in METHOD_COMPONENTS[method_name]
+        # are cleared with the run of method_name is successfull.
+        self.patch(components, '_PERSISTENT_ERRORS', {})
+        other_error = factory.getRandomString()
+        other_component = factory.getRandomString()
+        register_persistent_error(other_component, other_error)
+        self.papi.modify_nodes({})
+        self.assertEqual([other_error], get_persistent_errors())
+
+    def test_failing_components_cleared_if_modify_nodes_works(self):
+        self.patch(components, '_PERSISTENT_ERRORS', {})
+        register_persistent_error(COMPONENT.PSERV, factory.getRandomString())
+        register_persistent_error(COMPONENT.COBBLER, factory.getRandomString())
+        self.papi.modify_nodes({})
+        self.assertEqual([], get_persistent_errors())
+
+    def test_failing_components_cleared_if_delete_nodes_by_name_works(self):
+        self.patch(components, '_PERSISTENT_ERRORS', {})
+        register_persistent_error(COMPONENT.PSERV, factory.getRandomString())
+        register_persistent_error(COMPONENT.COBBLER, factory.getRandomString())
+        other_error = factory.getRandomString()
+        register_persistent_error(factory.getRandomString(), other_error)
+        self.papi.delete_nodes_by_name([])
+        self.assertEqual([other_error], get_persistent_errors())
 
 
 class TestProvisioningWithFake(ProvisioningTests, ProvisioningFakeFactory,

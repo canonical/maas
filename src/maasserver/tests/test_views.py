@@ -39,7 +39,6 @@ from maasserver.models import (
     SSHKey,
     UserProfile,
     )
-from maasserver.provisioning import present_user_friendly_fault
 from maasserver.testing import (
     get_data,
     reload_object,
@@ -1028,9 +1027,10 @@ class PermanentErrorDisplayTest(LoggedInTestCase):
             # Create component with getRandomString to be sure
             # to display all the errors.
             component = factory.getRandomString()
-            error = Fault(fault, factory.getRandomString())
+            error_message = factory.getRandomString()
+            error = Fault(fault, error_message)
             errors.append(error)
-            register_persistent_error(component, error)
+            register_persistent_error(component, error_message)
         links = [
             reverse('index'),
             reverse('node-list'),
@@ -1041,5 +1041,6 @@ class PermanentErrorDisplayTest(LoggedInTestCase):
             self.assertThat(
                 response.content,
                 MatchesAll(
-                    *[Contains(escape(str(present_user_friendly_fault(error))))
+                    *[Contains(
+                          escape(error.faultString))
                      for error in errors]))
