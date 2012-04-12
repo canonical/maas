@@ -512,7 +512,7 @@ class TestProvisioningWithFake(ProvisioningTests, ProvisioningFakeFactory,
         # server and MAAS ought to leave that alone. When the node is retired
         # netbooting is disabled.
         expected = {
-            NODE_STATUS.DECLARED: True,
+            NODE_STATUS.DECLARED: False,
             NODE_STATUS.COMMISSIONING: True,
             NODE_STATUS.FAILED_TESTS: True,
             NODE_STATUS.MISSING: True,

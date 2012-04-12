@@ -429,13 +429,10 @@ def provision_post_save_Node(sender, instance, created, **kwargs):
     # all other statuses... with one exception; retired nodes are never
     # netbooted.
     if instance.status != NODE_STATUS.ALLOCATED:
-        deltas = {
-            instance.system_id: {
-                "netboot_enabled":
-                    instance.status != NODE_STATUS.RETIRED,
-                }
-            }
-        papi.modify_nodes(deltas)
+        netboot_enabled = instance.status not in (
+            NODE_STATUS.DECLARED, NODE_STATUS.RETIRED)
+        delta = {"netboot_enabled": netboot_enabled}
+        papi.modify_nodes({instance.system_id: delta})
 
 
 def set_node_mac_addresses(node):
