@@ -58,7 +58,9 @@ find_creds_cfg() {
                return 0;;
          esac
       done
+      [ -n "$found" ] && _RET="$found" && return 0
    fi
+   return 1
 }
 
 signal() {
