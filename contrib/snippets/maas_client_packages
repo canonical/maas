@@ -1,1 +1,1 @@
-d-i     pkgsel/include string cloud-init openssh-server python-software-properties vim avahi-daemon
+d-i     pkgsel/include string cloud-init openssh-server python-software-properties vim avahi-daemon server^

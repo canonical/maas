@@ -2,3 +2,5 @@ d-i preseed/early_command string anna-install maas-enlist-udeb
 d-i maas-enlist/skip-maas-discover boolean true
 d-i maas-enlist/maas-server-address string @@server@@
 d-i maas-enlist/host-name string
+
+$SNIPPET('maas_proxy')
