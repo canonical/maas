@@ -33,6 +33,7 @@ from maasserver.exceptions import NoRabbit
 from maasserver.forms import NodeActionForm
 from maasserver.models import (
     Config,
+    Node,
     NODE_AFTER_COMMISSIONING_ACTION,
     NODE_STATUS,
     POWER_TYPE_CHOICES,
@@ -501,10 +502,10 @@ class AdminLoggedInTestCase(LoggedInTestCase):
         self.logged_in_user.save()
 
 
-def get_content_links(response):
-    """Extract links from :class:`HttpResponse` HTML body."""
+def get_content_links(response, element='#content'):
+    """Extract links from :class:`HttpResponse` #content element."""
     doc = fromstring(response.content)
-    [content_node] = doc.cssselect('#content')
+    [content_node] = doc.cssselect(element)
     return [elem.get('href') for elem in content_node.cssselect('a')]
 
 
@@ -575,6 +576,20 @@ class NodeViewsTest(LoggedInTestCase):
         response = self.client.get(node_delete_link)
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
+    def test_view_node_shows_message_for_commissioning_node(self):
+        statuses_with_message = (
+            NODE_STATUS.READY, NODE_STATUS.COMMISSIONING)
+        help_link = "https://wiki.ubuntu.com/ServerTeam/MAAS/AvahiBoot"
+        for status in map_enum(NODE_STATUS).values():
+            node = factory.make_node(status=status)
+            node_link = reverse('node-view', args=[node.system_id])
+            response = self.client.get(node_link)
+            links = get_content_links(response, '#flash-messages')
+            if status in statuses_with_message:
+                self.assertIn(help_link, links)
+            else:
+                self.assertNotIn(help_link, links)
+
     def test_view_node_shows_link_to_delete_node_for_admin(self):
         self.become_admin()
         node = factory.make_node()
@@ -589,7 +604,7 @@ class NodeViewsTest(LoggedInTestCase):
         node_delete_link = reverse('node-delete', args=[node.system_id])
         response = self.client.post(node_delete_link, {'post': 'yes'})
         self.assertEqual(httplib.FOUND, response.status_code)
-        self.assertFalse(User.objects.filter(id=node.id).exists())
+        self.assertFalse(Node.objects.filter(id=node.id).exists())
 
     def test_allocated_node_view_page_says_node_cannot_be_deleted(self):
         self.become_admin()
@@ -716,8 +731,8 @@ class NodeViewsTest(LoggedInTestCase):
         node = factory.make_node(status=NODE_STATUS.DECLARED)
         response = self.perform_action_and_get_node_page(
             node, "Accept & commission")
-        self.assertEqual(
-            ["Node commissioning started."],
+        self.assertIn(
+            "Node commissioning started.",
             [message.message for message in response.context['messages']])
 
     def test_start_node_from_ready_displays_message(self):
@@ -725,8 +740,8 @@ class NodeViewsTest(LoggedInTestCase):
             status=NODE_STATUS.READY, owner=self.logged_in_user)
         response = self.perform_action_and_get_node_page(
             node, "Start node")
-        self.assertEqual(
-            ["Node started."],
+        self.assertIn(
+            "Node started.",
             [message.message for message in response.context['messages']])
 
     def test_start_node_from_allocated_displays_message(self):
