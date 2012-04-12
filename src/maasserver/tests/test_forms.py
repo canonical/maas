@@ -184,7 +184,11 @@ class NodeEditForms(TestCase):
         form = UINodeEditForm()
 
         self.assertEqual(
-            ['hostname', 'after_commissioning_action'], list(form.fields))
+            [
+                'hostname',
+                # XXX JeroenVermeulen 2012-04-12, bug=979539: re-enable.
+                #'after_commissioning_action',
+            ], list(form.fields))
 
     def test_UINodeEditForm_changes_node(self):
         node = factory.make_node()
@@ -201,14 +205,20 @@ class NodeEditForms(TestCase):
         form.save()
 
         self.assertEqual(hostname, node.hostname)
-        self.assertEqual(
-            after_commissioning_action, node.after_commissioning_action)
+        # XXX JeroenVermeulen 2012-04-12, bug=979539: re-enable.
+        #self.assertEqual(
+        #    after_commissioning_action, node.after_commissioning_action)
 
     def test_UIAdminNodeEditForm_contains_limited_set_of_fields(self):
         form = UIAdminNodeEditForm()
 
-        self.assertSequenceEqual(
-            ['hostname', 'after_commissioning_action', 'power_type'],
+        self.assertEqual(
+            [
+                'hostname',
+                # XXX JeroenVermeulen 2012-04-12, bug=979539: re-enable.
+                #'after_commissioning_action',
+                'power_type',
+            ],
             list(form.fields))
 
     def test_UIAdminNodeEditForm_changes_node(self):
@@ -227,8 +237,9 @@ class NodeEditForms(TestCase):
         form.save()
 
         self.assertEqual(hostname, node.hostname)
-        self.assertEqual(
-            after_commissioning_action, node.after_commissioning_action)
+        # XXX JeroenVermeulen 2012-04-12, bug=979539: re-enable.
+        #self.assertEqual(
+        #    after_commissioning_action, node.after_commissioning_action)
         self.assertEqual(power_type, node.power_type)
 
 
