@@ -460,15 +460,6 @@ class NODE_PERMISSION:
     ADMIN = 'admin_node'
 
 
-# For the commissioning process, a node receives a minimal script as its
-# user_data through the metadata service.  This is the content of that
-# script.
-commissioning_user_data = dedent("""
-    #!/bin/sh
-    echo "Hello world"
-    """.lstrip('\n')).encode('ascii')
-
-
 class Node(CommonInfo):
     """A `Node` represents a physical machine used by the MAAS Server.
 
@@ -624,6 +615,13 @@ class Node(CommonInfo):
         """Install OS and self-test a new node."""
         # Avoid circular imports.
         from metadataserver.models import NodeCommissionResult
+
+        path = settings.COMMISSIONING_SCRIPT
+        if not os.path.exists(path):
+            raise ValidationError(
+                "Commissioning script is missing: %s" % path)
+        with open(path, 'r') as f:
+            commissioning_user_data = f.read()
 
         NodeCommissionResult.objects.clear_results(self)
         self.status = NODE_STATUS.COMMISSIONING
