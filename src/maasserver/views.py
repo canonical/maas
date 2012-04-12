@@ -205,8 +205,10 @@ class NodeListView(ListView):
     context_object_name = "node_list"
 
     def get_queryset(self):
+        # Return node list sorted, newest first.
         return Node.objects.get_nodes(
-            user=self.request.user, perm=NODE_PERMISSION.VIEW)
+            user=self.request.user,
+            perm=NODE_PERMISSION.VIEW).order_by('-id')
 
     def get_context_data(self, **kwargs):
         context = super(NodeListView, self).get_context_data(**kwargs)

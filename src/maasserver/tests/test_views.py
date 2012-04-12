@@ -515,6 +515,24 @@ class NodeViewsTest(LoggedInTestCase):
         node_link = reverse('node-view', args=[node.system_id])
         self.assertIn(node_link, get_content_links(response))
 
+    def test_node_list_displays_sorted_list_of_nodes(self):
+        # Nodes are sorted on the node list page, newest first.
+        nodes = [factory.make_node() for i in range(3)]
+        nodes.reverse()
+        # Modify one node to make sure that the default db ordering
+        # (by modification date) is not used.
+        node = nodes[1]
+        node.hostname = factory.getRandomString()
+        node.save()
+        response = self.client.get(reverse('node-list'))
+        node_links = [
+            reverse('node-view', args=[node.system_id])
+            for node in nodes]
+        self.assertEqual(
+            node_links,
+            [link for link in get_content_links(response)
+                if link.startswith('/nodes')])
+
     def test_view_node_displays_node_info(self):
         # The node page features the basic information about the node.
         node = factory.make_node(owner=self.logged_in_user)
