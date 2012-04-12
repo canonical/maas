@@ -37,8 +37,7 @@ fi
 [ -n "$PRIORITY" ] || PRIORITY="critical"
 [ -n "$LOCALE" ] || LOCALE="en_US"
 [ -n "$INTERFACE" ] || INTERFACE="auto"
-[ -n "$CONSOLE" ] || CONSOLE="ttyS0,9600n8"
-[ -n "$KOPTS" ] || KOPTS="priority=$PRIORITY locale=$LOCALE netcfg/choose_interface=$INTERFACE console=$CONSOLE"
+[ -n "$KOPTS" ] || KOPTS="priority=$PRIORITY locale=$LOCALE netcfg/choose_interface=$INTERFACE"
 [ -n "$ENLIST_PROFILE" ] || ENLIST_PROFILE="maas-enlist"
 [ -n "$IMPORT_EPHEMERALS" ] || IMPORT_EPHEMERALS=1
 if [ -n "$SERVER_IP" ]; then
@@ -48,6 +47,9 @@ else
 		SERVER_IP=$(grep "^server: " /etc/cobbler/settings | awk '{print $2}')
 		KOPTS="$KOPTS log_host=$SERVER_IP log_port=514"
 	fi
+fi
+if [ -n "$CONSOLE" ]; then
+	KOPTS="$KOPTS console=$CONSOLE"
 fi
 
 
