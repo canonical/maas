@@ -40,7 +40,6 @@ import os
 import re
 from socket import gethostname
 from string import whitespace
-from textwrap import dedent
 import time
 from uuid import uuid1
 

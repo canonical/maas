@@ -31,6 +31,9 @@ class PSERV_FAULT:
     # Profile does not exist.
     NO_SUCH_PROFILE = 5
 
+    # Error looking up cobbler server.
+    COBBLER_DNS_LOOKUP_ERROR = 6
+
     # Non-specific error inside Cobbler.
     GENERIC_COBBLER_ERROR = 99
 

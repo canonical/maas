@@ -12,11 +12,14 @@ __metaclass__ = type
 __all__ = []
 
 from random import Random
+import re
 from xmlrpclib import Fault
 
 import fixtures
+from maastesting.factory import factory
 from provisioningserver import cobblerclient
 from provisioningserver.cobblercatcher import ProvisioningError
+from provisioningserver.enum import PSERV_FAULT
 from provisioningserver.testing.fakecobbler import (
     fake_auth_failure_string,
     fake_object_not_found_string,
@@ -34,6 +37,7 @@ from testtools.testcase import (
     )
 from twisted.internet import defer
 from twisted.internet.defer import inlineCallbacks
+from twisted.internet.error import DNSLookupError
 from twisted.internet.task import Clock
 
 
@@ -341,6 +345,24 @@ class TestCobblerSession(TestCase):
         self.assertNotEqual(None, session.token)
         self.assertEqual(
             [('authenticate_me_first', session.token)], session.proxy.calls)
+
+    @inlineCallbacks
+    def test_dns_lookup_exception_handled(self):
+        url = factory.getRandomString()
+        session_args = (
+            'http://%s/%d' % (url, pick_number()),
+            factory.getRandomString(),  # username.
+            factory.getRandomString(),  # password.
+            )
+        session = make_recording_session(session_args=session_args)
+        failure = DNSLookupError(factory.getRandomString())
+        session.proxy.set_return_values([failure])
+        expected_exception = ProvisioningError(
+            faultCode=PSERV_FAULT.COBBLER_DNS_LOOKUP_ERROR,
+            faultString=url.lower())
+        expected_exception_re = re.escape(unicode(expected_exception))
+        with ExpectedException(ProvisioningError, expected_exception_re):
+            yield session.call('failing_method')
 
 
 class TestConnectionTimeouts(TestCase, fixtures.TestWithFixtures):

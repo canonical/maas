@@ -78,6 +78,13 @@ DETAILED_PRESENTATIONS = {
         If the error message is not clear, you may need to check the
         Cobbler logs in /var/log/cobbler/ or pserv.log.
         """,
+    PSERV_FAULT.COBBLER_DNS_LOOKUP_ERROR: """
+        The provisioning server was unable to resolve the Cobbler server's
+        DNS address: %(fault_string)s.
+
+        Has Cobbler been properly installed and is it accessible by the
+        provisioning server?  Check /var/log/cobbler/ and pserv.log.
+        """,
     8002: """
         Unable to reach provisioning server (%(fault_string)s).
 
@@ -103,6 +110,10 @@ SHORT_PRESENTATIONS = {
         """,
     PSERV_FAULT.GENERIC_COBBLER_ERROR: """
         Unknown problem encountered with the Cobbler server.
+        """,
+    PSERV_FAULT.COBBLER_DNS_LOOKUP_ERROR: """
+        Unable to resolve the Cobbler server's DNS address:
+        %(fault_string)s.
         """,
     8002: """
         Unable to reach provisioning server.
@@ -182,6 +193,7 @@ EXCEPTIONS_COMPONENTS = {
     PSERV_FAULT.COBBLER_AUTH_ERROR: COMPONENT.COBBLER,
     PSERV_FAULT.NO_SUCH_PROFILE: COMPONENT.IMPORT_ISOS,
     PSERV_FAULT.GENERIC_COBBLER_ERROR: COMPONENT.COBBLER,
+    PSERV_FAULT.COBBLER_DNS_LOOKUP_ERROR: COMPONENT.COBBLER,
     8002: COMPONENT.PSERV,
 }
 

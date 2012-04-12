@@ -31,9 +31,13 @@ __all__ = [
     ]
 
 from functools import partial
+from urlparse import urlparse
 import xmlrpclib
 
-from provisioningserver.cobblercatcher import convert_cobbler_exception
+from provisioningserver.cobblercatcher import (
+    convert_cobbler_exception,
+    ProvisioningError,
+    )
 from provisioningserver.enum import PSERV_FAULT
 from twisted.internet import reactor as default_reactor
 from twisted.internet.defer import (
@@ -41,6 +45,7 @@ from twisted.internet.defer import (
     inlineCallbacks,
     returnValue,
     )
+from twisted.internet.error import DNSLookupError
 from twisted.python.log import msg
 from twisted.web.xmlrpc import Proxy
 
@@ -248,6 +253,11 @@ class CobblerSession:
                 self.proxy.callRemote(method, *args))
         except xmlrpclib.Fault as e:
             raise convert_cobbler_exception(e)
+        except DNSLookupError as e:
+            hostname = urlparse(self.url).hostname
+            raise ProvisioningError(
+                faultCode=PSERV_FAULT.COBBLER_DNS_LOOKUP_ERROR,
+                faultString=hostname)
         returnValue(result)
 
     @inlineCallbacks
