@@ -1,0 +1,493 @@
+#!/bin/bash
+#
+# maas-import-ephemerals - sync and import ephemeral images
+#
+# Copyright (C) 2011-2012 Canonical
+#
+# Authors:
+#    Scott Moser <scott.moser@canonical.com>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as
+# published by the Free Software Foundation, version 3 of the License.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+VERBOSITY=0
+REMOTE_IMAGES_MIRROR="https://cloud-images.ubuntu.com"
+CONSOLE="ttyS0,9600n8"
+EPH_KOPTS_CONSOLE="console=$CONSOLE"
+EPH_KOPTS_ISCSI="ip=dhcp iscsi_target_name=@@iscsi_target@@ iscsi_target_ip=@@iscsi_target_ip@@ iscsi_target_port=3260"
+EPH_KOPTS_ROOT="root=LABEL=cloudimg-rootfs ro"
+EPH_KOPTS_LOGGING="log_host=@@server_ip@@ log_port=514"
+EPH_UPDATE_CMD="maas-cloudimg2ephemeral"
+TARGET_NAME_PREFIX="iqn.2004-05.com.ubuntu:maas:"
+DATA_DIR="/var/lib/maas/ephemeral"
+CONFIG="/etc/maas/import_ephemerals"
+RELEASES="precise"
+ARCHES="amd64 i386"
+BUILD_NAME="server"
+STREAM="released"
+KSDIR="/var/lib/cobbler/kickstarts"
+KICKSTART="$KSDIR/maas-commissioning.preseed"
+SYS_TGT_CONF="/etc/tgt/targets.conf"
+
+# DATA_DIR layout is like:
+#   tgt.conf
+#   tgt.conf.d/
+#     <name>.conf ->
+#        ../release/stream/arch/serial.conf
+#   release/
+#     stream/
+#       arch/
+#         serial/
+#           kernel
+#           disk.img
+#           initrd
+#           my.conf
+
+error() { echo "$@" 1>&2; }
+errorp() { printf "$@" 1>&2; }
+fail() { [ $# -eq 0 ] || error "$@"; exit 1; }
+failp() { [ $# -eq 0 ] || errorp "$@"; exit 1; }
+
+Usage() {
+	cat <<EOF
+Usage: ${0##*/} [ options ] <<ARGUMENTS>>
+
+   Import ephemeral (commissioning) images into maas
+   Settings are read from /etc/maas/maas_import_ephemerals
+
+   options:
+      -i | --import       initial import or freshen the images
+      -c | --update-check check existing imported data versus available
+                          in mirror.  exits 0 if an update is needed or
+                          an initial import is needed.
+      -u | --update       update parameters on cobbler profiles per config
+EOF
+}
+
+bad_Usage() { Usage 1>&2; [ $# -eq 0 ] || error "$@"; exit 1; }
+cleanup() {
+	[ -z "${TEMP_D}" -o ! -d "${TEMP_D}" ] || rm -Rf "${TEMP_D}"
+}
+
+debug() {
+	local level=${1}; shift;
+	[ "${level}" -gt "${VERBOSITY}" ] && return
+	error "${@}"
+}
+arch2u() {
+	# arch2ubuntu
+	_RET=$1
+	case "$1" in
+		i?86) _RET=i386;;
+		x86_64) _RET=amd64;;
+	esac
+}
+arch2cob() {
+	# arch 2 cobbler arch
+	_RET=$1
+	case "$1" in
+		i?86) _RET=i386;;
+		amd64) _RET=x86_64;;
+	esac
+}
+query_remote() {
+	# query /query data at REMOTE_IMAGES_MIRROR
+	# returns 7 values prefixed with 'r_'
+	local iarch=$1 irelease=$2 istream=$3 out=""
+	local burl="${REMOTE_IMAGES_MIRROR}/query"
+	local url="$burl/$irelease/$istream/${STREAM}-dl.current.txt"
+	mkdir -p "$TEMP_D/query"
+	local target="$TEMP_D/query/$release.$stream"
+	if [ ! -f "$TEMP_D/query/$release.$stream" ]; then
+		wget -q "$url" -O "$target.tmp" && mv "$target.tmp" "$target" ||
+			{ error "failed to get $url"; return 1; }
+	fi
+
+	r_release=""; r_stream=""; r_label=""; r_serial="";
+	r_arch=""; r_url=""; r_name=""
+
+	out=$(awk '-F\t' '$1 == release && $2 == stream && $5 == arch { print $3, $4, $6, $7 }' \
+		"arch=$iarch" "release=$irelease" "stream=$istream" \
+		"$target") && [ -n "$out" ] ||
+		return 1
+
+	set -- ${out}
+	r_release=$irelease
+	r_stream=$istream
+	r_label=$1;
+	r_serial=$2;
+	r_arch=$iarch
+	r_url=$3
+	r_name=$4
+	return
+}
+
+query_local() {
+	local iarch=$1 irelease=$2 istream=$3 out=""
+	local label="" name="" serial="" url=""
+
+	local found=""
+	for i in "${DATA_DIR}/"$irelease/$istream/$iarch/*/info; do
+		[ -f "$i" ] && found=$i
+	done
+	found=$(LC_ALL=C;
+		cd "${DATA_DIR}/$irelease/$istream/$iarch" 2>/dev/null || exit 0;
+		for d in [0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]*; do
+			[ -f "$d/info" ] && f=$d; done;
+		[ -n "$f" ] && echo "$PWD/$f/info")
+
+	l_release=""; l_stream=""; l_label=""; l_serial="";
+	l_arch=""; l_url=""; l_name=""
+	if [ -n "$found" ]; then
+		. "$found"
+		l_release="$release";
+		l_stream="$stream";
+		l_label="$label";
+		l_serial="$serial";
+		l_arch="$arch";
+		l_url="$url";
+		l_name="$name";
+		l_dir="${found%/*}";
+	fi
+}
+serial_gt() {
+	# is $1 a larger serial than $2 ?
+	local a=${1:-0} b=${2:-0}
+	case "$a" in
+		*.[0-9]) a="${a%.*}${a##*.}";;
+	esac
+	case "$b" in
+		*.[0-9]) b="${b%.*}${b##*.}";;
+	esac
+	[ $a -gt $b ]
+}
+
+prep_dir() {
+	local wd="$1" exdir="" tarball=""
+	shift
+	local release=$1 stream=$2 label=$3 serial=$4 arch=$5 url=$6 name=$7
+	local furl="$REMOTE_IMAGES_MIRROR/$url"
+
+	mkdir -p "$wd"
+	cat > "$wd/info" <<EOF
+release=$release
+stream=$stream
+label=$label
+serial=$serial
+arch=$arch
+url=$url
+name=$name
+EOF
+
+	# download
+	local cachepath="${TARBALL_CACHE_D}/${name}.tar.gz" rmtar=""
+	if [ -f "$cachepath" ]; then
+		tarball="${cachepath}"
+	elif [ -n "$TARBALL_CACHE_D" ]; then
+		mkdir -p "$TARBALL_CACHE_D"
+		debug 1 "downloading $name from $furl to local cache"
+		wget "$furl" --progress=dot:mega -O "${cachepath}.part$$" &&
+			mv "$cachepath.part$$" "$cachepath" || {
+			rm "$cachepath.part$$"
+			error "failed to download $furl";
+			return 1;
+		}
+		tarball="${cachepath}"
+	else
+		debug 1 "downloading $name from $furl"
+		tarball="$wd/dist.tar.gz"
+		wget "$furl" --progress=dot:mega -O "${tarball}" ||
+			{ error "failed to download $furl"; return 1; }
+		rmtar="$tarball"
+	fi
+
+	# extract
+	exdir="$wd/.xx"
+	mkdir -p "$exdir" &&
+		debug 1 "extracting tarball" &&
+		tar -Sxzf - -C  "$exdir" < "$tarball" ||
+		{ error "failed to extract tarball from $furl"; return 1; }
+
+	local x="" img="" kernel="" initrd=""
+	for x in "$exdir/"*.img; do
+		[ -f "$x" ] && img="$x" && break
+	done
+
+	for x in "$exdir/kernel" "$exdir/"*-vmlinuz*; do
+		[ -f "$x" ] && kernel="$x" && break
+	done
+
+	for x in "$exdir/initrd" "$exdir/"*-initrd*; do
+		[ -f "$x" ] && initrd="$x" && break
+	done
+
+	[ -n "$img" ] || { error "failed to find image in $furl"; return 1; }
+	mv "$img" "$wd/disk.img" ||
+		{ error "failed to move extracted image to $wd/disk.img"; return 1; }
+
+	[ -z "$kernel" ] || mv "$kernel" "$wd/kernel" ||
+		{ error "failed to move extracted kernel to $wd/kernel"; return 1; }
+
+	[ -z "$initrd" ] || mv "$initrd" "$wd/initrd" ||
+		{ error "failed to move extracted kernel to $wd/initrd"; return 1; }
+
+	rm -Rf "$exdir" || { error "failed to cleanup extract dir"; return 1; }
+	{ [ -z "$rmtar" ] || rm "$rmtar"; } ||
+		{ error "failed to remove temporary tarball $rmtar"; return 1; }
+
+	if [ -n "$EPH_UPDATE_CMD" ]; then
+		# update
+		debug 1 "invoking: ${EPH_UPDATE_CMD[*]} ./disk.img ./kernel ./initrd"
+		"${EPH_UPDATE_CMD[@]}" "$wd/disk.img" "$wd/kernel" "$wd/initrd" ||
+			{ error "failed to apply updates to $img"; return 1; }
+	else
+		[ -n "$kernel" -a -n "$initrd" ] || {
+			error "missing kernel or initrd in tarball. set \$EPH_UPDATE_CMD";
+			return 1;
+		}
+	fi
+
+	return 0
+}
+
+write_tgt_conf() {
+	local file="$1" target_name="$2" image="$3"
+	shift 2;
+	local release=$1 stream=$2 label=$3 serial=$4 arch=$5 url=$6 name=$7
+	cat > "$file" <<EOF
+<target ${target_name}>
+    readonly 1
+    backing-store "$image"
+</target>
+EOF
+}
+
+cobbler_has() {
+	local noun="$1" name="$2" out=""
+
+	out=$(cobbler "$noun" find "--name=$name" 2>/dev/null) &&
+		[ "$out" = "$name" ]
+}
+
+cobbler_add_update() {
+	# cobbler_add_update(distro_name, profile_name, 
+	#					 release, arch, kopts, kickstart,
+	#                    kernel, initrd)
+	local distro="$1" profile="$2" release="$3" arch="$4"
+	local kernel="$5" initrd="$6" kopts="$7" kickstart="$8" 
+	local op
+	
+	cobbler_has distro "$distro" && op="edit" || op="add"
+	
+	cobbler distro "$op" "--name=$distro" --breed=ubuntu \
+		"--os-version=$release" "--arch=$arch" \
+		"--kernel=$kernel" "--initrd=$initrd" ||
+		{ error "failed to $op $distro"; return 1; }
+
+	cobbler_has profile "$profile" && op="edit" || op="add"
+
+	cobbler profile "$op" "--name=$profile" "--distro=$distro" \
+		--kopts="$kopts" "--kickstart=$kickstart" ||
+		{ error "failed to $op $profile"; return 1; }
+
+	return 0
+}
+
+replace() {
+	# replace(input, key1, value1, key2, value2, ...)
+	local input="$1" key="" val=""
+	shift
+	while [ $# -ne 0 ]; do
+		input=${input//$1/$2}
+		shift 2
+	done
+	_RET=${input}
+}
+
+short_opts="hciuv"
+long_opts="help,import,update,update-check,verbose"
+getopt_out=$(getopt --name "${0##*/}" \
+	--options "${short_opts}" --long "${long_opts}" -- "$@") &&
+	eval set -- "${getopt_out}" ||
+	bad_Usage
+
+check=0
+import=0
+update=0
+
+while [ $# -ne 0 ]; do
+	cur=${1}; next=${2};
+	case "$cur" in
+		-h|--help) Usage ; exit 0;;
+		-v|--verbose) VERBOSITY=$((${VERBOSITY}+1));;
+		-i|--import) import=1;;
+		-c|--update-check) check=1;;
+		-u|--update) update=1;;
+		--) shift; break;;
+	esac
+	shift;
+done
+
+[ $import -eq 0 -a $check -eq 0 -a $update -eq 0 ] && import=1
+[ $(($import + $check + $update)) -eq 0 ] && import=1
+
+[ $(($import + $check + $update)) -eq 1 ] ||
+	bad_Usage "only one of --update-check, --update, --import may be given"
+
+[ ! -f "$CONFIG" ] || . "$CONFIG"
+[ ! -f ".${CONFIG}" ] || . ".${CONFIG}"
+
+# get default server ip
+[ -n "$SERVER_IP" ] ||
+	_ip=$(awk '$1 == "server:" { print $2 }' /etc/cobbler/settings) ||
+	fail "must set SERVER_IP to cobbler server"
+
+SERVER_IP=${SERVER_IP:-${_ip}}
+[ -n "${SERVER_IP}" ] &&
+	KOPTS="$KOPTS log_host=$SERVER_IP log_port=514"
+
+ISCSI_TARGET_IP=${ISCSI_TARGET_IP:-${SERVER_IP}}
+[ -n "$ISCSI_TARGET_IP" ] || fail "ISCSI_TARGET_IP must have a value"
+
+[ -f "$KICKSTART" ] ||
+	fail "kickstart $KICKSTART is not a file"
+
+mkdir -p "$DATA_DIR" "$DATA_DIR/.working" ||
+	fail "failed to make $DATA_DIR"
+
+TEMP_D=$(mktemp -d "$DATA_DIR/.working/${0##*/}.XXXXXX") ||
+   fail "failed to make tempdir"
+trap cleanup EXIT
+
+tgt_conf_d="$DATA_DIR/tgt.conf.d"
+tgt_conf="${DATA_DIR}/tgt.conf"
+
+mkdir -p "$tgt_conf_d" ||
+	fail "failed to make directories"
+if [ ! -f "${tgt_conf}" ]; then
+	cat > "${tgt_conf}" <<EOF
+include ${DATA_DIR}/tgt.conf.d/*.conf
+default-driver iscsi
+EOF
+fi
+
+updates=0
+for release in $RELEASES; do
+	for arch in $ARCHES; do
+		arch2cob "$arch"; arch_c=$_RET
+		arch2u "$arch"; arch_u=$_RET
+
+		query_local "$arch_u" "$release" "$BUILD_NAME" ||
+			fail "failed to query local for $release/$arch"
+		query_remote "$arch_u" "$release" "$BUILD_NAME" ||
+			fail "remote query of $REMOTE_IMAGES_MIRROR failed"
+
+		if [ $update -eq 0 -o -z "$l_dir" ]; then
+			serial_gt "$r_serial" "$l_serial" || {
+				debug 1 "$release-${arch_u} in ${l_dir} is up to date";
+				continue;
+			}
+
+			# an update is needed remote serial is newer than local
+			updates=$(($updates+1))
+
+			# check only
+			[ $check -eq 0 ] || continue
+
+			debug 1 "updating $release-$arch ($l_name => $r_name)"
+			wd="${TEMP_D}/$release/$arch"
+			prep_dir "$wd" \
+				"$r_release" "$r_stream" "$r_label" \
+				"$r_serial" "$r_arch" "$r_url" "$r_name" ||
+				fail "failed to prepare image for $release/$arch"
+
+			target_name="${TARGET_NAME_PREFIX}${r_name}"
+
+			final_d="${r_release}/${r_stream}/${r_arch}/${r_serial}"
+			fpfinal_d="${DATA_DIR}/${final_d}"
+			mkdir -p "${fpfinal_d}"
+
+			mv "$wd/"* "${fpfinal_d}/" ||
+				fail "failed to move contents to final directory ${fpfinal_d}"
+			name="${r_name}"
+		else
+			fpfinal_d="${l_dir}"
+			final_d="${l_release}/${l_stream}/${l_arch}/${l_serial}"
+
+			name="${l_name}"
+			target_name="${TARGET_NAME_PREFIX}${name}"
+			debug 1 "updating ${release}-${arch} $final_d"
+		fi
+
+		rel_tgt="../${final_d}/tgt.conf"
+
+		# iscsi_update
+		write_tgt_conf "${fpfinal_d}/tgt.conf" "$target_name" \
+			"${fpfinal_d}/disk.img" ||
+			fail "failed to write tgt.conf for $release/$arch"
+
+		ln -sf "$rel_tgt" "${tgt_conf_d}/${name}.conf" ||
+			fail "failed to symlink ${name}.conf into place"
+
+		ver_out="${TEMP_D}/verify.${target_name}"
+		tgt-admin --conf "$SYS_TGT_CONF" --update "${target_name}" &&
+			tgt-admin --conf "$SYS_TGT_CONF" --show > "${ver_out}" &&
+			grep -q "^Target [0-9][0-9]*: ${target_name}" "${ver_out}" || {
+			mv "${fpfinal_d}/info" "${fpfinal_d}/info.failed"
+			tgt-admin --conf "$SYS_TGT_CONF" --delete "$target_name"
+			rm "${tgt_conf_d}/${name}.conf"
+			fail "failed tgt-admin add for $name"
+		}
+
+		# cobbler_update
+		kopts_in="$EPH_CONSOLE_KOPTS $EPH_KOPTS_ISCSI $EPH_KOPTS_ROOT $EPH_KOPTS_LOGGING"
+		replace "${kopts_in}" \
+			"@@server_ip@@" "$SERVER_IP" \
+			"@@iscsi_target@@" "${target_name}" \
+			"@@iscsi_target_ip@@" "${ISCSI_TARGET_IP}"
+		kopts=$_RET
+
+		distro="$release-${arch_c}-maas-ephemeral"
+		profile="maas-${release}-${arch_c}-commissioning"
+		kernel="$fpfinal_d/kernel"
+		initrd="$fpfinal_d/initrd"
+		debug 1 "updating profile $profile, distro $distro kopts:${kopts}"
+		debug 2 cobbler_add_update "$distro" "$profile" "$release" "${arch_c}" \
+			"$kernel" "$initrd" "$kopts" "$KICKSTART"
+		cobbler_add_update "$distro" "$profile" "$release" "${arch_c}" \
+			"$kernel" "$initrd" "$kopts" "$KICKSTART" || {
+				mv "${fpfinal_d}/info" "${fpfinal_d}/info.failed"
+				tgt-admin --conf "$SYS_TGT_CONF" --delete "$target_name"
+				rm "${tgt_conf_d}/${name}.conf";
+				fail "failed to update cobbler for $profile/$distro"
+			}
+	done
+done
+
+if [ $check -eq 1 ]; then
+	# if --update-check, but no updates needed, exit 3
+	[ $updates_needed -eq 0 ] && exit 3
+	# if updates are needed, exit 0
+	exit 0
+fi
+
+cobbler sync
+
+## cleanup
+# here, go through anything non-current,
+#   * remove the tgt config
+#   * if tgt-show has entry:
+#     * remove from tgt-admin by name && remove directories
+#   * else
+#     * remove directory
+
+# vi: ts=4 noexpandtab

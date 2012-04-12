@@ -40,6 +40,7 @@ fi
 [ -n "$CONSOLE" ] || CONSOLE="ttyS0,9600n8"
 [ -n "$KOPTS" ] || KOPTS="priority=$PRIORITY locale=$LOCALE netcfg/choose_interface=$INTERFACE console=$CONSOLE"
 [ -n "$ENLIST_PROFILE" ] || ENLIST_PROFILE="maas-enlist"
+[ -n "$IMPORT_EPHEMERALS" ] || IMPORT_EPHEMERALS=1
 if [ -n "$SERVER_IP" ]; then
 	KOPTS="$KOPTS log_host=$SERVER_IP log_port=514"
 else
@@ -68,6 +69,8 @@ update_settings(){
 			fi
 		done
 	done
+
+	[ "$IMPORT_EPHEMERALS" = "0" ] || maas-import-ephemerals --update
 }
 
 import_isos(){
@@ -93,6 +96,8 @@ import_isos(){
 			fi
 		done
 	done
+
+	[ "${IMPORT_EPHEMERALS}" = "0" ] || maas-import-ephemerals --import
 }
 
 add_enlist_profile(){

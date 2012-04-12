@@ -1,0 +1,493 @@
+#!/bin/bash
+#
+# maas-cloudimg2ephemeral - update a cloud image to make it sufficient
+#                           for use as a maas ephemeral image
+#
+# Copyright (C) 2011-2012 Canonical
+#
+# Authors:
+#    Scott Moser <scott.moser@canonical.com>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as
+# published by the Free Software Foundation, version 3 of the License.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+VERBOSITY=0
+
+error() { echo "$@" 1>&2; }
+errorp() { printf "$@" 1>&2; }
+fail() { [ $# -eq 0 ] || error "$@"; exit 1; }
+failp() { [ $# -eq 0 ] || errorp "$@"; exit 1; }
+
+Usage() {
+	cat <<EOF
+Usage: ${0##*/} [ options ] disk kernel initrd
+
+   Update the image 'disk', kernel 'kernel' and initrd 'initrd'
+   
+   Expects to receive in a cloudimg disk image with no partition
+   table, and will update it for maas ephemeral use.
+
+   options:
+      -v | --verbose      increase verbosity
+EOF
+}
+
+bad_Usage() { Usage 1>&2; [ $# -eq 0 ] || error "$@"; exit 1; }
+cleanup() {
+	[ -z "${TEMP_D}" -o ! -d "${TEMP_D}" ] || {
+		unmount_under "${TEMP_D}" &&
+		rm -Rf "${TEMP_D}"
+	}
+}
+
+debug() {
+	local level=${1}; shift;
+	[ "${level}" -gt "${VERBOSITY}" ] && return
+	error "${@}"
+}
+
+unmount_under() {
+	# unmount_under(dir)
+	# unmount all mounts under 'dir'
+	[ -f /proc/mounts ] ||
+		{ error "/proc/mounts not a file"; return 1; }
+	tac /proc/mounts | sh -c '
+		under=$1
+		while read s mp t opt a b ; do 
+			[ "${mp#${under}}" != "${mp}" ] || continue; 
+			umount $mp || 
+				{ echo "failed umount $mp, waiting, trying again" 1>&2; 
+				  sleep 10;
+				  umount $mp || exit 1; }
+		done' -- "$1"
+}
+
+loop_mount() {
+	# Create more loop nodes, if necessary
+	local mounts=$(grep -c /dev/loop /proc/mounts) || mounts=0
+	local loops=$(ls /dev/loop* | wc -l) || loops=0
+	if [ $mounts -ge $loops ]; then
+		mknod -m 660 /dev/loop$loops b 7 $loops &&
+		chown root:disk /dev/loop$loops ||
+			return 1
+	fi
+	# Do the loop mount
+	mount -o loop "$1" "$2"
+}
+
+mount_callback_umount() {
+	# mount_callback_umount(img_or_device, func, args)
+	# mount the image given, call function with args,
+	# umount the image, return function's exit value
+	local device="$1" cb="$2" mp="" opts="" ret=0 m=""
+	shift 2;
+	mp=$(mktemp -d "$TEMP_D/mp.XXXXXX")
+	if [ -b "$device" ]; then
+		mount $opts "$device" "$mp" || return 1
+	else
+		loop_mount "$device" "$mp" || return 1
+	fi
+	for m in "/proc" "/sys"; do
+		[ -d "$mp/$m" ] || continue
+		mount --bind "$m" "$mp/$m" || {
+			error "failed to mount $mp/$m";
+			unmount_under "$mp";
+			return 1;
+		}
+	done
+	"$cb" "$mp" "$@"
+	ret=$?
+	unmount_under "$mp" && rmdir "$mp" ||
+		{ error "WARN! failed to umount $device from $mp"; return 2; }
+	return $ret
+}
+
+add_initramfs_hooks() {
+	local dir="$1" idir="" hook="" script=""
+	idir="$dir/etc/initramfs-tools"
+	mkdir -p "$idir/hooks" "$idir/scripts/init-bottom" ||
+		return 1
+	hook="$idir/hooks/overlay-ro"
+	cat > "$hook" <<"ENDEND"
+#!/bin/sh
+set -e
+
+PREREQS=""
+case $1 in
+	prereqs) echo "${PREREQS}"; exit 0;;
+esac
+
+. /usr/share/initramfs-tools/hook-functions
+
+##
+manual_add_modules overlayfs
+force_load overlayfs
+ 
+# vi: ts=4 noexpandtab
+ENDEND
+
+	[ $? -eq 0 ] || { error "failed to write $hook"; return 1; }
+
+	script="$idir/scripts/init-bottom/root-ro"
+	cat > "$script" <<"ENDEND"
+#!/bin/sh
+#  Copyright, 2012 Axel Heider
+#
+#  Based on scrpts from
+#    Sebastian P.
+#    Nicholas A. Schembri State College PA USA
+#
+#  This program is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation, either version 3 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see
+#    <http://www.gnu.org/licenses/>.
+#
+#
+# Tested with Ubuntu 11.10
+#
+# Notes:
+#   * no changes to the root fs are made by this script. 
+#   * if /home/[user] is on the RO root fs, files are in ram and not saved.
+#
+# Install:
+#  put this file in /etc/initramfs-tools/scripts/init-bottom/root-ro
+#  chmod 0755 root-ro
+#  optional: clean up menu.lst, update-grub
+#  update-initramfs -u
+#
+# Disable read-only root fs
+#   * option 1: kernel boot parameter "disable-root-ro=true"
+#   * option 2: create file "/disable-root-ro"
+#
+# ROOT_RO_DRIVER variable controls which driver isused for the ro/rw layering
+#   Supported drivers are: overlayfs, aufs
+#  the kernel parameter "root-ro-driver=[driver]" can be used to initialize
+#  the variable ROOT_RO_DRIVER. If nothing is given, overlayfs is used.
+#
+
+# no pre requirement
+PREREQ=""
+
+prereqs()
+{
+    echo "${PREREQ}"
+}
+
+case "$1" in
+    prereqs)
+    prereqs
+    exit 0
+    ;;
+esac
+
+. /scripts/functions
+
+MYTAG="root-ro"
+DISABLE_MAGIC_FILE="/disable-root-ro"
+
+# parse kernel boot command line 
+ROOT_RO_DRIVER=
+DISABLE_ROOT_RO=
+for CMD_PARAM in $(cat /proc/cmdline); do 
+    case ${CMD_PARAM} in 
+        disable-root-ro=*)
+            DISABLE_ROOT_RO=${CMD_PARAM#disable-root-ro=}
+            ;;
+        root-ro-driver=*)
+            ROOT_RO_DRIVER=${CMD_PARAM#root-ro-driver=}
+            ;;
+    esac
+done
+
+# check if read-only root fs is disabled
+if [ ! -z "${DISABLE_ROOT_RO}" ]; then
+    log_warning_msg "${MYTAG}: disabled, found boot parameter disable-root-ro=${DISABLE_ROOT_RO}"
+    exit 0
+fi
+if [ -e "${rootmnt}${DISABLE_MAGIC_FILE}" ]; then
+    log_warning_msg "${MYTAG}: disabled, found file ${rootmnt}${DISABLE_MAGIC_FILE}"
+    exit 0
+fi
+
+# generic settings 
+# ${ROOT} and ${rootmnt} are predefined by caller of this script. Note that
+# the root fs ${rootmnt} it mounted readonly on the initrams, which fits nicely
+# for our purposes.
+ROOT_RW=/mnt/root-rw
+ROOT_RO=/mnt/root-ro
+
+# check if ${ROOT_RO_DRIVER} is defined, otherwise set default 
+if [ -z "${ROOT_RO_DRIVER}" ]; then
+    ROOT_RO_DRIVER=overlayfs
+fi
+# settings based in ${ROOT_RO_DRIVER}, stop here if unsupported. 
+case ${ROOT_RO_DRIVER} in
+    overlayfs)
+        MOUNT_PARMS="-t overlayfs -o lowerdir=${ROOT_RO},upperdir=${ROOT_RW} overlayfs-root ${rootmnt}"
+        ;;
+    aufs)
+        MOUNT_PARMS="-t aufs -o dirs=${ROOT_RW}:${ROOT_RO}=ro aufs-root ${rootmnt}"
+        ;;
+    *)
+        panic "${MYTAG} ERROR: invalide ROOT_RO_DRIVER ${ROOT_RO_DRIVER}"
+        ;;
+esac
+
+
+# check if kernel module exists 
+modprobe -qb ${ROOT_RO_DRIVER}
+if [ $? -ne 0 ]; then
+    log_failure_msg "${MYTAG} ERROR: missing kernel module ${ROOT_RO_DRIVER}"
+    exit 0
+fi
+
+# make the mount point on the init root fs ${ROOT_RW}
+[ -d ${ROOT_RW} ] || mkdir -p ${ROOT_RW}
+if [ $? -ne 0 ]; then
+    log_failure_msg "${MYTAG} ERROR: failed to create ${ROOT_RW}"
+    exit 0
+fi
+
+# make the mount point on the init root fs ${ROOT_RO}
+[ -d ${ROOT_RO} ] || mkdir -p ${ROOT_RO}
+if [ $? -ne 0 ]; then
+    log_failure_msg "${MYTAG} ERROR: failed to create ${ROOT_RO}"
+    exit 0
+fi
+
+# mount a tempfs using the device name tmpfs-root at ${ROOT_RW}
+mount -t tmpfs tmpfs-root ${ROOT_RW}
+if [ $? -ne 0 ]; then
+    log_failure_msg "${MYTAG} ERROR: failed to create tmpfs"
+    exit 0
+fi
+
+
+# root is mounted on ${rootmnt}, move it to ${ROOT_RO}.
+mount --move ${rootmnt} ${ROOT_RO}
+if [ $? -ne 0 ]; then
+    log_failure_msg "${MYTAG} ERROR: failed to move root away from ${rootmnt} to ${ROOT_RO}"
+    exit 0
+fi
+
+# there is nothing left at ${rootmnt} now. So for any error we get we should
+# either do recovery to restore ${rootmnt} for drop to a initramfs shell using
+# "panic". Otherwise the boot process is very likely to fail with even more 
+# errors and leave the system in a wired state. 
+
+# mount virtual fs ${rootmnt} with rw-fs ${ROOT_RW} on top or ro-fs ${ROOT_RO}.
+mount ${MOUNT_PARMS}
+if [ $? -ne 0 ]; then
+    log_failure_msg "${MYTAG} ERROR: failed to create new ro/rw layerd ${rootmnt}"
+    # do recovery and try resoring the mount for ${rootmnt}
+    mount --move ${ROOT_RO} ${rootmnt}
+    if [ $? -ne 0 ]; then
+       # thats badm, drpo to s shell to let the user try fixing this
+       panic "${MYTAG} RECOVERY ERROR: failed to move ${ROOT_RO} back to ${rootmnt}"
+    fi
+    exit 0
+fi
+
+# now the real root fs is on ${ROOT_RO} of the init file system, our layered
+# root fs is set up at ${rootmnt}. So we can write anywhere in {rootmnt} and the
+# changes will end up in ${ROOT_RW} while ${ROOT_RO} it not touched. However 
+# ${ROOT_RO} and ${ROOT_RW} are on the initramfs root fs, which will be removed
+# an replaced by ${rootmnt}. Thus we must move ${ROOT_RO} and ${ROOT_RW} to the
+# rootfs visible later, ie. ${rootmnt}${ROOT_RO} and ${rootmnt}${ROOT_RO}.
+# Since the layered ro/rw is already up, these changes also end up on 
+# ${ROOT_RW} while ${ROOT_RO} is not touched.
+
+# move mount from ${ROOT_RO} to ${rootmnt}${ROOT_RO} 
+[ -d ${rootmnt}${ROOT_RO} ] || mkdir -p ${rootmnt}${ROOT_RO}
+mount --move ${ROOT_RO} ${rootmnt}${ROOT_RO}
+if [ $? -ne 0 ]; then
+    log_failure_msg "${MYTAG} ERROR: failed to move ${ROOT_RO} to ${rootmnt}${ROOT_RO}"
+    exit 0
+fi
+
+# move mount from ${ROOT_RW} to ${rootmnt}${ROOT_RW} 
+[ -d ${rootmnt}${ROOT_RW} ] || mkdir -p ${rootmnt}${ROOT_RW}
+mount --move ${ROOT_RW} ${rootmnt}${ROOT_RW}
+if [ $? -ne 0 ]; then
+    s "${MYTAG}: ERROR: failed to move ${ROOT_RW} to ${rootmnt}${ROOT_RW}"
+    exit 0
+fi
+
+# technically, everything is set up nicely now. Since ${rootmnt} had beend 
+# mounted read-only on the initfamfs already, ${rootmnt}${ROOT_RO} is it, too.
+# Now we init process could run - but unfortunately, we may have to prepare 
+# some more things here. 
+# Basically, there are two ways to deal with the read-only root fs. If the 
+# system is made aware of this, things can be simplified a lot.
+# If it is not, things need to be done to our best knowledge. 
+#
+# So we assume here, the system does not really know about our read-only root fs.
+#
+# Let's deal with /etc/fstab first. It usually contains an entry for the root 
+# fs, which is no longer valid now. We have to remove it and add our new 
+# ${ROOT_RO} entry. 
+# Remember we are still on the initramfs root fs here, so we have to work on
+# ${rootmnt}/etc/fstab. The original fstab is ${rootmnt}${ROOT_RO}/etc/fstab.
+ROOT_TYPE=$(cat /proc/mounts | grep ${ROOT} | cut -d' ' -f3)
+ROOT_OPTIONS=$(cat /proc/mounts | grep ${ROOT} | cut -d' ' -f4)
+cat <<EOF >${rootmnt}/etc/fstab
+#
+#  This fstab is in RAM, the real one can be found at ${ROOT_RO}/etc/fstab
+#  The original entry for '/' and all swap files have been removed.  The new 
+#  entry for the read-only the real root fs follows. Write access can be 
+#  enabled using:
+#    sudo mount -o remount,rw ${ROOT_RO}
+#  re-mounting it read-only is done using:
+#    sudo mount -o remount,ro ${ROOT_RO}
+#
+
+${ROOT} ${ROOT_RO} ${ROOT_TYPE} ${ROOT_OPTIONS} 0 0
+
+#
+#  remaining entries from the original ${ROOT_RO}/etc/fstab follow.
+#
+EOF
+if [ $? -ne 0 ]; then
+    log_failure_msg "${MYTAG} ERROR: failed to modify /etc/fstab (step 1)"
+    #exit 0
+fi
+
+#remove root entry and swap from fstab
+cat ${rootmnt}${ROOT_RO}/etc/fstab | grep -v ' / ' | grep -v swap >>${rootmnt}/etc/fstab
+if [ $? -ne 0 ]; then
+    log_failure_msg "${MYTAG} ERROR: failed to modify etc/fstab (step 2)"
+    #exit 0
+fi
+
+# now we are done. Additinal steps may be necessary depending on the actualy
+# distribution and/or its configuration. 
+
+log_success_msg "${MYTAG} sucessfully set up ro/tmpfs-rw layered root fs using ${ROOT_RO_DRIVER}"
+
+exit 0
+ENDEND
+	[ $? -eq 0 ] || { error "failed to write $script"; return 1; }
+	chmod 755 "$hook" "$script" ||
+		{ error "failed to chmod $hook, $script"; return 1; }
+}
+
+apply_updates() {
+	# apply_updates(dir, kernel_out, initramfs_out)
+	# update directory given, and pull out kernel and initramfs
+	# to given locations
+	local dir=$1 kernel_out=$2 initrd_out=$3
+	if [ -f "$dir/etc/resolv.conf" ]; then
+		mv "$dir/etc/resolv.conf" "$dir/etc/resolv.conf.dist" || return 1
+	fi
+	cp "/etc/resolv.conf" "$dir/etc/resolv.conf" ||
+		return 1
+
+	cat > "$dir/usr/sbin/policy-rc.d" <<"EOF"
+#!/bin/sh
+while true; do
+	case "$1" in
+		-*) shift ;;
+		makedev) exit 0 ;;
+		x11-common) exit 0 ;;
+		*) exit 101 ;;
+	esac
+done
+EOF
+	[ $? -eq 0 ] && chmod 755 "$dir/usr/sbin/policy-rc.d" ||
+		{ error "failed to write policy-rc.d"; return 1; }
+	
+	add_initramfs_hooks "$dir" || return
+
+	local prox="" apt_opts=""
+	out=$(apt-config shell prox Acquire::HTTP::Proxy) &&
+		eval $out && [ -n "$prox" ] &&
+		apt_opts="--option=Acquire::HTTP::Proxy=${prox}"
+
+	apt_opts="${apt_opts} --option=Dpkg::Options::=--force-confold"
+	[ -n "${apt_opts}" ] &&
+		debug 1 "using apt options ${apt_opts} for install"
+
+	LC_ALL=C DEBIAN_FRONTEND=noninteractive \
+		apt_opts="${apt_opts}" chroot "$dir" sh -c '
+		mkdir -p /etc/iscsi && touch /etc/iscsi/iscsi.initramfs &&
+		apt-get -q ${apt_opts} update &&
+		apt-get remove "linux.*virtual" ${apt_opts} --assume-yes &&
+		apt-get ${apt_opts} install -q -y linux-server open-iscsi ||
+			exit
+		k=""
+		for i in /boot/vmlinuz-*; do
+			[ "${i%-virtual}" = "${i}" ] && k=${i}; done
+		ver=${k##*/vmlinuz-}
+		mkinitramfs -o /tmp/initrd.img $ver &&
+		cp $k /tmp/kernel.img && chmod ugo+r /tmp/kernel.img' </dev/null
+	[ $? -eq 0 ] || {
+		error "failed to install packages or mkinitramfs in chroot";
+		return 1;
+	}
+
+	mv "$dir/tmp/kernel.img" "$kernel_out" &&
+		mv "$dir/tmp/initrd.img" "$initrd_out" ||
+		{ error "failed to copy kernels out"; return 1; }
+	
+	rm -f "$dir/etc/resolv.conf"
+	[ ! -e "$dir/etc/resolv.conf.dist" ] ||
+		mv "$dir/etc/resolv.conf.dist" "$dir/etc/resolv.conf" ||
+		{ error "failed to replace resolv.conf"; return 1; }
+
+	return 0
+}
+
+short_opts="hv"
+long_opts="help,verbose"
+getopt_out=$(getopt --name "${0##*/}" \
+	--options "${short_opts}" --long "${long_opts}" -- "$@") &&
+	eval set -- "${getopt_out}" ||
+	bad_Usage
+
+while [ $# -ne 0 ]; do
+	cur=${1}; next=${2};
+	case "$cur" in
+		-h|--help) Usage ; exit 0;;
+		-v|--verbose) VERBOSITY=$((${VERBOSITY}+1));;
+		--) shift; break;;
+	esac
+	shift;
+done
+
+[ $# -eq 3 ] ||
+	bad_Usage "expected image, kernel, ramdisk"
+
+img="$1"
+kernel="$2"
+initrd="$3"
+
+TEMP_D=$(mktemp -d "${TMPDIR:-/tmp}/${0##*/}.XXXXXX") ||
+	fail "failed to make tempdir"
+
+trap cleanup EXIT
+
+mount_callback_umount "$img" apply_updates \
+	"$kernel" "$initrd" ||
+	fail "failed to apply updates to $img"
+
+exit 0
+
+# vi: ts=4 noexpandtab

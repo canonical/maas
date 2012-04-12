@@ -6,3 +6,4 @@ RELEASES="precise"
 #INTERFACE="eth0"
 #CONSOLE="ttyS0,9600n8"
 #KOPTS="priority=$PRIORITY locale=$LOCALE netcfg/choose_interface=$INTERFACE console=$CONSOLE"
+#IMPORT_EPHEMERALS=1
