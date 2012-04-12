@@ -121,11 +121,11 @@ main() {
 
    if [ $numpass -eq $total ]; then
       ( cd "${OUT_D}" &&
-         signal $fargs OK "finished [$passed/$count]" )
+         signal $fargs OK "finished [$numpass/$total]" )
       return 0
    else
       ( cd "${OUT_D}" &&
-         signal $fargs OK "failed [$passed/$count] ($failed)" )
+         signal $fargs OK "failed [$numpass/$total] ($failed)" )
       return $(($count-$numpass))
    fi
 
