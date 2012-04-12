@@ -265,7 +265,7 @@ USE_REAL_PSERV = True
 # The location of the commissioning script that is executed on nodes as
 # part of commissioning.  Only override this if you know what you are
 # doing.
-COMMISSIONING_SCRIPT = 'etc/maas/commissioning.sh'
+COMMISSIONING_SCRIPT = 'etc/maas/commissioning-user-data'
 
 # Allow the user to override settings in maas_local_settings.
 import_local_settings()
