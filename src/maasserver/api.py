@@ -491,7 +491,7 @@ class NodesHandler(BaseHandler):
         """
         node = create_node(request)
         if request.user.is_superuser:
-            node.accept_enlistment()
+            node.accept_enlistment(request.user)
         return node
 
     @api_exported('accept', 'POST')
@@ -529,7 +529,8 @@ class NodesHandler(BaseHandler):
                 "You don't have the required permission to accept the "
                 "following node(s): %s." % (
                     ', '.join(system_ids - ids)))
-        return filter(None, [node.accept_enlistment() for node in nodes])
+        return filter(
+            None, [node.accept_enlistment(request.user) for node in nodes])
 
     @api_exported('list', 'GET')
     def list(self, request):

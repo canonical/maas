@@ -272,13 +272,7 @@ def start_node(node, user):
 NODE_ACTIONS = {
     NODE_STATUS.DECLARED: [
         {
-            'display': "Accept Enlisted node",
-            'permission': NODE_PERMISSION.ADMIN,
-            'execute': lambda node, user: Node.accept_enlistment(node),
-            'message': "Node accepted into the pool."
-        },
-        {
-            'display': "Commission node",
+            'display': "Accept & commission",
             'permission': NODE_PERMISSION.ADMIN,
             'execute': lambda node, user: Node.start_commissioning(node, user),
             'message': "Node commissioning started."

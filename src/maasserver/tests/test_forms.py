@@ -269,7 +269,7 @@ class TestNodeActionForm(TestCase):
         form = get_action_form(admin)(node)
         actions = form.available_action_methods(node, admin)
         self.assertEqual(
-            ["Accept Enlisted node", "Commission node"],
+            ["Accept & commission"],
             [action['display'] for action in actions])
         # All permissions should be ADMIN.
         self.assertEqual(
@@ -304,7 +304,7 @@ class TestNodeActionForm(TestCase):
         form = get_action_form(admin)(node)
 
         self.assertItemsEqual(
-            ["Accept Enlisted node", "Commission node"],
+            ["Accept & commission"],
             form.action_dict)
 
     def test_get_action_form_for_user(self):
@@ -320,10 +320,10 @@ class TestNodeActionForm(TestCase):
         admin = factory.make_admin()
         node = factory.make_node(status=NODE_STATUS.DECLARED)
         form = get_action_form(admin)(
-            node, {NodeActionForm.input_name: "Accept Enlisted node"})
+            node, {NodeActionForm.input_name: "Accept & commission"})
         form.save()
 
-        self.assertEqual(NODE_STATUS.READY, node.status)
+        self.assertEqual(NODE_STATUS.COMMISSIONING, node.status)
 
     def test_get_action_form_for_user_save(self):
         user = factory.make_user()

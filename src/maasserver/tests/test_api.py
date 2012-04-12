@@ -386,9 +386,9 @@ class AdminLoggedInEnlistmentAPITest(EnlistmentAPITest,
     # This is an actual test case that uses the EnlistmentAPITest mixin
     # and adds enlistement tests specific to admin users.
 
-    def test_POST_admin_creates_node_in_ready_state(self):
-        # When an admin user enlists a node, it goes into the Ready state.
-        # This will change once we start doing proper commissioning.
+    def test_POST_admin_creates_node_in_commissioning_state(self):
+        # When an admin user enlists a node, it goes into the
+        # Commissioning state.
         response = self.client.post(
             self.get_uri('nodes/'),
             {
@@ -401,7 +401,8 @@ class AdminLoggedInEnlistmentAPITest(EnlistmentAPITest,
         self.assertEqual(httplib.OK, response.status_code)
         system_id = json.loads(response.content)['system_id']
         self.assertEqual(
-            NODE_STATUS.READY, Node.objects.get(system_id=system_id).status)
+            NODE_STATUS.COMMISSIONING,
+            Node.objects.get(system_id=system_id).status)
 
     def test_POST_returns_limited_fields(self):
         response = self.client.post(
@@ -1121,7 +1122,7 @@ class TestNodesAPI(APITestCase):
         # This will change when we add provisioning.  Until then,
         # acceptance gets a node straight to Ready state.
         self.become_admin()
-        target_state = NODE_STATUS.READY
+        target_state = NODE_STATUS.COMMISSIONING
 
         node = factory.make_node(status=NODE_STATUS.DECLARED)
         response = self.client.post(
@@ -1199,7 +1200,7 @@ class TestNodesAPI(APITestCase):
         # This will change when we add provisioning.  Until then,
         # acceptance gets a node straight to Ready state.
         self.become_admin()
-        target_state = NODE_STATUS.READY
+        target_state = NODE_STATUS.COMMISSIONING
 
         nodes = [
             factory.make_node(status=NODE_STATUS.DECLARED)

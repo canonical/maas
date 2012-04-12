@@ -207,13 +207,10 @@ class NodeTest(TestCase):
     def test_accept_enlistment_gets_node_out_of_declared_state(self):
         # If called on a node in Declared state, accept_enlistment()
         # changes the node's status, and returns the node.
-
-        # This will change when we add commissioning.  Until then,
-        # acceptance gets a node straight to Ready state.
-        target_state = NODE_STATUS.READY
+        target_state = NODE_STATUS.COMMISSIONING
 
         node = factory.make_node(status=NODE_STATUS.DECLARED)
-        return_value = node.accept_enlistment()
+        return_value = node.accept_enlistment(factory.make_user())
         self.assertEqual((node, target_state), (return_value, node.status))
 
     def test_accept_enlistment_does_nothing_if_already_accepted(self):
@@ -229,7 +226,7 @@ class NodeTest(TestCase):
             for status in accepted_states}
 
         return_values = {
-            status: node.accept_enlistment()
+            status: node.accept_enlistment(factory.make_user())
             for status, node in nodes.items()}
 
         self.assertEqual(
@@ -257,7 +254,7 @@ class NodeTest(TestCase):
         exceptions = {status: False for status in unacceptable_states}
         for status, node in nodes.items():
             try:
-                node.accept_enlistment()
+                node.accept_enlistment(factory.make_user())
             except NodeStateViolation:
                 exceptions[status] = True
 

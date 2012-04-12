@@ -661,33 +661,6 @@ class NodeViewsTest(LoggedInTestCase):
         self.assertEqual(httplib.FOUND, response.status_code)
         self.assertAttributes(node, params)
 
-    def test_view_node_admin_has_button_to_accept_enlistement(self):
-        self.become_admin()
-        node = factory.make_node(status=NODE_STATUS.DECLARED)
-        node_link = reverse('node-view', args=[node.system_id])
-        response = self.client.get(node_link)
-        doc = fromstring(response.content)
-        inputs = [
-            input for input in doc.cssselect('form#node_actions input')
-            if input.name == NodeActionForm.input_name]
-
-        self.assertIn(
-            "Accept Enlisted node", [input.value for input in inputs])
-
-    def test_view_node_POST_admin_can_enlist_node(self):
-        self.become_admin()
-        node = factory.make_node(status=NODE_STATUS.DECLARED)
-        node_link = reverse('node-view', args=[node.system_id])
-        response = self.client.post(
-            node_link,
-            data={
-                NodeActionForm.input_name: "Accept Enlisted node",
-            })
-
-        self.assertEqual(httplib.FOUND, response.status_code)
-        self.assertEqual(
-            NODE_STATUS.READY, reload_object(node).status)
-
     def test_view_node_has_button_to_accept_enlistement_for_user(self):
         # A simple user can't see the button to enlist a declared node.
         node = factory.make_node(status=NODE_STATUS.DECLARED)
@@ -722,7 +695,7 @@ class NodeViewsTest(LoggedInTestCase):
         response = self.client.post(
             node_link,
             data={
-                NodeActionForm.input_name: "Commission node",
+                NodeActionForm.input_name: "Accept & commission",
             })
         self.assertEqual(httplib.FOUND, response.status_code)
         self.assertEqual(
@@ -738,20 +711,11 @@ class NodeViewsTest(LoggedInTestCase):
         response = self.client.get(node_link)
         return response
 
-    def test_enlist_action_displays_message(self):
-        self.become_admin()
-        node = factory.make_node(status=NODE_STATUS.DECLARED)
-        response = self.perform_action_and_get_node_page(
-            node, "Accept Enlisted node")
-        self.assertEqual(
-            ["Node accepted into the pool."],
-            [message.message for message in response.context['messages']])
-
     def test_start_commisionning_displays_message(self):
         self.become_admin()
         node = factory.make_node(status=NODE_STATUS.DECLARED)
         response = self.perform_action_and_get_node_page(
-            node, "Commission node")
+            node, "Accept & commission")
         self.assertEqual(
             ["Node commissioning started."],
             [message.message for message in response.context['messages']])

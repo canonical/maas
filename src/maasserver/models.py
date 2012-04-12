@@ -583,7 +583,7 @@ class Node(CommonInfo):
         if mac:
             mac.delete()
 
-    def accept_enlistment(self):
+    def accept_enlistment(self, user):
         """Accept this node's (anonymous) enlistment.
 
         This call makes sense only on a node in Declared state, i.e. one that
@@ -595,10 +595,6 @@ class Node(CommonInfo):
         :return: This node if it has made the transition from Declared, or
             None if it was already in an accepted state.
         """
-        # Accepting a node puts it into Ready state.  This will change
-        # once we implement commissioning.
-        target_state = NODE_STATUS.READY
-
         accepted_states = [NODE_STATUS.READY, NODE_STATUS.COMMISSIONING]
         if self.status in accepted_states:
             return None
@@ -607,8 +603,7 @@ class Node(CommonInfo):
                 "Cannot accept node enlistment: node %s is in state %s."
                 % (self.system_id, NODE_STATUS_CHOICES_DICT[self.status]))
 
-        self.status = target_state
-        self.save()
+        self.start_commissioning(user)
         return self
 
     def start_commissioning(self, user):
