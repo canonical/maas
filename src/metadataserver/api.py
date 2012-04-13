@@ -176,6 +176,9 @@ class VersionIndexHandler(MetadataViewHandler):
             return rc.ALL_OK
 
         node.status = target_status
+        # When moving to a terminal state, remove the allocation.
+        if target_status is not None:
+            node.owner = None
         node.error = request.POST.get('error', '')
         node.save()
 
