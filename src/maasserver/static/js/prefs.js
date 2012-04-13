@@ -42,7 +42,7 @@ Y.extend(TokenWidget, Y.Widget, {
             .set('id','create_token')
             .addClass('button')
             .addClass('right')
-            .set('text', "+ Add MAAS key");
+            .set('text', "+ Generate MAAS key");
         this.status_node = Y.Node.create('<div />')
             .set('id','create_error');
         this.spinnerNode = Y.Node.create('<img />')
