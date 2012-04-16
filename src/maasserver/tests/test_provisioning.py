@@ -25,7 +25,10 @@ from maasserver.components import (
     get_persistent_errors,
     register_persistent_error,
     )
-from maasserver.exceptions import MAASAPIException
+from maasserver.exceptions import (
+    ExternalComponentException,
+    MAASAPIException,
+    )
 from maasserver.models import (
     ARCHITECTURE,
     Config,
@@ -324,7 +327,7 @@ class ProvisioningTests:
             raise Fault(PSERV_FAULT.NO_SUCH_PROFILE, "Unknown profile.")
 
         self.patch(self.papi.proxy, 'add_node', raise_missing_profile)
-        with ExpectedException(MAASAPIException):
+        with ExpectedException(ExternalComponentException):
             node = factory.make_node(architecture='amd32k')
             provisioning.provision_post_save_Node(
                 sender=Node, instance=node, created=True)
@@ -335,7 +338,7 @@ class ProvisioningTests:
             raise Fault(PSERV_FAULT.NO_COBBLER, factory.getRandomString())
 
         self.patch(self.papi.proxy, 'add_node', raise_fault)
-        with ExpectedException(MAASAPIException):
+        with ExpectedException(ExternalComponentException):
             node = factory.make_node(architecture='amd32k')
             provisioning.provision_post_save_Node(
                 sender=Node, instance=node, created=True)
@@ -416,7 +419,8 @@ class ProvisioningTests:
 
         self.patch(self.papi.proxy, 'add_node', raise_fault)
 
-        with ExpectedException(MAASAPIException, ".*provisioning server.*"):
+        with ExpectedException(
+            ExternalComponentException, ".*provisioning server.*"):
             self.papi.add_node('node', 'profile', 'power', '')
 
     def test_provisioning_errors_are_reported_helpfully(self):
@@ -426,7 +430,7 @@ class ProvisioningTests:
 
         self.patch(self.papi.proxy, 'add_node', raise_provisioning_error)
 
-        with ExpectedException(MAASAPIException, ".*Cobbler.*"):
+        with ExpectedException(ExternalComponentException, ".*Cobbler.*"):
             self.papi.add_node('node', 'profile', 'power', '')
 
     def patch_and_call_papi_method(self, fault_code, papi_method='add_node'):

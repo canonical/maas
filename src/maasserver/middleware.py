@@ -12,6 +12,7 @@ __metaclass__ = type
 __all__ = [
     "AccessMiddleware",
     "APIErrorsMiddleware",
+    "ErrorsMiddleware",
     "ExceptionMiddleware",
     ]
 
@@ -25,6 +26,7 @@ import logging
 import re
 
 from django.conf import settings
+from django.contrib import messages
 from django.core.exceptions import (
     PermissionDenied,
     ValidationError,
@@ -37,7 +39,10 @@ from django.http import (
     HttpResponseRedirect,
     )
 from django.utils.http import urlquote_plus
-from maasserver.exceptions import MAASAPIException
+from maasserver.exceptions import (
+    ExternalComponentException,
+    MAASAPIException,
+    )
 
 
 def get_relative_path(path):
@@ -161,6 +166,24 @@ class APIErrorsMiddleware(ExceptionMiddleware):
     """Report exceptions from API requests as HTTP error responses."""
 
     path_regex = settings.API_URL_REGEXP
+
+
+class ErrorsMiddleware:
+    """Handle ExternalComponentException exceptions in POST requests: add a
+    message with the error string and redirect to the same page (using GET).
+    """
+
+    def process_exception(self, request, exception):
+        should_process_exception = (
+            request.method == 'POST' and
+            isinstance(exception, ExternalComponentException))
+        if should_process_exception:
+            messages.error(request, unicode(exception))
+            return HttpResponseRedirect(request.path)
+        else:
+            # Not an ExternalComponentException or not a POST request: do not
+            # handle it.
+            return None
 
 
 class ExceptionLoggerMiddleware:

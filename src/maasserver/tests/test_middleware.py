@@ -16,31 +16,54 @@ import json
 import logging
 from tempfile import NamedTemporaryFile
 
+from django.contrib.messages import constants
 from django.core.exceptions import (
     PermissionDenied,
     ValidationError,
     )
 from django.test.client import RequestFactory
 from maasserver.exceptions import (
+    ExternalComponentException,
     MAASAPIException,
     MAASAPINotFound,
+    MAASException,
     )
 from maasserver.middleware import (
     APIErrorsMiddleware,
+    ErrorsMiddleware,
     ExceptionLoggerMiddleware,
     ExceptionMiddleware,
     )
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import TestCase
+from maasserver.testing.testcase import (
+    LoggedInTestCase,
+    TestCase,
+    )
 
 
-def fake_request(base_path):
+class Messages:
+    """A class to record messages published by Django messaging
+    framework.
+    """
+
+    messages = []
+
+    def add(self, level, message, extras):
+        self.messages.append((level, message, extras))
+
+
+def fake_request(path, method='GET'):
     """Create a fake request.
 
-    :param base_path: The base path to make the request to.
+    :param path: The path to make the request to.
+    :param method: The method to use for the reques
+        ('GET' or 'POST').
     """
     rf = RequestFactory()
-    return rf.get('%s/hello/' % base_path)
+    request = rf.get(path)
+    request.method = method
+    request._messages = Messages()
+    return request
 
 
 class ExceptionMiddlewareTest(TestCase):
@@ -164,3 +187,35 @@ class ExceptionLoggerMiddlewareTest(TestCase):
                 fake_request('/middleware/api/hello'),
                 ValueError(error_text))
             self.assertIn(error_text, open(logfile.name).read())
+
+
+class ErrorsMiddlewareTest(LoggedInTestCase):
+
+    def test_error_middleware_ignores_GET_requests(self):
+        request = fake_request(factory.getRandomString(), 'GET')
+        exception = MAASException()
+        middleware = ErrorsMiddleware()
+        response = middleware.process_exception(request, exception)
+        self.assertIsNone(response)
+
+    def test_error_middleware_ignores_non_ExternalComponentException(self):
+        request = fake_request(factory.getRandomString(), 'GET')
+        exception = ValueError()
+        middleware = ErrorsMiddleware()
+        response = middleware.process_exception(request, exception)
+        self.assertIsNone(response)
+
+    def test_error_middleware_handles_ExternalComponentException(self):
+        url = factory.getRandomString()
+        request = fake_request(url, 'POST')
+        error_message = factory.getRandomString()
+        exception = ExternalComponentException(error_message)
+        middleware = ErrorsMiddleware()
+        response = middleware.process_exception(request, exception)
+        # The response is a redirect.
+        self.assertEqual(
+            (httplib.FOUND, response['Location']),
+            (response.status_code, url))
+        # An error message has been published.
+        self.assertEqual(
+            [(constants.ERROR, error_message, '')], request._messages.messages)

@@ -15,6 +15,7 @@ from collections import namedtuple
 import httplib
 import os
 import urllib2
+from urlparse import urlparse
 from xmlrpclib import Fault
 
 from django.conf import settings
@@ -29,7 +30,10 @@ from maasserver import (
     views,
     )
 from maasserver.components import register_persistent_error
-from maasserver.exceptions import NoRabbit
+from maasserver.exceptions import (
+    ExternalComponentException,
+    NoRabbit,
+    )
 from maasserver.forms import NodeActionForm
 from maasserver.models import (
     Config,
@@ -57,6 +61,7 @@ from maasserver.urls import (
 from maasserver.views import (
     get_longpoll_context,
     get_yui_location,
+    NodeEdit,
     proxy_to_longpoll,
     )
 from maastesting.rabbit import uses_rabbit_fixture
@@ -751,6 +756,43 @@ class NodeViewsTest(LoggedInTestCase):
             node, "Start node")
         self.assertEqual(
             ["Node started."],
+            [message.message for message in response.context['messages']])
+
+
+class MAASExceptionHandledInView(LoggedInTestCase):
+
+    def test_raised_MAASException_redirects(self):
+        # When a ExternalComponentException is raised in a POST request, the
+        # response is a redirect to the same page.
+
+        # Patch NodeEdit to error on post.
+        def post(self, request, *args, **kwargs):
+            raise ExternalComponentException()
+        self.patch(NodeEdit, 'post', post)
+        node = factory.make_node(owner=self.logged_in_user)
+        node_edit_link = reverse('node-edit', args=[node.system_id])
+        response = self.client.post(node_edit_link, {})
+        redirect_url = urlparse(response['Location']).path
+        self.assertEqual(
+            (httplib.FOUND, redirect_url),
+            (response.status_code, node_edit_link))
+
+    def test_raised_ExternalComponentException_publishes_message(self):
+        # When a ExternalComponentException is raised in a POST request, a
+        # message is published with the error message.
+        error_message = factory.getRandomString()
+
+        # Patch NodeEdit to error on post.
+        def post(self, request, *args, **kwargs):
+            raise ExternalComponentException(error_message)
+        self.patch(NodeEdit, 'post', post)
+        node = factory.make_node(owner=self.logged_in_user)
+        node_edit_link = reverse('node-edit', args=[node.system_id])
+        self.client.post(node_edit_link, {})
+        # Manually perform the redirect: i.e. get the same page.
+        response = self.client.get(node_edit_link, {})
+        self.assertEqual(
+            [error_message],
             [message.message for message in response.context['messages']])
 
 
