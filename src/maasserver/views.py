@@ -147,6 +147,10 @@ class NodeView(UpdateView):
             NODE_PERMISSION.ADMIN, node)
         if node.status in (NODE_STATUS.COMMISSIONING, NODE_STATUS.READY):
             messages.info(self.request, NODE_BOOT_INFO)
+        context['error_text'] = (
+            node.error if node.status == NODE_STATUS.FAILED_TESTS else None)
+        context['status_text'] = (
+            node.error if node.status != NODE_STATUS.FAILED_TESTS else None)
         return context
 
     def get_success_url(self):

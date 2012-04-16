@@ -690,15 +690,30 @@ class NodeViewsTest(LoggedInTestCase):
 
         self.assertEqual(0, len(doc.cssselect('form#node_actions input')))
 
-    def test_view_node_shows_error_if_set(self):
+    def test_view_node_shows_console_output_if_error_set(self):
+        # When node.error is set but the node's status does not indicate an
+        # error condition, the contents of node.error are displayed as console
+        # output.
         node = factory.make_node(
-            owner=self.logged_in_user, error=factory.getRandomString())
+            owner=self.logged_in_user, error=factory.getRandomString(),
+            status=NODE_STATUS.READY)
         node_link = reverse('node-view', args=[node.system_id])
         response = self.client.get(node_link)
-        doc = fromstring(response.content)
-        content_text = doc.cssselect('#content')[0].text_content()
-        self.assertIn("Error output", content_text)
-        self.assertIn(node.error, content_text)
+        console_output = fromstring(response.content).xpath(
+            '//h4[text()="Console output"]/following-sibling::span/text()')
+        self.assertEqual([node.error], console_output)
+
+    def test_view_node_shows_error_output_if_error_set(self):
+        # When node.error is set and the node's status indicates an error
+        # condition, the contents of node.error are displayed as error output.
+        node = factory.make_node(
+            owner=self.logged_in_user, error=factory.getRandomString(),
+            status=NODE_STATUS.FAILED_TESTS)
+        node_link = reverse('node-view', args=[node.system_id])
+        response = self.client.get(node_link)
+        error_output = fromstring(response.content).xpath(
+            '//h4[text()="Error output"]/following-sibling::span/text()')
+        self.assertEqual([node.error], error_output)
 
     def test_view_node_shows_no_error_if_no_error_set(self):
         node = factory.make_node(owner=self.logged_in_user)

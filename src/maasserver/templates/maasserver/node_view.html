@@ -61,12 +61,16 @@
           {{ node.display_status }}
       </span>
     </li>
-    {% if node.error %}
+    {% if error_text %}
     <li class="block first">
       <h4>Error output</h4>
-      <span>
-          {{ node.error }}
-      </span>
+      <span>{{ error_text }}</span>
+    </li>
+    {% endif %}
+    {% if status_text %}
+    <li class="block first">
+      <h4>Console output</h4>
+      <span>{{ status_text }}</span>
     </li>
     {% endif %}
     {% if node.owner %}
@@ -77,4 +81,3 @@
     {% endif %}
   </ul>
 {% endblock %}
-
