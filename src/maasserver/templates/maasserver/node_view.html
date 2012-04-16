@@ -7,41 +7,37 @@
 
 {% block sidebar %}
   {% if can_edit %}
-    <div class="block size3">
-      <h4>Node details</h4>
-      <a href="{% url 'node-edit' node.system_id %}" class="button secondary">
-        Edit node
-      </a>
-    </div>
+    <h4>Node details</h4>
+    <a href="{% url 'node-edit' node.system_id %}" class="button secondary">
+      Edit node
+    </a>
   {% endif %}
   {% if form.action_buttons or can_delete %}
-    <div class="block size3">
     <h4>Actions</h4>
-    {% if can_delete %}
-      {% if node.owner %}
-        <a href="#"
-           title="You cannot delete this node because it's in use."
-           class="disabled button">
-          Delete node
-        </a>
-      {% else %}
-        <a href="{% url 'node-delete' node.system_id %}"
-           class="button secondary">
-          Delete node
-        </a>
-      {% endif %}
+  {% endif %}
+  {% if can_delete %}
+    {% if node.owner %}
+      <a href="#"
+         title="You cannot delete this node because it's in use."
+         class="disabled button">
+        Delete node
+      </a>
+    {% else %}
+      <a href="{% url 'node-delete' node.system_id %}"
+         class="button secondary">
+        Delete node
+      </a>
     {% endif %}
-    {% for action in form.action_buttons %}
-      {% if forloop.first %}
-        <form id="node_actions" method="post" action=".">
-      {% endif %}
-      <input class="secondary {% if not forloop.first or can_delete %}space-top{% endif %}"
-             type="submit"
-             name="{{ form.input_name }}"
-             value="{{ action.display }}" />
-      {% if forloop.last %}</form>{% endif %}
-    {% endfor %}
-    </div>
+  {% endif %}
+  {% if form.action_buttons %}
+    <form id="node_actions" method="post" action=".">
+      {% for action in form.action_buttons %}
+        <input class="secondary {% if not forloop.first or can_delete %}space-top{% endif %}"
+               type="submit"
+               name="{{ form.input_name }}"
+               value="{{ action.display }}" />
+      {% endfor %}
+    </form>
   {% endif %}
 {% endblock %}
 

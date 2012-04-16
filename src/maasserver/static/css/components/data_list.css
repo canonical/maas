@@ -9,3 +9,6 @@
 .data-list span {
     font-size: 16px;
     }
+.data-list .block {
+    word-wrap: break-word;
+    }

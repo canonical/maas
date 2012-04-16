@@ -5,13 +5,13 @@
 {% block page-title %}Add archive{% endblock %}
 
 {% block content %}
-  <form action="." method="post">
+  <form action="." method="post" class="block auto-width">
     <ul>
     {% for field in form %}
       {% include "maasserver/form_field.html" %}
     {% endfor %}
     </ul>
-    <input type="submit" value="Add archive" />
-      &nbsp;&nbsp;<a class="link-button" href="{% url 'settings' %}">Cancel</a>
+    <input type="submit" class="right" value="Add archive" />
+    <a class="link-button" href="{% url 'settings' %}">Cancel</a>
   </form>
 {% endblock %}

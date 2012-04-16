@@ -22,6 +22,9 @@ img.icon {
     vertical-align: text-bottom;
     margin-right: 3px;
     }
+a.icon:hover {
+    text-decoration: none;
+    }
 /* Spacing */
 .space-top-small {
     margin-top: 10px;
@@ -45,8 +48,8 @@ img.icon {
     margin-bottom: 5px;
     }
 .pad-top {
-    margin-top: 20px;
+    padding-top: 20px;
     }
 .pad-top-large {
-    margin-top: 40px;
+    padding-top: 40px;
     }

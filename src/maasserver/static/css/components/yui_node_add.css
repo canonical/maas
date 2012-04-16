@@ -4,3 +4,6 @@
 .yui3-node-add-widget .buttons {
     margin-top: 30px;
     }
+.yui3-node-add-widget .add-link img.icon {
+    margin-right: 6px;
+    }
