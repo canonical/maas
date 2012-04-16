@@ -1066,7 +1066,7 @@ class FileStorage(models.Model):
 
     # Unix filenames can be longer than this (e.g. 255 bytes), but leave
     # some extra room for the full path, as well as a versioning suffix.
-    filename = models.CharField(max_length=100, unique=True, editable=False)
+    filename = models.CharField(max_length=200, unique=True, editable=False)
     data = models.FileField(
         upload_to=upload_dir, storage=storage, max_length=255)
 
