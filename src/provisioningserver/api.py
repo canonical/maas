@@ -170,6 +170,11 @@ class ProvisioningAPI:
         super(ProvisioningAPI, self).__init__()
         self.session = session
 
+    def sync(self):
+        """Request Cobbler to sync and return when it's finished."""
+        return self.session.call(
+            "sync", self.session.token_placeholder)
+
     @inlineCallbacks
     def add_distro(self, name, initrd, kernel):
         assert isinstance(name, basestring)
@@ -180,6 +185,7 @@ class ProvisioningAPI:
                 "initrd": initrd,
                 "kernel": kernel,
                 })
+        yield self.sync()
         returnValue(distro.name)
 
     @inlineCallbacks
@@ -188,6 +194,7 @@ class ProvisioningAPI:
         assert isinstance(distro, basestring)
         profile = yield CobblerProfile.new(
             self.session, name, {"distro": distro})
+        yield self.sync()
         returnValue(profile.name)
 
     @inlineCallbacks
@@ -204,17 +211,20 @@ class ProvisioningAPI:
             "power_type": power_type,
             }
         system = yield CobblerSystem.new(self.session, name, attributes)
+        yield self.sync()
         returnValue(system.name)
 
     @inlineCallbacks
     def modify_distros(self, deltas):
         for name, delta in deltas.items():
             yield CobblerDistro(self.session, name).modify(delta)
+        yield self.sync()
 
     @inlineCallbacks
     def modify_profiles(self, deltas):
         for name, delta in deltas.items():
             yield CobblerProfile(self.session, name).modify(delta)
+        yield self.sync()
 
     @inlineCallbacks
     def modify_nodes(self, deltas):
@@ -231,6 +241,7 @@ class ProvisioningAPI:
                 for interface_modification in interface_modifications:
                     yield system.modify(interface_modification)
             yield system.modify(delta)
+        yield self.sync()
 
     @inlineCallbacks
     def get_objects_by_name(self, object_type, names):
@@ -278,6 +289,7 @@ class ProvisioningAPI:
         assert all(isinstance(name, basestring) for name in names)
         for name in names:
             yield object_type(self.session, name).delete()
+        yield self.sync()
 
     @deferred
     def delete_distros_by_name(self, names):

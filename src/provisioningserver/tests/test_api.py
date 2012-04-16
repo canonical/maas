@@ -19,7 +19,8 @@ from abc import (
     abstractmethod,
     )
 from base64 import b64decode
-from unittest import skipIf
+from contextlib import contextmanager
+from functools import partial
 
 from maasserver.testing.enum import map_enum
 from maastesting.factory import factory
@@ -40,6 +41,11 @@ from provisioningserver.testing.fakecobbler import make_fake_cobbler_session
 from provisioningserver.testing.realcobbler import RealCobbler
 from testtools import TestCase
 from testtools.deferredruntest import AsynchronousDeferredRunTest
+from testtools.matchers import (
+    FileExists,
+    Not,
+    )
+from testtools.monkey import patch
 from twisted.internet.defer import inlineCallbacks
 from zope.interface.verify import verifyObject
 
@@ -607,6 +613,84 @@ class ProvisioningAPITestsWithCobbler:
         self.assertEqual(
             preseed_data, b64decode(attrs['ks_meta']['MAAS_PRESEED']))
 
+    @contextmanager
+    def expected_sync(self, papi, times=1):
+        """Context where # calls to `papi.sync` must match `times`."""
+        sync_calls = []
+        orig_sync = papi.sync
+        fake_sync = lambda: orig_sync().addCallback(sync_calls.append)
+        unpatch = patch(papi, "sync", fake_sync)
+        try:
+            yield
+        finally:
+            unpatch()
+        self.assertEqual(times, len(sync_calls))
+
+    @inlineCallbacks
+    def test_add_distro_syncs(self):
+        # add_distro ensures that Cobbler syncs.
+        papi = self.get_provisioning_api()
+        with self.expected_sync(papi):
+            yield self.add_distro(papi)
+
+    @inlineCallbacks
+    def test_add_profile_syncs(self):
+        # add_profile ensures that Cobbler syncs.
+        papi = self.get_provisioning_api()
+        distro_name = yield self.add_distro(papi)
+        with self.expected_sync(papi):
+            yield self.add_profile(papi, distro_name=distro_name)
+
+    @inlineCallbacks
+    def test_add_node_syncs(self):
+        # add_node ensures that Cobbler syncs.
+        papi = self.get_provisioning_api()
+        profile_name = yield self.add_profile(papi)
+        with self.expected_sync(papi):
+            yield self.add_node(papi, profile_name=profile_name)
+
+    @inlineCallbacks
+    def test_modify_distros_syncs(self):
+        # modify_distros ensures that Cobbler syncs.
+        papi = self.get_provisioning_api()
+        with self.expected_sync(papi):
+            yield papi.modify_distros({})
+
+    @inlineCallbacks
+    def test_modify_profiles_syncs(self):
+        # modify_profiles ensures that Cobbler syncs.
+        papi = self.get_provisioning_api()
+        with self.expected_sync(papi):
+            yield papi.modify_profiles({})
+
+    @inlineCallbacks
+    def test_modify_nodes_syncs(self):
+        # modify_nodes ensures that Cobbler syncs.
+        papi = self.get_provisioning_api()
+        with self.expected_sync(papi):
+            yield papi.modify_nodes({})
+
+    @inlineCallbacks
+    def test_delete_distros_by_name_syncs(self):
+        # delete_distros_by_name ensures that Cobbler syncs.
+        papi = self.get_provisioning_api()
+        with self.expected_sync(papi):
+            yield papi.delete_distros_by_name([])
+
+    @inlineCallbacks
+    def test_delete_profiles_by_name_syncs(self):
+        # delete_profiles_by_name ensures that Cobbler syncs.
+        papi = self.get_provisioning_api()
+        with self.expected_sync(papi):
+            yield papi.delete_profiles_by_name([])
+
+    @inlineCallbacks
+    def test_delete_nodes_by_name_syncs(self):
+        # delete_nodes_by_name ensures that Cobbler syncs.
+        papi = self.get_provisioning_api()
+        with self.expected_sync(papi):
+            yield papi.delete_nodes_by_name([])
+
 
 class TestFakeProvisioningAPI(ProvisioningAPITests, TestCase):
     """Test :class:`FakeAsynchronousProvisioningAPI`.
@@ -631,6 +715,22 @@ class TestProvisioningAPIWithFakeCobbler(ProvisioningAPITests,
         """Return a real ProvisioningAPI, but using a fake Cobbler session."""
         return ProvisioningAPI(make_fake_cobbler_session())
 
+    def test_sync(self):
+        """`ProvisioningAPI.sync` issues an authenticated ``sync`` call.
+
+        It is not exported - i.e. it is not part of :class:`IProvisioningAPI`
+        - but is used heavily by other methods in `IProvisioningAPI`.
+        """
+        papi = self.get_provisioning_api()
+        calls = []
+        self.patch(
+            papi.session, "call",
+            lambda *args: calls.append(args))
+        papi.sync()
+        self.assertEqual(
+            [("sync", papi.session.token_placeholder)],
+            calls)
+
 
 class TestProvisioningAPIWithRealCobbler(ProvisioningAPITests,
                                          ProvisioningAPITestsWithCobbler,
@@ -640,12 +740,34 @@ class TestProvisioningAPIWithRealCobbler(ProvisioningAPITests,
     The URL for the Cobbler instance must be provided in the
     `PSERV_TEST_COBBLER_URL` environment variable.
 
-    Includes by inheritance all the tests in :class:`ProvisioningAPITests`.
+    Includes by inheritance all the tests in :class:`ProvisioningAPITests` and
+    :class:`ProvisioningAPITestsWithCobbler`.
     """
 
     real_cobbler = RealCobbler()
 
-    @skipIf(not real_cobbler.is_available(), RealCobbler.help_text)
+    @real_cobbler.skip_unless_available
     def get_provisioning_api(self):
         """Return a connected :class:`ProvisioningAPI`."""
         return ProvisioningAPI(self.real_cobbler.get_session())
+
+    @real_cobbler.skip_unless_local
+    @inlineCallbacks
+    def test_sync_after_modify(self):
+        # When MAAS modifies the MAC addresses of a node it triggers a sync of
+        # Cobbler. This is to ensure that netboot files are up-to-date, or
+        # removed as appropriate.
+        papi = self.get_provisioning_api()
+        node_name = yield self.add_node(papi)
+        mac_address = factory.getRandomMACAddress()
+        yield papi.modify_nodes(
+            {node_name: {"mac_addresses": [mac_address]}})
+        # The PXE file corresponding to the node's MAC address is present.
+        pxe_filename = "/var/lib/tftpboot/pxelinux.cfg/01-%s" % (
+            mac_address.replace(":", "-"),)
+        self.assertThat(pxe_filename, FileExists())
+        # Remove the MAC address again.
+        yield papi.modify_nodes(
+            {node_name: {"mac_addresses": []}})
+        # The PXE file has been removed too.
+        self.assertThat(pxe_filename, Not(FileExists()))
