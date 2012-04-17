@@ -18,6 +18,7 @@ import os
 
 from django.conf import settings
 from django.contrib.auth.models import User
+from django.core.cache import cache
 from django.core.management import call_command
 from maasserver.models import FileStorage
 from maasserver.testing.factory import factory
@@ -102,3 +103,18 @@ class TestCommands(TestCase):
         self.assertTrue(users[0].check_password(password))
         self.assertTrue(users[0].is_superuser)
         self.assertEqual(email, users[0].email)
+
+    def test_clearcache_clears_entire_cache(self):
+        key = factory.getRandomString()
+        cache.set(key, factory.getRandomString())
+        call_command('clearcache')
+        self.assertIsNone(cache.get(key, None))
+
+    def test_clearcache_clears_specific_key(self):
+        key = factory.getRandomString()
+        cache.set(key, factory.getRandomString())
+        another_key = factory.getRandomString()
+        cache.set(another_key, factory.getRandomString())
+        call_command('clearcache', key=key)
+        self.assertIsNone(cache.get(key, None))
+        self.assertIsNotNone(cache.get(another_key, None))

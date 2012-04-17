@@ -190,3 +190,6 @@ add_enlist_profile
 
 # Sync changes with cobbler daemon
 cobbler sync
+
+# Clear MAAS' cache to force the profile check.
+maas clearcache --key=profile-check-done
