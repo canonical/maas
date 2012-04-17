@@ -73,7 +73,13 @@ fail() {
    exit 1
 }
 
+shutdown() {
+    echo "Finished, powering off."
+    shutdown -P now
+}
+
 main() {
+   trap shutdown EXIT
    # the main function, actually execute stuff that is written below
    local script total=0 creds=""
 
