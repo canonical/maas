@@ -75,7 +75,7 @@ fail() {
 
 shutdown() {
     echo "Finished, powering off."
-    shutdown -P now
+    /sbin/shutdown -P now
 }
 
 main() {
