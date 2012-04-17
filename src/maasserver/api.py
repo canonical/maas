@@ -47,6 +47,7 @@ For example, to list all nodes, you might GET "/api/1.0/nodes/?op=list".
 """
 
 from __future__ import (
+    absolute_import,
     print_function,
     unicode_literals,
     )

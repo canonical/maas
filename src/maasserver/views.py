@@ -4,6 +4,7 @@
 """Views."""
 
 from __future__ import (
+    absolute_import,
     print_function,
     unicode_literals,
     )
@@ -31,7 +32,6 @@ from logging import getLogger
 import mimetypes
 import os
 import urllib2
-from django.utils.safestring import mark_safe
 
 from convoy.combo import (
     combine_files,
@@ -61,6 +61,7 @@ from django.shortcuts import (
     render_to_response,
     )
 from django.template import RequestContext
+from django.utils.safestring import mark_safe
 from django.views.generic import (
     CreateView,
     DeleteView,

@@ -4,6 +4,7 @@
 """Maasserver migration 0002_macaddress_unique."""
 
 from __future__ import (
+    absolute_import,
     print_function,
     # This breaks South.
     #unicode_literals,

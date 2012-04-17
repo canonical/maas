@@ -4,6 +4,7 @@
 """Tests for conversion of Cobbler exceptions to `ProvisioningError`."""
 
 from __future__ import (
+    absolute_import,
     print_function,
     unicode_literals,
     )

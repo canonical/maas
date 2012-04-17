@@ -4,6 +4,7 @@
 """Run YUI3 unit tests with SST (http://testutils.org/sst/)."""
 
 from __future__ import (
+    absolute_import,
     print_function,
     unicode_literals,
     )

@@ -4,6 +4,7 @@
 """Tests for `maasserver.provisioning`."""
 
 from __future__ import (
+    absolute_import,
     print_function,
     unicode_literals,
     )

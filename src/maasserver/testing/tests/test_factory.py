@@ -4,6 +4,7 @@
 """Test the factory where appropriate.  Don't overdo this."""
 
 from __future__ import (
+    absolute_import,
     print_function,
     unicode_literals,
     )

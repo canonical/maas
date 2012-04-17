@@ -4,6 +4,7 @@
 """Tests for `maastesting.management.commands.reconcile`."""
 
 from __future__ import (
+    absolute_import,
     print_function,
     unicode_literals,
     )
@@ -11,10 +12,10 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
-from maastesting.testcase import TestCase
 from maastesting.management.commands.reconcile import (
     guess_architecture_from_profile,
     )
+from maastesting.testcase import TestCase
 
 
 class TestFunctions(TestCase):

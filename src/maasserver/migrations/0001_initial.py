@@ -4,6 +4,7 @@
 """Initial maasserver migration."""
 
 from __future__ import (
+    absolute_import,
     print_function,
     # This breaks South.
     #unicode_literals,

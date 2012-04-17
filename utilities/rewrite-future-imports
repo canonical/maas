@@ -1,0 +1,42 @@
+#!/usr/bin/env python2.7
+# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
+"""Ensure that __future__ import lines are populated correctly."""
+
+from __future__ import (
+    absolute_import,
+    print_function,
+    unicode_literals,
+    )
+
+__metaclass__ = type
+
+import re
+import sys
+
+
+re_futures = re.compile(
+    r"^(from __future__ import) [(](.*?)[)]", re.DOTALL | re.MULTILINE)
+
+
+mandatory_future_imports = frozenset(
+    ("absolute_import", "print_function", "unicode_literals"))
+
+
+def replace(match):
+    imports = set().union(
+        (name.strip() for name in match.group(2).split(",")),
+        mandatory_future_imports)
+    imports.discard("")
+    imports = "".join("    %s,\n" % name for name in sorted(imports))
+    return "%s (\n%s    )" % (match.group(1), imports)
+
+
+if __name__ == '__main__':
+    for filename in sys.argv[1:]:
+        with open(filename, "rb") as fd:
+            source = fd.read()
+        source = re_futures.sub(replace, source)
+        with open(filename, "wb") as fd:
+            fd.write(source)

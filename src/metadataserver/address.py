@@ -4,6 +4,7 @@
 """Figure out server address for the maas_url setting."""
 
 from __future__ import (
+    absolute_import,
     print_function,
     unicode_literals,
     )

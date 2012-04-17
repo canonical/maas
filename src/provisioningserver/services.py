@@ -4,6 +4,7 @@
 """Additional services that compose the MAAS Provisioning Server."""
 
 from __future__ import (
+    absolute_import,
     print_function,
     unicode_literals,
     )

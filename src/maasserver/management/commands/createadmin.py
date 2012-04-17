@@ -4,6 +4,7 @@
 """Django command: create a superuser with an empty email."""
 
 from __future__ import (
+    absolute_import,
     print_function,
     unicode_literals,
     )

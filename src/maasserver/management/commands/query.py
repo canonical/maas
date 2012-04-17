@@ -4,6 +4,7 @@
 """Django command: access the development database directly in SQL."""
 
 from __future__ import (
+    absolute_import,
     print_function,
     unicode_literals,
     )
