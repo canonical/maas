@@ -175,6 +175,12 @@ STATICFILES_DIRS = (
     # Don't forget to use absolute paths, not relative paths.
 )
 
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+    }
+}
+
 # List of finder classes that know how to find static files in
 # various locations.
 STATICFILES_FINDERS = (
@@ -214,6 +220,7 @@ MIDDLEWARE_CLASSES = (
     # should be placed after it.
     'maasserver.middleware.ErrorsMiddleware',
     'maasserver.middleware.APIErrorsMiddleware',
+    'maasserver.middleware.ExternalComponentsMiddleware',
     'metadataserver.middleware.MetadataErrorsMiddleware',
     'django.middleware.transaction.TransactionMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',

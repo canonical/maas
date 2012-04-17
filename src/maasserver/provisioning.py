@@ -11,12 +11,15 @@ from __future__ import (
 
 __metaclass__ = type
 __all__ = [
+    'check_profiles',
     'get_provisioning_api_proxy',
+    'get_all_profile_names',
     'present_detailed_user_friendly_fault',
     'ProvisioningProxy',
     ]
 
 from functools import partial
+import itertools
 from logging import getLogger
 from textwrap import dedent
 from urllib import urlencode
@@ -29,6 +32,7 @@ from django.db.models.signals import (
     post_save,
     )
 from django.dispatch import receiver
+from django.utils.safestring import mark_safe
 from maasserver.components import (
     COMPONENT,
     discard_persistent_error,
@@ -36,6 +40,7 @@ from maasserver.components import (
     )
 from maasserver.exceptions import ExternalComponentException
 from maasserver.models import (
+    ARCHITECTURE_CHOICES,
     Config,
     MACAddress,
     Node,
@@ -182,6 +187,7 @@ METHOD_COMPONENTS = {
     'add_node': [COMPONENT.PSERV, COMPONENT.COBBLER, COMPONENT.IMPORT_ISOS],
     'modify_nodes': [COMPONENT.PSERV, COMPONENT.COBBLER],
     'delete_nodes_by_name': [COMPONENT.PSERV, COMPONENT.COBBLER],
+    'get_profiles_by_name': [COMPONENT.PSERV, COMPONENT.COBBLER],
 }
 
 # A mapping exception -> component.
@@ -416,14 +422,55 @@ def name_arch_in_cobbler_style(architecture):
     return conversions.get(architecture, architecture)
 
 
+def check_profiles():
+    """Check that Cobbler has profiles defined for all the profiles used by
+    MAAS.  If a profile is missing, display a persistent error with an invite
+    to run the maas-import-isos script.
+    """
+    all_profiles = get_all_profile_names()
+    papi = get_provisioning_api_proxy()
+    existing_profiles = set(papi.get_profiles_by_name(all_profiles))
+    missing_profiles = set(all_profiles) - existing_profiles
+    if len(missing_profiles) != 0:
+        # Some profiles are missing: display a persistent component
+        # error.
+        register_persistent_error(
+            COMPONENT.IMPORT_ISOS,
+            mark_safe(
+                """
+                Some of the required system profiles are missing.
+                Run the maas-import-isos script to import Ubuntu isos and
+                create the related profiles:
+                <pre>sudo maas-import-isos</pre>
+                """))
+
+
+def get_all_profile_names():
+    """Return all the names of the profiles used by MAAS."""
+    architectures = {arch[0] for arch in ARCHITECTURE_CHOICES}
+    commissioning = {True, False}
+    product = itertools.product(architectures, commissioning)
+    profiles = [
+        get_profile_name(architecture, commissioning)
+        for architecture, commissioning in product]
+    return profiles
+
+
+def get_profile_name(architecture, commissioning=False):
+    """Return the profile name for a given architecture and whether the node
+    is commissioning or not."""
+    cobbler_arch = name_arch_in_cobbler_style(architecture)
+    profile = "maas-%s-%s" % ("precise", cobbler_arch)
+    if commissioning:
+        profile += "-commissioning"
+    return profile
+
+
 def select_profile_for_node(node):
     """Select which profile a node should be configured for."""
     assert node.architecture, "Node's architecture is not known."
-    cobbler_arch = name_arch_in_cobbler_style(node.architecture)
-    profile = "maas-%s-%s" % ("precise", cobbler_arch)
-    if node.status == NODE_STATUS.COMMISSIONING:
-        profile += "-commissioning"
-    return profile
+    commissioning = node.status == NODE_STATUS.COMMISSIONING
+    return get_profile_name(node.architecture, commissioning)
 
 
 @receiver(post_save, sender=Node)

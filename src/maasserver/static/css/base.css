@@ -16,3 +16,6 @@ pre {
     display: block;
     overflow: auto;
     }
+#flash-messages .warning pre {
+    background-color: #ECA918;
+}
