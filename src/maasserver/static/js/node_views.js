@@ -145,7 +145,13 @@ module.NodesDashboard = Y.Base.create(
         this.numberNode = Y.one(config.numberNode);
         this.descriptionNode = Y.one(config.descriptionNode);
         this.reservedNode = Y.one(config.reservedNode);
+        /* XXX: GavinPanella 2012-04-17 bug=984117:
+         * Hidden until we support reserved nodes. */
+        this.reservedNode.hide();
         this.retiredNode = Y.one(config.retiredNode);
+        /* XXX: GavinPanella 2012-04-17 bug=984116:
+         * Hidden until we support retired nodes. */
+        this.retiredNode.hide();
         this.deployed_nodes = 0;
         this.commissioned_nodes = 0;
         this.queued_nodes = 0;
