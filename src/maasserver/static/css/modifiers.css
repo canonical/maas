@@ -41,6 +41,9 @@ a.icon:hover {
 .space-right-small {
     margin-right: 10px;
     }
+.space-left-small {
+    margin-left: 10px;
+    }
 .space-bottom-none {
     margin-bottom: 0;
     }
