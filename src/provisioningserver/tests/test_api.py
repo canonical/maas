@@ -21,7 +21,6 @@ from abc import (
     )
 from base64 import b64decode
 from contextlib import contextmanager
-from functools import partial
 
 from maasserver.testing.enum import map_enum
 from maastesting.factory import factory

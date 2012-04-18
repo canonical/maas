@@ -16,7 +16,6 @@ from abc import (
     ABCMeta,
     abstractmethod,
     )
-from unittest import skipIf
 from xmlrpclib import Fault
 
 from maastesting.factory import factory
