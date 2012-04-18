@@ -20,19 +20,19 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 VERBOSITY=0
-REMOTE_IMAGES_MIRROR="https://cloud-images.ubuntu.com"
+REMOTE_IMAGES_MIRROR="https://maas.ubuntu.com/images"
 CONSOLE="ttyS0,9600n8"
 EPH_KOPTS_CONSOLE="console=$CONSOLE"
 EPH_KOPTS_ISCSI="ip=dhcp iscsi_target_name=@@iscsi_target@@ iscsi_target_ip=@@iscsi_target_ip@@ iscsi_target_port=3260"
 EPH_KOPTS_ROOT="root=LABEL=cloudimg-rootfs ro"
 EPH_KOPTS_LOGGING="log_host=@@server_ip@@ log_port=514"
-EPH_UPDATE_CMD="maas-cloudimg2ephemeral"
+EPH_UPDATE_CMD=""
 TARGET_NAME_PREFIX="iqn.2004-05.com.ubuntu:maas:"
 DATA_DIR="/var/lib/maas/ephemeral"
 CONFIG="/etc/maas/import_ephemerals"
 RELEASES="precise"
 ARCHES="amd64 i386"
-BUILD_NAME="server"
+BUILD_NAME="ephemeral"
 STREAM="released"
 KSDIR="/var/lib/cobbler/kickstarts"
 KICKSTART="$KSDIR/maas-commissioning.preseed"

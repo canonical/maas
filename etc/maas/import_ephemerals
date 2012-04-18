@@ -7,7 +7,7 @@
 #EPH_KOPTS_ISCSI="ip=dhcp iscsi_target_name=@@iscsi_target@@ iscsi_target_ip=@@iscsi_target_ip@@ iscsi_target_port=3260"
 #EPH_KOPTS_ROOT="root=cloudimg-rootfs ro"
 #EPH_KOPTS_LOGGING="log_host=@@server_ip@@ log_port=514"
-#EPH_UPDATE_CMD="maas-cloudimg2ephemeral"
+#EPH_UPDATE_CMD=""
 #TARGET_NAME_PREFIX="iqn.2004-05.com.ubuntu:maas:"
 #DATA_DIR="/var/lib/maas/ephemeral"
 #RELEASES="precise"
