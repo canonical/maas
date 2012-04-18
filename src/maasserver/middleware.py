@@ -45,7 +45,6 @@ from maasserver.exceptions import (
     ExternalComponentException,
     MAASAPIException,
     )
-from maasserver.provisioning import check_profiles
 
 
 def get_relative_path(path):
@@ -113,6 +112,8 @@ def check_profiles_cached():
     """Check Cobbler's profiles. The check is actually done at most once every
     PROFILE_CHECK_DELAY seconds for performance reasons.
     """
+    # Avoid circular imports.
+    from maasserver.provisioning import check_profiles
     if not cache.get(PROFILES_CHECK_DONE_KEY, False):
         # Mark the profile check as done beforehand as the actual check
         # might raise an exception.
