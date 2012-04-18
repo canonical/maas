@@ -387,7 +387,7 @@ class NodeManager(models.Manager):
 
         if constraints.get('name'):
             available_nodes = available_nodes.filter(
-                system_id=constraints['name'])
+                hostname=constraints['name'])
 
         available_nodes = list(available_nodes[:1])
         if len(available_nodes) == 0:

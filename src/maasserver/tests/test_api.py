@@ -1043,11 +1043,11 @@ class TestNodesAPI(APITestCase):
         desired_node = random.choice(available_nodes)
         response = self.client.post(self.get_uri('nodes/'), {
             'op': 'acquire',
-            'name': desired_node.system_id,
+            'name': desired_node.hostname,
         })
         self.assertEqual(httplib.OK, response.status_code)
         parsed_result = json.loads(response.content)
-        self.assertEqual(desired_node.system_id, parsed_result['system_id'])
+        self.assertEqual(desired_node.hostname, parsed_result['hostname'])
 
     def test_POST_acquire_would_rather_fail_than_disobey_constraint(self):
         # If "acquire" is passed a constraint, it won't return a node
@@ -1077,13 +1077,13 @@ class TestNodesAPI(APITestCase):
         # If a name constraint is given, "acquire" attempts to allocate
         # a node of that name.
         node = factory.make_node(status=NODE_STATUS.READY, owner=None)
-        system_id = node.system_id
         response = self.client.post(self.get_uri('nodes/'), {
             'op': 'acquire',
-            'name': system_id,
+            'name': node.hostname,
         })
         self.assertEqual(httplib.OK, response.status_code)
-        self.assertEqual(system_id, json.loads(response.content)['system_id'])
+        self.assertEqual(
+            node.hostname, json.loads(response.content)['hostname'])
 
     def test_POST_acquire_constrains_by_name(self):
         # Negative test for name constraint.
