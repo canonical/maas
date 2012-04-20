@@ -16,6 +16,7 @@ __all__ = [
     'fake_token',
     'FakeCobbler',
     'FakeTwistedProxy',
+    'log_in_to_fake_cobbler',
     'make_fake_cobbler_session',
     ]
 
@@ -554,11 +555,40 @@ class FakeCobbler:
         self._check_token(token)
 
 
-def make_fake_cobbler_session():
+unique_ints = count(randint(0, 9999))
+
+
+class FakeCobblerSession(CobblerSession):
+    """A `CobblerSession` instrumented not to use real XMLRPC."""
+
+    def __init__(self, url, user, password, fake_cobbler=None):
+        self.fake_proxy = FakeTwistedProxy(fake_cobbler=fake_cobbler)
+        super(FakeCobblerSession, self).__init__(url, user, password)
+
+    def _make_twisted_proxy(self):
+        """Override for CobblerSession's proxy factory."""
+        return self.fake_proxy
+
+
+def make_fake_cobbler_session(url=None, user=None, password=None,
+                              fake_cobbler=None):
     """Return a :class:`CobblerSession` wired up to a :class:`FakeCobbler`."""
-    cobbler_session = CobblerSession(
-        "http://localhost/does/not/exist", "user", "password")
-    cobbler_fake = FakeCobbler({"user": "password"})
-    cobbler_proxy = FakeTwistedProxy(cobbler_fake)
-    cobbler_session.proxy = cobbler_proxy
-    return cobbler_session
+    unique_number = next(unique_ints)
+    if url is None:
+        url = "http://localhost/url-%d/" % unique_number
+    if user is None:
+        user = "user%s" % unique_number
+    if password is None:
+        password = "password%d" % unique_number
+    if fake_cobbler is None:
+        fake_cobbler = FakeCobbler(passwords={user: password})
+
+    return FakeCobblerSession(url, user, password, fake_cobbler=fake_cobbler)
+
+
+@inlineCallbacks
+def log_in_to_fake_cobbler(*args, **kwargs):
+    """Set up a fake Cobbler session, and log in."""
+    session = make_fake_cobbler_session(*args, **kwargs)
+    yield session._authenticate()
+    returnValue(session)

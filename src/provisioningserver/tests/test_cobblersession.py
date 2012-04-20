@@ -130,6 +130,7 @@ class RecordingSession(cobblerclient.CobblerSession):
         super(RecordingSession, self).__init__(*args, **kwargs)
 
     def _make_twisted_proxy(self):
+        """Override for CobblerSession's proxy factory."""
         return self.fake_proxy
 
 
