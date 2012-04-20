@@ -114,8 +114,18 @@ txlongpoll-stop: pidfile=run/txlongpoll.pid
 txlongpoll-stop:
 	{ test -e $(pidfile) && cat $(pidfile); } | xargs --no-run-if-empty kill
 
-run: bin/maas dev-db run/pserv.pid run/txlongpoll.pid
-	bin/maas runserver 0.0.0.0:5240 --settings=maas.demo
+run/apache.pid: | etc/apache.conf
+	apache2 -k start -f etc/apache.conf -d `pwd`/
+
+apache-start: run/apache.pid
+
+apache-stop: pidfile=run/apache.pid
+apache-stop:
+	{ test -e $(pidfile) && cat $(pidfile); } | xargs --no-run-if-empty kill
+
+
+run: bin/maas dev-db run/pserv.pid run/txlongpoll.pid run/apache.pid
+	bin/maas runserver 0.0.0.0:5244 --settings=maas.demo
 
 harness: bin/maas dev-db
 	bin/maas shell --settings=maas.demo

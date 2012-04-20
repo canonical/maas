@@ -36,9 +36,8 @@ MIDDLEWARE_CLASSES += (
 # In dev mode: Django should act as a proxy to txlongpoll.
 LONGPOLL_SERVER_URL = "http://localhost:5242/"
 
-# Disable longpoll by default for now. Set it back to '/longpoll/' to
-# enable it.
-LONGPOLL_PATH = None
+# Enable longpoll. Set LONGPOLL_PATH to None to disable it.
+LONGPOLL_PATH = '/longpoll/'
 
 # For demo purposes, use a real provisioning server.
 USE_REAL_PSERV = True
