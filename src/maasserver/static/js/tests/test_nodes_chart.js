@@ -22,7 +22,7 @@ var cfg = {
 
 suite.add(new Y.maas.testing.TestCase({
     name: 'test-nodes-chart-widget-creation',
-    
+
     setUp : function () {
         this.chart = new module.NodesChartWidget(cfg);
     },
@@ -38,15 +38,15 @@ suite.add(new Y.maas.testing.TestCase({
         Y.assert(this.chart._offline_circle[0].node);
         Y.assert(this.chart._added_circle[0].node);
     },
-    
+
     tearDown : function () {
-        Y.one('#chart').set('text', '')
-    },
+        Y.one('#chart').set('text', '');
+    }
 }));
 
 suite.add(new Y.maas.testing.TestCase({
     name: 'test-nodes-chart-events',
-    
+
     setUp : function () {
         this.chart = new module.NodesChartWidget(cfg);
     },
@@ -114,22 +114,21 @@ suite.add(new Y.maas.testing.TestCase({
                 node: this.chart._added_circle[0].node
                 }
             ];
-        
-        
-        for (var e in events) {
-            this.chart.on(events[e].event, function(e, event) {
-                events[event].fired = true;
-            }, null, e);
-            Y.one(events[e].node).simulate(events[e].action);
+
+        Y.Array.each(events, function(event) {
+            this.chart.on(event.event, function(e, event) {
+                event.fired = true;
+            }, null, event);
+            Y.one(event.node).simulate(event.action);
             Y.Assert.isTrue(
-                events[e].fired,
-                'Event ' + events[e].event + ' should have fired');
-        }
+                event.fired,
+                'Event ' + event.event + ' should have fired');
+        }, this);
     },
-    
+
     tearDown : function () {
-        Y.one('#chart').set('text', '')
-    },
+        Y.one('#chart').set('text', '');
+    }
 }));
 
 namespace.suite = suite;

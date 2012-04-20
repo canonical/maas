@@ -17,8 +17,8 @@ suite.add(new Y.maas.testing.TestCase({
         var cfg = {
             srcNode: '#panel-two',
             targetNode: '#panel-one'
-        }
-        morpher = new module.Morph(cfg);
+        };
+        var morpher = new module.Morph(cfg);
         Y.Assert.isFalse(
             Y.one('#panel-one').hasClass('hidden'),
             'The target panel should initially be visible');

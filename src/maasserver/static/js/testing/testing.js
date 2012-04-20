@@ -46,8 +46,9 @@ module.TestCase = Y.Base.create('ioMockableTestCase', Y.Test.Case, [], {
 
     tearDown: function() {
         this._setUp();
-        var func;
-        while (func = this._cleanups.pop()) { func(); }
+        while (this._cleanups.length) {
+            this._cleanups.pop()();
+        }
     },
 
    /**

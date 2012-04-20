@@ -57,6 +57,18 @@ lint: bin/flake8
 	@find $(sources) -name '*.py' ! -path '*/migrations/*' \
 	    -print0 | xargs -r0 bin/flake8
 
+lint-css: sources = src/maasserver/static/css
+lint-css: /usr/bin/pocketlint
+	@find $(sources) -type f \
+	    -print0 | xargs -r0 pocketlint --max-length=120
+
+lint-js: sources = src/maasserver/static/js
+lint-js: /usr/bin/pocketlint
+	@find $(sources) -type f -print0 | xargs -r0 pocketlint
+
+/usr/bin/pocketlint:
+	sudo apt-get install python-pocket-lint
+
 check: clean test
 
 docs/api.rst: bin/maas src/maasserver/api.py syncdb
@@ -113,8 +125,25 @@ syncdb: bin/maas dev-db
 	bin/maas migrate maasserver --noinput
 	bin/maas migrate metadataserver --noinput
 
-.PHONY: \
-    build check clean dev-db distclean doc \
-    harness lint pserv-start pserv-stop run \
-    txlongpoll-start txlongpoll-stop \
-    syncdb test sampledata
+define phony
+  build
+  check
+  clean
+  dev-db
+  distclean
+  doc
+  harness
+  lint
+  lint-css
+  lint-js
+  pserv-start
+  pserv-stop
+  run
+  sampledata
+  syncdb
+  test
+  txlongpoll-start
+  txlongpoll-stop
+endef
+
+.PHONY: $(phony)

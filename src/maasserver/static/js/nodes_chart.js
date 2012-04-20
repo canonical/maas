@@ -12,16 +12,13 @@ Y.log('loading maas.nodes_chart');
 
 var module = Y.namespace('maas.nodes_chart');
 
-var NodesChartWidget = function() {
+var NodesChartWidget;
+
+NodesChartWidget = function() {
     NodesChartWidget.superclass.constructor.apply(this, arguments);
 };
 
 NodesChartWidget.NAME = 'nodes-chart-widget';
-
-
-NodesChartWidget._outer_paths;
-NodesChartWidget._offline_circle;
-NodesChartWidget._added_circle;
 
 var TRANSITION_TIME = 1000,
     TRANSITION_EASING = 'easeInOut',
@@ -184,10 +181,9 @@ Y.extend(NodesChartWidget, Y.Widget, {
                 }
             ];
 
-        var outer_total = 0;
-        for (var n in outer_nodes) {
-            outer_total += outer_nodes[n].nodes;
-        }
+        var outer_total = Y.Array.reduce(
+            outer_nodes, 0, function(total, node) {
+                return total + node.nodes; });
         var inner_total = offline_nodes + added_nodes;
         var total_nodes = outer_total + inner_total;
         if (outer_total > 0) {
@@ -197,8 +193,8 @@ Y.extend(NodesChartWidget, Y.Widget, {
                 this._outer_paths = [];
             }
             var segment_start = 0;
-            for(var i in outer_nodes) {
-                var segment_size = 360 / outer_total * outer_nodes[i].nodes;
+            Y.Array.each(outer_nodes, function(outer_node, i) {
+                var segment_size = 360 / outer_total * outer_node.nodes;
                 var segment = [
                     this._center().x,
                     this._center().y,
@@ -209,7 +205,7 @@ Y.extend(NodesChartWidget, Y.Widget, {
                     var slice = r.path();
                     slice.attr({
                         segment: segment,
-                        fill: outer_nodes[i].colour,
+                        fill: outer_node.colour,
                         stroke: STROKE_COLOUR,
                         'stroke-width': STROKE_WIDTH
                         });
@@ -222,9 +218,9 @@ Y.extend(NodesChartWidget, Y.Widget, {
                             widget.fire(out);
                         },
                         null,
-                        outer_nodes[i].events.over,
-                        outer_nodes[i].events.out,
-                        outer_nodes[i].name,
+                        outer_node.events.over,
+                        outer_node.events.out,
+                        outer_node.name,
                         this
                         );
                     this._outer_paths.push(slice);
@@ -235,10 +231,11 @@ Y.extend(NodesChartWidget, Y.Widget, {
                         TRANSITION_TIME,
                         TRANSITION_EASING
                         );
-                    this._outer_paths[i].angle = segment_start - segment_size / 2;
+                    this._outer_paths[i].angle =
+                        segment_start - segment_size / 2;
                 }
                 segment_start += segment_size;
-            }
+            }, this);
         }
 
         var offline_circle_width = 0;
@@ -271,7 +268,7 @@ Y.extend(NodesChartWidget, Y.Widget, {
         }
 
         var added_circle_width = 0;
-        if (total_nodes == 0) {
+        if (total_nodes === 0) {
             added_circle_width = this._radius() - STROKE_WIDTH * 2;
         }
         else if (added_nodes > 0) {
@@ -295,7 +292,7 @@ Y.extend(NodesChartWidget, Y.Widget, {
                 this);
         }
         else {
-            if (added_nodes != total_nodes || total_nodes == 0) {
+            if (added_nodes !== total_nodes || total_nodes === 0) {
                 this._added_circle.toFront();
                 this._added_circle.animate(
                     {r: added_circle_width},
@@ -307,14 +304,15 @@ Y.extend(NodesChartWidget, Y.Widget, {
     },
 
     initializer: function(cfg) {
-        canvas_size = this.get('width') + STROKE_WIDTH * 2;
+        var canvas_size = this.get('width') + STROKE_WIDTH * 2;
         r = Raphael(this.get('node_id'), canvas_size, canvas_size);
         r.customAttributes.segment = function (x, y, r, a1, a2) {
             var flag = (a2 - a1) > 180;
-            if (a1 == 0 && a2 == 360) {
-                /* If the arc is a full circle we need to set the end point to less
-                   than 360 degrees otherwise the start and end points are
-                   calculated as the same location. */
+            if (a1 === 0 && a2 === 360) {
+                /* If the arc is a full circle we need to set the end
+                   point to less than 360 degrees otherwise the start
+                   and end points are calculated as the same
+                   location. */
                 a2 = 359.99;
             }
             a1 = (a1 % 360) * Math.PI / 180;
@@ -347,5 +345,5 @@ Y.extend(NodesChartWidget, Y.Widget, {
 
 module.NodesChartWidget = NodesChartWidget;
 
-}, '0.1', {'requires': ['event-custom', 'widget']}
+}, '0.1', {'requires': ['array-extras', 'event-custom', 'widget']}
 );

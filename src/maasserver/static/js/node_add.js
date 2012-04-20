@@ -17,7 +17,9 @@ module.NODE_ADDED_EVENT = 'nodeAdded';
 // Only used to mockup io in tests.
 module._io = new Y.IO();
 
-var AddNodeWidget = function() {
+var AddNodeWidget;
+
+AddNodeWidget = function() {
     AddNodeWidget.superclass.constructor.apply(this, arguments);
 };
 

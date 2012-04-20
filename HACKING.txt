@@ -49,7 +49,7 @@ This is the list of runtime dependencies that you'll need to install::
 Additionally, you need to install the following python libraries
 for development convenience::
 
-    $ sudo apt-get install python-sphinx python-lxml
+    $ sudo apt-get install python-sphinx python-lxml python-pocket-lint
 
 If you intend to run the test suite, you also need xvfb and firefox::
 

@@ -20,7 +20,8 @@ suite.add(new Y.maas.testing.TestCase({
         module.createUserPanelWidget();
         Y.Assert.isNotNull(
             module._user_panel_singleton,
-            'module._user_panel_singleton is populated after the call to module.showAddNodeWidget.');
+            'module._user_panel_singleton is populated after the ' +
+            'call to module.showAddNodeWidget.');
     }
 }));
 
@@ -49,7 +50,8 @@ suite.add(new Y.maas.testing.TestCase({
         link.simulate('click');
         Y.Assert.isFalse(
             overlay.get('visible'),
-            'If an element outside the panel is clicked the panel should hide.');
+            'If an element outside the panel is clicked the ' +
+            'panel should hide.');
     }
 }));
 

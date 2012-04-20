@@ -12,7 +12,9 @@ Y.log('loading mass.morph');
 
 var module = Y.namespace('maas.morph');
 
-var Morph = function(config) {
+var Morph;
+
+Morph = function(config) {
     Morph.superclass.constructor.apply(this, arguments);
 };
 
@@ -44,14 +46,8 @@ Y.extend(Morph, Y.Widget, {
     },
 
     morph: function(reverse) {
-        if (reverse){
-            var srcNode = this.get('targetNode');
-            var targetNode = this.get('srcNode');
-        }
-        else {
-            var srcNode = this.get('srcNode');
-            var targetNode = this.get('targetNode');
-        }
+        var srcNode = this.get(reverse ? 'targetNode' : 'srcNode');
+        var targetNode = this.get(reverse ? 'srcNode' : 'targetNode');
         if (this._animate) {
             var target_height = targetNode.getComputedStyle('height');
             var fade_out = new Y.Anim({
@@ -65,7 +61,7 @@ Y.extend(Morph, Y.Widget, {
                 targetNode.addClass('hidden');
                 srcNode.setStyle('opacity', 0);
                 srcNode.removeClass('hidden');
-                src_height = srcNode.getComputedStyle('height')
+                var src_height = srcNode.getComputedStyle('height')
                     .replace('px', '');
                 srcNode.setStyle('height', target_height);
                 var fade_in = new Y.Anim({

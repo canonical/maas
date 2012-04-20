@@ -14,7 +14,9 @@ var module = Y.namespace('maas.prefs');
 // Only used to mockup io in tests.
 module._io = new Y.IO();
 
-var TokenWidget = function() {
+var TokenWidget;
+
+TokenWidget = function() {
     TokenWidget.superclass.constructor.apply(this, arguments);
 };
 

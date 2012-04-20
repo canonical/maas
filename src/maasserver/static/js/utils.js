@@ -99,7 +99,9 @@ var red_flash = function(obj) {
 module.red_flash = red_flash;
 
 
-var TitleEditWidget = function() {
+var TitleEditWidget;
+
+TitleEditWidget = function() {
     TitleEditWidget.superclass.constructor.apply(this, arguments);
 };
 

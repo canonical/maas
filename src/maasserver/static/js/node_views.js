@@ -197,8 +197,8 @@ module.NodesDashboard = Y.Base.create(
             {event: 'hover.queued.over', template: this.queued_template},
             {event: 'hover.queued.out'}
             ];
-        for (var ev in events) {
-            this.chart.on(events[ev].event, function(e, template, widget) {
+        Y.Array.each(events, function(event) {
+            this.chart.on(event.event, function(e, template, widget) {
                 if (Y.Lang.isValue(e.nodes)) {
                     widget.setSummary(true, e.nodes, template, true);
                 }
@@ -206,8 +206,8 @@ module.NodesDashboard = Y.Base.create(
                     // Set the text to the default
                     widget.setSummary(true);
                 }
-            }, null, events[ev].template, this);
-        }
+            }, null, event.template, this);
+        }, this);
     },
 
    /**
@@ -220,7 +220,8 @@ module.NodesDashboard = Y.Base.create(
            so that this.modelList exists.
         */
         if (!this.data_populated) {
-            for (var i=0; i<this.modelList.size(); i++) {
+            var i;
+            for (i=0; i<this.modelList.size(); i++) {
                 var node = this.modelList.item(i);
                 var status = node.get('status');
                 this.updateStatus('add', status);
@@ -262,22 +263,23 @@ module.NodesDashboard = Y.Base.create(
     * Update the nodes in the chart.
     */
     updateNode: function(action, node) {
+        var model_node;
         var update_chart = false;
-        if (action == 'created') {
+        if (action === 'created') {
             this.modelList.add(node);
             update_chart = this.updateStatus('add', node.status);
         }
-        else if (action == 'deleted') {
-            var model_node = this.modelList.getById(node.system_id);
+        else if (action === 'deleted') {
+            model_node = this.modelList.getById(node.system_id);
             this.modelList.remove(model_node);
             update_chart = this.updateStatus('remove', node.status);
         }
-        else if (action == 'updated') {
-            var model_node = this.modelList.getById(node.system_id);
-            previous_status = model_node.get('status');
+        else if (action === 'updated') {
+            model_node = this.modelList.getById(node.system_id);
+            var previous_status = model_node.get('status');
             model_node.set('status', node.status);
-            update_remove = this.updateStatus('remove', previous_status);
-            update_add = this.updateStatus('add', node.status);
+            var update_remove = this.updateStatus('remove', previous_status);
+            var update_add = this.updateStatus('add', node.status);
             if (update_remove || update_add) {
                 update_chart = true;
             }
@@ -288,7 +290,7 @@ module.NodesDashboard = Y.Base.create(
             this.chart.updateChart();
         }
 
-        if (action != 'updated') {
+        if (action !== 'updated') {
             /* Set the default text on the dashboard. We only need to do this
                if the total number of nodes has changed.
             */
@@ -304,35 +306,36 @@ module.NodesDashboard = Y.Base.create(
         /* This seems like an ugly way to calculate the change, but it stops
            duplication of checking for the action for each status.
         */
-        if (action == 'add') {
-            var node_counter = 1;
+        var node_counter;
+        if (action === 'add') {
+            node_counter = 1;
         }
-        else if (action == 'remove') {
-            var node_counter = -1;
+        else if (action === 'remove') {
+            node_counter = -1;
         }
 
         /* TODO: The commissioned status currently doesn't exist, but once it
            does it should be added here too.
         */
-        if (status == 0) {
+        if (status === 0) {
             // Added nodes
             this.added_nodes += node_counter;
             this.chart.set('added_nodes', this.added_nodes);
             update_chart = true;
         }
-        else if (status == 1 || status == 2 || status == 3) {
+        else if (status === 1 || status === 2 || status === 3) {
             // Offline nodes
             this.offline_nodes += node_counter;
             this.chart.set('offline_nodes', this.offline_nodes);
             update_chart = true;
         }
-        else if (status == 4) {
+        else if (status === 4) {
             // Queued nodes
             this.queued_nodes += node_counter;
             this.chart.set('queued_nodes', this.queued_nodes);
             update_chart = true;
         }
-        else if (status == 5) {
+        else if (status === 5) {
             // Reserved nodes
             this.reserved_nodes += node_counter;
             this.setNodeText(
@@ -341,13 +344,13 @@ module.NodesDashboard = Y.Base.create(
                 this.reserved_nodes
                 );
         }
-        else if (status == 6) {
+        else if (status === 6) {
             // Deployed nodes
             this.deployed_nodes += node_counter;
             this.chart.set('deployed_nodes', this.deployed_nodes);
             update_chart = true;
         }
-        else if (status == 7) {
+        else if (status === 7) {
             // Retired nodes
             this.retired_nodes += node_counter;
             this.setNodeText(
@@ -366,8 +369,8 @@ module.NodesDashboard = Y.Base.create(
             nodes = this.getNodeCount();
             template = this.all_template;
         }
-        plural = (nodes === 1) ? '' : 's';
-        text = Y.Lang.sub(template, {plural: plural})
+        var plural = (nodes === 1) ? '' : 's';
+        var text = Y.Lang.sub(template, {plural: plural});
 
         if (animate) {
             this.fade_out.run();
@@ -387,8 +390,8 @@ module.NodesDashboard = Y.Base.create(
     * Set the text from a template for a DOM node.
     */
     setNodeText: function(element, template, nodes) {
-        plural = (nodes === 1) ? '' : 's';
-        text = Y.Lang.sub(template, {plural: plural, nodes: nodes})
+        var plural = (nodes === 1) ? '' : 's';
+        var text = Y.Lang.sub(template, {plural: plural, nodes: nodes});
         element.setContent(text);
     },
 
@@ -397,7 +400,7 @@ module.NodesDashboard = Y.Base.create(
     */
     getNodeCount: function() {
         return Y.Array.filter(this.modelList.toArray(), function (model) {
-            return model.get('status') != 7;
+            return model.get('status') !== 7;
         }).length;
     }
 });
