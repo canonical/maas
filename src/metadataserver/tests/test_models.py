@@ -15,7 +15,7 @@ __all__ = []
 from django.db import IntegrityError
 from django.http import Http404
 from maasserver.testing.factory import factory
-from maastesting.testcase import TestCase
+from maastesting.djangotestcase import DjangoTestCase
 from metadataserver.models import (
     NodeCommissionResult,
     NodeKey,
@@ -23,7 +23,7 @@ from metadataserver.models import (
     )
 
 
-class TestNodeKeyManager(TestCase):
+class TestNodeKeyManager(DjangoTestCase):
     """Test NodeKeyManager."""
 
     def setUp(self):
@@ -72,7 +72,7 @@ class TestNodeKeyManager(TestCase):
                 NodeKey.objects.get_node_for_key(key)).key)
 
 
-class TestNodeUserDataManager(TestCase):
+class TestNodeUserDataManager(DjangoTestCase):
     """Test NodeUserDataManager."""
 
     def setUp(self):
@@ -137,7 +137,7 @@ class TestNodeUserDataManager(TestCase):
         self.assertTrue(NodeUserData.objects.has_user_data(node))
 
 
-class TestNodeCommissionResult(TestCase):
+class TestNodeCommissionResult(DjangoTestCase):
     """Test the NodeCommissionResult model."""
 
     def test_can_store_data(self):
@@ -166,7 +166,7 @@ class TestNodeCommissionResult(TestCase):
         self.assertEqual(ncr1.name, ncr2.name)
 
 
-class TestNodeCommissionResultManager(TestCase):
+class TestNodeCommissionResultManager(DjangoTestCase):
     """Test the manager utility for NodeCommissionResult."""
 
     def test_clear_results_removes_rows(self):

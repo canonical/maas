@@ -50,7 +50,7 @@ from maasserver.testing.testcase import (
     LoggedInTestCase,
     TestCase,
     )
-from maastesting.testcase import TransactionTestCase
+from maastesting.djangotestcase import TransactionTestCase
 from metadataserver.models import (
     NodeKey,
     NodeUserData,

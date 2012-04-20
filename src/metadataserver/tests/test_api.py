@@ -25,7 +25,7 @@ from maasserver.provisioning import get_provisioning_api_proxy
 from maasserver.testing import reload_object
 from maasserver.testing.factory import factory
 from maasserver.testing.oauthclient import OAuthAuthenticatedClient
-from maastesting.testcase import TestCase
+from maastesting.djangotestcase import DjangoTestCase
 from metadataserver.api import (
     check_version,
     get_node_for_request,
@@ -43,7 +43,7 @@ from metadataserver.nodeinituser import get_node_init_user
 from provisioningserver.testing.factory import ProvisioningFakeFactory
 
 
-class TestHelpers(TestCase):
+class TestHelpers(DjangoTestCase):
     """Tests for the API helper functions."""
 
     def fake_request(self, **kwargs):
@@ -86,7 +86,7 @@ class TestHelpers(TestCase):
             get_node_for_request, self.fake_request())
 
 
-class TestViews(TestCase, ProvisioningFakeFactory):
+class TestViews(DjangoTestCase, ProvisioningFakeFactory):
     """Tests for the API views."""
 
     def make_node_client(self, node=None):

@@ -28,11 +28,11 @@ from maas import (
     import_local_settings,
     import_settings,
     )
+from maastesting.djangotestcase import DjangoTestCase
 from maastesting.factory import factory
-from maastesting.testcase import TestCase
 
 
-class TestSettingsHelpers(TestCase):
+class TestSettingsHelpers(DjangoTestCase):
     """Test Django settings helper functions."""
 
     def test_find_settings(self):

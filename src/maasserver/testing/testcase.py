@@ -20,10 +20,10 @@ __all__ = [
 from django.core.cache import cache
 from maasserver.testing import reset_fake_provisioning_api_proxy
 from maasserver.testing.factory import factory
-import maastesting.testcase
+import maastesting.djangotestcase
 
 
-class TestCase(maastesting.testcase.TestCase):
+class TestCase(maastesting.djangotestcase.DjangoTestCase):
 
     def setUp(self):
         super(TestCase, self).setUp()
@@ -31,7 +31,8 @@ class TestCase(maastesting.testcase.TestCase):
         self.addCleanup(reset_fake_provisioning_api_proxy)
 
 
-class TestModelTestCase(TestCase, maastesting.testcase.TestModelTestCase):
+class TestModelTestCase(TestCase,
+                        maastesting.djangotestcase.TestModelTestCase):
     pass
 
 

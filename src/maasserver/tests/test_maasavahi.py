@@ -23,7 +23,7 @@ from maasserver.models import (
     Config,
     config_manager,
     )
-from maastesting.testcase import TestCase
+from maastesting.djangotestcase import DjangoTestCase
 
 
 class MockZeroconfServiceFactory:
@@ -58,7 +58,7 @@ class MockZeroconfService:
         self.calls.append('unpublish')
 
 
-class TestMAASAvahiService(TestCase):
+class TestMAASAvahiService(DjangoTestCase):
 
     def setup_mock_avahi(self):
         # Unregister other signals from Config, otherwise

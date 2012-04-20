@@ -22,10 +22,10 @@ from django.core.cache import cache
 from django.core.management import call_command
 from maasserver.models import FileStorage
 from maasserver.testing.factory import factory
-from maastesting.testcase import TestCase
+from maastesting.djangotestcase import DjangoTestCase
 
 
-class TestCommands(TestCase):
+class TestCommands(DjangoTestCase):
     """Happy-path integration testing for custom commands.
 
     Detailed testing does not belong here.  If there's any complexity at all
