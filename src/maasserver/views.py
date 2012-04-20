@@ -28,6 +28,10 @@ __all__ = [
     "SSHKeyDeleteView",
     ]
 
+from abc import (
+    ABCMeta,
+    abstractmethod,
+    )
 from logging import getLogger
 import mimetypes
 import os
@@ -51,6 +55,7 @@ from django.contrib.auth.views import (
 from django.core.exceptions import PermissionDenied
 from django.core.urlresolvers import reverse
 from django.http import (
+    Http404,
     HttpResponse,
     HttpResponseBadRequest,
     HttpResponseNotFound,
@@ -110,6 +115,84 @@ def login(request):
 def logout(request):
     messages.info(request, "You have been logged out.")
     return dj_logout(request, next_page=reverse('login'))
+
+
+class HelpfulDeleteView(DeleteView):
+    """Extension to Django's :class:`django.views.generic.DeleteView`.
+
+    This modifies `DeleteView` in a few ways:
+     - Deleting a nonexistent object is considered successful.
+     - There's a callback that lets you describe the object to the user.
+     - User feedback is built in.
+     - get_success_url defaults to returning the "next" URL.
+     - Confirmation screen also deals nicely with already-deleted object.
+
+    :ivar model: The model class this view is meant to delete.
+    """
+
+    __metaclass__ = ABCMeta
+
+    @abstractmethod
+    def get_object(self):
+        """Retrieve the object to be deleted."""
+
+    @abstractmethod
+    def get_next_url(self):
+        """URL of page to proceed to after deleting."""
+
+    def delete(self, *args, **kwargs):
+        """Delete result of self.get_object(), if any."""
+        try:
+            self.object = self.get_object()
+        except Http404:
+            feedback = self.compose_feedback_nonexistent()
+        else:
+            self.object.delete()
+            feedback = self.compose_feedback_deleted(self.object)
+        return self.move_on(feedback)
+
+    def get(self, *args, **kwargs):
+        """Prompt for confirmation of deletion request in the UI.
+
+        This is where the view acts as a regular template view.
+
+        If the object has been deleted in the meantime though, don't bother:
+        we'll just redirect to the next URL and show a notice that the object
+        is no longer there.
+        """
+        try:
+            return super(HelpfulDeleteView, self).get(*args, **kwargs)
+        except Http404:
+            return self.move_on(self.compose_feedback_nonexistent())
+
+    def compose_feedback_nonexistent(self):
+        """Compose feedback message: "obj was already deleted"."""
+        return "Not deleting: %s not found." % self.model._meta.verbose_name
+
+    def compose_feedback_deleted(self, obj):
+        """Compose feedback message: "obj has been deleted"."""
+        return ("%s deleted." % self.name_object(obj)).capitalize()
+
+    def name_object(self, obj):
+        """Overridable: describe object being deleted to the user.
+
+        The result text will be included in a user notice along the lines of
+        "<Object> deleted."
+
+        :param obj: Object that's been deleted from the database.
+        :return: Description of the object, along the lines of
+            "User <obj.username>".
+        """
+        return obj._meta.verbose_name
+
+    def show_notice(self, notice):
+        """Wrapper for messages.info."""
+        messages.info(self.request, notice)
+
+    def move_on(self, feedback_message):
+        """Redirect to the post-deletion page, showing the given message."""
+        self.show_notice(feedback_message)
+        return HttpResponseRedirect(self.get_next_url())
 
 
 # Info message displayed on the node page for COMMISSIONING
@@ -179,11 +262,11 @@ class NodeEdit(UpdateView):
         return reverse('node-view', args=[self.get_object().system_id])
 
 
-class NodeDelete(DeleteView):
+class NodeDelete(HelpfulDeleteView):
 
     template_name = 'maasserver/node_confirm_delete.html'
-
     context_object_name = 'node_to_delete'
+    model = Node
 
     def get_object(self):
         system_id = self.kwargs.get('system_id', None)
@@ -197,11 +280,9 @@ class NodeDelete(DeleteView):
     def get_next_url(self):
         return reverse('node-list')
 
-    def delete(self, request, *args, **kwargs):
-        node = self.get_object()
-        node.delete()
-        messages.info(request, "Node %s deleted." % node.system_id)
-        return HttpResponseRedirect(self.get_next_url())
+    def name_object(self, obj):
+        """See `HelpfulDeleteView`."""
+        return "Node %s" % obj.system_id
 
 
 def get_longpoll_context():
@@ -261,20 +342,20 @@ class SSHKeyCreateView(CreateView):
         return reverse('prefs')
 
 
-class SSHKeyDeleteView(DeleteView):
+class SSHKeyDeleteView(HelpfulDeleteView):
 
     template_name = 'maasserver/prefs_confirm_delete_sshkey.html'
     context_object_name = 'key'
+    model = SSHKey
 
     def get_object(self):
         keyid = self.kwargs.get('keyid', None)
-        return get_object_or_404(SSHKey, user=self.request.user, id=keyid)
+        key = get_object_or_404(SSHKey, id=keyid)
+        if key.user != self.request.user:
+            raise PermissionDenied("Can't delete this key.  It's not yours.")
+        return key
 
-    def form_valid(self, form):
-        messages.info(self.request, "SSH key deleted.")
-        return super(SSHKeyDeleteView, self).form_valid(form)
-
-    def get_success_url(self):
+    def get_next_url(self):
         return reverse('prefs')
 
 

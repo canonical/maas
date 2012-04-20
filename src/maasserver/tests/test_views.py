@@ -22,7 +22,10 @@ from xmlrpclib import Fault
 from django.conf import settings
 from django.conf.urls.defaults import patterns
 from django.contrib.auth.models import User
+from django.core.exceptions import PermissionDenied
 from django.core.urlresolvers import reverse
+from django.http import Http404
+from django.test.client import RequestFactory
 from django.utils.html import escape
 from lxml.html import fromstring
 from maasserver import (
@@ -62,6 +65,7 @@ from maasserver.urls import (
 from maasserver.views import (
     get_longpoll_context,
     get_yui_location,
+    HelpfulDeleteView,
     NodeEdit,
     proxy_to_longpoll,
     )
@@ -329,6 +333,113 @@ class TestUtilities(TestCase):
             url_without_prefix, make_path_relative(url_without_prefix))
 
 
+class FakeDeletableModel:
+    """A fake model class, with a delete method."""
+
+    class Meta:
+        app_label = 'maasserver'
+        object_name = 'fake'
+        verbose_name = "fake object"
+
+    _meta = Meta
+    deleted = False
+
+    def delete(self):
+        self.deleted = True
+
+
+class FakeDeleteView(HelpfulDeleteView):
+    """A fake `HelpfulDeleteView` instance.  Goes through most of the motions.
+
+    There are a few special features to help testing along:
+     - If there's no object, get_object() raises Http404.
+     - Info messages are captured in self.notices.
+    """
+
+    model = FakeDeletableModel
+
+    def __init__(self, obj=None, next_url=None, request=None):
+        self.obj = obj
+        self.next_url = next_url
+        self.request = request
+        self.notices = []
+
+    def get_object(self):
+        if self.obj is None:
+            raise Http404()
+        else:
+            return self.obj
+
+    def get_next_url(self):
+        return self.next_url
+
+    def raise_permission_denied(self):
+        """Helper to substitute for get_object."""
+        raise PermissionDenied()
+
+    def show_notice(self, notice):
+        self.notices.append(notice)
+
+
+class HelpfulDeleteViewTest(TestCase):
+
+    def test_delete_deletes_object(self):
+        obj = FakeDeletableModel()
+        view = FakeDeleteView(obj)
+        view.delete()
+        self.assertTrue(obj.deleted)
+        self.assertEqual([view.compose_feedback_deleted(obj)], view.notices)
+
+    def test_delete_is_gentle_with_missing_objects(self):
+        # Deleting a nonexistent object is basically treated as successful.
+        view = FakeDeleteView()
+        response = view.delete()
+        self.assertEqual(httplib.FOUND, response.status_code)
+        self.assertEqual([view.compose_feedback_nonexistent()], view.notices)
+
+    def test_delete_is_not_gentle_with_permission_violations(self):
+        view = FakeDeleteView()
+        view.get_object = view.raise_permission_denied
+        self.assertRaises(PermissionDenied, view.delete)
+
+    def test_get_asks_for_confirmation_and_does_nothing_yet(self):
+        obj = FakeDeletableModel()
+        next_url = factory.getRandomString()
+        request = RequestFactory().get('/foo')
+        view = FakeDeleteView(obj, request=request, next_url=next_url)
+        response = view.get(request)
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertNotIn(next_url, response.get('Location', ''))
+        self.assertFalse(obj.deleted)
+        self.assertEqual([], view.notices)
+
+    def test_get_skips_confirmation_for_missing_objects(self):
+        next_url = factory.getRandomString()
+        request = RequestFactory().get('/foo')
+        view = FakeDeleteView(next_url=next_url, request=request)
+        response = view.get(request)
+        self.assertEqual(
+            (httplib.FOUND, next_url),
+            (response.status_code, response['Location']))
+        self.assertEqual([view.compose_feedback_nonexistent()], view.notices)
+
+    def test_compose_feedback_nonexistent_names_class(self):
+        class_name = factory.getRandomString()
+        self.patch(FakeDeletableModel.Meta, 'verbose_name', class_name)
+        view = FakeDeleteView()
+        self.assertEqual(
+            "Not deleting: %s not found." % class_name,
+            view.compose_feedback_nonexistent())
+
+    def test_compose_feedback_deleted_uses_name_object(self):
+        object_name = factory.getRandomString()
+        view = FakeDeleteView(FakeDeletableModel())
+        view.name_object = lambda _obj: object_name
+        self.assertEqual(
+            "%s deleted." % object_name.capitalize(),
+            view.compose_feedback_deleted(view.obj))
+
+
 class UserPrefsViewTest(LoggedInTestCase):
 
     def test_prefs_GET_profile(self):
@@ -482,21 +593,45 @@ class KeyManagementTest(LoggedInTestCase):
             [elem.get('action').strip() for elem in doc.cssselect(
                 '#content form')])
 
-    def test_delete_key_GET_cannot_access_someoneelses_key(self):
+    def test_delete_key_GET_cannot_access_someone_elses_key(self):
         key = factory.make_sshkey(factory.make_user())
         del_link = reverse('prefs-delete-sshkey', args=[key.id])
         response = self.client.get(del_link)
 
-        self.assertEqual(httplib.NOT_FOUND, response.status_code)
+        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+
+    def test_delete_key_GET_nonexistent_key_redirects_to_prefs(self):
+        # Deleting a nonexistent key requires no confirmation.  It just
+        # "succeeds" instantaneously.
+        key = factory.make_sshkey(self.logged_in_user)
+        del_link = reverse('prefs-delete-sshkey', args=[key.id])
+        key.delete()
+        response = self.client.get(del_link)
+        self.assertEqual(
+            (httplib.FOUND, '/account/prefs/'),
+            (response.status_code, urlparse(response['Location']).path))
 
     def test_delete_key_POST(self):
-        # A POST request deletes the key.
+        # A POST request deletes the key, and redirects to the prefs.
         key = factory.make_sshkey(self.logged_in_user)
         del_link = reverse('prefs-delete-sshkey', args=[key.id])
         response = self.client.post(del_link, {'post': 'yes'})
 
-        self.assertEqual(httplib.FOUND, response.status_code)
+        self.assertEqual(
+            (httplib.FOUND, '/account/prefs/'),
+            (response.status_code, urlparse(response['Location']).path))
         self.assertFalse(SSHKey.objects.filter(id=key.id).exists())
+
+    def test_delete_key_POST_ignores_nonexistent_key(self):
+        # Deleting a key that's already been deleted?  Basically that's
+        # success.
+        key = factory.make_sshkey(self.logged_in_user)
+        del_link = reverse('prefs-delete-sshkey', args=[key.id])
+        key.delete()
+        response = self.client.post(del_link, {'post': 'yes'})
+        self.assertEqual(
+            (httplib.FOUND, '/account/prefs/'),
+            (response.status_code, urlparse(response['Location']).path))
 
 
 class AdminLoggedInTestCase(LoggedInTestCase):

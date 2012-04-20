@@ -930,7 +930,7 @@ class SSHKey(CommonInfo):
         null=False, editable=True, validators=[validate_ssh_public_key])
 
     class Meta:
-        verbose_name_plural = "SSH keys"
+        verbose_name = "SSH key"
         unique_together = ('user', 'key')
 
     def unique_error_message(self, model_class, unique_check):
