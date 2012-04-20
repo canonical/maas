@@ -73,6 +73,7 @@ from piston.models import (
 from provisioningserver.enum import POWER_TYPE
 from testtools.matchers import (
     EndsWith,
+    FileContains,
     GreaterThan,
     LessThan,
     )
@@ -282,11 +283,8 @@ class NodeTest(TestCase):
         node = factory.make_node(status=NODE_STATUS.DECLARED)
         node.start_commissioning(factory.make_admin())
         path = settings.COMMISSIONING_SCRIPT
-        with open(path, 'r') as f:
-            commissioning_user_data = f.read()
-        self.assertEqual(
-            commissioning_user_data,
-            NodeUserData.objects.get_user_data(node))
+        self.assertThat(
+            path, FileContains(NodeUserData.objects.get_user_data(node)))
 
     def test_missing_commissioning_script(self):
         self.patch(
@@ -1163,10 +1161,10 @@ class FileStorageTest(TestCase):
             new_data, FileStorage.objects.get(filename=filename).data.read())
 
     def test_list_stored_files_lists_files(self):
-        upload_dir = self.make_upload_dir()
         filename = factory.getRandomString()
-        with open(os.path.join(upload_dir, filename), 'w') as f:
-            f.write(self.make_data())
+        factory.make_file(
+            location=self.make_upload_dir(), name=filename,
+            contents=self.make_data())
         self.assertIn(
             self.get_media_path(filename),
             FileStorage.objects.list_stored_files())
@@ -1184,10 +1182,10 @@ class FileStorageTest(TestCase):
             storage.data.name, FileStorage.objects.list_referenced_files())
 
     def test_list_referenced_files_excludes_unreferenced_files(self):
-        upload_dir = self.make_upload_dir()
         filename = factory.getRandomString()
-        with open(os.path.join(upload_dir, filename), 'w') as f:
-            f.write(self.make_data())
+        factory.make_file(
+            location=self.make_upload_dir(), name=filename,
+            contents=self.make_data())
         self.assertNotIn(
             self.get_media_path(filename),
             FileStorage.objects.list_referenced_files())
@@ -1205,31 +1203,28 @@ class FileStorageTest(TestCase):
             storage.data.name, FileStorage.objects.list_referenced_files())
 
     def test_is_old_returns_False_for_recent_file(self):
-        upload_dir = self.make_upload_dir()
         filename = factory.getRandomString()
-        path = os.path.join(upload_dir, filename)
-        with open(path, 'w') as f:
-            f.write(self.make_data())
+        path = factory.make_file(
+            location=self.make_upload_dir(), name=filename,
+            contents=self.make_data())
         self.age_file(path, FileStorage.objects.grace_time - 60)
         self.assertFalse(
             FileStorage.objects.is_old(self.get_media_path(filename)))
 
     def test_is_old_returns_True_for_old_file(self):
-        upload_dir = self.make_upload_dir()
         filename = factory.getRandomString()
-        path = os.path.join(upload_dir, filename)
-        with open(path, 'w') as f:
-            f.write(self.make_data())
+        path = factory.make_file(
+            location=self.make_upload_dir(), name=filename,
+            contents=self.make_data())
         self.age_file(path, FileStorage.objects.grace_time + 1)
         self.assertTrue(
             FileStorage.objects.is_old(self.get_media_path(filename)))
 
     def test_collect_garbage_deletes_garbage(self):
-        upload_dir = self.make_upload_dir()
         filename = factory.getRandomString()
-        path = os.path.join(upload_dir, filename)
-        with open(path, 'w') as f:
-            f.write(self.make_data())
+        path = factory.make_file(
+            location=self.make_upload_dir(), name=filename,
+            contents=self.make_data())
         self.age_file(path)
         FileStorage.objects.collect_garbage()
         self.assertFalse(
@@ -1244,10 +1239,10 @@ class FileStorageTest(TestCase):
         self.assertThat(FileStorage.objects.grace_time, LessThan(24 * 60 * 60))
 
     def test_collect_garbage_leaves_recent_files_alone(self):
-        upload_dir = self.make_upload_dir()
         filename = factory.getRandomString()
-        with open(os.path.join(upload_dir, filename), 'w') as f:
-            f.write(self.make_data())
+        factory.make_file(
+            location=self.make_upload_dir(), name=filename,
+            contents=self.make_data())
         FileStorage.objects.collect_garbage()
         self.assertTrue(
             FileStorage.storage.exists(self.get_media_path(filename)))

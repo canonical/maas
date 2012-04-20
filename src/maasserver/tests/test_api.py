@@ -1460,15 +1460,13 @@ class FileStorageAPITestMixin:
         self.tmpdir = os.path.join(media_root, "testing")
         os.mkdir(self.tmpdir)
 
-    def make_file(self, name="foo", contents="test file contents"):
-        """Make a temp file named `name` with contents `contents`.
+    def make_upload_file(self, name=None, contents=None):
+        """Make a temp upload file named `name` with contents `contents`.
 
         :return: The full file path of the file that was created.
         """
-        filepath = os.path.join(self.tmpdir, name)
-        with open(filepath, "w") as f:
-            f.write(contents)
-        return filepath
+        return factory.make_file(
+            location=self.tmpdir, name=name, contents=contents)
 
     def _create_API_params(self, op=None, filename=None, fileObj=None):
         params = {}
@@ -1504,7 +1502,7 @@ class AnonymousFileStorageAPITest(FileStorageAPITestMixin, AnonAPITestCase):
 class FileStorageAPITest(FileStorageAPITestMixin, APITestCase):
 
     def test_add_file_succeeds(self):
-        filepath = self.make_file()
+        filepath = self.make_upload_file()
 
         with open(filepath) as f:
             response = self.make_API_POST_request("add", "foo", f)
@@ -1512,7 +1510,7 @@ class FileStorageAPITest(FileStorageAPITestMixin, APITestCase):
         self.assertEqual(httplib.CREATED, response.status_code)
 
     def test_add_file_fails_with_no_filename(self):
-        filepath = self.make_file()
+        filepath = self.make_upload_file()
 
         with open(filepath) as f:
             response = self.make_API_POST_request("add", fileObj=f)
@@ -1529,8 +1527,8 @@ class FileStorageAPITest(FileStorageAPITestMixin, APITestCase):
         self.assertEqual("File not supplied", response.content)
 
     def test_add_file_fails_with_too_many_files(self):
-        filepath = self.make_file(name="foo")
-        filepath2 = self.make_file(name="foo2")
+        filepath = self.make_upload_file(name="foo")
+        filepath2 = self.make_upload_file(name="foo2")
 
         with open(filepath) as f, open(filepath2) as f2:
             response = self.client.post(
@@ -1548,13 +1546,13 @@ class FileStorageAPITest(FileStorageAPITestMixin, APITestCase):
 
     def test_add_file_can_overwrite_existing_file_of_same_name(self):
         # Write file one.
-        filepath = self.make_file(contents="file one")
+        filepath = self.make_upload_file(contents="file one")
         with open(filepath) as f:
             response = self.make_API_POST_request("add", "foo", f)
         self.assertEqual(httplib.CREATED, response.status_code)
 
         # Write file two with the same name but different contents.
-        filepath = self.make_file(contents="file two")
+        filepath = self.make_upload_file(contents="file two")
         with open(filepath) as f:
             response = self.make_API_POST_request("add", "foo", f)
         self.assertEqual(httplib.CREATED, response.status_code)

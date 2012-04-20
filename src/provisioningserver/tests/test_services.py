@@ -16,13 +16,13 @@ import os
 import signal
 import sys
 
-from fixtures import TempDir
+from maastesting.factory import factory
+from maastesting.testcase import TestCase
 from oops_twisted import OOPSObserver
 from provisioningserver.services import (
     LogService,
     OOPSService,
     )
-from testtools import TestCase
 from testtools.content import content_from_file
 from testtools.deferredruntest import AsynchronousDeferredRunTest
 from twisted.application.service import MultiService
@@ -76,8 +76,7 @@ class TestLogService(TestServicesBase, TestCase):
             signal.SIG_DFL)
 
     def test_log_to_file(self):
-        tempdir = self.useFixture(TempDir()).path
-        log_filename = os.path.join(tempdir, "test.log")
+        log_filename = self.make_file(name="test.log")
         log_service = LogService(log_filename)
         log_service.setServiceParent(self.services)
         self.assertIsInstance(log_service.observer, FileLogObserver)
@@ -96,8 +95,9 @@ class TestOOPSService(TestServicesBase, TestCase):
     def setUp(self):
         super(TestOOPSService, self).setUp()
         # OOPSService relies upon LogService.
-        self.tempdir = self.useFixture(TempDir()).path
-        self.log_filename = os.path.join(self.tempdir, "test.log")
+        self.tempdir = self.make_dir()
+        self.log_filename = factory.make_file(
+            location=self.tempdir, name="test.log")
         self.log_service = LogService(self.log_filename)
         self.log_service.setServiceParent(self.services)
 
@@ -116,6 +116,4 @@ class TestOOPSService(TestServicesBase, TestCase):
         observer = oops_service.observer
         self.assertIsInstance(observer, OOPSObserver)
         self.assertEqual(1, len(observer.config.publishers))
-        self.assertEqual(
-            {"reporter": "Sidebottom"},
-            observer.config.template)
+        self.assertEqual({"reporter": "Sidebottom"}, observer.config.template)

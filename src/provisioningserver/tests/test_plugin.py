@@ -18,11 +18,12 @@ from getpass import getuser
 import httplib
 import os
 from StringIO import StringIO
+from textwrap import dedent
 import xmlrpclib
 
-from fixtures import TempDir
 import formencode
 from maastesting.factory import factory
+from maastesting.testcase import TestCase
 from provisioningserver.plugin import (
     Config,
     Options,
@@ -31,7 +32,6 @@ from provisioningserver.plugin import (
     SingleUsernamePasswordChecker,
     )
 from provisioningserver.testing.fakecobbler import make_fake_cobbler_session
-from testtools import TestCase
 from testtools.deferredruntest import (
     assert_fails_with,
     AsynchronousDeferredRunTest,
@@ -96,11 +96,11 @@ class TestConfig(TestCase):
 
     def test_load(self):
         # Configuration can be loaded and parsed from a file.
-        filename = os.path.join(
-            self.useFixture(TempDir()).path, "config.yaml")
-        with open(filename, "wb") as stream:
-            stream.write(b'logfile: "/some/where.log"\n')
-            stream.write(b'password: "megadeth"\n')
+        config = dedent("""
+            logfile: "/some/where.log"
+            password: "megadeth"
+            """)
+        filename = self.make_file(name="config.yaml", contents=config)
         observed = Config.load(filename)
         self.assertEqual("/some/where.log", observed["logfile"])
 
@@ -152,7 +152,7 @@ class TestProvisioningServiceMaker(TestCase):
 
     def setUp(self):
         super(TestProvisioningServiceMaker, self).setUp()
-        self.tempdir = self.useFixture(TempDir()).path
+        self.tempdir = self.make_dir()
 
     def write_config(self, config):
         config.setdefault("password", factory.getRandomString())

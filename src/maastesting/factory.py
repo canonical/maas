@@ -21,6 +21,7 @@ from itertools import (
     islice,
     repeat,
     )
+import os.path
 import random
 import string
 
@@ -62,6 +63,31 @@ class Factory:
     def getRandomMACAddress(self):
         octets = islice(self.random_octets, 6)
         return b":".join(format(octet, b"02x") for octet in octets)
+
+    def make_file(self, location, name=None, contents=None):
+        """Create a file, and write data to it.
+
+        Prefer the eponymous convenience wrapper in
+        :class:`maastesting.testcase.TestCase`.  It creates a temporary
+        directory and arranges for its eventual cleanup.
+
+        :param location: Directory.  Use a temporary directory for this, and
+            make sure it gets cleaned up after the test!
+        :param name: Optional name for the file.  If none is given, one will
+            be made up.
+        :param contents: Optional contents for the file.  If omitted, some
+            arbitrary ASCII text will be written.
+        :type contents: unicode, but containing only ASCII characters.
+        :return: Path to the file.
+        """
+        if name is None:
+            name = self.getRandomString()
+        if contents is None:
+            contents = self.getRandomString().encode('ascii')
+        path = os.path.join(location, name)
+        with open(path, 'w') as f:
+            f.write(contents)
+        return path
 
 
 # Create factory singleton.

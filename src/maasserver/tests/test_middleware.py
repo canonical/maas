@@ -15,7 +15,6 @@ __all__ = []
 import httplib
 import json
 import logging
-from tempfile import NamedTemporaryFile
 
 from django.contrib.messages import constants
 from django.core.cache import cache
@@ -49,6 +48,10 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
     LoggedInTestCase,
     TestCase,
+    )
+from testtools.matchers import (
+    Contains,
+    FileContains,
     )
 
 
@@ -192,12 +195,12 @@ class ExceptionLoggerMiddlewareTest(TestCase):
 
     def test_exception_logger_logs_error(self):
         error_text = factory.getRandomString()
-        with NamedTemporaryFile() as logfile:
-            self.set_up_logger(logfile.name)
-            ExceptionLoggerMiddleware().process_exception(
-                fake_request('/middleware/api/hello'),
-                ValueError(error_text))
-            self.assertIn(error_text, open(logfile.name).read())
+        logfile = self.make_file(contents="")
+        self.set_up_logger(logfile)
+        ExceptionLoggerMiddleware().process_exception(
+            fake_request('/middleware/api/hello'),
+            ValueError(error_text))
+        self.assertThat(logfile, FileContains(matcher=Contains(error_text)))
 
 
 class ExternalComponentsMiddlewareTest(TestCase):
