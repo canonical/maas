@@ -14,8 +14,8 @@ __all__ = []
 
 from itertools import count
 from random import randint
-from tempfile import NamedTemporaryFile
 
+from maastesting.testcase import TestCase
 from provisioningserver.cobblercatcher import ProvisioningError
 from provisioningserver.cobblerclient import (
     CobblerDistro,
@@ -25,16 +25,14 @@ from provisioningserver.cobblerclient import (
     CobblerRepo,
     CobblerSystem,
     )
+from provisioningserver.testing.factory import CobblerFakeFactory
 from provisioningserver.testing.fakecobbler import (
     FakeCobbler,
     log_in_to_fake_cobbler,
     )
 from testtools.content import text_content
 from testtools.deferredruntest import AsynchronousDeferredRunTest
-from testtools.testcase import (
-    ExpectedException,
-    TestCase,
-    )
+from testtools.testcase import ExpectedException
 from twisted.internet.defer import (
     inlineCallbacks,
     returnValue,
@@ -44,75 +42,7 @@ from twisted.internet.defer import (
 unique_ints = count(randint(0, 9999))
 
 
-def make_file():
-    """Make a temporary file."""
-    temp_file = NamedTemporaryFile()
-    temp_file.write("Data here.")
-    temp_file.flush()
-    return temp_file
-
-
-def default_to_file(attributes, attribute, required_attrs):
-    """If `attributes[attribute]` is required but not set, make a file.
-
-    :return: A temporary file.  Keep this alive as long as you need the file.
-    """
-    if attribute in required_attrs and attribute not in attributes:
-        temp_file = make_file()
-        attributes[attribute] = temp_file.name
-        return temp_file
-    else:
-        return None
-
-
-@inlineCallbacks
-def default_to_object(attributes, attribute, required_attrs, session,
-                      cobbler_class):
-    """If `attributes[attribute]` is required but not set, make an object."""
-    if attribute in required_attrs and attribute not in attributes:
-        other_obj = yield fake_cobbler_object(session, cobbler_class)
-        attributes[attribute] = other_obj.name
-
-
-@inlineCallbacks
-def fake_cobbler_object(session, object_class, name=None, attributes=None):
-    """Create a fake Cobbler object.
-
-    :param session: `CobblerSession`.
-    :param object_class: concrete `CobblerObject` class to instantiate.
-    :param name: Option name for the object.
-    :param attributes: Optional dict of attribute values for the object.
-    """
-    if attributes is None:
-        attributes = {}
-    else:
-        attributes = attributes.copy()
-    unique_int = next(unique_ints)
-    if name is None:
-        name = 'name-%s-%d' % (object_class.object_type, unique_int)
-    attributes['name'] = name
-    temp_files = [
-        default_to_file(
-            attributes, 'kernel', object_class.required_attributes),
-        default_to_file(
-            attributes, 'initrd', object_class.required_attributes),
-        ]
-    yield default_to_object(
-        attributes, 'profile', object_class.required_attributes, session,
-        CobblerProfile)
-    yield default_to_object(
-        attributes, 'distro', object_class.required_attributes, session,
-        CobblerDistro)
-    for attr in object_class.required_attributes:
-        if attr not in attributes:
-            attributes[attr] = '%s-%d' % (attr, unique_int)
-    new_object = yield object_class.new(session, name, attributes)
-    # Keep the temporary files alive for the lifetime of the object.
-    new_object._hold_these_files_please = temp_files
-    returnValue(new_object)
-
-
-class TestFakeCobbler(TestCase):
+class TestFakeCobbler(TestCase, CobblerFakeFactory):
     """Test `FakeCobbler`.
 
     These tests should also pass if run against a real (clean) Cobbler.
@@ -139,7 +69,7 @@ class TestFakeCobbler(TestCase):
         # Use of the token will now fail with an "invalid token"
         # error.  The Cobbler client notices this, re-authenticates, and
         # re-runs the method.
-        yield fake_cobbler_object(session, CobblerRepo)
+        yield self.fake_cobbler_object(session, CobblerRepo)
 
         # The re-authentication results in a fresh token.
         self.assertNotEqual(old_token, session.token)
@@ -148,11 +78,11 @@ class TestFakeCobbler(TestCase):
     def test_valid_token_does_not_raise_auth_error(self):
         session = yield log_in_to_fake_cobbler()
         old_token = session.token
-        yield fake_cobbler_object(session, CobblerRepo)
+        yield self.fake_cobbler_object(session, CobblerRepo)
         self.assertEqual(old_token, session.token)
 
 
-class CobblerObjectTestScenario:
+class CobblerObjectTestScenario(CobblerFakeFactory):
     """Generic tests for the various `CobblerObject` classes.
 
     This will be run once for each of the classes in the hierarchy.
@@ -189,7 +119,8 @@ class CobblerObjectTestScenario:
     def test_create_object(self):
         session = yield log_in_to_fake_cobbler()
         name = self.make_name()
-        obj = yield fake_cobbler_object(session, self.cobbler_class, name)
+        obj = yield self.fake_cobbler_object(
+            session, self.cobbler_class, name)
         self.assertEqual(name, obj.name)
 
     @inlineCallbacks
@@ -201,7 +132,7 @@ class CobblerObjectTestScenario:
         session = yield log_in_to_fake_cobbler()
         session.fake_proxy.fake_cobbler.xapi_object_edit = return_false
         with ExpectedException(RuntimeError):
-            yield fake_cobbler_object(session, self.cobbler_class)
+            yield self.fake_cobbler_object(session, self.cobbler_class)
 
     @inlineCallbacks
     def test_find_returns_empty_list_if_no_match(self):
@@ -214,7 +145,7 @@ class CobblerObjectTestScenario:
     def test_find_matches_name(self):
         session = yield log_in_to_fake_cobbler()
         name = self.make_name()
-        yield fake_cobbler_object(session, self.cobbler_class, name)
+        yield self.fake_cobbler_object(session, self.cobbler_class, name)
         by_name = yield self.cobbler_class.find(session, name=name)
         self.assertSequenceEqual([name], [obj.name for obj in by_name])
 
@@ -223,7 +154,7 @@ class CobblerObjectTestScenario:
         session = yield log_in_to_fake_cobbler()
         name = self.make_name()
         comment = "This is comment #%d" % next(unique_ints)
-        yield fake_cobbler_object(
+        yield self.fake_cobbler_object(
             session, self.cobbler_class, name, {'comment': comment})
         by_comment = yield self.cobbler_class.find(session, comment=comment)
         self.assertSequenceEqual([name], [obj.name for obj in by_comment])
@@ -232,7 +163,7 @@ class CobblerObjectTestScenario:
     def test_find_without_args_finds_everything(self):
         session = yield log_in_to_fake_cobbler()
         name = self.make_name()
-        yield fake_cobbler_object(session, self.cobbler_class, name)
+        yield self.fake_cobbler_object(session, self.cobbler_class, name)
         found_objects = yield self.cobbler_class.find(session)
         self.assertIn(name, [obj.name for obj in found_objects])
 
@@ -241,7 +172,7 @@ class CobblerObjectTestScenario:
         session = yield log_in_to_fake_cobbler()
         comment = "This is comment #%d" % next(unique_ints)
         name = self.make_name()
-        obj = yield fake_cobbler_object(
+        obj = yield self.fake_cobbler_object(
             session, self.cobbler_class, name, {'comment': comment})
         attributes = yield obj.get_values()
         self.assertEqual(name, attributes['name'])
@@ -252,7 +183,7 @@ class CobblerObjectTestScenario:
         session = yield log_in_to_fake_cobbler()
         comment = "This is comment #%d" % next(unique_ints)
         name = self.make_name()
-        yield fake_cobbler_object(
+        yield self.fake_cobbler_object(
             session, self.cobbler_class, name, {'comment': comment})
         all_objects = yield self.cobbler_class.get_all_values(session)
         found_obj = all_objects[name]
@@ -270,23 +201,24 @@ class CobblerObjectTestScenario:
     def test_get_handle_finds_handle(self):
         session = yield log_in_to_fake_cobbler()
         name = self.make_name()
-        obj = yield fake_cobbler_object(session, self.cobbler_class, name)
+        obj = yield self.fake_cobbler_object(
+            session, self.cobbler_class, name)
         handle = yield obj._get_handle()
         self.assertNotEqual(None, handle)
 
     @inlineCallbacks
     def test_get_handle_distinguishes_objects(self):
         session = yield log_in_to_fake_cobbler()
-        obj1 = yield fake_cobbler_object(session, self.cobbler_class)
+        obj1 = yield self.fake_cobbler_object(session, self.cobbler_class)
         handle1 = yield obj1._get_handle()
-        obj2 = yield fake_cobbler_object(session, self.cobbler_class)
+        obj2 = yield self.fake_cobbler_object(session, self.cobbler_class)
         handle2 = yield obj2._get_handle()
         self.assertNotEqual(handle1, handle2)
 
     @inlineCallbacks
     def test_get_handle_is_consistent(self):
         session = yield log_in_to_fake_cobbler()
-        obj = yield fake_cobbler_object(session, self.cobbler_class)
+        obj = yield self.fake_cobbler_object(session, self.cobbler_class)
         handle1 = yield obj._get_handle()
         handle2 = yield obj._get_handle()
         self.assertEqual(handle1, handle2)
@@ -295,7 +227,8 @@ class CobblerObjectTestScenario:
     def test_delete_removes_object(self):
         session = yield log_in_to_fake_cobbler()
         name = self.make_name()
-        obj = yield fake_cobbler_object(session, self.cobbler_class, name)
+        obj = yield self.fake_cobbler_object(
+            session, self.cobbler_class, name)
         yield obj.delete()
         matches = yield self.cobbler_class.find(session, name=name)
         self.assertSequenceEqual([], matches)
@@ -395,7 +328,7 @@ class TestCobblerSystem(CobblerObjectTestScenario, TestCase):
         names = [self.make_name() for counter in range(num_systems)]
         systems = []
         for name in names:
-            new_system = yield fake_cobbler_object(
+            new_system = yield self.fake_cobbler_object(
                 session, self.cobbler_class, name)
             systems.append(new_system)
         returnValue((names, systems))
@@ -412,7 +345,8 @@ class TestCobblerSystem(CobblerObjectTestScenario, TestCase):
     def test_interface_set_mac_address(self):
         session = yield log_in_to_fake_cobbler()
         name = self.make_name()
-        obj = yield fake_cobbler_object(session, self.cobbler_class, name)
+        obj = yield self.fake_cobbler_object(
+            session, self.cobbler_class, name)
         yield obj.modify(
             {"interface": "eth0", "mac_address": "12:34:56:78:90:12"})
         state = yield obj.get_values()
@@ -425,7 +359,8 @@ class TestCobblerSystem(CobblerObjectTestScenario, TestCase):
     def test_interface_set_dns_name(self):
         session = yield log_in_to_fake_cobbler()
         name = self.make_name()
-        obj = yield fake_cobbler_object(session, self.cobbler_class, name)
+        obj = yield self.fake_cobbler_object(
+            session, self.cobbler_class, name)
         yield obj.modify(
             {"interface": "eth0", "dns_name": "epitaph"})
         state = yield obj.get_values()
@@ -438,7 +373,8 @@ class TestCobblerSystem(CobblerObjectTestScenario, TestCase):
     def test_interface_delete_interface(self):
         session = yield log_in_to_fake_cobbler()
         name = self.make_name()
-        obj = yield fake_cobbler_object(session, self.cobbler_class, name)
+        obj = yield self.fake_cobbler_object(
+            session, self.cobbler_class, name)
         yield obj.modify(
             {"interface": "eth0", "mac_address": "12:34:56:78:90:12"})
         yield obj.modify(
