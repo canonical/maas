@@ -18,8 +18,6 @@ __all__ = [
     "get_html_display_for_key",
     "Config",
     "FileStorage",
-    "NODE_STATUS",
-    "NODE_PERMISSION",
     "NODE_TRANSITIONS",
     "Node",
     "MACAddress",
@@ -29,10 +27,7 @@ __all__ = [
 
 import binascii
 from cgi import escape
-from collections import (
-    defaultdict,
-    OrderedDict,
-    )
+from collections import defaultdict
 import copy
 import datetime
 from errno import ENOENT
@@ -58,6 +53,16 @@ from django.db import models
 from django.db.models.signals import post_save
 from django.shortcuts import get_object_or_404
 from django.utils.safestring import mark_safe
+from maasserver.enum import (
+    ARCHITECTURE,
+    ARCHITECTURE_CHOICES,
+    NODE_AFTER_COMMISSIONING_ACTION,
+    NODE_AFTER_COMMISSIONING_ACTION_CHOICES,
+    NODE_PERMISSION,
+    NODE_STATUS,
+    NODE_STATUS_CHOICES,
+    NODE_STATUS_CHOICES_DICT,
+    )
 from maasserver.exceptions import (
     CannotDeleteUserException,
     NodeStateViolation,
@@ -118,48 +123,6 @@ def generate_node_system_id():
     return 'node-%s' % uuid1()
 
 
-class NODE_STATUS:
-    """The vocabulary of a `Node`'s possible statuses."""
-    # A node starts out as READY.
-    DEFAULT_STATUS = 0
-
-    #: The node has been created and has a system ID assigned to it.
-    DECLARED = 0
-    #: Testing and other commissioning steps are taking place.
-    COMMISSIONING = 1
-    #: Smoke or burn-in testing has a found a problem.
-    FAILED_TESTS = 2
-    #: The node can't be contacted.
-    MISSING = 3
-    #: The node is in the general pool ready to be deployed.
-    READY = 4
-    #: The node is ready for named deployment.
-    RESERVED = 5
-    #: The node is powering a service from a charm or is ready for use with
-    #: a fresh Ubuntu install.
-    ALLOCATED = 6
-    #: The node has been removed from service manually until an admin
-    #: overrides the retirement.
-    RETIRED = 7
-
-
-# Django choices for NODE_STATUS: sequence of tuples (key, UI
-# representation).
-NODE_STATUS_CHOICES = (
-    (NODE_STATUS.DECLARED, "Declared"),
-    (NODE_STATUS.COMMISSIONING, "Commissioning"),
-    (NODE_STATUS.FAILED_TESTS, "Failed tests"),
-    (NODE_STATUS.MISSING, "Missing"),
-    (NODE_STATUS.READY, "Ready"),
-    (NODE_STATUS.RESERVED, "Reserved"),
-    (NODE_STATUS.ALLOCATED, "Allocated"),
-    (NODE_STATUS.RETIRED, "Retired"),
-)
-
-
-NODE_STATUS_CHOICES_DICT = OrderedDict(NODE_STATUS_CHOICES)
-
-
 # Information about valid node status transitions.
 # The format is:
 # {
@@ -218,49 +181,6 @@ NODE_TRANSITIONS = {
         NODE_STATUS.MISSING,
         ],
     }
-
-
-class NODE_AFTER_COMMISSIONING_ACTION:
-    """The vocabulary of a `Node`'s possible value for its field
-    after_commissioning_action.
-
-    """
-# TODO: document this when it's stabilized.
-    #:
-    DEFAULT = 0
-    #:
-    QUEUE = 0
-    #:
-    CHECK = 1
-    #:
-    DEPLOY_12_04 = 2
-
-
-NODE_AFTER_COMMISSIONING_ACTION_CHOICES = (
-    (NODE_AFTER_COMMISSIONING_ACTION.QUEUE,
-        "Queue for dynamic allocation to services"),
-    (NODE_AFTER_COMMISSIONING_ACTION.CHECK,
-        "Check compatibility and hold for future decision"),
-    (NODE_AFTER_COMMISSIONING_ACTION.DEPLOY_12_04,
-        "Deploy with Ubuntu 12.04 LTS"),
-)
-
-
-NODE_AFTER_COMMISSIONING_ACTION_CHOICES_DICT = dict(
-    NODE_AFTER_COMMISSIONING_ACTION_CHOICES)
-
-
-# List of supported architectures.
-class ARCHITECTURE:
-    i386 = 'i386'
-    amd64 = 'amd64'
-
-
-# Architecture names.
-ARCHITECTURE_CHOICES = (
-    (ARCHITECTURE.i386, "i386"),
-    (ARCHITECTURE.amd64, "amd64"),
-)
 
 
 def get_papi():
@@ -452,12 +372,6 @@ def get_db_state(instance, field_name):
             instance.__class__.objects.get(pk=instance.pk), field_name)
     except instance.DoesNotExist:
         return None
-
-
-class NODE_PERMISSION:
-    VIEW = 'view_node'
-    EDIT = 'edit_node'
-    ADMIN = 'admin_node'
 
 
 class Node(CommonInfo):

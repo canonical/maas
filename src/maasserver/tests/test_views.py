@@ -34,6 +34,10 @@ from maasserver import (
     views,
     )
 from maasserver.components import register_persistent_error
+from maasserver.enum import (
+    NODE_AFTER_COMMISSIONING_ACTION,
+    NODE_STATUS,
+    )
 from maasserver.exceptions import (
     ExternalComponentException,
     NoRabbit,
@@ -42,9 +46,6 @@ from maasserver.forms import NodeActionForm
 from maasserver.models import (
     Config,
     Node,
-    NODE_AFTER_COMMISSIONING_ACTION,
-    NODE_STATUS,
-    POWER_TYPE_CHOICES,
     SSHKey,
     UserProfile,
     )
@@ -70,7 +71,10 @@ from maasserver.views import (
     proxy_to_longpoll,
     )
 from maastesting.rabbit import uses_rabbit_fixture
-from provisioningserver.enum import PSERV_FAULT
+from provisioningserver.enum import (
+    POWER_TYPE_CHOICES,
+    PSERV_FAULT,
+    )
 from testtools.matchers import (
     Contains,
     MatchesAll,

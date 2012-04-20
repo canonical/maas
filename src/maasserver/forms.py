@@ -44,16 +44,18 @@ from django.forms import (
     Form,
     ModelForm,
     )
-from maasserver.fields import MACAddressFormField
-from maasserver.models import (
+from maasserver.enum import (
     ARCHITECTURE,
     ARCHITECTURE_CHOICES,
-    Config,
-    MACAddress,
-    Node,
     NODE_AFTER_COMMISSIONING_ACTION_CHOICES,
     NODE_PERMISSION,
     NODE_STATUS,
+    )
+from maasserver.fields import MACAddressFormField
+from maasserver.models import (
+    Config,
+    MACAddress,
+    Node,
     SSHKey,
     )
 

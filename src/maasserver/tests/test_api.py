@@ -28,15 +28,17 @@ from maasserver.api import (
     extract_constraints,
     extract_oauth_key,
     )
-from maasserver.models import (
+from maasserver.enum import (
     ARCHITECTURE_CHOICES,
+    NODE_STATUS,
+    NODE_STATUS_CHOICES_DICT,
+    )
+from maasserver.models import (
     Config,
     create_auth_token,
     get_auth_tokens,
     MACAddress,
     Node,
-    NODE_STATUS,
-    NODE_STATUS_CHOICES_DICT,
     )
 from maasserver.testing import (
     reload_object,

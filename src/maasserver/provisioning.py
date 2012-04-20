@@ -38,13 +38,15 @@ from maasserver.components import (
     discard_persistent_error,
     register_persistent_error,
     )
+from maasserver.enum import (
+    ARCHITECTURE_CHOICES,
+    NODE_STATUS,
+    )
 from maasserver.exceptions import ExternalComponentException
 from maasserver.models import (
-    ARCHITECTURE_CHOICES,
     Config,
     MACAddress,
     Node,
-    NODE_STATUS,
     )
 from provisioningserver.enum import PSERV_FAULT
 import yaml

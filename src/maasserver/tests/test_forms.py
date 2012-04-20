@@ -18,6 +18,13 @@ from django.core.exceptions import (
     ValidationError,
     )
 from django.http import QueryDict
+from maasserver.enum import (
+    ARCHITECTURE,
+    NODE_AFTER_COMMISSIONING_ACTION_CHOICES,
+    NODE_PERMISSION,
+    NODE_STATUS,
+    NODE_STATUS_CHOICES_DICT,
+    )
 from maasserver.forms import (
     ConfigForm,
     EditUserForm,
@@ -33,18 +40,13 @@ from maasserver.forms import (
     validate_hostname,
     )
 from maasserver.models import (
-    ARCHITECTURE,
     Config,
     DEFAULT_CONFIG,
-    NODE_AFTER_COMMISSIONING_ACTION_CHOICES,
-    NODE_PERMISSION,
-    NODE_STATUS,
-    NODE_STATUS_CHOICES_DICT,
-    POWER_TYPE_CHOICES,
     )
 from maasserver.provisioning import get_provisioning_api_proxy
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
+from provisioningserver.enum import POWER_TYPE_CHOICES
 from testtools.matchers import (
     AllMatch,
     Equals,

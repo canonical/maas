@@ -19,12 +19,14 @@ import random
 import time
 
 from django.contrib.auth.models import User
-from maasserver.models import (
+from maasserver.enum import (
     ARCHITECTURE,
+    NODE_STATUS,
+    )
+from maasserver.models import (
     FileStorage,
     MACAddress,
     Node,
-    NODE_STATUS,
     SSHKey,
     )
 from maasserver.testing import get_data

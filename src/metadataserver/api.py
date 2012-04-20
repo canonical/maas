@@ -25,17 +25,17 @@ from maasserver.api import (
     extract_oauth_key,
     get_mandatory_param,
     )
+from maasserver.enum import (
+    NODE_STATUS,
+    NODE_STATUS_CHOICES_DICT,
+    )
 from maasserver.exceptions import (
     MAASAPIBadRequest,
     MAASAPINotFound,
     NodeStateViolation,
     Unauthorized,
     )
-from maasserver.models import (
-    NODE_STATUS,
-    NODE_STATUS_CHOICES_DICT,
-    SSHKey,
-    )
+from maasserver.models import SSHKey
 from metadataserver.models import (
     NodeCommissionResult,
     NodeKey,

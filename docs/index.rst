@@ -33,6 +33,7 @@ Code
 
 .. toctree::
    models
+   enum
 
 Indices and tables
 ==================

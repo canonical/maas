@@ -90,6 +90,10 @@ from django.template import RequestContext
 from docutils import core
 from formencode import validators
 from formencode.validators import Invalid
+from maasserver.enum import (
+    NODE_PERMISSION,
+    NODE_STATUS,
+    )
 from maasserver.exceptions import (
     MAASAPIBadRequest,
     MAASAPINotFound,
@@ -104,8 +108,6 @@ from maasserver.models import (
     FileStorage,
     MACAddress,
     Node,
-    NODE_PERMISSION,
-    NODE_STATUS,
     )
 from piston.doc import generate_doc
 from piston.handler import (

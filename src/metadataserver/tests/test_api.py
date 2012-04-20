@@ -16,11 +16,9 @@ from collections import namedtuple
 import httplib
 from io import BytesIO
 
+from maasserver.enum import NODE_STATUS
 from maasserver.exceptions import Unauthorized
-from maasserver.models import (
-    NODE_STATUS,
-    SSHKey,
-    )
+from maasserver.models import SSHKey
 from maasserver.provisioning import get_provisioning_api_proxy
 from maasserver.testing import reload_object
 from maasserver.testing.factory import factory

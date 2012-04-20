@@ -77,6 +77,10 @@ from django.views.generic import (
 from django.views.generic.base import TemplateView
 from django.views.generic.detail import SingleObjectTemplateResponseMixin
 from django.views.generic.edit import ModelFormMixin
+from maasserver.enum import (
+    NODE_PERMISSION,
+    NODE_STATUS,
+    )
 from maasserver.exceptions import (
     CannotDeleteUserException,
     NoRabbit,
@@ -97,8 +101,6 @@ from maasserver.forms import (
 from maasserver.messages import messaging
 from maasserver.models import (
     Node,
-    NODE_PERMISSION,
-    NODE_STATUS,
     SSHKey,
     UserProfile,
     )

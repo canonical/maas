@@ -28,6 +28,12 @@ from django.core.exceptions import (
 from django.db import IntegrityError
 from django.utils.safestring import SafeUnicode
 from fixtures import TestWithFixtures
+from maasserver.enum import (
+    NODE_PERMISSION,
+    NODE_STATUS,
+    NODE_STATUS_CHOICES,
+    NODE_STATUS_CHOICES_DICT,
+    )
 from maasserver.exceptions import (
     CannotDeleteUserException,
     NodeStateViolation,
@@ -45,10 +51,6 @@ from maasserver.models import (
     HELLIPSIS,
     MACAddress,
     Node,
-    NODE_PERMISSION,
-    NODE_STATUS,
-    NODE_STATUS_CHOICES,
-    NODE_STATUS_CHOICES_DICT,
     NODE_TRANSITIONS,
     SSHKey,
     SYSTEM_USERS,

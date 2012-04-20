@@ -26,17 +26,19 @@ from maasserver.components import (
     get_persistent_errors,
     register_persistent_error,
     )
+from maasserver.enum import (
+    ARCHITECTURE,
+    NODE_AFTER_COMMISSIONING_ACTION,
+    NODE_STATUS,
+    NODE_STATUS_CHOICES,
+    )
 from maasserver.exceptions import (
     ExternalComponentException,
     MAASAPIException,
     )
 from maasserver.models import (
-    ARCHITECTURE,
     Config,
     Node,
-    NODE_AFTER_COMMISSIONING_ACTION,
-    NODE_STATUS,
-    NODE_STATUS_CHOICES,
     )
 from maasserver.provisioning import (
     check_profiles,
