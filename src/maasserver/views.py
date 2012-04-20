@@ -33,9 +33,7 @@ from abc import (
     abstractmethod,
     )
 from logging import getLogger
-import mimetypes
 import os
-import urllib2
 
 from convoy.combo import (
     combine_files,
@@ -523,21 +521,6 @@ class AccountsEdit(TemplateView, ModelFormMixin,
             return response
 
         return self.respond(request, profile_form, password_form)
-
-
-def proxy_to_longpoll(request):
-    url = django_settings.LONGPOLL_SERVER_URL
-    assert url is not None, (
-        "LONGPOLL_SERVER_URL should point to a Longpoll server.")
-
-    if 'QUERY_STRING' in request.META:
-        url += '?' + request.META['QUERY_STRING']
-    proxied_response = urllib2.urlopen(url)
-    status_code = proxied_response.code
-    mimetype = (
-        proxied_response.headers.typeheader or mimetypes.guess_type(url))
-    content = proxied_response.read()
-    return HttpResponse(content, status=status_code, mimetype=mimetype)
 
 
 def settings(request):

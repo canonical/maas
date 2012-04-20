@@ -40,7 +40,6 @@ from maasserver.views import (
     NodeListView,
     NodesCreateView,
     NodeView,
-    proxy_to_longpoll,
     settings,
     settings_add_archive,
     SSHKeyCreateView,
@@ -97,32 +96,6 @@ urlpatterns += patterns('maasserver.views',
         r'^nodes/create/$', NodesCreateView.as_view(), name='node-create'),
 )
 
-
-def get_proxy_longpoll_enabled():
-    """Should MAAS act as a proxy to a txlongpoll server?
-
-    This should only be true if longpoll is enabled (LONGPOLL_PATH) and
-    if the url to a txlongpoll is configured (LONGPOLL_SERVER_URL).
-    """
-    return (
-        django_settings.LONGPOLL_SERVER_URL is not None and
-        django_settings.LONGPOLL_PATH is not None)
-
-
-def make_path_relative(url):
-    if url.startswith('/'):
-        return url[1:]
-    else:
-        return url
-
-
-if get_proxy_longpoll_enabled():
-    urlpatterns += patterns('maasserver.views',
-        url(
-            r'^%s$' % re.escape(
-                make_path_relative(django_settings.LONGPOLL_PATH)),
-            proxy_to_longpoll, name='proxy-to-longpoll'),
-        )
 
 # URLs for admin users.
 urlpatterns += patterns('maasserver.views',

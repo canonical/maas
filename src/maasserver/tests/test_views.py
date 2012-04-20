@@ -12,10 +12,8 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
-from collections import namedtuple
 import httplib
 import os
-import urllib2
 from urlparse import urlparse
 from xmlrpclib import Fault
 
@@ -59,16 +57,11 @@ from maasserver.testing.testcase import (
     LoggedInTestCase,
     TestCase,
     )
-from maasserver.urls import (
-    get_proxy_longpoll_enabled,
-    make_path_relative,
-    )
 from maasserver.views import (
     get_longpoll_context,
     get_yui_location,
     HelpfulDeleteView,
     NodeEdit,
-    proxy_to_longpoll,
     )
 from maastesting.rabbit import uses_rabbit_fixture
 from provisioningserver.enum import (
@@ -181,63 +174,6 @@ class TestSnippets(LoggedInTestCase):
             'select#id_after_commissioning_action')
 
 
-class TestProxyView(LoggedInTestCase):
-    """Test the (dev) view used to proxy request to a txlongpoll server."""
-
-    def test_proxy_to_longpoll(self):
-        # Set LONGPOLL_SERVER_URL (to a random string).
-        longpoll_server_url = factory.getRandomString()
-        self.patch(settings, 'LONGPOLL_SERVER_URL', longpoll_server_url)
-
-        # Create content of the fake reponse.
-        query_string = factory.getRandomString()
-        mimetype = factory.getRandomString()
-        content = factory.getRandomString()
-        status_code = factory.getRandomStatusCode()
-
-        # Monkey patch urllib2.urlopen to make it return a (fake) response
-        # with status_code=code, headers.typeheader=mimetype and a
-        # 'read' method that will return 'content'.
-        def urlopen(url):
-            # Assert that urlopen is called on the longpoll url (plus
-            # additional parameters taken from the original request's
-            # query string).
-            self.assertEqual(
-                '%s?%s' % (longpoll_server_url, query_string), url)
-            FakeProxiedResponse = namedtuple(
-                'FakeProxiedResponse', 'code headers read')
-            headers = namedtuple('Headers', 'typeheader')(mimetype)
-            return FakeProxiedResponse(status_code, headers, lambda: content)
-        self.patch(urllib2, 'urlopen', urlopen)
-
-        # Create a fake request.
-        request = namedtuple(
-            'FakeRequest', ['META'])({'QUERY_STRING': query_string})
-        response = proxy_to_longpoll(request)
-
-        self.assertEqual(content, response.content)
-        self.assertEqual(mimetype, response['Content-Type'])
-        self.assertEqual(status_code, response.status_code)
-
-
-class TestGetLongpollenabled(TestCase):
-
-    def test_longpoll_not_included_if_LONGPOLL_SERVER_URL_None(self):
-        self.patch(settings, 'LONGPOLL_PATH', factory.getRandomString())
-        self.patch(settings, 'LONGPOLL_SERVER_URL', None)
-        self.assertFalse(get_proxy_longpoll_enabled())
-
-    def test_longpoll_not_included_if_LONGPOLL_PATH_None(self):
-        self.patch(settings, 'LONGPOLL_PATH', None)
-        self.patch(settings, 'LONGPOLL_SERVER_URL', factory.getRandomString())
-        self.assertFalse(get_proxy_longpoll_enabled())
-
-    def test_longpoll_included_if_LONGPOLL_PATH_and_LONGPOLL_SERVER_URL(self):
-        self.patch(settings, 'LONGPOLL_PATH', factory.getRandomString())
-        self.patch(settings, 'LONGPOLL_SERVER_URL', factory.getRandomString())
-        self.assertTrue(get_proxy_longpoll_enabled())
-
-
 class TestComboLoaderView(TestCase):
     """Test combo loader view."""
 
@@ -325,16 +261,6 @@ class TestUtilities(TestCase):
         self.assertItemsEqual(
             ['LONGPOLL_PATH', 'longpoll_queue'], list(context))
         self.assertEqual(longpoll, context['LONGPOLL_PATH'])
-
-    def test_make_path_relative_if_prefix(self):
-        url_without_prefix = factory.getRandomString()
-        url = '/%s' % url_without_prefix
-        self.assertEqual(url_without_prefix, make_path_relative(url))
-
-    def test_make_path_relative_if_no_prefix(self):
-        url_without_prefix = factory.getRandomString()
-        self.assertEqual(
-            url_without_prefix, make_path_relative(url_without_prefix))
 
 
 class FakeDeletableModel:

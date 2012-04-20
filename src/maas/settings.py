@@ -50,12 +50,6 @@ LOGIN_URL = '/accounts/login/'
 # The MAAS CLI.
 MAAS_CLI = 'sudo maas'
 
-# The location of the Longpoll server.
-# Set LONGPOLL_SERVER_URL to have the web app proxy requests to
-# a txlongpoll (note that this should only be required in a dev
-# environment).
-LONGPOLL_SERVER_URL = None
-
 # The relative path where a proxy to the Longpoll server can be
 # reached.  Longpolling will be disabled in the UI if this is None.
 LONGPOLL_PATH = '/longpoll/'
