@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
+# Exit immediately if a command exits with a non-zero status.
+set -o errexit
+# Treat unset variables as an error when substituting.
+set -o nounset
+
+# Move to the project root.
+cd "$(dirname "$0")/../.."
+
+# Start logging, if requested. Not using multilog here right now
+# because there are race issues when restarting.
+if [ -n "${logdir:-}" ]
+then
+    logfile="${logdir}/current"
+    exec &>> "${logfile}"
+    set -- "$@" \
+        -c "ErrorLog ${logfile}" \
+        -c "CustomLog ${logfile} common"
+fi
+
+# Exec the Provisioning Server.
+apache="$(type -p apache2)"
+config="$(readlink -f etc/apache.conf)"
+
+reload() { "${apache}" -k graceful -f "${config}" -d "$(pwd)"; }
+stop() { "${apache}" -k graceful-stop -f "${config}" -d "$(pwd)"; }
+
+# Run in debug mode unless this is running under supervise(8).
+if [ "/proc/${PPID}/exe" -ef "/usr/bin/supervise" ]
+then
+    trap stop EXIT; trap reload HUP
+    fghack "${apache}" -k start -f "${config}" -d "$(pwd)" "$@"
+else
+    exec "${apache}" -k start -f "${config}" -d "$(pwd)" "$@" -X
+fi

@@ -16,7 +16,8 @@
 ./media/demo/*
 ./media/development
 ./parts
-./run/*.pid
+./run/*
+./services/*/supervise
 ./TAGS
 ./tags
 ./twisted/plugins/dropin.cache

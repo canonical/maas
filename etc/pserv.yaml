@@ -22,7 +22,7 @@ password: "test"
 ## running server.
 #
 # logfile: "pserv.log"
-logfile: "logs/pserv.log"
+logfile: "/dev/null"
 
 ## OOPS configuration (optional).
 #

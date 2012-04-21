@@ -1,0 +1,91 @@
+#!/usr/bin/env python2.7
+# -*- mode: python -*-
+# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
+"""Script to start services, tail logs, and stop services at the end.
+
+Service names should be provided on the command-line.
+
+If a service name is preceded by a "+" (plus) it is started in the
+foreground. For example, to start the `pserv` and `txlongpoll` services in the
+background and `webapp` in the foreground:
+
+  $ services/run pserv txlongpoll +webapp
+
+It does not matter if a service name appears twice in the list. If the service
+name appears once with a preceding "+" and once without, the "+" one takes
+precedence, and that service will be started in the foreground. Only one
+service may be started in the foreground.
+
+If no service has a preceding "+" then all the services named are started and
+their logs tailed.
+"""
+
+from __future__ import (
+    absolute_import,
+    print_function,
+    unicode_literals,
+    )
+
+__metaclass__ = type
+
+from contextlib import contextmanager
+from os.path import join
+from subprocess import (
+    CalledProcessError,
+    check_call,
+    )
+from sys import (
+    argv,
+    stderr,
+    )
+
+
+@contextmanager
+def service(services):
+    started = []
+    try:
+        for service in services:
+            control(service, "start")
+            started.append(service)
+        yield
+    finally:
+        for service in started:
+            control(service, "stop")
+
+
+def control(service, action):
+    print("--> %s `%s`" % (action.capitalize(), service), file=stderr)
+    return check_call(
+        ("make", "--no-print-directory",
+         "services/%s/@%s" % (service, action)))
+
+
+def tail_logs(services):
+    command = ["tail", "--follow=name", "--retry", "--"]
+    command.extend(
+        join("logs", service, "current")
+        for service in services)
+    check_call(command)
+
+
+if __name__ == "__main__":
+    if len(argv) == 1:
+        raise SystemExit(__doc__)
+    services_bg = {name for name in argv[1:] if not name.startswith("+")}
+    services_fg = {name[1:] for name in argv[1:] if name.startswith("+")}
+    services_bg = services_bg - services_fg
+    service_fg = services_fg.pop() if services_fg else None
+    if len(services_fg) != 0:
+        raise SystemExit("Only zero or one foreground services permitted.")
+    try:
+        with service(services_bg):
+            if service_fg:
+                control(service_fg, "run")
+            else:
+                tail_logs(services_bg)
+    except CalledProcessError, error:
+        raise SystemExit(error.returncode)
+    except KeyboardInterrupt:
+        pass  # Ignore.

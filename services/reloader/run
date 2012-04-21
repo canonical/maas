@@ -1,0 +1,124 @@
+#!/usr/bin/env python2.7
+# -*- mode: python -*-
+# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
+"""Monitor for source changes."""
+
+from __future__ import (
+    absolute_import,
+    print_function,
+    unicode_literals,
+    )
+
+__metaclass__ = type
+
+from io import BytesIO
+from os import (
+    chdir,
+    dup2,
+    environ,
+    fdopen,
+    pardir,
+    path,
+    )
+from subprocess import (
+    call,
+    check_call,
+    )
+import sys
+import unittest
+
+import pyinotify
+
+
+TRIGGER_EVENTS = (
+    pyinotify.IN_CLOSE_WRITE |
+    pyinotify.IN_MOVED_FROM |
+    pyinotify.IN_MOVED_TO |
+    pyinotify.IN_DELETE)
+
+
+def is_interesting_python_change(filename):
+    return (
+        filename is not None and
+        filename.endswith(".py") and
+        not filename.startswith(".") and
+        not filename.endswith("_flymake.py"))
+
+
+def is_supervised(dirname):
+    return call(("svok", dirname)) == 0
+
+
+def handle_webapp_change(event):
+    service_dir = "services/webapp"
+    if is_interesting_python_change(event.name):
+        if is_supervised(service_dir):
+            print("<-- {0.pathname} changed; reloading webapp.".format(event))
+            check_call(("svc", "-du", service_dir))
+
+
+def handle_pserv_change(event):
+    service_dir = "services/pserv"
+    if is_interesting_python_change(event.name):
+        if is_supervised(service_dir):
+            print("<-- {0.pathname} changed; reloading pserv.".format(event))
+            check_call(("svc", "-du", service_dir))
+
+
+class TestReloader(unittest.TestCase):
+    """Tests for this script."""
+
+    def test_is_interesting_python_change(self):
+        expected = {
+            None: False,
+            "script": False,
+            "module.py": True,
+            ".hidden.py": False,
+            "module_flymake.py": False,
+            }
+        observed = {
+            filename: is_interesting_python_change(filename)
+            for filename in expected
+            }
+        self.assertEqual(expected, observed)
+
+
+def self_test():
+    """Run tests and exit if any fails."""
+    suite = unittest.makeSuite(TestReloader)
+    runner = unittest.TextTestRunner(stream=BytesIO())
+    if not runner.run(suite).wasSuccessful():
+        sys.stderr.write(runner.stream.getvalue())
+        raise SystemExit(1)
+
+
+if __name__ == "__main__":
+    # Check everything is hunky-dory.
+    self_test()
+    # Move to the project root.
+    chdir(path.join(path.dirname(__file__), pardir, pardir))
+    # Start watch src/ for changes.
+    wm = pyinotify.WatchManager(
+        exclude_filter=lambda path: (
+            "/test/" in path or "/testing/" in path or "/." in path))
+    wm.add_watch(
+        ["src/maas*", "src/meta*"], TRIGGER_EVENTS,
+        proc_fun=handle_webapp_change, rec=True, auto_add=True, do_glob=True)
+    wm.add_watch(
+        ["src/prov*"], TRIGGER_EVENTS, proc_fun=handle_pserv_change,
+        rec=True, auto_add=True, do_glob=True)
+    # Open log file.
+    if "logdir" in environ:
+        logdir = environ["logdir"]
+        logfile = path.join(logdir, "current")
+        with open(logfile, "ab", 1) as log:
+            dup2(log.fileno(), sys.stdout.fileno())
+            dup2(log.fileno(), sys.stderr.fileno())
+    # Ensure stdout and stderr are line-bufferred.
+    sys.stdout = fdopen(sys.stdout.fileno(), "ab", 1)
+    sys.stderr = fdopen(sys.stderr.fileno(), "ab", 1)
+    # Keep watching for ever.
+    notifier = pyinotify.Notifier(wm)
+    notifier.loop()
