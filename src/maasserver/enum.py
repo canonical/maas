@@ -19,9 +19,7 @@ __all__ = [
     'NODE_STATUS_CHOICES_DICT',
     ]
 
-from collections import (
-    OrderedDict,
-    )
+from collections import OrderedDict
 
 
 class NODE_STATUS:
@@ -77,18 +75,18 @@ class NODE_AFTER_COMMISSIONING_ACTION:
     #:
     QUEUE = 0
     #:
-    CHECK = 1
+    #CHECK = 1
     #:
-    DEPLOY_12_04 = 2
+    #DEPLOY_12_04 = 2
 
 
 NODE_AFTER_COMMISSIONING_ACTION_CHOICES = (
     (NODE_AFTER_COMMISSIONING_ACTION.QUEUE,
         "Queue for dynamic allocation to services"),
-    (NODE_AFTER_COMMISSIONING_ACTION.CHECK,
-        "Check compatibility and hold for future decision"),
-    (NODE_AFTER_COMMISSIONING_ACTION.DEPLOY_12_04,
-        "Deploy with Ubuntu 12.04 LTS"),
+    #(NODE_AFTER_COMMISSIONING_ACTION.CHECK,
+    #    "Check compatibility and hold for future decision"),
+    #(NODE_AFTER_COMMISSIONING_ACTION.DEPLOY_12_04,
+    #    "Deploy with Ubuntu 12.04 LTS"),
 )
 
 

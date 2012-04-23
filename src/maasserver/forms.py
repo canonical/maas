@@ -47,6 +47,7 @@ from django.forms import (
 from maasserver.enum import (
     ARCHITECTURE,
     ARCHITECTURE_CHOICES,
+    NODE_AFTER_COMMISSIONING_ACTION,
     NODE_AFTER_COMMISSIONING_ACTION_CHOICES,
     NODE_PERMISSION,
     NODE_STATUS,
@@ -86,12 +87,10 @@ class NodeForm(ModelForm):
         widget=forms.TextInput(attrs={'readonly': 'readonly'}),
         required=False)
 
-    # XXX JeroenVermeulen 2012-04-12, bug=979539: re-enable.
-
-    #after_commissioning_action = forms.TypedChoiceField(
-    #    label="After commissioning",
-    #    choices=NODE_AFTER_COMMISSIONING_ACTION_CHOICES, required=False,
-    #    empty_value=NODE_AFTER_COMMISSIONING_ACTION.DEFAULT)
+    after_commissioning_action = forms.TypedChoiceField(
+        label="After commissioning",
+        choices=NODE_AFTER_COMMISSIONING_ACTION_CHOICES, required=False,
+        empty_value=NODE_AFTER_COMMISSIONING_ACTION.DEFAULT)
 
     architecture = forms.ChoiceField(
         choices=ARCHITECTURE_CHOICES, required=True,
@@ -103,8 +102,7 @@ class NodeForm(ModelForm):
         fields = (
             'hostname',
             'system_id',
-            # XXX JeroenVermeulen 2012-04-12, bug=979539: re-enable.
-            #'after_commissioning_action',
+            'after_commissioning_action',
             'architecture',
             'power_type',
             )
@@ -112,35 +110,29 @@ class NodeForm(ModelForm):
 
 class UINodeEditForm(ModelForm):
 
-    # XXX JeroenVermeulen 2012-04-12, bug=979539: re-enable.
-
-    #after_commissioning_action = forms.ChoiceField(
-    #    label="After commissioning",
-    #    choices=NODE_AFTER_COMMISSIONING_ACTION_CHOICES)
+    after_commissioning_action = forms.ChoiceField(
+        label="After commissioning",
+        choices=NODE_AFTER_COMMISSIONING_ACTION_CHOICES)
 
     class Meta:
         model = Node
         fields = (
             'hostname',
-            # XXX JeroenVermeulen 2012-04-12, bug=979539: re-enable.
-            #'after_commissioning_action',
+            'after_commissioning_action',
             )
 
 
 class UIAdminNodeEditForm(ModelForm):
 
-    # XXX JeroenVermeulen 2012-04-12, bug=979539: re-enable.
-
-    #after_commissioning_action = forms.ChoiceField(
-    #    label="After commissioning",
-    #    choices=NODE_AFTER_COMMISSIONING_ACTION_CHOICES)
+    after_commissioning_action = forms.ChoiceField(
+        label="After commissioning",
+        choices=NODE_AFTER_COMMISSIONING_ACTION_CHOICES)
 
     class Meta:
         model = Node
         fields = (
             'hostname',
-            # XXX JeroenVermeulen 2012-04-12, bug=979539: re-enable.
-            #'after_commissioning_action',
+            'after_commissioning_action',
             'power_type',
             )
 
