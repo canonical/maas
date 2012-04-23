@@ -10,4 +10,16 @@ from __future__ import (
     )
 
 __metaclass__ = type
-__all__ = []
+__all__ = [
+    'DefaultMeta',
+    ]
+
+
+class DefaultMeta:
+    """Base class for model `Meta` classes in the maasserver app.
+
+    Each model in the models package outside of __init__.py needs a nested
+    `Meta` class that defines `app_label`.  Otherwise, South won't recognize
+    the model and will fail to generate schema migrations for it.
+    """
+    app_label = 'maasserver'
