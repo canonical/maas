@@ -13,11 +13,9 @@ __metaclass__ = type
 __all__ = []
 
 import httplib
-import os
 from urlparse import urlparse
 from xmlrpclib import Fault
 
-from django.conf import settings
 from django.conf.urls.defaults import patterns
 from django.contrib.auth.models import User
 from django.core.exceptions import PermissionDenied
@@ -26,16 +24,10 @@ from django.http import Http404
 from django.test.client import RequestFactory
 from django.utils.html import escape
 from lxml.html import fromstring
-from maasserver import (
-    components,
-    messages,
-    )
+from maasserver import components
 from maasserver.components import register_persistent_error
 from maasserver.enum import NODE_AFTER_COMMISSIONING_ACTION
-from maasserver.exceptions import (
-    ExternalComponentException,
-    NoRabbit,
-    )
+from maasserver.exceptions import ExternalComponentException
 from maasserver.models import (
     Config,
     UserProfile,
@@ -50,16 +42,8 @@ from maasserver.testing.testcase import (
     LoggedInTestCase,
     TestCase,
     )
-from maasserver.views import (
-    get_yui_location,
-    HelpfulDeleteView,
-    nodes as nodes_views,
-    )
-from maasserver.views.nodes import (
-    get_longpoll_context,
-    NodeEdit,
-    )
-from maastesting.rabbit import uses_rabbit_fixture
+from maasserver.views import HelpfulDeleteView
+from maasserver.views.nodes import NodeEdit
 from provisioningserver.enum import (
     POWER_TYPE_CHOICES,
     PSERV_FAULT,
@@ -131,95 +115,6 @@ class TestSnippets(LoggedInTestCase):
         self.assertTemplateExistsAndContains(
             response.content, '#add-node',
             'select#id_after_commissioning_action')
-
-
-class TestComboLoaderView(TestCase):
-    """Test combo loader view."""
-
-    def test_load_js(self):
-        requested_files = [
-            'tests/build/oop/oop.js',
-            'tests/build/event-custom-base/event-custom-base.js'
-            ]
-        response = self.client.get('/combo/?%s' % '&'.join(requested_files))
-        self.assertIn('text/javascript', response['Content-Type'])
-        for requested_file in requested_files:
-            self.assertIn(requested_file, response.content)
-        # No sign of a missing js file.
-        self.assertNotIn("/* [missing] */", response.content)
-        # The file contains a link to YUI's licence.
-        self.assertIn('http://yuilibrary.com/license/', response.content)
-
-    def test_load_css(self):
-        requested_files = [
-            'tests/build/widget-base/assets/skins/sam/widget-base.css',
-            'tests/build/widget-stack/assets/skins/sam/widget-stack.css',
-            ]
-        response = self.client.get('/combo/?%s' % '&'.join(requested_files))
-        self.assertIn('text/css', response['Content-Type'])
-        for requested_file in requested_files:
-            self.assertIn(requested_file, response.content)
-        # No sign of a missing css file.
-        self.assertNotIn("/* [missing] */", response.content)
-        # The file contains a link to YUI's licence.
-        self.assertIn('http://yuilibrary.com/license/', response.content)
-
-    def test_combo_no_file_returns_not_found(self):
-        response = self.client.get('/combo/')
-        self.assertEqual(httplib.NOT_FOUND, response.status_code)
-
-    def test_combo_wrong_file_extension_returns_bad_request(self):
-        response = self.client.get('/combo/?file.wrongextension')
-        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
-        self.assertEqual("Invalid file type requested.", response.content)
-
-
-class TestUtilities(TestCase):
-
-    def test_get_yui_location_if_static_root_is_none(self):
-        self.patch(settings, 'STATIC_ROOT', None)
-        yui_location = os.path.join(
-            os.path.dirname(os.path.dirname(__file__)),
-            'static', 'jslibs', 'yui')
-        self.assertEqual(yui_location, get_yui_location())
-
-    def test_get_yui_location(self):
-        static_root = factory.getRandomString()
-        self.patch(settings, 'STATIC_ROOT', static_root)
-        yui_location = os.path.join(static_root, 'jslibs', 'yui')
-        self.assertEqual(yui_location, get_yui_location())
-
-    def test_get_longpoll_context_empty_if_rabbitmq_publish_is_none(self):
-        self.patch(settings, 'RABBITMQ_PUBLISH', None)
-        self.patch(nodes_views, 'messaging', messages.get_messaging())
-        self.assertEqual({}, get_longpoll_context())
-
-    def test_get_longpoll_context_returns_empty_if_rabbit_not_running(self):
-
-        class FakeMessaging:
-            """Fake :class:`RabbitMessaging`: fail with `NoRabbit`."""
-
-            def getQueue(self, *args, **kwargs):
-                raise NoRabbit("Pretending not to have a rabbit.")
-
-        self.patch(messages, 'messaging', FakeMessaging())
-        self.assertEqual({}, get_longpoll_context())
-
-    def test_get_longpoll_context_empty_if_longpoll_url_is_None(self):
-        self.patch(settings, 'LONGPOLL_PATH', None)
-        self.patch(nodes_views, 'messaging', messages.get_messaging())
-        self.assertEqual({}, get_longpoll_context())
-
-    @uses_rabbit_fixture
-    def test_get_longpoll_context(self):
-        longpoll = factory.getRandomString()
-        self.patch(settings, 'LONGPOLL_PATH', longpoll)
-        self.patch(settings, 'RABBITMQ_PUBLISH', True)
-        self.patch(nodes_views, 'messaging', messages.get_messaging())
-        context = get_longpoll_context()
-        self.assertItemsEqual(
-            ['LONGPOLL_PATH', 'longpoll_queue'], context)
-        self.assertEqual(longpoll, context['LONGPOLL_PATH'])
 
 
 class FakeDeletableModel:

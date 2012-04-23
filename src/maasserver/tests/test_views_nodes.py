@@ -14,12 +14,15 @@ __all__ = []
 
 import httplib
 
+from django.conf import settings
 from django.core.urlresolvers import reverse
 from lxml.html import fromstring
+from maasserver import messages
 from maasserver.enum import (
     NODE_AFTER_COMMISSIONING_ACTION,
     NODE_STATUS,
     )
+from maasserver.exceptions import NoRabbit
 from maasserver.forms import NodeActionForm
 from maasserver.models import Node
 from maasserver.testing import (
@@ -28,7 +31,13 @@ from maasserver.testing import (
     )
 from maasserver.testing.enum import map_enum
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import LoggedInTestCase
+from maasserver.testing.testcase import (
+    LoggedInTestCase,
+    TestCase,
+    )
+from maasserver.views import nodes as nodes_views
+from maasserver.views.nodes import get_longpoll_context
+from maastesting.rabbit import uses_rabbit_fixture
 
 
 class NodeViewsTest(LoggedInTestCase):
@@ -288,3 +297,38 @@ class NodeViewsTest(LoggedInTestCase):
         self.assertEqual(
             ["Node started."],
             [message.message for message in response.context['messages']])
+
+
+class TestGetLongpollContext(TestCase):
+
+    def test_get_longpoll_context_empty_if_rabbitmq_publish_is_none(self):
+        self.patch(settings, 'RABBITMQ_PUBLISH', None)
+        self.patch(nodes_views, 'messaging', messages.get_messaging())
+        self.assertEqual({}, get_longpoll_context())
+
+    def test_get_longpoll_context_returns_empty_if_rabbit_not_running(self):
+
+        class FakeMessaging:
+            """Fake :class:`RabbitMessaging`: fail with `NoRabbit`."""
+
+            def getQueue(self, *args, **kwargs):
+                raise NoRabbit("Pretending not to have a rabbit.")
+
+        self.patch(messages, 'messaging', FakeMessaging())
+        self.assertEqual({}, get_longpoll_context())
+
+    def test_get_longpoll_context_empty_if_longpoll_url_is_None(self):
+        self.patch(settings, 'LONGPOLL_PATH', None)
+        self.patch(nodes_views, 'messaging', messages.get_messaging())
+        self.assertEqual({}, get_longpoll_context())
+
+    @uses_rabbit_fixture
+    def test_get_longpoll_context(self):
+        longpoll = factory.getRandomString()
+        self.patch(settings, 'LONGPOLL_PATH', longpoll)
+        self.patch(settings, 'RABBITMQ_PUBLISH', True)
+        self.patch(nodes_views, 'messaging', messages.get_messaging())
+        context = get_longpoll_context()
+        self.assertItemsEqual(
+            ['LONGPOLL_PATH', 'longpoll_queue'], context)
+        self.assertEqual(longpoll, context['LONGPOLL_PATH'])

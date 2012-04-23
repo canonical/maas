@@ -32,7 +32,6 @@ from maasserver.views import (
     AccountsDelete,
     AccountsEdit,
     AccountsView,
-    combo_view,
     settings,
     settings_add_archive,
     )
@@ -40,6 +39,7 @@ from maasserver.views.account import (
     login,
     logout,
     )
+from maasserver.views.combo import combo_view
 from maasserver.views.nodes import (
     NodeDelete,
     NodeEdit,
