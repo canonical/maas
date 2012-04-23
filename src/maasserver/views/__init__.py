@@ -16,8 +16,6 @@ __all__ = [
     "AccountsEdit",
     "AccountsView",
     "combo_view",
-    "login",
-    "logout",
     "NodeListView",
     "NodesCreateView",
     "NodeView",
@@ -46,10 +44,6 @@ from django.contrib.auth.forms import (
     PasswordChangeForm,
     )
 from django.contrib.auth.models import User
-from django.contrib.auth.views import (
-    login as dj_login,
-    logout as dj_logout,
-    )
 from django.core.exceptions import PermissionDenied
 from django.core.urlresolvers import reverse
 from django.http import (
@@ -102,19 +96,6 @@ from maasserver.models import (
     SSHKey,
     UserProfile,
     )
-
-
-def login(request):
-    extra_context = {
-        'no_users': UserProfile.objects.all_users().count() == 0,
-        'create_command': django_settings.MAAS_CLI,
-        }
-    return dj_login(request, extra_context=extra_context)
-
-
-def logout(request):
-    messages.info(request, "You have been logged out.")
-    return dj_logout(request, next_page=reverse('login'))
 
 
 class HelpfulDeleteView(DeleteView):
@@ -579,7 +560,8 @@ def get_yui_location():
             django_settings.STATIC_ROOT, 'jslibs', 'yui')
     else:
         return os.path.join(
-            os.path.dirname(__file__), 'static', 'jslibs', 'yui')
+            os.path.dirname(os.path.dirname(__file__)), 'static',
+            'jslibs', 'yui')
 
 
 def combo_view(request):

@@ -33,8 +33,6 @@ from maasserver.views import (
     AccountsEdit,
     AccountsView,
     combo_view,
-    login,
-    logout,
     NodeDelete,
     NodeEdit,
     NodeListView,
@@ -45,6 +43,10 @@ from maasserver.views import (
     SSHKeyCreateView,
     SSHKeyDeleteView,
     userprefsview,
+    )
+from maasserver.views.account import (
+    login,
+    logout,
     )
 
 

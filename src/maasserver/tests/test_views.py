@@ -122,24 +122,6 @@ class Test404500(LoggedInTestCase):
                 doc.cssselect('h2')])
 
 
-class TestLogin(TestCase):
-
-    def test_login_contains_input_tags_if_user(self):
-        factory.make_user()
-        response = self.client.get('/accounts/login/')
-        doc = fromstring(response.content)
-        self.assertFalse(response.context['no_users'])
-        self.assertEqual(1, len(doc.cssselect('input#id_username')))
-        self.assertEqual(1, len(doc.cssselect('input#id_password')))
-
-    def test_login_displays_createsuperuser_message_if_no_user(self):
-        path = factory.getRandomString()
-        self.patch(settings, 'MAAS_CLI', path)
-        response = self.client.get('/accounts/login/')
-        self.assertTrue(response.context['no_users'])
-        self.assertEqual(path, response.context['create_command'])
-
-
 class TestSnippets(LoggedInTestCase):
 
     def assertTemplateExistsAndContains(self, content, template_selector,
