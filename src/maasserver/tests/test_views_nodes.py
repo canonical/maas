@@ -32,12 +32,14 @@ from maasserver.testing import (
 from maasserver.testing.enum import map_enum
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
+    AdminLoggedInTestCase,
     LoggedInTestCase,
     TestCase,
     )
 from maasserver.views import nodes as nodes_views
 from maasserver.views.nodes import get_longpoll_context
 from maastesting.rabbit import uses_rabbit_fixture
+from provisioningserver.enum import POWER_TYPE_CHOICES
 
 
 class NodeViewsTest(LoggedInTestCase):
@@ -297,6 +299,24 @@ class NodeViewsTest(LoggedInTestCase):
         self.assertEqual(
             ["Node started."],
             [message.message for message in response.context['messages']])
+
+
+class AdminNodeViewsTest(AdminLoggedInTestCase):
+
+    def test_admin_can_edit_nodes(self):
+        node = factory.make_node(owner=factory.make_user())
+        node_edit_link = reverse('node-edit', args=[node.system_id])
+        params = {
+            'hostname': factory.getRandomString(),
+            'after_commissioning_action': factory.getRandomEnum(
+                NODE_AFTER_COMMISSIONING_ACTION),
+            'power_type': factory.getRandomChoice(POWER_TYPE_CHOICES),
+        }
+        response = self.client.post(node_edit_link, params)
+
+        node = reload_object(node)
+        self.assertEqual(httplib.FOUND, response.status_code)
+        self.assertAttributes(node, params)
 
 
 class TestGetLongpollContext(TestCase):

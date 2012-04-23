@@ -27,14 +27,6 @@ from django.views.generic.simple import (
     )
 from maasserver.maasavahi import setup_maas_avahi_service
 from maasserver.models import Node
-from maasserver.views import (
-    AccountsAdd,
-    AccountsDelete,
-    AccountsEdit,
-    AccountsView,
-    settings,
-    settings_add_archive,
-    )
 from maasserver.views.account import (
     login,
     logout,
@@ -50,6 +42,14 @@ from maasserver.views.prefs import (
     SSHKeyCreateView,
     SSHKeyDeleteView,
     userprefsview,
+    )
+from maasserver.views.settings import (
+    AccountsAdd,
+    AccountsDelete,
+    AccountsEdit,
+    AccountsView,
+    settings,
+    settings_add_archive,
     )
 
 
