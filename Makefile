@@ -85,7 +85,7 @@ clean:
 	find . -type f -name '*~' -print0 | xargs -r0 $(RM)
 	$(RM) -r media/demo/* media/development
 
-distclean: clean shutdown
+distclean: clean stop
 	utilities/maasdb delete-cluster ./db/
 	$(RM) -r eggs develop-eggs
 	$(RM) -r bin build dist logs/* parts
@@ -135,21 +135,21 @@ run+webapp:
 
 start: $(addsuffix @start,$(services))
 
-stop: $(addsuffix @stop,$(services))
+pause: $(addsuffix @pause,$(services))
 
 status: $(addsuffix @status,$(services))
 
 restart: $(addsuffix @restart,$(services))
 
-shutdown: $(addsuffix @shutdown,$(services))
+stop: $(addsuffix @stop,$(services))
 
 supervise: $(addsuffix @supervise,$(services))
 
 define phony_services_targets
+  pause
   restart
   run
   run+webapp
-  shutdown
   start
   status
   stop
@@ -160,13 +160,13 @@ endef
 
 service_lock = setlock -n /run/lock/maas.dev.$(firstword $(1))
 
-services/%/@run: services/%/@shutdown services/%/@deps
+services/%/@run: services/%/@stop services/%/@deps
 	@$(call service_lock, $*) services/$*/run
 
 services/%/@start: services/%/@supervise
 	@svc -u $(@D)
 
-services/%/@stop: services/%/@supervise
+services/%/@pause: services/%/@supervise
 	@svc -d $(@D)
 
 services/%/@status:
@@ -175,7 +175,7 @@ services/%/@status:
 services/%/@restart: services/%/@supervise
 	@svc -du $(@D)
 
-services/%/@shutdown:
+services/%/@stop:
 	@if svok $(@D); then svc -dx $(@D); fi
 	@while svok $(@D); do sleep 0.1; done
 

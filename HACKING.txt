@@ -199,12 +199,9 @@ There are familiar service-like commands::
   $ make restart
   $ make stop
 
-The latter leaves ``supervise`` running. To stop ``supervise`` too::
-
-  $ make shutdown
-
-This is a dependency of ``distclean`` so just running ``make
-distclean`` when you've finished with your branch is enough.
+The latter is a dependency of ``distclean`` so just running ``make
+distclean`` when you've finished with your branch is enough to stop
+everything.
 
 Individual services can be manipulated too::
 
