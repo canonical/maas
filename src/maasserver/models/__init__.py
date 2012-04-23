@@ -57,6 +57,7 @@ from django.db import models
 from django.db.models.signals import post_save
 from django.shortcuts import get_object_or_404
 from django.utils.safestring import mark_safe
+from maasserver import DefaultMeta
 from maasserver.enum import (
     ARCHITECTURE,
     ARCHITECTURE_CHOICES,
@@ -99,6 +100,7 @@ SYSTEM_USERS = [
 logger = getLogger('maasserver')
 
 
+# Due for model migration on 2012-04-30.
 class CommonInfo(models.Model):
     """A base model which:
     - calls full_clean before saving the model (by default).
@@ -108,11 +110,12 @@ class CommonInfo(models.Model):
     :ivar updated: The last modification date.
 
     """
+
+    class Meta(DefaultMeta):
+        abstract = True
+
     created = models.DateField(editable=False)
     updated = models.DateTimeField(editable=False)
-
-    class Meta:
-        abstract = True
 
     def save(self, skip_check=False, *args, **kwargs):
         if not self.id:
