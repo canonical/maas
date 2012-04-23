@@ -29,16 +29,15 @@ __all__ = [
     ]
 
 from django.core.management.base import NoArgsCommand
-from maasserver import (
-    models,
-    provisioning,
-    )
+from maasserver import provisioning
+from maasserver.enum import ARCHITECTURE
+from maasserver.models import Node
 
 
 ARCHITECTURE_GUESSES = {
-    "i386": models.ARCHITECTURE.i386,
-    "amd64": models.ARCHITECTURE.amd64,
-    "x86_64": models.ARCHITECTURE.amd64,
+    "i386": ARCHITECTURE.i386,
+    "amd64": ARCHITECTURE.amd64,
+    "x86_64": ARCHITECTURE.amd64,
     }
 
 
@@ -56,7 +55,7 @@ def guess_architecture_from_profile(profile_name):
 
 def reconcile():
     papi = provisioning.get_provisioning_api_proxy()
-    nodes_local = {node.system_id: node for node in models.Node.objects.all()}
+    nodes_local = {node.system_id: node for node in Node.objects.all()}
     nodes_remote = papi.get_nodes()
 
     missing_local = set(nodes_remote).difference(nodes_local)
@@ -64,7 +63,7 @@ def reconcile():
     for name in missing_local:
         print("remote:", name)
         remote_node = nodes_remote[name]
-        local_node = models.Node(
+        local_node = Node(
             system_id=remote_node["name"],
             architecture=(
                 guess_architecture_from_profile(remote_node["profile"])),
