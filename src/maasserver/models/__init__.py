@@ -1,7 +1,11 @@
 # Copyright 2012 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""MAAS model objects."""
+"""MAAS model objects.
+
+DO NOT add new models to this module.  Add them to the package as separate
+modules, but import them here and add them to `__all__`.
+"""
 
 from __future__ import (
     absolute_import,
