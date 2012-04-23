@@ -35,9 +35,6 @@ from maasserver.views import (
     combo_view,
     settings,
     settings_add_archive,
-    SSHKeyCreateView,
-    SSHKeyDeleteView,
-    userprefsview,
     )
 from maasserver.views.account import (
     login,
@@ -48,6 +45,11 @@ from maasserver.views.nodes import (
     NodeEdit,
     NodeListView,
     NodeView,
+    )
+from maasserver.views.prefs import (
+    SSHKeyCreateView,
+    SSHKeyDeleteView,
+    userprefsview,
     )
 
 

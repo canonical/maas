@@ -18,8 +18,6 @@ __all__ = [
     "combo_view",
     "settings",
     "settings_add_archive",
-    "SSHKeyCreateView",
-    "SSHKeyDeleteView",
     ]
 
 from abc import (
@@ -34,12 +32,8 @@ from convoy.combo import (
     )
 from django.conf import settings as django_settings
 from django.contrib import messages
-from django.contrib.auth.forms import (
-    AdminPasswordChangeForm,
-    PasswordChangeForm,
-    )
+from django.contrib.auth.forms import AdminPasswordChangeForm
 from django.contrib.auth.models import User
-from django.core.exceptions import PermissionDenied
 from django.core.urlresolvers import reverse
 from django.http import (
     Http404,
@@ -68,14 +62,9 @@ from maasserver.forms import (
     EditUserForm,
     MAASAndNetworkForm,
     NewUserCreationForm,
-    ProfileForm,
-    SSHKeyForm,
     UbuntuForm,
     )
-from maasserver.models import (
-    SSHKey,
-    UserProfile,
-    )
+from maasserver.models import UserProfile
 
 
 class HelpfulDeleteView(DeleteView):
@@ -156,41 +145,6 @@ class HelpfulDeleteView(DeleteView):
         return HttpResponseRedirect(self.get_next_url())
 
 
-class SSHKeyCreateView(CreateView):
-
-    form_class = SSHKeyForm
-    template_name = 'maasserver/prefs_add_sshkey.html'
-
-    def get_form_kwargs(self):
-        kwargs = super(SSHKeyCreateView, self).get_form_kwargs()
-        kwargs['user'] = self.request.user
-        return kwargs
-
-    def form_valid(self, form):
-        messages.info(self.request, "SSH key added.")
-        return super(SSHKeyCreateView, self).form_valid(form)
-
-    def get_success_url(self):
-        return reverse('prefs')
-
-
-class SSHKeyDeleteView(HelpfulDeleteView):
-
-    template_name = 'maasserver/prefs_confirm_delete_sshkey.html'
-    context_object_name = 'key'
-    model = SSHKey
-
-    def get_object(self):
-        keyid = self.kwargs.get('keyid', None)
-        key = get_object_or_404(SSHKey, id=keyid)
-        if key.user != self.request.user:
-            raise PermissionDenied("Can't delete this key.  It's not yours.")
-        return key
-
-    def get_next_url(self):
-        return reverse('prefs')
-
-
 def process_form(request, form_class, redirect_url, prefix,
                  success_message=None, form_kwargs=None):
     """Utility method to process subforms (i.e. forms with a prefix).
@@ -228,31 +182,6 @@ def process_form(request, form_class, redirect_url, prefix,
     else:
         form = form_class(prefix=prefix, **form_kwargs)
     return form, None
-
-
-def userprefsview(request):
-    user = request.user
-    # Process the profile update form.
-    profile_form, response = process_form(
-        request, ProfileForm, reverse('prefs'), 'profile', "Profile updated.",
-        {'instance': user})
-    if response is not None:
-        return response
-
-    # Process the password change form.
-    password_form, response = process_form(
-        request, PasswordChangeForm, reverse('prefs'), 'password',
-        "Password updated.", {'user': user})
-    if response is not None:
-        return response
-
-    return render_to_response(
-        'maasserver/prefs.html',
-        {
-            'profile_form': profile_form,
-            'password_form': password_form,
-        },
-        context_instance=RequestContext(request))
 
 
 class AccountsView(DetailView):
