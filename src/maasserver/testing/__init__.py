@@ -20,6 +20,7 @@ __all__ = [
 import os
 from uuid import uuid1
 
+from lxml.html import fromstring
 from provisioningserver.testing import fakeapi
 
 # Current (singleton) fake provisioning API server.
@@ -106,3 +107,10 @@ def get_data(filename):
     path = os.path.join(
         os.path.dirname(os.path.abspath(__file__)), '..', 'tests', filename)
     return file(path).read()
+
+
+def get_content_links(response, element='#content'):
+    """Extract links from :class:`HttpResponse` #content element."""
+    doc = fromstring(response.content)
+    [content_node] = doc.cssselect(element)
+    return [elem.get('href') for elem in content_node.cssselect('a')]

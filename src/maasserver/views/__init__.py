@@ -16,10 +16,6 @@ __all__ = [
     "AccountsEdit",
     "AccountsView",
     "combo_view",
-    "NodeListView",
-    "NodesCreateView",
-    "NodeView",
-    "NodeEdit",
     "settings",
     "settings_add_archive",
     "SSHKeyCreateView",
@@ -30,7 +26,6 @@ from abc import (
     ABCMeta,
     abstractmethod,
     )
-from logging import getLogger
 import os
 
 from convoy.combo import (
@@ -58,41 +53,26 @@ from django.shortcuts import (
     render_to_response,
     )
 from django.template import RequestContext
-from django.utils.safestring import mark_safe
 from django.views.generic import (
     CreateView,
     DeleteView,
     DetailView,
-    ListView,
-    UpdateView,
     )
 from django.views.generic.base import TemplateView
 from django.views.generic.detail import SingleObjectTemplateResponseMixin
 from django.views.generic.edit import ModelFormMixin
-from maasserver.enum import (
-    NODE_PERMISSION,
-    NODE_STATUS,
-    )
-from maasserver.exceptions import (
-    CannotDeleteUserException,
-    NoRabbit,
-    )
+from maasserver.exceptions import CannotDeleteUserException
 from maasserver.forms import (
     AddArchiveForm,
     CommissioningForm,
     EditUserForm,
-    get_action_form,
     MAASAndNetworkForm,
     NewUserCreationForm,
     ProfileForm,
     SSHKeyForm,
     UbuntuForm,
-    UIAdminNodeEditForm,
-    UINodeEditForm,
     )
-from maasserver.messages import messaging
 from maasserver.models import (
-    Node,
     SSHKey,
     UserProfile,
     )
@@ -174,135 +154,6 @@ class HelpfulDeleteView(DeleteView):
         """Redirect to the post-deletion page, showing the given message."""
         self.show_notice(feedback_message)
         return HttpResponseRedirect(self.get_next_url())
-
-
-# Info message displayed on the node page for COMMISSIONING
-# or READY nodes.
-NODE_BOOT_INFO = mark_safe("""
-You can boot this node using Avahi enabled boot media or an
-adequately configured dhcp server, see
-<a href="https://wiki.ubuntu.com/ServerTeam/MAAS/AvahiBoot">
-https://wiki.ubuntu.com/ServerTeam/MAAS/AvahiBoot</a> for
-details.
-""")
-
-
-class NodeView(UpdateView):
-
-    template_name = 'maasserver/node_view.html'
-
-    context_object_name = 'node'
-
-    def get_object(self):
-        system_id = self.kwargs.get('system_id', None)
-        node = Node.objects.get_node_or_404(
-            system_id=system_id, user=self.request.user,
-            perm=NODE_PERMISSION.VIEW)
-        return node
-
-    def get_form_class(self):
-        return get_action_form(self.request.user, self.request)
-
-    def get_context_data(self, **kwargs):
-        context = super(NodeView, self).get_context_data(**kwargs)
-        node = self.get_object()
-        context['can_edit'] = self.request.user.has_perm(
-            NODE_PERMISSION.EDIT, node)
-        context['can_delete'] = self.request.user.has_perm(
-            NODE_PERMISSION.ADMIN, node)
-        if node.status in (NODE_STATUS.COMMISSIONING, NODE_STATUS.READY):
-            messages.info(self.request, NODE_BOOT_INFO)
-        context['error_text'] = (
-            node.error if node.status == NODE_STATUS.FAILED_TESTS else None)
-        context['status_text'] = (
-            node.error if node.status != NODE_STATUS.FAILED_TESTS else None)
-        return context
-
-    def get_success_url(self):
-        return reverse('node-view', args=[self.get_object().system_id])
-
-
-class NodeEdit(UpdateView):
-
-    template_name = 'maasserver/node_edit.html'
-
-    def get_object(self):
-        system_id = self.kwargs.get('system_id', None)
-        node = Node.objects.get_node_or_404(
-            system_id=system_id, user=self.request.user,
-            perm=NODE_PERMISSION.EDIT)
-        return node
-
-    def get_form_class(self):
-        if self.request.user.is_superuser:
-            return UIAdminNodeEditForm
-        else:
-            return UINodeEditForm
-
-    def get_success_url(self):
-        return reverse('node-view', args=[self.get_object().system_id])
-
-
-class NodeDelete(HelpfulDeleteView):
-
-    template_name = 'maasserver/node_confirm_delete.html'
-    context_object_name = 'node_to_delete'
-    model = Node
-
-    def get_object(self):
-        system_id = self.kwargs.get('system_id', None)
-        node = Node.objects.get_node_or_404(
-            system_id=system_id, user=self.request.user,
-            perm=NODE_PERMISSION.ADMIN)
-        if node.status == NODE_STATUS.ALLOCATED:
-            raise PermissionDenied()
-        return node
-
-    def get_next_url(self):
-        return reverse('node-list')
-
-    def name_object(self, obj):
-        """See `HelpfulDeleteView`."""
-        return "Node %s" % obj.system_id
-
-
-def get_longpoll_context():
-    if messaging is not None and django_settings.LONGPOLL_PATH is not None:
-        try:
-            return {
-                'longpoll_queue': messaging.getQueue().name,
-                'LONGPOLL_PATH': django_settings.LONGPOLL_PATH,
-                }
-        except NoRabbit as e:
-            getLogger('maasserver').warn(
-                "Could not connect to RabbitMQ: %s", e)
-            return {}
-    else:
-        return {}
-
-
-class NodeListView(ListView):
-
-    context_object_name = "node_list"
-
-    def get_queryset(self):
-        # Return node list sorted, newest first.
-        return Node.objects.get_nodes(
-            user=self.request.user,
-            perm=NODE_PERMISSION.VIEW).order_by('-id')
-
-    def get_context_data(self, **kwargs):
-        context = super(NodeListView, self).get_context_data(**kwargs)
-        context.update(get_longpoll_context())
-        return context
-
-
-class NodesCreateView(CreateView):
-
-    model = Node
-
-    def get_success_url(self):
-        return reverse('index')
 
 
 class SSHKeyCreateView(CreateView):
