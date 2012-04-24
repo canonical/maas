@@ -13,35 +13,35 @@ bin/buildout: bootstrap.py distribute_setup.py
 	$(PYTHON) bootstrap.py --distribute --setup-source distribute_setup.py
 	@touch --no-create $@  # Ensure it's newer than its dependencies.
 
-bin/maas: bin/buildout buildout.cfg setup.py
+bin/maas: bin/buildout buildout.cfg versions.cfg setup.py
 	bin/buildout install maas
 	@touch --no-create $@
 
-bin/test.maas: bin/buildout buildout.cfg setup.py
+bin/test.maas: bin/buildout buildout.cfg versions.cfg setup.py
 	bin/buildout install maas-test
 	@touch --no-create $@
 
-bin/twistd.pserv: bin/buildout buildout.cfg setup.py
+bin/twistd.pserv: bin/buildout buildout.cfg versions.cfg setup.py
 	bin/buildout install pserv
 	@touch --no-create $@
 
-bin/test.pserv: bin/buildout buildout.cfg setup.py
+bin/test.pserv: bin/buildout buildout.cfg versions.cfg setup.py
 	bin/buildout install pserv-test
 	@touch --no-create $@
 
-bin/twistd.txlongpoll: bin/buildout buildout.cfg setup.py
+bin/twistd.txlongpoll: bin/buildout buildout.cfg versions.cfg setup.py
 	bin/buildout install txlongpoll
 	@touch --no-create $@
 
-bin/flake8: bin/buildout buildout.cfg setup.py
+bin/flake8: bin/buildout buildout.cfg versions.cfg setup.py
 	bin/buildout install flake8
 	@touch --no-create $@
 
-bin/sphinx: bin/buildout buildout.cfg setup.py
+bin/sphinx: bin/buildout buildout.cfg versions.cfg setup.py
 	bin/buildout install sphinx
 	@touch --no-create $@
 
-bin/py bin/ipy: bin/buildout buildout.cfg setup.py
+bin/py bin/ipy: bin/buildout buildout.cfg versions.cfg setup.py
 	bin/buildout install repl
 	@touch --no-create bin/py bin/ipy
 
