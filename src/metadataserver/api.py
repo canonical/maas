@@ -33,7 +33,6 @@ from maasserver.exceptions import (
     MAASAPIBadRequest,
     MAASAPINotFound,
     NodeStateViolation,
-    Unauthorized,
     )
 from maasserver.models import SSHKey
 from metadataserver.models import (
@@ -55,12 +54,7 @@ class UnknownNode(MAASAPINotFound):
 
 def get_node_for_request(request):
     """Return the `Node` that `request` is authorized to query for."""
-    auth_header = request.META.get('HTTP_AUTHORIZATION')
-    if auth_header is None:
-        raise Unauthorized("No authorization header received.")
-    key = extract_oauth_key(auth_header)
-    if key is None:
-        raise Unauthorized("No oauth token found for metadata request.")
+    key = extract_oauth_key(request)
     try:
         return NodeKey.objects.get_node_for_key(key)
     except NodeKey.DoesNotExist:

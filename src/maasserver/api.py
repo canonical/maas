@@ -56,8 +56,8 @@ __metaclass__ = type
 __all__ = [
     "api_doc",
     "api_doc_title",
-    "extract_oauth_key",
     "generate_api_doc",
+    "get_oauth_token",
     "AccountHandler",
     "AnonNodesHandler",
     "FilesHandler",
@@ -293,7 +293,7 @@ def get_mandatory_param(data, key, validator=None):
         return value
 
 
-def extract_oauth_key(auth_data):
+def extract_oauth_key_from_auth_header(auth_data):
     """Extract the oauth key from auth data in HTTP header.
 
     :param auth_data: {string} The HTTP Authorization header.
@@ -309,9 +309,39 @@ def extract_oauth_key(auth_data):
     return None
 
 
+def extract_oauth_key(request):
+    """Extract the oauth key from a request's headers.
+
+    Raises :class:`Unauthorized` if no key is found.
+    """
+    auth_header = request.META.get('HTTP_AUTHORIZATION')
+    if auth_header is None:
+        raise Unauthorized("No authorization header received.")
+    key = extract_oauth_key_from_auth_header(auth_header)
+    if key is None:
+        raise Unauthorized("Did not find request's oauth token.")
+    return key
+
+
+def get_oauth_token(request):
+    """Get the OAuth :class:`piston.models.Token` used for `request`.
+
+    Raises :class:`Unauthorized` if no key is found, or if the token is
+    unknown.
+    """
+    try:
+        return Token.objects.get(key=extract_oauth_key(request))
+    except Token.DoesNotExist:
+        raise Unauthorized("Unknown OAuth token.")
+
+
 NODE_FIELDS = (
-    'system_id', 'hostname', ('macaddress_set', ('mac_address',)),
-    'architecture', 'status')
+    'system_id',
+    'hostname',
+    ('macaddress_set', ('mac_address',)),
+    'architecture',
+    'status',
+    )
 
 
 @api_operations
@@ -547,17 +577,7 @@ class NodesHandler(BaseHandler):
     @api_exported('list_allocated', 'GET')
     def list_allocated(self, request):
         """Fetch Nodes that were allocated to the User/oauth token."""
-        auth_header = request.META.get("HTTP_AUTHORIZATION")
-        # A plain assertion is fine here because to get this far we
-        # should already have a valid authorization. If the assertion
-        # fails it is a genuine bug in the code and this will return a
-        # 500 response which is appropriate.
-        assert auth_header is not None, (
-            "HTTP_AUTHORIZATION not set on request")
-        key = extract_oauth_key(auth_header)
-        assert key is not None, (
-            "Invalid Authorization header on request.")
-        token = Token.objects.get(key=key)
+        token = get_oauth_token(request)
         match_ids = request.GET.getlist('id')
         if match_ids == []:
             match_ids = None
@@ -571,12 +591,7 @@ class NodesHandler(BaseHandler):
             request.user, constraints=extract_constraints(request.data))
         if node is None:
             raise NodesNotAvailable("No matching node is available.")
-        auth_header = request.META.get("HTTP_AUTHORIZATION")
-        assert auth_header is not None, (
-            "HTTP_AUTHORIZATION not set on request")
-        key = extract_oauth_key(auth_header)
-        token = Token.objects.get(key=key)
-        node.acquire(token)
+        node.acquire(get_oauth_token(request))
         return node
 
     @classmethod

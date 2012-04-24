@@ -13,6 +13,7 @@ __metaclass__ = type
 __all__ = []
 
 from base64 import b64encode
+from collections import namedtuple
 import httplib
 import json
 import os
@@ -27,6 +28,8 @@ from maasserver import api
 from maasserver.api import (
     extract_constraints,
     extract_oauth_key,
+    extract_oauth_key_from_auth_header,
+    get_oauth_token,
     )
 from maasserver.enum import (
     ARCHITECTURE_CHOICES,
@@ -34,6 +37,7 @@ from maasserver.enum import (
     NODE_STATUS,
     NODE_STATUS_CHOICES_DICT,
     )
+from maasserver.exceptions import Unauthorized
 from maasserver.models import (
     Config,
     create_auth_token,
@@ -75,14 +79,53 @@ class APIv10TestMixin:
 
 class TestModuleHelpers(TestCase):
 
-    def test_extract_oauth_key_extracts_oauth_token_from_oauth_header(self):
+    def make_fake_request(self, auth_header):
+        """Create a very simple fake request, with just an auth header."""
+        FakeRequest = namedtuple('FakeRequest', ['META'])
+        return FakeRequest(META={'HTTP_AUTHORIZATION': auth_header})
+
+    def test_extract_oauth_key_from_auth_header_returns_key(self):
         token = factory.getRandomString(18)
         self.assertEqual(
             token,
-            extract_oauth_key(factory.make_oauth_header(oauth_token=token)))
+            extract_oauth_key_from_auth_header(
+                factory.make_oauth_header(oauth_token=token)))
 
-    def test_extract_oauth_key_returns_None_without_oauth_key(self):
-        self.assertIs(None, extract_oauth_key(''))
+    def test_extract_oauth_key_from_auth_header_returns_None_if_missing(self):
+        self.assertIs(None, extract_oauth_key_from_auth_header(''))
+
+    def test_extract_oauth_key_raises_Unauthorized_if_no_auth_header(self):
+        self.assertRaises(
+            Unauthorized,
+            extract_oauth_key, self.make_fake_request(None))
+
+    def test_extract_oauth_key_raises_Unauthorized_if_no_key(self):
+        self.assertRaises(
+            Unauthorized,
+            extract_oauth_key, self.make_fake_request(''))
+
+    def test_extract_oauth_key_returns_key(self):
+        token = factory.getRandomString(18)
+        self.assertEqual(
+            token,
+            extract_oauth_key(self.make_fake_request(
+                factory.make_oauth_header(oauth_token=token))))
+
+    def test_get_oauth_token_finds_token(self):
+        user = factory.make_user()
+        consumer, token = user.get_profile().create_authorisation_token()
+        self.assertEqual(
+            token,
+            get_oauth_token(
+                self.make_fake_request(
+                    factory.make_oauth_header(oauth_token=token.key))))
+
+    def test_get_oauth_token_raises_Unauthorized_for_unknown_token(self):
+        fake_token = factory.getRandomString(18)
+        header = factory.make_oauth_header(oauth_token=fake_token)
+        self.assertRaises(
+            Unauthorized,
+            get_oauth_token, self.make_fake_request(header))
 
     def test_extract_constraints_ignores_unknown_parameters(self):
         unknown_parameter = "%s=%s" % (
