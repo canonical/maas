@@ -18,9 +18,9 @@ import BaseHTTPServer
 import json
 import logging
 import os
+from os.path import dirname
 import SimpleHTTPServer
 import SocketServer
-import threading
 
 from fixtures import Fixture
 from pyvirtualdisplay import Display
@@ -28,7 +28,6 @@ from sst.actions import (
     assert_text,
     get_element,
     go_to,
-    set_base_url,
     start,
     stop,
     wait_for,
@@ -89,31 +88,6 @@ class SilentHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
     log_error = lambda *args, **kwargs: None
 
 
-class StaticServerFixture(Fixture):
-    """Setup an HTTP server that will serve static files.
-
-    This is only required because SST forces us to request urls that start
-    with 'http://' (and thus does not allow us to use urls starting with
-    'file:///').
-    """
-
-    # Port used by the temporary http server used for testing.
-    TESTING_HTTP_PORT = 18463
-
-    port = TESTING_HTTP_PORT
-
-    def __init__(self):
-        self.server = ThreadingHTTPServer(
-            ('localhost', self.port), SilentHTTPRequestHandler)
-        self.server.daemon = True
-        self.server_thread = threading.Thread(target=self.server.serve_forever)
-
-    def setUp(self):
-        super(StaticServerFixture, self).setUp()
-        self.server_thread.start()
-        self.addCleanup(self.server.shutdown)
-
-
 class SSTFixture(Fixture):
     """Setup a javascript-enabled testing browser instance with SST."""
 
@@ -135,12 +109,14 @@ class SSTFixture(Fixture):
         self.addCleanup(stop)
 
 
+project_home = dirname(dirname(dirname(dirname(__file__))))
+
+
 class TestYUIUnitTests(TestCase):
 
     def setUp(self):
         super(TestYUIUnitTests, self).setUp()
         self.useFixture(DisplayFixture())
-        self.port = self.useFixture(StaticServerFixture()).port
         self.useFixture(SSTFixture())
 
     def _get_failed_tests_message(self, results):
@@ -163,13 +139,13 @@ class TestYUIUnitTests(TestCase):
         return ''.join(result)
 
     def test_YUI3_unit_tests(self):
-        set_base_url('http://localhost:%d' % self.port)
         # Find all the HTML files in BASE_PATH.
         for fname in os.listdir(BASE_PATH):
             if fname.endswith('.html'):
                 # Load the page and then wait for #suite to contain
                 # 'done'.  Read the results in '#test_results'.
-                go_to("%s%s" % (BASE_PATH, fname))
+                file_path = os.path.join(project_home, BASE_PATH, fname)
+                go_to('file://%s' % file_path)
                 wait_for(assert_text, 'suite', 'done')
                 results = json.loads(get_element(id='test_results').text)
                 if results['failed'] != 0:
