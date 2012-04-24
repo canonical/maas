@@ -590,12 +590,14 @@ class Node(CommonInfo):
         self.status = NODE_STATUS.ALLOCATED
         self.owner = token.user
         self.token = token
+        self.save()
 
     def release(self):
         """Mark allocated or reserved node as available again."""
         self.status = NODE_STATUS.READY
         self.owner = None
         self.token = None
+        self.save()
 
 
 mac_re = re.compile(r'^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$')
