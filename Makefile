@@ -57,17 +57,16 @@ lint: bin/flake8
 	@find $(sources) -name '*.py' ! -path '*/migrations/*' \
 	    -print0 | xargs -r0 bin/flake8
 
+pocketlint = $(call available,pocketlint,python-pocket-lint)
+
 lint-css: sources = src/maasserver/static/css
-lint-css: /usr/bin/pocketlint
+lint-css:
 	@find $(sources) -type f \
-	    -print0 | xargs -r0 pocketlint --max-length=120
+	    -print0 | xargs -r0 $(pocketlint) --max-length=120
 
 lint-js: sources = src/maasserver/static/js
-lint-js: /usr/bin/pocketlint
-	@find $(sources) -type f -print0 | xargs -r0 pocketlint
-
-/usr/bin/pocketlint:
-	sudo apt-get install python-pocket-lint
+lint-js:
+	@find $(sources) -type f -print0 | xargs -r0 $(pocketlint)
 
 check: clean test
 
@@ -156,36 +155,44 @@ define phony_services_targets
   supervise
 endef
 
-# Pseudo-magic targets for controlling individual services.
+# Convenient variables and functions for service control.
 
-service_lock = setlock -n /run/lock/maas.dev.$(firstword $(1))
+setlock = $(call available,setlock,daemontools)
+supervise = $(call available,supervise,daemontools)
+svc = $(call available,svc,daemontools)
+svok = $(call available,svok,daemontools)
+svstat = $(call available,svstat,daemontools)
+
+service_lock = $(setlock) -n /run/lock/maas.dev.$(firstword $(1))
+
+# Pseudo-magic targets for controlling individual services.
 
 services/%/@run: services/%/@stop services/%/@deps
 	@$(call service_lock, $*) services/$*/run
 
 services/%/@start: services/%/@supervise
-	@svc -u $(@D)
+	@$(svc) -u $(@D)
 
 services/%/@pause: services/%/@supervise
-	@svc -d $(@D)
+	@$(svc) -d $(@D)
 
 services/%/@status:
-	@svstat $(@D)
+	@$(svstat) $(@D)
 
 services/%/@restart: services/%/@supervise
-	@svc -du $(@D)
+	@$(svc) -du $(@D)
 
 services/%/@stop:
-	@if svok $(@D); then svc -dx $(@D); fi
-	@while svok $(@D); do sleep 0.1; done
+	@if $(svok) $(@D); then $(svc) -dx $(@D); fi
+	@while $(svok) $(@D); do sleep 0.1; done
 
 services/%/@supervise: services/%/@deps
 	@mkdir -p logs/$*
 	@touch $(@D)/down
-	@if ! svok $(@D); then \
+	@if ! $(svok) $(@D); then \
 	    logdir=$(PWD)/logs/$* \
-	        $(call service_lock, $*) supervise $(@D) & fi
-	@while ! svok $(@D); do sleep 0.1; done
+	        $(call service_lock, $*) $(supervise) $(@D) & fi
+	@while ! $(svok) $(@D); do sleep 0.1; done
 
 # Dependencies for individual services.
 
@@ -211,3 +218,15 @@ endef
 phony := $(sort $(strip $(phony)))
 
 .PHONY: $(phony)
+
+#
+# Functions.
+#
+
+# Check if a command is found on PATH. Raise an error if not, citing
+# the package to install. Return the command otherwise.
+# Usage: $(call available,<command>,<package>)
+define available
+  $(if $(shell which $(1)),$(1),$(error $(1) not found; \
+    install it with 'sudo apt-get install $(2)'))
+endef
