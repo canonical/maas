@@ -22,6 +22,7 @@ from django.conf import settings as django_settings
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.core.urlresolvers import reverse
+from django.http import HttpResponse
 from django.utils.safestring import mark_safe
 from django.views.generic import (
     ListView,
@@ -31,7 +32,10 @@ from maasserver.enum import (
     NODE_PERMISSION,
     NODE_STATUS,
     )
-from maasserver.exceptions import NoRabbit
+from maasserver.exceptions import (
+    MAASAPIException,
+    NoRabbit,
+    )
 from maasserver.forms import (
     get_action_form,
     UIAdminNodeEditForm,
@@ -113,6 +117,18 @@ class NodeView(UpdateView):
         context['status_text'] = (
             node.error if node.status != NODE_STATUS.FAILED_TESTS else None)
         return context
+
+    def dispatch(self, *args, **kwargs):
+        """Override from Django `View`: Handle MAAS exceptions.
+
+        Node actions may raise exceptions derived from
+        :class:`MAASAPIException`.  This type of exception contains an
+        http status code that we will forward to the client.
+        """
+        try:
+            return super(NodeView, self).dispatch(*args, **kwargs)
+        except MAASAPIException as e:
+            return HttpResponse(unicode(e), status=e.api_error)
 
     def get_success_url(self):
         return reverse('node-view', args=[self.get_object().system_id])
