@@ -26,7 +26,10 @@ from django.core.exceptions import (
     PermissionDenied,
     ValidationError,
     )
-from django.db import IntegrityError
+from django.db import (
+    IntegrityError,
+    transaction,
+    )
 from django.utils.safestring import SafeUnicode
 from fixtures import TestWithFixtures
 from maasserver.enum import (
@@ -89,7 +92,6 @@ from testtools.matchers import (
     GreaterThan,
     LessThan,
     )
-import transaction
 
 
 class UtilitiesTest(TestCase):

@@ -12,6 +12,7 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
+from datetime import datetime
 import os.path
 
 from maastesting.factory import factory
@@ -34,6 +35,9 @@ class TestFactory(TestCase):
 
     def test_getRandomPort_returns_int(self):
         self.assertIsInstance(factory.getRandomPort(), int)
+
+    def test_getRandomDate_returns_datetime(self):
+        self.assertIsInstance(factory.getRandomDate(), datetime)
 
     def test_getRandomMACAddress(self):
         mac_address = factory.getRandomMACAddress()

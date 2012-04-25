@@ -12,12 +12,7 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
-from datetime import (
-    datetime,
-    timedelta,
-    )
 import httplib
-import random
 from urlparse import urlparse
 
 from django.conf import settings
@@ -64,10 +59,8 @@ class NodeViewsTest(LoggedInTestCase):
         # Explicitely set node.created since all of these node will
         # be created in the same transaction and thus have the same
         # 'created' value by default.
-        now = datetime.now()
         for node in nodes:
-            delta = timedelta(hours=random.randint(0, 10))
-            created = now - delta
+            created = factory.getRandomDate()
             # Update node.created without calling node.save().
             Node.objects.filter(id=node.id).update(created=created)
         nodes = reload_objects(Node, nodes)
