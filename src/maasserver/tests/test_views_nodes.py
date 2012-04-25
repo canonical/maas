@@ -265,6 +265,17 @@ class NodeViewsTest(LoggedInTestCase):
         self.assertEqual(
             NODE_STATUS.COMMISSIONING, reload_object(node).status)
 
+    def test_view_node_POST_admin_can_retry_failed_commissioning(self):
+        self.become_admin()
+        node = factory.make_node(status=NODE_STATUS.FAILED_TESTS)
+        node_link = reverse('node-view', args=[node.system_id])
+        response = self.client.post(
+            node_link,
+            data={NodeActionForm.input_name: "Retry commissioning"})
+        self.assertEqual(httplib.FOUND, response.status_code)
+        self.assertEqual(
+            NODE_STATUS.COMMISSIONING, reload_object(node).status)
+
     def perform_action_and_get_node_page(self, node, action_name):
         """POST to perform a node action, then load the resulting page."""
         node_link = reverse('node-view', args=[node.system_id])
