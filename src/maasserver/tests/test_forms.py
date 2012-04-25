@@ -351,7 +351,7 @@ class TestNodeActionForm(TestCase):
 
     def test_start_action_starts_allocated_node_for_owner(self):
         node = factory.make_node(
-            status=NODE_STATUS.READY, owner=factory.make_user())
+            status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
         form = get_action_form(node.owner)(
             node, {NodeActionForm.input_name: "Start node"})
         form.save()

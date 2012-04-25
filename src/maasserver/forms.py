@@ -17,7 +17,6 @@ __all__ = [
     "NodeForm",
     "MACAddressForm",
     "MAASAndNetworkForm",
-    "NodeActionForm",
     "SSHKeyForm",
     "UbuntuForm",
     "UIAdminNodeEditForm",
@@ -334,20 +333,21 @@ class NodeActionForm(forms.Form):
             if user.has_perm(action['permission'], node)]
 
     def display_message(self, message):
+        """Show `message` as feedback after performing an action."""
         if self.request is not None:
             messages.add_message(self.request, messages.INFO, message)
 
     def save(self):
+        """An action was requested.  Perform it."""
         action_name = self.data.get(self.input_name)
         permission, execute, message = (
             self.action_dict.get(action_name, (None, None, None)))
-        if execute is not None:
-            if not self.user.has_perm(permission, self.node):
-                raise PermissionDenied()
-            execute(self.node, self.user)
-            self.display_message(message)
-        else:
+        if execute is None:
             raise PermissionDenied()
+        if not self.user.has_perm(permission, self.node):
+            raise PermissionDenied()
+        execute(self.node, self.user)
+        self.display_message(message)
 
 
 def get_action_form(user, request=None):

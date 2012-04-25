@@ -13,6 +13,7 @@ __metaclass__ = type
 __all__ = []
 
 import httplib
+from urlparse import urlparse
 
 from django.conf import settings
 from django.core.urlresolvers import reverse
@@ -264,16 +265,24 @@ class NodeViewsTest(LoggedInTestCase):
             NODE_STATUS.COMMISSIONING, reload_object(node).status)
 
     def perform_action_and_get_node_page(self, node, action_name):
+        """POST to perform a node action, then load the resulting page."""
         node_link = reverse('node-view', args=[node.system_id])
-        self.client.post(
+        response = self.client.post(
             node_link,
             data={
                 NodeActionForm.input_name: action_name,
             })
-        response = self.client.get(node_link)
-        return response
+        if response.status_code != httplib.FOUND:
+            self.fail(
+                "POST failed with code %d: '%s'"
+                % (response.status_code, response.content))
+        redirect = urlparse(response['Location']).path
+        if redirect != node_link:
+            self.fail(
+                "Odd: POST on %s redirected to %s." % (node_link, redirect))
+        return self.client.get(node_link)
 
-    def test_start_commisionning_displays_message(self):
+    def test_start_commisioning_displays_message(self):
         self.become_admin()
         node = factory.make_node(status=NODE_STATUS.DECLARED)
         response = self.perform_action_and_get_node_page(
