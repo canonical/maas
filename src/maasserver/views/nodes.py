@@ -69,7 +69,7 @@ class NodeListView(ListView):
         # Return node list sorted, newest first.
         return Node.objects.get_nodes(
             user=self.request.user,
-            perm=NODE_PERMISSION.VIEW).order_by('-id')
+            perm=NODE_PERMISSION.VIEW).order_by('-created')
 
     def get_context_data(self, **kwargs):
         context = super(NodeListView, self).get_context_data(**kwargs)

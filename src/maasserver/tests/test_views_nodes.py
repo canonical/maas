@@ -12,7 +12,12 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
+from datetime import (
+    datetime,
+    timedelta,
+    )
 import httplib
+import random
 from urlparse import urlparse
 
 from django.conf import settings
@@ -30,6 +35,7 @@ from maasserver.models import Node
 from maasserver.testing import (
     get_content_links,
     reload_object,
+    reload_objects,
     )
 from maasserver.testing.enum import map_enum
 from maasserver.testing.factory import factory
@@ -55,16 +61,21 @@ class NodeViewsTest(LoggedInTestCase):
     def test_node_list_displays_sorted_list_of_nodes(self):
         # Nodes are sorted on the node list page, newest first.
         nodes = [factory.make_node() for i in range(3)]
-        nodes.reverse()
-        # Modify one node to make sure that the default db ordering
-        # (by modification date) is not used.
-        node = nodes[1]
-        node.hostname = factory.getRandomString()
-        node.save()
+        # Explicitely set node.created since all of these node will
+        # be created in the same transaction and thus have the same
+        # 'created' value by default.
+        now = datetime.now()
+        for node in nodes:
+            delta = timedelta(hours=random.randint(0, 10))
+            created = now - delta
+            # Update node.created without calling node.save().
+            Node.objects.filter(id=node.id).update(created=created)
+        nodes = reload_objects(Node, nodes)
+        sorted_nodes = sorted(nodes, key=lambda x: x.created, reverse=True)
         response = self.client.get(reverse('node-list'))
         node_links = [
             reverse('node-view', args=[node.system_id])
-            for node in nodes]
+            for node in sorted_nodes]
         self.assertEqual(
             node_links,
             [link for link in get_content_links(response)

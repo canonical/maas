@@ -13,11 +13,17 @@ __metaclass__ = type
 __all__ = [
     'DjangoTestCase',
     'TestModelTestCase',
+    'TestModelTransactionalTestCase',
     'TransactionTestCase',
     ]
 
 from django.conf import settings
+from django.core.management import call_command
 from django.core.management.commands import syncdb
+from django.db import (
+    connections,
+    DEFAULT_DB_ALIAS,
+    )
 from django.db.models import loading
 import django.test
 from maastesting.testcase import TestCase
@@ -50,8 +56,44 @@ class TransactionTestCase(TestCase, django.test.TransactionTestCase):
     so this class should be used when tests involve transactions.
     """
 
+    def _fixture_teardown(self):
+        # Force a flush of the db: this is done by
+        # django.test.TransactionTestCase at the beginning of each
+        # TransactionTestCase test but not at the end.  The Django test runner
+        # avoids any problem by running all the TestCase tests and *then*
+        # all the TransactionTestCase tests.  Since we use nose, we don't
+        # have that ordering and thus we need to manually flush the db after
+        # each TransactionTestCase test.  Le Sigh.
+        if getattr(self, 'multi_db', False):
+            databases = connections
+        else:
+            databases = [DEFAULT_DB_ALIAS]
+        for db in databases:
+            call_command('flush', verbosity=0, interactive=False, database=db)
 
-class TestModelTestCase(TestCase):
+
+class TestModelMixin:
+    # Set the appropriate application to be loaded.
+    app = None
+
+    def _pre_setup(self):
+        # Add the models to the db.
+        self._original_installed_apps = list(settings.INSTALLED_APPS)
+        assert self.app is not None, "TestCase.app must be defined!"
+        settings.INSTALLED_APPS.append(self.app)
+        loading.cache.loaded = False
+        # Use Django's 'syncdb' rather than South's.
+        syncdb.Command().handle_noargs(verbosity=0, interactive=False)
+        super(TestModelMixin, self)._pre_setup()
+
+    def _post_teardown(self):
+        super(TestModelMixin, self)._post_teardown()
+        # Restore the settings.
+        settings.INSTALLED_APPS = self._original_installed_apps
+        loading.cache.loaded = False
+
+
+class TestModelTestCase(TestModelMixin, TestCase):
     """A custom test case that adds support for test-only models.
 
     For instance, if you want to have a model object used solely for testing
@@ -64,21 +106,8 @@ class TestModelTestCase(TestCase):
     this test case (and this test case only).
     """
 
-    # Set the appropriate application to be loaded.
-    app = None
 
-    def _pre_setup(self):
-        # Add the models to the db.
-        self._original_installed_apps = list(settings.INSTALLED_APPS)
-        assert self.app is not None, "TestCase.app must be defined!"
-        settings.INSTALLED_APPS.append(self.app)
-        loading.cache.loaded = False
-        # Use Django's 'syncdb' rather than South's.
-        syncdb.Command().handle_noargs(verbosity=0, interactive=False)
-        super(TestModelTestCase, self)._pre_setup()
-
-    def _post_teardown(self):
-        super(TestModelTestCase, self)._post_teardown()
-        # Restore the settings.
-        settings.INSTALLED_APPS = self._original_installed_apps
-        loading.cache.loaded = False
+class TestModelTransactionalTestCase(TestModelMixin, TransactionTestCase):
+    """A TestCase Similar to `TestModelTestCase` but with transaction
+    support.
+    """

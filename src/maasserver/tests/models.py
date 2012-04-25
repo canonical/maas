@@ -16,6 +16,7 @@ __all__ = [
 
 from django.db import models
 from maasserver.fields import JSONObjectField
+from maasserver.models import CommonInfo
 
 
 class JSONFieldModel(models.Model):
@@ -25,3 +26,9 @@ class JSONFieldModel(models.Model):
 
 class MessagesTestModel(models.Model):
     name = models.CharField(max_length=255, unique=False)
+
+
+class CommonInfoTestModel(CommonInfo):
+    # This model inherits from CommonInfo so it will have a 'created'
+    # field and an 'updated' field.
+    pass
