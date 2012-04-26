@@ -320,6 +320,7 @@ class NodeViewsTest(LoggedInTestCase):
             [message.message for message in response.context['messages']])
 
     def test_start_node_displays_message(self):
+        factory.make_sshkey(self.logged_in_user)
         profile = self.logged_in_user.get_profile()
         consumer, token = profile.create_authorisation_token()
         self.patch(maasserver.api, 'get_oauth_token', lambda request: token)
@@ -331,6 +332,7 @@ class NodeViewsTest(LoggedInTestCase):
         self.assertIn("asked to start up.", notices)
 
     def test_start_node_without_auth_returns_Unauthorized(self):
+        factory.make_sshkey(self.logged_in_user)
         node = factory.make_node(status=NODE_STATUS.READY)
         response = self.client.post(
             reverse('node-view', args=[node.system_id]),
