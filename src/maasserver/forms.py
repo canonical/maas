@@ -232,18 +232,13 @@ class NodeWithMACAddressesForm(NodeForm):
         return node
 
 
-def start_node(node, user, request=None):
-    """Start a node from the UI.  It will have no meta_data."""
-    Node.objects.start_nodes([node.system_id], user)
-
-
 def acquire_and_start_node(node, user, request=None):
-    """Acquire and start a node from the UI.  It will have no meta_data."""
+    """Acquire and start a node from the UI.  It will have no user_data."""
     # Avoid circular imports.
     from maasserver.api import get_oauth_token
 
     node.acquire(get_oauth_token(request))
-    start_node(node=node, user=user, request=request)
+    Node.objects.start_nodes([node.system_id], user)
 
 
 def start_commissioning_node(node, user, request=None):
@@ -306,14 +301,6 @@ NODE_ACTIONS = {
             'message': (
                 "This node is now allocated to you.  "
                 "It has been asked to start up."),
-        },
-    ],
-    NODE_STATUS.ALLOCATED: [
-        {
-            'display': "Start node",
-            'permission': NODE_PERMISSION.EDIT,
-            'execute': start_node,
-            'message': "The node has been asked to start up.",
         },
     ],
 }

@@ -357,16 +357,6 @@ class TestNodeActionForm(TestCase):
         self.assertEqual(NODE_STATUS.ALLOCATED, node.status)
         self.assertEqual(user, node.owner)
 
-    def test_start_action_starts_allocated_node_for_owner(self):
-        node = factory.make_node(
-            status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
-        form = get_action_form(node.owner)(
-            node, {NodeActionForm.input_name: "Start node"})
-        form.save()
-
-        power_status = get_provisioning_api_proxy().power_status
-        self.assertEqual('start', power_status.get(node.system_id))
-
     def test_accept_and_commission_starts_commissioning(self):
         admin = factory.make_admin()
         node = factory.make_node(status=NODE_STATUS.DECLARED)

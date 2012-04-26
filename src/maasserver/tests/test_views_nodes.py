@@ -307,7 +307,7 @@ class NodeViewsTest(LoggedInTestCase):
             "Node commissioning started.",
             [message.message for message in response.context['messages']])
 
-    def test_start_node_from_ready_displays_message(self):
+    def test_start_node_displays_message(self):
         profile = self.logged_in_user.get_profile()
         consumer, token = profile.create_authorisation_token()
         self.patch(maasserver.api, 'get_oauth_token', lambda request: token)
@@ -317,14 +317,6 @@ class NodeViewsTest(LoggedInTestCase):
             message.message for message in response.context['messages'])
         self.assertIn("This node is now allocated to you.", notices)
         self.assertIn("asked to start up.", notices)
-
-    def test_start_node_from_allocated_displays_message(self):
-        node = factory.make_node(
-            status=NODE_STATUS.ALLOCATED, owner=self.logged_in_user)
-        response = self.perform_action_and_get_node_page(node, "Start node")
-        self.assertEqual(
-            ["The node has been asked to start up."],
-            [message.message for message in response.context['messages']])
 
     def test_start_node_without_auth_returns_Unauthorized(self):
         node = factory.make_node(status=NODE_STATUS.READY)
