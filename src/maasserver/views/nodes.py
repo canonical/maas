@@ -22,7 +22,6 @@ from django.conf import settings as django_settings
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.core.urlresolvers import reverse
-from django.http import HttpResponse
 from django.utils.safestring import mark_safe
 from django.views.generic import (
     ListView,
@@ -128,7 +127,7 @@ class NodeView(UpdateView):
         try:
             return super(NodeView, self).dispatch(*args, **kwargs)
         except MAASAPIException as e:
-            return HttpResponse(unicode(e), status=e.api_error)
+            return e.make_http_response()
 
     def get_success_url(self):
         return reverse('node-view', args=[self.get_object().system_id])

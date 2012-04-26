@@ -1760,7 +1760,7 @@ class MAASAPITest(APITestCase):
 
 class APIErrorsTest(APIv10TestMixin, TransactionTestCase):
 
-    def test_internal_error_generate_proper_api_response(self):
+    def test_internal_error_generates_proper_api_response(self):
         error_message = factory.getRandomString()
 
         # Monkey patch api.create_node to have it raise a RuntimeError.

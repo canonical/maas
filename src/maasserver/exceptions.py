@@ -22,6 +22,11 @@ __all__ = [
 
 import httplib
 
+from django.http import (
+    HttpResponse,
+    HttpResponseRedirect,
+    )
+
 
 class MAASException(Exception):
     """Base class for MAAS' exceptions."""
@@ -43,6 +48,13 @@ class MAASAPIException(Exception):
 
     """
     api_error = httplib.INTERNAL_SERVER_ERROR
+
+    def make_http_response(self):
+        """Create an :class:`HttpResponse` representing this exception."""
+        encoding = b'utf-8'
+        return HttpResponse(
+            status=self.api_error, content=unicode(self).encode(encoding),
+            mimetype=b"text/plain; charset=%s" % encoding)
 
 
 class ExternalComponentException(MAASAPIException):
@@ -70,3 +82,11 @@ class NodeStateViolation(MAASAPIException):
 class NodesNotAvailable(NodeStateViolation):
     """Requested node(s) are not available to be acquired."""
     api_error = httplib.CONFLICT
+
+
+class Redirect(MAASAPIException):
+    """Redirect.  The exception message is the target URL."""
+    api_error = httplib.FOUND
+
+    def make_http_response(self):
+        return HttpResponseRedirect(unicode(self))

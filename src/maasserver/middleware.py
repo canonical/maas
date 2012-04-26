@@ -175,12 +175,9 @@ class ExceptionMiddleware:
 
         encoding = b'utf-8'
         if isinstance(exception, MAASAPIException):
-            # The exception is a MAASAPIException: exception.api_error
-            # will give us the proper error type.
-            return HttpResponse(
-                content=unicode(exception).encode(encoding),
-                status=exception.api_error,
-                mimetype=b"text/plain; charset=%s" % encoding)
+            # This type of exception knows how to translate itself into
+            # an http response.
+            return exception.make_http_response()
         elif isinstance(exception, ValidationError):
             if hasattr(exception, 'message_dict'):
                 # Complex validation error with multiple fields:
