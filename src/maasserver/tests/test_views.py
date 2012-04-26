@@ -756,22 +756,13 @@ class NodeViewsTest(LoggedInTestCase):
             "Node commissioning started.",
             [message.message for message in response.context['messages']])
 
-    def test_start_node_from_ready_displays_message(self):
+    def test_start_node_displays_message(self):
         node = factory.make_node(
             status=NODE_STATUS.READY, owner=self.logged_in_user)
         response = self.perform_action_and_get_node_page(
             node, "Start node")
         self.assertIn(
             "Node started.",
-            [message.message for message in response.context['messages']])
-
-    def test_start_node_from_allocated_displays_message(self):
-        node = factory.make_node(
-            status=NODE_STATUS.ALLOCATED, owner=self.logged_in_user)
-        response = self.perform_action_and_get_node_page(
-            node, "Start node")
-        self.assertEqual(
-            ["Node started."],
             [message.message for message in response.context['messages']])
 
 

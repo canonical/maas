@@ -287,14 +287,6 @@ NODE_ACTIONS = {
             'message': "Node started."
         },
     ],
-    NODE_STATUS.ALLOCATED: [
-        {
-            'display': "Start node",
-            'permission': NODE_PERMISSION.EDIT,
-            'execute': start_node,
-            'message': "Node started."
-        },
-    ],
 }
 
 
