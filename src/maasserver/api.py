@@ -58,6 +58,7 @@ __all__ = [
     "api_doc_title",
     "extract_oauth_key",
     "generate_api_doc",
+    "get_oauth_token",
     "AccountHandler",
     "AnonNodesHandler",
     "FilesHandler",
@@ -305,6 +306,19 @@ def extract_oauth_key(auth_data):
             if key == 'oauth_token':
                 return value.rstrip(',').strip('"')
     return None
+
+
+def get_oauth_token(request):
+    """Get the OAuth :class:`piston.models.Token` used for `request`.
+
+    Raises :class:`Unauthorized` if no key is found, or if the token is
+    unknown.
+    """
+    auth_header = request.META.get('HTTP_AUTHORIZATION')
+    try:
+        return Token.objects.get(key=extract_oauth_key(auth_header))
+    except Token.DoesNotExist:
+        raise Unauthorized("Unknown OAuth token.")
 
 
 NODE_FIELDS = (

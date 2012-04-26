@@ -239,9 +239,18 @@ class NodeWithMACAddressesForm(NodeForm):
         return node
 
 
-def start_node(node, user):
-    """Start a node from the UI.  It will have no meta_data."""
+def acquire_and_start_node(node, user, request=None):
+    """Acquire and start a node from the UI.  It will have no meta_data."""
+    # Avoid circular imports.
+    from maasserver.api import get_oauth_token
+
+    node.acquire(get_oauth_token(request))
     Node.objects.start_nodes([node.system_id], user)
+
+
+def start_commissioning_node(node, user, request=None):
+    """Start the commissioning process for a node."""
+    node.start_commissioning(user)
 
 
 # Node actions per status.
@@ -265,7 +274,11 @@ def start_node(node, user):
 #     'display': "Paint node",
 #     # Permission required to perform action.
 #     'permission': NODE_PERMISSION.EDIT,
-#     # Callable that performs action.  Takes parameters (node, user).
+#     # Callable that performs action.
+#     # Takes parameters (node, user, request).
+#     # Even though this is not the API, the action may raise a
+#     # MAASAPIException if it wants to convey failure with a specific
+#     # http status code.
 #     'execute': lambda node, user: paint_node(
 #                    node, favourite_colour(user)),
 # }
@@ -275,7 +288,7 @@ NODE_ACTIONS = {
         {
             'display': "Accept & commission",
             'permission': NODE_PERMISSION.ADMIN,
-            'execute': lambda node, user: Node.start_commissioning(node, user),
+            'execute': start_commissioning_node,
             'message': "Node commissioning started.",
         },
     ],
@@ -283,16 +296,18 @@ NODE_ACTIONS = {
         {
             'display': "Retry commissioning",
             'permission': NODE_PERMISSION.ADMIN,
-            'execute': lambda node, user: Node.start_commissioning(node, user),
+            'execute': start_commissioning_node,
             'message': "Started a new attempt to commission this node.",
         },
     ],
     NODE_STATUS.READY: [
         {
             'display': "Start node",
-            'permission': NODE_PERMISSION.EDIT,
-            'execute': start_node,
-            'message': "Node started."
+            'permission': NODE_PERMISSION.VIEW,
+            'execute': acquire_and_start_node,
+            'message': (
+                "This node is now allocated to you.  "
+                "It has been asked to start up."),
         },
     ],
 }
@@ -347,13 +362,10 @@ class NodeActionForm(forms.Form):
         action_name = self.data.get(self.input_name)
         permission, execute, message = (
             self.action_dict.get(action_name, (None, None, None)))
-        if execute is not None:
-            if not self.user.has_perm(permission, self.node):
-                raise PermissionDenied()
-            execute(self.node, self.user)
-            self.display_message(message)
-        else:
+        if execute is None or not self.user.has_perm(permission, self.node):
             raise PermissionDenied()
+        execute(node=self.node, user=self.user, request=self.request)
+        self.display_message(message)
 
 
 def get_action_form(user, request=None):

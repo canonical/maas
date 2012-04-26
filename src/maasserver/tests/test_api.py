@@ -13,6 +13,7 @@ __metaclass__ = type
 __all__ = []
 
 from base64 import b64encode
+from collections import namedtuple
 import httplib
 import json
 import os
@@ -27,7 +28,9 @@ from maasserver import api
 from maasserver.api import (
     extract_constraints,
     extract_oauth_key,
+    get_oauth_token,
     )
+from maasserver.exceptions import Unauthorized
 from maasserver.models import (
     ARCHITECTURE_CHOICES,
     Config,
@@ -72,6 +75,11 @@ class APIv10TestMixin:
 
 class TestModuleHelpers(TestCase):
 
+    def make_fake_request(self, auth_header):
+        """Create a very simple fake request, with just an auth header."""
+        FakeRequest = namedtuple('FakeRequest', ['META'])
+        return FakeRequest(META={'HTTP_AUTHORIZATION': auth_header})
+
     def test_extract_oauth_key_extracts_oauth_token_from_oauth_header(self):
         token = factory.getRandomString(18)
         self.assertEqual(
@@ -80,6 +88,22 @@ class TestModuleHelpers(TestCase):
 
     def test_extract_oauth_key_returns_None_without_oauth_key(self):
         self.assertIs(None, extract_oauth_key(''))
+
+    def test_get_oauth_token_finds_token(self):
+        user = factory.make_user()
+        consumer, token = user.get_profile().create_authorisation_token()
+        self.assertEqual(
+            token,
+            get_oauth_token(
+                self.make_fake_request(
+                    factory.make_oauth_header(oauth_token=token.key))))
+
+    def test_get_oauth_token_raises_Unauthorized_for_unknown_token(self):
+        fake_token = factory.getRandomString(18)
+        header = factory.make_oauth_header(oauth_token=fake_token)
+        self.assertRaises(
+            Unauthorized,
+            get_oauth_token, self.make_fake_request(header))
 
     def test_extract_constraints_ignores_unknown_parameters(self):
         unknown_parameter = "%s=%s" % (
