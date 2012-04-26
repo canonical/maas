@@ -107,8 +107,6 @@ class NodeView(UpdateView):
         node = self.get_object()
         context['can_edit'] = self.request.user.has_perm(
             NODE_PERMISSION.EDIT, node)
-        context['can_delete'] = self.request.user.has_perm(
-            NODE_PERMISSION.ADMIN, node)
         if node.status in (NODE_STATUS.COMMISSIONING, NODE_STATUS.READY):
             messages.info(self.request, NODE_BOOT_INFO)
         context['error_text'] = (

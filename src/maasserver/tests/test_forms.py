@@ -12,11 +12,15 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
+import httplib
+from urlparse import urlparse
+
 from django import forms
 from django.core.exceptions import (
     PermissionDenied,
     ValidationError,
     )
+from django.core.urlresolvers import reverse
 from django.http import QueryDict
 import maasserver.api
 from maasserver.enum import (
@@ -26,11 +30,14 @@ from maasserver.enum import (
     NODE_STATUS,
     NODE_STATUS_CHOICES_DICT,
     )
+from maasserver.exceptions import MAASAPIException
 from maasserver.forms import (
     ConfigForm,
+    delete_node,
     EditUserForm,
     get_action_form,
     HostnameFormField,
+    inhibit_delete,
     NewUserCreationForm,
     NODE_ACTIONS,
     NodeActionForm,
@@ -48,6 +55,7 @@ from maasserver.provisioning import get_provisioning_api_proxy
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
 from provisioningserver.enum import POWER_TYPE_CHOICES
+from testtools.testcase import ExpectedException
 
 
 class NodeWithMACAddressesFormTest(TestCase):
@@ -244,7 +252,6 @@ class NodeActionsTests(TestCase):
 
     def test_NODE_ACTIONS_initial_states(self):
         allowed_states = set(NODE_STATUS_CHOICES_DICT.keys() + [None])
-
         self.assertTrue(set(NODE_ACTIONS.keys()) <= allowed_states)
 
     def test_NODE_ACTIONS_dict_contains_only_accepted_keys(self):
@@ -263,28 +270,101 @@ class NodeActionsTests(TestCase):
 
 class TestNodeActionForm(TestCase):
 
-    def test_available_action_methods_for_declared_node_admin(self):
+    def test_inhibit_delete_allows_deletion_of_unowned_node(self):
+        admin = factory.make_admin()
+        node = factory.make_node(status=NODE_STATUS.DECLARED)
+        self.assertIsNone(inhibit_delete(node, admin))
+
+    def test_inhibit_delete_inhibits_deletion_of_owned_node(self):
+        admin = factory.make_admin()
+        node = factory.make_node(
+            status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
+        self.assertEqual(
+            "You cannot delete this node because it's in use.",
+            inhibit_delete(node, admin))
+
+    def test_delete_node_redirects_to_confirmation_page(self):
+        admin = factory.make_admin()
+        node = factory.make_node(status=NODE_STATUS.DECLARED)
+        try:
+            delete_node(node, admin)
+        except MAASAPIException as e:
+            pass
+        else:
+            self.fail("delete_node should have raised a Redirect.")
+        response = e.make_http_response()
+        self.assertEqual(httplib.FOUND, response.status_code)
+        self.assertEqual(
+            reverse('node-delete', args=[node.system_id]),
+            urlparse(response['Location']).path)
+
+    def have_permission_returns_False_if_action_is_None(self):
+        admin = factory.make_admin()
+        node = factory.make_node(status=NODE_STATUS.DECLARED)
+        self.assertFalse(get_action_form(admin)(node).have_permission(None))
+
+    def have_permission_returns_False_if_lacking_permission(self):
+        user = factory.make_user()
+        node = factory.make_node(
+            status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
+        action = {
+            'permission': NODE_PERMISSION.EDIT,
+        }
+        self.assertFalse(get_action_form(user)(node).have_permission(action))
+
+    def have_permission_returns_True_given_permission(self):
+        node = factory.make_node(
+            status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
+        action = {
+            'permission': NODE_PERMISSION.EDIT,
+        }
+        form = get_action_form(node.owner)(node)
+        self.assertTrue(form.have_permission(action))
+
+    def test_compile_action_records_inhibition(self):
+        node = factory.make_node()
+        user = factory.make_user()
+        form = get_action_form(user)(node)
+        inhibition = factory.getRandomString()
+
+        def inhibit(*args, **kwargs):
+            return inhibition
+
+        compiled_action = form.compile_action({'inhibit': inhibit})
+        self.assertEqual(inhibition, compiled_action['inhibition'])
+
+    def test_compile_action_records_None_if_no_inhibition(self):
+        node = factory.make_node()
+        user = factory.make_user()
+        form = get_action_form(user)(node)
+
+        def inhibit(*args, **kwargs):
+            return None
+
+        compiled_action = form.compile_action({'inhibit': inhibit})
+        self.assertIsNone(compiled_action['inhibition'])
+
+    def test_compile_actions_for_declared_node_admin(self):
         # Check which transitions are available for an admin on a
         # 'Declared' node.
         admin = factory.make_admin()
         node = factory.make_node(status=NODE_STATUS.DECLARED)
         form = get_action_form(admin)(node)
-        actions = form.available_action_methods(node, admin)
-        self.assertEqual(
-            ["Accept & commission"],
+        actions = form.compile_actions()
+        self.assertItemsEqual(
+            ["Accept & commission", "Delete node"],
             [action['display'] for action in actions])
         # All permissions should be ADMIN.
         self.assertEqual(
             [NODE_PERMISSION.ADMIN] * len(actions),
             [action['permission'] for actions in actions])
 
-    def test_available_action_methods_for_declared_node_simple_user(self):
+    def test_compile_actions_for_declared_node_simple_user(self):
         # A simple user sees no actions for a 'Declared' node.
         user = factory.make_user()
         node = factory.make_node(status=NODE_STATUS.DECLARED)
         form = get_action_form(user)(node)
-        self.assertItemsEqual(
-            [], form.available_action_methods(node, user))
+        self.assertItemsEqual([], form.compile_actions())
 
     def test_get_action_form_creates_form_class_with_attributes(self):
         user = factory.make_admin()
@@ -306,8 +386,8 @@ class TestNodeActionForm(TestCase):
         form = get_action_form(admin)(node)
 
         self.assertItemsEqual(
-            ["Accept & commission"],
-            form.action_dict)
+            ["Accept & commission", "Delete node"],
+            [action['display'] for action in form.action_buttons])
 
     def test_get_action_form_for_user(self):
         user = factory.make_user()
@@ -342,6 +422,15 @@ class TestNodeActionForm(TestCase):
             node, {NodeActionForm.input_name: factory.getRandomString()})
 
         self.assertRaises(PermissionDenied, form.save)
+
+    def test_save_double_checks_for_inhibitions(self):
+        admin = factory.make_admin()
+        node = factory.make_node(
+            status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
+        form = get_action_form(admin)(
+            node, {NodeActionForm.input_name: "Delete node"})
+        with ExpectedException(PermissionDenied, "You cannot delete.*"):
+            form.save()
 
     def test_start_action_acquires_and_starts_ready_node_for_user(self):
         node = factory.make_node(status=NODE_STATUS.READY)

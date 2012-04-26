@@ -129,14 +129,6 @@ class NodeViewsTest(LoggedInTestCase):
             else:
                 self.assertNotIn(help_link, links)
 
-    def test_view_node_shows_link_to_delete_node_for_admin(self):
-        self.become_admin()
-        node = factory.make_node()
-        node_link = reverse('node-view', args=[node.system_id])
-        response = self.client.get(node_link)
-        node_delete_link = reverse('node-delete', args=[node.system_id])
-        self.assertIn(node_delete_link, get_content_links(response))
-
     def test_admin_can_delete_nodes(self):
         self.become_admin()
         node = factory.make_node()
@@ -255,6 +247,26 @@ class NodeViewsTest(LoggedInTestCase):
         doc = fromstring(response.content)
         content_text = doc.cssselect('#content')[0].text_content()
         self.assertNotIn("Error output", content_text)
+
+    def test_view_node_POST_admin_can_delete_unused_node(self):
+        self.become_admin()
+        node = factory.make_node(status=NODE_STATUS.READY)
+        response = self.client.post(
+            reverse('node-view', args=[node.system_id]),
+            data={NodeActionForm.input_name: "Delete node"})
+        self.assertEqual(httplib.FOUND, response.status_code)
+        self.assertEqual(
+            reverse('node-delete', args=[node.system_id]),
+            urlparse(response['Location']).path)
+
+    def test_view_node_POST_admin_cannot_delete_used_node(self):
+        self.become_admin()
+        node = factory.make_node(
+            status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
+        response = self.client.post(
+            reverse('node-view', args=[node.system_id]),
+            data={NodeActionForm.input_name: "Delete node"})
+        self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
     def test_view_node_POST_admin_can_start_commissioning_node(self):
         self.become_admin()

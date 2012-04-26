@@ -37,6 +37,7 @@ from django.core.exceptions import (
     PermissionDenied,
     ValidationError,
     )
+from django.core.urlresolvers import reverse
 from django.core.validators import URLValidator
 from django.forms import (
     CharField,
@@ -51,6 +52,7 @@ from maasserver.enum import (
     NODE_PERMISSION,
     NODE_STATUS,
     )
+from maasserver.exceptions import Redirect
 from maasserver.fields import MACAddressFormField
 from maasserver.models import (
     Config,
@@ -246,6 +248,23 @@ def start_commissioning_node(node, user, request=None):
     node.start_commissioning(user)
 
 
+def inhibit_delete(node, user, request=None):
+    """Give me one reason why `user` can't delete `node`."""
+    if node.owner is not None:
+        return "You cannot delete this node because it's in use."
+    else:
+        return None
+
+
+def delete_node(node, user, request=None):
+    """Delete-a-node action.
+
+    Permissions and inhibitions have already been checked at this point.  We
+    redirect to the deletion view, which asks the user if they're sure.
+    """
+    raise Redirect(reverse('node-delete', args=[node.system_id]))
+
+
 # Node actions per status.
 #
 # This maps each NODE_STATUS to a list of actions applicable to a node
@@ -276,8 +295,18 @@ def start_commissioning_node(node, user, request=None):
 #                    node, favourite_colour(user)),
 # }
 #
+DELETE_ACTION = {
+    'display': "Delete node",
+    'permission': NODE_PERMISSION.ADMIN,
+    'execute': delete_node,
+    'message': "Node deleted.",
+    'inhibit': inhibit_delete,
+}
+
+
 NODE_ACTIONS = {
     NODE_STATUS.DECLARED: [
+        DELETE_ACTION,
         {
             'display': "Accept & commission",
             'permission': NODE_PERMISSION.ADMIN,
@@ -286,6 +315,7 @@ NODE_ACTIONS = {
         },
     ],
     NODE_STATUS.FAILED_TESTS: [
+        DELETE_ACTION,
         {
             'display': "Retry commissioning",
             'permission': NODE_PERMISSION.ADMIN,
@@ -293,7 +323,14 @@ NODE_ACTIONS = {
             'message': "Started a new attempt to commission this node.",
         },
     ],
+    NODE_STATUS.COMMISSIONING: [
+        DELETE_ACTION,
+    ],
+    NODE_STATUS.MISSING: [
+        DELETE_ACTION,
+    ],
     NODE_STATUS.READY: [
+        DELETE_ACTION,
         {
             'display': "Start node",
             'permission': NODE_PERMISSION.VIEW,
@@ -302,6 +339,15 @@ NODE_ACTIONS = {
                 "This node is now allocated to you.  "
                 "It has been asked to start up."),
         },
+    ],
+    NODE_STATUS.RESERVED: [
+        DELETE_ACTION,
+    ],
+    NODE_STATUS.ALLOCATED: [
+        DELETE_ACTION,
+    ],
+    NODE_STATUS.RETIRED: [
+        DELETE_ACTION,
     ],
 }
 
@@ -322,30 +368,62 @@ class NodeActionForm(forms.Form):
     def __init__(self, instance, *args, **kwargs):
         super(NodeActionForm, self).__init__(*args, **kwargs)
         self.node = instance
-        self.action_buttons = self.available_action_methods(
-            self.node, self.user)
-        # Create a convenient dict to fetch the action's name and
-        # the permission to be checked from the button name.
-        self.action_dict = {
-            action['display']: (
-                action['permission'], action['execute'], action['message'])
-            for action in self.action_buttons
-        }
+        self.action_buttons = self.compile_actions()
 
-    def available_action_methods(self, node, user):
+    def have_permission(self, action=None):
+        """Does the current user have the permission required by `action`?
+
+        The permission is relative to `self.node`.
+
+        :param action: Action to check.  If no action is given, the answer is
+            always False.
+        :return: Does the user have the required permission to perform
+            `action` on `self.node`?
+        """
+        if action is None:
+            return False
+        else:
+            return self.user.has_perm(action['permission'], self.node)
+
+    def compile_action(self, action):
+        """Return a copy of `action`, but add "inhibition" entry.
+
+        The key "inhibition" maps to a unicode string explaining why the
+        action is not currently available for `self.node`, or None if the
+        action can be executed.
+        """
+        compiled_action = action.copy()
+        inhibit = action.get('inhibit', lambda node, user, request: None)
+        compiled_action['inhibition'] = inhibit(
+                node=self.node, user=self.user, request=self.request)
+        return compiled_action
+
+    def compile_actions(self):
         """Return the actions that this user is allowed to perform on a node.
+
+        Each action will be "filled out," i.e. it will have an "inhibit"
+        callable even if the original action in NODE_ACTIONS did not.
 
         :param node: The node for which the check should be performed.
         :type node: :class:`maasserver.models.Node`
         :param user: The user who would be performing the action.  Only the
             actions available to this user will be returned.
         :type user: :class:`django.contrib.auth.models.User`
-        :return: Any applicable action dicts, as found in NODE_ACTIONS.
+        :return: Any applicable action dicts, as compiled based on
+            NODE_ACTIONS and the current user and node.
         :rtype: Sequence
         """
         return [
-            action for action in NODE_ACTIONS.get(node.status, ())
-            if user.has_perm(action['permission'], node)]
+            self.compile_action(action)
+            for action in NODE_ACTIONS.get(self.node.status, [])
+                if self.have_permission(action)]
+
+    def find_action(self, action_name):
+        """Find the compiled action of the given name, or return None."""
+        for action in self.action_buttons:
+            if action['display'] == action_name:
+                return action
+        return None
 
     def display_message(self, message):
         """Show `message` as feedback after performing an action."""
@@ -355,14 +433,17 @@ class NodeActionForm(forms.Form):
     def save(self):
         """An action was requested.  Perform it."""
         action_name = self.data.get(self.input_name)
-        permission, execute, message = (
-            self.action_dict.get(action_name, (None, None, None)))
-        if execute is None:
-            raise PermissionDenied()
-        if not self.user.has_perm(permission, self.node):
-            raise PermissionDenied()
-        execute(node=self.node, user=self.user, request=self.request)
-        self.display_message(message)
+        action = self.find_action(action_name)
+
+        if not self.have_permission(action):
+            raise PermissionDenied("Not a permitted action: %s" % action_name)
+
+        if action['inhibition'] is not None:
+            raise PermissionDenied(action['inhibition'])
+
+        action['execute'](
+            node=self.node, user=self.user, request=self.request)
+        self.display_message(action.get('message'))
 
 
 def get_action_form(user, request=None):

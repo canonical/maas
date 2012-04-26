@@ -12,30 +12,20 @@
       Edit node
     </a>
   {% endif %}
-  {% if form.action_buttons or can_delete %}
-    <h4>Actions</h4>
-  {% endif %}
-  {% if can_delete %}
-    {% if node.owner %}
-      <a href="#"
-         title="You cannot delete this node because it's in use."
-         class="disabled button">
-        Delete node
-      </a>
-    {% else %}
-      <a href="{% url 'node-delete' node.system_id %}"
-         class="button secondary">
-        Delete node
-      </a>
-    {% endif %}
-  {% endif %}
   {% if form.action_buttons %}
+    <h4>Actions</h4>
     <form id="node_actions" method="post" action=".">
       {% for action in form.action_buttons %}
-        <input class="secondary {% if not forloop.first or can_delete %}space-top{% endif %}"
-               type="submit"
-               name="{{ form.input_name }}"
-               value="{{ action.display }}" />
+        <input
+          class="secondary {% if action.inhibition %}disabled{% endif %} {% if not forloop.first %}space-top{% endif %}"
+          type="submit"
+          name="{{ form.input_name }}"
+          value="{{ action.display }}"
+          {% if action.inhibition %}}
+            title="{{ action.inhibition }}"
+            disabled="disabled"
+          {% endif %}
+          />
       {% endfor %}
     </form>
   {% endif %}
