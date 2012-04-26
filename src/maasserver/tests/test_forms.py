@@ -48,10 +48,6 @@ from maasserver.provisioning import get_provisioning_api_proxy
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
 from provisioningserver.enum import POWER_TYPE_CHOICES
-from testtools.matchers import (
-    AllMatch,
-    Equals,
-    )
 
 
 class NodeWithMACAddressesFormTest(TestCase):
@@ -251,12 +247,18 @@ class NodeActionsTests(TestCase):
 
         self.assertTrue(set(NODE_ACTIONS.keys()) <= allowed_states)
 
-    def test_NODE_ACTIONS_dict(self):
+    def test_NODE_ACTIONS_dict_contains_only_accepted_keys(self):
         actions = sum(NODE_ACTIONS.values(), [])
-        keys = ['permission', 'display', 'execute', 'message']
-        self.assertThat(
-            [sorted(action.keys()) for action in actions],
-            AllMatch(Equals(sorted(keys))))
+        accepted_keys = set([
+            'permission',
+            'inhibit',
+            'display',
+            'execute',
+            'message',
+            ])
+        actual_keys = set(sum([action.keys() for action in actions], []))
+        unknown_keys = actual_keys - accepted_keys
+        self.assertEqual(set(), unknown_keys)
 
 
 class TestNodeActionForm(TestCase):
@@ -314,7 +316,7 @@ class TestNodeActionForm(TestCase):
 
         self.assertIsInstance(form, NodeActionForm)
         self.assertEqual(node, form.node)
-        self.assertItemsEqual({}, form.action_dict)
+        self.assertItemsEqual({}, form.action_buttons)
 
     def test_get_action_form_node_for_admin_save(self):
         admin = factory.make_admin()

@@ -156,7 +156,7 @@ class NodeViewsTest(LoggedInTestCase):
         self.assertEqual(httplib.OK, response.status_code)
         self.assertNotIn(node_delete_link, get_content_links(response))
         self.assertIn(
-            "You cannot delete this node because it's in use.",
+            "You cannot delete this node because",
             response.content)
 
     def test_allocated_node_cannot_be_deleted(self):
