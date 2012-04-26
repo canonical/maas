@@ -7,7 +7,7 @@
   pk: 15
 - fields: {
     created: 2012-01-24, hostname: moon, architecture: i386,
-    owner: 106, status: 2,
+    owner: null, status: 2,
     system_id: node-29d7ad70-4671-11e1-93b8-00225f89f211,
     updated: !!timestamp '2012-01-24 10:52:44.507777'}
   model: maasserver.node

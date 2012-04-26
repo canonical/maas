@@ -276,7 +276,15 @@ NODE_ACTIONS = {
             'display': "Accept & commission",
             'permission': NODE_PERMISSION.ADMIN,
             'execute': lambda node, user: Node.start_commissioning(node, user),
-            'message': "Node commissioning started."
+            'message': "Node commissioning started.",
+        },
+    ],
+    NODE_STATUS.FAILED_TESTS: [
+        {
+            'display': "Retry commissioning",
+            'permission': NODE_PERMISSION.ADMIN,
+            'execute': lambda node, user: Node.start_commissioning(node, user),
+            'message': "Started a new attempt to commission this node.",
         },
     ],
     NODE_STATUS.READY: [
