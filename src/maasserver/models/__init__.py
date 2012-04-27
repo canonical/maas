@@ -492,9 +492,9 @@ class Node(CommonInfo):
             return status_text
 
     def add_mac_address(self, mac_address):
-        """Add a new MAC Address to this `Node`.
+        """Add a new MAC address to this `Node`.
 
-        :param mac_address: The MAC Address to be added.
+        :param mac_address: The MAC address to be added.
         :type mac_address: basestring
         :raises: django.core.exceptions.ValidationError_
 
@@ -508,9 +508,9 @@ class Node(CommonInfo):
         return mac
 
     def remove_mac_address(self, mac_address):
-        """Remove a MAC Address from this `Node`.
+        """Remove a MAC address from this `Node`.
 
-        :param mac_address: The MAC Address to be removed.
+        :param mac_address: The MAC address to be removed.
         :type mac_address: str
 
         """
@@ -618,10 +618,10 @@ mac_re = re.compile(r'^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$')
 
 
 class MACAddress(CommonInfo):
-    """A `MACAddress` represents a `MAC Address
+    """A `MACAddress` represents a `MAC address
     <http://en.wikipedia.org/wiki/MAC_address>`_ attached to a :class:`Node`.
 
-    :ivar mac_address: The MAC Address.
+    :ivar mac_address: The MAC address.
     :ivar node: The `Node` related to this `MACAddress`.
 
     """
@@ -636,7 +636,7 @@ class MACAddress(CommonInfo):
 
     def unique_error_message(self, model_class, unique_check):
         if unique_check == ('mac_address',):
-                return "This MAC Address is already registered."
+                return "This MAC address is already registered."
         return super(
             MACAddress, self).unique_error_message(model_class, unique_check)
 

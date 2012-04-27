@@ -393,7 +393,7 @@ class NodeDeleteMacTest(LoggedInTestCase):
         self.assertEqual(httplib.NOT_FOUND, response.status_code)
 
     def test_node_delete_redirects_if_mac_does_not_exist(self):
-        # If the MAC Address does not exist, the user is redirected
+        # If the MAC address does not exist, the user is redirected
         # to the node edit page.
         node = factory.make_node(owner=self.logged_in_user)
         mac = factory.getRandomMACAddress()
@@ -417,7 +417,7 @@ class NodeDeleteMacTest(LoggedInTestCase):
         mac_delete_link = reverse('mac-delete', args=[node.system_id, mac])
         response = self.client.get(mac_delete_link)
         self.assertIn(
-            'Are you sure you want to delete the MAC Address "%s"' %
+            'Are you sure you want to delete the MAC address "%s"' %
                 mac.mac_address,
             response.content)
 
@@ -471,7 +471,7 @@ class NodeAddMacTest(LoggedInTestCase):
         response = self.client.post(mac_add_link, {'mac_address': mac})
         response = self.client.get(urlparse(response['Location']).path)
         self.assertEqual(
-            ["MAC Address added."],
+            ["MAC address added."],
             [message.message for message in response.context['messages']])
 
 

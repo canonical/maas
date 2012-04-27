@@ -1,8 +1,8 @@
 {% extends "maasserver/base.html" %}
 
 {% block nav-active-settings %}active{% endblock %}
-{% block title %}Add MAC Address{% endblock %}
-{% block page-title %}Add MAC Address{% endblock %}
+{% block title %}Add MAC address{% endblock %}
+{% block page-title %}Add MAC address{% endblock %}
 
 {% block content %}
   <form action="." method="post" class="block auto-width">
@@ -11,7 +11,7 @@
       {% include "maasserver/form_field.html" %}
     {% endfor %}
     </ul>
-    <input type="submit" class="right" value="Add MAC Address" />
+    <input type="submit" class="right" value="Add MAC address" />
     <a class="link-button"
        href="{% url 'node-edit' node.system_id %}">Cancel</a>
   </form>

@@ -28,7 +28,7 @@ AddNodeWidget.NAME = 'node-add-widget';
 AddNodeWidget.ATTRS = {
 
    /**
-    * The number MAC Addresses fields on the form.
+    * The number MAC addresses fields on the form.
     *
     * @attribute nb_mac_fields
     * @type integer
@@ -54,7 +54,7 @@ AddNodeWidget.ATTRS = {
 Y.extend(AddNodeWidget, Y.Widget, {
 
     /**
-     * Create an input field to add a MAC Address.
+     * Create an input field to add a MAC address.
      *
      * @method _createMacField
      * @private
@@ -71,7 +71,7 @@ Y.extend(AddNodeWidget, Y.Widget, {
         if (this.get('nb_mac_fields') === 1) {
             var label = this.get(
                 'srcNode').one('label[for="id_mac_addresses"]');
-            label.set('text', "Mac addresses");
+            label.set('text', "MAC addresses");
         }
         var add_macaddress = this._createMacField();
         var add_mac_link = this.get('srcNode').one('.add-mac-form');

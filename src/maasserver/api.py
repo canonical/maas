@@ -470,7 +470,7 @@ class AnonNodesHandler(AnonymousBaseHandler):
 
     @api_exported('is_registered', 'GET')
     def is_registered(self, request):
-        """Returns whether or not the given MAC Address is registered within
+        """Returns whether or not the given MAC address is registered within
         this MAAS (and attached to a non-retired node).
 
         :param mac_address: The mac address to be checked.
@@ -601,21 +601,21 @@ class NodesHandler(BaseHandler):
 
 class NodeMacsHandler(BaseHandler):
     """
-    Manage all the MAC Addresses linked to a Node / Create a new MAC Address
+    Manage all the MAC addresses linked to a Node / Create a new MAC address
     for a Node.
 
     """
     allowed_methods = ('GET', 'POST',)
 
     def read(self, request, system_id):
-        """Read all MAC Addresses related to a Node."""
+        """Read all MAC addresses related to a Node."""
         node = Node.objects.get_node_or_404(
             user=request.user, system_id=system_id, perm=NODE_PERMISSION.VIEW)
 
         return MACAddress.objects.filter(node=node).order_by('id')
 
     def create(self, request, system_id):
-        """Create a MAC Address for a specified Node."""
+        """Create a MAC address for a specified Node."""
         node = Node.objects.get_node_or_404(
             user=request.user, system_id=system_id, perm=NODE_PERMISSION.EDIT)
         mac = node.add_mac_address(request.data.get('mac_address', None))
@@ -627,13 +627,13 @@ class NodeMacsHandler(BaseHandler):
 
 
 class NodeMacHandler(BaseHandler):
-    """Manage a MAC Address linked to a Node."""
+    """Manage a MAC address linked to a Node."""
     allowed_methods = ('GET', 'DELETE')
     fields = ('mac_address',)
     model = MACAddress
 
     def read(self, request, system_id, mac_address):
-        """Read a MAC Address related to a Node."""
+        """Read a MAC address related to a Node."""
         node = Node.objects.get_node_or_404(
             user=request.user, system_id=system_id, perm=NODE_PERMISSION.VIEW)
 
@@ -642,7 +642,7 @@ class NodeMacHandler(BaseHandler):
             MACAddress, node=node, mac_address=mac_address)
 
     def delete(self, request, system_id, mac_address):
-        """Delete a specific MAC Address for the specified Node."""
+        """Delete a specific MAC address for the specified Node."""
         validate_mac(mac_address)
         node = Node.objects.get_node_or_404(
             user=request.user, system_id=system_id, perm=NODE_PERMISSION.EDIT)

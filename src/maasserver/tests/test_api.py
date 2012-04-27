@@ -313,7 +313,7 @@ class EnlistmentAPITest(APIv10TestMixin):
         self.assertEqual(httplib.BAD_REQUEST, response.status_code)
         self.assertIn('application/json', response['Content-Type'])
         self.assertEqual(
-            ["One or more MAC Addresses is invalid."],
+            ["One or more MAC addresses is invalid."],
             parsed_result['mac_addresses'])
 
     def test_POST_invalid_architecture_returns_bad_request(self):
@@ -504,7 +504,7 @@ class AnonymousIsRegisteredAPITest(APIv10TestMixin, TestCase):
             (response.status_code, response.content))
 
     def test_is_registered_normalizes_mac_address(self):
-        # These two non-normalized MAC Addresses are the same.
+        # These two non-normalized MAC addresses are the same.
         non_normalized_mac_address = 'AA-bb-cc-dd-ee-ff'
         non_normalized_mac_address2 = 'aabbccddeeff'
         factory.make_mac_address(non_normalized_mac_address)
@@ -1302,7 +1302,7 @@ class MACAddressAPITest(APITestCase):
         return node, mac1, mac2
 
     def test_macs_GET(self):
-        # The api allows for fetching the list of the MAC Addresss for a node.
+        # The api allows for fetching the list of the MAC address for a node.
         node, mac1, mac2 = self.createNodeWithMacs()
         response = self.client.get(
             self.get_uri('nodes/%s/macs/') % node.system_id)
@@ -1316,7 +1316,7 @@ class MACAddressAPITest(APITestCase):
             mac2.mac_address, parsed_result[1]['mac_address'])
 
     def test_macs_GET_forbidden(self):
-        # When fetching MAC Addresses, the api returns a 'Forbidden' (403)
+        # When fetching MAC addresses, the api returns a 'Forbidden' (403)
         # error if the node is not visible to the logged-in user.
         other_node = factory.make_node(
             status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
@@ -1326,15 +1326,15 @@ class MACAddressAPITest(APITestCase):
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
     def test_macs_GET_not_found(self):
-        # When fetching MAC Addresses, the api returns a 'Not Found' (404)
+        # When fetching MAC addresses, the api returns a 'Not Found' (404)
         # error if no node is found.
         response = self.client.get(self.get_uri('nodes/invalid-id/macs/'))
 
         self.assertEqual(httplib.NOT_FOUND, response.status_code)
 
     def test_macs_GET_node_not_found(self):
-        # When fetching a MAC Address, the api returns a 'Not Found' (404)
-        # error if the MAC Address does not exist.
+        # When fetching a MAC address, the api returns a 'Not Found' (404)
+        # error if the MAC address does not exist.
         node = factory.make_node()
         response = self.client.get(
             self.get_uri(
@@ -1343,7 +1343,7 @@ class MACAddressAPITest(APITestCase):
         self.assertEqual(httplib.NOT_FOUND, response.status_code)
 
     def test_macs_GET_node_forbidden(self):
-        # When fetching a MAC Address, the api returns a 'Forbidden' (403)
+        # When fetching a MAC address, the api returns a 'Forbidden' (403)
         # error if the node is not visible to the logged-in user.
         other_node = factory.make_node(
             status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
@@ -1354,8 +1354,8 @@ class MACAddressAPITest(APITestCase):
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
     def test_macs_GET_node_bad_request(self):
-        # When fetching a MAC Address, the api returns a 'Bad Request' (400)
-        # error if the MAC Address is not valid.
+        # When fetching a MAC address, the api returns a 'Bad Request' (400)
+        # error if the MAC address is not valid.
         node = factory.make_node()
         response = self.client.get(
             self.get_uri('nodes/%s/macs/invalid-mac/') % node.system_id)
@@ -1363,7 +1363,7 @@ class MACAddressAPITest(APITestCase):
         self.assertEqual(400, response.status_code)
 
     def test_macs_POST_add_mac(self):
-        # The api allows to add a MAC Address to an existing node.
+        # The api allows to add a MAC address to an existing node.
         node = factory.make_node(owner=self.logged_in_user)
         nb_macs = MACAddress.objects.filter(node=node).count()
         response = self.client.post(
@@ -1378,7 +1378,7 @@ class MACAddressAPITest(APITestCase):
             MACAddress.objects.filter(node=node).count())
 
     def test_macs_POST_add_mac_without_edit_perm(self):
-        # Adding a MAC Address to a node requires the NODE_PERMISSION.EDIT
+        # Adding a MAC address to a node requires the NODE_PERMISSION.EDIT
         # permission.
         node = factory.make_node()
         response = self.client.post(
@@ -1389,7 +1389,7 @@ class MACAddressAPITest(APITestCase):
 
     def test_macs_POST_add_mac_invalid(self):
         # A 'Bad Request' response is returned if one tries to add an invalid
-        # MAC Address to a node.
+        # MAC address to a node.
         node = self.createNodeWithMacs(self.logged_in_user)[0]
         response = self.client.post(
             self.get_uri('nodes/%s/macs/') % node.system_id,
@@ -1403,7 +1403,7 @@ class MACAddressAPITest(APITestCase):
             parsed_result['mac_address'])
 
     def test_macs_DELETE_mac(self):
-        # The api allows to delete a MAC Address.
+        # The api allows to delete a MAC address.
         node, mac1, mac2 = self.createNodeWithMacs(self.logged_in_user)
         nb_macs = node.macaddress_set.count()
         response = self.client.delete(
@@ -1416,7 +1416,7 @@ class MACAddressAPITest(APITestCase):
             node.macaddress_set.count())
 
     def test_macs_DELETE_mac_forbidden(self):
-        # When deleting a MAC Address, the api returns a 'Forbidden' (403)
+        # When deleting a MAC address, the api returns a 'Forbidden' (403)
         # error if the node is not visible to the logged-in user.
         node, mac1, _ = self.createNodeWithMacs()
         other_node = factory.make_node(
@@ -1428,8 +1428,8 @@ class MACAddressAPITest(APITestCase):
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
     def test_macs_DELETE_not_found(self):
-        # When deleting a MAC Address, the api returns a 'Not Found' (404)
-        # error if no existing MAC Address is found.
+        # When deleting a MAC address, the api returns a 'Not Found' (404)
+        # error if no existing MAC address is found.
         node = factory.make_node(owner=self.logged_in_user)
         response = self.client.delete(
             self.get_uri('nodes/%s/macs/%s/') % (
@@ -1438,7 +1438,7 @@ class MACAddressAPITest(APITestCase):
         self.assertEqual(httplib.NOT_FOUND, response.status_code)
 
     def test_macs_DELETE_forbidden(self):
-        # When deleting a MAC Address, the api returns a 'Forbidden'
+        # When deleting a MAC address, the api returns a 'Forbidden'
         # (403) error if the user does not have the 'edit' permission on the
         # node.
         node = factory.make_node(owner=self.logged_in_user)
@@ -1449,8 +1449,8 @@ class MACAddressAPITest(APITestCase):
         self.assertEqual(httplib.NOT_FOUND, response.status_code)
 
     def test_macs_DELETE_bad_request(self):
-        # When deleting a MAC Address, the api returns a 'Bad Request' (400)
-        # error if the provided MAC Address is not valid.
+        # When deleting a MAC address, the api returns a 'Bad Request' (400)
+        # error if the provided MAC address is not valid.
         node = factory.make_node()
         response = self.client.delete(
             self.get_uri('nodes/%s/macs/%s/') % (

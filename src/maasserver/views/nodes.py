@@ -201,7 +201,7 @@ class MacAdd(CreateView):
 
     def form_valid(self, form):
         res = super(MacAdd, self).form_valid(form)
-        messages.info(self.request, "MAC Address added.")
+        messages.info(self.request, "MAC address added.")
         return res
 
     def get_success_url(self):
@@ -239,4 +239,4 @@ class MacDelete(HelpfulDeleteView):
 
     def name_object(self, obj):
         """See `HelpfulDeleteView`."""
-        return "MAC Address %s" % obj.mac_address
+        return "MAC address %s" % obj.mac_address

@@ -86,7 +86,7 @@ class NodeWithMACAddressesFormTest(TestCase):
         self.assertEqual(ARCHITECTURE.i386, form.cleaned_data['architecture'])
 
     def test_NodeWithMACAddressesForm_simple_invalid(self):
-        # If the form only has one (invalid) MAC Address field to validate,
+        # If the form only has one (invalid) MAC address field to validate,
         # the error message in form.errors['mac_addresses'] is the
         # message from the field's validation error.
         form = NodeWithMACAddressesForm(
@@ -102,7 +102,7 @@ class NodeWithMACAddressesFormTest(TestCase):
             form.errors['mac_addresses'])
 
     def test_NodeWithMACAddressesForm_multiple_invalid(self):
-        # If the form has multiple MAC Address fields to validate,
+        # If the form has multiple MAC address fields to validate,
         # if one or more fields are invalid, a single error message is
         # present in form.errors['mac_addresses'] after validation.
         form = NodeWithMACAddressesForm(
@@ -114,11 +114,11 @@ class NodeWithMACAddressesFormTest(TestCase):
         self.assertFalse(form.is_valid())
         self.assertEqual(['mac_addresses'], list(form.errors))
         self.assertEqual(
-            ['One or more MAC Addresses is invalid.'],
+            ['One or more MAC addresses is invalid.'],
             form.errors['mac_addresses'])
 
     def test_NodeWithMACAddressesForm_empty(self):
-        # Empty values in the list of MAC Addresses are simply ignored.
+        # Empty values in the list of MAC addresses are simply ignored.
         form = NodeWithMACAddressesForm(
             self.get_QueryDict({
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff', ''],
@@ -592,7 +592,7 @@ class TestMACAddressForm(TestCase):
         form = MACAddressForm(node=node, data={'mac_address': mac})
         self.assertFalse(form.is_valid())
         self.assertEquals(
-            {'mac_address': ['This MAC Address is already registered.']},
+            {'mac_address': ['This MAC address is already registered.']},
             form._errors)
         self.assertFalse(
             MACAddress.objects.filter(node=node, mac_address=mac).exists())

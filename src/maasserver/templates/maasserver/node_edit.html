@@ -11,7 +11,7 @@
         {% include "maasserver/form_field.html" %}
       {% endfor %}
       <li>
-        <label for="id_mac_addresses">Mac addresses</label>
+        <label for="id_mac_addresses">MAC addresses</label>
         {% for macaddress in node.macaddress_set.all %}
         <p>
         {{ macaddress }}&nbsp;&nbsp;
@@ -22,7 +22,7 @@
         </a>
         </p>
         {% empty %}
-          No MAC Address.
+          No MAC address.
         {% endfor %}
       </li>
       <li>
