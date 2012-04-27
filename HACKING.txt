@@ -165,9 +165,9 @@ password ``test``::
     $ sudo htdigest /etc/cobbler/users.digest Cobbler $USER
 
 Alternatively, if you're not interested in the Provisioning Server or
-Cobbler, set ``PSERV_URL`` to ``None`` in one of ``maas``'s settings
-files (typically ``src/maas/demo.py``), and a fake Provisioning Server
-will be used instead.
+Cobbler, set ``USE_REAL_PSERV`` to ``False`` in one of ``maas``'s
+settings files (typically ``src/maas/demo.py``), and a fake Provisioning
+Server will be used instead.
 
 Run the development webserver and watch all the logs go by::
 
