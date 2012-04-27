@@ -12,35 +12,24 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
-import httplib
-from urlparse import urlparse
-
 from django import forms
 from django.core.exceptions import (
     PermissionDenied,
     ValidationError,
     )
-from django.core.urlresolvers import reverse
 from django.http import QueryDict
-import maasserver.api
 from maasserver.enum import (
     ARCHITECTURE,
     NODE_AFTER_COMMISSIONING_ACTION_CHOICES,
-    NODE_PERMISSION,
     NODE_STATUS,
-    NODE_STATUS_CHOICES_DICT,
     )
-from maasserver.exceptions import MAASAPIException
 from maasserver.forms import (
     ConfigForm,
-    delete_node,
     EditUserForm,
     get_action_form,
     HostnameFormField,
-    inhibit_delete,
     MACAddressForm,
     NewUserCreationForm,
-    NODE_ACTIONS,
     NodeActionForm,
     NodeWithMACAddressesForm,
     ProfileForm,
@@ -53,7 +42,10 @@ from maasserver.models import (
     DEFAULT_CONFIG,
     MACAddress,
     )
-from maasserver.provisioning import get_provisioning_api_proxy
+from maasserver.node_action import (
+    AcceptAndCommission,
+    Delete,
+    )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
 from provisioningserver.enum import POWER_TYPE_CHOICES
@@ -249,124 +241,7 @@ class NodeEditForms(TestCase):
         self.assertEqual(power_type, node.power_type)
 
 
-class NodeActionsTests(TestCase):
-    """Test the structure of NODE_ACTIONS."""
-
-    def test_NODE_ACTIONS_initial_states(self):
-        allowed_states = set(NODE_STATUS_CHOICES_DICT.keys() + [None])
-        self.assertTrue(set(NODE_ACTIONS.keys()) <= allowed_states)
-
-    def test_NODE_ACTIONS_dict_contains_only_accepted_keys(self):
-        actions = sum(NODE_ACTIONS.values(), [])
-        accepted_keys = set([
-            'permission',
-            'inhibit',
-            'display',
-            'execute',
-            'message',
-            ])
-        actual_keys = set(sum([action.keys() for action in actions], []))
-        unknown_keys = actual_keys - accepted_keys
-        self.assertEqual(set(), unknown_keys)
-
-
 class TestNodeActionForm(TestCase):
-
-    def test_inhibit_delete_allows_deletion_of_unowned_node(self):
-        admin = factory.make_admin()
-        node = factory.make_node(status=NODE_STATUS.DECLARED)
-        self.assertIsNone(inhibit_delete(node, admin))
-
-    def test_inhibit_delete_inhibits_deletion_of_owned_node(self):
-        admin = factory.make_admin()
-        node = factory.make_node(
-            status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
-        self.assertEqual(
-            "You cannot delete this node because it's in use.",
-            inhibit_delete(node, admin))
-
-    def test_delete_node_redirects_to_confirmation_page(self):
-        admin = factory.make_admin()
-        node = factory.make_node(status=NODE_STATUS.DECLARED)
-        try:
-            delete_node(node, admin)
-        except MAASAPIException as e:
-            pass
-        else:
-            self.fail("delete_node should have raised a Redirect.")
-        response = e.make_http_response()
-        self.assertEqual(httplib.FOUND, response.status_code)
-        self.assertEqual(
-            reverse('node-delete', args=[node.system_id]),
-            urlparse(response['Location']).path)
-
-    def have_permission_returns_False_if_action_is_None(self):
-        admin = factory.make_admin()
-        node = factory.make_node(status=NODE_STATUS.DECLARED)
-        self.assertFalse(get_action_form(admin)(node).have_permission(None))
-
-    def have_permission_returns_False_if_lacking_permission(self):
-        user = factory.make_user()
-        node = factory.make_node(
-            status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
-        action = {
-            'permission': NODE_PERMISSION.EDIT,
-        }
-        self.assertFalse(get_action_form(user)(node).have_permission(action))
-
-    def have_permission_returns_True_given_permission(self):
-        node = factory.make_node(
-            status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
-        action = {
-            'permission': NODE_PERMISSION.EDIT,
-        }
-        form = get_action_form(node.owner)(node)
-        self.assertTrue(form.have_permission(action))
-
-    def test_compile_action_records_inhibition(self):
-        node = factory.make_node()
-        user = factory.make_user()
-        form = get_action_form(user)(node)
-        inhibition = factory.getRandomString()
-
-        def inhibit(*args, **kwargs):
-            return inhibition
-
-        compiled_action = form.compile_action({'inhibit': inhibit})
-        self.assertEqual(inhibition, compiled_action['inhibition'])
-
-    def test_compile_action_records_None_if_no_inhibition(self):
-        node = factory.make_node()
-        user = factory.make_user()
-        form = get_action_form(user)(node)
-
-        def inhibit(*args, **kwargs):
-            return None
-
-        compiled_action = form.compile_action({'inhibit': inhibit})
-        self.assertIsNone(compiled_action['inhibition'])
-
-    def test_compile_actions_for_declared_node_admin(self):
-        # Check which transitions are available for an admin on a
-        # 'Declared' node.
-        admin = factory.make_admin()
-        node = factory.make_node(status=NODE_STATUS.DECLARED)
-        form = get_action_form(admin)(node)
-        actions = form.compile_actions()
-        self.assertItemsEqual(
-            ["Accept & commission", "Delete node"],
-            [action['display'] for action in actions])
-        # All permissions should be ADMIN.
-        self.assertEqual(
-            [NODE_PERMISSION.ADMIN] * len(actions),
-            [action['permission'] for actions in actions])
-
-    def test_compile_actions_for_declared_node_simple_user(self):
-        # A simple user sees no actions for a 'Declared' node.
-        user = factory.make_user()
-        node = factory.make_node(status=NODE_STATUS.DECLARED)
-        form = get_action_form(user)(node)
-        self.assertItemsEqual([], form.compile_actions())
 
     def test_get_action_form_creates_form_class_with_attributes(self):
         user = factory.make_admin()
@@ -388,8 +263,8 @@ class TestNodeActionForm(TestCase):
         form = get_action_form(admin)(node)
 
         self.assertItemsEqual(
-            ["Accept & commission", "Delete node"],
-            [action['display'] for action in form.action_buttons])
+            [AcceptAndCommission.display, Delete.display],
+            form.actions)
 
     def test_get_action_form_for_user(self):
         user = factory.make_user()
@@ -398,31 +273,28 @@ class TestNodeActionForm(TestCase):
 
         self.assertIsInstance(form, NodeActionForm)
         self.assertEqual(node, form.node)
-        self.assertItemsEqual({}, form.action_buttons)
+        self.assertItemsEqual({}, form.actions)
 
-    def test_get_action_form_node_for_admin_save(self):
+    def test_save_performs_requested_action(self):
         admin = factory.make_admin()
         node = factory.make_node(status=NODE_STATUS.DECLARED)
         form = get_action_form(admin)(
-            node, {NodeActionForm.input_name: "Accept & commission"})
+            node, {NodeActionForm.input_name: AcceptAndCommission.display})
         form.save()
-
         self.assertEqual(NODE_STATUS.COMMISSIONING, node.status)
 
-    def test_get_action_form_for_user_save(self):
+    def test_save_refuses_disallowed_action(self):
         user = factory.make_user()
         node = factory.make_node(status=NODE_STATUS.DECLARED)
         form = get_action_form(user)(
-            node, {NodeActionForm.input_name: "Enlist node"})
-
+            node, {NodeActionForm.input_name: AcceptAndCommission.display})
         self.assertRaises(PermissionDenied, form.save)
 
-    def test_get_action_form_for_user_save_unknown_trans(self):
+    def test_save_refuses_unknown_action(self):
         user = factory.make_user()
         node = factory.make_node(status=NODE_STATUS.DECLARED)
         form = get_action_form(user)(
             node, {NodeActionForm.input_name: factory.getRandomString()})
-
         self.assertRaises(PermissionDenied, form.save)
 
     def test_save_double_checks_for_inhibitions(self):
@@ -430,51 +302,9 @@ class TestNodeActionForm(TestCase):
         node = factory.make_node(
             status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
         form = get_action_form(admin)(
-            node, {NodeActionForm.input_name: "Delete node"})
+            node, {NodeActionForm.input_name: Delete.display})
         with ExpectedException(PermissionDenied, "You cannot delete.*"):
             form.save()
-
-    def test_start_action_acquires_and_starts_ready_node_for_user(self):
-        node = factory.make_node(status=NODE_STATUS.READY)
-        user = factory.make_user()
-        factory.make_sshkey(user)
-        consumer, token = user.get_profile().create_authorisation_token()
-        self.patch(maasserver.api, 'get_oauth_token', lambda request: token)
-        form = get_action_form(user)(
-            node, {NodeActionForm.input_name: "Start node"})
-        form.save()
-
-        power_status = get_provisioning_api_proxy().power_status
-        self.assertEqual('start', power_status.get(node.system_id))
-        self.assertEqual(NODE_STATUS.ALLOCATED, node.status)
-        self.assertEqual(user, node.owner)
-
-    def test_start_action_is_enabled_for_user_with_key(self):
-        node = factory.make_node(status=NODE_STATUS.READY)
-        user = factory.make_user()
-        factory.make_sshkey(user)
-        consumer, token = user.get_profile().create_authorisation_token()
-        self.patch(maasserver.api, 'get_oauth_token', lambda request: token)
-        form = get_action_form(user)(node)
-        # The user has an SSH key, so there is no inhibition to stop
-        # them from starting a node.
-        self.assertIsNone(form.find_action("Start node")['inhibition'])
-
-    def test_start_action_is_disabled_for_keyless_user(self):
-        node = factory.make_node(status=NODE_STATUS.READY)
-        user = factory.make_user()
-        consumer, token = user.get_profile().create_authorisation_token()
-        self.patch(maasserver.api, 'get_oauth_token', lambda request: token)
-        form = get_action_form(user)(node)
-        self.assertIn("SSH key", form.find_action("Start node")['inhibition'])
-
-    def test_accept_and_commission_starts_commissioning(self):
-        admin = factory.make_admin()
-        node = factory.make_node(status=NODE_STATUS.DECLARED)
-        form = get_action_form(admin)(
-            node, {NodeActionForm.input_name: "Accept & commission"})
-        form.save()
-        self.assertEqual(NODE_STATUS.COMMISSIONING, node.status)
 
 
 class TestHostnameFormField(TestCase):

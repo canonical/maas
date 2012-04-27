@@ -26,6 +26,7 @@ from maasserver.enum import (
     )
 from maasserver.exceptions import NoRabbit
 from maasserver.forms import NodeActionForm
+from maasserver.node_action import StartNode
 from maasserver.models import (
     MACAddress,
     Node,
@@ -53,6 +54,12 @@ from testtools.matchers import (
 
 
 class NodeViewsTest(LoggedInTestCase):
+
+    def set_up_oauth_token(self):
+        """Set up an oauth token to be used for requests."""
+        profile = self.logged_in_user.get_profile()
+        consumer, token = profile.create_authorisation_token()
+        self.patch(maasserver.api, 'get_oauth_token', lambda request: token)
 
     def test_node_list_contains_link_to_node_view(self):
         node = factory.make_node()
@@ -289,95 +296,44 @@ class NodeViewsTest(LoggedInTestCase):
         content_text = doc.cssselect('#content')[0].text_content()
         self.assertNotIn("Error output", content_text)
 
-    def test_view_node_POST_admin_can_delete_unused_node(self):
-        self.become_admin()
+    def test_view_node_POST_performs_action(self):
+        factory.make_sshkey(self.logged_in_user)
+        self.set_up_oauth_token()
         node = factory.make_node(status=NODE_STATUS.READY)
-        response = self.client.post(
-            reverse('node-view', args=[node.system_id]),
-            data={NodeActionForm.input_name: "Delete node"})
-        self.assertEqual(httplib.FOUND, response.status_code)
-        self.assertEqual(
-            reverse('node-delete', args=[node.system_id]),
-            urlparse(response['Location']).path)
-
-    def test_view_node_POST_admin_cannot_delete_used_node(self):
-        self.become_admin()
-        node = factory.make_node(
-            status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
-        response = self.client.post(
-            reverse('node-view', args=[node.system_id]),
-            data={NodeActionForm.input_name: "Delete node"})
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
-
-    def test_view_node_POST_admin_can_start_commissioning_node(self):
-        self.become_admin()
-        node = factory.make_node(status=NODE_STATUS.DECLARED)
         node_link = reverse('node-view', args=[node.system_id])
         response = self.client.post(
-            node_link,
-            data={
-                NodeActionForm.input_name: "Accept & commission",
-            })
+            node_link, data={NodeActionForm.input_name: StartNode.display})
         self.assertEqual(httplib.FOUND, response.status_code)
-        self.assertEqual(
-            NODE_STATUS.COMMISSIONING, reload_object(node).status)
-
-    def test_view_node_POST_admin_can_retry_failed_commissioning(self):
-        self.become_admin()
-        node = factory.make_node(status=NODE_STATUS.FAILED_TESTS)
-        node_link = reverse('node-view', args=[node.system_id])
-        response = self.client.post(
-            node_link,
-            data={NodeActionForm.input_name: "Retry commissioning"})
-        self.assertEqual(httplib.FOUND, response.status_code)
-        self.assertEqual(
-            NODE_STATUS.COMMISSIONING, reload_object(node).status)
+        self.assertEqual(NODE_STATUS.ALLOCATED, reload_object(node).status)
 
     def perform_action_and_get_node_page(self, node, action_name):
         """POST to perform a node action, then load the resulting page."""
         node_link = reverse('node-view', args=[node.system_id])
         response = self.client.post(
-            node_link,
-            data={
-                NodeActionForm.input_name: action_name,
-            })
+            node_link, data={NodeActionForm.input_name: action_name})
         if response.status_code != httplib.FOUND:
-            self.fail(
-                "POST failed with code %d: '%s'"
-                % (response.status_code, response.content))
+            self.fail("%d: '%s'" % (response.status_code, response.content))
         redirect = urlparse(response['Location']).path
         if redirect != node_link:
-            self.fail(
-                "Odd: POST on %s redirected to %s." % (node_link, redirect))
+            self.fail("Odd: %s redirected to %s." % (node_link, redirect))
         return self.client.get(redirect)
 
-    def test_start_commisioning_displays_message(self):
-        self.become_admin()
-        node = factory.make_node(status=NODE_STATUS.DECLARED)
-        response = self.perform_action_and_get_node_page(
-            node, "Accept & commission")
-        self.assertIn(
-            "Node commissioning started.",
-            [message.message for message in response.context['messages']])
-
-    def test_start_node_displays_message(self):
+    def test_view_node_POST_action_displays_message(self):
         factory.make_sshkey(self.logged_in_user)
-        profile = self.logged_in_user.get_profile()
-        consumer, token = profile.create_authorisation_token()
-        self.patch(maasserver.api, 'get_oauth_token', lambda request: token)
+        self.set_up_oauth_token()
         node = factory.make_node(status=NODE_STATUS.READY)
-        response = self.perform_action_and_get_node_page(node, "Start node")
-        notices = '\n'.join(
-            message.message for message in response.context['messages'])
-        self.assertIn("This node is now allocated to you.", notices)
-        self.assertIn("asked to start up.", notices)
+        response = self.perform_action_and_get_node_page(
+            node, StartNode.display)
+        self.assertIn(
+            "This node is now allocated to you.",
+            '\n'.join(msg.message for msg in response.context['messages']))
 
-    def test_start_node_without_auth_returns_Unauthorized(self):
+    def test_view_node_POST_without_oauth_returns_Unauthorized(self):
         factory.make_sshkey(self.logged_in_user)
         node = factory.make_node(status=NODE_STATUS.READY)
         response = self.client.post(
             reverse('node-view', args=[node.system_id]),
-            data={NodeActionForm.input_name: "Start node"})
+            data={NodeActionForm.input_name: StartNode.display})
         self.assertEqual(httplib.UNAUTHORIZED, response.status_code)
 
 
