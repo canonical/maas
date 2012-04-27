@@ -26,7 +26,10 @@ from maasserver.enum import (
     )
 from maasserver.exceptions import NoRabbit
 from maasserver.forms import NodeActionForm
-from maasserver.models import Node
+from maasserver.models import (
+    MACAddress,
+    Node,
+    )
 from maasserver.testing import (
     get_content_links,
     reload_object,
@@ -43,6 +46,10 @@ from maasserver.views import nodes as nodes_views
 from maasserver.views.nodes import get_longpoll_context
 from maastesting.rabbit import uses_rabbit_fixture
 from provisioningserver.enum import POWER_TYPE_CHOICES
+from testtools.matchers import (
+    Contains,
+    MatchesAll,
+    )
 
 
 class NodeViewsTest(LoggedInTestCase):
@@ -206,6 +213,40 @@ class NodeViewsTest(LoggedInTestCase):
         self.assertEqual(httplib.FOUND, response.status_code)
         self.assertAttributes(node, params)
 
+    def test_edit_nodes_contains_list_of_macaddresses(self):
+        node = factory.make_node(owner=self.logged_in_user)
+        macs = [
+            factory.make_mac_address(node=node).mac_address
+            for i in range(3)
+        ]
+        node_edit_link = reverse('node-edit', args=[node.system_id])
+        response = self.client.get(node_edit_link)
+        self.assertThat(
+            response.content,
+            MatchesAll(*[Contains(mac) for mac in macs]))
+
+    def test_edit_nodes_contains_links_to_delete_the_macaddresses(self):
+        node = factory.make_node(owner=self.logged_in_user)
+        macs = [
+            factory.make_mac_address(node=node).mac_address
+            for i in range(3)
+        ]
+        node_edit_link = reverse('node-edit', args=[node.system_id])
+        response = self.client.get(node_edit_link)
+        self.assertThat(
+            response.content,
+            MatchesAll(
+                *[Contains(
+                    reverse('mac-delete', args=[node.system_id, mac]))
+                    for mac in macs]))
+
+    def test_edit_nodes_contains_link_to_add_a_macaddresses(self):
+        node = factory.make_node(owner=self.logged_in_user)
+        node_edit_link = reverse('node-edit', args=[node.system_id])
+        response = self.client.get(node_edit_link)
+        self.assertIn(
+            reverse('mac-add', args=[node.system_id]), response.content)
+
     def test_view_node_has_button_to_accept_enlistement_for_user(self):
         # A simple user can't see the button to enlist a declared node.
         node = factory.make_node(status=NODE_STATUS.DECLARED)
@@ -338,6 +379,100 @@ class NodeViewsTest(LoggedInTestCase):
             reverse('node-view', args=[node.system_id]),
             data={NodeActionForm.input_name: "Start node"})
         self.assertEqual(httplib.UNAUTHORIZED, response.status_code)
+
+
+class NodeDeleteMacTest(LoggedInTestCase):
+
+    def test_node_delete_not_found_if_node_does_not_exist(self):
+        # This returns a 404 rather than returning to the node page
+        # with a nice error message because the node could not be found.
+        node_id = factory.getRandomString()
+        mac = factory.getRandomMACAddress()
+        mac_delete_link = reverse('mac-delete', args=[node_id, mac])
+        response = self.client.get(mac_delete_link)
+        self.assertEqual(httplib.NOT_FOUND, response.status_code)
+
+    def test_node_delete_redirects_if_mac_does_not_exist(self):
+        # If the MAC Address does not exist, the user is redirected
+        # to the node edit page.
+        node = factory.make_node(owner=self.logged_in_user)
+        mac = factory.getRandomMACAddress()
+        mac_delete_link = reverse('mac-delete', args=[node.system_id, mac])
+        response = self.client.get(mac_delete_link)
+        next_url = reverse('node-edit', args=[node.system_id])
+        self.assertEqual(
+            (httplib.FOUND, next_url),
+            (response.status_code, urlparse(response['Location']).path))
+
+    def test_node_delete_access_denied_if_user_cannot_edit_node(self):
+        node = factory.make_node(owner=factory.make_user())
+        mac = factory.make_mac_address(node=node)
+        mac_delete_link = reverse('mac-delete', args=[node.system_id, mac])
+        response = self.client.get(mac_delete_link)
+        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+
+    def test_node_delete_mac_contains_mac(self):
+        node = factory.make_node(owner=self.logged_in_user)
+        mac = factory.make_mac_address(node=node)
+        mac_delete_link = reverse('mac-delete', args=[node.system_id, mac])
+        response = self.client.get(mac_delete_link)
+        self.assertIn(
+            'Are you sure you want to delete the MAC Address "%s"' %
+                mac.mac_address,
+            response.content)
+
+    def test_node_delete_mac_POST_deletes_mac(self):
+        node = factory.make_node(owner=self.logged_in_user)
+        mac = factory.make_mac_address(node=node)
+        mac_delete_link = reverse('mac-delete', args=[node.system_id, mac])
+        response = self.client.post(mac_delete_link, {'post': 'yes'})
+        next_url = reverse('node-edit', args=[node.system_id])
+        self.assertEqual(
+            (httplib.FOUND, next_url),
+            (response.status_code, urlparse(response['Location']).path))
+        self.assertFalse(MACAddress.objects.filter(id=mac.id).exists())
+
+    def test_node_delete_mac_POST_displays_message(self):
+        node = factory.make_node(owner=self.logged_in_user)
+        mac = factory.make_mac_address(node=node)
+        mac_delete_link = reverse('mac-delete', args=[node.system_id, mac])
+        response = self.client.post(mac_delete_link, {'post': 'yes'})
+        response = self.client.get(urlparse(response['Location']).path)
+        self.assertEqual(
+            ["Mac address %s deleted." % mac.mac_address],
+            [message.message for message in response.context['messages']])
+
+
+class NodeAddMacTest(LoggedInTestCase):
+
+    def test_node_add_mac_contains_form(self):
+        node = factory.make_node(owner=self.logged_in_user)
+        mac_add_link = reverse('mac-add', args=[node.system_id])
+        response = self.client.get(mac_add_link)
+        doc = fromstring(response.content)
+        self.assertEqual(1, len(doc.cssselect('form input#id_mac_address')))
+
+    def test_node_add_mac_POST_adds_mac(self):
+        node = factory.make_node(owner=self.logged_in_user)
+        mac_add_link = reverse('mac-add', args=[node.system_id])
+        mac = factory.getRandomMACAddress()
+        response = self.client.post(mac_add_link, {'mac_address': mac})
+        next_url = reverse('node-edit', args=[node.system_id])
+        self.assertEqual(
+            (httplib.FOUND, next_url),
+            (response.status_code, urlparse(response['Location']).path))
+        self.assertTrue(
+            MACAddress.objects.filter(node=node, mac_address=mac).exists())
+
+    def test_node_add_mac_POST_displays_message(self):
+        node = factory.make_node(owner=self.logged_in_user)
+        mac_add_link = reverse('mac-add', args=[node.system_id])
+        mac = factory.getRandomMACAddress()
+        response = self.client.post(mac_add_link, {'mac_address': mac})
+        response = self.client.get(urlparse(response['Location']).path)
+        self.assertEqual(
+            ["MAC Address added."],
+            [message.message for message in response.context['messages']])
 
 
 class AdminNodeViewsTest(AdminLoggedInTestCase):

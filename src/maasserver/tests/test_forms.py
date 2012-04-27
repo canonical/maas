@@ -38,6 +38,7 @@ from maasserver.forms import (
     get_action_form,
     HostnameFormField,
     inhibit_delete,
+    MACAddressForm,
     NewUserCreationForm,
     NODE_ACTIONS,
     NodeActionForm,
@@ -50,6 +51,7 @@ from maasserver.forms import (
 from maasserver.models import (
     Config,
     DEFAULT_CONFIG,
+    MACAddress,
     )
 from maasserver.provisioning import get_provisioning_api_proxy
 from maasserver.testing.factory import factory
@@ -571,3 +573,26 @@ class TestNewUserCreationForm(TestCase):
             ['username', 'last_name', 'email', 'password1', 'password2',
                 'is_superuser'],
             list(form.fields))
+
+
+class TestMACAddressForm(TestCase):
+
+    def test_MACAddressForm_creates_mac_address(self):
+        node = factory.make_node()
+        mac = factory.getRandomMACAddress()
+        form = MACAddressForm(node=node, data={'mac_address': mac})
+        form.save()
+        self.assertTrue(
+            MACAddress.objects.filter(node=node, mac_address=mac).exists())
+
+    def test_MACAddressForm_displays_error_message_if_mac_already_used(self):
+        mac = factory.getRandomMACAddress()
+        node = factory.make_mac_address(address=mac)
+        node = factory.make_node()
+        form = MACAddressForm(node=node, data={'mac_address': mac})
+        self.assertFalse(form.is_valid())
+        self.assertEquals(
+            {'mac_address': ['This MAC Address is already registered.']},
+            form._errors)
+        self.assertFalse(
+            MACAddress.objects.filter(node=node, mac_address=mac).exists())

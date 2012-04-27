@@ -7,9 +7,31 @@
 {% block content %}
   <form action="." method="post" class="block auto-width">
     <ul>
-    {% for field in form %}
-      {% include "maasserver/form_field.html" %}
-    {% endfor %}
+      {% for field in form %}
+        {% include "maasserver/form_field.html" %}
+      {% endfor %}
+      <li>
+        <label for="id_mac_addresses">Mac addresses</label>
+        {% for macaddress in node.macaddress_set.all %}
+        <p>
+        {{ macaddress }}&nbsp;&nbsp;
+        <a title="Delete mac address"
+           class="icon"
+           href="{% url 'mac-delete' macaddress.node.system_id macaddress.mac_address %}">
+          <img src="/static/img/delete.png" alt="delete"/>
+        </a>
+        </p>
+        {% empty %}
+          No MAC Address.
+        {% endfor %}
+      </li>
+      <li>
+        <a class="add-link add-mac-form"
+           href="{% url 'mac-add' node.system_id %}">
+          <img src="/static/img/inline_add.png" alt="+" class="icon"/>
+          Add additional MAC address
+        </a>
+      </li>
     </ul>
     <input type="submit" value="Save node" class="right" />
     <a class="link-button" href="{% url 'node-view' node.system_id %}">Cancel</a>

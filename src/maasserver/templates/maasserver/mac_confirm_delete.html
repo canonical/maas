@@ -1,0 +1,22 @@
+{% extends "maasserver/base.html" %}
+
+{% block nav-active-settings %}active{% endblock %}
+{% block title %}Delete MAC Address: {{ mac_to_delete.mac_address }}{% endblock %}
+{% block page-title %}Delete MAC Address: {{ mac_to_delete.mac_address }}{% endblock %}
+
+{% block content %}
+    <div class="block auto-width">
+        <h2>
+          Are you sure you want to delete the MAC Address "{{ mac_to_delete.mac_address }}"?
+        </h2>
+        <p>This action is permanent and can not be undone.</p>
+        <p>
+          <form action="." method="post">
+            <input type="hidden" name="post" value="yes" />
+            <input type="submit" value="Delete MAC Address" class="right" />
+            <a href="{% url 'node-edit' mac_to_delete.node.system_id %}">Cancel</a>
+          </form>
+        </p>
+    </div>
+{% endblock %}
+

@@ -144,6 +144,15 @@ class MACAddressForm(ModelForm):
     class Meta:
         model = MACAddress
 
+    def __init__(self, node, *args, **kwargs):
+        super(MACAddressForm, self).__init__(*args, **kwargs)
+        self.node = node
+
+    def save(self, *args, **kwargs):
+        mac = super(MACAddressForm, self).save(commit=False)
+        mac.node = self.node
+        return mac.save(*args, **kwargs)
+
 
 class SSHKeyForm(ModelForm):
     key = forms.CharField(

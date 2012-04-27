@@ -33,6 +33,8 @@ from maasserver.views.account import (
     )
 from maasserver.views.combo import combo_view
 from maasserver.views.nodes import (
+    MacAdd,
+    MacDelete,
     NodeDelete,
     NodeEdit,
     NodeListView,
@@ -106,6 +108,12 @@ urlpatterns += patterns('maasserver.views',
     url(
         r'^nodes/(?P<system_id>[\w\-]+)/delete/$', NodeDelete.as_view(),
         name='node-delete'),
+    url(
+        r'^nodes/(?P<system_id>[\w\-]+)/macs/(?P<mac_address>.+)/delete/$',
+        MacDelete.as_view(), name='mac-delete'),
+    url(
+        r'^nodes/(?P<system_id>[\w\-]+)/macs/add/$',
+        MacAdd.as_view(), name='mac-add'),
 )
 
 

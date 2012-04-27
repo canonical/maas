@@ -634,6 +634,12 @@ class MACAddress(CommonInfo):
     def __unicode__(self):
         return self.mac_address
 
+    def unique_error_message(self, model_class, unique_check):
+        if unique_check == ('mac_address',):
+                return "This MAC Address is already registered."
+        return super(
+            MACAddress, self).unique_error_message(model_class, unique_check)
+
 
 GENERIC_CONSUMER = 'MAAS consumer'
 

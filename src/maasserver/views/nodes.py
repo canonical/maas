@@ -11,6 +11,8 @@ from __future__ import (
 
 __metaclass__ = type
 __all__ = [
+    'MacAdd',
+    'MacDelete',
     'NodeListView',
     'NodeView',
     'NodeEdit',
@@ -22,8 +24,10 @@ from django.conf import settings as django_settings
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.core.urlresolvers import reverse
+from django.shortcuts import get_object_or_404
 from django.utils.safestring import mark_safe
 from django.views.generic import (
+    CreateView,
     ListView,
     UpdateView,
     )
@@ -37,11 +41,15 @@ from maasserver.exceptions import (
     )
 from maasserver.forms import (
     get_action_form,
+    MACAddressForm,
     UIAdminNodeEditForm,
     UINodeEditForm,
     )
 from maasserver.messages import messaging
-from maasserver.models import Node
+from maasserver.models import (
+    MACAddress,
+    Node,
+    )
 from maasserver.views import HelpfulDeleteView
 
 
@@ -173,3 +181,62 @@ class NodeDelete(HelpfulDeleteView):
     def name_object(self, obj):
         """See `HelpfulDeleteView`."""
         return "Node %s" % obj.system_id
+
+
+class MacAdd(CreateView):
+    form_class = MACAddressForm
+    template_name = 'maasserver/node_add_mac.html'
+
+    def get_node(self):
+        system_id = self.kwargs.get('system_id', None)
+        node = Node.objects.get_node_or_404(
+            system_id=system_id, user=self.request.user,
+            perm=NODE_PERMISSION.EDIT)
+        return node
+
+    def get_form_kwargs(self):
+        kwargs = super(MacAdd, self).get_form_kwargs()
+        kwargs['node'] = self.get_node()
+        return kwargs
+
+    def form_valid(self, form):
+        res = super(MacAdd, self).form_valid(form)
+        messages.info(self.request, "MAC Address added.")
+        return res
+
+    def get_success_url(self):
+        node = self.get_node()
+        return reverse('node-edit', args=[node.system_id])
+
+    def get_context_data(self, **kwargs):
+        context = super(MacAdd, self).get_context_data(**kwargs)
+        context.update({'node': self.get_node()})
+        return context
+
+
+class MacDelete(HelpfulDeleteView):
+
+    template_name = 'maasserver/mac_confirm_delete.html'
+    context_object_name = 'mac_to_delete'
+    model = MACAddress
+
+    def get_node(self):
+        system_id = self.kwargs.get('system_id', None)
+        node = Node.objects.get_node_or_404(
+            system_id=system_id, user=self.request.user,
+            perm=NODE_PERMISSION.EDIT)
+        return node
+
+    def get_object(self):
+        node = self.get_node()
+        mac_address = self.kwargs.get('mac_address', None)
+        return get_object_or_404(
+            MACAddress, node=node, mac_address=mac_address)
+
+    def get_next_url(self):
+        node = self.get_node()
+        return reverse('node-edit', args=[node.system_id])
+
+    def name_object(self, obj):
+        """See `HelpfulDeleteView`."""
+        return "MAC Address %s" % obj.mac_address

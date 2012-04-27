@@ -90,10 +90,12 @@ class Factory(maastesting.factory.Factory):
         ncr.save()
         return ncr
 
-    def make_mac_address(self, address):
+    def make_mac_address(self, address=None, node=None):
         """Create a MAC address."""
-        node = Node()
-        node.save()
+        if node is None:
+            node = self.make_node()
+        if address is None:
+            address = self.getRandomMACAddress()
         mac = MACAddress(mac_address=address, node=node)
         mac.save()
         return mac
