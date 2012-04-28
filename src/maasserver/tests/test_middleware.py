@@ -44,6 +44,7 @@ from maasserver.middleware import (
     ExternalComponentsMiddleware,
     PROFILES_CHECK_DONE_KEY,
     )
+from maasserver.testing import extract_redirect
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
     LoggedInTestCase,
@@ -301,9 +302,7 @@ class ErrorsMiddlewareTest(LoggedInTestCase):
         middleware = ErrorsMiddleware()
         response = middleware.process_exception(request, exception)
         # The response is a redirect.
-        self.assertEqual(
-            (httplib.FOUND, response['Location']),
-            (response.status_code, url))
+        self.assertEqual(url, extract_redirect(response))
         # An error message has been published.
         self.assertEqual(
             [(constants.ERROR, error_message, '')], request._messages.messages)

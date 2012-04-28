@@ -11,6 +11,7 @@ from __future__ import (
 
 __metaclass__ = type
 __all__ = [
+    "extract_redirect",
     "get_content_links",
     "get_data",
     "get_fake_provisioning_api_proxy",
@@ -19,7 +20,9 @@ __all__ = [
     "reload_objects",
     ]
 
+import httplib
 import os
+from urlparse import urlparse
 from uuid import uuid1
 
 from lxml.html import fromstring
@@ -57,6 +60,29 @@ def reset_fake_provisioning_api_proxy():
     """
     global fake_provisioning_proxy
     fake_provisioning_proxy = None
+
+
+def extract_redirect(http_response):
+    """Extract redirect target from an http response object.
+
+    Only the http path part of the redirect is ignored; protocol and host
+    name, if present, are not included in the result.
+
+    If the response is not a redirect, this raises :class:`ValueError` with
+    a descriptive error message.
+
+    :param http_response: A response returned from an http request.
+    :type http_response: :class:`HttpResponse`
+    :return: The "path" part of the target that `http_response` redirects to.
+    :raises: ValueError
+    """
+    if http_response.status_code != httplib.FOUND:
+        raise ValueError(
+            "Not a redirect: http status %d.  Content: %s"
+            % (http_response.status_code, http_response.content[:80]))
+    target_url = http_response['Location']
+    parsed_url = urlparse(target_url)
+    return parsed_url.path
 
 
 def reload_object(model_object):

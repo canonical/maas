@@ -18,6 +18,7 @@ from maasserver.exceptions import (
     MAASAPIBadRequest,
     Redirect,
     )
+from maasserver.testing import extract_redirect
 from maastesting.factory import factory
 from maastesting.testcase import TestCase
 
@@ -36,5 +37,4 @@ class TestExceptions(TestCase):
         target = factory.getRandomString()
         exception = Redirect(target)
         response = exception.make_http_response()
-        self.assertEqual(httplib.FOUND, response.status_code)
-        self.assertEqual(target, response['Location'])
+        self.assertEqual(target, extract_redirect(response))

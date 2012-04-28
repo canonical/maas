@@ -13,7 +13,6 @@ __metaclass__ = type
 __all__ = []
 
 import httplib
-from urlparse import urlparse
 from xmlrpclib import Fault
 
 from django.conf.urls.defaults import patterns
@@ -26,6 +25,7 @@ from lxml.html import fromstring
 from maasserver import components
 from maasserver.components import register_persistent_error
 from maasserver.exceptions import ExternalComponentException
+from maasserver.testing import extract_redirect
 from maasserver.testing.enum import map_enum
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
@@ -189,9 +189,7 @@ class HelpfulDeleteViewTest(TestCase):
         request = RequestFactory().get('/foo')
         view = FakeDeleteView(next_url=next_url, request=request)
         response = view.get(request)
-        self.assertEqual(
-            (httplib.FOUND, next_url),
-            (response.status_code, response['Location']))
+        self.assertEqual(next_url, extract_redirect(response))
         self.assertEqual([view.compose_feedback_nonexistent()], view.notices)
 
     def test_compose_feedback_nonexistent_names_class(self):
@@ -224,10 +222,7 @@ class MAASExceptionHandledInView(LoggedInTestCase):
         node = factory.make_node(owner=self.logged_in_user)
         node_edit_link = reverse('node-edit', args=[node.system_id])
         response = self.client.post(node_edit_link, {})
-        redirect_url = urlparse(response['Location']).path
-        self.assertEqual(
-            (httplib.FOUND, redirect_url),
-            (response.status_code, node_edit_link))
+        self.assertEqual(node_edit_link, extract_redirect(response))
 
     def test_raised_ExternalComponentException_publishes_message(self):
         # When a ExternalComponentException is raised in a POST request, a

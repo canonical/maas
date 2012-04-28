@@ -12,11 +12,19 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
+import httplib
+
+from django.http import (
+    HttpResponse,
+    HttpResponseRedirect,
+    )
 from maasserver import provisioning
 from maasserver.testing import (
+    extract_redirect,
     reload_object,
     reload_objects,
     )
+from maasserver.testing.factory import factory
 from maasserver.testing.models import TestModel
 from maasserver.testing.testcase import (
     TestCase,
@@ -75,6 +83,29 @@ class TestHelpers(TestModelTestCase):
     """Test helper functions."""
 
     app = 'maasserver.testing'
+
+    def test_extract_redirect_extracts_redirect_location(self):
+        url = factory.getRandomString()
+        self.assertEqual(
+            url, extract_redirect(HttpResponseRedirect(url)))
+
+    def test_extract_redirect_only_returns_target_path(self):
+        url_path = factory.getRandomString()
+        self.assertEqual(
+            "/%s" % url_path,
+            extract_redirect(
+                HttpResponseRedirect("http://example.com/%s" % url_path)))
+
+    def test_extract_redirect_errors_out_helpfully_if_not_a_redirect(self):
+        content = factory.getRandomString(10)
+        other_response = HttpResponse(status=httplib.OK, content=content)
+        try:
+            extract_redirect(other_response)
+        except ValueError as e:
+            pass
+
+        self.assertIn(unicode(httplib.OK), unicode(e))
+        self.assertIn(content, unicode(e))
 
     def test_reload_object_reloads_object(self):
         test_obj = TestModel(text="old text")

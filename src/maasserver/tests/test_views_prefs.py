@@ -14,13 +14,13 @@ __all__ = []
 
 
 import httplib
-from urlparse import urlparse
 
 from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse
 from lxml.html import fromstring
 from maasserver.models import SSHKey
 from maasserver.testing import (
+    extract_redirect,
     get_content_links,
     get_data,
     get_prefixed_form_data,
@@ -196,9 +196,7 @@ class KeyManagementTest(LoggedInTestCase):
         del_link = reverse('prefs-delete-sshkey', args=[key.id])
         key.delete()
         response = self.client.get(del_link)
-        self.assertEqual(
-            (httplib.FOUND, '/account/prefs/'),
-            (response.status_code, urlparse(response['Location']).path))
+        self.assertEqual('/account/prefs/', extract_redirect(response))
 
     def test_delete_key_POST(self):
         # A POST request deletes the key, and redirects to the prefs.
@@ -206,9 +204,7 @@ class KeyManagementTest(LoggedInTestCase):
         del_link = reverse('prefs-delete-sshkey', args=[key.id])
         response = self.client.post(del_link, {'post': 'yes'})
 
-        self.assertEqual(
-            (httplib.FOUND, '/account/prefs/'),
-            (response.status_code, urlparse(response['Location']).path))
+        self.assertEqual('/account/prefs/', extract_redirect(response))
         self.assertFalse(SSHKey.objects.filter(id=key.id).exists())
 
     def test_delete_key_POST_ignores_nonexistent_key(self):
@@ -218,6 +214,4 @@ class KeyManagementTest(LoggedInTestCase):
         del_link = reverse('prefs-delete-sshkey', args=[key.id])
         key.delete()
         response = self.client.post(del_link, {'post': 'yes'})
-        self.assertEqual(
-            (httplib.FOUND, '/account/prefs/'),
-            (response.status_code, urlparse(response['Location']).path))
+        self.assertEqual('/account/prefs/', extract_redirect(response))
