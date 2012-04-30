@@ -29,7 +29,10 @@ from maasserver.models import (
     Node,
     SSHKey,
     )
-from maasserver.testing import get_data
+from maasserver.testing import (
+    get_data,
+    reload_object,
+    )
 from maasserver.testing.enum import map_enum
 import maastesting.factory
 from metadataserver.models import NodeCommissionResult
@@ -67,7 +70,8 @@ class Factory(maastesting.factory.Factory):
             [choice for choice in choices if choice[0] not in but_not])[0]
 
     def make_node(self, hostname='', set_hostname=False, status=None,
-                  architecture=ARCHITECTURE.i386, **kwargs):
+                  architecture=ARCHITECTURE.i386, updated=None,
+                  created=None, **kwargs):
         # hostname=None is a valid value, hence the set_hostname trick.
         if hostname is '' and set_hostname:
             hostname = self.getRandomString(255)
@@ -77,7 +81,13 @@ class Factory(maastesting.factory.Factory):
             hostname=hostname, status=status, architecture=architecture,
             **kwargs)
         node.save(skip_check=True)
-        return node
+        # Update the 'updated'/'created' fields with a call to 'update'
+        # preventing a call to save() from overriding the values.
+        if updated is not None:
+            Node.objects.filter(id=node.id).update(updated=updated)
+        if created is not None:
+            Node.objects.filter(id=node.id).update(created=created)
+        return reload_object(node)
 
     def make_node_commission_result(self, node=None, name=None, data=None):
         if node is None:

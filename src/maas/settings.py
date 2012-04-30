@@ -276,5 +276,9 @@ USE_REAL_PSERV = True
 # doing.
 COMMISSIONING_SCRIPT = 'etc/maas/commissioning-user-data'
 
+# The duration, in minutes, after which we consider a commissioning node
+# to have failed and mark it as FAILED_TESTS.
+COMMISSIONING_TIMEOUT = 60
+
 # Allow the user to override settings in maas_local_settings.
 import_local_settings()

@@ -68,12 +68,17 @@ __all__ = [
     ]
 
 from base64 import b64decode
+from datetime import (
+    datetime,
+    timedelta,
+    )
 import httplib
 import json
 import sys
 from textwrap import dedent
 import types
 
+from django.conf import settings
 from django.core.exceptions import (
     PermissionDenied,
     ValidationError,
@@ -487,6 +492,21 @@ class AnonNodesHandler(AnonymousBaseHandler):
     def accept(self, request):
         """Accept a node's enlistment: not allowed to anonymous users."""
         raise Unauthorized("You must be logged in to accept nodes.")
+
+    @api_exported("check_commissioning", "POST")
+    def check_commissioning(self, request):
+        """Check all commissioning nodes to see if they are taking too long.
+
+        Anything that has been commissioning for longer than
+        settings.COMMISSIONING_TIMEOUT is moved into the FAILED_TESTS status.
+        """
+        interval = timedelta(minutes=settings.COMMISSIONING_TIMEOUT)
+        cutoff = datetime.now() - interval
+        query = Node.objects.filter(
+            status=NODE_STATUS.COMMISSIONING, updated__lte=cutoff)
+        query.update(status=NODE_STATUS.FAILED_TESTS)
+        # Note that Django doesn't call save() on updated nodes here,
+        # but I don't think anything requires its effects anyway.
 
     @classmethod
     def resource_uri(cls, *args, **kwargs):

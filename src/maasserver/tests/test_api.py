@@ -13,6 +13,10 @@ __metaclass__ = type
 __all__ = []
 
 from base64 import b64encode
+from datetime import (
+    datetime,
+    timedelta,
+    )
 from collections import namedtuple
 import httplib
 import json
@@ -1799,3 +1803,35 @@ class APIErrorsTest(APIv10TestMixin, TransactionTestCase):
             (response.status_code, response.content))
         self.assertRaises(
             Node.DoesNotExist, Node.objects.get, hostname=hostname)
+
+
+class TestAnonymousCommissioningTimeout(APIv10TestMixin, TestCase):
+    """Testing of commissioning timeout API."""
+
+    def test_check_with_no_action(self):
+        node = factory.make_node(status=NODE_STATUS.READY)
+        self.client.post(
+            self.get_uri('nodes/'), {'op': 'check_commissioning'})
+        # Anything that's not commissioning should be ignored.
+        self.assertEqual(NODE_STATUS.READY, node.status)
+
+    def test_check_with_commissioning_but_not_expired_node(self):
+        node = factory.make_node(
+            status=NODE_STATUS.COMMISSIONING)
+        self.client.post(
+            self.get_uri('nodes/'), {'op': 'check_commissioning'})
+        node = reload_object(node)
+        self.assertEqual(NODE_STATUS.COMMISSIONING, node.status)
+
+    def test_check_with_commissioning_and_expired_node(self):
+        # Have an interval 1 second longer than the timeout.
+        interval = timedelta(seconds=1, minutes=settings.COMMISSIONING_TIMEOUT)
+        updated_at = datetime.now() - interval
+        node = factory.make_node(
+            status=NODE_STATUS.COMMISSIONING, created=datetime.now(),
+            updated=updated_at)
+
+        self.client.post(
+            self.get_uri('nodes/'), {'op': 'check_commissioning'})
+        node = reload_object(node)
+        self.assertEqual(NODE_STATUS.FAILED_TESTS, node.status)
