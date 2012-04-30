@@ -3,12 +3,12 @@
  *
  * Widget to fade and resize between two DOM nodes.
  *
- * @module Y.mass.morph
+ * @module Y.maas.morph
  */
 
 YUI.add('maas.morph', function(Y) {
 
-Y.log('loading mass.morph');
+Y.log('loading maas.morph');
 
 var module = Y.namespace('maas.morph');
 

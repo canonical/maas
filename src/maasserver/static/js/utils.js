@@ -3,12 +3,12 @@
  *
  * MAAS utilities.
  *
- * @module Y.mass.utils
+ * @module Y.maas.utils
  */
 
 YUI.add('maas.utils', function(Y) {
 
-Y.log('loading mass.utils');
+Y.log('loading maas.utils');
 var module = Y.namespace('maas.utils');
 
 // Only used to mockup io in tests.

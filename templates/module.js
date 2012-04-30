@@ -3,12 +3,13 @@
  *
  * TODO: document me.
  *
- * @module Y.mass.sample
+ * @module Y.maas.sample
  */
 
+// TODO: Replace "sample" with module name throughout.
 YUI.add('maas.sample', function(Y) {
 
-Y.log('loading mass.sample');
+Y.log('loading maas.sample');
 var module = Y.namespace('maas.sample');
 
 // Only used to mockup io in tests.

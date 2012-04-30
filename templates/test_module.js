@@ -2,9 +2,10 @@
  * GNU Affero General Public License version 3 (see the file LICENSE).
  */
 
+// TODO: Replace "sample" with module name throughout.
 YUI({ useBrowserConsole: true }).add('maas.sample.tests', function(Y) {
 
-Y.log('loading mass.sample.tests');
+Y.log('loading maas.sample.tests');
 var namespace = Y.namespace('maas.sample.tests');
 
 var module = Y.maas.sample;
