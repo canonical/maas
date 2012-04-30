@@ -183,12 +183,12 @@ class StartNode(NodeAction):
         return None
 
     def execute(self):
-        # Avoid circular imports.
-        from maasserver.api import get_oauth_token
+        # The UI does not use OAuth, so there is no token to pass to the
+        # acquire() call.
+        self.node.acquire(self.user, token=None)
 
         # Be sure to acquire before starting, or start_nodes will think
         # the node ineligible based on its un-acquired status.
-        self.node.acquire(get_oauth_token(self.request))
         Node.objects.start_nodes([self.node.system_id], self.user)
         return dedent("""\
             This node is now allocated to you.

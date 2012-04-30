@@ -281,7 +281,7 @@ class NodeTest(TestCase):
         node = factory.make_node(status=NODE_STATUS.READY)
         user = factory.make_user()
         token = create_auth_token(user)
-        node.acquire(token)
+        node.acquire(user, token)
         self.assertEqual(user, node.owner)
         self.assertEqual(NODE_STATUS.ALLOCATED, node.status)
 

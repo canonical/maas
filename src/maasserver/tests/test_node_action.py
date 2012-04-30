@@ -15,7 +15,6 @@ __all__ = []
 from urlparse import urlparse
 
 from django.core.urlresolvers import reverse
-import maasserver.api
 from maasserver.enum import (
     NODE_PERMISSION,
     NODE_STATUS,
@@ -222,8 +221,6 @@ class TestNodeAction(TestCase):
     def test_StartNode_acquires_and_starts_node(self):
         node = factory.make_node(status=NODE_STATUS.READY)
         user = factory.make_user()
-        consumer, token = user.get_profile().create_authorisation_token()
-        self.patch(maasserver.api, 'get_oauth_token', lambda request: token)
         StartNode(node, user).execute()
         self.assertEqual(NODE_STATUS.ALLOCATED, node.status)
         self.assertEqual(user, node.owner)

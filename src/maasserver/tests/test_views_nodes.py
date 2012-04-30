@@ -326,14 +326,6 @@ class NodeViewsTest(LoggedInTestCase):
             "This node is now allocated to you.",
             '\n'.join(msg.message for msg in response.context['messages']))
 
-    def test_view_node_POST_without_oauth_returns_Unauthorized(self):
-        factory.make_sshkey(self.logged_in_user)
-        node = factory.make_node(status=NODE_STATUS.READY)
-        response = self.client.post(
-            reverse('node-view', args=[node.system_id]),
-            data={NodeActionForm.input_name: StartNode.display})
-        self.assertEqual(httplib.UNAUTHORIZED, response.status_code)
-
 
 class NodeDeleteMacTest(LoggedInTestCase):
 

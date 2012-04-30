@@ -598,11 +598,12 @@ class Node(CommonInfo):
             power_type = self.power_type
         return power_type
 
-    def acquire(self, token):
-        """Mark commissioned node as acquired by the given user's token."""
+    def acquire(self, user, token=None):
+        """Mark commissioned node as acquired by the given user and token."""
         assert self.owner is None
+        assert token is None or token.user == user
         self.status = NODE_STATUS.ALLOCATED
-        self.owner = token.user
+        self.owner = user
         self.token = token
         self.save()
 

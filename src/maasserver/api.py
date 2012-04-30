@@ -591,7 +591,7 @@ class NodesHandler(BaseHandler):
             request.user, constraints=extract_constraints(request.data))
         if node is None:
             raise NodesNotAvailable("No matching node is available.")
-        node.acquire(get_oauth_token(request))
+        node.acquire(request.user, get_oauth_token(request))
         return node
 
     @classmethod
