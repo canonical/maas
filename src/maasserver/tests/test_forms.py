@@ -18,7 +18,6 @@ from django.core.exceptions import (
     ValidationError,
     )
 from django.http import QueryDict
-import maasserver.api
 from maasserver.forms import (
     ConfigForm,
     EditUserForm,
@@ -346,8 +345,6 @@ class TestNodeActionForm(TestCase):
     def test_start_action_acquires_and_starts_ready_node_for_user(self):
         node = factory.make_node(status=NODE_STATUS.READY)
         user = factory.make_user()
-        consumer, token = user.get_profile().create_authorisation_token()
-        self.patch(maasserver.api, 'get_oauth_token', lambda request: token)
         form = get_action_form(user)(
             node, {NodeActionForm.input_name: "Start node"})
         form.save()

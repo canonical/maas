@@ -241,10 +241,7 @@ class NodeWithMACAddressesForm(NodeForm):
 
 def acquire_and_start_node(node, user, request=None):
     """Acquire and start a node from the UI.  It will have no meta_data."""
-    # Avoid circular imports.
-    from maasserver.api import get_oauth_token
-
-    node.acquire(get_oauth_token(request))
+    node.acquire(user, token=None)
     Node.objects.start_nodes([node.system_id], user)
 
 
