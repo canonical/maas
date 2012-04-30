@@ -34,11 +34,8 @@ from maasserver.testing.testcase import (
     )
 from maasserver.views import HelpfulDeleteView
 from maasserver.views.nodes import NodeEdit
+from maastesting.matchers import ContainsAll
 from provisioningserver.enum import PSERV_FAULT
-from testtools.matchers import (
-    Contains,
-    MatchesAll,
-    )
 
 
 class Test404500(LoggedInTestCase):
@@ -266,7 +263,5 @@ class PermanentErrorDisplayTest(LoggedInTestCase):
             response = self.client.get(link)
             self.assertThat(
                 response.content,
-                MatchesAll(
-                    *[Contains(
-                          escape(error.faultString))
-                     for error in errors]))
+                ContainsAll(
+                    [escape(error.faultString) for error in errors]))
