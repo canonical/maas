@@ -36,13 +36,13 @@ from maasserver.testing import (
     reload_object,
     reload_objects,
     )
-from maasserver.testing.enum import map_enum
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
     AdminLoggedInTestCase,
     LoggedInTestCase,
     TestCase,
     )
+from maasserver.utils import map_enum
 from maasserver.views import nodes as nodes_views
 from maasserver.views.nodes import get_longpoll_context
 from maastesting.matchers import ContainsAll

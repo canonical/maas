@@ -13,11 +13,11 @@ __metaclass__ = type
 __all__ = []
 
 from base64 import b64encode
+from collections import namedtuple
 from datetime import (
     datetime,
     timedelta,
     )
-from collections import namedtuple
 import httplib
 import json
 import os
@@ -53,7 +53,6 @@ from maasserver.testing import (
     reload_object,
     reload_objects,
     )
-from maasserver.testing.enum import map_enum
 from maasserver.testing.factory import factory
 from maasserver.testing.oauthclient import OAuthAuthenticatedClient
 from maasserver.testing.testcase import (
@@ -61,6 +60,7 @@ from maasserver.testing.testcase import (
     LoggedInTestCase,
     TestCase,
     )
+from maasserver.utils import map_enum
 from maastesting.djangotestcase import TransactionTestCase
 from metadataserver.models import (
     NodeKey,

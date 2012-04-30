@@ -22,9 +22,9 @@ from maasserver.components import (
     get_persistent_errors,
     register_persistent_error,
     )
-from maasserver.testing.enum import map_enum
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
+from maasserver.utils import map_enum
 
 
 def simple_error_display(error):

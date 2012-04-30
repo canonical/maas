@@ -12,8 +12,8 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
-from maastesting.matchers import ContainsAll
 from maastesting.factory import factory
+from maastesting.matchers import ContainsAll
 from maastesting.testcase import TestCase
 from testtools.matchers import MismatchError
 

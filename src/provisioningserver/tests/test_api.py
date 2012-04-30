@@ -22,7 +22,7 @@ from abc import (
 from base64 import b64decode
 from contextlib import contextmanager
 
-from maasserver.testing.enum import map_enum
+from maasserver.utils import map_enum
 from maastesting.factory import factory
 from provisioningserver.api import (
     cobbler_to_papi_distro,

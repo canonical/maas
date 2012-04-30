@@ -33,7 +33,7 @@ from maasserver.testing import (
     get_data,
     reload_object,
     )
-from maasserver.testing.enum import map_enum
+from maasserver.utils import map_enum
 import maastesting.factory
 from metadataserver.models import NodeCommissionResult
 

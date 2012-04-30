@@ -56,9 +56,9 @@ from maasserver.provisioning import (
     select_profile_for_node,
     SHORT_PRESENTATIONS,
     )
-from maasserver.testing.enum import map_enum
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
+from maasserver.utils import map_enum
 from metadataserver.models import NodeKey
 from provisioningserver.enum import (
     POWER_TYPE,

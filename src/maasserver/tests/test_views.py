@@ -26,7 +26,6 @@ from maasserver import components
 from maasserver.components import register_persistent_error
 from maasserver.exceptions import ExternalComponentException
 from maasserver.testing import extract_redirect
-from maasserver.testing.enum import map_enum
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
     LoggedInTestCase,
@@ -34,6 +33,7 @@ from maasserver.testing.testcase import (
     )
 from maasserver.views import HelpfulDeleteView
 from maasserver.views.nodes import NodeEdit
+from maasserver.utils import map_enum
 from maastesting.matchers import ContainsAll
 from provisioningserver.enum import PSERV_FAULT
 

@@ -64,13 +64,13 @@ from maasserver.models import (
     )
 from maasserver.provisioning import get_provisioning_api_proxy
 from maasserver.testing import get_data
-from maasserver.testing.enum import map_enum
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
     TestCase,
     TestModelTestCase,
     )
 from maasserver.tests.models import CommonInfoTestModel
+from maasserver.utils import map_enum
 from maastesting.djangotestcase import (
     TestModelTransactionalTestCase,
     TransactionTestCase,
