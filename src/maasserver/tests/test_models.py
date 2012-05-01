@@ -1347,6 +1347,7 @@ class FileStorageTest(TestCase):
         pass
 
 
+# Due for model migration on 2012-04-11
 class ConfigDefaultTest(TestCase, TestWithFixtures):
     """Test config default values."""
 
@@ -1355,6 +1356,7 @@ class ConfigDefaultTest(TestCase, TestWithFixtures):
         self.assertEqual(gethostname(), default_config['maas_name'])
 
 
+# Due for model migration on 2012-04-11
 class Listener:
     """A utility class which tracks the calls to its 'call' method and
     stores the arguments given to 'call' in 'self.calls'.
@@ -1367,6 +1369,7 @@ class Listener:
         self.calls.append([args, kwargs])
 
 
+# Due for model migration on 2012-04-11
 class ConfigTest(TestCase):
     """Testing of the :class:`Config` model and its related manager class."""
 
