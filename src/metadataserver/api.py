@@ -128,7 +128,7 @@ class VersionIndexHandler(MetadataViewHandler):
             contents = uploaded_file.read().decode('utf-8')
             NodeCommissionResult.objects.store_data(node, name, contents)
 
-    @api_exported('signal', 'POST')
+    @api_exported('POST')
     def signal(self, request, version=None):
         """Signal commissioning status.
 

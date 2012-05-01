@@ -155,15 +155,26 @@ class AdminRestrictedResource(RestrictedResource):
             return actor, anonymous
 
 
-def api_exported(operation_name=True, method='POST'):
+def api_exported(method='POST', exported_as=None):
+    """Decorator to make a method available on the API.
+
+    :param method: The HTTP method over which to export the operation.
+    :param exported_as: Optional operation name; defaults to the name of the
+        exported method.
+
+    See also _`api_operations`.
+    """
     def _decorator(func):
         if method not in dispatch_methods:
             raise ValueError("Invalid method: '%s'" % method)
-        if operation_name == dispatch_methods.get(method):
+        if exported_as is None:
+            func._api_exported = {method: func.__name__}
+        else:
+            func._api_exported = {method: exported_as}
+        if func._api_exported.get(method) == dispatch_methods.get(method):
             raise ValueError(
                 "Cannot define a '%s' operation." % dispatch_methods.get(
                     method))
-        func._api_exported = {method: operation_name}
         return func
     return _decorator
 
@@ -214,11 +225,11 @@ def api_operations(cls):
     >>> @api_operations
     >>> class MyHandler(BaseHandler):
     >>>
-    >>>    @api_exported('exported_post_name', method='POST')
+    >>>    @api_exported(method='POST', exported_as='exported_post_name')
     >>>    def do_x(self, request):
     >>>        # process request...
     >>>
-    >>>    @api_exported('exported_get_name', method='GET')
+    >>>    @api_exported(method='GET')
     >>>    def do_y(self, request):
     >>>        # process request...
 
@@ -229,9 +240,9 @@ def api_operations(cls):
     op=exported_post_name&param1=1
 
     MyHandler's method 'do_y' will service GET requests with
-    'op=exported_get_name' in its request parameters.
+    'op=do_y' in its request parameters.
 
-    GET /api/path/to/MyHandler/?op=exported_get_name&param1=1
+    GET /api/path/to/MyHandler/?op=do_y&param1=1
 
     """
     # Compute the list of methods ('GET', 'POST', etc.) that need to be
@@ -248,10 +259,9 @@ def api_operations(cls):
         cls._available_api_methods = getattr(
             cls, "_available_api_methods", {}).copy()
         cls._available_api_methods[method] = {
-            (name if op._api_exported[method] is True
-                else op._api_exported[method]): op
-            for name, op in operations.items()
-            if method in op._api_exported}
+            op._api_exported[method]: op
+                for name, op in operations.items()
+                if method in op._api_exported}
 
         def dispatcher(self, request, *args, **kwargs):
             return perform_api_operation(
@@ -390,7 +400,7 @@ class NodeHandler(BaseHandler):
             node_system_id = node.system_id
         return ('node_handler', (node_system_id, ))
 
-    @api_exported('stop', 'POST')
+    @api_exported('POST')
     def stop(self, request, system_id):
         """Shut down a node."""
         nodes = Node.objects.stop_nodes([system_id], request.user)
@@ -399,7 +409,7 @@ class NodeHandler(BaseHandler):
                 "You are not allowed to shut down this node.")
         return nodes[0]
 
-    @api_exported('start', 'POST')
+    @api_exported('POST')
     def start(self, request, system_id):
         """Power up a node.
 
@@ -421,7 +431,7 @@ class NodeHandler(BaseHandler):
                 "You are not allowed to start up this node.")
         return nodes[0]
 
-    @api_exported('release', 'POST')
+    @api_exported('POST')
     def release(self, request, system_id):
         """Release a node.  Opposite of `NodesHandler.acquire`."""
         node = Node.objects.get_node_or_404(
@@ -462,7 +472,7 @@ class AnonNodesHandler(AnonymousBaseHandler):
     allowed_methods = ('GET', 'POST',)
     fields = NODE_FIELDS
 
-    @api_exported('new', 'POST')
+    @api_exported('POST')
     def new(self, request):
         """Create a new Node.
 
@@ -473,7 +483,7 @@ class AnonNodesHandler(AnonymousBaseHandler):
         """
         return create_node(request)
 
-    @api_exported('is_registered', 'GET')
+    @api_exported('GET')
     def is_registered(self, request):
         """Returns whether or not the given MAC address is registered within
         this MAAS (and attached to a non-retired node).
@@ -488,12 +498,12 @@ class AnonNodesHandler(AnonymousBaseHandler):
             mac_address=mac_address).exclude(
                 node__status=NODE_STATUS.RETIRED).exists()
 
-    @api_exported('accept', 'POST')
+    @api_exported('POST')
     def accept(self, request):
         """Accept a node's enlistment: not allowed to anonymous users."""
         raise Unauthorized("You must be logged in to accept nodes.")
 
-    @api_exported("check_commissioning", "POST")
+    @api_exported("POST")
     def check_commissioning(self, request):
         """Check all commissioning nodes to see if they are taking too long.
 
@@ -534,7 +544,7 @@ class NodesHandler(BaseHandler):
     allowed_methods = ('GET', 'POST',)
     anonymous = AnonNodesHandler
 
-    @api_exported('new', 'POST')
+    @api_exported('POST')
     def new(self, request):
         """Create a new Node.
 
@@ -546,7 +556,7 @@ class NodesHandler(BaseHandler):
             node.accept_enlistment(request.user)
         return node
 
-    @api_exported('accept', 'POST')
+    @api_exported('POST')
     def accept(self, request):
         """Accept declared nodes into the MAAS.
 
@@ -584,7 +594,7 @@ class NodesHandler(BaseHandler):
         return filter(
             None, [node.accept_enlistment(request.user) for node in nodes])
 
-    @api_exported('list', 'GET')
+    @api_exported('GET')
     def list(self, request):
         """List Nodes visible to the user, optionally filtered by id."""
         match_ids = request.GET.getlist('id')
@@ -594,7 +604,7 @@ class NodesHandler(BaseHandler):
             request.user, NODE_PERMISSION.VIEW, ids=match_ids)
         return nodes.order_by('id')
 
-    @api_exported('list_allocated', 'GET')
+    @api_exported('GET')
     def list_allocated(self, request):
         """Fetch Nodes that were allocated to the User/oauth token."""
         token = get_oauth_token(request)
@@ -604,7 +614,7 @@ class NodesHandler(BaseHandler):
         nodes = Node.objects.get_allocated_visible_nodes(token, match_ids)
         return nodes.order_by('id')
 
-    @api_exported('acquire', 'POST')
+    @api_exported('POST')
     def acquire(self, request):
         """Acquire an available node for deployment."""
         node = Node.objects.get_available_node_for_acquisition(
@@ -713,7 +723,7 @@ class AnonFilesHandler(AnonymousBaseHandler):
     """
     allowed_methods = ('GET',)
 
-    get = api_exported('get', 'GET')(get_file)
+    get = api_exported('GET', exported_as='get')(get_file)
 
 
 @api_operations
@@ -722,9 +732,9 @@ class FilesHandler(BaseHandler):
     allowed_methods = ('GET', 'POST',)
     anonymous = AnonFilesHandler
 
-    get = api_exported('get', 'GET')(get_file)
+    get = api_exported('GET', exported_as='get')(get_file)
 
-    @api_exported('add', 'POST')
+    @api_exported('POST')
     def add(self, request):
         """Add a new file to the file storage.
 
@@ -759,7 +769,7 @@ class AccountHandler(BaseHandler):
     """Manage the current logged-in user."""
     allowed_methods = ('POST',)
 
-    @api_exported('create_authorisation_token', method='POST')
+    @api_exported('POST')
     def create_authorisation_token(self, request):
         """Create an authorisation OAuth token and OAuth consumer.
 
@@ -777,7 +787,7 @@ class AccountHandler(BaseHandler):
             'consumer_key': consumer.key,
             }
 
-    @api_exported('delete_authorisation_token', method='POST')
+    @api_exported('POST')
     def delete_authorisation_token(self, request):
         """Delete an authorisation OAuth token and the related OAuth consumer.
 
@@ -799,7 +809,7 @@ class MAASHandler(BaseHandler):
     """Manage the MAAS' itself."""
     allowed_methods = ('POST', 'GET')
 
-    @api_exported('set_config', method='POST')
+    @api_exported('POST')
     def set_config(self, request):
         """Set a config value.
 
@@ -814,7 +824,7 @@ class MAASHandler(BaseHandler):
         Config.objects.set_config(name, value)
         return rc.ALL_OK
 
-    @api_exported('get_config', method='GET')
+    @api_exported('GET')
     def get_config(self, request):
         """Get a config value.
 
