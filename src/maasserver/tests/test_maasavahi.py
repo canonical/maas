@@ -19,10 +19,7 @@ from maasserver.maasavahi import (
     MAASAvahiService,
     setup_maas_avahi_service,
     )
-from maasserver.models import (
-    Config,
-    config_manager,
-    )
+from maasserver.models import Config
 from maastesting.djangotestcase import DjangoTestCase
 
 
@@ -64,7 +61,7 @@ class TestMAASAvahiService(DjangoTestCase):
         # Unregister other signals from Config, otherwise
         # the one registered in urls.py, will interfere with these tests
         self.patch(
-            config_manager, '_config_changed_connections', defaultdict(set))
+            Config.objects, '_config_changed_connections', defaultdict(set))
 
         mock_avahi = MockZeroconfServiceFactory()
         self.patch(

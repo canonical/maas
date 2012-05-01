@@ -59,6 +59,7 @@ from django.db import (
 from django.db.models.signals import post_save
 from django.shortcuts import get_object_or_404
 from django.utils.safestring import mark_safe
+from maasserver import DefaultMeta
 from maasserver.enum import (
     ARCHITECTURE,
     ARCHITECTURE_CHOICES,
@@ -387,6 +388,9 @@ class Node(CommonInfo):
 
     """
 
+    class Meta(DefaultMeta):
+        """Needed for South to recognize this model."""
+
     system_id = models.CharField(
         max_length=41, unique=True, default=generate_node_system_id,
         editable=False)
@@ -602,7 +606,8 @@ class MACAddress(CommonInfo):
     mac_address = MACAddressField(unique=True)
     node = models.ForeignKey(Node, editable=False)
 
-    class Meta:
+    class Meta(DefaultMeta):
+        verbose_name = "MAC address"
         verbose_name_plural = "MAC addresses"
 
     def __unicode__(self):
@@ -688,6 +693,9 @@ class UserProfile(models.Model):
        #storing-additional-information-about-users
 
     """
+
+    class Meta(DefaultMeta):
+        """Needed for South to recognize this model."""
 
     objects = UserProfileManager()
     user = models.OneToOneField(User)
@@ -839,6 +847,10 @@ class SSHKey(CommonInfo):
     :ivar user: The user which owns the key.
     :ivar key: The ssh public key.
     """
+
+    class Meta(DefaultMeta):
+        """Needed for South to recognize this model."""
+
     objects = SSHKeyManager()
 
     user = models.ForeignKey(User, null=False, editable=False)
@@ -978,6 +990,9 @@ class FileStorage(models.Model):
     :ivar data: The file's actual data.
     """
 
+    class Meta(DefaultMeta):
+        """Needed for South to recognize this model."""
+
     storage = FileSystemStorage()
 
     upload_dir = "storage"
@@ -994,6 +1009,7 @@ class FileStorage(models.Model):
         return self.filename
 
 
+# Due for model migration on 2012-05-08
 def get_default_config():
     return {
         ## settings default values.
@@ -1018,10 +1034,12 @@ def get_default_config():
         }
 
 
+# Due for model migration on 2012-05-08
 # Default values for config options.
 DEFAULT_CONFIG = get_default_config()
 
 
+# Due for model migration on 2012-05-08
 class ConfigManager(models.Manager):
     """A utility to manage the configuration settings.
 
@@ -1097,9 +1115,7 @@ class ConfigManager(models.Manager):
             connection(sender, instance, created, **kwargs)
 
 
-config_manager = ConfigManager()
-
-
+# Due for model migration on 2012-05-08
 class Config(models.Model):
     """Configuration settings.
 
@@ -1109,17 +1125,21 @@ class Config(models.Model):
     :type value: Any pickleable python object.
     """
 
+    class Meta(DefaultMeta):
+        """Needed for South to recognize this model."""
+
     name = models.CharField(max_length=255, unique=False)
     value = JSONObjectField(null=True)
 
-    objects = config_manager
+    objects = ConfigManager()
 
     def __unicode__(self):
         return "%s: %s" % (self.name, self.value)
 
 
-# Connect config_manager._config_changed the post save signal of Config.
-post_save.connect(config_manager._config_changed, sender=Config)
+# Due for model migration on 2012-05-08
+# Connect config manager's _config_changed to Config's post-save signal.
+post_save.connect(Config.objects._config_changed, sender=Config)
 
 
 # Register the models in the admin site.
