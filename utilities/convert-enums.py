@@ -24,10 +24,6 @@ __metaclass__ = type
 
 from argparse import ArgumentParser
 from datetime import datetime
-from imp import (
-    find_module,
-    load_module,
-    )
 import json
 import os.path
 import sys
@@ -53,7 +49,7 @@ header = dedent("""\
 footer = "}, '0.1');"
 
 
-def get_module(src_path, package, name='enum'):
+def get_module(src_path, package):
     """Attempt to load a given module.
 
     This makes some assumptions about directory structure: it is assumed
@@ -65,13 +61,10 @@ def get_module(src_path, package, name='enum'):
     :param name: Name of module to load.
     :return: The imported module, or None if it was not found.
     """
-    path = os.path.join(src_path, package)
-    try:
-        found_module = find_module(name, [path])
-    except ImportError:
-        # No enum module here.  Ignore this package or directory.
+    if os.path.isfile(os.path.join(src_path, package, "enum.py")):
+        return __import__('.'.join([package, 'enum']), level=0, fromlist=True)
+    else:
         return None
-    return load_module(name, *found_module)
 
 
 def find_enum_modules(src_path):
@@ -83,9 +76,9 @@ def find_enum_modules(src_path):
     :param src_path: The path to search in.
     :return: An iterable of "enum" modules found in packages in src_path.
     """
-    return filter(None, [
-        get_module(src_path, package, 'enum')
-        for package in os.listdir(src_path)])
+    dirs = sorted(os.listdir(src_path))
+    modules = [get_module(src_path, package) for package in dirs]
+    return filter(None, modules)
 
 
 def is_enum(item):
