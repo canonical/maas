@@ -14,6 +14,9 @@ var module = Y.namespace('maas.node_views');
 // Only used to mockup io in tests.
 module._io = new Y.IO();
 
+var NODE_STATUS = Y.maas.enums.NODE_STATUS;
+
+
 /**
  * A base view class to display a set of Nodes (Y.maas.node.Node).
  *
@@ -303,10 +306,11 @@ module.NodesDashboard = Y.Base.create(
     */
     updateStatus: function(action, status) {
         var update_chart = false;
+        var node_counter;
+
         /* This seems like an ugly way to calculate the change, but it stops
            duplication of checking for the action for each status.
         */
-        var node_counter;
         if (action === 'add') {
             node_counter = 1;
         }
@@ -314,28 +318,28 @@ module.NodesDashboard = Y.Base.create(
             node_counter = -1;
         }
 
-        /* TODO: The commissioned status currently doesn't exist, but once it
-           does it should be added here too.
-        */
-        if (status === 0) {
+        switch (status) {
+        case NODE_STATUS.DECLARED:
             // Added nodes
             this.added_nodes += node_counter;
             this.chart.set('added_nodes', this.added_nodes);
             update_chart = true;
-        }
-        else if (status === 1 || status === 2 || status === 3) {
+            break;
+        case NODE_STATUS.COMMISSIONING:
+        case NODE_STATUS.FAILED_TESTS:
+        case NODE_STATUS.MISSING:
             // Offline nodes
             this.offline_nodes += node_counter;
             this.chart.set('offline_nodes', this.offline_nodes);
             update_chart = true;
-        }
-        else if (status === 4) {
+            break;
+        case NODE_STATUS.READY:
             // Queued nodes
             this.queued_nodes += node_counter;
             this.chart.set('queued_nodes', this.queued_nodes);
             update_chart = true;
-        }
-        else if (status === 5) {
+            break;
+        case NODE_STATUS.RESERVED:
             // Reserved nodes
             this.reserved_nodes += node_counter;
             this.setNodeText(
@@ -343,18 +347,19 @@ module.NodesDashboard = Y.Base.create(
                 this.reserved_template,
                 this.reserved_nodes
                 );
-        }
-        else if (status === 6) {
+            break;
+        case NODE_STATUS.ALLOCATED:
             // Deployed nodes
             this.deployed_nodes += node_counter;
             this.chart.set('deployed_nodes', this.deployed_nodes);
             update_chart = true;
-        }
-        else if (status === 7) {
+            break;
+        case NODE_STATUS.RETIRED:
             // Retired nodes
             this.retired_nodes += node_counter;
             this.setNodeText(
                 this.retiredNode, this.retired_template, this.retired_nodes);
+            break;
         }
 
         return update_chart;
@@ -406,6 +411,6 @@ module.NodesDashboard = Y.Base.create(
 });
 
 }, '0.1', {'requires': [
-    'view', 'io', 'maas.node', 'maas.node_add', 'maas.nodes_chart',
-    'maas.morph', 'anim']}
+    'view', 'io', 'maas.enums', 'maas.node', 'maas.node_add',
+    'maas.nodes_chart', 'maas.morph', 'anim']}
 );

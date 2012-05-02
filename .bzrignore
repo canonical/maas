@@ -18,6 +18,7 @@
 ./parts
 ./run/*
 ./services/*/supervise
+src/maasserver/static/js/enums.js
 ./TAGS
 ./tags
 ./twisted/plugins/dropin.cache

@@ -12,7 +12,7 @@ from __future__ import (
 __metaclass__ = type
 __all__ = [
     'ContainsAll',
-]
+    ]
 
 from testtools.matchers import (
     Contains,
@@ -21,8 +21,8 @@ from testtools.matchers import (
 
 
 def ContainsAll(items):
+    """Matches if the matchee contains all the provided items."""
 # XXX: rvb 2012-04-30 bug=991743:  This matcher has been submitted
 # upstream.  If it gets included in the next version of testtools, this code
 # should be removed.
-    """Matches if the matchee contains all the provided items."""
     return MatchesAll(*[Contains(item) for item in items], first_only=False)

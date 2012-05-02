@@ -463,5 +463,6 @@ function create_dashboard_view(data, self) {
 namespace.suite = suite;
 
 }, '0.1', {'requires': [
-    'node-event-simulate', 'test', 'maas.testing', 'maas.node_views']}
+    'node-event-simulate', 'test', 'maas.testing', 'maas.enums',
+    'maas.node_views']}
 );
