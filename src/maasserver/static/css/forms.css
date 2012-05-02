@@ -130,7 +130,8 @@ input[type="submit"].secondary:hover {
 /* Disabled buttons */
 .yui3-button.disabled,
 .button.disabled,
-button.disabled {
+button.disabled,
+input[type="submit"].disabled {
     cursor: not-allowed;
     border-color: #999;
     background-image: linear-gradient(bottom, rgb(200,200,200) 0%, rgb(150,150,150) 100%);
