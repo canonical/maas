@@ -87,10 +87,16 @@ Now restart dnsmasq::
 Import the Ubuntu images
 ========================
 
-MAAS will check for and download new Ubuntu images once a
-week. However, you'll need to download them manually the first time::
+MAAS will check for and download new Ubuntu images once a week.
+However, you'll need to download them manually the first time::
 
   $ sudo maas-import-isos
+
+If you are using an HTTP proxy, bear in mind that the "sudo" will not
+pass your http_proxy environment variable on to the script.  If that is
+a problem, pass it on explicitly::
+
+  $ sudo http_proxy=$http_proxy maas-import-isos
 
 
 Next steps
