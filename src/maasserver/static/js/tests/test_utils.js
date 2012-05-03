@@ -127,6 +127,15 @@ suite.add(new Y.maas.testing.TestCase({
         return widget;
     },
 
+    test_widget_goes_away_quietly_if_not_wanted: function() {
+        // If the srcNode isn't present on the page, the widget understands
+        // that it's not wanted.  Rather than break, it simply refrains from
+        // rendering.
+        var widget = new module.TitleEditWidget({srcNode: '#no-widget-here'});
+        widget.render();
+        Y.Assert.areEqual(null, widget.get('input'));
+    },
+
     test_getInput_returns_input: function() {
         var widget = this.createWidget();
         input = widget.get('srcNode').one('input');

@@ -190,7 +190,11 @@ Y.extend(TitleEditWidget, Y.Widget, {
     bindUI: function() {
         var self = this;
         var input = this.get('input');
-        // Click on the input node: start title edition.
+        if (input === null) {
+            // The widget isn't on this page.
+            return;
+        }
+        // Click on the input node: start title editing.
         input.on('click', function(e) {
             e.preventDefault();
             self.titleEditStart(e.rangeOffset);
@@ -202,8 +206,8 @@ Y.extend(TitleEditWidget, Y.Widget, {
         };
         // Blur is fired when the user clicks away.
         input.on('blur', done_editing);
-        // Change is fired when the input text as changed and the focus is now
-        // set another element.
+        // Change is fired when the input text has been changed and the focus
+        // shifts to another element.
         input.on('change', done_editing);
         // Form submitted (Enter pressed in the input Node).
         this.get('srcNode').on('submit', done_editing);
