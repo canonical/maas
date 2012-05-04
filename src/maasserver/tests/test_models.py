@@ -69,7 +69,7 @@ from maasserver.testing.testcase import (
     TestCase,
     TestModelTestCase,
     )
-from maasserver.tests.models import CommonInfoTestModel
+from maasserver.tests.models import TimestampedModelTestModel
 from maasserver.utils import map_enum
 from maastesting.djangotestcase import (
     TestModelTransactionalTestCase,
@@ -114,41 +114,41 @@ class UtilitiesTransactionalTest(TransactionTestCase):
         self.assertLessEqual(date_now, now())
 
 
-class CommonInfoTest(TestModelTestCase):
-    """Testing for the class `CommonInfo`."""
+class TimestampedModelTest(TestModelTestCase):
+    """Testing for the class `TimestampedModel`."""
 
     app = 'maasserver.tests'
 
     def test_created_populated_when_object_saved(self):
-        obj = CommonInfoTestModel()
+        obj = TimestampedModelTestModel()
         obj.save()
         self.assertIsNotNone(obj.created)
 
     def test_updated_populated_when_object_saved(self):
-        obj = CommonInfoTestModel()
+        obj = TimestampedModelTestModel()
         obj.save()
         self.assertIsNotNone(obj.updated)
 
     def test_updated_and_created_are_the_same_after_first_save(self):
-        obj = CommonInfoTestModel()
+        obj = TimestampedModelTestModel()
         obj.save()
         self.assertEqual(obj.created, obj.updated)
 
     def test_created_not_modified_by_subsequent_calls_to_save(self):
-        obj = CommonInfoTestModel()
+        obj = TimestampedModelTestModel()
         obj.save()
         old_created = obj.created
         obj.save()
         self.assertEqual(old_created, obj.created)
 
 
-class CommonInfoTransactionalTest(TestModelTransactionalTestCase):
+class TimestampedModelTransactionalTest(TestModelTransactionalTestCase):
 
     app = 'maasserver.tests'
 
     def test_created_bracketed_by_before_and_after_time(self):
         before = now()
-        obj = CommonInfoTestModel()
+        obj = TimestampedModelTestModel()
         obj.save()
         transaction.commit()
         after = now()
@@ -156,7 +156,7 @@ class CommonInfoTransactionalTest(TestModelTransactionalTestCase):
         self.assertGreaterEqual(after, obj.created)
 
     def test_updated_is_updated_when_object_saved(self):
-        obj = CommonInfoTestModel()
+        obj = TimestampedModelTestModel()
         obj.save()
         old_updated = obj.updated
         transaction.commit()
@@ -434,15 +434,6 @@ class NodeTest(TestCase):
             NodeStateViolation,
             "Invalid transition: Retired -> Allocated.",
             node.save)
-
-    def test_save_does_not_check_status_transition_if_skip_check(self):
-        # RETIRED -> ALLOCATED is an invalid transition.
-        node = factory.make_node(
-            status=NODE_STATUS.RETIRED, owner=factory.make_user())
-        node.status = NODE_STATUS.ALLOCATED
-        node.save(skip_check=True)
-        # The test is that this does not raise an error.
-        pass
 
 
 class NodeTransitionsTests(TestCase):
@@ -1093,13 +1084,22 @@ class SSHKeyTest(TestCase):
             ValidationError, key2.full_clean)
 
     def test_sshkey_user_and_key_unique_together_db_level(self):
+        # Even if we hack our way around model-level checks, uniqueness
+        # of the user/key combination is enforced at the database level.
         key_string = get_data('data/test_rsa0.pub')
         user = factory.make_user()
-        key = SSHKey(key=key_string, user=user)
-        key.save()
-        key2 = SSHKey(key=key_string, user=user)
+        existing_key = SSHKey(key=key_string, user=user)
+        existing_key.save()
+        # The trick to hack around the model-level checks: create a
+        # duplicate key for another user, then attach it to the same
+        # user as the existing key by updating it directly in the
+        # database.
+        redundant_key = SSHKey(key=key_string, user=factory.make_user())
+        redundant_key.save()
         self.assertRaises(
-            IntegrityError, key2.save, skip_check=True)
+            IntegrityError,
+            SSHKey.objects.filter(id=redundant_key.id).update,
+            user=user)
 
     def test_sshkey_same_key_can_be_used_by_different_users(self):
         key_string = get_data('data/test_rsa0.pub')

@@ -5,7 +5,7 @@ MAAS Objects
 
 .. automodule:: maasserver.models
 
-.. autoclass:: CommonInfo
+.. autoclass:: TimestampedModel
     :show-inheritance:
     :members:
 

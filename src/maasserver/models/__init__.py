@@ -78,7 +78,7 @@ from maasserver.fields import (
     JSONObjectField,
     MACAddressField,
     )
-from maasserver.models.commoninfo import CommonInfo
+from maasserver.models.timestampedmodel import TimestampedModel
 from metadataserver import nodeinituser
 from piston.models import (
     Consumer,
@@ -369,7 +369,7 @@ def get_db_state(instance, field_name):
         return None
 
 
-class Node(CommonInfo):
+class Node(TimestampedModel):
     """A `Node` represents a physical machine used by the MAAS Server.
 
     :ivar system_id: The unique identifier for this `Node`.
@@ -430,6 +430,11 @@ class Node(CommonInfo):
             return "%s (%s)" % (self.system_id, self.hostname)
         else:
             return self.system_id
+
+    def save(self, *args, **kwargs):
+        # Automatically check validity before saving.
+        self.full_clean()
+        return super(Node, self).save(*args, **kwargs)
 
     def clean_status(self):
         """Check a node's status transition against the node-status FSM."""
@@ -595,7 +600,7 @@ class Node(CommonInfo):
 mac_re = re.compile(r'^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$')
 
 
-class MACAddress(CommonInfo):
+class MACAddress(TimestampedModel):
     """A `MACAddress` represents a `MAC address
     <http://en.wikipedia.org/wiki/MAC_address>`_ attached to a :class:`Node`.
 
@@ -612,6 +617,11 @@ class MACAddress(CommonInfo):
 
     def __unicode__(self):
         return self.mac_address
+
+    def save(self, *args, **kwargs):
+        # Automatically check validity before saving.
+        self.full_clean()
+        return super(MACAddress, self).save(*args, **kwargs)
 
     def unique_error_message(self, model_class, unique_check):
         if unique_check == ('mac_address',):
@@ -839,7 +849,7 @@ def get_html_display_for_key(key, size):
 MAX_KEY_DISPLAY = 50
 
 
-class SSHKey(CommonInfo):
+class SSHKey(TimestampedModel):
     """A `SSHKey` represents a user public SSH key.
 
     Users will be able to access `Node`s using any of their registered keys.
@@ -861,6 +871,11 @@ class SSHKey(CommonInfo):
     class Meta:
         verbose_name = "SSH key"
         unique_together = ('user', 'key')
+
+    def save(self, *args, **kwargs):
+        # Automatically check validity before saving.
+        self.full_clean()
+        return super(SSHKey, self).save(*args, **kwargs)
 
     def unique_error_message(self, model_class, unique_check):
         if unique_check == ('user', 'key'):

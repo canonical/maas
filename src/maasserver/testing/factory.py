@@ -27,6 +27,7 @@ from maasserver.models import (
     FileStorage,
     MACAddress,
     Node,
+    NODE_TRANSITIONS,
     SSHKey,
     )
 from maasserver.testing import (
@@ -40,6 +41,9 @@ from metadataserver.models import NodeCommissionResult
 # We have a limited number of public keys:
 # src/maasserver/tests/data/test_rsa{0, 1, 2, 3, 4}.pub
 MAX_PUBLIC_KEYS = 5
+
+
+ALL_NODE_STATES = map_enum(NODE_STATUS).values()
 
 
 class Factory(maastesting.factory.Factory):
@@ -69,6 +73,15 @@ class Factory(maastesting.factory.Factory):
         return random.choice(
             [choice for choice in choices if choice[0] not in but_not])[0]
 
+    def _save_node_unchecked(self, node):
+        """Save a :class:`Node`, but circumvent status transition checks."""
+        valid_initial_states = NODE_TRANSITIONS[None]
+        NODE_TRANSITIONS[None] = ALL_NODE_STATES
+        try:
+            node.save()
+        finally:
+            NODE_TRANSITIONS[None] = valid_initial_states
+
     def make_node(self, hostname='', set_hostname=False, status=None,
                   architecture=ARCHITECTURE.i386, updated=None,
                   created=None, **kwargs):
@@ -80,7 +93,8 @@ class Factory(maastesting.factory.Factory):
         node = Node(
             hostname=hostname, status=status, architecture=architecture,
             **kwargs)
-        node.save(skip_check=True)
+        self._save_node_unchecked(node)
+
         # Update the 'updated'/'created' fields with a call to 'update'
         # preventing a call to save() from overriding the values.
         if updated is not None:

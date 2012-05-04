@@ -340,7 +340,7 @@ class ProvisioningTests:
 
         self.patch(self.papi.proxy, 'add_node', raise_missing_profile)
         with ExpectedException(ExternalComponentException):
-            node = factory.make_node(architecture='amd32k')
+            node = factory.make_node()
             provisioning.provision_post_save_Node(
                 sender=Node, instance=node, created=True)
 
@@ -351,7 +351,7 @@ class ProvisioningTests:
 
         self.patch(self.papi.proxy, 'add_node', raise_fault)
         with ExpectedException(ExternalComponentException):
-            node = factory.make_node(architecture='amd32k')
+            node = factory.make_node()
             provisioning.provision_post_save_Node(
                 sender=Node, instance=node, created=True)
 
