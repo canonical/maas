@@ -45,12 +45,10 @@ from maasserver.exceptions import (
 from maasserver.models import (
     Config,
     create_auth_token,
-    DEFAULT_CONFIG,
     FileStorage,
     GENERIC_CONSUMER,
     get_auth_tokens,
     get_db_state,
-    get_default_config,
     get_html_display_for_key,
     HELLIPSIS,
     MACAddress,
@@ -61,6 +59,10 @@ from maasserver.models import (
     SYSTEM_USERS,
     UserProfile,
     validate_ssh_public_key,
+    )
+from maasserver.models.config import (
+    DEFAULT_CONFIG,
+    get_default_config,
     )
 from maasserver.provisioning import get_provisioning_api_proxy
 from maasserver.testing import get_data

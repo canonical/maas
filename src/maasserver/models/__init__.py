@@ -31,13 +31,10 @@ __all__ = [
 
 import binascii
 from cgi import escape
-from collections import defaultdict
-import copy
 from errno import ENOENT
 from logging import getLogger
 import os
 import re
-from socket import gethostname
 from string import whitespace
 import time
 from uuid import uuid1
@@ -74,10 +71,8 @@ from maasserver.exceptions import (
     CannotDeleteUserException,
     NodeStateViolation,
     )
-from maasserver.fields import (
-    JSONObjectField,
-    MACAddressField,
-    )
+from maasserver.fields import MACAddressField
+from maasserver.models.config import Config
 from maasserver.models.timestampedmodel import TimestampedModel
 from metadataserver import nodeinituser
 from piston.models import (
@@ -1022,139 +1017,6 @@ class FileStorage(models.Model):
 
     def __unicode__(self):
         return self.filename
-
-
-# Due for model migration on 2012-05-08
-def get_default_config():
-    return {
-        ## settings default values.
-        # Commissioning section configuration.
-        'after_commissioning': NODE_AFTER_COMMISSIONING_ACTION.DEFAULT,
-        'check_compatibility': False,
-        'node_power_type': POWER_TYPE.WAKE_ON_LAN,
-        # The host name or address where the nodes can access the metadata
-        # service of this MAAS.
-        'maas_url': settings.DEFAULT_MAAS_URL,
-        # Ubuntu section configuration.
-        'fallback_master_archive': False,
-        'keep_mirror_list_uptodate': False,
-        'fetch_new_releases': False,
-        'update_from': 'archive.ubuntu.com',
-        'update_from_choice': (
-            [['archive.ubuntu.com', 'archive.ubuntu.com']]),
-        # Network section configuration.
-        'maas_name': gethostname(),
-        'enlistment_domain': b'local',
-        ## /settings
-        }
-
-
-# Due for model migration on 2012-05-08
-# Default values for config options.
-DEFAULT_CONFIG = get_default_config()
-
-
-# Due for model migration on 2012-05-08
-class ConfigManager(models.Manager):
-    """A utility to manage the configuration settings.
-
-    """
-
-    def __init__(self):
-        super(ConfigManager, self).__init__()
-        self._config_changed_connections = defaultdict(set)
-
-    def get_config(self, name, default=None):
-        """Return the config value corresponding to the given config name.
-        Return None or the provided default if the config value does not
-        exist.
-
-        :param name: The name of the config item.
-        :type name: basestring
-        :param name: The optional default value to return if no such config
-            item exists.
-        :type name: object
-        :return: A config value.
-        :raises: Config.MultipleObjectsReturned
-        """
-        try:
-            return self.get(name=name).value
-        except Config.DoesNotExist:
-            return copy.deepcopy(DEFAULT_CONFIG.get(name, default))
-
-    def get_config_list(self, name):
-        """Return the config value list corresponding to the given config
-        name.
-
-        :param name: The name of the config items.
-        :type name: basestring
-        :return: A list of the config values.
-        :rtype: list
-        """
-        return [config.value for config in self.filter(name=name)]
-
-    def set_config(self, name, value):
-        """Set or overwrite a config value.
-
-        :param name: The name of the config item to set.
-        :type name: basestring
-        :param value: The value of the config item to set.
-        :type value: Any jsonizable object
-        """
-        try:
-            existing = self.get(name=name)
-            existing.value = value
-            existing.save()
-        except Config.DoesNotExist:
-            self.create(name=name, value=value)
-
-    def config_changed_connect(self, config_name, method):
-        """Connect a method to Django's 'update' signal for given config name.
-
-        :param config_name: The name of the config item to track.
-        :type config_name: basestring
-        :param method: The method to be called.
-        :type method: callable
-
-        The provided callabe should follow Django's convention.  E.g:
-
-        >>> def callable(sender, instance, created, **kwargs):
-        >>>     pass
-        >>>
-        >>> Config.objects.config_changed_connect('config_name', callable)
-        """
-        self._config_changed_connections[config_name].add(method)
-
-    def _config_changed(self, sender, instance, created, **kwargs):
-        for connection in self._config_changed_connections[instance.name]:
-            connection(sender, instance, created, **kwargs)
-
-
-# Due for model migration on 2012-05-08
-class Config(models.Model):
-    """Configuration settings.
-
-    :ivar name: The name of the configuration option.
-    :type name: basestring
-    :ivar value: The configuration value.
-    :type value: Any pickleable python object.
-    """
-
-    class Meta(DefaultMeta):
-        """Needed for South to recognize this model."""
-
-    name = models.CharField(max_length=255, unique=False)
-    value = JSONObjectField(null=True)
-
-    objects = ConfigManager()
-
-    def __unicode__(self):
-        return "%s: %s" % (self.name, self.value)
-
-
-# Due for model migration on 2012-05-08
-# Connect config manager's _config_changed to Config's post-save signal.
-post_save.connect(Config.objects._config_changed, sender=Config)
 
 
 # Register the models in the admin site.

@@ -39,9 +39,9 @@ from maasserver.forms import (
     )
 from maasserver.models import (
     Config,
-    DEFAULT_CONFIG,
     MACAddress,
     )
+from maasserver.models.config import DEFAULT_CONFIG
 from maasserver.node_action import (
     AcceptAndCommission,
     Delete,
