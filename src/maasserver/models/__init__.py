@@ -49,9 +49,17 @@ from django.core.exceptions import (
     )
 from django.core.files.base import ContentFile
 from django.core.files.storage import FileSystemStorage
-from django.db import (
-    connection,
-    models,
+from django.db import connection
+from django.db.models import (
+    CharField,
+    FileField,
+    ForeignKey,
+    IntegerField,
+    Manager,
+    Model,
+    OneToOneField,
+    Q,
+    TextField,
     )
 from django.db.models.signals import post_save
 from django.shortcuts import get_object_or_404
@@ -181,7 +189,7 @@ def get_papi():
     return get_provisioning_api_proxy()
 
 
-class NodeManager(models.Manager):
+class NodeManager(Manager):
     """A utility to manage the collection of Nodes."""
 
     def filter_by_ids(self, query, ids=None):
@@ -222,8 +230,7 @@ class NodeManager(models.Manager):
             nodes = self.all()
         else:
             if perm == NODE_PERMISSION.VIEW:
-                nodes = self.filter(
-                    models.Q(owner__isnull=True) | models.Q(owner=user))
+                nodes = self.filter(Q(owner__isnull=True) | Q(owner=user))
             elif perm == NODE_PERMISSION.EDIT:
                 nodes = self.filter(owner=user)
             elif perm == NODE_PERMISSION.ADMIN:
@@ -387,37 +394,37 @@ class Node(CleanSave, TimestampedModel):
     class Meta(DefaultMeta):
         """Needed for South to recognize this model."""
 
-    system_id = models.CharField(
+    system_id = CharField(
         max_length=41, unique=True, default=generate_node_system_id,
         editable=False)
 
-    hostname = models.CharField(max_length=255, default='', blank=True)
+    hostname = CharField(max_length=255, default='', blank=True)
 
-    status = models.IntegerField(
+    status = IntegerField(
         max_length=10, choices=NODE_STATUS_CHOICES, editable=False,
         default=NODE_STATUS.DEFAULT_STATUS)
 
-    owner = models.ForeignKey(
+    owner = ForeignKey(
         User, default=None, blank=True, null=True, editable=False)
 
-    after_commissioning_action = models.IntegerField(
+    after_commissioning_action = IntegerField(
         choices=NODE_AFTER_COMMISSIONING_ACTION_CHOICES,
         default=NODE_AFTER_COMMISSIONING_ACTION.DEFAULT)
 
-    architecture = models.CharField(
+    architecture = CharField(
         max_length=10, choices=ARCHITECTURE_CHOICES, blank=False,
         default=ARCHITECTURE.i386)
 
     # For strings, Django insists on abusing the empty string ("blank")
     # to mean "none."
-    power_type = models.CharField(
+    power_type = CharField(
         max_length=10, choices=POWER_TYPE_CHOICES, null=False, blank=True,
         default=POWER_TYPE.DEFAULT)
 
-    token = models.ForeignKey(
+    token = ForeignKey(
         Token, db_index=True, null=True, editable=False, unique=False)
 
-    error = models.CharField(max_length=255, blank=True, default='')
+    error = CharField(max_length=255, blank=True, default='')
 
     objects = NodeManager()
 
@@ -600,7 +607,7 @@ class MACAddress(CleanSave, TimestampedModel):
 
     """
     mac_address = MACAddressField(unique=True)
-    node = models.ForeignKey(Node, editable=False)
+    node = ForeignKey(Node, editable=False)
 
     class Meta(DefaultMeta):
         verbose_name = "MAC address"
@@ -656,7 +663,7 @@ def get_auth_tokens(user):
         user=user, token_type=Token.ACCESS, is_approved=True).order_by('id')
 
 
-class UserProfileManager(models.Manager):
+class UserProfileManager(Manager):
     """A utility to manage the collection of UserProfile (or User).
 
     This should be used when dealing with UserProfiles or Users because it
@@ -679,7 +686,7 @@ class UserProfileManager(models.Manager):
         return User.objects.filter(id__in=user_ids)
 
 
-class UserProfile(CleanSave, models.Model):
+class UserProfile(CleanSave, Model):
     """A User profile to store MAAS specific methods and fields.
 
     :ivar user: The related User_.
@@ -694,7 +701,7 @@ class UserProfile(CleanSave, models.Model):
         """Needed for South to recognize this model."""
 
     objects = UserProfileManager()
-    user = models.OneToOneField(User)
+    user = OneToOneField(User)
 
     def delete(self):
         if self.user.node_set.exists():
@@ -766,7 +773,7 @@ post_save.connect(create_user, sender=User)
 User._meta.get_field('email')._unique = True
 
 
-class SSHKeyManager(models.Manager):
+class SSHKeyManager(Manager):
     """A utility to manage the colletion of `SSHKey`s."""
 
     def get_keys_for_user(self, user):
@@ -846,9 +853,9 @@ class SSHKey(CleanSave, TimestampedModel):
 
     objects = SSHKeyManager()
 
-    user = models.ForeignKey(User, null=False, editable=False)
+    user = ForeignKey(User, null=False, editable=False)
 
-    key = models.TextField(
+    key = TextField(
         null=False, editable=True, validators=[validate_ssh_public_key])
 
     class Meta(DefaultMeta):
@@ -873,7 +880,7 @@ class SSHKey(CleanSave, TimestampedModel):
         return mark_safe(get_html_display_for_key(self.key, MAX_KEY_DISPLAY))
 
 
-class FileStorageManager(models.Manager):
+class FileStorageManager(Manager):
     """Manager for `FileStorage` objects.
 
     Store files by calling `save_file`.  No two `FileStorage` objects can
@@ -976,7 +983,7 @@ class FileStorageManager(models.Manager):
                 FileStorage.storage.delete(path)
 
 
-class FileStorage(CleanSave, models.Model):
+class FileStorage(CleanSave, Model):
     """A simple file storage keyed on file name.
 
     :ivar filename: A unique file name to use for the data being stored.
@@ -992,9 +999,8 @@ class FileStorage(CleanSave, models.Model):
 
     # Unix filenames can be longer than this (e.g. 255 bytes), but leave
     # some extra room for the full path, as well as a versioning suffix.
-    filename = models.CharField(max_length=200, unique=True, editable=False)
-    data = models.FileField(
-        upload_to=upload_dir, storage=storage, max_length=255)
+    filename = CharField(max_length=200, unique=True, editable=False)
+    data = FileField(upload_to=upload_dir, storage=storage, max_length=255)
 
     objects = FileStorageManager()
 

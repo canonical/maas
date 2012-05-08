@@ -14,18 +14,21 @@ __all__ = [
     'JSONFieldModel',
     ]
 
-from django.db import models
+from django.db.models import (
+    CharField,
+    Model,
+    )
 from maasserver.fields import JSONObjectField
 from maasserver.models.timestampedmodel import TimestampedModel
 
 
-class JSONFieldModel(models.Model):
-    name = models.CharField(max_length=255, unique=False)
+class JSONFieldModel(Model):
+    name = CharField(max_length=255, unique=False)
     value = JSONObjectField(null=True)
 
 
-class MessagesTestModel(models.Model):
-    name = models.CharField(max_length=255, unique=False)
+class MessagesTestModel(Model):
+    name = CharField(max_length=255, unique=False)
 
 
 class TimestampedModelTestModel(TimestampedModel):

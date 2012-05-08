@@ -17,12 +17,15 @@ __all__ = [
     ]
 
 
-from django.db import models
+from django.db.models import (
+    Manager,
+    Model,
+    )
 # TODO: s/maasserver/metadataserver/ when using in metadataserver.
 from maasserver import DefaultMeta
 
 
-class ModelManager(models.Manager):
+class ModelManager(Manager):
     """Manager for model class.
 
     Don't import or instantiate this directly; access as `<Class>.objects` on
@@ -31,7 +34,7 @@ class ModelManager(models.Manager):
 
 
 # TODO: Your class name here.
-class ModelClass(models.Model):
+class ModelClass(Model):
 
     class Meta(DefaultMeta):
         """Needed for South to recognize this model."""
