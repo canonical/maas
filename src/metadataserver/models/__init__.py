@@ -30,6 +30,7 @@ from maasserver.models import (
     create_auth_token,
     Node,
     )
+from maasserver.models.cleansave import CleanSave
 from metadataserver.fields import (
     Bin,
     BinaryField,
@@ -117,7 +118,7 @@ class NodeKeyManager(Manager):
         return self.get(key=key).node
 
 
-class NodeKey(Model):
+class NodeKey(CleanSave, Model):
     """Associate a Node with its OAuth (token) key.
 
     :ivar node: A Node.
@@ -168,7 +169,7 @@ class NodeUserDataManager(Manager):
         self.filter(node=node).delete()
 
 
-class NodeUserData(Model):
+class NodeUserData(CleanSave, Model):
     """User-data portion of a node's metadata.
 
     When cloud-init sets up a node, it retrieves specific data for that node
@@ -206,7 +207,7 @@ class NodeCommissionResultManager(Manager):
         return ncr.data
 
 
-class NodeCommissionResult(Model):
+class NodeCommissionResult(CleanSave, Model):
     """Storage for data returned from node commissioning.
 
     Commissioning a node results in various bits of data that need to be

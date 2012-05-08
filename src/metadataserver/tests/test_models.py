@@ -12,7 +12,7 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
-from django.db import IntegrityError
+from django.core.exceptions import ValidationError
 from django.http import Http404
 from maasserver.testing.factory import factory
 from maastesting.djangotestcase import DjangoTestCase
@@ -155,7 +155,7 @@ class TestNodeCommissionResult(DjangoTestCase):
         node = factory.make_node()
         factory.make_node_commission_result(node=node, name="foo")
         self.assertRaises(
-            IntegrityError,
+            ValidationError,
             factory.make_node_commission_result, node=node, name="foo")
 
     def test_different_nodes_can_have_same_data_name(self):

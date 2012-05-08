@@ -15,7 +15,10 @@ __all__ = [
     ]
 
 
-from django.db.models import DateTimeField, Model
+from django.db.models import (
+    DateTimeField,
+    Model,
+    )
 from maasserver import DefaultMeta
 
 

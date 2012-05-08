@@ -72,6 +72,7 @@ from maasserver.exceptions import (
     NodeStateViolation,
     )
 from maasserver.fields import MACAddressField
+from maasserver.models.cleansave import CleanSave
 from maasserver.models.config import Config
 from maasserver.models.timestampedmodel import TimestampedModel
 from metadataserver import nodeinituser
@@ -364,7 +365,7 @@ def get_db_state(instance, field_name):
         return None
 
 
-class Node(TimestampedModel):
+class Node(CleanSave, TimestampedModel):
     """A `Node` represents a physical machine used by the MAAS Server.
 
     :ivar system_id: The unique identifier for this `Node`.
@@ -425,11 +426,6 @@ class Node(TimestampedModel):
             return "%s (%s)" % (self.system_id, self.hostname)
         else:
             return self.system_id
-
-    def save(self, *args, **kwargs):
-        # Automatically check validity before saving.
-        self.full_clean()
-        return super(Node, self).save(*args, **kwargs)
 
     def clean_status(self):
         """Check a node's status transition against the node-status FSM."""
@@ -595,7 +591,7 @@ class Node(TimestampedModel):
 mac_re = re.compile(r'^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$')
 
 
-class MACAddress(TimestampedModel):
+class MACAddress(CleanSave, TimestampedModel):
     """A `MACAddress` represents a `MAC address
     <http://en.wikipedia.org/wiki/MAC_address>`_ attached to a :class:`Node`.
 
@@ -612,11 +608,6 @@ class MACAddress(TimestampedModel):
 
     def __unicode__(self):
         return self.mac_address
-
-    def save(self, *args, **kwargs):
-        # Automatically check validity before saving.
-        self.full_clean()
-        return super(MACAddress, self).save(*args, **kwargs)
 
     def unique_error_message(self, model_class, unique_check):
         if unique_check == ('mac_address',):
@@ -688,7 +679,7 @@ class UserProfileManager(models.Manager):
         return User.objects.filter(id__in=user_ids)
 
 
-class UserProfile(models.Model):
+class UserProfile(CleanSave, models.Model):
     """A User profile to store MAAS specific methods and fields.
 
     :ivar user: The related User_.
@@ -844,7 +835,7 @@ def get_html_display_for_key(key, size):
 MAX_KEY_DISPLAY = 50
 
 
-class SSHKey(TimestampedModel):
+class SSHKey(CleanSave, TimestampedModel):
     """A `SSHKey` represents a user public SSH key.
 
     Users will be able to access `Node`s using any of their registered keys.
@@ -853,9 +844,6 @@ class SSHKey(TimestampedModel):
     :ivar key: The ssh public key.
     """
 
-    class Meta(DefaultMeta):
-        """Needed for South to recognize this model."""
-
     objects = SSHKeyManager()
 
     user = models.ForeignKey(User, null=False, editable=False)
@@ -863,14 +851,9 @@ class SSHKey(TimestampedModel):
     key = models.TextField(
         null=False, editable=True, validators=[validate_ssh_public_key])
 
-    class Meta:
+    class Meta(DefaultMeta):
         verbose_name = "SSH key"
         unique_together = ('user', 'key')
-
-    def save(self, *args, **kwargs):
-        # Automatically check validity before saving.
-        self.full_clean()
-        return super(SSHKey, self).save(*args, **kwargs)
 
     def unique_error_message(self, model_class, unique_check):
         if unique_check == ('user', 'key'):
@@ -993,7 +976,7 @@ class FileStorageManager(models.Manager):
                 FileStorage.storage.delete(path)
 
 
-class FileStorage(models.Model):
+class FileStorage(CleanSave, models.Model):
     """A simple file storage keyed on file name.
 
     :ivar filename: A unique file name to use for the data being stored.
