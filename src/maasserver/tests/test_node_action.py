@@ -162,19 +162,18 @@ class TestNodeAction(TestCase):
         action.fake_inhibition = factory.getRandomString()
         self.assertIsNone(action.inhibition)
 
-    def test_Delete_inhibit_allows_if_node_has_no_owner(self):
-        unowned_node = factory.make_node(status=NODE_STATUS.READY)
-        self.assertIsNone(
-            Delete(unowned_node, factory.make_admin()).inhibit())
-
-    def test_Delete_inhibit_disallows_if_node_has_owner(self):
-        owned_node = factory.make_node(
-            status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
-        action = Delete(owned_node, factory.make_admin())
+    def test_Delete_inhibit_when_node_is_allocated(self):
+        node = factory.make_node(status=NODE_STATUS.ALLOCATED)
+        action = Delete(node, factory.make_admin())
         inhibition = action.inhibit()
-        self.assertIsNotNone(inhibition)
         self.assertEqual(
             "You cannot delete this node because it's in use.", inhibition)
+
+    def test_Delete_does_not_inhibit_otherwise(self):
+        node = factory.make_node(status=NODE_STATUS.FAILED_TESTS)
+        action = Delete(node, factory.make_admin())
+        inhibition = action.inhibit()
+        self.assertIsNone(inhibition)
 
     def test_Delete_redirects_to_node_delete_view(self):
         node = factory.make_node()

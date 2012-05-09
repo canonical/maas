@@ -17,7 +17,9 @@
     <form id="node_actions" method="post" action=".">
       {% for action in form.action_buttons %}
         <input
-          class="secondary {% if action.inhibition %}disabled{% endif %} {% if not forloop.first %}space-top{% endif %}"
+          class="secondary
+                 {% if action.inhibition %}disabled{% endif %}
+                 {% if not forloop.first %}space-top{% endif %}"
           type="submit"
           name="{{ form.input_name }}"
           value="{{ action.display }}"

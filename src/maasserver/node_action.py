@@ -129,7 +129,7 @@ class Delete(NodeAction):
     permission = NODE_PERMISSION.ADMIN
 
     def inhibit(self):
-        if self.node.owner is not None:
+        if self.node.status == NODE_STATUS.ALLOCATED:
             return "You cannot delete this node because it's in use."
         return None
 
