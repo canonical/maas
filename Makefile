@@ -1,4 +1,9 @@
-PYTHON = python2.7
+python := python2.7
+
+# Python enum modules.
+py_enums := $(wildcard src/*/enum.py)
+# JavaScript enum module (not modules).
+js_enums := src/maasserver/static/js/enums.js
 
 build: \
     bin/buildout \
@@ -6,19 +11,19 @@ build: \
     bin/twistd.pserv bin/test.pserv \
     bin/twistd.txlongpoll \
     bin/py bin/ipy \
-    enums
+    $(js_enums)
 
 all: build doc
 
 bin/buildout: bootstrap.py distribute_setup.py
-	$(PYTHON) bootstrap.py --distribute --setup-source distribute_setup.py
+	$(python) bootstrap.py --distribute --setup-source distribute_setup.py
 	@touch --no-create $@  # Ensure it's newer than its dependencies.
 
-bin/maas: bin/buildout buildout.cfg versions.cfg setup.py enums
+bin/maas: bin/buildout buildout.cfg versions.cfg setup.py $(js_enums)
 	bin/buildout install maas
 	@touch --no-create $@
 
-bin/test.maas: bin/buildout buildout.cfg versions.cfg setup.py enums
+bin/test.maas: bin/buildout buildout.cfg versions.cfg setup.py $(js_enums)
 	bin/buildout install maas-test
 	@touch --no-create $@
 
@@ -49,7 +54,7 @@ bin/py bin/ipy: bin/buildout buildout.cfg versions.cfg setup.py
 dev-db:
 	utilities/maasdb start ./db/ disposable
 
-test: bin/test.maas bin/test.pserv enums
+test: bin/test.maas bin/test.pserv $(js_enums)
 	bin/test.maas
 	bin/test.pserv
 
@@ -80,20 +85,16 @@ sampledata: bin/maas syncdb
 doc: bin/sphinx docs/api.rst
 	bin/sphinx
 
-# JavaScript enums module, generated from python enums modules.
-JSENUMS = src/maasserver/static/js/enums.js
+enums: $(js_enums)
 
-# Generate JavaScript enums from python enums.
-enums: $(JSENUMS)
-
-$(JSENUMS): utilities/convert-enums.py src/*/enum.py
-	utilities/convert-enums.py --src=src >$@
+$(js_enums): bin/py src/maas/utils/jsenums.py $(py_enums)
+	 bin/py -m src/maas/utils/jsenums $(py_enums) > $@
 
 clean:
 	find . -type f -name '*.py[co]' -print0 | xargs -r0 $(RM)
 	find . -type f -name '*~' -print0 | xargs -r0 $(RM)
 	$(RM) -r media/demo/* media/development
-	$(RM) $(JSENUMS)
+	$(RM) $(js_enums)
 
 distclean: clean stop
 	utilities/maasdb delete-cluster ./db/
