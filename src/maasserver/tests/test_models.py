@@ -1125,6 +1125,7 @@ class SSHKeyManagerTest(TestCase):
         self.assertItemsEqual([key.key for key in created_keys], keys)
 
 
+# Due for model migration on 2012-05-22
 class FileStorageTest(TestCase):
     """Testing of the :class:`FileStorage` model."""
 

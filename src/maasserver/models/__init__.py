@@ -880,6 +880,7 @@ class SSHKey(CleanSave, TimestampedModel):
         return mark_safe(get_html_display_for_key(self.key, MAX_KEY_DISPLAY))
 
 
+# Due for model migration on 2012-05-18
 class FileStorageManager(Manager):
     """Manager for `FileStorage` objects.
 
@@ -983,6 +984,7 @@ class FileStorageManager(Manager):
                 FileStorage.storage.delete(path)
 
 
+# Due for model migration on 2012-05-18
 class FileStorage(CleanSave, Model):
     """A simple file storage keyed on file name.
 
