@@ -32,7 +32,7 @@ class ConfigDefaultTest(TestCase, TestWithFixtures):
         self.assertEqual(gethostname(), default_config['maas_name'])
 
 
-class Listener:
+class CallRecorder:
     """A utility class which tracks the calls to its 'call' method and
     stores the arguments given to 'call' in 'self.calls'.
     """
@@ -40,7 +40,7 @@ class Listener:
     def __init__(self):
         self.calls = []
 
-    def call(self, *args, **kwargs):
+    def __call__(self, *args, **kwargs):
         self.calls.append([args, kwargs])
 
 
@@ -89,46 +89,46 @@ class ConfigTest(TestCase):
             [config.value for config in Config.objects.filter(name='name')])
 
     def test_manager_config_changed_connect_connects(self):
-        listener = Listener()
+        recorder = CallRecorder()
         name = factory.getRandomString()
         value = factory.getRandomString()
-        Config.objects.config_changed_connect(name, listener.call)
+        Config.objects.config_changed_connect(name, recorder)
         Config.objects.set_config(name, value)
         config = Config.objects.get(name=name)
 
-        self.assertEqual(1, len(listener.calls))
-        self.assertEqual((Config, config, True), listener.calls[0][0])
+        self.assertEqual(1, len(recorder.calls))
+        self.assertEqual((Config, config, True), recorder.calls[0][0])
 
     def test_manager_config_changed_connect_connects_multiple(self):
-        listener = Listener()
-        listener2 = Listener()
+        recorder = CallRecorder()
+        recorder2 = CallRecorder()
         name = factory.getRandomString()
         value = factory.getRandomString()
-        Config.objects.config_changed_connect(name, listener.call)
-        Config.objects.config_changed_connect(name, listener2.call)
+        Config.objects.config_changed_connect(name, recorder)
+        Config.objects.config_changed_connect(name, recorder2)
         Config.objects.set_config(name, value)
 
-        self.assertEqual(1, len(listener.calls))
-        self.assertEqual(1, len(listener2.calls))
+        self.assertEqual(1, len(recorder.calls))
+        self.assertEqual(1, len(recorder2.calls))
 
     def test_manager_config_changed_connect_connects_multiple_same(self):
         # If the same method is connected twice, it will only get called
         # once.
-        listener = Listener()
+        recorder = CallRecorder()
         name = factory.getRandomString()
         value = factory.getRandomString()
-        Config.objects.config_changed_connect(name, listener.call)
-        Config.objects.config_changed_connect(name, listener.call)
+        Config.objects.config_changed_connect(name, recorder)
+        Config.objects.config_changed_connect(name, recorder)
         Config.objects.set_config(name, value)
 
-        self.assertEqual(1, len(listener.calls))
+        self.assertEqual(1, len(recorder.calls))
 
     def test_manager_config_changed_connect_connects_by_config_name(self):
-        listener = Listener()
+        recorder = CallRecorder()
         name = factory.getRandomString()
         value = factory.getRandomString()
-        Config.objects.config_changed_connect(name, listener.call)
+        Config.objects.config_changed_connect(name, recorder)
         another_name = factory.getRandomString()
         Config.objects.set_config(another_name, value)
 
-        self.assertEqual(0, len(listener.calls))
+        self.assertEqual(0, len(recorder.calls))
