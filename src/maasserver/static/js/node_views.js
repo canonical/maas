@@ -405,7 +405,7 @@ module.NodesDashboard = Y.Base.create(
     */
     getNodeCount: function() {
         return Y.Array.filter(this.modelList.toArray(), function (model) {
-            return model.get('status') !== 7;
+            return model.get('status') !== NODE_STATUS.RETIRED;
         }).length;
     }
 });

@@ -55,20 +55,73 @@ suite.add(new Y.maas.testing.TestCase({
     name: 'test-node-views-NodeDashBoard',
 
     setUp : function () {
+        var NODE_STATUS = Y.maas.enums.NODE_STATUS;
         this.data = [
-            {system_id: 'sys1', hostname: 'host1', status: 0},
-            {system_id: 'sys2', hostname: 'host2', status: 0},
-            {system_id: 'sys3', hostname: 'host3', status: 1},
-            {system_id: 'sys4', hostname: 'host4', status: 2},
-            {system_id: 'sys5', hostname: 'host5', status: 2},
-            {system_id: 'sys6', hostname: 'host6', status: 3},
-            {system_id: 'sys7', hostname: 'host7', status: 4},
-            {system_id: 'sys8', hostname: 'host8', status: 4},
-            {system_id: 'sys9', hostname: 'host9', status: 5},
-            {system_id: 'sys10', hostname: 'host10', status: 5},
-            {system_id: 'sys11', hostname: 'host11', status: 5},
-            {system_id: 'sys12', hostname: 'host12', status: 6},
-            {system_id: 'sys13', hostname: 'host13', status: 7}
+            {
+                system_id: 'sys1',
+                hostname: 'host1',
+                status: NODE_STATUS.DECLARED
+            },
+            {
+                system_id: 'sys2',
+                hostname: 'host2',
+                status: NODE_STATUS.DECLARED
+            },
+            {
+                system_id: 'sys3',
+                hostname: 'host3',
+                status: NODE_STATUS.COMMISSIONING
+            },
+            {
+                system_id: 'sys4',
+                hostname: 'host4',
+                status: NODE_STATUS.FAILED_TESTS
+            },
+            {
+                system_id: 'sys5',
+                hostname: 'host5',
+                status: NODE_STATUS.FAILED_TESTS
+            },
+            {
+                system_id: 'sys6',
+                hostname: 'host6',
+                status: NODE_STATUS.MISSING
+            },
+            {
+                system_id: 'sys7',
+                hostname: 'host7',
+                status: NODE_STATUS.READY
+            },
+            {
+                system_id: 'sys8',
+                hostname: 'host8',
+                status: NODE_STATUS.READY
+            },
+            {
+                system_id: 'sys9',
+                hostname: 'host9',
+                status: NODE_STATUS.RESERVED
+            },
+            {
+                system_id: 'sys10',
+                hostname: 'host10',
+                status: NODE_STATUS.RESERVED
+            },
+            {
+                system_id: 'sys11',
+                hostname: 'host11',
+                status: NODE_STATUS.RESERVED
+            },
+            {
+                system_id: 'sys12',
+                hostname: 'host12',
+                status: NODE_STATUS.ALLOCATED
+            },
+            {
+                system_id: 'sys13',
+                hostname: 'host13',
+                status: NODE_STATUS.RETIRED
+            }
         ];
     },
 
@@ -174,7 +227,11 @@ suite.add(new Y.maas.testing.TestCase({
 
     testUpdateNodeCreation: function() {
         var view = create_dashboard_view(this.data, this);
-        var node = {system_id: 'sys14', hostname: 'host14', status: 0};
+        var node = {
+            system_id: 'sys14',
+            hostname: 'host14',
+            status: Y.maas.enums.NODE_STATUS.DECLARED
+        };
         this.addCleanup(function() { view.destroy(); });
         view.render();
         Y.Assert.areEqual(
@@ -213,7 +270,7 @@ suite.add(new Y.maas.testing.TestCase({
         var node = this.data[0];
         this.addCleanup(function() { view.destroy(); });
         view.render();
-        node.status = 6;
+        node.status = Y.maas.enums.NODE_STATUS.ALLOCATED;
         Y.Assert.areEqual(
             1,
             view.deployed_nodes,
@@ -328,9 +385,11 @@ suite.add(new Y.maas.testing.TestCase({
 
     testSetSummary: function() {
         // Test the default summary, with more than one node
-        var data = [
-            {system_id: 'sys9', hostname: 'host9', status: 5}
-        ];
+        var data = [{
+            system_id: 'sys9',
+            hostname: 'host9',
+            status: Y.maas.enums.NODE_STATUS.RESERVED
+            }];
         var view = create_dashboard_view(data, this);
         this.addCleanup(function() { view.destroy(); });
         view.render();
@@ -418,9 +477,11 @@ suite.add(new Y.maas.testing.TestCase({
             Y.one('#reserved-nodes').get('text'),
             'The text should be set with nodes as a plural');
 
-        var data = [
-            {system_id: 'sys9', hostname: 'host9', status: 5}
-        ];
+        var data = [{
+            system_id: 'sys9',
+            hostname: 'host9',
+            status: Y.maas.enums.NODE_STATUS.RESERVED
+            }];
         view = create_dashboard_view(data, this);
         view.render();
         view.setNodeText(
