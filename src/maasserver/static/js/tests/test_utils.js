@@ -265,16 +265,6 @@ suite.add(new Y.maas.testing.TestCase({
         var input = widget.get('srcNode').one('input');
         input.simulate('blur');
         Y.Assert.isFalse(widget._editing);
-    },
-
-    test_input_enter_pressed_stops_editing: function() {
-        var widget = this.createWidget();
-        widget._editing = true;
-        this.silentIO(module);
-        var input = widget.get('srcNode').one('input');
-        // Simulate 'Enter' being pressed.
-        input.simulate("keypress", { keyCode: 13 });
-        Y.Assert.isFalse(widget._editing);
     }
 
 }));

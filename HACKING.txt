@@ -124,6 +124,21 @@ tests that can be run against it::
 Adjust ``PSERV_TEST_COBBLER_URL`` as necessary. **Warning:** these
 tests will modify your Cobbler database.
 
+Running JavaScript tests
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+The JavaScript tests are run using Selenium_.  Firefox is the default
+browser but any browser supported by Selenium can be used to run the
+tests. Note that you might need to download the appropriate driver and
+make it available in the path.  You can then choose which browsers to use by
+setting the environment variable ``MAAS_TEST_BROWSERS`` to a comma-separated
+list of the names of the browsers to use.  For instance, to run the tests
+with Firefox and Chrome::
+
+    $ export MAAS_TEST_BROWSERS="Firefox, Chrome"
+
+.. _Selenium: http://seleniumhq.org/
+
 
 Development MAAS server setup
 =============================

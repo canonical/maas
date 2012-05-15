@@ -21,6 +21,7 @@ import os
 from os.path import dirname
 import SimpleHTTPServer
 import SocketServer
+import string
 
 from fixtures import Fixture
 from pyvirtualdisplay import Display
@@ -32,6 +33,7 @@ from sst.actions import (
     stop,
     wait_for,
     )
+from testscenarios import TestWithScenarios
 from testtools import TestCase
 
 # Base path where the HTML files will be searched.
@@ -93,16 +95,14 @@ class SSTFixture(Fixture):
 
     logger_names = ['selenium.webdriver.remote.remote_connection']
 
-    # Parameters used by SST for testing.
-    BROWSER_TYPE = 'Firefox'
-    BROWSER_VERSION = ''
-    BROWSER_PLATFORM = 'ANY'
+    def __init__(self, driver):
+        self.driver = driver
 
     def setUp(self):
         super(SSTFixture, self).setUp()
         start(
-              self.BROWSER_TYPE, self.BROWSER_VERSION, self.BROWSER_PLATFORM,
-              session_name=None, javascript_disabled=False,
+              self.driver, '', 'ANY', session_name=None,
+              javascript_disabled=False,
               assume_trusted_cert_issuer=False,
               webdriver_remote=None)
         self.useFixture(LoggerSilencerFixture(self.logger_names))
@@ -112,12 +112,25 @@ class SSTFixture(Fixture):
 project_home = dirname(dirname(dirname(dirname(__file__))))
 
 
-class TestYUIUnitTests(TestCase):
+def get_drivers_from_env():
+    """Parse the environment variable MAAS_TEST_BROWSERS to get a list of
+    the browsers to use for the JavaScript tests.
+    Returns ['Firefox'] if the environment variable is not present.
+    """
+    return map(
+        string.strip,
+        os.environ.get('MAAS_TEST_BROWSERS', 'Firefox').split(','))
+
+
+class TestYUIUnitTests(TestWithScenarios, TestCase):
+
+    scenarios = [
+        (driver, dict(driver=driver)) for driver in get_drivers_from_env()]
 
     def setUp(self):
         super(TestYUIUnitTests, self).setUp()
         self.useFixture(DisplayFixture())
-        self.useFixture(SSTFixture())
+        self.useFixture(SSTFixture(self.driver))
 
     def _get_failed_tests_message(self, results):
         """Return a readable error message with the list of the failed tests.

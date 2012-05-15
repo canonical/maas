@@ -105,6 +105,7 @@ setup(
             'python-subunit',
             'rabbitfixture',
             'testresources',
+            'testscenarios',
             'testtools',
             ],
     )
