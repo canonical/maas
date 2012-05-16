@@ -18,19 +18,37 @@ import unittest
 
 from fixtures import TempDir
 from maastesting.factory import factory
+from maastesting.scenarios import WithScenarios
 import testresources
 import testtools
 
 
-class TestCase(testtools.TestCase):
-    """Base `TestCase` for MAAS.  Supports test resources and fixtures."""
+class TestCase(WithScenarios, testtools.TestCase):
+    """Base `TestCase` for MAAS.
+
+    Supports `test resources`_, `test scenarios`_, and `fixtures`_.
+
+    .. _test resources: https://launchpad.net/testresources
+
+    .. _test scenarios: https://launchpad.net/testscenarios
+
+    .. _fixtures: https://launchpad.net/python-fixtures
+
+    """
+
     # testresources.ResourcedTestCase does something similar to this class
     # (with respect to setUpResources and tearDownResources) but it explicitly
     # up-calls to unittest.TestCase instead of using super() even though it is
     # not guaranteed that the next class in the inheritance chain is
     # unittest.TestCase.
 
-    resources = ()
+    resources = (
+        # (resource-name, resource),
+        )
+
+    scenarios = (
+        # (scenario-name, {instance-attribute-name: value, ...}),
+        )
 
     def setUp(self):
         super(TestCase, self).setUp()
