@@ -10,6 +10,11 @@ var namespace = Y.namespace('maas.node_views.tests');
 var module = Y.maas.node_views;
 var suite = new Y.Test.Suite("maas.node_views Tests");
 
+
+// Dump this HTML into #placeholder to get DOM hooks for the dashboard.
+var dashboard_hooks = Y.one('#dashboard-hooks').getContent();
+
+
 suite.add(new Y.maas.testing.TestCase({
     name: 'test-node-views-NodeListLoader',
 
@@ -55,6 +60,7 @@ suite.add(new Y.maas.testing.TestCase({
     name: 'test-node-views-NodeDashBoard',
 
     setUp : function () {
+        Y.one('#placeholder').empty();
         var NODE_STATUS = Y.maas.enums.NODE_STATUS;
         this.data = [
             {
@@ -126,6 +132,18 @@ suite.add(new Y.maas.testing.TestCase({
     },
 
     /**
+     * Counter to generate unique numbers.
+     */
+    counter: 0,
+
+    /**
+     * Get next value of this.counter, and increment.
+     */
+    getNumber: function() {
+        return this.counter++;
+    },
+
+    /**
      * Create a dashboard view, render it, and arrange for its cleanup.
      *
      * The "data" parameter defaults to this.data.
@@ -134,7 +152,12 @@ suite.add(new Y.maas.testing.TestCase({
         if (data === undefined) {
             data = this.data;
         }
-        var view = create_dashboard_view(data, this);
+        var root_node_id = 'widget-' + this.getNumber().toString();
+        var new_dash = Y.Node.create('<div />').set('id', root_node_id);
+        this.addCleanup(function() { new_dash.remove(); });
+        new_dash.append(Y.Node.create(dashboard_hooks));
+        Y.one('#placeholder').append(new_dash);
+        var view = create_dashboard_view(data, this, '#' + root_node_id);
         this.addCleanup(function() { view.destroy(); });
         view.render();
         return view;
@@ -144,41 +167,56 @@ suite.add(new Y.maas.testing.TestCase({
         var view = this.makeDashboard();
         Y.Assert.areNotEqual(
             '',
-            Y.one('#chart').get('text'),
+            view.srcNode.one('#chart').get('text'),
             "The chart node should have been populated.");
     },
 
     testHoverMouseover: function() {
+        var self = this;
         var view = this.makeDashboard();
+        var number_node = view.srcNode.one('#nodes-number');
+        var description_node = view.srcNode.one('#nodes-description');
 
-        // Chart hovers should be set up
-        Y.one(view.chart._offline_circle[0].node).simulate('mouseover');
-        this.wait(function() {
-            Y.Assert.areEqual(
-                '4',
-                Y.one('#nodes-number').get('text'),
-                "The total number of offline nodes should be set.");
-            Y.Assert.areEqual(
-                'nodes offline',
-                Y.one('#nodes-description').get('text'),
-                "The text should be set with nodes as a plural.");
-        }, 500);
+        // The dashboard sets up hover actions on the chart.  Hovering over a
+        // chart segment causes its stats to fade in.
+        view.fade_in.on('end', function() {
+            self.resume(function() {
+                Y.Assert.areEqual(
+                    '4',
+                    number_node.get('text'),
+                    "The total number of offline nodes should be set.");
+                Y.Assert.areEqual(
+                    'nodes offline',
+                    description_node.get('text'),
+                    "The text should be set with nodes as a plural.");
+            });
+        });
+
+        Y.one(view.chart._offline_circle[0].node).simulate(
+            'mouseover');
+        this.wait();
     },
 
     testHoverMouseout: function() {
+        var self = this;
         var view = this.makeDashboard();
+        var number_node = view.srcNode.one('#nodes-number');
+        var description_node = view.srcNode.one('#nodes-description');
 
+        view.fade_in.on('end', function() {
+            self.resume(function() {
+                Y.Assert.areEqual(
+                    '12',
+                    number_node.get('text'),
+                    "The total number of nodes should be set.");
+                Y.Assert.areEqual(
+                    'nodes in this MAAS',
+                    description_node.get('text'),
+                    "The default text should be set.");
+            });
+        });
         Y.one(view.chart._offline_circle[0].node).simulate('mouseout');
-        this.wait(function() {
-            Y.Assert.areEqual(
-                '12',
-                Y.one('#nodes-number').get('text'),
-                "The total number of nodes should be set.");
-            Y.Assert.areEqual(
-                'nodes in this MAAS',
-                Y.one('#nodes-description').get('text'),
-                "The default text should be set.");
-        }, 500);
+        this.wait();
     },
 
     testDisplay: function() {
@@ -210,75 +248,84 @@ suite.add(new Y.maas.testing.TestCase({
             "The number of retired nodes should have been set.");
         Y.Assert.areEqual(
             '12',
-            Y.one('#nodes-number').get('text'),
+            view.srcNode.one('#nodes-number').get('text'),
             "The total number of nodes should be set.");
         Y.Assert.areEqual(
             "nodes in this MAAS",
-            Y.one('#nodes-description').get('text'),
+            view.srcNode.one('#nodes-description').get('text'),
             "The summary text should be set.");
         Y.Assert.areEqual(
             "3 nodes reserved for named deployment.",
-            Y.one('#reserved-nodes').get('text'),
+            view.srcNode.one('#reserved-nodes').get('text'),
             "The reserved text should be set.");
-        /* XXX: GavinPanella 2012-04-17 bug=984117:
-         * Hidden until we support reserved nodes. */
+        // XXX: GavinPanella 2012-04-17 bug=984117:
+        // Hidden until we support reserved nodes.
         Y.Assert.areEqual("none", view.reservedNode.getStyle("display"));
         Y.Assert.areEqual(
             "1 retired node not represented.",
-            Y.one('#retired-nodes').get('text'),
+            view.srcNode.one('#retired-nodes').get('text'),
             "The retired text should be set.");
-        /* XXX: GavinPanella 2012-04-17 bug=984116:
-         * Hidden until we support retired nodes. */
+        // XXX: GavinPanella 2012-04-17 bug=984116:
+        // Hidden until we support retired nodes.
         Y.Assert.areEqual("none", view.retiredNode.getStyle("display"));
     },
 
     testUpdateNodeCreation: function() {
+        var self = this;
         var view = this.makeDashboard();
         var node = {
             system_id: 'sys14',
             hostname: 'host14',
             status: Y.maas.enums.NODE_STATUS.DECLARED
         };
+        var number_node = view.srcNode.one('#nodes-number');
         Y.Assert.areEqual(
             '12',
-            Y.one('#nodes-number').get('text'),
+            number_node.get('text'),
             "The total number of nodes should be set.");
-        // Check node creation
+
+        // Check node creation.
         Y.Assert.areEqual(
             2,
             view.added_nodes,
             "Check the initial number of nodes for the status.");
-        Y.fire('Node.created', {instance: node});
-        Y.Assert.areEqual(
-            'host14',
-            view.modelList.getById('sys14').get('hostname'),
-            "The node should exist in the modellist.");
-        Y.Assert.areEqual(
-            3,
-            view.added_nodes,
-            "The status should have one extra node.");
-        Y.Assert.areEqual(
-            3,
-            view.chart.get('added_nodes'),
-            "The chart status number should also be updated.");
-        var self = this;
-        this.wait(function() {
-            Y.Assert.areEqual(
-                '13',
-                Y.one('#nodes-number').get('text'),
-                "The total number of nodes should have been updated.");
-        }, 500);
+
+        view.fade_in.on('end', function() { self.resume(function() {
+                Y.Assert.areEqual(
+                    'host14',
+                    view.modelList.getById('sys14').get('hostname'),
+                    "The node should exist in the modellist.");
+                Y.Assert.areEqual(
+                    3,
+                    view.added_nodes,
+                    "The status should have one extra node.");
+                Y.Assert.areEqual(
+                    3,
+                    view.chart.get('added_nodes'),
+                    "The chart status number should also be updated.");
+                Y.Assert.areEqual(
+                    '13',
+                    number_node.get('text'),
+                    "The total number of nodes should have been updated.");
+            });
+        });
+
+        view.updateNode('created', node);
+        this.wait();
     },
 
     testUpdateNodeUpdating: function() {
+        var self = this;
         var view = this.makeDashboard();
         var node = this.data[0];
+        var number_node = view.srcNode.one('#nodes-number');
         node.status = Y.maas.enums.NODE_STATUS.ALLOCATED;
         Y.Assert.areEqual(
             1,
             view.deployed_nodes,
             "Check the initial number of nodes for the new status.");
-        Y.fire('Node.updated', {instance: node});
+
+        view.updateNode('updated', node);
         Y.Assert.areEqual(
             6,
             view.modelList.getById('sys1').get('status'),
@@ -299,43 +346,46 @@ suite.add(new Y.maas.testing.TestCase({
             1,
             view.chart.get('added_nodes'),
             "The old chart status number should also be updated.");
-        /* XXX: Bug: 963090 This is timing dependant and causes spurious
-           failures from time to time.
 
-        this.wait(function() {
-            Y.Assert.areEqual(
-                Y.one('#nodes-number').get('text'),
-                '12',
-                "The total number of nodes should not have been updated.");
-        }, 500);
-        */
+        Y.Assert.areEqual(
+            number_node.get('text'),
+            '12',
+            "The total number of nodes should not have been updated.");
     },
 
     testUpdateNodeDeleting: function() {
+        var self = this;
         var view = this.makeDashboard();
         var node = this.data[12];
-        Y.fire('Node.deleted', {instance: node});
-        Y.Assert.isNull(
-            view.modelList.getById('sys14'),
-            "The node should have been deleted.");
-        Y.Assert.areEqual(
-            1,
-            view.deployed_nodes,
-            "The status should have one less node.");
-        Y.Assert.areEqual(
-            1,
-            view.chart.get('deployed_nodes'),
-            "The chart status number should also be updated.");
-        this.wait(function() {
-            Y.Assert.areEqual(
-                '12',
-                Y.one('#nodes-number').get('text'),
-                "The total number of nodes should have been updated.");
-        }, 500);
+        var number_node = view.srcNode.one('#nodes-number');
+
+        view.fade_in.on('end', function() {
+            self.resume(function() {
+                Y.Assert.isNull(
+                    view.modelList.getById('sys14'),
+                    "The node should have been deleted.");
+                Y.Assert.areEqual(
+                    1,
+                    view.deployed_nodes,
+                    "The status should have one less node.");
+                Y.Assert.areEqual(
+                    1,
+                    view.chart.get('deployed_nodes'),
+                    "The chart status number should also be updated.");
+                Y.Assert.areEqual(
+                    '12',
+                    number_node.get('text'),
+                    "The total number of nodes should have been updated.");
+            });
+        });
+
+        view.updateNode('deleted', node);
+        this.wait();
     },
 
     testUpdateStatus: function() {
         var view = this.makeDashboard();
+        var reserved_node = view.srcNode.one('#reserved-nodes');
         // Add a node to a status that also updates the chart
         Y.Assert.areEqual(
             2,
@@ -375,7 +425,7 @@ suite.add(new Y.maas.testing.TestCase({
             "The status should have one extra node.");
         Y.Assert.areEqual(
             "4 nodes reserved for named deployment.",
-            Y.one('#reserved-nodes').get('text'),
+            reserved_node.get('text'),
             "The dashboard reserved text should be updated.");
         Y.Assert.isFalse(
             result,
@@ -393,11 +443,11 @@ suite.add(new Y.maas.testing.TestCase({
         view.setSummary(false);
         Y.Assert.areEqual(
             '1',
-            Y.one('#nodes-number').get('text'),
+            view.srcNode.one('#nodes-number').get('text'),
             "The total number of nodes should be set.");
         Y.Assert.areEqual(
             'node in this MAAS',
-            Y.one('#nodes-description').get('text'),
+            view.srcNode.one('#nodes-description').get('text'),
             "The text should be set with nodes as singular.");
 
         // Test the default summary, with one node
@@ -405,11 +455,11 @@ suite.add(new Y.maas.testing.TestCase({
         view.setSummary(false);
         Y.Assert.areEqual(
             '12',
-            Y.one('#nodes-number').get('text'),
+            view.srcNode.one('#nodes-number').get('text'),
             "The total number of nodes should be set.");
         Y.Assert.areEqual(
             'nodes in this MAAS',
-            Y.one('#nodes-description').get('text'),
+            view.srcNode.one('#nodes-description').get('text'),
             "The text should be set with nodes as a plural.");
 
         // Test we can set the summary for a particular status (multiple nodes)
@@ -417,28 +467,16 @@ suite.add(new Y.maas.testing.TestCase({
         view.setSummary(false, 1, view.queued_template);
         Y.Assert.areEqual(
             '1',
-            Y.one('#nodes-number').get('text'),
+            view.srcNode.one('#nodes-number').get('text'),
             "The total number of nodes should be set.");
         Y.Assert.areEqual(
             'node queued',
-            Y.one('#nodes-description').get('text'),
+            view.srcNode.one('#nodes-description').get('text'),
             "The text should be set with nodes as a plural.");
-
-        // Test the animation doesn't run if we have set it to run
-        var fade_out_anim = false;
-        var fade_in_anim = false;
-        view.setSummary(false);
-        this.wait(function() {
-            Y.Assert.isFalse(
-                fade_out_anim,
-                "The fade out animation should not have run.");
-            Y.Assert.isFalse(
-                fade_in_anim,
-                "The fade in animation should not have run.");
-        }, 500);
     },
 
     testSetSummaryAnimation: function() {
+        var self = this;
         var view = this.makeDashboard();
         var fade_out_anim = false;
         var fade_in_anim = false;
@@ -447,16 +485,17 @@ suite.add(new Y.maas.testing.TestCase({
         });
         view.fade_in.on('end', function() {
             fade_in_anim = true;
+            self.resume(function() {
+                Y.Assert.isTrue(
+                    fade_out_anim,
+                    "The fade-out animation should have run.");
+                Y.Assert.isTrue(
+                    fade_in_anim,
+                    "The fade-in animation should have run.");
+            });
         });
         view.setSummary(true);
-        this.wait(function() {
-            Y.Assert.isTrue(
-                fade_out_anim,
-                "The fade-out animation should have run.");
-            Y.Assert.isTrue(
-                fade_in_anim,
-                "The fade-in animation should have run.");
-        }, 500);
+        this.wait();
     },
 
     testSetNodeText: function() {
@@ -465,7 +504,7 @@ suite.add(new Y.maas.testing.TestCase({
             view.reservedNode, view.reserved_template, view.reserved_nodes);
         Y.Assert.areEqual(
             "3 nodes reserved for named deployment.",
-            Y.one('#reserved-nodes').get('text'),
+            view.srcNode.one('#reserved-nodes').get('text'),
             "The text should be set with nodes as a plural.");
 
         var data = [{
@@ -478,7 +517,7 @@ suite.add(new Y.maas.testing.TestCase({
             view.reservedNode, view.reserved_template, view.reserved_nodes);
         Y.Assert.areEqual(
             "1 node reserved for named deployment.",
-            Y.one('#reserved-nodes').get('text'),
+            view.srcNode.one('#reserved-nodes').get('text'),
             "The text should be set with nodes as singular.");
     },
 
@@ -488,18 +527,16 @@ suite.add(new Y.maas.testing.TestCase({
             12,
             view.getNodeCount(),
             "The total nodes should not return retired nodes.");
-    },
-
-    tearDown : function () {
-        Y.one('#chart').set('text', '');
     }
+
 }));
 
-function create_dashboard_view(data, self) {
+
+function create_dashboard_view(data, self, root_node_descriptor) {
     var response = Y.JSON.stringify(data);
     self.mockSuccess(response, module);
     var view = new Y.maas.node_views.NodesDashboard({
-        srcNode: '#dashboard',
+        srcNode: root_node_descriptor,
         summaryNode: '#summary',
         numberNode: '#nodes-number',
         descriptionNode: '#nodes-description',

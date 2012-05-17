@@ -30,7 +30,9 @@
   </head>
   <body>
   <span id="suite">maas.node_views.tests</span>
-  <div id="dashboard">
+
+  <!-- Reusable template: nodes for the dashboard to hook into. -->
+  <script type="text/x-template" id="dashboard-hooks">
     <div id="chart"></div>
     <div id="summary">
       <h2 id="nodes-number"></h2>
@@ -38,6 +40,10 @@
     </div>
     <p id="reserved-nodes"></p>
     <p id="retired-nodes"></p>
-  </div>
+  </script>
+
+  <!-- Place for tests to hook instances of the template in the DOM. -->
+  <div id="placeholder"></div>
+
   </body>
 </html>

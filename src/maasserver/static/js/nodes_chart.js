@@ -31,10 +31,10 @@ var TRANSITION_TIME = 1000,
 
 NodesChartWidget.ATTRS = {
    /**
-    * The node id to display the chart.
+    * The node or node id to display the chart.
     *
     * @attribute node_id
-    * @type string
+    * @type Node or string
     */
     node_id: {
         value: ''

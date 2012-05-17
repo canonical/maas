@@ -143,17 +143,17 @@ module.NodesDashboard = Y.Base.create(
     retired_template: ('{nodes} retired node{plural} not represented.'),
 
     initializer: function(config) {
-        this.srcNode = config.srcNode;
-        this.summaryNode = Y.one(config.summaryNode);
-        this.numberNode = Y.one(config.numberNode);
-        this.descriptionNode = Y.one(config.descriptionNode);
-        this.reservedNode = Y.one(config.reservedNode);
-        /* XXX: GavinPanella 2012-04-17 bug=984117:
-         * Hidden until we support reserved nodes. */
+        this.srcNode = Y.one(config.srcNode);
+        this.summaryNode = this.srcNode.one(config.summaryNode);
+        this.numberNode = this.srcNode.one(config.numberNode);
+        this.descriptionNode = this.srcNode.one(config.descriptionNode);
+        this.reservedNode = this.srcNode.one(config.reservedNode);
+        // XXX: GavinPanella 2012-04-17 bug=984117:
+        // Hidden until we support reserved nodes.
         this.reservedNode.hide();
-        this.retiredNode = Y.one(config.retiredNode);
-        /* XXX: GavinPanella 2012-04-17 bug=984116:
-         * Hidden until we support retired nodes. */
+        this.retiredNode = this.srcNode.one(config.retiredNode);
+        // XXX: GavinPanella 2012-04-17 bug=984116:
+        // Hidden until we support retired nodes.
         this.retiredNode.hide();
         this.deployed_nodes = 0;
         this.commissioned_nodes = 0;
@@ -255,7 +255,7 @@ module.NodesDashboard = Y.Base.create(
     },
 
     loadNodesStarted: function() {
-        Y.one(this.srcNode).insert(this.spinnerNode, 0);
+        this.srcNode.insert(this.spinnerNode, 0);
     },
 
     loadNodesEnded: function() {
@@ -378,12 +378,12 @@ module.NodesDashboard = Y.Base.create(
         var text = Y.Lang.sub(template, {plural: plural});
 
         if (animate) {
-            this.fade_out.run();
             this.fade_out.on('end', function (e, self, nodes, text) {
                 self.numberNode.setContent(nodes);
                 self.descriptionNode.setContent(text);
                 self.fade_in.run();
             }, null, this, nodes, text);
+            this.fade_out.run();
         }
         else {
             this.numberNode.setContent(nodes);
