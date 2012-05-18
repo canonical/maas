@@ -19,7 +19,6 @@ __all__ = [
     "generate_node_system_id",
     "get_auth_tokens",
     "get_db_state",
-    "get_html_display_for_key",
     "logger",
     "Config",
     "FileStorage",
@@ -770,6 +769,7 @@ post_save.connect(create_user, sender=User)
 User._meta.get_field('email')._unique = True
 
 
+# Due for model migration on 2012-05-25
 class SSHKeyManager(Manager):
     """A utility to manage the colletion of `SSHKey`s."""
 
@@ -778,6 +778,7 @@ class SSHKeyManager(Manager):
         return SSHKey.objects.filter(user=user).values_list('key', flat=True)
 
 
+# Due for model migration on 2012-05-25
 def validate_ssh_public_key(value):
     """Validate that the given value contains a valid SSH public key."""
     try:
@@ -789,9 +790,11 @@ def validate_ssh_public_key(value):
         raise ValidationError("Invalid SSH public key.")
 
 
+# Due for model migration on 2012-05-25
 HELLIPSIS = '&hellip;'
 
 
+# Due for model migration on 2012-05-25
 def get_html_display_for_key(key, size):
     """Return a compact HTML representation of this key with a boundary on
     the size of the resulting string.
@@ -836,9 +839,11 @@ def get_html_display_for_key(key, size):
         return escape(key, quote=True)
 
 
+# Due for model migration on 2012-05-25
 MAX_KEY_DISPLAY = 50
 
 
+# Due for model migration on 2012-05-25
 class SSHKey(CleanSave, TimestampedModel):
     """A `SSHKey` represents a user public SSH key.
 
