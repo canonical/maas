@@ -12,6 +12,10 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
+from abc import (
+    ABCMeta,
+    abstractproperty,
+    )
 from base64 import b64encode
 from collections import namedtuple
 from datetime import (
@@ -25,6 +29,7 @@ import random
 import shutil
 
 from django.conf import settings
+from django.contrib.auth.models import AnonymousUser
 from django.db.models.signals import post_save
 from django.http import QueryDict
 from fixtures import Fixture
@@ -146,11 +151,52 @@ class TestModuleHelpers(TestCase):
             extract_constraints(QueryDict('name=%s' % name)))
 
 
-class EnlistmentAPITest(APIv10TestMixin):
-    # This is a mixin containing enlistement tests.  We will run this for:
-    # an anonymous user, a simple (non-admin) user and an admin user.
-    # XXX: rvb 2012-04-10 bug=978035: It would be better to use
-    # testscenarios for this.
+class MultipleUsersScenarios:
+    """A mixin that uses testscenarios to repeat a testcase as different
+    users.
+
+    The scenarios should inject a `userfactory` variable that will
+    be called to produce the user used in the tests e.g.:
+
+    class ExampleTest(MultipleUsersScenarios, TestCase):
+        scenarios = [
+            ('anon', dict(userfactory=lambda: AnonymousUser())),
+            ('user', dict(userfactory=factory.make_user)),
+            ('admin', dict(userfactory=factory.make_admin)),
+            ]
+
+        def test_something(self):
+            pass
+
+    The test `test_something` with be run 3 times: one with a anonymous user
+    logged in, once with a simple (non-admin) user logged in and once with
+    an admin user logged in.
+    """
+
+    __metaclass__ = ABCMeta
+
+    scenarios = abstractproperty(
+        "The scenarios as defined by testscenarios.")
+
+    def setUp(self):
+        super(MultipleUsersScenarios, self).setUp()
+        user = self.userfactory()
+        if not user.is_anonymous():
+            password = factory.getRandomString()
+            user.set_password(password)
+            user.save()
+            self.logged_in_user = user
+            self.client.login(
+                username=self.logged_in_user.username, password=password)
+
+
+class EnlistmentAPITest(APIv10TestMixin, MultipleUsersScenarios, TestCase):
+    """Enlistment tests."""
+    scenarios = [
+        ('anon', dict(userfactory=lambda: AnonymousUser())),
+        ('user', dict(userfactory=factory.make_user)),
+        ('admin', dict(userfactory=factory.make_admin)),
+        ]
 
     def test_POST_new_creates_node(self):
         # The API allows a Node to be created.
@@ -338,8 +384,14 @@ class EnlistmentAPITest(APIv10TestMixin):
         self.assertItemsEqual(['architecture'], parsed_result)
 
 
-class NonAdminEnlistmentAPITest(EnlistmentAPITest):
-    # This is a mixin containing enlistement tests for non-admin users.
+class NonAdminEnlistmentAPITest(APIv10TestMixin, MultipleUsersScenarios,
+                                TestCase):
+    # Enlistment tests for non-admin users.
+
+    scenarios = [
+        ('anon', dict(userfactory=lambda: AnonymousUser())),
+        ('user', dict(userfactory=factory.make_user)),
+        ]
 
     def test_POST_non_admin_creates_node_in_declared_state(self):
         # Upon non-admin enlistment, a node goes into the Declared
@@ -362,9 +414,8 @@ class NonAdminEnlistmentAPITest(EnlistmentAPITest):
             Node.objects.get(system_id=system_id).status)
 
 
-class AnonymousEnlistmentAPITest(NonAdminEnlistmentAPITest, TestCase):
-    # This is an actual test case that uses the NonAdminEnlistmentAPITest
-    # mixin and adds enlistement tests specific to anonymous users.
+class AnonymousEnlistmentAPITest(APIv10TestMixin, TestCase):
+    # Enlistment tests specific to anonymous users.
 
     def test_POST_accept_not_allowed(self):
         # An anonymous user is not allowed to accept an anonymously
@@ -397,10 +448,8 @@ class AnonymousEnlistmentAPITest(NonAdminEnlistmentAPITest, TestCase):
             list(parsed_result))
 
 
-class SimpleUserLoggedInEnlistmentAPITest(NonAdminEnlistmentAPITest,
-                                          LoggedInTestCase):
-    # This is an actual test case that uses the NonAdminEnlistmentAPITest
-    # mixin plus enlistement tests specific to simple (non-admin) users.
+class SimpleUserLoggedInEnlistmentAPITest(APIv10TestMixin, LoggedInTestCase):
+    # Enlistment tests specific to simple (non-admin) users.
 
     def test_POST_accept_not_allowed(self):
         # An non-admin user is not allowed to accept an anonymously
@@ -439,10 +488,8 @@ class SimpleUserLoggedInEnlistmentAPITest(NonAdminEnlistmentAPITest,
             list(parsed_result))
 
 
-class AdminLoggedInEnlistmentAPITest(EnlistmentAPITest,
-                                     AdminLoggedInTestCase):
-    # This is an actual test case that uses the EnlistmentAPITest mixin
-    # and adds enlistement tests specific to admin users.
+class AdminLoggedInEnlistmentAPITest(APIv10TestMixin, AdminLoggedInTestCase):
+    # Enlistment tests specific to admin users.
 
     def test_POST_admin_creates_node_in_commissioning_state(self):
         # When an admin user enlists a node, it goes into the

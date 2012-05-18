@@ -248,7 +248,7 @@ class NodeViewsTest(LoggedInTestCase):
         self.assertIn(
             reverse('mac-add', args=[node.system_id]), response.content)
 
-    def test_view_node_has_button_to_accept_enlistement_for_user(self):
+    def test_view_node_has_button_to_accept_enlistment_for_user(self):
         # A simple user can't see the button to enlist a declared node.
         node = factory.make_node(status=NODE_STATUS.DECLARED)
         node_link = reverse('node-view', args=[node.system_id])
