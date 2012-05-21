@@ -6,6 +6,7 @@
 ./.noseids
 ./bin
 ./build
+./celerybeat-schedule
 ./db
 ./develop-eggs
 ./dist

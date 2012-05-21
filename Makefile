@@ -96,6 +96,7 @@ clean:
 	$(RM) -r media/demo/* media/development
 	$(RM) $(js_enums)
 	$(RM) *.log
+	$(RM) celerybeat-schedule
 
 distclean: clean stop
 	utilities/maasdb delete-cluster ./db/
@@ -137,7 +138,7 @@ endef
 # Development services.
 #
 
-service_names := pserv reloader txlongpoll web webapp
+service_names := pserv celeryd reloader txlongpoll web webapp
 services := $(patsubst %,services/%/,$(service_names))
 
 run:
@@ -219,6 +220,8 @@ services/txlongpoll/@deps: bin/twistd.txlongpoll
 services/web/@deps:
 
 services/webapp/@deps: bin/maas dev-db
+
+services/celeryd/@deps:
 
 #
 # Phony stuff.
