@@ -23,6 +23,7 @@ from itertools import (
     repeat,
     )
 
+from maasserver.utils import map_enum
 from provisioningserver.cobblerclient import (
     CobblerDistro,
     CobblerProfile,
@@ -36,6 +37,9 @@ from twisted.internet.defer import (
     returnValue,
     )
 from zope.interface import implements
+
+
+POWER_TYPE_VALUES = set(map_enum(POWER_TYPE).values())
 
 
 def postprocess_mapping(mapping, function):
@@ -203,7 +207,7 @@ class ProvisioningAPI:
         assert isinstance(name, basestring)
         assert isinstance(hostname, basestring)
         assert isinstance(profile, basestring)
-        assert power_type in (POWER_TYPE.VIRSH, POWER_TYPE.WAKE_ON_LAN)
+        assert power_type in POWER_TYPE_VALUES
         assert isinstance(preseed_data, basestring)
         attributes = {
             "hostname": hostname,
