@@ -16,12 +16,12 @@ from __future__ import (
 __metaclass__ = type
 
 import os
-from maas import import_settings
 
+from maas import import_settings
 
 # Location of power action templates. Use an absolute path.
 POWER_TEMPLATES_DIR = os.path.join(
-    os.path.dirname(__file__), os.pardir, "provisioningserver", "power",
+    os.path.dirname(__file__), os.pardir, "src", "provisioningserver", "power",
     "templates")
 
 

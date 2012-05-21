@@ -14,18 +14,18 @@ __metaclass__ = type
 __all__ = []
 
 import os
-from maastesting.factory import factory
-from maastesting.testcase import TestCase
-from testtools.matchers import FileContains
 from textwrap import dedent
 
-from maas.celeryconfig import POWER_TEMPLATES_DIR
+from celeryconfig import POWER_TEMPLATES_DIR
+from maastesting.factory import factory
+from maastesting.testcase import TestCase
 from provisioningserver.enum import POWER_TYPE
 from provisioningserver.power.poweraction import (
     PowerAction,
     PowerActionFail,
     UnknownPowerType,
     )
+from testtools.matchers import FileContains
 
 
 class TestPowerAction(TestCase):

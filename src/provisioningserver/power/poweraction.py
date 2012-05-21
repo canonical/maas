@@ -20,7 +20,7 @@ __all__ = [
 import os
 import subprocess
 
-from maas.celeryconfig import POWER_TEMPLATES_DIR
+from celeryconfig import POWER_TEMPLATES_DIR
 
 
 class UnknownPowerType(Exception):
@@ -37,7 +37,7 @@ class PowerAction:
     :param power_type: A value from :class:`POWER_TYPE`.
 
     The class is intended to be used in two phases:
-    1. Instatiation, passing the power_type.
+    1. Instantiation, passing the power_type.
     2. .execute(), passing any template parameters required by the template.
     """
 
