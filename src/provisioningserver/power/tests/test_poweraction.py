@@ -19,7 +19,7 @@ from maastesting.testcase import TestCase
 from testtools.matchers import FileContains
 from textwrap import dedent
 
-from django.conf import settings
+from maas.celeryconfig import POWER_TEMPLATES_DIR
 from provisioningserver.enum import POWER_TYPE
 from provisioningserver.power.poweraction import (
     PowerAction,
@@ -43,7 +43,7 @@ class TestPowerAction(TestCase):
 
     def test_init_stores_template_path(self):
         power_type = POWER_TYPE.WAKE_ON_LAN
-        basedir = settings.POWER_TEMPLATES_DIR
+        basedir = POWER_TEMPLATES_DIR
         path = os.path.join(basedir, power_type + ".template")
         pa = PowerAction(power_type)
         self.assertEqual(path, pa.path)

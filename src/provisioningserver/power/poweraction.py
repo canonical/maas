@@ -20,7 +20,7 @@ __all__ = [
 import os
 import subprocess
 
-from django.conf import settings
+from maas.celeryconfig import POWER_TEMPLATES_DIR
 
 
 class UnknownPowerType(Exception):
@@ -42,7 +42,7 @@ class PowerAction:
     """
 
     def __init__(self, power_type):
-        basedir = settings.POWER_TEMPLATES_DIR
+        basedir = POWER_TEMPLATES_DIR
         self.path = os.path.join(basedir, power_type + ".template")
         if not os.path.exists(self.path):
             raise UnknownPowerType
