@@ -65,4 +65,6 @@ class POWER_TYPE:
 POWER_TYPE_CHOICES = (
     (POWER_TYPE.VIRSH, "virsh (virtual systems)"),
     (POWER_TYPE.WAKE_ON_LAN, "Wake-on-LAN"),
+    (POWER_TYPE.IPMI, "IPMI"),
+    (POWER_TYPE.IPMI_LAN, "IPMI over LAN"),
     )
