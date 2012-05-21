@@ -55,6 +55,12 @@ class POWER_TYPE:
     # Network wake-up.
     WAKE_ON_LAN = 'ether_wake'
 
+    # IPMI (Intelligent Platform Management Interface).
+    IPMI = 'ipmi'
+
+    # IPMI over LAN.
+    IPMI_LAN = 'ipmi_lan'
+
 
 POWER_TYPE_CHOICES = (
     (POWER_TYPE.VIRSH, "virsh (virtual systems)"),

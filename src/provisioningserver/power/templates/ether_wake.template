@@ -1,0 +1,6 @@
+set mac = %(mac)s
+if [ -x /usr/bin/wakeonlan ]; then
+    /usr/bin/wakeonlan $mac
+elif [ -x /usr/sbin/etherwake ]; then
+    /usr/sbin/etherwake $mac
+fi

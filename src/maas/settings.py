@@ -280,5 +280,10 @@ COMMISSIONING_SCRIPT = 'etc/maas/commissioning-user-data'
 # to have failed and mark it as FAILED_TESTS.
 COMMISSIONING_TIMEOUT = 60
 
+# Location of power action templates. Use an absolute path.
+POWER_TEMPLATES_DIR = os.path.join(
+    os.path.dirname(__file__), os.pardir, "provisioningserver", "power",
+    "templates")
+
 # Allow the user to override settings in maas_local_settings.
 import_local_settings()
