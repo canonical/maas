@@ -33,7 +33,7 @@ class PowerActionFail(Exception):
 
 class PowerAction:
     """Actions for power-related operations.
-    
+
     :param power_type: A value from :class:`POWER_TYPE`.
 
     The class is intended to be used in two phases:
