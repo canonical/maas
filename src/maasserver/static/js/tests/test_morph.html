@@ -14,12 +14,18 @@
     <script type="text/javascript" src="test_morph.js"></script>
   </head>
   <body>
-  <div id="panel-one">
-    Panel One
-  </div>
-  <div id="panel-two" class="hidden">
-    Panel Two
-  </div>
+  <script type="text/x-template" id="panel-one-template">
+    <div id="panel-one">
+      Panel One
+    </div>
+  </script>
+  <script type="text/x-template" id="panel-two-template">
+    <div id="panel-two" class="hidden">
+      Panel Two
+    </div>
+  </script>
+
+  <div id="placeholder"></div>
 
   <span id="suite">maas.morph.tests</span>
   </body>

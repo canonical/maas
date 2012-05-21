@@ -10,52 +10,122 @@ var namespace = Y.namespace('maas.morph.tests');
 var module = Y.maas.morph;
 var suite = new Y.Test.Suite("maas.morph Tests");
 
+var panel_one = Y.one('#panel-one-template').getContent();
+var panel_two = Y.one('#panel-two-template').getContent();
+
 suite.add(new Y.maas.testing.TestCase({
     name: 'test-morphing',
 
-    testMorphing: function() {
+    setUp: function() {
+        Y.one('#placeholder').empty().append(
+            Y.Node.create(panel_one)).append(
+                Y.Node.create(panel_two));
+    },
+
+    get_morph: function(animate) {
         var cfg = {
             srcNode: '#panel-two',
-            targetNode: '#panel-one'
+            targetNode: '#panel-one',
+            animate: animate
         };
-        var morpher = new module.Morph(cfg);
-        Y.Assert.isFalse(
-            Y.one('#panel-one').hasClass('hidden'),
-            'The target panel should initially be visible');
-        Y.Assert.isTrue(
-            Y.one('#panel-two').hasClass('hidden'),
-            'The source panel should initially be hidden');
-        var morphed_fired = false;
-        morpher.on('morphed', function() {
-            morphed_fired = true;
+        return new module.Morph(cfg);
+    },
+
+    test_morphing_no_animation_sets_visibility_classes: function() {
+        var morpher = this.get_morph(false);
+        morpher.morph(false);
+
+        Y.Assert.isTrue(Y.one('#panel-one').hasClass('hidden'));
+        Y.Assert.isFalse(Y.one('#panel-two').hasClass('hidden'));
+    },
+
+    test_morphing_animation_sets_visibility_classes: function() {
+        Y.Assert.isFalse(Y.one('#panel-one').hasClass('hidden'));
+        Y.Assert.isTrue(Y.one('#panel-two').hasClass('hidden'));
+        var morpher = this.get_morph(true);
+        var self = this;
+        morpher.on('morphed', function () {
+            self.resume(function() {
+                Y.Assert.isTrue(Y.one('#panel-one').hasClass('hidden'));
+                Y.Assert.isFalse(Y.one('#panel-two').hasClass('hidden'));
+            });
         });
         morpher.morph();
-        this.wait(function() {
-            Y.Assert.isTrue(
-                Y.one(cfg.targetNode).hasClass('hidden'),
-                'The target panel should now be hidden');
-            Y.Assert.isFalse(
-                Y.one(cfg.srcNode).hasClass('hidden'),
-                'The source panel should now be visible');
-            Y.Assert.isTrue(
-                morphed_fired,
-                'The morphed event should have fired');
-            Y.Assert.areEqual(
-                'auto',
-                Y.one(cfg.srcNode).getStyle('height'),
-                'The morpher should set the height back to auto');
-            /* Fire this morph again, this time for the reverse. */
-            morpher.morph(true);
-            this.wait(function() {
-                Y.Assert.isFalse(
-                    Y.one(cfg.targetNode).hasClass('hidden'),
-                    'The target panel should now be visible again');
-                Y.Assert.isTrue(
-                    Y.one(cfg.srcNode).hasClass('hidden'),
-                    'The source panel should now be hidden again');
-            }, 2000);
-        }, 2000);
+        this.wait();
+    },
+
+    test__create_morph_out_anim_sets_opacity_and_adds_class: function() {
+        var targetNode = Y.one('#panel-one');
+        targetNode.setStyle('opacity', 0.5);
+        var morph = module._create_morph_out(targetNode);
+        var self = this;
+        morph.on('end', function () {
+            self.resume(function() {
+                var opacity = targetNode.getComputedStyle('opacity');
+                Y.Assert.areEqual(0, opacity);
+                Y.Assert.isTrue(targetNode.hasClass('hidden'));
+            });
+        });
+        morph.run();
+        this.wait();
+    },
+
+    test__create_morph_in_anim_sets_initial_opacity_and_class: function() {
+        var srcNode = Y.one('#panel-one');
+        srcNode.setStyle('opacity', 0.5);
+        var targetNode = Y.one('#panel-two');
+        var morph = module._create_morph_in(srcNode, targetNode);
+
+        Y.Assert.areEqual(0, srcNode.getComputedStyle('opacity'));
+        Y.Assert.isFalse(srcNode.hasClass('hidden'));
+    },
+
+    test__create_morph_in_anim_sets_opacity: function() {
+        var srcNode = Y.one('#panel-one');
+        srcNode.setStyle('opacity', 0.5);
+        var targetNode = Y.one('#panel-two');
+        var morph = module._create_morph_in(srcNode, targetNode);
+        var self = this;
+        morph.on('end', function () {
+            self.resume(function() {
+                Y.Assert.areEqual(1, srcNode.getComputedStyle('opacity'));
+            });
+        });
+        morph.run();
+        this.wait();
+    },
+
+    test__create_morph_anim_set_visibility_classes: function() {
+        var srcNode = Y.one('#panel-two');
+        var targetNode = Y.one('#panel-one');
+        var publisher = new Y.Base();
+        var morph = module._create_morph(srcNode, targetNode, publisher);
+        var self = this;
+        publisher.on('morphed', function () {
+            self.resume(function() {
+                Y.Assert.areEqual(1, srcNode.getComputedStyle('opacity'));
+                Y.Assert.isTrue(Y.one('#panel-one').hasClass('hidden'));
+                Y.Assert.isFalse(Y.one('#panel-two').hasClass('hidden'));
+            });
+        });
+        morph.run();
+        this.wait();
+    },
+
+    test__create_resize_animation_resizes: function() {
+        var srcNode = Y.one('#panel-one');
+        var resize = module._create_resize(srcNode, '29');
+        var self = this;
+        resize.on('resized', function () {
+            self.resume(function() {
+                var height_style = srcNode.getStyle('height');
+                Y.Assert.areEqual('auto', height_style);
+            });
+        });
+        resize.run();
+        this.wait();
     }
+
 }));
 
 namespace.suite = suite;
