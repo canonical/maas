@@ -586,10 +586,13 @@ class ProvisioningAPITests(ProvisioningFakeFactory):
 class ProvisioningAPITestsWithCobbler:
     """Provisioning API tests that also access a real, or fake, Cobbler."""
 
+    # Overridable: acceptable power types in the current test setup.
+    valid_power_types = set(map_enum(POWER_TYPE).values())
+
     @inlineCallbacks
     def test_add_node_sets_power_type(self):
         papi = self.get_provisioning_api()
-        power_types = list(map_enum(POWER_TYPE).values())
+        power_types = self.valid_power_types.copy()
         # The DEFAULT value does not exist as far as the provisioning
         # server is concerned.
         power_types.remove(POWER_TYPE.DEFAULT)
@@ -745,6 +748,28 @@ class TestProvisioningAPIWithRealCobbler(ProvisioningAPITests,
     """
 
     real_cobbler = RealCobbler()
+
+    # Power methods that Cobbler accepts.
+    cobbler_power_types = set([
+        'apc_snmp',
+        'bladecenter',
+        'bullpap',
+        'drac',
+        'ether_wake',
+        'ilo',
+        'integrity',
+        'ipmilan',
+        'ipmitool',
+        'lpar',
+        'rsa',
+        'sentryswitch_cdu',
+        'virsh',
+        'wti',
+        ])
+    # Only accept power methods that both MAAS and Cobbler know.
+    valid_power_types = (
+        ProvisioningAPITestsWithCobbler.valid_power_types.intersection(
+            cobbler_power_types))
 
     @real_cobbler.skip_unless_available
     def get_provisioning_api(self):
