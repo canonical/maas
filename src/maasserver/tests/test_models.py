@@ -62,6 +62,7 @@ from maasserver.testing.testcase import (
     )
 from maasserver.tests.models import TimestampedModelTestModel
 from maasserver.utils import map_enum
+from maastesting.celery import CeleryFixture
 from maastesting.djangotestcase import (
     TestModelTransactionalTestCase,
     TransactionTestCase,
@@ -341,8 +342,11 @@ class NodeTest(TestCase):
             {status: node.status for status, node in nodes.items()})
 
     def test_start_commissioning_changes_status_and_starts_node(self):
+        fixture = self.useFixture(CeleryFixture())
         user = factory.make_user()
-        node = factory.make_node(status=NODE_STATUS.DECLARED)
+        node = factory.make_node(
+            status=NODE_STATUS.DECLARED, power_type=POWER_TYPE.WAKE_ON_LAN)
+        factory.make_mac_address(node=node)
         node.start_commissioning(user)
 
         expected_attrs = {
@@ -350,8 +354,9 @@ class NodeTest(TestCase):
             'owner': user,
         }
         self.assertAttributes(node, expected_attrs)
-        power_status = get_provisioning_api_proxy().power_status
-        self.assertEqual('start', power_status[node.system_id])
+        self.assertEqual(
+            (1, 'provisioningserver.tasks.power_on'),
+            (len(fixture.tasks), fixture.tasks[0]['task'].name))
 
     def test_start_commissioning_sets_user_data(self):
         node = factory.make_node(status=NODE_STATUS.DECLARED)
@@ -456,13 +461,19 @@ class GetDbStateTest(TestCase):
 
 class NodeManagerTest(TestCase):
 
-    def make_node(self, user=None):
+    def make_node(self, user=None, **kwargs):
         """Create a node, allocated to `user` if given."""
         if user is None:
             status = NODE_STATUS.READY
         else:
             status = NODE_STATUS.ALLOCATED
-        return factory.make_node(set_hostname=True, status=status, owner=user)
+        return factory.make_node(
+            set_hostname=True, status=status, owner=user, **kwargs)
+
+    def make_node_with_mac(self, user=None, **kwargs):
+        node = self.make_node(user, **kwargs)
+        mac = factory.make_mac_address(node=node)
+        return node, mac
 
     def make_user_data(self):
         """Create a blob of arbitrary user-data."""
@@ -645,40 +656,33 @@ class NodeManagerTest(TestCase):
             Node.objects.stop_nodes(ids, stoppable_node.owner))
 
     def test_start_nodes_starts_nodes(self):
+        fixture = self.useFixture(CeleryFixture())
+
+        user = factory.make_user()
+        node, mac = self.make_node_with_mac(
+            user, power_type=POWER_TYPE.WAKE_ON_LAN)
+        output = Node.objects.start_nodes([node.system_id], user)
+
+        self.assertItemsEqual([node], output)
+        self.assertEqual(
+            (1, 'provisioningserver.tasks.power_on', mac.mac_address),
+            (
+                len(fixture.tasks),
+                fixture.tasks[0]['task'].name,
+                fixture.tasks[0]['kwargs']['mac'],
+            ))
+
+    def test_start_nodes_ignores_nodes_without_mac(self):
         user = factory.make_user()
         node = self.make_node(user)
         output = Node.objects.start_nodes([node.system_id], user)
 
-        self.assertItemsEqual([node], output)
-        power_status = get_provisioning_api_proxy().power_status
-        self.assertEqual('start', power_status[node.system_id])
-
-    def test_start_nodes_sets_commissioning_profile(self):
-        # Starting up a node should always set a profile. Here we test
-        # that a commissioning profile was set for nodes in the
-        # commissioning status.
-        user = factory.make_user()
-        node = factory.make_node(
-            set_hostname=True, status=NODE_STATUS.COMMISSIONING, owner=user)
-        output = Node.objects.start_nodes([node.system_id], user)
-
-        self.assertItemsEqual([node], output)
-        profile = get_provisioning_api_proxy().nodes[node.system_id]['profile']
-        self.assertEqual('maas-precise-i386-commissioning', profile)
-
-    def test_start_nodes_doesnt_set_commissioning_profile(self):
-        # Starting up a node should always set a profile. Complement the
-        # above test to show that a different profile can be set.
-        user = factory.make_user()
-        node = self.make_node(user)
-        output = Node.objects.start_nodes([node.system_id], user)
-
-        self.assertItemsEqual([node], output)
-        profile = get_provisioning_api_proxy().nodes[node.system_id]['profile']
-        self.assertEqual('maas-precise-i386', profile)
+        self.assertItemsEqual([], output)
 
     def test_start_nodes_ignores_uneditable_nodes(self):
-        nodes = [self.make_node(factory.make_user()) for counter in range(3)]
+        nodes = [
+            self.make_node_with_mac(
+                factory.make_user())[0] for counter in range(3)]
         ids = [node.system_id for node in nodes]
         startable_node = nodes[0]
         self.assertItemsEqual(
