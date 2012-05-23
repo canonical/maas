@@ -12,7 +12,7 @@ from __future__ import (
 __metaclass__ = type
 
 import logging
-import os
+from os.path import abspath
 
 from maas import (
     import_local_settings,
@@ -58,13 +58,13 @@ DATABASES = {
         'NAME': 'maas',
         # For PostgreSQL, a "hostname" starting with a slash indicates a
         # Unix socket directory.
-        'HOST': '%s/db' % os.getcwd(),
+        'HOST': abspath('db'),
     }
 }
 
 # Absolute filesystem path to the directory that will hold user-uploaded files.
 # Example: "/home/media/media.lawrence.com/media/"
-MEDIA_ROOT = os.path.join(os.getcwd(), "media/development")
+MEDIA_ROOT = abspath("media/development")
 
 INSTALLED_APPS += (
     'django.contrib.admin',

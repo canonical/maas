@@ -11,7 +11,7 @@ from __future__ import (
 
 __metaclass__ = type
 
-import os
+from os.path import abspath
 
 from maas import (
     development,
@@ -27,7 +27,7 @@ MIDDLEWARE_CLASSES = None
 import_settings(settings)
 import_settings(development)
 
-MEDIA_ROOT = os.path.join(os.getcwd(), "media/demo")
+MEDIA_ROOT = abspath("media/demo")
 
 MIDDLEWARE_CLASSES += (
     'debug_toolbar.middleware.DebugToolbarMiddleware',
@@ -39,7 +39,7 @@ LONGPOLL_PATH = '/longpoll/'
 # For demo purposes, use a real provisioning server.
 USE_REAL_PSERV = True
 
-MAAS_CLI = os.path.join(os.getcwd(), 'bin', 'maas')
+MAAS_CLI = abspath("bin/maas")
 
 RABBITMQ_PUBLISH = True
 

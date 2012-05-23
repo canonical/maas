@@ -37,7 +37,7 @@ bin/maas createadmin \
     --username "${LOGNAME}" --password test \
     --email "${LOGNAME}@example.com"
 bin/maas reconcile
-utilities/maasdb shell db <<'EOF'
+make dbharness <<'EOF'
 UPDATE maasserver_node
    SET owner_id = NULL, status = 4
  WHERE hostname LIKE 'odev-node%';

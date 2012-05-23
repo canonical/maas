@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
+# Exit immediately if a command exits with a non-zero status.
+set -o errexit
+# Treat unset variables as an error when substituting.
+set -o nounset
+
+# Move to the project root.
+cd "$(dirname "$0")/../.."
+
+# Start logging, if requested. Not using multilog here right now
+# because there are race issues when restarting.
+[ -z "${logdir:-}" ] || exec &>> "${logdir}/current"
+
+# Use `maas` as the default database.
+export PGDATABASE="maas"
+
+# Start the database.
+script="$(readlink -f bin/database)"
+exec "${script}" --preserve run

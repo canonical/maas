@@ -5,8 +5,13 @@ py_enums := $(wildcard src/*/enum.py)
 # JavaScript enum module (not modules).
 js_enums := src/maasserver/static/js/enums.js
 
+# For things that care, postgresfixture for example, we always want to
+# use the "maas" databases.
+export PGDATABASE := maas
+
 build: \
     bin/buildout \
+    bin/database \
     bin/maas bin/test.maas \
     bin/twistd.pserv bin/test.pserv \
     bin/twistd.txlongpoll \
@@ -18,6 +23,10 @@ all: build doc
 bin/buildout: bootstrap.py distribute_setup.py
 	$(python) bootstrap.py --distribute --setup-source distribute_setup.py
 	@touch --no-create $@  # Ensure it's newer than its dependencies.
+
+bin/database: bin/buildout buildout.cfg versions.cfg setup.py
+	bin/buildout install database
+	@touch --no-create $@
 
 bin/maas: bin/buildout buildout.cfg versions.cfg setup.py $(js_enums)
 	bin/buildout install maas
@@ -50,9 +59,6 @@ bin/sphinx: bin/buildout buildout.cfg versions.cfg setup.py
 bin/py bin/ipy: bin/buildout buildout.cfg versions.cfg setup.py
 	bin/buildout install repl
 	@touch --no-create bin/py bin/ipy
-
-dev-db:
-	utilities/maasdb start ./db/ disposable
 
 test: bin/test.maas bin/test.pserv $(js_enums)
 	bin/test.maas
@@ -99,7 +105,6 @@ clean:
 	$(RM) celerybeat-schedule
 
 distclean: clean stop
-	utilities/maasdb delete-cluster ./db/
 	$(RM) -r eggs develop-eggs
 	$(RM) -r bin build dist logs/* parts
 	$(RM) tags TAGS .installed.cfg
@@ -109,19 +114,24 @@ distclean: clean stop
 	$(RM) -r run/* services/*/supervise
 	$(RM) twisted/plugins/dropin.cache
 
-harness: bin/maas dev-db
-	bin/maas shell --settings=maas.demo
+harness: run = bin/database --preserve run --
+harness: bin/maas bin/database
+	$(run) bin/maas shell --settings=maas.demo
 
-syncdb: bin/maas dev-db
-	bin/maas syncdb --noinput
-	bin/maas migrate maasserver --noinput
-	bin/maas migrate metadataserver --noinput
+dbharness: bin/database
+	bin/database --preserve shell
+
+syncdb: run = bin/database --preserve run --
+syncdb: bin/maas bin/database
+	$(run) bin/maas syncdb --noinput
+	$(run) bin/maas migrate maasserver --noinput
+	$(run) bin/maas migrate metadataserver --noinput
 
 define phony_targets
   build
   check
   clean
-  dev-db
+  dbharness
   distclean
   doc
   enums
@@ -138,7 +148,7 @@ endef
 # Development services.
 #
 
-service_names := pserv celeryd reloader txlongpoll web webapp
+service_names := celeryd database pserv reloader txlongpoll web webapp
 services := $(patsubst %,services/%/,$(service_names))
 
 run:
@@ -211,6 +221,10 @@ services/%/@supervise: services/%/@deps
 
 # Dependencies for individual services.
 
+services/celeryd/@deps:
+
+services/database/@deps: bin/database
+
 services/pserv/@deps: bin/twistd.pserv
 
 services/reloader/@deps:
@@ -219,9 +233,7 @@ services/txlongpoll/@deps: bin/twistd.txlongpoll
 
 services/web/@deps:
 
-services/webapp/@deps: bin/maas dev-db
-
-services/celeryd/@deps:
+services/webapp/@deps: bin/maas
 
 #
 # Phony stuff.

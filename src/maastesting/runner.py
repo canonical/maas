@@ -14,9 +14,9 @@ __all__ = [
     "TestRunner",
     ]
 
-from subprocess import check_call
-
+from django.conf import settings
 from django_nose import NoseTestSuiteRunner
+from postgresfixture import ClusterFixture
 
 
 class TestRunner(NoseTestSuiteRunner):
@@ -24,5 +24,13 @@ class TestRunner(NoseTestSuiteRunner):
 
     def setup_databases(self, *args, **kwargs):
         """Fire up the db cluster, then punt to original implementation."""
-        check_call(['utilities/maasdb', 'start', './db/', 'disposable'])
+        self.cluster = ClusterFixture("db", preserve=True)
+        self.cluster.setUp()
+        for database in settings.DATABASES.values():
+            if database["HOST"] == self.cluster.datadir:
+                self.cluster.createdb(database["NAME"])
         return super(TestRunner, self).setup_databases(*args, **kwargs)
+
+    def teardown_databases(self, *args, **kwargs):
+        super(TestRunner, self).teardown_databases(*args, **kwargs)
+        self.cluster.cleanUp()
