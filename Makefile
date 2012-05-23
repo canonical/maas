@@ -5,6 +5,11 @@ py_enums := $(wildcard src/*/enum.py)
 # JavaScript enum module (not modules).
 js_enums := src/maasserver/static/js/enums.js
 
+# Prefix commands with this when they need access to the database.
+# Remember to add a dependency on bin/database from the targets in
+# which those commands appear.
+dbrun := bin/database --preserve run --
+
 # For things that care, postgresfixture for example, we always want to
 # use the "maas" databases.
 export PGDATABASE := maas
@@ -85,8 +90,8 @@ check: clean test
 docs/api.rst: bin/maas src/maasserver/api.py syncdb
 	bin/maas generate_api_doc > $@
 
-sampledata: bin/maas syncdb
-	bin/maas loaddata src/maasserver/fixtures/dev_fixture.yaml
+sampledata: bin/maas bin/database syncdb
+	$(dbrun) bin/maas loaddata src/maasserver/fixtures/dev_fixture.yaml
 
 doc: bin/sphinx docs/api.rst
 	bin/sphinx
@@ -114,18 +119,16 @@ distclean: clean stop
 	$(RM) -r run/* services/*/supervise
 	$(RM) twisted/plugins/dropin.cache
 
-harness: run = bin/database --preserve run --
 harness: bin/maas bin/database
-	$(run) bin/maas shell --settings=maas.demo
+	$(dbrun) bin/maas shell --settings=maas.demo
 
 dbharness: bin/database
 	bin/database --preserve shell
 
-syncdb: run = bin/database --preserve run --
 syncdb: bin/maas bin/database
-	$(run) bin/maas syncdb --noinput
-	$(run) bin/maas migrate maasserver --noinput
-	$(run) bin/maas migrate metadataserver --noinput
+	$(dbrun) bin/maas syncdb --noinput
+	$(dbrun) bin/maas migrate maasserver --noinput
+	$(dbrun) bin/maas migrate metadataserver --noinput
 
 define phony_targets
   build
