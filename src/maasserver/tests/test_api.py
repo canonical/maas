@@ -701,20 +701,20 @@ class TestNodeAPI(APITestCase):
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
     def test_POST_start_returns_node(self):
-        node = factory.make_node(owner=self.logged_in_user)
+        node = factory.make_node(owner=self.logged_in_user, mac=True)
         response = self.client.post(self.get_node_uri(node), {'op': 'start'})
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(
             node.system_id, json.loads(response.content)['system_id'])
 
     def test_POST_start_may_be_repeated(self):
-        node = factory.make_node(owner=self.logged_in_user)
+        node = factory.make_node(owner=self.logged_in_user, mac=True)
         self.client.post(self.get_node_uri(node), {'op': 'start'})
         response = self.client.post(self.get_node_uri(node), {'op': 'start'})
         self.assertEqual(httplib.OK, response.status_code)
 
     def test_POST_start_stores_user_data(self):
-        node = factory.make_node(owner=self.logged_in_user)
+        node = factory.make_node(owner=self.logged_in_user, mac=True)
         user_data = (
             b'\xff\x00\xff\xfe\xff\xff\xfe' +
             factory.getRandomString().encode('ascii'))

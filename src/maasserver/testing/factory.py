@@ -82,8 +82,8 @@ class Factory(maastesting.factory.Factory):
         finally:
             NODE_TRANSITIONS[None] = valid_initial_states
 
-    def make_node(self, hostname='', set_hostname=False, status=None,
-                  architecture=ARCHITECTURE.i386, updated=None,
+    def make_node(self, mac=False, hostname='', set_hostname=False,
+                  status=None, architecture=ARCHITECTURE.i386, updated=None,
                   created=None, **kwargs):
         # hostname=None is a valid value, hence the set_hostname trick.
         if hostname is '' and set_hostname:
@@ -94,6 +94,8 @@ class Factory(maastesting.factory.Factory):
             hostname=hostname, status=status, architecture=architecture,
             **kwargs)
         self._save_node_unchecked(node)
+        if mac:
+            self.make_mac_address(node=node)
 
         # Update the 'updated'/'created' fields with a call to 'update'
         # preventing a call to save() from overriding the values.

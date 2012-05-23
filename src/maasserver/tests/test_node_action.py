@@ -29,9 +29,10 @@ from maasserver.node_action import (
     RetryCommissioning,
     StartNode,
     )
-from maasserver.provisioning import get_provisioning_api_proxy
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
+from maastesting.celery import CeleryFixture
+from provisioningserver.enum import POWER_TYPE
 
 
 ALL_STATUSES = NODE_STATUS_CHOICES_DICT.keys()
@@ -187,22 +188,28 @@ class TestNodeAction(TestCase):
             urlparse(unicode(e)).path)
 
     def test_AcceptAndCommission_starts_commissioning(self):
-        node = factory.make_node(status=NODE_STATUS.DECLARED)
+        fixture = self.useFixture(CeleryFixture())
+        node = factory.make_node(
+            mac=True, status=NODE_STATUS.DECLARED,
+            power_type=POWER_TYPE.WAKE_ON_LAN)
         action = AcceptAndCommission(node, factory.make_admin())
         action.execute()
         self.assertEqual(NODE_STATUS.COMMISSIONING, node.status)
         self.assertEqual(
-            'start',
-            get_provisioning_api_proxy().power_status.get(node.system_id))
+            'provisioningserver.tasks.power_on',
+            fixture.tasks[0]['task'].name)
 
     def test_RetryCommissioning_starts_commissioning(self):
-        node = factory.make_node(status=NODE_STATUS.FAILED_TESTS)
+        fixture = self.useFixture(CeleryFixture())
+        node = factory.make_node(
+            mac=True, status=NODE_STATUS.FAILED_TESTS,
+            power_type=POWER_TYPE.WAKE_ON_LAN)
         action = RetryCommissioning(node, factory.make_admin())
         action.execute()
         self.assertEqual(NODE_STATUS.COMMISSIONING, node.status)
         self.assertEqual(
-            'start',
-            get_provisioning_api_proxy().power_status.get(node.system_id))
+            'provisioningserver.tasks.power_on',
+            fixture.tasks[0]['task'].name)
 
     def test_StartNode_inhibit_allows_user_with_SSH_key(self):
         user_with_key = factory.make_user()
@@ -218,11 +225,14 @@ class TestNodeAction(TestCase):
         self.assertIn("SSH key", inhibition)
 
     def test_StartNode_acquires_and_starts_node(self):
-        node = factory.make_node(status=NODE_STATUS.READY)
+        fixture = self.useFixture(CeleryFixture())
+        node = factory.make_node(
+            mac=True, status=NODE_STATUS.READY,
+            power_type=POWER_TYPE.WAKE_ON_LAN)
         user = factory.make_user()
         StartNode(node, user).execute()
         self.assertEqual(NODE_STATUS.ALLOCATED, node.status)
         self.assertEqual(user, node.owner)
         self.assertEqual(
-            'start',
-            get_provisioning_api_proxy().power_status.get(node.system_id))
+            'provisioningserver.tasks.power_on',
+            fixture.tasks[0]['task'].name)
