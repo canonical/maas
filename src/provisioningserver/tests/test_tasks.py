@@ -12,22 +12,15 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
-from testresources import FixtureResource
-
 from maastesting.celery import CeleryFixture
 from maastesting.testcase import TestCase
 from provisioningserver.enum import POWER_TYPE
 from provisioningserver.power.poweraction import PowerActionFail
 from provisioningserver.tasks import power_on
+from testresources import FixtureResource
 
 
-class TaskTestCase(TestCase):
-
-    def assertSuccess(self, task_result):
-        self.assertEqual("SUCCESS", task_result.status)
-
-
-class TestPowerTasks(TaskTestCase):
+class TestPowerTasks(TestCase):
 
     resources = (
         ("celery", FixtureResource(CeleryFixture())),
@@ -43,4 +36,4 @@ class TestPowerTasks(TaskTestCase):
     def test_ether_wake_power_on(self):
         mac = "AA:BB:CC:DD:EE:FF"
         result = power_on.delay(POWER_TYPE.WAKE_ON_LAN, mac=mac)
-        self.assertSuccess(result)
+        self.assertTrue(result.successful())

@@ -10,11 +10,12 @@ from __future__ import (
     )
 
 __metaclass__ = type
-__all__ = []
+__all__ = [
+    'power_on'
+    ]
 
 
 from celery.decorators import task
-
 from provisioningserver.power.poweraction import (
     PowerAction,
     PowerActionFail,

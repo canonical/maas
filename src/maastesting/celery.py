@@ -14,7 +14,10 @@ __all__ = [
     'CeleryFixture',
     ]
 
-from celery import current_app
+from celery import (
+    current_app,
+    signals,
+    )
 from fixtures import Fixture
 from testtools.monkey import MonkeyPatcher
 
@@ -44,9 +47,24 @@ class CeleryFixture(Fixture):
 
     def setUp(self):
         super(CeleryFixture, self).setUp()
+        self.configure()
+        self.record_tasks()
+
+    def configure(self):
         patcher = MonkeyPatcher()
         patcher.add_patch(current_app.conf, 'CELERY_ALWAYS_EAGER', True)
         patcher.add_patch(
             current_app.conf, 'CELERY_EAGER_PROPAGATES_EXCEPTIONS', True)
         self.addCleanup(patcher.restore)
         patcher.patch()
+
+    def record_tasks(self):
+        self.tasks = []
+
+        def on_task_postrun(**kwargs):
+            self.tasks.append(kwargs)
+        signals.task_postrun.connect(on_task_postrun, weak=False)
+        self.addCleanup(lambda: self.cleanup_tasks())
+
+    def cleanup_tasks(self):
+        self.tasks = []
