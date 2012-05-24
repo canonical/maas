@@ -17,7 +17,7 @@ export PGDATABASE := maas
 build: \
     bin/buildout \
     bin/database \
-    bin/maas bin/test.maas \
+    bin/maas bin/test.maas bin/test.maastesting \
     bin/twistd.pserv bin/test.pserv \
     bin/twistd.txlongpoll \
     bin/py bin/ipy \
@@ -39,6 +39,10 @@ bin/maas: bin/buildout buildout.cfg versions.cfg setup.py $(js_enums)
 
 bin/test.maas: bin/buildout buildout.cfg versions.cfg setup.py $(js_enums)
 	bin/buildout install maas-test
+	@touch --no-create $@
+
+bin/test.maastesting: bin/buildout buildout.cfg versions.cfg setup.py
+	bin/buildout install maastesting-test
 	@touch --no-create $@
 
 bin/twistd.pserv: bin/buildout buildout.cfg versions.cfg setup.py
@@ -65,8 +69,9 @@ bin/py bin/ipy: bin/buildout buildout.cfg versions.cfg setup.py
 	bin/buildout install repl
 	@touch --no-create bin/py bin/ipy
 
-test: bin/test.maas bin/test.pserv $(js_enums)
+test: bin/test.maas bin/test.maastesting bin/test.pserv $(js_enums)
 	bin/test.maas
+	bin/test.maastesting
 	bin/test.pserv
 
 lint: sources = contrib setup.py src templates twisted utilities

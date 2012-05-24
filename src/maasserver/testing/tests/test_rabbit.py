@@ -13,8 +13,8 @@ __metaclass__ = type
 __all__ = []
 
 from django.conf import settings
+from maasserver.testing.rabbit import RabbitServerSettings
 from maastesting.factory import factory
-from maastesting.rabbit import RabbitServerSettings
 from maastesting.testcase import TestCase
 from rabbitfixture.server import RabbitServerResources
 

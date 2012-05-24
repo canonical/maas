@@ -37,6 +37,7 @@ from maasserver.testing import (
     reload_objects,
     )
 from maasserver.testing.factory import factory
+from maasserver.testing.rabbit import uses_rabbit_fixture
 from maasserver.testing.testcase import (
     AdminLoggedInTestCase,
     LoggedInTestCase,
@@ -46,7 +47,6 @@ from maasserver.utils import map_enum
 from maasserver.views import nodes as nodes_views
 from maasserver.views.nodes import get_longpoll_context
 from maastesting.matchers import ContainsAll
-from maastesting.rabbit import uses_rabbit_fixture
 from provisioningserver.enum import POWER_TYPE_CHOICES
 
 

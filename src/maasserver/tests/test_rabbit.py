@@ -27,7 +27,7 @@ from maasserver.rabbit import (
     RabbitSession,
     )
 from maasserver.testing.factory import factory
-from maastesting.rabbit import (
+from maasserver.testing.rabbit import (
     get_rabbit,
     uses_rabbit_fixture,
     )

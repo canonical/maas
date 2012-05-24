@@ -1,7 +1,7 @@
 # Copyright 2012 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for `maastesting.management.commands.reconcile`."""
+"""Tests for `maasserver.management.commands.reconcile`."""
 
 from __future__ import (
     absolute_import,
@@ -12,7 +12,7 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
-from maastesting.management.commands.reconcile import (
+from maasserver.management.commands.reconcile import (
     guess_architecture_from_profile,
     )
 from maastesting.testcase import TestCase
