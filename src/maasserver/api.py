@@ -350,13 +350,23 @@ def get_oauth_token(request):
         raise Unauthorized("Unknown OAuth token.")
 
 
-NODE_FIELDS = (
+# Node's fields exposed on the API.
+DISPLAYED_NODE_FIELDS = (
     'system_id',
     'hostname',
     ('macaddress_set', ('mac_address',)),
     'architecture',
     'status',
+    'power_type',
+    'power_parameters',
     )
+
+
+EDITABLE_NODE_FIELDS = (
+    'hostname',
+    'architecture',
+    'power_type',
+     )
 
 
 @api_operations
@@ -364,7 +374,7 @@ class NodeHandler(BaseHandler):
     """Manage individual Nodes."""
     allowed_methods = ('GET', 'DELETE', 'POST', 'PUT')
     model = Node
-    fields = NODE_FIELDS
+    fields = DISPLAYED_NODE_FIELDS
 
     def read(self, request, system_id):
         """Read a specific Node."""
@@ -372,9 +382,25 @@ class NodeHandler(BaseHandler):
             system_id=system_id, user=request.user, perm=NODE_PERMISSION.VIEW)
 
     def update(self, request, system_id):
-        """Update a specific Node."""
+        """Update a specific Node.
+
+        :param hostname: The new hostname for this node.
+        :type hostname: basestring
+        :param architecture: The new architecture for this node (see
+            vocabulary `ARCHITECTURE`).
+        :type architecture: basestring
+        :param power_type: The new power type for this node (see
+            vocabulary `POWER_TYPE`).
+        :type power_type: basestring
+        """
+
         node = Node.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NODE_PERMISSION.EDIT)
+        unknown_fields = set(request.data).difference(EDITABLE_NODE_FIELDS)
+        if len(unknown_fields) != 0:
+            raise PermissionDenied(
+                "Unable to set field(s): %s. Allowed fields are: %s." % (
+                    ','.join(unknown_fields), ','.join(EDITABLE_NODE_FIELDS)))
         for key, value in request.data.items():
             setattr(node, key, value)
         node.save()
@@ -470,7 +496,7 @@ def create_node(request):
 class AnonNodesHandler(AnonymousBaseHandler):
     """Create Nodes."""
     allowed_methods = ('GET', 'POST',)
-    fields = NODE_FIELDS
+    fields = DISPLAYED_NODE_FIELDS
 
     @api_exported('POST')
     def new(self, request):

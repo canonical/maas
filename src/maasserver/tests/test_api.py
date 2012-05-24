@@ -35,6 +35,7 @@ from django.http import QueryDict
 from fixtures import Fixture
 from maasserver import api
 from maasserver.api import (
+    EDITABLE_NODE_FIELDS,
     extract_constraints,
     extract_oauth_key,
     extract_oauth_key_from_auth_header,
@@ -442,8 +443,13 @@ class AnonymousEnlistmentAPITest(APIv10TestMixin, TestCase):
         parsed_result = json.loads(response.content)
         self.assertItemsEqual(
             [
-                'hostname', 'system_id', 'macaddress_set', 'architecture',
+                'hostname',
+                'system_id',
+                'macaddress_set',
+                'architecture',
                 'status',
+                'power_type',
+                'power_parameters',
             ],
             list(parsed_result))
 
@@ -483,6 +489,8 @@ class SimpleUserLoggedInEnlistmentAPITest(APIv10TestMixin, LoggedInTestCase):
                 'macaddress_set',
                 'architecture',
                 'status',
+                'power_type',
+                'power_parameters',
                 'resource_uri',
             ],
             list(parsed_result))
@@ -524,8 +532,14 @@ class AdminLoggedInEnlistmentAPITest(APIv10TestMixin, AdminLoggedInTestCase):
         parsed_result = json.loads(response.content)
         self.assertItemsEqual(
             [
-                'hostname', 'system_id', 'macaddress_set', 'architecture',
-                'status', 'resource_uri',
+                'hostname',
+                'system_id',
+                'macaddress_set',
+                'architecture',
+                'status',
+                'power_type',
+                'power_parameters',
+                'resource_uri',
             ],
             list(parsed_result))
 
@@ -851,6 +865,21 @@ class TestNodeAPI(APITestCase):
         self.assertEqual('francis', parsed_result['hostname'])
         self.assertEqual(0, Node.objects.filter(hostname='diane').count())
         self.assertEqual(1, Node.objects.filter(hostname='francis').count())
+
+    def test_PUT_rejects_unknown_fields(self):
+        node = factory.make_node(owner=self.logged_in_user)
+        field = factory.getRandomString()
+        response = self.client.put(
+            self.get_node_uri(node),
+            {field: factory.getRandomString}
+            )
+
+        error_msg = (
+            "Unable to set field(s): %s. Allowed fields are: %s." % (
+                (field, ','.join(EDITABLE_NODE_FIELDS))))
+        self.assertEqual(
+            (httplib.FORBIDDEN, error_msg),
+            (response.status_code, response.content))
 
     def test_resource_uri_points_back_at_node(self):
         # When a Node is returned by the API, the field 'resource_uri'
