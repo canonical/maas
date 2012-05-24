@@ -54,7 +54,10 @@ from maasserver.models import (
     validate_ssh_public_key,
     )
 from maasserver.provisioning import get_provisioning_api_proxy
-from maasserver.testing import get_data
+from maasserver.testing import (
+    get_data,
+    reload_object,
+    )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
     TestCase,
@@ -266,6 +269,18 @@ class NodeTest(TestCase):
         node = factory.make_node(power_type=POWER_TYPE.DEFAULT)
         Config.objects.set_config('node_power_type', POWER_TYPE.DEFAULT)
         self.assertRaises(ValueError, node.get_effective_power_type)
+
+    def test_power_parameters(self):
+        node = factory.make_node(power_type=POWER_TYPE.DEFAULT)
+        parameters = dict(user="tarquin", address="10.1.2.3")
+        node.power_parameters = parameters
+        node.save()
+        node = reload_object(node)
+        self.assertEqual(parameters, node.power_parameters)
+
+    def test_power_parameters_default(self):
+        node = factory.make_node(power_type=POWER_TYPE.DEFAULT)
+        self.assertEqual("", node.power_parameters)
 
     def test_acquire(self):
         node = factory.make_node(status=NODE_STATUS.READY)

@@ -60,6 +60,7 @@ from django.db.models.signals import post_save
 from django.shortcuts import get_object_or_404
 from django.utils.safestring import mark_safe
 from maasserver import DefaultMeta
+from maasserver.fields import JSONObjectField
 from maasserver.enum import (
     ARCHITECTURE,
     ARCHITECTURE_CHOICES,
@@ -423,6 +424,9 @@ class Node(CleanSave, TimestampedModel):
     power_type = CharField(
         max_length=10, choices=POWER_TYPE_CHOICES, null=False, blank=True,
         default=POWER_TYPE.DEFAULT)
+
+    # JSON-encoded set of parameters for power control.
+    power_parameters = JSONObjectField(blank=True, default="")
 
     token = ForeignKey(
         Token, db_index=True, null=True, editable=False, unique=False)
