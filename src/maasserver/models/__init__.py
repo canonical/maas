@@ -685,6 +685,7 @@ def get_auth_tokens(user):
         user=user, token_type=Token.ACCESS, is_approved=True).order_by('id')
 
 
+# Scheduled for model migration on 2012-06-01
 class UserProfileManager(Manager):
     """A utility to manage the collection of UserProfile (or User).
 
@@ -708,6 +709,7 @@ class UserProfileManager(Manager):
         return User.objects.filter(id__in=user_ids)
 
 
+# Scheduled for model migration on 2012-06-01
 class UserProfile(CleanSave, Model):
     """A User profile to store MAAS specific methods and fields.
 
