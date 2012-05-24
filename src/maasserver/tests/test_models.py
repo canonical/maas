@@ -663,9 +663,12 @@ class NodeManagerTest(TestCase):
         self.assertEqual('stop', power_status[node.system_id])
 
     def test_stop_nodes_ignores_uneditable_nodes(self):
-        nodes = [self.make_node(factory.make_user()) for counter in range(3)]
-        ids = [node.system_id for node in nodes]
-        stoppable_node = nodes[0]
+        nodes = [
+            self.make_node_with_mac(
+                factory.make_user(), power_type=POWER_TYPE.WAKE_ON_LAN)
+            for counter in range(3)]
+        ids = [node.system_id for node, mac in nodes]
+        stoppable_node = nodes[0][0]
         self.assertItemsEqual(
             [stoppable_node],
             Node.objects.stop_nodes(ids, stoppable_node.owner))
@@ -687,6 +690,73 @@ class NodeManagerTest(TestCase):
                 fixture.tasks[0]['kwargs']['mac'],
             ))
 
+    def test_start_nodes_wakeonlan_prefers_power_parameters(self):
+        # If power_parameters is set we should prefer it to sifting
+        # through related MAC addresses.
+        fixture = self.useFixture(CeleryFixture())
+
+        user = factory.make_user()
+        preferred_mac = factory.getRandomMACAddress()
+        node, mac = self.make_node_with_mac(
+            user, power_type=POWER_TYPE.WAKE_ON_LAN,
+            power_parameters=dict(mac=preferred_mac))
+        output = Node.objects.start_nodes([node.system_id], user)
+
+        self.assertItemsEqual([node], output)
+        self.assertEqual(
+            (1, 'provisioningserver.tasks.power_on', preferred_mac),
+            (
+                len(fixture.tasks),
+                fixture.tasks[0]['task'].name,
+                fixture.tasks[0]['kwargs']['mac'],
+            ))
+
+    def test_start_nodes_wakeonlan_ignores_invalid_parameters(self):
+        # If node.power_params is set but doesn't have "mac" in it, then
+        # the node shouldn't be started.
+        fixture = self.useFixture(CeleryFixture())
+        user = factory.make_user()
+        node, mac = self.make_node_with_mac(
+            user, power_type=POWER_TYPE.WAKE_ON_LAN,
+            power_parameters=dict(jarjar="binks"))
+        output = Node.objects.start_nodes([node.system_id], user)
+        self.assertItemsEqual([], output)
+
+    def test_start_nodes_wakeonlan_ignores_empty_mac_parameter(self):
+        fixture = self.useFixture(CeleryFixture())
+        user = factory.make_user()
+        node, mac = self.make_node_with_mac(
+            user, power_type=POWER_TYPE.WAKE_ON_LAN,
+            power_parameters=dict(mac=""))
+        output = Node.objects.start_nodes([node.system_id], user)
+        self.assertItemsEqual([], output)
+        self.assertEqual(0, len(fixture.tasks))
+
+    def test_start_nodes_other_power_type(self):
+        # wakeonlan tests, above, are a special case. Test another type
+        # here that exclusively uses power_parameters from the node.
+        fixture = self.useFixture(CeleryFixture())
+        user = factory.make_user()
+        params = dict(
+            driver="qemu",
+            address="localhost",
+            user="nobody")
+        node, mac = self.make_node_with_mac(
+            user, power_type=POWER_TYPE.VIRSH, power_parameters=params)
+        output = Node.objects.start_nodes([node.system_id], user)
+
+        self.assertItemsEqual([node], output)
+        self.assertEqual(
+            (1, 'provisioningserver.tasks.power_on',
+                "qemu", "localhost", "nobody"),
+            (
+                len(fixture.tasks),
+                fixture.tasks[0]['task'].name,
+                fixture.tasks[0]['kwargs']['driver'],
+                fixture.tasks[0]['kwargs']['address'],
+                fixture.tasks[0]['kwargs']['user'],
+            ))
+
     def test_start_nodes_ignores_nodes_without_mac(self):
         user = factory.make_user()
         node = self.make_node(user)
@@ -697,7 +767,8 @@ class NodeManagerTest(TestCase):
     def test_start_nodes_ignores_uneditable_nodes(self):
         nodes = [
             self.make_node_with_mac(
-                factory.make_user())[0] for counter in range(3)]
+                factory.make_user(), power_type=POWER_TYPE.WAKE_ON_LAN)[0]
+                for counter in range(3)]
         ids = [node.system_id for node in nodes]
         startable_node = nodes[0]
         self.assertItemsEqual(
