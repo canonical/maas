@@ -363,7 +363,7 @@ class NodeManager(Manager):
                     try:
                         macaddress = node.macaddress_set.order_by('created')[0]
                     except IndexError:
-                        pass # No MAC recorded for this node.
+                        pass  # No MAC recorded for this node.
                     else:
                         mac = macaddress.mac_address
                 if mac is not None and mac != "":
