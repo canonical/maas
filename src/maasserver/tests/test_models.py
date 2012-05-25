@@ -42,8 +42,6 @@ from maasserver.models import (
     GENERIC_CONSUMER,
     get_auth_tokens,
     get_db_state,
-    get_html_display_for_key,
-    HELLIPSIS,
     MACAddress,
     Node,
     NODE_TRANSITIONS,
@@ -51,6 +49,10 @@ from maasserver.models import (
     SSHKey,
     SYSTEM_USERS,
     UserProfile,
+    )
+from maasserver.models.sshkey import (
+    get_html_display_for_key,
+    HELLIPSIS,
     validate_ssh_public_key,
     )
 from maasserver.provisioning import get_provisioning_api_proxy
