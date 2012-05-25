@@ -692,6 +692,23 @@ class NodeManagerTest(TestCase):
                 fixture.tasks[0]['kwargs']['mac'],
             ))
 
+    def test_start_nodes_uses_default_power_type_if_not_node_specific(self):
+        # If the node has a power_type set to POWER_TYPE.DEFAULT,
+        # NodeManager.start_node(this_node) should use the default
+        # power_type.
+        fixture = self.useFixture(CeleryFixture())
+
+        Config.objects.set_config('node_power_type', POWER_TYPE.WAKE_ON_LAN)
+        user = factory.make_user()
+        node, unused = self.make_node_with_mac(
+            user, power_type=POWER_TYPE.DEFAULT)
+        output = Node.objects.start_nodes([node.system_id], user)
+
+        self.assertItemsEqual([node], output)
+        self.assertEqual(
+            (1, 'provisioningserver.tasks.power_on'),
+            (len(fixture.tasks), fixture.tasks[0]['task'].name))
+
     def test_start_nodes_wakeonlan_prefers_power_parameters(self):
         # If power_parameters is set we should prefer it to sifting
         # through related MAC addresses.
