@@ -13,6 +13,7 @@ __metaclass__ = type
 __all__ = []
 
 from contextlib import closing
+from os.path import relpath
 from socket import (
     gethostbyname,
     gethostname,
@@ -39,7 +40,7 @@ class TestHTTPServerFixture(TestCase):
         self.assertEqual(expected_url, fixture.url)
 
     def test_use(self):
-        filename = "setup.py"
+        filename = relpath(__file__)
         self.assertThat(filename, FileExists())
         with HTTPServerFixture() as httpd:
             url = urljoin(httpd.url, filename)
