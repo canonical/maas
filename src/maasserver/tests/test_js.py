@@ -10,159 +10,182 @@ from __future__ import (
     )
 
 __metaclass__ = type
-__all__ = [
-    'TestYUIUnitTests',
-    ]
+__all__ = []
 
-import BaseHTTPServer
+from abc import (
+    ABCMeta,
+    abstractmethod,
+    )
+from glob import glob
 import json
-import logging
 import os
-from os.path import dirname
-import SimpleHTTPServer
-import SocketServer
-import string
+from os.path import abspath
+from urlparse import urljoin
 
-from fixtures import Fixture
-from pyvirtualdisplay import Display
+from maastesting import yui3
+from maastesting.fixtures import (
+    DisplayFixture,
+    SSTFixture,
+    )
+from maastesting.httpd import HTTPServerFixture
+from maastesting.testcase import TestCase
+from maastesting.utils import extract_word_list
+from nose.tools import nottest
+from saucelabsfixture import (
+    SauceConnectFixture,
+    SSTOnDemandFixture,
+    )
+from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 from sst.actions import (
     assert_text,
     get_element,
     go_to,
-    start,
-    stop,
     wait_for,
     )
-from testscenarios import TestWithScenarios
-from testtools import TestCase
+from testtools import clone_test_with_new_id
 
-# Base path where the HTML files will be searched.
-BASE_PATH = 'src/maasserver/static/js/tests/'
-
-
-class LoggerSilencerFixture(Fixture):
-    """Fixture to change the log level of loggers.
-
-    All the loggers with names self.logger_names will have their log level
-    changed to self.level (logging.ERROR by default).
-    """
-
-    def __init__(self, names, level=logging.ERROR):
-        super(LoggerSilencerFixture, self).__init__()
-        self.names = names
-        self.level = level
-
-    def setUp(self):
-        super(LoggerSilencerFixture, self).setUp()
-        for name in self.names:
-            logger = logging.getLogger(name)
-            self.addCleanup(logger.setLevel, logger.level)
-            logger.setLevel(self.level)
+# Nose is over-zealous.
+nottest(clone_test_with_new_id)
 
 
-class DisplayFixture(Fixture):
-    """Fixture to create a virtual display with pyvirtualdisplay.Display."""
-
-    logger_names = ['easyprocess', 'pyvirtualdisplay']
-
-    def __init__(self, visible=False, size=(1280, 1024)):
-        super(DisplayFixture, self).__init__()
-        self.visible = visible
-        self.size = size
-
-    def setUp(self):
-        super(DisplayFixture, self).setUp()
-        self.useFixture(LoggerSilencerFixture(self.logger_names))
-        self.display = Display(
-            visible=self.visible, size=self.size)
-        self.display.start()
-        self.addCleanup(self.display.stop)
-
-
-class ThreadingHTTPServer(SocketServer.ThreadingMixIn,
-                          BaseHTTPServer.HTTPServer):
-    """A simple HTTP Server that whill run in it's own thread."""
-
-
-class SilentHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
-    # SimpleHTTPRequestHandler logs to stdout: silence it.
-    log_request = lambda *args, **kwargs: None
-    log_error = lambda *args, **kwargs: None
-
-
-class SSTFixture(Fixture):
-    """Setup a javascript-enabled testing browser instance with SST."""
-
-    logger_names = ['selenium.webdriver.remote.remote_connection']
-
-    def __init__(self, driver):
-        self.driver = driver
-
-    def setUp(self):
-        super(SSTFixture, self).setUp()
-        start(
-              self.driver, '', 'ANY', session_name=None,
-              javascript_disabled=False,
-              assume_trusted_cert_issuer=False,
-              webdriver_remote=None)
-        self.useFixture(LoggerSilencerFixture(self.logger_names))
-        self.addCleanup(stop)
-
-
-project_home = dirname(dirname(dirname(dirname(__file__))))
-
-
-def get_drivers_from_env():
-    """Parse the environment variable MAAS_TEST_BROWSERS to get a list of
+def get_browser_names_from_env():
+    """Parse the environment variable ``MAAS_TEST_BROWSERS`` to get a list of
     the browsers to use for the JavaScript tests.
+
     Returns ['Firefox'] if the environment variable is not present.
     """
-    return map(
-        string.strip,
-        os.environ.get('MAAS_TEST_BROWSERS', 'Firefox').split(','))
+    names = os.environ.get('MAAS_TEST_BROWSERS', 'Firefox')
+    return extract_word_list(names)
 
 
-class TestYUIUnitTests(TestWithScenarios, TestCase):
+# See <https://saucelabs.com/docs/ondemand/browsers/env/python/se2/linux> for
+# more information on browser/platform choices.
+remote_browsers = {
+    "ie7": dict(
+        DesiredCapabilities.INTERNETEXPLORER,
+        version="7", platform="XP"),
+    "ie8": dict(
+        DesiredCapabilities.INTERNETEXPLORER,
+        version="8", platform="XP"),
+    "ie9": dict(
+        DesiredCapabilities.INTERNETEXPLORER,
+        version="9", platform="VISTA"),
+    "chrome": dict(
+        DesiredCapabilities.CHROME,
+        platform="VISTA"),
+    }
 
-    scenarios = [
-        (driver, dict(driver=driver)) for driver in get_drivers_from_env()]
 
-    def setUp(self):
-        super(TestYUIUnitTests, self).setUp()
-        self.useFixture(DisplayFixture())
-        self.useFixture(SSTFixture(self.driver))
+def get_remote_browser_names_from_env():
+    """Parse the environment variable ``MAAS_REMOTE_TEST_BROWSERS`` to get a
+    list of the browsers to use for the JavaScript tests.
 
-    def _get_failed_tests_message(self, results):
-        """Return a readable error message with the list of the failed tests.
+    Returns [] if the environment variable is not present.
+    """
+    names = os.environ.get('MAAS_REMOTE_TEST_BROWSERS', '')
+    names = [name.lower() for name in extract_word_list(names)]
+    unrecognised = set(names).difference(remote_browsers)
+    if len(unrecognised) > 0:
+        raise ValueError("Unrecognised browsers: %r" % unrecognised)
+    return names
 
-        Given a YUI3 results_ json object, return a readable error message.
 
-        .. _results: http://yuilibrary.com/yui/docs/test/
+class YUIUnitTestsBase:
+    """Base class for running YUI3 tests in a variety of browsers.
+
+    Calls to instance of this class are intercepted. If the call is to a clone
+    the superclass is called, and thus the test executes as normal. Otherwise
+    the `multiply` method is called. This method can then arrange for the
+    testcase to be run in multiple environments, cloning the test for each.
+
+    In this way it can efficiently set-up and tear-down resources for the
+    tests, and also report on a per-test basis. If test resources were fully
+    working for MAAS tests this might not be necessary, but at the time of
+    implementation this was a solution with the lowest friction (at least,
+    lower than ripping nose out, or teaching it about test resources).
+    """
+
+    __metaclass__ = ABCMeta
+
+    test_paths = glob("src/maasserver/static/js/tests/*.html")
+    assert test_paths != [], "No JavaScript unit test pages found."
+
+    # Indicates if this test has been cloned.
+    cloned = False
+
+    def clone(self, suffix):
+        # Clone this test with a new suffix.
+        test = clone_test_with_new_id(
+            self, "%s#%s" % (self.id(), suffix))
+        test.cloned = True
+        return test
+
+    @abstractmethod
+    def multiply(self, result):
+        """Run the test for each of a specified range of browsers.
+
+        This method should sort out shared fixtures.
         """
-        result = []
-        suites = [item for item in results.values() if isinstance(item, dict)]
-        for suite in suites:
-            if suite['failed'] != 0:
-                tests = [item for item in suite.values()
-                         if isinstance(item, dict)]
-                for test in tests:
-                    if test['result'] != 'pass':
-                        result.append('\n%s.%s: %s\n' % (
-                            suite['name'], test['name'], test['message']))
-        return ''.join(result)
+
+    def __call__(self, result=None):
+        if self.cloned:
+            # This test has been cloned; just call-up to run the test.
+            super(YUIUnitTestsBase, self).__call__(result)
+        else:
+            self.multiply(result)
 
     def test_YUI3_unit_tests(self):
-        # Find all the HTML files in BASE_PATH.
-        for fname in os.listdir(BASE_PATH):
-            if fname.endswith('.html'):
-                # Load the page and then wait for #suite to contain
-                # 'done'.  Read the results in '#test_results'.
-                file_path = os.path.join(project_home, BASE_PATH, fname)
-                go_to('file://%s' % file_path)
-                wait_for(assert_text, 'suite', 'done')
-                results = json.loads(get_element(id='test_results').text)
-                if results['failed'] != 0:
-                    raise AssertionError(
-                        '%d test(s) failed.\n%s' % (
-                            results['failed'],
-                            self._get_failed_tests_message(results)))
+        # Load the page and then wait for #suite to contain
+        # 'done'.  Read the results in '#test_results'.
+        go_to(self.test_url)
+        wait_for(assert_text, 'suite', 'done')
+        results = json.loads(get_element(id='test_results').text)
+        if results['failed'] != 0:
+            message = '%d test(s) failed.\n\n%s' % (
+                results['failed'], yui3.get_failed_tests_message(results))
+            self.fail(message)
+
+
+class YUIUnitTestsLocal(YUIUnitTestsBase, TestCase):
+
+    scenarios = tuple(
+        (path, {"test_url": "file://%s" % abspath(path)})
+        for path in YUIUnitTestsBase.test_paths)
+
+    def multiply(self, result):
+        # Run this test locally for each browser requested. Use the same
+        # display fixture for all browsers. This is done here so that all
+        # scenarios are played out for each browser in turn; starting and
+        # stopping browsers is costly.
+        with DisplayFixture():
+            for browser_name in get_browser_names_from_env():
+                browser_test = self.clone("local:%s" % browser_name)
+                with SSTFixture(browser_name):
+                    browser_test(result)
+
+
+class YUIUnitTestsRemote(YUIUnitTestsBase, TestCase):
+
+    def multiply(self, result):
+        # Now run this test remotely for each requested Sauce OnDemand
+        # browser requested.
+        browser_names = get_remote_browser_names_from_env()
+        if len(browser_names) == 0:
+            return
+
+        # A web server is needed so the OnDemand service can obtain local
+        # tests. Be careful when choosing web server ports; only a scattering
+        # are proxied. See <https://saucelabs.com/docs/ondemand/connect>.
+        with HTTPServerFixture(port=5555) as httpd:
+            scenarios = tuple(
+                (path, {"test_url": urljoin(httpd.url, path)})
+                for path in self.test_paths)
+            with SauceConnectFixture() as sauce_connect:
+                for browser_name in browser_names:
+                    capabilities = remote_browsers[browser_name]
+                    sst_ondemand = SSTOnDemandFixture(
+                        capabilities, sauce_connect.control_url)
+                    with sst_ondemand:
+                        browser_test = self.clone("remote:%s" % browser_name)
+                        browser_test.scenarios = scenarios
+                        browser_test(result)

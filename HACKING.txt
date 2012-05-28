@@ -124,6 +124,7 @@ tests that can be run against it::
 Adjust ``PSERV_TEST_COBBLER_URL`` as necessary. **Warning:** these
 tests will modify your Cobbler database.
 
+
 Running JavaScript tests
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -138,6 +139,37 @@ with Firefox and Chrome::
     $ export MAAS_TEST_BROWSERS="Firefox, Chrome"
 
 .. _Selenium: http://seleniumhq.org/
+
+
+Running JavaScript tests with browsers on other platforms
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The JavaScript tests can be run using the `SauceLabs' OnDemand`_
+service. There is a free version of this that provides 45 minutes a
+month of testing. To get started, `sign up`_ and go to your `account
+page`_, select the *Account* tab, and click *View my API Key*. Now
+save your credentials::
+
+  $ mkdir -p ~/.saucelabs/connect
+  $ chmod go-rwx ~/.saucelabs/connect
+  $ echo "${username} ${api_key}" > ~/.saucelabs/connect/credentials
+
+(You need to substitute your SauceLabs username and API key above.)
+
+Next, like when running Selenium tests locally, you need to specify
+the browsers to run on. At the time of writing there are four to
+choose from, all running on a Windows host::
+
+  $ export MAAS_REMOTE_TEST_BROWSERS="IE7, IE8, IE9, Chrome"
+
+By default, when ``MAAS_REMOTE_TEST_BROWSERS`` is not specified,
+testing via OnDemand is *not* attempted.
+
+.. _SauceLabs' OnDemand: http://saucelabs.com/
+
+.. _sign up: http://saucelabs.com/pricing
+
+.. _account page: https://saucelabs.com/account
 
 
 Development MAAS server setup

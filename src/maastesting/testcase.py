@@ -14,13 +14,38 @@ __all__ = [
     'TestCase',
     ]
 
+from contextlib import contextmanager
 import unittest
 
 from fixtures import TempDir
 from maastesting.factory import factory
 from maastesting.scenarios import WithScenarios
+from nose.proxy import ResultProxy
+from nose.tools import nottest
 import testresources
 import testtools
+
+
+@nottest
+@contextmanager
+def active_test(result, test):
+    """Force nose to report for the test that's running.
+
+    Nose presents a proxy result and passes on results using only the
+    top-level test, rather than the actual running test. This attempts to undo
+    this dubious choice.
+
+    If the result is not a nose proxy then this is a no-op.
+    """
+    if isinstance(result, ResultProxy):
+        orig = result.test.test
+        result.test.test = test
+        try:
+            yield
+        finally:
+            result.test.test = orig
+    else:
+        yield
 
 
 class TestCase(WithScenarios, testtools.TestCase):
@@ -86,3 +111,11 @@ class TestCase(WithScenarios, testtools.TestCase):
     # Django's implementation for this seems to be broken and was
     # probably only added to support compatibility with python 2.6.
     assertItemsEqual = unittest.TestCase.assertItemsEqual
+
+    def run(self, result=None):
+        with active_test(result, self):
+            super(TestCase, self).run(result)
+
+    def __call__(self, result=None):
+        with active_test(result, self):
+            super(TestCase, self).__call__(result)
