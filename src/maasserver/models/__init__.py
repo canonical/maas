@@ -589,9 +589,9 @@ class Node(CleanSave, TimestampedModel):
             power_type = Config.objects.get_config('node_power_type')
             if power_type == POWER_TYPE.DEFAULT:
                 raise ValueError(
-                    "Default power type is configured to the default, but "
-                    "that means to use the configured default.  It needs to "
-                    "be confirued to another, more useful value.")
+                    "Node power type is set to the default, but "
+                    "the default is not yet configured.  The default "
+                    "needs to be configured to another, more useful value.")
         else:
             power_type = self.power_type
         return power_type
