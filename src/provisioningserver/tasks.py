@@ -11,7 +11,8 @@ from __future__ import (
 
 __metaclass__ = type
 __all__ = [
-    'power_on'
+    'power_off',
+    'power_on',
     ]
 
 
@@ -22,8 +23,17 @@ from provisioningserver.power.poweraction import (
     )
 
 
-@task
-def power_on(power_type, **kwargs):
+def issue_power_action(power_type, power_change, **kwargs):
+    """Issue a power action to a node.
+
+    :param power_type: The node's power type.  Must have a corresponding
+        power template.
+    :param power_change: The change to request: 'on' or 'off'.
+    :param **kwargs: Keyword arguments are passed on to :class:`PowerAction`.
+    """
+    assert power_change in ('on', 'off'), (
+        "Unknown power change keyword: %s" % power_change)
+    kwargs['power_change'] = power_change
     try:
         pa = PowerAction(power_type)
         pa.execute(**kwargs)
@@ -35,3 +45,15 @@ def power_on(power_type, **kwargs):
         raise
 
     # TODO: signal to webapp that it worked.
+
+
+@task
+def power_on(power_type, **kwargs):
+    """Turn a node on."""
+    issue_power_action(power_type, 'on', **kwargs)
+
+
+@task
+def power_off(power_type, **kwargs):
+    """Turn a node off."""
+    issue_power_action(power_type, 'off', **kwargs)

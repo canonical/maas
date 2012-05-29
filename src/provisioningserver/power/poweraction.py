@@ -45,7 +45,7 @@ class PowerAction:
         basedir = POWER_TEMPLATES_DIR
         self.path = os.path.join(basedir, power_type + ".template")
         if not os.path.exists(self.path):
-            raise UnknownPowerType
+            raise UnknownPowerType(power_type)
 
         self.power_type = power_type
 

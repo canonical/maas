@@ -1,6 +1,18 @@
-set mac = %(mac)s
-if [ -x /usr/bin/wakeonlan ]; then
+mac='%(mac)s'
+power_change='%(power_change)s'
+
+if [ "${power_change}" != 'on' ]
+then
+    echo "There is no way to power down a node through etherwake." >&2
+    exit 1
+elif [ -x /usr/bin/wakeonlan ]
+then
     /usr/bin/wakeonlan $mac
-elif [ -x /usr/sbin/etherwake ]; then
+elif [ -x /usr/sbin/etherwake ]
+then
     /usr/sbin/etherwake $mac
+else
+    echo "No wakeonlan or etherwake program found." >&2
 fi
+
+exit 0

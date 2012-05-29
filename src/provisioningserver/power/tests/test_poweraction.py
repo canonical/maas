@@ -104,3 +104,9 @@ class TestPowerAction(TestCase):
         exception = self.assertRaises(PowerActionFail, self.run_action, path)
         self.assertEqual(
             "ether_wake failed with return code 127", exception.message)
+
+    def test_wake_on_lan_cannot_shut_down_node(self):
+        pa = PowerAction(POWER_TYPE.WAKE_ON_LAN)
+        self.assertRaises(
+            PowerActionFail,
+            pa.execute, power_change='off', mac=factory.getRandomMACAddress())
