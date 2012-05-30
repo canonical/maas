@@ -915,6 +915,7 @@ class AuthTokensTest(TestCase):
         self.assertNotIn(token, get_auth_tokens(user))
 
 
+# Scheduled for model migration on 2012-06-05
 class UserProfileTest(TestCase):
 
     def test_profile_creation(self):
