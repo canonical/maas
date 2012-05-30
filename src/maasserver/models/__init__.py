@@ -340,35 +340,24 @@ class NodeManager(Manager):
         :return: Those Nodes for which power-on was actually requested.
         :rtype: list
         """
-        # TODO: File structure needs sorting out to avoid this circular
-        # import dance.
+        # Avoid circular imports.
         from metadataserver.models import NodeUserData
+
         nodes = self.get_nodes(by_user, NODE_PERMISSION.EDIT, ids=ids)
-        processed_nodes = []
         for node in nodes:
             NodeUserData.objects.set_user_data(node, user_data)
-            # Wake on LAN is a special case, deal with it first.
+        processed_nodes = []
+        for node in nodes:
+            power_params = node.get_effective_power_parameters()
             node_power_type = node.get_effective_power_type()
             if node_power_type == POWER_TYPE.WAKE_ON_LAN:
-                # If power_parameters is set, use it.  Otherwise, use the
-                # first registered MAC address.
-                mac = None
-                if node.power_parameters:
-                    mac = node.power_parameters.get("mac", None)
-                else:
-                    try:
-                        macaddress = node.macaddress_set.order_by('created')[0]
-                    except IndexError:
-                        pass  # No MAC recorded for this node.
-                    else:
-                        mac = macaddress.mac_address
-                if mac is not None and mac != "":
-                    power_on.delay(node_power_type, mac=mac)
-                    processed_nodes.append(node)
+                mac = power_params.get('mac')
+                do_start = (mac != '' and mac is not None)
             else:
-                if node.power_parameters:
-                    power_on.delay(node_power_type, **node.power_parameters)
-                    processed_nodes.append(node)
+                do_start = True
+            if do_start:
+                power_on.delay(node_power_type, **power_params)
+                processed_nodes.append(node)
         return processed_nodes
 
 
@@ -595,6 +584,31 @@ class Node(CleanSave, TimestampedModel):
         else:
             power_type = self.power_type
         return power_type
+
+    def get_primary_mac(self):
+        """Return the primary :class:`MACAddress` for this node."""
+        macs = self.macaddress_set.order_by('created')[:1]
+        if len(macs) > 0:
+            return macs[0]
+        else:
+            return None
+
+    def get_effective_power_parameters(self):
+        """Return effective power parameters, including any defaults."""
+        if self.power_parameters:
+            power_params = self.power_parameters.copy()
+        else:
+            # An empty power_parameters comes out as an empty unicode string!
+            power_params = {}
+
+        power_params.setdefault('system_id', self.system_id)
+        # The "mac" parameter defaults to the node's primary MAC
+        # address, but only if no power parameters were set at all.
+        if not self.power_parameters:
+            primary_mac = self.get_primary_mac()
+            if primary_mac is not None:
+                power_params['mac'] = primary_mac.mac_address
+        return power_params
 
     def acquire(self, user, token=None):
         """Mark commissioned node as acquired by the given user and token."""

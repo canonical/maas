@@ -12,7 +12,10 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
-from datetime import datetime
+from datetime import (
+    datetime,
+    timedelta,
+    )
 
 from django.conf import settings
 from django.contrib.auth.models import User
@@ -187,6 +190,27 @@ class NodeTest(TestCase):
             node=node, mac_address='AA:BB:CC:DD:EE:FF').count()
         self.assertEqual(0, macs)
 
+    def test_get_primary_mac_returns_mac_address(self):
+        node = factory.make_node()
+        mac = factory.getRandomMACAddress()
+        node.add_mac_address(mac)
+        self.assertEqual(mac, node.get_primary_mac().mac_address)
+
+    def test_get_primary_mac_returns_None_if_node_has_no_mac(self):
+        node = factory.make_node()
+        self.assertIsNone(node.get_primary_mac())
+
+    def test_get_primary_mac_returns_oldest_mac(self):
+        node = factory.make_node()
+        macs = [factory.getRandomMACAddress() for counter in range(3)]
+        offset = timedelta(0)
+        for mac in macs:
+            mac_address = node.add_mac_address(mac)
+            mac_address.created += offset
+            mac_address.save()
+            offset += timedelta(1)
+        self.assertEqual(macs[0], node.get_primary_mac().mac_address)
+
     def test_delete_node_deletes_related_mac(self):
         node = factory.make_node()
         mac = node.add_mac_address('AA:BB:CC:DD:EE:FF')
@@ -266,6 +290,31 @@ class NodeTest(TestCase):
     def test_power_parameters_default(self):
         node = factory.make_node(power_type=POWER_TYPE.DEFAULT)
         self.assertEqual("", node.power_parameters)
+
+    def test_get_effective_power_parameters_returns_power_parameters(self):
+        params = {'test_parameter': factory.getRandomString()}
+        node = factory.make_node(power_parameters=params)
+        self.assertEqual(
+            params['test_parameter'],
+            node.get_effective_power_parameters()['test_parameter'])
+
+    def test_get_effective_power_parameters_adds_system_id(self):
+        node = factory.make_node()
+        self.assertEqual(
+            node.system_id,
+            node.get_effective_power_parameters()['system_id'])
+
+    def test_get_effective_power_parameters_adds_mac_if_no_params_set(self):
+        node = factory.make_node()
+        mac = factory.getRandomMACAddress()
+        node.add_mac_address(mac)
+        self.assertEqual(mac, node.get_effective_power_parameters()['mac'])
+
+    def test_get_effective_power_parameters_adds_no_mac_if_params_set(self):
+        node = factory.make_node(power_parameters={'foo': 'bar'})
+        mac = factory.getRandomMACAddress()
+        node.add_mac_address(mac)
+        self.assertNotIn('mac', node.get_effective_power_parameters())
 
     def test_acquire(self):
         node = factory.make_node(status=NODE_STATUS.READY)
