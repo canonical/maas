@@ -598,6 +598,8 @@ class Node(CleanSave, TimestampedModel):
             power_params = {}
 
         power_params.setdefault('system_id', self.system_id)
+        power_params.setdefault('virsh', '/usr/bin/virsh')
+
         # The "mac" parameter defaults to the node's primary MAC
         # address, but only if no power parameters were set at all.
         if not self.power_parameters:

@@ -72,6 +72,7 @@ from piston.models import (
     Token,
     )
 from provisioningserver.enum import POWER_TYPE
+from provisioningserver.power.poweraction import PowerAction
 from testtools.matchers import FileContains
 
 
@@ -315,6 +316,32 @@ class NodeTest(TestCase):
         mac = factory.getRandomMACAddress()
         node.add_mac_address(mac)
         self.assertNotIn('mac', node.get_effective_power_parameters())
+
+    def test_get_effective_power_parameters_provides_usable_defaults(self):
+        # For some power types at least, the defaults provided by
+        # get_effective_power_parameters are enough to get a basic setup
+        # working.
+        configless_power_types = [
+            POWER_TYPE.WAKE_ON_LAN,
+            POWER_TYPE.VIRSH,
+            ]
+        # We don't actually want to fire off power events, but we'll go
+        # through the motions right up to the point where we'd normally
+        # run shell commands.
+        self.patch(PowerAction, 'run_shell', lambda *args, **kwargs: ('', ''))
+        user = factory.make_admin()
+        nodes = [
+            factory.make_node(power_type=power_type)
+            for power_type in configless_power_types]
+        for node in nodes:
+            node.add_mac_address(factory.getRandomMACAddress())
+        node_power_types = {
+            node: node.get_effective_power_type()
+            for node in nodes}
+        started_nodes = Node.objects.start_nodes(
+            list(node_power_types.keys()), user)
+        successful_types = [node_power_types[node] for node in started_nodes]
+        self.assertItemsEqual(configless_power_types, successful_types)
 
     def test_acquire(self):
         node = factory.make_node(status=NODE_STATUS.READY)
@@ -810,31 +837,6 @@ class NodeManagerTest(TestCase):
         output = Node.objects.start_nodes([node.system_id], user)
         self.assertItemsEqual([], output)
         self.assertEqual([], fixture.tasks)
-
-    def test_start_nodes_other_power_type(self):
-        # wakeonlan tests, above, are a special case. Test another type
-        # here that exclusively uses power_parameters from the node.
-        fixture = self.useFixture(CeleryFixture())
-        user = factory.make_user()
-        params = dict(
-            driver="qemu",
-            address="localhost",
-            user="nobody")
-        node, mac = self.make_node_with_mac(
-            user, power_type=POWER_TYPE.VIRSH, power_parameters=params)
-        output = Node.objects.start_nodes([node.system_id], user)
-
-        self.assertItemsEqual([node], output)
-        self.assertEqual(
-            (1, 'provisioningserver.tasks.power_on',
-                "qemu", "localhost", "nobody"),
-            (
-                len(fixture.tasks),
-                fixture.tasks[0]['task'].name,
-                fixture.tasks[0]['kwargs']['driver'],
-                fixture.tasks[0]['kwargs']['address'],
-                fixture.tasks[0]['kwargs']['user'],
-            ))
 
     def test_start_nodes_ignores_nodes_without_mac(self):
         user = factory.make_user()

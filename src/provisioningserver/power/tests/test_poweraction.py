@@ -110,3 +110,17 @@ class TestPowerAction(TestCase):
         self.assertRaises(
             PowerActionFail,
             pa.execute, power_change='off', mac=factory.getRandomMACAddress())
+
+    def test_virsh_checks_vm_state(self):
+        # We can't test the virsh template in detail (and it may be
+        # customized), but by making it use "echo" instead of a real
+        # virsh we can make it get a bogus answer from its status check.
+        # The bogus answer is actually the rest of the virsh command
+        # line.  It will complain about this and fail.
+        action = PowerAction(POWER_TYPE.VIRSH)
+        script = action.render_template(
+            action.get_template(), power_change='on',
+            virsh_url='qemu://example.com/', system_id='mysystem',
+            virsh='echo')
+        stdout, stderr = action.run_shell(script)
+        self.assertIn("Got unknown power state from virsh", stderr)

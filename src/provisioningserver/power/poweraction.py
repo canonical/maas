@@ -62,22 +62,21 @@ class PowerAction:
                 "Template is missing at least the %s parameter." % e.message)
         return rendered
 
-    def execute(self, **kwargs):
-        """Execute the template.
+    def run_shell(self, commands):
+        """Execute raw shell script (as rendered from a template).
 
-        Any supplied parameters will be passed to the template as substitution
-        values.
+        :param commands: String containing shell script.
+        :param **kwargs: Keyword arguments are passed on to the template as
+            substitution values.
+        :return: Tuple of strings: stdout, stderr.
         """
-        template = self.get_template()
-        rendered = self.render_template(template, **kwargs)
-
         # This might need retrying but it could be better to leave that
         # to the individual scripts.
         try:
             proc = subprocess.Popen(
-                rendered, shell=True, stdout=subprocess.PIPE,
+                commands, shell=True, stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE, close_fds=True)
-        except OSError, e:
+        except OSError as e:
             raise PowerActionFail(e)
 
         stdout, stderr = proc.communicate()
@@ -86,3 +85,14 @@ class PowerAction:
         if code != 0:
             raise PowerActionFail("%s failed with return code %s" % (
                 self.power_type, code))
+        return stdout, stderr
+
+    def execute(self, **kwargs):
+        """Execute the template.
+
+        Any supplied parameters will be passed to the template as substitution
+        values.
+        """
+        template = self.get_template()
+        rendered = self.render_template(template, **kwargs)
+        self.run_shell(rendered)

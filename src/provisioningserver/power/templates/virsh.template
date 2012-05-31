@@ -1,1 +1,49 @@
-# FIXME: Doing nothing yet.
+# Control virtual system's "power" through virsh.
+
+# Parameters.
+power_change="%(power_change)s"
+virsh_url="%(virsh_url)s"
+system_id="%(system_id)s"
+virsh="%(virsh)s"
+
+
+# Choose command for virsh to make the requested power change happen.
+formulate_power_command() {
+  if [ ${power_change} = 'on' ]
+  then
+      echo 'start'
+  else
+      echo 'destroy'
+  fi
+}
+
+
+# Express system's current state as expressed by virsh as "on" or "off".
+formulate_power_state() {
+    case $1 in
+    'running') echo 'on' ;;
+    'shut off') echo 'off' ;;
+    *)
+        echo "Got unknown power state from virsh: '$1'" >&2
+        exit 1
+    esac
+}
+
+
+# Issue command to virsh, for the given system.
+issue_virsh_command() {
+    ${virsh} --connect ${virsh_url}/system $1 ${system_id}
+}
+
+
+# Get the given system's power state: 'on' or 'off'.
+get_power_state() {
+    virsh_state=$(issue_virsh_command domstate)
+    formulate_power_state ${virsh_state}
+}
+
+
+if [ "$(get_power_state)" != "${power_change}" ]
+then
+    issue_virsh_command $(formulate_power_command)
+fi
