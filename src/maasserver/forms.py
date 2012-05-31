@@ -13,6 +13,7 @@ __metaclass__ = type
 __all__ = [
     "CommissioningForm",
     "get_action_form",
+    "get_node_edit_form",
     "HostnameFormField",
     "NodeForm",
     "MACAddressForm",
@@ -110,7 +111,8 @@ class UINodeEditForm(ModelForm):
 
     after_commissioning_action = forms.ChoiceField(
         label="After commissioning",
-        choices=NODE_AFTER_COMMISSIONING_ACTION_CHOICES)
+        choices=NODE_AFTER_COMMISSIONING_ACTION_CHOICES,
+        required=False)
 
     class Meta:
         model = Node
@@ -124,7 +126,8 @@ class UIAdminNodeEditForm(ModelForm):
 
     after_commissioning_action = forms.ChoiceField(
         label="After commissioning",
-        choices=NODE_AFTER_COMMISSIONING_ACTION_CHOICES)
+        choices=NODE_AFTER_COMMISSIONING_ACTION_CHOICES,
+        required=False)
 
     class Meta:
         model = Node
@@ -133,6 +136,13 @@ class UIAdminNodeEditForm(ModelForm):
             'after_commissioning_action',
             'power_type',
             )
+
+
+def get_node_edit_form(user):
+    if user.is_superuser:
+        return UIAdminNodeEditForm
+    else:
+        return UINodeEditForm
 
 
 class MACAddressForm(ModelForm):

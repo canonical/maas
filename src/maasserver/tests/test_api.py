@@ -35,11 +35,11 @@ from django.http import QueryDict
 from fixtures import Fixture
 from maasserver import api
 from maasserver.api import (
-    EDITABLE_NODE_FIELDS,
     extract_constraints,
     extract_oauth_key,
     extract_oauth_key_from_auth_header,
     get_oauth_token,
+    get_overrided_query_dict,
     )
 from maasserver.enum import (
     ARCHITECTURE_CHOICES,
@@ -73,7 +73,10 @@ from metadataserver.models import (
     NodeUserData,
     )
 from metadataserver.nodeinituser import get_node_init_user
-from provisioningserver.enum import POWER_TYPE
+from provisioningserver.enum import (
+    POWER_TYPE,
+    POWER_TYPE_CHOICES,
+    )
 
 
 class APIv10TestMixin:
@@ -150,6 +153,21 @@ class TestModuleHelpers(TestCase):
         self.assertEqual(
             {'name': name},
             extract_constraints(QueryDict('name=%s' % name)))
+
+    def test_get_overrided_query_dict_returns_QueryDict(self):
+        defaults = {factory.getRandomString(): factory.getRandomString()}
+        results = get_overrided_query_dict(defaults, QueryDict(''))
+        expected_results = QueryDict('').copy()
+        expected_results.update(defaults)
+        self.assertEqual(expected_results, results)
+
+    def test_get_overrided_query_dict_values_in_data_replaces_defaults(self):
+        key = factory.getRandomString()
+        defaults = {key: factory.getRandomString()}
+        data_value = factory.getRandomString()
+        data = {key: data_value}
+        results = get_overrided_query_dict(defaults, data)
+        self.assertEqual([data_value], results.getlist(key))
 
 
 class MultipleUsersScenarios:
@@ -866,20 +884,55 @@ class TestNodeAPI(APITestCase):
         self.assertEqual(0, Node.objects.filter(hostname='diane').count())
         self.assertEqual(1, Node.objects.filter(hostname='francis').count())
 
-    def test_PUT_rejects_unknown_fields(self):
-        node = factory.make_node(owner=self.logged_in_user)
+    def test_PUT_ignores_unknown_fields(self):
+        node = factory.make_node(
+            owner=self.logged_in_user,
+            after_commissioning_action=(
+                NODE_AFTER_COMMISSIONING_ACTION.DEFAULT))
         field = factory.getRandomString()
         response = self.client.put(
             self.get_node_uri(node),
-            {field: factory.getRandomString}
+            {field: factory.getRandomString()}
             )
 
-        error_msg = (
-            "Unable to set field(s): %s. Allowed fields are: %s." % (
-                (field, ','.join(EDITABLE_NODE_FIELDS))))
+        self.assertEqual(httplib.OK, response.status_code)
+
+    def test_PUT_admin_can_change_power_type(self):
+        self.become_admin()
+        original_power_type = factory.getRandomChoice(
+            POWER_TYPE_CHOICES)
+        new_power_type = factory.getRandomChoice(
+            POWER_TYPE_CHOICES, but_not=original_power_type)
+        node = factory.make_node(
+            owner=self.logged_in_user,
+            power_type=original_power_type,
+            after_commissioning_action=(
+                NODE_AFTER_COMMISSIONING_ACTION.DEFAULT))
+        self.client.put(
+            self.get_node_uri(node),
+            {'power_type': new_power_type}
+            )
+
         self.assertEqual(
-            (httplib.FORBIDDEN, error_msg),
-            (response.status_code, response.content))
+            new_power_type, reload_object(node).power_type)
+
+    def test_PUT_non_admin_cannot_change_power_type(self):
+        original_power_type = factory.getRandomChoice(
+            POWER_TYPE_CHOICES)
+        new_power_type = factory.getRandomChoice(
+            POWER_TYPE_CHOICES, but_not=original_power_type)
+        node = factory.make_node(
+            owner=self.logged_in_user,
+            power_type=original_power_type,
+            after_commissioning_action=(
+                NODE_AFTER_COMMISSIONING_ACTION.DEFAULT))
+        self.client.put(
+            self.get_node_uri(node),
+            {'power_type': new_power_type}
+            )
+
+        self.assertEqual(
+            original_power_type, reload_object(node).power_type)
 
     def test_resource_uri_points_back_at_node(self):
         # When a Node is returned by the API, the field 'resource_uri'

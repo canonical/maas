@@ -27,6 +27,7 @@ from maasserver.forms import (
     ConfigForm,
     EditUserForm,
     get_action_form,
+    get_node_edit_form,
     HostnameFormField,
     MACAddressForm,
     NewUserCreationForm,
@@ -239,6 +240,14 @@ class NodeEditForms(TestCase):
         self.assertEqual(
             after_commissioning_action, node.after_commissioning_action)
         self.assertEqual(power_type, node.power_type)
+
+    def test_get_node_edit_form_returns_UIAdminNodeEditForm_if_admin(self):
+        admin = factory.make_admin()
+        self.assertEqual(UIAdminNodeEditForm, get_node_edit_form(admin))
+
+    def test_get_node_edit_form_returns_UINodeEditForm_if_non_admin(self):
+        user = factory.make_user()
+        self.assertEqual(UINodeEditForm, get_node_edit_form(user))
 
 
 class TestNodeActionForm(TestCase):

@@ -41,9 +41,8 @@ from maasserver.exceptions import (
     )
 from maasserver.forms import (
     get_action_form,
+    get_node_edit_form,
     MACAddressForm,
-    UIAdminNodeEditForm,
-    UINodeEditForm,
     )
 from maasserver.messages import messaging
 from maasserver.models import (
@@ -151,10 +150,7 @@ class NodeEdit(UpdateView):
         return node
 
     def get_form_class(self):
-        if self.request.user.is_superuser:
-            return UIAdminNodeEditForm
-        else:
-            return UINodeEditForm
+        return get_node_edit_form(self.request.user)
 
     def get_success_url(self):
         return reverse('node-view', args=[self.get_object().system_id])

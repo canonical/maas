@@ -83,9 +83,11 @@ from django.core.exceptions import (
     PermissionDenied,
     ValidationError,
     )
+from django.forms.models import model_to_dict
 from django.http import (
     HttpResponse,
     HttpResponseBadRequest,
+    QueryDict,
     )
 from django.shortcuts import (
     get_object_or_404,
@@ -107,7 +109,10 @@ from maasserver.exceptions import (
     Unauthorized,
     )
 from maasserver.fields import validate_mac
-from maasserver.forms import NodeWithMACAddressesForm
+from maasserver.forms import (
+    get_node_edit_form,
+    NodeWithMACAddressesForm,
+    )
 from maasserver.models import (
     Config,
     FileStorage,
@@ -350,6 +355,30 @@ def get_oauth_token(request):
         raise Unauthorized("Unknown OAuth token.")
 
 
+def get_overrided_query_dict(defaults, data):
+    """Returns a QueryDict with the values of 'defaults' overridden by the
+    values in 'data'.
+
+    :param defaults: The dictionary containing the default values.
+    :type defaults: dict
+    :param data: The data used to override the defaults.
+    :type data: :class:`django.http.QueryDict`
+    :return: The updated QueryDict.
+    :raises: :class:`django.http.QueryDict`
+    """
+    # Create a writable query dict.
+    new_data = QueryDict('').copy()
+    # Missing fields will be taken from the node's current values.  This
+    # is to circumvent Django's ModelForm (form created from a model)
+    # default behaviour that requires all the fields to be defined.
+    new_data.update(defaults)
+    # We can't use update here because data is a QueryDict and 'update'
+    # does not replaces the old values with the new as one would expect.
+    for k, v in data.items():
+        new_data[k] = v
+    return new_data
+
+
 # Node's fields exposed on the API.
 DISPLAYED_NODE_FIELDS = (
     'system_id',
@@ -360,13 +389,6 @@ DISPLAYED_NODE_FIELDS = (
     'power_type',
     'power_parameters',
     )
-
-
-EDITABLE_NODE_FIELDS = (
-    'hostname',
-    'architecture',
-    'power_type',
-     )
 
 
 @api_operations
@@ -390,21 +412,19 @@ class NodeHandler(BaseHandler):
             vocabulary `ARCHITECTURE`).
         :type architecture: basestring
         :param power_type: The new power type for this node (see
-            vocabulary `POWER_TYPE`).
+            vocabulary `POWER_TYPE`).  Only available to admin users.
         :type power_type: basestring
         """
 
         node = Node.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NODE_PERMISSION.EDIT)
-        unknown_fields = set(request.data).difference(EDITABLE_NODE_FIELDS)
-        if len(unknown_fields) != 0:
-            raise PermissionDenied(
-                "Unable to set field(s): %s. Allowed fields are: %s." % (
-                    ','.join(unknown_fields), ','.join(EDITABLE_NODE_FIELDS)))
-        for key, value in request.data.items():
-            setattr(node, key, value)
-        node.save()
-        return node
+        data = get_overrided_query_dict(model_to_dict(node), request.data)
+        Form = get_node_edit_form(request.user)
+        form = Form(data, instance=node)
+        if form.is_valid():
+            return form.save()
+        else:
+            raise ValidationError(form.errors)
 
     def delete(self, request, system_id):
         """Delete a specific Node."""
