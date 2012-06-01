@@ -280,5 +280,11 @@ COMMISSIONING_SCRIPT = 'etc/maas/commissioning-user-data'
 # to have failed and mark it as FAILED_TESTS.
 COMMISSIONING_TIMEOUT = 60
 
+# Allow anonymous access to the metadata for a node, keyed by its MAC
+# address?  This is for development purposes only.  DO NOT ENABLE THIS
+# IN PRODUCTION or private metadata, including MAAS access credentials
+# for all nodes, will be exposed on your network.
+ALLOW_ANONYMOUS_METADATA_ACCESS = False
+
 # Allow the user to override settings in maas_local_settings.
 import_local_settings()

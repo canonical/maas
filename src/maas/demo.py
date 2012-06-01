@@ -73,3 +73,9 @@ LOGGING = {
         },
      }
 }
+
+
+# For demo purposes, give nodes unauthenticated access to their metadata
+# even if we can't pass boot parameters.  This is not safe; do not
+# enable it on a production MAAS.
+ALLOW_ANONYMOUS_METADATA_ACCESS = True

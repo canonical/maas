@@ -79,5 +79,9 @@ DEBUG_TOOLBAR_CONFIG = {
     'INTERCEPT_REDIRECTS': False,
     }
 
+# Make all nodes' metadata visible.  This is not safe; do not enable it
+# on a production MAAS.
+ALLOW_ANONYMOUS_METADATA_ACCESS = True
+
 # Allow the user to override settings in maas_local_settings.
 import_local_settings()

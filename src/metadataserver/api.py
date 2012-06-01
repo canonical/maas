@@ -17,6 +17,7 @@ __all__ = [
     'VersionIndexHandler',
     ]
 
+from django.conf import settings
 from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse
 from maasserver.api import (
@@ -34,7 +35,10 @@ from maasserver.exceptions import (
     MAASAPINotFound,
     NodeStateViolation,
     )
-from maasserver.models import SSHKey
+from maasserver.models import (
+    MACAddress,
+    SSHKey,
+    )
 from metadataserver.models import (
     NodeCommissionResult,
     NodeKey,
@@ -53,12 +57,54 @@ class UnknownNode(MAASAPINotFound):
 
 
 def get_node_for_request(request):
-    """Return the `Node` that `request` is authorized to query for."""
+    """Return the `Node` that `request` queries metadata for.
+
+    For this form of access, a node can only query its own metadata.  Thus
+    the oauth key used to authenticate the request must belong to the same
+    node that is being queried.  Any request that is not made by an
+    authenticated node will be denied.
+    """
     key = extract_oauth_key(request)
     try:
         return NodeKey.objects.get_node_for_key(key)
     except NodeKey.DoesNotExist:
         raise PermissionDenied("Not authenticated as a known node.")
+
+
+def get_node_for_mac(mac):
+    """Identify node being queried based on its MAC address.
+
+    This form of access is a security hazard, and thus it is permitted only
+    on development systems where ALLOW_ANONYMOUS_METADATA_ACCESS is enabled.
+    """
+    if not settings.ALLOW_ANONYMOUS_METADATA_ACCESS:
+        raise PermissionDenied(
+            "Unauthenticated metadata access is not allowed on this MAAS.")
+    matching_macs = list(MACAddress.objects.filter(mac_address=mac))
+    if len(matching_macs) == 0:
+        raise MAASAPINotFound()
+    [match] = matching_macs
+    return match.node
+
+
+def get_queried_node(request, for_mac=None):
+    """Identify and authorize the node whose metadata is being queried.
+
+    :param request: HTTP request.  In normal usage, this is authenticated
+        with an oauth key; the key maps to the querying node, and the
+        querying node always queries itself.
+    :param for_mac: Optional MAC address for the node being queried.  If
+        this is given, and anonymous metadata access is enabled (do in
+        development environments only!) then the node is looked up by its
+        MAC address.
+    :return: The :class:`Node` whose metadata is being queried.
+    """
+    if for_mac is None:
+        # Identify node, and authorize access, by oauth key.
+        return get_node_for_request(request)
+    else:
+        # Access keyed by MAC address.
+        return get_node_for_mac(for_mac)
 
 
 def make_text_response(contents):
@@ -115,7 +161,7 @@ class VersionIndexHandler(MetadataViewHandler):
     def read(self, request, version):
         """Read the metadata index for this version."""
         check_version(version)
-        if NodeUserData.objects.has_user_data(get_node_for_request(request)):
+        if NodeUserData.objects.has_user_data(get_queried_node(request)):
             shown_fields = self.fields
         else:
             shown_fields = list(self.fields)
@@ -146,7 +192,7 @@ class VersionIndexHandler(MetadataViewHandler):
             (overwriting any previous error string), and displayed in the MAAS
             UI.  If not given, any previous error string will be cleared.
         """
-        node = get_node_for_request(request)
+        node = get_queried_node(request)
         status = request.POST.get('status', None)
 
         status = get_mandatory_param(request.POST, 'status')
@@ -210,7 +256,7 @@ class MetaDataHandler(VersionIndexHandler):
 
     def read(self, request, version, item=None):
         check_version(version)
-        node = get_node_for_request(request)
+        node = get_queried_node(request)
 
         # Requesting the list of attributes, not any particular
         # attribute.
@@ -247,7 +293,7 @@ class UserDataHandler(MetadataViewHandler):
 
     def read(self, request, version):
         check_version(version)
-        node = get_node_for_request(request)
+        node = get_queried_node(request)
         try:
             return HttpResponse(
                 NodeUserData.objects.get_user_data(node),

@@ -16,8 +16,13 @@ from collections import namedtuple
 import httplib
 from io import BytesIO
 
+from django.conf import settings
+from django.core.exceptions import PermissionDenied
 from maasserver.enum import NODE_STATUS
-from maasserver.exceptions import Unauthorized
+from maasserver.exceptions import (
+    MAASAPINotFound,
+    Unauthorized,
+    )
 from maasserver.models import SSHKey
 from maasserver.provisioning import get_provisioning_api_proxy
 from maasserver.testing import reload_object
@@ -26,7 +31,9 @@ from maasserver.testing.oauthclient import OAuthAuthenticatedClient
 from maastesting.djangotestcase import DjangoTestCase
 from metadataserver.api import (
     check_version,
+    get_node_for_mac,
     get_node_for_request,
+    get_queried_node,
     make_list_response,
     make_text_response,
     MetaDataHandler,
@@ -82,6 +89,33 @@ class TestHelpers(DjangoTestCase):
         self.assertRaises(
             Unauthorized,
             get_node_for_request, self.fake_request())
+
+    def test_get_node_for_mac_refuses_if_anonymous_access_disabled(self):
+        self.patch(settings, 'ALLOW_ANONYMOUS_METADATA_ACCESS', False)
+        self.assertRaises(
+            PermissionDenied, get_node_for_mac, factory.getRandomMACAddress())
+
+    def test_get_node_for_mac_raises_404_for_unknown_mac(self):
+        self.assertRaises(
+            MAASAPINotFound, get_node_for_mac, factory.getRandomMACAddress())
+
+    def test_get_node_for_mac_finds_node_by_mac(self):
+        mac = factory.make_mac_address()
+        self.assertEqual(mac.node, get_node_for_mac(mac.mac_address))
+
+    def test_get_queried_node_looks_up_by_mac_if_given(self):
+        mac = factory.make_mac_address()
+        self.assertEqual(
+            mac.node,
+            get_queried_node(object(), for_mac=mac.mac_address))
+
+    def test_get_queried_node_looks_up_oauth_key_by_default(self):
+        node = factory.make_node()
+        token = NodeKey.objects.get_token_for_node(node)
+        request = self.fake_request(
+            HTTP_AUTHORIZATION=factory.make_oauth_header(
+                oauth_token=token.key))
+        self.assertEqual(node, get_queried_node(request))
 
 
 class TestViews(DjangoTestCase, ProvisioningFakeFactory):
