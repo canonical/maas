@@ -24,12 +24,15 @@ from maasserver.enum import (
     NODE_STATUS,
     )
 from maasserver.models import (
+    create_auth_token,
     FileStorage,
     MACAddress,
     Node,
+    NodeGroup,
     NODE_TRANSITIONS,
     SSHKey,
     )
+from maasserver.models.nodegroup import NodeGroup
 from maasserver.testing import (
     get_data,
     reload_object,
@@ -104,6 +107,14 @@ class Factory(maastesting.factory.Factory):
         if created is not None:
             Node.objects.filter(id=node.id).update(created=created)
         return reload_object(node)
+
+    def make_node_group(self, api_token=None, **kwargs):
+        if api_token is None:
+            user = self.make_user()
+            api_token = create_auth_token(user)
+        ng = NodeGroup(api_token=api_token, api_key=api_token.key, **kwargs)
+        ng.save()
+        return ng
 
     def make_node_commission_result(self, node=None, name=None, data=None):
         if node is None:

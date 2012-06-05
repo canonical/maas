@@ -24,6 +24,7 @@ __all__ = [
     "FileStorage",
     "NODE_TRANSITIONS",
     "Node",
+    "NodeGroup",
     "MACAddress",
     "SSHKey",
     "UserProfile",
@@ -72,6 +73,8 @@ from maasserver.fields import (
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.config import Config
 from maasserver.models.filestorage import FileStorage
+from maasserver.models.nodegroup import NodeGroup
+NodeGroup
 from maasserver.models.sshkey import SSHKey
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.models.userprofile import UserProfile
