@@ -12,10 +12,9 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
-from testtools.matchers import MatchesStructure
-
 from maasserver.testing.factory import factory
-from maastesting.testcase import TestCase
+from maasserver.testing.testcase import TestCase
+from testtools.matchers import MatchesStructure
 
 
 class TestNodeGroup(TestCase):

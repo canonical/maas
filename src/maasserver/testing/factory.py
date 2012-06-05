@@ -28,11 +28,10 @@ from maasserver.models import (
     FileStorage,
     MACAddress,
     Node,
-    NodeGroup,
     NODE_TRANSITIONS,
+    NodeGroup,
     SSHKey,
     )
-from maasserver.models.nodegroup import NodeGroup
 from maasserver.testing import (
     get_data,
     reload_object,
