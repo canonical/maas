@@ -65,7 +65,9 @@ class DictCharField(forms.MultiValueField):
         # 'skip_check' that isn't used to actually skip the checks would be
         # very confusing.
         if SKIP_CHECK_NAME in self.field_dict.keys():
-            raise RuntimeError("No subfield can be named 'skip_check'.")
+            raise RuntimeError(
+                "'%s' is a reserved name "
+                "(it can't be used to name a subfield)." % SKIP_CHECK_NAME)
         # if skip_check: add a BooleanField to the list of fields, this will
         # be used to skip the validation of the fields and accept arbitrary
         # data.
@@ -292,12 +294,12 @@ class DictCharWidget(forms.widgets.MultiWidget):
         """Extract the values for each widget from a data dict (QueryDict).
         :param data: The data dict (usually request.data or request.GET where
             request is a django.http.HttpRequest).
-        :param data: dict
+        :type data: dict
         :param files: The files dict (usually request.FILES where request is a
             django.http.HttpRequest).
-        :param files: dict
+        :type files: dict
         :param name: The name of the widget.
-        :param name: basestring
+        :type name: basestring
         :return: The extracted values.  If skip_check has been activated, the
             extracted value will be a dictionary, if not, is will be a list.
         :rtype: dict or list

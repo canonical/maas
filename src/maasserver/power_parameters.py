@@ -14,7 +14,7 @@ selected power_type.  The classes in this module are used to associate each
 power type with a set of power parameters.
 
 To define a new set of power parameters for a new power_type: create a new
-mapping between the new power type and a list of PowerParameter instances in
+mapping between the new power type and a DictCharField instance in
 `POWER_TYPE_PARAMETERS`.
 """
 
@@ -27,108 +27,48 @@ from __future__ import (
 __metaclass__ = type
 __all__ = [
     'POWER_TYPE_PARAMETERS',
-    'validate_power_parameters',
     ]
 
-from collections import namedtuple
-from operator import attrgetter
 
-from django.core.exceptions import ValidationError
+from django import forms
+from maasserver.config_forms import DictCharField
 from provisioningserver.enum import POWER_TYPE
-
-
-PowerParameter = namedtuple(
-    'PowerParameter',
-    [
-        # 'display' will be used in the UI as the title of the field.
-        'display',
-        # 'name' is the actual name of this parameter as used in the JSON
-        # structure (power parameters are stored as JSON dicts).
-        'name',
-    ])
 
 
 POWER_TYPE_PARAMETERS = {
     POWER_TYPE.WAKE_ON_LAN:
-        [
-            PowerParameter(
-                display='Address',
-                name='power_address',
-                ),
-        ],
+        DictCharField(
+            [
+                ('power_address', forms.CharField(label="Address")),
+            ],
+            required=False,
+            skip_check=True),
     POWER_TYPE.VIRSH:
-        [
-            PowerParameter(
-                display='Driver',
-                name='driver',
-                ),
-             PowerParameter(
-                display='Username',
-                name='username',
-                ),
-             PowerParameter(
-                display='Address',
-                name='power_address',
-                ),
-             PowerParameter(
-                display='power_id',
-                name='power_id',
-                ),
-         ],
+        DictCharField(
+            [
+                ('driver', forms.CharField(label="Driver")),
+                ('username', forms.CharField(label="Username")),
+                ('power_address', forms.CharField(label="Address")),
+                ('power_id', forms.CharField(label="Power ID")),
+            ],
+            required=False,
+            skip_check=True),
     POWER_TYPE.IPMI:
-        [
-            PowerParameter(
-                display='Address',
-                name='power_address',
-                ),
-            PowerParameter(
-                display='User',
-                name='power_user',
-                ),
-            PowerParameter(
-                display='Password',
-                name='power_pass',
-                ),
-         ],
+        DictCharField(
+            [
+                ('power_address', forms.CharField(label="Address")),
+                ('power_user', forms.CharField(label="User")),
+                ('power_pass', forms.CharField(label="Password")),
+            ],
+            required=False,
+            skip_check=True),
     POWER_TYPE.IPMI_LAN:
-        [
-            PowerParameter(
-                display='User',
-                name='power_user',
-                ),
-            PowerParameter(
-                display='Password',
-                name='power_pass',
-                ),
-            PowerParameter(
-                display='power_id',
-                name='power_id',
-                ),
-        ]
+        DictCharField(
+            [
+                ('power_user', forms.CharField(label="User")),
+                ('power_pass', forms.CharField(label="Password")),
+                ('power_id', forms.CharField(label="Power ID")),
+            ],
+            required=False,
+            skip_check=True),
     }
-
-
-def validate_power_parameters(power_parameters, power_type):
-    """Validate that the given power parameters:
-    - the given power_parameter argument must be a dictionary.
-    - the keys of the given power_parameter argument must be a subset of
-      the possible parameters for this power type.
-    If one of these assertions is not true, raise a ValidationError.
-    """
-    if not isinstance(power_parameters, dict):
-        raise ValidationError(
-            "The given power parameters should be a dictionary.")
-    # Fetch the expected power_parameter related to the power_type.  If the
-    # power_type is unknown, don't validate power_parameter.  We don't want
-    # to block things if one wants to use a custom power_type.
-    expected_power_parameters = map(attrgetter(
-        'name'), POWER_TYPE_PARAMETERS.get(power_type, []))
-    if len(expected_power_parameters) != 0:
-        unknown_fields = set(
-            power_parameters).difference(expected_power_parameters)
-        if len(unknown_fields) != 0:
-            raise ValidationError(
-                    "These field(s) are invalid for this power type: %s.  "
-                    "Allowed fields: %s." % (
-                        ', '.join(unknown_fields),
-                        ', '.join(expected_power_parameters)))
