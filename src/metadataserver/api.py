@@ -126,7 +126,7 @@ def check_version(version):
 class MetadataViewHandler(BaseHandler):
     allowed_methods = ('GET',)
 
-    def read(self, request):
+    def read(self, request, mac=None):
         return make_list_response(sorted(self.fields))
 
 
@@ -158,10 +158,11 @@ class VersionIndexHandler(MetadataViewHandler):
         'WORKING': None,
     }
 
-    def read(self, request, version):
+    def read(self, request, version, mac=None):
         """Read the metadata index for this version."""
         check_version(version)
-        if NodeUserData.objects.has_user_data(get_queried_node(request)):
+        node = get_queried_node(request, for_mac=mac)
+        if NodeUserData.objects.has_user_data(node):
             shown_fields = self.fields
         else:
             shown_fields = list(self.fields)
@@ -175,7 +176,7 @@ class VersionIndexHandler(MetadataViewHandler):
             NodeCommissionResult.objects.store_data(node, name, contents)
 
     @api_exported('POST')
-    def signal(self, request, version=None):
+    def signal(self, request, version=None, mac=None):
         """Signal commissioning status.
 
         A commissioning node can call this to report progress of the
@@ -192,7 +193,7 @@ class VersionIndexHandler(MetadataViewHandler):
             (overwriting any previous error string), and displayed in the MAAS
             UI.  If not given, any previous error string will be cleared.
         """
-        node = get_queried_node(request)
+        node = get_queried_node(request, for_mac=mac)
         status = request.POST.get('status', None)
 
         status = get_mandatory_param(request.POST, 'status')
@@ -254,9 +255,9 @@ class MetaDataHandler(VersionIndexHandler):
 
         return producers[field]
 
-    def read(self, request, version, item=None):
+    def read(self, request, version, mac=None, item=None):
         check_version(version)
-        node = get_queried_node(request)
+        node = get_queried_node(request, for_mac=mac)
 
         # Requesting the list of attributes, not any particular
         # attribute.
@@ -291,9 +292,9 @@ class MetaDataHandler(VersionIndexHandler):
 class UserDataHandler(MetadataViewHandler):
     """User-data blob for a given version."""
 
-    def read(self, request, version):
+    def read(self, request, version, mac=None):
         check_version(version)
-        node = get_queried_node(request)
+        node = get_queried_node(request, for_mac=mac)
         try:
             return HttpResponse(
                 NodeUserData.objects.get_user_data(node),
