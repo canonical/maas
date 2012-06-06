@@ -658,9 +658,11 @@ class MACAddress(CleanSave, TimestampedModel):
             MACAddress, self).unique_error_message(model_class, unique_check)
 
 
+# Scheduled for model migration on 2012-06-13
 GENERIC_CONSUMER = 'MAAS consumer'
 
 
+# Scheduled for model migration on 2012-06-13
 def create_auth_token(user):
     """Create new Token and Consumer (OAuth authorisation) for `user`.
 
@@ -684,6 +686,7 @@ def create_auth_token(user):
     return token
 
 
+# Scheduled for model migration on 2012-06-13
 def get_auth_tokens(user):
     """Fetches all the user's OAuth tokens.
 
@@ -698,6 +701,7 @@ def get_auth_tokens(user):
         user=user, token_type=Token.ACCESS, is_approved=True).order_by('id')
 
 
+# Scheduled for model migration on 2012-06-13
 # When a user is created: create the related profile and the default
 # consumer/token.
 def create_user(sender, instance, created, **kwargs):
