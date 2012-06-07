@@ -32,7 +32,6 @@ __all__ = [
 
 from logging import getLogger
 import os
-import re
 from string import whitespace
 from uuid import uuid1
 
@@ -66,14 +65,14 @@ from maasserver.enum import (
     NODE_STATUS_CHOICES_DICT,
     )
 from maasserver.exceptions import NodeStateViolation
-from maasserver.fields import (
-    JSONObjectField,
-    MACAddressField,
-    )
+from maasserver.fields import JSONObjectField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.config import Config
 from maasserver.models.filestorage import FileStorage
+from maasserver.models.macaddress import MACAddress
 from maasserver.models.nodegroup import NodeGroup
+
+
 NodeGroup
 from maasserver.models.sshkey import SSHKey
 from maasserver.models.timestampedmodel import TimestampedModel
@@ -626,36 +625,6 @@ class Node(CleanSave, TimestampedModel):
         self.owner = None
         self.token = None
         self.save()
-
-
-# Scheduled for model migration on 2012-06-07
-mac_re = re.compile(r'^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$')
-
-
-# Scheduled for model migration on 2012-06-07
-class MACAddress(CleanSave, TimestampedModel):
-    """A `MACAddress` represents a `MAC address
-    <http://en.wikipedia.org/wiki/MAC_address>`_ attached to a :class:`Node`.
-
-    :ivar mac_address: The MAC address.
-    :ivar node: The `Node` related to this `MACAddress`.
-
-    """
-    mac_address = MACAddressField(unique=True)
-    node = ForeignKey(Node, editable=False)
-
-    class Meta(DefaultMeta):
-        verbose_name = "MAC address"
-        verbose_name_plural = "MAC addresses"
-
-    def __unicode__(self):
-        return self.mac_address
-
-    def unique_error_message(self, model_class, unique_check):
-        if unique_check == ('mac_address',):
-                return "This MAC address is already registered."
-        return super(
-            MACAddress, self).unique_error_message(model_class, unique_check)
 
 
 # Scheduled for model migration on 2012-06-13
