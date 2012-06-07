@@ -31,7 +31,7 @@ template = dedent("""\
       match if substring (option vendor-class-identifier, 0, 21) = "U-boot.armv7.highbank";
     }
 
-    subnet %(subnet)s netmask %(subnet_mask) {
+    subnet %(subnet)s netmask %(subnet_mask)s {
            next-server %(next_server)s;
            option subnet-mask %(subnet_mask)s;
            option broadcast-address %(broadcast_address)s;
