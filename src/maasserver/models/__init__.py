@@ -72,12 +72,10 @@ from maasserver.models.config import Config
 from maasserver.models.filestorage import FileStorage
 from maasserver.models.macaddress import MACAddress
 from maasserver.models.nodegroup import NodeGroup
-
-
-NodeGroup
 from maasserver.models.sshkey import SSHKey
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.models.userprofile import UserProfile
+from maasserver.utils import ignore_unused
 from metadataserver import nodeinituser
 from piston.models import (
     Consumer,
@@ -88,6 +86,12 @@ from provisioningserver.enum import (
     POWER_TYPE_CHOICES,
     )
 from provisioningserver.tasks import power_on
+
+# Scheduled for model migration on 2012-06-15
+# Suppress warning about NodeGroup being imported, but only used for
+# export in __all__.
+ignore_unused(NodeGroup)
+
 
 # Scheduled for model migration on 2012-06-13
 # Special users internal to MAAS.
@@ -745,9 +749,8 @@ class MAASAuthorizationBackend(ModelBackend):
 # 'provisioning' is imported so that it can register its signal handlers early
 # on, before it misses anything.
 from maasserver import provisioning
-# We mention 'provisioning' here to silence lint warnings.
-provisioning
+ignore_unused(provisioning)
 
 # Scheduled for model migration on 2012-06-15
 from maasserver import messages
-messages
+ignore_unused(messages)

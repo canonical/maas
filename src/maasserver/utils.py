@@ -11,8 +11,18 @@ from __future__ import (
 
 __metaclass__ = type
 __all__ = [
+    'ignore_unused',
     'map_enum',
     ]
+
+
+def ignore_unused(*args):
+    """Suppress warnings about unused variables.
+
+    This function does nothing.  Use it whenever you have deliberately
+    unused symbols: pass them to this function and lint checkers will no
+    longer consider them unused.
+    """
 
 
 def map_enum(enum_class):
