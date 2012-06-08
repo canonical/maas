@@ -15,7 +15,7 @@ suite.add(new Y.maas.testing.TestCase({
     name: 'test-sample',
 
     testMe: function() {
-        Y.Assert.areTrue(true);
+        Y.Assert.isTrue(true);
     }
 
 }));

@@ -164,12 +164,11 @@ class DictCharField(forms.MultiValueField):
         feed to the sub fields' validators."""
         if not value or isinstance(value, (list, tuple)):
             # value is considered empty if it is in
-            # validators.EMPTY_VALUES, or if each of the subvalues is in
-            # validators.EMPTY_VALUES.
+            # validators.EMPTY_VALUES, or if each of the subvalues is
+            # None.
             is_empty = (
                 value in validators.EMPTY_VALUES or
-                len(filter(
-                    lambda x: x not in validators.EMPTY_VALUES, value)) == 0)
+               len(filter(lambda x: x is not None, value)) == 0)
             if is_empty:
                 if self.required:
                     raise ValidationError(self.error_messages['required'])
@@ -273,12 +272,18 @@ class DictCharWidget(forms.widgets.MultiWidget):
     def render(self, name, value, attrs=None):
         # value is a list of values, each corresponding to a widget
         # in self.widgets.
+        # Do not display the 'skip_check' boolean widget.
+        if self.skip_check:
+            widgets = self.widgets[:-1]
+        else:
+            widgets = self.widgets
         if not isinstance(value, list):
             value = self.decompress(value)
         output = ['<fieldset>']
         final_attrs = self.build_attrs(attrs)
         id_ = final_attrs.get('id', None)
-        for index, widget in enumerate(self.widgets):
+
+        for index, widget in enumerate(widgets):
             try:
                 widget_value = value[index]
             except IndexError:
@@ -329,7 +334,7 @@ class DictCharWidget(forms.widgets.MultiWidget):
         """Returns a list of decompressed values for the given compressed
         value.  The given value can be assumed to be valid, but not
         necessarily non-empty."""
-        if value is not None:
+        if value not in validators.EMPTY_VALUES:
             return [value.get(name, None) for name in self.names]
         else:
             return [None] * len(self.names)

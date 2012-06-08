@@ -41,35 +41,55 @@ POWER_TYPE_PARAMETERS = {
     POWER_TYPE.WAKE_ON_LAN:
         DictCharField(
             [
-                ('power_address', forms.CharField(label="Address")),
+                (
+                    'power_address',
+                    forms.CharField(label="Address", required=False)),
             ],
             required=False,
             skip_check=True),
     POWER_TYPE.VIRSH:
         DictCharField(
             [
-                ('driver', forms.CharField(label="Driver")),
-                ('username', forms.CharField(label="Username")),
-                ('power_address', forms.CharField(label="Address")),
-                ('power_id', forms.CharField(label="Power ID")),
+                ('driver', forms.CharField(label="Driver", required=False)),
+                (
+                    'username',
+                    forms.CharField(label="Username", required=False)),
+                (
+                    'power_address',
+                    forms.CharField(label="Address", required=False)),
+                (
+                    'power_id',
+                    forms.CharField(label="Power ID", required=False)),
             ],
             required=False,
             skip_check=True),
     POWER_TYPE.IPMI:
         DictCharField(
             [
-                ('power_address', forms.CharField(label="Address")),
-                ('power_user', forms.CharField(label="User")),
-                ('power_pass', forms.CharField(label="Password")),
+                (
+                    'power_address',
+                    forms.CharField(label="Address", required=False)),
+                (
+                    'power_user',
+                    forms.CharField(label="User", required=False)),
+                (
+                    'power_pass',
+                    forms.CharField(label="Password", required=False)),
             ],
             required=False,
             skip_check=True),
     POWER_TYPE.IPMI_LAN:
         DictCharField(
             [
-                ('power_user', forms.CharField(label="User")),
-                ('power_pass', forms.CharField(label="Password")),
-                ('power_id', forms.CharField(label="Power ID")),
+                (
+                    'power_user',
+                    forms.CharField(label="User", required=False)),
+                (
+                    'power_pass',
+                    forms.CharField(label="Password", required=False)),
+                (
+                    'power_id',
+                    forms.CharField(label="Power ID", required=False)),
             ],
             required=False,
             skip_check=True),
