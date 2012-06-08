@@ -49,7 +49,6 @@ from maasserver.testing.testcase import (
     )
 from maasserver.tests.models import TimestampedModelTestModel
 from maasserver.utils import map_enum
-from maastesting.celery import CeleryFixture
 from maastesting.djangotestcase import (
     TestModelTransactionalTestCase,
     TransactionTestCase,
@@ -409,7 +408,6 @@ class NodeTest(TestCase):
             {status: node.status for status, node in nodes.items()})
 
     def test_start_commissioning_changes_status_and_starts_node(self):
-        fixture = self.useFixture(CeleryFixture())
         user = factory.make_user()
         node = factory.make_node(
             status=NODE_STATUS.DECLARED, power_type=POWER_TYPE.WAKE_ON_LAN)
@@ -423,7 +421,7 @@ class NodeTest(TestCase):
         self.assertAttributes(node, expected_attrs)
         self.assertEqual(
             (1, 'provisioningserver.tasks.power_on'),
-            (len(fixture.tasks), fixture.tasks[0]['task'].name))
+            (len(self.celery.tasks), self.celery.tasks[0]['task'].name))
 
     def test_start_commissioning_sets_user_data(self):
         node = factory.make_node(status=NODE_STATUS.DECLARED)
@@ -726,8 +724,6 @@ class NodeManagerTest(TestCase):
             Node.objects.stop_nodes(ids, stoppable_node.owner))
 
     def test_start_nodes_starts_nodes(self):
-        fixture = self.useFixture(CeleryFixture())
-
         user = factory.make_user()
         node, mac = self.make_node_with_mac(
             user, power_type=POWER_TYPE.WAKE_ON_LAN)
@@ -737,16 +733,15 @@ class NodeManagerTest(TestCase):
         self.assertEqual(
             (1, 'provisioningserver.tasks.power_on', mac.mac_address),
             (
-                len(fixture.tasks),
-                fixture.tasks[0]['task'].name,
-                fixture.tasks[0]['kwargs']['mac'],
+                len(self.celery.tasks),
+                self.celery.tasks[0]['task'].name,
+                self.celery.tasks[0]['kwargs']['mac'],
             ))
 
     def test_start_nodes_sets_commissioning_profile(self):
         # Starting up a node should always set a profile. Here we test
         # that a commissioning profile was set for nodes in the
         # commissioning status.
-        self.useFixture(CeleryFixture())
         user = factory.make_user()
         node = factory.make_node(
             set_hostname=True, status=NODE_STATUS.COMMISSIONING, owner=user)
@@ -759,7 +754,6 @@ class NodeManagerTest(TestCase):
     def test_start_nodes_doesnt_set_commissioning_profile(self):
         # Starting up a node should always set a profile. Complement the
         # above test to show that a different profile can be set.
-        self.useFixture(CeleryFixture())
         user = factory.make_user()
         node = self.make_node(user)
         factory.make_mac_address(node=node)
@@ -773,8 +767,6 @@ class NodeManagerTest(TestCase):
         # If the node has a power_type set to POWER_TYPE.DEFAULT,
         # NodeManager.start_node(this_node) should use the default
         # power_type.
-        fixture = self.useFixture(CeleryFixture())
-
         Config.objects.set_config('node_power_type', POWER_TYPE.WAKE_ON_LAN)
         user = factory.make_user()
         node, unused = self.make_node_with_mac(
@@ -784,13 +776,11 @@ class NodeManagerTest(TestCase):
         self.assertItemsEqual([node], output)
         self.assertEqual(
             (1, 'provisioningserver.tasks.power_on'),
-            (len(fixture.tasks), fixture.tasks[0]['task'].name))
+            (len(self.celery.tasks), self.celery.tasks[0]['task'].name))
 
     def test_start_nodes_wakeonlan_prefers_power_parameters(self):
         # If power_parameters is set we should prefer it to sifting
         # through related MAC addresses.
-        fixture = self.useFixture(CeleryFixture())
-
         user = factory.make_user()
         preferred_mac = factory.getRandomMACAddress()
         node, mac = self.make_node_with_mac(
@@ -802,32 +792,30 @@ class NodeManagerTest(TestCase):
         self.assertEqual(
             (1, 'provisioningserver.tasks.power_on', preferred_mac),
             (
-                len(fixture.tasks),
-                fixture.tasks[0]['task'].name,
-                fixture.tasks[0]['kwargs']['mac'],
+                len(self.celery.tasks),
+                self.celery.tasks[0]['task'].name,
+                self.celery.tasks[0]['kwargs']['mac'],
             ))
 
     def test_start_nodes_wakeonlan_ignores_invalid_parameters(self):
         # If node.power_params is set but doesn't have "mac" in it, then
         # the node shouldn't be started.
-        fixture = self.useFixture(CeleryFixture())
         user = factory.make_user()
         node, mac = self.make_node_with_mac(
             user, power_type=POWER_TYPE.WAKE_ON_LAN,
             power_parameters=dict(jarjar="binks"))
         output = Node.objects.start_nodes([node.system_id], user)
         self.assertItemsEqual([], output)
-        self.assertEqual([], fixture.tasks)
+        self.assertEqual([], self.celery.tasks)
 
     def test_start_nodes_wakeonlan_ignores_empty_mac_parameter(self):
-        fixture = self.useFixture(CeleryFixture())
         user = factory.make_user()
         node, mac = self.make_node_with_mac(
             user, power_type=POWER_TYPE.WAKE_ON_LAN,
             power_parameters=dict(mac=""))
         output = Node.objects.start_nodes([node.system_id], user)
         self.assertItemsEqual([], output)
-        self.assertEqual([], fixture.tasks)
+        self.assertEqual([], self.celery.tasks)
 
     def test_start_nodes_ignores_nodes_without_mac(self):
         user = factory.make_user()

@@ -31,7 +31,6 @@ from maasserver.node_action import (
     )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
-from maastesting.celery import CeleryFixture
 from provisioningserver.enum import POWER_TYPE
 
 
@@ -188,7 +187,6 @@ class TestNodeAction(TestCase):
             urlparse(unicode(e)).path)
 
     def test_AcceptAndCommission_starts_commissioning(self):
-        fixture = self.useFixture(CeleryFixture())
         node = factory.make_node(
             mac=True, status=NODE_STATUS.DECLARED,
             power_type=POWER_TYPE.WAKE_ON_LAN)
@@ -197,10 +195,9 @@ class TestNodeAction(TestCase):
         self.assertEqual(NODE_STATUS.COMMISSIONING, node.status)
         self.assertEqual(
             'provisioningserver.tasks.power_on',
-            fixture.tasks[0]['task'].name)
+            self.celery.tasks[0]['task'].name)
 
     def test_RetryCommissioning_starts_commissioning(self):
-        fixture = self.useFixture(CeleryFixture())
         node = factory.make_node(
             mac=True, status=NODE_STATUS.FAILED_TESTS,
             power_type=POWER_TYPE.WAKE_ON_LAN)
@@ -209,7 +206,7 @@ class TestNodeAction(TestCase):
         self.assertEqual(NODE_STATUS.COMMISSIONING, node.status)
         self.assertEqual(
             'provisioningserver.tasks.power_on',
-            fixture.tasks[0]['task'].name)
+            self.celery.tasks[0]['task'].name)
 
     def test_StartNode_inhibit_allows_user_with_SSH_key(self):
         user_with_key = factory.make_user()
@@ -225,7 +222,6 @@ class TestNodeAction(TestCase):
         self.assertIn("SSH key", inhibition)
 
     def test_StartNode_acquires_and_starts_node(self):
-        fixture = self.useFixture(CeleryFixture())
         node = factory.make_node(
             mac=True, status=NODE_STATUS.READY,
             power_type=POWER_TYPE.WAKE_ON_LAN)
@@ -235,4 +231,4 @@ class TestNodeAction(TestCase):
         self.assertEqual(user, node.owner)
         self.assertEqual(
             'provisioningserver.tasks.power_on',
-            fixture.tasks[0]['task'].name)
+            self.celery.tasks[0]['task'].name)
