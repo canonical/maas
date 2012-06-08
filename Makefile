@@ -95,7 +95,7 @@ lint-js: sources = src/maasserver/static/js
 lint-js:
 	@find $(sources) -type f -print0 | xargs -r0 $(pocketlint)
 
-check: clean test
+check: clean build test
 
 docs/api.rst: bin/maas src/maasserver/api.py syncdb
 	bin/maas generate_api_doc > $@
