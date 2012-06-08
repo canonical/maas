@@ -28,7 +28,8 @@ template = dedent("""\
       match if substring (option vendor-class-identifier, 0, 9) = "PXEClient";
     }
     class "uboot-highbank" {
-      match if substring (option vendor-class-identifier, 0, 21) = "U-boot.armv7.highbank";
+      match if substring (option vendor-class-identifier, 0, 21) = \
+        "U-boot.armv7.highbank";
     }
 
     subnet %(subnet)s netmask %(subnet_mask)s {
