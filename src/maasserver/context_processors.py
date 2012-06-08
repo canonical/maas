@@ -18,6 +18,8 @@ from django.conf import settings
 from maasserver.components import get_persistent_errors
 from maasserver.forms import NodeForm
 from maasserver.models import Config
+from maasserver.power_parameters import POWER_TYPE_PARAMETERS
+from provisioningserver.enum import POWER_TYPE
 
 
 def yui(context):
@@ -33,6 +35,10 @@ def global_options(context):
     return {
         'persistent_errors': get_persistent_errors(),
         'node_form': NodeForm(),
+        'POWER_TYPE_PARAMETERS_FIELDS':
+            [(power_type, field.widget.render('power_parameters', []))
+                for power_type, field in POWER_TYPE_PARAMETERS.items()
+                if power_type is not POWER_TYPE.DEFAULT],
         'global_options': {
             'site_name': Config.objects.get_config('maas_name'),
         }

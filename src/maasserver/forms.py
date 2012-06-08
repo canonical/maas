@@ -180,8 +180,9 @@ class APIAdminNodeEditForm(APIEditMixin, UIAdminNodeEditForm):
            'power_parameters',
            )
 
-    def __init__(self, data, instance):
-        super(APIAdminNodeEditForm, self).__init__(data, instance=instance)
+    def __init__(self, data=None, files=None, instance=None, initial=None):
+        super(APIAdminNodeEditForm, self).__init__(
+            data=data, files=files, instance=instance, initial=initial)
         self.set_up_power_parameters_field(data, instance)
 
     def set_up_power_parameters_field(self, data, node):
@@ -209,7 +210,7 @@ class APIAdminNodeEditForm(APIEditMixin, UIAdminNodeEditForm):
 
 def get_node_edit_form(user, api=False):
     if user.is_superuser:
-        return APIAdminNodeEditForm if api else UIAdminNodeEditForm
+        return APIAdminNodeEditForm
     else:
         return UINodeEditForm
 

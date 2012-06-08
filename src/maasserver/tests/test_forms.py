@@ -291,10 +291,6 @@ class NodeEditForms(TestCase):
             (node.hostname, node.after_commissioning_action, node.power_type,
                 node.power_parameters))
 
-    def test_get_node_edit_form_returns_UIAdminNodeEditForm_if_admin(self):
-        admin = factory.make_admin()
-        self.assertEqual(UIAdminNodeEditForm, get_node_edit_form(admin))
-
     def test_get_node_edit_form_returns_UINodeEditForm_if_non_admin(self):
         user = factory.make_user()
         self.assertEqual(UINodeEditForm, get_node_edit_form(user))

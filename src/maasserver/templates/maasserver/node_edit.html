@@ -4,6 +4,33 @@
 {% block title %}Edit node{% endblock %}
 {% block page-title %}Edit node{% endblock %}
 
+{% block html_includes %}{% include "maasserver/snippets.html" %}
+{% endblock %}
+
+{% block head %}
+  <script type="text/javascript" src="{{ STATIC_URL }}js/power_parameters.js"></script>
+  <script type="text/javascript" src="{{ STATIC_URL }}js/enums.js"></script>
+  <script type="text/javascript">
+  <!--
+  YUI().use(
+    'maas.enums', 'maas.power_parameters',
+    function (Y) {
+    Y.on('load', function() {
+      // Create LinkedContentWidget widget so that the power_parameter field
+      // will be updated each time the value of the power_type field changes.
+      var widget = new Y.maas.power_parameters.LinkedContentWidget({
+          srcNode: '.power_parameters',
+          driverEnum: Y.maas.enums.POWER_TYPE,
+          templatePrefix: '#power-param-form-'
+          });
+      widget.bindTo(Y.one('.power_type').one('select'), 'change');
+      widget.render();
+    });
+  });
+  // -->
+  </script>
+{% endblock %}
+
 {% block content %}
   <form action="." method="post" class="block auto-width">
     <ul>

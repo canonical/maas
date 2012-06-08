@@ -26,3 +26,11 @@
     {{ node_form.after_commissioning_action }}
   </p>
 </script>
+{% for power_type, fieldset in POWER_TYPE_PARAMETERS_FIELDS %}
+  <script type="text/x-template" id="power-param-form-{{ power_type}}">
+    {{ fieldset }}
+  </script>
+{% endfor %}
+<script type="text/x-template" id="power-param-form-">
+</script>
+

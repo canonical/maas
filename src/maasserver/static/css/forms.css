@@ -51,6 +51,14 @@ input[type="password"]:focus,
 input[type="text"]:focus {
     border-color: #000;
     }
+fieldset {
+    padding-left: 10;
+    padding-right: 10px;
+    border: 1px solid #999;
+    -moz-border-radius: 2px;
+    -webkit-border-radius: 2px;
+    border-radius: 2px;
+    }
 li.error textarea,
 li.error input[type="password"],
 li.error input[type="text"] {

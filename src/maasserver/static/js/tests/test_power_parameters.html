@@ -1,0 +1,50 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+  <head>
+    <title>Test maas.power_parameters</title>
+
+    <!-- YUI and test setup -->
+    <script type="text/javascript" src="../testing/yui_test_conf.js"></script>
+    <script type="text/javascript" src="../../jslibs/yui/tests/build/yui/yui.js"></script>
+    <script type="text/javascript" src="../testing/testrunner.js"></script>
+    <script type="text/javascript" src="../testing/testing.js"></script>
+    <!-- The module under test -->
+    <script type="text/javascript" src="../power_parameters.js"></script>
+    <!-- The test suite -->
+    <script type="text/javascript" src="test_power_parameters.js"></script>
+    <script type="text/javascript">
+    <!--
+    var ENUM = {
+        "DEFAULT": "",
+        "VALUE1": "value1",
+        "VALUE2": "value2"
+    };
+    // -->
+    </script>
+  </head>
+  <body>
+  <span id="suite">maas.power_parameters.tests</span>
+  <script type="text/x-template" id="select_node">
+  <span class="power_type">
+    <select>
+      <option value="" selected="selected">---------</option>
+      <option value="value1">Value1</option>
+      <option value="value2">Value2</option>
+    </select>
+  </span>
+  </script>
+  <script type="text/x-template" id="target_node">
+    <span class="power_parameters"></span>
+  </script>
+  <script type="text/x-template" id="prefix-">
+    Empty default value.
+  </script>
+  <script type="text/x-template" id="prefix-value1">
+    Value1
+  </script>
+  <script type="text/x-template" id="prefix-value2">
+    Value2.
+  </script>
+  <div id="placeholder"></div>
+  </body>
+</html>
