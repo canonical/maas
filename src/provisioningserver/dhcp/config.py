@@ -18,12 +18,14 @@ __all__ = [
 
 from textwrap import dedent
 
+import tempita
+
 
 class DHCPConfigError(Exception):
     """Exception raised for errors processing the DHCP config."""
 
 
-template = dedent("""\
+template_content = dedent("""\
     class "pxe" {
       match if substring (option vendor-class-identifier, 0, 9) = "PXEClient";
     }
@@ -32,13 +34,13 @@ template = dedent("""\
         "U-boot.armv7.highbank";
     }
 
-    subnet %(subnet)s netmask %(subnet_mask)s {
-           next-server %(next_server)s;
-           option subnet-mask %(subnet_mask)s;
-           option broadcast-address %(broadcast_address)s;
-           option domain-name-servers %(dns_servers)s;
-           option routers %(gateway)s;
-           range dynamic-bootp %(low_range)s %(high_range)s;
+    subnet {{subnet}} netmask {{subnet_mask}} {
+           next-server {{next_server}};
+           option subnet-mask {{subnet_mask}};
+           option broadcast-address {{broadcast_address}};
+           option domain-name-servers {{dns_servers}};
+           option routers {{gateway}};
+           range dynamic-bootp {{low_range}} {{high_range}};
 
            pool {
                    allow members of "uboot-highbank";
@@ -50,6 +52,9 @@ template = dedent("""\
            }
     }
 """)
+
+template = tempita.Template(
+    template_content, name="%s.template" % __name__)
 
 
 def get_config(**params):
@@ -71,8 +76,6 @@ def get_config(**params):
     # This is a really simple substitution for now but it's encapsulated
     # here so that its implementation can be changed later if required.
     try:
-        return template % params
-    except KeyError, e:
-        raise DHCPConfigError(
-            "Passed parameters are missing at least the value for %s" %
-                e.message)
+        return template.substitute(params)
+    except NameError, error:
+        raise DHCPConfigError(*error.args)

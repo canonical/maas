@@ -12,31 +12,34 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
-from testtools import TestCase
 from textwrap import dedent
 
 from provisioningserver.dhcp import config
+import tempita
+from testtools import TestCase
+from testtools.matchers import MatchesRegex
 
 
 class TestDHCPConfig(TestCase):
 
     def setUp(self):
         super(TestDHCPConfig, self).setUp()
-        self.template = dedent("""\
-            %(subnet)s
-            %(subnet_mask)s
-            %(next_server)s
-            %(broadcast_address)s
-            %(dns_servers)s
-            %(gateway)s
-            %(low_range)s
-            %(high_range)s
+        self.template_content = dedent("""\
+            {{subnet}}
+            {{subnet_mask}}
+            {{next_server}}
+            {{broadcast_address}}
+            {{dns_servers}}
+            {{gateway}}
+            {{low_range}}
+            {{high_range}}
             """)
+        self.template = tempita.Template(
+            content=self.template_content,
+            name="%s.template" % self.__class__.__name__)
 
     def test_param_substitution(self):
-        self.patch(
-            config, "template", self.template
-            )
+        self.patch(config, "template", self.template)
 
         params = dict(
             subnet="10.0.0.0",
@@ -50,13 +53,11 @@ class TestDHCPConfig(TestCase):
 
         output = config.get_config(**params)
 
-        expected = self.template % params
+        expected = self.template.substitute(params)
         self.assertEqual(expected, output)
 
     def test_get_config_with_too_few_parameters(self):
-        self.patch(
-            config, "template", self.template
-            )
+        self.patch(config, "template", self.template)
 
         params = dict(
             # subnet is missing
@@ -71,6 +72,7 @@ class TestDHCPConfig(TestCase):
         e = self.assertRaises(
             config.DHCPConfigError, config.get_config, **params)
 
-        self.assertEqual(
-            "Passed parameters are missing at least the value for subnet",
-            e.message)
+        self.assertThat(
+            e.message, MatchesRegex(
+                "name 'subnet' is not defined at line \d+ column \d+ "
+                "in file %s" % self.template.name))
