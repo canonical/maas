@@ -44,6 +44,7 @@ from django.forms import (
     Form,
     ModelForm,
     )
+from maasserver.config_forms import SKIP_CHECK_NAME
 from maasserver.enum import (
     ARCHITECTURE,
     ARCHITECTURE_CHOICES,
@@ -58,6 +59,11 @@ from maasserver.models import (
     SSHKey,
     )
 from maasserver.node_action import compile_node_actions
+from maasserver.power_parameters import POWER_TYPE_PARAMETERS
+from provisioningserver.enum import (
+    POWER_TYPE,
+    POWER_TYPE_CHOICES,
+    )
 
 
 def compose_invalid_choice_text(choice_of_what, valid_choices):
@@ -138,9 +144,72 @@ class UIAdminNodeEditForm(ModelForm):
             )
 
 
-def get_node_edit_form(user):
+def remove_None_values(data):
+    """Return a new dictionary without the keys corresponding to None values.
+    """
+    return {key: value for key, value in data.items() if value is not None}
+
+
+class APIEditMixin:
+    """A mixin that clears None values after the cleaning phase.
+
+    Form data contain None values for missing fields.  This class
+    removes these None values before processing the data.
+    """
+
+    def _post_clean(self):
+        """Override Django's private hook _post_save to remove None values
+        from 'self.cleaned_data'.
+
+        _post_clean is where the fields of the instance get set with the data
+        from self.cleaned_data.  That's why the cleanup needs to happen right
+        before that.
+        """
+        self.cleaned_data = remove_None_values(self.cleaned_data)
+        super(APIEditMixin, self)._post_clean()
+
+
+class APIAdminNodeEditForm(APIEditMixin, UIAdminNodeEditForm):
+
+    class Meta:
+        model = Node
+        fields = (
+           'hostname',
+           'after_commissioning_action',
+           'power_type',
+           'power_parameters',
+           )
+
+    def __init__(self, data, instance):
+        super(APIAdminNodeEditForm, self).__init__(data, instance=instance)
+        self.set_up_power_parameters_field(data, instance)
+
+    def set_up_power_parameters_field(self, data, node):
+        if data is None:
+            data = {}
+        power_type = data.get('power_type', self.initial.get('power_type'))
+        if power_type not in dict(POWER_TYPE_CHOICES):
+            power_type = node.power_type
+        self.fields['power_parameters'] = POWER_TYPE_PARAMETERS[power_type]
+
+    def clean(self):
+        cleaned_data = super(APIAdminNodeEditForm, self).clean()
+        # If power_type is DEFAULT and power_parameters_skip_check is not
+        # on, reset power_parameters (set it to the empty string).
+        is_default = cleaned_data['power_type'] == POWER_TYPE.DEFAULT
+        skip_check = (
+            self.data.get('power_parameters_%s' % SKIP_CHECK_NAME) == 'true')
+        if is_default and not skip_check:
+            cleaned_data['power_parameters'] = ''
+        return cleaned_data
+
+    def clean_power_type_power_param(self, cleaned_data):
+        return cleaned_data
+
+
+def get_node_edit_form(user, api=False):
     if user.is_superuser:
-        return UIAdminNodeEditForm
+        return APIAdminNodeEditForm if api else UIAdminNodeEditForm
     else:
         return UINodeEditForm
 

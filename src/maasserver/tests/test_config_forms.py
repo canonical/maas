@@ -124,8 +124,8 @@ class TestFormWithDictCharField(TestCase):
     def test_DictCharField_skip_check_false(self):
         # Create a value that will fail validation because it's too long.
         field_value = factory.getRandomString(10)
-        field_name = factory.getRandomString(10)
-        field_label = factory.getRandomString(10)
+        field_name = factory.getRandomString()
+        field_label = factory.getRandomString()
         # Force the check with multi_field_skip_check=false.
         data = QueryDict(
             'multi_field_%s=%s&multi_field_skip_check=false' % (
@@ -218,8 +218,8 @@ class TestDictCharWidget(TestCase):
             widget.render(name, values))
 
     def test_DictCharWidget_value_from_datadict_values_from_data(self):
-        # 'value_from_datadict' extracts the value of the fields from a
-        # QueryDict and returns them in the sub widgets' order.
+        # 'value_from_datadict' extracts the values corresponding to the
+        # field as a dictionary.
         names = [factory.getRandomString(), factory.getRandomString()]
         labels = [factory.getRandomString(), factory.getRandomString()]
         name = factory.getRandomString()
@@ -236,5 +236,5 @@ class TestDictCharWidget(TestCase):
         widget = DictCharWidget(
             [widgets.TextInput, widgets.TextInput], names, labels)
         self.assertEqual(
-            [field_1_value, field_2_value],
+            {names[0]: field_1_value, names[1]: field_2_value},
             widget.value_from_datadict(data, None, name))

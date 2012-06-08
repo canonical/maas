@@ -36,6 +36,8 @@ from provisioningserver.enum import POWER_TYPE
 
 
 POWER_TYPE_PARAMETERS = {
+    POWER_TYPE.DEFAULT:
+        DictCharField([], required=False, skip_check=True),
     POWER_TYPE.WAKE_ON_LAN:
         DictCharField(
             [

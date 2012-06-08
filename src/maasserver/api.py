@@ -412,14 +412,29 @@ class NodeHandler(BaseHandler):
             vocabulary `ARCHITECTURE`).
         :type architecture: basestring
         :param power_type: The new power type for this node (see
-            vocabulary `POWER_TYPE`).  Only available to admin users.
+            vocabulary `POWER_TYPE`).  Note that if you set power_type to
+            use the default value, power_parameters will be set to the empty
+            string.  Available to admin users.
         :type power_type: basestring
+        :param power_parameters_{param1}: The new value for the 'param1'
+            power parameter.  Note that this is dynamic as the available
+            parameters depend on the selected value of the Node's power_type.
+            For instance, if the power_type is 'ether_wake', the only valid
+            parameter is 'power_address' so one would want to pass 'myaddress'
+            as the value of the 'power_parameters_power_address' parameter.
+            Available to admin users.
+        :type power_parameters_{param1}: basestring
+        :param power_parameters_skip_check: Whether or not the new power
+            parameters for this node should be checked against the expected
+            power parameters for the node's power type ('true' or 'false').
+            The default is 'false'.
+        :type power_parameters_skip_validation: basestring
         """
 
         node = Node.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NODE_PERMISSION.EDIT)
         data = get_overrided_query_dict(model_to_dict(node), request.data)
-        Form = get_node_edit_form(request.user)
+        Form = get_node_edit_form(request.user, api=True)
         form = Form(data, instance=node)
         if form.is_valid():
             return form.save()
