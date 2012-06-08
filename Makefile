@@ -21,7 +21,6 @@ build: \
     bin/twistd.pserv bin/test.pserv \
     bin/twistd.txlongpoll \
     bin/py bin/ipy \
-    bin/write_dhcp_config \
     $(js_enums)
 
 all: build doc
@@ -70,10 +69,6 @@ bin/py bin/ipy: bin/buildout buildout.cfg versions.cfg setup.py
 	bin/buildout install repl
 	@touch --no-create bin/py bin/ipy
 
-bin/write_dhcp_config: bin/buildout buildout.cfg versions.cfg setup.py
-	bin/buildout install write-dhcp-config
-	@touch --no-create $@
-
 test: bin/test.maas bin/test.maastesting bin/test.pserv $(js_enums)
 	bin/test.maas
 	bin/test.maastesting
@@ -95,7 +90,7 @@ lint-js: sources = src/maasserver/static/js
 lint-js:
 	@find $(sources) -type f -print0 | xargs -r0 $(pocketlint)
 
-check: clean build test
+check: clean test
 
 docs/api.rst: bin/maas src/maasserver/api.py syncdb
 	bin/maas generate_api_doc > $@
