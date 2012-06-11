@@ -475,6 +475,24 @@ class SimpleUserLoggedInEnlistmentAPITest(APIv10TestMixin, LoggedInTestCase):
                 "following node(s): %s." % node_id),
             (response.status_code, response.content))
 
+    def test_POST_simple_user_cannot_set_power_type_and_parameters(self):
+        new_power_address = factory.getRandomString()
+        response = self.client.post(
+            self.get_uri('nodes/'), {
+                'op': 'new',
+                'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
+                'power_type': POWER_TYPE.WAKE_ON_LAN,
+                'power_parameters_power_address': new_power_address,
+                'mac_addresses': ['AA:BB:CC:DD:EE:FF'],
+                })
+
+        node = Node.objects.get(
+            system_id=json.loads(response.content)['system_id'])
+        self.assertEqual(
+                (httplib.OK, '', POWER_TYPE.DEFAULT),
+                (response.status_code, node.power_parameters,
+                    node.power_type))
+
     def test_POST_returns_limited_fields(self):
         response = self.client.post(
             self.get_uri('nodes/'),
@@ -504,6 +522,23 @@ class SimpleUserLoggedInEnlistmentAPITest(APIv10TestMixin, LoggedInTestCase):
 class AdminLoggedInEnlistmentAPITest(APIv10TestMixin, AdminLoggedInTestCase):
     # Enlistment tests specific to admin users.
 
+    def test_POST_new_creates_node_default_values_for_power_settings(self):
+        architecture = factory.getRandomChoice(ARCHITECTURE_CHOICES)
+        mac_address = 'AA:BB:CC:DD:EE:FF'
+        response = self.client.post(
+            self.get_uri('nodes/'), {
+                'op': 'new',
+                'architecture': architecture,
+                'mac_addresses': [mac_address],
+                })
+        node = Node.objects.get(
+            system_id=json.loads(response.content)['system_id'])
+        self.assertAttributes(
+            node,
+            dict(
+                architecture=architecture, power_type=POWER_TYPE.DEFAULT,
+                power_parameters=''))
+
     def test_POST_new_sets_power_type_if_admin(self):
         response = self.client.post(
             self.get_uri('nodes/'), {
@@ -515,6 +550,68 @@ class AdminLoggedInEnlistmentAPITest(APIv10TestMixin, AdminLoggedInTestCase):
         node = Node.objects.get(
             system_id=json.loads(response.content)['system_id'])
         self.assertEqual(POWER_TYPE.WAKE_ON_LAN, node.power_type)
+        self.assertEqual('', node.power_parameters)
+
+    def test_POST_new_sets_power_parameters_field(self):
+        # The api allows the setting of a Node's power_parameters field.
+        # Create a power_parameter valid for the selected power_type.
+        new_power_address = factory.getRandomString()
+        response = self.client.post(
+            self.get_uri('nodes/'), {
+                'op': 'new',
+                'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
+                'power_type': POWER_TYPE.WAKE_ON_LAN,
+                'power_parameters_power_address': new_power_address,
+                'mac_addresses': ['AA:BB:CC:DD:EE:FF'],
+                })
+
+        node = Node.objects.get(
+            system_id=json.loads(response.content)['system_id'])
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(
+            {'power_address': new_power_address},
+            reload_object(node).power_parameters)
+
+    def test_POST_updates_power_parameters_rejects_unknown_param(self):
+        hostname = factory.getRandomString()
+        response = self.client.post(
+            self.get_uri('nodes/'), {
+                'op': 'new',
+                'hostname': hostname,
+                'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
+                'power_type': POWER_TYPE.WAKE_ON_LAN,
+                'power_parameters_unknown_param': factory.getRandomString(),
+                'mac_addresses': [factory.getRandomMACAddress()],
+                })
+
+        self.assertEqual(
+            (
+                httplib.BAD_REQUEST,
+                {'power_parameters': ["Unknown parameter(s): unknown_param."]}
+            ),
+            (response.status_code, json.loads(response.content)))
+        self.assertFalse(Node.objects.filter(hostname=hostname).exists())
+
+    def test_POST_new_sets_power_parameters_skip_check(self):
+        # The api allows to skip the validation step and set arbitrary
+        # power parameters.
+        param = factory.getRandomString()
+        response = self.client.post(
+            self.get_uri('nodes/'), {
+                'op': 'new',
+                'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
+                'power_type': POWER_TYPE.WAKE_ON_LAN,
+                'power_parameters_param': param,
+                'power_parameters_skip_check': 'true',
+                'mac_addresses': ['AA:BB:CC:DD:EE:FF'],
+                })
+
+        node = Node.objects.get(
+            system_id=json.loads(response.content)['system_id'])
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(
+            {'param': param},
+            reload_object(node).power_parameters)
 
     def test_POST_admin_creates_node_in_commissioning_state(self):
         # When an admin user enlists a node, it goes into the
