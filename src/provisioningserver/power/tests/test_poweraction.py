@@ -14,7 +14,7 @@ __metaclass__ = type
 __all__ = []
 
 import os
-from textwrap import dedent
+import re
 
 from celeryconfig import POWER_TEMPLATES_DIR
 from maastesting.factory import factory
@@ -25,7 +25,11 @@ from provisioningserver.power.poweraction import (
     PowerActionFail,
     UnknownPowerType,
     )
-from testtools.matchers import FileContains
+from provisioningserver.utils import ShellTemplate
+from testtools.matchers import (
+    FileContains,
+    MatchesRegex,
+    )
 
 
 class TestPowerAction(TestCase):
@@ -51,29 +55,32 @@ class TestPowerAction(TestCase):
     def test_get_template(self):
         # get_template() should find and read the template file.
         pa = PowerAction(POWER_TYPE.WAKE_ON_LAN)
-        with open(pa.path, "r") as f:
-            template = f.read()
-        self.assertEqual(template, pa.get_template())
+        template = pa.get_template()
+        self.assertIsInstance(template, ShellTemplate)
+        with open(pa.path, "rb") as f:
+            template_content = f.read()
+        self.assertEqual(template_content, template.content)
 
     def test_render_template(self):
         # render_template() should take a template string and substitue
         # its variables.
         pa = PowerAction(POWER_TYPE.WAKE_ON_LAN)
-        template = "template: %(mac)s"
+        template = ShellTemplate("template: {{mac}}")
         rendered = pa.render_template(template, mac="mymac")
-        self.assertEqual(
-            template % dict(mac="mymac"), rendered)
+        self.assertEqual("template: mymac", rendered)
 
     def test_render_template_raises_PowerActionFail(self):
         # If not enough arguments are supplied to fill in template
         # variables then a PowerActionFail is raised.
         pa = PowerAction(POWER_TYPE.WAKE_ON_LAN)
-        template = "template: %(mac)s"
+        template_name = factory.getRandomString()
+        template = ShellTemplate("template: {{mac}}", name=template_name)
         exception = self.assertRaises(
             PowerActionFail, pa.render_template, template)
-        self.assertEqual(
-            "Template is missing at least the mac parameter.",
-            exception.message)
+        self.assertThat(
+            exception.message, MatchesRegex(
+                "name 'mac' is not defined at line \d+ column \d+ "
+                "in file %s" % re.escape(template_name)))
 
     def _create_template_file(self, template):
         return self.make_file("testscript.sh", template)
@@ -89,13 +96,10 @@ class TestPowerAction(TestCase):
         # Create a template in a temp dir.
         tempdir = self.make_dir()
         output_file = os.path.join(tempdir, "output")
-        template = dedent("""\
-            #!/bin/sh
-            echo working %(mac)s >""")
-        template += output_file
+        template = "echo working {{mac}} > {{outfile}}"
         path = self._create_template_file(template)
 
-        self.run_action(path, mac="test")
+        self.run_action(path, mac="test", outfile=output_file)
         self.assertThat(output_file, FileContains("working test\n"))
 
     def test_execute_raises_PowerActionFail_when_script_fails(self):

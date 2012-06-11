@@ -1,10 +1,13 @@
+# -*- mode: shell-script -*-
+#
 # Control virtual system's "power" through virsh.
+#
 
 # Parameters.
-power_change="%(power_change)s"
-virsh_url="%(virsh_url)s"
-system_id="%(system_id)s"
-virsh="%(virsh)s"
+power_change={{power_change}}
+virsh_url={{virsh_url}}
+system_id={{system_id}}
+virsh={{virsh}}
 
 
 # Choose command for virsh to make the requested power change happen.

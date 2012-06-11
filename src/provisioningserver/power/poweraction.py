@@ -21,6 +21,7 @@ import os
 import subprocess
 
 from celeryconfig import POWER_TEMPLATES_DIR
+from provisioningserver.utils import ShellTemplate
 
 
 class UnknownPowerType(Exception):
@@ -50,17 +51,14 @@ class PowerAction:
         self.power_type = power_type
 
     def get_template(self):
-        with open(self.path, "r") as f:
-            template = f.read()
-        return template
+        with open(self.path, "rb") as f:
+            return ShellTemplate(f.read(), name=self.path)
 
     def render_template(self, template, **kwargs):
         try:
-            rendered = template % kwargs
-        except KeyError, e:
-            raise PowerActionFail(
-                "Template is missing at least the %s parameter." % e.message)
-        return rendered
+            return template.substitute(kwargs)
+        except NameError as error:
+            raise PowerActionFail(*error.args)
 
     def run_shell(self, commands):
         """Execute raw shell script (as rendered from a template).

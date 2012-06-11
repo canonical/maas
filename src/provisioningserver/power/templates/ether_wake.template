@@ -1,5 +1,10 @@
-mac='%(mac)s'
-power_change='%(power_change)s'
+# -*- mode: shell-script -*-
+#
+# Control node power through WOL, via `wakeonlan` or `etherwake`.
+#
+
+mac={{mac}}
+power_change={{power_change}}
 
 if [ "${power_change}" != 'on' ]
 then
