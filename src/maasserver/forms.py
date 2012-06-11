@@ -11,17 +11,20 @@ from __future__ import (
 
 __metaclass__ = type
 __all__ = [
+    "AdminNodeWithMACAddressesForm",
     "CommissioningForm",
     "get_action_form",
     "get_node_edit_form",
+    "get_node_create_form",
     "HostnameFormField",
     "NodeForm",
     "MACAddressForm",
     "MAASAndNetworkForm",
+    "NodeWithMACAddressesForm",
     "SSHKeyForm",
     "UbuntuForm",
-    "UIAdminNodeEditForm",
-    "UINodeEditForm",
+    "AdminNodeForm",
+    "NodeForm",
     ]
 
 from django import forms
@@ -88,10 +91,6 @@ INVALID_ARCHITECTURE_MESSAGE = compose_invalid_choice_text(
 
 
 class NodeForm(ModelForm):
-    system_id = forms.CharField(
-        widget=forms.TextInput(attrs={'readonly': 'readonly'}),
-        required=False)
-
     after_commissioning_action = forms.TypedChoiceField(
         label="After commissioning",
         choices=NODE_AFTER_COMMISSIONING_ACTION_CHOICES, required=False,
@@ -106,41 +105,8 @@ class NodeForm(ModelForm):
         model = Node
         fields = (
             'hostname',
-            'system_id',
             'after_commissioning_action',
             'architecture',
-            'power_type',
-            )
-
-
-class UINodeEditForm(ModelForm):
-
-    after_commissioning_action = forms.ChoiceField(
-        label="After commissioning",
-        choices=NODE_AFTER_COMMISSIONING_ACTION_CHOICES,
-        required=False)
-
-    class Meta:
-        model = Node
-        fields = (
-            'hostname',
-            'after_commissioning_action',
-            )
-
-
-class UIAdminNodeEditForm(ModelForm):
-
-    after_commissioning_action = forms.ChoiceField(
-        label="After commissioning",
-        choices=NODE_AFTER_COMMISSIONING_ACTION_CHOICES,
-        required=False)
-
-    class Meta:
-        model = Node
-        fields = (
-            'hostname',
-            'after_commissioning_action',
-            'power_type',
             )
 
 
@@ -169,32 +135,39 @@ class APIEditMixin:
         super(APIEditMixin, self)._post_clean()
 
 
-class APIAdminNodeEditForm(APIEditMixin, UIAdminNodeEditForm):
+class AdminNodeForm(APIEditMixin, NodeForm):
+    """A version of NodeForm with adds the fields 'power_type' and
+    'power_parameters'.
+    """
 
     class Meta:
         model = Node
         fields = (
-           'hostname',
-           'after_commissioning_action',
-           'power_type',
-           'power_parameters',
-           )
+            'hostname',
+            'after_commissioning_action',
+            'architecture',
+            'power_type',
+            'power_parameters',
+            )
 
     def __init__(self, data=None, files=None, instance=None, initial=None):
-        super(APIAdminNodeEditForm, self).__init__(
+        super(AdminNodeForm, self).__init__(
             data=data, files=files, instance=instance, initial=initial)
         self.set_up_power_parameters_field(data, instance)
 
     def set_up_power_parameters_field(self, data, node):
-        if data is None:
-            data = {}
-        power_type = data.get('power_type', self.initial.get('power_type'))
-        if power_type not in dict(POWER_TYPE_CHOICES):
-            power_type = node.power_type
-        self.fields['power_parameters'] = POWER_TYPE_PARAMETERS[power_type]
+        if node is not None:
+            if data is None:
+                data = {}
+            power_type = data.get(
+                'power_type', self.initial.get('power_type'))
+            if power_type not in dict(POWER_TYPE_CHOICES):
+                power_type = node.power_type
+            self.fields['power_parameters'] = (
+                POWER_TYPE_PARAMETERS[power_type])
 
     def clean(self):
-        cleaned_data = super(APIAdminNodeEditForm, self).clean()
+        cleaned_data = super(AdminNodeForm, self).clean()
         # If power_type is DEFAULT and power_parameters_skip_check is not
         # on, reset power_parameters (set it to the empty string).
         is_default = cleaned_data['power_type'] == POWER_TYPE.DEFAULT
@@ -204,15 +177,12 @@ class APIAdminNodeEditForm(APIEditMixin, UIAdminNodeEditForm):
             cleaned_data['power_parameters'] = ''
         return cleaned_data
 
-    def clean_power_type_power_param(self, cleaned_data):
-        return cleaned_data
 
-
-def get_node_edit_form(user, api=False):
+def get_node_edit_form(user):
     if user.is_superuser:
-        return APIAdminNodeEditForm
+        return AdminNodeForm
     else:
-        return UINodeEditForm
+        return NodeForm
 
 
 class MACAddressForm(ModelForm):
@@ -281,17 +251,25 @@ class MultipleMACAddressField(forms.MultiValueField):
         return []
 
 
-class NodeWithMACAddressesForm(NodeForm):
+class WithMACAddressesMixin:
+    """A form mixin which dynamically adds a MultipleMACAddressField to the
+    list of fields.  This mixin also overrides the 'save' method to persist
+    the list of MAC addresses and is intended to be used with a class
+    inheriting from NodeForm.
+    """
 
     def __init__(self, *args, **kwargs):
-        super(NodeWithMACAddressesForm, self).__init__(*args, **kwargs)
+        super(WithMACAddressesMixin, self).__init__(*args, **kwargs)
+        self.set_up_mac_addresses_field()
+
+    def set_up_mac_addresses_field(self):
         macs = [mac for mac in self.data.getlist('mac_addresses') if mac]
         self.fields['mac_addresses'] = MultipleMACAddressField(len(macs))
         self.data = self.data.copy()
         self.data['mac_addresses'] = macs
 
     def is_valid(self):
-        valid = super(NodeWithMACAddressesForm, self).is_valid()
+        valid = super(WithMACAddressesMixin, self).is_valid()
         # If the number of MAC address fields is > 1, provide a unified
         # error message if the validation has failed.
         reformat_mac_address_error = (
@@ -312,12 +290,30 @@ class NodeWithMACAddressesForm(NodeForm):
         return data
 
     def save(self):
-        node = super(NodeWithMACAddressesForm, self).save()
+        node = super(WithMACAddressesMixin, self).save()
         for mac in self.cleaned_data['mac_addresses']:
             node.add_mac_address(mac)
         if self.cleaned_data['hostname'] == "":
             node.set_mac_based_hostname(self.cleaned_data['mac_addresses'][0])
         return node
+
+
+class AdminNodeWithMACAddressesForm(WithMACAddressesMixin, AdminNodeForm):
+    """A version of the AdminNodeForm which includes the multi-MAC address
+    field.
+    """
+
+
+class NodeWithMACAddressesForm(WithMACAddressesMixin, NodeForm):
+    """A version of the NodeForm which includes the multi-MAC address field.
+    """
+
+
+def get_node_create_form(user):
+    if user.is_superuser:
+        return AdminNodeWithMACAddressesForm
+    else:
+        return NodeWithMACAddressesForm
 
 
 class NodeActionForm(forms.Form):

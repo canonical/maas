@@ -251,19 +251,6 @@ class EnlistmentAPITest(APIv10TestMixin, MultipleUsersScenarios, TestCase):
             system_id=json.loads(response.content)['system_id'])
         self.assertEqual(POWER_TYPE.DEFAULT, node.power_type)
 
-    def test_POST_new_sets_power_type(self):
-        architecture = factory.getRandomChoice(ARCHITECTURE_CHOICES)
-        response = self.client.post(
-            self.get_uri('nodes/'), {
-                'op': 'new',
-                'architecture': architecture,
-                'power_type': POWER_TYPE.WAKE_ON_LAN,
-                'mac_addresses': ['00:11:22:33:44:55'],
-                })
-        node = Node.objects.get(
-            system_id=json.loads(response.content)['system_id'])
-        self.assertEqual(POWER_TYPE.WAKE_ON_LAN, node.power_type)
-
     def test_POST_new_associates_mac_addresses(self):
         # The API allows a Node to be created and associated with MAC
         # Addresses.
@@ -516,6 +503,18 @@ class SimpleUserLoggedInEnlistmentAPITest(APIv10TestMixin, LoggedInTestCase):
 
 class AdminLoggedInEnlistmentAPITest(APIv10TestMixin, AdminLoggedInTestCase):
     # Enlistment tests specific to admin users.
+
+    def test_POST_new_sets_power_type_if_admin(self):
+        response = self.client.post(
+            self.get_uri('nodes/'), {
+                'op': 'new',
+                'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
+                'power_type': POWER_TYPE.WAKE_ON_LAN,
+                'mac_addresses': ['00:11:22:33:44:55'],
+                })
+        node = Node.objects.get(
+            system_id=json.loads(response.content)['system_id'])
+        self.assertEqual(POWER_TYPE.WAKE_ON_LAN, node.power_type)
 
     def test_POST_admin_creates_node_in_commissioning_state(self):
         # When an admin user enlists a node, it goes into the
@@ -1007,12 +1006,11 @@ class TestNodeAPI(APITestCase):
             {'power_parameters_unknown_param': factory.getRandomString()})
 
         self.assertEqual(
-            (httplib.BAD_REQUEST, json.loads(response.content)),
             (
-                response.status_code,
-                {'power_parameters':
-                    ["Unknown parameter(s): unknown_param."]}
-            ))
+                httplib.BAD_REQUEST,
+                {'power_parameters': ["Unknown parameter(s): unknown_param."]}
+            ),
+            (response.status_code, json.loads(response.content)))
         self.assertEqual(
             power_parameters, reload_object(node).power_parameters)
 
@@ -1052,11 +1050,11 @@ class TestNodeAPI(APITestCase):
 
         node = reload_object(node)
         self.assertEqual(
-            (httplib.BAD_REQUEST, json.loads(response.content)),
             (
-                response.status_code,
-                {'power_parameters': ['Unknown parameter(s): address.']}
-            ))
+                httplib.BAD_REQUEST,
+                {'power_parameters': ["Unknown parameter(s): address."]}
+            ),
+            (response.status_code, json.loads(response.content)))
         self.assertEqual(
             power_parameters, reload_object(node).power_parameters)
 

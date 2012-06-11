@@ -20,6 +20,7 @@ from lxml.html import fromstring
 from maasserver import messages
 import maasserver.api
 from maasserver.enum import (
+    ARCHITECTURE_CHOICES,
     NODE_AFTER_COMMISSIONING_ACTION,
     NODE_STATUS,
     )
@@ -208,6 +209,7 @@ class NodeViewsTest(LoggedInTestCase):
         node_edit_link = reverse('node-edit', args=[node.system_id])
         params = {
             'hostname': factory.getRandomString(),
+            'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
             'after_commissioning_action': factory.getRandomEnum(
                 NODE_AFTER_COMMISSIONING_ACTION),
         }
@@ -424,6 +426,7 @@ class AdminNodeViewsTest(AdminLoggedInTestCase):
             'after_commissioning_action': factory.getRandomEnum(
                 NODE_AFTER_COMMISSIONING_ACTION),
             'power_type': factory.getRandomChoice(POWER_TYPE_CHOICES),
+            'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
         }
         response = self.client.post(node_edit_link, params)
 

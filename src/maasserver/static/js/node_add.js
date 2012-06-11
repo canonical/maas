@@ -140,10 +140,10 @@ Y.extend(AddNodeWidget, Y.Widget, {
             .set('method', 'post')
             .append(global_error)
             .append(operation)
+            .append(Y.Node.create(this.add_node))
+            .append(Y.Node.create(this.add_architecture))
             .append(Y.Node.create(this.add_macaddress))
             .append(macaddress_add_link)
-            .append(Y.Node.create(this.add_architecture))
-            .append(Y.Node.create(this.add_node))
             .append(buttons);
         return addnodeform;
     },

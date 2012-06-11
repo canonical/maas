@@ -20,24 +20,26 @@ from django.core.exceptions import (
 from django.http import QueryDict
 from maasserver.enum import (
     ARCHITECTURE,
+    ARCHITECTURE_CHOICES,
     NODE_AFTER_COMMISSIONING_ACTION_CHOICES,
     NODE_STATUS,
     )
 from maasserver.forms import (
-    APIAdminNodeEditForm,
+    AdminNodeForm,
+    AdminNodeWithMACAddressesForm,
     ConfigForm,
     EditUserForm,
     get_action_form,
+    get_node_create_form,
     get_node_edit_form,
     HostnameFormField,
     MACAddressForm,
     NewUserCreationForm,
     NodeActionForm,
+    NodeForm,
     NodeWithMACAddressesForm,
     ProfileForm,
     remove_None_values,
-    UIAdminNodeEditForm,
-    UINodeEditForm,
     validate_hostname,
     )
 from maasserver.models import (
@@ -185,25 +187,27 @@ class FormWithHostname(forms.Form):
 
 class NodeEditForms(TestCase):
 
-    def test_UINodeEditForm_contains_limited_set_of_fields(self):
-        form = UINodeEditForm()
+    def test_NodeForm_contains_limited_set_of_fields(self):
+        form = NodeForm()
 
         self.assertEqual(
             [
                 'hostname',
                 'after_commissioning_action',
+                'architecture',
             ], list(form.fields))
 
-    def test_UINodeEditForm_changes_node(self):
+    def test_NodeForm_changes_node(self):
         node = factory.make_node()
         hostname = factory.getRandomString()
         after_commissioning_action = factory.getRandomChoice(
             NODE_AFTER_COMMISSIONING_ACTION_CHOICES)
 
-        form = UINodeEditForm(
+        form = NodeForm(
             data={
                 'hostname': hostname,
                 'after_commissioning_action': after_commissioning_action,
+                'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
                 },
             instance=node)
         form.save()
@@ -212,28 +216,32 @@ class NodeEditForms(TestCase):
         self.assertEqual(
             after_commissioning_action, node.after_commissioning_action)
 
-    def test_UIAdminNodeEditForm_contains_limited_set_of_fields(self):
-        form = UIAdminNodeEditForm()
+    def test_AdminNodeForm_contains_limited_set_of_fields(self):
+        node = factory.make_node()
+        form = AdminNodeForm(instance=node)
 
         self.assertEqual(
             [
                 'hostname',
                 'after_commissioning_action',
+                'architecture',
                 'power_type',
+                'power_parameters',
             ],
             list(form.fields))
 
-    def test_UIAdminNodeEditForm_changes_node(self):
+    def test_AdminNodeForm_changes_node(self):
         node = factory.make_node()
         hostname = factory.getRandomString()
         after_commissioning_action = factory.getRandomChoice(
             NODE_AFTER_COMMISSIONING_ACTION_CHOICES)
         power_type = factory.getRandomChoice(POWER_TYPE_CHOICES)
-        form = UIAdminNodeEditForm(
+        form = AdminNodeForm(
             data={
                 'hostname': hostname,
                 'after_commissioning_action': after_commissioning_action,
                 'power_type': power_type,
+                'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
                 },
             instance=node)
         form.save()
@@ -255,29 +263,18 @@ class NodeEditForms(TestCase):
     def test_remove_None_values_leaves_empty_dict_untouched(self):
         self.assertEqual({}, remove_None_values({}))
 
-    def test_APIAdminNodeEditForm_contains_limited_set_of_fields(self):
-        form = APIAdminNodeEditForm({}, instance=factory.make_node())
-
-        self.assertEqual(
-            [
-                'hostname',
-                'after_commissioning_action',
-                'power_type',
-                'power_parameters',
-            ],
-            list(form.fields))
-
-    def test_APIAdminNodeEditForm_changes_node(self):
+    def test_AdminNodeForm_changes_node_with_skip_check(self):
         node = factory.make_node()
         hostname = factory.getRandomString()
         after_commissioning_action = factory.getRandomChoice(
             NODE_AFTER_COMMISSIONING_ACTION_CHOICES)
         power_type = factory.getRandomChoice(POWER_TYPE_CHOICES)
         power_parameters_field = factory.getRandomString()
-        form = APIAdminNodeEditForm(
+        form = AdminNodeForm(
             data={
                 'hostname': hostname,
                 'after_commissioning_action': after_commissioning_action,
+                'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
                 'power_type': power_type,
                 'power_parameters_field': power_parameters_field,
                 'power_parameters_skip_check': True,
@@ -291,17 +288,23 @@ class NodeEditForms(TestCase):
             (node.hostname, node.after_commissioning_action, node.power_type,
                 node.power_parameters))
 
-    def test_get_node_edit_form_returns_UINodeEditForm_if_non_admin(self):
+    def test_get_node_edit_form_returns_NodeForm_if_non_admin(self):
         user = factory.make_user()
-        self.assertEqual(UINodeEditForm, get_node_edit_form(user))
+        self.assertEqual(NodeForm, get_node_edit_form(user))
 
-    def test_get_node_edit_form_returns_APIAdminNodeEdit_if_admin_api(self):
+    def test_get_node_edit_form_returns_APIAdminNodeEdit_if_admin(self):
         admin = factory.make_admin()
-        self.assertEqual(APIAdminNodeEditForm, get_node_edit_form(admin, True))
+        self.assertEqual(AdminNodeForm, get_node_edit_form(admin))
 
-    def test_get_node_edit_form_returns_UINodeEditForm_if_non_admin_api(self):
+    def test_get_node_create_form_if_non_admin(self):
         user = factory.make_user()
-        self.assertEqual(UINodeEditForm, get_node_edit_form(user, True))
+        self.assertEqual(
+            NodeWithMACAddressesForm, get_node_create_form(user))
+
+    def test_get_node_create_form_if_admin(self):
+        admin = factory.make_admin()
+        self.assertEqual(
+            AdminNodeWithMACAddressesForm, get_node_create_form(admin))
 
 
 class TestNodeActionForm(TestCase):

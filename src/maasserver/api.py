@@ -110,8 +110,8 @@ from maasserver.exceptions import (
     )
 from maasserver.fields import validate_mac
 from maasserver.forms import (
+    get_node_create_form,
     get_node_edit_form,
-    NodeWithMACAddressesForm,
     )
 from maasserver.models import (
     Config,
@@ -434,7 +434,7 @@ class NodeHandler(BaseHandler):
         node = Node.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NODE_PERMISSION.EDIT)
         data = get_overrided_query_dict(model_to_dict(node), request.data)
-        Form = get_node_edit_form(request.user, api=True)
+        Form = get_node_edit_form(request.user)
         form = Form(data, instance=node)
         if form.is_valid():
             return form.save()
@@ -520,7 +520,8 @@ def create_node(request):
     :rtype: :class:`maasserver.models.Node`.
     :raises: ValidationError
     """
-    form = NodeWithMACAddressesForm(request.data)
+    Form = get_node_create_form(request.user)
+    form = Form(request.data)
     if form.is_valid():
         return form.save()
     else:
