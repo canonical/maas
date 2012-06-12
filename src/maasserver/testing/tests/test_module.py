@@ -25,11 +25,11 @@ from maasserver.testing import (
     reload_objects,
     )
 from maasserver.testing.factory import factory
-from maasserver.testing.models import TestModel
 from maasserver.testing.testcase import (
     TestCase,
     TestModelTestCase,
     )
+from maasserver.testing.tests.models import TestModel
 from provisioningserver.testing import fakeapi
 
 # Horrible kludge.  Works around a bug where delete() does not work on
@@ -82,7 +82,7 @@ class TestTestCase(TestCase):
 class TestHelpers(TestModelTestCase):
     """Test helper functions."""
 
-    app = 'maasserver.testing'
+    app = 'maasserver.testing.tests'
 
     def test_extract_redirect_extracts_redirect_location(self):
         url = factory.getRandomString()
