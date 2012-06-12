@@ -9,6 +9,8 @@
     <script type="text/javascript" src="../testing/testrunner.js"></script>
     <script type="text/javascript" src="../testing/testing.js"></script>
     <script type="text/javascript" src="../morph.js"></script>
+    <script type="text/javascript" src="../power_parameters.js"></script>
+    <script type="text/javascript" src="../enums.js"></script>
     <!-- The module under test -->
     <script type="text/javascript" src="../node_add.js"></script>
     <!-- The test suite -->
@@ -22,30 +24,47 @@
         nodes_handler: '/api/nodes/'
       }
     };
+    var ENUM = {
+        "DEFAULT": "",
+        "value1": "value1"
+    };
     // -->
     </script>
   </head>
   <body>
+  <script type="text/x-template" id="power-param-form-">
+  </script>
+  <script type="text/x-template" id="power-param-form-value1">
+  </script>
   <script type="text/x-template" id="add-macaddress">
     <p></p>
   </script>
-  <script type="text/x-template" id="add-architecture">
-    <p>
-    <label for="id_architecture">Architecture
-    </label>
-    <select id="id_architecture" name="architecture">
-      <option value="amd64">amd64</option>
-      <option value="i386">i386</option>
-    </select>
-    <input type="text" maxlength="30" name="hostname" id="id_hostname" />
-    </p>
-  </script>
   <script type="text/x-template" id="add-node">
     <p>
-    <label for="id_hostname">Hostname
-      <span class="form-optional">(optional)</span>
-    </label>
-    <input type="text" maxlength="30" name="hostname" id="id_hostname" />
+      <label for="id_hostname">Hostname
+        <span class="form-optional">(optional)</span>
+      </label>
+      <input type="text" maxlength="30" name="hostname" id="id_hostname" />
+    </p>
+    <p>
+      <label for="id_architecture">Architecture</label>
+      <select id="id_architecture" name="architecture">
+        <option value="amd64">amd64</option>
+        <option value="i386">i386</option>
+      </select>
+      <input type="text" maxlength="30" name="hostname" id="id_hostname" />
+    </p>
+  </script>
+  <script type="text/x-template" id="add-node-admin">
+    <p>
+      <label for="id_power_type">Power type</label>
+      <select name="power_type" id="id_power_type">
+        <option value="" selected="selected">---------</option>
+        <option value="value1">value1</option>
+      </select>
+    </p>
+    <p class="power_parameters">
+      <label for="id_power_parameters">Power parameters</label>
     </p>
   </script>
   <div id="target_node"></div>

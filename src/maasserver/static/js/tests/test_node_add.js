@@ -211,6 +211,70 @@ suite.add(new Y.maas.testing.TestCase({
 
 }));
 
+suite.add(new Y.maas.testing.TestCase({
+    name: 'test-add-node-widget-add-node-admin',
+
+    setUp: function() {
+        this.setUpAdminTemplate();
+        this.setUpPowerTypeEnum();
+    },
+
+    setUpPowerTypeEnum: function() {
+        // Override module.POWER_TYPE_ENUM for the sake of testing.
+        this.POWER_TYPE_ENUM = module.POWER_TYPE_ENUM;
+        module.POWER_TYPE_ENUM = ENUM;
+    },
+
+    setUpAdminTemplate: function() {
+        // Append the snippet that will be seen by an admin user to the
+        // general template.
+        this.add_node_template = Y.one('#add-node').getContent();
+        this.add_node_admin_snippet = Y.one('#add-node-admin').getContent();
+        Y.one('#add-node').set(
+            'innerHTML',
+            this.add_node_template + this.add_node_admin_snippet);
+    },
+
+    tearDown: function() {
+        this.tearDownAdminTemplate();
+        this.tearDownPowerTypeEnum();
+    },
+
+    tearDownAdminTemplate: function() {
+        Y.one('#add-node').set('innerHTML', this.add_node_template);
+    },
+
+    tearDownPowerTypeEnum: function() {
+        module.POWER_TYPE_ENUM = this.POWER_TYPE_ENUM;
+    },
+
+    testFormContainsPowerType: function() {
+        module.showAddNodeWidget({targetNode: '#target_node', animate: false});
+        Y.Assert.isNotNull(find_widget().one('#id_power_type'));
+    },
+
+    testPowerParameterHidden: function() {
+        // The power_parameter field starts hidden.
+        module.showAddNodeWidget({targetNode: '#target_node', animate: false});
+        Y.Assert.isTrue(
+            find_widget().one('.power_parameters').hasClass('hidden'));
+    },
+
+    testPowerParameterDynamicallyLinked: function() {
+        // When the option of the 'select' tag changes to a non empty
+        // string, the 'power_parameters' field is shown.
+        module.showAddNodeWidget({targetNode: '#target_node', animate: false});
+        var select = Y.one('#id_power_type');
+        select.set('value', 'value1');
+        select.simulate('change');
+        Y.Assert.isFalse(
+            find_widget().one('.power_parameters').hasClass('hidden'));
+    }
+
+
+}));
+
+
 namespace.suite = suite;
 
 }, '0.1', {'requires': [

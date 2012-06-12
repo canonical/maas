@@ -31,9 +31,9 @@ from maasserver.testing.testcase import (
     LoggedInTestCase,
     TestCase,
     )
+from maasserver.utils import map_enum
 from maasserver.views import HelpfulDeleteView
 from maasserver.views.nodes import NodeEdit
-from maasserver.utils import map_enum
 from maastesting.matchers import ContainsAll
 from provisioningserver.enum import PSERV_FAULT
 
@@ -70,24 +70,47 @@ class Test404500(LoggedInTestCase):
 
 class TestSnippets(LoggedInTestCase):
 
+    def _assertTemplateExistsAndContains(self, content, template_selector,
+                                         contains_selector, reverse=False):
+        doc = fromstring(content)
+        snippets = doc.cssselect(template_selector)
+        # The snippet exists.
+        self.assertEqual(
+            1, len(snippets),
+            "The snippet '%s' does not exist." % template_selector)
+        # It contains the required element.
+        selects = fromstring(snippets[0].text).cssselect(contains_selector)
+        if reverse:
+            self.assertEqual(
+                0, len(selects),
+                "The element '%s' does exist." % contains_selector)
+        else:
+            self.assertEqual(
+                1, len(selects),
+                "The element '%s' does not exist." % contains_selector,)
+
     def assertTemplateExistsAndContains(self, content, template_selector,
-                                        contains_selector):
+                                        contains_selector, reverse=False):
         """Assert that the provided html 'content' contains a snippet as
         selected by 'template_selector' which in turn contains an element
         selected by 'contains_selector'.
         """
-        doc = fromstring(content)
-        snippets = doc.cssselect(template_selector)
-        # The snippet exists.
-        self.assertEqual(1, len(snippets))
-        # It contains the required element.
-        selects = fromstring(snippets[0].text).cssselect(contains_selector)
-        self.assertEqual(1, len(selects))
+        self._assertTemplateExistsAndContains(
+            content, template_selector, contains_selector)
+
+    def assertTemplateExistsAndDoesNotContain(self, content, template_selector,
+                                              contains_selector):
+        """Assert that the provided html 'content' contains a snippet as
+        selected by 'template_selector' which does not contains an element
+        selected by 'contains_selector'.
+        """
+        self._assertTemplateExistsAndContains(
+            content, template_selector, contains_selector, reverse=True)
 
     def test_architecture_snippet(self):
         response = self.client.get('/')
         self.assertTemplateExistsAndContains(
-            response.content, '#add-architecture', 'select#id_architecture')
+            response.content, '#add-node', 'select#id_architecture')
 
     def test_hostname(self):
         response = self.client.get('/')
@@ -99,6 +122,19 @@ class TestSnippets(LoggedInTestCase):
         self.assertTemplateExistsAndContains(
             response.content, '#add-node',
             'select#id_after_commissioning_action')
+
+    def test_power_type_does_not_exist_if_not_admin(self):
+        response = self.client.get('/')
+        self.assertTemplateExistsAndDoesNotContain(
+            response.content, '#add-node',
+            'select#id_power_type')
+
+    def test_power_type_exists_if_admin(self):
+        self.become_admin()
+        response = self.client.get('/')
+        self.assertTemplateExistsAndContains(
+            response.content, '#add-node',
+            'select#id_power_type')
 
 
 class FakeDeletableModel:

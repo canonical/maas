@@ -216,6 +216,11 @@ class TestDictCharWidget(TestCase):
                 ),
             widget.render(name, values))
 
+    def test_empty_DictCharWidget_renders_as_empty_string(self):
+        widget = DictCharWidget(
+            [widgets.CheckboxInput], [], [], skip_check=True)
+        self.assertEqual('', widget.render(factory.getRandomString(), ''))
+
     def test_DictCharWidget_value_from_datadict_values_from_data(self):
         # 'value_from_datadict' extracts the values corresponding to the
         # field as a dictionary.

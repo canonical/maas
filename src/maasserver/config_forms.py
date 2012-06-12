@@ -279,6 +279,9 @@ class DictCharWidget(forms.widgets.MultiWidget):
             widgets = self.widgets
         if not isinstance(value, list):
             value = self.decompress(value)
+        if len(widgets) == 0:
+            return mark_safe(self.format_output(''))
+
         output = ['<fieldset>']
         final_attrs = self.build_attrs(attrs)
         id_ = final_attrs.get('id', None)

@@ -25,6 +25,10 @@ AddNodeWidget = function() {
 
 AddNodeWidget.NAME = 'node-add-widget';
 
+module.POWER_TYPE_ENUM = Y.maas.enums.POWER_TYPE;
+
+module.POWER_PARAM_TEMPLATE_PREFIX = '#power-param-form-';
+
 AddNodeWidget.ATTRS = {
 
    /**
@@ -141,7 +145,6 @@ Y.extend(AddNodeWidget, Y.Widget, {
             .append(global_error)
             .append(operation)
             .append(Y.Node.create(this.add_node))
-            .append(Y.Node.create(this.add_architecture))
             .append(Y.Node.create(this.add_macaddress))
             .append(macaddress_add_link)
             .append(buttons);
@@ -207,13 +210,33 @@ Y.extend(AddNodeWidget, Y.Widget, {
     renderUI: function() {
         // Load form snippets.
         this.add_macaddress = Y.one('#add-macaddress').getContent();
-        this.add_architecture = Y.one('#add-architecture').getContent();
         this.add_node = Y.one('#add-node').getContent();
         // Create panel's content.
         var heading = Y.Node.create('<h2 />')
             .set('text', "Add node");
         this.get('srcNode').append(heading).append(this.createForm());
+        this.setupPowerParameterField();
         this.initializeNodes();
+    },
+
+    /**
+     * If the 'power_type' field is present, setup the linked
+     * 'power_parameter' field.
+     *
+     * @method setupPowerParameterField
+     */
+    setupPowerParameterField: function() {
+        if (Y.Lang.isValue(Y.one('#id_power_type'))) {
+            // If the 'power_type' field is present, setup the linked
+            // field 'power_parameters'.
+            var widget = new Y.maas.power_parameters.LinkedContentWidget({
+                srcNode: '.power_parameters',
+                driverEnum: module.POWER_TYPE_ENUM,
+                templatePrefix: module.POWER_PARAM_TEMPLATE_PREFIX
+                });
+            widget.bindTo(Y.one('#id_power_type'), 'change');
+            widget.render();
+        }
     },
 
     /**
@@ -379,5 +402,5 @@ module.showAddNodeWidget = function(cfg) {
 };
 
 }, '0.1', {'requires': ['io', 'node', 'widget', 'event', 'event-custom',
-                        'maas.morph']}
+                        'maas.morph', 'maas.enums', 'maas.power_parameters']}
 );
