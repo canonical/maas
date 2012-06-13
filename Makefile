@@ -25,8 +25,10 @@ build: \
 
 all: build doc
 
-bin/buildout: bootstrap.py distribute_setup.py
-	$(python) bootstrap.py --distribute --setup-source distribute_setup.py
+bin/buildout: bootstrap/bootstrap.py bootstrap/distribute_setup.py
+	$(python) bootstrap/bootstrap.py --distribute \
+	    --setup-source bootstrap/distribute_setup.py \
+	    --download-base $(PWD)/bootstrap
 	@touch --no-create $@  # Ensure it's newer than its dependencies.
 
 bin/database: bin/buildout buildout.cfg versions.cfg setup.py
