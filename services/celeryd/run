@@ -13,5 +13,5 @@ cd "$(dirname "$0")/../.."
 [ -z "${logdir:-}" ] || exec &>> "${logdir}/current"
 
 # Run celeryd.
-export PYTHONPATH=$PYTHONPATH:`pwd`/src:`pwd`/src/maas
+export PYTHONPATH=$PYTHONPATH:`pwd`/src:`pwd`/etc
 celeryd -l INFO
