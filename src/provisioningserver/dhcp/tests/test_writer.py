@@ -12,32 +12,35 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
-import os
+from argparse import ArgumentParser
+from io import BytesIO
+from os import path
+import sys
 
 from maastesting.matchers import ContainsAll
 from maastesting.testcase import TestCase
-from provisioningserver.dhcp.writer import DHCPConfigWriter
+from provisioningserver.dhcp import writer
 from testtools.matchers import MatchesStructure
 
 
-class TestDHCPConfigWriter(TestCase):
-    """Test `DHCPConfigWriter`."""
+class TestScript(TestCase):
+    """Test the DHCP configuration writer."""
+
+    test_args = (
+        '--subnet', 'subnet',
+        '--subnet-mask', 'subnet-mask',
+        '--next-server', 'next-server',
+        '--broadcast-address', 'broadcast-address',
+        '--dns-servers', 'dns-servers',
+        '--gateway', 'gateway',
+        '--low-range', 'low-range',
+        '--high-range', 'high-range',
+        )
 
     def test_arg_setup(self):
-        writer = DHCPConfigWriter()
-        test_args = [
-            '--subnet', 'subnet',
-            '--subnet-mask', 'subnet-mask',
-            '--next-server', 'next-server',
-            '--broadcast-address', 'broadcast-address',
-            '--dns-servers', 'dns-servers',
-            '--gateway', 'gateway',
-            '--low-range', 'low-range',
-            '--high-range', 'high-range',
-            '--out-file', 'out-file',
-            ]
-        args = writer.parse_args(test_args)
-
+        parser = ArgumentParser()
+        writer.add_arguments(parser)
+        args = parser.parse_args(self.test_args)
         self.assertThat(
             args, MatchesStructure.byEquality(
                 subnet='subnet',
@@ -47,44 +50,30 @@ class TestDHCPConfigWriter(TestCase):
                 dns_servers='dns-servers',
                 gateway='gateway',
                 low_range='low-range',
-                high_range='high-range',
-                out_file='out-file'))
+                high_range='high-range'))
 
-    def test_generate(self):
-        writer = DHCPConfigWriter()
-        test_args = [
-            '--subnet', 'subnet',
-            '--subnet-mask', 'subnet-mask',
-            '--next-server', 'next-server',
-            '--broadcast-address', 'broadcast-address',
-            '--dns-servers', 'dns-servers',
-            '--gateway', 'gateway',
-            '--low-range', 'low-range',
-            '--high-range', 'high-range',
-            ]
-        args = writer.parse_args(test_args)
-        output = writer.generate(args)
-
+    def test_run(self):
+        self.patch(sys, "stdout", BytesIO())
+        parser = ArgumentParser()
+        writer.add_arguments(parser)
+        args = parser.parse_args(self.test_args)
+        writer.run(args)
+        output = sys.stdout.getvalue()
         contains_all_params = ContainsAll(
             ['subnet', 'subnet-mask', 'next-server', 'broadcast-address',
-            'dns-servers', 'gateway', 'low-range', 'high-range'])
+             'dns-servers', 'gateway', 'low-range', 'high-range'])
         self.assertThat(output, contains_all_params)
 
-    def test_run_with_file_output(self):
-        temp_dir = self.make_dir()
-        outfile = os.path.join(temp_dir, "outfile")
-        writer = DHCPConfigWriter()
-        test_args = [
-            '--subnet', 'subnet',
-            '--subnet-mask', 'subnet-mask',
-            '--next-server', 'next-server',
-            '--broadcast-address', 'broadcast-address',
-            '--dns-servers', 'dns-servers',
-            '--gateway', 'gateway',
-            '--low-range', 'low-range',
-            '--high-range', 'high-range',
-            '--out-file', outfile,
-            ]
-        writer.run(test_args)
-
-        self.assertTrue(os.path.exists(outfile))
+    def test_run_save_to_file(self):
+        parser = ArgumentParser()
+        writer.add_arguments(parser)
+        outfile = path.join(self.make_dir(), "outfile.txt")
+        args = parser.parse_args(
+            self.test_args + ("--outfile", outfile))
+        writer.run(args)
+        with open(outfile, "rb") as stream:
+            output = stream.read()
+        contains_all_params = ContainsAll(
+            ['subnet', 'subnet-mask', 'next-server', 'broadcast-address',
+             'dns-servers', 'gateway', 'low-range', 'high-range'])
+        self.assertThat(output, contains_all_params)
