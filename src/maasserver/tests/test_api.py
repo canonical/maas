@@ -925,7 +925,7 @@ class TestNodeAPI(APITestCase):
         self.assertEqual(
             [httplib.CONFLICT] * len(unreleasable_statuses),
             [response.status_code for response in responses])
-        self.assertEqual(
+        self.assertItemsEqual(
             unreleasable_statuses,
             [node.status for node in reload_objects(Node, nodes)])
 
