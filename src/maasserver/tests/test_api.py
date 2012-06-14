@@ -50,10 +50,12 @@ from maasserver.enum import (
 from maasserver.exceptions import Unauthorized
 from maasserver.models import (
     Config,
-    create_auth_token,
-    get_auth_tokens,
     MACAddress,
     Node,
+    )
+from maasserver.models.user import (
+    create_auth_token,
+    get_auth_tokens,
     )
 from maasserver.testing import (
     reload_object,

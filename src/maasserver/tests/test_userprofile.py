@@ -14,11 +14,11 @@ __all__ = []
 
 from django.contrib.auth.models import User
 from maasserver.exceptions import CannotDeleteUserException
-from maasserver.models import (
+from maasserver.models import UserProfile
+from maasserver.models.user import (
     GENERIC_CONSUMER,
     get_auth_tokens,
     SYSTEM_USERS,
-    UserProfile,
     )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase

@@ -17,7 +17,7 @@ __all__ = [
 from time import time
 
 from django.test.client import Client
-from maasserver.models import get_auth_tokens
+from maasserver.models.user import get_auth_tokens
 from oauth.oauth import (
     generate_nonce,
     OAuthConsumer,

@@ -74,9 +74,9 @@ from maasserver.models.macaddress import MACAddress
 from maasserver.models.nodegroup import NodeGroup
 from maasserver.models.sshkey import SSHKey
 from maasserver.models.timestampedmodel import TimestampedModel
+from maasserver.models.user import create_user
 from maasserver.models.userprofile import UserProfile
 from maasserver.utils import ignore_unused
-from metadataserver import nodeinituser
 from piston.models import (
     Consumer,
     Token,
@@ -88,17 +88,9 @@ from provisioningserver.enum import (
 from provisioningserver.tasks import power_on
 
 # Scheduled for model migration on 2012-06-15
-# Suppress warning about NodeGroup being imported, but only used for
+# Suppress warning about symbols being imported, but only used for
 # export in __all__.
-ignore_unused(NodeGroup)
-
-
-# Scheduled for model migration on 2012-06-13
-# Special users internal to MAAS.
-SYSTEM_USERS = [
-    # For nodes' access to the metadata API:
-    nodeinituser.user_name,
-    ]
+ignore_unused(NodeGroup, UserProfile)
 
 
 # Scheduled for model migration on 2012-06-15
@@ -638,61 +630,6 @@ class Node(CleanSave, TimestampedModel):
         self.token = None
         self.save()
 
-
-# Scheduled for model migration on 2012-06-13
-GENERIC_CONSUMER = 'MAAS consumer'
-
-
-# Scheduled for model migration on 2012-06-13
-def create_auth_token(user):
-    """Create new Token and Consumer (OAuth authorisation) for `user`.
-
-    :param user: The user to create a token for.
-    :type user: User
-    :return: The created Token.
-    :rtype: piston.models.Token
-
-    """
-    consumer = Consumer.objects.create(
-        user=user, name=GENERIC_CONSUMER, status='accepted')
-    consumer.generate_random_codes()
-    # This is a 'generic' consumer aimed to service many clients, hence
-    # we don't authenticate the consumer with key/secret key.
-    consumer.secret = ''
-    consumer.save()
-    token = Token.objects.create(
-        user=user, token_type=Token.ACCESS, consumer=consumer,
-        is_approved=True)
-    token.generate_random_codes()
-    return token
-
-
-# Scheduled for model migration on 2012-06-13
-def get_auth_tokens(user):
-    """Fetches all the user's OAuth tokens.
-
-    :return: A QuerySet of the tokens.
-    :rtype: django.db.models.query.QuerySet_
-
-    .. _django.db.models.query.QuerySet: https://docs.djangoproject.com/
-       en/dev/ref/models/querysets/
-
-    """
-    return Token.objects.select_related().filter(
-        user=user, token_type=Token.ACCESS, is_approved=True).order_by('id')
-
-
-# Scheduled for model migration on 2012-06-13
-# When a user is created: create the related profile and the default
-# consumer/token.
-def create_user(sender, instance, created, **kwargs):
-    # System users do not have profiles.
-    if created and instance.username not in SYSTEM_USERS:
-        # Create related UserProfile.
-        profile = UserProfile.objects.create(user=instance)
-
-        # Create initial authorisation token.
-        profile.create_authorisation_token()
 
 # Scheduled for model migration on 2012-06-15
 # Connect the 'create_user' method to the post save signal of User.

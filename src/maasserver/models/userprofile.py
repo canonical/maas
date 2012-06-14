@@ -90,7 +90,7 @@ class UserProfile(CleanSave, Model):
 
         """
         # Avoid circular imports.
-        from maasserver.models import get_auth_tokens
+        from maasserver.models.user import get_auth_tokens
 
         return get_auth_tokens(self.user)
 
@@ -103,7 +103,7 @@ class UserProfile(CleanSave, Model):
 
         """
         # Avoid circular imports.
-        from maasserver.models import create_auth_token
+        from maasserver.models.user import create_auth_token
 
         token = create_auth_token(self.user)
         return token.consumer, token

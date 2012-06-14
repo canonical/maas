@@ -24,7 +24,6 @@ from maasserver.enum import (
     NODE_STATUS,
     )
 from maasserver.models import (
-    create_auth_token,
     FileStorage,
     MACAddress,
     Node,
@@ -32,6 +31,7 @@ from maasserver.models import (
     NodeGroup,
     SSHKey,
     )
+from maasserver.models.user import create_auth_token
 from maasserver.testing import (
     get_data,
     reload_object,
