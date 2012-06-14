@@ -60,11 +60,14 @@ def handle_webapp_change(event):
 
 
 def handle_pserv_change(event):
-    service_dir = "services/pserv"
+    services = "pserv", "celeryd"
     if is_interesting_python_change(event.name):
-        if is_supervised(service_dir):
-            print("<-- {0.pathname} changed; reloading pserv.".format(event))
-            check_call(("svc", "-du", service_dir))
+        for service in services:
+            service_dir = "services/%s" % service
+            if is_supervised(service_dir):
+                print("<-- {0.pathname} changed; reloading {1}.".format(
+                        event, service))
+                check_call(("svc", "-du", service_dir))
 
 
 class TestReloader(unittest.TestCase):
