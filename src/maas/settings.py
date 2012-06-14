@@ -78,8 +78,15 @@ YUI_COMBO_URL = "combo/"
 PISTON_DISPLAY_ERRORS = False
 
 TEMPLATE_DEBUG = DEBUG
+
 YUI_DEBUG = DEBUG
-YUI_VERSION = '3.5.1'
+
+# Set this to where YUI3 files can be found to serve these files from a
+# custom location.  For instance, you can set it to
+# '/usr/share/javascript/yui/' to serve the files from the YUI package
+# (libjs-yui).
+YUI_LOCATION = None
+
 STATIC_LOCAL_SERVE = DEBUG
 
 AUTH_PROFILE_MODULE = 'maasserver.UserProfile'

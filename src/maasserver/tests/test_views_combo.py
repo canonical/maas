@@ -23,6 +23,11 @@ from maasserver.views.combo import get_yui_location
 
 class TestUtilities(TestCase):
 
+    def test_get_yui_location_if_yui_location_set(self):
+        yui_location = factory.getRandomString()
+        self.patch(settings, 'YUI_LOCATION', yui_location)
+        self.assertEqual(yui_location, get_yui_location())
+
     def test_get_yui_location_if_static_root_is_none(self):
         self.patch(settings, 'STATIC_ROOT', None)
         yui_location = os.path.join(
@@ -42,8 +47,8 @@ class TestComboLoaderView(TestCase):
 
     def test_load_js(self):
         requested_files = [
-            'tests/build/oop/oop.js',
-            'tests/build/event-custom-base/event-custom-base.js'
+            'oop/oop.js',
+            'event-custom-base/event-custom-base.js'
             ]
         response = self.client.get('/combo/?%s' % '&'.join(requested_files))
         self.assertIn('text/javascript', response['Content-Type'])
@@ -56,8 +61,8 @@ class TestComboLoaderView(TestCase):
 
     def test_load_css(self):
         requested_files = [
-            'tests/build/widget-base/assets/skins/sam/widget-base.css',
-            'tests/build/widget-stack/assets/skins/sam/widget-stack.css',
+            'widget-base/assets/skins/sam/widget-base.css',
+            'widget-stack/assets/skins/sam/widget-stack.css',
             ]
         response = self.client.get('/combo/?%s' % '&'.join(requested_files))
         self.assertIn('text/css', response['Content-Type'])

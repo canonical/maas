@@ -4,7 +4,8 @@ var YUI_config = {
     debug: {% if YUI_DEBUG %}true{% else %}false{% endif %},
     combine: true,
     filter: {% if YUI_DEBUG %}'raw'{% else %}'min'{% endif %},
-    base: '{{ STATIC_URL }}jslibs/yui/{{ YUI_VERSION }}/build/',
+    root: '',
+    base: '{% if FORCE_SCRIPT_NAME %}{{ FORCE_SCRIPT_NAME }}{% endif%}/{{YUI_COMBO_URL }}?',
     comboBase: '{% if FORCE_SCRIPT_NAME %}{{ FORCE_SCRIPT_NAME }}{% endif%}/{{ YUI_COMBO_URL }}?',
 };
 var MAAS_config = {
@@ -20,7 +21,7 @@ var MAAS_config = {
 // -->
 </script>
 <script type="text/javascript"
-  src="{{ STATIC_URL }}jslibs/yui/{{ YUI_VERSION }}/build/yui-base/yui-base-min.js">
+  src="{% if FORCE_SCRIPT_NAME %}{{ FORCE_SCRIPT_NAME }}{% endif%}/{{ YUI_COMBO_URL }}?yui-base/yui-base-min.js">
 </script>
 <script type="text/javascript" src="{{ STATIC_URL }}js/morph.js"></script>
 <script type="text/javascript" src="{{ STATIC_URL }}js/user_panel.js"></script>

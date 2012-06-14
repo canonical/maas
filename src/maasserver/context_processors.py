@@ -25,7 +25,6 @@ from provisioningserver.enum import POWER_TYPE
 def yui(context):
     return {
         'YUI_DEBUG': settings.YUI_DEBUG,
-        'YUI_VERSION': settings.YUI_VERSION,
         'YUI_COMBO_URL': settings.YUI_COMBO_URL,
         'FORCE_SCRIPT_NAME': settings.FORCE_SCRIPT_NAME,
     }

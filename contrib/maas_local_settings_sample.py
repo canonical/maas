@@ -17,6 +17,9 @@ FORCE_SCRIPT_NAME = '/MAAS'
 # Where to store the user uploaded files.
 MEDIA_ROOT = '/var/lib/maas/media/'
 
+# Use the (libjs-yui) package's files to serve YUI3.
+YUI_LOCATION = '/usr/share/javascript/yui/'
+
 # RabbitMQ settings.
 RABBITMQ_HOST = 'localhost'
 RABBITMQ_USERID = 'maas_longpoll'

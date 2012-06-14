@@ -29,7 +29,9 @@ from django.http import (
 
 
 def get_yui_location():
-    if django_settings.STATIC_ROOT:
+    if django_settings.YUI_LOCATION is not None:
+        return django_settings.YUI_LOCATION
+    elif django_settings.STATIC_ROOT:
         return os.path.join(
             django_settings.STATIC_ROOT, 'jslibs', 'yui')
     else:
