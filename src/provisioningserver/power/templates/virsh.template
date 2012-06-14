@@ -5,7 +5,9 @@
 
 # Parameters.
 power_change={{power_change}}
-virsh_url={{virsh_url}}
+power_address={{power_address}}
+power_id={{power_id}}
+username={{username}}
 system_id={{system_id}}
 virsh={{virsh}}
 
@@ -35,7 +37,7 @@ formulate_power_state() {
 
 # Issue command to virsh, for the given system.
 issue_virsh_command() {
-    ${virsh} --connect ${virsh_url}/system $1 ${system_id}
+    ${virsh} --connect ${power_address} $1 ${power_id}
 }
 
 
