@@ -71,7 +71,6 @@ class Safe:
             self.__class__.__name__, self.value)
 
 
-
 class ShellTemplate(tempita.Template):
     """A Tempita template specialised for writing shell scripts.
 
