@@ -1,0 +1,191 @@
+#!/usr/bin/env bash
+# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+#
+# Download static files needed for net-booting nodes through TFTP:
+# pre-boot loader, kernels, and initrd images.
+#
+# This script downloads the required files into the TFTP home directory
+# (by default, /var/lib/tftpboot).  Run it with the necessarily privileges
+# to write them there.
+
+# Exit immediately if a command exits with a non-zero status.
+set -o errexit
+# Treat unset variables as an error when substituting.
+set -o nounset
+
+# Load settings if available.
+settings="/etc/maas/import_isos"
+[ -r $settings ] && . $settings
+local_settings="$(pwd)/$settings"
+[ -r $local_settings ] && . $local_settings
+
+# Download location for Ubuntu releases.
+ARCHIVE=${ARCHIVE:-http://archive.ubuntu.com/ubuntu/}
+
+# Ubuntu releases that are to be downloaded.
+SUPPORTED_RELEASES=$(distro-info --supported)
+RELEASES=${RELEASES:-$SUPPORTED_RELEASES}
+
+# The current Ubuntu release.
+STABLE_RELEASE=$(distro-info --stable)
+CURRENT_RELEASE=${CURRENT_RELEASE:-$STABLE_RELEASE}
+
+# Supported architectures.
+ARCHES=${ARCHES:-amd64 i386}
+
+# TFTP root directory.  (Don't let the "root" vs. "boot" confuse you.)
+TFTPROOT=${TFTPROOT:-/var/lib/tftpboot}
+
+# Command line to download a resource at a given URL into the current
+# directory.  A wget command line will work here, but curl will do as well.
+DOWNLOAD=${DOWNLOAD:-wget --no-verbose}
+
+
+# Put together a full URL for where the installer files for architecture $1
+# and release $2 can be downloaded.
+compose_installer_download_url() {
+    local arch=$1 release=$2
+    local installer_url="$ARCHIVE/dists/$release/main/installer-$arch"
+    echo "$installer_url/current/images/netboot/ubuntu-installer/$arch/"
+}
+
+
+# Download the pre-boot loader, pxelinux.0, for architecture $2 if it exists,
+# and if so, install it into directory $1.  (Not all architectures need this
+# file, and there's rarely an urgent need for the very latest file, so if
+# the download fails this function just skips it.)
+update_pre_boot_loader() {
+    local dest=$1 arch=$2
+    local url=$(compose_installer_download_url $arch $CURRENT_RELEASE)
+    if ! $DOWNLOAD $url/pxelinux.0
+    then
+        echo "No pre-boot loader for $arch; skipping."
+        return
+    fi
+
+    # If the file has changed, move it into place (replacing any previous
+    # version).  Otherwise, leave the filesystem alone.
+    if [ -f pxelinux.0 ]
+    then
+        if cmp --quiet pxelinux.0 $dest/pxelinux.0
+        then
+            rm -f -- pxelinux.0
+        else
+            echo "Updating pre-boot loader for $arch."
+            mv -- pxelinux.0 $dest/
+        fi
+    fi
+}
+
+
+# Move local directory $1 into directory $2, so that it becomes $2/$1.
+# If a directory of the same name already existed in $2, remove it along
+# with all its contents.
+# This will use "$2/$1.new" and "$2/$1.old" as temporary locations, which
+# will also be deleted.
+install_dir() {
+    local name=$1 dest=$2
+    # Use the "old"/"new" directories to maximize speed and minimize
+    # inconvenience: ensure that the new directory contents are on the
+    # partition they will ultimately need to be on, then move the old
+    # ones out of the way and immediately replace them with the new, and
+    # finally remove the old ones outside of the critical path.
+    # This will not resolve races with ongoing downloads by booting nodes.
+    # It merely minimizes this script's side of the race window.
+    rm -rf -- $dest/$name.old $dest/$name.new
+    # Put new downloads next to the old.  If any file copying is needed
+    # because directories are on different partitions, it happens here.
+    mv -- $name $dest/$name.new
+
+    # Start of the critical window.
+
+    # Move existing directory (if any) out of the way.
+    [ -d $dest/$name ] && mv -- $dest/$name $dest/$name.old
+
+    # Move new directory into place.
+    mv -- $dest/$name.new $dest/$name
+
+    # End of the critical window.
+
+    # Clean up the old directory (if any).
+    rm -rf -- $dest/$name.old
+}
+
+
+# Compare given file names between directories $1 and $2.  Print "yes" if
+# they are all identical, or "no" if any of them are different or missing.
+identical_files() {
+    local lhs=$1 rhs=$2
+    local file
+    shift 2
+    for file in $*
+    do
+        if ! cmp --quiet $lhs/$file $rhs/$file
+        then
+            echo "no"
+            return
+        fi
+    done
+    echo "yes"
+}
+
+
+# Download kernel/initrd for installing Ubuntu release $3 for
+# architecture $2 into directory $1/install.
+update_install_files() {
+    local dest=$1 arch=$2 release=$3
+    local files="initrd.gz linux"
+    local url=$(compose_installer_download_url $arch $release)
+    local file
+
+    mkdir "install"
+    pushd "install" >/dev/null
+    for file in $files
+    do
+        $DOWNLOAD $url/$file
+    done
+    popd >/dev/null
+
+    # TODO: Prevent this change from upsetting any currently booting nodes.
+    if [ $(identical_files "install" $dest/"install" $files) != 'yes' ]
+    then
+        echo "Updating files for $release-$arch."
+        install_dir "install" $dest
+    fi
+}
+
+
+main() {
+    local arch release arch_dir rel_dir
+
+    DOWNLOAD_DIR=$(mktemp -d)
+    echo "Downloading to temporary location $DOWNLOAD_DIR."
+    cd -- $DOWNLOAD_DIR
+
+    # All files we create here are public.  The TFTP user will need to be
+    # able to read them.
+    umask a+r
+
+    for arch in $ARCHES
+    do
+        # Replace the "generic" with sub-architecture once we start
+        # supporting those.
+        arch_dir="$TFTPROOT/maas/$arch/generic"
+
+        mkdir -p -- $arch_dir
+        update_pre_boot_loader $arch_dir $arch
+
+        for release in $RELEASES
+        do
+            rel_dir="$arch_dir/$release"
+            mkdir -p -- $rel_dir
+            update_install_files $rel_dir $arch $release
+        done
+    done
+
+    rm -rf -- $DOWNLOAD_DIR
+}
+
+
+main

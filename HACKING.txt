@@ -44,16 +44,16 @@ This is the list of runtime dependencies that you'll need to install::
         python-formencode python-oauth python-oops python-oops-datedir-repo \
         python-twisted python-oops-wsgi python-oops-twisted \
         python-psycopg2 python-yaml python-convoy python-django-south \
-        python-avahi python-dbus python-celery python-tempita
+        python-avahi python-dbus python-celery python-tempita distro-info
 
 Additionally, you need to install the following python libraries
 for development convenience::
 
     $ sudo apt-get install python-sphinx python-lxml python-pocket-lint
 
-If you intend to run the test suite, you also need xvfb and firefox::
+If you intend to run the test suite, you also need a few other things:
 
-    $ sudo apt-get install xvfb firefox avahi-utils
+    $ sudo apt-get install xvfb firefox avahi-utils curl
 
 All other development dependencies are pulled automatically from `PyPI`_
 when buildout runs.
