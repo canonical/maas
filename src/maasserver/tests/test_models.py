@@ -69,6 +69,7 @@ from testtools.matchers import FileContains
 
 
 class UtilitiesTest(TestCase):
+# Scheduled for model migration on 2012-06-21
 
     def test_now_returns_datetime(self):
         self.assertIsInstance(now(), datetime)
@@ -78,6 +79,7 @@ class UtilitiesTest(TestCase):
         self.assertEqual(date_now, now())
 
 
+# Scheduled for model migration on 2012-06-21
 class UtilitiesTransactionalTest(TransactionTestCase):
 
     def test_now_returns_transaction_time(self):
@@ -88,6 +90,7 @@ class UtilitiesTransactionalTest(TransactionTestCase):
         self.assertLessEqual(date_now, now())
 
 
+# Scheduled for model migration on 2012-06-21
 class TimestampedModelTest(TestModelTestCase):
     """Testing for the class `TimestampedModel`."""
 
@@ -116,6 +119,7 @@ class TimestampedModelTest(TestModelTestCase):
         self.assertEqual(old_created, obj.created)
 
 
+# Scheduled for model migration on 2012-06-21
 class TimestampedModelTransactionalTest(TestModelTransactionalTestCase):
 
     app = 'maasserver.tests'
@@ -514,6 +518,7 @@ class NodeTransitionsTests(TestCase):
         self.assertTrue(set(all_destination_states) <= allowed_states)
 
 
+# Scheduled for model migration on 2012-06-21
 class GetDbStateTest(TestCase):
     """Testing for the method `get_db_state`."""
 
@@ -872,6 +877,7 @@ class NodeManagerTest(TestCase):
         self.assertEqual(user_data, NodeUserData.objects.get_user_data(node))
 
 
+# Scheduled for model migration on 2012-06-21
 class MACAddressTest(TestCase):
 
     def make_MAC(self, address):
@@ -889,6 +895,7 @@ class MACAddressTest(TestCase):
         self.assertRaises(ValidationError, mac.full_clean)
 
 
+# Scheduled for model migration on 2012-06-21
 class AuthTokensTest(TestCase):
     """Test creation and retrieval of auth tokens."""
 
