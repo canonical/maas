@@ -27,10 +27,10 @@ from maasserver.models import (
     FileStorage,
     MACAddress,
     Node,
-    NODE_TRANSITIONS,
     NodeGroup,
     SSHKey,
     )
+from maasserver.models.node import NODE_TRANSITIONS
 from maasserver.models.user import create_auth_token
 from maasserver.testing import (
     get_data,

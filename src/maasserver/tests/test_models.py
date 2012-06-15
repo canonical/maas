@@ -32,12 +32,11 @@ from maasserver.enum import (
 from maasserver.exceptions import NodeStateViolation
 from maasserver.models import (
     Config,
-    get_db_state,
     MACAddress,
     Node,
-    NODE_TRANSITIONS,
-    now,
     )
+from maasserver.models.node import NODE_TRANSITIONS
+from maasserver.models.timestampedmodel import now
 from maasserver.models.user import (
     create_auth_token,
     get_auth_tokens,
@@ -50,7 +49,10 @@ from maasserver.testing.testcase import (
     TestModelTestCase,
     )
 from maasserver.tests.models import TimestampedModelTestModel
-from maasserver.utils import map_enum
+from maasserver.utils import (
+    get_db_state,
+    map_enum,
+    )
 from maastesting.djangotestcase import (
     TestModelTransactionalTestCase,
     TransactionTestCase,

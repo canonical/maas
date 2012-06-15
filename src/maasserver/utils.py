@@ -11,9 +11,25 @@ from __future__ import (
 
 __metaclass__ = type
 __all__ = [
+    'get_db_state',
     'ignore_unused',
     'map_enum',
     ]
+
+
+def get_db_state(instance, field_name):
+    """Get the persisted state of a given field for a given model instance.
+
+    :param instance: The model instance to consider.
+    :type instance: :class:`django.db.models.Model`
+    :param field_name: The name of the field to return.
+    :type field_name: basestring
+    """
+    try:
+        return getattr(
+            instance.__class__.objects.get(pk=instance.pk), field_name)
+    except instance.DoesNotExist:
+        return None
 
 
 def ignore_unused(*args):

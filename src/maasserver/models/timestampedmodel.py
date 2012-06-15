@@ -15,11 +15,19 @@ __all__ = [
     ]
 
 
+from django.db import connection
 from django.db.models import (
     DateTimeField,
     Model,
     )
 from maasserver import DefaultMeta
+
+
+def now():
+    """Current database time (as per start of current transaction)."""
+    cursor = connection.cursor()
+    cursor.execute("select now()")
+    return cursor.fetchone()[0]
 
 
 class TimestampedModel(Model):
@@ -38,9 +46,6 @@ class TimestampedModel(Model):
     updated = DateTimeField(editable=False)
 
     def save(self, *args, **kwargs):
-        # Avoid circular imports.
-        from maasserver.models import now
-
         current_time = now()
         if self.id is None:
             self.created = current_time
