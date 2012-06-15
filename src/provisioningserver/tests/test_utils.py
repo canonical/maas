@@ -162,7 +162,8 @@ class TestActionScript(TestCase):
         self.assertEqual(exception.returncode, error.code)
 
     def test_call_with_keyboard_interrupt(self):
-        # KeyboardInterrupt is silently ignored.
+        # KeyboardInterrupt is silently converted into SystemExit, with an
+        # exit code of 1.
 
         def raise_exception():
             raise KeyboardInterrupt()
@@ -172,4 +173,5 @@ class TestActionScript(TestCase):
         handler.run = lambda args: raise_exception()
         script = ActionScript("Description")
         script.register("smash", handler)
-        script(["smash"])
+        error = self.assertRaises(SystemExit, script, ["smash"])
+        self.assertEqual(1, error.code)

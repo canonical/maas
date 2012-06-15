@@ -157,4 +157,4 @@ class ActionScript:
             # Print error.cmd and error.output too?
             raise SystemExit(error.returncode)
         except KeyboardInterrupt:
-            pass
+            raise SystemExit(1)
