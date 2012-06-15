@@ -49,7 +49,8 @@ This is the list of runtime dependencies that you'll need to install::
 Additionally, you need to install the following python libraries
 for development convenience::
 
-    $ sudo apt-get install python-sphinx python-lxml python-pocket-lint
+    $ sudo apt-get install python-sphinx python-lxml python-pocket-lint \
+        python-pip python-virtualenv
 
 If you intend to run the test suite, you also need a few other things:
 

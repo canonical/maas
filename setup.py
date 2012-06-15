@@ -43,7 +43,7 @@ setup(
     url="https://launchpad.net/maas",
     license="AGPLv3",
     description="Metal as as Service",
-    long_description=read('README.txt'),
+    long_description=read('README'),
 
     author="MAAS Developers",
     author_email="juju@lists.ubuntu.com",

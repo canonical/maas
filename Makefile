@@ -1,4 +1,6 @@
 python := python2.7
+buildout := bin/buildout
+virtualenv := virtualenv
 
 # Python enum modules.
 py_enums := $(wildcard src/*/enum.py)
@@ -23,52 +25,62 @@ build: \
     bin/py bin/ipy \
     $(js_enums)
 
+# Note: the following target may not be needed. It remains as an
+# experiment, to see if it helps the situation with building MAAS in
+# the QA environment, which is isolated from the Internet at large.
+build-offline: buildout := $(buildout) buildout:offline=true
+build-offline: virtualenv := $(virtualenv) --never-download
+build-offline: build
+
 all: build doc
 
-bin/buildout: bootstrap/bootstrap.py bootstrap/distribute_setup.py
-	$(python) bootstrap/bootstrap.py --distribute \
-	    --setup-source bootstrap/distribute_setup.py \
-	    --download-base $(PWD)/bootstrap
+bin/python bin/pip:
+	$(virtualenv) --python=$(python) --system-site-packages $(PWD)
+
+bin/buildout: bin/pip bootstrap/zc.buildout-1.5.2.tar.gz
+	bin/pip --quiet install --ignore-installed \
+	    --no-dependencies bootstrap/zc.buildout-1.5.2.tar.gz
+	$(RM) -f README.txt  # zc.buildout installs an annoying README.txt.
 	@touch --no-create $@  # Ensure it's newer than its dependencies.
 
 bin/database: bin/buildout buildout.cfg versions.cfg setup.py
-	bin/buildout install database
+	$(buildout) install database
 	@touch --no-create $@
 
 bin/maas: bin/buildout buildout.cfg versions.cfg setup.py $(js_enums)
-	bin/buildout install maas
+	$(buildout) install maas
 	@touch --no-create $@
 
 bin/test.maas: bin/buildout buildout.cfg versions.cfg setup.py $(js_enums)
-	bin/buildout install maas-test
+	$(buildout) install maas-test
 	@touch --no-create $@
 
 bin/test.maastesting: bin/buildout buildout.cfg versions.cfg setup.py
-	bin/buildout install maastesting-test
+	$(buildout) install maastesting-test
 	@touch --no-create $@
 
 bin/twistd.pserv: bin/buildout buildout.cfg versions.cfg setup.py
-	bin/buildout install pserv
+	$(buildout) install pserv
 	@touch --no-create $@
 
 bin/test.pserv: bin/buildout buildout.cfg versions.cfg setup.py
-	bin/buildout install pserv-test
+	$(buildout) install pserv-test
 	@touch --no-create $@
 
 bin/twistd.txlongpoll: bin/buildout buildout.cfg versions.cfg setup.py
-	bin/buildout install txlongpoll
+	$(buildout) install txlongpoll
 	@touch --no-create $@
 
 bin/flake8: bin/buildout buildout.cfg versions.cfg setup.py
-	bin/buildout install flake8
+	$(buildout) install flake8
 	@touch --no-create $@
 
 bin/sphinx: bin/buildout buildout.cfg versions.cfg setup.py
-	bin/buildout install sphinx
+	$(buildout) install sphinx
 	@touch --no-create $@
 
 bin/py bin/ipy: bin/buildout buildout.cfg versions.cfg setup.py
-	bin/buildout install repl
+	$(buildout) install repl
 	@touch --no-create bin/py bin/ipy
 
 test: bin/test.maas bin/test.maastesting bin/test.pserv $(js_enums)
@@ -117,8 +129,9 @@ clean:
 	$(RM) celerybeat-schedule
 
 distclean: clean stop
+	$(RM) -r bin include lib local
 	$(RM) -r eggs develop-eggs
-	$(RM) -r bin build dist logs/* parts
+	$(RM) -r build dist logs/* parts
 	$(RM) tags TAGS .installed.cfg
 	$(RM) -r *.egg *.egg-info src/*.egg-info
 	$(RM) docs/api.rst
@@ -139,6 +152,7 @@ syncdb: bin/maas bin/database
 
 define phony_targets
   build
+  build-offline
   check
   clean
   dbharness
