@@ -29,6 +29,7 @@ from django.shortcuts import get_object_or_404
 from maasserver.models import Node
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.user import create_auth_token
+from metadataserver import DefaultMeta
 from metadataserver.fields import (
     Bin,
     BinaryField,
@@ -124,6 +125,9 @@ class NodeKey(CleanSave, Model):
         to the maas-init-node user.
     """
 
+    class Meta(DefaultMeta):
+        """Needed for South to recognize this model."""
+
     objects = NodeKeyManager()
 
     node = ForeignKey(Node, null=False, editable=False, unique=True)
@@ -132,6 +136,7 @@ class NodeKey(CleanSave, Model):
         max_length=KEY_SIZE, null=False, editable=False, unique=True)
 
 
+# Scheduled for model migration on 2012-06-22
 class NodeUserDataManager(Manager):
     """Utility for the collection of NodeUserData items."""
 
@@ -167,6 +172,7 @@ class NodeUserDataManager(Manager):
         self.filter(node=node).delete()
 
 
+# Scheduled for model migration on 2012-06-22
 class NodeUserData(CleanSave, Model):
     """User-data portion of a node's metadata.
 
@@ -178,9 +184,13 @@ class NodeUserData(CleanSave, Model):
     :ivar data: base64-encoded data.
     """
 
+    class Meta(DefaultMeta):
+        """Needed for South to recognize this model."""
+
     objects = NodeUserDataManager()
 
-    node = ForeignKey(Node, null=False, editable=False, unique=True)
+    node = ForeignKey(
+        'maasserver.Node', null=False, editable=False, unique=True)
     data = BinaryField(null=False)
 
 
@@ -223,5 +233,5 @@ class NodeCommissionResult(CleanSave, Model):
     name = CharField(max_length=100, unique=False, editable=False)
     data = CharField(max_length=1024 * 1024, editable=True)
 
-    class Meta:
+    class Meta(DefaultMeta):
         unique_together = ('node', 'name')
