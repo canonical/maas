@@ -12,7 +12,7 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
-from maastesting.testcase import TestCase
+from maasserver.testing.testcase import TestCase
 
 
 class TestSomething(TestCase):

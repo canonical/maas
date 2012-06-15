@@ -65,10 +65,7 @@ class NodeViewsTest(LoggedInTestCase):
         node_link = reverse('node-view', args=[node.system_id])
         self.assertIn(node_link, get_content_links(response))
 
-    # XXX rvb 2012-06-14 bug=1013275  I've disabled this test temporarily.
-    # There is an isolation problem here as this test is picking up 5
-    # nodes from the database and only 3 nodes are created.
-    def disabled_node_list_displays_sorted_list_of_nodes(self):
+    def test_node_list_displays_sorted_list_of_nodes(self):
         # Nodes are sorted on the node list page, newest first.
         nodes = [factory.make_node() for i in range(3)]
         # Explicitely set node.created since all of these node will

@@ -17,7 +17,7 @@ from maasserver.preseed import (
     split_subarch,
     )
 from maasserver.testing.factory import factory
-from maastesting.testcase import TestCase
+from maasserver.testing.testcase import TestCase
 
 
 class TestPreseedUtilities(TestCase):
