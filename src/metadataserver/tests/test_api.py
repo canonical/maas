@@ -526,3 +526,18 @@ class TestViews(DjangoTestCase, ProvisioningFakeFactory):
         response = self.get(
             '/latest/by-mac/%s/meta-data/instance-id/' % mac.mac_address)
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
+
+    def test_netboot_off(self):
+        node = factory.make_node(netboot=True)
+        client = self.make_node_client(node=node)
+        response = client.post(
+            self.make_url('/latest/'), {'op': 'netboot_off'})
+        node = reload_object(node)
+        self.assertFalse(node.netboot, response)
+
+    def test_netboot_on(self):
+        node = factory.make_node(netboot=False)
+        client = self.make_node_client(node=node)
+        response = client.post(self.make_url('/latest/'), {'op': 'netboot_on'})
+        node = reload_object(node)
+        self.assertTrue(node.netboot, response)

@@ -386,6 +386,7 @@ DISPLAYED_NODE_FIELDS = (
     ('macaddress_set', ('mac_address',)),
     'architecture',
     'status',
+    'netboot',
     'power_type',
     'power_parameters',
     )

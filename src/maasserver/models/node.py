@@ -30,6 +30,7 @@ from django.core.exceptions import (
     ValidationError,
     )
 from django.db.models import (
+    BooleanField,
     CharField,
     ForeignKey,
     IntegerField,
@@ -373,6 +374,8 @@ class Node(CleanSave, TimestampedModel):
         Token, db_index=True, null=True, editable=False, unique=False)
 
     error = CharField(max_length=255, blank=True, default='')
+
+    netboot = BooleanField(default=True)
 
     objects = NodeManager()
 

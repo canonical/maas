@@ -502,6 +502,10 @@ class NodeTest(TestCase):
             "Invalid transition: Retired -> Allocated.",
             node.save)
 
+    def test_netboot_defaults_to_True(self):
+        node = Node()
+        self.assertTrue(node.netboot)
+
 
 class NodeTransitionsTests(TestCase):
     """Test the structure of NODE_TRANSITIONS."""
