@@ -24,6 +24,14 @@ POWER_TEMPLATES_DIR = os.path.join(
     os.path.dirname(__file__), os.pardir, "src", "provisioningserver", "power",
     "templates")
 
+# Location of PXE config templates. Use an absolute path.
+PXE_TEMPLATES_DIR = os.path.join(
+    os.path.dirname(__file__), os.pardir, "src", "provisioningserver", "pxe",
+    "templates")
+
+# Where to write PXE config files.
+PXE_TARGET_DIR = "/var/lib/tftp/maas"
+
 
 try:
     import user_maasceleryconfig
