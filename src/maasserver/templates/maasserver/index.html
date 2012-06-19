@@ -38,12 +38,14 @@
 	  {srcNode: '.page-title-form'});
       title_widget.render();
 
-      // Start longpoll.
       {% if longpoll_queue and LONGPOLL_PATH %}
+      // Start longpoll.
         Y.later(0, Y.maas.longpoll, function() {
           var longpollmanager = Y.maas.longpoll.setupLongPollManager(
             '{{ longpoll_queue }}', '{{ LONGPOLL_PATH }}');
         });
+      {% else %}
+      // Longoll disabled.
       {% endif %}
 
     });
