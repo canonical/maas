@@ -541,3 +541,15 @@ class TestViews(DjangoTestCase, ProvisioningFakeFactory):
         response = client.post(self.make_url('/latest/'), {'op': 'netboot_on'})
         node = reload_object(node)
         self.assertTrue(node.netboot, response)
+
+    def test_anonymous_netboot_off(self):
+        node = factory.make_node(netboot=True)
+        anon_netboot_off_url = self.make_url(
+            '/latest/%s/edit/' % node.system_id)
+        response = self.client.post(
+            anon_netboot_off_url, {'op': 'netboot_off'})
+        node = reload_object(node)
+        self.assertEqual(
+            (httplib.OK, False),
+            (response.status_code, node.netboot),
+            response)

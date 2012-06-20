@@ -11,10 +11,16 @@ from __future__ import (
 
 __metaclass__ = type
 __all__ = [
+    'absolute_reverse',
     'get_db_state',
     'ignore_unused',
     'map_enum',
     ]
+
+from urlparse import urljoin
+
+from django.conf import settings
+from django.core.urlresolvers import reverse
 
 
 def get_db_state(instance, field_name):
@@ -53,3 +59,18 @@ def map_enum(enum_class):
         for key, value in vars(enum_class).items()
             if not key.startswith('_')
     }
+
+
+def absolute_reverse(view_name, *args, **kwargs):
+    """Return the absolute URL (i.e. including the URL scheme specifier and
+    the network location of the MAAS server).  Internally this method simply
+    calls Django's 'reverse' method and prefixes the result of that call with
+    the configured DEFAULT_MAAS_URL.
+
+    :param view_name: Django's view function name/reference or URL pattern
+        name for which to compute the absolute URL.
+    :param args: Positional arguments for Django's 'reverse' method.
+    :param kwargs: Named arguments for Django's 'reverse' method.
+    """
+    return urljoin(
+        settings.DEFAULT_MAAS_URL, reverse(view_name, *args, **kwargs))

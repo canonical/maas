@@ -13,6 +13,7 @@ __metaclass__ = type
 __all__ = []
 
 import os
+from pipes import quote
 
 from django.conf import settings
 from maasserver.models import Config
@@ -304,8 +305,18 @@ class TestPreseedContext(TestCase):
         context = get_preseed_context(node, release)
         self.assertItemsEqual(
             ['node', 'release', 'server_host', 'preseed_data',
-             'node_disable_pxe_url'],
+             'node_disable_pxe_url', 'node_disable_pxe_data'],
             context)
+
+
+class TestPreseedTemplate(TestCase):
+    """Tests for class:`PreseedTemplate`."""
+
+    def test_escape_shell(self):
+        template = PreseedTemplate("{{var|escape.shell}}")
+        var = "$ ! ()"
+        observed = template.substitute(var=var)
+        self.assertEqual(quote(var), observed)
 
 
 class TestRenderPreseed(TestCase):

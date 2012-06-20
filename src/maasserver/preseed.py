@@ -12,12 +12,16 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
+from collections import namedtuple
 from os.path import join
+from pipes import quote
+from urllib import urlencode
 from urlparse import urlparse
 
 from django.conf import settings
 from maasserver.models import Config
 from maasserver.provisioning import compose_preseed
+from maasserver.utils import absolute_reverse
 import tempita
 
 
@@ -89,8 +93,23 @@ def get_preseed_template(filenames):
         return None, None
 
 
+def get_escape_singleton():
+    """Return a singleton containing methods to escape various formats used in
+    the preseed templates.
+    """
+    Escape = namedtuple('Escape', 'shell')
+    return Escape(shell=quote)
+
+
 class PreseedTemplate(tempita.Template):
-    """A Tempita template specialised for preseed rendering."""
+    """A Tempita template specialised for preseed rendering.
+
+    It provides a filter named 'escape' which contains methods to escape
+    various formats used in the template."""
+
+    default_namespace = dict(
+        tempita.Template.default_namespace,
+        escape=get_escape_singleton())
 
 
 class TemplateNotFoundError(Exception):
@@ -145,13 +164,19 @@ def get_preseed_context(node, release="precise"):
     :return: The context dictionary.
     :rtype: dict.
     """
-    server_host = ''
+    server_host = get_maas_server_host()
+    # Create the url and the url-data (POST parameters) used to turn off
+    # PXE booting once the install of the node is finished.
+    node_disable_pxe_url = absolute_reverse(
+        'metadata-anon-node-edit', args=['latest', node.system_id])
+    node_disable_pxe_data = urlencode({'op': 'netboot_off'})
     return {
         'node': node,
         'release': release,
         'server_host': server_host,
         'preseed_data': compose_preseed(node),
-        'node_disable_pxe_url': '',  # TODO.
+        'node_disable_pxe_url': node_disable_pxe_url,
+        'node_disable_pxe_data': node_disable_pxe_data,
     }
 
 

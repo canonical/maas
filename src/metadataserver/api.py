@@ -11,6 +11,7 @@ from __future__ import (
 
 __metaclass__ = type
 __all__ = [
+    'AnonMetaDataHandler',
     'IndexHandler',
     'MetaDataHandler',
     'UserDataHandler',
@@ -20,6 +21,7 @@ __all__ = [
 from django.conf import settings
 from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse
+from django.shortcuts import get_object_or_404
 from maasserver.api import (
     api_exported,
     api_operations,
@@ -37,6 +39,7 @@ from maasserver.exceptions import (
     )
 from maasserver.models import (
     MACAddress,
+    Node,
     SSHKey,
     )
 from metadataserver.models import (
@@ -321,3 +324,20 @@ class UserDataHandler(MetadataViewHandler):
                 mimetype='application/octet-stream')
         except NodeUserData.DoesNotExist:
             raise MAASAPINotFound("No user data available for this node.")
+
+
+@api_operations
+class AnonMetaDataHandler(VersionIndexHandler):
+    """Anonymous metadata."""
+
+    @api_exported('POST')
+    def netboot_off(self, request, version=None, system_id=None):
+        """Turn off netboot on the node.
+
+        A commissioning node can call this to turn off netbooting when
+        it finishes installing itself.
+        """
+        node = get_object_or_404(Node, system_id=system_id)
+        node.netboot = False
+        node.save()
+        return rc.ALL_OK

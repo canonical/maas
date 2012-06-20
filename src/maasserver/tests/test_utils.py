@@ -12,7 +12,14 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
-from maasserver.utils import map_enum
+from django.conf import settings
+from django.core.urlresolvers import reverse
+from maasserver.testing.factory import factory
+from maasserver.testing.testcase import TestCase as DjangoTestCase
+from maasserver.utils import (
+    absolute_reverse,
+    map_enum,
+    )
 from maastesting.testcase import TestCase
 
 
@@ -49,3 +56,28 @@ class TestEnum(TestCase):
             THREE = 3
 
         self.assertEqual({'ONE': 1, 'THREE': 3}, map_enum(Enum))
+
+
+class TestAbsoluteReverse(DjangoTestCase):
+
+    def test_absolute_reverse_uses_DEFAULT_MAAS_URL(self):
+        maas_url = 'http://%s' % factory.getRandomString()
+        self.patch(settings, 'DEFAULT_MAAS_URL', maas_url)
+        absolute_url = absolute_reverse('settings')
+        expected_url = settings.DEFAULT_MAAS_URL + reverse('settings')
+        self.assertEqual(expected_url, absolute_url)
+
+    def test_absolute_reverse_uses_kwargs(self):
+        node = factory.make_node()
+        self.patch(settings, 'DEFAULT_MAAS_URL', '')
+        absolute_url = absolute_reverse(
+            'node-view', kwargs={'system_id': node.system_id})
+        expected_url = reverse('node-view', args=[node.system_id])
+        self.assertEqual(expected_url, absolute_url)
+
+    def test_absolute_reverse_uses_args(self):
+        node = factory.make_node()
+        self.patch(settings, 'DEFAULT_MAAS_URL', '')
+        absolute_url = absolute_reverse('node-view', args=[node.system_id])
+        expected_url = reverse('node-view', args=[node.system_id])
+        self.assertEqual(expected_url, absolute_url)
