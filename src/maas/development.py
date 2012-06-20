@@ -83,5 +83,11 @@ DEBUG_TOOLBAR_CONFIG = {
 # on a production MAAS.
 ALLOW_ANONYMOUS_METADATA_ACCESS = True
 
+# Use in-branch preseed templates.
+PRESEED_TEMPLATE_LOCATIONS = (
+    abspath("etc/preseeds"),
+    abspath("contrib/preseeds"),
+    )
+
 # Allow the user to override settings in maas_local_settings.
 import_local_settings()

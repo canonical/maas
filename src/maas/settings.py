@@ -293,5 +293,12 @@ COMMISSIONING_TIMEOUT = 60
 # for all nodes, will be exposed on your network.
 ALLOW_ANONYMOUS_METADATA_ACCESS = False
 
+# Earlier locations in the following list will shadow, or overlay, later
+# locations.
+PRESEED_TEMPLATE_LOCATIONS = (
+    "/etc/maas/preseeds",
+    "/usr/share/maas/preseeds",
+    )
+
 # Allow the user to override settings in maas_local_settings.
 import_local_settings()
