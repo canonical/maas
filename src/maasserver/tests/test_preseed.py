@@ -15,12 +15,16 @@ __all__ = []
 import os
 
 from django.conf import settings
+from maasserver.models import Config
 from maasserver.preseed import (
     GENERIC_FILENAME,
+    get_maas_server_host,
+    get_preseed_context,
     get_preseed_filenames,
     get_preseed_template,
     load_preseed_template,
     PreseedTemplate,
+    render_preseed,
     split_subarch,
     TemplateNotFoundError,
     )
@@ -81,6 +85,18 @@ class TestGetPreseedFilenames(TestCase):
                 'generic',
             ],
             list(get_preseed_filenames(node, prefix, release, default=True)))
+
+    def test_get_preseed_filenames_supports_empty_prefix(self):
+        hostname = factory.getRandomString()
+        release = factory.getRandomString()
+        node = factory.make_node(hostname=hostname)
+        self.assertSequenceEqual(
+            [
+                '%s_%s_%s' % (node.architecture, release, hostname),
+                '%s_%s' % (node.architecture, release),
+                '%s' % node.architecture,
+            ],
+            list(get_preseed_filenames(node, '', release)))
 
     def test_get_preseed_filenames_returns_list_without_default(self):
         # If default=False is passed to get_preseed_filenames, the
@@ -264,3 +280,52 @@ class TestLoadPreseedTemplate(TestCase):
         template = load_preseed_template(node, prefix)
         self.assertRaises(
             TemplateNotFoundError, template.substitute)
+
+
+class TestGetMAASServerHost(TestCase):
+    """Tests for `get_maas_server_host`."""
+
+    def test_get_maas_server_host_returns_host(self):
+        Config.objects.set_config('maas_url', 'http://example.com/path')
+        self.assertEqual('example.com', get_maas_server_host())
+
+    def test_get_maas_server_host_strips_out_port(self):
+        Config.objects.set_config(
+            'maas_url', 'http://example.com:%d' % factory.getRandomPort())
+        self.assertEqual('example.com', get_maas_server_host())
+
+
+class TestPreseedContext(TestCase):
+    """Tests for `get_preseed_context`."""
+
+    def test_get_preseed_context_contains_keys(self):
+        node = factory.make_node()
+        release = factory.getRandomString()
+        context = get_preseed_context(node, release)
+        self.assertItemsEqual(
+            ['node', 'release', 'server_host', 'preseed_data',
+             'node_disable_pxe_url'],
+            context)
+
+
+class TestRenderPreseed(TestCase):
+    """Tests for `render_preseed`.
+
+    These tests check that the templates render (i.e. that no variable is
+    missing) and 'look right'.
+    """
+
+    def test_render_default_preseed(self):
+        node = factory.make_node()
+        preseed = render_preseed(node, factory.getRandomString(), "precise")
+        self.assertIn('preseed/late_command', preseed)
+
+    def test_render_enlist_preseed(self):
+        node = factory.make_node()
+        preseed = render_preseed(node, 'enlist', "precise")
+        self.assertIn('maas-enlist-udeb', preseed)
+
+    def test_render_commissioning_preseed(self):
+        node = factory.make_node()
+        preseed = render_preseed(node, 'commissioning', "precise")
+        self.assertIn('cloud-init', preseed)

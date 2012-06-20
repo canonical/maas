@@ -13,8 +13,11 @@ __metaclass__ = type
 __all__ = []
 
 from os.path import join
+from urlparse import urlparse
 
 from django.conf import settings
+from maasserver.models import Config
+from maasserver.provisioning import compose_preseed
 import tempita
 
 
@@ -22,7 +25,7 @@ GENERIC_FILENAME = 'generic'
 
 
 # XXX: rvb 2012-06-14 bug=1013146:  'precise' is hardcoded here.
-def get_preseed_filenames(node, prefix, release='precise', default=False):
+def get_preseed_filenames(node, prefix='', release='precise', default=False):
     """List possible preseed template filenames for the given node.
 
     :param node: The node to return template preseed filenames for.
@@ -46,7 +49,10 @@ def get_preseed_filenames(node, prefix, release='precise', default=False):
     'generic'
     """
     arch = split_subarch(node.architecture)
-    elements = [prefix] + arch + [release, node.hostname]
+    elements = []
+    if prefix != '':
+        elements.append(prefix)
+    elements.extend(arch + [release, node.hostname])
     while elements:
         yield compose_filename(elements)
         elements.pop()
@@ -120,3 +126,45 @@ def load_preseed_template(node, prefix, release="precise"):
             content, name=filepath, get_template=get_template)
 
     return get_template(prefix, None, default=True)
+
+
+def get_maas_server_host():
+    """Return MAAS' server name."""
+    maas_url = Config.objects.get_config('maas_url')
+    return urlparse(maas_url).netloc.split(':')[0]
+
+
+# XXX: rvb 2012-06-19 bug=1013146:  'precise' is hardcoded here.
+def get_preseed_context(node, release="precise"):
+    """Return the context dictionary to be used to render preseed templates
+    for this node.
+
+    :param node: See `get_preseed_filenames`.
+    :param prefix: See `get_preseed_filenames`.
+    :param release: See `get_preseed_filenames`.
+    :return: The context dictionary.
+    :rtype: dict.
+    """
+    server_host = ''
+    return {
+        'node': node,
+        'release': release,
+        'server_host': server_host,
+        'preseed_data': compose_preseed(node),
+        'node_disable_pxe_url': '',  # TODO.
+    }
+
+
+# XXX: rvb 2012-06-19 bug=1013146:  'precise' is hardcoded here.
+def render_preseed(node, prefix, release="precise"):
+    """Find and load a `PreseedTemplate` for the given node.
+
+    :param node: See `get_preseed_filenames`.
+    :param prefix: See `get_preseed_filenames`.
+    :param release: See `get_preseed_filenames`.
+    :return: The rendered preseed string.
+    :rtype: basestring.
+    """
+    template = load_preseed_template(node, prefix, release)
+    context = get_preseed_context(node, release)
+    return template.substitute(**context)

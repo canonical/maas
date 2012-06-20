@@ -1,0 +1,9 @@
+d-i preseed/early_command string anna-install maas-enlist-udeb
+d-i maas-enlist/skip-maas-discover boolean true
+d-i maas-enlist/maas-server-address string {{server_host}}
+d-i maas-enlist/host-name string
+
+d-i     mirror/country string manual
+d-i     mirror/http/hostname string archive.ubuntu.com
+d-i     mirror/http/directory string /ubuntu
+d-i     mirror/http/proxy string http://{{server_host}}:8000/

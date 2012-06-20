@@ -86,7 +86,7 @@ ALLOW_ANONYMOUS_METADATA_ACCESS = True
 # Use in-branch preseed templates.
 PRESEED_TEMPLATE_LOCATIONS = (
     abspath("etc/preseeds"),
-    abspath("contrib/preseeds"),
+    abspath("contrib/preseeds_v2"),
     )
 
 # Allow the user to override settings in maas_local_settings.

@@ -1,0 +1,2 @@
+{{preseed_data}}
+cloud-init   cloud-init/local-cloud-config string manage_etc_hosts: localhost
