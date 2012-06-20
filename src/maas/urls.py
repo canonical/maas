@@ -23,7 +23,7 @@ from django.contrib.staticfiles.urls import staticfiles_urlpatterns
 
 urlpatterns = patterns('',
     url(r'^', include('maasserver.urls')),
-    url(r'^metadata', include('metadataserver.urls')),
+    url(r'^metadata/', include('metadataserver.urls')),
 )
 
 if settings.STATIC_LOCAL_SERVE:
