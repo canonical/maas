@@ -12,16 +12,22 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
+import os
+
+from maasserver.enum import ARCHITECTURE
+from maastesting.factory import factory
 from maastesting.celery import CeleryFixture
+from maastesting.matchers import ContainsAll
 from maastesting.testcase import TestCase
 from provisioningserver.enum import POWER_TYPE
 from provisioningserver.power.poweraction import PowerActionFail
 from provisioningserver.tasks import (
     power_off,
     power_on,
+    write_tftp_config_for_node,
     )
 from testresources import FixtureResource
-
+from testtools.matchers import FileContains
 
 # An arbitrary MAC address.  Not using a properly random one here since
 # we might accidentally affect real machines on the network.
@@ -49,3 +55,36 @@ class TestPowerTasks(TestCase):
         self.assertRaises(
             PowerActionFail, power_off.delay,
             POWER_TYPE.WAKE_ON_LAN, mac=arbitrary_mac)
+
+
+class TestTFTPTasks(TestCase):
+
+    resources = (
+        ("celery", FixtureResource(CeleryFixture())),
+        )
+
+    def test_write_tftp_config_for_node_writes_files(self):
+        arch = ARCHITECTURE.i386
+        mac = factory.getRandomMACAddress()
+        mac2 = factory.getRandomMACAddress()
+        target_dir = self.make_dir()
+        kernel = factory.getRandomString()
+        menutitle = factory.getRandomString()
+        append = factory.getRandomString()
+
+        result = write_tftp_config_for_node.delay(
+            arch, (mac, mac2), pxe_target_dir=target_dir, menutitle=menutitle,
+            kernelimage=kernel, append=append)
+
+        self.assertTrue(result.successful(), result)
+        expected_file1 = os.path.join(
+            target_dir, arch, "generic", "pxelinux.cfg", mac.replace(":", "-"))
+        expected_file2 = os.path.join(
+            target_dir, arch, "generic", "pxelinux.cfg",
+            mac2.replace(":", "-"))
+        self.assertThat(
+            expected_file1,
+            FileContains(matcher=ContainsAll((kernel, menutitle, append))))
+        self.assertThat(
+            expected_file2,
+            FileContains(matcher=ContainsAll((kernel, menutitle, append))))
