@@ -83,7 +83,7 @@ bin/py bin/ipy: bin/buildout buildout.cfg versions.cfg setup.py
 	$(buildout) install repl
 	@touch --no-create bin/py bin/ipy
 
-test: bin/test.maas bin/test.maastesting bin/test.pserv $(js_enums)
+test: build
 	bin/test.maas
 	bin/test.maastesting
 	bin/test.pserv
