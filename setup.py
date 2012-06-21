@@ -2,7 +2,7 @@
 # Copyright 2012 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Distutils installer for maas."""
+"""Distribute/Setuptools installer for MAAS."""
 
 from __future__ import (
     absolute_import,
@@ -14,13 +14,6 @@ from os.path import (
     dirname,
     join,
     )
-
-import distribute_setup
-
-# The version of distribute packaged in precise is not quite at 0.6.24
-# final yet so we need to override the required version here to stop a
-# recipe build from trying to download from pypi.
-distribute_setup.use_setuptools(version="0.6.24dev-r0")
 
 from setuptools import (
     find_packages,
@@ -42,11 +35,11 @@ setup(
     version=__version__,
     url="https://launchpad.net/maas",
     license="AGPLv3",
-    description="Metal as as Service",
+    description="Metal As A Service",
     long_description=read('README'),
 
     author="MAAS Developers",
-    author_email="juju@lists.ubuntu.com",
+    author_email="maas-devel@lists.launchpad.net",
 
     packages=find_packages(
         where=b'src',
