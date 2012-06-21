@@ -21,6 +21,7 @@ from django.conf import settings
 from maasserver.models import FileStorage
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
+from maastesting.utils import age_file
 from testtools.matchers import (
     GreaterThan,
     LessThan,
@@ -65,18 +66,6 @@ class FileStorageTest(TestCase):
         # Proper handling of real binary data is tested separately.
         text = "%s %s" % (including_text, factory.getRandomString())
         return text.encode('ascii')
-
-    def age_file(self, path, seconds=None):
-        """Make the file at `path` look like it hasn't been touched recently.
-
-        Decrements the file's mtime by a bit over a day.
-        """
-        if seconds is None:
-            seconds = FileStorage.objects.grace_time + 1
-        stat_result = os.stat(path)
-        atime = stat_result.st_atime
-        mtime = stat_result.st_mtime
-        os.utime(path, (atime, mtime - seconds))
 
     def test_get_existing_storage_returns_None_if_none_found(self):
         nonexistent_file = factory.getRandomString()
@@ -190,7 +179,7 @@ class FileStorageTest(TestCase):
         path = factory.make_file(
             location=self.make_upload_dir(), name=filename,
             contents=self.make_data())
-        self.age_file(path, FileStorage.objects.grace_time - 60)
+        age_file(path, FileStorage.objects.grace_time - 60)
         self.assertFalse(
             FileStorage.objects.is_old(self.get_media_path(filename)))
 
@@ -199,7 +188,7 @@ class FileStorageTest(TestCase):
         path = factory.make_file(
             location=self.make_upload_dir(), name=filename,
             contents=self.make_data())
-        self.age_file(path, FileStorage.objects.grace_time + 1)
+        age_file(path, FileStorage.objects.grace_time + 1)
         self.assertTrue(
             FileStorage.objects.is_old(self.get_media_path(filename)))
 
@@ -208,7 +197,7 @@ class FileStorageTest(TestCase):
         path = factory.make_file(
             location=self.make_upload_dir(), name=filename,
             contents=self.make_data())
-        self.age_file(path)
+        age_file(path, FileStorage.objects.grace_time + 1)
         FileStorage.objects.collect_garbage()
         self.assertFalse(
             FileStorage.storage.exists(self.get_media_path(filename)))
@@ -233,7 +222,7 @@ class FileStorageTest(TestCase):
     def test_collect_garbage_leaves_referenced_files_alone(self):
         self.make_upload_dir()
         storage = factory.make_file_storage()
-        self.age_file(storage.data.path)
+        age_file(storage.data.path, FileStorage.objects.grace_time + 1)
         FileStorage.objects.collect_garbage()
         self.assertTrue(FileStorage.storage.exists(storage.data.name))
 

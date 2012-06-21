@@ -13,11 +13,14 @@ __metaclass__ = type
 __all__ = []
 
 import os
-from stat import ST_MTIME
 from subprocess import check_call
 
 from maastesting.factory import factory
 from maastesting.testcase import TestCase
+from maastesting.utils import (
+    age_file,
+    get_write_time,
+    )
 from testtools.matchers import (
     Contains,
     FileContains,
@@ -37,14 +40,9 @@ def read_file(path, name):
         return infile.read()
 
 
-def get_write_time(path):
-    """Return last modification time of file at `path`."""
-    return os.stat(path)[ST_MTIME]
-
-
 def backdate(path):
     """Set the last modification time for the file at `path` to the past."""
-    os.utime(path, (99999, 99999))
+    age_file(path, 9999999)
 
 
 def compose_download_dir(archive, arch, release):
