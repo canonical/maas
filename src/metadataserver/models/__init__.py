@@ -15,6 +15,7 @@ from __future__ import (
 
 __metaclass__ = type
 __all__ = [
+    'NodeCommissionResult',
     'NodeKey',
     'NodeUserData',
     ]
@@ -42,6 +43,7 @@ from piston.models import (
 
 
 class NodeKeyManager(Manager):
+# Scheduled for model migration on 2012-07-02
     """Utility for the collection of NodeKeys.
 
     Each Node that needs to access the metadata service will have its own
@@ -117,6 +119,7 @@ class NodeKeyManager(Manager):
         return self.get(key=key).node
 
 
+# Scheduled for model migration on 2012-07-02
 class NodeKey(CleanSave, Model):
     """Associate a Node with its OAuth (token) key.
 
