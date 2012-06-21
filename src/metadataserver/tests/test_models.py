@@ -72,6 +72,7 @@ class TestNodeKeyManager(DjangoTestCase):
                 NodeKey.objects.get_node_for_key(key)).key)
 
 
+# Scheduled for model migration on 2012-06-28
 class TestNodeUserDataManager(DjangoTestCase):
     """Test NodeUserDataManager."""
 
