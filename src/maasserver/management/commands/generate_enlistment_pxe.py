@@ -39,9 +39,13 @@ class Command(BaseCommand):
         make_option(
             '--release', dest='release', default=None,
             help="Ubuntu release to run when enlisting nodes."),
+        make_option(
+            '--pxe-target-dir', dest='pxe_target_dir', default=None,
+            help="Write PXE config here instead of in its normal location."),
         )
 
-    def handle(self, arch=None, subarch='generic', release=None, **kwargs):
+    def handle(self, arch=None, subarch='generic', release=None,
+               pxe_target_dir=None, **kwargs):
         image_path = '/maas/%s/%s/%s/install' % (arch, subarch, release)
         # TODO: This needs to go somewhere more appropriate, and
         # probably contain more appropriate options.
@@ -65,4 +69,5 @@ class Command(BaseCommand):
             'kernelimage': '/'.join([image_path, 'linux']),
             'append': kernel_opts,
         }
-        PXEConfig(arch, subarch).write_config(**template_args)
+        writer = PXEConfig(arch, subarch, pxe_target_dir=pxe_target_dir)
+        writer.write_config(**template_args)

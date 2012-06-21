@@ -28,7 +28,9 @@ class TestGenerateEnlistmentPXE(TestCase):
         release = 'precise'
         tftpdir = self.make_dir()
         self.patch(PXEConfig, 'target_basedir', tftpdir)
-        call_command('generate_enlistment_pxe', arch=arch, release=release)
+        call_command(
+            'generate_enlistment_pxe', arch=arch, release=release,
+            pxe_target_dir=tftpdir)
         # This produces a "default" PXE config file in the right place.
         # It refers to the kernel and initrd for the requested
         # architecture and release.

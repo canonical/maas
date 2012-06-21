@@ -182,6 +182,10 @@ main() {
             mkdir -p -- $rel_dir
             update_install_files $rel_dir $arch $release
         done
+
+        maas generate_enlistment_pxe \
+            --arch=$arch --release=$CURRENT_RELEASE \
+            --pxe-target-dir=$TFTPROOT/maas
     done
 
     rm -rf -- $DOWNLOAD_DIR

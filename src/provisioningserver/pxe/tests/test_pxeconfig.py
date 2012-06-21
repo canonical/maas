@@ -14,7 +14,6 @@ __all__ = []
 
 import os
 import re
-import tempita
 
 from celeryconfig import (
     PXE_TARGET_DIR,
@@ -26,7 +25,9 @@ from provisioningserver.pxe.pxeconfig import (
     PXEConfig,
     PXEConfigFail,
     )
+import tempita
 from testtools.matchers import (
+    Contains,
     FileContains,
     MatchesRegex,
     )
@@ -97,11 +98,10 @@ class TestPXEConfig(TestCase):
                 "name 'kernelimage' is not defined at line \d+ column \d+ "
                 "in file %s" % re.escape(template_name)))
 
-    def test_write_config(self):
+    def test_write_config_writes_config(self):
         # Ensure that a rendered template is written to the right place.
         out_dir = self.make_dir()
-        self.patch(PXEConfig, 'target_basedir', out_dir)
-        pxeconfig = PXEConfig("armhf", "armadaxp")
+        pxeconfig = PXEConfig("armhf", "armadaxp", pxe_target_dir=out_dir)
         pxeconfig.write_config(
             menutitle="menutitle", kernelimage="/my/kernel", append="append")
 
@@ -111,3 +111,16 @@ class TestPXEConfig(TestCase):
             append="append")
 
         self.assertThat(pxeconfig.target_file, FileContains(expected))
+
+    def test_write_config_overwrites_config(self):
+        out_dir = self.make_dir()
+        pxeconfig = PXEConfig("amd64", "generic", pxe_target_dir=out_dir)
+        pxeconfig.write_config(
+            menutitle="oldtitle", kernelimage="/old/kernel", append="append")
+        pxeconfig = PXEConfig("amd64", "generic", pxe_target_dir=out_dir)
+        pxeconfig.write_config(
+            menutitle="newtitle", kernelimage="/new/kernel", append="append")
+
+        self.assertThat(
+            pxeconfig.target_file,
+            FileContains(matcher=Contains('newtitle')))

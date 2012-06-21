@@ -19,6 +19,7 @@ from subprocess import check_call
 from maastesting.factory import factory
 from maastesting.testcase import TestCase
 from testtools.matchers import (
+    Contains,
     FileContains,
     FileExists,
     Not,
@@ -97,10 +98,17 @@ class TestImportPXEFiles(TestCase):
         TFTP root directory, respectively.  Both bad ideas.
         """
         script = './scripts/maas-import-pxe-files'
+        path = ':'.join([
+            os.path.join(
+                os.path.dirname(__file__), os.path.pardir, os.path.pardir,
+                os.path.pardir, 'bin'),
+            os.environ['PATH'],
+            ])
         env = {
             'ARCHIVE': 'file://%s' % archive_dir,
             # Substitute curl for wget; it accepts file:// URLs.
             'DOWNLOAD': 'curl -O --silent',
+            'PATH': path,
             'TFTPROOT': tftproot,
         }
         if arch is not None:
@@ -200,3 +208,14 @@ class TestImportPXEFiles(TestCase):
         original_timestamp = get_write_time(tftp_path)
         self.call_script(archive, tftproot, arch=arch, release=release)
         self.assertEqual(original_timestamp, get_write_time(tftp_path))
+
+    def test_generates_default_pxe_config(self):
+        arch = make_name('arch')
+        release = 'precise'
+        tftproot = self.make_dir()
+        archive = self.make_downloads(arch=arch, release=release)
+        self.call_script(archive, tftproot, arch=arch, release=release)
+        self.assertThat(
+            os.path.join(
+                tftproot, 'maas', arch, 'generic', 'pxelinux.cfg', 'default'),
+            FileContains(matcher=Contains("MENU TITLE")))
