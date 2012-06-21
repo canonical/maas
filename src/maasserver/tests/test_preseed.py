@@ -16,10 +16,16 @@ import os
 from pipes import quote
 
 from django.conf import settings
+from maasserver.enum import (
+    NODE_STATUS,
+    PRESEED_TYPE,
+    )
 from maasserver.models import Config
 from maasserver.preseed import (
     GENERIC_FILENAME,
+    get_enlist_preseed,
     get_maas_server_host,
+    get_preseed,
     get_preseed_context,
     get_preseed_filenames,
     get_preseed_template,
@@ -31,6 +37,7 @@ from maasserver.preseed import (
     )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
+from maasserver.utils import map_enum
 from testtools.matchers import (
     AllMatch,
     IsInstance,
@@ -86,6 +93,16 @@ class TestGetPreseedFilenames(TestCase):
                 'generic',
             ],
             list(get_preseed_filenames(node, prefix, release, default=True)))
+
+    def test_get_preseed_filenames_if_node_is_None(self):
+        release = factory.getRandomString()
+        prefix = factory.getRandomString()
+        self.assertSequenceEqual(
+            [
+                '%s_%s' % (prefix, release),
+                '%s' % prefix,
+            ],
+            list(get_preseed_filenames(None, prefix, release)))
 
     def test_get_preseed_filenames_supports_empty_prefix(self):
         hostname = factory.getRandomString()
@@ -308,6 +325,16 @@ class TestPreseedContext(TestCase):
              'node_disable_pxe_url', 'node_disable_pxe_data'],
             context)
 
+    def test_get_preseed_context_if_node_None(self):
+        # If the provided Node is None (when're in the context of an
+        # enlistment preseed) the returned context does not include the
+        # node context.
+        release = factory.getRandomString()
+        context = get_preseed_context(None, release)
+        self.assertItemsEqual(
+            ['release', 'server_host'],
+            context)
+
 
 class TestPreseedTemplate(TestCase):
     """Tests for class:`PreseedTemplate`."""
@@ -323,20 +350,38 @@ class TestRenderPreseed(TestCase):
     """Tests for `render_preseed`.
 
     These tests check that the templates render (i.e. that no variable is
-    missing) and 'look right'.
+    missing).
     """
 
-    def test_render_default_preseed(self):
+    # Create a scenario for each possible value of PRESEED_TYPE.
+    scenarios = [
+        (name, {'preseed': value})
+        for name, value in map_enum(PRESEED_TYPE).items()]
+
+    def test_render_preseed(self):
         node = factory.make_node()
-        preseed = render_preseed(node, factory.getRandomString(), "precise")
+        preseed = render_preseed(node, self.preseed, "precise")
+        # The test really is that the preseed is rendered without an
+        # error.
+        self.assertIsInstance(preseed, str)
+
+
+class TestPreseedMethods(TestCase):
+    """Tests for `get_enlist_preseed` and `get_preseed`.
+
+    These tests check that the preseed templates render and 'look right'.
+    """
+
+    def test_get_preseed_returns_default_preseed(self):
+        node = factory.make_node()
+        preseed = get_preseed(node)
         self.assertIn('preseed/late_command', preseed)
 
-    def test_render_enlist_preseed(self):
-        node = factory.make_node()
-        preseed = render_preseed(node, 'enlist', "precise")
+    def test_get_enlist_preseed_returns_enlist_preseed(self):
+        preseed = get_enlist_preseed()
         self.assertIn('maas-enlist-udeb', preseed)
 
-    def test_render_commissioning_preseed(self):
-        node = factory.make_node()
-        preseed = render_preseed(node, 'commissioning', "precise")
+    def test_get_preseed_returns_commissioning_preseed(self):
+        node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
+        preseed = get_preseed(node)
         self.assertIn('cloud-init', preseed)

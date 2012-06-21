@@ -17,6 +17,7 @@ __all__ = [
     'NODE_STATUS',
     'NODE_STATUS_CHOICES',
     'NODE_STATUS_CHOICES_DICT',
+    'PRESEED_TYPE',
     ]
 
 from collections import OrderedDict
@@ -113,3 +114,9 @@ class NODE_PERMISSION:
     VIEW = 'view_node'
     EDIT = 'edit_node'
     ADMIN = 'admin_node'
+
+
+class PRESEED_TYPE:
+    DEFAULT = ''
+    COMMISSIONING = 'commissioning'
+    ENLIST = 'enlist'

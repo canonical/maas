@@ -10,7 +10,10 @@ from __future__ import (
     )
 
 __metaclass__ = type
-__all__ = []
+__all__ = [
+    'get_enlist_preseed',
+    'get_preseed',
+    ]
 
 from collections import namedtuple
 from os.path import join
@@ -19,6 +22,10 @@ from urllib import urlencode
 from urlparse import urlparse
 
 from django.conf import settings
+from maasserver.enum import (
+    NODE_STATUS,
+    PRESEED_TYPE,
+    )
 from maasserver.models import Config
 from maasserver.provisioning import compose_preseed
 from maasserver.utils import absolute_reverse
@@ -26,6 +33,35 @@ import tempita
 
 
 GENERIC_FILENAME = 'generic'
+
+
+def get_enlist_preseed():
+    """Return the enlistment preseed.
+
+    :return: The rendered preseed string.
+    :rtype: basestring.
+    """
+    return render_preseed(None, PRESEED_TYPE.ENLIST)
+
+
+# XXX: rvb 2012-06-21 bug=1013146:  'precise' is hardcoded here.
+def get_preseed(node, release="precise"):
+    """Return the preseed for a given node.  Depending on the node's status
+    this will be a commissioning preseed (if the node is commissioning) or the
+    standard preseed (normal installation preseed).
+
+    :param node: The node to return preseed for.
+    :type node: :class:`maasserver.models.Node`
+    :param release: The Ubuntu release to be used.
+    :type release: basestring
+    :return: The rendered preseed string.
+    :rtype: basestring.
+    """
+    if node.status == NODE_STATUS.COMMISSIONING:
+        return render_preseed(
+            node, PRESEED_TYPE.COMMISSIONING, release=release)
+    else:
+        return render_preseed(node, PRESEED_TYPE.DEFAULT, release=release)
 
 
 # XXX: rvb 2012-06-14 bug=1013146:  'precise' is hardcoded here.
@@ -52,11 +88,19 @@ def get_preseed_filenames(node, prefix='', release='precise', default=False):
     {prefix}
     'generic'
     """
-    arch = split_subarch(node.architecture)
     elements = []
+    # Add prefix.
     if prefix != '':
         elements.append(prefix)
-    elements.extend(arch + [release, node.hostname])
+    # Add architecture/sub-architecture.
+    if node is not None:
+        arch = split_subarch(node.architecture)
+        elements.extend(arch)
+    # Add release.
+    elements.append(release)
+    # Add hostname.
+    if node is not None:
+        elements.append(node.hostname)
     while elements:
         yield compose_filename(elements)
         elements.pop()
@@ -165,19 +209,25 @@ def get_preseed_context(node, release="precise"):
     :rtype: dict.
     """
     server_host = get_maas_server_host()
-    # Create the url and the url-data (POST parameters) used to turn off
-    # PXE booting once the install of the node is finished.
-    node_disable_pxe_url = absolute_reverse(
-        'metadata-anon-node-edit', args=['latest', node.system_id])
-    node_disable_pxe_data = urlencode({'op': 'netboot_off'})
-    return {
-        'node': node,
+    context = {
         'release': release,
         'server_host': server_host,
-        'preseed_data': compose_preseed(node),
-        'node_disable_pxe_url': node_disable_pxe_url,
-        'node_disable_pxe_data': node_disable_pxe_data,
-    }
+        }
+    if node is not None:
+        # Create the url and the url-data (POST parameters) used to turn off
+        # PXE booting once the install of the node is finished.
+        node_disable_pxe_url = absolute_reverse(
+            'metadata-anon-node-edit', args=['latest', node.system_id])
+        node_disable_pxe_data = urlencode({'op': 'netboot_off'})
+        node_context = {
+            'node': node,
+            'preseed_data': compose_preseed(node),
+            'node_disable_pxe_url': node_disable_pxe_url,
+            'node_disable_pxe_data': node_disable_pxe_data,
+        }
+        context.update(node_context)
+
+    return context
 
 
 # XXX: rvb 2012-06-19 bug=1013146:  'precise' is hardcoded here.
