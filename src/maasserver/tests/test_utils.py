@@ -1,7 +1,7 @@
 # Copyright 2012 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for enumeration helpers."""
+"""Tests for miscellaneous helpers."""
 
 from __future__ import (
     absolute_import,
@@ -14,10 +14,12 @@ __all__ = []
 
 from django.conf import settings
 from django.core.urlresolvers import reverse
+from maasserver.enum import NODE_STATUS_CHOICES
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase as DjangoTestCase
 from maasserver.utils import (
     absolute_reverse,
+    get_db_state,
     map_enum,
     )
 from maastesting.testcase import TestCase
@@ -81,3 +83,15 @@ class TestAbsoluteReverse(DjangoTestCase):
         absolute_url = absolute_reverse('node-view', args=[node.system_id])
         expected_url = reverse('node-view', args=[node.system_id])
         self.assertEqual(expected_url, absolute_url)
+
+
+class GetDbStateTest(DjangoTestCase):
+    """Testing for the method `get_db_state`."""
+
+    def test_get_db_state_returns_db_state(self):
+        status = factory.getRandomChoice(NODE_STATUS_CHOICES)
+        node = factory.make_node(status=status)
+        another_status = factory.getRandomChoice(
+            NODE_STATUS_CHOICES, but_not=[status])
+        node.status = another_status
+        self.assertEqual(status, get_db_state(node, 'status'))

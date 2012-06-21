@@ -12,17 +12,13 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
-from datetime import (
-    datetime,
-    timedelta,
-    )
+from datetime import timedelta
 
 from django.conf import settings
 from django.core.exceptions import (
     PermissionDenied,
     ValidationError,
     )
-from django.db import transaction
 from maasserver.enum import (
     NODE_PERMISSION,
     NODE_STATUS,
@@ -36,112 +32,19 @@ from maasserver.models import (
     Node,
     )
 from maasserver.models.node import NODE_TRANSITIONS
-from maasserver.models.timestampedmodel import now
-from maasserver.models.user import (
-    create_auth_token,
-    get_auth_tokens,
-    )
+from maasserver.models.user import create_auth_token
 from maasserver.provisioning import get_provisioning_api_proxy
 from maasserver.testing import reload_object
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import (
-    TestCase,
-    TestModelTestCase,
-    )
-from maasserver.tests.models import TimestampedModelTestModel
-from maasserver.utils import (
-    get_db_state,
-    map_enum,
-    )
-from maastesting.djangotestcase import (
-    TestModelTransactionalTestCase,
-    TransactionTestCase,
-    )
+from maasserver.testing.testcase import TestCase
+from maasserver.utils import map_enum
 from metadataserver.models import (
     NodeCommissionResult,
     NodeUserData,
     )
-from piston.models import (
-    KEY_SIZE,
-    SECRET_SIZE,
-    )
 from provisioningserver.enum import POWER_TYPE
 from provisioningserver.power.poweraction import PowerAction
 from testtools.matchers import FileContains
-
-
-class UtilitiesTest(TestCase):
-# Scheduled for model migration on 2012-06-21
-
-    def test_now_returns_datetime(self):
-        self.assertIsInstance(now(), datetime)
-
-    def test_now_returns_same_datetime_inside_transaction(self):
-        date_now = now()
-        self.assertEqual(date_now, now())
-
-
-# Scheduled for model migration on 2012-06-21
-class UtilitiesTransactionalTest(TransactionTestCase):
-
-    def test_now_returns_transaction_time(self):
-        date_now = now()
-        # Perform a write database operation.
-        factory.make_node()
-        transaction.commit()
-        self.assertLessEqual(date_now, now())
-
-
-# Scheduled for model migration on 2012-06-21
-class TimestampedModelTest(TestModelTestCase):
-    """Testing for the class `TimestampedModel`."""
-
-    app = 'maasserver.tests'
-
-    def test_created_populated_when_object_saved(self):
-        obj = TimestampedModelTestModel()
-        obj.save()
-        self.assertIsNotNone(obj.created)
-
-    def test_updated_populated_when_object_saved(self):
-        obj = TimestampedModelTestModel()
-        obj.save()
-        self.assertIsNotNone(obj.updated)
-
-    def test_updated_and_created_are_the_same_after_first_save(self):
-        obj = TimestampedModelTestModel()
-        obj.save()
-        self.assertEqual(obj.created, obj.updated)
-
-    def test_created_not_modified_by_subsequent_calls_to_save(self):
-        obj = TimestampedModelTestModel()
-        obj.save()
-        old_created = obj.created
-        obj.save()
-        self.assertEqual(old_created, obj.created)
-
-
-# Scheduled for model migration on 2012-06-21
-class TimestampedModelTransactionalTest(TestModelTransactionalTestCase):
-
-    app = 'maasserver.tests'
-
-    def test_created_bracketed_by_before_and_after_time(self):
-        before = now()
-        obj = TimestampedModelTestModel()
-        obj.save()
-        transaction.commit()
-        after = now()
-        self.assertLessEqual(before, obj.created)
-        self.assertGreaterEqual(after, obj.created)
-
-    def test_updated_is_updated_when_object_saved(self):
-        obj = TimestampedModelTestModel()
-        obj.save()
-        old_updated = obj.updated
-        transaction.commit()
-        obj.save()
-        self.assertLessEqual(old_updated, obj.updated)
 
 
 class NodeTest(TestCase):
@@ -524,19 +427,6 @@ class NodeTransitionsTests(TestCase):
         self.assertTrue(set(all_destination_states) <= allowed_states)
 
 
-# Scheduled for model migration on 2012-06-21
-class GetDbStateTest(TestCase):
-    """Testing for the method `get_db_state`."""
-
-    def test_get_db_state_returns_db_state(self):
-        status = factory.getRandomChoice(NODE_STATUS_CHOICES)
-        node = factory.make_node(status=status)
-        another_status = factory.getRandomChoice(
-            NODE_STATUS_CHOICES, but_not=[status])
-        node.status = another_status
-        self.assertEqual(status, get_db_state(node, 'status'))
-
-
 class NodeManagerTest(TestCase):
 
     def make_node(self, user=None, **kwargs):
@@ -881,63 +771,3 @@ class NodeManagerTest(TestCase):
         Node.objects.start_nodes(
             [node.system_id], node.owner, user_data=user_data)
         self.assertEqual(user_data, NodeUserData.objects.get_user_data(node))
-
-
-# Scheduled for model migration on 2012-06-21
-class MACAddressTest(TestCase):
-
-    def make_MAC(self, address):
-        """Create a MAC address."""
-        node = factory.make_node()
-        return MACAddress(mac_address=address, node=node)
-
-    def test_stores_to_database(self):
-        mac = self.make_MAC('00:11:22:33:44:55')
-        mac.save()
-        self.assertEqual([mac], list(MACAddress.objects.all()))
-
-    def test_invalid_address_raises_validation_error(self):
-        mac = self.make_MAC('aa:bb:ccxdd:ee:ff')
-        self.assertRaises(ValidationError, mac.full_clean)
-
-
-# Scheduled for model migration on 2012-06-21
-class AuthTokensTest(TestCase):
-    """Test creation and retrieval of auth tokens."""
-
-    def assertTokenValid(self, token):
-        self.assertIsInstance(token.key, basestring)
-        self.assertEqual(KEY_SIZE, len(token.key))
-        self.assertIsInstance(token.secret, basestring)
-        self.assertEqual(SECRET_SIZE, len(token.secret))
-
-    def assertConsumerValid(self, consumer):
-        self.assertIsInstance(consumer.key, basestring)
-        self.assertEqual(KEY_SIZE, len(consumer.key))
-        self.assertEqual('', consumer.secret)
-
-    def test_create_auth_token(self):
-        user = factory.make_user()
-        token = create_auth_token(user)
-        self.assertEqual(user, token.user)
-        self.assertEqual(user, token.consumer.user)
-        self.assertTrue(token.is_approved)
-        self.assertConsumerValid(token.consumer)
-        self.assertTokenValid(token)
-
-    def test_get_auth_tokens_finds_tokens_for_user(self):
-        user = factory.make_user()
-        token = create_auth_token(user)
-        self.assertIn(token, get_auth_tokens(user))
-
-    def test_get_auth_tokens_ignores_other_users(self):
-        user, other_user = factory.make_user(), factory.make_user()
-        unrelated_token = create_auth_token(other_user)
-        self.assertNotIn(unrelated_token, get_auth_tokens(user))
-
-    def test_get_auth_tokens_ignores_unapproved_tokens(self):
-        user = factory.make_user()
-        token = create_auth_token(user)
-        token.is_approved = False
-        token.save()
-        self.assertNotIn(token, get_auth_tokens(user))
