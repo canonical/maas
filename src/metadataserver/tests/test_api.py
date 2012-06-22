@@ -30,6 +30,7 @@ from maasserver.testing import reload_object
 from maasserver.testing.factory import factory
 from maasserver.testing.oauthclient import OAuthAuthenticatedClient
 from maastesting.djangotestcase import DjangoTestCase
+from metadataserver import api
 from metadataserver.api import (
     check_version,
     get_node_for_mac,
@@ -92,7 +93,7 @@ class TestHelpers(DjangoTestCase):
             get_node_for_request, self.fake_request())
 
     def test_get_node_for_mac_refuses_if_anonymous_access_disabled(self):
-        self.patch(settings, 'ALLOW_ANONYMOUS_METADATA_ACCESS', False)
+        self.patch(settings, 'ALLOW_UNSAFE_METADATA_ACCESS', False)
         self.assertRaises(
             PermissionDenied, get_node_for_mac, factory.getRandomMACAddress())
 
@@ -517,7 +518,7 @@ class TestViews(DjangoTestCase, ProvisioningFakeFactory):
             (response.status_code, response.content))
 
     def test_api_normally_disallows_anonymous_node_metadata_access(self):
-        self.patch(settings, 'ALLOW_ANONYMOUS_METADATA_ACCESS', False)
+        self.patch(settings, 'ALLOW_UNSAFE_METADATA_ACCESS', False)
         mac = factory.make_mac_address()
         url = reverse(
             'metadata-meta-data-by-mac',
@@ -544,12 +545,31 @@ class TestViews(DjangoTestCase, ProvisioningFakeFactory):
     def test_anonymous_netboot_off(self):
         node = factory.make_node(netboot=True)
         anon_netboot_off_url = reverse(
-            'metadata-anon-node-edit', args=['latest',
-            node.system_id])
+            'metadata-node-by-id', args=['latest', node.system_id])
         response = self.client.post(
             anon_netboot_off_url, {'op': 'netboot_off'})
         node = reload_object(node)
         self.assertEqual(
             (httplib.OK, False),
             (response.status_code, node.netboot),
+            response)
+
+    def test_anonymous_get_preseed(self):
+        # The preseed for a node can be obtained anonymously.
+        node = factory.make_node()
+        anon_node_url = reverse(
+            'metadata-node-by-id',
+            args=['latest', node.system_id])
+        # Fake the preseed so we're just exercising the view.
+        fake_preseed = factory.getRandomString()
+        self.patch(api, "get_preseed", lambda node: fake_preseed)
+        response = self.client.get(
+            anon_node_url, {'op': 'get_preseed'})
+        self.assertEqual(
+            (httplib.OK,
+             "text/plain",
+             fake_preseed),
+            (response.status_code,
+             response["Content-Type"],
+             response.content),
             response)

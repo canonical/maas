@@ -217,7 +217,7 @@ def get_preseed_context(node, release="precise"):
         # Create the url and the url-data (POST parameters) used to turn off
         # PXE booting once the install of the node is finished.
         node_disable_pxe_url = absolute_reverse(
-            'metadata-anon-node-edit', args=['latest', node.system_id])
+            'metadata-node-by-id', args=['latest', node.system_id])
         node_disable_pxe_data = urlencode({'op': 'netboot_off'})
         node_context = {
             'node': node,

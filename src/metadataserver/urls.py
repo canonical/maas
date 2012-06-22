@@ -35,11 +35,11 @@ version_index_handler = Resource(VersionIndexHandler, authentication=api_auth)
 index_handler = Resource(IndexHandler, authentication=api_auth)
 
 
-# Handlers for anonymous node operations.
-meta_data_node_anon_handler = Resource(AnonMetaDataHandler)
+# Handlers for anonymous metadata operations.
+meta_data_node_by_id_handler = Resource(AnonMetaDataHandler)
 
 
-# Handlers for anonymous random metadata access.
+# Handlers for UNSAFE anonymous random metadata access.
 meta_data_by_mac_handler = Resource(MetaDataHandler)
 user_data_by_mac_handler = Resource(UserDataHandler)
 version_index_by_mac_handler = Resource(VersionIndexHandler)
@@ -61,22 +61,22 @@ node_patterns = patterns(
     url(r'', index_handler, name='metadata'),
     )
 
-# Anonymous random metadata access.  These serve requests from the nodes
-# which happen when the environment is so minimal that proper
+# Anonymous random metadata access, keyed by system ID.  These serve requests
+# from the nodes which happen when the environment is so minimal that proper
 # authenticated calls are not possible.
-anon_patterns = patterns(
+by_id_patterns = patterns(
     '',
     # XXX: rvb 2012-06-20 bug=1015559:  This method is accessible
     # without authentication.  This is a security threat.
     url(
-        r'(?P<version>[^/]+)/(?P<system_id>[\w\-]+)/edit/$',
-        meta_data_node_anon_handler,
-        name='metadata-anon-node-edit'),
+        r'(?P<version>[^/]+)/by-id/(?P<system_id>[\w\-]+)/$',
+        meta_data_node_by_id_handler,
+        name='metadata-node-by-id'),
     )
 
-# Anonymous random metadata access keyed by MAC address.  These won't
-# work unless ALLOW_ANONYMOUS_METADATA_ACCESS is enabled, which you
-# should never do on a production MAAS.
+# UNSAFE anonymous random metadata access, keyed by MAC address.  These won't
+# work unless ALLOW_UNSAFE_METADATA_ACCESS is enabled, which you should never
+# do on a production MAAS.
 by_mac_patterns = patterns(
     '',
     url(
@@ -97,4 +97,4 @@ by_mac_patterns = patterns(
 # URL patterns.  The anonymous patterns are listed first because they're
 # so recognizable: there's no chance of a regular metadata access being
 # mistaken for one of these based on URL pattern match.
-urlpatterns = anon_patterns + by_mac_patterns + node_patterns
+urlpatterns = by_id_patterns + by_mac_patterns + node_patterns

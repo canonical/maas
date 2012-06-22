@@ -288,10 +288,10 @@ COMMISSIONING_SCRIPT = 'etc/maas/commissioning-user-data'
 COMMISSIONING_TIMEOUT = 60
 
 # Allow anonymous access to the metadata for a node, keyed by its MAC
-# address?  This is for development purposes only.  DO NOT ENABLE THIS
+# address.  This is for development purposes only.  DO NOT ENABLE THIS
 # IN PRODUCTION or private metadata, including MAAS access credentials
 # for all nodes, will be exposed on your network.
-ALLOW_ANONYMOUS_METADATA_ACCESS = False
+ALLOW_UNSAFE_METADATA_ACCESS = False
 
 # Earlier locations in the following list will shadow, or overlay, later
 # locations.

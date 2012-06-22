@@ -81,7 +81,7 @@ DEBUG_TOOLBAR_CONFIG = {
 
 # Make all nodes' metadata visible.  This is not safe; do not enable it
 # on a production MAAS.
-ALLOW_ANONYMOUS_METADATA_ACCESS = True
+ALLOW_UNSAFE_METADATA_ACCESS = True
 
 # Use in-branch preseed templates.
 PRESEED_TEMPLATE_LOCATIONS = (
