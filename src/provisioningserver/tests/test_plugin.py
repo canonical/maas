@@ -158,7 +158,7 @@ class TestProvisioningServiceMaker(TestCase):
         config.setdefault("password", factory.getRandomString())
         config_filename = os.path.join(self.tempdir, "config.yaml")
         with open(config_filename, "wb") as stream:
-            yaml.dump(config, stream)
+            yaml.safe_dump(config, stream)
         return config_filename
 
     def test_init(self):

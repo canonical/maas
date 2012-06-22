@@ -93,7 +93,7 @@ class TestHelpers(TestCase):
 
     def test_compose_preseed_for_commissioning_node_produces_yaml(self):
         node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
-        preseed = yaml.load(compose_preseed(node))
+        preseed = yaml.safe_load(compose_preseed(node))
         self.assertIn('datasource', preseed)
         self.assertIn('MAAS', preseed['datasource'])
         self.assertThat(
@@ -111,7 +111,7 @@ class TestHelpers(TestCase):
 
     def test_compose_preseed_for_commissioning_includes_metadata_url(self):
         node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
-        preseed = yaml.load(compose_preseed(node))
+        preseed = yaml.safe_load(compose_preseed(node))
         self.assertEqual(
             get_metadata_server_url(),
             preseed['datasource']['MAAS']['metadata_url'])
@@ -126,7 +126,7 @@ class TestHelpers(TestCase):
 
     def test_compose_preseed_for_commissioning_includes_auth_token(self):
         node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
-        preseed = yaml.load(compose_preseed(node))
+        preseed = yaml.safe_load(compose_preseed(node))
         maas_dict = preseed['datasource']['MAAS']
         token = NodeKey.objects.get_token_for_node(node)
         self.assertEqual(token.consumer.key, maas_dict['consumer_key'])

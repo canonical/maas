@@ -250,7 +250,7 @@ def read_config(url, creds):
             url = url[7:]
         cfg_str = open(url,"r").read()
 
-    cfg = yaml.load(cfg_str)
+    cfg = yaml.safe_load(cfg_str)
 
     # support reading cloud-init config for MAAS datasource
     if 'datasource' in cfg:

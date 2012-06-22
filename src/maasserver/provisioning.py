@@ -368,7 +368,7 @@ def compose_cloud_init_preseed(token):
 
 def compose_commissioning_preseed(token):
     """Compose the preseed value for a Commissioning node."""
-    return "#cloud-config\n%s" % yaml.dump({
+    return "#cloud-config\n%s" % yaml.safe_dump({
         'datasource': {
             'MAAS': {
                 'metadata_url': get_metadata_server_url(),
