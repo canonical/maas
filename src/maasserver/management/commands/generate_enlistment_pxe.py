@@ -34,7 +34,7 @@ class Command(BaseCommand):
             '--arch', dest='arch', default=None,
             help="Main system architecture to generate config for."),
         make_option(
-            '--subarch', dest='arch', default='generic',
+            '--subarch', dest='subarch', default='generic',
             help="Sub-architecture of the main architecture."),
         make_option(
             '--release', dest='release', default=None,
