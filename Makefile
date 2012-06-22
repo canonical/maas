@@ -35,7 +35,7 @@ build-offline: build
 all: build doc
 
 bin/python bin/pip:
-	$(virtualenv) --python=$(python) --system-site-packages $(PWD)
+	$(virtualenv) --python=$(python) --system-site-packages $(CURDIR)
 
 bin/buildout: bin/pip bootstrap/zc.buildout-1.5.2.tar.gz
 	bin/pip --quiet install --ignore-installed \
@@ -239,7 +239,7 @@ services/%/@supervise: services/%/@deps
 	@mkdir -p logs/$*
 	@touch $(@D)/down
 	@if ! $(svok) $(@D); then \
-	    logdir=$(PWD)/logs/$* \
+	    logdir=$(CURDIR)/logs/$* \
 	        $(call service_lock, $*) $(supervise) $(@D) & fi
 	@while ! $(svok) $(@D); do sleep 0.1; done
 
