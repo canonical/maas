@@ -554,6 +554,24 @@ class TestViews(DjangoTestCase, ProvisioningFakeFactory):
             (response.status_code, node.netboot),
             response)
 
+    def test_anonymous_get_enlist_preseed(self):
+        # The preseed for enlistment can be obtained anonymously.
+        anon_enlist_preseed_url = reverse(
+            'metadata-enlist-preseed', args=['latest'])
+        # Fake the preseed so we're just exercising the view.
+        fake_preseed = factory.getRandomString()
+        self.patch(api, "get_enlist_preseed", lambda: fake_preseed)
+        response = self.client.get(
+            anon_enlist_preseed_url, {'op': 'get_enlist_preseed'})
+        self.assertEqual(
+            (httplib.OK,
+             "text/plain",
+             fake_preseed),
+            (response.status_code,
+             response["Content-Type"],
+             response.content),
+            response)
+
     def test_anonymous_get_preseed(self):
         # The preseed for a node can be obtained anonymously.
         node = factory.make_node()

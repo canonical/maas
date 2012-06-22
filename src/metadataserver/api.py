@@ -42,7 +42,10 @@ from maasserver.models import (
     Node,
     SSHKey,
     )
-from maasserver.preseed import get_preseed
+from maasserver.preseed import (
+    get_enlist_preseed,
+    get_preseed,
+    )
 from metadataserver.models import (
     NodeCommissionResult,
     NodeKey,
@@ -330,6 +333,11 @@ class UserDataHandler(MetadataViewHandler):
 @api_operations
 class AnonMetaDataHandler(VersionIndexHandler):
     """Anonymous metadata."""
+
+    @api_exported('GET')
+    def get_enlist_preseed(self, request, version=None):
+        """Render and return a preseed script for enlistment."""
+        return HttpResponse(get_enlist_preseed(), mimetype="text/plain")
 
     @api_exported('GET')
     def get_preseed(self, request, version=None, system_id=None):
