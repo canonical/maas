@@ -1,7 +1,7 @@
 # MAAS - Ubuntu Server Installation
 # * Minimal install
 # * Cloud-init for bare-metal
-# * maas_preseed snippet is expanded to provide cloud-init preseed data
+# * Cloud-init preseed data
 
 # Locale
 d-i     debian-installer/locale string en_US.UTF-8

@@ -1,0 +1,22 @@
+{% extends "maasserver/base.html" %}
+
+{% block nav-active-settings %}active{% endblock %}
+{% block title %}Preseed for node: {{ node.hostname }}{% endblock %}
+{% block page-title %}Preseed for node: {{ node.hostname }}{% endblock %}
+{% block layout-modifiers %}sidebar{% endblock %}
+
+{% block sidebar %}
+  <h4>Node details</h4>
+  <a href="{% url 'node-view' node.system_id %}" class="button secondary">
+    View node
+  </a>
+{% endblock %}
+
+{% block content %}
+  {% if is_commissioning %}
+  This node is comissioning.  This is the comissioning preseed.
+  {% endif %}
+  <pre>
+{{ preseed }}
+  </pre>
+{% endblock %}

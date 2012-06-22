@@ -31,6 +31,10 @@ from maasserver.models import (
     Node,
     )
 from maasserver.node_action import StartNode
+from maasserver.preseed import (
+    get_enlist_preseed,
+    get_preseed,
+    )
 from maasserver.testing import (
     extract_redirect,
     get_content_links,
@@ -65,6 +69,11 @@ class NodeViewsTest(LoggedInTestCase):
         node_link = reverse('node-view', args=[node.system_id])
         self.assertIn(node_link, get_content_links(response))
 
+    def test_node_list_contains_link_to_enlist_preseed_view(self):
+        response = self.client.get(reverse('node-list'))
+        enlist_preseed_link = reverse('enlist-preseed-view')
+        self.assertIn(enlist_preseed_link, get_content_links(response))
+
     def test_node_list_displays_sorted_list_of_nodes(self):
         # Nodes are sorted on the node list page, newest first.
         nodes = [factory.make_node() for i in range(3)]
@@ -84,7 +93,7 @@ class NodeViewsTest(LoggedInTestCase):
         self.assertEqual(
             node_links,
             [link for link in get_content_links(response)
-                if link.startswith('/nodes')])
+                if link.startswith('/nodes/node')])
 
     def test_view_node_displays_node_info(self):
         # The node page features the basic information about the node.
@@ -105,6 +114,13 @@ class NodeViewsTest(LoggedInTestCase):
         doc = fromstring(response.content)
         content_text = doc.cssselect('#content')[0].text_content()
         self.assertNotIn('Owner', content_text)
+
+    def test_view_node_displays_link_to_view_preseed(self):
+        node = factory.make_node(owner=self.logged_in_user)
+        node_link = reverse('node-view', args=[node.system_id])
+        response = self.client.get(node_link)
+        node_preseed_link = reverse('node-preseed-view', args=[node.system_id])
+        self.assertIn(node_preseed_link, get_content_links(response))
 
     def test_view_node_displays_link_to_edit_if_user_owns_node(self):
         node = factory.make_node(owner=self.logged_in_user)
@@ -321,6 +337,37 @@ class NodeViewsTest(LoggedInTestCase):
         self.assertIn(
             "This node is now allocated to you.",
             '\n'.join(msg.message for msg in response.context['messages']))
+
+
+class NodePreseedViewTest(LoggedInTestCase):
+
+    def test_preseedview_node_displays_preseed_data(self):
+        node = factory.make_node(owner=self.logged_in_user)
+        node_preseed_link = reverse('node-preseed-view', args=[node.system_id])
+        response = self.client.get(node_preseed_link)
+        self.assertIn(get_preseed(node), response.content)
+
+    def test_preseedview_node_displays_message_if_commissioning(self):
+        node = factory.make_node(
+            owner=self.logged_in_user, status=NODE_STATUS.COMMISSIONING,
+            set_hostname=True)
+        node_preseed_link = reverse('node-preseed-view', args=[node.system_id])
+        response = self.client.get(node_preseed_link)
+        self.assertThat(
+            response.content,
+            ContainsAll([get_preseed(node), "This node is comissioning."]))
+
+    def test_preseedview_node_displays_link_to_view_node(self):
+        node = factory.make_node(owner=self.logged_in_user)
+        node_preseed_link = reverse('node-preseed-view', args=[node.system_id])
+        response = self.client.get(node_preseed_link)
+        node_link = reverse('node-view', args=[node.system_id])
+        self.assertIn(node_link, get_content_links(response))
+
+    def test_enlist_preseed_displays_enlist_preseed(self):
+        enlist_preseed_link = reverse('enlist-preseed-view')
+        response = self.client.get(enlist_preseed_link)
+        self.assertIn(get_enlist_preseed(), response.content)
 
 
 class NodeDeleteMacTest(LoggedInTestCase):

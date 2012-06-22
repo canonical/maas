@@ -33,11 +33,13 @@ from maasserver.views.account import (
     )
 from maasserver.views.combo import combo_view
 from maasserver.views.nodes import (
+    enlist_preseed_view,
     MacAdd,
     MacDelete,
     NodeDelete,
     NodeEdit,
     NodeListView,
+    NodePreseedView,
     NodeView,
     )
 from maasserver.views.prefs import (
@@ -99,10 +101,15 @@ urlpatterns += patterns('maasserver.views',
         NodeListView.as_view(template_name="maasserver/index.html"),
         name='index'),
     url(r'^nodes/$', NodeListView.as_view(model=Node), name='node-list'),
+    url(r'^nodes/enlist-preseed/$', enlist_preseed_view,
+        name='enlist-preseed-view'),
     url(
         r'^nodes/(?P<system_id>[\w\-]+)/view/$', NodeView.as_view(),
         name='node-view'),
     url(
+        r'^nodes/(?P<system_id>[\w\-]+)/preseedview/$',
+        NodePreseedView.as_view(), name='node-preseed-view'),
+     url(
         r'^nodes/(?P<system_id>[\w\-]+)/edit/$', NodeEdit.as_view(),
         name='node-edit'),
     url(
