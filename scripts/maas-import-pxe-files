@@ -79,62 +79,10 @@ update_pre_boot_loader() {
 }
 
 
-# Move local directory $1 into directory $2, so that it becomes $2/$1.
-# If a directory of the same name already existed in $2, remove it along
-# with all its contents.
-# This will use "$2/$1.new" and "$2/$1.old" as temporary locations, which
-# will also be deleted.
-install_dir() {
-    local name=$1 dest=$2
-    # Use the "old"/"new" directories to maximize speed and minimize
-    # inconvenience: ensure that the new directory contents are on the
-    # partition they will ultimately need to be on, then move the old
-    # ones out of the way and immediately replace them with the new, and
-    # finally remove the old ones outside of the critical path.
-    # This will not resolve races with ongoing downloads by booting nodes.
-    # It merely minimizes this script's side of the race window.
-    rm -rf -- $dest/$name.old $dest/$name.new
-    # Put new downloads next to the old.  If any file copying is needed
-    # because directories are on different partitions, it happens here.
-    mv -- $name $dest/$name.new
-
-    # Start of the critical window.
-
-    # Move existing directory (if any) out of the way.
-    [ -d $dest/$name ] && mv -- $dest/$name $dest/$name.old
-
-    # Move new directory into place.
-    mv -- $dest/$name.new $dest/$name
-
-    # End of the critical window.
-
-    # Clean up the old directory (if any).
-    rm -rf -- $dest/$name.old
-}
-
-
-# Compare given file names between directories $1 and $2.  Print "yes" if
-# they are all identical, or "no" if any of them are different or missing.
-identical_files() {
-    local lhs=$1 rhs=$2
-    local file
-    shift 2
-    for file in $*
-    do
-        if ! cmp --quiet $lhs/$file $rhs/$file
-        then
-            echo "no"
-            return
-        fi
-    done
-    echo "yes"
-}
-
-
-# Download kernel/initrd for installing Ubuntu release $3 for
-# architecture $2 into directory $1/install.
+# Download kernel/initrd for installing Ubuntu release $2 for
+# architecture $1 and install it into the TFTP directory hierarchy.
 update_install_files() {
-    local dest=$1 arch=$2 release=$3
+    local arch=$1 release=$2
     local files="initrd.gz linux"
     local url=$(compose_installer_download_url $arch $release)
     local file
@@ -147,12 +95,9 @@ update_install_files() {
     done
     popd >/dev/null
 
-    # TODO: Prevent this change from upsetting any currently booting nodes.
-    if [ $(identical_files "install" $dest/"install" $files) != 'yes' ]
-    then
-        echo "Updating files for $release-$arch."
-        install_dir "install" $dest
-    fi
+    maas install_pxe_image \
+        --arch=$arch --release=$release --purpose="install" \
+        --image="install" --pxe-target-dir="$TFTPROOT/maas"
 }
 
 
@@ -178,9 +123,7 @@ main() {
 
         for release in $RELEASES
         do
-            rel_dir="$arch_dir/$release"
-            mkdir -p -- $rel_dir
-            update_install_files $rel_dir $arch $release
+            update_install_files $arch $release
         done
 
         maas generate_enlistment_pxe \
