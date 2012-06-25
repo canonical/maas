@@ -28,12 +28,12 @@ mac_re = re.compile(r'^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$')
 
 
 class MACAddress(CleanSave, TimestampedModel):
-    """A `MACAddress` represents a `MAC address
-    <http://en.wikipedia.org/wiki/MAC_address>`_ attached to a :class:`Node`.
+    """A `MACAddress` represents a `MAC address`_ attached to a :class:`Node`.
 
     :ivar mac_address: The MAC address.
-    :ivar node: The `Node` related to this `MACAddress`.
+    :ivar node: The :class:`Node` related to this `MACAddress`.
 
+    .. _MAC address: http://en.wikipedia.org/wiki/MAC_address
     """
     mac_address = MACAddressField(unique=True)
     node = ForeignKey('Node', editable=False)

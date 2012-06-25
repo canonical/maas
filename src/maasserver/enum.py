@@ -95,8 +95,8 @@ NODE_AFTER_COMMISSIONING_ACTION_CHOICES_DICT = dict(
     NODE_AFTER_COMMISSIONING_ACTION_CHOICES)
 
 
-# List of supported architectures.
 class ARCHITECTURE:
+    """List of supported architectures."""
     #:
     i386 = 'i386'
     #:
@@ -111,12 +111,14 @@ ARCHITECTURE_CHOICES = (
 
 
 class NODE_PERMISSION:
+    """Permissions relating to nodes."""
     VIEW = 'view_node'
     EDIT = 'edit_node'
     ADMIN = 'admin_node'
 
 
 class PRESEED_TYPE:
+    """Types of preseed documents that can be generated."""
     DEFAULT = ''
     COMMISSIONING = 'commissioning'
     ENLIST = 'enlist'

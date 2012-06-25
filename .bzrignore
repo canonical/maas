@@ -10,6 +10,7 @@
 ./db
 ./develop-eggs
 ./dist
+./docs/_autosummary
 ./docs/_build
 ./docs/api.rst
 ./eggs

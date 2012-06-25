@@ -2,27 +2,18 @@
 MAAS Objects
 ============
 
+.. autosummary::
+   :toctree: _autosummary
 
-.. automodule:: maasserver.models
-
-.. autoclass:: TimestampedModel
-    :show-inheritance:
-    :members:
-
-.. autoclass:: Node
-    :show-inheritance:
-    :members:
-
-.. autoclass:: NodeManager
-    :show-inheritance:
-    :members:
-
-.. autoclass:: MACAddress
-    :show-inheritance:
-    :members:
-
-.. autoclass:: UserProfile
-    :show-inheritance:
-    :members:
-
-
+   maasserver.models
+   maasserver.models.config
+   maasserver.models.filestorage
+   maasserver.models.macaddress
+   maasserver.models.node
+   maasserver.models.nodegroup
+   maasserver.models.sshkey
+   maasserver.models.timestampedmodel
+   maasserver.models.user
+   maasserver.models.userprofile
+   metadataserver.models
+   metadataserver.models.nodeuserdata

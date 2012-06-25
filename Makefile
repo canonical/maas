@@ -127,6 +127,8 @@ clean:
 	$(RM) $(js_enums)
 	$(RM) *.log
 	$(RM) celerybeat-schedule
+	$(RM) docs/api.rst
+	$(RM) -r docs/_autosummary
 
 distclean: clean stop
 	$(RM) -r bin include lib local
@@ -134,8 +136,7 @@ distclean: clean stop
 	$(RM) -r build dist logs/* parts
 	$(RM) tags TAGS .installed.cfg
 	$(RM) -r *.egg *.egg-info src/*.egg-info
-	$(RM) docs/api.rst
-	$(RM) -r docs/_build/
+	$(RM) -r docs/_build
 	$(RM) -r run/* services/*/supervise
 	$(RM) twisted/plugins/dropin.cache
 
