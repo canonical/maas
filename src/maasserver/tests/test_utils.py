@@ -12,6 +12,8 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
+from urllib import urlencode
+
 from django.conf import settings
 from django.core.urlresolvers import reverse
 from maasserver.enum import NODE_STATUS_CHOICES
@@ -67,6 +69,13 @@ class TestAbsoluteReverse(DjangoTestCase):
         self.patch(settings, 'DEFAULT_MAAS_URL', maas_url)
         absolute_url = absolute_reverse('settings')
         expected_url = settings.DEFAULT_MAAS_URL + reverse('settings')
+        self.assertEqual(expected_url, absolute_url)
+
+    def test_absolute_reverse_uses_query_string(self):
+        self.patch(settings, 'DEFAULT_MAAS_URL', '')
+        parameters = {factory.getRandomString(): factory.getRandomString()}
+        absolute_url = absolute_reverse('settings', query=parameters)
+        expected_url = '%s?%s' % (reverse('settings'), urlencode(parameters))
         self.assertEqual(expected_url, absolute_url)
 
     def test_absolute_reverse_uses_kwargs(self):

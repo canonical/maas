@@ -25,7 +25,6 @@ from django.views.generic.simple import (
     direct_to_template,
     redirect_to,
     )
-from maasserver.maasavahi import setup_maas_avahi_service
 from maasserver.models import Node
 from maasserver.views.account import (
     login,
@@ -148,10 +147,3 @@ urlpatterns += patterns('maasserver.views',
 urlpatterns += patterns('',
     (r'^api/1\.0/', include('maasserver.urls_api'))
     )
-
-# Code to run once when the server is initialized, as suggested in
-# http://stackoverflow.com/
-#   questions/
-#       6791911/
-#           execute-code-when-django-starts-once-only
-setup_maas_avahi_service()

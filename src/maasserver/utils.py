@@ -17,6 +17,7 @@ __all__ = [
     'map_enum',
     ]
 
+from urllib import urlencode
 from urlparse import urljoin
 
 from django.conf import settings
@@ -61,7 +62,7 @@ def map_enum(enum_class):
     }
 
 
-def absolute_reverse(view_name, *args, **kwargs):
+def absolute_reverse(view_name, query=None, *args, **kwargs):
     """Return the absolute URL (i.e. including the URL scheme specifier and
     the network location of the MAAS server).  Internally this method simply
     calls Django's 'reverse' method and prefixes the result of that call with
@@ -69,8 +70,14 @@ def absolute_reverse(view_name, *args, **kwargs):
 
     :param view_name: Django's view function name/reference or URL pattern
         name for which to compute the absolute URL.
+    :param query: Optional query argument which will be passed down to
+        urllib.urlencode.  The result of that call will be appended to the
+        resulting url.
     :param args: Positional arguments for Django's 'reverse' method.
     :param kwargs: Named arguments for Django's 'reverse' method.
     """
-    return urljoin(
+    url = urljoin(
         settings.DEFAULT_MAAS_URL, reverse(view_name, *args, **kwargs))
+    if query is not None:
+        url += '?%s' % urlencode(query, doseq=True)
+    return url

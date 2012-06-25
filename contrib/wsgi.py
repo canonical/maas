@@ -23,3 +23,6 @@ sys.path.append(current_path)
 
 os.environ['DJANGO_SETTINGS_MODULE'] = 'maas.settings'
 application = django.core.handlers.wsgi.WSGIHandler()
+
+from maasserver.maasavahi import setup_maas_avahi_service
+setup_maas_avahi_service()
