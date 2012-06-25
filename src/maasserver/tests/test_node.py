@@ -771,3 +771,13 @@ class NodeManagerTest(TestCase):
         Node.objects.start_nodes(
             [node.system_id], node.owner, user_data=user_data)
         self.assertEqual(user_data, NodeUserData.objects.get_user_data(node))
+
+    def test_netboot_on(self):
+        node = factory.make_node(netboot=False)
+        node.set_netboot(True)
+        self.assertTrue(node.netboot)
+
+    def test_netboot_off(self):
+        node = factory.make_node(netboot=True)
+        node.set_netboot(False)
+        self.assertFalse(node.netboot)

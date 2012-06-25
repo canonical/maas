@@ -579,3 +579,8 @@ class Node(CleanSave, TimestampedModel):
         self.owner = None
         self.token = None
         self.save()
+
+    def set_netboot(self, on=True):
+        """Set netboot on or off."""
+        self.netboot = on
+        self.save()
