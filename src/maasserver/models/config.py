@@ -19,9 +19,13 @@ from collections import defaultdict
 import copy
 from socket import gethostname
 
-from django.db.models import Manager, Model, CharField
-from django.db.models.signals import post_save
 from django.conf import settings
+from django.db.models import (
+    CharField,
+    Manager,
+    Model,
+    )
+from django.db.models.signals import post_save
 from maasserver import DefaultMeta
 from maasserver.enum import NODE_AFTER_COMMISSIONING_ACTION
 from maasserver.fields import JSONObjectField

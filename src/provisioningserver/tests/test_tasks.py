@@ -15,8 +15,8 @@ __all__ = []
 import os
 
 from maasserver.enum import ARCHITECTURE
-from maastesting.factory import factory
 from maastesting.celery import CeleryFixture
+from maastesting.factory import factory
 from maastesting.matchers import ContainsAll
 from maastesting.testcase import TestCase
 from provisioningserver.enum import POWER_TYPE

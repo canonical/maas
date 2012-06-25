@@ -16,8 +16,8 @@ __all__ = [
 
 from os import environ
 from textwrap import dedent
-from urlparse import urlparse
 from unittest import skipIf
+from urlparse import urlparse
 
 from provisioningserver.cobblerclient import CobblerSession
 

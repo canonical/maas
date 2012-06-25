@@ -15,8 +15,8 @@ __all__ = []
 from datetime import datetime
 
 from django.db import transaction
-from maasserver.testing.factory import factory
 from maasserver.models.timestampedmodel import now
+from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
     TestCase,
     TestModelTestCase,

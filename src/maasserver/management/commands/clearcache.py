@@ -14,8 +14,9 @@ __all__ = [
     'Command',
     ]
 
-from django.core.cache import cache
 from optparse import make_option
+
+from django.core.cache import cache
 from django.core.management.base import BaseCommand
 
 

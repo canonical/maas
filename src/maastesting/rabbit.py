@@ -18,7 +18,6 @@ __all__ = [
 
 from rabbitfixture.server import RabbitServer
 
-
 # See {start,stop,get}_rabbit().
 rabbit = None
 

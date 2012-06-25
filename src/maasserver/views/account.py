@@ -15,14 +15,14 @@ __all__ = [
     "logout",
     ]
 
-from maasserver.models import UserProfile
+from django.conf import settings as django_settings
+from django.contrib import messages
 from django.contrib.auth.views import (
     login as dj_login,
     logout as dj_logout,
     )
-from django.contrib import messages
-from django.conf import settings as django_settings
 from django.core.urlresolvers import reverse
+from maasserver.models import UserProfile
 
 
 def login(request):
