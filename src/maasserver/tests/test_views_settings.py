@@ -212,10 +212,10 @@ class UserManagementTest(AdminLoggedInTestCase):
         user = factory.make_user()
         params = make_user_attribute_params(user)
         params.update({
-            'last_name': 'Newname-%s' % factory.getRandomString(),
+            'last_name': factory.make_name('Newname'),
             'email': 'new-%s@example.com' % factory.getRandomString(),
             'is_superuser': True,
-            'username': 'newname-%s' % factory.getRandomString(),
+            'username': factory.make_name('newname'),
             })
 
         response = self.client.post(

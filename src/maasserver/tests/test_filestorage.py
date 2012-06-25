@@ -122,7 +122,7 @@ class FileStorageTest(TestCase):
         # reference to the old data gets overwritten with one to the new
         # data.  They are actually different files on the filesystem.
         self.make_upload_dir()
-        filename = 'filename-%s' % factory.getRandomString()
+        filename = factory.make_name('filename')
         old_storage = factory.make_file_storage(
             filename=filename, data=self.make_data('old data'))
         new_data = self.make_data('new-data')

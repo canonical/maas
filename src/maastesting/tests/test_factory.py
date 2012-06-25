@@ -14,12 +14,17 @@ __all__ = []
 
 from datetime import datetime
 import os.path
+from random import randint
 
 from maastesting.factory import factory
 from maastesting.testcase import TestCase
 from testtools.matchers import (
+    Contains,
     FileContains,
     FileExists,
+    MatchesAll,
+    Not,
+    StartsWith,
     )
 
 
@@ -72,3 +77,37 @@ class TestFactory(TestCase):
         self.assertEqual(
             (directory, name),
             os.path.split(factory.make_file(directory, name=name)))
+
+    def test_make_name_returns_unicode(self):
+        self.assertIsInstance(factory.make_name(), unicode)
+
+    def test_make_name_includes_prefix_and_separator(self):
+        self.assertThat(factory.make_name('abc'), StartsWith('abc-'))
+
+    def test_make_name_includes_random_text_of_requested_length(self):
+        size = randint(1, 99)
+        self.assertEqual(
+            len('prefix') + len('-') + size,
+            len(factory.make_name('prefix', size=size)))
+
+    def test_make_name_includes_random_text(self):
+        self.assertNotEqual(
+            factory.make_name(size=100), factory.make_name(size=100))
+
+    def test_make_name_uses_configurable_separator(self):
+        sep = 'SEPARATOR'
+        prefix = factory.getRandomString(3)
+        self.assertThat(
+            factory.make_name(prefix, sep=sep),
+            StartsWith(prefix + sep))
+
+    def test_make_name_does_not_require_prefix(self):
+        size = randint(1, 99)
+        unprefixed_name = factory.make_name(sep='-', size=size)
+        self.assertEqual(size, len(unprefixed_name))
+        self.assertThat(unprefixed_name, Not(StartsWith('-')))
+
+    def test_make_name_does_not_include_weird_characters(self):
+        self.assertThat(
+            factory.make_name(size=100),
+            MatchesAll(*[Not(Contains(char)) for char in '/ \t\n\r\\']))

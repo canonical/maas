@@ -29,11 +29,6 @@ from testtools.matchers import (
     )
 
 
-def make_name(prefix, separator='-'):
-    """Return an arbitrary name, with the given prefix."""
-    return separator.join([prefix, factory.getRandomString(4)])
-
-
 def read_file(path, name):
     """Return the contents of the file at `path/name`."""
     with open(os.path.join(path, name)) as infile:
@@ -78,9 +73,9 @@ class TestImportPXEFiles(TestCase):
         Returns an "ARCHIVE" URL for the download.
         """
         if release is None:
-            release = make_name('release')
+            release = factory.make_name('release')
         if arch is None:
-            arch = make_name('arch')
+            arch = factory.make_name('arch')
         archive = self.make_dir()
         download = compose_download_dir(archive, arch, release)
         os.makedirs(download)
@@ -118,7 +113,7 @@ class TestImportPXEFiles(TestCase):
             check_call(script, env=env, stdout=dev_null)
 
     def test_downloads_pre_boot_loader(self):
-        arch = make_name('arch')
+        arch = factory.make_name('arch')
         release = 'precise'
         archive = self.make_downloads(arch=arch, release=release)
         tftproot = self.make_dir()
@@ -129,7 +124,7 @@ class TestImportPXEFiles(TestCase):
         self.assertThat(tftp_path, FileContains(expected_contents))
 
     def test_ignores_missing_pre_boot_loader(self):
-        arch = make_name('arch')
+        arch = factory.make_name('arch')
         release = 'precise'
         archive = self.make_downloads(arch=arch, release=release)
         download_path = compose_download_dir(archive, arch, release)
@@ -140,7 +135,7 @@ class TestImportPXEFiles(TestCase):
         self.assertThat(tftp_path, Not(FileExists()))
 
     def test_updates_pre_boot_loader(self):
-        arch = make_name('arch')
+        arch = factory.make_name('arch')
         release = 'precise'
         tftproot = self.make_dir()
         tftp_path = compose_tftp_path(tftproot, arch, 'pxelinux.0')
@@ -156,7 +151,7 @@ class TestImportPXEFiles(TestCase):
     def test_leaves_pre_boot_loader_untouched_if_unchanged(self):
         # If pxelinux.0 has not changed between script runs, the old
         # copy stays in place.
-        arch = make_name('arch')
+        arch = factory.make_name('arch')
         release = 'precise'
         archive = self.make_downloads(arch=arch, release=release)
         tftproot = self.make_dir()
@@ -168,7 +163,7 @@ class TestImportPXEFiles(TestCase):
         self.assertEqual(original_timestamp, get_write_time(tftp_path))
 
     def test_downloads_install_image(self):
-        arch = make_name('arch')
+        arch = factory.make_name('arch')
         release = 'precise'
         archive = self.make_downloads(arch=arch, release=release)
         tftproot = self.make_dir()
@@ -180,7 +175,7 @@ class TestImportPXEFiles(TestCase):
         self.assertThat(tftp_path, FileContains(expected_contents))
 
     def test_updates_install_image(self):
-        arch = make_name('arch')
+        arch = factory.make_name('arch')
         release = 'precise'
         tftproot = self.make_dir()
         tftp_path = compose_tftp_path(
@@ -195,7 +190,7 @@ class TestImportPXEFiles(TestCase):
         self.assertThat(tftp_path, FileContains(expected_contents))
 
     def test_leaves_install_image_untouched_if_unchanged(self):
-        arch = make_name('arch')
+        arch = factory.make_name('arch')
         release = 'precise'
         archive = self.make_downloads(arch=arch, release=release)
         tftproot = self.make_dir()
@@ -208,7 +203,7 @@ class TestImportPXEFiles(TestCase):
         self.assertEqual(original_timestamp, get_write_time(tftp_path))
 
     def test_generates_default_pxe_config(self):
-        arch = make_name('arch')
+        arch = factory.make_name('arch')
         release = 'precise'
         tftproot = self.make_dir()
         archive = self.make_downloads(arch=arch, release=release)

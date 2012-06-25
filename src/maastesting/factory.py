@@ -97,6 +97,23 @@ class Factory:
             f.write(contents)
         return path
 
+    def make_name(self, prefix=None, sep='-', size=6):
+        """Generate a random name.
+
+        :param prefix: Optional prefix.  Pass one to help make test failures
+            and tracebacks easier to read!  If you don't, you might as well
+            use `getRandomString`.
+        :param sep: Separator that will go between the prefix and the random
+            portion of the name.  Defaults to a dash.
+        :param size: Length of the random portion of the name.  Don't get
+            hung up on this; you may need more if uniqueness is really
+            important or less if it doesn't but legibility does, but
+            generally, use the default.
+        :return: A randomized unicode string.
+        """
+        return sep.join(
+            filter(None, [prefix, self.getRandomString(size=size)]))
+
 
 # Create factory singleton.
 factory = Factory()

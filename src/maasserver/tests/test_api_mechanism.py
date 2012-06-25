@@ -14,13 +14,12 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
-from maastesting.testcase import TestCase
-from maasserver.testing.factory import factory
-
 from maasserver.api import (
     api_exported,
     dispatch_methods,
     )
+from maasserver.testing.factory import factory
+from maastesting.testcase import TestCase
 
 
 class TestApiExported(TestCase):
@@ -29,7 +28,7 @@ class TestApiExported(TestCase):
     def test_invalid_method(self):
         # If the supplied HTTP method is not in the allowed set, it should
         # raise a ValueError.
-        random_method = "method" + factory.getRandomString(4)
+        random_method = factory.make_name('method', sep='')
         decorate = api_exported(random_method)
         self.assertRaises(ValueError, decorate, lambda: None)
 
@@ -58,9 +57,8 @@ class TestApiExported(TestCase):
 
     def test_can_pass_export_as(self):
         # Test that passing the optional "export_as" works as expected.
-        random_exported_name = "exportedas" + factory.getRandomString()
-        decorate = api_exported(
-            "POST", exported_as=random_exported_name)
+        random_exported_name = factory.make_name("exportedas", sep='')
+        decorate = api_exported("POST", exported_as=random_exported_name)
         decorated = decorate(lambda: None)
 
         self.assertEqual(

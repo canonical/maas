@@ -36,7 +36,7 @@ class TestPowerAction(TestCase):
     """Tests for PowerAction."""
 
     def test_init_raises_for_unknown_powertype(self):
-        powertype = "powertype" + factory.getRandomString()
+        powertype = factory.make_name("powertype", sep='')
         self.assertRaises(
             UnknownPowerType,
             PowerAction, powertype)

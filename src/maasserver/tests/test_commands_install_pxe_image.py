@@ -30,21 +30,13 @@ from testtools.matchers import (
     )
 
 
-def make_random_string(prefix):
-    """Return an arbitrary string starting with the given prefix."""
-    return '-'.join([prefix, factory.getRandomString(5)])
-
-
 def make_arch_subarch_release():
     """Create arbitrary architecture/subarchitecture/release names.
 
     :return: A triplet of three identifiers for these respective items.
     """
-    return (
-        make_random_string('arch'),
-        make_random_string('subarch'),
-        make_random_string('release'),
-        )
+    return tuple(
+        factory.make_name(item) for item in ('arch', 'subarch', 'release'))
 
 
 class TestInstallPXEImage(TestCase):

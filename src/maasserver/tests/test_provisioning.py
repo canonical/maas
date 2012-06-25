@@ -259,7 +259,7 @@ class ProvisioningTests:
 
     def make_node_without_saving(self, arch=ARCHITECTURE.i386):
         """Create a Node, but don't save it to the database."""
-        system_id = "node-%s" % factory.getRandomString()
+        system_id = factory.make_name("node")
         return Node(
             system_id=system_id, hostname=factory.getRandomString(),
             status=NODE_STATUS.DEFAULT_STATUS, after_commissioning_action=(
