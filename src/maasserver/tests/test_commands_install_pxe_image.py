@@ -46,16 +46,16 @@ class TestInstallPXEImage(TestCase):
         image_dir = os.path.join(download_dir, 'image')
         os.makedirs(image_dir)
         factory.make_file(image_dir, 'kernel')
-        pxe_target_dir = self.make_dir()
+        tftproot = self.make_dir()
 
         call_command(
             'install_pxe_image', arch='arch', subarch='subarch',
             release='release', purpose='purpose', image=image_dir,
-            pxe_target_dir=pxe_target_dir)
+            tftproot=tftproot)
 
         self.assertThat(
             os.path.join(
-                pxe_target_dir, 'arch', 'subarch', 'release', 'purpose',
+                tftproot, 'maas', 'arch', 'subarch', 'release', 'purpose',
                 'kernel'),
             FileExists())
 
@@ -63,41 +63,31 @@ class TestInstallPXEImage(TestCase):
         # The directory that make_destination returns follows the PXE
         # directory hierarchy specified for MAAS:
         # /var/lib/tftproot/maas/<arch>/<subarch>/<release>
-        # (Where the /var/lib/tftproot/maas/ part is configurable, so we
+        # (Where the /var/lib/tftproot/ part is configurable, so we
         # can test this without overwriting system files).
-        pxe_target_dir = self.make_dir()
+        tftproot = self.make_dir()
         arch, subarch, release = make_arch_subarch_release()
         self.assertEqual(
-            os.path.join(pxe_target_dir, arch, subarch, release),
-            make_destination(pxe_target_dir, arch, subarch, release))
-
-    def test_make_destination_assumes_maas_dir_included_in_target_dir(self):
-        # make_destination does not add a "maas" part to the path, as in
-        # the default /var/lib/tftpboot/maas/; that is assumed to be
-        # included already in the pxe-target-dir setting.
-        pxe_target_dir = self.make_dir()
-        arch, subarch, release = make_arch_subarch_release()
-        self.assertNotIn(
-            '/maas/',
-            make_destination(pxe_target_dir, arch, subarch, release))
+            os.path.join(tftproot, 'maas', arch, subarch, release),
+            make_destination(tftproot, arch, subarch, release))
 
     def test_make_destination_creates_directory_if_not_present(self):
-        pxe_target_dir = self.make_dir()
+        tftproot = self.make_dir()
         arch, subarch, release = make_arch_subarch_release()
         expected_destination = os.path.join(
-            pxe_target_dir, arch, subarch, release)
-        make_destination(pxe_target_dir, arch, subarch, release)
+            tftproot, 'maas', arch, subarch, release)
+        make_destination(tftproot, arch, subarch, release)
         self.assertThat(expected_destination, DirExists())
 
     def test_make_destination_returns_existing_directory(self):
-        pxe_target_dir = self.make_dir()
+        tftproot = self.make_dir()
         arch, subarch, release = make_arch_subarch_release()
-        expected_dest = os.path.join(pxe_target_dir, arch, subarch, release)
+        expected_dest = os.path.join(tftproot, 'maas', arch, subarch, release)
         os.makedirs(expected_dest)
         contents = factory.getRandomString()
         testfile = factory.getRandomString()
         factory.make_file(expected_dest, contents=contents, name=testfile)
-        dest = make_destination(pxe_target_dir, arch, subarch, release)
+        dest = make_destination(tftproot, arch, subarch, release)
         self.assertThat(os.path.join(dest, testfile), FileContains(contents))
 
     def test_are_identical_dirs_sees_missing_old_dir_as_different(self):

@@ -67,20 +67,21 @@ class TestTFTPTasks(TestCase):
         arch = ARCHITECTURE.i386
         mac = factory.getRandomMACAddress()
         mac2 = factory.getRandomMACAddress()
-        target_dir = self.make_dir()
+        tftproot = self.make_dir()
         kernel = factory.getRandomString()
         menutitle = factory.getRandomString()
         append = factory.getRandomString()
 
         result = write_tftp_config_for_node.delay(
-            arch, (mac, mac2), pxe_target_dir=target_dir, menutitle=menutitle,
+            arch, (mac, mac2), tftproot=tftproot, menutitle=menutitle,
             kernelimage=kernel, append=append)
 
         self.assertTrue(result.successful(), result)
         expected_file1 = os.path.join(
-            target_dir, arch, "generic", "pxelinux.cfg", mac.replace(":", "-"))
+            tftproot, 'maas', arch, "generic", "pxelinux.cfg",
+            mac.replace(":", "-"))
         expected_file2 = os.path.join(
-            target_dir, arch, "generic", "pxelinux.cfg",
+            tftproot, 'maas', arch, "generic", "pxelinux.cfg",
             mac2.replace(":", "-"))
         self.assertThat(
             expected_file1,

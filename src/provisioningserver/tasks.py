@@ -62,7 +62,7 @@ def power_off(power_type, **kwargs):
 
 @task
 def write_tftp_config_for_node(arch, macs, subarch="generic",
-                               pxe_target_dir=None, **kwargs):
+                               tftproot=None, **kwargs):
     """Write out the TFTP MAC-based config for a node.
 
     A config file is written for each MAC associated with the node.
@@ -73,9 +73,10 @@ def write_tftp_config_for_node(arch, macs, subarch="generic",
     :type macs: Iterable of strings
     :param subarch: The subarchitecture of the node, defaults to "generic" for
         architectures without sub-architectures.
+    :param tftproot: Root TFTP directory.
     :param **kwargs: Keyword args passed to PXEConfig.write_config()
     """
     # TODO: fix subarch when node.py starts modelling sub-architecture for ARM
     for mac in macs:
-        pxeconfig = PXEConfig(arch, subarch, mac, pxe_target_dir)
+        pxeconfig = PXEConfig(arch, subarch, mac, tftproot)
         pxeconfig.write_config(**kwargs)

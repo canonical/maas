@@ -40,12 +40,12 @@ class Command(BaseCommand):
             '--release', dest='release', default=None,
             help="Ubuntu release to run when enlisting nodes."),
         make_option(
-            '--pxe-target-dir', dest='pxe_target_dir', default=None,
-            help="Write PXE config here instead of in its normal location."),
+            '--tftproot', dest='tftproot', default=None,
+            help="Root of TFTP directory hierarchy to place config into."),
         )
 
     def handle(self, arch=None, subarch='generic', release=None,
-               pxe_target_dir=None, **kwargs):
+               tftproot=None, **kwargs):
         image_path = '/maas/%s/%s/%s/install' % (arch, subarch, release)
         # TODO: This needs to go somewhere more appropriate, and
         # probably contain more appropriate options.
@@ -69,5 +69,5 @@ class Command(BaseCommand):
             'kernelimage': '/'.join([image_path, 'linux']),
             'append': kernel_opts,
         }
-        writer = PXEConfig(arch, subarch, pxe_target_dir=pxe_target_dir)
+        writer = PXEConfig(arch, subarch, tftproot=tftproot)
         writer.write_config(**template_args)

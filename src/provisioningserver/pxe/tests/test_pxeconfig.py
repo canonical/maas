@@ -16,8 +16,8 @@ import os
 import re
 
 from celeryconfig import (
-    PXE_TARGET_DIR,
     PXE_TEMPLATES_DIR,
+    TFTPROOT,
     )
 from maastesting.factory import factory
 from maastesting.testcase import TestCase
@@ -41,20 +41,20 @@ class TestPXEConfig(TestCase):
 
         expected_template = os.path.join(PXE_TEMPLATES_DIR, "maas.template")
         expected_target = os.path.join(
-            PXE_TARGET_DIR, "armhf", "armadaxp", "pxelinux.cfg")
+            TFTPROOT, "maas", "armhf", "armadaxp", "pxelinux.cfg")
         self.assertEqual(expected_template, pxeconfig.template)
         self.assertEqual(expected_target, pxeconfig.target_dir)
 
     def test_init_with_no_subarch_makes_path_with_generic(self):
         pxeconfig = PXEConfig("i386")
         expected_target = os.path.join(
-            PXE_TARGET_DIR, "i386", "generic", "pxelinux.cfg")
+            TFTPROOT, "maas", "i386", "generic", "pxelinux.cfg")
         self.assertEqual(expected_target, pxeconfig.target_dir)
 
     def test_init_with_no_mac_sets_default_filename(self):
         pxeconfig = PXEConfig("armhf", "armadaxp")
         expected_filename = os.path.join(
-            PXE_TARGET_DIR, "armhf", "armadaxp", "pxelinux.cfg", "default")
+            TFTPROOT, "maas", "armhf", "armadaxp", "pxelinux.cfg", "default")
         self.assertEqual(expected_filename, pxeconfig.target_file)
 
     def test_init_with_dodgy_mac(self):
@@ -68,7 +68,7 @@ class TestPXEConfig(TestCase):
     def test_init_with_mac_sets_filename(self):
         pxeconfig = PXEConfig("armhf", "armadaxp", mac="00:a1:b2:c3:e4:d5")
         expected_filename = os.path.join(
-            PXE_TARGET_DIR, "armhf", "armadaxp", "pxelinux.cfg",
+            TFTPROOT, "maas", "armhf", "armadaxp", "pxelinux.cfg",
             "00-a1-b2-c3-e4-d5")
         self.assertEqual(expected_filename, pxeconfig.target_file)
 
@@ -100,8 +100,8 @@ class TestPXEConfig(TestCase):
 
     def test_write_config_writes_config(self):
         # Ensure that a rendered template is written to the right place.
-        out_dir = self.make_dir()
-        pxeconfig = PXEConfig("armhf", "armadaxp", pxe_target_dir=out_dir)
+        tftproot = self.make_dir()
+        pxeconfig = PXEConfig("armhf", "armadaxp", tftproot=tftproot)
         pxeconfig.write_config(
             menutitle="menutitle", kernelimage="/my/kernel", append="append")
 
@@ -113,11 +113,11 @@ class TestPXEConfig(TestCase):
         self.assertThat(pxeconfig.target_file, FileContains(expected))
 
     def test_write_config_overwrites_config(self):
-        out_dir = self.make_dir()
-        pxeconfig = PXEConfig("amd64", "generic", pxe_target_dir=out_dir)
+        tftproot = self.make_dir()
+        pxeconfig = PXEConfig("amd64", "generic", tftproot=tftproot)
         pxeconfig.write_config(
             menutitle="oldtitle", kernelimage="/old/kernel", append="append")
-        pxeconfig = PXEConfig("amd64", "generic", pxe_target_dir=out_dir)
+        pxeconfig = PXEConfig("amd64", "generic", tftproot=tftproot)
         pxeconfig.write_config(
             menutitle="newtitle", kernelimage="/new/kernel", append="append")
 

@@ -19,8 +19,8 @@ __all__ = [
 import os
 
 from celeryconfig import (
-    PXE_TARGET_DIR,
     PXE_TEMPLATES_DIR,
+    TFTPROOT,
     )
 import tempita
 
@@ -47,11 +47,11 @@ class PXEConfig:
         aa:bb:cc:dd:ee:ff.  This is the default for MAC addresses coming
         from the database fields in MAAS, so it's not heavily checked here.
     :type mac: string
-    :param pxe_target_dir: Base directory to write PXE configurations to,
-        e.g.  /var/lib/tftpboot/maas (which is also the default).  The
-        config file will go into a directory determined by the architecture
-        that it's for: `<target_dir>/<arch>/<subarch>/pxelinux.cfg/`
-    :type pxe_target_dir: string
+    :param tftproot: Base directory to write PXE configurations to,
+        e.g.  /var/lib/tftpboot/ (which is also the default).  The config
+        file will go into a directory determined by the architecture that
+        it's for: `/maas/<target_dir>/<arch>/<subarch>/pxelinux.cfg/`
+    :type tftproot: string
 
     :raises PXEConfigFail: if there's a problem with template parameters
         or the MAC address looks incorrectly formatted.
@@ -67,12 +67,12 @@ class PXEConfig:
             append="initrd=blah url=blah")
     """
 
-    def __init__(self, arch, subarch=None, mac=None, pxe_target_dir=None):
+    def __init__(self, arch, subarch=None, mac=None, tftproot=None):
         if subarch is None:
             subarch = "generic"
-        if pxe_target_dir is None:
-            pxe_target_dir = PXE_TARGET_DIR
-        self.target_basedir = pxe_target_dir
+        if tftproot is None:
+            tftproot = TFTPROOT
+        self.target_basedir = os.path.join(tftproot, 'maas')
         self._validate_mac(mac)
         self.template = os.path.join(self.template_basedir, "maas.template")
         self.target_dir = os.path.join(

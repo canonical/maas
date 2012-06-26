@@ -29,8 +29,8 @@ PXE_TEMPLATES_DIR = os.path.join(
     os.path.dirname(__file__), os.pardir, "src", "provisioningserver", "pxe",
     "templates")
 
-# Where to write PXE config files.
-PXE_TARGET_DIR = "/var/lib/tftp/maas"
+# TFTP server's root directory.
+TFTPROOT = "/var/lib/tftp"
 
 
 try:

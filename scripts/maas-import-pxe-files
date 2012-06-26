@@ -97,7 +97,7 @@ update_install_files() {
 
     maas install_pxe_image \
         --arch=$arch --release=$release --purpose="install" \
-        --image="install" --pxe-target-dir="$TFTPROOT/maas"
+        --image="install" --tftproot=$TFTPROOT
 }
 
 
@@ -128,7 +128,7 @@ main() {
 
         maas generate_enlistment_pxe \
             --arch=$arch --release=$CURRENT_RELEASE \
-            --pxe-target-dir=$TFTPROOT/maas
+            --tftproot=$TFTPROOT
     done
 
     rm -rf -- $DOWNLOAD_DIR

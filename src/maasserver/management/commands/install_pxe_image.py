@@ -22,22 +22,22 @@ from shutil import (
     rmtree,
     )
 
-from celeryconfig import PXE_TARGET_DIR
+from celeryconfig import TFTPROOT
 from django.core.management.base import BaseCommand
 
 
-def make_destination(pxe_target_dir, arch, subarch, release):
+def make_destination(tftproot, arch, subarch, release):
     """Locate the destination directory, creating it if necessary.
 
-    :param pxe_target_dir: The TFTP directory containing the MAAS portion
-        of the PXE directory tree, e.g. /var/lib/tftpboot/maas/.
+    :param tftproot: The root directory served up by the TFTP server,
+        e.g. /var/lib/tftpboot/.
     :param arch: Main architecture to locate the destination for.
     :param subarch: Sub-architecture of the main architecture.
     :param release: OS release name, e.g. "precise".
     :return: Path of the destination directory that the image directory
         should be stored in.
     """
-    dest = os.path.join(pxe_target_dir, arch, subarch, release)
+    dest = os.path.join(tftproot, 'maas', arch, subarch, release)
     if not os.path.isdir(dest):
         os.makedirs(dest)
     return dest
@@ -132,16 +132,16 @@ class Command(BaseCommand):
             '--image', dest='image', default=None,
             help="Netboot image directory, containing kernel & initrd."),
         make_option(
-            '--pxe-target-dir', dest='pxe_target_dir', default=PXE_TARGET_DIR,
+            '--tftproot', dest='tftproot', default=TFTPROOT,
             help="Store to this TFTP directory tree instead of the default."),
         )
 
     def handle(self, arch=None, subarch='generic', release=None, purpose=None,
-               image=None, pxe_target_dir=None, **kwargs):
-        if pxe_target_dir is None:
-            pxe_target_dir = PXE_TARGET_DIR
+               image=None, tftproot=None, **kwargs):
+        if tftproot is None:
+            tftproot = TFTPROOT
 
-        dest = make_destination(pxe_target_dir, arch, subarch, release)
+        dest = make_destination(tftproot, arch, subarch, release)
         if not are_identical_dirs(os.path.join(dest, purpose), image):
             # Image has changed.  Move the new version into place.
             install_dir(image, os.path.join(dest, purpose))
