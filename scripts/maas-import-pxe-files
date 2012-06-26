@@ -102,7 +102,7 @@ update_install_files() {
 
 
 main() {
-    local arch release arch_dir rel_dir
+    local arch release arch_dir
 
     DOWNLOAD_DIR=$(mktemp -d)
     echo "Downloading to temporary location $DOWNLOAD_DIR."
