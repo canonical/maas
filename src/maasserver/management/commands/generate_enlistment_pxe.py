@@ -24,6 +24,7 @@ from optparse import make_option
 
 from django.core.management.base import BaseCommand
 from provisioningserver.pxe.pxeconfig import PXEConfig
+from provisioningserver.pxe.tftppath import compose_image_path
 
 
 class Command(BaseCommand):
@@ -46,7 +47,7 @@ class Command(BaseCommand):
 
     def handle(self, arch=None, subarch='generic', release=None,
                tftproot=None, **kwargs):
-        image_path = '/maas/%s/%s/%s/install' % (arch, subarch, release)
+        image_path = compose_image_path(arch, subarch, release, 'install')
         # TODO: This needs to go somewhere more appropriate, and
         # probably contain more appropriate options.
         kernel_opts = ' '.join([

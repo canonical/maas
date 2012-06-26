@@ -12,19 +12,27 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
-import os.path
-
 from django.core.management import call_command
 from maasserver.enum import ARCHITECTURE_CHOICES
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
 from provisioningserver.pxe.pxeconfig import PXEConfig
+from provisioningserver.pxe.tftppath import (
+    compose_config_path,
+    compose_image_path,
+    locate_tftp_path,
+    )
+from testtools.matchers import (
+    Contains,
+    FileContains,
+    )
 
 
 class TestGenerateEnlistmentPXE(TestCase):
 
     def test_generates_default_pxe_config(self):
         arch = factory.getRandomChoice(ARCHITECTURE_CHOICES)
+        subarch = 'generic'
         release = 'precise'
         tftproot = self.make_dir()
         self.patch(PXEConfig, 'target_basedir', tftproot)
@@ -34,10 +42,11 @@ class TestGenerateEnlistmentPXE(TestCase):
         # This produces a "default" PXE config file in the right place.
         # It refers to the kernel and initrd for the requested
         # architecture and release.
-        result_path = os.path.join(
-            tftproot, 'maas', arch, 'generic', 'pxelinux.cfg', 'default')
-        with open(result_path) as result_file:
-            contents = result_file.read()
-        self.assertIn(
-            '/'.join(['/maas', arch, 'generic', release, 'install', 'linux']),
-            contents)
+        result_path = locate_tftp_path(
+            compose_config_path(arch, subarch, 'default'),
+            tftproot=tftproot)
+        self.assertThat(
+            result_path,
+            FileContains(matcher=Contains(
+                compose_image_path(arch, subarch, release, 'install') +
+                    '/linux')))

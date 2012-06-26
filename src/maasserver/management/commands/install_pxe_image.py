@@ -24,22 +24,31 @@ from shutil import (
 
 from celeryconfig import TFTPROOT
 from django.core.management.base import BaseCommand
+from provisioningserver.pxe.tftppath import (
+    compose_image_path,
+    locate_tftp_path,
+    )
 
 
-def make_destination(tftproot, arch, subarch, release):
-    """Locate the destination directory, creating it if necessary.
+def make_destination(tftproot, arch, subarch, release, purpose):
+    """Locate an image's destination.  Create containing directory if needed.
 
     :param tftproot: The root directory served up by the TFTP server,
         e.g. /var/lib/tftpboot/.
     :param arch: Main architecture to locate the destination for.
     :param subarch: Sub-architecture of the main architecture.
     :param release: OS release name, e.g. "precise".
-    :return: Path of the destination directory that the image directory
-        should be stored in.
+    :param purpose: Purpose of this image, e.g. "install".
+    :return: Full path describing the image directory's new location and
+        name.  In other words, a file "linux" in the image directory should
+        become os.path.join(make_destination(...), 'linux').
     """
-    dest = os.path.join(tftproot, 'maas', arch, subarch, release)
-    if not os.path.isdir(dest):
-        os.makedirs(dest)
+    dest = locate_tftp_path(
+        compose_image_path(arch, subarch, release, purpose),
+        tftproot=tftproot)
+    parent = os.path.dirname(dest)
+    if not os.path.isdir(parent):
+        os.makedirs(parent)
     return dest
 
 
@@ -141,8 +150,8 @@ class Command(BaseCommand):
         if tftproot is None:
             tftproot = TFTPROOT
 
-        dest = make_destination(tftproot, arch, subarch, release)
-        if not are_identical_dirs(os.path.join(dest, purpose), image):
+        dest = make_destination(tftproot, arch, subarch, release, purpose)
+        if not are_identical_dirs(dest, image):
             # Image has changed.  Move the new version into place.
-            install_dir(image, os.path.join(dest, purpose))
+            install_dir(image, dest)
         rmtree(image, ignore_errors=True)

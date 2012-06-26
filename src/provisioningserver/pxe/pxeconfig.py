@@ -18,9 +18,10 @@ __all__ = [
 
 import os
 
-from celeryconfig import (
-    PXE_TEMPLATES_DIR,
-    TFTPROOT,
+from celeryconfig import PXE_TEMPLATES_DIR
+from provisioningserver.pxe.tftppath import (
+    compose_config_path,
+    locate_tftp_path,
     )
 import tempita
 
@@ -49,8 +50,9 @@ class PXEConfig:
     :type mac: string
     :param tftproot: Base directory to write PXE configurations to,
         e.g.  /var/lib/tftpboot/ (which is also the default).  The config
-        file will go into a directory determined by the architecture that
-        it's for: `/maas/<target_dir>/<arch>/<subarch>/pxelinux.cfg/`
+        file will go into a directory inside this tree that's determined by
+        the architecture that it's for:
+        `<tftproot>/maas/<arch>/<subarch>/pxelinux.cfg/`
     :type tftproot: string
 
     :raises PXEConfigFail: if there's a problem with template parameters
@@ -70,21 +72,15 @@ class PXEConfig:
     def __init__(self, arch, subarch=None, mac=None, tftproot=None):
         if subarch is None:
             subarch = "generic"
-        if tftproot is None:
-            tftproot = TFTPROOT
-        self.target_basedir = os.path.join(tftproot, 'maas')
         self._validate_mac(mac)
         self.template = os.path.join(self.template_basedir, "maas.template")
-        self.target_dir = os.path.join(
-            self.target_basedir,
-            arch,
-            subarch,
-            "pxelinux.cfg")
         if mac is not None:
             filename = mac.replace(':', '-')
         else:
             filename = "default"
-        self.target_file = os.path.join(self.target_dir, filename)
+        self.target_file = locate_tftp_path(
+            compose_config_path(arch, subarch, filename),
+            tftproot=tftproot)
 
     @property
     def template_basedir(self):
@@ -124,7 +120,8 @@ class PXEConfig:
         """
         template = self.get_template()
         rendered = self.render_template(template, **kwargs)
-        if not os.path.isdir(self.target_dir):
-            os.makedirs(self.target_dir)
+        target_dir = os.path.dirname(self.target_file)
+        if not os.path.isdir(target_dir):
+            os.makedirs(target_dir)
         with open(self.target_file, "w") as f:
             f.write(rendered)

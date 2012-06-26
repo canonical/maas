@@ -15,15 +15,16 @@ __all__ = []
 import os
 import re
 
-from celeryconfig import (
-    PXE_TEMPLATES_DIR,
-    TFTPROOT,
-    )
+from celeryconfig import PXE_TEMPLATES_DIR
 from maastesting.factory import factory
 from maastesting.testcase import TestCase
 from provisioningserver.pxe.pxeconfig import (
     PXEConfig,
     PXEConfigFail,
+    )
+from provisioningserver.pxe.tftppath import (
+    compose_config_path,
+    locate_tftp_path,
     )
 import tempita
 from testtools.matchers import (
@@ -40,21 +41,23 @@ class TestPXEConfig(TestCase):
         pxeconfig = PXEConfig("armhf", "armadaxp")
 
         expected_template = os.path.join(PXE_TEMPLATES_DIR, "maas.template")
-        expected_target = os.path.join(
-            TFTPROOT, "maas", "armhf", "armadaxp", "pxelinux.cfg")
+        expected_target = os.path.dirname(locate_tftp_path(
+            compose_config_path('armhf', 'armadaxp', 'default')))
         self.assertEqual(expected_template, pxeconfig.template)
-        self.assertEqual(expected_target, pxeconfig.target_dir)
+        self.assertEqual(
+            expected_target, os.path.dirname(pxeconfig.target_file))
 
     def test_init_with_no_subarch_makes_path_with_generic(self):
         pxeconfig = PXEConfig("i386")
-        expected_target = os.path.join(
-            TFTPROOT, "maas", "i386", "generic", "pxelinux.cfg")
-        self.assertEqual(expected_target, pxeconfig.target_dir)
+        expected_target = os.path.dirname(locate_tftp_path(
+                compose_config_path('i386', 'generic', 'default')))
+        self.assertEqual(
+            expected_target, os.path.dirname(pxeconfig.target_file))
 
     def test_init_with_no_mac_sets_default_filename(self):
         pxeconfig = PXEConfig("armhf", "armadaxp")
-        expected_filename = os.path.join(
-            TFTPROOT, "maas", "armhf", "armadaxp", "pxelinux.cfg", "default")
+        expected_filename = locate_tftp_path(
+            compose_config_path('armhf', 'armadaxp', 'default'))
         self.assertEqual(expected_filename, pxeconfig.target_file)
 
     def test_init_with_dodgy_mac(self):
@@ -67,9 +70,8 @@ class TestPXEConfig(TestCase):
 
     def test_init_with_mac_sets_filename(self):
         pxeconfig = PXEConfig("armhf", "armadaxp", mac="00:a1:b2:c3:e4:d5")
-        expected_filename = os.path.join(
-            TFTPROOT, "maas", "armhf", "armadaxp", "pxelinux.cfg",
-            "00-a1-b2-c3-e4-d5")
+        expected_filename = locate_tftp_path(
+            compose_config_path('armhf', 'armadaxp', '00-a1-b2-c3-e4-d5'))
         self.assertEqual(expected_filename, pxeconfig.target_file)
 
     def test_get_template(self):

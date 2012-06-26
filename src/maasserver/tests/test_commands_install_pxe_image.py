@@ -22,6 +22,10 @@ from maasserver.management.commands.install_pxe_image import (
     )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
+from provisioningserver.pxe.tftppath import (
+    compose_image_path,
+    locate_tftp_path,
+    )
 from testtools.matchers import (
     DirExists,
     FileContains,
@@ -30,13 +34,14 @@ from testtools.matchers import (
     )
 
 
-def make_arch_subarch_release():
+def make_arch_subarch_release_purpose():
     """Create arbitrary architecture/subarchitecture/release names.
 
     :return: A triplet of three identifiers for these respective items.
     """
     return tuple(
-        factory.make_name(item) for item in ('arch', 'subarch', 'release'))
+        factory.make_name(item)
+        for item in ('arch', 'subarch', 'release', 'purpose'))
 
 
 class TestInstallPXEImage(TestCase):
@@ -47,47 +52,53 @@ class TestInstallPXEImage(TestCase):
         os.makedirs(image_dir)
         factory.make_file(image_dir, 'kernel')
         tftproot = self.make_dir()
+        arch, subarch, release, purpose = make_arch_subarch_release_purpose()
 
         call_command(
-            'install_pxe_image', arch='arch', subarch='subarch',
-            release='release', purpose='purpose', image=image_dir,
+            'install_pxe_image', arch=arch, subarch=subarch, release=release,
+            purpose=purpose, image=image_dir,
             tftproot=tftproot)
 
         self.assertThat(
             os.path.join(
-                tftproot, 'maas', 'arch', 'subarch', 'release', 'purpose',
+                locate_tftp_path(
+                    compose_image_path(arch, subarch, release, purpose),
+                    tftproot=tftproot),
                 'kernel'),
             FileExists())
 
     def test_make_destination_follows_pxe_path_conventions(self):
         # The directory that make_destination returns follows the PXE
         # directory hierarchy specified for MAAS:
-        # /var/lib/tftproot/maas/<arch>/<subarch>/<release>
+        # /var/lib/tftproot/maas/<arch>/<subarch>/<release>/<purpose>
         # (Where the /var/lib/tftproot/ part is configurable, so we
         # can test this without overwriting system files).
         tftproot = self.make_dir()
-        arch, subarch, release = make_arch_subarch_release()
+        arch, subarch, release, purpose = make_arch_subarch_release_purpose()
         self.assertEqual(
-            os.path.join(tftproot, 'maas', arch, subarch, release),
-            make_destination(tftproot, arch, subarch, release))
+            os.path.join(tftproot, 'maas', arch, subarch, release, purpose),
+            make_destination(tftproot, arch, subarch, release, purpose))
 
     def test_make_destination_creates_directory_if_not_present(self):
         tftproot = self.make_dir()
-        arch, subarch, release = make_arch_subarch_release()
-        expected_destination = os.path.join(
-            tftproot, 'maas', arch, subarch, release)
-        make_destination(tftproot, arch, subarch, release)
+        arch, subarch, release, purpose = make_arch_subarch_release_purpose()
+        expected_destination = os.path.dirname(locate_tftp_path(
+            compose_image_path(arch, subarch, release, purpose),
+            tftproot=tftproot))
+        make_destination(tftproot, arch, subarch, release, purpose)
         self.assertThat(expected_destination, DirExists())
 
     def test_make_destination_returns_existing_directory(self):
         tftproot = self.make_dir()
-        arch, subarch, release = make_arch_subarch_release()
-        expected_dest = os.path.join(tftproot, 'maas', arch, subarch, release)
+        arch, subarch, release, purpose = make_arch_subarch_release_purpose()
+        expected_dest = locate_tftp_path(
+            compose_image_path(arch, subarch, release, purpose),
+            tftproot=tftproot)
         os.makedirs(expected_dest)
         contents = factory.getRandomString()
-        testfile = factory.getRandomString()
+        testfile = factory.make_name('testfile')
         factory.make_file(expected_dest, contents=contents, name=testfile)
-        dest = make_destination(tftproot, arch, subarch, release)
+        dest = make_destination(tftproot, arch, subarch, release, purpose)
         self.assertThat(os.path.join(dest, testfile), FileContains(contents))
 
     def test_are_identical_dirs_sees_missing_old_dir_as_different(self):
