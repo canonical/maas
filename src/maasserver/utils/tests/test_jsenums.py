@@ -1,7 +1,7 @@
 # Copyright 2012 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for `maas.utils.jsenums`."""
+"""Tests for `maasserver.utils.jsenums`."""
 
 from __future__ import (
     absolute_import,
@@ -14,7 +14,7 @@ __all__ = []
 
 from inspect import getsourcefile
 
-from maas.utils.jsenums import (
+from maasserver.utils.jsenums import (
     dump,
     footer,
     get_enums,

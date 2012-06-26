@@ -90,18 +90,18 @@ class TestImportPXEFiles(TestCase):
         to download from the Ubuntu server and store into the system's real
         TFTP root directory, respectively.  Both bad ideas.
         """
-        script = './scripts/maas-import-pxe-files'
-        path = ':'.join([
-            os.path.join(
-                os.path.dirname(__file__), os.path.pardir, os.path.pardir,
-                os.path.pardir, 'bin'),
-            os.environ['PATH'],
-            ])
+        # TODO: Use path.py <http://pypi.python.org/pypi/path.py> instead, or
+        # something similar; this is tedious stuff.
+        here = os.path.dirname(__file__)
+        root = os.path.join(here, os.pardir, os.pardir, os.pardir)
+        script = os.path.join(root, "scripts", "maas-import-pxe-files")
+        path = [os.path.join(root, "bin")]
+        path.extend(os.environ.get("PATH", "").split(os.pathsep))
         env = {
             'ARCHIVE': 'file://%s' % archive_dir,
             # Substitute curl for wget; it accepts file:// URLs.
             'DOWNLOAD': 'curl -O --silent',
-            'PATH': path,
+            'PATH': os.pathsep.join(path),
             'TFTPROOT': tftproot,
         }
         if arch is not None:
