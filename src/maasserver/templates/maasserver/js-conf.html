@@ -5,8 +5,8 @@ var YUI_config = {
     combine: true,
     filter: {% if YUI_DEBUG %}'raw'{% else %}'min'{% endif %},
     root: '',
-    base: '{% if FORCE_SCRIPT_NAME %}{{ FORCE_SCRIPT_NAME }}{% endif%}/{{YUI_COMBO_URL }}?',
-    comboBase: '{% if FORCE_SCRIPT_NAME %}{{ FORCE_SCRIPT_NAME }}{% endif%}/{{ YUI_COMBO_URL }}?',
+    base: '{% url "combo-yui" %}?',
+    comboBase: '{% url "combo-yui" %}?',
 };
 var MAAS_config = {
     uris: {
@@ -21,15 +21,8 @@ var MAAS_config = {
 // -->
 </script>
 <script type="text/javascript"
-  src="{% if FORCE_SCRIPT_NAME %}{{ FORCE_SCRIPT_NAME }}{% endif%}/{{ YUI_COMBO_URL }}?yui-base/yui-base-min.js">
+    src="{% url "combo-yui" %}?yui-base/yui-base-min.js">
 </script>
-<script type="text/javascript" src="{{ STATIC_URL }}js/morph.js"></script>
-<script type="text/javascript" src="{{ STATIC_URL }}js/user_panel.js"></script>
-<script type="text/javascript" src="{{ STATIC_URL }}js/node_add.js"></script>
-<script type="text/javascript" src="{{ STATIC_URL }}js/node.js"></script>
-<script type="text/javascript" src="{{ STATIC_URL }}js/prefs.js"></script>
-<script type="text/javascript" src="{{ STATIC_URL }}js/utils.js"></script>
-<script type="text/javascript" src="{{ STATIC_URL }}js/node_views.js"></script>
-<script type="text/javascript" src="{{ STATIC_URL }}js/longpoll.js"></script>
-<script type="text/javascript" src="{{ STATIC_URL }}js/enums.js"></script>
-<script type="text/javascript" src="{{ STATIC_URL }}js/power_parameters.js"></script>
+<script type="text/javascript"
+    src="{% url "combo-maas" %}?{{ JS_LIST|join:"&" }}">
+</script>

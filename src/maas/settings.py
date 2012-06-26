@@ -72,20 +72,27 @@ if FORCE_SCRIPT_NAME is not None:
 API_URL_REGEXP = '^/api/1[.]0/'
 METADATA_URL_REGEXP = '^/metadata/'
 
-YUI_COMBO_URL = "combo/"
 # We handle exceptions ourselves (in
 # maasserver.middleware.APIErrorsMiddleware)
 PISTON_DISPLAY_ERRORS = False
 
 TEMPLATE_DEBUG = DEBUG
 
+# Set this to where RaphaelJS files can be found.
+# Use a relative path (i.e. a path not starting with '/') to indicate a
+# path relative to the 'static' directory.
+# Use an absolute path (like '/usr/share/javascript/raphael/') to serve the
+# files from a custom location.
+RAPHAELJS_LOCATION = os.path.join('jslibs', 'raphael')
+
 YUI_DEBUG = DEBUG
 
-# Set this to where YUI3 files can be found to serve these files from a
-# custom location.  For instance, you can set it to
-# '/usr/share/javascript/yui/' to serve the files from the YUI package
-# (libjs-yui).
-YUI_LOCATION = None
+# Set this to where YUI3 files can be found.
+# Use a relative path (i.e. a path not starting with '/') to indicate a
+# path relative to the 'static' directory.
+# Use an absolute path (like '/usr/share/javascript/yui/') to serve the files
+# from a custom location.
+YUI_LOCATION = os.path.join('jslibs', 'yui')
 
 STATIC_LOCAL_SERVE = DEBUG
 
@@ -211,6 +218,7 @@ TEMPLATE_CONTEXT_PROCESSORS = (
     "django.contrib.messages.context_processors.messages",
     "maasserver.context_processors.yui",
     "maasserver.context_processors.global_options",
+    "maasserver.context_processors.static_resources",
 )
 
 MIDDLEWARE_CLASSES = (

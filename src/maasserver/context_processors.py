@@ -11,6 +11,8 @@ from __future__ import (
 
 __metaclass__ = type
 __all__ = [
+    "global_options",
+    "static_resources",
     "yui",
     ]
 
@@ -25,8 +27,42 @@ from provisioningserver.enum import POWER_TYPE
 def yui(context):
     return {
         'YUI_DEBUG': settings.YUI_DEBUG,
-        'YUI_COMBO_URL': settings.YUI_COMBO_URL,
-        'FORCE_SCRIPT_NAME': settings.FORCE_SCRIPT_NAME,
+    }
+
+
+def static_resources(context):
+    return {
+        'CSS_LIST': [
+            'css/base.css',
+            'css/typography.css',
+            'css/forms.css',
+            'css/layout.css',
+            'css/modifiers.css',
+            'css/components/flash_messages.css',
+            'css/components/pagination.css',
+            'css/components/table_list.css',
+            'css/components/title_form.css',
+            'css/components/blocks.css',
+            'css/components/yui_panel.css',
+            'css/components/yui_overlay.css',
+            'css/components/yui_node_add.css',
+            'css/components/data_list.css',
+            'css/components/search_box.css',
+            'css/ubuntu-webfonts.css',
+        ],
+        'JS_LIST': [
+            'js/morph.js',
+            'js/user_panel.js',
+            'js/node_add.js',
+            'js/node.js',
+            'js/prefs.js',
+            'js/utils.js',
+            'js/node_views.js',
+            'js/longpoll.js',
+            'js/enums.js',
+            'js/power_parameters.js',
+            'js/nodes_chart.js',
+        ],
     }
 
 

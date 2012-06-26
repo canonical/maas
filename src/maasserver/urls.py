@@ -12,9 +12,7 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
-import re
 
-from django.conf import settings as django_settings
 from django.conf.urls.defaults import (
     include,
     patterns,
@@ -30,7 +28,6 @@ from maasserver.views.account import (
     login,
     logout,
     )
-from maasserver.views.combo import combo_view
 from maasserver.views.nodes import (
     enlist_preseed_view,
     MacAdd,
@@ -62,10 +59,13 @@ def adminurl(regexp, view, *args, **kwargs):
 
 
 ## URLs accessible to anonymous users.
-urlpatterns = patterns('maasserver.views',
-    url(
-        r'^%s' % re.escape(django_settings.YUI_COMBO_URL), combo_view,
-        name='yui-combo'),
+# Combo URLs.
+urlpatterns = patterns('',
+    (r'combo/', include('maasserver.urls_combo'))
+)
+
+# Anonymous views.
+urlpatterns += patterns('maasserver.views',
     url(r'^accounts/login/$', login, name='login'),
     url(
         r'^robots\.txt$', direct_to_template,

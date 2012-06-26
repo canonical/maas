@@ -20,6 +20,9 @@ MEDIA_ROOT = '/var/lib/maas/media/'
 # Use the (libjs-yui) package's files to serve YUI3.
 YUI_LOCATION = '/usr/share/javascript/yui/'
 
+# Use the package's files to serve RaphaelJS.
+RAPHAELJS_LOCATION = '/usr/share/javascript/raphael/'
+
 # RabbitMQ settings.
 RABBITMQ_HOST = 'localhost'
 RABBITMQ_USERID = 'maas_longpoll'

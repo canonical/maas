@@ -3,8 +3,7 @@
   <head>
     <meta http-equiv="Content-type" content="text/html; charset=utf-8" />
     <meta http-equiv="Content-Language" content="en-us" />
-    <link rel="stylesheet" href="{{ STATIC_URL }}css/import.css" />
-    <link rel="stylesheet" href="{{ STATIC_URL }}css/ubuntu-webfonts.css" />
+    <link rel="stylesheet" href="{% url "combo-maas" %}?{{ CSS_LIST|join:"&" }}" />
     <title>{% block title %}{% endblock %} | {% include "maasserver/site_title.html" %}</title>
     {% block js-conf %}{% include "maasserver/js-conf.html" %}{% endblock %}
     {% block head %}{% endblock %}
