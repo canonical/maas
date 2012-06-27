@@ -23,10 +23,8 @@ from metadataserver.models import (
 
 
 class TestNodeKeyManager(DjangoTestCase):
+# Scheduled for model migration on 2012-07-04
     """Test NodeKeyManager."""
-
-    def setUp(self):
-        super(TestNodeKeyManager, self).setUp()
 
     def test_get_token_for_node_registers_node_key(self):
         node = factory.make_node()
