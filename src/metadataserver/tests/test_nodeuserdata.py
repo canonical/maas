@@ -20,9 +20,6 @@ from metadataserver.models import NodeUserData
 class TestNodeUserDataManager(DjangoTestCase):
     """Test NodeUserDataManager."""
 
-    def setUp(self):
-        super(TestNodeUserDataManager, self).setUp()
-
     def test_set_user_data_creates_new_nodeuserdata_if_needed(self):
         node = factory.make_node()
         data = b'foo'
