@@ -62,7 +62,7 @@ Make the following changes:
   If applicable, specify your network's domain.
 
 ``dhcp-range``
-  Specify the range from wluke haineshich dnsmasq should allocate IP
+  Specify the range from which dnsmasq should allocate IP
   addresses to servers in your MAAS.
 
 ``dhcp-option=3,next_server``
