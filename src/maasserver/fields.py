@@ -108,7 +108,7 @@ class JSONObjectField(Field):
         else:
             return None
 
-    def get_db_prep_value(self, value):
+    def get_db_prep_value(self, value, connection=None, prepared=False):
         """python -> db: json dump."""
         if value is not None:
             return dumps(deepcopy(value))

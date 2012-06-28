@@ -78,8 +78,9 @@ class TestModelMixin:
 
     def _pre_setup(self):
         # Add the models to the db.
-        self._original_installed_apps = list(settings.INSTALLED_APPS)
+        self._original_installed_apps = settings.INSTALLED_APPS
         assert self.app is not None, "TestCase.app must be defined!"
+        settings.INSTALLED_APPS = list(settings.INSTALLED_APPS)
         settings.INSTALLED_APPS.append(self.app)
         loading.cache.loaded = False
         # Use Django's 'syncdb' rather than South's.

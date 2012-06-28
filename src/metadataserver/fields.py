@@ -92,7 +92,7 @@ class BinaryField(Field):
                 "Invalid BinaryField value (expected unicode): '%s'"
                 % repr(value))
 
-    def get_db_prep_value(self, value):
+    def get_db_prep_value(self, value, connection=None, prepared=False):
         """Django overridable: convert python-side value to database value."""
         if value is None:
             # Equivalent of a NULL.
