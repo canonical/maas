@@ -62,7 +62,7 @@
     <div class="clear"></div>
     <div id="profile" class="block size7 first">
       <h2>User details</h2>
-      <form action="." method="post">
+      <form action="." method="post">{% csrf_token %}
         <ul>
           {% for field in profile_form %}
             {% include "maasserver/form_field.html" %}
@@ -74,7 +74,7 @@
     </div>
     <div id="password" class="block size7 first">
       <h2>Password</h2>
-      <form action="." method="post">
+      <form action="." method="post">{% csrf_token %}
         <ul>
           {% for field in password_form %}
             {% include "maasserver/form_field.html" %}

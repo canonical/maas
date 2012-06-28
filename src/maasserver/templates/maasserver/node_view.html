@@ -17,7 +17,7 @@
     </a>
   {% if form.action_buttons %}
     <h4>Actions</h4>
-    <form id="node_actions" method="post" action=".">
+    <form id="node_actions" method="post" action=".">{% csrf_token %}
       {% for action in form.action_buttons %}
         <input
           class="secondary

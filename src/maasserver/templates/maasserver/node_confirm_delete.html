@@ -13,7 +13,7 @@
         </h2>
         <p>This action is permanent and can not be undone.</p>
         <p>
-          <form action="." method="post">
+          <form action="." method="post">{% csrf_token %}
             <input type="hidden" name="post" value="yes" />
             <input type="submit" value="Delete node" class="right" />
             <a href="{% url 'node-view' node_to_delete.system_id %}">Cancel</a>

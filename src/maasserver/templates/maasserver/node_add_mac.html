@@ -6,6 +6,7 @@
 
 {% block content %}
   <form action="." method="post" class="block auto-width">
+    {% csrf_token %}
     <ul>
     {% for field in form %}
       {% include "maasserver/form_field.html" %}

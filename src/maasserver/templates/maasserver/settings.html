@@ -54,6 +54,7 @@
                 </a>
                 <form method="POST"
                       action="{% url 'accounts-del' user_item.username %}">
+                  {% csrf_token %}
                   <input type="hidden" name="username"
                          value="{{ user_item.username }}" />
                 </form>
@@ -71,6 +72,7 @@
     <div id="commissioning" class="block size7 first">
       <h2>Commissioning</h2>
       <form action="{% url "settings" %}" method="post">
+        {% csrf_token %}
         <ul>
         {% for field in commissioning_form %}
           {% include "maasserver/form_field.html" %}
@@ -83,6 +85,7 @@
     <div id="ubuntu" class="block size7 first">
       <h2>Ubuntu</h2>
       <form action="{% url "settings" %}" method="post">
+        {% csrf_token %}
         <ul>
         {% with field=ubuntu_form.update_from %}
           {% include "maasserver/form_field.html" %}
@@ -112,6 +115,7 @@
     <div id="maas_and_network" class="block size7 first">
       <h2>Network Configuration</h2>
       <form action="{% url "settings" %}" method="post">
+        {% csrf_token %}
         <ul>
         {% for field in maas_and_network_form %}
           {% include "maasserver/form_field.html" %}

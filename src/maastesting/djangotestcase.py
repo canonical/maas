@@ -84,7 +84,8 @@ class TestModelMixin:
         settings.INSTALLED_APPS.append(self.app)
         loading.cache.loaded = False
         # Use Django's 'syncdb' rather than South's.
-        syncdb.Command().handle_noargs(verbosity=0, interactive=False)
+        syncdb.Command().handle_noargs(
+            verbosity=0, interactive=False, database=DEFAULT_DB_ALIAS)
         super(TestModelMixin, self)._pre_setup()
 
     def _post_teardown(self):

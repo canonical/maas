@@ -233,7 +233,6 @@ MIDDLEWARE_CLASSES = (
     'metadataserver.middleware.MetadataErrorsMiddleware',
     'django.middleware.transaction.TransactionMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
-    'django.middleware.csrf.CsrfResponseMiddleware',
     'maasserver.middleware.ExceptionLoggerMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
