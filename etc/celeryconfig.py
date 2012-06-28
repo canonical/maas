@@ -30,7 +30,7 @@ PXE_TEMPLATES_DIR = os.path.join(
     "templates")
 
 # TFTP server's root directory.
-TFTPROOT = "/var/lib/tftp"
+TFTPROOT = "/var/lib/tftpboot"
 
 
 try:

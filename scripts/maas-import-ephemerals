@@ -19,24 +19,44 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+# Cobbler is being removed from MAAS.  Set NO_COBBLER to skip anything
+# in this script that is related to Cobbler.
+NO_COBBLER=${NO_COBBLER:-}
+
 VERBOSITY=0
 REMOTE_IMAGES_MIRROR="https://maas.ubuntu.com/images"
+
+if [ -z "$NO_COBBLER" ]
+then
 CONSOLE="ttyS0,9600n8"
 EPH_KOPTS_CONSOLE="console=$CONSOLE"
 EPH_KOPTS_ISCSI="ip=dhcp iscsi_target_name=@@iscsi_target@@ iscsi_target_ip=@@iscsi_target_ip@@ iscsi_target_port=3260"
 EPH_KOPTS_ROOT="root=LABEL=cloudimg-rootfs ro"
 EPH_KOPTS_LOGGING="log_host=@@server_ip@@ log_port=514"
+KSDIR="/var/lib/cobbler/kickstarts"
+KICKSTART="$KSDIR/maas-commissioning.preseed"
+SYS_TGT_CONF="/etc/tgt/targets.conf"
+fi
+
+# TODO: What's this for?  If set, it gets run on a downloaded disk.img,
+# kernel, and initrd.
 EPH_UPDATE_CMD=""
+
+# Prefix for iSCSI target name.
 TARGET_NAME_PREFIX="iqn.2004-05.com.ubuntu:maas:"
+
+# TODO: DATA_DIR seems to be the root of a directory tree that's exposed over
+# iSCSI for download by nodes.  Can we confirm this?
 DATA_DIR="/var/lib/maas/ephemeral"
+
+# Optional configuration script that may set variables for use by this
+# script.  It gets sourced later on.
 CONFIG="/etc/maas/import_ephemerals"
+
 RELEASES="precise"
 ARCHES="amd64 i386"
 BUILD_NAME="ephemeral"
 STREAM="released"
-KSDIR="/var/lib/cobbler/kickstarts"
-KICKSTART="$KSDIR/maas-commissioning.preseed"
-SYS_TGT_CONF="/etc/tgt/targets.conf"
 
 # DATA_DIR layout is like:
 #   tgt.conf
@@ -57,6 +77,7 @@ errorp() { printf "$@" 1>&2; }
 fail() { [ $# -eq 0 ] || error "$@"; exit 1; }
 failp() { [ $# -eq 0 ] || errorp "$@"; exit 1; }
 
+
 Usage() {
 	cat <<EOF
 Usage: ${0##*/} [ options ] <<ARGUMENTS>>
@@ -73,32 +94,45 @@ Usage: ${0##*/} [ options ] <<ARGUMENTS>>
 EOF
 }
 
+
 bad_Usage() { Usage 1>&2; [ $# -eq 0 ] || error "$@"; exit 1; }
+
+
 cleanup() {
 	[ -z "${TEMP_D}" -o ! -d "${TEMP_D}" ] || rm -Rf "${TEMP_D}"
 }
+
 
 debug() {
 	local level=${1}; shift;
 	[ "${level}" -gt "${VERBOSITY}" ] && return
 	error "${@}"
 }
+
+
 arch2u() {
-	# arch2ubuntu
+	# Normalize architecture name to an Ubuntu architecture name.
 	_RET=$1
 	case "$1" in
 		i?86) _RET=i386;;
 		x86_64) _RET=amd64;;
 	esac
 }
+
+
+if [ -z "$NO_COBBLER" ]
+then
 arch2cob() {
-	# arch 2 cobbler arch
+	# Normalize an architecture name for use in Cobbler.
 	_RET=$1
 	case "$1" in
 		i?86) _RET=i386;;
 		amd64) _RET=x86_64;;
 	esac
 }
+fi
+
+
 query_remote() {
 	# query /query data at REMOTE_IMAGES_MIRROR
 	# returns 7 values prefixed with 'r_'
@@ -131,6 +165,7 @@ query_remote() {
 	return
 }
 
+
 query_local() {
 	local iarch=$1 irelease=$2 istream=$3 out=""
 	local label="" name="" serial="" url=""
@@ -159,6 +194,8 @@ query_local() {
 		l_dir="${found%/*}";
 	fi
 }
+
+
 serial_gt() {
 	# is $1 a larger serial than $2 ?
 	local a=${1:-0} b=${2:-0}
@@ -170,6 +207,7 @@ serial_gt() {
 	esac
 	[ $a -gt $b ]
 }
+
 
 prep_dir() {
 	local wd="$1" exdir="" tarball=""
@@ -238,7 +276,7 @@ EOF
 		{ error "failed to move extracted kernel to $wd/kernel"; return 1; }
 
 	[ -z "$initrd" ] || mv "$initrd" "$wd/initrd" ||
-		{ error "failed to move extracted kernel to $wd/initrd"; return 1; }
+		{ error "failed to move extracted initrd to $wd/initrd"; return 1; }
 
 	rm -Rf "$exdir" || { error "failed to cleanup extract dir"; return 1; }
 	{ [ -z "$rmtar" ] || rm "$rmtar"; } ||
@@ -259,6 +297,7 @@ EOF
 	return 0
 }
 
+
 write_tgt_conf() {
 	local file="$1" target_name="$2" image="$3"
 	shift 2;
@@ -271,13 +310,20 @@ write_tgt_conf() {
 EOF
 }
 
+
+if [ -z "$NO_COBBLER" ]
+then
 cobbler_has() {
 	local noun="$1" name="$2" out=""
 
 	out=$(cobbler "$noun" find "--name=$name" 2>/dev/null) &&
 		[ "$out" = "$name" ]
 }
+fi
 
+
+if [ -z "$NO_COBBLER" ]
+then
 cobbler_add_update() {
 	# cobbler_add_update(distro_name, profile_name, 
 	#					 release, arch, kopts, kickstart,
@@ -301,7 +347,11 @@ cobbler_add_update() {
 
 	return 0
 }
+fi
 
+
+if [ -z "$NO_COBBLER" ]
+then
 replace() {
 	# replace(input, key1, value1, key2, value2, ...)
 	local input="$1" key="" val=""
@@ -312,6 +362,30 @@ replace() {
 	done
 	_RET=${input}
 }
+fi
+
+
+install_tftp_image() {
+    # Make image in directory $1, for architecture $2 and subarchitecture $3,
+    # and OS release $4, available over TFTP for netbooting nodes.  Only the
+    # kernel and initrd are needed.
+
+    local src="$1" arch="$2" subarch="$3" release="$4" tmpdir=""
+
+    # Create image in a temporary directory; the installation process
+    # deletes it.
+    tmpdir="$(mktemp -d)"
+
+    for filename in kernel initrd
+    do
+        cp -- "$src/$filename" "$tmpdir/"
+    done
+
+    maas install_pxe_image \
+        --arch=$arch --subarch=$subarch --release=$release \
+        --purpose="commissioning" --image="$tmpdir"
+}
+
 
 short_opts="hciuv"
 long_opts="help,import,update,update-check,verbose"
@@ -346,6 +420,9 @@ done
 [ ! -f "$CONFIG" ] || . "$CONFIG"
 [ ! -f ".${CONFIG}" ] || . ".${CONFIG}"
 
+
+if [ -z "$NO_COBBLER" ]
+then
 # get default server ip
 [ -n "$SERVER_IP" ] ||
 	_ip=$(awk '$1 == "server:" { print $2 }' /etc/cobbler/settings) ||
@@ -354,12 +431,19 @@ done
 SERVER_IP=${SERVER_IP:-${_ip}}
 [ -n "${SERVER_IP}" ] &&
 	KOPTS="$KOPTS log_host=$SERVER_IP log_port=514"
+fi
+
 
 ISCSI_TARGET_IP=${ISCSI_TARGET_IP:-${SERVER_IP}}
 [ -n "$ISCSI_TARGET_IP" ] || fail "ISCSI_TARGET_IP must have a value"
 
+
+if [ -z "$NO_COBBLER" ]
+then
 [ -f "$KICKSTART" ] ||
 	fail "kickstart $KICKSTART is not a file"
+fi
+
 
 mkdir -p "$DATA_DIR" "$DATA_DIR/.working" ||
 	fail "failed to make $DATA_DIR"
@@ -410,6 +494,8 @@ for release in $RELEASES; do
 				"$r_serial" "$r_arch" "$r_url" "$r_name" ||
 				fail "failed to prepare image for $release/$arch"
 
+            install_tftp_image "$wd" "$r_arch" "generic" "$r_release"
+
 			target_name="${TARGET_NAME_PREFIX}${r_name}"
 
 			final_d="${r_release}/${r_stream}/${r_arch}/${r_serial}"
@@ -448,6 +534,9 @@ for release in $RELEASES; do
 			fail "failed tgt-admin add for $name"
 		}
 
+
+if [ -z "$NO_COBBLER" ]
+then
 		# cobbler_update
 		kopts_in="$EPH_CONSOLE_KOPTS $EPH_KOPTS_ISCSI $EPH_KOPTS_ROOT $EPH_KOPTS_LOGGING"
 		replace "${kopts_in}" \
@@ -470,8 +559,12 @@ for release in $RELEASES; do
 				rm "${tgt_conf_d}/${name}.conf";
 				fail "failed to update cobbler for $profile/$distro"
 			}
+fi
+
+
 	done
 done
+
 
 if [ $check -eq 1 ]; then
 	# if --update-check, but no updates needed, exit 3
@@ -480,7 +573,12 @@ if [ $check -eq 1 ]; then
 	exit 0
 fi
 
+
+if [ -z "$NO_COBBLER" ]
+then
 cobbler sync
+fi
+
 
 ## cleanup
 # here, go through anything non-current,
