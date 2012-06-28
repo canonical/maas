@@ -18,7 +18,7 @@ FORCE_SCRIPT_NAME = '/MAAS'
 MEDIA_ROOT = '/var/lib/maas/media/'
 
 # Use the (libjs-yui) package's files to serve YUI3.
-YUI_LOCATION = '/usr/share/javascript/yui/'
+YUI_LOCATION = '/usr/share/javascript/yui3/'
 
 # Use the package's files to serve RaphaelJS.
 RAPHAELJS_LOCATION = '/usr/share/javascript/raphael/'
