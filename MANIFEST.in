@@ -2,6 +2,7 @@ graft src/*/static
 graft src/*/templates
 graft src/*/fixtures
 graft src/*/specs
+graft src/provisioningserver/*/templates
 graft vdenv
 prune src/*/testing
 prune src/*/tests
