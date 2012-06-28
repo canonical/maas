@@ -15,19 +15,15 @@ from __future__ import (
 
 __metaclass__ = type
 
-import os
-
 from maas import import_settings
 
-# Location of power action templates. Use an absolute path.
-POWER_TEMPLATES_DIR = os.path.join(
-    os.path.dirname(__file__), os.pardir, "src", "provisioningserver", "power",
-    "templates")
+# Location of power action templates.  Use an absolute path, or leave as
+# None to use the templates installed with the running version of MAAS.
+POWER_TEMPLATES_DIR = None
 
-# Location of PXE config templates. Use an absolute path.
-PXE_TEMPLATES_DIR = os.path.join(
-    os.path.dirname(__file__), os.pardir, "src", "provisioningserver", "pxe",
-    "templates")
+# Location of PXE config templates.  Use an absolute path, or leave as
+# None to use the templates installed with the running version of MAAS.
+PXE_TEMPLATES_DIR = None
 
 # TFTP server's root directory.
 TFTPROOT = "/var/lib/tftpboot"

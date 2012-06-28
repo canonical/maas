@@ -43,12 +43,23 @@ class PowerAction:
     """
 
     def __init__(self, power_type):
-        basedir = POWER_TEMPLATES_DIR
-        self.path = os.path.join(basedir, power_type + ".template")
+        self.path = os.path.join(
+            self.template_basedir, power_type + ".template")
         if not os.path.exists(self.path):
             raise UnknownPowerType(power_type)
 
         self.power_type = power_type
+
+    @property
+    def template_basedir(self):
+        """Directory where power templates are stored."""
+        if POWER_TEMPLATES_DIR is None:
+            # The power templates are installed into the same location
+            # as this file, and also live in the same directory as this
+            # file in the source tree.
+            return os.path.join(os.path.dirname(__file__), 'templates')
+        else:
+            return POWER_TEMPLATES_DIR
 
     def get_template(self):
         with open(self.path, "rb") as f:

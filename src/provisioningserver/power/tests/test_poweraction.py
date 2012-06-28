@@ -16,10 +16,10 @@ __all__ = []
 import os
 import re
 
-from celeryconfig import POWER_TEMPLATES_DIR
 from maastesting.factory import factory
 from maastesting.testcase import TestCase
 from provisioningserver.enum import POWER_TYPE
+import provisioningserver.power.poweraction
 from provisioningserver.power.poweraction import (
     PowerAction,
     PowerActionFail,
@@ -35,6 +35,11 @@ from testtools.matchers import (
 class TestPowerAction(TestCase):
     """Tests for PowerAction."""
 
+    def configure_templates_dir(self, path=None):
+        """Configure POWER_TEMPLATES_DIR to `path`."""
+        self.patch(
+            provisioningserver.power.poweraction, 'POWER_TEMPLATES_DIR', path)
+
     def test_init_raises_for_unknown_powertype(self):
         powertype = factory.make_name("powertype", sep='')
         self.assertRaises(
@@ -46,20 +51,45 @@ class TestPowerAction(TestCase):
         self.assertEqual(POWER_TYPE.WAKE_ON_LAN, pa.power_type)
 
     def test_init_stores_template_path(self):
+        self.configure_templates_dir()
         power_type = POWER_TYPE.WAKE_ON_LAN
-        basedir = POWER_TEMPLATES_DIR
-        path = os.path.join(basedir, power_type + ".template")
         pa = PowerAction(power_type)
+        path = os.path.join(pa.template_basedir, power_type + ".template")
         self.assertEqual(path, pa.path)
 
-    def test_get_template(self):
-        # get_template() should find and read the template file.
+    def test_template_basedir_defaults_to_local_dir(self):
+        self.configure_templates_dir()
+        self.assertEqual(
+            os.path.join(
+                os.path.dirname(os.path.dirname(__file__)), 'templates'),
+            PowerAction(POWER_TYPE.WAKE_ON_LAN).template_basedir)
+
+    def test_template_basedir_prefers_configured_value(self):
+        power_type = POWER_TYPE.WAKE_ON_LAN
+        template_name = '%s.template' % power_type
+        template = self.make_file(name=template_name)
+        template_dir = os.path.dirname(template)
+        self.configure_templates_dir(template_dir)
+        self.assertEqual(
+            template_dir,
+            PowerAction(POWER_TYPE.WAKE_ON_LAN).template_basedir)
+
+    def test_get_template_retrieves_template(self):
+        self.configure_templates_dir()
         pa = PowerAction(POWER_TYPE.WAKE_ON_LAN)
         template = pa.get_template()
         self.assertIsInstance(template, ShellTemplate)
-        with open(pa.path, "rb") as f:
-            template_content = f.read()
-        self.assertEqual(template_content, template.content)
+        self.assertThat(pa.path, FileContains(template.content))
+
+    def test_get_template_looks_for_template_in_template_basedir(self):
+        contents = factory.getRandomString()
+        power_type = POWER_TYPE.WAKE_ON_LAN
+        template_name = '%s.template' % power_type
+        template = self.make_file(name=template_name, contents=contents)
+        self.configure_templates_dir(os.path.dirname(template))
+        self.assertEqual(
+            contents,
+            PowerAction(power_type).get_template().content)
 
     def test_render_template(self):
         # render_template() should take a template string and substitue
@@ -83,6 +113,7 @@ class TestPowerAction(TestCase):
                 "in file %s" % re.escape(template_name)))
 
     def _create_template_file(self, template):
+        """Create a temporary template file with the given contents."""
         return self.make_file("testscript.sh", template)
 
     def run_action(self, path, **kwargs):
@@ -92,10 +123,8 @@ class TestPowerAction(TestCase):
 
     def test_execute(self):
         # execute() should run the template through a shell.
-
-        # Create a template in a temp dir.
-        tempdir = self.make_dir()
-        output_file = os.path.join(tempdir, "output")
+        output_file = self.make_file(
+            name='output', contents="(Output should go here)")
         template = "echo working {{mac}} > {{outfile}}"
         path = self._create_template_file(template)
 
@@ -103,8 +132,7 @@ class TestPowerAction(TestCase):
         self.assertThat(output_file, FileContains("working test\n"))
 
     def test_execute_raises_PowerActionFail_when_script_fails(self):
-        template = "this_is_not_valid_shell"
-        path = self._create_template_file(template)
+        path = self._create_template_file("this_is_not_valid_shell")
         exception = self.assertRaises(PowerActionFail, self.run_action, path)
         self.assertEqual(
             "ether_wake failed with return code 127", exception.message)

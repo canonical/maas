@@ -15,9 +15,9 @@ __all__ = []
 import os
 import re
 
-from celeryconfig import PXE_TEMPLATES_DIR
 from maastesting.factory import factory
 from maastesting.testcase import TestCase
+import provisioningserver.pxe.pxeconfig
 from provisioningserver.pxe.pxeconfig import (
     PXEConfig,
     PXEConfigFail,
@@ -37,10 +37,16 @@ from testtools.matchers import (
 class TestPXEConfig(TestCase):
     """Tests for PXEConfig."""
 
+    def configure_templates_dir(self, path=None):
+        """Configure PXE_TEMPLATES_DIR to `path`."""
+        self.patch(
+            provisioningserver.pxe.pxeconfig, 'PXE_TEMPLATES_DIR', path)
+
     def test_init_sets_up_paths(self):
         pxeconfig = PXEConfig("armhf", "armadaxp")
 
-        expected_template = os.path.join(PXE_TEMPLATES_DIR, "maas.template")
+        expected_template = os.path.join(
+            pxeconfig.template_basedir, 'maas.template')
         expected_target = os.path.dirname(locate_tftp_path(
             compose_config_path('armhf', 'armadaxp', 'default')))
         self.assertEqual(expected_template, pxeconfig.template)
@@ -74,11 +80,35 @@ class TestPXEConfig(TestCase):
             compose_config_path('armhf', 'armadaxp', '00-a1-b2-c3-e4-d5'))
         self.assertEqual(expected_filename, pxeconfig.target_file)
 
-    def test_get_template(self):
+    def test_template_basedir_defaults_to_local_dir(self):
+        self.configure_templates_dir()
+        arch = factory.make_name('arch')
+        self.assertEqual(
+            os.path.join(
+                os.path.dirname(os.path.dirname(__file__)), 'templates'),
+            PXEConfig(arch).template_basedir)
+
+    def test_template_basedir_prefers_configured_value(self):
+        temp_dir = self.make_dir()
+        self.configure_templates_dir(temp_dir)
+        arch = factory.make_name('arch')
+        self.assertEqual(
+            temp_dir,
+            PXEConfig(arch).template_basedir)
+
+    def test_get_template_retrieves_template(self):
+        self.configure_templates_dir()
         pxeconfig = PXEConfig("i386")
         template = pxeconfig.get_template()
         self.assertIsInstance(template, tempita.Template)
         self.assertThat(pxeconfig.template, FileContains(template.content))
+
+    def test_get_template_looks_for_template_in_template_basedir(self):
+        contents = factory.getRandomString()
+        template = self.make_file(name='maas.template', contents=contents)
+        self.configure_templates_dir(os.path.dirname(template))
+        arch = factory.make_name('arch')
+        self.assertEqual(contents, PXEConfig(arch).get_template().content)
 
     def test_render_template(self):
         pxeconfig = PXEConfig("i386")

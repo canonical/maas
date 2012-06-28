@@ -84,7 +84,14 @@ class PXEConfig:
 
     @property
     def template_basedir(self):
-        return PXE_TEMPLATES_DIR
+        """Directory where PXE templates are stored."""
+        if PXE_TEMPLATES_DIR is None:
+            # The PXE templates are installed into the same location as this
+            # file, and also live in the same directory as this file in the
+            # source tree.
+            return os.path.join(os.path.dirname(__file__), 'templates')
+        else:
+            return PXE_TEMPLATES_DIR
 
     def _validate_mac(self, mac):
         # A MAC address should be of the form aa:bb:cc:dd:ee:ff with
