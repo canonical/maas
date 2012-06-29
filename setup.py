@@ -52,6 +52,28 @@ setup(
     package_dir={'': b'src'},
     include_package_data=True,
 
+    data_files=[
+        ('/etc/maas',
+            ['etc/pserv.yaml',
+             'etc/txlongpoll.yaml',
+             'etc/celeryconfig.py',
+             'etc/maas/import_ephemerals',
+             'etc/maas/commissioning-user-data',
+             'contrib/maas-http.conf',
+             'contrib/maas_local_settings.py']),
+        ('/etc/cron.d',
+            ['etc/cron.d/maas-gc']),
+        ('/usr/share/maas',
+            ['contrib/wsgi.py']),
+        ('/usr/share/maas/preseeds',
+            ['contrib/preseeds_v2/commissioning',
+             'contrib/preseeds_v2/enlist',
+             'contrib/preseeds_v2/generic',
+             'contrib/preseeds_v2/preseed_master']),
+        ('/usr/sbin',
+            ['scripts/maas-import-ephemerals', 'scripts/maas-import-pxe-files']),
+    ],
+
     install_requires=[
         'setuptools',
         'Django == 1.3.1',
