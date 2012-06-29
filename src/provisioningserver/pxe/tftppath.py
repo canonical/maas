@@ -11,6 +11,7 @@ from __future__ import (
 
 __metaclass__ = type
 __all__ = [
+    'compose_bootloader_path',
     'compose_config_path',
     'compose_image_path',
     'locate_tftp_path',
@@ -19,6 +20,11 @@ __all__ = [
 import os.path
 
 from celeryconfig import TFTPROOT
+
+
+def compose_bootloader_path(arch, subarch):
+    """Compose the TFTP path for a PXE pre-boot loader."""
+    return '/'.join(['/maas', arch, subarch, 'pxelinux.0'])
 
 
 def compose_config_path(arch, subarch, name):

@@ -18,6 +18,7 @@ from celeryconfig import TFTPROOT
 from maastesting.factory import factory
 from maastesting.testcase import TestCase
 from provisioningserver.pxe.tftppath import (
+    compose_bootloader_path,
     compose_config_path,
     compose_image_path,
     locate_tftp_path,
@@ -62,6 +63,20 @@ class TestTFTPPath(TestCase):
         purpose = factory.make_name('purpose')
         self.assertThat(
             compose_image_path(arch, subarch, release, purpose),
+            Not(StartsWith(TFTPROOT)))
+
+    def test_compose_bootloader_path_follows_maas_pxe_directory_layout(self):
+        arch = factory.make_name('arch')
+        subarch = factory.make_name('subarch')
+        self.assertEqual(
+            '/maas/%s/%s/pxelinux.0' % (arch, subarch),
+            compose_bootloader_path(arch, subarch))
+
+    def test_compose_bootloader_path_does_not_include_tftp_root(self):
+        arch = factory.make_name('arch')
+        subarch = factory.make_name('subarch')
+        self.assertThat(
+            compose_bootloader_path(arch, subarch),
             Not(StartsWith(TFTPROOT)))
 
     def test_locate_tftp_path_prefixes_tftp_root_by_default(self):
