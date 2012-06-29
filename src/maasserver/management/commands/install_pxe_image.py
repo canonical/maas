@@ -145,7 +145,7 @@ class Command(BaseCommand):
             help="Store to this TFTP directory tree instead of the default."),
         )
 
-    def handle(self, arch=None, subarch='generic', release=None, purpose=None,
+    def handle(self, arch=None, subarch=None, release=None, purpose=None,
                image=None, tftproot=None, **kwargs):
         if tftproot is None:
             tftproot = TFTPROOT
