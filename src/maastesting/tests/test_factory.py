@@ -41,6 +41,14 @@ class TestFactory(TestCase):
     def test_getRandomPort_returns_int(self):
         self.assertIsInstance(factory.getRandomPort(), int)
 
+    def test_getRandomIPAddress(self):
+        ip_address = factory.getRandomIPAddress()
+        self.assertIsInstance(ip_address, str)
+        octets = ip_address.split('.')
+        self.assertEqual(4, len(octets))
+        for octet in octets:
+            self.assertTrue(0 <= int(octet) <= 255)
+
     def test_getRandomDate_returns_datetime(self):
         self.assertIsInstance(factory.getRandomDate(), datetime)
 

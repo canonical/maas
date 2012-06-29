@@ -107,11 +107,29 @@ class Factory(maastesting.factory.Factory):
             Node.objects.filter(id=node.id).update(created=created)
         return reload_object(node)
 
-    def make_node_group(self, api_token=None, **kwargs):
+    def make_node_group(self, api_token=None, worker_ip=None,
+                        subnet_mask=None, broadcast_ip=None, router_ip=None,
+                        ip_range_low=None, ip_range_high=None, **kwargs):
         if api_token is None:
             user = self.make_user()
             api_token = create_auth_token(user)
-        ng = NodeGroup(api_token=api_token, api_key=api_token.key, **kwargs)
+        if worker_ip is None:
+            worker_ip = factory.getRandomIPAddress()
+        if subnet_mask is None:
+            subnet_mask = factory.getRandomIPAddress()
+        if broadcast_ip is None:
+            broadcast_ip = factory.getRandomIPAddress()
+        if router_ip is None:
+            router_ip = factory.getRandomIPAddress()
+        if ip_range_low is None:
+            ip_range_low = factory.getRandomIPAddress()
+        if ip_range_high is None:
+            ip_range_high = factory.getRandomIPAddress()
+        ng = NodeGroup(
+            api_token=api_token, api_key=api_token.key, worker_ip=worker_ip,
+            subnet_mask=subnet_mask, broadcast_ip=broadcast_ip,
+            router_ip=router_ip, ip_range_low=ip_range_low,
+            ip_range_high=ip_range_high, **kwargs)
         ng.save()
         return ng
 

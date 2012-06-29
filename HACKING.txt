@@ -336,14 +336,17 @@ Be sure to have a look at `South's documentation`_ before you make any change.
 Changing the schema
 ^^^^^^^^^^^^^^^^^^^
 
-Once you've made a change to ``src/<application>/models.py`` you have to run
-South's `schemamigration`_ command to create a migration file that will be
-stored in ``src/<application>/migrations/``.
+Once you've made a model change (i.e. a change to a file in
+``src/<application>/models/*.py``) you have to run South's `schemamigration`_
+command to create a migration file that will be stored in
+``src/<application>/migrations/``.
+
+Note that if you want to add a new model class you'll need to import it
+in ``src/<application>/models/__init__.py``
 
 .. _schemamigration: http://south.aeracode.org/docs/commands.html#schemamigration
 
-For instance if you're making changes to ``src/maasserver/models.py``, you
-will need to run::
+Once you've changed the code, will need to run::
 
     $ ./bin/maas schemamigration maasserver --auto description_of_the_change
 
