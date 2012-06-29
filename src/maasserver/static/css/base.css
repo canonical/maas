@@ -3,7 +3,7 @@ html, body {
     padding: 0;
     }
 body {
-    background: #2C001E url(../img/bg_dots.png) repeat top center;
+    background: #2C001E url(../?img/bg_dots.png) repeat top center;
     }
 table {
     width: 100%;

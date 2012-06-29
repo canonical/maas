@@ -26,7 +26,7 @@
     }
 #header {
     min-height: 64px;
-    background: #dd4814 url(../img/header_stripes.png) repeat-x top left;
+    background: #dd4814 url(../?img/header_stripes.png) repeat-x top left;
     -moz-border-radius: 0 0 4px 4px;
     -webkit-border-radius: 0 0 4px 4px;
     border-radius: 0 0 4px 4px;
@@ -59,7 +59,7 @@
     }
 #right-nav li.active a,
 #main-nav li.active a {
-    background: rgba(0,0,0,0.2) url(../img/header_tail.png) no-repeat bottom center;
+    background: rgba(0,0,0,0.2) url(../?img/header_tail.png) no-repeat bottom center;
     }
 #right-nav {
     float: right;
@@ -107,7 +107,7 @@
     color: #fff;
     margin: 0 20px;
     padding: 14px 0 20px 0;
-    background: transparent url(../img/content_tail.png) no-repeat 50px bottom;
+    background: transparent url(../?img/content_tail.png) no-repeat 50px bottom;
     }
 #content {
     padding: 20px 20px 40px 20px;

@@ -13,7 +13,7 @@ __metaclass__ = type
 __all__ = []
 
 
-from django.conf import settings as django_settings
+from django.conf import settings
 from django.conf.urls.defaults import (
     patterns,
     url,
@@ -23,13 +23,15 @@ from maasserver.views.combo import get_combo_view
 
 urlpatterns = patterns('',
     url(
-        r'^maas/', get_combo_view(), name='combo-maas'),
+        r'^maas/', get_combo_view(
+            location='', default_redirect=settings.STATIC_URL),
+        name='combo-maas'),
     url(
         r'^raphael/',
-        get_combo_view(location=django_settings.RAPHAELJS_LOCATION),
+        get_combo_view(location=settings.RAPHAELJS_LOCATION),
         name='combo-raphael'),
     url(
         r'^yui/',
-        get_combo_view(location=django_settings.YUI_LOCATION),
+        get_combo_view(location=settings.YUI_LOCATION),
         name='combo-yui'),
 )

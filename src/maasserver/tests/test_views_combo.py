@@ -19,6 +19,7 @@ import os
 from django.conf import settings
 from django.core.urlresolvers import reverse
 from django.test.client import RequestFactory
+from maasserver.testing import extract_redirect
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
 from maasserver.views.combo import (
@@ -77,6 +78,23 @@ class TestUtilities(TestCase):
         self.assertEqual(
              (httplib.OK, expected_content),
              (response.status_code, response.content))
+
+    def test_get_combo_redirects_if_unknown_type(self):
+        # The optional parameter 'default_redirect' allows to configure
+        # a default address where requests for files of unknown types will be
+        # redirected.
+        # Create a test file with an unknown extension.
+        test_file_name = "%s.%s" % (
+            factory.getRandomString(), factory.getRandomString())
+        redirect_root = factory.getRandomString()
+        view = get_combo_view(
+            factory.getRandomString(), default_redirect=redirect_root)
+        rf = RequestFactory()
+        request = rf.get("/test/?%s" % test_file_name)
+        response = view(request)
+        self.assertEqual(
+            '%s%s' % (redirect_root, test_file_name),
+            extract_redirect(response))
 
 
 # String used by convoy to replace missing files.
@@ -140,6 +158,14 @@ class TestComboLoaderView(TestCase):
         response = self.client.get(url)
         # No sign of a missing css file.
         self.assertNotIn(CONVOY_MISSING_FILE, response.content)
+
+    def test_maas_load_image(self):
+        img_path = 'img/bg_dots.png'
+        url = '%s?%s' % (reverse('combo-maas'), img_path)
+        response = self.client.get(url)
+        self.assertEqual(
+            '%s%s' % (settings.STATIC_URL, img_path),
+            extract_redirect(response))
 
     def test_raphael_load_js(self):
         requested_files = ['raphael-min.js']

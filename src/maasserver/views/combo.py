@@ -26,6 +26,7 @@ from django.http import (
     HttpResponse,
     HttpResponseBadRequest,
     HttpResponseNotFound,
+    HttpResponseRedirect,
     )
 
 # Static root computed from this very file.
@@ -60,19 +61,24 @@ def get_absolute_location(location=''):
         return os.path.join(LOCAL_STATIC_ROOT, location)
 
 
-def get_combo_view(location=''):
+def get_combo_view(location='', default_redirect=None):
     """Return a Django view to serve static resources using a combo loader.
 
     :param location: An optional absolute or relative location.
+    :type location: basestring
+    :param default_redirect: An optional address where requests for one file
+        of an unknown file type will be redirected.  If this parameter is
+        omitted, such requests will lead to a "Bad request" response.
     :type location: basestring
     :return: A Django view method.
     :rtype: callable
     """
     location = get_absolute_location(location)
-    return partial(combo_view, location=location)
+    return partial(
+        combo_view, location=location, default_redirect=default_redirect)
 
 
-def combo_view(request, location, encoding='utf8'):
+def combo_view(request, location, default_redirect=None, encoding='utf8'):
     """Handle a request for combining a set of files.
 
     The files are searched in the absolute location `abs_location` (if
@@ -85,6 +91,9 @@ def combo_view(request, location, encoding='utf8'):
             content_type = 'text/javascript; charset=UTF-8'
         elif fnames[0].endswith('.css'):
             content_type = 'text/css'
+        elif default_redirect is not None and len(fnames) == 1:
+            return HttpResponseRedirect(
+                "%s%s" % (default_redirect, fnames[0]))
         else:
             return HttpResponseBadRequest("Invalid file type requested.")
         content = "".join(
