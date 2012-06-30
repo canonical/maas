@@ -51,16 +51,16 @@ compose_installer_download_url() {
 }
 
 
-# Download the pre-boot loader, pxelinux.0, for architecture $2 if it exists,
-# and if so, install it into directory $1.  (Not all architectures need this
+# Download the pre-boot loader, pxelinux.0, for architecture $1.  If
+# successful, install it for netboot use.  (Not all architectures need this
 # file, and there's rarely an urgent need for the very latest file, so if
 # the download fails this function just skips it.)
 update_pre_boot_loader() {
-    local dest=$1 arch=$2
+    local arch=$1
     local url=$(compose_installer_download_url $arch $CURRENT_RELEASE)
     if ! $DOWNLOAD $url/pxelinux.0
     then
-        echo "No pre-boot loader for $arch; skipping."
+        echo "Could not download pre-boot loader for $arch; skipping."
         return
     fi
 
@@ -68,13 +68,9 @@ update_pre_boot_loader() {
     # version).  Otherwise, leave the filesystem alone.
     if [ -f pxelinux.0 ]
     then
-        if cmp --quiet pxelinux.0 $dest/pxelinux.0
-        then
-            rm -f -- pxelinux.0
-        else
-            echo "Updating pre-boot loader for $arch."
-            mv -- pxelinux.0 $dest/
-        fi
+        # TODO: Pass sub-architecture once we support those.
+        maas install_pxe_bootloader \
+            --arch=$arch --loader='pxelinux.0' --tftproot=$TFTPROOT
     fi
 }
 
@@ -102,7 +98,7 @@ update_install_files() {
 
 
 main() {
-    local arch release arch_dir
+    local arch release
 
     DOWNLOAD_DIR=$(mktemp -d)
     echo "Downloading to temporary location $DOWNLOAD_DIR."
@@ -114,18 +110,14 @@ main() {
 
     for arch in $ARCHES
     do
-        # Replace the "generic" with sub-architecture once we start
-        # supporting those.
-        arch_dir="$TFTPROOT/maas/$arch/generic"
-
-        mkdir -p -- $arch_dir
-        update_pre_boot_loader $arch_dir $arch
+        update_pre_boot_loader $arch
 
         for release in $RELEASES
         do
             update_install_files $arch $release
         done
 
+        # TODO: Pass sub-architecture once we support those.
         maas generate_enlistment_pxe \
             --arch=$arch --release=$CURRENT_RELEASE \
             --tftproot=$TFTPROOT

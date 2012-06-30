@@ -148,20 +148,6 @@ class TestImportPXEFiles(TestCase):
         expected_contents = read_file(download_path, 'pxelinux.0')
         self.assertThat(tftp_path, FileContains(expected_contents))
 
-    def test_leaves_pre_boot_loader_untouched_if_unchanged(self):
-        # If pxelinux.0 has not changed between script runs, the old
-        # copy stays in place.
-        arch = factory.make_name('arch')
-        release = 'precise'
-        archive = self.make_downloads(arch=arch, release=release)
-        tftproot = self.make_dir()
-        self.call_script(archive, tftproot, arch=arch, release=release)
-        tftp_path = compose_tftp_path(tftproot, arch, 'pxelinux.0')
-        backdate(tftp_path)
-        original_timestamp = get_write_time(tftp_path)
-        self.call_script(archive, tftproot, arch=arch, release=release)
-        self.assertEqual(original_timestamp, get_write_time(tftp_path))
-
     def test_downloads_install_image(self):
         arch = factory.make_name('arch')
         release = 'precise'
