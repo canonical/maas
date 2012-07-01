@@ -71,7 +71,8 @@ setup(
              'contrib/preseeds_v2/generic',
              'contrib/preseeds_v2/preseed_master']),
         ('/usr/sbin',
-            ['scripts/maas-import-ephemerals', 'scripts/maas-import-pxe-files']),
+            ['scripts/maas-import-ephemerals',
+             'scripts/maas-import-pxe-files']),
     ],
 
     install_requires=[
