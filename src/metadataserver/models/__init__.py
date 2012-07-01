@@ -141,6 +141,7 @@ class NodeKey(CleanSave, Model):
 
 
 class NodeCommissionResultManager(Manager):
+# Scheduled for model migration on 2012-07-09
     """Utility to manage a collection of :class:`NodeCommissionResult`s."""
 
     def clear_results(self, node):
@@ -161,6 +162,7 @@ class NodeCommissionResultManager(Manager):
         return ncr.data
 
 
+# Scheduled for model migration on 2012-07-09
 class NodeCommissionResult(CleanSave, Model):
     """Storage for data returned from node commissioning.
 
@@ -173,11 +175,12 @@ class NodeCommissionResult(CleanSave, Model):
     :ivar data: The file's actual data, unicode only.
     """
 
-    objects = NodeCommissionResultManager()
-
-    node = ForeignKey(Node, null=False, editable=False, unique=False)
-    name = CharField(max_length=100, unique=False, editable=False)
-    data = CharField(max_length=1024 * 1024, editable=True)
-
     class Meta(DefaultMeta):
         unique_together = ('node', 'name')
+
+    objects = NodeCommissionResultManager()
+
+    node = ForeignKey(
+        'maasserver.Node', null=False, editable=False, unique=False)
+    name = CharField(max_length=100, unique=False, editable=False)
+    data = CharField(max_length=1024 * 1024, editable=True)
