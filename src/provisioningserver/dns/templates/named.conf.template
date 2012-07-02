@@ -1,0 +1,32 @@
+
+options {
+        listen-on port 53 { any; };
+        directory       "/var/named";
+        dump-file       "/var/named/data/cache_dump.db";
+        statistics-file "/var/named/data/named_stats.txt";
+        memstatistics-file "/var/named/data/named_mem_stats.txt";
+        recursion yes;
+};
+
+logging {
+        channel default_debug {
+                file "data/named.run";
+                severity dynamic;
+        };
+};
+
+# Zone declarations
+
+{{for zone_bunch in zones}}
+zone "{{zone_bunch.zone}}." {
+    type master;
+    file "{{zone_bunch.file}}";
+};
+{{endfor}}
+
+{{for reverse_bunch in reverse_zones}}
+zone "{{reverse_bunch.arpa}}." {
+    type master;
+    file "{{reverse_bunch.file}}";
+};
+{{endfor}}
