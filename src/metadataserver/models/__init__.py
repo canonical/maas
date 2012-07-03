@@ -27,7 +27,6 @@ from django.db.models import (
     Model,
     )
 from django.shortcuts import get_object_or_404
-from maasserver.models import Node
 from maasserver.models.cleansave import CleanSave
 from maasserver.utils import ignore_unused
 from metadataserver import DefaultMeta
