@@ -18,12 +18,22 @@ __all__ = [
 
 from textwrap import dedent
 
+from provisioningserver.pxe.tftppath import compose_bootloader_path
 import tempita
 
 
 class DHCPConfigError(Exception):
     """Exception raised for errors processing the DHCP config."""
 
+
+# Architectures that we support netbooting for.
+# Actually we don't really do amd64; those systems get to use the i386
+# bootloader instead.
+bootloader_architectures = [
+    ('amd64', 'generic'),
+    ('arm', 'highbank'),
+    ('i386', 'generic'),
+    ]
 
 template_content = dedent("""\
     class "pxe" {
@@ -44,17 +54,31 @@ template_content = dedent("""\
 
            pool {
                    allow members of "uboot-highbank";
-                   filename "/arm/highbank/empty";
+                   filename "{{bootloaders['arm', 'highbank']}}";
            }
            pool {
                    allow members of "pxe";
-                   filename "/x86/pxelinux.0";
+                   filename "{{bootloaders['i386', 'generic']}}";
            }
     }
 """)
 
 template = tempita.Template(
     template_content, name="%s.template" % __name__)
+
+
+def compose_bootloaders():
+    """Compose "bootloaders" dict for substitution in the DHCP template.
+
+    The bootloaders dict maps tuples of (architecture, subarchitecture) to
+    their respective TFTP bootloader paths.
+
+    Thus, bootloaders['i386', 'generic'] yields the TFTP path for the i386
+    bootloader.
+    """
+    return {
+        (arch, subarch): compose_bootloader_path(arch, subarch)
+        for arch, subarch in bootloader_architectures}
 
 
 def get_config(**params):
@@ -73,6 +97,8 @@ def get_config(**params):
     :param high_range: The last IP address in the range of IP addresses to
         allocate
     """
+    params['bootloaders'] = compose_bootloaders()
+
     # This is a really simple substitution for now but it's encapsulated
     # here so that its implementation can be changed later if required.
     try:
