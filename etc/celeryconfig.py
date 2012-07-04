@@ -15,6 +15,8 @@ from __future__ import (
 
 __metaclass__ = type
 
+import os
+
 from maas import import_settings
 
 # Location of power action templates.  Use an absolute path, or leave as
@@ -28,6 +30,8 @@ PXE_TEMPLATES_DIR = None
 # TFTP server's root directory.
 TFTPROOT = "/var/lib/tftpboot"
 
+# Location of MAAS' bind configuration files.
+DNS_CONFIG_DIR = os.path.join(os.sep, 'var', 'cache', 'bind', 'maas')
 
 try:
     import user_maasceleryconfig
