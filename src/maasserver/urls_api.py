@@ -26,6 +26,7 @@ from maasserver.api import (
     NodeMacHandler,
     NodeMacsHandler,
     NodesHandler,
+    pxeconfig,
     RestrictedResource,
     )
 from maasserver.api_auth import api_auth
@@ -47,6 +48,7 @@ maas_handler = AdminRestrictedResource(MAASHandler, authentication=api_auth)
 # API URLs accessible to anonymous users.
 urlpatterns = patterns('',
     url(r'doc/$', api_doc, name='api-doc'),
+    url(r'pxeconfig/$', pxeconfig, name='pxeconfig'),
 )
 
 

@@ -115,6 +115,16 @@ class PXEConfig:
         except NameError as error:
             raise PXEConfigFail(*error.args)
 
+    def get_config(self, **kwargs):
+        """Return this PXE config file as a unicode string.
+
+        :param menutitle: The PXE menu title shown.
+        :param kernelimage: The path to the kernel in the TFTP server
+        :param append: Kernel parameters to append.
+        """
+        template = self.get_template()
+        return self.render_template(template, **kwargs)
+
     def write_config(self, **kwargs):
         """Write out this PXE config file.
 
@@ -125,8 +135,7 @@ class PXEConfig:
         Any required directories will be created but the caller must have
         permission to make them and write the file.
         """
-        template = self.get_template()
-        rendered = self.render_template(template, **kwargs)
+        rendered = self.get_config(**kwargs)
         target_dir = os.path.dirname(self.target_file)
         if not os.path.isdir(target_dir):
             os.makedirs(target_dir)

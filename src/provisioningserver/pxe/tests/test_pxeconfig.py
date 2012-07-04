@@ -130,6 +130,20 @@ class TestPXEConfig(TestCase):
                 "name 'kernelimage' is not defined at line \d+ column \d+ "
                 "in file %s" % re.escape(template_name)))
 
+    def test_get_config_returns_config(self):
+        tftproot = self.make_dir()
+        pxeconfig = PXEConfig("armhf", "armadaxp", tftproot=tftproot)
+        template = pxeconfig.get_template()
+        expected = pxeconfig.render_template(
+            template, menutitle="menutitle", kernelimage="/my/kernel",
+            append="append")
+
+        self.assertEqual(
+            pxeconfig.get_config(
+                 menutitle="menutitle", kernelimage="/my/kernel",
+                 append="append"),
+            expected)
+
     def test_write_config_writes_config(self):
         # Ensure that a rendered template is written to the right place.
         tftproot = self.make_dir()

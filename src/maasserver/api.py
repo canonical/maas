@@ -65,6 +65,7 @@ __all__ = [
     "NodesHandler",
     "NodeMacHandler",
     "NodeMacsHandler",
+    "pxeconfig",
     ]
 
 from base64 import b64decode
@@ -128,6 +129,10 @@ from piston.handler import (
 from piston.models import Token
 from piston.resource import Resource
 from piston.utils import rc
+from provisioningserver.pxe.pxeconfig import (
+    PXEConfig,
+    PXEConfigFail,
+    )
 
 
 dispatch_methods = {
@@ -962,6 +967,7 @@ _API_DOC = None
 
 
 def api_doc(request):
+    """Get ReST documentation for the REST API."""
     # Generate the documentation and keep it cached.  Note that we can't do
     # that at the module level because the API doc generation needs Django
     # fully initialized.
@@ -972,3 +978,31 @@ def api_doc(request):
         'maasserver/api_doc.html',
         {'doc': reST_to_html_fragment(generate_api_doc())},
         context_instance=RequestContext(request))
+
+
+def pxeconfig(request):
+    """Get the PXE configuration given a node's details.
+
+    :param arch: Main machine architecture.
+    :param subarch: Sub-architecture, or "generic" if there is none.
+    :param mac: If specified will return a mac-specific PXE file.
+        If not specified will return a "default" file.
+    :param menutitle: The PXE menu title shown.
+    :param kernelimage: The path to the kernel in the TFTP server
+    :param append: Kernel parameters to append.
+    """
+    arch = get_mandatory_param(request.GET, 'arch')
+    subarch = request.GET.get('subarch', None)
+    mac = request.GET.get('mac', None)
+    config = PXEConfig(arch, subarch, mac)
+    # Rendering parameters.
+    menutitle = get_mandatory_param(request.GET, 'menutitle')
+    kernelimage = get_mandatory_param(request.GET, 'kernelimage')
+    append = get_mandatory_param(request.GET, 'append')
+    try:
+        return HttpResponse(
+            config.get_config(
+                menutitle=menutitle, kernelimage=kernelimage, append=append),
+            content_type="text/plain; charset=utf-8")
+    except PXEConfigFail, e:
+        raise ValidationError(e.message)

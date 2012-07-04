@@ -30,6 +30,7 @@ import shutil
 
 from django.conf import settings
 from django.contrib.auth.models import AnonymousUser
+from django.core.urlresolvers import reverse
 from django.db.models.signals import post_save
 from django.http import QueryDict
 from fixtures import Fixture
@@ -78,6 +79,11 @@ from metadataserver.nodeinituser import get_node_init_user
 from provisioningserver.enum import (
     POWER_TYPE,
     POWER_TYPE_CHOICES,
+    )
+from testtools.matchers import (
+    Equals,
+    MatchesListwise,
+    StartsWith,
     )
 
 
@@ -2211,3 +2217,59 @@ class TestAnonymousCommissioningTimeout(APIv10TestMixin, TestCase):
             self.get_uri('nodes/'), {'op': 'check_commissioning'})
         node = reload_object(node)
         self.assertEqual(NODE_STATUS.FAILED_TESTS, node.status)
+
+
+class TestPXEConfigAPI(AnonAPITestCase):
+
+    def get_params(self):
+        return {
+                'arch': "armhf",
+                'subarch': "armadaxp",
+                'mac': "AA:BB:CC:DD:EE:FF",
+                'menutitle': "menutitle",
+                'kernelimage': "/my/kernel",
+                'append': "append",
+            }
+
+    def get_optional_params(self):
+        return ['subarch', 'mac']
+
+    def test_pxe_config_returns_config(self):
+        response = self.client.get(reverse('pxeconfig'), self.get_params())
+
+        self.assertThat(
+            (
+                response.status_code,
+                response['Content-Type'],
+                response.content
+            ),
+            MatchesListwise(
+                (
+                    Equals(httplib.OK),
+                    Equals("text/plain; charset=utf-8"),
+                    StartsWith('DEFAULT menu'),
+                )),
+            response)
+
+    def get_without_param(self, param):
+        params = self.get_params()
+        del params[param]
+        return self.client.get(reverse('pxeconfig'), params)
+
+    def test_pxe_config_missing_parameters(self):
+        # Some parameters are optional, others are mandatory. The
+        # absence of a mandatory parameter always results in a BAD
+        # REQUEST response.
+        expected = {
+            'arch': httplib.BAD_REQUEST,
+            'subarch': httplib.OK,
+            'mac': httplib.OK,
+            'menutitle': httplib.BAD_REQUEST,
+            'kernelimage': httplib.BAD_REQUEST,
+            'append': httplib.BAD_REQUEST,
+            }
+        observed = {
+            param: self.get_without_param(param).status_code
+            for param in self.get_params()
+            }
+        self.assertEqual(expected, observed)
