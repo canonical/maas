@@ -288,7 +288,7 @@ USE_REAL_PSERV = True
 # The location of the commissioning script that is executed on nodes as
 # part of commissioning.  Only override this if you know what you are
 # doing.
-COMMISSIONING_SCRIPT = 'etc/maas/commissioning-user-data'
+COMMISSIONING_SCRIPT = '/etc/maas/commissioning-user-data'
 
 # The duration, in minutes, after which we consider a commissioning node
 # to have failed and mark it as FAILED_TESTS.

@@ -12,6 +12,7 @@ from __future__ import (
 __metaclass__ = type
 
 import logging
+import os
 from os.path import abspath
 
 from maas import (
@@ -88,6 +89,15 @@ PRESEED_TEMPLATE_LOCATIONS = (
     abspath("etc/preseeds"),
     abspath("contrib/preseeds_v2"),
     )
+
+# The root directory of the MAAS project for this dev instance.
+DEV_ROOT_DIRECTORY = os.path.join(
+    os.path.dirname(__file__), os.pardir, os.pardir)
+
+
+COMMISSIONING_SCRIPT = os.path.join(
+    DEV_ROOT_DIRECTORY, 'etc/maas/commissioning-user-data')
+
 
 # Allow the user to override settings in maas_local_settings.
 import_local_settings()
