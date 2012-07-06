@@ -33,6 +33,10 @@ TFTPROOT = "/var/lib/tftpboot"
 # Location of MAAS' bind configuration files.
 DNS_CONFIG_DIR = os.path.join(os.sep, 'var', 'cache', 'bind', 'maas')
 
+# DHCP leases file, as maintained by ISC dhcpd.
+DHCP_LEASES_FILE = '/var/lib/dhcp/dhcpd.leases'
+
+
 try:
     import user_maasceleryconfig
 except ImportError:
