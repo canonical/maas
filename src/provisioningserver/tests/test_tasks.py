@@ -13,21 +13,36 @@ __metaclass__ = type
 __all__ = []
 
 import os
+import random
 
 from maasserver.enum import ARCHITECTURE
 from maastesting.celery import CeleryFixture
 from maastesting.factory import factory
+from maastesting.fakemethod import FakeMethod
 from maastesting.matchers import ContainsAll
 from maastesting.testcase import TestCase
+from provisioningserver import tasks
+from provisioningserver.dns.config import conf
 from provisioningserver.enum import POWER_TYPE
 from provisioningserver.power.poweraction import PowerActionFail
 from provisioningserver.tasks import (
     power_off,
     power_on,
+    reload_dns_config,
+    reload_zone_config,
+    setup_rndc_configuration,
+    write_dns_config,
+    write_dns_zone_config,
     write_tftp_config_for_node,
     )
 from testresources import FixtureResource
-from testtools.matchers import FileContains
+from testtools.matchers import (
+    AllMatch,
+    Equals,
+    FileContains,
+    FileExists,
+    MatchesListwise,
+    )
 
 # An arbitrary MAC address.  Not using a properly random one here since
 # we might accidentally affect real machines on the network.
@@ -84,8 +99,122 @@ class TestTFTPTasks(TestCase):
             tftproot, 'maas', arch, "generic", "pxelinux.cfg",
             mac2.replace(":", "-"))
         self.assertThat(
-            expected_file1,
-            FileContains(matcher=ContainsAll((kernel, menutitle, append))))
+            [expected_file1, expected_file2],
+            AllMatch(
+                FileContains(
+                    matcher=ContainsAll((kernel, menutitle, append)))))
+
+
+class TestDNSTasks(TestCase):
+
+    resources = (
+        ("celery", FixtureResource(CeleryFixture())),
+        )
+
+    def setUp(self):
+        super(TestDNSTasks, self).setUp()
+        # Patch DNS_CONFIG_DIR so that the configuration files will be
+        # written in a temporary directory.
+        self.dns_conf_dir = self.make_dir()
+        self.patch(conf, 'DNS_CONFIG_DIR', self.dns_conf_dir)
+        # Record the calls to 'execute_rndc_command' (instead of
+        # executing real rndc commands).
+        self.rndc_recorder = FakeMethod()
+        self.patch(tasks, 'execute_rndc_command', self.rndc_recorder)
+
+    def test_write_dns_config_writes_file(self):
+        zone_ids = [random.randint(1, 100), random.randint(1, 100)]
+        result = write_dns_config.delay(inactive=False, zone_ids=zone_ids)
+
         self.assertThat(
-            expected_file2,
-            FileContains(matcher=ContainsAll((kernel, menutitle, append))))
+            (
+                result.successful(),
+                os.path.join(self.dns_conf_dir, 'named.conf'),
+                self.rndc_recorder.calls,
+            ),
+            MatchesListwise(
+                (
+                    Equals(True),
+                    FileExists(),
+                    Equals([(('reload',), {})]),
+                )),
+            result)
+
+    def test_write_dns_config_with_inactive_True(self):
+        result = write_dns_config.delay(inactive=True)
+
+        self.assertThat(
+            (
+                result.successful(),
+                os.path.join(self.dns_conf_dir, 'named.conf'),
+                self.rndc_recorder.calls,
+            ),
+            MatchesListwise(
+                (
+                    Equals(True),
+                    FileContains(''),
+                    Equals([(('reload',), {})]),
+                )),
+            result)
+
+    def test_write_dns_zone_config_writes_file(self):
+        zone_id = random.randint(1, 100)
+        result = write_dns_zone_config.delay(
+            zone_id=zone_id, maas_server=factory.getRandomString(),
+            serial=random.randint(1, 100), hosts=[])
+
+        self.assertThat(
+            (
+                result.successful(),
+                os.path.join(self.dns_conf_dir, 'zone.%d' % zone_id),
+                self.rndc_recorder.calls,
+            ),
+            MatchesListwise(
+                (
+                    Equals(True),
+                    FileExists(),
+                    Equals([(('reload', zone_id), {})]),
+                )),
+            result)
+
+    def test_setup_rndc_configuration_writes_files(self):
+        result = setup_rndc_configuration.delay()
+
+        self.assertThat(
+            (
+                result.successful(),
+                os.path.join(self.dns_conf_dir, 'rndc.conf'),
+                os.path.join(self.dns_conf_dir, 'named.conf.rndc'),
+                self.rndc_recorder.calls,
+            ),
+            MatchesListwise(
+                (
+                    Equals(True),
+                    FileExists(),
+                    FileExists(),
+                    Equals([(('reload',), {})]),
+                )),
+            result)
+
+    def test_reload_dns_config_issues_reload_command(self):
+        result = reload_dns_config.delay()
+
+        self.assertThat(
+            (result.successful(), self.rndc_recorder.calls),
+            MatchesListwise(
+                (
+                    Equals(True),
+                    Equals([(('reload',), {})]),
+                )))
+
+    def test_reload_zone_config_issues_zone_reload_command(self):
+        zone_id = random.randint(1, 100)
+        result = reload_zone_config.delay(zone_id)
+
+        self.assertThat(
+            (result.successful(), self.rndc_recorder.calls),
+            MatchesListwise(
+                (
+                    Equals(True),
+                    Equals([(('reload', zone_id), {})]),
+                )))

@@ -1,32 +1,32 @@
+include "{{named_rndc_conf_path}}";
 
 options {
-        listen-on port 53 { any; };
-        directory       "/var/named";
-        dump-file       "/var/named/data/cache_dump.db";
-        statistics-file "/var/named/data/named_stats.txt";
-        memstatistics-file "/var/named/data/named_mem_stats.txt";
-        recursion yes;
+    listen-on port 53 { any; };
+    directory       "{{ DNS_CONFIG_DIR }}/";
+    dump-file       "{{ DNS_CONFIG_DIR }}/data/cache_dump.db";
+    statistics-file "{{ DNS_CONFIG_DIR }}/data/named_stats.txt";
+    memstatistics-file "{{ DNS_CONFIG_DIR }}/data/named_mem_stats.txt";
+    recursion yes;
 };
 
 logging {
-        channel default_debug {
-                file "data/named.run";
-                severity dynamic;
-        };
+    channel default_debug {
+    file "data/named.run";
+    severity dynamic;
+    };
 };
 
 # Zone declarations
-
-{{for zone_bunch in zones}}
-zone "{{zone_bunch.zone}}." {
+{{for zone in zones}}
+zone "{{zone.name}}" {
     type master;
-    file "{{zone_bunch.file}}";
+    file "{{zone.target_path}}";
 };
 {{endfor}}
 
-{{for reverse_bunch in reverse_zones}}
-zone "{{reverse_bunch.arpa}}." {
+{{for rev_zone in rev_zones}}
+zone "{{rev_zone.name}}" {
     type master;
-    file "{{reverse_bunch.file}}";
+    file "{{rev_zone.target_path}}";
 };
 {{endfor}}

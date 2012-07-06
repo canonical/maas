@@ -11,9 +11,9 @@ from __future__ import (
 
 __metaclass__ = type
 __all__ = [
-    'BlankDNSConfig',
     'DNSConfig',
     'DNSZoneConfig',
+    'InactiveDNSConfig',
     'setup_rndc',
     ]
 
@@ -23,7 +23,10 @@ from abc import (
     abstractproperty,
     )
 import os.path
-from subprocess import check_output
+from subprocess import (
+    check_call,
+    check_output,
+    )
 
 from celery.conf import conf
 import tempita
@@ -60,19 +63,33 @@ def generate_rndc():
     return rndc_content, named_conf
 
 
+def get_named_rndc_conf_path():
+    return os.path.join(conf.DNS_CONFIG_DIR, 'named.conf.rndc')
+
+
+def get_rndc_conf_path():
+    return os.path.join(conf.DNS_CONFIG_DIR, 'rndc.conf')
+
+
 def setup_rndc():
     """Writes out the two files needed to enable MAAS to use rndc commands:
     rndc.conf and named.conf.rndc, both stored in conf.DNS_CONFIG_DIR.
     """
     rndc_content, named_content = generate_rndc()
 
-    target_file = os.path.join(conf.DNS_CONFIG_DIR, 'rndc.conf')
+    target_file = get_rndc_conf_path()
     with open(target_file, "wb") as f:
         f.write(rndc_content)
 
-    target_file = os.path.join(conf.DNS_CONFIG_DIR, 'named.conf.rndc')
+    target_file = get_named_rndc_conf_path()
     with open(target_file, "wb") as f:
         f.write(named_content)
+
+
+def execute_rndc_command(*arguments):
+    """Execute a rndc command."""
+    rndc_conf = os.path.join(conf.DNS_CONFIG_DIR, 'rndc.conf')
+    check_call(['rndc', '-c', rndc_conf] + map(str, arguments))
 
 
 # Directory where the DNS configuration template files can be found.
@@ -108,9 +125,15 @@ class DNSConfigBase:
         except NameError as error:
             raise DNSConfigFail(*error.args)
 
+    def get_extra_context(self):
+        """Dictionary containing extra parameters to be included in the
+        parameters used when rendering the template."""
+        return {}
+
     def write_config(self, **kwargs):
         """Write out this DNS config file."""
         template = self.get_template()
+        kwargs.update(self.get_extra_context())
         rendered = self.render_template(template, **kwargs)
         with open(self.target_path, "wb") as f:
             f.write(rendered)
@@ -125,6 +148,10 @@ class DNSConfig(DNSConfigBase):
     template_file_name = 'named.conf.template'
     target_file_name = 'named.conf'
 
+    def __init__(self, zone_ids=(), reverse_zone_ids=()):
+        self.zone_ids = zone_ids
+        self.reverse_zone_ids = reverse_zone_ids
+
     @property
     def template_path(self):
         return os.path.join(self.template_dir, self.template_file_name)
@@ -133,8 +160,18 @@ class DNSConfig(DNSConfigBase):
     def target_path(self):
         return os.path.join(self.target_dir, self.target_file_name)
 
+    def get_extra_context(self):
+        return {
+            'zones': [DNSZoneConfig(zone_id) for zone_id in self.zone_ids],
+            'rev_zones': [
+                RevDNSZoneConfig(reverse_zone_id)
+                for reverse_zone_id in self.reverse_zone_ids],
+            'DNS_CONFIG_DIR': conf.DNS_CONFIG_DIR,
+            'named_rndc_conf_path':  get_named_rndc_conf_path()
+        }
 
-class BlankDNSConfig(DNSConfig):
+
+class InactiveDNSConfig(DNSConfig):
     """A specialized version of DNSConfig that simply writes a blank/empty
     configuration file.
     """
@@ -148,9 +185,15 @@ class DNSZoneConfig(DNSConfig):
     """A specialized version of DNSConfig that writes zone files."""
 
     template_file_name = 'zone.template'
+    zone_name_string = '%d'
+    zone_filename_string = 'zone.%d'
 
     def __init__(self, zone_id):
         self.zone_id = zone_id
+
+    @property
+    def name(self):
+        return self.zone_name_string % self.zone_id
 
     @property
     def template_path(self):
@@ -158,4 +201,19 @@ class DNSZoneConfig(DNSConfig):
 
     @property
     def target_path(self):
-        return os.path.join(self.target_dir, 'zone.%d' % self.zone_id)
+        return os.path.join(
+            self.target_dir, self.zone_filename_string % self.zone_id)
+
+    def get_extra_context(self):
+        return {}
+
+
+class RevDNSZoneConfig(DNSZoneConfig):
+    """A specialized version of DNSZoneConfig that writes reverse zone
+    files.
+    """
+
+    template_file_name = 'zone.template'
+    # TODO: create a proper reverse zone template, create test for this class.
+    zone_name_string = '%d.rev'
+    zone_filename_string = 'zone.rev.%d'
