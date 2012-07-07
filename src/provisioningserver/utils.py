@@ -14,16 +14,19 @@ __all__ = [
     "ActionScript",
     "deferred",
     "ShellTemplate",
+    "atomic_write",
     "xmlrpc_export",
     ]
 
 from argparse import ArgumentParser
 from functools import wraps
+import os
 from os import fdopen
 from pipes import quote
 import signal
 from subprocess import CalledProcessError
 import sys
+import tempfile
 
 import tempita
 from twisted.internet.defer import maybeDeferred
@@ -62,6 +65,23 @@ def xmlrpc_export(iface):
                 setattr(cls, "xmlrpc_%s" % name, method)
         return cls
     return decorate
+
+
+def atomic_write(content, filename):
+    """Write the given `content` into the file `filename` in an atomic
+    fashion.
+    """
+    # Write the file to a temporary place (next to the target destination,
+    # to ensure that it is on the same filesystem).
+    directory = os.path.dirname(filename)
+    temp_fd, temp_file = tempfile.mkstemp(
+        dir=directory, suffix=".tmp",
+        prefix=".%s." % os.path.basename(filename))
+    with os.fdopen(temp_fd, "wb") as f:
+        f.write(content)
+    # Rename the temporary file to `filename`, that operation is atomic on
+    # POSIX systems.
+    os.rename(temp_file, filename)
 
 
 class Safe:
