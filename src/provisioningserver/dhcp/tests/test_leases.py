@@ -16,6 +16,7 @@ from datetime import (
     datetime,
     timedelta,
     )
+from textwrap import dedent
 
 from maastesting.factory import factory
 from maastesting.fakemethod import FakeMethod
@@ -27,6 +28,7 @@ from maastesting.utils import (
 from provisioningserver.dhcp import leases as leases_module
 from provisioningserver.dhcp.leases import (
     check_lease_changes,
+    parse_leases_file,
     record_lease_state,
     update_leases,
     upload_leases,
@@ -48,8 +50,16 @@ class TestUpdateLeases(TestCase):
         """Create a leases dict with one, arbitrary lease in it."""
         return {factory.getRandomIPAddress(): factory.getRandomMACAddress()}
 
+    def redirect_parser(self, path):
+        """Make the leases parser read from a file at `path`."""
+        self.patch(leases_module, 'DHCP_LEASES_FILE', path)
+
     def fake_leases_file(self, leases=None, age=None):
-        """Create a fake leases file.
+        """Fake the presence of a leases file.
+
+        This does not go through the leases parser.  It patches out the
+        leases parser with a fake that returns the lease data you pass in
+        here.
 
         :param leases: Dict of leases (mapping IP addresses to MACs).
         :param age: Number of seconds since last modification to leases file.
@@ -62,10 +72,22 @@ class TestUpdateLeases(TestCase):
         if age is not None:
             age_file(leases_file, age)
         timestamp = get_write_time(leases_file)
-        self.patch(leases_module, 'DHCP_LEASES_FILE', leases_file)
-        # TODO: We don't have a lease-file parser yet.  For now, just
-        # fake up a "parser" that returns the given data.
-        self.patch(leases_module, 'parse_leases', lambda: (timestamp, leases))
+        self.redirect_parser(leases_file)
+        self.patch(
+            leases_module, 'parse_leases_file', lambda: (timestamp, leases))
+        return leases_file
+
+    def write_leases_file(self, contents):
+        """Create a leases file, and cause the parser to read from it.
+
+        This patches out the leases parser to read from the new file.
+
+        :param contents: Text contents for the leases file.
+        :return: Path of temporary leases file.
+        """
+        leases_file = self.make_file(
+            contents=dedent(contents).encode('utf-8'))
+        self.redirect_parser(leases_file)
         return leases_file
 
     def test_check_lease_changes_returns_tuple_if_no_state_cached(self):
@@ -90,7 +112,7 @@ class TestUpdateLeases(TestCase):
     def test_check_lease_changes_does_not_parse_unchanged_leases_file(self):
         parser = FakeMethod()
         leases_file = self.fake_leases_file()
-        self.patch(leases_module, 'parse_leases', parser)
+        self.patch(leases_module, 'parse_leases_file', parser)
         record_lease_state(get_write_time(leases_file), {})
         update_leases()
         self.assertSequenceEqual([], parser.calls)
@@ -186,3 +208,22 @@ class TestUpdateLeases(TestCase):
         except StopExecuting:
             pass
         self.assertIsNone(check_lease_changes())
+
+    def test_parse_leases_file_parses_leases(self):
+        params = {
+            'ip': factory.getRandomIPAddress(),
+            'mac': factory.getRandomMACAddress(),
+        }
+        leases_file = self.write_leases_file("""\
+            lease %(ip)s {
+                starts 5 2010/01/01 00:00:01;
+                ends never;
+                tstp 6 2010/01/02 05:00:00;
+                tsfp 6 2010/01/02 05:00:00;
+                binding state free;
+                hardware ethernet %(mac)s;
+            }
+            """ % params)
+        self.assertEqual(
+            (get_write_time(leases_file), {params['ip']: params['mac']}),
+            parse_leases_file())

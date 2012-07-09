@@ -32,9 +32,13 @@ __all__ = [
     ]
 
 
-from os import stat
+from os import (
+    fstat,
+    stat,
+    )
 
 from celeryconfig import DHCP_LEASES_FILE
+from provisioningserver.dhcp.leases_parser import parse_leases
 
 # Modification time on last-processed leases file.
 recorded_leases_time = None
@@ -48,21 +52,23 @@ def get_leases_timestamp():
     return stat(DHCP_LEASES_FILE).st_mtime
 
 
-def parse_leases():
+def parse_leases_file():
     """Parse the DHCP leases file.
 
     :return: A tuple: (timestamp, leases).  The `timestamp` is the last
         modification time of the leases file, and `leases` is a dict
         mapping leased IP addresses to their associated MAC addresses.
     """
-    # TODO: Implement leases-file parser here.
+    with open(DHCP_LEASES_FILE, 'rb') as leases_file:
+        contents = leases_file.read().decode('utf-8')
+        return fstat(leases_file.fileno()).st_mtime, parse_leases(contents)
 
 
 def check_lease_changes():
     """Has the DHCP leases file changed in any significant way?"""
     if get_leases_timestamp() == recorded_leases_time:
         return None
-    timestamp, leases = parse_leases()
+    timestamp, leases = parse_leases_file()
     if leases == recorded_leases:
         return None
     else:
@@ -96,7 +102,7 @@ def upload_leases():
     server restarts, or zone-file update commands getting lost on their
     way to the DNS server.
     """
-    timestamp, leases = parse_leases()
+    timestamp, leases = parse_leases_file()
     record_lease_state(timestamp, leases)
     send_leases(leases)
 
