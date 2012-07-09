@@ -13,7 +13,6 @@ __metaclass__ = type
 __all__ = []
 
 from getpass import getuser
-from os import getcwd
 
 from formencode import Schema
 from formencode.validators import (
@@ -24,6 +23,7 @@ from formencode.validators import (
     )
 from provisioningserver.amqpclient import AMQFactory
 from provisioningserver.cobblerclient import CobblerSession
+from provisioningserver.pxe.tftppath import locate_tftp_path
 from provisioningserver.remote import ProvisioningAPI_XMLRPC
 from provisioningserver.services import (
     LogService,
@@ -150,7 +150,7 @@ class ConfigTFTP(Schema):
 
     if_key_missing = None
 
-    root = String(if_missing=getcwd())
+    root = String(if_missing=locate_tftp_path())
     port = Int(min=1, max=65535, if_missing=5244)
     generator = URL(
         add_http=True, require_tld=False,

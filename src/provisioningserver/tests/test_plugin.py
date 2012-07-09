@@ -31,6 +31,7 @@ from provisioningserver.plugin import (
     ProvisioningServiceMaker,
     SingleUsernamePasswordChecker,
     )
+from provisioningserver.pxe.tftppath import locate_tftp_path
 from provisioningserver.testing.fakecobbler import make_fake_cobbler_session
 from provisioningserver.tftp import TFTPBackend
 from testtools.deferredruntest import (
@@ -86,7 +87,7 @@ class TestConfig(TestCase):
             'tftp': {
                 'generator': 'http://localhost:5243/api/1.0/pxeconfig',
                 'port': 5244,
-                'root': os.getcwd(),
+                'root': locate_tftp_path(),
                 },
             'interface': '127.0.0.1',
             'port': 5241,
