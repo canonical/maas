@@ -56,10 +56,10 @@ class POWER_TYPE:
     WAKE_ON_LAN = 'ether_wake'
 
     # IPMI (Intelligent Platform Management Interface).
-    IPMI = 'ipmi'
+    IPMI = 'ipmitool'
 
     # IPMI over LAN.
-    IPMI_LAN = 'ipmi_lan'
+    IPMI_LAN = 'ipmilan'
 
 
 POWER_TYPE_CHOICES = (
