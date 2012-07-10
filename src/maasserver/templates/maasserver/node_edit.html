@@ -44,7 +44,7 @@
         <a title="Delete mac address"
            class="icon"
            href="{% url 'mac-delete' macaddress.node.system_id macaddress.mac_address %}">
-          <img src="/static/img/delete.png" alt="delete"/>
+          <img src="{{ STATIC_URL }}img/delete.png" alt="delete" />
         </a>
         </p>
         {% empty %}
@@ -54,7 +54,7 @@
       <li>
         <a class="add-link add-mac-form"
            href="{% url 'mac-add' node.system_id %}">
-          <img src="/static/img/inline_add.png" alt="+" class="icon"/>
+          <img src="{{ STATIC_URL }}img/inline_add.png" alt="+" class="icon" />
           Add additional MAC address
         </a>
       </li>
