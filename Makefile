@@ -173,7 +173,7 @@ endef
 # Development services.
 #
 
-service_names := celeryd database pserv reloader txlongpoll web webapp
+service_names := celeryd database dns pserv reloader txlongpoll web webapp
 services := $(patsubst %,services/%/,$(service_names))
 
 run:
@@ -245,6 +245,8 @@ services/%/@supervise: services/%/@deps
 	@while ! $(svok) $(@D); do sleep 0.1; done
 
 # Dependencies for individual services.
+
+services/dns/@deps: bin/py
 
 services/celeryd/@deps:
 
