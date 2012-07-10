@@ -37,7 +37,7 @@ class DNSConfigFail(Exception):
     """Raised if there's a problem with a DNS config."""
 
 
-def generate_rndc():
+def generate_rndc(port=953, key_name='rndc-maas-key'):
     """Use `rndc-confgen` (from bind9utils) to generate a rndc+named
     configuration.
 
@@ -50,7 +50,7 @@ def generate_rndc():
     # non-blocking.
     rndc_content = check_output(
         ['rndc-confgen', '-b', '256', '-r', '/dev/urandom',
-         '-k', 'rndc-maas-key'])
+         '-k', key_name, '-p', str(port)])
     # Extract from the result the part which corresponds to the named
     # configuration.
     start_marker = (
