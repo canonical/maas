@@ -44,8 +44,8 @@ class NodeGroup(TimestampedModel):
 
     objects = NodeGroupManager()
 
-    name = CharField(
-        max_length=80, unique=True, editable=True, default="")
+    # Name for the node group's DNS zone.
+    name = CharField(max_length=80, unique=True, editable=True, default="")
 
     api_token = ForeignKey(Token, null=False, editable=False, unique=True)
     api_key = CharField(
