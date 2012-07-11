@@ -49,6 +49,7 @@ from maasserver.exceptions import NodeStateViolation
 from maasserver.fields import JSONObjectField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.config import Config
+from maasserver.models.nodegroup import NodeGroup
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils import get_db_state
 from piston.models import Token
@@ -372,6 +373,10 @@ class Node(CleanSave, TimestampedModel):
     error = CharField(max_length=255, blank=True, default='')
 
     netboot = BooleanField(default=True)
+
+    nodegroup = ForeignKey(
+        NodeGroup, default=None, blank=True, null=True,
+        editable=False)
 
     objects = NodeManager()
 
