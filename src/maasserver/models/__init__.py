@@ -12,6 +12,7 @@ from __future__ import (
 __metaclass__ = type
 __all__ = [
     'Config',
+    'DHCPLease',
     'FileStorage',
     'logger',
     'MACAddress',
@@ -29,6 +30,7 @@ from django.contrib.auth.models import User
 from django.db.models.signals import post_save
 from maasserver.enum import NODE_PERMISSION
 from maasserver.models.config import Config
+from maasserver.models.dhcplease import DHCPLease
 from maasserver.models.filestorage import FileStorage
 from maasserver.models.macaddress import MACAddress
 from maasserver.models.node import Node
@@ -45,7 +47,9 @@ logger = getLogger('maasserver')
 
 # Suppress warning about symbols being imported, but only used for
 # export in __all__.
-ignore_unused(Config, FileStorage, MACAddress, NodeGroup, SSHKey, UserProfile)
+ignore_unused(
+    Config, DHCPLease, FileStorage, MACAddress, NodeGroup, SSHKey,
+    UserProfile)
 
 
 # Connect the 'create_user' method to the post save signal of User.

@@ -24,6 +24,7 @@ from maasserver.enum import (
     NODE_STATUS,
     )
 from maasserver.models import (
+    DHCPLease,
     FileStorage,
     MACAddress,
     Node,
@@ -155,6 +156,18 @@ class Factory(maastesting.factory.Factory):
         mac = MACAddress(mac_address=address, node=node)
         mac.save()
         return mac
+
+    def make_dhcp_lease(self, nodegroup=None, ip=None, mac=None):
+        """Create a :class:`DHCPLease`."""
+        if nodegroup is None:
+            nodegroup = self.make_node_group()
+        if ip is None:
+            ip = self.getRandomIPAddress()
+        if mac is None:
+            mac = self.getRandomMACAddress()
+        lease = DHCPLease(nodegroup=nodegroup, ip=ip, mac=mac)
+        lease.save()
+        return lease
 
     def make_user(self, username=None, password=None, email=None):
         if username is None:
