@@ -99,5 +99,9 @@ COMMISSIONING_SCRIPT = os.path.join(
     DEV_ROOT_DIRECTORY, 'etc/maas/commissioning-user-data')
 
 
+# Set up celery to use the demo settings.
+os.environ['CELERY_CONFIG_MODULE'] = 'democeleryconfig'
+
+
 # Allow the user to override settings in maas_local_settings.
 import_local_settings()

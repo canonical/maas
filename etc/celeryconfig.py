@@ -15,7 +15,6 @@ from __future__ import (
 
 __metaclass__ = type
 
-import os
 
 from maas import import_settings
 
@@ -31,7 +30,7 @@ PXE_TEMPLATES_DIR = None
 TFTPROOT = "/var/lib/tftpboot"
 
 # Location of MAAS' bind configuration files.
-DNS_CONFIG_DIR = os.path.join(os.sep, 'var', 'cache', 'bind', 'maas')
+DNS_CONFIG_DIR = '/var/cache/bind/maas'
 
 # DHCP leases file, as maintained by ISC dhcpd.
 DHCP_LEASES_FILE = '/var/lib/dhcp/dhcpd.leases'
