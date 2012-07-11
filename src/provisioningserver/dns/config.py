@@ -180,6 +180,9 @@ class DNSConfig(DNSConfigBase):
             'named_rndc_conf_path':  get_named_rndc_conf_path()
         }
 
+    def get_include_snippet(self):
+        return '\ninclude "%s";\n' % self.target_path
+
 
 class InactiveDNSConfig(DNSConfig):
     """A specialized version of DNSConfig that simply writes a blank/empty

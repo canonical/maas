@@ -18,7 +18,10 @@ import random
 from celery.conf import conf
 from maastesting.factory import factory
 from maastesting.fakemethod import FakeMethod
-from maastesting.matchers import ContainsAll
+from maastesting.matchers import (
+    ContainsAll,
+    MatchesAll,
+    )
 from maastesting.testcase import TestCase
 from provisioningserver.dns import config
 from provisioningserver.dns.config import (
@@ -35,7 +38,12 @@ from provisioningserver.dns.config import (
     TEMPLATES_PATH,
     )
 import tempita
-from testtools.matchers import FileContains
+from testtools.matchers import (
+    Contains,
+    EndsWith,
+    FileContains,
+    StartsWith,
+    )
 
 
 class TestRNDCUtilities(TestCase):
@@ -124,6 +132,19 @@ class TestDNSConfig(TestCase):
                         'zone "%s.rev"' % reverse_zone_names[0],
                         MAAS_NAMED_RNDC_CONF_NAME,
                     ])))
+
+    def test_get_include_snippet_returns_snippet(self):
+        target_dir = self.make_dir()
+        self.patch(DNSConfig, 'target_dir', target_dir)
+        dnsconfig = DNSConfig()
+        snippet = dnsconfig.get_include_snippet()
+        self.assertThat(
+            snippet,
+            MatchesAll(
+                StartsWith('\n'),
+                EndsWith('\n'),
+                Contains(target_dir),
+                Contains('include "%s"' % dnsconfig.target_path)))
 
 
 class TestInactiveDNSConfig(TestCase):
