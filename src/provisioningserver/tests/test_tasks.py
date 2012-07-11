@@ -22,7 +22,12 @@ from maastesting.fakemethod import FakeMethod
 from maastesting.matchers import ContainsAll
 from maastesting.testcase import TestCase
 from provisioningserver import tasks
-from provisioningserver.dns.config import conf
+from provisioningserver.dns.config import (
+    conf,
+    MAAS_NAMED_CONF_NAME,
+    MAAS_NAMED_RNDC_CONF_NAME,
+    MAAS_RNDC_CONF_NAME,
+    )
 from provisioningserver.enum import POWER_TYPE
 from provisioningserver.power.poweraction import PowerActionFail
 from provisioningserver.tasks import (
@@ -33,6 +38,7 @@ from provisioningserver.tasks import (
     setup_rndc_configuration,
     write_dns_config,
     write_dns_zone_config,
+    write_full_dns_config,
     write_tftp_config_for_node,
     )
 from testresources import FixtureResource
@@ -123,13 +129,13 @@ class TestDNSTasks(TestCase):
         self.patch(tasks, 'execute_rndc_command', self.rndc_recorder)
 
     def test_write_dns_config_writes_file(self):
-        zone_ids = [random.randint(1, 100), random.randint(1, 100)]
-        result = write_dns_config.delay(inactive=False, zone_ids=zone_ids)
+        zone_names = [random.randint(1, 100), random.randint(1, 100)]
+        result = write_dns_config.delay(inactive=False, zone_names=zone_names)
 
         self.assertThat(
             (
                 result.successful(),
-                os.path.join(self.dns_conf_dir, 'named.conf'),
+                os.path.join(self.dns_conf_dir, MAAS_NAMED_CONF_NAME),
                 self.rndc_recorder.calls,
             ),
             MatchesListwise(
@@ -146,7 +152,7 @@ class TestDNSTasks(TestCase):
         self.assertThat(
             (
                 result.successful(),
-                os.path.join(self.dns_conf_dir, 'named.conf'),
+                os.path.join(self.dns_conf_dir, MAAS_NAMED_CONF_NAME),
                 self.rndc_recorder.calls,
             ),
             MatchesListwise(
@@ -158,22 +164,22 @@ class TestDNSTasks(TestCase):
             result)
 
     def test_write_dns_zone_config_writes_file(self):
-        zone_id = random.randint(1, 100)
+        zone_name = factory.getRandomString()
         result = write_dns_zone_config.delay(
-            zone_id=zone_id, maas_server=factory.getRandomString(),
+            zone_name=zone_name, domain=factory.getRandomString(),
             serial=random.randint(1, 100), hosts=[])
 
         self.assertThat(
             (
                 result.successful(),
-                os.path.join(self.dns_conf_dir, 'zone.%d' % zone_id),
+                os.path.join(self.dns_conf_dir, 'zone.%s' % zone_name),
                 self.rndc_recorder.calls,
             ),
             MatchesListwise(
                 (
                     Equals(True),
                     FileExists(),
-                    Equals([(('reload', zone_id), {})]),
+                    Equals([(('reload', zone_name), {})]),
                 )),
             result)
 
@@ -183,8 +189,9 @@ class TestDNSTasks(TestCase):
         self.assertThat(
             (
                 result.successful(),
-                os.path.join(self.dns_conf_dir, 'rndc.conf'),
-                os.path.join(self.dns_conf_dir, 'named.conf.rndc'),
+                os.path.join(self.dns_conf_dir, MAAS_RNDC_CONF_NAME),
+                os.path.join(
+                    self.dns_conf_dir, MAAS_NAMED_RNDC_CONF_NAME),
                 self.rndc_recorder.calls,
             ),
             MatchesListwise(
@@ -208,13 +215,46 @@ class TestDNSTasks(TestCase):
                 )))
 
     def test_reload_zone_config_issues_zone_reload_command(self):
-        zone_id = random.randint(1, 100)
-        result = reload_zone_config.delay(zone_id)
+        zone_name = factory.getRandomString()
+        result = reload_zone_config.delay(zone_name)
 
         self.assertThat(
             (result.successful(), self.rndc_recorder.calls),
             MatchesListwise(
                 (
                     Equals(True),
-                    Equals([(('reload', zone_id), {})]),
+                    Equals([(('reload', zone_name), {})]),
+                )))
+
+    def test_write_full_dns_config_sets_up_config(self):
+        # write_full_dns_config writes the config file, writes
+        # the zone files, and reloads the dns service.
+        hostname = factory.getRandomString()
+        ip = factory.getRandomIPAddress()
+        zone_name = factory.getRandomString()
+        domain = factory.getRandomString()
+        zones = {
+            zone_name: {
+                'serial': random.randint(1, 100),
+                'hosts': [{'hostname': hostname, 'ip': ip}],
+                'domain': domain,
+            }
+        }
+        result = write_full_dns_config.delay(zones=zones)
+
+        self.assertThat(
+            (
+                result.successful(),
+                self.rndc_recorder.calls,
+                os.path.join(
+                    self.dns_conf_dir, 'zone.%s' % zone_name),
+                os.path.join(
+                    self.dns_conf_dir, MAAS_NAMED_CONF_NAME),
+            ),
+            MatchesListwise(
+                (
+                    Equals(True),
+                    Equals([(('reload',), {})]),
+                    FileExists(),
+                    FileExists(),
                 )))

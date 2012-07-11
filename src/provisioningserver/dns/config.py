@@ -33,6 +33,11 @@ from provisioningserver.utils import atomic_write
 import tempita
 
 
+MAAS_NAMED_CONF_NAME = 'named.conf.maas'
+MAAS_NAMED_RNDC_CONF_NAME = 'named.conf.rndc.maas'
+MAAS_RNDC_CONF_NAME = 'rndc.conf.maas'
+
+
 class DNSConfigFail(Exception):
     """Raised if there's a problem with a DNS config."""
 
@@ -65,16 +70,18 @@ def generate_rndc(port=953, key_name='rndc-maas-key'):
 
 
 def get_named_rndc_conf_path():
-    return os.path.join(conf.DNS_CONFIG_DIR, 'named.conf.rndc')
+    return os.path.join(
+        conf.DNS_CONFIG_DIR, MAAS_NAMED_RNDC_CONF_NAME)
 
 
 def get_rndc_conf_path():
-    return os.path.join(conf.DNS_CONFIG_DIR, 'rndc.conf')
+    return os.path.join(conf.DNS_CONFIG_DIR, MAAS_RNDC_CONF_NAME)
 
 
 def setup_rndc():
     """Writes out the two files needed to enable MAAS to use rndc commands:
-    rndc.conf and named.conf.rndc, both stored in conf.DNS_CONFIG_DIR.
+    MAAS_RNDC_CONF_NAME and MAAS_NAMED_RNDC_CONF_NAME, both stored in
+    conf.DNS_CONFIG_DIR.
     """
     rndc_content, named_content = generate_rndc()
 
@@ -89,7 +96,8 @@ def setup_rndc():
 
 def execute_rndc_command(*arguments):
     """Execute a rndc command."""
-    rndc_conf = os.path.join(conf.DNS_CONFIG_DIR, 'rndc.conf')
+    rndc_conf = os.path.join(
+        conf.DNS_CONFIG_DIR, MAAS_RNDC_CONF_NAME)
     check_call(['rndc', '-c', rndc_conf] + map(str, arguments))
 
 
@@ -146,11 +154,11 @@ class DNSConfig(DNSConfigBase):
     """
 
     template_file_name = 'named.conf.template'
-    target_file_name = 'named.conf'
+    target_file_name = MAAS_NAMED_CONF_NAME
 
-    def __init__(self, zone_ids=(), reverse_zone_ids=()):
-        self.zone_ids = zone_ids
-        self.reverse_zone_ids = reverse_zone_ids
+    def __init__(self, zone_names=(), reverse_zone_names=()):
+        self.zone_names = zone_names
+        self.reverse_zone_names = reverse_zone_names
 
     @property
     def template_path(self):
@@ -162,10 +170,12 @@ class DNSConfig(DNSConfigBase):
 
     def get_extra_context(self):
         return {
-            'zones': [DNSZoneConfig(zone_id) for zone_id in self.zone_ids],
+            'zones': [
+                DNSZoneConfig(zone_name)
+                for zone_name in self.zone_names],
             'rev_zones': [
-                RevDNSZoneConfig(reverse_zone_id)
-                for reverse_zone_id in self.reverse_zone_ids],
+                RevDNSZoneConfig(reverse_zone_name)
+                for reverse_zone_name in self.reverse_zone_names],
             'DNS_CONFIG_DIR': conf.DNS_CONFIG_DIR,
             'named_rndc_conf_path':  get_named_rndc_conf_path()
         }
@@ -185,15 +195,15 @@ class DNSZoneConfig(DNSConfig):
     """A specialized version of DNSConfig that writes zone files."""
 
     template_file_name = 'zone.template'
-    zone_name_string = '%d'
-    zone_filename_string = 'zone.%d'
+    zone_name_string = '%s'
+    zone_filename_string = 'zone.%s'
 
-    def __init__(self, zone_id):
-        self.zone_id = zone_id
+    def __init__(self, zone_name):
+        self.zone_name = zone_name
 
     @property
     def name(self):
-        return self.zone_name_string % self.zone_id
+        return self.zone_name_string % self.zone_name
 
     @property
     def template_path(self):
@@ -202,7 +212,7 @@ class DNSZoneConfig(DNSConfig):
     @property
     def target_path(self):
         return os.path.join(
-            self.target_dir, self.zone_filename_string % self.zone_id)
+            self.target_dir, self.zone_filename_string % self.zone_name)
 
     def get_extra_context(self):
         return {}
@@ -215,5 +225,5 @@ class RevDNSZoneConfig(DNSZoneConfig):
 
     template_file_name = 'zone.template'
     # TODO: create a proper reverse zone template, create test for this class.
-    zone_name_string = '%d.rev'
-    zone_filename_string = 'zone.rev.%d'
+    zone_name_string = '%s.rev'
+    zone_filename_string = 'zone.rev.%s'

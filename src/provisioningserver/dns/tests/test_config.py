@@ -28,6 +28,9 @@ from provisioningserver.dns.config import (
     execute_rndc_command,
     generate_rndc,
     InactiveDNSConfig,
+    MAAS_NAMED_CONF_NAME,
+    MAAS_NAMED_RNDC_CONF_NAME,
+    MAAS_RNDC_CONF_NAME,
     setup_rndc,
     TEMPLATES_PATH,
     )
@@ -50,8 +53,8 @@ class TestRNDCUtilities(TestCase):
         self.patch(conf, 'DNS_CONFIG_DIR', dns_conf_dir)
         setup_rndc()
         expected = (
-            ('rndc.conf', '# Start of rndc.conf'),
-            ('named.conf.rndc', 'controls {'))
+            (MAAS_RNDC_CONF_NAME, '# Start of rndc.conf'),
+            (MAAS_NAMED_RNDC_CONF_NAME, 'controls {'))
         for filename, content in expected:
             with open(os.path.join(dns_conf_dir, filename), "rb") as stream:
                 conf_content = stream.read()
@@ -64,7 +67,7 @@ class TestRNDCUtilities(TestCase):
         self.patch(conf, 'DNS_CONFIG_DIR', fake_dir)
         command = factory.getRandomString()
         execute_rndc_command(command)
-        rndc_conf_path = os.path.join(fake_dir, 'rndc.conf')
+        rndc_conf_path = os.path.join(fake_dir, MAAS_RNDC_CONF_NAME)
         expected_command = ['rndc', '-c', rndc_conf_path, command]
         self.assertSequenceEqual(
             [((expected_command,), {})],
@@ -79,7 +82,7 @@ class TestDNSConfig(TestCase):
         self.assertEqual(
             (
                 os.path.join(TEMPLATES_PATH, 'named.conf.template'),
-                os.path.join(conf.DNS_CONFIG_DIR, 'named.conf')
+                os.path.join(conf.DNS_CONFIG_DIR, MAAS_NAMED_CONF_NAME)
             ),
             (dnsconfig.template_path, dnsconfig.target_path))
 
@@ -107,19 +110,19 @@ class TestDNSConfig(TestCase):
     def test_write_config_writes_config(self):
         target_dir = self.make_dir()
         self.patch(DNSConfig, 'target_dir', target_dir)
-        zone_ids = [random.randint(0, 100)]
-        reverse_zone_ids = [random.randint(0, 100)]
+        zone_names = [factory.getRandomString()]
+        reverse_zone_names = [factory.getRandomString()]
         dnsconfig = DNSConfig(
-            zone_ids=zone_ids, reverse_zone_ids=reverse_zone_ids)
+            zone_names=zone_names, reverse_zone_names=reverse_zone_names)
         dnsconfig.write_config()
         self.assertThat(
-            os.path.join(target_dir, 'named.conf'),
+            os.path.join(target_dir, MAAS_NAMED_CONF_NAME),
             FileContains(
                 matcher=ContainsAll(
                     [
-                        'zone "%d"' % zone_ids[0],
-                        'zone "%d.rev"' % reverse_zone_ids[0],
-                        'named.conf.rndc',
+                        'zone "%s"' % zone_names[0],
+                        'zone "%s.rev"' % reverse_zone_names[0],
+                        MAAS_NAMED_RNDC_CONF_NAME,
                     ])))
 
 
@@ -132,45 +135,46 @@ class TestInactiveDNSConfig(TestCase):
         dnsconfig = InactiveDNSConfig()
         dnsconfig.write_config()
         self.assertThat(
-            os.path.join(target_dir, 'named.conf'), FileContains(''))
+            os.path.join(target_dir, MAAS_NAMED_CONF_NAME),
+            FileContains(''))
 
 
 class TestDNSZoneConfig(TestCase):
     """Tests for DNSZoneConfig."""
 
     def test_name_returns_zone_name(self):
-        zone_id = random.randint(0, 100)
-        dnszoneconfig = DNSZoneConfig(zone_id)
-        self.assertEqual(dnszoneconfig.name, '%d' % zone_id)
+        zone_name = factory.getRandomString()
+        dnszoneconfig = DNSZoneConfig(zone_name)
+        self.assertEqual(dnszoneconfig.name, '%s' % zone_name)
 
     def test_DNSZoneConfig_fields(self):
-        zone_id = random.randint(0, 100)
-        dnszoneconfig = DNSZoneConfig(zone_id)
+        zone_name = factory.getRandomString()
+        dnszoneconfig = DNSZoneConfig(zone_name)
         self.assertEqual(
             (
                 os.path.join(TEMPLATES_PATH, 'zone.template'),
-                os.path.join(conf.DNS_CONFIG_DIR, 'zone.%d' % zone_id)
+                os.path.join(conf.DNS_CONFIG_DIR, 'zone.%s' % zone_name)
             ),
             (dnszoneconfig.template_path, dnszoneconfig.target_path))
 
     def test_write_config_writes_zone_config(self):
         target_dir = self.make_dir()
         self.patch(DNSConfig, 'target_dir', target_dir)
-        zone_id = random.randint(0, 100)
-        dnszoneconfig = DNSZoneConfig(zone_id)
-        maas_server = factory.getRandomString()
+        zone_name = factory.getRandomString()
+        dnszoneconfig = DNSZoneConfig(zone_name)
+        domain = factory.getRandomString()
         serial = random.randint(1, 100)
         hosts = [{
             'ip': factory.getRandomIPAddress(),
             'hostname': factory.getRandomString()}]
         dnszoneconfig.write_config(
-            maas_server=maas_server, serial=serial, hosts=hosts)
+            domain=domain, serial=serial, hosts=hosts)
         self.assertThat(
-            os.path.join(target_dir, 'zone.%d' % zone_id),
+            os.path.join(target_dir, 'zone.%s' % zone_name),
             FileContains(
                 matcher=ContainsAll(
                     [
-                        'IN  NS  %s.' % maas_server,
+                        'IN  NS  %s.' % domain,
                         '%s IN A %s' % (
                             hosts[0]['hostname'], hosts[0]['ip']),
                     ])))

@@ -1,5 +1,5 @@
 $TTL    300
-@   IN    SOA {{maas_server}}. nobody.example.com. (
+@   IN    SOA {{domain}}. nobody.example.com. (
               {{serial}} ; serial
               600 ; Refresh
               1800 ; Retry
@@ -7,7 +7,7 @@ $TTL    300
               300 ; TTL
               )
 
-    IN  NS  {{maas_server}}.
+    IN  NS  {{domain}}.
 {{for host in hosts}}
 {{host['hostname']}} IN A {{host['ip']}}
 {{endfor}}

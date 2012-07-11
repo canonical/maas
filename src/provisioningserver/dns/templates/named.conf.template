@@ -1,21 +1,5 @@
 include "{{named_rndc_conf_path}}";
 
-options {
-    listen-on port 53 { any; };
-    directory       "{{ DNS_CONFIG_DIR }}/";
-    dump-file       "{{ DNS_CONFIG_DIR }}/data/cache_dump.db";
-    statistics-file "{{ DNS_CONFIG_DIR }}/data/named_stats.txt";
-    memstatistics-file "{{ DNS_CONFIG_DIR }}/data/named_mem_stats.txt";
-    recursion yes;
-};
-
-logging {
-    channel default_debug {
-    file "data/named.run";
-    severity dynamic;
-    };
-};
-
 # Zone declarations
 {{for zone in zones}}
 zone "{{zone.name}}" {

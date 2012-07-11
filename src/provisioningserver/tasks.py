@@ -17,6 +17,7 @@ __all__ = [
     'reload_zone_config',
     'write_dns_config',
     'write_dns_zone_config',
+    'write_full_dns_config',
     'setup_rndc_configuration',
     ]
 
@@ -102,46 +103,80 @@ def reload_dns_config():
 
 
 @task
-def reload_zone_config(zone_id):
+def reload_zone_config(zone_name):
     """Use rndc to reload the DNS configuration for a zone."""
-    execute_rndc_command('reload', zone_id)
+    execute_rndc_command('reload', zone_name)
 
 
 @task
-def write_dns_config(inactive=False, zone_ids=(),
-                     reverse_zone_ids=(), **kwargs):
+def write_full_dns_config(zones=None, reverse_zones=None,
+                          **kwargs):
+    """Write out the DNS configuration files: the main configuration
+    file and the zone files.
+    :param zones: Mapping between zone names and the zone data used
+        to write the zone config files.
+    :type zones: dict
+    :param reverse_zones: Mapping between reverse zone names and the
+        reverse zone data used to write the reverse zone config
+        files.
+    :type reverse_zones: dict
+    :param **kwargs: Keyword args passed to DNSConfig.write_config()
+    """
+    if zones is None:
+        zones = {}
+    if reverse_zones is None:
+        reverse_zones = {}
+    # Write zone files.
+    for zone_name, zone_data in zones.items():
+        DNSZoneConfig(zone_name).write_config(**zone_data)
+    # TODO: Write reverse zone files.
+    # for zone_name, zone_data in zones.items():
+    #    DNSZoneConfig(zone_name).write_config(**zone_data)
+    # Write main config file.
+    config = DNSConfig(
+        zone_names=list(zones),
+        reverse_zone_names=list(reverse_zones))
+    config.write_config(**kwargs)
+    subtask(reload_dns_config.subtask()).delay()
+
+
+@task
+def write_dns_config(inactive=False, zone_names=(),
+                     reverse_zone_names=(), **kwargs):
     """Write out the DNS configuration file.
 
     :param inactive: Whether or not an inactive (i.e. blank)
         configuration should be written. False by default.
     :type inactive: boolean
-    :param zone_ids: List of zone ids to include as part of the main config.
-    :type zone_ids: list
-    :param reverse_zone_ids: List of reverse zone ids to include as part of
+    :param zone_names: List of zone names to include as part of the
+        main config.
+    :type zone_names: list
+    :param reverse_zone_names: List of reverse zone names to include as part of
         the main config.
-    :type reverse_zone_ids: list
+    :type reverse_zone_names: list
     :param **kwargs: Keyword args passed to DNSConfig.write_config()
     """
     if inactive:
         InactiveDNSConfig().write_config()
     else:
         config = DNSConfig(
-            zone_ids=zone_ids,
-            reverse_zone_ids=reverse_zone_ids)
+            zone_names=zone_names,
+            reverse_zone_names=reverse_zone_names)
         config.write_config(**kwargs)
     subtask(reload_dns_config.subtask()).delay()
 
 
 @task
-def write_dns_zone_config(zone_id, **kwargs):
+def write_dns_zone_config(zone_name, **kwargs):
     """Write out a DNS zone configuration file.
 
-    :param zone_id: The identifier of the zone to write the configuration for.
-    :type zone_id: int
+    :param zone_name: The identifier of the zone to write the configuration
+        for.
+    :type zone_name: basestring
     :param **kwargs: Keyword args passed to DNSZoneConfig.write_config()
     """
-    DNSZoneConfig(zone_id).write_config(**kwargs)
-    subtask(reload_zone_config.subtask(args=[zone_id])).delay()
+    DNSZoneConfig(zone_name).write_config(**kwargs)
+    subtask(reload_zone_config.subtask(args=[zone_name])).delay()
 
 
 @task
