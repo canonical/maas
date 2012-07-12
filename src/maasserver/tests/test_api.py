@@ -2273,3 +2273,38 @@ class TestPXEConfigAPI(AnonAPITestCase):
             for param in self.get_params()
             }
         self.assertEqual(expected, observed)
+
+
+class TestNodeGroupsAPI(APITestCase):
+
+    def test_nodegroups_index_lists_nodegroups(self):
+        # The nodegroups index lists node groups for the MAAS.
+        nodegroup = factory.make_node_group()
+        response = self.client.get(self.get_uri('nodegroups/'))
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertIn(nodegroup.name, json.loads(response.content))
+
+
+class TestNodeGroupAPI(APITestCase):
+
+    def test_GET_returns_node_group(self):
+        nodegroup = factory.make_node_group()
+        response = self.client.get(
+            self.get_uri('nodegroups/%s/' % nodegroup.name))
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(
+            nodegroup.name, json.loads(response.content).get('name'))
+
+    def test_GET_returns_404_for_unknown_node_group(self):
+        response = self.client.get(
+            self.get_uri('nodegroups/%s/' % factory.make_name('nodegroup')))
+        self.assertEqual(httplib.NOT_FOUND, response.status_code)
+
+
+class TestAnonNodeGroupsAPI(AnonAPITestCase):
+
+    def test_nodegroups_require_authentication(self):
+        nodegroup = factory.make_node_group()
+        response = self.client.get(
+            self.get_uri('nodegroups/%s/' % nodegroup.name))
+        self.assertEqual(httplib.UNAUTHORIZED, response.status_code)
