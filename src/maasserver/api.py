@@ -117,6 +117,7 @@ from maasserver.forms import (
     )
 from maasserver.models import (
     Config,
+    DHCPLease,
     FileStorage,
     MACAddress,
     Node,
@@ -847,7 +848,7 @@ class NodeGroupsHandler(BaseHandler):
 
     @classmethod
     def resource_uri(cls):
-        return ('nodegroup_handler', ())
+        return ('nodegroups_handler', [])
 
 
 @api_operations
@@ -863,7 +864,18 @@ class NodeGroupHandler(BaseHandler):
 
     @classmethod
     def resource_uri(cls, nodegroup):
-        return ('nodegroups_handler', (nodegroup, ))
+        if nodegroup is None:
+            name = 'name'
+        else:
+            name = nodegroup.name
+        return ('nodegroup_handler', [name])
+
+    @api_exported('POST')
+    def update_leases(self, request, name):
+        leases = get_mandatory_param(request.data, 'leases')
+        nodegroup = get_object_or_404(NodeGroup, name=name)
+        DHCPLease.objects.update_leases(nodegroup, json.loads(leases))
+        return HttpResponse("Leases updated.", status=httplib.OK)
 
 
 @api_operations

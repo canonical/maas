@@ -73,10 +73,8 @@ urlpatterns += patterns('',
     url(r'nodes/$', nodes_handler, name='nodes_handler'),
     url(
         r'nodegroups/(?P<name>[^/]+)/$',
-        nodegroup_handler, name='nodegroup_handler'),
-    url(
-        r'nodegroups/$',
-        nodegroups_handler, name='nodegroups_handler'),
+        nodegroup_handler, name='nodegroup'),
+    url(r'nodegroups/$', nodegroups_handler, name='nodegroups'),
     url(r'files/$', files_handler, name='files_handler'),
     url(r'account/$', account_handler, name='account_handler'),
 )

@@ -51,6 +51,7 @@ from maasserver.enum import (
 from maasserver.exceptions import Unauthorized
 from maasserver.models import (
     Config,
+    DHCPLease,
     MACAddress,
     Node,
     )
@@ -2277,20 +2278,28 @@ class TestPXEConfigAPI(AnonAPITestCase):
 
 class TestNodeGroupsAPI(APITestCase):
 
+    def test_reverse_points_to_nodegroups_api(self):
+        self.assertEqual(self.get_uri('nodegroups/'), reverse('nodegroups'))
+
     def test_nodegroups_index_lists_nodegroups(self):
         # The nodegroups index lists node groups for the MAAS.
         nodegroup = factory.make_node_group()
-        response = self.client.get(self.get_uri('nodegroups/'))
+        response = self.client.get(reverse('nodegroups'))
         self.assertEqual(httplib.OK, response.status_code)
         self.assertIn(nodegroup.name, json.loads(response.content))
 
 
 class TestNodeGroupAPI(APITestCase):
 
+    def test_reverse_points_to_nodegroup(self):
+        nodegroup = factory.make_node_group()
+        self.assertEqual(
+            self.get_uri('nodegroups/%s/' % nodegroup.name),
+            reverse('nodegroup', args=[nodegroup.name]))
+
     def test_GET_returns_node_group(self):
         nodegroup = factory.make_node_group()
-        response = self.client.get(
-            self.get_uri('nodegroups/%s/' % nodegroup.name))
+        response = self.client.get(reverse('nodegroup', args=[nodegroup.name]))
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(
             nodegroup.name, json.loads(response.content).get('name'))
@@ -2300,11 +2309,42 @@ class TestNodeGroupAPI(APITestCase):
             self.get_uri('nodegroups/%s/' % factory.make_name('nodegroup')))
         self.assertEqual(httplib.NOT_FOUND, response.status_code)
 
+    def test_update_leases_processes_empty_leases_dict(self):
+        nodegroup = factory.make_node_group()
+        factory.make_dhcp_lease(nodegroup=nodegroup)
+        response = self.client.post(
+            reverse('nodegroup', args=[nodegroup.name]),
+            {
+                'op': 'update_leases',
+                'leases': json.dumps({}),
+            })
+        self.assertEqual(
+            (httplib.OK, "Leases updated."),
+            (response.status_code, response.content))
+        self.assertItemsEqual(
+            [], DHCPLease.objects.filter(nodegroup=nodegroup))
+
+    def test_update_leases_stores_leases(self):
+        nodegroup = factory.make_node_group()
+        ip = factory.getRandomIPAddress()
+        mac = factory.getRandomMACAddress()
+        response = self.client.post(
+            reverse('nodegroup', args=[nodegroup.name]),
+            {
+                'op': 'update_leases',
+                'leases': json.dumps({ip: mac}),
+            })
+        self.assertEqual(
+            (httplib.OK, "Leases updated."),
+            (response.status_code, response.content))
+        self.assertEqual([ip], [
+            lease.ip
+            for lease in DHCPLease.objects.filter(nodegroup=nodegroup)])
+
 
 class TestAnonNodeGroupsAPI(AnonAPITestCase):
 
-    def test_nodegroups_require_authentication(self):
+    def test_nodegroup_requires_authentication(self):
         nodegroup = factory.make_node_group()
-        response = self.client.get(
-            self.get_uri('nodegroups/%s/' % nodegroup.name))
+        response = self.client.get(reverse('nodegroup', args=[nodegroup.name]))
         self.assertEqual(httplib.UNAUTHORIZED, response.status_code)
