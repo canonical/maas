@@ -96,6 +96,37 @@ class DHCPLeaseManager(Manager):
         self._delete_obsolete_leases(nodegroup, leases)
         self._add_missing_leases(nodegroup, leases)
 
+    def get_hostname_ip_mapping(self, nodegroup):
+        """Return a mapping {hostnames -> ips} for the currently leased
+        IP addresses for the nodes in `nodegroup`.
+
+        This will consider only the first interface (i.e. the first
+        MAC Address) associated with each node withing the given
+        `nodegroup`.
+        """
+        cursor = connection.cursor()
+        # The subquery fetches the IDs of the first MAC Address for
+        # all the nodes in this nodegroup.
+        # Then the main query returns the hostname -> ip mapping for
+        # these MAC Addresses.
+        cursor.execute("""
+        SELECT node.hostname, lease.ip
+        FROM maasserver_macaddress as mac,
+             maasserver_node as node,
+             maasserver_dhcplease as lease
+        WHERE mac.id IN (
+            SELECT DISTINCT ON (node_id) mac.id
+            FROM maasserver_macaddress as mac,
+                 maasserver_node as node
+            WHERE node.nodegroup_id = %s AND mac.node_id = node.id
+            ORDER BY node_id, mac.id
+        )
+        AND mac.node_id = node.id
+        AND mac.mac_address = lease.mac
+        AND lease.nodegroup_id = %s
+        """, (nodegroup.id, nodegroup.id))
+        return dict(cursor.fetchall())
+
 
 class DHCPLease(CleanSave, Model):
     """A known mapping of an IP address to a MAC address.

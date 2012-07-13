@@ -134,3 +134,41 @@ class TestDHCPLeaseManager(TestCase):
                 new_ip: mac1,
             },
             map_leases(nodegroup))
+
+    def test_get_hostname_ip_mapping_returns_mapping(self):
+        nodegroup = factory.make_node_group()
+        expected_mapping = {}
+        for i in range(3):
+            node = factory.make_node(
+                nodegroup=nodegroup, set_hostname=True)
+            mac = factory.make_mac_address(node=node)
+            factory.make_mac_address(node=node)
+            lease = factory.make_dhcp_lease(
+                nodegroup=nodegroup, mac=mac.mac_address)
+            expected_mapping[node.hostname] = lease.ip
+        mapping = DHCPLease.objects.get_hostname_ip_mapping(nodegroup)
+        self.assertEqual(expected_mapping, mapping)
+
+    def test_get_hostname_ip_mapping_considers_only_first_mac(self):
+        nodegroup = factory.make_node_group()
+        node = factory.make_node(
+            nodegroup=nodegroup, set_hostname=True)
+        factory.make_mac_address(node=node)
+        second_mac = factory.make_mac_address(node=node)
+        # Create a lease for the second MAC Address.
+        factory.make_dhcp_lease(
+            nodegroup=nodegroup, mac=second_mac.mac_address)
+        mapping = DHCPLease.objects.get_hostname_ip_mapping(nodegroup)
+        self.assertEqual({}, mapping)
+
+    def test_get_hostname_ip_mapping_considers_given_nodegroup(self):
+        nodegroup = factory.make_node_group()
+        node = factory.make_node(
+            nodegroup=nodegroup, set_hostname=True)
+        mac = factory.make_mac_address(node=node)
+        factory.make_dhcp_lease(
+            nodegroup=nodegroup, mac=mac.mac_address)
+        another_nodegroup = factory.make_node_group()
+        mapping = DHCPLease.objects.get_hostname_ip_mapping(
+            another_nodegroup)
+        self.assertEqual({}, mapping)
