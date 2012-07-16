@@ -12,9 +12,10 @@ from __future__ import (
 __metaclass__ = type
 __all__ = [
     "ActionScript",
+    "atomic_write",
     "deferred",
     "ShellTemplate",
-    "atomic_write",
+    "incremental_write",
     "xmlrpc_export",
     ]
 
@@ -27,6 +28,7 @@ import signal
 from subprocess import CalledProcessError
 import sys
 import tempfile
+from time import time
 
 import tempita
 from twisted.internet.defer import maybeDeferred
@@ -82,6 +84,54 @@ def atomic_write(content, filename):
     # Rename the temporary file to `filename`, that operation is atomic on
     # POSIX systems.
     os.rename(temp_file, filename)
+
+
+def incremental_write(content, filename):
+    """Write the given `content` into the file `filename` and
+    increment the modification time by 1 sec.
+    """
+    old_mtime = None
+    if os.path.exists(filename):
+        old_mtime = os.stat(filename).st_mtime
+    atomic_write(content, filename)
+    increment_age(filename, old_mtime=old_mtime)
+
+
+def increment_age(filename, old_mtime=None, delta=1000):
+    """Increment the modification time by 1 sec compared to the given
+    `old_mtime`.
+
+    This function is used to manage the modification time of files
+    for which we need to see an increment in the modification time
+    each time the file is modified.  This is the case for DNS zone
+    files which only get properly reloaded if BIND sees that the
+    modification time is > to the time it has in its database.
+
+    Since the resolution of the modification time is one second,
+    we want to manually set the modification time in the past
+    the first time the file is written and increment the mod
+    time by 1 manually each time the file gets written again.
+
+    We also want to be careful not to set the modification time in
+    the future (mostly because BIND doesn't deal with that well).
+
+    Finally, note that the access time is set to the same value as
+    the modification time.
+    """
+    now = time()
+    if old_mtime is None:
+        # Set modification time in the past to have room for
+        # sub-second modifications.
+        new_mtime = now - delta
+    else:
+        # If the modification time can be incremented by 1 sec
+        # without being in the future, do it.  Otherwise we give
+        # up and set it to 'now'.
+        if old_mtime + 1 <= now:
+            new_mtime = old_mtime + 1
+        else:
+            new_mtime = old_mtime
+    os.utime(filename, (new_mtime, new_mtime))
 
 
 class Safe:
