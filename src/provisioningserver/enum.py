@@ -59,12 +59,12 @@ class POWER_TYPE:
     IPMI = 'ipmitool'
 
     # IPMI over LAN.
-    IPMI_LAN = 'ipmilan'
+    IPMI_LAN = 'ipmitool'
 
 
 POWER_TYPE_CHOICES = (
     (POWER_TYPE.VIRSH, "virsh (virtual systems)"),
     (POWER_TYPE.WAKE_ON_LAN, "Wake-on-LAN"),
-    (POWER_TYPE.IPMI, "IPMI"),
-    (POWER_TYPE.IPMI_LAN, "IPMI over LAN"),
+    (POWER_TYPE.IPMI, "IPMI v1.5 (LAN Interface)"),
+    (POWER_TYPE.IPMI_LAN, "IPMI v2.0 (RMCP+ LAN Interface)"),
     )

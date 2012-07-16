@@ -156,3 +156,21 @@ class TestPowerAction(TestCase):
             power_id='mysystem', username='me', virsh='echo')
         stdout, stderr = action.run_shell(script)
         self.assertIn("Got unknown power state from virsh", stderr)
+
+    def test_ipmi_checks_state(self):
+        action = PowerAction(POWER_TYPE.IPMI)
+        script = action.render_template(
+            action.get_template(), power_change='on',
+            power_address='mystystem', power_user='me', power_pass='me',
+            power_ipmi_interface='lan', ipmitool='echo')
+        stdout, stderr = action.run_shell(script)
+        self.assertIn("Got unknown power state from ipmitool", stderr)
+
+    def test_ipmi_lan_checks_state(self):
+        action = PowerAction(POWER_TYPE.IPMI_LAN)
+        script = action.render_template(
+            action.get_template(), power_change='on',
+            power_address='mystystem', power_user='me', power_pass='me',
+            power_ipmi_interface='lanplus', ipmitool='echo')
+        stdout, stderr = action.run_shell(script)
+        self.assertIn("Got unknown power state from ipmitool", stderr)
