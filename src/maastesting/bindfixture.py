@@ -308,9 +308,14 @@ if __name__ == "__main__":
         '--rndc-port', type=int,
         help="The rndc port that will be used by BIND")
     parser.add_argument(
-        '--overwrite_config', type=bool,
+        '--overwrite-config', action='store_true',
         help="Whether or not to overwrite the configuration files "
              "if they already exist", default=False)
+    parser.add_argument(
+        '--create-config-only', action='store_true',
+        help="If set, only create the config files instead of "
+             "also running the service [default: %(default)s].",
+        default=False)
     arguments = parser.parse_args()
 
     # Create homedir if it does not already exist.
@@ -324,6 +329,7 @@ if __name__ == "__main__":
         port=arguments.port, rndc_port=arguments.rndc_port)
     resources.setUp(overwrite_config=arguments.overwrite_config)
     # exec named.
-    os.execlp(
-        resources.named_file, resources.named_file, "-g", "-c",
-        resources.conf_file)
+    if not arguments.create_config_only:
+        os.execlp(
+            resources.named_file, resources.named_file, "-g", "-c",
+            resources.conf_file)

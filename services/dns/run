@@ -12,8 +12,20 @@ cd "$(dirname "$0")/../.."
 # because there are race issues when restarting.
 [ -z "${logdir:-}" ] || exec &>> "${logdir}/current"
 
+homedir=`pwd`/run/named
+port=5246
+rndc_port=5247
+# Create DNS config.
+bin/py -m maastesting.bindfixture -- \
+    --create-config-only --overwrite-config \
+    --homedir $homedir \
+    --port $port --rndc-port $rndc_port
+# Create MAAS' DNS config.
+./bin/maas set_up_dns
+# Edit the fixture's named.conf to include MAAS' DNS config.
+./bin/maas get_named_conf --edit --config_path \
+    `pwd`/run/named/named.conf
 # Run named.
 exec bin/py -m maastesting.bindfixture -- \
-    --homedir `pwd`/run/named \
-    --log-file `pwd`/logs/dns/current \
-    --port 5244 --rndc-port 5245
+    --homedir $homedir \
+    --port $port --rndc-port $rndc_port
