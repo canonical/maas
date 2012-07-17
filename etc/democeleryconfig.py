@@ -26,3 +26,7 @@ DEV_ROOT_DIRECTORY = os.path.join(
 
 DNS_CONFIG_DIR = os.path.join(
     DEV_ROOT_DIRECTORY, 'run/named/')
+
+
+DNS_RNDC_PORT = 9154
+

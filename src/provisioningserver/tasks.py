@@ -13,22 +13,19 @@ __metaclass__ = type
 __all__ = [
     'power_off',
     'power_on',
-    'reload_dns_config',
-    'reload_zone_config',
+    'rndc_command',
+    'setup_rndc_configuration',
     'write_dns_config',
     'write_dns_zone_config',
     'write_full_dns_config',
-    'setup_rndc_configuration',
     ]
 
 
 from celery.task import task
-from celery.task.sets import subtask
 from provisioningserver.dns.config import (
     DNSConfig,
     DNSZoneConfig,
     execute_rndc_command,
-    InactiveDNSConfig,
     setup_rndc,
     )
 from provisioningserver.power.poweraction import (
@@ -97,20 +94,14 @@ def write_tftp_config_for_node(arch, macs, subarch="generic",
 
 
 @task
-def reload_dns_config():
-    """Use rndc to reload the DNS configuration."""
-    execute_rndc_command('reload')
-
-
-@task
-def reload_zone_config(zone_name):
-    """Use rndc to reload the DNS configuration for a zone."""
-    execute_rndc_command('reload', zone_name)
+def rndc_command(*arguments):
+    """Use rndc to execute a command."""
+    execute_rndc_command(*arguments)
 
 
 @task
 def write_full_dns_config(zones=None, reverse_zones=None,
-                          **kwargs):
+                          callback=None, **kwargs):
     """Write out the DNS configuration files: the main configuration
     file and the zone files.
     :param zones: Mapping between zone names and the zone data used
@@ -120,6 +111,8 @@ def write_full_dns_config(zones=None, reverse_zones=None,
         reverse zone data used to write the reverse zone config
         files.
     :type reverse_zones: dict
+    :param callback: Callback subtask.
+    :type callback: callable
     :param **kwargs: Keyword args passed to DNSConfig.write_config()
     """
     if zones is None:
@@ -137,52 +130,57 @@ def write_full_dns_config(zones=None, reverse_zones=None,
         zone_names=list(zones),
         reverse_zone_names=list(reverse_zones))
     config.write_config(**kwargs)
-    subtask(reload_dns_config.subtask()).delay()
+    if callback is not None:
+        callback.delay()
 
 
 @task
-def write_dns_config(inactive=False, zone_names=(),
-                     reverse_zone_names=(), **kwargs):
+def write_dns_config(zone_names=(), reverse_zone_names=(),
+                     callback=None, **kwargs):
     """Write out the DNS configuration file.
 
-    :param inactive: Whether or not an inactive (i.e. blank)
-        configuration should be written. False by default.
-    :type inactive: boolean
     :param zone_names: List of zone names to include as part of the
         main config.
     :type zone_names: list
     :param reverse_zone_names: List of reverse zone names to include as part of
         the main config.
     :type reverse_zone_names: list
+    :param callback: Callback subtask.
+    :type callback: callable
     :param **kwargs: Keyword args passed to DNSConfig.write_config()
     """
-    if inactive:
-        InactiveDNSConfig().write_config()
-    else:
-        config = DNSConfig(
-            zone_names=zone_names,
-            reverse_zone_names=reverse_zone_names)
-        config.write_config(**kwargs)
-    subtask(reload_dns_config.subtask()).delay()
+    config = DNSConfig(
+        zone_names=zone_names,
+        reverse_zone_names=reverse_zone_names)
+    config.write_config(**kwargs)
+    if callback is not None:
+        callback.delay()
 
 
 @task
-def write_dns_zone_config(zone_name, **kwargs):
+def write_dns_zone_config(zone_name, callback=None, **kwargs):
     """Write out a DNS zone configuration file.
 
     :param zone_name: The identifier of the zone to write the configuration
         for.
     :type zone_name: basestring
+    :param callback: Callback subtask.
+    :type callback: callable
     :param **kwargs: Keyword args passed to DNSZoneConfig.write_config()
     """
     DNSZoneConfig(zone_name).write_config(**kwargs)
-    subtask(reload_zone_config.subtask(args=[zone_name])).delay()
+    if callback is not None:
+        callback.delay()
 
 
 @task
-def setup_rndc_configuration():
+def setup_rndc_configuration(callback=None):
     """Write out the two rndc configuration files (rndc.conf and
     named.conf.rndc).
+
+    :param callback: Callback subtask.
+    :type callback: callable
     """
     setup_rndc()
-    subtask(reload_dns_config.subtask()).delay()
+    if callback is not None:
+        callback.delay()

@@ -13,7 +13,6 @@ __metaclass__ = type
 __all__ = [
     'DNSConfig',
     'DNSZoneConfig',
-    'InactiveDNSConfig',
     'setup_rndc',
     ]
 
@@ -22,6 +21,7 @@ from abc import (
     ABCMeta,
     abstractproperty,
     )
+from datetime import datetime
 import os.path
 from subprocess import (
     check_call,
@@ -29,7 +29,10 @@ from subprocess import (
     )
 
 from celery.conf import conf
-from provisioningserver.utils import atomic_write
+from provisioningserver.utils import (
+    atomic_write,
+    incremental_write,
+    )
 import tempita
 
 
@@ -83,7 +86,8 @@ def setup_rndc():
     MAAS_RNDC_CONF_NAME and MAAS_NAMED_RNDC_CONF_NAME, both stored in
     conf.DNS_CONFIG_DIR.
     """
-    rndc_content, named_content = generate_rndc()
+    rndc_content, named_content = generate_rndc(
+        conf.DNS_RNDC_PORT)
 
     target_file = get_rndc_conf_path()
     with open(target_file, "wb") as f:
@@ -98,7 +102,10 @@ def execute_rndc_command(*arguments):
     """Execute a rndc command."""
     rndc_conf = os.path.join(
         conf.DNS_CONFIG_DIR, MAAS_RNDC_CONF_NAME)
-    check_call(['rndc', '-c', rndc_conf] + map(str, arguments))
+    with open(os.devnull, "ab") as devnull:
+        check_call(
+        ['rndc', '-c', rndc_conf] + map(str, arguments),
+        stdout=devnull)
 
 
 # Directory where the DNS configuration template files can be found.
@@ -107,6 +114,8 @@ TEMPLATES_PATH = os.path.join(os.path.dirname(__file__), 'templates')
 
 class DNSConfigBase:
     __metaclass__ = ABCMeta
+
+    incremental_write = False
 
     @abstractproperty
     def template_path(self):
@@ -144,7 +153,10 @@ class DNSConfigBase:
         template = self.get_template()
         kwargs.update(self.get_extra_context())
         rendered = self.render_template(template, **kwargs)
-        atomic_write(rendered, self.target_path)
+        if self.incremental_write:
+            incremental_write(rendered, self.target_path)
+        else:
+            atomic_write(rendered, self.target_path)
 
 
 class DNSConfig(DNSConfigBase):
@@ -177,21 +189,12 @@ class DNSConfig(DNSConfigBase):
                 RevDNSZoneConfig(reverse_zone_name)
                 for reverse_zone_name in self.reverse_zone_names],
             'DNS_CONFIG_DIR': conf.DNS_CONFIG_DIR,
-            'named_rndc_conf_path':  get_named_rndc_conf_path()
+            'named_rndc_conf_path':  get_named_rndc_conf_path(),
+            'modified': unicode(datetime.today()),
         }
 
     def get_include_snippet(self):
         return '\ninclude "%s";\n' % self.target_path
-
-
-class InactiveDNSConfig(DNSConfig):
-    """A specialized version of DNSConfig that simply writes a blank/empty
-    configuration file.
-    """
-
-    def get_template(self):
-        """Return an empty template."""
-        return tempita.Template('', 'empty template')
 
 
 class DNSZoneConfig(DNSConfig):
@@ -200,6 +203,7 @@ class DNSZoneConfig(DNSConfig):
     template_file_name = 'zone.template'
     zone_name_string = '%s'
     zone_filename_string = 'zone.%s'
+    incremental_write = True
 
     def __init__(self, zone_name):
         self.zone_name = zone_name
@@ -218,7 +222,9 @@ class DNSZoneConfig(DNSConfig):
             self.target_dir, self.zone_filename_string % self.zone_name)
 
     def get_extra_context(self):
-        return {}
+        return {
+            'modified': unicode(datetime.today()),
+        }
 
 
 class RevDNSZoneConfig(DNSZoneConfig):

@@ -32,6 +32,10 @@ TFTPROOT = "/var/lib/tftpboot"
 # Location of MAAS' bind configuration files.
 DNS_CONFIG_DIR = '/var/cache/bind/maas'
 
+# RNDC port to be configured by MAAS to communicate with the BIND
+# server.
+DNS_RNDC_PORT = 954
+
 # DHCP leases file, as maintained by ISC dhcpd.
 DHCP_LEASES_FILE = '/var/lib/dhcp/dhcpd.leases'
 

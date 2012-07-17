@@ -33,8 +33,7 @@ from provisioningserver.power.poweraction import PowerActionFail
 from provisioningserver.tasks import (
     power_off,
     power_on,
-    reload_dns_config,
-    reload_zone_config,
+    rndc_command,
     setup_rndc_configuration,
     write_dns_config,
     write_dns_zone_config,
@@ -130,7 +129,10 @@ class TestDNSTasks(TestCase):
 
     def test_write_dns_config_writes_file(self):
         zone_names = [random.randint(1, 100), random.randint(1, 100)]
-        result = write_dns_config.delay(inactive=False, zone_names=zone_names)
+        command = factory.getRandomString()
+        result = write_dns_config.delay(
+            zone_names=zone_names,
+            callback=rndc_command.subtask(args=[command]))
 
         self.assertThat(
             (
@@ -142,32 +144,17 @@ class TestDNSTasks(TestCase):
                 (
                     Equals(True),
                     FileExists(),
-                    Equals([(('reload',), {})]),
-                )),
-            result)
-
-    def test_write_dns_config_with_inactive_True(self):
-        result = write_dns_config.delay(inactive=True)
-
-        self.assertThat(
-            (
-                result.successful(),
-                os.path.join(self.dns_conf_dir, MAAS_NAMED_CONF_NAME),
-                self.rndc_recorder.calls,
-            ),
-            MatchesListwise(
-                (
-                    Equals(True),
-                    FileContains(''),
-                    Equals([(('reload',), {})]),
+                    Equals([((command,), {})]),
                 )),
             result)
 
     def test_write_dns_zone_config_writes_file(self):
+        command = factory.getRandomString()
         zone_name = factory.getRandomString()
         result = write_dns_zone_config.delay(
             zone_name=zone_name, domain=factory.getRandomString(),
-            serial=random.randint(1, 100), hosts=[])
+            serial=random.randint(1, 100), hostname_ip_mapping={},
+            callback=rndc_command.subtask(args=[command]))
 
         self.assertThat(
             (
@@ -179,12 +166,14 @@ class TestDNSTasks(TestCase):
                 (
                     Equals(True),
                     FileExists(),
-                    Equals([(('reload', zone_name), {})]),
+                    Equals([((command, ), {})]),
                 )),
             result)
 
     def test_setup_rndc_configuration_writes_files(self):
-        result = setup_rndc_configuration.delay()
+        command = factory.getRandomString()
+        result = setup_rndc_configuration.delay(
+            callback=rndc_command.subtask(args=[command]))
 
         self.assertThat(
             (
@@ -199,31 +188,20 @@ class TestDNSTasks(TestCase):
                     Equals(True),
                     FileExists(),
                     FileExists(),
-                    Equals([(('reload',), {})]),
+                    Equals([((command,), {})]),
                 )),
             result)
 
-    def test_reload_dns_config_issues_reload_command(self):
-        result = reload_dns_config.delay()
+    def test_rndc_command_execute_command(self):
+        command = factory.getRandomString()
+        result = rndc_command.delay(command)
 
         self.assertThat(
             (result.successful(), self.rndc_recorder.calls),
             MatchesListwise(
                 (
                     Equals(True),
-                    Equals([(('reload',), {})]),
-                )))
-
-    def test_reload_zone_config_issues_zone_reload_command(self):
-        zone_name = factory.getRandomString()
-        result = reload_zone_config.delay(zone_name)
-
-        self.assertThat(
-            (result.successful(), self.rndc_recorder.calls),
-            MatchesListwise(
-                (
-                    Equals(True),
-                    Equals([(('reload', zone_name), {})]),
+                    Equals([((command,), {})]),
                 )))
 
     def test_write_full_dns_config_sets_up_config(self):
@@ -236,11 +214,14 @@ class TestDNSTasks(TestCase):
         zones = {
             zone_name: {
                 'serial': random.randint(1, 100),
-                'hosts': [{'hostname': hostname, 'ip': ip}],
+                'hostname_ip_mapping': {hostname: ip},
                 'domain': domain,
             }
         }
-        result = write_full_dns_config.delay(zones=zones)
+        command = factory.getRandomString()
+        result = write_full_dns_config.delay(
+            zones=zones,
+            callback=rndc_command.subtask(args=[command]))
 
         self.assertThat(
             (
@@ -254,7 +235,7 @@ class TestDNSTasks(TestCase):
             MatchesListwise(
                 (
                     Equals(True),
-                    Equals([(('reload',), {})]),
+                    Equals([((command,), {})]),
                     FileExists(),
                     FileExists(),
                 )))

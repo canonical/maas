@@ -1,3 +1,7 @@
+; Zone file modified: {{modified}}.
+; Note that the modification time of this file doesn't reflect
+; the actual modification time.  MAAS controls the modification time
+; of this file to be able to force the zone to be reloaded by BIND.
 $TTL    300
 @   IN    SOA {{domain}}. nobody.example.com. (
               {{serial}} ; serial
@@ -8,6 +12,7 @@ $TTL    300
               )
 
     IN  NS  {{domain}}.
-{{for host in hosts}}
-{{host['hostname']}} IN A {{host['ip']}}
+{{domain}}.  IN A 127.0.0.1; TODO: use master worker IP.
+{{for hostname, ip in hostname_ip_mapping.items()}}
+{{hostname}} IN A {{ip}}
 {{endfor}}

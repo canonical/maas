@@ -90,7 +90,7 @@ class Factory(maastesting.factory.Factory):
                   created=None, **kwargs):
         # hostname=None is a valid value, hence the set_hostname trick.
         if hostname is '' and set_hostname:
-            hostname = self.getRandomString(255)
+            hostname = self.getRandomString(20)
         if status is None:
             status = NODE_STATUS.DEFAULT_STATUS
         node = Node(

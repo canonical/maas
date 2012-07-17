@@ -32,7 +32,7 @@ from testtools.matchers import (
 from testtools.testcase import gather_details
 
 
-def dig_call(port=53, server='127.0.0.1', command=''):
+def dig_call(port=53, server='127.0.0.1', commands=None):
     """Call `dig` with the given command.
 
     Note that calling dig without a command will perform an NS
@@ -42,16 +42,19 @@ def dig_call(port=53, server='127.0.0.1', command=''):
     :param port: Port of the queried DNS server (defaults to 53).
     :param server: IP address of the queried DNS server (defaults
         to '127.0.0.1').
-    :param command: Dig command to run (defaults to '').
+    :param commands: List of dig commands to run (defaults to None
+        which will perform an NS query for "." (the root)).
     :return: The output as a string.
     :rtype: basestring
     """
     cmd = [
         'dig', '+time=1', '+tries=1', '@%s' % server, '-p',
         '%d' % port]
-    if command != '':
-        cmd.append(command)
-    return check_output(cmd)
+    if commands is not None:
+        if not isinstance(commands, list):
+            commands = (commands, )
+        cmd.extend(commands)
+    return check_output(cmd).strip()
 
 
 class TestBINDFixture(TestCase):

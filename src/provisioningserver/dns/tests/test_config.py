@@ -30,7 +30,6 @@ from provisioningserver.dns.config import (
     DNSZoneConfig,
     execute_rndc_command,
     generate_rndc,
-    InactiveDNSConfig,
     MAAS_NAMED_CONF_NAME,
     MAAS_NAMED_RNDC_CONF_NAME,
     MAAS_RNDC_CONF_NAME,
@@ -77,9 +76,7 @@ class TestRNDCUtilities(TestCase):
         execute_rndc_command(command)
         rndc_conf_path = os.path.join(fake_dir, MAAS_RNDC_CONF_NAME)
         expected_command = ['rndc', '-c', rndc_conf_path, command]
-        self.assertSequenceEqual(
-            [((expected_command,), {})],
-            recorder.calls)
+        self.assertEqual((expected_command,), recorder.calls[0][0])
 
 
 class TestDNSConfig(TestCase):
@@ -147,19 +144,6 @@ class TestDNSConfig(TestCase):
                 Contains('include "%s"' % dnsconfig.target_path)))
 
 
-class TestInactiveDNSConfig(TestCase):
-    """Tests for InactiveDNSConfig."""
-
-    def test_write_config_writes_empty_config(self):
-        target_dir = self.make_dir()
-        self.patch(InactiveDNSConfig, 'target_dir', target_dir)
-        dnsconfig = InactiveDNSConfig()
-        dnsconfig.write_config()
-        self.assertThat(
-            os.path.join(target_dir, MAAS_NAMED_CONF_NAME),
-            FileContains(''))
-
-
 class TestDNSZoneConfig(TestCase):
     """Tests for DNSZoneConfig."""
 
@@ -185,17 +169,16 @@ class TestDNSZoneConfig(TestCase):
         dnszoneconfig = DNSZoneConfig(zone_name)
         domain = factory.getRandomString()
         serial = random.randint(1, 100)
-        hosts = [{
-            'ip': factory.getRandomIPAddress(),
-            'hostname': factory.getRandomString()}]
+        hostname = factory.getRandomString()
+        ip = factory.getRandomIPAddress()
         dnszoneconfig.write_config(
-            domain=domain, serial=serial, hosts=hosts)
+            domain=domain, serial=serial,
+            hostname_ip_mapping={hostname: ip})
         self.assertThat(
             os.path.join(target_dir, 'zone.%s' % zone_name),
             FileContains(
                 matcher=ContainsAll(
                     [
                         'IN  NS  %s.' % domain,
-                        '%s IN A %s' % (
-                            hosts[0]['hostname'], hosts[0]['ip']),
+                        '%s IN A %s' % (hostname, ip),
                     ])))
