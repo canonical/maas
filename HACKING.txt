@@ -203,10 +203,14 @@ Install Cobbler, and install the preseed files and snippets::
     $ sudo cp contrib/preseeds/* /var/lib/cobbler/kickstarts/
     $ sudo cp contrib/snippets/* /var/lib/cobbler/snippets/
 
-Now run ``maas-import-isos`` to download Ubuntu precise and create the
-necessary MAAS profiles::
+Now run ``maas-import-pxe-files`` to download current Ubuntu releases for
+installing nodes::
 
-    $ sudo http_proxy=$http_proxy PATH=$PATH:./bin ./scripts/maas-import-isos
+    $ sudo http_proxy=$http_proxy PATH=$PATH:./bin \
+        ./scripts/maas-import-pxe-files
+
+This may download dozens or hundreds of megabytes, so depending on your
+network connection it may take a while.
 
 You need the PATH addition because the script will want to run bin/maas.
 The http_proxy variable is only needed if you're downloading through a

@@ -1,0 +1,54 @@
+.TH maas\-import\-pxe-files 8 "16 July 2012" maas "maas"
+.SH NAME
+\fBmaas\-import\-pxe-files\fP \- import Ubuntu install images into MAAS
+
+.SH DESCRIPTION
+\fBmaas\-import\-pxe\-files\fP downloads Ubuntu images and installs them into
+MAAS.  The MAAS server needs these images to provides nodes with operating
+systems.  Images that are already in place are kept unchanged, unless the
+version in the archive has since been updated.
+
+The script reads a configuration file \fI/etc/maas/import_isos\fP in order
+to determine:
+ - ARCHIVE: Location of the Ubuntu download archive
+ - RELEASES: Ubuntu releases to download
+ - CURRENT_RELEASE: Most up-to-date Ubuntu release
+ - ARCHES: Architectures for which images should be downloaded
+
+(To support development setups that run directly from a code branch, it will
+also look for \fIetc/maas/import_isos\fP relative to the current directory).
+
+The script uses \fBwget\fP(1) to download the kernel and initrd image for
+each architecture in ARCHES and each release in RELEASES.  It will also
+download the current pre-boot loader for each architecture in ARCHES that
+uses this loader.  It always uses the loader from CURRENT_RELEASE.
+
+These images are the minimum that's required to start installng a node.
+During installation, a node may download its packages over the network.
+
+A \fBcron\fP(8) job typically runs this script at a quiet time every Sunday,
+but you may need to run it manually once for a new MAAS installation.
+
+.SH FILES
+\fI/etc/maas/import_isos\fP, \fI/etc/cron.d/maas\-import\-pxe\-files\fP
+
+.SH "SEE ALSO"
+.BR maas\-import\-ephemerals (8),
+.BR maas\-import\-isos (8),
+.BR cron (8), 
+.BR wget (1)
+
+.TP
+\fIhttp://launchpad.net/maas\fP
+.PD
+
+.SH AUTHOR
+This manual page and the script were written by Jeroen Vermeulen
+<jeroen.vermeulen@canonical.com> for Ubuntu systems, but may be used by
+others.  Permission is granted to copy, distribute and/or modify this
+document and the utility under the terms of the GNU General Public
+License, Version 3 published by the Free Software Foundation.
+
+The complete text of the GNU General Public License can be found in
+\fI/usr/share/common-licenses/GPL\fP on Debian/Ubuntu systems, or on
+the web at \fIhttp://www.gnu.org/licenses/gpl.txt\fP.
