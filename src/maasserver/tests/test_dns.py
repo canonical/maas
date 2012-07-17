@@ -27,10 +27,6 @@ from maastesting.bindfixture import BINDServer
 from maastesting.celery import CeleryFixture
 from maastesting.tests.test_bindfixture import dig_call
 from provisioningserver.dns.config import conf
-from provisioningserver.tasks import (
-    setup_rndc_configuration,
-    write_dns_config,
-    )
 from testresources import FixtureResource
 from testtools.matchers import MatchesStructure
 
@@ -65,11 +61,16 @@ class TestDNSConfigModifications(TestCase):
         self.bind = self.useFixture(BINDServer())
         self.patch(conf, 'DNS_CONFIG_DIR', self.bind.config.homedir)
 
+        # This simulates what should happen when the package is
+        # installed:
+        # Create MAAS-specific DNS configuration files.
+        call_command('set_up_dns')
+        # Register MAAS-specific DNS configuration files with the
+        # system's BIND instance.
         call_command(
             'get_named_conf', edit=True,
             config_path=self.bind.config.conf_file)
-        setup_rndc_configuration()
-        write_dns_config(inactive=True)
+        # Reload BIND.
         self.bind.runner.rndc('reload')
 
     def create_nodegroup_with_lease(self, nodegroup=None):

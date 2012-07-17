@@ -23,7 +23,7 @@ from testtools.matchers import (
     )
 
 
-class TestGenerateEnlistmentPXE(TestCase):
+class TestGetNamedConfCommand(TestCase):
 
     def test_get_named_conf_returns_snippet(self):
         out = BytesIO()

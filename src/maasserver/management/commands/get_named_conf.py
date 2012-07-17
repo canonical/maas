@@ -12,7 +12,9 @@ from __future__ import (
     )
 
 __metaclass__ = type
-__all__ = []
+__all__ = [
+    'Command',
+    ]
 
 
 from optparse import make_option
