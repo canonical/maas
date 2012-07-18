@@ -1,7 +1,10 @@
 # Copyright 2012 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""User management for nodes' access to the metadata service."""
+"""System user representing node-group workers.
+
+The Celery workers access the MAAS API under this user identity.
+"""
 
 from __future__ import (
     absolute_import,
@@ -11,23 +14,24 @@ from __future__ import (
 
 __metaclass__ = type
 __all__ = [
-    'get_node_init_user',
+    'get_worker_user',
     'user_name',
     ]
 
 from django.contrib.auth.models import User
 
 
-user_name = 'maas-init-node'
+user_name = 'maas-nodegroup-worker'
 
 
 # Cached, shared reference to this special user.  Keep internal to this
 # module.
-node_init_user = None
+worker_user = None
 
 
-def get_node_init_user():
-    global node_init_user
-    if node_init_user is None:
-        node_init_user = User.objects.get(username=user_name)
-    return node_init_user
+def get_worker_user():
+    """Get the system user representing the node-group workers."""
+    global worker_user
+    if worker_user is None:
+        worker_user = User.objects.get(username=user_name)
+    return worker_user

@@ -12,27 +12,65 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
+from maasserver.models import NodeGroup
+from maasserver.testing import reload_object
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
+from maasserver.worker_user import get_worker_user
 from testtools.matchers import MatchesStructure
 
 
-class TestNodeGroup(TestCase):
+def make_dhcp_settings():
+    """Create a dict of arbitrary nodegroup configuration parameters."""
+    return {
+        'subnet_mask': '255.0.0.0',
+        'broadcast_ip': '10.255.255.255',
+        'router_ip': factory.getRandomIPAddress(),
+        'ip_range_low': '10.0.0.1',
+        'ip_range_high': '10.254.254.254',
+    }
 
-    def test_model_stores_to_database(self):
-        ng = factory.make_node_group(
-            name=factory.getRandomString(80),
-            worker_ip="10.1.1.1",
-            subnet_mask="255.0.0.0",
-            broadcast_ip="10.255.255.255",
-            router_ip="10.1.1.254",
-            ip_range_low="10.1.1.2",
-            ip_range_high="10.254.254.253")
+
+class TestNodeGroupManager(TestCase):
+
+    def test_new_creates_nodegroup(self):
+        name = factory.make_name('nodegroup')
+        ip = factory.getRandomIPAddress()
         self.assertThat(
-            ng, MatchesStructure.byEquality(
-                worker_ip="10.1.1.1",
-                subnet_mask="255.0.0.0",
-                broadcast_ip="10.255.255.255",
-                router_ip="10.1.1.254",
-                ip_range_low="10.1.1.2",
-                ip_range_high="10.254.254.253"))
+            NodeGroup.objects.new(name, ip),
+            MatchesStructure.fromExample({'name': name, 'worker_ip': ip}))
+
+    def test_new_does_not_require_dhcp_settings(self):
+        name = factory.make_name('nodegroup')
+        ip = factory.getRandomIPAddress()
+        nodegroup = NodeGroup.objects.new(name, ip)
+        self.assertThat(
+            nodegroup,
+            MatchesStructure.fromExample({
+                item: None
+                for item in make_dhcp_settings().keys()}))
+
+    def test_new_requires_all_dhcp_settings_or_none(self):
+        name = factory.make_name('nodegroup')
+        ip = factory.getRandomIPAddress()
+        self.assertRaises(
+            AssertionError,
+            NodeGroup.objects.new, name, ip, subnet_mask='255.0.0.0')
+
+    def test_new_creates_nodegroup_with_given_dhcp_settings(self):
+        name = factory.make_name('nodegroup')
+        ip = factory.getRandomIPAddress()
+        dhcp_settings = make_dhcp_settings()
+        nodegroup = NodeGroup.objects.new(name, ip, **dhcp_settings)
+        nodegroup = reload_object(nodegroup)
+        self.assertEqual(name, nodegroup.name)
+        self.assertThat(
+            nodegroup, MatchesStructure.fromExample(dhcp_settings))
+
+    def test_new_assigns_token_and_key_for_worker_user(self):
+        nodegroup = NodeGroup.objects.new(
+            factory.make_name('nodegroup'), factory.getRandomIPAddress())
+        self.assertIsNotNone(nodegroup.api_token)
+        self.assertIsNotNone(nodegroup.api_key)
+        self.assertEqual(get_worker_user(), nodegroup.api_token.user)
+        self.assertEqual(nodegroup.api_key, nodegroup.api_token.key)

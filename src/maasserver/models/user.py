@@ -16,6 +16,7 @@ __all__ = [
     'get_auth_tokens',
     ]
 
+from maasserver import worker_user
 from metadataserver import nodeinituser
 from piston.models import (
     Consumer,
@@ -26,6 +27,8 @@ from piston.models import (
 SYSTEM_USERS = [
     # For nodes' access to the metadata API:
     nodeinituser.user_name,
+    # For node-group's workers to the MAAS API:
+    worker_user.user_name,
     ]
 
 GENERIC_CONSUMER = 'MAAS consumer'
