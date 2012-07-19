@@ -185,7 +185,8 @@ class TestActionScript(TestCase):
         handler.run = handler_calls.append
         script = ActionScript("Description")
         script.register("amputate", handler)
-        script(["amputate"])
+        error = self.assertRaises(SystemExit, script, ["amputate"])
+        self.assertEqual(0, error.code)
         self.assertEqual(1, len(handler_calls))
         self.assertIsInstance(handler_calls[0], Namespace)
 

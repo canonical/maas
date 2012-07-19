@@ -109,7 +109,7 @@ class TestImportPXEFiles(TestCase):
         if release is not None:
             env['RELEASES'] = release
             env['CURRENT_RELEASE'] = release
-        with open('/dev/null', 'w') as dev_null:
+        with open(os.devnull, 'wb') as dev_null:
             check_call(script, env=env, stdout=dev_null)
 
     def test_downloads_pre_boot_loader(self):

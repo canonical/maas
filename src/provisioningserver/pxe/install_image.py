@@ -11,11 +11,11 @@ from __future__ import (
 
 __metaclass__ = type
 __all__ = [
-    'Command',
+    "add_arguments",
+    "run",
     ]
 
 from filecmp import cmpfiles
-from optparse import make_option
 import os.path
 from shutil import (
     copytree,
@@ -23,7 +23,6 @@ from shutil import (
     )
 
 from celeryconfig import TFTPROOT
-from django.core.management.base import BaseCommand
 from provisioningserver.pxe.tftppath import (
     compose_image_path,
     locate_tftp_path,
@@ -115,7 +114,29 @@ def install_dir(new, old):
     rmtree('%s.old' % old, ignore_errors=True)
 
 
-class Command(BaseCommand):
+def add_arguments(parser):
+    parser.add_argument(
+        '--arch', dest='arch', default=None,
+        help="Main system architecture that the image is for.")
+    parser.add_argument(
+        '--subarch', dest='subarch', default='generic',
+        help="Sub-architecture of the main architecture [%(default)s].")
+    parser.add_argument(
+        '--release', dest='release', default=None,
+        help="Ubuntu release that the image is for.")
+    parser.add_argument(
+        '--purpose', dest='purpose', default=None,
+        help="Purpose of the image (e.g. 'install' or 'commissioning').")
+    parser.add_argument(
+        '--image', dest='image', default=None,
+        help="Netboot image directory, containing kernel & initrd.")
+    parser.add_argument(
+        '--tftproot', dest='tftproot', default=TFTPROOT, help=(
+            "Store to this TFTP directory tree instead of the "
+            "default [%(default)s]."))
+
+
+def run(args):
     """Move a netboot image into the TFTP directory structure.
 
     The image is a directory containing a kernel and an initrd.  If the
@@ -123,35 +144,9 @@ class Command(BaseCommand):
     containing identical files, the new image is deleted and the old one
     is left untouched.
     """
-
-    option_list = BaseCommand.option_list + (
-        make_option(
-            '--arch', dest='arch', default=None,
-            help="Main system architecture that the image is for."),
-        make_option(
-            '--subarch', dest='subarch', default='generic',
-            help="Sub-architecture of the main architecture."),
-        make_option(
-            '--release', dest='release', default=None,
-            help="Ubuntu release that the image is for."),
-        make_option(
-            '--purpose', dest='purpose', default=None,
-            help="Purpose of the image (e.g. 'install' or 'commissioning')."),
-        make_option(
-            '--image', dest='image', default=None,
-            help="Netboot image directory, containing kernel & initrd."),
-        make_option(
-            '--tftproot', dest='tftproot', default=TFTPROOT,
-            help="Store to this TFTP directory tree instead of the default."),
-        )
-
-    def handle(self, arch=None, subarch=None, release=None, purpose=None,
-               image=None, tftproot=None, **kwargs):
-        if tftproot is None:
-            tftproot = TFTPROOT
-
-        dest = make_destination(tftproot, arch, subarch, release, purpose)
-        if not are_identical_dirs(dest, image):
-            # Image has changed.  Move the new version into place.
-            install_dir(image, dest)
-        rmtree(image, ignore_errors=True)
+    destination = make_destination(
+        args.tftproot, args.arch, args.subarch, args.release, args.purpose)
+    if not are_identical_dirs(destination, args.image):
+        # Image has changed.  Move the new version into place.
+        install_dir(args.image, destination)
+    rmtree(args.image, ignore_errors=True)

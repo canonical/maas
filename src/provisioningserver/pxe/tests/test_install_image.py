@@ -14,18 +14,19 @@ __all__ = []
 
 import os
 
-from django.core.management import call_command
-from maasserver.management.commands.install_pxe_image import (
+from maastesting.factory import factory
+from maastesting.testcase import TestCase
+import provisioningserver.pxe.install_image
+from provisioningserver.pxe.install_image import (
     are_identical_dirs,
     install_dir,
     make_destination,
     )
-from maasserver.testing.factory import factory
-from maasserver.testing.testcase import TestCase
 from provisioningserver.pxe.tftppath import (
     compose_image_path,
     locate_tftp_path,
     )
+from provisioningserver.utils import ActionScript
 from testtools.matchers import (
     DirExists,
     FileContains,
@@ -54,10 +55,13 @@ class TestInstallPXEImage(TestCase):
         tftproot = self.make_dir()
         arch, subarch, release, purpose = make_arch_subarch_release_purpose()
 
-        call_command(
-            'install_pxe_image', arch=arch, subarch=subarch, release=release,
-            purpose=purpose, image=image_dir,
-            tftproot=tftproot)
+        action = factory.make_name("action")
+        script = ActionScript(action)
+        script.register(action, provisioningserver.pxe.install_image)
+        script.execute(
+            (action, "--arch", arch, "--subarch", subarch, "--release",
+             release, "--purpose", purpose, "--image", image_dir,
+             "--tftproot", tftproot))
 
         self.assertThat(
             os.path.join(

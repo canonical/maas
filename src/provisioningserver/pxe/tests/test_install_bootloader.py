@@ -14,21 +14,22 @@ __all__ = []
 
 import os.path
 
-from django.core.management import call_command
-from maasserver.management.commands.install_pxe_bootloader import (
-    install_bootloader,
-    make_destination,
-    )
 from maastesting.factory import factory
 from maastesting.testcase import TestCase
 from maastesting.utils import (
     age_file,
     get_write_time,
     )
+import provisioningserver.pxe.install_bootloader
+from provisioningserver.pxe.install_bootloader import (
+    install_bootloader,
+    make_destination,
+    )
 from provisioningserver.pxe.tftppath import (
     compose_bootloader_path,
     locate_tftp_path,
     )
+from provisioningserver.utils import ActionScript
 from testtools.matchers import (
     DirExists,
     FileContains,
@@ -45,9 +46,12 @@ class TestInstallPXEBootloader(TestCase):
         arch = factory.make_name('arch')
         subarch = factory.make_name('subarch')
 
-        call_command(
-            'install_pxe_bootloader', arch=arch, subarch=subarch,
-            loader=loader, tftproot=tftproot)
+        action = factory.make_name("action")
+        script = ActionScript(action)
+        script.register(action, provisioningserver.pxe.install_bootloader)
+        script.execute(
+            (action, "--arch", arch, "--subarch", subarch,
+             "--loader", loader, "--tftproot", tftproot))
 
         self.assertThat(
             locate_tftp_path(

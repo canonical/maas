@@ -69,7 +69,7 @@ update_pre_boot_loader() {
     if [ -f pxelinux.0 ]
     then
         # TODO: Pass sub-architecture once we support those.
-        maas install_pxe_bootloader \
+        maas-provision install-pxe-bootloader \
             --arch=$arch --loader='pxelinux.0' --tftproot=$TFTPROOT
     fi
 }
@@ -91,7 +91,7 @@ update_install_files() {
     done
     popd >/dev/null
 
-    maas install_pxe_image \
+    maas-provision install-pxe-image \
         --arch=$arch --release=$release --purpose="install" \
         --image="install" --tftproot=$TFTPROOT
 }

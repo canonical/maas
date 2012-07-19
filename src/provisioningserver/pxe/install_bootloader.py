@@ -11,16 +11,15 @@ from __future__ import (
 
 __metaclass__ = type
 __all__ = [
-    'Command',
+    "add_arguments",
+    "run",
     ]
 
 import filecmp
-from optparse import make_option
 import os.path
 from shutil import copyfile
 
 from celeryconfig import TFTPROOT
-from django.core.management.base import BaseCommand
 from provisioningserver.pxe.tftppath import (
     compose_bootloader_path,
     locate_tftp_path,
@@ -88,34 +87,29 @@ def install_bootloader(loader, destination):
     os.rename(temp_file, destination)
 
 
-class Command(BaseCommand):
+def add_arguments(parser):
+    parser.add_argument(
+        '--arch', dest='arch', default=None,
+        help="Main system architecture that the bootloader is for.")
+    parser.add_argument(
+        '--subarch', dest='subarch', default='generic',
+        help="Sub-architecture of the main architecture [%(default)s].")
+    parser.add_argument(
+        '--loader', dest='loader', default=None,
+        help="PXE pre-boot loader to install.")
+    parser.add_argument(
+        '--tftproot', dest='tftproot', default=TFTPROOT, help=(
+            "Store to this TFTP directory tree instead of the "
+            "default [%(default)s]."))
+
+
+def run(args):
     """Install a PXE pre-boot loader into the TFTP directory structure.
 
     This won't overwrite an existing loader if its contents are unchanged.
     However the new loader you give it will be deleted regardless.
     """
-
-    option_list = BaseCommand.option_list + (
-        make_option(
-            '--arch', dest='arch', default=None,
-            help="Main system architecture that the bootloader is for."),
-        make_option(
-            '--subarch', dest='subarch', default='generic',
-            help="Sub-architecture of the main architecture."),
-        make_option(
-            '--loader', dest='loader', default=None,
-            help="PXE pre-boot loader to install."),
-        make_option(
-            '--tftproot', dest='tftproot', default=TFTPROOT,
-            help="Store to this TFTP directory tree instead of the default."),
-        )
-
-    def handle(self, arch=None, subarch=None, loader=None, tftproot=None,
-               **kwargs):
-        if tftproot is None:
-            tftproot = TFTPROOT
-
-        install_bootloader(loader, make_destination(tftproot, arch, subarch))
-
-        if os.path.exists(loader):
-            os.remove(loader)
+    destination = make_destination(args.tftproot, args.arch, args.subarch)
+    install_bootloader(args.loader, destination)
+    if os.path.exists(args.loader):
+        os.remove(args.loader)
