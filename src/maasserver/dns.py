@@ -27,6 +27,7 @@ from maasserver.sequence import (
     Sequence,
     )
 from provisioningserver import tasks
+from provisioningserver.dns.config import DNSZoneConfig
 
 # A DNS zone's serial is a 32-bit integer.  Also, we start with the
 # value 1 because 0 has special meaning for some DNS servers.  Even if
@@ -39,57 +40,64 @@ def next_zone_serial():
     return '%0.10d' % zone_serial.nextval()
 
 
+def get_zone(nodegroup, serial=None):
+    """Create a :class:`DNSZoneConfig` object from a nodegroup.
+
+    This method also accepts a serial to reuse the same serial when
+    we are creating DNSZoneConfig objects in bulk.
+    """
+    if serial is None:
+        serial = next_zone_serial()
+    return DNSZoneConfig(
+        zone_name=nodegroup.name, serial=serial,
+        mapping=DHCPLease.objects.get_hostname_ip_mapping(nodegroup),
+        bcast=nodegroup.broadcast_ip, mask=nodegroup.subnet_mask)
+
+
 def change_dns_zone(nodegroup):
     """Update the zone configurtion for the given `nodegroup`.
 
     :param nodegroup: The nodegroup for which the zone should be cupdated.
     :type nodegroup: :class:`NodeGroup`
     """
-    mapping = DHCPLease.objects.get_hostname_ip_mapping(nodegroup)
-    zone_name = nodegroup.name
+    zone = get_zone(nodegroup)
+    reverse_zone_reload_subtask = tasks.rndc_command.subtask(
+        args=[['reload', zone.reverse_zone_name]])
     zone_reload_subtask = tasks.rndc_command.subtask(
-        args=['reload', zone_name])
+        args=[['reload', zone.zone_name]],
+        callback=reverse_zone_reload_subtask)
     tasks.write_dns_zone_config.delay(
-        zone_name=zone_name, domain=zone_name,
-        serial=next_zone_serial(), hostname_ip_mapping=mapping,
-        callback=zone_reload_subtask)
+        zone=zone, callback=zone_reload_subtask)
 
 
 def add_zone(nodegroup):
     """Add to the DNS server a new zone for the given `nodegroup`.
 
+    To do this we have to write a new configuration file for the zone
+    and update the master config to include this new configuration.
+    These are done in turn by chaining Celery subtasks.
+
     :param nodegroup: The nodegroup for which the zone should be added.
     :type nodegroup: :class:`NodeGroup`
     """
-    zone_names = [
-        result[0]
-        for result in NodeGroup.objects.all().values_list('name')]
-    tasks.write_dns_config(zone_names=zone_names)
-    mapping = DHCPLease.objects.get_hostname_ip_mapping(nodegroup)
-    zone_name = nodegroup.name
-    reconfig_subtask = tasks.rndc_command.subtask(args=['reconfig'])
+    serial = next_zone_serial()
+    zones = [
+        get_zone(nodegroup, serial)
+        for nodegroup in NodeGroup.objects.all()]
+    reconfig_subtask = tasks.rndc_command.subtask(args=[['reconfig']])
     write_dns_config_subtask = tasks.write_dns_config.subtask(
-        zone_names=zone_names, callback=reconfig_subtask)
+        zones=zones, callback=reconfig_subtask)
+    zone = get_zone(nodegroup)
     tasks.write_dns_zone_config.delay(
-        zone_name=zone_name, domain=zone_name,
-        serial=next_zone_serial(), hostname_ip_mapping=mapping,
-        callback=write_dns_config_subtask)
+        zone=zone, callback=write_dns_config_subtask)
 
 
 def write_full_dns_config():
     """Write the DNS configuration for all the nodegroups."""
-    groups = NodeGroup.objects.all()
     serial = next_zone_serial()
-    zones = {
-        group.name: {
-            'serial': serial,
-            'zone_name': group.name,
-            'domain': group.name,
-            'hostname_ip_mapping': (
-                DHCPLease.objects.get_hostname_ip_mapping(
-                    group))
-            }
-        for group in groups
-        }
-    tasks.write_full_dns_config(
-        zones,  callback=tasks.rndc_command.subtask(args=['reload']))
+    zones = [
+        get_zone(nodegroup, serial)
+        for nodegroup in NodeGroup.objects.all()]
+    tasks.write_full_dns_config.delay(
+        zones=zones,
+        callback=tasks.rndc_command.subtask(args=[['reload']]))

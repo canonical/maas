@@ -12,7 +12,6 @@ $TTL    300
               )
 
     IN  NS  {{domain}}.
-{{domain}}.  IN A 127.0.0.1; TODO: use master worker IP.
-{{for hostname, ip in hostname_ip_mapping.items()}}
-{{hostname}} IN A {{ip}}
+{{for item_from, item_to in mapping.items()}}
+{{item_from}} IN {{type}} {{item_to}}
 {{endfor}}

@@ -24,6 +24,7 @@ from maastesting.testcase import TestCase
 from provisioningserver import tasks
 from provisioningserver.dns.config import (
     conf,
+    DNSZoneConfig,
     MAAS_NAMED_CONF_NAME,
     MAAS_NAMED_RNDC_CONF_NAME,
     MAAS_RNDC_CONF_NAME,
@@ -151,20 +152,25 @@ class TestDNSTasks(TestCase):
     def test_write_dns_zone_config_writes_file(self):
         command = factory.getRandomString()
         zone_name = factory.getRandomString()
+        zone = DNSZoneConfig(
+            zone_name, bcast='192.168.0.255',
+            mask='255.255.255.0',
+            serial=random.randint(1, 100),
+            mapping={factory.getRandomString(): '192.168.0.5'})
         result = write_dns_zone_config.delay(
-            zone_name=zone_name, domain=factory.getRandomString(),
-            serial=random.randint(1, 100), hostname_ip_mapping={},
-            callback=rndc_command.subtask(args=[command]))
+            zone=zone, callback=rndc_command.subtask(args=[command]))
 
         self.assertThat(
             (
                 result.successful(),
                 os.path.join(self.dns_conf_dir, 'zone.%s' % zone_name),
+                os.path.join(self.dns_conf_dir, 'zone.rev.%s' % zone_name),
                 self.rndc_recorder.calls,
             ),
             MatchesListwise(
                 (
                     Equals(True),
+                    FileExists(),
                     FileExists(),
                     Equals([((command, ), {})]),
                 )),
@@ -207,17 +213,12 @@ class TestDNSTasks(TestCase):
     def test_write_full_dns_config_sets_up_config(self):
         # write_full_dns_config writes the config file, writes
         # the zone files, and reloads the dns service.
-        hostname = factory.getRandomString()
-        ip = factory.getRandomIPAddress()
         zone_name = factory.getRandomString()
-        domain = factory.getRandomString()
-        zones = {
-            zone_name: {
-                'serial': random.randint(1, 100),
-                'hostname_ip_mapping': {hostname: ip},
-                'domain': domain,
-            }
-        }
+        zones = [DNSZoneConfig(
+            zone_name, bcast='192.168.0.255',
+            mask='255.255.255.0',
+            serial=random.randint(1, 100),
+            mapping={factory.getRandomString(): '192.168.0.5'})]
         command = factory.getRandomString()
         result = write_full_dns_config.delay(
             zones=zones,
@@ -230,12 +231,15 @@ class TestDNSTasks(TestCase):
                 os.path.join(
                     self.dns_conf_dir, 'zone.%s' % zone_name),
                 os.path.join(
+                    self.dns_conf_dir, 'zone.rev.%s' % zone_name),
+                os.path.join(
                     self.dns_conf_dir, MAAS_NAMED_CONF_NAME),
             ),
             MatchesListwise(
                 (
                     Equals(True),
                     Equals([((command,), {})]),
+                    FileExists(),
                     FileExists(),
                     FileExists(),
                 )))

@@ -73,42 +73,61 @@ class TestDNSConfigModifications(TestCase):
         # Reload BIND.
         self.bind.runner.rndc('reload')
 
-    def create_nodegroup_with_lease(self, nodegroup=None):
+    def create_nodegroup_with_lease(self, lease_number=1, nodegroup=None):
         if nodegroup is None:
-            nodegroup = factory.make_node_group()
+            nodegroup = factory.make_node_group(
+                broadcast_ip='192.168.0.255',
+                subnet_mask='255.255.255.0')
         node = factory.make_node(
             nodegroup=nodegroup, set_hostname=True)
         mac = factory.make_mac_address(node=node)
         lease = factory.make_dhcp_lease(
-            nodegroup=nodegroup, mac=mac.mac_address)
+            nodegroup=nodegroup, mac=mac.mac_address,
+            ip='192.168.0.%d' % lease_number)
         return nodegroup, node, lease
 
     def dig_resolve(self, fqdn):
         return dig_call(
+            port=self.bind.config.port, commands=[fqdn, '+short'])
+
+    def dig_reverse_resolve(self, ip):
+        return dig_call(
             port=self.bind.config.port,
-            commands=[fqdn, '+short'])
+            commands=['-x', ip, '+short'])
 
     def test_add_zone_loads_dns_zone(self):
         nodegroup, node, lease = self.create_nodegroup_with_lease()
         add_zone(nodegroup)
-
         fqdn = "%s.%s" % (node.hostname, nodegroup.name)
-        self.assertEqual(lease.ip, self.dig_resolve(fqdn))
+        self.assertEqual(
+            (lease.ip, '%s.' % fqdn),
+            (
+                self.dig_resolve(fqdn),
+                self.dig_reverse_resolve(lease.ip),
+            ))
 
     def test_change_zone_changes_dns_zone(self):
         nodegroup, _, _ = self.create_nodegroup_with_lease()
         write_full_dns_config()
         nodegroup, new_node, new_lease = (
-            self.create_nodegroup_with_lease(nodegroup=nodegroup))
+            self.create_nodegroup_with_lease(
+                nodegroup=nodegroup, lease_number=2))
         change_dns_zone(nodegroup)
-
         fqdn = "%s.%s" % (new_node.hostname, nodegroup.name)
-        self.assertEqual(new_lease.ip, self.dig_resolve(fqdn))
+        self.assertEqual(
+            (new_lease.ip, '%s.' % fqdn),
+            (
+                self.dig_resolve(fqdn),
+                self.dig_reverse_resolve(new_lease.ip),
+            ))
 
     def test_write_full_dns_loads_full_dns_config(self):
         nodegroup, node, lease = self.create_nodegroup_with_lease()
-
         write_full_dns_config()
-
         fqdn = "%s.%s" % (node.hostname, nodegroup.name)
-        self.assertEqual(lease.ip, self.dig_resolve(fqdn))
+        self.assertEqual(
+            (lease.ip, '%s.' % fqdn),
+            (
+                self.dig_resolve(fqdn),
+                self.dig_reverse_resolve(lease.ip),
+            ))

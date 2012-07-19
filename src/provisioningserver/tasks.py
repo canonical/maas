@@ -24,7 +24,6 @@ __all__ = [
 from celery.task import task
 from provisioningserver.dns.config import (
     DNSConfig,
-    DNSZoneConfig,
     execute_rndc_command,
     setup_rndc,
     )
@@ -94,81 +93,66 @@ def write_tftp_config_for_node(arch, macs, subarch="generic",
 
 
 @task
-def rndc_command(*arguments):
-    """Use rndc to execute a command."""
-    execute_rndc_command(*arguments)
+def rndc_command(arguments, callback=None):
+    """Use rndc to execute a command.
+    :param callback: Callback subtask.
+    :type callback: callable
+    """
+    execute_rndc_command(arguments)
+    if callback is not None:
+        callback.delay()
 
 
 @task
-def write_full_dns_config(zones=None, reverse_zones=None,
-                          callback=None, **kwargs):
+def write_full_dns_config(zones=None, callback=None, **kwargs):
     """Write out the DNS configuration files: the main configuration
     file and the zone files.
-    :param zones: Mapping between zone names and the zone data used
-        to write the zone config files.
-    :type zones: dict
-    :param reverse_zones: Mapping between reverse zone names and the
-        reverse zone data used to write the reverse zone config
-        files.
-    :type reverse_zones: dict
+    :param zones: List of zones to write.
+    :type zones: list of :class:`DNSZoneData`
     :param callback: Callback subtask.
     :type callback: callable
     :param **kwargs: Keyword args passed to DNSConfig.write_config()
     """
-    if zones is None:
-        zones = {}
-    if reverse_zones is None:
-        reverse_zones = {}
-    # Write zone files.
-    for zone_name, zone_data in zones.items():
-        DNSZoneConfig(zone_name).write_config(**zone_data)
-    # TODO: Write reverse zone files.
-    # for zone_name, zone_data in zones.items():
-    #    DNSZoneConfig(zone_name).write_config(**zone_data)
+    if zones is not None:
+        for zone in zones:
+            zone.write_config()
+            zone.write_reverse_config()
     # Write main config file.
-    config = DNSConfig(
-        zone_names=list(zones),
-        reverse_zone_names=list(reverse_zones))
+    config = DNSConfig(zones=zones)
     config.write_config(**kwargs)
     if callback is not None:
         callback.delay()
 
 
 @task
-def write_dns_config(zone_names=(), reverse_zone_names=(),
-                     callback=None, **kwargs):
+def write_dns_config(zones=(), callback=None, **kwargs):
     """Write out the DNS configuration file.
 
-    :param zone_names: List of zone names to include as part of the
-        main config.
-    :type zone_names: list
-    :param reverse_zone_names: List of reverse zone names to include as part of
-        the main config.
-    :type reverse_zone_names: list
+    :param zones: List of zones to include as part of the main
+        config.
+    :type zones: list of :class:`DNSZoneData`
     :param callback: Callback subtask.
     :type callback: callable
     :param **kwargs: Keyword args passed to DNSConfig.write_config()
     """
-    config = DNSConfig(
-        zone_names=zone_names,
-        reverse_zone_names=reverse_zone_names)
+    config = DNSConfig(zones=zones)
     config.write_config(**kwargs)
     if callback is not None:
         callback.delay()
 
 
 @task
-def write_dns_zone_config(zone_name, callback=None, **kwargs):
+def write_dns_zone_config(zone, callback=None, **kwargs):
     """Write out a DNS zone configuration file.
 
-    :param zone_name: The identifier of the zone to write the configuration
-        for.
-    :type zone_name: basestring
+    :param zone: The zone data to write the configuration for.
+    :type zone: :class:`DNSZoneData`
     :param callback: Callback subtask.
     :type callback: callable
     :param **kwargs: Keyword args passed to DNSZoneConfig.write_config()
     """
-    DNSZoneConfig(zone_name).write_config(**kwargs)
+    zone.write_config()
+    zone.write_reverse_config()
     if callback is not None:
         callback.delay()
 
