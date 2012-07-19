@@ -69,6 +69,13 @@ class NodeGroupManager(Manager):
         nodegroup.save()
         return nodegroup
 
+    def ensure_master(self):
+        """Obtain the master node group, creating it first if needed."""
+        try:
+            return self.get(name='master')
+        except NodeGroup.DoesNotExist:
+            return self.new('master', '127.0.0.1')
+
 
 class NodeGroup(TimestampedModel):
 

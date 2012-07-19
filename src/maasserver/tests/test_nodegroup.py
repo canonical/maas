@@ -74,3 +74,33 @@ class TestNodeGroupManager(TestCase):
         self.assertIsNotNone(nodegroup.api_key)
         self.assertEqual(get_worker_user(), nodegroup.api_token.user)
         self.assertEqual(nodegroup.api_key, nodegroup.api_token.key)
+
+    def test_ensure_master_creates_minimal_master_nodegroup(self):
+        self.assertThat(
+            NodeGroup.objects.ensure_master(),
+            MatchesStructure.fromExample({
+                'name': 'master',
+                'worker_ip': '127.0.0.1',
+                'subnet_mask': None,
+                'broadcast_ip': None,
+                'router_ip': None,
+                'ip_range_low': None,
+                'ip_range_high': None,
+            }))
+
+    def test_writes_master_nodegroup_to_database(self):
+        master = NodeGroup.objects.ensure_master()
+        self.assertEqual(
+            master.id, NodeGroup.objects.get(name=master.name).id)
+
+    def test_ensure_master_returns_same_nodegroup_every_time(self):
+        self.assertEqual(
+            NodeGroup.objects.ensure_master().id,
+            NodeGroup.objects.ensure_master().id)
+
+    def test_ensure_master_preserves_existing_attributes(self):
+        master = NodeGroup.objects.ensure_master()
+        ip = factory.getRandomIPAddress()
+        master.worker_ip = ip
+        master.save()
+        self.assertEqual(ip, NodeGroup.objects.ensure_master().worker_ip)
