@@ -15,12 +15,11 @@ case "$GUEST_ARCHITECTURE" in
     x86_64) GUEST_ARCHITECTURE="amd64" ;;
 esac
 
-
-DEF_ZIMG="http://cloud-images.ubuntu.com/server/precise/current/precise-server-cloudimg-${GUEST_ARCHITECTURE}-disk1.img"
+GUEST_RELEASE=${ZIMMER_GUEST_RELEASE:-quantal}
+DEF_ZIMG="http://cloud-images.ubuntu.com/server/${GUEST_RELEASE}/current/${GUEST_RELEASE}-server-cloudimg-${GUEST_ARCHITECTURE}-disk1.img"
 DEF_SAVE_D="pristine"
 DEF_UD_FILE="ud-build.txt"
-ZIMMER_SSH_FORWARD=""
-#ZIMMER_SSH_FORWARD=${ZIMMER_SSH_FORWARD:-"hostfwd=tcp::2222-:22"}
+ZIMMER_SSH_FORWARD=${ZIMMER_SSH_FORWARD:-""} # hostfwd=tcp::2222-:22
 ZIMMER_MEM="${ZIMMER_MEM:-1024}"
 KVM_PID=""
 TAIL_PID=""
@@ -130,6 +129,7 @@ output="$1"
 command -v genisoimage >/dev/null ||
     fail "you do not have genisoimage installed. install genisoimage package"
 
+: > "$LOG"
 
 [ -f "$ud_file" ] ||
     fail "user data file $ud_file" is not a file
@@ -182,6 +182,7 @@ else
     img=${zimg%.zimg}.img
     debug 0 "creating uncompressed img $img from $zimg"
     qemu-img convert -O qcow2 "$zimg" "$img"
+    qemu-img resize "$img" 4G
 fi
 
 debug 0 "making nocloud data source in iso"
@@ -215,8 +216,8 @@ img_fp=$(readlink -f "$img") || fail "failed to get fullpath for $img"
 qemu-img create -f qcow2 -b "$img_fp" "${build0}" ||
     fail "failed to create qcow image backed by $img"
 
-## on precise, you do do not need 'boot=on' in kvm commanad line
-[ "$(lsb_release -sc)" = "precise" ] && bton="" || bton="boot=on"
+## on release newer than oneiric, do not give 'boot=on' in kvm cmdline
+[ "$(lsb_release -sc)" ">" "oneiric" ] && bton="" || bton="boot=on"
 
 serial_out="$TEMP_D/serial.output"
 monitor="${TEMP_D}/monitor.fifo" && mkfifo "$monitor" ||

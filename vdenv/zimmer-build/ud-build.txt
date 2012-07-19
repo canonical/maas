@@ -14,13 +14,15 @@ bucket:
    #ONE_TIME_PROXY=http://local-proxy:3128/
    PROXY_COPY_SYS_TO_COBBLER=1
 
+   [ -n "$ONE_TIME_PROXY" ] &&
+     export http_proxy="$ONE_TIME_PROXY" &&
+     export https_proxy="$http_proxy"
+
    echo === $(date) ====
    debconf-set-selections <<EOF
-   cobbler  cobbler/password  password xcobbler
    cloud-init	cloud-init/datasources	multiselect	NoCloud
    EOF
 
-   [ -n "$ONE_TIME_PROXY" ] && export http_proxy="$ONE_TIME_PROXY"
    export DEBIAN_FRONTEND=noninteractive;
    dpkg-reconfigure cloud-init
 
@@ -39,7 +41,6 @@ bucket:
    pkgs=""
    pkgs="$pkgs distro-info" # (LP: #960142)
    pkgs="$pkgs libvirt-bin" # for power control via virsh
-   pkgs="$pkgs cobbler-web" # for debugging and ease of use of cobbler
    pkgs="$pkgs maas" # main maas package
    apt_get update
    apt_get install ${pkgs}
@@ -56,59 +57,107 @@ bucket:
       ln -sf ${fname##*/}.zimmer "$fname"
    fi
 
-   # hack /etc/init/cobbler.conf to always update its IP address on start
-   cat >> /etc/init/cobbler.conf <<"ENDCOB"
-   #### added by zimmer-build ######
-   pre-start script
-     #set -x; exec >/tmp/cobbler-pre.out 2>/tmp/cobbler-pre.err
-     found=""
-     fn="/etc/cobbler/cobbler-server"
-   
-     # if user wants to manage this, then just remove that file
-     # it is expected to either have an IP address or 'auto'
-     [ -f "$fn" ] || exit 0
-     read found < "$fn" || :
-     [ -n "$found" -a "$found" != "auto" ] ||
-       found=$(ifconfig eth0 2>/dev/null |
-         awk '$0 ~ /inet addr:/ { sub(/.*:/,"",$2); print $2; }')
-   
-     [ -z "$found" ] && exit 0
-   
-     sed -i.start -e "s/^next_server: .*$/next_server: $found/" \
-        -e "s/^server: *..*..*..*$/server: $found/" \
-        /etc/cobbler/settings
-   
-     # if the above sed did something, then we leave the orig
-     # file around for post-start to cleanup.
-     cmp /etc/cobbler/settings.start /etc/cobbler/settings >/dev/null &&
-       rm -f /etc/cobbler/settings.start || :
-   end script
-   
-   post-start script
-     #set -x; exec >/tmp/cobbler-start.out 2>/tmp/cobbler-start.err
-     set +e  # upstart uses 'set -e' by default
-     [ -f /etc/cobbler/settings.start ] || exit 0
-     rm -f /etc/cobbler/settings.start
+   ## set up rc.local.d functionality (LP: #915215)
+   mkdir -p /etc/rc.local.d
+   if [ ! -e /etc/rc.local.d/00-rc-local ]; then
+     mv /etc/rc.local /etc/rc.local.d/00-rc-local
+   fi
+   printf "#!/bin/sh\nrun-parts /etc/rc.local.d\n" >> /etc/rc.local
+   chmod 755 /etc/rc.local
 
-     # now basically wait around until cobbler is available
-     while : ; do
+   # add an rc.local.d job that sets MAAS_PROVISION_URL and cobbler
+   # to have the right ip address.
+   cat > /etc/rc.local.d/maas-ip-fixup <<"END_MAAS_IP_FIXUP"
+   #!/bin/sh
+   # reconfigure maas in case our IP address has changed
+   # get the right value for maas/default-maas-url. it will take
+   # care of restarting things that need to be
+   /usr/local/bin/maas-set-ip set auto
+
+   # now basically wait around until cobbler is available
+   # detach to not block the rest of boot
+   sh -c '
+     max=3; i=0;
+     while [ $i -lt $max ]; do
        # will exit 155 if "cobblerd does not appear to be running"
        cobbler system list >/dev/null
        [ $? -eq 155 ] || break
-       sleep 1
+       sleep 4
+       i=$(($i+1))
      done
 
-     # we're allowing cobbler to start even if these fail
-     cobbler sync
-     maas-import-isos --update
-     exit 0
-   end script
-   ENDCOB
+     if [ $i -ne $max ]; then
+       # if we talked to cobbler above, then sync it and import-isos
+       cobbler sync
+       maas-import-isos --update
+     fi' &
+   END_MAAS_IP_FIXUP
+   chmod 755 /etc/rc.local.d/maas-ip-fixup
 
-   echo "auto" >> /etc/cobbler/cobbler-server
+   cat > /usr/local/bin/maas-set-ip <<"END_MAAS_SET_IP"
+   #!/bin/sh
 
+   FIELDS="maas/default-maas-url"
+   Usage() {
+     cat <<EOF
+   Usage ${0##*/} [set|show]
+    Set or show the IP addresses for maas.
+    for set, provide IP address or "auto"
+   EOF
+   }
+   [ "$1" = "-h" -o "$1" = "--help" ] && { Usage; exit 0; }
+   [ "$1" = "set" -o "$1" = "show" ] || { Usage 1>&2; exit 1; }
+   
+   get() {
+     _RET=$(debconf-show ${1%%/*} 2>/dev/null |
+       awk '{gsub("*","");} $1 == key { print $2 }' "key=$1:")
+   }
+   show() {
+     while [ $# -ne 0 ]; do
+       get $1; echo "$1: $_RET"
+       shift
+     done 
+   }
+   get_ip() {
+     # stolen from /var/lib/dpkg/info/maas.postinst
+     local Iface Destination Gateway Flags RefCnt Use Metric Mask MTU Window \
+     local IRTT interface ipaddr
+     while read Iface Destination Gateway Flags RefCnt Use Metric Mask MTU \
+                Window IRTT; do
+       [ "$Mask" = "00000000" ] && break
+     done < /proc/net/route
+     interface="$Iface"
+     ipaddr=$(LC_ALL=C /sbin/ip -4 addr list dev "$interface" scope global)
+     ipaddr=${ipaddr#* inet }
+     ipaddr=${ipaddr%%/*}
+     _RET=${ipaddr}
+   }
+   if [ "$1" = "show" ]; then
+     show $FIELDS
+   else
+     [ "$(id -u)" = "0" ] || { echo "must be root to set" 1>&2; exit 1; }
+     url_val=$2
+     url_key="maas/default-maas-url"
+     if [ "${url_val:-auto}" = "auto" ]; then
+       get_ip
+       url_val=$_RET
+     fi
+     printf "%s\t%s\t%s\t%s\n" \
+       "${url_key%%/*}" "${url_key}" "string" "$url_val" |
+       debconf-set-selections
+     DEBIAN_FRONTEND=${DEBIAN_FRONTEND:-noninteractive} \
+       dpkg-reconfigure -plow ${url_key%%/*}
+     sudo service apache2 restart
+     show $FIELDS
+     #grep MAAS_URL /etc/maas/maas_local_settings.py
+     #egrep "^(server|next_server)" /etc/cobbler/settings
+   fi
+   END_MAAS_SET_IP
+   chmod 755 /usr/local/bin/maas-set-ip
+   
+   my_release=$(lsb_release -c)
    cat >> /etc/maas/import_isos <<END
-   RELEASES="precise"
+   RELEASES="${my_release}"
    ARCHES="i386 amd64"
    END
 

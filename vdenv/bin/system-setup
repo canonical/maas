@@ -23,7 +23,7 @@ filter_installed_packages() {
     # $ dpkg-query --show cloud-init
     # No packages found matching cloud-init.
     LC_ALL=C dpkg-query --show "$@" 2>&1 |
-        awk '$0 ~ /^No packages/ { sub("[.]$","",$NF); pkgs[n]=$NF; n=n+1; };
+        awk '$0 ~ /[Nn]o packages/ { sub("[.]$","",$NF); pkgs[n]=$NF; n=n+1; };
             END { for(p in pkgs) {printf("%s ",pkgs[p])}; printf("\n"); }' \
             n=0
 }
