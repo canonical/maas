@@ -110,7 +110,7 @@ bucket:
    
    get() {
      _RET=$(debconf-show ${1%%/*} 2>/dev/null |
-       awk '{gsub("*","");} $1 == key { print $2 }' "key=$1:")
+       awk '{gsub("[*]","");} $1 == key { print $2 }' "key=$1:")
    }
    show() {
      while [ $# -ne 0 ]; do
