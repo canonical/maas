@@ -57,7 +57,7 @@ from provisioningserver.enum import (
     POWER_TYPE,
     POWER_TYPE_CHOICES,
     )
-from provisioningserver.tasks import power_on
+from provisioningserver.tasks import power_on, power_off
 
 
 def generate_node_system_id():
@@ -274,8 +274,15 @@ class NodeManager(Manager):
         :rtype: list
         """
         nodes = self.get_nodes(by_user, NODE_PERMISSION.EDIT, ids=ids)
-        get_papi().stop_nodes([node.system_id for node in nodes])
-        return nodes
+        processed_nodes = []
+        for node in nodes:
+            power_params = node.get_effective_power_parameters()
+            node_power_type = node.get_effective_power_type()
+            # WAKE_ON_LAN does not support poweroff.
+            if node_power_type != POWER_TYPE.WAKE_ON_LAN:
+                power_off.delay(node_power_type, **power_params)
+            processed_nodes.append(node)
+        return processed_nodes
 
     def start_nodes(self, ids, by_user, user_data=None):
         """Request on given user's behalf that the given nodes be started up.
