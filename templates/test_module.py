@@ -1,6 +1,7 @@
 # Copyright 2012 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+# TODO: Description here.
 """..."""
 
 from __future__ import (
@@ -16,6 +17,7 @@ from maasserver.testing.testcase import TestCase
 
 
 class TestSomething(TestCase):
+# TODO: Change test class name to match what you're testing.
 
     #resources = [...]
 
