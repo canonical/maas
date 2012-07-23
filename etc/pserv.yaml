@@ -60,7 +60,7 @@ cobbler:
 ## TFTP configuration.
 #
 tftp:
-  # root: <current directory>
+  root: /var/lib/tftpboot
   # port: 5244
   ## The URL to be contacted to generate PXE configurations.
   # generator: http://localhost:5243/api/1.0/pxeconfig

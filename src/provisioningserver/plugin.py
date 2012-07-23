@@ -12,18 +12,9 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
-from getpass import getuser
-
-from formencode import Schema
-from formencode.validators import (
-    Int,
-    RequireIfPresent,
-    String,
-    URL,
-    )
 from provisioningserver.amqpclient import AMQFactory
 from provisioningserver.cobblerclient import CobblerSession
-from provisioningserver.pxe.tftppath import locate_tftp_path
+from provisioningserver.config import Config
 from provisioningserver.remote import ProvisioningAPI_XMLRPC
 from provisioningserver.services import (
     LogService,
@@ -65,7 +56,6 @@ from twisted.web.resource import (
     Resource,
     )
 from twisted.web.server import Site
-import yaml
 from zope.interface import implementer
 
 
@@ -105,84 +95,6 @@ class ProvisioningRealm:
         if IResource in interfaces:
             return (IResource, self.resource, self.noop)
         raise NotImplementedError()
-
-
-class ConfigOops(Schema):
-    """Configuration validator for OOPS options."""
-
-    if_key_missing = None
-
-    directory = String(if_missing=b"")
-    reporter = String(if_missing=b"")
-
-    chained_validators = (
-        RequireIfPresent("reporter", present="directory"),
-        )
-
-
-class ConfigBroker(Schema):
-    """Configuration validator for message broker options."""
-
-    if_key_missing = None
-
-    host = String(if_missing=b"localhost")
-    port = Int(min=1, max=65535, if_missing=5673)
-    username = String(if_missing=getuser())
-    password = String(if_missing=b"test")
-    vhost = String(if_missing="/")
-
-
-class ConfigCobbler(Schema):
-    """Configuration validator for connecting to Cobbler."""
-
-    if_key_missing = None
-
-    url = URL(
-        add_http=True, require_tld=False,
-        if_missing=b"http://localhost/cobbler_api",
-        )
-    username = String(if_missing=getuser())
-    password = String(if_missing=b"test")
-
-
-class ConfigTFTP(Schema):
-    """Configuration validator for the TFTP service."""
-
-    if_key_missing = None
-
-    root = String(if_missing=locate_tftp_path())
-    port = Int(min=1, max=65535, if_missing=5244)
-    generator = URL(
-        add_http=True, require_tld=False,
-        if_missing=b"http://localhost:5243/api/1.0/pxeconfig",
-        )
-
-
-class Config(Schema):
-    """Configuration validator."""
-
-    if_key_missing = None
-
-    interface = String(if_empty=b"", if_missing=b"127.0.0.1")
-    port = Int(min=1, max=65535, if_missing=5241)
-    username = String(not_empty=True, if_missing=getuser())
-    password = String(not_empty=True)
-    logfile = String(if_empty=b"pserv.log", if_missing=b"pserv.log")
-    oops = ConfigOops
-    broker = ConfigBroker
-    cobbler = ConfigCobbler
-    tftp = ConfigTFTP
-
-    @classmethod
-    def parse(cls, stream):
-        """Load a YAML configuration from `stream` and validate."""
-        return cls.to_python(yaml.safe_load(stream))
-
-    @classmethod
-    def load(cls, filename):
-        """Load a YAML configuration from `filename` and validate."""
-        with open(filename, "rb") as stream:
-            return cls.parse(stream)
 
 
 class Options(usage.Options):

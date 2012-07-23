@@ -26,9 +26,6 @@ POWER_TEMPLATES_DIR = None
 # None to use the templates installed with the running version of MAAS.
 PXE_TEMPLATES_DIR = None
 
-# TFTP server's root directory.
-TFTPROOT = "/var/lib/tftpboot"
-
 # Location of MAAS' bind configuration files.
 DNS_CONFIG_DIR = '/var/cache/bind/maas'
 

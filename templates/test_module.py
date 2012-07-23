@@ -13,7 +13,7 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
-from maasserver.testing.testcase import TestCase
+from maastesting.testcase import TestCase
 
 
 class TestSomething(TestCase):

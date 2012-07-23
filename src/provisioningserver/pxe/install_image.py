@@ -22,7 +22,7 @@ from shutil import (
     rmtree,
     )
 
-from celeryconfig import TFTPROOT
+from provisioningserver.config import Config
 from provisioningserver.pxe.tftppath import (
     compose_image_path,
     locate_tftp_path,
@@ -130,10 +130,6 @@ def add_arguments(parser):
     parser.add_argument(
         '--image', dest='image', default=None,
         help="Netboot image directory, containing kernel & initrd.")
-    parser.add_argument(
-        '--tftproot', dest='tftproot', default=TFTPROOT, help=(
-            "Store to this TFTP directory tree instead of the "
-            "default [%(default)s]."))
 
 
 def run(args):
@@ -144,8 +140,10 @@ def run(args):
     containing identical files, the new image is deleted and the old one
     is left untouched.
     """
+    config = Config.load(args.config_file)
+    tftproot = config["tftp"]["root"]
     destination = make_destination(
-        args.tftproot, args.arch, args.subarch, args.release, args.purpose)
+        tftproot, args.arch, args.subarch, args.release, args.purpose)
     if not are_identical_dirs(destination, args.image):
         # Image has changed.  Move the new version into place.
         install_dir(args.image, destination)

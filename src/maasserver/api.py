@@ -133,6 +133,7 @@ from piston.handler import (
 from piston.models import Token
 from piston.resource import Resource
 from piston.utils import rc
+import provisioningserver.config
 from provisioningserver.pxe.pxeconfig import (
     PXEConfig,
     PXEConfigFail,
@@ -1084,13 +1085,17 @@ def pxeconfig(request):
     :param kernelimage: The path to the kernel in the TFTP server
     :param append: Kernel parameters to append.
     """
+    provisioning_config = (
+        provisioningserver.config.Config.load_from_cache(
+            settings.PROVISIONING_SETTINGS))
     menutitle = get_mandatory_param(request.GET, 'menutitle')
     kernelimage = get_mandatory_param(request.GET, 'kernelimage')
     append = get_mandatory_param(request.GET, 'append')
     arch = get_mandatory_param(request.GET, 'arch')
     subarch = request.GET.get('subarch', None)
     mac = request.GET.get('mac', None)
-    config = PXEConfig(arch, subarch, mac)
+    tftproot = provisioning_config["tftp"]["root"]
+    config = PXEConfig(arch, subarch, mac, tftproot)
 
     # In addition to the "append" parameter, also add a URL for the
     # node's preseed to the kernel command line.

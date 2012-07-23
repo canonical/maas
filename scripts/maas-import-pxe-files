@@ -34,8 +34,13 @@ CURRENT_RELEASE=${CURRENT_RELEASE:-$STABLE_RELEASE}
 # Supported architectures.
 ARCHES=${ARCHES:-amd64 i386}
 
-# TFTP root directory.  (Don't let the "root" vs. "boot" confuse you.)
-TFTPROOT=${TFTPROOT:-/var/lib/tftpboot}
+# TFTP root directory. Mandatory.
+# TODO: Remove this; it's here to support the obsolete
+# generate_enlistment_pxe command.
+TFTPROOT=${TFTPROOT?}
+
+# Path to the provisioning configuration. Mandatory.
+MAAS_PROVISIONING_SETTINGS=${MAAS_PROVISIONING_SETTINGS?}
 
 # Command line to download a resource at a given URL into the current
 # directory.  A wget command line will work here, but curl will do as well.
@@ -70,7 +75,7 @@ update_pre_boot_loader() {
     then
         # TODO: Pass sub-architecture once we support those.
         maas-provision install-pxe-bootloader \
-            --arch=$arch --loader='pxelinux.0' --tftproot=$TFTPROOT
+            --arch=$arch --loader='pxelinux.0'
     fi
 }
 
@@ -93,7 +98,7 @@ update_install_files() {
 
     maas-provision install-pxe-image \
         --arch=$arch --release=$release --purpose="install" \
-        --image="install" --tftproot=$TFTPROOT
+        --image="install"
 }
 
 
@@ -118,6 +123,7 @@ main() {
         done
 
         # TODO: Pass sub-architecture once we support those.
+        # TODO: Remove this; it's obsolete.
         maas generate_enlistment_pxe \
             --arch=$arch --release=$CURRENT_RELEASE \
             --tftproot=$TFTPROOT

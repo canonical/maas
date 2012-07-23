@@ -14,15 +14,19 @@ __all__ = [
     "ActionScript",
     "atomic_write",
     "deferred",
-    "ShellTemplate",
     "incremental_write",
+    "MainScript",
+    "ShellTemplate",
     "xmlrpc_export",
     ]
 
 from argparse import ArgumentParser
 from functools import wraps
 import os
-from os import fdopen
+from os import (
+    fdopen,
+    environ,
+    )
 from pipes import quote
 import signal
 from subprocess import CalledProcessError
@@ -239,3 +243,21 @@ class ActionScript:
             raise SystemExit(1)
         else:
             raise SystemExit(0)
+
+
+class MainScript(ActionScript):
+    """An `ActionScript` that always accepts a `--config-file` option.
+
+    The `--config-file` option defaults to the value of
+    `MAAS_PROVISIONING_SETTINGS` in the process's environment, otherwise
+    `/etc/maas/pserv.yaml`.
+    """
+
+    def __init__(self, description):
+        super(MainScript, self).__init__(description)
+        self.parser.add_argument(
+            "-c", "--config-file", metavar="FILENAME",
+            help="Configuration file to load [%(default)s].",
+            default=environ.get(
+                "MAAS_PROVISIONING_SETTINGS",
+                "/etc/maas/pserv.yaml"))

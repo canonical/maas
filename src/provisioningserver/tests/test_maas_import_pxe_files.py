@@ -21,6 +21,7 @@ from maastesting.utils import (
     age_file,
     get_write_time,
     )
+from provisioningserver.testing.config import ConfigFixture
 from testtools.matchers import (
     Contains,
     FileContains,
@@ -67,6 +68,13 @@ def compose_tftp_path(tftproot, arch, *path):
 
 class TestImportPXEFiles(TestCase):
 
+    def setUp(self):
+        super(TestImportPXEFiles, self).setUp()
+        self.tftproot = self.make_dir()
+        self.config = {"tftp": {"root": self.tftproot}}
+        self.config_fixture = ConfigFixture(self.config)
+        self.useFixture(self.config_fixture)
+
     def make_downloads(self, release=None, arch=None):
         """Set up a directory with an image for "download" by the script.
 
@@ -102,8 +110,11 @@ class TestImportPXEFiles(TestCase):
             # Substitute curl for wget; it accepts file:// URLs.
             'DOWNLOAD': 'curl -O --silent',
             'PATH': os.pathsep.join(path),
-            'TFTPROOT': tftproot,
+            # TODO: Remove TFTPROOT; it's here to support the obsolete
+            # generate_enlistment_pxe command.
+            'TFTPROOT': self.tftproot,
         }
+        env.update(self.config_fixture.environ)
         if arch is not None:
             env['ARCHES'] = arch
         if release is not None:
@@ -116,9 +127,8 @@ class TestImportPXEFiles(TestCase):
         arch = factory.make_name('arch')
         release = 'precise'
         archive = self.make_downloads(arch=arch, release=release)
-        tftproot = self.make_dir()
-        self.call_script(archive, tftproot, arch=arch, release=release)
-        tftp_path = compose_tftp_path(tftproot, arch, 'pxelinux.0')
+        self.call_script(archive, self.tftproot, arch=arch, release=release)
+        tftp_path = compose_tftp_path(self.tftproot, arch, 'pxelinux.0')
         download_path = compose_download_dir(archive, arch, release)
         expected_contents = read_file(download_path, 'pxelinux.0')
         self.assertThat(tftp_path, FileContains(expected_contents))
@@ -129,21 +139,19 @@ class TestImportPXEFiles(TestCase):
         archive = self.make_downloads(arch=arch, release=release)
         download_path = compose_download_dir(archive, arch, release)
         os.remove(os.path.join(download_path, 'pxelinux.0'))
-        tftproot = self.make_dir()
-        self.call_script(archive, tftproot, arch=arch, release=release)
-        tftp_path = compose_tftp_path(tftproot, arch, 'pxelinux.0')
+        self.call_script(archive, self.tftproot, arch=arch, release=release)
+        tftp_path = compose_tftp_path(self.tftproot, arch, 'pxelinux.0')
         self.assertThat(tftp_path, Not(FileExists()))
 
     def test_updates_pre_boot_loader(self):
         arch = factory.make_name('arch')
         release = 'precise'
-        tftproot = self.make_dir()
-        tftp_path = compose_tftp_path(tftproot, arch, 'pxelinux.0')
+        tftp_path = compose_tftp_path(self.tftproot, arch, 'pxelinux.0')
         os.makedirs(os.path.dirname(tftp_path))
         with open(tftp_path, 'w') as existing_file:
             existing_file.write(factory.getRandomString())
         archive = self.make_downloads(arch=arch, release=release)
-        self.call_script(archive, tftproot, arch=arch, release=release)
+        self.call_script(archive, self.tftproot, arch=arch, release=release)
         download_path = compose_download_dir(archive, arch, release)
         expected_contents = read_file(download_path, 'pxelinux.0')
         self.assertThat(tftp_path, FileContains(expected_contents))
@@ -152,10 +160,9 @@ class TestImportPXEFiles(TestCase):
         arch = factory.make_name('arch')
         release = 'precise'
         archive = self.make_downloads(arch=arch, release=release)
-        tftproot = self.make_dir()
-        self.call_script(archive, tftproot, arch=arch, release=release)
+        self.call_script(archive, self.tftproot, arch=arch, release=release)
         tftp_path = compose_tftp_path(
-            tftproot, arch, release, 'install', 'linux')
+            self.tftproot, arch, release, 'install', 'linux')
         download_path = compose_download_dir(archive, arch, release)
         expected_contents = read_file(download_path, 'linux')
         self.assertThat(tftp_path, FileContains(expected_contents))
@@ -163,14 +170,13 @@ class TestImportPXEFiles(TestCase):
     def test_updates_install_image(self):
         arch = factory.make_name('arch')
         release = 'precise'
-        tftproot = self.make_dir()
         tftp_path = compose_tftp_path(
-            tftproot, arch, release, 'install', 'linux')
+            self.tftproot, arch, release, 'install', 'linux')
         os.makedirs(os.path.dirname(tftp_path))
         with open(tftp_path, 'w') as existing_file:
             existing_file.write(factory.getRandomString())
         archive = self.make_downloads(arch=arch, release=release)
-        self.call_script(archive, tftproot, arch=arch, release=release)
+        self.call_script(archive, self.tftproot, arch=arch, release=release)
         download_path = compose_download_dir(archive, arch, release)
         expected_contents = read_file(download_path, 'linux')
         self.assertThat(tftp_path, FileContains(expected_contents))
@@ -179,22 +185,21 @@ class TestImportPXEFiles(TestCase):
         arch = factory.make_name('arch')
         release = 'precise'
         archive = self.make_downloads(arch=arch, release=release)
-        tftproot = self.make_dir()
-        self.call_script(archive, tftproot, arch=arch, release=release)
+        self.call_script(archive, self.tftproot, arch=arch, release=release)
         tftp_path = compose_tftp_path(
-            tftproot, arch, release, 'install', 'linux')
+            self.tftproot, arch, release, 'install', 'linux')
         backdate(tftp_path)
         original_timestamp = get_write_time(tftp_path)
-        self.call_script(archive, tftproot, arch=arch, release=release)
+        self.call_script(archive, self.tftproot, arch=arch, release=release)
         self.assertEqual(original_timestamp, get_write_time(tftp_path))
 
     def test_generates_default_pxe_config(self):
         arch = factory.make_name('arch')
         release = 'precise'
-        tftproot = self.make_dir()
         archive = self.make_downloads(arch=arch, release=release)
-        self.call_script(archive, tftproot, arch=arch, release=release)
+        self.call_script(archive, self.tftproot, arch=arch, release=release)
         self.assertThat(
             os.path.join(
-                tftproot, 'maas', arch, 'generic', 'pxelinux.cfg', 'default'),
+                self.tftproot, 'maas', arch, 'generic',
+                'pxelinux.cfg', 'default'),
             FileContains(matcher=Contains("MENU TITLE")))

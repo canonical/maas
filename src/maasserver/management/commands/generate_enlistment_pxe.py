@@ -29,6 +29,7 @@ from provisioningserver.pxe.tftppath import compose_image_path
 
 class Command(BaseCommand):
     """Print out enlistment PXE config."""
+    # TODO: Remove this; it's obsolete.
 
     option_list = BaseCommand.option_list + (
         make_option(

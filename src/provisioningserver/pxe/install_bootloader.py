@@ -19,7 +19,7 @@ import filecmp
 import os.path
 from shutil import copyfile
 
-from celeryconfig import TFTPROOT
+from provisioningserver.config import Config
 from provisioningserver.pxe.tftppath import (
     compose_bootloader_path,
     locate_tftp_path,
@@ -97,10 +97,6 @@ def add_arguments(parser):
     parser.add_argument(
         '--loader', dest='loader', default=None,
         help="PXE pre-boot loader to install.")
-    parser.add_argument(
-        '--tftproot', dest='tftproot', default=TFTPROOT, help=(
-            "Store to this TFTP directory tree instead of the "
-            "default [%(default)s]."))
 
 
 def run(args):
@@ -109,7 +105,9 @@ def run(args):
     This won't overwrite an existing loader if its contents are unchanged.
     However the new loader you give it will be deleted regardless.
     """
-    destination = make_destination(args.tftproot, args.arch, args.subarch)
+    config = Config.load(args.config_file)
+    tftproot = config["tftp"]["root"]
+    destination = make_destination(tftproot, args.arch, args.subarch)
     install_bootloader(args.loader, destination)
     if os.path.exists(args.loader):
         os.remove(args.loader)

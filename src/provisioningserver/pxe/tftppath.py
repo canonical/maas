@@ -19,8 +19,6 @@ __all__ = [
 
 import os.path
 
-from celeryconfig import TFTPROOT
-
 
 def compose_bootloader_path(arch, subarch):
     """Compose the TFTP path for a PXE pre-boot loader."""
@@ -73,8 +71,7 @@ def locate_tftp_path(tftp_path=None, tftproot=None):
     :param tftproot: Optional TFTP root directory to override the
         configured default.
     """
-    if tftproot is None:
-        tftproot = TFTPROOT
+    assert tftproot is not None, "tftproot must be defined."
     if tftp_path is None:
         return tftproot
     return os.path.join(tftproot, tftp_path.lstrip('/'))

@@ -16,10 +16,10 @@ from argparse import (
     ArgumentParser,
     Namespace,
     )
-from io import BytesIO
 import os
 import random
 from random import randint
+import StringIO
 from subprocess import CalledProcessError
 import sys
 import types
@@ -31,6 +31,7 @@ from provisioningserver.utils import (
     atomic_write,
     increment_age,
     incremental_write,
+    MainScript,
     Safe,
     ShellTemplate,
     )
@@ -132,17 +133,21 @@ class TestShellTemplate(TestCase):
 class TestActionScript(TestCase):
     """Test `ActionScript`."""
 
+    factory = ActionScript
+
     def setUp(self):
         super(TestActionScript, self).setUp()
         # ActionScript.setup() is not safe to run in the test suite.
         self.patch(ActionScript, "setup", lambda self: None)
-        # ArgumentParser sometimes likes to print to stdout/err.
-        self.patch(sys, "stdout", BytesIO())
-        self.patch(sys, "stderr", BytesIO())
+        # ArgumentParser sometimes likes to print to stdout/err. Use
+        # StringIO.StringIO to be relaxed about str/unicode (argparse uses
+        # str). When moving to Python 3 this will need to be tightened up.
+        self.patch(sys, "stdout", StringIO.StringIO())
+        self.patch(sys, "stderr", StringIO.StringIO())
 
     def test_init(self):
         description = factory.getRandomString()
-        script = ActionScript(description)
+        script = self.factory(description)
         self.assertIsInstance(script.parser, ArgumentParser)
         self.assertEqual(description, script.parser.description)
 
@@ -152,7 +157,7 @@ class TestActionScript(TestCase):
             self.assertIsInstance(parser, ArgumentParser))
         handler.run = lambda args: (
             self.assertIsInstance(args, int))
-        script = ActionScript("Description")
+        script = self.factory("Description")
         script.register("slay", handler)
         self.assertIn("slay", script.subparsers.choices)
         action_parser = script.subparsers.choices["slay"]
@@ -163,7 +168,7 @@ class TestActionScript(TestCase):
         # add_arguments() callable.
         handler = types.ModuleType(b"handler")
         handler.run = lambda args: None
-        script = ActionScript("Description")
+        script = self.factory("Description")
         error = self.assertRaises(
             AttributeError, script.register, "decapitate", handler)
         self.assertIn("'add_arguments'", "%s" % error)
@@ -173,7 +178,7 @@ class TestActionScript(TestCase):
         # callable.
         handler = types.ModuleType(b"handler")
         handler.add_arguments = lambda parser: None
-        script = ActionScript("Description")
+        script = self.factory("Description")
         error = self.assertRaises(
             AttributeError, script.register, "decapitate", handler)
         self.assertIn("'run'", "%s" % error)
@@ -183,7 +188,7 @@ class TestActionScript(TestCase):
         handler = types.ModuleType(b"handler")
         handler.add_arguments = lambda parser: None
         handler.run = handler_calls.append
-        script = ActionScript("Description")
+        script = self.factory("Description")
         script.register("amputate", handler)
         error = self.assertRaises(SystemExit, script, ["amputate"])
         self.assertEqual(0, error.code)
@@ -191,7 +196,7 @@ class TestActionScript(TestCase):
         self.assertIsInstance(handler_calls[0], Namespace)
 
     def test_call_invalid_choice(self):
-        script = ActionScript("Description")
+        script = self.factory("Description")
         self.assertRaises(SystemExit, script, ["disembowel"])
         self.assertIn(b"invalid choice", sys.stderr.getvalue())
 
@@ -200,7 +205,7 @@ class TestActionScript(TestCase):
         handler = types.ModuleType(b"handler")
         handler.add_arguments = lambda parser: None
         handler.run = lambda args: 0 / 0
-        script = ActionScript("Description")
+        script = self.factory("Description")
         script.register("eviscerate", handler)
         self.assertRaises(ZeroDivisionError, script, ["eviscerate"])
 
@@ -216,7 +221,7 @@ class TestActionScript(TestCase):
         handler = types.ModuleType(b"handler")
         handler.add_arguments = lambda parser: None
         handler.run = lambda args: raise_exception()
-        script = ActionScript("Description")
+        script = self.factory("Description")
         script.register("sever", handler)
         error = self.assertRaises(SystemExit, script, ["sever"])
         self.assertEqual(exception.returncode, error.code)
@@ -231,7 +236,31 @@ class TestActionScript(TestCase):
         handler = types.ModuleType(b"handler")
         handler.add_arguments = lambda parser: None
         handler.run = lambda args: raise_exception()
-        script = ActionScript("Description")
+        script = self.factory("Description")
         script.register("smash", handler)
         error = self.assertRaises(SystemExit, script, ["smash"])
         self.assertEqual(1, error.code)
+
+
+class TestMainScript(TestActionScript):
+
+    factory = MainScript
+
+    def test_default_arguments(self):
+        # MainScript accepts a --config-file parameter. The value of this is
+        # passed through into the args namespace object as config_file.
+        handler_calls = []
+        handler = types.ModuleType(b"handler")
+        handler.add_arguments = lambda parser: None
+        handler.run = handler_calls.append
+        script = self.factory("Description")
+        script.register("dislocate", handler)
+        dummy_config_file = factory.make_name("config-file")
+        # --config-file is specified before the action.
+        args = ["--config-file", dummy_config_file, "dislocate"]
+        error = self.assertRaises(SystemExit, script, args)
+        self.assertEqual(0, error.code)
+        namespace = handler_calls[0]
+        self.assertEqual(
+            {"config_file": dummy_config_file, "handler": handler},
+            vars(namespace))
