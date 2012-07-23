@@ -321,6 +321,16 @@ def get_mandatory_param(data, key, validator=None):
         return value
 
 
+def get_optional_list(data, key, default=None):
+    """Get the list from the provided data dict or return a default value.
+    """
+    value = data.getlist(key)
+    if value == []:
+        return default
+    else:
+        return value
+
+
 def extract_oauth_key_from_auth_header(auth_data):
     """Extract the oauth key from auth data in HTTP header.
 
@@ -667,21 +677,30 @@ class NodesHandler(BaseHandler):
 
     @api_exported('GET')
     def list(self, request):
-        """List Nodes visible to the user, optionally filtered by id."""
-        match_ids = request.GET.getlist('id')
-        if match_ids == []:
-            match_ids = None
+        """List Nodes visible to the user, optionally filtered by criteria.
+
+        :param mac_address: An optional list of MAC addresses.  Only
+            nodes with matching MAC addresses will be returned.
+        :type mac_address: iterable
+        :param id: An optional list of system ids.  Only nodes with
+            matching system ids will be returned.
+        :type id: iterable
+        """
+        # Get filters from request.
+        match_ids = get_optional_list(request.GET, 'id')
+        match_macs = get_optional_list(request.GET, 'mac_address')
+        # Fetch nodes and apply filters.
         nodes = Node.objects.get_nodes(
             request.user, NODE_PERMISSION.VIEW, ids=match_ids)
+        if match_macs is not None:
+            nodes = nodes.filter(macaddress__mac_address__in=match_macs)
         return nodes.order_by('id')
 
     @api_exported('GET')
     def list_allocated(self, request):
         """Fetch Nodes that were allocated to the User/oauth token."""
         token = get_oauth_token(request)
-        match_ids = request.GET.getlist('id')
-        if match_ids == []:
-            match_ids = None
+        match_ids = get_optional_list(request.GET, 'id')
         nodes = Node.objects.get_allocated_visible_nodes(token, match_ids)
         return nodes.order_by('id')
 
