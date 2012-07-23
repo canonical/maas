@@ -63,6 +63,11 @@ when buildout runs.
 .. _PyPI:
   http://pypi.python.org/
 
+After installing bind9, you will have an extra daemon running.  If you are a
+developer and don't intend to run BIND locally, you can disable the daemon
+by inserting ``exit 1`` at the top of ``/etc/default/bind9``.  The package
+still needs to be installed for tests though.
+
 
 First time using buildout?
 ==========================
