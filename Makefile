@@ -84,9 +84,7 @@ bin/py bin/ipy: bin/buildout buildout.cfg versions.cfg setup.py
 	@touch --no-create bin/py bin/ipy
 
 test: build
-	bin/test.maas
-	bin/test.maastesting
-	bin/test.pserv
+	echo $(wildcard bin/test.*) | xargs -n1 env
 
 lint: sources = $(wildcard *.py contrib/*.py) src templates twisted utilities
 lint: bin/flake8
