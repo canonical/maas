@@ -59,6 +59,10 @@ from maasserver.models.user import (
     create_auth_token,
     get_auth_tokens,
     )
+from maasserver.preseed import (
+    get_enlist_preseed,
+    get_preseed,
+    )
 from maasserver.testing import (
     reload_object,
     reload_objects,
@@ -2240,7 +2244,7 @@ class TestPXEConfigAPI(AnonAPITestCase):
         return {
                 'arch': "armhf",
                 'subarch': "armadaxp",
-                'mac': "AA:BB:CC:DD:EE:FF",
+                'mac': factory.make_mac_address().mac_address,
                 'menutitle': "menutitle",
                 'kernelimage': "/my/kernel",
                 'append': "append",
@@ -2288,6 +2292,42 @@ class TestPXEConfigAPI(AnonAPITestCase):
             for param in self.get_params()
             }
         self.assertEqual(expected, observed)
+
+    def test_compose_enlistment_preseed_url_links_to_enlistment_preseed(self):
+        response = self.client.get(api.compose_enlistment_preseed_url())
+        self.assertEqual(
+            (httplib.OK, get_enlist_preseed()),
+            (response.status_code, response.content))
+
+    def test_compose_preseed_url_links_to_preseed_for_node(self):
+        node = factory.make_node()
+        response = self.client.get(api.compose_preseed_url(node))
+        self.assertEqual(
+            (httplib.OK, get_preseed(node)),
+            (response.status_code, response.content))
+
+    def test_compose_preseed_kernel_opt_returns_option_for_known_node(self):
+        mac = factory.make_mac_address()
+        self.assertEqual(
+            "auto url=%s" % api.compose_preseed_url(mac.node),
+            api.compose_preseed_kernel_opt(mac.mac_address))
+
+    def test_compose_preseed_kernel_opt_returns_option_for_unknown_node(self):
+        self.assertEqual(
+            "auto url=%s" % api.compose_enlistment_preseed_url(),
+            api.compose_preseed_kernel_opt(factory.getRandomMACAddress()))
+
+    def test_pxe_config_appends_enlistment_preseed_url_for_unknown_node(self):
+        params = self.get_params()
+        params['mac'] = factory.getRandomMACAddress()
+        response = self.client.get(reverse('pxeconfig'), params)
+        self.assertIn(api.compose_enlistment_preseed_url(), response.content)
+
+    def test_pxe_config_appends_preseed_url_for_known_node(self):
+        params = self.get_params()
+        node = MACAddress.objects.get(mac_address=params['mac']).node
+        response = self.client.get(reverse('pxeconfig'), params)
+        self.assertIn(api.compose_preseed_url(node), response.content)
 
 
 class TestNodeGroupsAPI(APITestCase):

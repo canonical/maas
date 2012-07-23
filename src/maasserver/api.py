@@ -85,6 +85,7 @@ from django.core.exceptions import (
     PermissionDenied,
     ValidationError,
     )
+from django.core.urlresolvers import reverse
 from django.forms.models import model_to_dict
 from django.http import (
     HttpResponse,
@@ -1045,6 +1046,33 @@ def api_doc(request):
         context_instance=RequestContext(request))
 
 
+def compose_enlistment_preseed_url():
+    """Compose enlistment preseed URL."""
+    # Always uses the latest version of the metadata API.
+    version = 'latest'
+    return "%s?op=get_enlist_preseed" % reverse(
+        'metadata-enlist-preseed', args=[version])
+
+
+def compose_preseed_url(node):
+    """Compose a metadata URL for `node`'s preseed data."""
+    # Always uses the latest version of the metadata API.
+    version = 'latest'
+    return "%s?op=get_preseed" % reverse(
+        'metadata-node-by-id', args=[version, node.system_id])
+
+
+def compose_preseed_kernel_opt(mac):
+    """Compose a kernel option for preseed URL for node that owns `mac`."""
+    macaddress_match = MACAddress.objects.filter(mac_address=mac)
+    if len(macaddress_match) == 0:
+        preseed_url = compose_enlistment_preseed_url()
+    else:
+        [macaddress] = macaddress_match
+        preseed_url = compose_preseed_url(macaddress.node)
+    return "auto url=%s" % preseed_url
+
+
 def pxeconfig(request):
     """Get the PXE configuration given a node's details.
 
@@ -1056,18 +1084,22 @@ def pxeconfig(request):
     :param kernelimage: The path to the kernel in the TFTP server
     :param append: Kernel parameters to append.
     """
+    menutitle = get_mandatory_param(request.GET, 'menutitle')
+    kernelimage = get_mandatory_param(request.GET, 'kernelimage')
+    append = get_mandatory_param(request.GET, 'append')
     arch = get_mandatory_param(request.GET, 'arch')
     subarch = request.GET.get('subarch', None)
     mac = request.GET.get('mac', None)
     config = PXEConfig(arch, subarch, mac)
-    # Rendering parameters.
-    menutitle = get_mandatory_param(request.GET, 'menutitle')
-    kernelimage = get_mandatory_param(request.GET, 'kernelimage')
-    append = get_mandatory_param(request.GET, 'append')
+
+    # In addition to the "append" parameter, also add a URL for the
+    # node's preseed to the kernel command line.
+    append = "%s %s" % (append, compose_preseed_kernel_opt(mac))
+
     try:
         return HttpResponse(
             config.get_config(
                 menutitle=menutitle, kernelimage=kernelimage, append=append),
             content_type="text/plain; charset=utf-8")
-    except PXEConfigFail, e:
+    except PXEConfigFail as e:
         raise ValidationError(e.message)
