@@ -590,7 +590,8 @@ class Node(CleanSave, TimestampedModel):
         self.save()
 
     def release(self):
-        """Mark allocated or reserved node as available again."""
+        """Mark allocated or reserved node as available again and power off."""
+        Node.objects.stop_nodes([self.system_id], self.owner)
         self.status = NODE_STATUS.READY
         self.owner = None
         self.token = None

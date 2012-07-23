@@ -258,6 +258,18 @@ class NodeTest(TestCase):
         node.release()
         self.assertEqual((NODE_STATUS.READY, None), (node.status, node.owner))
 
+    def test_release_powers_off_node(self):
+        # Test that releasing a node causes a 'power_off' celery job.
+        node = factory.make_node(
+            status=NODE_STATUS.ALLOCATED, owner=factory.make_user(),
+            power_type=POWER_TYPE.VIRSH)
+        # Prevent actual job script from running.
+        self.patch(PowerAction, 'run_shell', lambda *args, **kwargs: ('', ''))
+        node.release()
+        self.assertEqual(
+            (1, 'provisioningserver.tasks.power_off'),
+            (len(self.celery.tasks), self.celery.tasks[0]['task'].name))
+
     def test_accept_enlistment_gets_node_out_of_declared_state(self):
         # If called on a node in Declared state, accept_enlistment()
         # changes the node's status, and returns the node.
