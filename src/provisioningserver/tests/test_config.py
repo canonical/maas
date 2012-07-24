@@ -101,9 +101,7 @@ class TestConfig(TestCase):
     """Tests for `provisioningserver.config.Config`."""
 
     def test_defaults(self):
-        mandatory = {
-            'password': 'killing_joke',
-            }
+        dummy_password = factory.make_name("password")
         expected = {
             'broker': {
                 'host': 'localhost',
@@ -130,9 +128,13 @@ class TestConfig(TestCase):
             'interface': '127.0.0.1',
             'port': 5241,
             'username': getuser(),
+            'password': dummy_password,
             }
-        expected.update(mandatory)
-        observed = Config.to_python(mandatory)
+        # The password field is set to a random 12-digit string if not
+        # specified. This prevents access, but makes testing easier in other
+        # parts.
+        self.patch(Config.field("password"), "if_missing", dummy_password)
+        observed = Config.to_python({})
         self.assertEqual(expected, observed)
 
     def test_parse(self):
@@ -147,7 +149,6 @@ class TestConfig(TestCase):
         # Configuration can be loaded and parsed from a file.
         config = dedent("""
             logfile: "/some/where.log"
-            password: "megadeth"
             """)
         filename = self.make_file(name="config.yaml", contents=config)
         observed = Config.load(filename)
@@ -162,8 +163,7 @@ class TestConfig(TestCase):
 
     def test_load_from_cache(self):
         # A config loaded by Config.load_from_cache() is never reloaded.
-        filename = self.make_file(
-            name="config.yaml", contents='password: irrelevant')
+        filename = self.make_file(name="config.yaml", contents='')
         config_before = Config.load_from_cache(filename)
         os.unlink(filename)
         config_after = Config.load_from_cache(filename)

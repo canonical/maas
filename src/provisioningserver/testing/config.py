@@ -21,7 +21,6 @@ from fixtures import (
     Fixture,
     TempDir,
     )
-from maastesting.factory import factory
 import yaml
 
 
@@ -29,12 +28,7 @@ class ConfigFixture(Fixture):
 
     def __init__(self, config=None):
         super(ConfigFixture, self).__init__()
-        # The smallest config snippet that will validate.
-        self.config = {
-            "password": factory.getRandomString(),
-            }
-        if config is not None:
-            self.config.update(config)
+        self.config = {} if config is None else config
 
     def setUp(self):
         super(ConfigFixture, self).setUp()
