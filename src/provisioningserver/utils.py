@@ -23,10 +23,7 @@ __all__ = [
 from argparse import ArgumentParser
 from functools import wraps
 import os
-from os import (
-    fdopen,
-    environ,
-    )
+from os import fdopen
 from pipes import quote
 import signal
 from subprocess import CalledProcessError
@@ -34,6 +31,7 @@ import sys
 import tempfile
 from time import time
 
+from provisioningserver.config import Config
 import tempita
 from twisted.internet.defer import maybeDeferred
 from zope.interface.interface import Method
@@ -258,6 +256,4 @@ class MainScript(ActionScript):
         self.parser.add_argument(
             "-c", "--config-file", metavar="FILENAME",
             help="Configuration file to load [%(default)s].",
-            default=environ.get(
-                "MAAS_PROVISIONING_SETTINGS",
-                "/etc/maas/pserv.yaml"))
+            default=Config.DEFAULT_FILENAME)

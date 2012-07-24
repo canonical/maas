@@ -1085,9 +1085,7 @@ def pxeconfig(request):
     :param kernelimage: The path to the kernel in the TFTP server
     :param append: Kernel parameters to append.
     """
-    provisioning_config = (
-        provisioningserver.config.Config.load_from_cache(
-            settings.PROVISIONING_SETTINGS))
+    provisioning_config = provisioningserver.config.Config.load_from_cache()
     menutitle = get_mandatory_param(request.GET, 'menutitle')
     kernelimage = get_mandatory_param(request.GET, 'kernelimage')
     append = get_mandatory_param(request.GET, 'append')

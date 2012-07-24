@@ -17,6 +17,7 @@ from getpass import getuser
 import os
 from textwrap import dedent
 
+from fixtures import EnvironmentVariableFixture
 import formencode
 from maastesting.factory import factory
 from maastesting.testcase import TestCase
@@ -61,6 +62,39 @@ class TestConfigFixture(TestCase):
         fixture = ConfigFixture({"logfile": dummy_logfile})
         self.assertEqual(dummy_logfile, fixture.config["logfile"])
         self.exercise_fixture(fixture)
+
+
+class TestConfig_DEFAULT_FILENAME(TestCase):
+    """Tests for `provisioningserver.config.Config.DEFAULT_FILENAME`."""
+
+    def setUp(self):
+        super(TestConfig_DEFAULT_FILENAME, self).setUp()
+        # Start with a clean environment every time.
+        fixture = EnvironmentVariableFixture("MAAS_PROVISIONING_SETTINGS")
+        self.useFixture(fixture)
+
+    def test_get_with_environment_empty(self):
+        self.assertEqual("/etc/maas/pserv.yaml", Config.DEFAULT_FILENAME)
+
+    def test_get_with_environment_set(self):
+        dummy_filename = factory.make_name("config")
+        fixture = EnvironmentVariableFixture(
+            "MAAS_PROVISIONING_SETTINGS", dummy_filename)
+        self.useFixture(fixture)
+        self.assertEqual(dummy_filename, Config.DEFAULT_FILENAME)
+
+    def test_set(self):
+        dummy_filename = factory.make_name("config")
+        Config.DEFAULT_FILENAME = dummy_filename
+        self.assertEqual(dummy_filename, Config.DEFAULT_FILENAME)
+
+    def test_delete(self):
+        Config.DEFAULT_FILENAME = factory.make_name("config")
+        del Config.DEFAULT_FILENAME
+        # The filename reverts; see test_get_with_environment_empty.
+        self.assertEqual("/etc/maas/pserv.yaml", Config.DEFAULT_FILENAME)
+        # The delete does not fail when called multiple times.
+        del Config.DEFAULT_FILENAME
 
 
 class TestConfig(TestCase):
