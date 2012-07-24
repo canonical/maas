@@ -55,9 +55,8 @@ def add_arguments(parser):
     parser.add_argument(
         "-o", "--outfile", action="store", required=False, help=(
             "A file to save to. When left unspecified the configuration "
-            "will be written to stdout. This option may be useful when "
-            "using a pre-1973 UNIX (see http://en.wikipedia.org/wiki/"
-            "Unix_pipes#History)."))
+            "will be written to stdout. This option is useful when "
+            "running outside of a shell."))
 
 
 def run(args):
