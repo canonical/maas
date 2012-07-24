@@ -34,11 +34,6 @@ CURRENT_RELEASE=${CURRENT_RELEASE:-$STABLE_RELEASE}
 # Supported architectures.
 ARCHES=${ARCHES:-amd64 i386}
 
-# TFTP root directory. Mandatory.
-# TODO: Remove this; it's here to support the obsolete
-# generate_enlistment_pxe command.
-TFTPROOT=${TFTPROOT?}
-
 # Path to the provisioning configuration. Mandatory.
 MAAS_PROVISIONING_SETTINGS=${MAAS_PROVISIONING_SETTINGS?}
 
@@ -121,12 +116,6 @@ main() {
         do
             update_install_files $arch $release
         done
-
-        # TODO: Pass sub-architecture once we support those.
-        # TODO: Remove this; it's obsolete.
-        maas generate_enlistment_pxe \
-            --arch=$arch --release=$CURRENT_RELEASE \
-            --tftproot=$TFTPROOT
     done
 
     rm -rf -- $DOWNLOAD_DIR

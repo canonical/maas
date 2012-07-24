@@ -110,9 +110,6 @@ class TestImportPXEFiles(TestCase):
             # Substitute curl for wget; it accepts file:// URLs.
             'DOWNLOAD': 'curl -O --silent',
             'PATH': os.pathsep.join(path),
-            # TODO: Remove TFTPROOT; it's here to support the obsolete
-            # generate_enlistment_pxe command.
-            'TFTPROOT': self.tftproot,
         }
         env.update(self.config_fixture.environ)
         if arch is not None:
@@ -192,14 +189,3 @@ class TestImportPXEFiles(TestCase):
         original_timestamp = get_write_time(tftp_path)
         self.call_script(archive, self.tftproot, arch=arch, release=release)
         self.assertEqual(original_timestamp, get_write_time(tftp_path))
-
-    def test_generates_default_pxe_config(self):
-        arch = factory.make_name('arch')
-        release = 'precise'
-        archive = self.make_downloads(arch=arch, release=release)
-        self.call_script(archive, self.tftproot, arch=arch, release=release)
-        self.assertThat(
-            os.path.join(
-                self.tftproot, 'maas', arch, 'generic',
-                'pxelinux.cfg', 'default'),
-            FileContains(matcher=Contains("MENU TITLE")))
