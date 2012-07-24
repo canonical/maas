@@ -59,7 +59,7 @@ class POWER_TYPE:
     IPMI = 'ipmitool'
 
     # IPMI over LAN.
-    IPMI_LAN = 'ipmitool'
+    IPMI_LAN = 'ipmilan'
 
 
 POWER_TYPE_CHOICES = (
