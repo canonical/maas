@@ -277,7 +277,7 @@ class DNSZoneConfig(DNSConfig):
     def target_reverse_path(self):
         """Return the full path of the DNS reverse zone config file."""
         return os.path.join(
-            self.target_dir, 'zone.rev.%s' % self.zone_name)
+            self.target_dir, 'zone.rev.%s' % self.reverse_zone_name)
 
     def get_base_context(self):
         """Return the dict used to render both zone files."""

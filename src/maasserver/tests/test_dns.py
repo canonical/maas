@@ -13,6 +13,8 @@ __metaclass__ = type
 __all__ = []
 
 
+from itertools import islice
+
 from django.core.management import call_command
 from maasserver.dns import (
     add_zone,
@@ -26,7 +28,10 @@ from maasserver.testing.testcase import TestCase
 from maastesting.bindfixture import BINDServer
 from maastesting.celery import CeleryFixture
 from maastesting.tests.test_bindfixture import dig_call
-from netaddr import IPNetwork
+from netaddr import (
+    IPNetwork,
+    IPRange,
+    )
 from provisioningserver.dns.config import conf
 from provisioningserver.dns.utils import generated_hostname
 from testresources import FixtureResource
@@ -82,9 +87,10 @@ class TestDNSConfigModifications(TestCase):
         node = factory.make_node(
             nodegroup=nodegroup, set_hostname=True)
         mac = factory.make_mac_address(node=node)
+        ips = IPRange(nodegroup.ip_range_low, nodegroup.ip_range_high)
+        lease_ip = str(islice(ips, lease_number, lease_number + 1).next())
         lease = factory.make_dhcp_lease(
-            nodegroup=nodegroup, mac=mac.mac_address,
-            ip='192.168.0.%d' % lease_number)
+            nodegroup=nodegroup, mac=mac.mac_address, ip=lease_ip)
         return nodegroup, node, lease
 
     def dig_resolve(self, fqdn):

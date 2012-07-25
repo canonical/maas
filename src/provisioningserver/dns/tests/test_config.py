@@ -121,7 +121,7 @@ class TestDNSConfig(TestCase):
         target_dir = self.make_dir()
         self.patch(DNSConfig, 'target_dir', target_dir)
         zone_name = factory.getRandomString()
-        network = factory.getRandomNetwork()
+        network = IPNetwork('192.168.0.3/24')
         ip = factory.getRandomIPInNetwork(network)
         zone = DNSZoneConfig(
             zone_name, mapping={factory.getRandomString(): ip},
@@ -134,7 +134,7 @@ class TestDNSConfig(TestCase):
                 matcher=ContainsAll(
                     [
                         'zone.%s' % zone_name,
-                        'zone.rev.%s' % zone_name,
+                        'zone.rev.0.168.192.in-addr.arpa',
                         MAAS_NAMED_RNDC_CONF_NAME,
                     ])))
 
@@ -196,13 +196,17 @@ class TestDNSZoneConfig(TestCase):
             )
 
     def test_DNSZoneConfig_computes_dns_config_file_paths(self):
-        zone_name = factory.getRandomString()
-        dns_zone_config = DNSZoneConfig(zone_name)
+        zone_name = factory.make_name('zone')
+        reverse_file_name = 'zone.rev.168.192.in-addr.arpa'
+        dns_zone_config = DNSZoneConfig(
+            zone_name, broadcast_ip='192.168.0.255',
+            subnet_mask='255.255.252.0',
+            )
         self.assertEqual(
             (
                 os.path.join(TEMPLATES_PATH, 'zone.template'),
                 os.path.join(conf.DNS_CONFIG_DIR, 'zone.%s' % zone_name),
-                os.path.join(conf.DNS_CONFIG_DIR, 'zone.rev.%s' % zone_name)
+                os.path.join(conf.DNS_CONFIG_DIR, reverse_file_name)
             ),
             (
                 dns_zone_config.template_path,
@@ -213,7 +217,7 @@ class TestDNSZoneConfig(TestCase):
     def test_DNSZoneConfig_reverse_data_slash_24(self):
         # DNSZoneConfig calculates the reverse data correctly for
         # a /24 network.
-        zone_name = factory.getRandomString()
+        zone_name = factory.make_name('zone')
         hostname = factory.getRandomString()
         ip = '192.168.0.5'
         network = IPNetwork('192.168.0.1/24')
@@ -311,8 +315,9 @@ class TestDNSZoneConfig(TestCase):
         dns_zone_config = DNSZoneConfig(
             zone_name, serial=random.randint(1, 100), **network_infos(network))
         dns_zone_config.write_reverse_config()
+        reverse_file_name = 'zone.rev.168.192.in-addr.arpa'
         self.assertThat(
-            os.path.join(target_dir, 'zone.rev.%s' % zone_name),
+            os.path.join(target_dir, reverse_file_name),
             FileContains(
                 matcher=ContainsAll(
                     ['%s IN PTR %s' % (

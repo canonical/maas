@@ -59,7 +59,7 @@ def get_zone(nodegroup, serial=None):
 def change_dns_zone(nodegroup):
     """Update the zone configurtion for the given `nodegroup`.
 
-    :param nodegroup: The nodegroup for which the zone should be cupdated.
+    :param nodegroup: The nodegroup for which the zone should be updated.
     :type nodegroup: :class:`NodeGroup`
     """
     zone = get_zone(nodegroup)
