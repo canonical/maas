@@ -27,6 +27,11 @@ import random
 import string
 import time
 
+from netaddr import (
+    IPAddress,
+    IPNetwork,
+    )
+
 
 class Factory:
 
@@ -65,6 +70,17 @@ class Factory:
     def getRandomIPAddress(self):
         octets = islice(self.random_octets, 4)
         return b'%d.%d.%d.%d' % tuple(octets)
+
+    def getRandomNetwork(self, slash=None):
+        ip = self.getRandomIPAddress()
+        if slash is None:
+            # Create a *small* network.
+            slash = random.randint(24, 30)
+        return IPNetwork('%s/%s' % (ip, slash))
+
+    def getRandomIPInNetwork(self, network):
+        return str(IPAddress(
+            random.randint(network.first, network.last)))
 
     def getRandomMACAddress(self):
         octets = islice(self.random_octets, 6)

@@ -18,6 +18,10 @@ from random import randint
 
 from maastesting.factory import factory
 from maastesting.testcase import TestCase
+from netaddr import (
+    IPAddress,
+    IPNetwork,
+    )
 from testtools.matchers import (
     Contains,
     FileContains,
@@ -48,6 +52,16 @@ class TestFactory(TestCase):
         self.assertEqual(4, len(octets))
         for octet in octets:
             self.assertTrue(0 <= int(octet) <= 255)
+
+    def test_getRandomNetwork(self):
+        network = factory.getRandomNetwork()
+        self.assertIsInstance(network, IPNetwork)
+
+    def test_getRandomIPInNetwork(self):
+        network = factory.getRandomNetwork()
+        ip = factory.getRandomIPInNetwork(network)
+        self.assertTrue(
+            network.first <= IPAddress(ip).value <= network.last)
 
     def test_getRandomDate_returns_datetime(self):
         self.assertIsInstance(factory.getRandomDate(), datetime)

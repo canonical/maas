@@ -41,6 +41,7 @@ from provisioningserver.tasks import (
     write_full_dns_config,
     write_tftp_config_for_node,
     )
+from provisioningserver.testing import network_infos
 from testresources import FixtureResource
 from testtools.matchers import (
     AllMatch,
@@ -152,11 +153,11 @@ class TestDNSTasks(TestCase):
     def test_write_dns_zone_config_writes_file(self):
         command = factory.getRandomString()
         zone_name = factory.getRandomString()
+        network = factory.getRandomNetwork()
+        ip = factory.getRandomIPInNetwork(network)
         zone = DNSZoneConfig(
-            zone_name, bcast='192.168.0.255',
-            mask='255.255.255.0',
-            serial=random.randint(1, 100),
-            mapping={factory.getRandomString(): '192.168.0.5'})
+            zone_name, serial=random.randint(1, 100),
+            mapping={factory.getRandomString(): ip}, **network_infos(network))
         result = write_dns_zone_config.delay(
             zone=zone, callback=rndc_command.subtask(args=[command]))
 
@@ -214,11 +215,11 @@ class TestDNSTasks(TestCase):
         # write_full_dns_config writes the config file, writes
         # the zone files, and reloads the dns service.
         zone_name = factory.getRandomString()
+        network = factory.getRandomNetwork()
+        ip = factory.getRandomIPInNetwork(network)
         zones = [DNSZoneConfig(
-            zone_name, bcast='192.168.0.255',
-            mask='255.255.255.0',
-            serial=random.randint(1, 100),
-            mapping={factory.getRandomString(): '192.168.0.5'})]
+            zone_name, serial=random.randint(1, 100),
+            mapping={factory.getRandomString(): ip}, **network_infos(network))]
         command = factory.getRandomString()
         result = write_full_dns_config.delay(
             zones=zones,

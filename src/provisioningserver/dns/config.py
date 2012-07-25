@@ -29,6 +29,8 @@ from subprocess import (
     )
 
 from celery.conf import conf
+from netaddr import IPRange
+from provisioningserver.dns.utils import generated_hostname
 from provisioningserver.utils import (
     atomic_write,
     incremental_write,
@@ -186,44 +188,80 @@ class DNSConfig(DNSConfigBase):
         return '\ninclude "%s";\n' % self.target_path
 
 
+def shortened_reversed_ip(ip, byte_num):
+    """Get a reversed version of this IP with only the significant bytes.
+
+    This method is a utility used when generating reverse zone files.
+
+    >>> shortened_reversed_ip('192.156.0.3', 2)
+    '3.0'
+    """
+    assert 0 <= byte_num <= 4, ("byte_num should be >=0 and <= 4.")
+    ip_octets = ip.split('.')
+    significant_octets = list(
+    reversed(ip_octets))[:byte_num]
+    return '.'.join(significant_octets)
+
+
 class DNSZoneConfig(DNSConfig):
     """A specialized version of DNSConfig that writes zone files."""
 
     template_file_name = 'zone.template'
 
     def __init__(self, zone_name, serial=None, mapping={},
-                 bcast=None, mask=None):
+                 subnet_mask=None, broadcast_ip=None, ip_range_low=None,
+                 ip_range_high=None):
         self.zone_name = zone_name
-        self.mapping = mapping
-        self.mask = mask
-        self.bcast = bcast
         self.serial = serial
+        self.mapping = mapping
+        self.subnet_mask = subnet_mask
+        self.broadcast_ip = broadcast_ip
+        self.ip_range_low = ip_range_low
+        self.ip_range_high = ip_range_high
 
     @property
     def byte_num(self):
         """Number of significant octets for the IPs of this zone."""
-        return len(
-            [byte for byte in self.mask.split('.')
+        return 4 - len(
+            [byte for byte in self.subnet_mask.split('.')
              if byte == '255'])
 
     @property
     def reverse_zone_name(self):
         """Return the name of the reverse zone."""
-        significant_bits = self.bcast.split('.')[:self.byte_num]
+        significant_bits = self.broadcast_ip.split('.')[:4 - self.byte_num]
         return '%s.in-addr.arpa' % '.'.join(reversed(significant_bits))
 
-    @property
-    def reverse_mapping(self):
-        """Return the reverse mapping: (shortened) ip->fqdn."""
-        reverse_mapping = {}
-        for hostname, ip in self.mapping.items():
-            ip_octets = ip.split('.')
-            significant_octets = list(
-                reversed(ip_octets))[:4 - self.byte_num]
-            rel_zone_ip = '.'.join(significant_octets)
-            fqdn = '%s.%s.' % (hostname, self.zone_name)
-            reverse_mapping[rel_zone_ip] = fqdn
-        return reverse_mapping
+    def get_mapping(self):
+        """Return the mapping: hostname->generated hostname."""
+        return {
+            hostname: generated_hostname(ip)
+            for hostname, ip in self.mapping.items()
+        }
+
+    def get_generated_mapping(self):
+        """Return the generated mapping: fqdn->ip.
+
+        The generated mapping is the mapping between the generated hostnames
+        and the IP addresses for all the possible IP addresses in zone.
+        """
+        return {
+            generated_hostname(str(ip)): str(ip)
+            for ip in IPRange(self.ip_range_low, self.ip_range_high)
+        }
+
+    def get_generated_reverse_mapping(self):
+        """Return the reverse generated mapping: (shortened) ip->fqdn.
+
+        The reverse generated mapping is the mapping between the IP addresses
+        and the generated hostnames for all the possible IP addresses in zone.
+        """
+        return dict(
+            (
+                shortened_reversed_ip(ip, self.byte_num),
+                '%s.%s.' % (hostname, self.zone_name)
+            )
+            for hostname, ip in self.get_generated_mapping().items())
 
     @property
     def template_path(self):
@@ -255,10 +293,14 @@ class DNSZoneConfig(DNSConfig):
         That context dict is used to render the DNS zone file.
         """
         context = self.get_base_context()
-        mapping = self.mapping.copy()
+        mapping = self.get_generated_mapping()
         # TODO: Add NS record.
         mapping['%s.' % self.zone_name] = '127.0.0.1'
-        context.update(mapping=mapping, type='A')
+        mappings = {
+            'CNAME': self.get_mapping(),
+            'A': mapping,
+        }
+        context.update(mappings=mappings)
         return context
 
     def get_reverse_context(self):
@@ -267,7 +309,8 @@ class DNSZoneConfig(DNSConfig):
         That context dict is used to render the DNS reverse zone file.
         """
         context = self.get_base_context()
-        context.update(mapping=self.reverse_mapping, type='PTR')
+        mappings = {'PTR': self.get_generated_reverse_mapping()}
+        context.update(mappings=mappings)
         return context
 
     def write_config(self, **kwargs):

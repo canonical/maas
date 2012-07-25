@@ -40,6 +40,7 @@ from maasserver.testing import (
 from maasserver.utils import map_enum
 import maastesting.factory
 from metadataserver.models import NodeCommissionResult
+from netaddr import IPAddress
 
 # We have a limited number of public keys:
 # src/maasserver/tests/data/test_rsa{0, 1, 2, 3, 4}.pub
@@ -108,26 +109,23 @@ class Factory(maastesting.factory.Factory):
             Node.objects.filter(id=node.id).update(created=created)
         return reload_object(node)
 
-    def make_node_group(self, name=None, api_token=None, worker_ip=None,
-                        subnet_mask=None, broadcast_ip=None, router_ip=None,
-                        ip_range_low=None, ip_range_high=None, **kwargs):
+    def make_node_group(self, name=None, worker_ip=None, router_ip=None,
+                        api_token=None, network=None, **kwargs):
         if name is None:
             name = self.make_name('nodegroup')
         if api_token is None:
             user = self.make_user()
             api_token = create_auth_token(user)
-        if worker_ip is None:
-            worker_ip = factory.getRandomIPAddress()
-        if subnet_mask is None:
-            subnet_mask = factory.getRandomIPAddress()
-        if broadcast_ip is None:
-            broadcast_ip = factory.getRandomIPAddress()
+        if network is None:
+            network = factory.getRandomNetwork()
+        subnet_mask = str(network.netmask)
+        broadcast_ip = str(network.broadcast)
+        ip_range_low = str(IPAddress(network.first))
+        ip_range_high = str(IPAddress(network.last))
         if router_ip is None:
-            router_ip = factory.getRandomIPAddress()
-        if ip_range_low is None:
-            ip_range_low = factory.getRandomIPAddress()
-        if ip_range_high is None:
-            ip_range_high = factory.getRandomIPAddress()
+            router_ip = factory.getRandomIPInNetwork(network)
+        if worker_ip is None:
+            worker_ip = factory.getRandomIPInNetwork(network)
         ng = NodeGroup(
             name=name, api_token=api_token, api_key=api_token.key,
             worker_ip=worker_ip, subnet_mask=subnet_mask,
