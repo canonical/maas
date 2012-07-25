@@ -23,7 +23,6 @@ from maastesting.utils import (
     )
 from provisioningserver.testing.config import ConfigFixture
 from testtools.matchers import (
-    Contains,
     FileContains,
     FileExists,
     Not,
