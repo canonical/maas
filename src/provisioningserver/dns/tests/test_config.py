@@ -110,7 +110,7 @@ class TestDNSConfig(TestCase):
         rendered = dnsconfig.render_template(template, test=random_content)
         self.assertEqual(random_content, rendered)
 
-    def test_render_template_raises_PXEConfigFail(self):
+    def test_render_template_raises_DNSConfigFail(self):
         dnsconfig = DNSConfig()
         template = tempita.Template("template: {{test}}")
         exception = self.assertRaises(

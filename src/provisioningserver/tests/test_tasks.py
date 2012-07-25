@@ -15,11 +15,9 @@ __all__ = []
 import os
 import random
 
-from maasserver.enum import ARCHITECTURE
 from maastesting.celery import CeleryFixture
 from maastesting.factory import factory
 from maastesting.fakemethod import FakeMethod
-from maastesting.matchers import ContainsAll
 from maastesting.testcase import TestCase
 from netaddr import IPNetwork
 from provisioningserver import tasks
@@ -40,14 +38,11 @@ from provisioningserver.tasks import (
     write_dns_config,
     write_dns_zone_config,
     write_full_dns_config,
-    write_tftp_config_for_node,
     )
 from provisioningserver.testing import network_infos
 from testresources import FixtureResource
 from testtools.matchers import (
-    AllMatch,
     Equals,
-    FileContains,
     FileExists,
     MatchesListwise,
     )
@@ -78,39 +73,6 @@ class TestPowerTasks(TestCase):
         self.assertRaises(
             PowerActionFail, power_off.delay,
             POWER_TYPE.WAKE_ON_LAN, mac=arbitrary_mac)
-
-
-class TestTFTPTasks(TestCase):
-
-    resources = (
-        ("celery", FixtureResource(CeleryFixture())),
-        )
-
-    def test_write_tftp_config_for_node_writes_files(self):
-        arch = ARCHITECTURE.i386
-        mac = factory.getRandomMACAddress()
-        mac2 = factory.getRandomMACAddress()
-        tftproot = self.make_dir()
-        kernel = factory.getRandomString()
-        menutitle = factory.getRandomString()
-        append = factory.getRandomString()
-
-        result = write_tftp_config_for_node.delay(
-            arch, (mac, mac2), tftproot=tftproot, menutitle=menutitle,
-            kernelimage=kernel, append=append)
-
-        self.assertTrue(result.successful(), result)
-        expected_file1 = os.path.join(
-            tftproot, 'maas', arch, "generic", "pxelinux.cfg",
-            mac.replace(":", "-"))
-        expected_file2 = os.path.join(
-            tftproot, 'maas', arch, "generic", "pxelinux.cfg",
-            mac2.replace(":", "-"))
-        self.assertThat(
-            [expected_file1, expected_file2],
-            AllMatch(
-                FileContains(
-                    matcher=ContainsAll((kernel, menutitle, append)))))
 
 
 class TestDNSTasks(TestCase):

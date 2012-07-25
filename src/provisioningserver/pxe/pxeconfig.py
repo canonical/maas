@@ -1,7 +1,7 @@
 # Copyright 2012 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""PXE configuration file."""
+"""Generating PXE configuration files."""
 
 from __future__ import (
     absolute_import,
@@ -19,10 +19,6 @@ __all__ = [
 import os
 
 from celeryconfig import PXE_TEMPLATES_DIR
-from provisioningserver.pxe.tftppath import (
-    compose_config_path,
-    locate_tftp_path,
-    )
 import tempita
 
 
@@ -35,52 +31,29 @@ class PXEConfig:
 
     Encapsulation of PXE config templates and parameter substitution.
 
-    :param arch: The architecture of the context node.
+    :param arch: The architecture to write a configuration for, e.g. i386.
     :type arch: string
-    :param subarch: The sub-architecture of the context node. This is
-        optional because some architectures such as i386 don't have a
-        sub-architecture.  If not passed, a directory name of "generic"
-        is used in the subarch part of the path to the target file.
+    :param subarch: Sub-architecture.  Only needed for architectures that
+        have sub-architectures, such as ARM; other architectures use
+        a sub-architecture of "generic" (which is the default).
     :type subarch: string
-    :param mac: If specified will write out a mac-specific pxe file.
-        If not specified will write out a "default" file.
-        Note: Ensure the mac is passed in a colon-separated format like
-        aa:bb:cc:dd:ee:ff.  This is the default for MAC addresses coming
-        from the database fields in MAAS, so it's not heavily checked here.
-    :type mac: string
-    :param tftproot: Base directory to write PXE configurations to,
-        e.g.  /var/lib/tftpboot/ (which is also the default).  The config
-        file will go into a directory inside this tree that's determined by
-        the architecture that it's for:
-        `<tftproot>/maas/<arch>/<subarch>/pxelinux.cfg/`
-    :type tftproot: string
 
-    :raises PXEConfigFail: if there's a problem with template parameters
-        or the MAC address looks incorrectly formatted.
+    :raises PXEConfigFail: if there's a problem substituting the template
+        parameters.
 
     Use this class by instantiating with parameters that define its location:
 
-    >>> pxeconfig = PXEConfig("armhf", "armadaxp", mac="00:a1:b2:c3:e4:d5")
+    >>> pxeconfig = PXEConfig("armhf", "armadaxp")
 
-    and then write the file with:
+    and then produce a configuration file with:
 
-    >>> pxeconfig.write_config(
+    >>> pxeconfig.get_config(
     ...     menutitle="menutitle", kernelimage="/my/kernel",
             append="initrd=blah url=blah")
     """
 
-    def __init__(self, arch, subarch=None, mac=None, tftproot=None):
-        if subarch is None:
-            subarch = "generic"
-        self._validate_mac(mac)
+    def __init__(self, arch, subarch='generic'):
         self.template = os.path.join(self.template_basedir, "maas.template")
-        if mac is not None:
-            filename = mac.replace(':', '-')
-        else:
-            filename = "default"
-        self.target_file = locate_tftp_path(
-            compose_config_path(arch, subarch, filename),
-            tftproot=tftproot)
 
     @property
     def template_basedir(self):
@@ -92,18 +65,6 @@ class PXEConfig:
             return os.path.join(os.path.dirname(__file__), 'templates')
         else:
             return PXE_TEMPLATES_DIR
-
-    def _validate_mac(self, mac):
-        # A MAC address should be of the form aa:bb:cc:dd:ee:ff with
-        # precisely five colons in it.  We do a cursory check since most
-        # MACs will come from the DB which are already checked and
-        # formatted.
-        if mac is None:
-            return
-        colon_count = mac.count(":")
-        if colon_count != 5:
-            raise PXEConfigFail(
-                "Expecting exactly five ':' chars, found %s" % colon_count)
 
     def get_template(self):
         with open(self.template, "r") as f:
@@ -124,20 +85,3 @@ class PXEConfig:
         """
         template = self.get_template()
         return self.render_template(template, **kwargs)
-
-    def write_config(self, **kwargs):
-        """Write out this PXE config file.
-
-        :param menutitle: The PXE menu title shown.
-        :param kernelimage: The path to the kernel in the TFTP server
-        :param append: Kernel parameters to append.
-
-        Any required directories will be created but the caller must have
-        permission to make them and write the file.
-        """
-        rendered = self.get_config(**kwargs)
-        target_dir = os.path.dirname(self.target_file)
-        if not os.path.isdir(target_dir):
-            os.makedirs(target_dir)
-        with open(self.target_file, "w") as f:
-            f.write(rendered)
