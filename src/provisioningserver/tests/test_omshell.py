@@ -13,6 +13,7 @@ __metaclass__ = type
 __all__ = []
 
 from subprocess import CalledProcessError
+from textwrap import dedent
 
 from maastesting.factory import factory
 from maastesting.fakemethod import FakeMethod
@@ -40,21 +41,22 @@ class TestOmshell(TestCase):
         shell = Omshell(server_address, shared_key)
 
         # Instead of calling a real omshell, we'll just record the
-        # parameters passed to 'check_call'.
-        recorder = FakeMethod(result=("hardware-type", None))
-        self.patch(shell.proc, 'communicate', recorder)
+        # parameters passed to Popen.
+        recorder = FakeMethod(result=(0, "hardware-type"))
+        shell._run = recorder
 
         shell.create(ip_address, mac_address)
 
-        expected_args = (
-            "server %(server)s\n"
-            "key omapi_key %(key)s\n"
-            "connect\n"
-            "new host\n"
-            "set ip-address = %(ip)s\n"
-            "set hardware-address = %(mac)s\n"
-            "set name = %(ip)s\n"
-            "create\n" % dict(
+        expected_args = (dedent("""\
+            server {server}
+            key omapi_key {key}
+            connect
+            new host
+            set ip-address = {ip}
+            set hardware-address = {mac}
+            set name = {ip}
+            create
+            """).format(
                 server=server_address,
                 key=shared_key,
                 ip=ip_address,
@@ -79,8 +81,8 @@ class TestOmshell(TestCase):
 
         # Fake a call that results in a failure with random output.
         random_output = factory.getRandomString()
-        recorder = FakeMethod(result=(random_output, None))
-        self.patch(shell.proc, 'communicate', recorder)
+        recorder = FakeMethod(result=(0, random_output))
+        shell._run = recorder
 
         exc = self.assertRaises(
             CalledProcessError, shell.create, ip_address, mac_address)
@@ -93,29 +95,28 @@ class TestOmshell(TestCase):
         shell = Omshell(server_address, shared_key)
 
         # Instead of calling a real omshell, we'll just record the
-        # parameters passed to 'check_call'.
-        recorder = FakeMethod(result=("thing1\nthing2\nobj: <null>", None))
-        self.patch(shell.proc, 'communicate', recorder)
+        # parameters passed to Popen.
+        recorder = FakeMethod(result=(0, "thing1\nthing2\nobj: <null>"))
+        shell._run = recorder
 
         shell.remove(ip_address)
 
-        expected_args = (
-            "server %(server)s\n"
-            "key omapi_key %(key)s\n"
-            "connect\n"
-            "new host\n"
-            "set name = %(ip)s\n"
-            "open\n"
-            "remove\n" % dict(
+        expected_args = (dedent("""\
+            server {server}
+            key omapi_key {key}
+            connect
+            new host
+            set name = {ip}
+            open
+            remove
+            """).format(
                 server=server_address,
                 key=shared_key,
                 ip=ip_address),)
 
         # Check that the 'stdin' arg contains the correct set of
         # commands.
-        self.assertEqual(
-            [1, expected_args],
-            [recorder.call_count, recorder.extract_args()[0]])
+        self.assertEqual([expected_args], recorder.extract_args())
 
     def test_remove_raises_when_omshell_fails(self):
         # If the call to omshell doesn't result in output ending in the
@@ -128,8 +129,8 @@ class TestOmshell(TestCase):
 
         # Fake a call that results in a failure with random output.
         random_output = factory.getRandomString()
-        recorder = FakeMethod(result=(random_output, None))
-        self.patch(shell.proc, 'communicate', recorder)
+        recorder = FakeMethod(result=(0, random_output))
+        shell._run = recorder
 
         exc = self.assertRaises(
             CalledProcessError, shell.remove, ip_address)
