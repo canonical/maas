@@ -76,6 +76,7 @@ class TestNodeGroupManager(TestCase):
         self.assertEqual(nodegroup.api_key, nodegroup.api_token.key)
 
     def test_ensure_master_creates_minimal_master_nodegroup(self):
+        NodeGroup.objects._delete_master()
         self.assertThat(
             NodeGroup.objects.ensure_master(),
             MatchesStructure.fromExample({
@@ -88,15 +89,24 @@ class TestNodeGroupManager(TestCase):
                 'ip_range_high': None,
             }))
 
-    def test_writes_master_nodegroup_to_database(self):
+    def test_ensure_master_writes_master_nodegroup_to_database(self):
+        NodeGroup.objects._delete_master()
         master = NodeGroup.objects.ensure_master()
         self.assertEqual(
             master.id, NodeGroup.objects.get(name=master.name).id)
 
     def test_ensure_master_returns_same_nodegroup_every_time(self):
+        NodeGroup.objects._delete_master()
         self.assertEqual(
             NodeGroup.objects.ensure_master().id,
             NodeGroup.objects.ensure_master().id)
+
+    def test_ensure_master_does_not_return_other_nodegroup(self):
+        NodeGroup.objects._delete_master()
+        self.assertNotEqual(
+            NodeGroup.objects.new(
+                factory.make_name('nodegroup'), factory.getRandomIPAddress()),
+            NodeGroup.objects.ensure_master())
 
     def test_ensure_master_preserves_existing_attributes(self):
         master = NodeGroup.objects.ensure_master()
@@ -104,3 +114,15 @@ class TestNodeGroupManager(TestCase):
         master.worker_ip = ip
         master.save()
         self.assertEqual(ip, NodeGroup.objects.ensure_master().worker_ip)
+
+    def test_ensure_master_updates_groupless_nodes(self):
+        NodeGroup.objects._delete_master()
+        # This test becomes obsolete (and the failure impossible to test
+        # for) once Node.nodegroup is NOT NULL.
+        groupless_node = factory.make_node()
+        groupless_node.nodegroup = None
+        groupless_node.save()
+        groupful_node = factory.make_node(nodegroup=factory.make_node_group())
+        master = NodeGroup.objects.ensure_master()
+        self.assertEqual(master, reload_object(groupless_node).nodegroup)
+        self.assertNotEqual(master, reload_object(groupful_node).nodegroup)

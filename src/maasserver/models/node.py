@@ -49,7 +49,6 @@ from maasserver.exceptions import NodeStateViolation
 from maasserver.fields import JSONObjectField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.config import Config
-from maasserver.models.nodegroup import NodeGroup
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils import get_db_state
 from piston.models import Token
@@ -57,7 +56,10 @@ from provisioningserver.enum import (
     POWER_TYPE,
     POWER_TYPE_CHOICES,
     )
-from provisioningserver.tasks import power_on, power_off
+from provisioningserver.tasks import (
+    power_off,
+    power_on,
+    )
 
 
 def generate_node_system_id():
@@ -382,7 +384,7 @@ class Node(CleanSave, TimestampedModel):
     netboot = BooleanField(default=True)
 
     nodegroup = ForeignKey(
-        NodeGroup, default=None, blank=True, null=True,
+        'maasserver.NodeGroup', default=None, blank=True, null=True,
         editable=False)
 
     objects = NodeManager()
