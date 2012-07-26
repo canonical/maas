@@ -202,15 +202,19 @@ class FilesystemAsyncBackend(FilesystemSynchronousBackend):
         self.clock = clock
 
     def get_reader(self, file_name):
-        reader = super(FilesystemAsyncBackend, self).get_reader(file_name)
+        d_get = super(FilesystemAsyncBackend, self).get_reader(file_name)
         d = Deferred()
-        self.clock.callLater(0, d.callback, reader)
+        # d_get has already fired, so don't chain d_get to d until later,
+        # otherwise d will be fired too early.
+        self.clock.callLater(0, d_get.chainDeferred, d)
         return d
 
     def get_writer(self, file_name):
-        writer = super(FilesystemAsyncBackend, self).get_writer(file_name)
+        d_get = super(FilesystemAsyncBackend, self).get_writer(file_name)
         d = Deferred()
-        self.clock.callLater(0, d.callback, writer)
+        # d_get has already fired, so don't chain d_get to d until later,
+        # otherwise d will be fired too early.
+        self.clock.callLater(0, d_get.chainDeferred, d)
         return d
 
 
@@ -224,7 +228,7 @@ class SuccessfulAsyncDispatch(unittest.TestCase):
         self.backend = FilesystemAsyncBackend(self.tmp_dir_path, self.clock)
         self.tftp = TFTP(self.backend, self.clock)
 
-    def test_get_reader_can_defer(self):
+    def test_get_reader_defers(self):
         rrq_datagram = RRQDatagram('nonempty', 'NetASCiI', {})
         rrq_addr = ('127.0.0.1', 1069)
         rrq_mode = "octet"
@@ -234,7 +238,7 @@ class SuccessfulAsyncDispatch(unittest.TestCase):
         self.assertTrue(d.called)
         self.assertTrue(IReader.providedBy(d.result.backend))
 
-    def test_get_writer_can_defer(self):
+    def test_get_writer_defers(self):
         wrq_datagram = WRQDatagram('foobar', 'NetASCiI', {})
         wrq_addr = ('127.0.0.1', 1069)
         wrq_mode = "octet"

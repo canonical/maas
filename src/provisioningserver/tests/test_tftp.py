@@ -118,6 +118,7 @@ class TestTFTPBackend(TestCase):
             ]
         self.assertItemsEqual(query_expected, query)
 
+    @inlineCallbacks
     def test_get_reader_regular_file(self):
         # TFTPBackend.get_reader() returns a regular FilesystemReader for
         # paths not matching re_config_file.
@@ -125,7 +126,7 @@ class TestTFTPBackend(TestCase):
         temp_file = self.make_file(name="example", contents=data)
         temp_dir = path.dirname(temp_file)
         backend = TFTPBackend(temp_dir, "http://nowhere.example.com/")
-        reader = backend.get_reader("example")
+        reader = yield backend.get_reader("example")
         self.addCleanup(reader.finish)
         self.assertEqual(len(data), reader.size)
         self.assertEqual(data, reader.read(len(data)))

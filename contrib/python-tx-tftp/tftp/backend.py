@@ -3,6 +3,7 @@
 '''
 from os import fstat
 from tftp.errors import Unsupported, FileExists, AccessViolation, FileNotFound
+from tftp.util import deferred
 from twisted.python.filepath import FilePath, InsecurePath
 import shutil
 import tempfile
@@ -33,8 +34,7 @@ class IBackend(interface.Interface):
         @raise BackendError: for any other errors, that were encountered while
         attempting to construct a reader
 
-        @return: an object, that provides L{IReader}, or a L{Deferred} that
-        will fire with an L{IReader}
+        @return: a L{Deferred} that will fire with an L{IReader}
 
         """
 
@@ -57,8 +57,7 @@ class IBackend(interface.Interface):
         @raise BackendError: for any other errors, that were encountered while
         attempting to construct a writer
 
-        @return: an object, that provides L{IWriter}, or a L{Deferred} that
-        will fire with an L{IWriter}
+        @return: a L{Deferred} that will fire with an L{IWriter}
 
         """
 
@@ -195,6 +194,9 @@ class FilesystemWriter(object):
     def __init__(self, file_path):
         if file_path.exists():
             raise FileExists(file_path)
+        file_dir = file_path.parent()
+        if not file_dir.exists():
+            file_dir.makedirs()
         self.file_path = file_path
         self.destination_file = self.file_path.open('w')
         self.temp_destination = tempfile.TemporaryFile()
@@ -257,34 +259,34 @@ class FilesystemSynchronousBackend(object):
             self.base = FilePath(base_path)
         self.can_read, self.can_write = can_read, can_write
 
+    @deferred
     def get_reader(self, file_name):
         """
         @see: L{IBackend.get_reader}
 
-        @return: an object, providing L{IReader}
-        @rtype: L{FilesystemReader}
+        @rtype: L{Deferred}, yielding a L{FilesystemReader}
 
         """
         if not self.can_read:
             raise Unsupported("Reading not supported")
         try:
-            target_path = self.base.child(file_name)
+            target_path = self.base.descendant(file_name.split("/"))
         except InsecurePath, e:
             raise AccessViolation("Insecure path: %s" % e)
         return FilesystemReader(target_path)
 
+    @deferred
     def get_writer(self, file_name):
         """
         @see: L{IBackend.get_writer}
 
-        @return: an object, providing L{IWriter}
-        @rtype: L{FilesystemWriter}
+        @rtype: L{Deferred}, yielding a L{FilesystemWriter}
 
         """
         if not self.can_write:
             raise Unsupported("Writing not supported")
         try:
-            target_path = self.base.child(file_name)
+            target_path = self.base.descendant(file_name.split("/"))
         except InsecurePath, e:
             raise AccessViolation("Insecure path: %s" % e)
         return FilesystemWriter(target_path)

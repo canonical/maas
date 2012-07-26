@@ -1,10 +1,12 @@
 '''
 @author: shylent
 '''
+from functools import wraps
 from twisted.internet import reactor
+from twisted.internet.defer import maybeDeferred
 
 
-__all__ = ['SequentialCall', 'Spent', 'Cancelled']
+__all__ = ['SequentialCall', 'Spent', 'Cancelled', 'deferred']
 
 
 class Spent(Exception):
@@ -120,3 +122,15 @@ class SequentialCall(object):
     def active(self):
         """Whether or not this L{SequentialCall} object is considered active"""
         return not (self._spent or self._cancelled)
+
+
+def deferred(func):
+    """Decorates a function to ensure that it always returns a `Deferred`.
+
+    This also serves a secondary documentation purpose; functions decorated
+    with this are readily identifiable as asynchronous.
+    """
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        return maybeDeferred(func, *args, **kwargs)
+    return wrapper

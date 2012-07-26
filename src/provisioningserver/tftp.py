@@ -22,6 +22,7 @@ from urlparse import (
     urlparse,
     )
 
+from provisioningserver.utils import deferred
 from tftp.backend import (
     FilesystemSynchronousBackend,
     IReader,
@@ -91,6 +92,7 @@ class TFTPBackend(FilesystemSynchronousBackend):
         # maas_client._ascii_url() for inspiration.
         return url.geturl().encode("ascii")
 
+    @deferred
     def get_reader(self, file_name):
         """See `IBackend.get_reader()`.
 
