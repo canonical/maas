@@ -12,16 +12,26 @@ from __future__ import (
 __metaclass__ = type
 __all__ = [
     'add_zone',
-    'change_dns_zone',
+    'change_dns_zones',
     'next_zone_serial',
     'write_full_dns_config',
     ]
 
 
+import collections
+
+from django.conf import settings
+from django.db.models.signals import (
+    post_delete,
+    post_save,
+    )
+from django.dispatch import receiver
 from maasserver.models import (
     DHCPLease,
+    Node,
     NodeGroup,
     )
+from maasserver.models.dhcplease import post_updates
 from maasserver.sequence import (
     INT_MAX,
     Sequence,
@@ -40,6 +50,41 @@ def next_zone_serial():
     return '%0.10d' % zone_serial.nextval()
 
 
+def is_dns_enabled():
+    return settings.DNS_CONNECT
+
+
+@receiver(post_save, sender=NodeGroup)
+def dns_post_save_NodeGroup(sender, instance, created, **kwargs):
+    """Create or update DNS zones related to the new nodegroup."""
+    if is_dns_enabled():
+        if created:
+            add_zone(instance)
+        else:
+            write_full_dns_config()
+
+
+@receiver(post_delete, sender=NodeGroup)
+def dns_post_delete_NodeGroup(sender, instance, **kwargs):
+    """Delete DNS zones related to the nodegroup."""
+    if is_dns_enabled():
+        write_full_dns_config()
+
+
+@receiver(post_updates, sender=DHCPLease.objects)
+def dns_updated_DHCPLeaseManager(sender, **kwargs):
+    """Update all the zone files."""
+    if is_dns_enabled():
+        change_dns_zones(NodeGroup.objects.all())
+
+
+@receiver(post_delete, sender=Node)
+def dns_post_delete_Node(sender, instance, **kwargs):
+    """Update the Node's zone file."""
+    if is_dns_enabled():
+        change_dns_zones(instance.nodegroup)
+
+
 def get_zone(nodegroup, serial=None):
     """Create a :class:`DNSZoneConfig` object from a nodegroup.
 
@@ -56,20 +101,25 @@ def get_zone(nodegroup, serial=None):
         mapping=DHCPLease.objects.get_hostname_ip_mapping(nodegroup))
 
 
-def change_dns_zone(nodegroup):
-    """Update the zone configurtion for the given `nodegroup`.
+def change_dns_zones(nodegroups):
+    """Update the zone configuration for the given list of Nodegroups.
 
-    :param nodegroup: The nodegroup for which the zone should be updated.
-    :type nodegroup: :class:`NodeGroup`
+    :param nodegroups: The list of nodegroups (or the nodegroup) for which the
+        zone should be updated.
+    :type nodegroups: list (or :class:`NodeGroup`)
     """
-    zone = get_zone(nodegroup)
-    reverse_zone_reload_subtask = tasks.rndc_command.subtask(
-        args=[['reload', zone.reverse_zone_name]])
-    zone_reload_subtask = tasks.rndc_command.subtask(
-        args=[['reload', zone.zone_name]],
-        callback=reverse_zone_reload_subtask)
-    tasks.write_dns_zone_config.delay(
-        zone=zone, callback=zone_reload_subtask)
+    if not isinstance(nodegroups, collections.Iterable):
+        nodegroups = [nodegroups]
+    serial = next_zone_serial()
+    for nodegroup in nodegroups:
+        zone = get_zone(nodegroup, serial)
+        reverse_zone_reload_subtask = tasks.rndc_command.subtask(
+            args=[['reload', zone.reverse_zone_name]])
+        zone_reload_subtask = tasks.rndc_command.subtask(
+            args=[['reload', zone.zone_name]],
+            callback=reverse_zone_reload_subtask)
+        tasks.write_dns_zone_config.delay(
+            zone=zone, callback=zone_reload_subtask)
 
 
 def add_zone(nodegroup):

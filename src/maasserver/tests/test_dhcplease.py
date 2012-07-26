@@ -12,10 +12,14 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
-from maasserver.models.dhcplease import DHCPLease
+from maasserver.models.dhcplease import (
+    DHCPLease,
+    post_updates,
+    )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
 from maasserver.utils import ignore_unused
+from maastesting.fakemethod import FakeMethod
 
 
 def get_leases(nodegroup):
@@ -134,6 +138,17 @@ class TestDHCPLeaseManager(TestCase):
                 new_ip: mac1,
             },
             map_leases(nodegroup))
+
+    def test_update_leases_fires_signal(self):
+        # A call to DHCPLease.objects.update_leases fires the 'post_updates'
+        # signal.
+        recorder = FakeMethod()
+        post_updates.connect(recorder, sender=DHCPLease.objects)
+        self.addCleanup(
+            post_updates.disconnect, recorder, sender=DHCPLease.objects)
+        nodegroup = factory.make_node_group()
+        DHCPLease.objects.update_leases(nodegroup, {})
+        self.assertEqual(1, recorder.call_count)
 
     def test_get_hostname_ip_mapping_returns_mapping(self):
         nodegroup = factory.make_node_group()

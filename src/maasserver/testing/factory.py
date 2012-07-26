@@ -110,22 +110,44 @@ class Factory(maastesting.factory.Factory):
         return reload_object(node)
 
     def make_node_group(self, name=None, worker_ip=None, router_ip=None,
-                        api_token=None, network=None, **kwargs):
+                        api_token=None, network=None, subnet_mask=None,
+                        broadcast_ip=None, ip_range_low=None,
+                        ip_range_high=None, **kwargs):
+        """Create a :class:`NodeGroup`.
+
+        If network (an instance of IPNetwork) is provided, use it to populate
+        subnet_mask, broadcast_ip, ip_range_low, ip_range_high, router_ip and
+        worker_ip. This is a convenience to setup a coherent network all in
+        one go.
+
+        Otherwise, use the provided values for these values or use random IP
+        addresses if they are not provided.
+        """
         if name is None:
             name = self.make_name('nodegroup')
         if api_token is None:
             user = self.make_user()
             api_token = create_auth_token(user)
-        if network is None:
-            network = factory.getRandomNetwork()
-        subnet_mask = str(network.netmask)
-        broadcast_ip = str(network.broadcast)
-        ip_range_low = str(IPAddress(network.first))
-        ip_range_high = str(IPAddress(network.last))
-        if router_ip is None:
+        if network is not None:
+            subnet_mask = str(network.netmask)
+            broadcast_ip = str(network.broadcast)
+            ip_range_low = str(IPAddress(network.first))
+            ip_range_high = str(IPAddress(network.last))
             router_ip = factory.getRandomIPInNetwork(network)
-        if worker_ip is None:
             worker_ip = factory.getRandomIPInNetwork(network)
+        else:
+            if subnet_mask is None:
+                subnet_mask = self.getRandomIPAddress()
+            if broadcast_ip is None:
+                broadcast_ip = self.getRandomIPAddress()
+            if ip_range_low is None:
+                ip_range_low = self.getRandomIPAddress()
+            if ip_range_high is None:
+                ip_range_high = self.getRandomIPAddress()
+            if router_ip is None:
+                router_ip = self.getRandomIPAddress()
+            if worker_ip is None:
+                worker_ip = self.getRandomIPAddress()
         ng = NodeGroup(
             name=name, api_token=api_token, api_key=api_token.key,
             worker_ip=worker_ip, subnet_mask=subnet_mask,

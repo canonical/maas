@@ -40,6 +40,10 @@ TEST_RUNNER = 'maastesting.runner.TestRunner'
 # Use a fake provisioning server for test/demo purposes.
 USE_REAL_PSERV = False
 
+# Don't connect to the DNS server in tests, this will be enabled on a case per
+# case basis.
+DNS_CONNECT = False
+
 # Invalid strings should be visible.
 TEMPLATE_STRING_IF_INVALID = '#### INVALID STRING ####'
 

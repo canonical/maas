@@ -108,3 +108,6 @@ ignore_unused(provisioning)
 
 from maasserver import messages
 ignore_unused(messages)
+
+from maasserver import dns
+ignore_unused(dns)
