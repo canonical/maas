@@ -20,6 +20,7 @@ __all__ = [
     'write_full_dns_config',
     ]
 
+from subprocess import CalledProcessError
 
 from celery.task import task
 from provisioningserver.dns.config import (
@@ -27,10 +28,16 @@ from provisioningserver.dns.config import (
     execute_rndc_command,
     setup_rndc,
     )
+from provisioningserver.omshell import Omshell
 from provisioningserver.power.poweraction import (
     PowerAction,
     PowerActionFail,
     )
+
+
+# =====================================================================
+# Power-related tasks
+# =====================================================================
 
 
 def issue_power_action(power_type, power_change, **kwargs):
@@ -67,6 +74,11 @@ def power_on(power_type, **kwargs):
 def power_off(power_type, **kwargs):
     """Turn a node off."""
     issue_power_action(power_type, 'off', **kwargs)
+
+
+# =====================================================================
+# DNS-related tasks
+# =====================================================================
 
 
 @task
@@ -145,3 +157,49 @@ def setup_rndc_configuration(callback=None):
     setup_rndc()
     if callback is not None:
         callback.delay()
+
+
+# =====================================================================
+# DHCP-related tasks
+# =====================================================================
+
+
+@task
+def add_new_dhcp_host_map(ip_address, mac_address, server_address, shared_key):
+    """Add a MAC to IP mapping in the DHCP server.
+
+    :param ip_address: Dotted quad string
+    :param mac_address: Colon-separated hex string, e.g. aa:bb:cc:dd:ee:ff
+    :param server_address: IP or hostname for the DHCP server
+    :param shared_key: The HMAC-MD5 key that the DHCP server uses for access
+        control.
+    """
+    omshell = Omshell(server_address, shared_key)
+    try:
+        omshell.create(ip_address, mac_address)
+    except CalledProcessError:
+        # TODO signal to webapp that the job failed.
+
+        # Re-raise, so the job is marked as failed.  Only currently
+        # useful for tests.
+        raise
+
+
+@task
+def remove_dhcp_host_map(ip_address, server_address, shared_key):
+    """Remove an IP to MAC mapping in the DHCP server.
+
+    :param ip_address: Dotted quad string
+    :param server_address: IP or hostname for the DHCP server
+    :param shared_key: The HMAC-MD5 key that the DHCP server uses for access
+        control.
+    """
+    omshell = Omshell(server_address, shared_key)
+    try:
+        omshell.remove(ip_address)
+    except CalledProcessError:
+        # TODO signal to webapp that the job failed.
+
+        # Re-raise, so the job is marked as failed.  Only currently
+        # useful for tests.
+        raise

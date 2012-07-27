@@ -45,7 +45,7 @@ This is the list of runtime dependencies that you'll need to install::
         python-twisted python-oops-wsgi python-oops-twisted \
         python-psycopg2 python-yaml python-convoy python-django-south \
         python-avahi python-dbus python-celery python-tempita distro-info \
-        bind9utils libpq-dev dnsutils bind9 python-netaddr
+        bind9utils libpq-dev dnsutils bind9 python-netaddr isc-dhcp-common
 
 Additionally, you need to install the following python libraries
 for development convenience::
