@@ -2245,9 +2245,10 @@ class TestPXEConfigAPI(AnonAPITestCase):
                 'arch': "armhf",
                 'subarch': "armadaxp",
                 'mac': factory.make_mac_address().mac_address,
-                'menutitle': "menutitle",
-                'kernelimage': "/my/kernel",
-                'append': "append",
+                'menu_title': factory.make_name("Menu"),
+                'kernel': factory.make_name("/my/kernel"),
+                'initrd': factory.make_name("/my/initrd"),
+                'append': factory.make_name("append"),
             }
 
     def get_optional_params(self):
@@ -2283,8 +2284,9 @@ class TestPXEConfigAPI(AnonAPITestCase):
             'arch': httplib.BAD_REQUEST,
             'subarch': httplib.OK,
             'mac': httplib.OK,
-            'menutitle': httplib.BAD_REQUEST,
-            'kernelimage': httplib.BAD_REQUEST,
+            'menu_title': httplib.BAD_REQUEST,
+            'kernel': httplib.BAD_REQUEST,
+            'initrd': httplib.BAD_REQUEST,
             'append': httplib.BAD_REQUEST,
             }
         observed = {

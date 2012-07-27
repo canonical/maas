@@ -1,13 +1,14 @@
 DEFAULT menu
 PROMPT 0
-MENU TITLE {{menutitle}}
+MENU TITLE {{menu_title}}
 TIMEOUT 1
-ONTIMEOUT ubuntu-enlist
+ONTIMEOUT execute
 
-LABEL ubuntu-enlist
-        kernel {{kernelimage}}
-        MENU LABEL ubuntu-enlist
-        append {{append}}
-        ipappend 2
+LABEL execute
+        KERNEL {{kernel}}
+        INITRD {{initrd}}
+        MENU LABEL Continue
+        APPEND {{append}}
+        IPAPPEND 2
 
 MENU end

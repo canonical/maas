@@ -1,7 +1,12 @@
 # Copyright 2012 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Generating PXE configuration files."""
+"""Generating PXE configuration files.
+
+For more about the format of these files:
+
+http://www.syslinux.org/wiki/index.php/SYSLINUX#How_do_I_Configure_SYSLINUX.3F
+"""
 
 from __future__ import (
     absolute_import,
@@ -48,8 +53,8 @@ class PXEConfig:
     and then produce a configuration file with:
 
     >>> pxeconfig.get_config(
-    ...     menutitle="menutitle", kernelimage="/my/kernel",
-            append="initrd=blah url=blah")
+    ...     menu_title="Booting", kernel="/my/kernel", initrd="/my/initrd",
+            append="auto url=blah")
     """
 
     def __init__(self, arch, subarch='generic'):
@@ -79,9 +84,11 @@ class PXEConfig:
     def get_config(self, **kwargs):
         """Return this PXE config file as a unicode string.
 
-        :param menutitle: The PXE menu title shown.
-        :param kernelimage: The path to the kernel in the TFTP server
-        :param append: Kernel parameters to append.
+        :param menu_title: Title that the node should show on its boot menu.
+        :param kernel: TFTP path to the kernel image to boot.
+        :param initrd: TFTP path to the initrd file to boot from.
+        :param append: Additional parameters to append to the kernel
+            command line.
         """
         template = self.get_template()
         return self.render_template(template, **kwargs)

@@ -96,12 +96,16 @@ class TestTFTPBackend(TestCase):
         arch = factory.make_name("arch").encode("ascii")
         subarch = factory.make_name("subarch").encode("ascii")
         name = factory.make_name("name").encode("ascii")
-        kernelimage = factory.make_name("kernelimage").encode("ascii")
-        menutitle = factory.make_name("menutitle").encode("ascii")
+        kernel = factory.make_name("kernel").encode("ascii")
+        initrd = factory.make_name("initrd").encode("ascii")
+        menu_title = factory.make_name("menu-title").encode("ascii")
         append = factory.make_name("append").encode("ascii")
-        backend_url = b"http://example.com/?" + urlencode(
-            {b"kernelimage": kernelimage, b"menutitle": menutitle,
-             b"append": append})
+        backend_url = b"http://example.com/?" + urlencode({
+            b"kernel": kernel,
+            b"initrd": initrd,
+            b"menu_title": menu_title,
+            b"append": append,
+            })
         backend = TFTPBackend(self.make_dir(), backend_url)
         # params is an example of the parameters obtained from a request.
         params = {"arch": arch, "subarch": subarch, "name": name}
@@ -110,10 +114,11 @@ class TestTFTPBackend(TestCase):
         query = parse_qsl(generator_url.query)
         query_expected = [
             ("append", append),
-            ("kernelimage", kernelimage),
+            ("kernel", kernel),
+            ("initrd", initrd),
             ("arch", arch),
             ("subarch", subarch),
-            ("menutitle", menutitle),
+            ("menu_title", menu_title),
             ("name", name),
             ]
         self.assertItemsEqual(query_expected, query)

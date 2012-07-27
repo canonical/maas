@@ -1078,14 +1078,18 @@ def pxeconfig(request):
 
     :param arch: Main machine architecture.
     :param subarch: Sub-architecture, or "generic" if there is none.
-    :param mac: If specified will return a mac-specific PXE file.
-        If not specified will return a "default" file.
-    :param menutitle: The PXE menu title shown.
-    :param kernelimage: The path to the kernel in the TFTP server
-    :param append: Kernel parameters to append.
+    :param mac: MAC address to produce a boot configuration for.  This
+        parameter is optional.  If it is not given, the configuration
+        will be the "default" one which boots into an enlistment image.
+    :param menu_title: Title that the node should show in its PXE menu.
+    :param kernel: TFTP path to the kernel image that is to be booted.
+    :param initrd: TFTP path to the initrd that is to be booted.
+    :param append: Additional parameters to append to the kernel command
+        line.
     """
-    menutitle = get_mandatory_param(request.GET, 'menutitle')
-    kernelimage = get_mandatory_param(request.GET, 'kernelimage')
+    menu_title = get_mandatory_param(request.GET, 'menu_title')
+    kernel = get_mandatory_param(request.GET, 'kernel')
+    initrd = get_mandatory_param(request.GET, 'initrd')
     append = get_mandatory_param(request.GET, 'append')
     arch = get_mandatory_param(request.GET, 'arch')
     subarch = request.GET.get('subarch', 'generic')
@@ -1099,7 +1103,8 @@ def pxeconfig(request):
     try:
         return HttpResponse(
             config.get_config(
-                menutitle=menutitle, kernelimage=kernelimage, append=append),
+                menu_title=menu_title, kernel=kernel, initrd=initrd,
+                append=append),
             content_type="text/plain; charset=utf-8")
     except PXEConfigFail as e:
         raise ValidationError(e.message)

@@ -73,8 +73,8 @@ class TestPXEConfig(TestCase):
 
     def test_render_template(self):
         pxeconfig = PXEConfig("i386")
-        template = tempita.Template("template: {{kernelimage}}")
-        rendered = pxeconfig.render_template(template, kernelimage="myimage")
+        template = tempita.Template("template: {{kernel}}")
+        rendered = pxeconfig.render_template(template, kernel="myimage")
         self.assertEqual("template: myimage", rendered)
 
     def test_render_template_raises_PXEConfigFail(self):
@@ -83,23 +83,23 @@ class TestPXEConfig(TestCase):
         pxeconfig = PXEConfig("i386")
         template_name = factory.getRandomString()
         template = tempita.Template(
-            "template: {{kernelimage}}", name=template_name)
+            "template: {{kernel}}", name=template_name)
         exception = self.assertRaises(
             PXEConfigFail, pxeconfig.render_template, template)
         self.assertThat(
             exception.message, MatchesRegex(
-                "name 'kernelimage' is not defined at line \d+ column \d+ "
+                "name 'kernel' is not defined at line \d+ column \d+ "
                 "in file %s" % re.escape(template_name)))
 
     def test_get_config_returns_config(self):
         pxeconfig = PXEConfig("armhf", "armadaxp")
         template = pxeconfig.get_template()
         expected = pxeconfig.render_template(
-            template, menutitle="menutitle", kernelimage="/my/kernel",
-            append="append")
+            template, menu_title="Title", kernel="/my/kernel",
+            initrd="/my/initrd", append="append")
 
         self.assertEqual(
             pxeconfig.get_config(
-                 menutitle="menutitle", kernelimage="/my/kernel",
+                 menu_title="Title", kernel="/my/kernel", initrd="/my/initrd",
                  append="append"),
             expected)

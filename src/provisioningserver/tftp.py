@@ -78,8 +78,9 @@ class TFTPBackend(FilesystemSynchronousBackend):
         """
         # TODO: update query defaults.
         query = {
-            b"menutitle": b"",
-            b"kernelimage": b"",
+            b"menu_title": b"",
+            b"kernel": b"",
+            b"initrd": b"",
             b"append": b"",
             }
         # Merge parameters from the generator URL.
