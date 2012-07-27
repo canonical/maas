@@ -58,28 +58,63 @@ class TestBytesReader(TestCase):
         self.assertRaises(ValueError, reader.read, 1)
 
 
-class TestTFTPBackend(TestCase):
-    """Tests for `provisioningserver.tftp.TFTPBackend`."""
+class TestTFTPBackendRegex(TestCase):
+    """Tests for `provisioningserver.tftp.TFTPBackend.re_config_file`."""
 
-    run_tests_with = AsynchronousDeferredRunTest.make_factory(timeout=5)
+    @staticmethod
+    def get_example_path_and_components():
+        """Return a plausible path and its components.
+
+        The path is intended to match `re_config_file`, and the components are
+        the expected groups from a match.
+        """
+        components = {
+            "arch": factory.make_name("arch"),
+            "subarch": factory.make_name("subarch"),
+            "mac": factory.getRandomMACAddress(),
+            }
+        config_path = compose_config_path(
+            arch=components["arch"], subarch=components["subarch"],
+            name=components["mac"])
+        return config_path, components
 
     def test_re_config_file(self):
         # The regular expression for extracting components of the file path is
         # compatible with the PXE config path generator.
         regex = TFTPBackend.re_config_file
         for iteration in range(10):
-            args = {
-                "arch": factory.make_name("arch"),
-                "subarch": factory.make_name("subarch"),
-                "name": factory.make_name("name"),
-                }
-            config_path = compose_config_path(**args)
-            # Remove leading slash from config path; the TFTP server does not
-            # include them in paths.
-            config_path = config_path.lstrip("/")
+            config_path, args = self.get_example_path_and_components()
             match = regex.match(config_path)
             self.assertIsNotNone(match, config_path)
             self.assertEqual(args, match.groupdict())
+
+    def test_re_config_file_with_leading_slash(self):
+        # The regular expression for extracting components of the file path
+        # doesn't care if there's a leading forward slash; the TFTP server is
+        # easy on this point, so it makes sense to be also.
+        config_path, args = self.get_example_path_and_components()
+        # Ensure there's a leading slash.
+        config_path = "/" + config_path.lstrip("/")
+        match = TFTPBackend.re_config_file.match(config_path)
+        self.assertIsNotNone(match, config_path)
+        self.assertEqual(args, match.groupdict())
+
+    def test_re_config_file_without_leading_slash(self):
+        # The regular expression for extracting components of the file path
+        # doesn't care if there's no leading forward slash; the TFTP server is
+        # easy on this point, so it makes sense to be also.
+        config_path, args = self.get_example_path_and_components()
+        # Ensure there's no leading slash.
+        config_path = config_path.lstrip("/")
+        match = TFTPBackend.re_config_file.match(config_path)
+        self.assertIsNotNone(match, config_path)
+        self.assertEqual(args, match.groupdict())
+
+
+class TestTFTPBackend(TestCase):
+    """Tests for `provisioningserver.tftp.TFTPBackend`."""
+
+    run_tests_with = AsynchronousDeferredRunTest.make_factory(timeout=5)
 
     def test_init(self):
         temp_dir = self.make_dir()
@@ -95,7 +130,7 @@ class TestTFTPBackend(TestCase):
         # file path (arch, subarch, name) into the configured generator URL.
         arch = factory.make_name("arch").encode("ascii")
         subarch = factory.make_name("subarch").encode("ascii")
-        name = factory.make_name("name").encode("ascii")
+        mac = factory.getRandomMACAddress()
         kernel = factory.make_name("kernel").encode("ascii")
         initrd = factory.make_name("initrd").encode("ascii")
         menu_title = factory.make_name("menu-title").encode("ascii")
@@ -108,7 +143,7 @@ class TestTFTPBackend(TestCase):
             })
         backend = TFTPBackend(self.make_dir(), backend_url)
         # params is an example of the parameters obtained from a request.
-        params = {"arch": arch, "subarch": subarch, "name": name}
+        params = {"arch": arch, "subarch": subarch, "mac": mac}
         generator_url = urlparse(backend.get_generator_url(params))
         self.assertEqual("example.com", generator_url.hostname)
         query = parse_qsl(generator_url.query)
@@ -119,7 +154,7 @@ class TestTFTPBackend(TestCase):
             ("arch", arch),
             ("subarch", subarch),
             ("menu_title", menu_title),
-            ("name", name),
+            ("mac", mac),
             ]
         self.assertItemsEqual(query_expected, query)
 
@@ -143,8 +178,8 @@ class TestTFTPBackend(TestCase):
         # a Deferred that will yield a BytesReader.
         arch = factory.make_name("arch").encode("ascii")
         subarch = factory.make_name("subarch").encode("ascii")
-        name = factory.make_name("name").encode("ascii")
-        config_path = compose_config_path(arch, subarch, name)
+        mac = factory.getRandomMACAddress()
+        config_path = compose_config_path(arch, subarch, mac)
         backend = TFTPBackend(self.make_dir(), b"http://example.com/")
 
         # Patch get_generator_url() to check params.
@@ -152,7 +187,7 @@ class TestTFTPBackend(TestCase):
 
         @partial(self.patch, backend, "get_generator_url")
         def get_generator_url(params):
-            expected_params = {"arch": arch, "subarch": subarch, "name": name}
+            expected_params = {"arch": arch, "subarch": subarch, "mac": mac}
             self.assertEqual(expected_params, params)
             return generator_url
 
