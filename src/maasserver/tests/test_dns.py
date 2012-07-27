@@ -14,12 +14,15 @@ __all__ = []
 
 
 from itertools import islice
+import socket
 
 from django.conf import settings
 from django.core.management import call_command
 from maasserver.dns import (
     add_zone,
     change_dns_zones,
+    DNSException,
+    get_dns_server_address,
     is_dns_enabled,
     next_zone_serial,
     write_full_dns_config,
@@ -33,6 +36,7 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
 from maastesting.bindfixture import BINDServer
 from maastesting.celery import CeleryFixture
+from maastesting.fakemethod import FakeMethod
 from maastesting.tests.test_bindfixture import dig_call
 from netaddr import (
     IPNetwork,
@@ -61,6 +65,39 @@ class TestDNSUtilities(TestCase):
         self.assertSequenceEqual(
             ['%0.10d' % i for i in range(initial + 1, initial + 11)],
             [next_zone_serial() for i in range(initial, initial + 10)])
+
+    def patch_DEFAULT_MAAS_URL_with_random_values(self, hostname=None):
+        if hostname is None:
+            hostname = factory.getRandomString()
+        url = 'http://%s:%d/%s' % (
+            hostname, factory.getRandomPort(), factory.getRandomString())
+        self.patch(settings, 'DEFAULT_MAAS_URL', url)
+
+    def test_get_dns_server_address_returns_IP(self):
+        ip = factory.getRandomIPAddress()
+        self.patch_DEFAULT_MAAS_URL_with_random_values(hostname=ip)
+        self.assertEqual(ip, get_dns_server_address())
+
+    def test_get_dns_server_address_returns_IP_if_IP_is_localhost(self):
+        ip = factory.getRandomIPInNetwork(IPNetwork('127.0.0.1/8'))
+        self.patch_DEFAULT_MAAS_URL_with_random_values(hostname=ip)
+        self.assertEqual(ip, get_dns_server_address())
+
+    def test_get_dns_server_address_resolves_hostname(self):
+        ip = factory.getRandomIPAddress()
+        resolver = FakeMethod(result=ip)
+        self.patch(socket, 'gethostbyname', resolver)
+        hostname = factory.getRandomString()
+        self.patch_DEFAULT_MAAS_URL_with_random_values(hostname=hostname)
+        self.assertEqual(
+            (ip, [(hostname, )]),
+            (get_dns_server_address(), resolver.extract_args()))
+
+    def test_get_dns_server_address_raises_if_hostname_doesnt_resolve(self):
+        resolver = FakeMethod(failure=socket.error)
+        self.patch(socket, 'gethostbyname', resolver)
+        self.patch_DEFAULT_MAAS_URL_with_random_values()
+        self.assertRaises(DNSException, get_dns_server_address)
 
 
 class TestDNSConfigModifications(TestCase):

@@ -19,6 +19,9 @@ __all__ = [
 
 
 import collections
+import logging
+import socket
+from urlparse import urlparse
 
 from django.conf import settings
 from django.db.models.signals import (
@@ -26,6 +29,7 @@ from django.db.models.signals import (
     post_save,
     )
 from django.dispatch import receiver
+from maasserver.exceptions import MAASException
 from maasserver.models import (
     DHCPLease,
     Node,
@@ -35,6 +39,10 @@ from maasserver.models.dhcplease import post_updates
 from maasserver.sequence import (
     INT_MAX,
     Sequence,
+    )
+from netaddr import (
+    IPAddress,
+    IPNetwork,
     )
 from provisioningserver import tasks
 from provisioningserver.dns.config import DNSZoneConfig
@@ -52,6 +60,47 @@ def next_zone_serial():
 
 def is_dns_enabled():
     return settings.DNS_CONNECT
+
+
+class DNSException(MAASException):
+    """An error occured when setting up MAAS' DNS server."""
+
+
+def warn_loopback(ip):
+    """Warn if the given IP address is in the loopback network."""
+    if IPAddress(ip) in IPNetwork('127.0.0.1/8'):
+        logging.getLogger('maas').warn(
+            "The DNS server address used will be '%s'.  That address is "
+            "in the loopback network.  This might not be a problem "
+            "if you're not using MAAS' DNS features or if "
+            "you don't rely on this information.  Be sure to set the "
+            "setting DEFAULT_MAAS_URL." % ip)
+
+
+def get_dns_server_address():
+    """Return the DNS server's IP address.
+
+    That address is derived from DEFAULT_MAAS_URL in order to get a sensible
+    default and at the same time give a possibility to the user to change this.
+    """
+    host = urlparse(settings.DEFAULT_MAAS_URL).netloc.split(':')[0]
+
+    # Try to resolve the hostname, if `host` is alread an IP address, it
+    # will simpply be returned by `socket.gethostbyname`.
+    try:
+        ip = socket.gethostbyname(host)
+        warn_loopback(ip)
+        return ip
+    except socket.error:
+        pass
+
+    # No suitable address has been found.
+    raise DNSException(
+        "Unable to find a suitable IP for the MAAS server.  Such an IP "
+        "is required for MAAS' DNS features to work.  Make sure that the "
+        "setting DEFAULT_MAAS_URL is defined properly.  The IP in "
+        "DEFAULT_MAAS_URL is the one which will be used for the NS record "
+        "in MAAS' zone files.")
 
 
 @receiver(post_save, sender=NodeGroup)
