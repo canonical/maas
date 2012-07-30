@@ -14,6 +14,7 @@ __all__ = []
 
 import httplib
 
+from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse
 from lxml.html import fromstring
@@ -72,21 +73,28 @@ class SettingsTest(AdminLoggedInTestCase):
                     reverse('accounts-del', args=[user.username]), links)
 
     def test_settings_maas_and_network_POST(self):
+        # Disable the DNS machinery so that we can skip the required
+        # setup.
+        self.patch(settings, "DNS_CONNECT", False)
         new_name = factory.getRandomString()
         new_domain = factory.getRandomString()
+        new_enable_dns = factory.getRandomBoolean()
         response = self.client.post(
-            '/settings/',
+            reverse('settings'),
             get_prefixed_form_data(
                 prefix='maas_and_network',
                 data={
                     'maas_name': new_name,
                     'enlistment_domain': new_domain,
+                    'enable_dns ': new_enable_dns,
                 }))
 
         self.assertEqual(httplib.FOUND, response.status_code)
         self.assertEqual(new_name, Config.objects.get_config('maas_name'))
         self.assertEqual(
             new_domain, Config.objects.get_config('enlistment_domain'))
+        self.assertEqual(
+            new_enable_dns, Config.objects.get_config('enable_dns'))
 
     def test_settings_commissioning_POST(self):
         new_after_commissioning = factory.getRandomEnum(

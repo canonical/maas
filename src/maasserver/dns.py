@@ -31,6 +31,7 @@ from django.db.models.signals import (
 from django.dispatch import receiver
 from maasserver.exceptions import MAASException
 from maasserver.models import (
+    Config,
     DHCPLease,
     Node,
     NodeGroup,
@@ -59,7 +60,7 @@ def next_zone_serial():
 
 
 def is_dns_enabled():
-    return settings.DNS_CONNECT
+    return settings.DNS_CONNECT and Config.objects.get_config('enable_dns')
 
 
 class DNSException(MAASException):
@@ -101,6 +102,15 @@ def get_dns_server_address():
         "setting DEFAULT_MAAS_URL is defined properly.  The IP in "
         "DEFAULT_MAAS_URL is the one which will be used for the NS record "
         "in MAAS' zone files.")
+
+
+def dns_config_changed(sender, config, created, **kwargs):
+    """Signal callback called when the DNS config changed."""
+    if is_dns_enabled():
+        write_full_dns_config(active=config.value)
+
+
+Config.objects.config_changed_connect('enable_dns', dns_config_changed)
 
 
 @receiver(post_save, sender=NodeGroup)
@@ -212,10 +222,17 @@ def add_zone(nodegroup):
         zone=zone, callback=write_dns_config_subtask)
 
 
-def write_full_dns_config():
-    """Write the DNS configuration for all the nodegroups."""
-    serial = next_zone_serial()
-    zones = get_zones(NodeGroup.objects.all(), serial)
+def write_full_dns_config(active=True):
+    """Write the DNS configuration.
+
+    If active is True, write the DNS config for all the nodegroups.
+    If active is False, write an empty DNS config (with no zones).
+    """
+    if active:
+        serial = next_zone_serial()
+        zones = get_zones(NodeGroup.objects.all(), serial)
+    else:
+        zones = []
     tasks.write_full_dns_config.delay(
         zones=zones,
         callback=tasks.rndc_command.subtask(args=[['reload']]))

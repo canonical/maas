@@ -497,6 +497,11 @@ class MAASAndNetworkForm(ConfigForm):
         label="Default domain for new nodes", required=False, help_text=(
             "If 'local' is chosen, nodes must be using mDNS. Leave empty to "
             "use hostnames without a domain for newly enlisted nodes."))
+    enable_dns = forms.BooleanField(
+        label="Enable DNS", required=False, help_text=(
+            "When enabled, MAAS will use the machine's BIND server to "
+            "publish its DNS zones."
+        ))
 
 
 class CommissioningForm(ConfigForm):

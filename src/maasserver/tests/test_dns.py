@@ -30,6 +30,7 @@ from maasserver.dns import (
     write_full_dns_config,
     zone_serial,
     )
+from maasserver.models import Config
 from maasserver.models.dhcplease import (
     DHCPLease,
     post_updates,
@@ -227,6 +228,19 @@ class TestDNSConfigModifications(TestCase):
         change_dns_zones(nodegroup)
         self.assertDNSMatches(new_node.hostname, nodegroup.name, new_lease.ip)
 
+    def test_is_dns_enabled_return_false_if_DNS_CONNECT_False(self):
+        self.patch(settings, 'DNS_CONNECT', False)
+        self.assertFalse(is_dns_enabled())
+
+    def test_is_dns_enabled_return_false_if_confif_enable_dns_False(self):
+        Config.objects.set_config('enable_dns', False)
+        self.assertFalse(is_dns_enabled())
+
+    def test_is_dns_enabled_return_True(self):
+        self.patch(settings, 'DNS_CONNECT', True)
+        Config.objects.set_config('enable_dns', True)
+        self.assertTrue(is_dns_enabled())
+
     def test_change_dns_zone_changes_doesnt_write_conf_if_dhcp_disabled(self):
         recorder = FakeMethod()
         self.patch(DNSZoneConfig, 'write_config', recorder)
@@ -249,6 +263,11 @@ class TestDNSConfigModifications(TestCase):
         nodegroup, node, lease = self.create_nodegroup_with_lease()
         write_full_dns_config()
         self.assertDNSMatches(node.hostname, nodegroup.name, lease.ip)
+
+    def test_write_full_dns_can_write_inactive_config(self):
+        nodegroup, node, lease = self.create_nodegroup_with_lease()
+        write_full_dns_config(active=False)
+        self.assertEqual([''], self.dig_resolve(generated_hostname(lease.ip)))
 
     def test_dns_config_has_NS_record(self):
         ip = factory.getRandomIPAddress()
@@ -314,3 +333,16 @@ class TestDNSConfigModifications(TestCase):
         node.delete()
         fqdn = "%s.%s" % (node.hostname, nodegroup.name)
         self.assertEqual([''], self.dig_resolve(fqdn))
+
+    def test_change_config_enable_dns_enables_dns(self):
+        self.patch(settings, "DNS_CONNECT", False)
+        nodegroup, node, lease = self.create_nodegroup_with_lease()
+        settings.DNS_CONNECT = True
+        Config.objects.set_config('enable_dns', True)
+        self.assertDNSMatches(node.hostname, nodegroup.name, lease.ip)
+
+    def test_change_config_enable_dns_disables_dns(self):
+        self.patch(settings, "DNS_CONNECT", True)
+        nodegroup, node, lease = self.create_nodegroup_with_lease()
+        Config.objects.set_config('enable_dns', False)
+        self.assertEqual([''], self.dig_resolve(generated_hostname(lease.ip)))
