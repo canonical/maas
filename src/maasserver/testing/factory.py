@@ -88,15 +88,17 @@ class Factory(maastesting.factory.Factory):
 
     def make_node(self, mac=False, hostname='', set_hostname=False,
                   status=None, architecture=ARCHITECTURE.i386, updated=None,
-                  created=None, **kwargs):
+                  created=None, nodegroup=None, **kwargs):
         # hostname=None is a valid value, hence the set_hostname trick.
         if hostname is '' and set_hostname:
             hostname = self.getRandomString(20)
         if status is None:
             status = NODE_STATUS.DEFAULT_STATUS
+        if nodegroup is None:
+            nodegroup = self.make_node_group()
         node = Node(
             hostname=hostname, status=status, architecture=architecture,
-            **kwargs)
+            nodegroup=nodegroup, **kwargs)
         self._save_node_unchecked(node)
         if mac:
             self.make_mac_address(node=node)
