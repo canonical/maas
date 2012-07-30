@@ -124,3 +124,12 @@ class NodeGroup(TimestampedModel):
         editable=True, unique=True, blank=True, null=True, default='')
     ip_range_high = IPAddressField(
         editable=True, unique=True, blank=True, null=True, default='')
+
+    def is_dhcp_enabled(self):
+        """Is the DHCP for this nodegroup enabled?"""
+        return all([
+                self.subnet_mask,
+                self.broadcast_ip,
+                self.ip_range_low,
+                self.ip_range_high
+                ])

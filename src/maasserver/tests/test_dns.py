@@ -14,6 +14,7 @@ __all__ = []
 
 
 from itertools import islice
+import random
 import socket
 
 from django.conf import settings
@@ -23,6 +24,7 @@ from maasserver.dns import (
     change_dns_zones,
     DNSException,
     get_dns_server_address,
+    get_zone,
     is_dns_enabled,
     next_zone_serial,
     write_full_dns_config,
@@ -42,7 +44,10 @@ from netaddr import (
     IPNetwork,
     IPRange,
     )
-from provisioningserver.dns.config import conf
+from provisioningserver.dns.config import (
+    conf,
+    DNSZoneConfig,
+    )
 from provisioningserver.dns.utils import generated_hostname
 from testresources import FixtureResource
 from testtools.matchers import MatchesStructure
@@ -98,6 +103,28 @@ class TestDNSUtilities(TestCase):
         self.patch(socket, 'gethostbyname', resolver)
         self.patch_DEFAULT_MAAS_URL_with_random_values()
         self.assertRaises(DNSException, get_dns_server_address)
+
+    def test_get_zone_creates_DNSZoneConfig(self):
+        nodegroup = factory.make_node_group()
+        serial = random.randint(1, 100)
+        zone = get_zone(nodegroup, serial)
+        self.assertAttributes(
+            zone,
+            dict(
+                zone_name=nodegroup.name,
+                serial=serial,
+                subnet_mask=nodegroup.subnet_mask,
+                broadcast_ip=nodegroup.broadcast_ip,
+                ip_range_low=nodegroup.ip_range_low,
+                ip_range_high=nodegroup.ip_range_high,
+                mapping=DHCPLease.objects.get_hostname_ip_mapping(nodegroup),
+                ))
+
+    def test_get_zone_returns_None_if_dhcp_not_enabled(self):
+        nodegroup = factory.make_node_group()
+        nodegroup.subnet_mask = None
+        nodegroup.save()
+        self.assertIsNone(get_zone(nodegroup))
 
 
 class TestDNSConfigModifications(TestCase):
@@ -182,7 +209,16 @@ class TestDNSConfigModifications(TestCase):
         add_zone(nodegroup)
         self.assertDNSMatches(node.hostname, nodegroup.name, lease.ip)
 
-    def test_change_zone_changes_dns_zone(self):
+    def test_add_zone_doesnt_write_config_if_dhcp_disabled(self):
+        recorder = FakeMethod()
+        self.patch(DNSZoneConfig, 'write_config', recorder)
+        nodegroup = factory.make_node_group()
+        nodegroup.subnet_mask = None
+        nodegroup.save()
+        add_zone(nodegroup)
+        self.assertEqual(0, recorder.call_count)
+
+    def test_change_dns_zone_changes_dns_zone(self):
         nodegroup, _, _ = self.create_nodegroup_with_lease()
         write_full_dns_config()
         nodegroup, new_node, new_lease = (
@@ -190,6 +226,24 @@ class TestDNSConfigModifications(TestCase):
                 nodegroup=nodegroup, lease_number=2))
         change_dns_zones(nodegroup)
         self.assertDNSMatches(new_node.hostname, nodegroup.name, new_lease.ip)
+
+    def test_change_dns_zone_changes_doesnt_write_conf_if_dhcp_disabled(self):
+        recorder = FakeMethod()
+        self.patch(DNSZoneConfig, 'write_config', recorder)
+        nodegroup = factory.make_node_group()
+        nodegroup.subnet_mask = None
+        nodegroup.save()
+        change_dns_zones(nodegroup)
+        self.assertEqual(0, recorder.call_count)
+
+    def test_write_full_dns_doesnt_write_config_if_dhcp_disabled(self):
+        recorder = FakeMethod()
+        self.patch(DNSZoneConfig, 'write_config', recorder)
+        nodegroup = factory.make_node_group()
+        nodegroup.subnet_mask = None
+        nodegroup.save()
+        write_full_dns_config()
+        self.assertEqual(0, recorder.call_count)
 
     def test_write_full_dns_loads_full_dns_config(self):
         nodegroup, node, lease = self.create_nodegroup_with_lease()

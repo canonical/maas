@@ -126,3 +126,28 @@ class TestNodeGroupManager(TestCase):
         master = NodeGroup.objects.ensure_master()
         self.assertEqual(master, reload_object(groupless_node).nodegroup)
         self.assertNotEqual(master, reload_object(groupful_node).nodegroup)
+
+
+class TestNodeGroup(TestCase):
+
+    def test_is_dhcp_enabled_false_if_one_element_is_none(self):
+        required_fields = [
+            'subnet_mask', 'broadcast_ip', 'ip_range_low', 'ip_range_high']
+        nodegroups = []
+        for required_field in required_fields:
+            nodegroup = factory.make_node_group()
+            setattr(nodegroup, required_field, None)
+            nodegroup.save()
+            nodegroups.append(nodegroup)
+        self.assertEquals(
+                [nodegroup.is_dhcp_enabled() for nodegroup in nodegroups],
+                [False] * len(nodegroups))
+
+    def test_is_dhcp_enabled_true_if_all_the_elements_defined(self):
+        nodegroup = factory.make_node_group(
+            subnet_mask=factory.getRandomIPAddress(),
+            broadcast_ip=factory.getRandomIPAddress(),
+            ip_range_low=factory.getRandomIPAddress(),
+            ip_range_high=factory.getRandomIPAddress(),
+            )
+        self.assertTrue(nodegroup.is_dhcp_enabled())
