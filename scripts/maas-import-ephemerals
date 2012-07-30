@@ -381,7 +381,7 @@ install_tftp_image() {
         cp -- "$src/$filename" "$tmpdir/"
     done
 
-    maas install_pxe_image \
+    maas-provision install-pxe-image \
         --arch=$arch --subarch=$subarch --release=$release \
         --purpose="commissioning" --image="$tmpdir"
 }
