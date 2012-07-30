@@ -39,9 +39,6 @@ class NodeGroupManager(Manager):
     the model class it manages.
     """
 
-    # Cached master nodegroup.
-    cached_master = None
-
     def new(self, name, worker_ip, subnet_mask=None, broadcast_ip=None,
             router_ip=None, ip_range_low=None, ip_range_high=None):
         """Create a :class:`NodeGroup` with the given parameters.
@@ -77,19 +74,20 @@ class NodeGroupManager(Manager):
         # Avoid circular imports.
         from maasserver.models import Node
 
-        if self.cached_master is None:
-            try:
-                self.cached_master = self.get(name='master')
-            except NodeGroup.DoesNotExist:
-                self.cached_master = self.new('master', '127.0.0.1')
-                Node.objects.filter(nodegroup=None).update(
-                    nodegroup=self.cached_master)
+        try:
+            master = self.get(name='master')
+        except NodeGroup.DoesNotExist:
+            # The master did not exist yet; create it on demand.
+            master = self.new('master', '127.0.0.1')
 
-        return self.cached_master
+            # If any legacy nodes were still not associated with a node
+            # group, enroll them in the master node group.
+            Node.objects.filter(nodegroup=None).update(nodegroup=master)
+
+        return master
 
     def _delete_master(self):
         """For use by tests: delete the master nodegroup."""
-        self.cached_master = None
         self.filter(name='master').delete()
 
     def get_by_natural_key(self, name):
