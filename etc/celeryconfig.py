@@ -27,7 +27,7 @@ POWER_TEMPLATES_DIR = None
 PXE_TEMPLATES_DIR = None
 
 # Location of MAAS' bind configuration files.
-DNS_CONFIG_DIR = '/var/cache/bind/maas'
+DNS_CONFIG_DIR = '/etc/bind/maas'
 
 # RNDC port to be configured by MAAS to communicate with the BIND
 # server.
