@@ -12,14 +12,24 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
+from fixtures import TempDir
+import os
 from subprocess import CalledProcessError
+import tempfile
 from textwrap import dedent
 
 from maastesting.factory import factory
 from maastesting.fakemethod import FakeMethod
 from maastesting.testcase import TestCase
-from provisioningserver.omshell import Omshell
-from testtools.matchers import MatchesStructure
+from provisioningserver import omshell
+from provisioningserver.omshell import (
+    generate_omapi_key,
+    Omshell,
+    )
+from testtools.matchers import (
+    EndsWith,
+    MatchesStructure,
+    )
 
 
 class TestOmshell(TestCase):
@@ -135,3 +145,34 @@ class TestOmshell(TestCase):
         exc = self.assertRaises(
             CalledProcessError, shell.remove, ip_address)
         self.assertEqual(random_output, exc.output)
+
+
+class Test_generate_omapi_key(TestCase):
+    """Tests for omshell.generate_omapi_key"""
+
+    def test_generate_omapi_key_returns_a_key(self):
+        key = generate_omapi_key()
+        # Could test for != None here, but the keys end in == for a 512
+        # bit length key, so that's a better check that the script was
+        # actually run and produced output.
+        self.assertThat(key, EndsWith("=="))
+
+    def test_generate_omapi_key_leaves_no_temp_files(self):
+        tmpdir = self.useFixture(TempDir()).path
+        # Make mkdtemp() in omshell nest all directories within tmpdir.
+        self.patch(tempfile, 'tempdir', tmpdir)
+        generate_omapi_key()
+        self.assertEqual([], os.listdir(tmpdir))
+
+    def test_generate_omapi_key_raises_assertionerror_on_no_output(self):
+        self.patch(omshell, 'call_dnssec_keygen', FakeMethod())
+        self.assertRaises(AssertionError, generate_omapi_key)
+
+    def test_generate_omapi_key_raises_assertionerror_on_bad_output(self):
+        def returns_junk(tmpdir):
+            key_name = factory.getRandomString()
+            factory.make_file(tmpdir, "%s.private" % key_name)
+            return key_name
+
+        self.patch(omshell, 'call_dnssec_keygen', returns_junk)
+        self.assertRaises(AssertionError, generate_omapi_key)
