@@ -85,7 +85,6 @@ from django.core.exceptions import (
     PermissionDenied,
     ValidationError,
     )
-from django.core.urlresolvers import reverse
 from django.forms.models import model_to_dict
 from django.http import (
     HttpResponse,
@@ -124,6 +123,7 @@ from maasserver.models import (
     Node,
     NodeGroup,
     )
+from maasserver.utils import absolute_reverse
 from piston.doc import generate_doc
 from piston.handler import (
     AnonymousBaseHandler,
@@ -1050,16 +1050,18 @@ def compose_enlistment_preseed_url():
     """Compose enlistment preseed URL."""
     # Always uses the latest version of the metadata API.
     version = 'latest'
-    return "%s?op=get_enlist_preseed" % reverse(
-        'metadata-enlist-preseed', args=[version])
+    return absolute_reverse(
+        'metadata-enlist-preseed', args=[version],
+        query={'op': 'get_enlist_preseed'})
 
 
 def compose_preseed_url(node):
     """Compose a metadata URL for `node`'s preseed data."""
     # Always uses the latest version of the metadata API.
     version = 'latest'
-    return "%s?op=get_preseed" % reverse(
-        'metadata-node-by-id', args=[version, node.system_id])
+    return absolute_reverse(
+        'metadata-node-by-id', args=[version, node.system_id],
+        query={'op': 'get_preseed'})
 
 
 def compose_preseed_kernel_opt(mac):

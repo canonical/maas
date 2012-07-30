@@ -2301,12 +2301,25 @@ class TestPXEConfigAPI(AnonAPITestCase):
             (httplib.OK, get_enlist_preseed()),
             (response.status_code, response.content))
 
+    def test_compose_enlistment_preseed_url_returns_absolute_link(self):
+        url = 'http://%s' % factory.make_name('host')
+        self.patch(settings, 'DEFAULT_MAAS_URL', url)
+        self.assertThat(
+                api.compose_enlistment_preseed_url(), StartsWith(url))
+
     def test_compose_preseed_url_links_to_preseed_for_node(self):
         node = factory.make_node()
         response = self.client.get(api.compose_preseed_url(node))
         self.assertEqual(
             (httplib.OK, get_preseed(node)),
             (response.status_code, response.content))
+
+    def test_compose_preseed_url_returns_absolute_link(self):
+        url = 'http://%s' % factory.make_name('host')
+        self.patch(settings, 'DEFAULT_MAAS_URL', url)
+        node = factory.make_node()
+        self.assertThat(
+                api.compose_preseed_url(node), StartsWith(url))
 
     def test_compose_preseed_kernel_opt_returns_option_for_known_node(self):
         mac = factory.make_mac_address()
