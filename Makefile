@@ -34,6 +34,11 @@ build-offline: build
 
 all: build doc
 
+# Install all packages required for MAAS development & operation on
+# the system. This may prompt for a password.
+install-dependencies:
+	sudo apt-get install $(shell sort -u required-packages/*)
+
 bin/python bin/pip:
 	$(virtualenv) --python=$(python) --system-site-packages $(CURDIR)
 
@@ -159,6 +164,7 @@ define phony_targets
   doc
   enums
   harness
+  install-dependencies
   lint
   lint-css
   lint-js
@@ -191,12 +197,6 @@ restart: $(addsuffix @restart,$(services))
 stop: $(addsuffix @stop,$(services))
 
 supervise: $(addsuffix @supervise,$(services))
-
-# Install all packages required for MAAS development & operation on the
-# system.
-# This may prompt for a password.
-install_dependencies:
-	sudo apt-get install `cat required-packages/*`
 
 define phony_services_targets
   pause

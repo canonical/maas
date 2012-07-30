@@ -1,6 +1,7 @@
 avahi-utils
 curl
 firefox
+make
 python-lxml
 python-pip
 python-pocket-lint

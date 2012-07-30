@@ -1,4 +1,4 @@
-apache2-mpm-prefork
+apache2
 avahi-daemon
 bind9
 bind9utils
@@ -7,7 +7,6 @@ distro-info
 dnsutils
 isc-dhcp-common
 libpq-dev
-make
 postgresql-9.1
 python-amqplib
 python-avahi
