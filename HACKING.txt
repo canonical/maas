@@ -26,36 +26,21 @@ usually use the ``lowercase_with_underscores`` form.
 Prerequisites
 =============
 
-You will need to manually install Postgres 9.1, RabbitMQ, Apache 2,
-python-dev, avahi-daemon, daemontools, pyinotify, and make::
+MAAS depends on Postgres 9.1, RabbitMQ, Apache 2, python-dev, avahi-daemon,
+daemontools, pyinotify, and many other packages.  To install everything that's
+needed for running and developing MAAS, run::
 
-    $ sudo apt-get install postgresql-9.1 rabbitmq-server python-dev \
-        avahi-daemon make apache2-mpm-prefork daemontools python-pyinotify
+    $ make install_dependencies
 
-Also, you might want to install Bazaar (``bzr``) to grab the source
-code directly from Launchpad::
+Careful: this will "apt-get install" many packages on your system, under
+"sudo."  It may prompt you for your password.
+
+You may need to install python-django-piston as well, but installing it seems
+to cause import errors for "oauth" when running the test suite.
+
+And for convenience, you may also want bzr which we use for development::
 
     $ sudo apt-get install bzr
-
-This is the list of runtime dependencies that you'll need to install::
-
-    $ sudo apt-get install python-django python-django-piston \
-        python-django-south python-twisted python-txamqp python-amqplib \
-        python-formencode python-oauth python-oops python-oops-datedir-repo \
-        python-twisted python-oops-wsgi python-oops-twisted \
-        python-psycopg2 python-yaml python-convoy python-django-south \
-        python-avahi python-dbus python-celery python-tempita distro-info \
-        bind9utils libpq-dev dnsutils bind9 python-netaddr isc-dhcp-common
-
-Additionally, you need to install the following python libraries
-for development convenience::
-
-    $ sudo apt-get install python-sphinx python-lxml python-pocket-lint \
-        python-pip python-virtualenv
-
-If you intend to run the test suite, you also need a few other things:
-
-    $ sudo apt-get install xvfb firefox avahi-utils curl
 
 All other development dependencies are pulled automatically from `PyPI`_
 when buildout runs.

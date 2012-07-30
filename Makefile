@@ -192,6 +192,12 @@ stop: $(addsuffix @stop,$(services))
 
 supervise: $(addsuffix @supervise,$(services))
 
+# Install all packages required for MAAS development & operation on the
+# system.
+# This may prompt for a password.
+install_dependencies:
+	sudo apt-get install `cat required-packages/*`
+
 define phony_services_targets
   pause
   restart
