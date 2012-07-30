@@ -127,6 +127,18 @@ class TestNodeGroupManager(TestCase):
         self.assertEqual(master, reload_object(groupless_node).nodegroup)
         self.assertNotEqual(master, reload_object(groupful_node).nodegroup)
 
+    def test_get_by_natural_key_looks_up_by_name(self):
+        nodegroup = factory.make_node_group()
+        self.assertEqual(
+            nodegroup, NodeGroup.objects.get_by_natural_key(nodegroup.name))
+
+    def test_get_by_natural_key_will_not_return_other_nodegroup(self):
+        factory.make_node_group()
+        self.assertRaises(
+            NodeGroup.DoesNotExist,
+            NodeGroup.objects.get_by_natural_key,
+            factory.make_name("nonexistent-nodegroup"))
+
 
 class TestNodeGroup(TestCase):
 

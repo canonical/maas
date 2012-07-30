@@ -92,6 +92,10 @@ class NodeGroupManager(Manager):
         self.cached_master = None
         self.filter(name='master').delete()
 
+    def get_by_natural_key(self, name):
+        """For Django, a node group's name is a natural key."""
+        return self.get(name=name)
+
 
 class NodeGroup(TimestampedModel):
 
