@@ -82,9 +82,10 @@ class Factory:
         return str(IPAddress(
             random.randint(network.first, network.last)))
 
-    def getRandomMACAddress(self):
+    def getRandomMACAddress(self, delimiter=b":"):
+        assert isinstance(delimiter, bytes)
         octets = islice(self.random_octets, 6)
-        return b":".join(format(octet, b"02x") for octet in octets)
+        return delimiter.join(format(octet, b"02x") for octet in octets)
 
     def getRandomDate(self, year=2011):
         start = time.mktime(datetime.datetime(year, 1, 1).timetuple())

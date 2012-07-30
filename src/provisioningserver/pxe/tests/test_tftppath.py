@@ -16,6 +16,7 @@ import os.path
 
 from maastesting.factory import factory
 from maastesting.testcase import TestCase
+from provisioningserver.enum import ARP_HTYPE
 from provisioningserver.pxe.tftppath import (
     compose_bootloader_path,
     compose_config_path,
@@ -42,7 +43,8 @@ class TestTFTPPath(TestCase):
         subarch = factory.make_name('subarch')
         name = factory.make_name('config')
         self.assertEqual(
-            '/maas/%s/%s/pxelinux.cfg/%s' % (arch, subarch, name),
+            '/maas/%s/%s/pxelinux.cfg/%02x-%s' % (
+                arch, subarch, ARP_HTYPE.ETHERNET, name),
             compose_config_path(arch, subarch, name))
 
     def test_compose_config_path_does_not_include_tftp_root(self):

@@ -71,7 +71,7 @@ class TestTFTPBackendRegex(TestCase):
         components = {
             "arch": factory.make_name("arch"),
             "subarch": factory.make_name("subarch"),
-            "mac": factory.getRandomMACAddress(),
+            "mac": factory.getRandomMACAddress(b"-"),
             }
         config_path = compose_config_path(
             arch=components["arch"], subarch=components["subarch"],
@@ -130,7 +130,7 @@ class TestTFTPBackend(TestCase):
         # file path (arch, subarch, name) into the configured generator URL.
         arch = factory.make_name("arch").encode("ascii")
         subarch = factory.make_name("subarch").encode("ascii")
-        mac = factory.getRandomMACAddress()
+        mac = factory.getRandomMACAddress(b"-")
         kernel = factory.make_name("kernel").encode("ascii")
         initrd = factory.make_name("initrd").encode("ascii")
         menu_title = factory.make_name("menu-title").encode("ascii")
@@ -178,7 +178,7 @@ class TestTFTPBackend(TestCase):
         # a Deferred that will yield a BytesReader.
         arch = factory.make_name("arch").encode("ascii")
         subarch = factory.make_name("subarch").encode("ascii")
-        mac = factory.getRandomMACAddress()
+        mac = factory.getRandomMACAddress(b"-")
         config_path = compose_config_path(arch, subarch, mac)
         backend = TFTPBackend(self.make_dir(), b"http://example.com/")
 

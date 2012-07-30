@@ -11,6 +11,7 @@ from __future__ import (
 
 __metaclass__ = type
 __all__ = [
+    'ARP_HTYPE',
     'POWER_TYPE',
     'POWER_TYPE_CHOICES',
     'PSERV_FAULT',
@@ -68,3 +69,9 @@ POWER_TYPE_CHOICES = (
     (POWER_TYPE.IPMI, "IPMI v1.5 (LAN Interface)"),
     (POWER_TYPE.IPMI_LAN, "IPMI v2.0 (RMCP+ LAN Interface)"),
     )
+
+
+class ARP_HTYPE:
+    """ARP Hardware Type codes."""
+
+    ETHERNET = 0x01

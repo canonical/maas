@@ -13,6 +13,7 @@ __metaclass__ = type
 __all__ = []
 
 from datetime import datetime
+from itertools import count
 import os.path
 from random import randint
 
@@ -72,6 +73,11 @@ class TestFactory(TestCase):
         self.assertEqual(17, len(mac_address))
         for hex_octet in mac_address.split(":"):
             self.assertTrue(0 <= int(hex_octet, 16) <= 255)
+
+    def test_getRandomMACAddress_alternative_delimiter(self):
+        self.patch(factory, "random_octets", count(0x3a))
+        mac_address = factory.getRandomMACAddress(delimiter=b"-")
+        self.assertEqual("3a-3b-3c-3d-3e-3f", mac_address)
 
     def test_make_file_creates_file(self):
         self.assertThat(factory.make_file(self.make_dir()), FileExists())

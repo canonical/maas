@@ -15,6 +15,7 @@ __all__ = [
     ]
 
 from io import BytesIO
+from itertools import repeat
 import re
 from urllib import urlencode
 from urlparse import (
@@ -22,6 +23,7 @@ from urlparse import (
     urlparse,
     )
 
+from provisioningserver.enum import ARP_HTYPE
 from provisioningserver.utils import deferred
 from tftp.backend import (
     FilesystemSynchronousBackend,
@@ -50,14 +52,44 @@ class TFTPBackend(FilesystemSynchronousBackend):
     """A partially dynamic read-only TFTP server.
 
     Requests for PXE configurations are forwarded to a configurable URL. See
-    `re_config_file`.
+    `re_config_file` and `re_mac_address`.
+
+    This must be very selective about which requests to forward, because
+    failures cause the boot process to halt. This is why the expression for
+    matching the MAC address is so narrowly defined; PXELINUX attempts to
+    fetch files at many similar paths, and this must respond to only one
+    pattern.
     """
 
     get_page = staticmethod(getPage)
 
+    # This is how PXELINUX represents a MAC address. See
+    # http://www.syslinux.org/wiki/index.php/PXELINUX.
+    re_mac_address_octet = r'[0-9a-f]{2}'
+    re_mac_address = re.compile(
+        "-".join(repeat(re_mac_address_octet, 6)))
+
+    # We assume that the ARP HTYPE (hardware type) that PXELINUX sends is
+    # alway Ethernet.
     re_config_file = re.compile(
-        r'^/?maas/(?P<arch>[^/]+)/(?P<subarch>[^/]+)/'
-        r'pxelinux[.]cfg/(?P<mac>[^/]+)$')
+        r'''
+        ^/?
+        maas     # Static namespacing.
+        /
+        (?P<arch>[^/]+)     # Capture arch.
+        /
+        (?P<subarch>[^/]+)    # Capture subarch.
+        /
+        pxelinux[.]cfg    # PXELINUX expects this.
+        /
+        {htype:02x}    # ARP HTYPE.
+        -
+        (?P<mac>{re_mac_address.pattern})    # Capture MAC.
+        $
+        '''.format(
+            htype=ARP_HTYPE.ETHERNET,
+            re_mac_address=re_mac_address),
+        re.VERBOSE)
 
     def __init__(self, base_path, generator_url):
         """
