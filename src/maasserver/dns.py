@@ -142,8 +142,9 @@ def get_zone(nodegroup, serial=None):
     """
     if serial is None:
         serial = next_zone_serial()
+    dns_ip = get_dns_server_address()
     return DNSZoneConfig(
-        zone_name=nodegroup.name, serial=serial,
+        zone_name=nodegroup.name, serial=serial, dns_ip=dns_ip,
         subnet_mask=nodegroup.subnet_mask, broadcast_ip=nodegroup.broadcast_ip,
         ip_range_low=nodegroup.ip_range_low,
         ip_range_high=nodegroup.ip_range_high,

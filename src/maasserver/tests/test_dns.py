@@ -196,6 +196,20 @@ class TestDNSConfigModifications(TestCase):
         write_full_dns_config()
         self.assertDNSMatches(node.hostname, nodegroup.name, lease.ip)
 
+    def test_dns_config_has_NS_record(self):
+        ip = factory.getRandomIPAddress()
+        self.patch(settings, 'DEFAULT_MAAS_URL', 'http://%s/' % ip)
+        nodegroup, node, lease = self.create_nodegroup_with_lease()
+        write_full_dns_config()
+        # Get the NS record for the zone 'nodegroup.name'.
+        ns_record = dig_call(
+            port=self.bind.config.port,
+            commands=[nodegroup.name, 'NS', '+short'])
+        # Resolve that hostname.
+        ip_of_ns_record = dig_call(
+            port=self.bind.config.port, commands=[ns_record, '+short'])
+        self.assertEqual(ip, ip_of_ns_record)
+
     def test_is_dns_enabled_follows_DNS_CONNECT(self):
         rand_bool = factory.getRandomBoolean()
         self.patch(settings, "DNS_CONNECT", rand_bool)

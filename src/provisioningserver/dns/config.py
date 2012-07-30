@@ -208,12 +208,16 @@ class DNSZoneConfig(DNSConfig):
 
     template_file_name = 'zone.template'
 
-    def __init__(self, zone_name, serial=None, mapping={},
+    def __init__(self, zone_name, serial=None, mapping=None, dns_ip=None,
                  subnet_mask=None, broadcast_ip=None, ip_range_low=None,
                  ip_range_high=None):
         self.zone_name = zone_name
         self.serial = serial
-        self.mapping = mapping
+        if mapping is None:
+            self.mapping = {}
+        else:
+            self.mapping = mapping
+        self.dns_ip = dns_ip
         self.subnet_mask = subnet_mask
         self.broadcast_ip = broadcast_ip
         self.ip_range_low = ip_range_low
@@ -294,8 +298,8 @@ class DNSZoneConfig(DNSConfig):
         """
         context = self.get_base_context()
         mapping = self.get_generated_mapping()
-        # TODO: Add NS record.
-        mapping['%s.' % self.zone_name] = '127.0.0.1'
+        # Add A record for the name server's IP.
+        mapping['%s.' % self.zone_name] = self.dns_ip
         mappings = {
             'CNAME': self.get_mapping(),
             'A': mapping,

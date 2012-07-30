@@ -302,9 +302,26 @@ class TestDNSZoneConfig(TestCase):
             FileContains(
                 matcher=ContainsAll(
                     [
-                        'IN  NS  %s.' % zone_name,
                         '%s IN CNAME %s' % (hostname, generated_hostname(ip)),
                         '%s IN A %s' % (generated_hostname(ip), ip),
+                    ])))
+
+    def test_DNSZoneConfig_writes_dns_zone_config_with_NS_record(self):
+        target_dir = self.make_dir()
+        self.patch(DNSConfig, 'target_dir', target_dir)
+        network = factory.getRandomNetwork()
+        dns_ip = factory.getRandomIPAddress()
+        dns_zone_config = DNSZoneConfig(
+            factory.getRandomString(), serial=random.randint(1, 100),
+            dns_ip=dns_ip, **network_infos(network))
+        dns_zone_config.write_config()
+        self.assertThat(
+            os.path.join(target_dir, 'zone.%s' % dns_zone_config.zone_name),
+            FileContains(
+                matcher=ContainsAll(
+                    [
+                        'IN  NS  %s.' % dns_zone_config.zone_name,
+                        '%s. IN A %s' % (dns_zone_config.zone_name, dns_ip),
                     ])))
 
     def test_DNSZoneConfig_writes_reverse_dns_zone_config(self):
@@ -322,7 +339,7 @@ class TestDNSZoneConfig(TestCase):
                 matcher=ContainsAll(
                     ['%s IN PTR %s' % (
                         '10.0',
-                        generated_hostname('192.168.0.10')
+                        generated_hostname('192.168.0.10'),
                         )
                     ]
                 )
