@@ -115,18 +115,6 @@ class TestNodeGroupManager(TestCase):
         master.save()
         self.assertEqual(ip, NodeGroup.objects.ensure_master().worker_ip)
 
-    def test_ensure_master_updates_groupless_nodes(self):
-        NodeGroup.objects._delete_master()
-        # This test becomes obsolete (and the failure impossible to test
-        # for) once Node.nodegroup is NOT NULL.
-        groupless_node = factory.make_node()
-        groupless_node.nodegroup = None
-        groupless_node.save()
-        groupful_node = factory.make_node(nodegroup=factory.make_node_group())
-        master = NodeGroup.objects.ensure_master()
-        self.assertEqual(master, reload_object(groupless_node).nodegroup)
-        self.assertNotEqual(master, reload_object(groupful_node).nodegroup)
-
     def test_get_by_natural_key_looks_up_by_name(self):
         nodegroup = factory.make_node_group()
         self.assertEqual(

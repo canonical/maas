@@ -270,7 +270,7 @@ class MultipleMACAddressField(forms.MultiValueField):
 
 def initialize_node_group(node):
     """If `node` is not in a node group yet, enroll it in the master group."""
-    if node.nodegroup is None:
+    if node.nodegroup_id is None:
         node.nodegroup = NodeGroup.objects.ensure_master()
 
 

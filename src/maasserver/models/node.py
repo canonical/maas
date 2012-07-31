@@ -383,9 +383,7 @@ class Node(CleanSave, TimestampedModel):
 
     netboot = BooleanField(default=True)
 
-    nodegroup = ForeignKey(
-        'maasserver.NodeGroup', default=None, blank=True, null=True,
-        editable=False)
+    nodegroup = ForeignKey('maasserver.NodeGroup', editable=False)
 
     objects = NodeManager()
 
