@@ -80,7 +80,7 @@ class ConfigTFTP(Schema):
     port = Int(min=1, max=65535, if_missing=5244)
     generator = URL(
         add_http=True, require_tld=False,
-        if_missing=b"http://localhost:5243/api/1.0/pxeconfig",
+        if_missing=b"http://localhost:5243/api/1.0/pxeconfig/",
         )
 
 

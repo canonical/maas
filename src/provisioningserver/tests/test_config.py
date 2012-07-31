@@ -121,7 +121,7 @@ class TestConfig(TestCase):
                 'reporter': '',
                 },
             'tftp': {
-                'generator': 'http://localhost:5243/api/1.0/pxeconfig',
+                'generator': 'http://localhost:5243/api/1.0/pxeconfig/',
                 'port': 5244,
                 'root': "/var/lib/tftpboot",
                 },
