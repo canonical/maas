@@ -13,6 +13,7 @@ __metaclass__ = type
 __all__ = []
 
 from django import forms
+from django.contrib.auth.models import User
 from django.core.exceptions import (
     PermissionDenied,
     ValidationError,
@@ -462,6 +463,31 @@ class TestUniqueEmailForms(TestCase):
 
 class TestNewUserCreationForm(TestCase):
 
+    def test_saves_to_db_by_default(self):
+        password = factory.make_name('password')
+        params = {
+            'email': '%s@example.com' % factory.getRandomString(),
+            'username': factory.make_name('user'),
+            'password1': password,
+            'password2': password,
+        }
+        form = NewUserCreationForm(params)
+        form.save()
+        self.assertIsNotNone(User.objects.get(username=params['username']))
+
+    def test_does_not_save_to_db_if_commit_is_False(self):
+        password = factory.make_name('password')
+        params = {
+            'email': '%s@example.com' % factory.getRandomString(),
+            'username': factory.make_name('user'),
+            'password1': password,
+            'password2': password,
+        }
+        form = NewUserCreationForm(params)
+        form.save(commit=False)
+        self.assertItemsEqual(
+            [], User.objects.filter(username=params['username']))
+
     def test_fields_order(self):
         form = NewUserCreationForm()
 
@@ -480,6 +506,21 @@ class TestMACAddressForm(TestCase):
         form.save()
         self.assertTrue(
             MACAddress.objects.filter(node=node, mac_address=mac).exists())
+
+    def test_saves_to_db_by_default(self):
+        node = factory.make_node()
+        mac = factory.getRandomMACAddress()
+        form = MACAddressForm(node=node, data={'mac_address': mac})
+        form.save()
+        self.assertEqual(
+            mac, MACAddress.objects.get(mac_address=mac).mac_address)
+
+    def test_does_not_save_to_db_if_commit_is_False(self):
+        node = factory.make_node()
+        mac = factory.getRandomMACAddress()
+        form = MACAddressForm(node=node, data={'mac_address': mac})
+        form.save(commit=False)
+        self.assertItemsEqual([], MACAddress.objects.filter(mac_address=mac))
 
     def test_MACAddressForm_displays_error_message_if_mac_already_used(self):
         mac = factory.getRandomMACAddress()
