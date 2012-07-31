@@ -87,19 +87,12 @@ class TestTFTPPath(TestCase):
             compose_bootloader_path(arch, subarch),
             Not(StartsWith(self.tftproot)))
 
-    def test_locate_tftp_path_prefixes_tftp_root_by_default(self):
+    def test_locate_tftp_path_prefixes_tftp_root(self):
         pxefile = factory.make_name('pxefile')
         self.assertEqual(
             os.path.join(self.tftproot, pxefile),
             locate_tftp_path(pxefile, tftproot=self.tftproot))
 
-    def test_locate_tftp_path_overrides_default_tftproot(self):
-        tftproot = '/%s' % factory.make_name('tftproot')
-        pxefile = factory.make_name('pxefile')
+    def test_locate_tftp_path_returns_root_when_path_is_None(self):
         self.assertEqual(
-            os.path.join(tftproot, pxefile),
-            locate_tftp_path(pxefile, tftproot=tftproot))
-
-    def test_locate_tftp_path_returns_root_by_default(self):
-        self.assertEqual(
-            self.tftproot, locate_tftp_path(tftproot=self.tftproot))
+            self.tftproot, locate_tftp_path(None, tftproot=self.tftproot))
