@@ -54,6 +54,7 @@ from maasserver.models import (
     DHCPLease,
     MACAddress,
     Node,
+    NodeGroup,
     )
 from maasserver.models.user import (
     create_auth_token,
@@ -282,6 +283,20 @@ class EnlistmentAPITest(APIv10TestMixin, MultipleUsersScenarios, TestCase):
         self.assertItemsEqual(
             ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
             [mac.mac_address for mac in diane.macaddress_set.all()])
+
+    def test_POST_new_initializes_nodegroup_to_master_by_default(self):
+        hostname = factory.make_name('host')
+        self.client.post(
+            self.get_uri('nodes/'),
+            {
+                'op': 'new',
+                'hostname': hostname,
+                'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
+                'mac_addresses': [factory.getRandomMACAddress()],
+            })
+        self.assertEqual(
+            NodeGroup.objects.ensure_master(),
+            Node.objects.get(hostname=hostname).nodegroup)
 
     def test_POST_with_no_hostname_auto_populates_hostname(self):
         architecture = factory.getRandomChoice(ARCHITECTURE_CHOICES)

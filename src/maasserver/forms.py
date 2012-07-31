@@ -59,6 +59,7 @@ from maasserver.models import (
     Config,
     MACAddress,
     Node,
+    NodeGroup,
     SSHKey,
     )
 from maasserver.node_action import compile_node_actions
@@ -267,6 +268,12 @@ class MultipleMACAddressField(forms.MultiValueField):
         return []
 
 
+def initialize_node_group(node):
+    """If `node` is not in a node group yet, enroll it in the master group."""
+    if node.nodegroup is None:
+        node.nodegroup = NodeGroup.objects.ensure_master()
+
+
 class WithMACAddressesMixin:
     """A form mixin which dynamically adds a MultipleMACAddressField to the
     list of fields.  This mixin also overrides the 'save' method to persist
@@ -310,7 +317,12 @@ class WithMACAddressesMixin:
 
         This implementation of `save` does not support the `commit` argument.
         """
-        node = super(WithMACAddressesMixin, self).save()
+        node = super(WithMACAddressesMixin, self).save(commit=False)
+        # We have to save this node in order to attach MACAddress
+        # records to it.  But its nodegroup must be initialized before
+        # we can do that.
+        initialize_node_group(node)
+        node.save()
         for mac in self.cleaned_data['mac_addresses']:
             node.add_mac_address(mac)
         if self.cleaned_data['hostname'] == "":
