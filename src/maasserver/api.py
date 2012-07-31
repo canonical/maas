@@ -1061,15 +1061,42 @@ def compose_preseed_url(node):
         query={'op': 'get_preseed'})
 
 
-def compose_preseed_kernel_opt(mac):
-    """Compose a kernel option for preseed URL for node that owns `mac`."""
-    macaddress_match = MACAddress.objects.filter(mac_address=mac)
-    if len(macaddress_match) == 0:
+def compose_preseed_kernel_opt(node):
+    """Compose a kernel option for preseed URL for given `node`.
+
+    :param mac_address: A `Node`, or `None`.
+    """
+    if node is None:
         preseed_url = compose_enlistment_preseed_url()
     else:
-        [macaddress] = macaddress_match
-        preseed_url = compose_preseed_url(macaddress.node)
+        preseed_url = compose_preseed_url(node)
     return "auto url=%s" % preseed_url
+
+
+def get_boot_purpose(node):
+    """Return a suitable "purpose" for this boot, e.g. "install"."""
+    # XXX: allenap bug=1031406 2012-07-31: The boot purpose is still in
+    # flux. It may be that there will just be an "ephemeral" environment and
+    # an "install" environment, and the differing behaviour between, say,
+    # enlistment and commissioning - both of which will use the "ephemeral"
+    # environment - will be governed by varying the preseed or PXE
+    # configuration.
+    if node is None:
+        # This node is enlisting, for which we use a commissioning image.
+        return "commissioning"
+    elif node.status == NODE_STATUS.COMMISSIONING:
+        # It is commissioning.
+        return "commissioning"
+    elif node.status == NODE_STATUS.ALLOCATED:
+        # Install the node if netboot is enabled, otherwise boot locally.
+        if node.netboot:
+            return "install"
+        else:
+            return "local"  # TODO: Investigate.
+    else:
+        # Just poweroff? TODO: Investigate. Perhaps even send an IPMI signal
+        # to turn off power.
+        return "poweroff"
 
 
 def pxeconfig(request):
@@ -1078,35 +1105,35 @@ def pxeconfig(request):
     :param mac: MAC address to produce a boot configuration for.  This
         parameter is optional.  If it is not given, the configuration
         will be the "default" one which boots into an enlistment image.
-    :param title: Title that the node should show in its PXE menu.
-    :param kernel: TFTP path to the kernel image that is to be booted.
-    :param initrd: TFTP path to the initrd that is to be booted.
-    :param append: Additional parameters to append to the kernel command
-        line.
-
-    In addition, the following parameters are expected, but are not used:
-
     :param arch: Main machine architecture.
     :param subarch: Sub-architecture, or "generic" if there is none.
+    :param title: Title that the node should show in its PXE menu.
+    :param append: Additional parameters to append to the kernel command
+        line.
     """
-    title = get_mandatory_param(request.GET, 'title')
-    kernel = get_mandatory_param(request.GET, 'kernel')
-    initrd = get_mandatory_param(request.GET, 'initrd')
-    append = get_mandatory_param(request.GET, 'append')
     mac = request.GET.get('mac', None)
-
-    # The following two parameters - arch and subarch - typically must be
-    # supplied, but are unused right now.
     arch = get_mandatory_param(request.GET, 'arch')
     subarch = request.GET.get('subarch', 'generic')
-    arch, subarch  # Suppress lint warnings.
+    title = get_mandatory_param(request.GET, 'title')
+    append = get_mandatory_param(request.GET, 'append')
+
+    # See if we have a record of this MAC address, and thus node.
+    try:
+        macaddress = MACAddress.objects.get(mac_address=mac)
+    except MACAddress.DoesNotExist:
+        macaddress = node = None
+    else:
+        node = macaddress.node
 
     # In addition to the "append" parameter, also add a URL for the
     # node's preseed to the kernel command line.
-    append = "%s %s" % (append, compose_preseed_kernel_opt(mac))
+    append = "%s %s" % (append, compose_preseed_kernel_opt(node))
+
+    # XXX: allenap 2012-07-31 bug=1013146: 'precise' is hardcoded here.
+    release = "precise"
 
     return HttpResponse(
         render_pxe_config(
-            title=title, kernel=kernel,
-            initrd=initrd, append=append),
+            title=title, arch=arch, subarch=subarch, release=release,
+            purpose=get_boot_purpose(node), append=append),
         content_type="text/plain; charset=utf-8")

@@ -87,6 +87,7 @@ from provisioningserver.enum import (
     POWER_TYPE_CHOICES,
     )
 from testtools.matchers import (
+    Contains,
     Equals,
     MatchesListwise,
     StartsWith,
@@ -2261,8 +2262,6 @@ class TestPXEConfigAPI(AnonAPITestCase):
                 'subarch': "armadaxp",
                 'mac': factory.make_mac_address().mac_address,
                 'title': factory.make_name("Menu"),
-                'kernel': factory.make_name("/my/kernel"),
-                'initrd': factory.make_name("/my/initrd"),
                 'append': factory.make_name("append"),
             }
 
@@ -2300,8 +2299,6 @@ class TestPXEConfigAPI(AnonAPITestCase):
             'subarch': httplib.OK,
             'mac': httplib.OK,
             'title': httplib.BAD_REQUEST,
-            'kernel': httplib.BAD_REQUEST,
-            'initrd': httplib.BAD_REQUEST,
             'append': httplib.BAD_REQUEST,
             }
         observed = {
@@ -2337,15 +2334,15 @@ class TestPXEConfigAPI(AnonAPITestCase):
                 api.compose_preseed_url(node), StartsWith(url))
 
     def test_compose_preseed_kernel_opt_returns_option_for_known_node(self):
-        mac = factory.make_mac_address()
+        node = factory.make_node()
         self.assertEqual(
-            "auto url=%s" % api.compose_preseed_url(mac.node),
-            api.compose_preseed_kernel_opt(mac.mac_address))
+            "auto url=%s" % api.compose_preseed_url(node),
+            api.compose_preseed_kernel_opt(node))
 
     def test_compose_preseed_kernel_opt_returns_option_for_unknown_node(self):
         self.assertEqual(
             "auto url=%s" % api.compose_enlistment_preseed_url(),
-            api.compose_preseed_kernel_opt(factory.getRandomMACAddress()))
+            api.compose_preseed_kernel_opt(None))
 
     def test_pxe_config_appends_enlistment_preseed_url_for_unknown_node(self):
         params = self.get_params()
@@ -2358,6 +2355,37 @@ class TestPXEConfigAPI(AnonAPITestCase):
         node = MACAddress.objects.get(mac_address=params['mac']).node
         response = self.client.get(reverse('pxeconfig'), params)
         self.assertIn(api.compose_preseed_url(node), response.content)
+
+    def test_get_boot_purpose_unknown_node(self):
+        # A node that's not yet known to MAAS is assumed to be enlisting,
+        # which uses a "commissioning" image.
+        self.assertEqual("commissioning", api.get_boot_purpose(None))
+
+    def test_get_boot_purpose_known_node(self):
+        # The following table shows the expected boot "purpose" for each set
+        # of node parameters.
+        options = [
+            ("poweroff", {"status": NODE_STATUS.DECLARED}),
+            ("commissioning", {"status": NODE_STATUS.COMMISSIONING}),
+            ("poweroff", {"status": NODE_STATUS.FAILED_TESTS}),
+            ("poweroff", {"status": NODE_STATUS.MISSING}),
+            ("poweroff", {"status": NODE_STATUS.READY}),
+            ("poweroff", {"status": NODE_STATUS.RESERVED}),
+            ("install", {"status": NODE_STATUS.ALLOCATED, "netboot": True}),
+            ("local", {"status": NODE_STATUS.ALLOCATED, "netboot": False}),
+            ("poweroff", {"status": NODE_STATUS.RETIRED}),
+            ]
+        node = factory.make_node()
+        for purpose, parameters in options:
+            for name, value in parameters.items():
+                setattr(node, name, value)
+            self.assertEqual(purpose, api.get_boot_purpose(node))
+
+    def test_pxe_config_uses_boot_purpose(self):
+        fake_boot_purpose = factory.make_name("purpose")
+        self.patch(api, "get_boot_purpose", lambda node: fake_boot_purpose)
+        response = self.client.get(reverse('pxeconfig'), self.get_params())
+        self.assertThat(response.content, Contains(fake_boot_purpose))
 
 
 class TestNodeGroupsAPI(APITestCase):

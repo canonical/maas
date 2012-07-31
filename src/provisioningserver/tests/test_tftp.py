@@ -131,16 +131,10 @@ class TestTFTPBackend(TestCase):
         arch = factory.make_name("arch").encode("ascii")
         subarch = factory.make_name("subarch").encode("ascii")
         mac = factory.getRandomMACAddress(b"-")
-        kernel = factory.make_name("kernel").encode("ascii")
-        initrd = factory.make_name("initrd").encode("ascii")
         title = factory.make_name("menu-title").encode("ascii")
         append = factory.make_name("append").encode("ascii")
-        backend_url = b"http://example.com/?" + urlencode({
-            b"kernel": kernel,
-            b"initrd": initrd,
-            b"title": title,
-            b"append": append,
-            })
+        backend_url = b"http://example.com/?" + (
+            urlencode({b"title": title, b"append": append}))
         backend = TFTPBackend(self.make_dir(), backend_url)
         # params is an example of the parameters obtained from a request.
         params = {"arch": arch, "subarch": subarch, "mac": mac}
@@ -149,8 +143,6 @@ class TestTFTPBackend(TestCase):
         query = parse_qsl(generator_url.query)
         query_expected = [
             ("append", append),
-            ("kernel", kernel),
-            ("initrd", initrd),
             ("arch", arch),
             ("subarch", subarch),
             ("title", title),
