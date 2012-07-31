@@ -110,7 +110,7 @@ class TFTPBackend(FilesystemSynchronousBackend):
         """
         # TODO: update query defaults.
         query = {
-            b"menu_title": b"",
+            b"title": b"",
             b"kernel": b"",
             b"initrd": b"",
             b"append": b"",

@@ -1,6 +1,6 @@
 DEFAULT menu
 PROMPT 0
-MENU TITLE {{menu_title}}
+MENU TITLE {{title}}
 TIMEOUT 1
 ONTIMEOUT execute
 

@@ -133,12 +133,12 @@ class TestTFTPBackend(TestCase):
         mac = factory.getRandomMACAddress(b"-")
         kernel = factory.make_name("kernel").encode("ascii")
         initrd = factory.make_name("initrd").encode("ascii")
-        menu_title = factory.make_name("menu-title").encode("ascii")
+        title = factory.make_name("menu-title").encode("ascii")
         append = factory.make_name("append").encode("ascii")
         backend_url = b"http://example.com/?" + urlencode({
             b"kernel": kernel,
             b"initrd": initrd,
-            b"menu_title": menu_title,
+            b"title": title,
             b"append": append,
             })
         backend = TFTPBackend(self.make_dir(), backend_url)
@@ -153,7 +153,7 @@ class TestTFTPBackend(TestCase):
             ("initrd", initrd),
             ("arch", arch),
             ("subarch", subarch),
-            ("menu_title", menu_title),
+            ("title", title),
             ("mac", mac),
             ]
         self.assertItemsEqual(query_expected, query)
