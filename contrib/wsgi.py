@@ -10,7 +10,9 @@ from __future__ import (
     )
 
 __metaclass__ = type
-__all__ = []
+__all__ = [
+    'application',
+    ]
 
 import os
 import sys
@@ -26,3 +28,6 @@ application = django.core.handlers.wsgi.WSGIHandler()
 
 from maasserver.maasavahi import setup_maas_avahi_service
 setup_maas_avahi_service()
+
+from maasserver.models import NodeGroup
+NodeGroup.objects.ensure_master()

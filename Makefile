@@ -153,6 +153,7 @@ syncdb: bin/maas bin/database
 	$(dbrun) bin/maas syncdb --noinput
 	$(dbrun) bin/maas migrate maasserver --noinput
 	$(dbrun) bin/maas migrate metadataserver --noinput
+	$(dbrun) bin/maas config_master_dhcp --ensure
 
 define phony_targets
   build
