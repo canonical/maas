@@ -27,6 +27,7 @@ from piston.models import (
     KEY_SIZE,
     Token,
     )
+from provisioningserver.omshell import generate_omapi_key
 
 
 worker_user_name = 'maas-nodegroup-worker'
@@ -40,7 +41,8 @@ class NodeGroupManager(Manager):
     """
 
     def new(self, name, worker_ip, subnet_mask=None, broadcast_ip=None,
-            router_ip=None, ip_range_low=None, ip_range_high=None):
+            router_ip=None, ip_range_low=None, ip_range_high=None,
+            dhcp_key=''):
         """Create a :class:`NodeGroup` with the given parameters.
 
         This method will generate API credentials for the nodegroup's
@@ -65,7 +67,7 @@ class NodeGroupManager(Manager):
             name=name, worker_ip=worker_ip, subnet_mask=subnet_mask,
             broadcast_ip=broadcast_ip, router_ip=router_ip,
             ip_range_low=ip_range_low, ip_range_high=ip_range_high,
-            api_token=api_token, api_key=api_token.key)
+            api_token=api_token, api_key=api_token.key, dhcp_key=dhcp_key)
         nodegroup.save()
         return nodegroup
 
@@ -78,7 +80,8 @@ class NodeGroupManager(Manager):
             master = self.get(name='master')
         except NodeGroup.DoesNotExist:
             # The master did not exist yet; create it on demand.
-            master = self.new('master', '127.0.0.1')
+            master = self.new(
+                'master', '127.0.0.1', dhcp_key=generate_omapi_key())
 
             # If any legacy nodes were still not associated with a node
             # group, enroll them in the master node group.
@@ -116,6 +119,8 @@ class NodeGroup(TimestampedModel):
     worker_ip = IPAddressField(null=False, editable=True, unique=True)
 
     # DHCP server settings.
+    dhcp_key = CharField(
+        blank=True, editable=False, max_length=255, default='')
     subnet_mask = IPAddressField(
         editable=True, unique=False, blank=True, null=True, default='')
     broadcast_ip = IPAddressField(

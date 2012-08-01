@@ -17,7 +17,11 @@ from maasserver.testing import reload_object
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
 from maasserver.worker_user import get_worker_user
-from testtools.matchers import MatchesStructure
+from provisioningserver.omshell import generate_omapi_key
+from testtools.matchers import (
+    GreaterThan,
+    MatchesStructure,
+    )
 
 
 def make_dhcp_settings():
@@ -75,6 +79,18 @@ class TestNodeGroupManager(TestCase):
         self.assertEqual(get_worker_user(), nodegroup.api_token.user)
         self.assertEqual(nodegroup.api_key, nodegroup.api_token.key)
 
+    def test_new_creates_nodegroup_with_empty_dhcp_key(self):
+        nodegroup = NodeGroup.objects.new(
+            factory.make_name('nodegroup'), factory.getRandomIPAddress())
+        self.assertEqual('', nodegroup.dhcp_key)
+
+    def test_new_stores_dhcp_key_on_nodegroup(self):
+        key = generate_omapi_key()
+        nodegroup = NodeGroup.objects.new(
+            factory.make_name('nodegroup'), factory.getRandomIPAddress(),
+            dhcp_key=key)
+        self.assertEqual(key, nodegroup.dhcp_key)
+
     def test_ensure_master_creates_minimal_master_nodegroup(self):
         NodeGroup.objects._delete_master()
         self.assertThat(
@@ -94,6 +110,11 @@ class TestNodeGroupManager(TestCase):
         master = NodeGroup.objects.ensure_master()
         self.assertEqual(
             master.id, NodeGroup.objects.get(name=master.name).id)
+
+    def test_ensure_master_creates_dhcp_key(self):
+        NodeGroup.objects._delete_master()
+        master = NodeGroup.objects.ensure_master()
+        self.assertThat(len(master.dhcp_key), GreaterThan(20))
 
     def test_ensure_master_returns_same_nodegroup_every_time(self):
         NodeGroup.objects._delete_master()
