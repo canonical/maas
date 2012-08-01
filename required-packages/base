@@ -30,3 +30,4 @@ python-twisted
 python-txamqp
 python-yaml
 rabbitmq-server
+tgt
