@@ -87,7 +87,6 @@ from provisioningserver.enum import (
     POWER_TYPE_CHOICES,
     )
 from testtools.matchers import (
-    Contains,
     Equals,
     MatchesListwise,
     StartsWith,
@@ -2261,7 +2260,6 @@ class TestPXEConfigAPI(AnonAPITestCase):
                 'arch': "armhf",
                 'subarch': "armadaxp",
                 'mac': factory.make_mac_address().mac_address,
-                'title': factory.make_name("Menu"),
                 'append': factory.make_name("append"),
             }
 
@@ -2286,7 +2284,7 @@ class TestPXEConfigAPI(AnonAPITestCase):
             response)
         params_out = json.loads(response.content)
         # Some parameters are unchanged.
-        params_unchanged = {"arch", "subarch", "title"}
+        params_unchanged = {"arch", "subarch"}
         self.assertEqual(
             {name: params_in[name] for name in params_unchanged},
             {name: params_out[name] for name in params_unchanged})
@@ -2313,7 +2311,6 @@ class TestPXEConfigAPI(AnonAPITestCase):
             'arch': httplib.BAD_REQUEST,
             'subarch': httplib.OK,
             'mac': httplib.OK,
-            'title': httplib.BAD_REQUEST,
             'append': httplib.BAD_REQUEST,
             }
         observed = {

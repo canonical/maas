@@ -134,10 +134,8 @@ class TestTFTPBackend(TestCase):
         arch = factory.make_name("arch").encode("ascii")
         subarch = factory.make_name("subarch").encode("ascii")
         mac = factory.getRandomMACAddress(b"-")
-        title = factory.make_name("menu-title").encode("ascii")
         append = factory.make_name("append").encode("ascii")
-        backend_url = b"http://example.com/?" + (
-            urlencode({b"title": title, b"append": append}))
+        backend_url = b"http://example.com/?" + urlencode({b"append": append})
         backend = TFTPBackend(self.make_dir(), backend_url)
         # params is an example of the parameters obtained from a request.
         params = {"arch": arch, "subarch": subarch, "mac": mac}
@@ -148,7 +146,6 @@ class TestTFTPBackend(TestCase):
             ("append", append),
             ("arch", arch),
             ("subarch", subarch),
-            ("title", title),
             ("mac", mac),
             ]
         self.assertItemsEqual(query_expected, query)
@@ -210,12 +207,11 @@ class TestTFTPBackend(TestCase):
         fake_api_params.update(
             append=factory.make_name("append"),
             purpose=factory.make_name("purpose"),
-            release=factory.make_name("release"),
-            title=factory.make_name("title"))
-        # Add a title to the first set of parameters. This will later help
+            release=factory.make_name("release"))
+        # Add a purpose to the first set of parameters. This will later help
         # demonstrate that the API parameters take precedence over the file
         # path parameters.
-        fake_params["title"] = factory.make_name("original-title")
+        fake_params["purpose"] = factory.make_name("original-purpose")
         # Stub get_page to return the fake API configuration parameters.
         fake_api_params_json = json.dumps(fake_api_params)
         backend.get_page = lambda url: succeed(fake_api_params_json)

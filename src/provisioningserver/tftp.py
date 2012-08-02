@@ -114,11 +114,8 @@ class TFTPBackend(FilesystemSynchronousBackend):
         :param params: A dict, or iterable suitable for updating a dict, of
             additional query parameters.
         """
-        # TODO: update query defaults.
-        query = {
-            b"title": b"",
-            b"append": b"",
-            }
+        # Query defaults.
+        query = {b"append": b""}
         # Merge parameters from the generator URL.
         query.update(parse_qsl(self.generator_url.query))
         # Merge parameters obtained from the request.

@@ -133,7 +133,6 @@ from piston.handler import (
 from piston.models import Token
 from piston.resource import Resource
 from piston.utils import rc
-from provisioningserver.pxe.config import render_pxe_config
 
 
 dispatch_methods = {
@@ -1107,14 +1106,12 @@ def pxeconfig(request):
         will be the "default" one which boots into an enlistment image.
     :param arch: Main machine architecture.
     :param subarch: Sub-architecture, or "generic" if there is none.
-    :param title: Title that the node should show in its PXE menu.
     :param append: Additional parameters to append to the kernel command
         line.
     """
     mac = request.GET.get('mac', None)
     arch = get_mandatory_param(request.GET, 'arch')
     subarch = request.GET.get('subarch', 'generic')
-    title = get_mandatory_param(request.GET, 'title')
     append = get_mandatory_param(request.GET, 'append')
 
     # See if we have a record of this MAC address, and thus node.
@@ -1133,7 +1130,7 @@ def pxeconfig(request):
     release = "precise"
 
     params = dict(
-        title=title, arch=arch, subarch=subarch, release=release,
+        arch=arch, subarch=subarch, release=release,
         purpose=get_boot_purpose(node), append=append)
 
     return HttpResponse(

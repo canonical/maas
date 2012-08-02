@@ -34,7 +34,6 @@ class TestRenderPXEConfig(TestCase):
         # Given the right configuration options, the PXE configuration is
         # correctly rendered.
         options = {
-            "title": factory.make_name("title"),
             "arch": factory.make_name("arch"),
             "subarch": factory.make_name("subarch"),
             "release": factory.make_name("release"),
@@ -68,7 +67,6 @@ class TestRenderPXEConfig(TestCase):
     def test_render_with_extra_arguments_does_not_affect_output(self):
         # render_pxe_config() allows any keyword arguments as a safety valve.
         options = {
-            "title": factory.make_name("title"),
             "arch": factory.make_name("arch"),
             "subarch": factory.make_name("subarch"),
             "release": factory.make_name("release"),

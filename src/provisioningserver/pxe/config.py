@@ -34,10 +34,9 @@ template = tempita.Template.from_filename(template_filename, encoding="UTF-8")
 
 
 def render_pxe_config(
-    title, arch, subarch, release, purpose, append, bootpath, **extra):
+    arch, subarch, release, purpose, append, bootpath, **extra):
     """Render a PXE configuration file as a unicode string.
 
-    :param title: Title that the node should show on its boot menu.
     :param arch: Main machine architecture.
     :param subarch: Sub-architecture, or "generic" if there is none.
     :param release: The OS release, e.g. "precise".
@@ -54,6 +53,5 @@ def render_pxe_config(
         "initrd": "%s/initrd.gz" % image_dir,
         "kernel": "%s/kernel" % image_dir,
         "relpath": partial(posixpath.relpath, start=bootpath),
-        "title": title,
         }
     return template.substitute(namespace)
