@@ -17,8 +17,12 @@ from maasserver.testing import reload_object
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
 from maasserver.worker_user import get_worker_user
+from maastesting.fakemethod import FakeMethod
+from maastesting.matchers import ContainsAll
+from provisioningserver import tasks
 from provisioningserver.omshell import generate_omapi_key
 from testtools.matchers import (
+    FileContains,
     GreaterThan,
     MatchesStructure,
     )
@@ -172,3 +176,28 @@ class TestNodeGroup(TestCase):
             ip_range_high=factory.getRandomIPAddress(),
             )
         self.assertTrue(nodegroup.is_dhcp_enabled())
+
+    def test_set_up_dhcp_writes_dhcp_config(self):
+        conf_file = self.make_file(contents=factory.getRandomString())
+        self.patch(tasks, 'DHCP_CONFIG_FILE', conf_file)
+        # Silence dhcpd restart.
+        self.patch(tasks, 'check_call', FakeMethod())
+        nodegroup = factory.make_node_group(
+            dhcp_key=factory.getRandomString())
+        nodegroup.set_up_dhcp()
+        dhcp_params = [
+            'dhcp_key', 'subnet_mask', 'broadcast_ip', 'router_ip',
+            'ip_range_low', 'ip_range_high']
+        expected = [getattr(nodegroup, param) for param in dhcp_params]
+        self.assertThat(
+            conf_file,
+            FileContains(
+                matcher=ContainsAll(expected)))
+
+    def test_set_up_dhcp_reloads_dhcp_server(self):
+        self.patch(tasks, 'DHCP_CONFIG_FILE', self.make_file())
+        recorder = FakeMethod()
+        self.patch(tasks, 'check_call', recorder)
+        nodegroup = factory.make_node_group()
+        nodegroup.set_up_dhcp()
+        self.assertEqual(1, recorder.call_count)

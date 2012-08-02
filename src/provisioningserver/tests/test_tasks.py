@@ -34,12 +34,14 @@ from provisioningserver.enum import POWER_TYPE
 from provisioningserver.power.poweraction import PowerActionFail
 from provisioningserver.tasks import (
     add_new_dhcp_host_map,
+    Omshell,
     power_off,
     power_on,
     remove_dhcp_host_map,
+    restart_dhcp_server,
     rndc_command,
-    Omshell,
     setup_rndc_configuration,
+    write_dhcp_config,
     write_dns_config,
     write_dns_zone_config,
     write_full_dns_config,
@@ -48,6 +50,7 @@ from provisioningserver.testing import network_infos
 from testresources import FixtureResource
 from testtools.matchers import (
     Equals,
+    FileContains,
     FileExists,
     MatchesListwise,
     )
@@ -144,6 +147,37 @@ class TestDHCPTasks(TestCase):
         self.assertRaises(
             CalledProcessError, remove_dhcp_host_map.delay,
             ip, server_address, key)
+
+    def test_write_dhcp_config_writes_config(self):
+        conf_file = self.make_file(contents=factory.getRandomString())
+        self.patch(tasks, 'DHCP_CONFIG_FILE', conf_file)
+        recorder = FakeMethod()
+        self.patch(tasks, 'check_call', recorder)
+        param_names = [
+             'omapi_shared_key', 'subnet', 'subnet_mask', 'next_server',
+             'broadcast_ip', 'dns_servers', 'router_ip', 'ip_range_low',
+             'ip_range_high']
+        params = {param: factory.getRandomString() for param in param_names}
+        write_dhcp_config(**params)
+        self.assertThat(
+            conf_file,
+            FileContains(
+                matcher=ContainsAll(
+                    [
+                        'class "pxe"',
+                        "option subnet-mask",
+                    ])))
+        self.assertEqual(
+            (1, (['sudo', 'service', 'isc-dhcp-server', 'restart'],)),
+            (recorder.call_count, recorder.extract_args()[0]))
+
+    def test_restart_dhcp_server_sends_command(self):
+        recorder = FakeMethod()
+        self.patch(tasks, 'check_call', recorder)
+        restart_dhcp_server()
+        self.assertEqual(
+            (1, (['sudo', 'service', 'isc-dhcp-server', 'restart'],)),
+            (recorder.call_count, recorder.extract_args()[0]))
 
 
 class TestDNSTasks(TestCase):

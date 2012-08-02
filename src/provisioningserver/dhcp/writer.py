@@ -27,7 +27,7 @@ def add_arguments(parser):
     """
     parser.add_argument(
         "--subnet", action="store", required=True, help=(
-            "Base subnet declaration, e.g. 192.168.1.0"))
+        "Base subnet declaration, e.g. 192.168.1.0"))
     parser.add_argument(
         "--subnet-mask", action="store", required=True, help=(
             "The mask for the subnet, e.g. 255.255.255.0"))
@@ -35,23 +35,26 @@ def add_arguments(parser):
         "--next-server", action="store", required=True, help=(
             "The address of the TFTP server"))
     parser.add_argument(
-        "--broadcast-address", action="store", required=True, help=(
+        "--broadcast-ip", action="store", required=True, help=(
             "The broadcast IP address for the subnet, e.g. 192.168.1.255"))
     parser.add_argument(
         "--dns-servers", action="store", required=True, help=(
             "One or more IP addresses of the DNS server for the subnet "
             "separated by spaces."))
     parser.add_argument(
-        "--gateway", action="store", required=True, help=(
+        "--router-ip", action="store", required=True, help=(
             "The router/gateway IP address for the subnet"))
     parser.add_argument(
-        "--low-range", action="store", required=True, help=(
+        "--ip-range-low", action="store", required=True, help=(
             "The first IP address in the range of IP addresses to "
             "allocate"))
     parser.add_argument(
-        "--high-range", action="store", required=True, help=(
+        "--ip-range-high", action="store", required=True, help=(
             "The last IP address in the range of IP addresses to "
             "allocate"))
+    parser.add_argument(
+        "--omapi-shared-key", action="store", required=True, help=(
+            "The shared key"))
     parser.add_argument(
         "-o", "--outfile", action="store", required=False, help=(
             "A file to save to. When left unspecified the configuration "

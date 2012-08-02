@@ -36,6 +36,9 @@ DNS_RNDC_PORT = 954
 # DHCP leases file, as maintained by ISC dhcpd.
 DHCP_LEASES_FILE = '/var/lib/dhcp/dhcpd.leases'
 
+# ISC dhcpd configuration file.
+DHCP_CONFIG_FILE = '/etc/dhcp/dhcpd.conf'
+
 
 try:
     import user_maasceleryconfig

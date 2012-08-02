@@ -30,3 +30,7 @@ DNS_CONFIG_DIR = os.path.join(
 
 DNS_RNDC_PORT = 9154
 
+
+DHCP_CONFIG_FILE = os.path.join(
+    DEV_ROOT_DIRECTORY, 'run/dhcpd.conf')
+
