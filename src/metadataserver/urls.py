@@ -49,16 +49,21 @@ version_index_by_mac_handler = Resource(VersionIndexHandler)
 node_patterns = patterns(
     '',
     url(
-        r'^(?P<version>[^/]+)/meta-data/(?P<item>.*)$',
+        # could-init adds additional slashes in front of urls.
+        r'^/*(?P<version>[^/]+)/meta-data/(?P<item>.*)$',
         meta_data_handler,
         name='metadata-meta-data'),
     url(
-        r'^(?P<version>[^/]+)/user-data$', user_data_handler,
+        # could-init adds additional slashes in front of urls.
+        r'^/*(?P<version>[^/]+)/user-data$', user_data_handler,
         name='metadata-user-data'),
     url(
-        r'^(?P<version>[^/]+)/', version_index_handler,
+        # could-init adds additional slashes in front of urls.
+        r'^/*(?P<version>[^/]+)/', version_index_handler,
         name='metadata-version'),
-    url(r'^', index_handler, name='metadata'),
+    url(
+        # could-init adds additional slashes in front of urls.
+        r'^/*', index_handler, name='metadata'),
     )
 
 # Anonymous random metadata access, keyed by system ID.  These serve requests
@@ -69,11 +74,13 @@ by_id_patterns = patterns(
     # XXX: rvb 2012-06-20 bug=1015559:  This method is accessible
     # without authentication.  This is a security threat.
     url(
-        r'^(?P<version>[^/]+)/by-id/(?P<system_id>[\w\-]+)/$',
+        # could-init adds additional slashes in front of urls.
+        r'^/*(?P<version>[^/]+)/by-id/(?P<system_id>[\w\-]+)/$',
         meta_data_anon_handler,
         name='metadata-node-by-id'),
     url(
-        r'^(?P<version>[^/]+)/enlist-preseed/$',
+        # could-init adds additional slashes in front of urls.
+        r'^/*(?P<version>[^/]+)/enlist-preseed/$',
         meta_data_anon_handler,
         name='metadata-enlist-preseed'),
     )
@@ -84,15 +91,18 @@ by_id_patterns = patterns(
 by_mac_patterns = patterns(
     '',
     url(
-        r'^(?P<version>[^/]+)/by-mac/(?P<mac>[^/]+)/meta-data/(?P<item>.*)$',
+        # could-init adds additional slashes in front of urls.
+        r'^/*(?P<version>[^/]+)/by-mac/(?P<mac>[^/]+)/meta-data/(?P<item>.*)$',
         meta_data_by_mac_handler,
         name='metadata-meta-data-by-mac'),
     url(
-        r'^(?P<version>[^/]+)/by-mac/(?P<mac>[^/]+)/user-data$',
+        # could-init adds additional slashes in front of urls.
+        r'^/*(?P<version>[^/]+)/by-mac/(?P<mac>[^/]+)/user-data$',
         user_data_by_mac_handler,
         name='metadata-user-data-by-mac'),
     url(
-        r'^(?P<version>[^/]+)/by-mac/(?P<mac>[^/]+)/',
+        # could-init adds additional slashes in front of urls.
+        r'^/*(?P<version>[^/]+)/by-mac/(?P<mac>[^/]+)/',
         version_index_by_mac_handler,
         name='metadata-version-by-mac'),
     )

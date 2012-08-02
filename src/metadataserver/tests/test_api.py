@@ -292,6 +292,21 @@ class TestViews(DjangoTestCase, ProvisioningFakeFactory):
             response.content.decode('ascii'))
         self.assertIn('text/plain', response['Content-Type'])
 
+    def test_public_keys_url_with_additional_slashes(self):
+        # The metadata service also accepts urls with any number of additional
+        # slashes after 'metadata': e.g. http://host/metadata///rest-of-url.
+        user, _ = factory.make_user_with_keys(n_keys=2, username='my-user')
+        node = factory.make_node(owner=user)
+        url = reverse('metadata-meta-data', args=['latest', 'public-keys'])
+        # Insert additional slashes.
+        url = url.replace('metadata', 'metadata/////')
+        client = self.make_node_client(node=node)
+        response = client.get(url)
+        keys = SSHKey.objects.filter(user=user).values_list('key', flat=True)
+        self.assertItemsEqual(
+            '\n'.join(keys),
+            response.content.decode('ascii'))
+
     def test_other_user_than_node_cannot_signal_commissioning_result(self):
         node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
         client = OAuthAuthenticatedClient(factory.make_user())
