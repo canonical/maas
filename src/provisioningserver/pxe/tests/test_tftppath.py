@@ -43,7 +43,7 @@ class TestTFTPPath(TestCase):
         subarch = factory.make_name('subarch')
         name = factory.make_name('config')
         self.assertEqual(
-            '/maas/%s/%s/pxelinux.cfg/%02x-%s' % (
+            'maas/%s/%s/pxelinux.cfg/%02x-%s' % (
                 arch, subarch, ARP_HTYPE.ETHERNET, name),
             compose_config_path(arch, subarch, name))
 
@@ -61,7 +61,7 @@ class TestTFTPPath(TestCase):
         release = factory.make_name('release')
         purpose = factory.make_name('purpose')
         self.assertEqual(
-            '/maas/%s/%s/%s/%s' % (arch, subarch, release, purpose),
+            'maas/%s/%s/%s/%s' % (arch, subarch, release, purpose),
             compose_image_path(arch, subarch, release, purpose))
 
     def test_compose_image_path_does_not_include_tftp_root(self):
@@ -77,7 +77,7 @@ class TestTFTPPath(TestCase):
         arch = factory.make_name('arch')
         subarch = factory.make_name('subarch')
         self.assertEqual(
-            '/maas/%s/%s/pxelinux.0' % (arch, subarch),
+            'maas/%s/%s/pxelinux.0' % (arch, subarch),
             compose_bootloader_path(arch, subarch))
 
     def test_compose_bootloader_path_does_not_include_tftp_root(self):

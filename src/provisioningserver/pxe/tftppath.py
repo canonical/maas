@@ -24,7 +24,7 @@ from provisioningserver.enum import ARP_HTYPE
 
 def compose_bootloader_path(arch, subarch):
     """Compose the TFTP path for a PXE pre-boot loader."""
-    return '/'.join(['/maas', arch, subarch, 'pxelinux.0'])
+    return '/'.join(['maas', arch, subarch, 'pxelinux.0'])
 
 
 # TODO: move this; it is now only used for testing.
@@ -43,7 +43,7 @@ def compose_config_path(arch, subarch, name):
     # Not using os.path.join: this is a TFTP path, not a native path. Yes, in
     # practice for us they're the same. We always assume that the ARP HTYPE
     # (hardware type) that PXELINUX sends is Ethernet.
-    return "/maas/{arch}/{subarch}/pxelinux.cfg/{htype:02x}-{name}".format(
+    return "maas/{arch}/{subarch}/pxelinux.cfg/{htype:02x}-{name}".format(
         arch=arch, subarch=subarch, htype=ARP_HTYPE.ETHERNET, name=name)
 
 
@@ -61,7 +61,7 @@ def compose_image_path(arch, subarch, release, purpose):
     :return: Path for the corresponding image directory (containing a
         kernel and initrd) as exposed over TFTP.
     """
-    return '/'.join(['/maas', arch, subarch, release, purpose])
+    return '/'.join(['maas', arch, subarch, release, purpose])
 
 
 def locate_tftp_path(path, tftproot):

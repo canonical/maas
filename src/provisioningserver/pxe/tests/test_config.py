@@ -16,6 +16,7 @@ import re
 
 from maastesting.factory import factory
 from maastesting.testcase import TestCase
+import posixpath
 from provisioningserver.pxe.config import render_pxe_config
 from provisioningserver.pxe.tftppath import compose_image_path
 from testtools.matchers import (
@@ -40,6 +41,7 @@ class TestRenderPXEConfig(TestCase):
             "purpose": factory.make_name("purpose"),
             "append": factory.make_name("append"),
             }
+        options["bootpath"] = "maas/%(arch)s/%(subarch)s" % options
         output = render_pxe_config(**options)
         # The output is always a Unicode string.
         self.assertThat(output, IsInstance(unicode))
@@ -50,6 +52,7 @@ class TestRenderPXEConfig(TestCase):
         image_dir = compose_image_path(
             arch=options["arch"], subarch=options["subarch"],
             release=options["release"], purpose=options["purpose"])
+        image_dir = posixpath.relpath(image_dir, options["bootpath"])
         self.assertThat(
             output, MatchesAll(
                 MatchesRegex(
@@ -70,6 +73,7 @@ class TestRenderPXEConfig(TestCase):
             "subarch": factory.make_name("subarch"),
             "release": factory.make_name("release"),
             "purpose": factory.make_name("purpose"),
+            "bootpath": factory.make_name("bootpath"),
             "append": factory.make_name("append"),
             }
         # Capture the output before sprinking in some random options.

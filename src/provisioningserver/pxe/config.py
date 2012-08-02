@@ -20,8 +20,10 @@ __all__ = [
     ]
 
 
+from functools import partial
 from os import path
 
+import posixpath
 from provisioningserver.pxe.tftppath import compose_image_path
 import tempita
 
@@ -32,7 +34,7 @@ template = tempita.Template.from_filename(template_filename, encoding="UTF-8")
 
 
 def render_pxe_config(
-    title, arch, subarch, release, purpose, append, **extra):
+    title, arch, subarch, release, purpose, append, bootpath, **extra):
     """Render a PXE configuration file as a unicode string.
 
     :param title: Title that the node should show on its boot menu.
@@ -41,11 +43,17 @@ def render_pxe_config(
     :param release: The OS release, e.g. "precise".
     :param purpose: What's the purpose of this boot, e.g. "install".
     :param append: Additional kernel parameters.
+    :param bootpath: The directory path of `pxelinux.0`.
     :param extra: Allow for other arguments. This is a safety valve;
         parameters generated in another component (for example, see
         `TFTPBackend.get_config_reader`) won't cause this to break.
     """
     image_dir = compose_image_path(arch, subarch, release, purpose)
-    return template.substitute(
-        title=title, kernel="%s/kernel" % image_dir,
-        initrd="%s/initrd.gz" % image_dir, append=append)
+    namespace = {
+        "append": append,
+        "initrd": "%s/initrd.gz" % image_dir,
+        "kernel": "%s/kernel" % image_dir,
+        "relpath": partial(posixpath.relpath, start=bootpath),
+        "title": title,
+        }
+    return template.substitute(namespace)
