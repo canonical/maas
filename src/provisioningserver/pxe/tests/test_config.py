@@ -55,7 +55,7 @@ class TestRenderPXEConfig(TestCase):
         self.assertThat(
             output, MatchesAll(
                 MatchesRegex(
-                    r'.*^\s+KERNEL %s/kernel$' % re.escape(image_dir),
+                    r'.*^\s+KERNEL %s/linux$' % re.escape(image_dir),
                     re.MULTILINE | re.DOTALL),
                 MatchesRegex(
                     r'.*^\s+INITRD %s/initrd[.]gz$' % re.escape(image_dir),
