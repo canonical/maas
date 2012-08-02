@@ -16,6 +16,7 @@ __all__ = [
 
 from io import BytesIO
 from itertools import repeat
+import json
 import re
 from urllib import urlencode
 from urlparse import (
@@ -24,6 +25,7 @@ from urlparse import (
     )
 
 from provisioningserver.enum import ARP_HTYPE
+from provisioningserver.pxe.config import render_pxe_config
 from provisioningserver.utils import deferred
 from tftp.backend import (
     FilesystemSynchronousBackend,
@@ -62,6 +64,7 @@ class TFTPBackend(FilesystemSynchronousBackend):
     """
 
     get_page = staticmethod(getPage)
+    render_pxe_config = staticmethod(render_pxe_config)
 
     # This is how PXELINUX represents a MAC address. See
     # http://www.syslinux.org/wiki/index.php/PXELINUX.
@@ -74,11 +77,13 @@ class TFTPBackend(FilesystemSynchronousBackend):
     re_config_file = re.compile(
         r'''
         ^/?
-        maas     # Static namespacing.
-        /
-        (?P<arch>[^/]+)     # Capture arch.
-        /
-        (?P<subarch>[^/]+)    # Capture subarch.
+        (?P<bootpath>
+          maas     # Static namespacing.
+          /
+          (?P<arch>[^/]+)     # Capture arch.
+          /
+          (?P<subarch>[^/]+)    # Capture subarch.
+        )    # Capture boot directory.
         /
         pxelinux[.]cfg    # PXELINUX expects this.
         /
@@ -103,7 +108,8 @@ class TFTPBackend(FilesystemSynchronousBackend):
         self.generator_url = urlparse(generator_url)
 
     def get_generator_url(self, params):
-        """Calculate the URL, including query, that the PXE config is at.
+        """Calculate the URL, including query, from which we can fetch
+        additional configuration parameters.
 
         :param params: A dict, or iterable suitable for updating a dict, of
             additional query parameters.
@@ -124,6 +130,26 @@ class TFTPBackend(FilesystemSynchronousBackend):
         return url.geturl().encode("ascii")
 
     @deferred
+    def get_config_reader(self, params):
+        """Return an `IReader` for a PXE config.
+
+        :param params: Parameters so far obtained, typically from the file
+            path requested.
+        """
+        url = self.get_generator_url(params)
+
+        def generate_config(api_params):
+            params.update(api_params)
+            config = self.render_pxe_config(**params)
+            return config.encode("utf-8")
+
+        d = self.get_page(url)
+        d.addCallback(json.loads)
+        d.addCallback(generate_config)
+        d.addCallback(BytesReader)
+        return d
+
+    @deferred
     def get_reader(self, file_name):
         """See `IBackend.get_reader()`.
 
@@ -136,7 +162,4 @@ class TFTPBackend(FilesystemSynchronousBackend):
             return super(TFTPBackend, self).get_reader(file_name)
         else:
             params = config_file_match.groupdict()
-            url = self.get_generator_url(params)
-            d = self.get_page(url)
-            d.addCallback(BytesReader)
-            return d
+            return self.get_config_reader(params)

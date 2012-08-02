@@ -1132,8 +1132,9 @@ def pxeconfig(request):
     # XXX: allenap 2012-07-31 bug=1013146: 'precise' is hardcoded here.
     release = "precise"
 
+    params = dict(
+        title=title, arch=arch, subarch=subarch, release=release,
+        purpose=get_boot_purpose(node), append=append)
+
     return HttpResponse(
-        render_pxe_config(
-            title=title, arch=arch, subarch=subarch, release=release,
-            purpose=get_boot_purpose(node), append=append),
-        content_type="text/plain; charset=utf-8")
+        json.dumps(params), content_type="application/json")

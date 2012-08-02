@@ -13,6 +13,7 @@ __metaclass__ = type
 __all__ = []
 
 from functools import partial
+import json
 from os import path
 from urllib import urlencode
 from urlparse import (
@@ -73,6 +74,8 @@ class TestTFTPBackendRegex(TestCase):
             "subarch": factory.make_name("subarch"),
             "mac": factory.getRandomMACAddress(b"-"),
             }
+        # The bootpath component is a superset of arch and subarch.
+        components["bootpath"] = "maas/{arch}/{subarch}".format(**components)
         config_path = compose_config_path(
             arch=components["arch"], subarch=components["subarch"],
             name=components["mac"])
@@ -174,17 +177,59 @@ class TestTFTPBackend(TestCase):
         config_path = compose_config_path(arch, subarch, mac)
         backend = TFTPBackend(self.make_dir(), b"http://example.com/")
 
-        # Patch get_generator_url() to check params.
-        generator_url = factory.make_name("generator-url").encode("ascii")
+        @partial(self.patch, backend, "get_config_reader")
+        def get_config_reader(params):
+            params_json = json.dumps(params)
+            params_json_reader = BytesReader(params_json)
+            return succeed(params_json_reader)
 
-        @partial(self.patch, backend, "get_generator_url")
-        def get_generator_url(params):
-            expected_params = {"arch": arch, "subarch": subarch, "mac": mac}
-            self.assertEqual(expected_params, params)
-            return generator_url
+        reader = yield backend.get_reader(config_path)
+        output = reader.read(10000)
+        # The expected parameters include bootpath; this is extracted from the
+        # file path by re_config_file.
+        expected_params = dict(
+            arch=arch, subarch=subarch, mac=mac,
+            bootpath="maas/%s/%s" % (arch, subarch))
+        observed_params = json.loads(output)
+        self.assertEqual(expected_params, observed_params)
 
-        backend.get_page = succeed  # Return the URL, via a Deferred.
-        reader = yield backend.get_reader(config_path.lstrip("/"))
+    @inlineCallbacks
+    def test_get_config_reader_returns_rendered_params(self):
+        # get_config_reader() takes a dict() of parameters and returns an
+        # `IReader` of a PXE configuration, rendered by `render_pxe_config`.
+        backend = TFTPBackend(self.make_dir(), b"http://example.com/")
+        # Fake configuration parameters, as discovered from the file path.
+        fake_params = dict(
+            arch=factory.make_name("arch"),
+            subarch=factory.make_name("subarch"),
+            mac=factory.getRandomMACAddress(b"-"))
+        fake_params.update(
+            bootpath="maas/%(arch)s/%(subarch)s" % fake_params)
+        # Fake configuration parameters, as returned from the API call.
+        fake_api_params = dict(fake_params)
+        fake_api_params.update(
+            append=factory.make_name("append"),
+            purpose=factory.make_name("purpose"),
+            release=factory.make_name("release"),
+            title=factory.make_name("title"))
+        # Add a title to the first set of parameters. This will later help
+        # demonstrate that the API parameters take precedence over the file
+        # path parameters.
+        fake_params["title"] = factory.make_name("original-title")
+        # Stub get_page to return the fake API configuration parameters.
+        fake_api_params_json = json.dumps(fake_api_params)
+        backend.get_page = lambda url: succeed(fake_api_params_json)
+        # Stub render_pxe_config to return the render parameters.
+        backend.render_pxe_config = lambda **kwargs: json.dumps(kwargs)
+        # Get the rendered configuration, which will actually be a JSON dump
+        # of the render-time parameters.
+        reader = yield backend.get_config_reader(fake_api_params)
         self.addCleanup(reader.finish)
         self.assertIsInstance(reader, BytesReader)
-        self.assertEqual(generator_url, reader.read(1000))
+        output = reader.read(10000)
+        # The expected render-time parameters are a merge of previous
+        # parameters. Note that the API parameters take precedence.
+        expected_render_params = dict(fake_params)
+        expected_render_params.update(fake_api_params)
+        observed_render_params = json.loads(output)
+        self.assertEqual(expected_render_params, observed_render_params)

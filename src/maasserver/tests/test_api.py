@@ -2268,9 +2268,9 @@ class TestPXEConfigAPI(AnonAPITestCase):
     def get_optional_params(self):
         return ['subarch', 'mac']
 
-    def test_pxe_config_returns_config(self):
-        response = self.client.get(reverse('pxeconfig'), self.get_params())
-
+    def test_pxeconfig_returns_config(self):
+        params_in = self.get_params()
+        response = self.client.get(reverse('pxeconfig'), params_in)
         self.assertThat(
             (
                 response.status_code,
@@ -2280,17 +2280,32 @@ class TestPXEConfigAPI(AnonAPITestCase):
             MatchesListwise(
                 (
                     Equals(httplib.OK),
-                    Equals("text/plain; charset=utf-8"),
-                    StartsWith('DEFAULT execute'),
+                    Equals("application/json"),
+                    StartsWith(b'{'),
                 )),
             response)
+        params_out = json.loads(response.content)
+        # Some parameters are unchanged.
+        params_unchanged = {"arch", "subarch", "title"}
+        self.assertEqual(
+            {name: params_in[name] for name in params_unchanged},
+            {name: params_out[name] for name in params_unchanged})
+        # The append parameter is... appended to.
+        self.assertThat(
+            params_out["append"], StartsWith(
+                "%(append)s auto url=http://" % params_in))
+        # Some parameters are added.
+        params_added = {"release", "purpose"}
+        self.assertEqual(set(params_out).difference(params_in), params_added)
+        # The release is always "precise".
+        self.assertEqual("precise", params_out["release"])
 
     def get_without_param(self, param):
         params = self.get_params()
         del params[param]
         return self.client.get(reverse('pxeconfig'), params)
 
-    def test_pxe_config_missing_parameters(self):
+    def test_pxeconfig_missing_parameters(self):
         # Some parameters are optional, others are mandatory. The
         # absence of a mandatory parameter always results in a BAD
         # REQUEST response.
@@ -2344,17 +2359,21 @@ class TestPXEConfigAPI(AnonAPITestCase):
             "auto url=%s" % api.compose_enlistment_preseed_url(),
             api.compose_preseed_kernel_opt(None))
 
-    def test_pxe_config_appends_enlistment_preseed_url_for_unknown_node(self):
+    def test_pxeconfig_appends_enlistment_preseed_url_for_unknown_node(self):
         params = self.get_params()
         params['mac'] = factory.getRandomMACAddress()
         response = self.client.get(reverse('pxeconfig'), params)
-        self.assertIn(api.compose_enlistment_preseed_url(), response.content)
+        self.assertIn(
+            api.compose_enlistment_preseed_url(),
+            json.loads(response.content)["append"])
 
-    def test_pxe_config_appends_preseed_url_for_known_node(self):
+    def test_pxeconfig_appends_preseed_url_for_known_node(self):
         params = self.get_params()
         node = MACAddress.objects.get(mac_address=params['mac']).node
         response = self.client.get(reverse('pxeconfig'), params)
-        self.assertIn(api.compose_preseed_url(node), response.content)
+        self.assertIn(
+            api.compose_preseed_url(node),
+            json.loads(response.content)["append"])
 
     def test_get_boot_purpose_unknown_node(self):
         # A node that's not yet known to MAAS is assumed to be enlisting,
@@ -2381,11 +2400,13 @@ class TestPXEConfigAPI(AnonAPITestCase):
                 setattr(node, name, value)
             self.assertEqual(purpose, api.get_boot_purpose(node))
 
-    def test_pxe_config_uses_boot_purpose(self):
+    def test_pxeconfig_uses_boot_purpose(self):
         fake_boot_purpose = factory.make_name("purpose")
         self.patch(api, "get_boot_purpose", lambda node: fake_boot_purpose)
         response = self.client.get(reverse('pxeconfig'), self.get_params())
-        self.assertThat(response.content, Contains(fake_boot_purpose))
+        self.assertEqual(
+            fake_boot_purpose,
+            json.loads(response.content)["purpose"])
 
 
 class TestNodeGroupsAPI(APITestCase):

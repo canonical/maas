@@ -31,7 +31,8 @@ template_filename = path.join(template_dir, "config.template")
 template = tempita.Template.from_filename(template_filename, encoding="UTF-8")
 
 
-def render_pxe_config(title, arch, subarch, release, purpose, append):
+def render_pxe_config(
+    title, arch, subarch, release, purpose, append, **extra):
     """Render a PXE configuration file as a unicode string.
 
     :param title: Title that the node should show on its boot menu.
@@ -40,6 +41,9 @@ def render_pxe_config(title, arch, subarch, release, purpose, append):
     :param release: The OS release, e.g. "precise".
     :param purpose: What's the purpose of this boot, e.g. "install".
     :param append: Additional kernel parameters.
+    :param extra: Allow for other arguments. This is a safety valve;
+        parameters generated in another component (for example, see
+        `TFTPBackend.get_config_reader`) won't cause this to break.
     """
     image_dir = compose_image_path(arch, subarch, release, purpose)
     return template.substitute(
