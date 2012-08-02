@@ -194,9 +194,18 @@ files and snippets::
     $ sudo cp contrib/preseeds/* /var/lib/cobbler/kickstarts/
     $ sudo cp contrib/snippets/* /var/lib/cobbler/snippets/
 
+By default, the snippet ``maas_proxy`` includes a definition for an http
+proxy running on port 8000 on the same host as the MAAS server.  This
+means you can *either* install ``squid-deb-proxy``::
+
+    $ sudo apt-get install squid-deb-proxy
+
+*or* you can edit ``contrib/snippets/maas_proxy`` to remove the proxy
+definition.
+
 Set the iSCSI config to include the MAAS configs::
 
-   $ sudo tee -a /etc/tgt/targets.conf < contrib/tgt.conf
+    $ sudo tee -a /etc/tgt/targets.conf < contrib/tgt.conf
 
 Now run ``maas-import-pxe-files`` to download current Ubuntu releases for
 installing nodes::
