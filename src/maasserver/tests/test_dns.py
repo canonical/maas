@@ -327,12 +327,28 @@ class TestDNSConfigModifications(TestCase):
         nodegroup, node, lease = self.create_nodegroup_with_lease()
         self.assertDNSMatches(node.hostname, nodegroup.name, lease.ip)
 
-    def test_remove_node_updates_zone(self):
+    def test_delete_node_updates_zone(self):
         self.patch(settings, "DNS_CONNECT", True)
         nodegroup, node, lease = self.create_nodegroup_with_lease()
         node.delete()
         fqdn = "%s.%s" % (node.hostname, nodegroup.name)
         self.assertEqual([''], self.dig_resolve(fqdn))
+
+    def test_change_node_hostname_updates_zone(self):
+        self.patch(settings, "DNS_CONNECT", True)
+        nodegroup, node, lease = self.create_nodegroup_with_lease()
+        node.hostname = factory.make_name('hostname')
+        node.save()
+        self.assertDNSMatches(node.hostname, nodegroup.name, lease.ip)
+
+    def test_change_node_other_field_does_not_update_zone(self):
+        self.patch(settings, "DNS_CONNECT", True)
+        nodegroup, node, lease = self.create_nodegroup_with_lease()
+        recorder = FakeMethod()
+        self.patch(DNSZoneConfig, 'write_config', recorder)
+        node.error = factory.getRandomString()
+        node.save()
+        self.assertEqual(0, recorder.call_count)
 
     def test_change_config_enable_dns_enables_dns(self):
         self.patch(settings, "DNS_CONNECT", False)
