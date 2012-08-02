@@ -53,9 +53,6 @@ class TestRenderPXEConfig(TestCase):
         self.assertThat(
             output, MatchesAll(
                 MatchesRegex(
-                    r'.*^MENU TITLE %s$' % re.escape(options["title"]),
-                    re.MULTILINE | re.DOTALL),
-                MatchesRegex(
                     r'.*^\s+KERNEL %s/kernel$' % re.escape(image_dir),
                     re.MULTILINE | re.DOTALL),
                 MatchesRegex(

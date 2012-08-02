@@ -1,14 +1,10 @@
-DEFAULT menu
-PROMPT 0
-MENU TITLE {{title}}
-TIMEOUT 1
-ONTIMEOUT execute
+DEFAULT execute
+TIMEOUT 20
+SAY Booting under MAAS direction in 20 seconds.
 
 LABEL execute
+        SAY Booting under MAAS direction...
         KERNEL {{kernel}}
         INITRD {{initrd}}
-        MENU LABEL Continue
         APPEND {{append}}
         IPAPPEND 2
-
-MENU end

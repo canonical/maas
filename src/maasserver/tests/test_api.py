@@ -2281,7 +2281,7 @@ class TestPXEConfigAPI(AnonAPITestCase):
                 (
                     Equals(httplib.OK),
                     Equals("text/plain; charset=utf-8"),
-                    StartsWith('DEFAULT menu'),
+                    StartsWith('DEFAULT execute'),
                 )),
             response)
 
