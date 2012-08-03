@@ -102,13 +102,17 @@ class TestImportPXEFiles(TestCase):
         here = os.path.dirname(__file__)
         root = os.path.join(here, os.pardir, os.pardir, os.pardir)
         script = os.path.join(root, "scripts", "maas-import-pxe-files")
-        path = [os.path.join(root, "bin")]
+
+        path = [os.path.join(root, "bin"), os.path.join(root, "scripts")]
         path.extend(os.environ.get("PATH", "").split(os.pathsep))
         env = {
             'ARCHIVE': 'file://%s' % archive_dir,
             # Substitute curl for wget; it accepts file:// URLs.
             'DOWNLOAD': 'curl -O --silent',
             'PATH': os.pathsep.join(path),
+            # Suppress running of maas-import-ephemerals.  It gets too
+            # intimate with the system to test here.
+            'IMPORT_EPHEMERALS': '0',
         }
         env.update(self.config_fixture.environ)
         if arch is not None:
@@ -116,6 +120,7 @@ class TestImportPXEFiles(TestCase):
         if release is not None:
             env['RELEASES'] = release
             env['CURRENT_RELEASE'] = release
+
         with open(os.devnull, 'wb') as dev_null:
             check_call(script, env=env, stdout=dev_null)
 
