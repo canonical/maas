@@ -107,7 +107,7 @@ import_install_images() {
 
     DOWNLOAD_DIR=$(mktemp -d)
     echo "Downloading to temporary location $DOWNLOAD_DIR."
-    cd -- $DOWNLOAD_DIR
+    pushd -- $DOWNLOAD_DIR
 
     # All files we create here are public.  The TFTP user will need to be
     # able to read them.
@@ -123,6 +123,7 @@ import_install_images() {
         done
     done
 
+    popd
     rm -rf -- $DOWNLOAD_DIR
 }
 

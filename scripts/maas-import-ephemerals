@@ -434,8 +434,11 @@ SERVER_IP=${SERVER_IP:-${_ip}}
 fi
 
 
+if [ -z "$NO_COBBLER" ]
+then
 ISCSI_TARGET_IP=${ISCSI_TARGET_IP:-${SERVER_IP}}
 [ -n "$ISCSI_TARGET_IP" ] || fail "ISCSI_TARGET_IP must have a value"
+fi
 
 
 if [ -z "$NO_COBBLER" ]
