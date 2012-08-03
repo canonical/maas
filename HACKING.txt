@@ -248,6 +248,47 @@ your branch::
     $ make distclean
 
 
+Running the built-in TFTP server
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+You will need to run the built-in TFTP server on the real TFTP port (69) if
+you want to boot some real hardware.  By default, it's set to start up on
+port 5244 for testing purposes.  Make these changes::
+
+    * Edit ``etc/pserv.yaml`` to change the tftp/port setting to 69
+    * Install the ``authbind``package:
+
+      $ sudo apt-get install authbind
+
+    * Create a file ``/etc/authbind/byport/69`` that is *executable* by the
+      user running MAAS.
+
+      $ sudo touch /etc/authbind/byport/69
+      $ sudo chmod a+x /etc/authbind/byport/69
+
+Now when starting up the MAAS development webserver, do it like this::
+
+    $ authbind --deep make run
+
+
+Running the BIND daemon for real
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+There's a BIND daemon that is started up as part of the development service
+but it runs on port 5246 by default.  If you want to make it run as a real
+DNS server on the box then edit ``services/dns/run`` and change the port
+declaration there so it says::
+
+    port=53
+
+Then as for TFTP above, create an authbind authorisation::
+
+    $ sudo touch /etc/authbind/byport/53
+    $ sudo chmod a+x /etc/authbind/byport/53
+
+and run as for TFTP.
+
+
 Development services
 ====================
 
