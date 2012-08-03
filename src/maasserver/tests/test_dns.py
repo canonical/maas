@@ -50,6 +50,7 @@ from provisioningserver.dns.config import (
     DNSZoneConfig,
     )
 from provisioningserver.dns.utils import generated_hostname
+from rabbitfixture.server import allocate_ports
 from testresources import FixtureResource
 from testtools.matchers import MatchesStructure
 
@@ -139,6 +140,8 @@ class TestDNSConfigModifications(TestCase):
         self.bind = self.useFixture(BINDServer())
         self.patch(conf, 'DNS_CONFIG_DIR', self.bind.config.homedir)
 
+        # Use a random port for rndc.
+        self.patch(conf, 'DNS_RNDC_PORT', allocate_ports(1)[0])
         # This simulates what should happen when the package is
         # installed:
         # Create MAAS-specific DNS configuration files.
