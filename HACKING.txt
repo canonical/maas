@@ -93,8 +93,8 @@ To run the whole suite::
 
 To run tests at a lower level of granularity::
 
-    $ bin/test.maas maasserver.tests.test_api -v
-    $ bin/test.pserv provisioningserver.tests.test_api -v
+    $ ./bin/maas test src/maasserver/tests/test_api.py
+    $ ./bin/maas test src/maasserver/tests/test_api.py:AnonymousEnlistmentAPITest
 
 The test runner is `nose`_, so you can pass in options like
 ``--with-coverage`` and ``--nocapture`` (short option: ``-s``). The
