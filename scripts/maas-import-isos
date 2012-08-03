@@ -5,10 +5,10 @@
 #    Copyright (C) 2011-2012 Canonical
 #
 #    Authors:
-#		Marc Cluet <marc.cluet@canonical.com>
-#		Dustin Kirkland <kirkland@canonical.com>
-#		Andres Rodriguez <andres.rodriguez@canonical.com>
-#		Scott Moser <scott.moser@canonical.com>
+#       Marc Cluet <marc.cluet@canonical.com>
+#       Dustin Kirkland <kirkland@canonical.com>
+#       Andres Rodriguez <andres.rodriguez@canonical.com>
+#       Scott Moser <scott.moser@canonical.com>
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU Affero General Public License as
@@ -24,8 +24,8 @@
 
 # Ensure root
 if [ "$(id -u)" != "0" ]; then
-	echo "ERROR: $0 must run as root" 2>&1
-	exit 1
+    echo "ERROR: $0 must run as root" 2>&1
+    exit 1
 fi
 
 # Definitions for supported releases and architectures
@@ -41,65 +41,65 @@ fi
 [ -n "$ENLIST_PROFILE" ] || ENLIST_PROFILE="maas-enlist"
 [ -n "$IMPORT_EPHEMERALS" ] || IMPORT_EPHEMERALS=1
 if [ -n "$SERVER_IP" ]; then
-	KOPTS="$KOPTS log_host=$SERVER_IP log_port=514"
+    KOPTS="$KOPTS log_host=$SERVER_IP log_port=514"
 else
-	if grep -qs "^server: " /etc/cobbler/settings >/dev/null 2>&1; then
-		SERVER_IP=$(grep "^server: " /etc/cobbler/settings | awk '{print $2}')
-		KOPTS="$KOPTS log_host=$SERVER_IP log_port=514"
-	fi
+    if grep -qs "^server: " /etc/cobbler/settings >/dev/null 2>&1; then
+        SERVER_IP=$(grep "^server: " /etc/cobbler/settings | awk '{print $2}')
+        KOPTS="$KOPTS log_host=$SERVER_IP log_port=514"
+    fi
 fi
 if [ -n "$CONSOLE" ]; then
-	KOPTS="$KOPTS console=$CONSOLE"
+    KOPTS="$KOPTS console=$CONSOLE"
 fi
 
 
 name_arch_in_cobbler_style() {
-	echo "$1" | sed -e 's/amd64/x86_64/' -e 's/i686/i386/'
+    echo "$1" | sed -e 's/amd64/x86_64/' -e 's/i686/i386/'
 }
 
 
 update_settings(){
-	local r a profile
-	# Updates the parent profiles with new settings. Only affects KOPTS
-	for r in $RELEASES; do
-		for a in $ARCHES; do
-			a=$(name_arch_in_cobbler_style "$a")
-			profile="maas-$r-$a"
-			# If profile exists, update it.
-			if (cobbler profile list | grep -qs " $profile$"); then
-				cobbler profile edit --name="$profile" --kopts="$KOPTS"
-			fi
-		done
-	done
+    local r a profile
+    # Updates the parent profiles with new settings. Only affects KOPTS
+    for r in $RELEASES; do
+        for a in $ARCHES; do
+            a=$(name_arch_in_cobbler_style "$a")
+            profile="maas-$r-$a"
+            # If profile exists, update it.
+            if (cobbler profile list | grep -qs " $profile$"); then
+                cobbler profile edit --name="$profile" --kopts="$KOPTS"
+            fi
+        done
+    done
 
-	[ "$IMPORT_EPHEMERALS" = "0" ] || maas-import-ephemerals --update
+    [ "$IMPORT_EPHEMERALS" = "0" ] || maas-import-ephemerals --update
 }
 
 import_isos(){
-	local r a profile
-	# Wget and import net install ISOs
-	for r in $RELEASES; do
-		for a in $ARCHES; do
-			a=$(name_arch_in_cobbler_style "$a")
-			profile="$r-$a"
-			# Skip if cobbler already has this distro/arch combo
-			if ! (cobbler distro list | grep -qs " $profile$"); then
-				# Import the iso
-				cobbler-ubuntu-import $profile
-			else
-				# check archive for an updated ISO, update our cache if necessary
-				cobbler-ubuntu-import -c $profile && cobbler-ubuntu-import -u $profile
+    local r a profile
+    # Wget and import net install ISOs
+    for r in $RELEASES; do
+        for a in $ARCHES; do
+            a=$(name_arch_in_cobbler_style "$a")
+            profile="$r-$a"
+            # Skip if cobbler already has this distro/arch combo
+            if ! (cobbler distro list | grep -qs " $profile$"); then
+                # Import the iso
+                cobbler-ubuntu-import $profile
+            else
+                # check archive for an updated ISO, update our cache if necessary
+                cobbler-ubuntu-import -c $profile && cobbler-ubuntu-import -u $profile
 
-			fi
-			# Skip if cobbler already has this distro/arch profile
-			if ! (cobbler profile list | grep -qs " maas-$profile$"); then
-				# Add JuJu sub-profile based on the name of the imported ISO
-				cobbler profile add --name="maas-$profile" --parent="$profile" --kopts="$KOPTS" --kickstart="$KSDIR/maas.preseed"
-			fi
-		done
-	done
+            fi
+            # Skip if cobbler already has this distro/arch profile
+            if ! (cobbler profile list | grep -qs " maas-$profile$"); then
+                # Add JuJu sub-profile based on the name of the imported ISO
+                cobbler profile add --name="maas-$profile" --parent="$profile" --kopts="$KOPTS" --kickstart="$KSDIR/maas.preseed"
+            fi
+        done
+    done
 
-	[ "${IMPORT_EPHEMERALS}" = "0" ] || maas-import-ephemerals --import
+    [ "${IMPORT_EPHEMERALS}" = "0" ] || maas-import-ephemerals --import
 }
 
 add_enlist_profile(){
@@ -164,14 +164,14 @@ do_import_isos=false
 do_update_settings=false
 
 while [ $# -ne 0 ]; do
-	cur=${1};
-	case "$cur" in
-		-h|--help) Usage ; exit 0;;
-		-i|--import-isos) do_import_isos=true;;
-		-u|--update-settings) do_update_settings=true;;
-		--) shift; break;;
-	esac
-	shift;
+    cur=${1};
+    case "$cur" in
+        -h|--help) Usage ; exit 0;;
+        -i|--import-isos) do_import_isos=true;;
+        -u|--update-settings) do_update_settings=true;;
+        --) shift; break;;
+    esac
+    shift;
 done
 
 ## check arguments here
@@ -182,8 +182,8 @@ done
 # do not allow import + update
 ( $do_import_isos && $do_update_settings ) && bad_Usage
 
-$do_import_isos && import_isos 
-$do_update_settings && update_settings 
+$do_import_isos && import_isos
+$do_update_settings && update_settings
 
 # Add enlist profile if doesn't exist
 add_enlist_profile

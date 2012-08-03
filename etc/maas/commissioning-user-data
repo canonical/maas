@@ -342,7 +342,7 @@ def main():
         msg = exc.message
     except Exception as exc:
         msg = "unexpected error [%s]" % exc
-    
+
     sys.stderr.write("%s\n" % msg)
     sys.exit((exc is None))
 

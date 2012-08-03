@@ -12,7 +12,7 @@
       {% csrf_token %}
       <ul>
       {% for field in profile_form %}
-	{% include "maasserver/form_field.html" %}
+        {% include "maasserver/form_field.html" %}
       {% endfor %}
       </ul>
       <input type="hidden" name="profile_submit" value="1" />
@@ -27,7 +27,7 @@
       {% csrf_token %}
       <ul>
       {% for field in password_form %}
-	{% include "maasserver/form_field.html" %}
+        {% include "maasserver/form_field.html" %}
       {% endfor %}
       </ul>
       <input type="hidden" name="password_submit" value="1" />

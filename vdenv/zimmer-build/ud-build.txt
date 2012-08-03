@@ -20,7 +20,7 @@ bucket:
 
    echo === $(date) ====
    debconf-set-selections <<EOF
-   cloud-init	cloud-init/datasources	multiselect	NoCloud
+   cloud-init   cloud-init/datasources  multiselect     NoCloud
    EOF
 
    export DEBIAN_FRONTEND=noninteractive;
@@ -32,9 +32,9 @@ bucket:
    hostname zimmer
 
    echo "127.0.1.2 zimmer-server" >> /etc/hosts
-   
+
    echo === $(date): starting apt ====
-   apt_get() { 
+   apt_get() {
      DEBIAN_FRONTEND=noninteractive apt-get \
         --option "Dpkg::Options::=--force-confold" --assume-yes "$@"
    }
@@ -44,7 +44,7 @@ bucket:
    pkgs="$pkgs maas" # main maas package
    apt_get update
    apt_get install ${pkgs}
-   
+
    # if local apt is configured to use a proxy, modify
    # cobbler to tell nodes to use that proxy. (LP: #914202)
    if [ "${PROXY_COPY_SYS_TO_COBBLER:-1}" != "0" ] &&
@@ -107,7 +107,7 @@ bucket:
    }
    [ "$1" = "-h" -o "$1" = "--help" ] && { Usage; exit 0; }
    [ "$1" = "set" -o "$1" = "show" ] || { Usage 1>&2; exit 1; }
-   
+
    get() {
      _RET=$(debconf-show ${1%%/*} 2>/dev/null |
        awk '{gsub("[*]","");} $1 == key { print $2 }' "key=$1:")
@@ -116,7 +116,7 @@ bucket:
      while [ $# -ne 0 ]; do
        get $1; echo "$1: $_RET"
        shift
-     done 
+     done
    }
    get_ip() {
      # stolen from /var/lib/dpkg/info/maas.postinst
@@ -154,7 +154,7 @@ bucket:
    fi
    END_MAAS_SET_IP
    chmod 755 /usr/local/bin/maas-set-ip
-   
+
    my_release=$(lsb_release -c)
    cat >> /etc/maas/import_isos <<END
    RELEASES="${my_release}"

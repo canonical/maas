@@ -1,4 +1,4 @@
-{% load field_type %} 
+{% load field_type %}
 <li class="{{ field.html_name }}{% if field.errors %} error{% endif %}">
   <label for="id_{{ field.html_name }}">
     {% ifequal field|field_type "CheckboxInput" %}

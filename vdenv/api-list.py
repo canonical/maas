@@ -38,7 +38,7 @@ for d in server.get_distros():
     print("%s: breed=%s, os_version=%s, mgmt_classes=%s" %
          (d['name'], d['breed'], d['os_version'], d['mgmt_classes']))
 
-profiles = server.get_profiles() 
+profiles = server.get_profiles()
 print("\n::::::::::: profiles :::::::::::")
 for d in server.get_profiles():
     print("%s: distro=%s parent=%s kickstart=%s" %

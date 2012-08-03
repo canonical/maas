@@ -91,7 +91,7 @@ def renderSysDom(config, syscfg, stype="node"):
 #  mac: 00:16:3e:3e:a9:1a
 #  template: libvirt-system.tmpl
 #  mem: 524288
-#    
+#
 #nodes:
 # prefix: node
 # mac_pre: 00:16:3e:3e:aa
@@ -195,7 +195,7 @@ def cobbler_setup(config):
     hostip = "%s.1" % config['network']['ip_pre']
     arch = get_profile_arch()
     profile = "maas-precise-%s" % arch
-    
+
     cob = System(config, "zimmer")
     cobbler_url = "http://%s/cobbler_api" % cob.ipaddr
     print("Connecting to %s." % cobbler_url)

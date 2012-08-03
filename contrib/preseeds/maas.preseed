@@ -1,9 +1,9 @@
 # MAAS - Ubuntu Server Installation
-# * Minimal install 
+# * Minimal install
 # * Cloud-init for bare-metal
 # * maas_preseed snippet is expanded to provide cloud-init preseed data
 
-# Locale 
+# Locale
 d-i     debian-installer/locale string en_US.UTF-8
 
 # No splash
@@ -42,15 +42,15 @@ d-i     partman/default_filesystem string ext4
 d-i     base-installer/kernel/image     string linux-server
 
 # User Setup
-d-i	passwd/root-login	boolean false
-d-i	passwd/make-user	boolean true
-d-i	passwd/user-fullname	string ubuntu
-d-i	passwd/username	string ubuntu
-d-i	passwd/user-password-crypted password !
-d-i	passwd/user-uid	string 
-d-i	user-setup/allow-password-weak	boolean false
-d-i	user-setup/encrypt-home	boolean false
-d-i	passwd/user-default-groups	string adm cdrom dialout lpadmin plugdev sambashare
+d-i     passwd/root-login       boolean false
+d-i     passwd/make-user        boolean true
+d-i     passwd/user-fullname    string ubuntu
+d-i     passwd/username         string ubuntu
+d-i     passwd/user-password-crypted password !
+d-i     passwd/user-uid         string
+d-i     user-setup/allow-password-weak  boolean false
+d-i     user-setup/encrypt-home         boolean false
+d-i     passwd/user-default-groups      string adm cdrom dialout lpadmin plugdev sambashare
 
 # APT
 $SNIPPET('maas_proxy')
@@ -87,7 +87,7 @@ $SNIPPET('maas_client_packages')
 $SNIPPET('maas_preseed')
 
 # Post scripts. Executes late command and disables PXE
-d-i	preseed/late_command string true && \
-   	$SNIPPET('maas_sudoers') && \
-   	$SNIPPET('maas_disable_pxe') && \
-   	true
+d-i     preseed/late_command string true && \
+        $SNIPPET('maas_sudoers') && \
+        $SNIPPET('maas_disable_pxe') && \
+        true

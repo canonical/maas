@@ -51,8 +51,8 @@
             </a>
             {{ key.display_html }}
           </li>
-	{% empty %}
-	  No SSH key configured.
+        {% empty %}
+          No SSH key configured.
         {% endfor %}
       </ul>
       <a href="{% url 'prefs-add-sshkey' %}"
@@ -66,8 +66,8 @@
         <ul>
           {% for field in profile_form %}
             {% include "maasserver/form_field.html" %}
-	  {% endfor %}
-	</ul>
+          {% endfor %}
+        </ul>
         <input type="hidden" name="profile_submit" value="1" />
         <input type="submit" class="button right" value="Save" />
       </form>

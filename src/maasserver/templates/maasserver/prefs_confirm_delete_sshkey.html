@@ -8,7 +8,7 @@
         <h2>
           Are you sure you want to delete the following key?<br />
         </h2>
-	<p style="word-wrap: break-word; width: 700px;">{{ key }}</p>
+        <p style="word-wrap: break-word; width: 700px;">{{ key }}</p>
         <p>This action is permanent and can not be undone.</p>
         <p>
           <form action="." method="post">{% csrf_token %}
@@ -19,4 +19,3 @@
         </p>
     </div>
 {% endblock %}
-
