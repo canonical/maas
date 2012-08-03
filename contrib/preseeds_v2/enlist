@@ -1,9 +1,10 @@
-d-i preseed/early_command string anna-install maas-enlist-udeb
-d-i maas-enlist/skip-maas-discover boolean true
-d-i maas-enlist/maas-server-address string {{server_host}}
-d-i maas-enlist/host-name string
+#cloud-config
+datasource:
+  MAAS:
+    timeout : 50
+    max_wait : 120
+    # there are no default values for metadata_url or oauth credentials
+    # If no credentials are present, non-authed attempts will be made.
+    metadata_url: http://{{server_host}}/MAAS/metadata/enlist
 
-d-i     mirror/country string manual
-d-i     mirror/http/hostname string archive.ubuntu.com
-d-i     mirror/http/directory string /ubuntu
-d-i     mirror/http/proxy string http://{{server_host}}:8000/
+output: {all: '| tee -a /var/log/cloud-init-output.log'}

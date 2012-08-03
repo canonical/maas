@@ -379,7 +379,7 @@ class TestPreseedMethods(TestCase):
 
     def test_get_enlist_preseed_returns_enlist_preseed(self):
         preseed = get_enlist_preseed()
-        self.assertIn('maas-enlist-udeb', preseed)
+        self.assertTrue(preseed.startswith('#cloud-config'))
 
     def test_get_preseed_returns_commissioning_preseed(self):
         node = factory.make_node(status=NODE_STATUS.COMMISSIONING)

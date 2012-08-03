@@ -21,6 +21,9 @@ from django.conf.urls.defaults import (
 from maasserver.api_auth import api_auth
 from metadataserver.api import (
     AnonMetaDataHandler,
+    EnlistMetaDataHandler,
+    EnlistUserDataHandler,
+    EnlistVersionIndexHandler,
     IndexHandler,
     MetaDataHandler,
     UserDataHandler,
@@ -44,6 +47,11 @@ meta_data_by_mac_handler = Resource(MetaDataHandler)
 user_data_by_mac_handler = Resource(UserDataHandler)
 version_index_by_mac_handler = Resource(VersionIndexHandler)
 
+# Handlers for the anonymous enlistment metadata service
+enlist_meta_data_handler = Resource(EnlistMetaDataHandler)
+enlist_user_data_handler = Resource(EnlistUserDataHandler)
+enlist_index_handler = Resource(IndexHandler)
+enlist_version_index_handler = Resource(EnlistVersionIndexHandler)
 
 # Normal metadata access, available to a node querying its own metadata.
 node_patterns = patterns(
@@ -107,8 +115,26 @@ by_mac_patterns = patterns(
         name='metadata-version-by-mac'),
     )
 
+# Anonymous enlistment entry point
+enlist_metadata_patterns = patterns(
+    '',
+    url(
+        r'^/*enlist/(?P<version>[^/]+)/meta-data/(?P<item>.*)$',
+        enlist_meta_data_handler,
+        name='enlist-metadata-meta-data'),
+    url(
+        r'^/*enlist/(?P<version>[^/]+)/user-data$', enlist_user_data_handler,
+        name='enlist-metadata-user-data'),
+    url(
+        r'^/*enlist/(?P<version>[^/]+)[/]*$', enlist_version_index_handler,
+        name='enlist-version'),
+    url(r'^/*enlist[/]*$', enlist_index_handler, name='enlist'),
+    )
+
 
 # URL patterns.  The anonymous patterns are listed first because they're
 # so recognizable: there's no chance of a regular metadata access being
 # mistaken for one of these based on URL pattern match.
-urlpatterns = by_id_patterns + by_mac_patterns + node_patterns
+urlpatterns = (
+    enlist_metadata_patterns + by_id_patterns + by_mac_patterns +
+    node_patterns)

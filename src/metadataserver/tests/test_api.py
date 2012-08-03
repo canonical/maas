@@ -606,3 +606,66 @@ class TestViews(DjangoTestCase, ProvisioningFakeFactory):
              response["Content-Type"],
              response.content),
             response)
+
+
+class TestEnlistViews(DjangoTestCase, ProvisioningFakeFactory):
+    """Tests for the enlistment metadata views."""
+
+    def test_get_instance_id(self):
+        # instance-id must be available
+        md_url = reverse('enlist-metadata-meta-data',
+            args=['latest', 'instance-id'])
+        response = self.client.get(md_url)
+        self.assertEqual(
+            (httplib.OK, "text/plain"),
+            (response.status_code, response["Content-Type"]))
+        # just insist content is non-empty. It doesn't matter what it is.
+        self.assertTrue(response.content)
+
+    def test_get_hostname(self):
+        # instance-id must be available
+        md_url = reverse('enlist-metadata-meta-data',
+            args=['latest', 'local-hostname'])
+        response = self.client.get(md_url)
+        self.assertEqual(
+            (httplib.OK, "text/plain"),
+            (response.status_code, response["Content-Type"]))
+        # just insist content is non-empty. It doesn't matter what it is.
+        self.assertTrue(response.content)
+
+    def test_metadata_bogus_is_404(self):
+        md_url = reverse('enlist-metadata-meta-data',
+            args=['latest', 'BOGUS'])
+        response = self.client.get(md_url)
+        self.assertEqual(httplib.NOT_FOUND, response.status_code)
+
+    def test_get_userdata(self):
+        # instance-id must be available
+        ud_url = reverse('enlist-metadata-user-data', args=['latest'])
+        fake_preseed = factory.getRandomString()
+        self.patch(api, "get_enlist_userdata", lambda: fake_preseed)
+        response = self.client.get(ud_url)
+        self.assertEqual(
+            (httplib.OK, "text/plain", fake_preseed),
+            (response.status_code, response["Content-Type"], response.content),
+            response)
+
+    def test_metadata_list(self):
+        # /enlist/latest/metadata request should list available keys
+        md_url = reverse('enlist-metadata-meta-data', args=['latest', ""])
+        response = self.client.get(md_url)
+        self.assertEqual(
+            (httplib.OK, "text/plain"),
+            (response.status_code, response["Content-Type"]))
+        self.assertTrue('instance-id' in response.content.splitlines())
+        self.assertTrue('local-hostname' in response.content.splitlines())
+
+    def test_api_version_contents_list(self):
+        # top level api (/enlist/latest/) must list 'metadata' and 'userdata'
+        md_url = reverse('enlist-version', args=['latest'])
+        response = self.client.get(md_url)
+        self.assertEqual(
+            (httplib.OK, "text/plain"),
+            (response.status_code, response["Content-Type"]))
+        self.assertTrue('user-data' in response.content.splitlines())
+        self.assertTrue('meta-data' in response.content.splitlines())

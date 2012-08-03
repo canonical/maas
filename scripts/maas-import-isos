@@ -109,9 +109,9 @@ add_enlist_profile(){
 
         # Check what release to use as parent profile
         if [ `echo $STABLE "precise" | awk '{ print ($1 >= $2) ? "True" : "False" }'` = True ]; then
-                PARENT_PROFILE="$STABLE-i386"
+                PARENT_PROFILE="maas-$STABLE-i386-commissioning"
         else
-                PARENT_PROFILE="$DEVEL-i386"
+                PARENT_PROFILE="maas-$DEVEL-i386-commissioning"
         fi
 
         # Add enlist profile

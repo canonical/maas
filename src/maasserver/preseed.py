@@ -44,6 +44,15 @@ def get_enlist_preseed():
     return render_preseed(None, PRESEED_TYPE.ENLIST)
 
 
+def get_enlist_userdata():
+    """Return the enlistment preseed.
+
+    :return: The rendered enlistment user-data string.
+    :rtype: basestring.
+    """
+    return render_preseed(None, PRESEED_TYPE.ENLIST_USERDATA)
+
+
 # XXX: rvb 2012-06-21 bug=1013146:  'precise' is hardcoded here.
 def get_preseed(node, release="precise"):
     """Return the preseed for a given node.  Depending on the node's status

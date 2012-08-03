@@ -44,6 +44,7 @@ from maasserver.models import (
     )
 from maasserver.preseed import (
     get_enlist_preseed,
+    get_enlist_userdata,
     get_preseed,
     )
 from metadataserver.models import (
@@ -326,6 +327,47 @@ class UserDataHandler(MetadataViewHandler):
                 mimetype='application/octet-stream')
         except NodeUserData.DoesNotExist:
             raise MAASAPINotFound("No user data available for this node.")
+
+
+class EnlistMetaDataHandler(BaseHandler):
+    """this has to handle the 'meta-data' portion of the meta-data api
+    for enlistment only.  It should mimic the read-only portion
+    of /VersionIndexHandler"""
+
+    allowed_methods = ('GET',)
+
+    data = {
+        'instance-id': 'i-maas-enlistment',
+        'local-hostname': "maas-enlisting-node",
+    }
+
+    def read(self, request, version, item=None):
+        check_version(version)
+
+        # Requesting the list of attributes, not any particular attribute.
+        if item is None or len(item) == 0:
+            return make_list_response(sorted(self.data.keys()))
+
+        if item not in self.data:
+            raise MAASAPINotFound("Unknown metadata attribute: %s" % item)
+
+        return make_text_response(self.data[item])
+
+
+class EnlistUserDataHandler(BaseHandler):
+    """User-data for the enlistment environment"""
+
+    def read(self, request, version):
+        check_version(version)
+        return HttpResponse(get_enlist_userdata(), mimetype="text/plain")
+
+
+class EnlistVersionIndexHandler(BaseHandler):
+    allowed_methods = ('GET',)
+    fields = ('meta-data', 'user-data')
+
+    def read(self, request, version):
+        return make_list_response(sorted(self.fields))
 
 
 @api_operations

@@ -1,0 +1,11 @@
+#cloud-config
+
+# could/should set local mirror here or proxy here
+# apt_proxy: http://{{server_host}}:8000/
+# apt_proxy: http://{{server_host}}:8000/
+packages: [ maas-enlist ]
+output: {all: '| tee -a /var/log/cloud-init-output.log'}
+runcmd:
+ - [ maas-enlist, --serverurl, {{server_host}}, --interface, eth0 ]
+
+## the interface above needs probably to be done by 'auto'

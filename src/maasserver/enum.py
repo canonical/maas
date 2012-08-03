@@ -122,3 +122,4 @@ class PRESEED_TYPE:
     DEFAULT = ''
     COMMISSIONING = 'commissioning'
     ENLIST = 'enlist'
+    ENLIST_USERDATA = 'enlist_userdata'
