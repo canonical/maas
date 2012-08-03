@@ -2,10 +2,32 @@
 
 # could/should set local mirror here or proxy here
 # apt_proxy: http://{{server_host}}:8000/
-# apt_proxy: http://{{server_host}}:8000/
+
+misc_bucket:
+ - &maas_enlist |
+   # we could obtain the interface that booted from the kernel cmdline
+   # thanks to 'IPAPPEND' (http://www.syslinux.org/wiki/index.php/SYSLINUX)
+   host="{{server_host}}"
+   maas-enlist --serverurl "$host" >/tmp/enlist.out
+   if [ $? -eq 0 ]; then
+      echo
+      echo "=== $(date -R): successfully enlisted system to $host ==="
+      cat  /tmp/enlist.out
+      echo =============================================
+      sleep 10
+   else
+      # we could set a password here and allow user at console to login
+      echo
+      echo =============================================
+      echo "failed to enlist system maas server '$host'"
+      echo "sleeping 60 seconds then poweroff"
+      cat /tmp/enlist.out
+      echo =============================================
+      sleep 60
+   fi
+   poweroff
+
 packages: [ maas-enlist ]
 output: {all: '| tee -a /var/log/cloud-init-output.log'}
 runcmd:
- - [ maas-enlist, --serverurl, {{server_host}}, --interface, eth0 ]
-
-## the interface above needs probably to be done by 'auto'
+ - [ sh, -c, *maas_enlist ]
