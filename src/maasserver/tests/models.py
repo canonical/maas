@@ -12,6 +12,7 @@ from __future__ import (
 __metaclass__ = type
 __all__ = [
     'JSONFieldModel',
+    'FieldChangeTestModel',
     ]
 
 from django.db.models import (
@@ -35,3 +36,8 @@ class TimestampedModelTestModel(TimestampedModel):
     # This model inherits from TimestampedModel so it will have a 'created'
     # field and an 'updated' field.
     pass
+
+
+class FieldChangeTestModel(Model):
+    name1 = CharField(max_length=255, unique=False)
+    name2 = CharField(max_length=255, unique=False)
