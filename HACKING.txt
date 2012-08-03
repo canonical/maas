@@ -30,7 +30,7 @@ MAAS depends on Postgres 9.1, RabbitMQ, Apache 2, python-dev, avahi-daemon,
 daemontools, pyinotify, and many other packages.  To install everything that's
 needed for running and developing MAAS, run::
 
-    $ make install_dependencies
+    $ make install-dependencies
 
 Careful: this will "apt-get install" many packages on your system, under
 "sudo."  It may prompt you for your password.
