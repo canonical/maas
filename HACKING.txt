@@ -210,13 +210,12 @@ Set the iSCSI config to include the MAAS configs::
 Now run ``maas-import-pxe-files`` to download current Ubuntu releases for
 installing nodes::
 
-    $ sudo http_proxy=$http_proxy PATH=$PATH:./bin \
+    $ sudo http_proxy=$http_proxy PATH=$PATH:./bin:./scripts \
         ./scripts/maas-import-pxe-files
 
 This may download dozens or hundreds of megabytes, so depending on your
 network connection it may take a while.
 
-You need the PATH addition because the script will want to run bin/maas.
 The http_proxy variable is only needed if you're downloading through a
 proxy; "sudo" wouldn't pass it on to the script without the assignment.
 Or if you don't have it set but do want to download through a proxy, pass
