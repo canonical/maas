@@ -2317,13 +2317,13 @@ class TestPXEConfigAPI(AnonAPITestCase):
 
     def test_pxeconfig_adds_some_parameters(self):
         params_in = self.get_params()
-        optional_params = {'release', 'purpose'}
-        for param in optional_params:
+        added_params = {'release', 'purpose'}
+        for param in added_params:
             if param in params_in:
                 del params_in[param]
         params_out = self.get_pxeconfig(params_in)
         self.assertEqual(
-            set(params_out).difference(params_in), optional_params)
+            set(params_out).difference(params_in), added_params)
         # The release is always "precise".
         self.assertEqual('precise', params_out['release'])
 

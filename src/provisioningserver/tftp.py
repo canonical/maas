@@ -66,14 +66,14 @@ class TFTPBackend(FilesystemSynchronousBackend):
     get_page = staticmethod(getPage)
     render_pxe_config = staticmethod(render_pxe_config)
 
-    # This is how PXELINUX represents a MAC address. See
-    # http://www.syslinux.org/wiki/index.php/PXELINUX.
+    # PXELINUX represents a MAC address in IEEE 802 hyphen-separated
+    # format.  See http://www.syslinux.org/wiki/index.php/PXELINUX.
     re_mac_address_octet = r'[0-9a-f]{2}'
     re_mac_address = re.compile(
         "-".join(repeat(re_mac_address_octet, 6)))
 
     # We assume that the ARP HTYPE (hardware type) that PXELINUX sends is
-    # alway Ethernet.
+    # always Ethernet.
     re_config_file = re.compile(
         r'''
         ^/?
