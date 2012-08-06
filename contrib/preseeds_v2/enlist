@@ -5,6 +5,6 @@ datasource:
     max_wait : 120
     # there are no default values for metadata_url or oauth credentials
     # If no credentials are present, non-authed attempts will be made.
-    metadata_url: http://{{server_host}}/MAAS/metadata/enlist
+    metadata_url: {{metadata_enlist_url}}
 
 output: {all: '| tee -a /var/log/cloud-init-output.log'}

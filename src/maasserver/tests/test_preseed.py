@@ -306,7 +306,8 @@ class TestPreseedContext(TestCase):
         release = factory.getRandomString()
         context = get_preseed_context(node, release)
         self.assertItemsEqual(
-            ['node', 'release', 'server_host', 'preseed_data',
+            ['node', 'release', 'metadata_enlist_url',
+             'server_host', 'preseed_data',
              'node_disable_pxe_url', 'node_disable_pxe_data'],
             context)
 
@@ -317,7 +318,7 @@ class TestPreseedContext(TestCase):
         release = factory.getRandomString()
         context = get_preseed_context(None, release)
         self.assertItemsEqual(
-            ['release', 'server_host'],
+            ['release', 'metadata_enlist_url', 'server_host'],
             context)
 
 
