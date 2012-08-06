@@ -77,6 +77,7 @@ from maasserver.testing.testcase import (
     )
 from maasserver.utils import map_enum
 from maastesting.djangotestcase import TransactionTestCase
+from maastesting.matchers import ContainsAll
 from metadataserver.models import (
     NodeKey,
     NodeUserData,
@@ -87,6 +88,7 @@ from provisioningserver.enum import (
     POWER_TYPE_CHOICES,
     )
 from testtools.matchers import (
+    Contains,
     Equals,
     MatchesListwise,
     StartsWith,
@@ -2260,64 +2262,100 @@ class TestPXEConfigAPI(AnonAPITestCase):
                 'arch': "armhf",
                 'subarch': "armadaxp",
                 'mac': factory.make_mac_address().mac_address,
-                'append': factory.make_name("append"),
+                'append': "%s=%s" % (
+                    factory.make_name("opt"),
+                    factory.make_name("value"),
+                    ),
             }
 
     def get_optional_params(self):
         return ['subarch', 'mac']
 
-    def test_pxeconfig_returns_config(self):
-        params_in = self.get_params()
-        response = self.client.get(reverse('pxeconfig'), params_in)
+    def get_pxeconfig(self, params=None):
+        """Make a request to `pxeconfig`, and return its response dict."""
+        if params is None:
+            params = self.get_params()
+        response = self.client.get(reverse('pxeconfig'), params)
+        return json.loads(response.content)
+
+    def test_pxeconfig_returns_json(self):
+        response = self.client.get(reverse('pxeconfig'), self.get_params())
         self.assertThat(
             (
                 response.status_code,
                 response['Content-Type'],
-                response.content
+                response.content,
+                response.content,
             ),
             MatchesListwise(
                 (
                     Equals(httplib.OK),
                     Equals("application/json"),
                     StartsWith(b'{'),
+                    Contains('arch'),
                 )),
             response)
-        params_out = json.loads(response.content)
-        # Some parameters are unchanged.
-        params_unchanged = {"arch", "subarch"}
-        self.assertEqual(
-            {name: params_in[name] for name in params_unchanged},
-            {name: params_out[name] for name in params_unchanged})
-        # The append parameter is... appended to.
+
+    def test_pxeconfig_returns_complete_config(self):
         self.assertThat(
-            params_out["append"], StartsWith(
-                "%(append)s auto url=http://" % params_in))
-        # Some parameters are added.
-        params_added = {"release", "purpose"}
-        self.assertEqual(set(params_out).difference(params_in), params_added)
+            self.get_pxeconfig(),
+            ContainsAll([
+                'arch',
+                'subarch',
+                'append',
+                'release',
+                'purpose',
+                ]))
+
+    def test_pxeconfig_copies_some_parameters_from_request(self):
+        params_in = self.get_params()
+        params_out = self.get_pxeconfig(params_in)
+        copied_params = ['arch', 'subarch']
+        self.assertEqual(
+            {name: params_in[name] for name in copied_params},
+            {name: params_out[name] for name in copied_params})
+
+    def test_pxeconfig_adds_some_parameters(self):
+        params_in = self.get_params()
+        optional_params = {'release', 'purpose'}
+        for param in optional_params:
+            if param in params_in:
+                del params_in[param]
+        params_out = self.get_pxeconfig(params_in)
+        self.assertEqual(
+            set(params_out).difference(params_in), optional_params)
         # The release is always "precise".
-        self.assertEqual("precise", params_out["release"])
+        self.assertEqual('precise', params_out['release'])
+
+    def test_pxeconfig_appends_to_append_from_request(self):
+        params_in = self.get_params()
+        params_out = self.get_pxeconfig(params_in)
+        self.assertThat(
+            params_out['append'],
+            Contains("%(append)s auto url=http://" % params_in))
 
     def get_without_param(self, param):
+        """Request a `pxeconfig()` response, but omit `param` from request."""
         params = self.get_params()
         del params[param]
         return self.client.get(reverse('pxeconfig'), params)
 
-    def test_pxeconfig_missing_parameters(self):
+    def test_pxeconfig_handles_missing_parameters_appropriately(self):
         # Some parameters are optional, others are mandatory. The
         # absence of a mandatory parameter always results in a BAD
         # REQUEST response.
-        expected = {
+        expected_response_to_missing_parameter = {
             'arch': httplib.BAD_REQUEST,
             'subarch': httplib.OK,
             'mac': httplib.OK,
             'append': httplib.BAD_REQUEST,
             }
-        observed = {
+        observed_response = {
             param: self.get_without_param(param).status_code
             for param in self.get_params()
             }
-        self.assertEqual(expected, observed)
+        self.assertEqual(
+            expected_response_to_missing_parameter, observed_response)
 
     def test_compose_enlistment_preseed_url_links_to_enlistment_preseed(self):
         response = self.client.get(api.compose_enlistment_preseed_url())
