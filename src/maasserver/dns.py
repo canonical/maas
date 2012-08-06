@@ -21,7 +21,6 @@ __all__ = [
 import collections
 import logging
 import socket
-from urlparse import urlparse
 
 from django.conf import settings
 from django.db.models.signals import (
@@ -41,6 +40,7 @@ from maasserver.sequence import (
     INT_MAX,
     Sequence,
     )
+from maasserver.server_address import get_maas_facing_server_address
 from maasserver.signals import connect_to_field_change
 from netaddr import (
     IPAddress,
@@ -65,18 +65,20 @@ def is_dns_enabled():
 
 
 class DNSException(MAASException):
-    """An error occured when setting up MAAS' DNS server."""
+    """An error occured when setting up MAAS's DNS server."""
 
 
 def warn_loopback(ip):
     """Warn if the given IP address is in the loopback network."""
     if IPAddress(ip) in IPNetwork('127.0.0.1/8'):
         logging.getLogger('maas').warn(
-            "The DNS server address used will be '%s'.  That address is "
-            "in the loopback network.  This might not be a problem "
-            "if you're not using MAAS' DNS features or if "
-            "you don't rely on this information.  Be sure to set the "
-            "setting DEFAULT_MAAS_URL." % ip)
+            "The DNS server will use the address '%s',  which is inside the "
+            "loopback network.  This may not be a problem if you're not using "
+            "MAAS's DNS features or if you don't rely on this information.  "
+            "Be sure to configure the DEFAULT_MAAS_URL setting in MAAS's "
+            "settings.py (or demo.py/development.py if you are running a "
+            "development system)."
+            % ip)
 
 
 def get_dns_server_address():
@@ -85,24 +87,18 @@ def get_dns_server_address():
     That address is derived from DEFAULT_MAAS_URL in order to get a sensible
     default and at the same time give a possibility to the user to change this.
     """
-    host = urlparse(settings.DEFAULT_MAAS_URL).netloc.split(':')[0]
-
-    # Try to resolve the hostname, if `host` is alread an IP address, it
-    # will simpply be returned by `socket.gethostbyname`.
     try:
-        ip = socket.gethostbyname(host)
-        warn_loopback(ip)
-        return ip
-    except socket.error:
-        pass
+        ip = get_maas_facing_server_address()
+    except socket.error as e:
+        raise DNSException(
+            "Unable to find MAAS server IP address: %s.  "
+            "MAAS's DNS server requires this IP address for the NS records "
+            "in its zone files.  Make sure that the DEFAULT_MAAS_URL setting "
+            "has the correct hostname."
+            % e.strerror)
 
-    # No suitable address has been found.
-    raise DNSException(
-        "Unable to find a suitable IP for the MAAS server.  Such an IP "
-        "is required for MAAS' DNS features to work.  Make sure that the "
-        "setting DEFAULT_MAAS_URL is defined properly.  The IP in "
-        "DEFAULT_MAAS_URL is the one which will be used for the NS record "
-        "in MAAS' zone files.")
+    warn_loopback(ip)
+    return ip
 
 
 def dns_config_changed(sender, config, created, **kwargs):

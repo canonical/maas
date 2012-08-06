@@ -20,11 +20,9 @@ from maasserver.enum import (
     NODE_STATUS,
     PRESEED_TYPE,
     )
-from maasserver.models import Config
 from maasserver.preseed import (
     GENERIC_FILENAME,
     get_enlist_preseed,
-    get_maas_server_host,
     get_preseed,
     get_preseed_context,
     get_preseed_filenames,
@@ -298,19 +296,6 @@ class TestLoadPreseedTemplate(TestCase):
         template = load_preseed_template(node, prefix)
         self.assertRaises(
             TemplateNotFoundError, template.substitute)
-
-
-class TestGetMAASServerHost(TestCase):
-    """Tests for `get_maas_server_host`."""
-
-    def test_get_maas_server_host_returns_host(self):
-        Config.objects.set_config('maas_url', 'http://example.com/path')
-        self.assertEqual('example.com', get_maas_server_host())
-
-    def test_get_maas_server_host_strips_out_port(self):
-        Config.objects.set_config(
-            'maas_url', 'http://example.com:%d' % factory.getRandomPort())
-        self.assertEqual('example.com', get_maas_server_host())
 
 
 class TestPreseedContext(TestCase):

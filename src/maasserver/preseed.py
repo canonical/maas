@@ -19,15 +19,14 @@ from collections import namedtuple
 from os.path import join
 from pipes import quote
 from urllib import urlencode
-from urlparse import urlparse
 
 from django.conf import settings
 from maasserver.enum import (
     NODE_STATUS,
     PRESEED_TYPE,
     )
-from maasserver.models import Config
 from maasserver.provisioning import compose_preseed
+from maasserver.server_address import get_maas_facing_server_host
 from maasserver.utils import absolute_reverse
 import tempita
 
@@ -200,12 +199,6 @@ def load_preseed_template(node, prefix, release="precise"):
     return get_template(prefix, None, default=True)
 
 
-def get_maas_server_host():
-    """Return MAAS' server name."""
-    maas_url = Config.objects.get_config('maas_url')
-    return urlparse(maas_url).netloc.split(':')[0]
-
-
 # XXX: rvb 2012-06-19 bug=1013146:  'precise' is hardcoded here.
 def get_preseed_context(node, release="precise"):
     """Return the context dictionary to be used to render preseed templates
@@ -217,7 +210,7 @@ def get_preseed_context(node, release="precise"):
     :return: The context dictionary.
     :rtype: dict.
     """
-    server_host = get_maas_server_host()
+    server_host = get_maas_facing_server_host()
     context = {
         'release': release,
         'server_host': server_host,

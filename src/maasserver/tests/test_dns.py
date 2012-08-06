@@ -19,16 +19,9 @@ import socket
 
 from django.conf import settings
 from django.core.management import call_command
-from maasserver.dns import (
-    add_zone,
-    change_dns_zones,
-    DNSException,
-    get_dns_server_address,
-    get_zone,
-    is_dns_enabled,
-    next_zone_serial,
-    write_full_dns_config,
-    zone_serial,
+from maasserver import (
+    dns,
+    server_address,
     )
 from maasserver.models import Config
 from maasserver.models.dhcplease import (
@@ -59,7 +52,7 @@ class TestDNSUtilities(TestCase):
 
     def test_zone_serial_parameters(self):
         self.assertThat(
-            zone_serial,
+            dns.zone_serial,
             MatchesStructure.byEquality(
                 maxvalue=2 ** 32 - 1,
                 minvalue=1,
@@ -68,10 +61,10 @@ class TestDNSUtilities(TestCase):
             )
 
     def test_next_zone_serial_returns_sequence(self):
-        initial = int(next_zone_serial())
+        initial = int(dns.next_zone_serial())
         self.assertSequenceEqual(
             ['%0.10d' % i for i in range(initial + 1, initial + 11)],
-            [next_zone_serial() for i in range(initial, initial + 10)])
+            [dns.next_zone_serial() for i in range(initial, initial + 10)])
 
     def patch_DEFAULT_MAAS_URL_with_random_values(self, hostname=None):
         if hostname is None:
@@ -80,36 +73,27 @@ class TestDNSUtilities(TestCase):
             hostname, factory.getRandomPort(), factory.getRandomString())
         self.patch(settings, 'DEFAULT_MAAS_URL', url)
 
-    def test_get_dns_server_address_returns_IP(self):
-        ip = factory.getRandomIPAddress()
-        self.patch_DEFAULT_MAAS_URL_with_random_values(hostname=ip)
-        self.assertEqual(ip, get_dns_server_address())
-
-    def test_get_dns_server_address_returns_IP_if_IP_is_localhost(self):
-        ip = factory.getRandomIPInNetwork(IPNetwork('127.0.0.1/8'))
-        self.patch_DEFAULT_MAAS_URL_with_random_values(hostname=ip)
-        self.assertEqual(ip, get_dns_server_address())
-
     def test_get_dns_server_address_resolves_hostname(self):
         ip = factory.getRandomIPAddress()
         resolver = FakeMethod(result=ip)
-        self.patch(socket, 'gethostbyname', resolver)
-        hostname = factory.getRandomString()
+        self.patch(server_address, 'gethostbyname', resolver)
+        hostname = factory.getRandomString().lower()
         self.patch_DEFAULT_MAAS_URL_with_random_values(hostname=hostname)
         self.assertEqual(
             (ip, [(hostname, )]),
-            (get_dns_server_address(), resolver.extract_args()))
+            (dns.get_dns_server_address(), resolver.extract_args()))
 
     def test_get_dns_server_address_raises_if_hostname_doesnt_resolve(self):
-        resolver = FakeMethod(failure=socket.error)
-        self.patch(socket, 'gethostbyname', resolver)
+        self.patch(
+            dns, 'get_maas_facing_server_address',
+            FakeMethod(failure=socket.error))
         self.patch_DEFAULT_MAAS_URL_with_random_values()
-        self.assertRaises(DNSException, get_dns_server_address)
+        self.assertRaises(dns.DNSException, dns.get_dns_server_address)
 
     def test_get_zone_creates_DNSZoneConfig(self):
         nodegroup = factory.make_node_group()
         serial = random.randint(1, 100)
-        zone = get_zone(nodegroup, serial)
+        zone = dns.get_zone(nodegroup, serial)
         self.assertAttributes(
             zone,
             dict(
@@ -126,7 +110,7 @@ class TestDNSUtilities(TestCase):
         nodegroup = factory.make_node_group()
         nodegroup.subnet_mask = None
         nodegroup.save()
-        self.assertIsNone(get_zone(nodegroup))
+        self.assertIsNone(dns.get_zone(nodegroup))
 
 
 class TestDNSConfigModifications(TestCase):
@@ -210,7 +194,7 @@ class TestDNSConfigModifications(TestCase):
 
     def test_add_zone_loads_dns_zone(self):
         nodegroup, node, lease = self.create_nodegroup_with_lease()
-        add_zone(nodegroup)
+        dns.add_zone(nodegroup)
         self.assertDNSMatches(node.hostname, nodegroup.name, lease.ip)
 
     def test_add_zone_doesnt_write_config_if_dhcp_disabled(self):
@@ -219,30 +203,30 @@ class TestDNSConfigModifications(TestCase):
         nodegroup = factory.make_node_group()
         nodegroup.subnet_mask = None
         nodegroup.save()
-        add_zone(nodegroup)
+        dns.add_zone(nodegroup)
         self.assertEqual(0, recorder.call_count)
 
     def test_change_dns_zone_changes_dns_zone(self):
         nodegroup, _, _ = self.create_nodegroup_with_lease()
-        write_full_dns_config()
+        dns.write_full_dns_config()
         nodegroup, new_node, new_lease = (
             self.create_nodegroup_with_lease(
                 nodegroup=nodegroup, lease_number=2))
-        change_dns_zones(nodegroup)
+        dns.change_dns_zones(nodegroup)
         self.assertDNSMatches(new_node.hostname, nodegroup.name, new_lease.ip)
 
     def test_is_dns_enabled_return_false_if_DNS_CONNECT_False(self):
         self.patch(settings, 'DNS_CONNECT', False)
-        self.assertFalse(is_dns_enabled())
+        self.assertFalse(dns.is_dns_enabled())
 
     def test_is_dns_enabled_return_false_if_confif_enable_dns_False(self):
         Config.objects.set_config('enable_dns', False)
-        self.assertFalse(is_dns_enabled())
+        self.assertFalse(dns.is_dns_enabled())
 
     def test_is_dns_enabled_return_True(self):
         self.patch(settings, 'DNS_CONNECT', True)
         Config.objects.set_config('enable_dns', True)
-        self.assertTrue(is_dns_enabled())
+        self.assertTrue(dns.is_dns_enabled())
 
     def test_change_dns_zone_changes_doesnt_write_conf_if_dhcp_disabled(self):
         recorder = FakeMethod()
@@ -250,7 +234,7 @@ class TestDNSConfigModifications(TestCase):
         nodegroup = factory.make_node_group()
         nodegroup.subnet_mask = None
         nodegroup.save()
-        change_dns_zones(nodegroup)
+        dns.change_dns_zones(nodegroup)
         self.assertEqual(0, recorder.call_count)
 
     def test_write_full_dns_doesnt_write_config_if_dhcp_disabled(self):
@@ -259,24 +243,24 @@ class TestDNSConfigModifications(TestCase):
         nodegroup = factory.make_node_group()
         nodegroup.subnet_mask = None
         nodegroup.save()
-        write_full_dns_config()
+        dns.write_full_dns_config()
         self.assertEqual(0, recorder.call_count)
 
     def test_write_full_dns_loads_full_dns_config(self):
         nodegroup, node, lease = self.create_nodegroup_with_lease()
-        write_full_dns_config()
+        dns.write_full_dns_config()
         self.assertDNSMatches(node.hostname, nodegroup.name, lease.ip)
 
     def test_write_full_dns_can_write_inactive_config(self):
         nodegroup, node, lease = self.create_nodegroup_with_lease()
-        write_full_dns_config(active=False)
+        dns.write_full_dns_config(active=False)
         self.assertEqual([''], self.dig_resolve(generated_hostname(lease.ip)))
 
     def test_dns_config_has_NS_record(self):
         ip = factory.getRandomIPAddress()
         self.patch(settings, 'DEFAULT_MAAS_URL', 'http://%s/' % ip)
         nodegroup, node, lease = self.create_nodegroup_with_lease()
-        write_full_dns_config()
+        dns.write_full_dns_config()
         # Get the NS record for the zone 'nodegroup.name'.
         ns_record = dig_call(
             port=self.bind.config.port,
@@ -289,7 +273,7 @@ class TestDNSConfigModifications(TestCase):
     def test_is_dns_enabled_follows_DNS_CONNECT(self):
         rand_bool = factory.getRandomBoolean()
         self.patch(settings, "DNS_CONNECT", rand_bool)
-        self.assertEqual(rand_bool, is_dns_enabled())
+        self.assertEqual(rand_bool, dns.is_dns_enabled())
 
     def test_add_nodegroup_creates_DNS_zone(self):
         self.patch(settings, "DNS_CONNECT", True)
