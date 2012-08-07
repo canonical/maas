@@ -13,6 +13,7 @@ __metaclass__ = type
 __all__ = []
 
 import httplib
+import os
 
 from django.conf import settings
 from maasserver.api import get_boot_purpose
@@ -21,17 +22,32 @@ from maasserver.kernel_opts import (
     compose_kernel_command_line,
     compose_preseed_opt,
     compose_preseed_url,
+    get_last_directory,
+    ISCSI_TARGET_NAME_PREFIX,
     )
-from maasserver.server_address import get_maas_facing_server_address
 from maasserver.preseed import (
     get_enlist_preseed,
     get_preseed,
     )
+from maasserver.server_address import get_maas_facing_server_address
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
 from maastesting.matchers import ContainsAll
 from provisioningserver.pxe.tftppath import compose_image_path
 from testtools.matchers import StartsWith
+
+
+class TestUtilitiesKernelOpts(TestCase):
+
+    def test_get_last_directory(self):
+        root = self.make_dir()
+        dir1 = os.path.join(root, '20120405')
+        dir2 = os.path.join(root, '20120105')
+        dir3 = os.path.join(root, '20120403')
+        os.makedirs(dir1)
+        os.makedirs(dir2)
+        os.makedirs(dir3)
+        self.assertEqual(dir1, get_last_directory(root))
 
 
 class TestKernelOpts(TestCase):
@@ -131,17 +147,41 @@ class TestKernelOpts(TestCase):
                 factory.make_name('subarch'),
                 purpose=factory.make_name('purpose')))
 
+    def create_ephemeral_info(self, name, arch):
+        """Create a pseudo-real ephemeral info file."""
+        release = 'precise'
+        epheneral_info = """
+            release=precise
+            stream=ephemeral
+            label=release
+            serial=20120424
+            arch=i386
+            name=%s
+            """ % name
+        ephemeral_root = self.make_dir()
+        self.patch(settings, 'EPHEMERAL_ROOT', ephemeral_root)
+        ephemeral_dir = os.path.join(
+            ephemeral_root, release, 'ephemeral', arch,
+            factory.make_name('release'))
+        os.makedirs(ephemeral_dir)
+        factory.make_file(
+            ephemeral_dir, name='info', contents=epheneral_info)
+
     def test_compose_kernel_command_line_inc_purpose_opts_comm_node(self):
         # The result of compose_kernel_command_line includes the purpose
         # options for a "commissioning" node.
+        ephemeral_name = factory.make_name("ephemeral")
+        arch = factory.make_name('arch')
+        self.create_ephemeral_info(ephemeral_name, arch)
         node = factory.make_node()
         self.assertThat(
             compose_kernel_command_line(
-                node, factory.make_name('arch'),
+                node, arch,
                 factory.make_name('subarch'),
                 purpose="commissioning"),
             ContainsAll([
-                "iscsi_target_name=iqn.2004-05.com.ubuntu:maas",
+                "iscsi_target_name=%s:%s" % (
+                    ISCSI_TARGET_NAME_PREFIX, ephemeral_name),
                 "iscsi_target_port=3260",
                 "iscsi_target_ip=%s" % get_maas_facing_server_address(),
                 ]))
