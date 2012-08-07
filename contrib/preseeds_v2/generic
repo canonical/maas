@@ -19,6 +19,6 @@ cloud-init   cloud-init/local-cloud-config string manage_etc_hosts: localhost
 # Executes late command and disables PXE.
 d-i     preseed/late_command string true && \
     in-target sh -c 'f=$1; shift; echo $0 > $f && chmod 0440 $f $*' 'ubuntu ALL=(ALL) NOPASSWD: ALL' /etc/sudoers.d/maas && \
-    wget "{{node_disable_pxe_url|escape.shell}}" --post-data "{{node_disable_pxe_data|escape.shell}}" -O /dev/null && \
+    in-target wget --no-proxy "{{node_disable_pxe_url|escape.shell}}" --post-data "{{node_disable_pxe_data|escape.shell}}" -O /dev/null && \
     true
 {{enddef}}
