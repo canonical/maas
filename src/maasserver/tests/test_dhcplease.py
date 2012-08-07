@@ -150,36 +150,6 @@ class TestDHCPLeaseManager(TestCase):
         DHCPLease.objects.update_leases(nodegroup, {})
         self.assertEqual(1, recorder.call_count)
 
-    def test_add_missing_leases_returns_new_leases(self):
-        nodegroup = factory.make_node_group()
-        new_lease = {
-            factory.getRandomIPAddress(): factory.getRandomMACAddress(),
-        }
-        self.assertEqual(
-            new_lease.copy(),
-            DHCPLease.objects._add_missing_leases(
-                nodegroup, new_lease.copy()))
-
-    def test_add_missing_leases_returns_empty_dict_if_no_new_leases(self):
-        nodegroup = factory.make_node_group()
-        old_lease = factory.make_dhcp_lease(nodegroup)
-        self.assertEqual(
-            {},
-            DHCPLease.objects._add_missing_leases(
-                nodegroup, {old_lease.ip: old_lease.mac}))
-
-    def test_add_missing_leases_ignores_removed_leases(self):
-        nodegroup = factory.make_node_group()
-        old_lease = factory.make_dhcp_lease(nodegroup)
-        ignore_unused(old_lease)
-        new_lease = {
-            factory.getRandomIPAddress(): factory.getRandomMACAddress(),
-        }
-        self.assertEqual(
-            new_lease.copy(),
-            DHCPLease.objects._add_missing_leases(
-                nodegroup, new_lease.copy()))
-
     def test_get_hostname_ip_mapping_returns_mapping(self):
         nodegroup = factory.make_node_group()
         expected_mapping = {}

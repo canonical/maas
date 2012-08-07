@@ -71,30 +71,19 @@ class DHCPLeaseManager(Manager):
         `nodegroup` has a DHCPLease with the same `ip` field.  There
         can't be any DHCPLease entries with the same `ip` as in `leases`
         but a different `mac`.
-
-        :param nodegroup: :class:`NodeGroup` whose leases are being updated.
-        :param leases: A dict describing all current IP/MAC mappings as
-            managed by the node group's DHCP server.  Keys are IP
-            addresses, values are MAC addresses.
-        :return: A dict of leases (also mapping IP addresses to MAC addresses)
-            that have been newly created.  This will be a subset of `leases`.
         """
         leased_ips = self._get_leased_ips(nodegroup)
         new_leases = tuple(
             (nodegroup.id, ip, mac)
             for ip, mac in leases.items() if ip not in leased_ips)
-        if len(new_leases) == 0:
-            return {}
-
-        cursor = connection.cursor()
-        new_tuples = ", ".join(
-            cursor.mogrify("%s", [lease]) for lease in new_leases)
-        cursor.execute("""
-            INSERT INTO maasserver_dhcplease (nodegroup_id, ip, mac)
-            VALUES %s
-            RETURNING ip, mac
-            """ % new_tuples)
-        return dict(cursor.fetchall())
+        if len(new_leases) > 0:
+            cursor = connection.cursor()
+            new_tuples = ", ".join(
+                cursor.mogrify("%s", [lease]) for lease in new_leases)
+            cursor.execute("""
+                INSERT INTO maasserver_dhcplease (nodegroup_id, ip, mac)
+                VALUES %s
+                """ % new_tuples)
 
     def update_leases(self, nodegroup, leases):
         """Refresh our knowledge of a node group's IP mappings.
