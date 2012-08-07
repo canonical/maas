@@ -19,7 +19,6 @@ from collections import defaultdict
 import copy
 from socket import gethostname
 
-from django.conf import settings
 from django.db.models import (
     CharField,
     Manager,
@@ -39,9 +38,6 @@ def get_default_config():
         'after_commissioning': NODE_AFTER_COMMISSIONING_ACTION.DEFAULT,
         'check_compatibility': False,
         'node_power_type': POWER_TYPE.WAKE_ON_LAN,
-        # The host name or address where the nodes can access the metadata
-        # service of this MAAS.
-        'maas_url': settings.DEFAULT_MAAS_URL,
         # Ubuntu section configuration.
         'fallback_master_archive': False,
         'keep_mirror_list_uptodate': False,

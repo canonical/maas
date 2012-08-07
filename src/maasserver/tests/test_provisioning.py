@@ -16,7 +16,6 @@ from abc import ABCMeta
 from base64 import b64decode
 from xmlrpclib import Fault
 
-from django.conf import settings
 from maasserver import (
     components,
     provisioning,
@@ -36,10 +35,7 @@ from maasserver.exceptions import (
     ExternalComponentException,
     MAASAPIException,
     )
-from maasserver.models import (
-    Config,
-    Node,
-    )
+from maasserver.models import Node
 from maasserver.provisioning import (
     check_profiles,
     compose_cloud_init_preseed,
@@ -47,7 +43,6 @@ from maasserver.provisioning import (
     compose_preseed,
     DETAILED_PRESENTATIONS,
     get_all_profile_names,
-    get_metadata_server_url,
     get_profile_name,
     name_arch_in_cobbler_style,
     present_detailed_user_friendly_fault,
@@ -58,7 +53,10 @@ from maasserver.provisioning import (
     )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
-from maasserver.utils import map_enum
+from maasserver.utils import (
+    absolute_reverse,
+    map_enum,
+    )
 from metadataserver.models import NodeKey
 from provisioningserver.enum import (
     POWER_TYPE,
@@ -78,19 +76,6 @@ import yaml
 class TestHelpers(TestCase):
     """Tests for helpers that don't actually need any kind of pserv."""
 
-    def test_metadata_server_url_refers_to_own_metadata_service(self):
-        self.assertEqual(
-            "%s/metadata/"
-            % Config.objects.get_config('maas_url').rstrip('/'),
-            get_metadata_server_url())
-
-    def test_metadata_server_url_includes_script_name(self):
-        self.patch(settings, "FORCE_SCRIPT_NAME", "/MAAS")
-        self.assertEqual(
-            "%s/MAAS/metadata/"
-            % Config.objects.get_config('maas_url').rstrip('/'),
-            get_metadata_server_url())
-
     def test_compose_preseed_for_commissioning_node_produces_yaml(self):
         node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
         preseed = yaml.safe_load(compose_preseed(node))
@@ -107,13 +92,13 @@ class TestHelpers(TestCase):
 
     def test_compose_preseed_includes_metadata_url(self):
         node = factory.make_node(status=NODE_STATUS.READY)
-        self.assertIn(get_metadata_server_url(), compose_preseed(node))
+        self.assertIn(absolute_reverse('metadata'), compose_preseed(node))
 
     def test_compose_preseed_for_commissioning_includes_metadata_url(self):
         node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
         preseed = yaml.safe_load(compose_preseed(node))
         self.assertEqual(
-            get_metadata_server_url(),
+            absolute_reverse('metadata'),
             preseed['datasource']['MAAS']['metadata_url'])
 
     def test_compose_preseed_includes_node_oauth_token(self):

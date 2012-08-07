@@ -23,7 +23,6 @@ import itertools
 from logging import getLogger
 from textwrap import dedent
 from urllib import urlencode
-from urlparse import urljoin
 import xmlrpclib
 
 from django.conf import settings
@@ -44,10 +43,10 @@ from maasserver.enum import (
     )
 from maasserver.exceptions import ExternalComponentException
 from maasserver.models import (
-    Config,
     MACAddress,
     Node,
     )
+from maasserver.utils import absolute_reverse
 from provisioningserver.enum import PSERV_FAULT
 import yaml
 
@@ -331,16 +330,6 @@ def get_provisioning_api_proxy():
     return ProvisioningProxy(xmlrpc_proxy)
 
 
-def get_metadata_server_url():
-    """Return the URL where nodes can reach the metadata service."""
-    maas_url = Config.objects.get_config('maas_url')
-    if settings.FORCE_SCRIPT_NAME is None:
-        path = "metadata/"
-    else:
-        path = "%s/metadata/" % settings.FORCE_SCRIPT_NAME
-    return urljoin(maas_url, path)
-
-
 def compose_cloud_init_preseed(token):
     """Compose the preseed value for a node in any state but Commissioning."""
     credentials = urlencode({
@@ -353,7 +342,7 @@ def compose_cloud_init_preseed(token):
     # ks_meta, and it gets fed straight into debconf.
     metadata_preseed_items = [
         ('datasources', 'multiselect', 'MAAS'),
-        ('maas-metadata-url', 'string', get_metadata_server_url()),
+        ('maas-metadata-url', 'string', absolute_reverse('metadata')),
         ('maas-metadata-credentials', 'string', credentials),
         ]
 
@@ -371,7 +360,7 @@ def compose_commissioning_preseed(token):
     return "#cloud-config\n%s" % yaml.safe_dump({
         'datasource': {
             'MAAS': {
-                'metadata_url': get_metadata_server_url(),
+                'metadata_url': absolute_reverse('metadata'),
                 'consumer_key': token.consumer.key,
                 'token_key': token.key,
                 'token_secret': token.secret,
