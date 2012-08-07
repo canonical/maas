@@ -30,7 +30,8 @@ import tempita
 
 template_dir = path.dirname(__file__)
 template_filename = path.join(template_dir, "config.template")
-template = tempita.Template.from_filename(template_filename, encoding="UTF-8")
+template_localboot_filename = path.join(
+    template_dir, "config.localboot.template")
 
 
 def render_pxe_config(
@@ -47,6 +48,15 @@ def render_pxe_config(
         parameters generated in another component (for example, see
         `TFTPBackend.get_config_reader`) won't cause this to break.
     """
+    if purpose == "local":
+        template = tempita.Template.from_filename(
+            template_localboot_filename, encoding="UTF-8")
+        # No params in local boot pxeconfig, but using a template anyway
+        # in case we decide to do so in the future.
+        return template.substitute()
+
+    template = tempita.Template.from_filename(
+        template_filename, encoding="UTF-8")
     image_dir = compose_image_path(arch, subarch, release, purpose)
     # The locations of the kernel image and the initrd are defined by
     # update_install_files(), in scripts/maas-import-pxe-files.

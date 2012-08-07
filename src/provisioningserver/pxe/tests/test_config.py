@@ -84,3 +84,17 @@ class TestRenderPXEConfig(TestCase):
         output_after = render_pxe_config(**options)
         # The generated template is the same.
         self.assertEqual(output_before, output_after)
+
+    def test_render_pxe_config_with_local_purpose(self):
+        # If purpose is "local", the config.localboot.template should be
+        # used.
+        options = {
+            "arch": factory.make_name("arch"),
+            "subarch": factory.make_name("subarch"),
+            "release": factory.make_name("release"),
+            "purpose": "local",
+            "bootpath": factory.make_name("bootpath"),
+            "append": factory.make_name("append"),
+            }
+        output = render_pxe_config(**options)
+        self.assertIn("LOCALBOOT -1", output)
