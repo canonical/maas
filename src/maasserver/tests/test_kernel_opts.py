@@ -22,6 +22,7 @@ from maasserver.kernel_opts import (
     compose_preseed_opt,
     compose_preseed_url,
     )
+from maasserver.server_address import get_maas_facing_server_address
 from maasserver.preseed import (
     get_enlist_preseed,
     get_preseed,
@@ -118,6 +119,31 @@ class TestKernelOpts(TestCase):
                 "log_host=%s" % log_host,
                 "log_port=%s" % log_port,
                 "text priority=%s" % text_priority,
+                ]))
+
+    def test_compose_kernel_command_line_inc_purpose_opts(self):
+        # The result of compose_kernel_command_line includes the purpose
+        # options for a non "commissioning" node.
+        self.assertIn(
+            "netcfg/choose_interface=auto",
+            compose_kernel_command_line(
+                None, factory.make_name('arch'),
+                factory.make_name('subarch'),
+                purpose=factory.make_name('purpose')))
+
+    def test_compose_kernel_command_line_inc_purpose_opts_comm_node(self):
+        # The result of compose_kernel_command_line includes the purpose
+        # options for a "commissioning" node.
+        node = factory.make_node()
+        self.assertThat(
+            compose_kernel_command_line(
+                node, factory.make_name('arch'),
+                factory.make_name('subarch'),
+                purpose="commissioning"),
+            ContainsAll([
+                "iscsi_target_name=iqn.2004-05.com.ubuntu:maas",
+                "iscsi_target_port=3260",
+                "iscsi_target_ip=%s" % get_maas_facing_server_address(),
                 ]))
 
     def test_compose_enlistment_preseed_url_links_to_enlistment_preseed(self):

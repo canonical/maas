@@ -86,6 +86,28 @@ def compose_logging_opts():
         ]
 
 
+def get_ephemeral_name(release, arch):
+    # TODO: do something real here.
+    return "maas-precise-12.04-i386-ephemeral-20120424"
+
+
+def compose_purpose_opts(release, arch, purpose):
+    if purpose == "commissioning":
+        target_name_prefix = "iqn.2004-05.com.ubuntu:maas"
+        return [
+            "iscsi_target_name=%s:%s" % (
+                target_name_prefix, get_ephemeral_name(release, arch)),
+            "ip=dhcp",
+            "ro root=LABEL=cloudimg-rootfs",
+            "iscsi_target_ip=%s" % get_maas_facing_server_address(),
+            "iscsi_target_port=3260",
+            ]
+    else:
+        return [
+            "netcfg/choose_interface=auto"
+            ]
+
+
 def compose_kernel_command_line(node, arch, subarch, purpose):
     """Generate a line of kernel options for booting `node`.
 
@@ -104,5 +126,6 @@ def compose_kernel_command_line(node, arch, subarch, purpose):
         compose_domain_opt(node),
         compose_locale_opt(),
         ]
+    options += compose_purpose_opts(release, arch, purpose)
     options += compose_logging_opts()
     return ' '.join(options)
