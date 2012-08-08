@@ -248,13 +248,14 @@ EOF
         rmtar="$tarball"
     fi
 
-    # extract
+    # Extract the tarball.
     exdir="$wd/.xx"
     mkdir -p "$exdir" &&
         debug 1 "extracting tarball" &&
         tar -Sxzf - -C  "$exdir" < "$tarball" ||
         { error "failed to extract tarball from $furl"; return 1; }
 
+    # Look for our files in the extracted tarball.
     local x="" img="" kernel="" initrd=""
     for x in "$exdir/"*.img; do
         [ -f "$x" ] && img="$x" && break
@@ -268,17 +269,18 @@ EOF
         [ -f "$x" ] && initrd="$x" && break
     done
 
+    # Rename/move files extracted from tarballs to the target dir.
     [ -n "$img" ] || { error "failed to find image in $furl"; return 1; }
     mv "$img" "$wd/disk.img" ||
         { error "failed to move extracted image to $wd/disk.img"; return 1; }
 
-    [ -z "$kernel" ] || mv "$kernel" "$wd/kernel" ||
-        { error "failed to move extracted kernel to $wd/kernel"; return 1; }
+    [ -z "$kernel" ] || mv "$kernel" "$wd/linux" ||
+        { error "failed to move extracted kernel to $wd/linux"; return 1; }
 
-    [ -z "$initrd" ] || mv "$initrd" "$wd/initrd" ||
-        { error "failed to move extracted initrd to $wd/initrd"; return 1; }
+    [ -z "$initrd" ] || mv "$initrd" "$wd/initrd.gz" ||
+        { error "failed to move extracted initrd to $wd/initrd.gz"; return 1; }
 
-    rm -Rf "$exdir" || { error "failed to cleanup extract dir"; return 1; }
+    rm -Rf "$exdir" || { error "failed to cleanup extraction dir"; return 1; }
     { [ -z "$rmtar" ] || rm "$rmtar"; } ||
         { error "failed to remove temporary tarball $rmtar"; return 1; }
 
