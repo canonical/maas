@@ -35,8 +35,9 @@ EPH_KOPTS_ROOT="root=LABEL=cloudimg-rootfs ro"
 EPH_KOPTS_LOGGING="log_host=@@server_ip@@ log_port=514"
 KSDIR="/var/lib/cobbler/kickstarts"
 KICKSTART="$KSDIR/maas-commissioning.preseed"
-SYS_TGT_CONF="/etc/tgt/targets.conf"
 fi
+
+SYS_TGT_CONF="/etc/tgt/targets.conf"
 
 # TODO: What's this for?  If set, it gets run on a downloaded disk.img,
 # kernel, and initrd.
