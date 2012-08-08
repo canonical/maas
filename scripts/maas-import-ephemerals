@@ -474,7 +474,9 @@ fi
 updates=0
 for release in $RELEASES; do
     for arch in $ARCHES; do
-        arch2cob "$arch"; arch_c=$_RET
+        if [ -z "$NO_COBBLER" ]; then
+            arch2cob "$arch"; arch_c=$_RET
+        fi
         arch2u "$arch"; arch_u=$_RET
 
         query_local "$arch_u" "$release" "$BUILD_NAME" ||
