@@ -95,14 +95,12 @@ class TestConfigMasterDHCP(TestCase):
             call_command, 'config_master_dhcp', clear=True, ensure=True)
 
     def test_ensure_creates_master_nodegroup_without_dhcp_settings(self):
-        NodeGroup.objects._delete_master()
         call_command('config_master_dhcp', ensure=True)
         self.assertThat(
             NodeGroup.objects.get(name='master'),
             MatchesStructure.fromExample(make_cleared_dhcp_settings()))
 
     def test_ensure_leaves_cleared_settings_cleared(self):
-        NodeGroup.objects._delete_master()
         call_command('config_master_dhcp', clear=True)
         call_command('config_master_dhcp', ensure=True)
         self.assertThat(
@@ -110,7 +108,6 @@ class TestConfigMasterDHCP(TestCase):
             MatchesStructure.fromExample(make_cleared_dhcp_settings()))
 
     def test_ensure_leaves_dhcp_settings_intact(self):
-        NodeGroup.objects._delete_master()
         settings = make_dhcp_settings()
         call_command('config_master_dhcp', **settings)
         call_command('config_master_dhcp', ensure=True)

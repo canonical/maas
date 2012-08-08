@@ -37,3 +37,7 @@ class TestNodeGroupUser(TestCase):
         worker_user = get_worker_user()
         self.assertIn(worker_user.username, SYSTEM_USERS)
         self.assertRaises(UserProfile.DoesNotExist, worker_user.get_profile)
+
+    def test_get_worker_user_caches_user(self):
+        get_worker_user()
+        self.assertNumQueries(0, get_worker_user)

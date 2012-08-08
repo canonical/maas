@@ -31,9 +31,6 @@ from provisioningserver.omshell import generate_omapi_key
 from provisioningserver.tasks import write_dhcp_config
 
 
-worker_user_name = 'maas-nodegroup-worker'
-
-
 class NodeGroupManager(Manager):
     """Manager for the NodeGroup class.
 
@@ -89,10 +86,6 @@ class NodeGroupManager(Manager):
             Node.objects.filter(nodegroup=None).update(nodegroup=master)
 
         return master
-
-    def _delete_master(self):
-        """For use by tests: delete the master nodegroup."""
-        self.filter(name='master').delete()
 
     def get_by_natural_key(self, name):
         """For Django, a node group's name is a natural key."""

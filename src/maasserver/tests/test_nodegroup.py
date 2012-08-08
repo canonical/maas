@@ -96,7 +96,6 @@ class TestNodeGroupManager(TestCase):
         self.assertEqual(key, nodegroup.dhcp_key)
 
     def test_ensure_master_creates_minimal_master_nodegroup(self):
-        NodeGroup.objects._delete_master()
         self.assertThat(
             NodeGroup.objects.ensure_master(),
             MatchesStructure.fromExample({
@@ -110,24 +109,20 @@ class TestNodeGroupManager(TestCase):
             }))
 
     def test_ensure_master_writes_master_nodegroup_to_database(self):
-        NodeGroup.objects._delete_master()
         master = NodeGroup.objects.ensure_master()
         self.assertEqual(
             master.id, NodeGroup.objects.get(name=master.name).id)
 
     def test_ensure_master_creates_dhcp_key(self):
-        NodeGroup.objects._delete_master()
         master = NodeGroup.objects.ensure_master()
         self.assertThat(len(master.dhcp_key), GreaterThan(20))
 
     def test_ensure_master_returns_same_nodegroup_every_time(self):
-        NodeGroup.objects._delete_master()
         self.assertEqual(
             NodeGroup.objects.ensure_master().id,
             NodeGroup.objects.ensure_master().id)
 
     def test_ensure_master_does_not_return_other_nodegroup(self):
-        NodeGroup.objects._delete_master()
         self.assertNotEqual(
             NodeGroup.objects.new(
                 factory.make_name('nodegroup'), factory.getRandomIPAddress()),

@@ -19,19 +19,18 @@ __all__ = [
     ]
 
 from django.contrib.auth.models import User
+from django.core.cache import cache
 
 
 user_name = 'maas-nodegroup-worker'
 
-
-# Cached, shared reference to this special user.  Keep internal to this
-# module.
-worker_user = None
+# Cache key for the worker user.
+WORKER_USER_CACHE_KEY = 'worker-user-maas-cache-key'
 
 
 def get_worker_user():
     """Get the system user representing the node-group workers."""
-    global worker_user
+    worker_user = cache.get(WORKER_USER_CACHE_KEY)
     if worker_user is None:
         worker_user, created = User.objects.get_or_create(
             username=user_name, defaults=dict(
@@ -39,4 +38,5 @@ def get_worker_user():
                 last_name="Special user",
                 email="maas-nodegroup-worker@localhost",
                 is_staff=False, is_active=False, is_superuser=False))
+        cache.set(WORKER_USER_CACHE_KEY, worker_user)
     return worker_user
