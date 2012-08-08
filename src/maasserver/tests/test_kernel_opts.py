@@ -17,6 +17,7 @@ import os
 
 from django.conf import settings
 from maasserver.api import get_boot_purpose
+from maasserver.exceptions import EphemeralImagesDirectoryNotFound
 from maasserver.kernel_opts import (
     compose_enlistment_preseed_url,
     compose_kernel_command_line,
@@ -185,6 +186,15 @@ class TestKernelOpts(TestCase):
                 "iscsi_target_port=3260",
                 "iscsi_target_ip=%s" % get_maas_facing_server_address(),
                 ]))
+
+    def test_compose_kernel_command_line_reports_error_about_missing_dir(self):
+        self.patch(
+            settings, 'EPHEMERAL_ROOT', factory.make_name('missing-dir'))
+        node = factory.make_node()
+        self.assertRaises(
+            EphemeralImagesDirectoryNotFound,
+            compose_kernel_command_line, node, factory.make_name('arch'),
+            factory.make_name('subarch'), purpose="commissioning")
 
     def test_compose_enlistment_preseed_url_links_to_enlistment_preseed(self):
         response = self.client.get(compose_enlistment_preseed_url())

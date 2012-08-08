@@ -40,6 +40,10 @@ class NoRabbit(MAASException):
     """Could not reach RabbitMQ."""
 
 
+class EphemeralImagesDirectoryNotFound(MAASException):
+    """The ephemeral images directory cannot be found."""
+
+
 class MAASAPIException(Exception):
     """Base class for MAAS' API exceptions.
 

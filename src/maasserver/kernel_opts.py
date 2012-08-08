@@ -17,6 +17,7 @@ __all__ = [
 import os
 
 from django.conf import settings
+from maasserver.exceptions import EphemeralImagesDirectoryNotFound
 from maasserver.server_address import get_maas_facing_server_address
 from maasserver.utils import absolute_reverse
 from provisioningserver.pxe.tftppath import compose_image_path
@@ -115,7 +116,13 @@ def get_ephemeral_name(release, arch):
     /var/lib/maas/ephemeral/precise/ephemeral/i386/20120424/info
     """
     root = os.path.join(settings.EPHEMERAL_ROOT, release, 'ephemeral', arch)
-    filename = os.path.join(get_last_directory(root), 'info')
+    try:
+        filename = os.path.join(get_last_directory(root), 'info')
+    except OSError:
+        raise EphemeralImagesDirectoryNotFound(
+            "The directory containing the ephemeral images/info is missing "
+            "(%r).  Make sure to run the script "
+            "'maas-import-pxe-files'." % root)
     name = parse_key_value_file(filename, separator="=")['name']
     return name
 
