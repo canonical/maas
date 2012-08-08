@@ -30,6 +30,7 @@ from subprocess import (
 from celery.task import task
 from celeryconfig import DHCP_CONFIG_FILE
 from provisioningserver.dhcp import config
+from provisioningserver.dhcp.leases import record_omapi_shared_key
 from provisioningserver.dns.config import (
     DNSConfig,
     execute_rndc_command,
@@ -41,6 +42,51 @@ from provisioningserver.power.poweraction import (
     PowerActionFail,
     )
 from provisioningserver.utils import atomic_write
+
+# For each item passed to refresh_secrets, a refresh function to give it to.
+refresh_functions = {
+    'omapi_shared_key': record_omapi_shared_key,
+}
+
+
+@task
+def refresh_secrets(**kwargs):
+    """Update the worker's knowledge of various secrets it needs.
+
+    The worker shares some secrets with the MAAS server, such as its
+    omapi key for talking to the DHCP server, and its MAAS API credentials.
+    When the server sends tasks to the worker, the tasks will include these
+    secrets as needed.  But not everything the worker does is initiated by
+    a server request, so it needs copies of these secrets at hand.
+
+    We don't store these secrets in the worker, but we hold copies in
+    memory.  The worker won't perform jobs that require secrets it does
+    not have yet, waiting instead for the next chance to catch up.
+
+    To make sure that the worker does not have to wait too long, the server
+    can send periodic `refresh_secrets` messages with the required
+    information.
+
+    Tasks can also call `refresh_secrets` to record information they receive
+    from the server.
+
+    All refreshed items are passed as keyword arguments, to avoid confusion
+    and allow for easy reordering.  All refreshed items are optional.  An
+    item that is not passed will not be refreshed, so it's entirely valid to
+    call this for just a single item.  However `None` is a value like any
+    other, so passing `foo=None` will cause item `foo` to be refreshed with
+    value `None`.
+
+    To help catch simple programming mistakes, passing an unknown argument
+    will result in an assertion failure.
+
+    :param omapi_shared_key: Shared key for working with the worker's
+        DHCP server.
+    """
+    for key, value in kwargs.items():
+        assert key in refresh_functions, "Unknown refresh item: %s" % key
+        refresh_functions[key](value)
+
 
 # =====================================================================
 # Power-related tasks
@@ -182,6 +228,7 @@ def add_new_dhcp_host_map(mappings, server_address, shared_key):
         control.
     """
     omshell = Omshell(server_address, shared_key)
+    refresh_secrets(omapi_shared_key=shared_key)
     try:
         for ip_address, mac_address in mappings.items():
             omshell.create(ip_address, mac_address)
@@ -203,6 +250,7 @@ def remove_dhcp_host_map(ip_address, server_address, shared_key):
         control.
     """
     omshell = Omshell(server_address, shared_key)
+    refresh_secrets(omapi_shared_key=shared_key)
     try:
         omshell.remove(ip_address)
     except CalledProcessError:

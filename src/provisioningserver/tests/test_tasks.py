@@ -23,6 +23,7 @@ from maastesting.matchers import ContainsAll
 from maastesting.testcase import TestCase
 from netaddr import IPNetwork
 from provisioningserver import tasks
+from provisioningserver.dhcp import leases
 from provisioningserver.dns.config import (
     conf,
     DNSZoneConfig,
@@ -37,6 +38,7 @@ from provisioningserver.tasks import (
     Omshell,
     power_off,
     power_on,
+    refresh_secrets,
     remove_dhcp_host_map,
     restart_dhcp_server,
     rndc_command,
@@ -58,6 +60,50 @@ from testtools.matchers import (
 # An arbitrary MAC address.  Not using a properly random one here since
 # we might accidentally affect real machines on the network.
 arbitrary_mac = "AA:BB:CC:DD:EE:FF"
+
+
+class TestRefreshSecrets(TestCase):
+    """Tests for the `refresh_secrets` task."""
+
+    resources = (
+        ("celery", FixtureResource(CeleryFixture())),
+        )
+
+    def test_does_not_require_arguments(self):
+        refresh_secrets()
+        # Nothing is refreshed, but there is no error either.
+        pass
+
+    def test_calls_refresh_function(self):
+        value = factory.make_name('new-value')
+        refresh_function = FakeMethod()
+        self.patch(tasks, 'refresh_functions', {'my_item': refresh_function})
+        refresh_secrets(my_item=value)
+        self.assertEqual([(value, )], refresh_function.extract_args())
+
+    def test_refreshes_even_if_None(self):
+        refresh_function = FakeMethod()
+        self.patch(tasks, 'refresh_functions', {'my_item': refresh_function})
+        refresh_secrets(my_item=None)
+        self.assertEqual([(None, )], refresh_function.extract_args())
+
+    def test_does_not_refresh_if_omitted(self):
+        refresh_function = FakeMethod()
+        self.patch(tasks, 'refresh_functions', {'my_item': refresh_function})
+        refresh_secrets()
+        self.assertEqual([], refresh_function.extract_args())
+
+    def test_breaks_on_unknown_item(self):
+        self.assertRaises(AssertionError, refresh_secrets, not_an_item=None)
+
+    def test_updates_omapi_shared_key(self):
+        self.patch(leases, 'recorded_omapi_shared_key', None)
+        key = factory.make_name('omapi-shared-key')
+        refresh_secrets(omapi_shared_key=key)
+        self.assertEqual(key, leases.recorded_omapi_shared_key)
+
+    def test_works_as_a_task(self):
+        self.assertTrue(refresh_secrets.delay().successful())
 
 
 class TestPowerTasks(TestCase):
@@ -124,6 +170,12 @@ class TestDHCPTasks(TestCase):
             CalledProcessError, add_new_dhcp_host_map.delay,
             {mac: ip}, server_address, key)
 
+    def test_add_new_dhcp_host_map_records_shared_key(self):
+        key = factory.getRandomString()
+        self.patch(Omshell, '_run', FakeMethod())
+        add_new_dhcp_host_map({}, factory.make_name('server'), key)
+        self.assertEqual(key, leases.recorded_omapi_shared_key)
+
     def test_remove_dhcp_host_map(self):
         # We don't want to actually run omshell in the task, so we stub
         # out the wrapper class's _run method and record what it would
@@ -147,6 +199,13 @@ class TestDHCPTasks(TestCase):
         self.assertRaises(
             CalledProcessError, remove_dhcp_host_map.delay,
             ip, server_address, key)
+
+    def test_remove_dhcp_host_map_records_shared_key(self):
+        key = factory.getRandomString()
+        self.patch(Omshell, '_run', FakeMethod((0, "obj: <null>")))
+        remove_dhcp_host_map(
+            factory.getRandomIPAddress(), factory.make_name('server'), key)
+        self.assertEqual(key, leases.recorded_omapi_shared_key)
 
     def test_write_dhcp_config_writes_config(self):
         conf_file = self.make_file(contents=factory.getRandomString())

@@ -46,6 +46,18 @@ recorded_leases_time = None
 # Leases as last parsed.
 recorded_leases = None
 
+# Shared key for use with omshell.  We don't store this key
+# persistently, but when the server sends it, we keep a copy in memory
+# so that celerybeat jobs (which do not originate with the server and
+# therefore don't receive this argument) can make use of it.
+recorded_omapi_shared_key = None
+
+
+def record_omapi_shared_key(shared_key):
+    """Record the OMAPI shared key as received from the server."""
+    global recorded_omapi_shared_key
+    recorded_omapi_shared_key = shared_key
+
 
 def get_leases_timestamp():
     """Return the last modification timestamp of the DHCP leases file."""

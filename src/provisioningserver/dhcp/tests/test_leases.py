@@ -30,9 +30,18 @@ from provisioningserver.dhcp.leases import (
     check_lease_changes,
     parse_leases_file,
     record_lease_state,
+    record_omapi_shared_key,
     update_leases,
     upload_leases,
     )
+
+
+class TestHelpers(TestCase):
+
+    def test_record_omapi_shared_key_records_shared_key(self):
+        key = factory.getRandomString()
+        record_omapi_shared_key(key)
+        self.assertEqual(key, leases_module.recorded_omapi_shared_key)
 
 
 class StopExecuting(BaseException):
