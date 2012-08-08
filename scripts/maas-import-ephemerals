@@ -379,11 +379,12 @@ install_tftp_image() {
     # deletes it.
     tmpdir="$(mktemp -d)"
 
-    for filename in kernel initrd
+    for filename in linux initrd.gz
     do
         cp -- "$src/$filename" "$tmpdir/"
     done
 
+    debug 1 "maas-provision install-pxe-image --arch=$arch --subarch=$subarch --release=$release --purpose=commissioning --image=$tmpdir"
     maas-provision install-pxe-image \
         --arch=$arch --subarch=$subarch --release=$release \
         --purpose="commissioning" --image="$tmpdir"
