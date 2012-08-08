@@ -108,7 +108,7 @@ class TestDHCPTasks(TestCase):
         key = factory.getRandomString()
         recorder = FakeMethod(result=(0, "hardware-type"))
         self.patch(Omshell, '_run', recorder)
-        add_new_dhcp_host_map.delay(ip, mac, server_address, key)
+        add_new_dhcp_host_map.delay({ip: mac}, server_address, key)
 
         self.assertRecordedStdin(recorder, ip, mac, server_address, key)
 
@@ -122,7 +122,7 @@ class TestDHCPTasks(TestCase):
         self.patch(Omshell, '_run', FakeMethod(result=(0, "this_will_fail")))
         self.assertRaises(
             CalledProcessError, add_new_dhcp_host_map.delay,
-            ip, mac, server_address, key)
+            {mac: ip}, server_address, key)
 
     def test_remove_dhcp_host_map(self):
         # We don't want to actually run omshell in the task, so we stub
