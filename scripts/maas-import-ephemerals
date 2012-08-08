@@ -19,15 +19,15 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-# Cobbler is being removed from MAAS.  Set NO_COBBLER to skip anything
-# in this script that is related to Cobbler.
+# Cobbler is being removed from MAAS.  Set NO_COBBLER to a value other than '0'
+# to skip anything in this script that is related to Cobbler.
 NO_COBBLER=${NO_COBBLER:-}
+USE_COBBLER() { [ "${NO_COBBLER:-0}" = "0" ]; }
 
 VERBOSITY=0
 REMOTE_IMAGES_MIRROR="https://maas.ubuntu.com/images"
 
-if [ -z "$NO_COBBLER" ]
-then
+if USE_COBBLER; then
 CONSOLE="ttyS0,9600n8"
 EPH_KOPTS_CONSOLE="console=$CONSOLE"
 EPH_KOPTS_ISCSI="ip=dhcp iscsi_target_name=@@iscsi_target@@ iscsi_target_ip=@@iscsi_target_ip@@ iscsi_target_port=3260"
@@ -35,7 +35,7 @@ EPH_KOPTS_ROOT="root=LABEL=cloudimg-rootfs ro"
 EPH_KOPTS_LOGGING="log_host=@@server_ip@@ log_port=514"
 KSDIR="/var/lib/cobbler/kickstarts"
 KICKSTART="$KSDIR/maas-commissioning.preseed"
-fi
+fi # end USE_COBBLER
 
 SYS_TGT_CONF="/etc/tgt/targets.conf"
 
@@ -121,8 +121,7 @@ arch2u() {
 }
 
 
-if [ -z "$NO_COBBLER" ]
-then
+if USE_COBBLER; then
 arch2cob() {
     # Normalize an architecture name for use in Cobbler.
     _RET=$1
@@ -131,7 +130,7 @@ arch2cob() {
         amd64) _RET=x86_64;;
     esac
 }
-fi
+fi # end USE_COBBLER
 
 
 query_remote() {
@@ -314,19 +313,14 @@ EOF
 }
 
 
-if [ -z "$NO_COBBLER" ]
-then
+if USE_COBBLER; then
 cobbler_has() {
     local noun="$1" name="$2" out=""
 
     out=$(cobbler "$noun" find "--name=$name" 2>/dev/null) &&
         [ "$out" = "$name" ]
 }
-fi
 
-
-if [ -z "$NO_COBBLER" ]
-then
 cobbler_add_update() {
     # cobbler_add_update(distro_name, profile_name,
     #                    release, arch, kopts, kickstart,
@@ -342,19 +336,21 @@ cobbler_add_update() {
         "--kernel=$kernel" "--initrd=$initrd" ||
         { error "failed to $op $distro"; return 1; }
 
+    cobbler_has distro "$distro" ||
+        { error "no distro '$distro' after '$op'"; return 1; }
+
     cobbler_has profile "$profile" && op="edit" || op="add"
 
     cobbler profile "$op" "--name=$profile" "--distro=$distro" \
         --kopts="$kopts" "--kickstart=$kickstart" ||
         { error "failed to $op $profile"; return 1; }
 
+    cobbler_has profile "$profile" ||
+        { error "no profile '$profile' after '$op'"; return 1; }
+
     return 0
 }
-fi
 
-
-if [ -z "$NO_COBBLER" ]
-then
 replace() {
     # replace(input, key1, value1, key2, value2, ...)
     local input="$1" key="" val=""
@@ -365,7 +361,7 @@ replace() {
     done
     _RET=${input}
 }
-fi
+fi # end USE_COBBLER
 
 
 install_tftp_image() {
@@ -425,8 +421,7 @@ done
 [ ! -f ".${CONFIG}" ] || . ".${CONFIG}"
 
 
-if [ -z "$NO_COBBLER" ]
-then
+if USE_COBBLER; then
 # get default server ip
 [ -n "$SERVER_IP" ] ||
     _ip=$(awk '$1 == "server:" { print $2 }' /etc/cobbler/settings) ||
@@ -435,21 +430,15 @@ then
 SERVER_IP=${SERVER_IP:-${_ip}}
 [ -n "${SERVER_IP}" ] &&
     KOPTS="$KOPTS log_host=$SERVER_IP log_port=514"
-fi
 
 
-if [ -z "$NO_COBBLER" ]
-then
 ISCSI_TARGET_IP=${ISCSI_TARGET_IP:-${SERVER_IP}}
 [ -n "$ISCSI_TARGET_IP" ] || fail "ISCSI_TARGET_IP must have a value"
-fi
 
 
-if [ -z "$NO_COBBLER" ]
-then
 [ -f "$KICKSTART" ] ||
     fail "kickstart $KICKSTART is not a file"
-fi
+fi # end USE_COBBLER
 
 
 mkdir -p "$DATA_DIR" "$DATA_DIR/.working" ||
@@ -474,9 +463,9 @@ fi
 updates=0
 for release in $RELEASES; do
     for arch in $ARCHES; do
-        if [ -z "$NO_COBBLER" ]; then
+if USE_COBBLER; then
             arch2cob "$arch"; arch_c=$_RET
-        fi
+fi # end USE_COBBLER
         arch2u "$arch"; arch_u=$_RET
 
         query_local "$arch_u" "$release" "$BUILD_NAME" ||
@@ -503,7 +492,9 @@ for release in $RELEASES; do
                 "$r_serial" "$r_arch" "$r_url" "$r_name" ||
                 fail "failed to prepare image for $release/$arch"
 
+if ! USE_COBBLER; then
             install_tftp_image "$wd" "$r_arch" "generic" "$r_release"
+fi
 
             target_name="${TARGET_NAME_PREFIX}${r_name}"
 
@@ -544,8 +535,7 @@ for release in $RELEASES; do
         }
 
 
-if [ -z "$NO_COBBLER" ]
-then
+if USE_COBBLER; then
         # cobbler_update
         kopts_in="$EPH_CONSOLE_KOPTS $EPH_KOPTS_ISCSI $EPH_KOPTS_ROOT $EPH_KOPTS_LOGGING"
         replace "${kopts_in}" \
@@ -556,8 +546,8 @@ then
 
         distro="$release-${arch_c}-maas-ephemeral"
         profile="maas-${release}-${arch_c}-commissioning"
-        kernel="$fpfinal_d/kernel"
-        initrd="$fpfinal_d/initrd"
+        kernel="$fpfinal_d/linux"
+        initrd="$fpfinal_d/initrd.gz"
         debug 1 "updating profile $profile, distro $distro kopts:${kopts}"
         debug 2 cobbler_add_update "$distro" "$profile" "$release" "${arch_c}" \
             "$kernel" "$initrd" "$kopts" "$KICKSTART"
@@ -568,7 +558,7 @@ then
                 rm "${tgt_conf_d}/${name}.conf";
                 fail "failed to update cobbler for $profile/$distro"
             }
-fi
+fi # end USE_COBBLER
 
 
     done
@@ -582,12 +572,9 @@ if [ $check -eq 1 ]; then
     exit 0
 fi
 
-
-if [ -z "$NO_COBBLER" ]
-then
+if USE_COBBLER; then
 cobbler sync
-fi
-
+fi # end USE_COBBLER
 
 ## cleanup
 # here, go through anything non-current,
