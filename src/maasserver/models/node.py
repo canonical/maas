@@ -595,6 +595,7 @@ class Node(CleanSave, TimestampedModel):
         self.status = NODE_STATUS.READY
         self.owner = None
         self.token = None
+        self.set_netboot()
         self.save()
 
     def set_netboot(self, on=True):

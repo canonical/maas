@@ -258,6 +258,13 @@ class NodeTest(TestCase):
         node.release()
         self.assertEqual((NODE_STATUS.READY, None), (node.status, node.owner))
 
+    def test_release_turns_on_netboot(self):
+        node = factory.make_node(
+            status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
+        node.set_netboot(on=False)
+        node.release()
+        self.assertTrue(node.netboot)
+
     def test_release_powers_off_node(self):
         # Test that releasing a node causes a 'power_off' celery job.
         node = factory.make_node(

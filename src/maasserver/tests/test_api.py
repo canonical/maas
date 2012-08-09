@@ -917,6 +917,13 @@ class TestNodeAPI(APITestCase):
             [NODE_STATUS.READY] * len(owned_nodes),
             [node.status for node in reload_objects(Node, owned_nodes)])
 
+    def test_POST_release_turns_on_netboot(self):
+        node = factory.make_node(
+            status=NODE_STATUS.ALLOCATED, owner=self.logged_in_user)
+        node.set_netboot(on=False)
+        self.client.post(self.get_node_uri(node), {'op': 'release'})
+        self.assertTrue(reload_object(node).netboot)
+
     def test_POST_release_removes_token_and_user(self):
         node = factory.make_node(status=NODE_STATUS.READY)
         self.client.post(self.get_uri('nodes/'), {'op': 'acquire'})
