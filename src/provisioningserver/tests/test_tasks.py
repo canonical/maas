@@ -23,6 +23,7 @@ from maastesting.matchers import ContainsAll
 from maastesting.testcase import TestCase
 from netaddr import IPNetwork
 from provisioningserver import tasks
+from provisioningserver.auth import get_recorded_api_credentials
 from provisioningserver.dhcp import leases
 from provisioningserver.dns.config import (
     conf,
@@ -96,14 +97,23 @@ class TestRefreshSecrets(TestCase):
     def test_breaks_on_unknown_item(self):
         self.assertRaises(AssertionError, refresh_secrets, not_an_item=None)
 
+    def test_works_as_a_task(self):
+        self.assertTrue(refresh_secrets.delay().successful())
+
+    def test_updates_api_credentials(self):
+        credentials = (
+            factory.make_name('key'),
+            factory.make_name('token'),
+            factory.make_name('secret'),
+            )
+        refresh_secrets(api_credentials=':'.join(credentials))
+        self.assertEqual(credentials, get_recorded_api_credentials())
+
     def test_updates_omapi_shared_key(self):
         self.patch(leases, 'recorded_omapi_shared_key', None)
         key = factory.make_name('omapi-shared-key')
         refresh_secrets(omapi_shared_key=key)
         self.assertEqual(key, leases.recorded_omapi_shared_key)
-
-    def test_works_as_a_task(self):
-        self.assertTrue(refresh_secrets.delay().successful())
 
 
 class TestPowerTasks(TestCase):

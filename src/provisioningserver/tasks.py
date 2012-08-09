@@ -29,6 +29,7 @@ from subprocess import (
 
 from celery.task import task
 from celeryconfig import DHCP_CONFIG_FILE
+from provisioningserver.auth import record_api_credentials
 from provisioningserver.dhcp import (
     config,
     leases,
@@ -47,6 +48,7 @@ from provisioningserver.utils import atomic_write
 
 # For each item passed to refresh_secrets, a refresh function to give it to.
 refresh_functions = {
+    'api_credentials': record_api_credentials,
     'omapi_shared_key': leases.record_omapi_shared_key,
 }
 
