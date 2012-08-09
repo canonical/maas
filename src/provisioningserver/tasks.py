@@ -29,8 +29,10 @@ from subprocess import (
 
 from celery.task import task
 from celeryconfig import DHCP_CONFIG_FILE
-from provisioningserver.dhcp import config
-from provisioningserver.dhcp.leases import record_omapi_shared_key
+from provisioningserver.dhcp import (
+    config,
+    leases,
+    )
 from provisioningserver.dns.config import (
     DNSConfig,
     execute_rndc_command,
@@ -45,7 +47,7 @@ from provisioningserver.utils import atomic_write
 
 # For each item passed to refresh_secrets, a refresh function to give it to.
 refresh_functions = {
-    'omapi_shared_key': record_omapi_shared_key,
+    'omapi_shared_key': leases.record_omapi_shared_key,
 }
 
 
