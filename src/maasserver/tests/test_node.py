@@ -428,6 +428,11 @@ class NodeTest(TestCase):
         node = Node()
         self.assertTrue(node.netboot)
 
+    def test_nodegroup_cannot_be_null(self):
+        node = factory.make_node()
+        node.nodegroup = None
+        self.assertRaises(ValidationError, node.save)
+
 
 class NodeTransitionsTests(TestCase):
     """Test the structure of NODE_TRANSITIONS."""

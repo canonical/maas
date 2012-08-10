@@ -311,6 +311,16 @@ class NodeEditForms(TestCase):
             (node.hostname, node.after_commissioning_action, node.power_type,
                 node.power_parameters))
 
+    def test_AdminForm_does_not_permit_nodegroup_change(self):
+        # We had to make Node.nodegroup editable to get Django to
+        # validate it as non-blankable, but that doesn't mean that we
+        # actually want to allow people to edit it through API or UI.
+        old_nodegroup = factory.make_node_group()
+        node = factory.make_node(nodegroup=old_nodegroup)
+        new_nodegroup = factory.make_node_group()
+        form = AdminNodeForm(data={'nodegroup': new_nodegroup}, instance=node)
+        self.assertRaises(ValueError, form.save)
+
     def test_get_node_edit_form_returns_NodeForm_if_non_admin(self):
         user = factory.make_user()
         self.assertEqual(NodeForm, get_node_edit_form(user))

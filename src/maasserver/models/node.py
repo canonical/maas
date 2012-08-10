@@ -383,7 +383,17 @@ class Node(CleanSave, TimestampedModel):
 
     netboot = BooleanField(default=True)
 
-    nodegroup = ForeignKey('maasserver.NodeGroup', editable=False)
+    # This field can't be null, but we can't enforce that in the
+    # database schema because we can only create the default value from
+    # a complete schema, after schema migration.  We can't use custom
+    # model validation either, because the node forms need to set their
+    # default values *after* saving the form (with commit=False), which
+    # incurs validation before the default values are set.
+    # So all we can do is set blank=False, and make the field editable
+    # to cajole Django out of skipping it during "model" (actually model
+    # form) validation.
+    nodegroup = ForeignKey(
+        'maasserver.NodeGroup', editable=True, null=True, blank=False)
 
     objects = NodeManager()
 

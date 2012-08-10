@@ -17,14 +17,12 @@ __all__ = [
     "get_node_edit_form",
     "get_node_create_form",
     "HostnameFormField",
-    "NodeForm",
     "MACAddressForm",
     "MAASAndNetworkForm",
     "NodeWithMACAddressesForm",
     "SSHKeyForm",
     "UbuntuForm",
     "AdminNodeForm",
-    "NodeForm",
     ]
 
 from django import forms
