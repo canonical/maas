@@ -19,7 +19,7 @@ from django.conf import settings
 from django.core.management.commands.runserver import BaseRunserverCommand
 from django.core.servers import basehttp
 from django.core.servers.basehttp import WSGIServer
-from maasserver.maasavahi import setup_maas_avahi_service
+from maasserver.start_up import start_up
 import oops
 from oops_datedir_repo import DateDirRepo
 from oops_wsgi import (
@@ -68,7 +68,7 @@ class Command(BaseRunserverCommand):
             # Monkey patch basehttp.WSGIServer.
             setattr(basehttp, 'WSGIServer', ThreadedWSGIServer)
 
-        setup_maas_avahi_service()
+        start_up()
         return super(Command, self).run(*args, **options)
 
     def get_handler(self, *args, **kwargs):
