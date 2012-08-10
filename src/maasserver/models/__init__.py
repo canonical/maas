@@ -109,5 +109,5 @@ ignore_unused(provisioning)
 from maasserver import messages
 ignore_unused(messages)
 
-from maasserver import dns
-ignore_unused(dns)
+from maasserver import dns_connect
+ignore_unused(dns_connect)

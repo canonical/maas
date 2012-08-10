@@ -18,7 +18,10 @@ from subprocess import CalledProcessError
 
 from maastesting.celery import CeleryFixture
 from maastesting.factory import factory
-from maastesting.fakemethod import FakeMethod
+from maastesting.fakemethod import (
+    FakeMethod,
+    MultiFakeMethod,
+    )
 from maastesting.matchers import ContainsAll
 from maastesting.testcase import TestCase
 from netaddr import IPNetwork
@@ -45,6 +48,7 @@ from provisioningserver.tasks import (
     remove_dhcp_host_map,
     restart_dhcp_server,
     rndc_command,
+    RNDC_COMMAND_MAX_RETRY,
     setup_rndc_configuration,
     write_dhcp_config,
     write_dns_config,
@@ -357,6 +361,34 @@ class TestDNSTasks(TestCase):
                     Equals(True),
                     Equals([((command,), {})]),
                 )))
+
+    def test_rndc_command_can_be_retried(self):
+        # The rndc_command task can be retried.
+        # Simulate a temporary failure.
+        number_of_failures = RNDC_COMMAND_MAX_RETRY
+        raised_exception = CalledProcessError(
+            factory.make_name('exception'), random.randint(100, 200))
+        simulate_failures = MultiFakeMethod(
+            [FakeMethod(failure=raised_exception)] * number_of_failures +
+            [FakeMethod()])
+        self.patch(tasks, 'execute_rndc_command', simulate_failures)
+        command = factory.getRandomString()
+        result = rndc_command.delay(command, retry=True)
+        self.assertTrue(result.successful())
+
+    def test_rndc_command_is_retried_a_limited_number_of_times(self):
+        # If we simulate RNDC_COMMAND_MAX_RETRY + 1 failures, the
+        # task fails.
+        number_of_failures = RNDC_COMMAND_MAX_RETRY + 1
+        raised_exception = CalledProcessError(
+            factory.make_name('exception'), random.randint(100, 200))
+        simulate_failures = MultiFakeMethod(
+            [FakeMethod(failure=raised_exception)] * number_of_failures +
+            [FakeMethod()])
+        self.patch(tasks, 'execute_rndc_command', simulate_failures)
+        command = factory.getRandomString()
+        self.assertRaises(
+            CalledProcessError, rndc_command.delay, command, retry=True)
 
     def test_write_full_dns_config_sets_up_config(self):
         # write_full_dns_config writes the config file, writes

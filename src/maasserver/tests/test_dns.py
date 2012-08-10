@@ -17,6 +17,7 @@ from itertools import islice
 import random
 import socket
 
+from celery.task import task
 from django.conf import settings
 from django.core.management import call_command
 from maasserver import (
@@ -38,6 +39,7 @@ from netaddr import (
     IPNetwork,
     IPRange,
     )
+from provisioningserver import tasks
 from provisioningserver.dns.config import (
     conf,
     DNSZoneConfig,
@@ -194,6 +196,7 @@ class TestDNSConfigModifications(TestCase):
 
     def test_add_zone_loads_dns_zone(self):
         nodegroup, node, lease = self.create_nodegroup_with_lease()
+        self.patch(settings, 'DNS_CONNECT', True)
         dns.add_zone(nodegroup)
         self.assertDNSMatches(node.hostname, nodegroup.name, lease.ip)
 
@@ -203,11 +206,13 @@ class TestDNSConfigModifications(TestCase):
         nodegroup = factory.make_node_group()
         nodegroup.subnet_mask = None
         nodegroup.save()
+        self.patch(settings, 'DNS_CONNECT', True)
         dns.add_zone(nodegroup)
         self.assertEqual(0, recorder.call_count)
 
     def test_change_dns_zone_changes_dns_zone(self):
         nodegroup, _, _ = self.create_nodegroup_with_lease()
+        self.patch(settings, 'DNS_CONNECT', True)
         dns.write_full_dns_config()
         nodegroup, new_node, new_lease = (
             self.create_nodegroup_with_lease(
@@ -234,6 +239,7 @@ class TestDNSConfigModifications(TestCase):
         nodegroup = factory.make_node_group()
         nodegroup.subnet_mask = None
         nodegroup.save()
+        self.patch(settings, 'DNS_CONNECT', True)
         dns.change_dns_zones(nodegroup)
         self.assertEqual(0, recorder.call_count)
 
@@ -243,23 +249,39 @@ class TestDNSConfigModifications(TestCase):
         nodegroup = factory.make_node_group()
         nodegroup.subnet_mask = None
         nodegroup.save()
+        self.patch(settings, 'DNS_CONNECT', True)
         dns.write_full_dns_config()
         self.assertEqual(0, recorder.call_count)
 
     def test_write_full_dns_loads_full_dns_config(self):
         nodegroup, node, lease = self.create_nodegroup_with_lease()
+        self.patch(settings, 'DNS_CONNECT', True)
         dns.write_full_dns_config()
         self.assertDNSMatches(node.hostname, nodegroup.name, lease.ip)
 
     def test_write_full_dns_can_write_inactive_config(self):
         nodegroup, node, lease = self.create_nodegroup_with_lease()
+        self.patch(settings, 'DNS_CONNECT', True)
         dns.write_full_dns_config(active=False)
         self.assertEqual([''], self.dig_resolve(generated_hostname(lease.ip)))
+
+    def test_write_full_dns_passes_reload_retry_parameter(self):
+        self.patch(settings, 'DNS_CONNECT', True)
+        recorder = FakeMethod()
+
+        @task
+        def recorder_task(*args, **kwargs):
+            return recorder(*args, **kwargs)
+        self.patch(tasks, 'rndc_command', recorder_task)
+        dns.write_full_dns_config(reload_retry=True)
+        self.assertEqual(
+            ([(['reload'], True)]), recorder.extract_args())
 
     def test_dns_config_has_NS_record(self):
         ip = factory.getRandomIPAddress()
         self.patch(settings, 'DEFAULT_MAAS_URL', 'http://%s/' % ip)
         nodegroup, node, lease = self.create_nodegroup_with_lease()
+        self.patch(settings, 'DNS_CONNECT', True)
         dns.write_full_dns_config()
         # Get the NS record for the zone 'nodegroup.name'.
         ns_record = dig_call(

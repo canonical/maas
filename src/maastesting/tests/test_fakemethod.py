@@ -12,7 +12,10 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
-from maastesting.fakemethod import FakeMethod
+from maastesting.fakemethod import (
+    FakeMethod,
+    MultiFakeMethod,
+    )
 from maastesting.testcase import TestCase
 
 
@@ -67,3 +70,22 @@ class TestFakeMethod(TestCase):
         stub = FakeMethod()
         stub(1, 2, 3, x=12)
         self.assertItemsEqual([{'x': 12}], stub.extract_kwargs())
+
+
+class TestMultiFakeMethod(TestCase):
+
+    def test_call_calls_all_given_methods(self):
+        methods = FakeMethod(), FakeMethod()
+        method = MultiFakeMethod(methods)
+        call1_args = "input 1"
+        call2_args = "input 2"
+        method(call1_args)
+        method(call2_args)
+        self.assertEqual(
+            [[('input 1',)], [('input 2',)]],
+            [methods[0].extract_args(), methods[1].extract_args()])
+
+    def test_raises_if_called_one_time_too_many(self):
+        method = MultiFakeMethod([FakeMethod()])
+        method()
+        self.assertRaises(ValueError, method)

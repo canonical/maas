@@ -146,14 +146,31 @@ def power_off(power_type, **kwargs):
 # DNS-related tasks
 # =====================================================================
 
+# How many times should a rndc task be retried?
+RNDC_COMMAND_MAX_RETRY = 10
 
-@task
-def rndc_command(arguments, callback=None):
+# How long to wait between rndc tasks retries (in seconds)?
+RNDC_COMMAND_RETRY_DELAY = 2
+
+
+@task(max_retries=RNDC_COMMAND_MAX_RETRY)
+def rndc_command(arguments, retry=False, callback=None):
     """Use rndc to execute a command.
+    :param arguments: Argument list passed down to the rndc command.
+    :type arguments : list
+    :param retry: Should this task be retried in case of failure?
+    :type retry: bool
     :param callback: Callback subtask.
     :type callback: callable
     """
-    execute_rndc_command(arguments)
+    try:
+        execute_rndc_command(arguments)
+    except CalledProcessError, exc:
+        if retry:
+            return rndc_command.retry(
+                exc=exc, countdown=RNDC_COMMAND_RETRY_DELAY)
+        else:
+            raise
     if callback is not None:
         callback.delay()
 

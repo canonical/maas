@@ -14,6 +14,7 @@ from __future__ import (
 __metaclass__ = type
 __all__ = [
     'FakeMethod',
+    'MultiFakeMethod',
     ]
 
 
@@ -70,3 +71,30 @@ class FakeMethod:
     def extract_kwargs(self):
         """Return just the calls' keyword-arguments dicts."""
         return [kwargs for args, kwargs in self.calls]
+
+
+class MultiFakeMethod:
+    """Return a method whose behavior is derived from a list of methods.
+
+    When called repeatedly, this method will call all the methods used to
+    built it in turn, one after the other.
+
+    This can be used, for instance, to simulate a temporary failure.
+    >>> simulate_failures = MultiFakeMethod(
+            [FakeMethod(failure=raised_exception)] * number_of_failures +
+            [FakeMethod()])
+    """
+
+    def __init__(self, methods):
+        self.methods = methods
+        self._call_count = -1
+
+    def __call__(self, *args, **kwargs):
+        self._call_count = self._call_count + 1
+        if self._call_count < len(self.methods):
+            return self.methods[self._call_count](*args, **kwargs)
+        else:
+            raise ValueError(
+                "No more method to call.  This MultiFakeMethod has been "
+                "called %d times and it only contains %d method(s)." % (
+                    self._call_count + 1, len(self.methods)))
