@@ -177,6 +177,16 @@ done
 ## check arguments here
 [ $# -ne 0 ] && bad_Usage
 
+# Older versions of maas-import-isos may have created PXE images in the
+# TFTP directory tree that are not world-readable as they should be.
+# This script doesn't know where they are, but if they are in the
+# default location, it can ease the pain by fixing up their access mode
+# now.
+if [ -d /var/lib/tftpboot/maas ]
+then
+    chmod -R a+r /var/lib/tftpboot/maas
+fi
+
 # if no action specified, import by default
 ( ! $do_import_isos && ! $do_update_settings  ) && do_import_isos=true
 # do not allow import + update

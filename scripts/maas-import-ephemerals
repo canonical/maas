@@ -380,6 +380,10 @@ install_tftp_image() {
         cp -- "$src/$filename" "$tmpdir/"
     done
 
+    # All files we create here are public.  The TFTP user will need to be
+    # able to read them.
+    umask a+r
+
     debug 1 "maas-provision install-pxe-image --arch=$arch --subarch=$subarch --release=$release --purpose=commissioning --image=$tmpdir"
     maas-provision install-pxe-image \
         --arch=$arch --subarch=$subarch --release=$release \
