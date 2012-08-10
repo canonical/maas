@@ -13,6 +13,7 @@ __metaclass__ = type
 __all__ = [
     'get_recorded_api_credentials',
     'get_recorded_nodegroup_name',
+    'locate_maas_api',
     'record_api_credentials',
     'record_nodegroup_name',
     ]
@@ -21,6 +22,12 @@ __all__ = [
 # credentials to access the MAAS API.
 # Shared between threads.
 recorded_api_credentials = None
+
+
+def locate_maas_api():
+    """Return the base URL for the MAAS API."""
+# TODO: Configure this somehow.  What you see here is a placeholder.
+    return "http://localhost/MAAS/"
 
 
 # The name of the nodegroup that this worker manages.

@@ -37,8 +37,19 @@ from os import (
     stat,
     )
 
+from apiclient.maas_client import (
+    MAASClient,
+    MAASDispatcher,
+    MAASOAuth,
+    )
 from celeryconfig import DHCP_LEASES_FILE
+from provisioningserver.auth import (
+    get_recorded_api_credentials,
+    get_recorded_nodegroup_name,
+    locate_maas_api,
+    )
 from provisioningserver.dhcp.leases_parser import parse_leases
+from provisioningserver.logging import task_logger
 
 # Modification time on last-processed leases file.
 # Shared between celery threads.
@@ -139,13 +150,36 @@ def register_new_leases(current_leases):
     # The recorded_omapi_shared_key is shared between threads, so read
     # it just once, atomically.
     omapi_key = recorded_omapi_shared_key
-    if omapi_key is not None:
+    if omapi_key is None:
+        task_logger.info(
+            "Not registering new leases: "
+            "no OMAPI key received from server yet.")
+    else:
         new_leases = identify_new_leases(current_leases)
         add_new_dhcp_host_map(new_leases, 'localhost', omapi_key)
 
 
 def send_leases(leases):
     """Send lease updates to the server API."""
+    api_credentials = get_recorded_api_credentials()
+    nodegroup_name = get_recorded_nodegroup_name()
+    if None in (api_credentials, nodegroup_name):
+        # The MAAS server hasn't sent us enough information for us to do
+        # this yet.  Leave it for another time.
+        if api_credentials is None:
+            task_logger.info(
+                "Not sending DHCP leases to server: "
+                "No MAAS API credentials received from server yet.")
+        if nodegroup_name is None:
+            task_logger.info(
+                "Not sending DHCP leases to server: "
+                "No MAAS API URL received from server yet.")
+        return
+
+    api_path = 'nodegroups/%s/' % nodegroup_name
+    oauth = MAASOAuth(*get_recorded_api_credentials())
+    MAASClient(oauth, MAASDispatcher(), locate_maas_api()).post(
+        api_path, 'update_leases', leases=leases)
 
 
 def process_leases(timestamp, leases):
