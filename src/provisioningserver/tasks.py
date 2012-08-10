@@ -29,7 +29,10 @@ from subprocess import (
 
 from celery.task import task
 from celeryconfig import DHCP_CONFIG_FILE
-from provisioningserver.auth import record_api_credentials
+from provisioningserver.auth import (
+    record_api_credentials,
+    record_nodegroup_name,
+    )
 from provisioningserver.dhcp import (
     config,
     leases,
@@ -50,6 +53,7 @@ from provisioningserver.utils import atomic_write
 refresh_functions = {
     'api_credentials': record_api_credentials,
     'omapi_shared_key': leases.record_omapi_shared_key,
+    'nodegroup_name': record_nodegroup_name,
 }
 
 
@@ -84,8 +88,13 @@ def refresh_secrets(**kwargs):
     To help catch simple programming mistakes, passing an unknown argument
     will result in an assertion failure.
 
+    :param api_credentials: A colon separated string containing this
+        worker's credentials for accessing the MAAS API: consumer key,
+        resource token, resource secret.
     :param omapi_shared_key: Shared key for working with the worker's
         DHCP server.
+    :param nodegroup_name: The name of the node group that this worker
+        manages.
     """
     for key, value in kwargs.items():
         assert key in refresh_functions, "Unknown refresh item: %s" % key

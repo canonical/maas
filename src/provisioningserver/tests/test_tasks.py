@@ -22,8 +22,10 @@ from maastesting.fakemethod import FakeMethod
 from maastesting.matchers import ContainsAll
 from maastesting.testcase import TestCase
 from netaddr import IPNetwork
-from provisioningserver import tasks
-from provisioningserver.auth import get_recorded_api_credentials
+from provisioningserver import (
+    auth,
+    tasks,
+    )
 from provisioningserver.dhcp import leases
 from provisioningserver.dns.config import (
     conf,
@@ -106,8 +108,15 @@ class TestRefreshSecrets(TestCase):
             factory.make_name('token'),
             factory.make_name('secret'),
             )
+        self.patch(auth, 'recorded_api_credentials', None)
         refresh_secrets(api_credentials=':'.join(credentials))
-        self.assertEqual(credentials, get_recorded_api_credentials())
+        self.assertEqual(credentials, auth.get_recorded_api_credentials())
+
+    def test_updates_nodegroup_name(self):
+        nodegroup_name = factory.make_name('nodegroup')
+        self.patch(auth, 'recorded_nodegroup_name', None)
+        refresh_secrets(nodegroup_name=nodegroup_name)
+        self.assertEqual(nodegroup_name, auth.get_recorded_nodegroup_name())
 
     def test_updates_omapi_shared_key(self):
         self.patch(leases, 'recorded_omapi_shared_key', None)

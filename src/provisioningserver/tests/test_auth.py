@@ -34,15 +34,23 @@ def represent_credentials(credentials):
 class TestAuth(TestCase):
 
     def test_record_api_credentials_records_credentials_string(self):
+        self.patch(auth, 'recorded_api_credentials', None)
         creds_string = represent_credentials(make_credentials())
         auth.record_api_credentials(creds_string)
         self.assertEqual(creds_string, auth.recorded_api_credentials)
 
     def test_get_recorded_api_credentials_returns_credentials_as_tuple(self):
+        self.patch(auth, 'recorded_api_credentials', None)
         creds = make_credentials()
         auth.record_api_credentials(represent_credentials(creds))
         self.assertEqual(creds, auth.get_recorded_api_credentials())
 
     def test_get_recorded_api_credentials_returns_None_without_creds(self):
-        auth.record_api_credentials(None)
+        self.patch(auth, 'recorded_api_credentials', None)
         self.assertIsNone(auth.get_recorded_api_credentials())
+
+    def test_get_recorded_nodegroup_name_vs_record_nodegroup_name(self):
+        self.patch(auth, 'recorded_nodegroup_name', None)
+        nodegroup_name = factory.make_name('nodegroup')
+        auth.record_nodegroup_name(nodegroup_name)
+        self.assertEqual(nodegroup_name, auth.get_recorded_nodegroup_name())
