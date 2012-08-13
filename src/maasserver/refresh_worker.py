@@ -1,0 +1,45 @@
+# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
+"""Refresh node-group worker's knowledge."""
+
+from __future__ import (
+    absolute_import,
+    print_function,
+    unicode_literals,
+    )
+
+__metaclass__ = type
+__all__ = [
+    'refresh_worker',
+    ]
+
+from provisioningserver.tasks import refresh_secrets
+
+
+def refresh_worker(nodegroup):
+    """Send worker for `nodegroup` a refresh message with credentials etc.
+
+    This is how we tell the worker its MAAS API credentials, the name of
+    the node group it manages, and so on.  The function gathers all the
+    usual information (although we can always extend the mechanism with
+    more specific knowledge that we may choose not to include here) and
+    issues a task to the node-group worker that causes it to absorb the
+    given information items.
+    """
+
+    items = {
+        'nodegroup_name': nodegroup.name,
+    }
+
+    if nodegroup.dhcp_key is not None and len(nodegroup.dhcp_key) > 0:
+        items['omapi_shared_key'] = nodegroup.dhcp_key
+
+    items['api_credentials'] = ':'.join([
+        nodegroup.api_token.consumer.key,
+        nodegroup.api_token.key,
+        nodegroup.api_token.secret,
+        ])
+
+    # TODO: Route this to the right worker, once we have multiple.
+    refresh_secrets.delay(**items)
