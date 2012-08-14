@@ -12,6 +12,8 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
+from apiclient.creds import convert_tuple_to_string
+from maasserver.models.user import get_creds_tuple
 from maasserver.refresh_worker import refresh_worker
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
@@ -42,11 +44,8 @@ class TestRefreshWorker(TestCase):
         refresh_functions = self.patch_refresh_functions()
         nodegroup = factory.make_node_group()
         refresh_worker(nodegroup)
-        creds_string = ':'.join([
-            nodegroup.api_token.consumer.key,
-            nodegroup.api_token.key,
-            nodegroup.api_token.secret,
-            ])
+        creds_string = convert_tuple_to_string(
+            get_creds_tuple(nodegroup.api_token))
         self.assertEqual(
             [(creds_string, )],
             refresh_functions['api_credentials'].extract_args())

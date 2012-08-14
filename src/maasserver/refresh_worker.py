@@ -14,6 +14,8 @@ __all__ = [
     'refresh_worker',
     ]
 
+from apiclient.creds import convert_tuple_to_string
+from maasserver.models.user import get_creds_tuple
 from provisioningserver.tasks import refresh_secrets
 
 
@@ -35,11 +37,8 @@ def refresh_worker(nodegroup):
     if nodegroup.dhcp_key is not None and len(nodegroup.dhcp_key) > 0:
         items['omapi_shared_key'] = nodegroup.dhcp_key
 
-    items['api_credentials'] = ':'.join([
-        nodegroup.api_token.consumer.key,
-        nodegroup.api_token.key,
-        nodegroup.api_token.secret,
-        ])
+    items['api_credentials'] = convert_tuple_to_string(
+        get_creds_tuple(nodegroup.api_token))
 
     # TODO: Route this to the right worker, once we have multiple.
     refresh_secrets.delay(**items)

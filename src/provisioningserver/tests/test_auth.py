@@ -12,6 +12,7 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
+from apiclient.creds import convert_tuple_to_string
 from maastesting.factory import factory
 from maastesting.testcase import TestCase
 from provisioningserver import auth
@@ -26,23 +27,18 @@ def make_credentials():
         )
 
 
-def represent_credentials(credentials):
-    """Represent a tuple of API credentials as a credentials string."""
-    return ':'.join(credentials)
-
-
 class TestAuth(TestCase):
 
     def test_record_api_credentials_records_credentials_string(self):
         self.patch(auth, 'recorded_api_credentials', None)
-        creds_string = represent_credentials(make_credentials())
+        creds_string = convert_tuple_to_string(make_credentials())
         auth.record_api_credentials(creds_string)
         self.assertEqual(creds_string, auth.recorded_api_credentials)
 
     def test_get_recorded_api_credentials_returns_credentials_as_tuple(self):
         self.patch(auth, 'recorded_api_credentials', None)
         creds = make_credentials()
-        auth.record_api_credentials(represent_credentials(creds))
+        auth.record_api_credentials(convert_tuple_to_string(creds))
         self.assertEqual(creds, auth.get_recorded_api_credentials())
 
     def test_get_recorded_api_credentials_returns_None_without_creds(self):

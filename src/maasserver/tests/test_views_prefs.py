@@ -15,10 +15,12 @@ __all__ = []
 
 import httplib
 
+from apiclient.creds import convert_tuple_to_string
 from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse
 from lxml.html import fromstring
 from maasserver.models import SSHKey
+from maasserver.models.user import get_creds_tuple
 from maasserver.testing import (
     extract_redirect,
     get_content_links,
@@ -54,11 +56,9 @@ class UserPrefsViewTest(LoggedInTestCase):
         doc = fromstring(response.content)
         # The OAuth tokens are displayed.
         for token in user.get_profile().get_authorisation_tokens():
-            consumer = token.consumer
             # The token string is a compact representation of the keys.
-            token_string = '%s:%s:%s' % (consumer.key, token.key, token.secret)
             self.assertSequenceEqual(
-                [token_string],
+                [convert_tuple_to_string(get_creds_tuple(token))],
                 [elem.value.strip() for elem in
                     doc.cssselect('input#%s' % token.key)])
 

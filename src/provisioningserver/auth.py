@@ -18,6 +18,8 @@ __all__ = [
     'record_nodegroup_name',
     ]
 
+from apiclient.creds import convert_string_to_tuple
+
 # API credentials as last sent by the server.  The worker uses these
 # credentials to access the MAAS API.
 # Shared between threads.
@@ -57,7 +59,7 @@ def get_recorded_api_credentials():
     if credentials_string is None:
         return None
     else:
-        return tuple(credentials_string.split(':'))
+        return convert_string_to_tuple(credentials_string)
 
 
 def record_nodegroup_name(nodegroup_name):

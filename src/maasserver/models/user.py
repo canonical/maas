@@ -14,6 +14,7 @@ __all__ = [
     'create_auth_token',
     'create_user',
     'get_auth_tokens',
+    'get_creds_tuple',
     ]
 
 from maasserver import worker_user
@@ -84,3 +85,16 @@ def create_user(sender, instance, created, **kwargs):
 
         # Create initial authorisation token.
         profile.create_authorisation_token()
+
+
+def get_creds_tuple(token):
+    """Return API credentials as tuple, as used in :class:`MAASOAuth`.
+
+    Returns a tuple of (consumer key, resource token, resource secret).
+    The consumer secret is hard-wired to the empty string.
+    """
+    return (
+        token.consumer.key,
+        token.key,
+        token.secret,
+        )
