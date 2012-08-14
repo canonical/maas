@@ -45,6 +45,7 @@ from testtools.matchers import (
     Contains,
     EndsWith,
     FileContains,
+    FileExists,
     MatchesStructure,
     StartsWith,
     )
@@ -116,6 +117,32 @@ class TestDNSConfig(TestCase):
         exception = self.assertRaises(
             DNSConfigFail, dnsconfig.render_template, template)
         self.assertIn("'test' is not defined", exception.message)
+
+    def test_write_config_skips_writing_if_overwrite_false(self):
+        # If DNSConfig is created with overwrite=False, it won't
+        # overwrite an existing config file.
+        target_dir = self.make_dir()
+        self.patch(DNSConfig, 'target_dir', target_dir)
+        random_content = factory.getRandomString()
+        factory.make_file(
+            location=target_dir, name=MAAS_NAMED_CONF_NAME,
+            contents=random_content)
+        dnsconfig = DNSConfig()
+        dnsconfig.write_config(overwrite=False)
+        self.assertThat(
+            os.path.join(target_dir, MAAS_NAMED_CONF_NAME),
+            FileContains(random_content))
+
+    def test_write_config_writes_config_if_no_existing_file(self):
+        # If DNSConfig is created with overwrite=False, the config file
+        # will be written if no config file exists.
+        target_dir = self.make_dir()
+        self.patch(DNSConfig, 'target_dir', target_dir)
+        dnsconfig = DNSConfig()
+        dnsconfig.write_config(overwrite=False)
+        self.assertThat(
+            os.path.join(target_dir, MAAS_NAMED_CONF_NAME),
+            FileExists())
 
     def test_write_config_writes_config(self):
         target_dir = self.make_dir()

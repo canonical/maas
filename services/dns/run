@@ -20,8 +20,9 @@ bin/py -m maastesting.bindfixture -- \
     --create-config-only --overwrite-config \
     --homedir $homedir \
     --port $port --rndc-port $rndc_port
-# Create MAAS' DNS config.
-./bin/maas set_up_dns
+# Create MAAS' DNS config: do not overwrite an existing config file
+# as the writing of the full configuration might have happened already.
+./bin/maas set_up_dns --no-clobber
 # Edit the fixture's named.conf to include MAAS' DNS config.
 ./bin/maas get_named_conf --edit --config_path \
     `pwd`/run/named/named.conf

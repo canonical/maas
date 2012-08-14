@@ -32,6 +32,7 @@ import sys
 import tempfile
 from time import time
 
+from lockfile import FileLock
 from provisioningserver.config import Config
 import tempita
 from twisted.internet.defer import maybeDeferred
@@ -72,10 +73,8 @@ def xmlrpc_export(iface):
     return decorate
 
 
-def atomic_write(content, filename):
-    """Write the given `content` into the file `filename` in an atomic
-    fashion.
-    """
+def _write_temp_file(content, filename):
+    """Write the given `content` in a temporary file next to `filename`."""
     # Write the file to a temporary place (next to the target destination,
     # to ensure that it is on the same filesystem).
     directory = os.path.dirname(filename)
@@ -84,9 +83,29 @@ def atomic_write(content, filename):
         prefix=".%s." % os.path.basename(filename))
     with os.fdopen(temp_fd, "wb") as f:
         f.write(content)
-    # Rename the temporary file to `filename`, that operation is atomic on
-    # POSIX systems.
-    os.rename(temp_file, filename)
+    return temp_file
+
+
+def atomic_write(content, filename, overwrite=True):
+    """Write `content` into the file `filename` in an atomic fashion."""
+    # If not overwrite: use filelock to gain an exclusive access to the
+    # destination file.
+    if not overwrite:
+        lock = FileLock(filename)
+        # Acquire an exclusive lock on this file.
+        lock.acquire()
+        try:
+            if not os.path.isfile(filename):
+                temp_file = _write_temp_file(content, filename)
+                os.rename(temp_file, filename)
+        finally:
+            # Release the lock.
+            lock.release()
+    else:
+        # Rename the temporary file to `filename`, that operation is atomic on
+        # POSIX systems.
+        temp_file = _write_temp_file(content, filename)
+        os.rename(temp_file, filename)
 
 
 def incremental_write(content, filename):

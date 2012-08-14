@@ -148,12 +148,12 @@ class DNSConfigBase:
         parameters used when rendering the template."""
         return {}
 
-    def write_config(self, **kwargs):
+    def write_config(self, overwrite=True, **kwargs):
         """Write out this DNS config file."""
         template = self.get_template()
         kwargs.update(self.get_context())
         rendered = self.render_template(template, **kwargs)
-        atomic_write(rendered, self.target_path)
+        atomic_write(rendered, self.target_path, overwrite=overwrite)
 
 
 class DNSConfig(DNSConfigBase):
@@ -167,6 +167,7 @@ class DNSConfig(DNSConfigBase):
 
     def __init__(self, zones=()):
         self.zones = zones
+        return super(DNSConfig, self).__init__()
 
     @property
     def template_path(self):

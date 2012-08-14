@@ -62,6 +62,31 @@ class TestWriteAtomic(TestCase):
         atomic_write(content, filename)
         self.assertThat(filename, FileContains(content))
 
+    def test_atomic_write_does_not_overwrite_file_if_overwrite_false(self):
+        content = factory.getRandomString()
+        random_content = factory.getRandomString()
+        filename = self.make_file(contents=random_content)
+        atomic_write(content, filename, False)
+        self.assertThat(filename, FileContains(random_content))
+
+    def test_atomic_write_writes_file_if_no_file_present(self):
+        filename = os.path.join(self.make_dir(), factory.getRandomString())
+        content = factory.getRandomString()
+        atomic_write(content, filename, False)
+        self.assertThat(filename, FileContains(content))
+
+    def test_atomic_write_cleans_up_temp_file(self):
+        # If the writing of the file is skipped because overwrite is
+        # False and the file already exists, the temporary file which
+        # would have been used for the copy operation is removed.
+        content = factory.getRandomString()
+        random_content = factory.getRandomString()
+        filename = self.make_file(contents=random_content)
+        atomic_write(content, filename, False)
+        self.assertEqual(
+            [os.path.basename(filename)],
+            os.listdir(os.path.dirname(filename)))
+
 
 class TestIncrementalWrite(TestCase):
     """Test `incremental_write`."""
