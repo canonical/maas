@@ -214,6 +214,7 @@ def get_preseed_context(node, release="precise"):
     context = {
         'release': release,
         'server_host': server_host,
+        'server_url': absolute_reverse('nodes_handler'),
         'metadata_enlist_url': absolute_reverse('enlist'),
         }
     if node is not None:
