@@ -5,5 +5,4 @@ PROMPT 0
 
 LABEL execute
         SAY Booting local disk ...
-        LOCALBOOT -1
-
+        LOCALBOOT 0

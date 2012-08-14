@@ -97,4 +97,34 @@ class TestRenderPXEConfig(TestCase):
             "append": factory.make_name("append"),
             }
         output = render_pxe_config(**options)
-        self.assertIn("LOCALBOOT -1", output)
+        self.assertIn("LOCALBOOT 0", output)
+
+    def test_render_pxe_config_with_local_purpose_i386_arch(self):
+        # Intel i386 is a special case and needs to use the chain.c32
+        # loader as the LOCALBOOT PXE directive is unreliable.
+        options = {
+            "arch": "i386",
+            "subarch": factory.make_name("subarch"),
+            "release": factory.make_name("release"),
+            "purpose": "local",
+            "bootpath": factory.make_name("bootpath"),
+            "append": factory.make_name("append"),
+            }
+        output = render_pxe_config(**options)
+        self.assertIn("chain.c32", output)
+        self.assertNotIn("LOCALBOOT", output)
+
+    def test_render_pxe_config_with_local_purpose_amd64_arch(self):
+        # Intel amd64 is a special case and needs to use the chain.c32
+        # loader as the LOCALBOOT PXE directive is unreliable.
+        options = {
+            "arch": "amd64",
+            "subarch": factory.make_name("subarch"),
+            "release": factory.make_name("release"),
+            "purpose": "local",
+            "bootpath": factory.make_name("bootpath"),
+            "append": factory.make_name("append"),
+            }
+        output = render_pxe_config(**options)
+        self.assertIn("chain.c32", output)
+        self.assertNotIn("LOCALBOOT", output)

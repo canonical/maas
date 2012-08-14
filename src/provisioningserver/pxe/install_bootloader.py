@@ -27,16 +27,16 @@ from provisioningserver.pxe.tftppath import (
 
 
 def make_destination(tftproot, arch, subarch):
-    """Locate a loader's destination.  Create containing directory if needed.
+    """Locate a loader's destination, creating the directory if needed.
 
     :param tftproot: The root directory served up by the TFTP server,
         e.g. /var/lib/tftpboot/.
     :param arch: Main architecture to locate the destination for.
     :param subarch: Sub-architecture of the main architecture.
-    :return: Full path describing the filename that the installed loader
+    :return: Full path describing the directory that the installed loader
         should end up having.  For example, the loader for i386 (with
         sub-architecture "generic") should install at
-        /maas/i386/generic/pxelinux.0.
+        /maas/i386/generic/
     """
     path = locate_tftp_path(
         compose_bootloader_path(arch, subarch),
@@ -44,7 +44,7 @@ def make_destination(tftproot, arch, subarch):
     directory = os.path.dirname(path)
     if not os.path.isdir(directory):
         os.makedirs(directory)
-    return path
+    return directory
 
 
 def are_identical_files(old, new):
@@ -103,11 +103,9 @@ def run(args):
     """Install a PXE pre-boot loader into the TFTP directory structure.
 
     This won't overwrite an existing loader if its contents are unchanged.
-    However the new loader you give it will be deleted regardless.
     """
     config = Config.load(args.config_file)
     tftproot = config["tftp"]["root"]
-    destination = make_destination(tftproot, args.arch, args.subarch)
+    destination_path = make_destination(tftproot, args.arch, args.subarch)
+    destination = os.path.join(destination_path, os.path.basename(args.loader))
     install_bootloader(args.loader, destination)
-    if os.path.exists(args.loader):
-        os.remove(args.loader)

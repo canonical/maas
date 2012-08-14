@@ -32,6 +32,8 @@ template_dir = path.dirname(__file__)
 template_filename = path.join(template_dir, "config.template")
 template_localboot_filename = path.join(
     template_dir, "config.localboot.template")
+template_localboot_intel_filename = path.join(
+    template_dir, "config.localboot-intel.template")
 
 
 def render_pxe_config(
@@ -48,9 +50,15 @@ def render_pxe_config(
         parameters generated in another component (for example, see
         `TFTPBackend.get_config_reader`) won't cause this to break.
     """
+    # Templates are loaded each time here so that they can be changed on
+    # the fly without restarting the provisioning server.
     if purpose == "local":
-        template = tempita.Template.from_filename(
-            template_localboot_filename, encoding="UTF-8")
+        if arch in ("i386", "amd64"):
+            template = tempita.Template.from_filename(
+                template_localboot_intel_filename, encoding="UTF-8")
+        else:
+            template = tempita.Template.from_filename(
+                template_localboot_filename, encoding="UTF-8")
         # No params in local boot pxeconfig, but using a template anyway
         # in case we decide to do so in the future.
         return template.substitute()

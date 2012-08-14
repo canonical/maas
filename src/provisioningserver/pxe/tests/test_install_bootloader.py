@@ -35,7 +35,6 @@ from testtools.matchers import (
     DirExists,
     FileContains,
     FileExists,
-    Not,
     )
 
 
@@ -58,19 +57,20 @@ class TestInstallPXEBootloader(TestCase):
             ("--config-file", config_fixture.filename, action, "--arch", arch,
              "--subarch", subarch, "--loader", loader))
 
+        bootloader_filename = os.path.join(
+            os.path.dirname(compose_bootloader_path(arch, subarch)),
+            os.path.basename(loader))
         self.assertThat(
             locate_tftp_path(
-                compose_bootloader_path(arch, subarch),
-                tftproot=tftproot),
+                bootloader_filename, tftproot=tftproot),
             FileExists())
-        self.assertThat(loader, Not(FileExists()))
 
     def test_make_destination_creates_directory_if_not_present(self):
         tftproot = self.make_dir()
         arch = factory.make_name('arch')
         subarch = factory.make_name('subarch')
         dest = make_destination(tftproot, arch, subarch)
-        self.assertThat(os.path.dirname(dest), DirExists())
+        self.assertThat(dest, DirExists())
 
     def test_make_destination_returns_existing_directory(self):
         tftproot = self.make_dir()
@@ -78,7 +78,7 @@ class TestInstallPXEBootloader(TestCase):
         subarch = factory.make_name('subarch')
         make_destination(tftproot, arch, subarch)
         dest = make_destination(tftproot, arch, subarch)
-        self.assertThat(os.path.dirname(dest), DirExists())
+        self.assertThat(dest, DirExists())
 
     def test_install_bootloader_installs_new_bootloader(self):
         contents = factory.getRandomString()

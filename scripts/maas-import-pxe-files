@@ -73,8 +73,12 @@ update_pre_boot_loader() {
     if [ -f pxelinux.0 ]
     then
         # TODO: Pass sub-architecture once we support those.
+        # TODO: pxelinux.0 is downloaded but there's no reason why it can't
+        # come from the syslinux package like chain.c32 is.
         maas-provision install-pxe-bootloader \
             --arch=$arch --loader='pxelinux.0'
+        maas-provision install-pxe-bootloader \
+            --arch=$arch --loader='/usr/lib/syslinux/chain.c32'
     fi
 }
 
