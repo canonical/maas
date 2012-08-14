@@ -124,6 +124,7 @@ from maasserver.models import (
     Node,
     NodeGroup,
     )
+from maasserver.refresh_worker import refresh_worker
 from piston.doc import generate_doc
 from piston.handler import (
     AnonymousBaseHandler,
@@ -853,9 +854,12 @@ class FilesHandler(BaseHandler):
 
 @api_operations
 class NodeGroupsHandler(BaseHandler):
-    """Node-groups API.  Lists the registered node groups."""
+    """Node-groups API.  Lists the registered node groups.
 
-    allowed_methods = ('GET', )
+    BE VERY CAREFUL in this view: it is accessible anonymously, even for POST.
+    """
+
+    allowed_methods = ('GET', 'POST')
 
     def read(self, request):
         """Index of node groups."""
@@ -865,6 +869,21 @@ class NodeGroupsHandler(BaseHandler):
     @classmethod
     def resource_uri(cls):
         return ('nodegroups_handler', [])
+
+    @api_exported('POST')
+    def refresh_workers(self, request):
+        """Request an update of all node groups' configurations.
+
+        This sends each node-group worker an update of its API credentials,
+        OMAPI key, node-group name, and so on.
+
+        Anyone can request this (for example, a bootstrapping worker that
+        does not know its node-group name or API credentials yet) but the
+        information will be sent only to the known workers.
+        """
+        for nodegroup in NodeGroup.objects.all():
+            refresh_worker(nodegroup)
+        return HttpResponse("Sending worker refresh.", status=httplib.OK)
 
 
 @api_operations

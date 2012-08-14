@@ -37,6 +37,7 @@ from fixtures import Fixture
 from maasserver import (
     api,
     kernel_opts,
+    refresh_worker,
     )
 from maasserver.api import (
     extract_constraints,
@@ -2416,7 +2417,7 @@ class TestPXEConfigAPI(AnonAPITestCase):
             json.loads(response.content)["purpose"])
 
 
-class TestNodeGroupsAPI(APITestCase):
+class TestNodeGroupsAPI(AnonAPITestCase):
 
     def test_reverse_points_to_nodegroups_api(self):
         self.assertEqual(self.get_uri('nodegroups/'), reverse('nodegroups'))
@@ -2427,6 +2428,28 @@ class TestNodeGroupsAPI(APITestCase):
         response = self.client.get(reverse('nodegroups'))
         self.assertEqual(httplib.OK, response.status_code)
         self.assertIn(nodegroup.name, json.loads(response.content))
+
+    def test_refresh_calls_refresh_worker(self):
+        recorder = FakeMethod()
+        self.patch(refresh_worker.refresh_secrets, 'delay', recorder)
+        nodegroup = factory.make_node_group()
+        response = self.client.post(
+            reverse('nodegroups'), {'op': 'refresh_workers'})
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertIn(
+            nodegroup.name, [
+                kwargs['nodegroup_name']
+                for kwargs in recorder.extract_kwargs()])
+
+    def test_refresh_does_not_return_secrets(self):
+        # The response from "refresh" contains only an innocuous
+        # confirmation.  Anyone can call this method, so it mustn't
+        # reveal anything sensitive.
+        response = self.client.post(
+            reverse('nodegroups'), {'op': 'refresh_workers'})
+        self.assertEqual(
+            (httplib.OK, "Sending worker refresh."),
+            (response.status_code, response.content))
 
 
 class TestNodeGroupAPI(APITestCase):
