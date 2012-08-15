@@ -19,32 +19,18 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-# Cobbler is being removed from MAAS.  Set NO_COBBLER to a value other than '0'
-# to skip anything in this script that is related to Cobbler.
-NO_COBBLER=${NO_COBBLER:-}
-USE_COBBLER() { [ "${NO_COBBLER:-0}" = "0" ]; }
-
 VERBOSITY=0
 REMOTE_IMAGES_MIRROR="https://maas.ubuntu.com/images"
 
-if USE_COBBLER; then
-CONSOLE="ttyS0,9600n8"
-EPH_KOPTS_CONSOLE="console=$CONSOLE"
-EPH_KOPTS_ISCSI="ip=dhcp iscsi_target_name=@@iscsi_target@@ iscsi_target_ip=@@iscsi_target_ip@@ iscsi_target_port=3260"
-EPH_KOPTS_ROOT="root=LABEL=cloudimg-rootfs ro"
-EPH_KOPTS_LOGGING="log_host=@@server_ip@@ log_port=514"
-KSDIR="/var/lib/cobbler/kickstarts"
-KICKSTART="$KSDIR/maas-commissioning.preseed"
-fi # end USE_COBBLER
-
+# iSCSI targets configuration file.
 SYS_TGT_CONF="/etc/tgt/targets.conf"
+
+# Prefix for iSCSI target name.
+TARGET_NAME_PREFIX="iqn.2004-05.com.ubuntu:maas:"
 
 # TODO: What's this for?  If set, it gets run on a downloaded disk.img,
 # kernel, and initrd.
 EPH_UPDATE_CMD=""
-
-# Prefix for iSCSI target name.
-TARGET_NAME_PREFIX="iqn.2004-05.com.ubuntu:maas:"
 
 # TODO: DATA_DIR seems to be the root of a directory tree that's exposed over
 # iSCSI for download by nodes.  Can we confirm this?
@@ -74,24 +60,15 @@ STREAM="released"
 #           my.conf
 
 error() { echo "$@" 1>&2; }
-errorp() { printf "$@" 1>&2; }
 fail() { [ $# -eq 0 ] || error "$@"; exit 1; }
-failp() { [ $# -eq 0 ] || errorp "$@"; exit 1; }
 
 
 Usage() {
     cat <<EOF
 Usage: ${0##*/} [ options ] <<ARGUMENTS>>
 
-   Import ephemeral (commissioning) images into maas.
+   Import ephemeral (enlistment/commissioning) images into maas.
    Settings are read from $CONFIG.
-
-   options:
-      -i | --import       initial import or freshen the images
-      -c | --update-check check existing imported data versus available
-                          in mirror.  exits 0 if an update is needed or
-                          an initial import is needed.
-      -u | --update       update parameters on cobbler profiles per config
 EOF
 }
 
@@ -121,26 +98,14 @@ arch2u() {
 }
 
 
-if USE_COBBLER; then
-arch2cob() {
-    # Normalize an architecture name for use in Cobbler.
-    _RET=$1
-    case "$1" in
-        i?86) _RET=i386;;
-        amd64) _RET=x86_64;;
-    esac
-}
-fi # end USE_COBBLER
-
-
 query_remote() {
     # query /query data at REMOTE_IMAGES_MIRROR
     # returns 7 values prefixed with 'r_'
     local iarch=$1 irelease=$2 istream=$3 out=""
     local burl="${REMOTE_IMAGES_MIRROR}/query"
     local url="$burl/$irelease/$istream/${STREAM}-dl.current.txt"
-    mkdir -p "$TEMP_D/query"
     local target="$TEMP_D/query/$release.$stream"
+    mkdir -p -- "$TEMP_D/query"
     if [ ! -f "$TEMP_D/query/$release.$stream" ]; then
         wget -q "$url" -O "$target.tmp" && mv "$target.tmp" "$target" ||
             { error "failed to get $url"; return 1; }
@@ -292,6 +257,7 @@ EOF
     else
         [ -n "$kernel" -a -n "$initrd" ] || {
             error "missing kernel or initrd in tarball. set \$EPH_UPDATE_CMD";
+            # TODO: Set it to what!?
             return 1;
         }
     fi
@@ -311,57 +277,6 @@ write_tgt_conf() {
 </target>
 EOF
 }
-
-
-if USE_COBBLER; then
-cobbler_has() {
-    local noun="$1" name="$2" out=""
-
-    out=$(cobbler "$noun" find "--name=$name" 2>/dev/null) &&
-        [ "$out" = "$name" ]
-}
-
-cobbler_add_update() {
-    # cobbler_add_update(distro_name, profile_name,
-    #                    release, arch, kopts, kickstart,
-    #                    kernel, initrd)
-    local distro="$1" profile="$2" release="$3" arch="$4"
-    local kernel="$5" initrd="$6" kopts="$7" kickstart="$8"
-    local op
-
-    cobbler_has distro "$distro" && op="edit" || op="add"
-
-    cobbler distro "$op" "--name=$distro" --breed=ubuntu \
-        "--os-version=$release" "--arch=$arch" \
-        "--kernel=$kernel" "--initrd=$initrd" ||
-        { error "failed to $op $distro"; return 1; }
-
-    cobbler_has distro "$distro" ||
-        { error "no distro '$distro' after '$op'"; return 1; }
-
-    cobbler_has profile "$profile" && op="edit" || op="add"
-
-    cobbler profile "$op" "--name=$profile" "--distro=$distro" \
-        --kopts="$kopts" "--kickstart=$kickstart" ||
-        { error "failed to $op $profile"; return 1; }
-
-    cobbler_has profile "$profile" ||
-        { error "no profile '$profile' after '$op'"; return 1; }
-
-    return 0
-}
-
-replace() {
-    # replace(input, key1, value1, key2, value2, ...)
-    local input="$1" key="" val=""
-    shift
-    while [ $# -ne 0 ]; do
-        input=${input//$1/$2}
-        shift 2
-    done
-    _RET=${input}
-}
-fi # end USE_COBBLER
 
 
 install_tftp_image() {
@@ -392,57 +307,24 @@ install_tftp_image() {
 
 
 short_opts="hciuv"
-long_opts="help,import,update,update-check,verbose"
+long_opts="help,verbose"
 getopt_out=$(getopt --name "${0##*/}" \
     --options "${short_opts}" --long "${long_opts}" -- "$@") &&
     eval set -- "${getopt_out}" ||
     bad_Usage
-
-check=0
-import=0
-update=0
 
 while [ $# -ne 0 ]; do
     cur=${1}; next=${2};
     case "$cur" in
         -h|--help) Usage ; exit 0;;
         -v|--verbose) VERBOSITY=$((${VERBOSITY}+1));;
-        -i|--import) import=1;;
-        -c|--update-check) check=1;;
-        -u|--update) update=1;;
         --) shift; break;;
     esac
     shift;
 done
 
-[ $import -eq 0 -a $check -eq 0 -a $update -eq 0 ] && import=1
-[ $(($import + $check + $update)) -eq 0 ] && import=1
-
-[ $(($import + $check + $update)) -eq 1 ] ||
-    bad_Usage "only one of --update-check, --update, --import may be given"
-
 [ ! -f "$CONFIG" ] || . "$CONFIG"
 [ ! -f ".${CONFIG}" ] || . ".${CONFIG}"
-
-
-if USE_COBBLER; then
-# get default server ip
-[ -n "$SERVER_IP" ] ||
-    _ip=$(awk '$1 == "server:" { print $2 }' /etc/cobbler/settings) ||
-    fail "must set SERVER_IP to cobbler server"
-
-SERVER_IP=${SERVER_IP:-${_ip}}
-[ -n "${SERVER_IP}" ] &&
-    KOPTS="$KOPTS log_host=$SERVER_IP log_port=514"
-
-
-ISCSI_TARGET_IP=${ISCSI_TARGET_IP:-${SERVER_IP}}
-[ -n "$ISCSI_TARGET_IP" ] || fail "ISCSI_TARGET_IP must have a value"
-
-
-[ -f "$KICKSTART" ] ||
-    fail "kickstart $KICKSTART is not a file"
-fi # end USE_COBBLER
 
 
 mkdir -p "$DATA_DIR" "$DATA_DIR/.working" ||
@@ -467,9 +349,6 @@ fi
 updates=0
 for release in $RELEASES; do
     for arch in $ARCHES; do
-if USE_COBBLER; then
-            arch2cob "$arch"; arch_c=$_RET
-fi # end USE_COBBLER
         arch2u "$arch"; arch_u=$_RET
 
         query_local "$arch_u" "$release" "$BUILD_NAME" ||
@@ -477,7 +356,7 @@ fi # end USE_COBBLER
         query_remote "$arch_u" "$release" "$BUILD_NAME" ||
             fail "remote query of $REMOTE_IMAGES_MIRROR failed"
 
-        if [ $update -eq 0 -o -z "$l_dir" ]; then
+        if [ -z "$l_dir" ]; then
             serial_gt "$r_serial" "$l_serial" || {
                 debug 1 "$release-${arch_u} in ${l_dir} is up to date";
                 continue;
@@ -486,9 +365,6 @@ fi # end USE_COBBLER
             # an update is needed remote serial is newer than local
             updates=$(($updates+1))
 
-            # check only
-            [ $check -eq 0 ] || continue
-
             debug 1 "updating $release-$arch ($l_name => $r_name)"
             wd="${TEMP_D}/$release/$arch"
             prep_dir "$wd" \
@@ -496,9 +372,7 @@ fi # end USE_COBBLER
                 "$r_serial" "$r_arch" "$r_url" "$r_name" ||
                 fail "failed to prepare image for $release/$arch"
 
-if ! USE_COBBLER; then
             install_tftp_image "$wd" "$r_arch" "generic" "$r_release"
-fi
 
             target_name="${TARGET_NAME_PREFIX}${r_name}"
 
@@ -538,47 +412,9 @@ fi
             fail "failed tgt-admin add for $name"
         }
 
-
-if USE_COBBLER; then
-        # cobbler_update
-        kopts_in="$EPH_CONSOLE_KOPTS $EPH_KOPTS_ISCSI $EPH_KOPTS_ROOT $EPH_KOPTS_LOGGING"
-        replace "${kopts_in}" \
-            "@@server_ip@@" "$SERVER_IP" \
-            "@@iscsi_target@@" "${target_name}" \
-            "@@iscsi_target_ip@@" "${ISCSI_TARGET_IP}"
-        kopts=$_RET
-
-        distro="$release-${arch_c}-maas-ephemeral"
-        profile="maas-${release}-${arch_c}-commissioning"
-        kernel="$fpfinal_d/linux"
-        initrd="$fpfinal_d/initrd.gz"
-        debug 1 "updating profile $profile, distro $distro kopts:${kopts}"
-        debug 2 cobbler_add_update "$distro" "$profile" "$release" "${arch_c}" \
-            "$kernel" "$initrd" "$kopts" "$KICKSTART"
-        cobbler_add_update "$distro" "$profile" "$release" "${arch_c}" \
-            "$kernel" "$initrd" "$kopts" "$KICKSTART" || {
-                mv "${fpfinal_d}/info" "${fpfinal_d}/info.failed"
-                tgt-admin --conf "$SYS_TGT_CONF" --delete "$target_name"
-                rm "${tgt_conf_d}/${name}.conf";
-                fail "failed to update cobbler for $profile/$distro"
-            }
-fi # end USE_COBBLER
-
-
     done
 done
 
-
-if [ $check -eq 1 ]; then
-    # if --update-check, but no updates needed, exit 3
-    [ $updates_needed -eq 0 ] && exit 3
-    # if updates are needed, exit 0
-    exit 0
-fi
-
-if USE_COBBLER; then
-cobbler sync
-fi # end USE_COBBLER
 
 ## cleanup
 # here, go through anything non-current,

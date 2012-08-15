@@ -136,7 +136,7 @@ import_install_images() {
 import_ephemeral_images() {
     if test "$IMPORT_EPHEMERALS" != "0"
     then
-        NO_COBBLER=1 maas-import-ephemerals --import
+        maas-import-ephemerals
     fi
 }
 

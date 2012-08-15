@@ -2,16 +2,8 @@
 [ ! -f /etc/maas/import_pxe_files ] || . /etc/maas/import_pxe_files
 
 #REMOTE_IMAGES_MIRROR="https://cloud-images.ubuntu.com"
-#ISCSI_TARGET_IP="" # defaults to cobbler server setting
-#EPH_KOPTS_CONSOLE="console=${CONSOLE:-ttyS0,9600n8}"
-#EPH_KOPTS_ISCSI="ip=dhcp iscsi_target_name=@@iscsi_target@@ iscsi_target_ip=@@iscsi_target_ip@@ iscsi_target_port=3260"
-#EPH_KOPTS_ROOT="root=cloudimg-rootfs ro"
-#EPH_KOPTS_LOGGING="log_host=@@server_ip@@ log_port=514"
-#EPH_UPDATE_CMD=""
 #TARGET_NAME_PREFIX="iqn.2004-05.com.ubuntu:maas:"
 #DATA_DIR="/var/lib/maas/ephemeral"
 #RELEASES="precise"
 #ARCHES="amd64 i386"
-#KSDIR="/var/lib/cobbler/kickstarts"
-#KICKSTART="$KSDIR/maas-commissioning.preseed"
 #TARBALL_CACHE_D="" # set to cache downloaded content

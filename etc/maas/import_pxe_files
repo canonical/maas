@@ -15,9 +15,5 @@ fi
 #RELEASES="oneiric precise"
 RELEASES="precise"
 #ARCHES="amd64 i386"
-#PRIORITY="critical"
 #LOCALE="en_US"
-#INTERFACE="eth0"
-#CONSOLE="ttyS0,9600n8"
-#KOPTS="priority=$PRIORITY locale=$LOCALE netcfg/choose_interface=$INTERFACE console=$CONSOLE"
 #IMPORT_EPHEMERALS=1
