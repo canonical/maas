@@ -63,9 +63,9 @@ class TestStartUp(TestCase):
             self.assertRaises(LockTimeout, lock.acquire, timeout=0.1)
 
         def check_lock_in_subprocess():
-             proc = Process(target=check_lock)
-             proc.start()
-             proc.join()
+            proc = Process(target=check_lock)
+            proc.start()
+            proc.join()
 
         self.patch(start_up, 'inner_start_up', check_lock_in_subprocess)
         start_up.start_up()
