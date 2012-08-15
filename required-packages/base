@@ -31,5 +31,5 @@ python-twisted
 python-txamqp
 python-yaml
 rabbitmq-server
-syslinux
+syslinux-common
 tgt
