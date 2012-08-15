@@ -32,7 +32,6 @@ from maasserver.models import (
     SSHKey,
     )
 from maasserver.models.node import NODE_TRANSITIONS
-from maasserver.models.user import create_auth_token
 from maasserver.testing import (
     get_data,
     reload_object,
@@ -112,9 +111,8 @@ class Factory(maastesting.factory.Factory):
         return reload_object(node)
 
     def make_node_group(self, name=None, worker_ip=None, router_ip=None,
-                        api_token=None, network=None, subnet_mask=None,
-                        broadcast_ip=None, ip_range_low=None,
-                        ip_range_high=None, **kwargs):
+                        network=None, subnet_mask=None, broadcast_ip=None,
+                        ip_range_low=None, ip_range_high=None, **kwargs):
         """Create a :class:`NodeGroup`.
 
         If network (an instance of IPNetwork) is provided, use it to populate
@@ -127,9 +125,6 @@ class Factory(maastesting.factory.Factory):
         """
         if name is None:
             name = self.make_name('nodegroup')
-        if api_token is None:
-            user = self.make_user()
-            api_token = create_auth_token(user)
         if network is not None:
             subnet_mask = str(network.netmask)
             broadcast_ip = str(network.broadcast)
@@ -150,9 +145,8 @@ class Factory(maastesting.factory.Factory):
                 router_ip = self.getRandomIPAddress()
             if worker_ip is None:
                 worker_ip = self.getRandomIPAddress()
-        ng = NodeGroup(
-            name=name, api_token=api_token, api_key=api_token.key,
-            worker_ip=worker_ip, subnet_mask=subnet_mask,
+        ng = NodeGroup.objects.new(
+            name=name, worker_ip=worker_ip, subnet_mask=subnet_mask,
             broadcast_ip=broadcast_ip, router_ip=router_ip,
             ip_range_low=ip_range_low, ip_range_high=ip_range_high, **kwargs)
         ng.save()

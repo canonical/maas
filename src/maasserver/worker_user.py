@@ -37,6 +37,6 @@ def get_worker_user():
                 first_name="Node-group worker",
                 last_name="Special user",
                 email="maas-nodegroup-worker@localhost",
-                is_staff=False, is_active=False, is_superuser=False))
+                is_staff=False, is_superuser=False))
         cache.set(WORKER_USER_CACHE_KEY, worker_user)
     return worker_user

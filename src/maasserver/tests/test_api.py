@@ -80,6 +80,7 @@ from maasserver.testing.testcase import (
     TestCase,
     )
 from maasserver.utils import map_enum
+from maasserver.worker_user import get_worker_user
 from maastesting.djangotestcase import TransactionTestCase
 from maastesting.fakemethod import FakeMethod
 from maastesting.matchers import ContainsAll
@@ -2452,6 +2453,21 @@ class TestNodeGroupsAPI(AnonAPITestCase):
             (response.status_code, response.content))
 
 
+def explain_unexpected_response(expected_status, response):
+    """Return human-readable failure message: unexpected http response."""
+    return "Unexpected http status (expected %s): %s - %s" % (
+        expected_status,
+        response.status_code,
+        response.content,
+        )
+
+
+def make_worker_client(nodegroup):
+    """Create a test client logged in as if it were `nodegroup`."""
+    return OAuthAuthenticatedClient(
+        get_worker_user(), token=nodegroup.api_token)
+
+
 class TestNodeGroupAPI(APITestCase):
 
     def test_reverse_points_to_nodegroup(self):
@@ -2475,7 +2491,8 @@ class TestNodeGroupAPI(APITestCase):
     def test_update_leases_processes_empty_leases_dict(self):
         nodegroup = factory.make_node_group()
         factory.make_dhcp_lease(nodegroup=nodegroup)
-        response = self.client.post(
+        client = make_worker_client(nodegroup)
+        response = client.post(
             reverse('nodegroup', args=[nodegroup.name]),
             {
                 'op': 'update_leases',
@@ -2491,7 +2508,8 @@ class TestNodeGroupAPI(APITestCase):
         nodegroup = factory.make_node_group()
         ip = factory.getRandomIPAddress()
         mac = factory.getRandomMACAddress()
-        response = self.client.post(
+        client = make_worker_client(nodegroup)
+        response = client.post(
             reverse('nodegroup', args=[nodegroup.name]),
             {
                 'op': 'update_leases',
@@ -2505,9 +2523,47 @@ class TestNodeGroupAPI(APITestCase):
             for lease in DHCPLease.objects.filter(nodegroup=nodegroup)])
 
 
-class TestAnonNodeGroupsAPI(AnonAPITestCase):
+class TestNodeGroupAPIAuth(APIv10TestMixin, TestCase):
+    """Authorization tests for nodegroup API."""
+
+    def log_in_as_normal_user(self):
+        """Log `self.client` in as a normal user."""
+        password = factory.getRandomString()
+        user = factory.make_user(password=password)
+        self.client.login(username=user.username, password=password)
 
     def test_nodegroup_requires_authentication(self):
         nodegroup = factory.make_node_group()
         response = self.client.get(reverse('nodegroup', args=[nodegroup.name]))
         self.assertEqual(httplib.UNAUTHORIZED, response.status_code)
+
+    def test_update_leases_works_for_nodegroup_worker(self):
+        nodegroup = factory.make_node_group()
+        client = make_worker_client(nodegroup)
+        response = client.post(
+            reverse('nodegroup', args=[nodegroup.name]),
+            {'op': 'update_leases', 'leases': json.dumps({})})
+        self.assertEqual(
+            httplib.OK, response.status_code,
+            explain_unexpected_response(httplib.OK, response))
+
+    def test_update_leases_does_not_work_for_normal_user(self):
+        nodegroup = factory.make_node_group()
+        self.log_in_as_normal_user()
+        response = self.client.post(
+            reverse('nodegroup', args=[nodegroup.name]),
+            {'op': 'update_leases', 'leases': json.dumps({})})
+        self.assertEqual(
+            httplib.FORBIDDEN, response.status_code,
+            explain_unexpected_response(httplib.FORBIDDEN, response))
+
+    def test_update_leases_does_not_let_worker_update_other_nodegroup(self):
+        requesting_nodegroup = factory.make_node_group()
+        about_nodegroup = factory.make_node_group()
+        client = make_worker_client(requesting_nodegroup)
+        response = client.post(
+            reverse('nodegroup', args=[about_nodegroup.name]),
+            {'op': 'update_leases', 'leases': json.dumps({})})
+        self.assertEqual(
+            httplib.FORBIDDEN, response.status_code,
+            explain_unexpected_response(httplib.FORBIDDEN, response))

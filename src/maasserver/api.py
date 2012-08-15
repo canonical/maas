@@ -886,6 +886,26 @@ class NodeGroupsHandler(BaseHandler):
         return HttpResponse("Sending worker refresh.", status=httplib.OK)
 
 
+def get_nodegroup_for_worker(request, nodegroup_name):
+    """Get :class:`NodeGroup` by name, for access by its worker.
+
+    This supports a nodegroup worker accessing its nodegroup object on
+    the API.  If the request is done by ayone but the worker for this
+    particular nodegroup, the function raises :class:`PermissionDenied`.
+    """
+    nodegroup = get_object_or_404(NodeGroup, name=nodegroup_name)
+    try:
+        key = extract_oauth_key(request)
+    except Unauthorized as e:
+        raise PermissionDenied(unicode(e))
+
+    if key != nodegroup.api_key:
+        raise PermissionDenied(
+            "Only allowed for the %r worker." % nodegroup.name)
+
+    return nodegroup
+
+
 @api_operations
 class NodeGroupHandler(BaseHandler):
     """Node-group API."""
@@ -908,7 +928,7 @@ class NodeGroupHandler(BaseHandler):
     @api_exported('POST')
     def update_leases(self, request, name):
         leases = get_mandatory_param(request.data, 'leases')
-        nodegroup = get_object_or_404(NodeGroup, name=name)
+        nodegroup = get_nodegroup_for_worker(request, name)
         DHCPLease.objects.update_leases(nodegroup, json.loads(leases))
         return HttpResponse("Leases updated.", status=httplib.OK)
 
