@@ -8,15 +8,16 @@ MAAS.  The MAAS server needs these images to provides nodes with operating
 systems.  Images that are already in place are kept unchanged, unless the
 version in the archive has since been updated.
 
-The script reads a configuration file \fI/etc/maas/import_isos\fP in order
-to determine:
+The script reads a configuration file \fI/etc/maas/import_pxe_files\fP in
+order to determine:
  - ARCHIVE: Location of the Ubuntu download archive
  - RELEASES: Ubuntu releases to download
  - CURRENT_RELEASE: Most up-to-date Ubuntu release
  - ARCHES: Architectures for which images should be downloaded
 
 (To support development setups that run directly from a code branch, it will
-also look for \fIetc/maas/import_isos\fP relative to the current directory).
+also look for \fIetc/maas/import_pxe_files\fP relative to the current
+directory).
 
 The script uses \fBwget\fP(1) to download the kernel and initrd image for
 each architecture in ARCHES and each release in RELEASES.  It will also
@@ -30,11 +31,10 @@ A \fBcron\fP(8) job typically runs this script at a quiet time every Sunday,
 but you may need to run it manually once for a new MAAS installation.
 
 .SH FILES
-\fI/etc/maas/import_isos\fP, \fI/etc/cron.d/maas\-import\-pxe\-files\fP
+\fI/etc/maas/import_pxe_files\fP, \fI/etc/cron.d/maas\-import\-pxe\-files\fP
 
 .SH "SEE ALSO"
 .BR maas\-import\-ephemerals (8),
-.BR maas\-import\-isos (8),
 .BR cron (8),
 .BR wget (1)
 

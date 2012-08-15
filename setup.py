@@ -58,6 +58,7 @@ setup(
              'etc/txlongpoll.yaml',
              'etc/celeryconfig.py',
              'etc/maas/import_ephemerals',
+             'etc/maas/import_pxe_files',
              'etc/maas/commissioning-user-data',
              'contrib/maas-http.conf',
              'contrib/maas_local_settings.py']),

@@ -22,7 +22,7 @@ import threading
 class COMPONENT:
     COBBLER = 'cobbler server'
     PSERV = 'provisioning server'
-    IMPORT_ISOS = 'maas-import-isos script'
+    IMPORT_PXE_FILES = 'maas-import-pxe-files script'
 
 
 # Persistent errors are global to a MAAS instance.

@@ -164,7 +164,7 @@ class TestHelpers(TestCase):
                 "invalid profile name: %s" % profile))
         friendly_text = friendly_fault.message
         self.assertIn(profile, friendly_text)
-        self.assertIn("maas-import-isos", friendly_text)
+        self.assertIn("profile", friendly_text)
 
     def test_present_detailed_fault_describes_generic_cobbler_fail(self):
         error_text = factory.getRandomString()
@@ -316,19 +316,6 @@ class ProvisioningTests:
                     get_profile_name(arch, commissioning))
         self.assertItemsEqual(expected_profiles, get_all_profile_names())
 
-    def test_provision_post_save_Node_checks_for_missing_profile(self):
-        # If the required profile for a node is missing, MAAS reports
-        # that the maas-import-isos script may need running.
-
-        def raise_missing_profile(*args, **kwargs):
-            raise Fault(PSERV_FAULT.NO_SUCH_PROFILE, "Unknown profile.")
-
-        self.patch(self.papi.proxy, 'add_node', raise_missing_profile)
-        with ExpectedException(ExternalComponentException):
-            node = factory.make_node()
-            provisioning.provision_post_save_Node(
-                sender=Node, instance=node, created=True)
-
     def test_provision_post_save_Node_returns_other_pserv_faults(self):
 
         def raise_fault(*args, **kwargs):
@@ -472,21 +459,12 @@ class ProvisioningTests:
         check_profiles()
         self.assertEqual([], get_persistent_errors())
 
-    def test_check_profiles_error_registered_if_not_all_profiles_found(self):
-        def return_some_profiles(profiles):
-            return profiles[1:]
-        self.patch_get_profiles_by_name(return_some_profiles)
-
-        check_profiles()
-        errors = get_persistent_errors()
-        self.assertIn("<pre>sudo maas-import-isos</pre>", errors[0])
-
     def test_failing_components_cleared_if_add_node_works(self):
         self.patch(components, '_PERSISTENT_ERRORS', {})
         register_persistent_error(COMPONENT.PSERV, factory.getRandomString())
         register_persistent_error(COMPONENT.COBBLER, factory.getRandomString())
         register_persistent_error(
-            COMPONENT.IMPORT_ISOS, factory.getRandomString())
+            COMPONENT.IMPORT_PXE_FILES, factory.getRandomString())
         self.papi.add_node('node', 'hostname', 'profile', 'power', '')
         self.assertEqual([], get_persistent_errors())
 

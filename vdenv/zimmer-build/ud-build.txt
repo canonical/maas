@@ -74,23 +74,6 @@ bucket:
    # care of restarting things that need to be
    /usr/local/bin/maas-set-ip set auto
 
-   # now basically wait around until cobbler is available
-   # detach to not block the rest of boot
-   sh -c '
-     max=3; i=0;
-     while [ $i -lt $max ]; do
-       # will exit 155 if "cobblerd does not appear to be running"
-       cobbler system list >/dev/null
-       [ $? -eq 155 ] || break
-       sleep 4
-       i=$(($i+1))
-     done
-
-     if [ $i -ne $max ]; then
-       # if we talked to cobbler above, then sync it and import-isos
-       cobbler sync
-       maas-import-isos --update
-     fi' &
    END_MAAS_IP_FIXUP
    chmod 755 /etc/rc.local.d/maas-ip-fixup
 
@@ -156,13 +139,13 @@ bucket:
    chmod 755 /usr/local/bin/maas-set-ip
 
    my_release=$(lsb_release -c)
-   cat >> /etc/maas/import_isos <<END
+   cat >> /etc/maas/import_pxe_files <<END
    RELEASES="${my_release}"
    ARCHES="i386 amd64"
    END
 
    echo === $(date): starting import ====
-   maas-import-isos
+   maas-import-pxe-files
 
    sed -i '/zimmer-server/d' /etc/hosts
 

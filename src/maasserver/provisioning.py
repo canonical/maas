@@ -13,7 +13,6 @@ __metaclass__ = type
 __all__ = [
     'check_profiles',
     'get_provisioning_api_proxy',
-    'get_all_profile_names',
     'present_detailed_user_friendly_fault',
     'ProvisioningProxy',
     ]
@@ -74,9 +73,8 @@ DETAILED_PRESENTATIONS = {
     PSERV_FAULT.NO_SUCH_PROFILE: """
         System profile does not exist: %(fault_string)s.
 
-        Has the maas-import-isos script been run?  This will run
-        automatically from time to time, but if it is failing, an
-        administrator may need to run it manually.
+        This is a Cobbler error and should no longer occur now that Cobbler
+        has been removed as a component of MAAS.
         """,
     PSERV_FAULT.GENERIC_COBBLER_ERROR: """
         The provisioning service encountered a problem with the Cobbler
@@ -185,7 +183,11 @@ present_detailed_user_friendly_fault = partial(
 # uses.  This way, when calling the method is a success, if means that
 # the related components are working properly.
 METHOD_COMPONENTS = {
-    'add_node': [COMPONENT.PSERV, COMPONENT.COBBLER, COMPONENT.IMPORT_ISOS],
+    'add_node': [
+        COMPONENT.PSERV,
+        COMPONENT.COBBLER,
+        COMPONENT.IMPORT_PXE_FILES,
+        ],
     'modify_nodes': [COMPONENT.PSERV, COMPONENT.COBBLER],
     'delete_nodes_by_name': [COMPONENT.PSERV, COMPONENT.COBBLER],
     'get_profiles_by_name': [COMPONENT.PSERV, COMPONENT.COBBLER],
@@ -199,7 +201,7 @@ EXCEPTIONS_COMPONENTS = {
     PSERV_FAULT.NO_COBBLER: COMPONENT.COBBLER,
     PSERV_FAULT.COBBLER_AUTH_FAILED: COMPONENT.COBBLER,
     PSERV_FAULT.COBBLER_AUTH_ERROR: COMPONENT.COBBLER,
-    PSERV_FAULT.NO_SUCH_PROFILE: COMPONENT.IMPORT_ISOS,
+    PSERV_FAULT.NO_SUCH_PROFILE: COMPONENT.IMPORT_PXE_FILES,
     PSERV_FAULT.GENERIC_COBBLER_ERROR: COMPONENT.COBBLER,
     PSERV_FAULT.COBBLER_DNS_LOOKUP_ERROR: COMPONENT.COBBLER,
     8002: COMPONENT.PSERV,
@@ -415,8 +417,9 @@ def name_arch_in_cobbler_style(architecture):
 
 def check_profiles():
     """Check that Cobbler has profiles defined for all the profiles used by
-    MAAS.  If a profile is missing, display a persistent error with an invite
-    to run the maas-import-isos script.
+    MAAS.
+
+    This should no longer be relevant, since Cobbler is being removed.
     """
     all_profiles = get_all_profile_names()
     papi = get_provisioning_api_proxy()
@@ -426,13 +429,13 @@ def check_profiles():
         # Some profiles are missing: display a persistent component
         # error.
         register_persistent_error(
-            COMPONENT.IMPORT_ISOS,
+            COMPONENT.IMPORT_PXE_FILES,
             mark_safe(
                 """
-                Some of the required system profiles are missing.
-                Run the maas-import-isos script to import Ubuntu isos and
-                create the related profiles:
-                <pre>sudo maas-import-isos</pre>
+                Some Cobbler system profiles are missing.
+
+                Cobbler has been removed as a component of MAAS; this should
+                no longer matter.
                 """))
 
 

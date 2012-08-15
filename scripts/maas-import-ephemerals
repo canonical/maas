@@ -83,8 +83,8 @@ Usage() {
     cat <<EOF
 Usage: ${0##*/} [ options ] <<ARGUMENTS>>
 
-   Import ephemeral (commissioning) images into maas
-   Settings are read from /etc/maas/maas_import_ephemerals
+   Import ephemeral (commissioning) images into maas.
+   Settings are read from $CONFIG.
 
    options:
       -i | --import       initial import or freshen the images

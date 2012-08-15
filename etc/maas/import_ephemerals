@@ -1,5 +1,5 @@
-## get default settings from maas_import_iso
-[ ! -f /etc/maas/maas_import_iso ] || . /etc/maas/maas_import_iso
+## get default settings from import_pxe_files
+[ ! -f /etc/maas/import_pxe_files ] || . /etc/maas/import_pxe_files
 
 #REMOTE_IMAGES_MIRROR="https://cloud-images.ubuntu.com"
 #ISCSI_TARGET_IP="" # defaults to cobbler server setting

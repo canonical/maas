@@ -15,7 +15,7 @@ set -o errexit
 set -o nounset
 
 # Load settings if available.
-settings="/etc/maas/import_isos"
+settings="/etc/maas/import_pxe_files"
 [ -r $settings ] && . $settings
 local_settings="$(pwd)/$settings"
 [ -r $local_settings ] && . $local_settings

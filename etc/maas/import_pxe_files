@@ -1,0 +1,23 @@
+# This file replaces an older one called import_isos.  Include that here for
+# compatibility.
+if [ -f /etc/maas/import_isos ]
+then
+    cat >&2 <<EOF
+
+Including obsolete /etc/maas/import_isos in configuration.  This file has been
+superseded by import_pxe_files.  Please see if it can be removed.
+
+EOF
+    . /etc/maas/import_isos
+fi
+
+
+#RELEASES="oneiric precise"
+RELEASES="precise"
+#ARCHES="amd64 i386"
+#PRIORITY="critical"
+#LOCALE="en_US"
+#INTERFACE="eth0"
+#CONSOLE="ttyS0,9600n8"
+#KOPTS="priority=$PRIORITY locale=$LOCALE netcfg/choose_interface=$INTERFACE console=$CONSOLE"
+#IMPORT_EPHEMERALS=1
