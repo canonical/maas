@@ -17,22 +17,24 @@ from argparse import (
     Namespace,
     )
 import os
-import random
 from random import randint
 import StringIO
 from subprocess import CalledProcessError
 import sys
+import time
 import types
 
 from maastesting.factory import factory
+from maastesting.fakemethod import FakeMethod
 from maastesting.testcase import TestCase
 from provisioningserver.utils import (
     ActionScript,
     atomic_write,
-    increment_age,
+    get_mtime,
     incremental_write,
     MainScript,
     parse_key_value_file,
+    pick_new_mtime,
     Safe,
     ShellTemplate,
     )
@@ -103,32 +105,52 @@ class TestIncrementalWrite(TestCase):
             os.stat(filename).st_mtime, old_mtime + 1, delta=0.01)
 
 
-class TestIncrementAge(TestCase):
-    """Test `increment_age`."""
+class TestGetMTime(TestCase):
+    """Test `get_mtime`."""
 
-    def setUp(self):
-        super(TestIncrementAge, self).setUp()
-        self.filename = self.make_file()
-        self.now = os.stat(self.filename).st_mtime
+    def test_get_mtime_returns_None_for_nonexistent_file(self):
+        nonexistent_file = os.path.join(
+            self.make_dir(), factory.make_name('nonexistent-file'))
+        self.assertIsNone(get_mtime(nonexistent_file))
 
-    def test_increment_age_sets_mtime_in_the_past(self):
-        delta = random.randint(100, 200)
-        increment_age(self.filename, old_mtime=None, delta=delta)
+    def test_get_mtime_returns_mtime(self):
+        existing_file = self.make_file()
+        mtime = os.stat(existing_file).st_mtime - randint(0, 100)
+        os.utime(existing_file, (mtime, mtime))
+        # Some small rounding/representation errors can happen here.
+        # That's just the way of floating-point numbers.  According to
+        # Gavin there's a conversion to fixed-point along the way, which
+        # would raise representability issues.
+        self.assertAlmostEqual(mtime, get_mtime(existing_file), delta=0.00001)
+
+    def test_get_mtime_passes_on_other_error(self):
+        forbidden_file = self.make_file()
+        self.patch(os, 'stat', FakeMethod(failure=OSError("Forbidden file")))
+        self.assertRaises(OSError, get_mtime, forbidden_file)
+
+
+class TestPickNewMTime(TestCase):
+    """Test `pick_new_mtime`."""
+
+    def test_pick_new_mtime_applies_starting_age_to_new_file(self):
+        before = time.time()
+        starting_age = randint(0, 5)
+        recommended_age = pick_new_mtime(None, starting_age=starting_age)
+        now = time.time()
         self.assertAlmostEqual(
-            os.stat(self.filename).st_mtime,
-            self.now - delta, delta=2)
+            now - starting_age,
+            recommended_age,
+            delta=(now - before))
 
-    def test_increment_age_increments_mtime(self):
-        old_mtime = self.now - 200
-        increment_age(self.filename, old_mtime=old_mtime)
-        self.assertAlmostEqual(
-            os.stat(self.filename).st_mtime, old_mtime + 1, delta=0.01)
+    def test_pick_new_mtime_increments_mtime_if_possible(self):
+        past = time.time() - 2
+        self.assertEqual(past + 1, pick_new_mtime(past))
 
-    def test_increment_age_does_not_increment_mtime_if_in_future(self):
-        old_mtime = self.now + 200
-        increment_age(self.filename, old_mtime=old_mtime)
-        self.assertAlmostEqual(
-            os.stat(self.filename).st_mtime, old_mtime, delta=0.01)
+    def test_pick_new_mtime_refuses_to_move_mtime_into_the_future(self):
+        # Race condition: this will fail if the test gets held up for
+        # a second between readings of the clock.
+        now = time.time()
+        self.assertEqual(now, pick_new_mtime(now))
 
 
 class ParseConfigTest(TestCase):

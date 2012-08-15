@@ -22,6 +22,7 @@ __all__ = [
     ]
 
 from argparse import ArgumentParser
+import errno
 from functools import wraps
 import os
 from os import fdopen
@@ -112,16 +113,27 @@ def incremental_write(content, filename):
     """Write the given `content` into the file `filename` and
     increment the modification time by 1 sec.
     """
-    old_mtime = None
-    if os.path.exists(filename):
-        old_mtime = os.stat(filename).st_mtime
+    old_mtime = get_mtime(filename)
     atomic_write(content, filename)
-    increment_age(filename, old_mtime=old_mtime)
+    new_mtime = pick_new_mtime(old_mtime)
+    os.utime(filename, (new_mtime, new_mtime))
 
 
-def increment_age(filename, old_mtime=None, delta=1000):
-    """Increment the modification time by 1 sec compared to the given
-    `old_mtime`.
+def get_mtime(filename):
+    """Return a file's modification time, or None if it does not exist."""
+    try:
+        return os.stat(filename).st_mtime
+    except OSError as e:
+        if e.errno == errno.ENOENT:
+            # File does not exist.  Be helpful, return None.
+            return None
+        else:
+            # Other failure.  The caller will want to know.
+            raise
+
+
+def pick_new_mtime(old_mtime=None, starting_age=1000):
+    """Choose a new modification time for a file that needs it updated.
 
     This function is used to manage the modification time of files
     for which we need to see an increment in the modification time
@@ -129,31 +141,35 @@ def increment_age(filename, old_mtime=None, delta=1000):
     files which only get properly reloaded if BIND sees that the
     modification time is > to the time it has in its database.
 
-    Since the resolution of the modification time is one second,
-    we want to manually set the modification time in the past
-    the first time the file is written and increment the mod
-    time by 1 manually each time the file gets written again.
+    Modification time can have a resolution as low as one second in
+    some relevant environments (we have observed this with ext3).
+    To produce mtime changes regardless, we set a file's modification
+    time in the past when it is first written, and
+    increment it by 1 second on each subsequent write.
 
-    We also want to be careful not to set the modification time in
-    the future (mostly because BIND doesn't deal with that well).
+    However we also want to be careful not to set the modification time
+    in the future, mostly because BIND does not deal with that very
+    well.
 
-    Finally, note that the access time is set to the same value as
-    the modification time.
+    :param old_mtime: File's previous modification time, as a number
+        with a unity of one second, or None if it did not previously
+        exist.
+    :param starting_age: If the file did not exist previously, set its
+        modification time this many seconds in the past.
     """
     now = time()
     if old_mtime is None:
-        # Set modification time in the past to have room for
+        # File is new.  Set modification time in the past to have room for
         # sub-second modifications.
-        new_mtime = now - delta
+        return now - starting_age
+    elif old_mtime + 1 <= now:
+        # There is room to increment the file's mtime by one second
+        # without ending up in the future.
+        return old_mtime + 1
     else:
-        # If the modification time can be incremented by 1 sec
-        # without being in the future, do it.  Otherwise we give
-        # up and set it to 'now'.
-        if old_mtime + 1 <= now:
-            new_mtime = old_mtime + 1
-        else:
-            new_mtime = old_mtime
-    os.utime(filename, (new_mtime, new_mtime))
+        # We can't increase the file's modification time.  Give up and
+        # return the previous modification time.
+        return old_mtime
 
 
 def split_lines(input, separator):
