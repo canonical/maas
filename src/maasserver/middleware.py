@@ -28,7 +28,6 @@ import re
 
 from django.conf import settings
 from django.contrib import messages
-from django.core.cache import cache
 from django.core.exceptions import (
     PermissionDenied,
     ValidationError,
@@ -103,34 +102,11 @@ class AccessMiddleware:
                 return None
 
 
-PROFILES_CHECK_DONE_KEY = 'profile-check-done'
-
-# The profiles check done by check_profiles_cached is only done at most once
-# every PROFILE_CHECK_DELAY seconds for efficiency.
-PROFILE_CHECK_DELAY = 2 * 60
-
-
-def check_profiles_cached():
-    """Check Cobbler's profiles. The check is actually done at most once every
-    PROFILE_CHECK_DELAY seconds for performance reasons.
-    """
-    # Avoid circular imports.
-    from maasserver.provisioning import check_profiles
-    if not cache.get(PROFILES_CHECK_DONE_KEY, False):
-        # Mark the profile check as done beforehand as the actual check
-        # might raise an exception.
-        cache.set(PROFILES_CHECK_DONE_KEY, True, PROFILE_CHECK_DELAY)
-        check_profiles()
-
-
-def clear_profiles_check_cache():
-    """Force a profile check next time the MAAS server is accessed."""
-    cache.delete(PROFILES_CHECK_DONE_KEY)
-
-
 class ExternalComponentsMiddleware:
-    """This middleware performs checks for external components (right
-    now only Cobbler is checked) at regular intervals.
+    """Middleware check external components at regular intervals.
+
+    Right now nothing is checked, because Cobbler was the only component
+    we checked, and we just ditched it.
     """
     def process_request(self, request):
         # This middleware hijacks the request to perform checks.  Any
@@ -138,7 +114,8 @@ class ExternalComponentsMiddleware:
         # disturbing the handling of the request.  Proper error reporting
         # should be handled in the check method itself.
         try:
-            check_profiles_cached()
+            # TODO: Components checks here.
+            pass
         except Exception:
             pass
         return None

@@ -131,13 +131,6 @@ NODE_TRANSITIONS = {
     }
 
 
-def get_papi():
-    """Return a provisioning server API proxy."""
-    # Avoid circular imports.
-    from maasserver.provisioning import get_provisioning_api_proxy
-    return get_provisioning_api_proxy()
-
-
 class NodeManager(Manager):
     """A utility to manage the collection of Nodes."""
 

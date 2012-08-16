@@ -11,40 +11,23 @@ from __future__ import (
 
 __metaclass__ = type
 __all__ = [
-    'check_profiles',
-    'get_provisioning_api_proxy',
     'present_detailed_user_friendly_fault',
     'ProvisioningProxy',
     ]
 
 from functools import partial
-import itertools
-from logging import getLogger
 from textwrap import dedent
 from urllib import urlencode
 import xmlrpclib
 
 from django.conf import settings
-from django.db.models.signals import (
-    post_delete,
-    post_save,
-    )
-from django.dispatch import receiver
-from django.utils.safestring import mark_safe
 from maasserver.components import (
     COMPONENT,
     discard_persistent_error,
     register_persistent_error,
     )
-from maasserver.enum import (
-    ARCHITECTURE_CHOICES,
-    NODE_STATUS,
-    )
+from maasserver.enum import NODE_STATUS
 from maasserver.exceptions import ExternalComponentException
-from maasserver.models import (
-    MACAddress,
-    Node,
-    )
 from maasserver.utils import absolute_reverse
 from provisioningserver.enum import PSERV_FAULT
 import yaml
@@ -301,37 +284,6 @@ class ProvisioningTransport(xmlrpclib.Transport):
         return connection
 
 
-def get_provisioning_api_proxy():
-    """Return a proxy to the Provisioning API.
-
-    If ``PSERV_URL`` is not set, we attempt to return a handle to a fake proxy
-    implementation. This will not be available in a packaged version of MAAS,
-    in which case an error is raised.
-    """
-    if settings.USE_REAL_PSERV:
-        # Use a real provisioning server.  This requires PSERV_URL to be
-        # set.
-        xmlrpc_transport = ProvisioningTransport(use_datetime=True)
-        xmlrpc_proxy = xmlrpclib.ServerProxy(
-            settings.PSERV_URL, transport=xmlrpc_transport, allow_none=True)
-    else:
-        # Create a fake.  The code that provides the testing fake is not
-        # available in an installed production system, so import it only
-        # when a fake is requested.
-        try:
-            from maasserver.testing import get_fake_provisioning_api_proxy
-        except ImportError:
-            getLogger('maasserver').error(
-                "Could not import fake provisioning proxy.  "
-                "This may mean you're trying to run tests, or have set "
-                "USE_REAL_PSERV to False, on an installed MAAS.  "
-                "Don't do either.")
-            raise
-        xmlrpc_proxy = get_fake_provisioning_api_proxy()
-
-    return ProvisioningProxy(xmlrpc_proxy)
-
-
 def compose_cloud_init_preseed(token):
     """Compose the preseed value for a node in any state but Commissioning."""
     credentials = urlencode({
@@ -393,127 +345,3 @@ def compose_preseed(node):
         return compose_commissioning_preseed(token)
     else:
         return compose_cloud_init_preseed(token)
-
-
-def name_arch_in_cobbler_style(architecture):
-    """Give architecture name as used in cobbler.
-
-    MAAS uses Ubuntu-style architecture names, notably including "amd64"
-    which in Cobbler terms is "x86_64."
-
-    :param architecture: An architecture name (e.g. as produced by MAAS).
-    :type architecture: basestring
-    :return: An architecture name in Cobbler style.
-    :rtype: unicode
-    """
-    conversions = {
-        'amd64': 'x86_64',
-        'i686': 'i386',
-    }
-    if isinstance(architecture, bytes):
-        architecture = architecture.decode('ascii')
-    return conversions.get(architecture, architecture)
-
-
-def check_profiles():
-    """Check that Cobbler has profiles defined for all the profiles used by
-    MAAS.
-
-    This should no longer be relevant, since Cobbler is being removed.
-    """
-    all_profiles = get_all_profile_names()
-    papi = get_provisioning_api_proxy()
-    existing_profiles = set(papi.get_profiles_by_name(all_profiles))
-    missing_profiles = set(all_profiles) - existing_profiles
-    if len(missing_profiles) != 0:
-        # Some profiles are missing: display a persistent component
-        # error.
-        register_persistent_error(
-            COMPONENT.IMPORT_PXE_FILES,
-            mark_safe(
-                """
-                Some Cobbler system profiles are missing.
-
-                Cobbler has been removed as a component of MAAS; this should
-                no longer matter.
-                """))
-
-
-def get_all_profile_names():
-    """Return all the names of the profiles used by MAAS."""
-    architectures = {arch[0] for arch in ARCHITECTURE_CHOICES}
-    commissioning = {True, False}
-    product = itertools.product(architectures, commissioning)
-    profiles = [
-        get_profile_name(architecture, commissioning)
-        for architecture, commissioning in product]
-    return profiles
-
-
-def get_profile_name(architecture, commissioning=False):
-    """Return the profile name for a given architecture and whether the node
-    is commissioning or not."""
-    cobbler_arch = name_arch_in_cobbler_style(architecture)
-    profile = "maas-%s-%s" % ("precise", cobbler_arch)
-    if commissioning:
-        profile += "-commissioning"
-    return profile
-
-
-def select_profile_for_node(node):
-    """Select which profile a node should be configured for."""
-    assert node.architecture, "Node's architecture is not known."
-    commissioning = node.status == NODE_STATUS.COMMISSIONING
-    return get_profile_name(node.architecture, commissioning)
-
-
-@receiver(post_save, sender=Node)
-def provision_post_save_Node(sender, instance, created, **kwargs):
-    """Create or update nodes in the provisioning server."""
-    papi = get_provisioning_api_proxy()
-    profile = select_profile_for_node(instance)
-    power_type = instance.get_effective_power_type()
-    preseed_data = compose_preseed(instance)
-    papi.add_node(
-        instance.system_id, instance.hostname,
-        profile, power_type, preseed_data)
-
-    # When the node is allocated this must not modify the netboot_enabled
-    # parameter. The node, once it has booted and installed itself, asks the
-    # provisioning server to disable netbooting. If this were to enable
-    # netbooting again, the node would reinstall itself the next time it
-    # booted. However, netbooting must be enabled at the point the node is
-    # allocated so that the first install goes ahead, hence why it is set for
-    # all other statuses... with one exception; retired nodes are never
-    # netbooted.
-    if instance.status != NODE_STATUS.ALLOCATED:
-        netboot_enabled = instance.status not in (
-            NODE_STATUS.DECLARED, NODE_STATUS.RETIRED)
-        delta = {"netboot_enabled": netboot_enabled}
-        papi.modify_nodes({instance.system_id: delta})
-
-
-def set_node_mac_addresses(node):
-    """Update the Node's MAC addresses in the provisioning server."""
-    mac_addresses = [mac.mac_address for mac in node.macaddress_set.all()]
-    deltas = {node.system_id: {"mac_addresses": mac_addresses}}
-    get_provisioning_api_proxy().modify_nodes(deltas)
-
-
-@receiver(post_save, sender=MACAddress)
-def provision_post_save_MACAddress(sender, instance, created, **kwargs):
-    """Create or update MACs in the provisioning server."""
-    set_node_mac_addresses(instance.node)
-
-
-@receiver(post_delete, sender=Node)
-def provision_post_delete_Node(sender, instance, **kwargs):
-    """Delete nodes in the provisioning server."""
-    papi = get_provisioning_api_proxy()
-    papi.delete_nodes_by_name([instance.system_id])
-
-
-@receiver(post_delete, sender=MACAddress)
-def provision_post_delete_MACAddress(sender, instance, **kwargs):
-    """Delete MACs in the provisioning server."""
-    set_node_mac_addresses(instance.node)

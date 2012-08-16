@@ -18,19 +18,14 @@ from django.http import (
     HttpResponse,
     HttpResponseRedirect,
     )
-from maasserver import provisioning
 from maasserver.testing import (
     extract_redirect,
     reload_object,
     reload_objects,
     )
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import (
-    TestCase,
-    TestModelTestCase,
-    )
+from maasserver.testing.testcase import TestModelTestCase
 from maasserver.testing.tests.models import TestModel
-from provisioningserver.testing import fakeapi
 
 # Horrible kludge.  Works around a bug where delete() does not work on
 # test models when using nose.  Without this, running the tests in this
@@ -40,43 +35,6 @@ from provisioningserver.testing import fakeapi
 #
 # https://github.com/jbalogh/django-nose/issues/15
 TestModel._meta.get_all_related_objects()
-
-
-class TestTestCase(TestCase):
-    """Tests for `TestCase`."""
-
-    def test_patched_in_fake_papi(self):
-        # TestCase.setUp() patches in a fake provisioning API so that we can
-        # observe what the signal handlers are doing.
-        papi_fake = provisioning.get_provisioning_api_proxy()
-        self.assertIsInstance(papi_fake, provisioning.ProvisioningProxy)
-        self.assertIsInstance(
-            papi_fake.proxy, fakeapi.FakeSynchronousProvisioningAPI)
-        # The fake has some limited, automatically generated, sample
-        # data. This is required for many tests to run. First there is a
-        # sample distro.
-        self.assertEqual(1, len(papi_fake.distros))
-        [distro_name] = papi_fake.distros
-        expected_distros = {
-            distro_name: {
-                'initrd': 'initrd',
-                'kernel': 'kernel',
-                'name': distro_name,
-                },
-            }
-        self.assertEqual(expected_distros, papi_fake.distros)
-        # Second there is a sample profile, referring to the distro.
-        self.assertEqual(1, len(papi_fake.profiles))
-        [profile_name] = papi_fake.profiles
-        expected_profiles = {
-            profile_name: {
-                'distro': distro_name,
-                'name': profile_name,
-                },
-            }
-        self.assertEqual(expected_profiles, papi_fake.profiles)
-        # There are no nodes.
-        self.assertEqual({}, papi_fake.nodes)
 
 
 class TestHelpers(TestModelTestCase):
