@@ -14,8 +14,9 @@ __all__ = []
 
 from apiclient.creds import convert_tuple_to_string
 from maastesting.factory import factory
-from maastesting.testcase import TestCase
 from provisioningserver import auth
+from provisioningserver.cache import cache
+from provisioningserver.testing.testcase import PservTestCase
 
 
 def make_credentials():
@@ -27,26 +28,23 @@ def make_credentials():
         )
 
 
-class TestAuth(TestCase):
+class TestAuth(PservTestCase):
 
     def test_record_api_credentials_records_credentials_string(self):
-        self.patch(auth, 'recorded_api_credentials', None)
         creds_string = convert_tuple_to_string(make_credentials())
         auth.record_api_credentials(creds_string)
-        self.assertEqual(creds_string, auth.recorded_api_credentials)
+        self.assertEqual(
+            creds_string, cache.get(auth.API_CREDENTIALS_KEY_CACHE_NAME))
 
     def test_get_recorded_api_credentials_returns_credentials_as_tuple(self):
-        self.patch(auth, 'recorded_api_credentials', None)
         creds = make_credentials()
         auth.record_api_credentials(convert_tuple_to_string(creds))
         self.assertEqual(creds, auth.get_recorded_api_credentials())
 
     def test_get_recorded_api_credentials_returns_None_without_creds(self):
-        self.patch(auth, 'recorded_api_credentials', None)
         self.assertIsNone(auth.get_recorded_api_credentials())
 
     def test_get_recorded_nodegroup_name_vs_record_nodegroup_name(self):
-        self.patch(auth, 'recorded_nodegroup_name', None)
         nodegroup_name = factory.make_name('nodegroup')
         auth.record_nodegroup_name(nodegroup_name)
         self.assertEqual(nodegroup_name, auth.get_recorded_nodegroup_name())

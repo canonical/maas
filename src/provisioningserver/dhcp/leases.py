@@ -48,29 +48,25 @@ from provisioningserver.auth import (
     get_recorded_nodegroup_name,
     locate_maas_api,
     )
+from provisioningserver.cache import cache
 from provisioningserver.dhcp.leases_parser import parse_leases
 from provisioningserver.logging import task_logger
 
-# Modification time on last-processed leases file.
-# Shared between celery threads.
-recorded_leases_time = None
+# Cache key for the modification time on last-processed leases file.
+LEASES_TIME_KEY_CACHE_NAME = 'leases_time'
 
-# Leases as last parsed.
-# Shared between celery threads.
-recorded_leases = None
 
-# Shared key for use with omshell.  We don't store this key
-# persistently, but when the server sends it, we keep a copy in memory
-# so that celerybeat jobs (which do not originate with the server and
-# therefore don't receive this argument) can make use of it.
-# Shared between celery threads.
-recorded_omapi_shared_key = None
+# Cache key for the leases as last parsed.
+LEASES_KEY_CACHE_NAME = 'recorded_leases'
+
+
+# Cache key for the shared key for use with omshell.
+OMAPI_SHARED_KEY_CACHE_NAME = 'omapi_shared_key'
 
 
 def record_omapi_shared_key(shared_key):
     """Record the OMAPI shared key as received from the server."""
-    global recorded_omapi_shared_key
-    recorded_omapi_shared_key = shared_key
+    cache.set(OMAPI_SHARED_KEY_CACHE_NAME, shared_key)
 
 
 def get_leases_timestamp():
@@ -95,8 +91,8 @@ def check_lease_changes():
     # These variables are shared between threads.  A bit of
     # inconsistency due to concurrent updates is not a problem, but read
     # them both at once here to reduce the scope for trouble.
-    previous_leases = recorded_leases
-    previous_leases_time = recorded_leases_time
+    previous_leases = cache.get(LEASES_KEY_CACHE_NAME)
+    previous_leases_time = cache.get(LEASES_TIME_KEY_CACHE_NAME)
 
     if get_leases_timestamp() == previous_leases_time:
         return None
@@ -115,10 +111,8 @@ def record_lease_state(last_change, leases):
     :param leases: A dict mapping each leased IP address to the MAC address
         that it has been assigned to.
     """
-    global recorded_leases_time
-    global recorded_leases
-    recorded_leases_time = last_change
-    recorded_leases = leases
+    cache.set(LEASES_TIME_KEY_CACHE_NAME, last_change)
+    cache.set(LEASES_KEY_CACHE_NAME, leases)
 
 
 def identify_new_leases(current_leases):
@@ -127,9 +121,9 @@ def identify_new_leases(current_leases):
     :param current_leases: A dict mapping IP addresses to the respective
         MAC addresses that own them.
     """
-    # The recorded_leases reference is shared between threads.  Read it
+    # The recorded leases is shared between threads.  Read it
     # just once to reduce the impact of concurrent changes.
-    previous_leases = recorded_leases
+    previous_leases = cache.get(LEASES_KEY_CACHE_NAME)
     if previous_leases is None:
         return current_leases
     else:
@@ -149,7 +143,7 @@ def register_new_leases(current_leases):
 
     # The recorded_omapi_shared_key is shared between threads, so read
     # it just once, atomically.
-    omapi_key = recorded_omapi_shared_key
+    omapi_key = cache.get(OMAPI_SHARED_KEY_CACHE_NAME)
     if omapi_key is None:
         task_logger.info(
             "Not registering new leases: "
@@ -177,7 +171,7 @@ def send_leases(leases):
         return
 
     api_path = 'nodegroups/%s/' % nodegroup_name
-    oauth = MAASOAuth(*get_recorded_api_credentials())
+    oauth = MAASOAuth(*api_credentials)
     MAASClient(oauth, MAASDispatcher(), locate_maas_api()).post(
         api_path, 'update_leases', leases=leases)
 
