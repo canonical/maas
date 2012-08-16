@@ -19,8 +19,11 @@ wait_for_user_to_press_n() {
 cat <<'EOF'
 
 This script assumes that `vdenv` has been started, and that `zimmer` is
-running. It will then *destroy* your development/demo database, rebuild
-everything, and reconcile with Cobbler.
+running. It will then *destroy* your development/demo database, and
+rebuild everything.
+
+WARNING: Script is probably broken at the moment and may simply destroy
+your database.
 
 EOF
 wait_for_user_to_press_n
@@ -36,7 +39,10 @@ make txlongpoll-start
 bin/maas createadmin \
     --username "${LOGNAME}" --password test \
     --email "${LOGNAME}@example.com"
-bin/maas reconcile
+
+# TODO: Set up virtual nodes.  We used to read them from Cobbler database
+# here, as set up by vdenv.
+
 make dbharness <<'EOF'
 UPDATE maasserver_node
    SET owner_id = NULL, status = 4
@@ -69,11 +75,7 @@ credentials with which to manipulate it:
 
   4. Put it into `~/.juju/environments.yaml`.
 
-Some tips for productive Juju fun:
-
-  - Check VNC output (via virsh). Go to vt7 for the boot log.
-
-  - Check netboot enabled/disabled (in Cobbler).
+Be sure to check VNC output (via virsh). Go to vt7 for the boot log.
 
 Good luck. You'll need it ;)
 
