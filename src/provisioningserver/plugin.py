@@ -13,7 +13,6 @@ __metaclass__ = type
 __all__ = []
 
 from provisioningserver.amqpclient import AMQFactory
-from provisioningserver.cobblerclient import CobblerSession
 from provisioningserver.config import Config
 from provisioningserver.remote import ProvisioningAPI_XMLRPC
 from provisioningserver.services import (
@@ -125,12 +124,6 @@ class ProvisioningServiceMaker(object):
         oops_reporter = oops_config["reporter"]
         return OOPSService(log_service, oops_dir, oops_reporter)
 
-    def _makeCobblerSession(self, cobbler_config):
-        """Create a :class:`CobblerSession`."""
-        return CobblerSession(
-            cobbler_config["url"], cobbler_config["username"],
-            cobbler_config["password"])
-
     def _makeProvisioningAPI(self, cobbler_session, config):
         """Construct an :class:`IResource` for the Provisioning API."""
         papi_xmlrpc = ProvisioningAPI_XMLRPC(cobbler_session)
@@ -198,14 +191,6 @@ class ProvisioningServiceMaker(object):
         if broker_config["password"] != b"test":
             client_service = self._makeBroker(broker_config)
             client_service.setServiceParent(services)
-
-        cobbler_config = config["cobbler"]
-        cobbler_session = self._makeCobblerSession(cobbler_config)
-
-        papi_root = self._makeProvisioningAPI(cobbler_session, config)
-
-        site_service = self._makeSiteService(papi_root, config)
-        site_service.setServiceParent(services)
 
         tftp_service = self._makeTFTPService(config["tftp"])
         tftp_service.setServiceParent(services)

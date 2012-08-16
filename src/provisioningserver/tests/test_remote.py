@@ -17,7 +17,6 @@ from provisioningserver.interfaces import (
     IProvisioningAPI_XMLRPC,
     )
 from provisioningserver.remote import ProvisioningAPI_XMLRPC
-from provisioningserver.testing.fakecobbler import make_fake_cobbler_session
 from testtools import TestCase
 from testtools.deferredruntest import SynchronousDeferredRunTest
 from zope.interface.verify import verifyObject
@@ -40,11 +39,3 @@ class TestProvisioningAPI_XMLRPC(TestCase):
         papi_xmlrpc = ProvisioningAPI_XMLRPC(dummy_session)
         verifyObject(IProvisioningAPI, papi_xmlrpc)
         verifyObject(IProvisioningAPI_XMLRPC, papi_xmlrpc)
-
-    def test_ProvisioningAPI_invoke(self):
-        # The xmlrpc_* methods can be invoked.
-        session = make_fake_cobbler_session()
-        papi_xmlrpc = ProvisioningAPI_XMLRPC(session)
-        d = papi_xmlrpc.xmlrpc_add_distro("frank", "side", "bottom")
-        d.addCallback(self.assertEqual, "frank")
-        return d

@@ -14,7 +14,6 @@ __all__ = [
     "ProvisioningAPI",
     ]
 
-from base64 import b64encode
 from functools import partial
 from itertools import (
     chain,
@@ -24,11 +23,6 @@ from itertools import (
     )
 
 from maasserver.utils import map_enum
-from provisioningserver.cobblerclient import (
-    CobblerDistro,
-    CobblerProfile,
-    CobblerSystem,
-    )
 from provisioningserver.enum import POWER_TYPE
 from provisioningserver.interfaces import IProvisioningAPI
 from provisioningserver.utils import deferred
@@ -185,22 +179,13 @@ class ProvisioningAPI:
         assert isinstance(name, basestring)
         assert isinstance(initrd, basestring)
         assert isinstance(kernel, basestring)
-        distro = yield CobblerDistro.new(
-            self.session, name, {
-                "initrd": initrd,
-                "kernel": kernel,
-                })
         yield self.sync()
-        returnValue(distro.name)
 
     @inlineCallbacks
     def add_profile(self, name, distro):
         assert isinstance(name, basestring)
         assert isinstance(distro, basestring)
-        profile = yield CobblerProfile.new(
-            self.session, name, {"distro": distro})
         yield self.sync()
-        returnValue(profile.name)
 
     @inlineCallbacks
     def add_node(self, name, hostname, profile, power_type, preseed_data):
@@ -209,43 +194,18 @@ class ProvisioningAPI:
         assert isinstance(profile, basestring)
         assert power_type in POWER_TYPE_VALUES
         assert isinstance(preseed_data, basestring)
-        attributes = {
-            "hostname": hostname,
-            "profile": profile,
-            "ks_meta": {"MAAS_PRESEED": b64encode(preseed_data)},
-            "power_type": power_type,
-            }
-        system = yield CobblerSystem.new(self.session, name, attributes)
         yield self.sync()
-        returnValue(system.name)
 
     @inlineCallbacks
     def modify_distros(self, deltas):
-        for name, delta in deltas.items():
-            yield CobblerDistro(self.session, name).modify(delta)
         yield self.sync()
 
     @inlineCallbacks
     def modify_profiles(self, deltas):
-        for name, delta in deltas.items():
-            yield CobblerProfile(self.session, name).modify(delta)
         yield self.sync()
 
     @inlineCallbacks
     def modify_nodes(self, deltas):
-        for name, delta in deltas.items():
-            system = CobblerSystem(self.session, name)
-            if "mac_addresses" in delta:
-                # This needs to be handled carefully.
-                mac_addresses = delta.pop("mac_addresses")
-                system_state = yield system.get_values()
-                hostname = system_state.get("hostname", "")
-                interfaces = system_state.get("interfaces", {})
-                interface_modifications = gen_cobbler_interface_deltas(
-                    interfaces, hostname, mac_addresses)
-                for interface_modification in interface_modifications:
-                    yield system.modify(interface_modification)
-            yield system.modify(delta)
         yield self.sync()
 
     @inlineCallbacks
@@ -268,18 +228,15 @@ class ProvisioningAPI:
 
     @deferred
     def get_distros_by_name(self, names):
-        d = self.get_objects_by_name(CobblerDistro, names)
-        return d.addCallback(cobbler_mapping_to_papi_distros)
+        pass
 
     @deferred
     def get_profiles_by_name(self, names):
-        d = self.get_objects_by_name(CobblerProfile, names)
-        return d.addCallback(cobbler_mapping_to_papi_profiles)
+        pass
 
     @deferred
     def get_nodes_by_name(self, names):
-        d = self.get_objects_by_name(CobblerSystem, names)
-        return d.addCallback(cobbler_mapping_to_papi_nodes)
+        pass
 
     @inlineCallbacks
     def delete_objects_by_name(self, object_type, names):
@@ -298,43 +255,32 @@ class ProvisioningAPI:
 
     @deferred
     def delete_distros_by_name(self, names):
-        return self.delete_objects_by_name(CobblerDistro, names)
+        pass
 
     @deferred
     def delete_profiles_by_name(self, names):
-        return self.delete_objects_by_name(CobblerProfile, names)
+        pass
 
     @deferred
     def delete_nodes_by_name(self, names):
-        return self.delete_objects_by_name(CobblerSystem, names)
+        pass
 
     @deferred
     def get_distros(self):
-        # WARNING: This could return a large number of results. Consider
-        # adding filtering options to this function before using it in anger.
-        d = CobblerDistro.get_all_values(self.session)
-        return d.addCallback(cobbler_mapping_to_papi_distros)
+        pass
 
     @deferred
     def get_profiles(self):
-        # WARNING: This could return a large number of results. Consider
-        # adding filtering options to this function before using it in anger.
-        d = CobblerProfile.get_all_values(self.session)
-        return d.addCallback(cobbler_mapping_to_papi_profiles)
+        pass
 
     @deferred
     def get_nodes(self):
-        # WARNING: This could return a *huge* number of results. Consider
-        # adding filtering options to this function before using it in anger.
-        d = CobblerSystem.get_all_values(self.session)
-        return d.addCallback(cobbler_mapping_to_papi_nodes)
+        pass
 
     @deferred
     def start_nodes(self, names):
-        d = CobblerSystem.powerOnMultiple(self.session, names)
-        return d
+        pass
 
     @deferred
     def stop_nodes(self, names):
-        d = CobblerSystem.powerOffMultiple(self.session, names)
-        return d
+        pass

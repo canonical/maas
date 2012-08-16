@@ -12,12 +12,8 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
-from base64 import b64encode
 from functools import partial
-import httplib
 import os
-from StringIO import StringIO
-import xmlrpclib
 
 from maastesting.factory import factory
 from maastesting.testcase import TestCase
@@ -27,7 +23,6 @@ from provisioningserver.plugin import (
     ProvisioningServiceMaker,
     SingleUsernamePasswordChecker,
     )
-from provisioningserver.testing.fakecobbler import make_fake_cobbler_session
 from provisioningserver.tftp import TFTPBackend
 from testtools.deferredruntest import (
     assert_fails_with,
@@ -38,19 +33,13 @@ from testtools.matchers import (
     Raises,
     )
 from tftp.protocol import TFTP
-from twisted.application.internet import (
-    TCPServer,
-    UDPServer,
-    )
+from twisted.application.internet import UDPServer
 from twisted.application.service import MultiService
 from twisted.cred.credentials import UsernamePassword
 from twisted.cred.error import UnauthorizedLogin
 from twisted.internet.defer import inlineCallbacks
 from twisted.python.usage import UsageError
-from twisted.web.guard import HTTPAuthSessionWrapper
 from twisted.web.resource import IResource
-from twisted.web.server import NOT_DONE_YET
-from twisted.web.test.test_web import DummyRequest
 import yaml
 
 
@@ -106,7 +95,7 @@ class TestProvisioningServiceMaker(TestCase):
         service = service_maker.makeService(options)
         self.assertIsInstance(service, MultiService)
         self.assertSequenceEqual(
-            ["log", "oops", "site", "tftp"],
+            ["log", "oops", "tftp"],
             sorted(service.namedServices))
         self.assertEqual(
             len(service.namedServices), len(service.services),
@@ -124,79 +113,11 @@ class TestProvisioningServiceMaker(TestCase):
         service = service_maker.makeService(options)
         self.assertIsInstance(service, MultiService)
         self.assertSequenceEqual(
-            ["amqp", "log", "oops", "site", "tftp"],
+            ["amqp", "log", "oops", "tftp"],
             sorted(service.namedServices))
         self.assertEqual(
             len(service.namedServices), len(service.services),
             "Not all services are named.")
-
-    def test_makeService_api_requires_credentials(self):
-        """
-        The site service's /api resource requires credentials from clients.
-        """
-        options = Options()
-        options["config-file"] = self.write_config({})
-        service_maker = ProvisioningServiceMaker("Harry", "Hill")
-        service = service_maker.makeService(options)
-        self.assertIsInstance(service, MultiService)
-        site_service = service.getServiceNamed("site")
-        self.assertIsInstance(site_service, TCPServer)
-        port, site = site_service.args
-        self.assertIn("api", site.resource.listStaticNames())
-        api = site.resource.getStaticEntity("api")
-        # HTTPAuthSessionWrapper demands credentials from an HTTP request.
-        self.assertIsInstance(api, HTTPAuthSessionWrapper)
-
-    def exercise_api_credentials(self, config_file, username, password):
-        """
-        Create a new service with :class:`ProvisioningServiceMaker` and
-        attempt to access the API with the given credentials.
-        """
-        options = Options()
-        options["config-file"] = config_file
-        service_maker = ProvisioningServiceMaker("Morecombe", "Wise")
-        # Terminate the service in a fake Cobbler session.
-        service_maker._makeCobblerSession = (
-            lambda config: make_fake_cobbler_session())
-        service = service_maker.makeService(options)
-        port, site = service.getServiceNamed("site").args
-        api = site.resource.getStaticEntity("api")
-        # Create an XML-RPC request with valid credentials.
-        request = DummyRequest([])
-        request.method = "POST"
-        request.content = StringIO(xmlrpclib.dumps((), "get_nodes"))
-        request.prepath = ["api"]
-        request.headers["authorization"] = (
-            "Basic %s" % b64encode(b"%s:%s" % (username, password)))
-        # The credential check and resource rendering is deferred, but
-        # NOT_DONE_YET is returned from render(). The request signals
-        # completion with the aid of notifyFinish().
-        finished = request.notifyFinish()
-        self.assertEqual(NOT_DONE_YET, api.render(request))
-        return finished.addCallback(lambda ignored: request)
-
-    @inlineCallbacks
-    def test_makeService_api_accepts_valid_credentials(self):
-        """
-        The site service's /api resource accepts valid credentials.
-        """
-        config = {"username": "orange", "password": "goblin"}
-        request = yield self.exercise_api_credentials(
-            self.write_config(config), "orange", "goblin")
-        # A valid XML-RPC response has been written.
-        self.assertEqual(None, request.responseCode)  # None implies 200.
-        xmlrpclib.loads(b"".join(request.written))
-
-    @inlineCallbacks
-    def test_makeService_api_rejects_invalid_credentials(self):
-        """
-        The site service's /api resource rejects invalid credentials.
-        """
-        config = {"username": "orange", "password": "goblin"}
-        request = yield self.exercise_api_credentials(
-            self.write_config(config), "abigail", "williams")
-        # The request has not been authorized.
-        self.assertEqual(httplib.UNAUTHORIZED, request.responseCode)
 
     def test_tftp_service(self):
         # A TFTP service is configured and added to the top-level service.

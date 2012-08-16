@@ -21,10 +21,6 @@ from random import randint
 from time import time
 from xmlrpclib import Fault
 
-from provisioningserver.cobblerclient import (
-    CobblerDistro,
-    CobblerProfile,
-    )
 from provisioningserver.enum import POWER_TYPE
 from twisted.internet.defer import (
     inlineCallbacks,
@@ -184,12 +180,6 @@ class CobblerFakeFactory:
             attributes, 'kernel', object_class.required_attributes),
         self.default_to_file(
             attributes, 'initrd', object_class.required_attributes),
-        yield self.default_to_object(
-            attributes, 'profile', object_class.required_attributes, session,
-            CobblerProfile)
-        yield self.default_to_object(
-            attributes, 'distro', object_class.required_attributes, session,
-            CobblerDistro)
         for attr in object_class.required_attributes:
             if attr not in attributes:
                 attributes[attr] = '%s-%d' % (attr, unique_int)
