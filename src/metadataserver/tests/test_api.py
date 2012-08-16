@@ -46,7 +46,6 @@ from metadataserver.models import (
     NodeUserData,
     )
 from metadataserver.nodeinituser import get_node_init_user
-from provisioningserver.testing.factory import ProvisioningFakeFactory
 
 
 class TestHelpers(DjangoTestCase):
@@ -119,7 +118,7 @@ class TestHelpers(DjangoTestCase):
         self.assertEqual(node, get_queried_node(request))
 
 
-class TestViews(DjangoTestCase, ProvisioningFakeFactory):
+class TestViews(DjangoTestCase):
     """Tests for the API views."""
 
     def make_node_client(self, node=None):
@@ -592,7 +591,7 @@ class TestViews(DjangoTestCase, ProvisioningFakeFactory):
             response)
 
 
-class TestEnlistViews(DjangoTestCase, ProvisioningFakeFactory):
+class TestEnlistViews(DjangoTestCase):
     """Tests for the enlistment metadata views."""
 
     def test_get_instance_id(self):
