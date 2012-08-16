@@ -145,7 +145,8 @@ class TestPowerTasks(TestCase):
             PowerActionFail, power_on.delay, POWER_TYPE.WAKE_ON_LAN)
 
     def test_ether_wake_power_on(self):
-        result = power_on.delay(POWER_TYPE.WAKE_ON_LAN, mac=arbitrary_mac)
+        result = power_on.delay(
+            POWER_TYPE.WAKE_ON_LAN, mac_address=arbitrary_mac)
         self.assertTrue(result.successful())
 
     def test_ether_wake_does_not_support_power_off(self):

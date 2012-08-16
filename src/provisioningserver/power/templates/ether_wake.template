@@ -3,7 +3,7 @@
 # Control node power through WOL, via `wakeonlan` or `etherwake`.
 #
 
-mac={{mac}}
+mac_address={{mac_address}}
 power_change={{power_change}}
 
 if [ "${power_change}" != 'on' ]
@@ -12,10 +12,10 @@ then
     exit 1
 elif [ -x /usr/bin/wakeonlan ]
 then
-    /usr/bin/wakeonlan $mac
+    /usr/bin/wakeonlan $mac_address
 elif [ -x /usr/sbin/etherwake ]
 then
-    /usr/sbin/etherwake $mac
+    /usr/sbin/etherwake $mac_address
 else
     echo "No wakeonlan or etherwake program found." >&2
 fi

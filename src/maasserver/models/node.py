@@ -307,7 +307,7 @@ class NodeManager(Manager):
             power_params = node.get_effective_power_parameters()
             node_power_type = node.get_effective_power_type()
             if node_power_type == POWER_TYPE.WAKE_ON_LAN:
-                mac = power_params.get('mac')
+                mac = power_params.get('mac_address')
                 do_start = (mac != '' and mac is not None)
             else:
                 do_start = True
@@ -580,7 +580,7 @@ class Node(CleanSave, TimestampedModel):
         if not self.power_parameters:
             primary_mac = self.get_primary_mac()
             if primary_mac is not None:
-                power_params['mac'] = primary_mac.mac_address
+                power_params['mac_address'] = primary_mac.mac_address
         return power_params
 
     def acquire(self, user, token=None):

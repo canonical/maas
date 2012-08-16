@@ -209,7 +209,8 @@ class NodeTest(TestCase):
         node = factory.make_node()
         mac = factory.getRandomMACAddress()
         node.add_mac_address(mac)
-        self.assertEqual(mac, node.get_effective_power_parameters()['mac'])
+        self.assertEqual(
+            mac, node.get_effective_power_parameters()['mac_address'])
 
     def test_get_effective_power_parameters_adds_no_mac_if_params_set(self):
         node = factory.make_node(power_parameters={'foo': 'bar'})
@@ -670,7 +671,7 @@ class NodeManagerTest(TestCase):
             (
                 len(self.celery.tasks),
                 self.celery.tasks[0]['task'].name,
-                self.celery.tasks[0]['kwargs']['mac'],
+                self.celery.tasks[0]['kwargs']['mac_address'],
             ))
 
     def test_start_nodes_uses_default_power_type_if_not_node_specific(self):
@@ -695,7 +696,7 @@ class NodeManagerTest(TestCase):
         preferred_mac = factory.getRandomMACAddress()
         node, mac = self.make_node_with_mac(
             user, power_type=POWER_TYPE.WAKE_ON_LAN,
-            power_parameters=dict(mac=preferred_mac))
+            power_parameters=dict(mac_address=preferred_mac))
         output = Node.objects.start_nodes([node.system_id], user)
 
         self.assertItemsEqual([node], output)
@@ -704,12 +705,12 @@ class NodeManagerTest(TestCase):
             (
                 len(self.celery.tasks),
                 self.celery.tasks[0]['task'].name,
-                self.celery.tasks[0]['kwargs']['mac'],
+                self.celery.tasks[0]['kwargs']['mac_address'],
             ))
 
     def test_start_nodes_wakeonlan_ignores_invalid_parameters(self):
-        # If node.power_params is set but doesn't have "mac" in it, then
-        # the node shouldn't be started.
+        # If node.power_params is set but doesn't have "mac_address" in it,
+        # then the node shouldn't be started.
         user = factory.make_user()
         node, mac = self.make_node_with_mac(
             user, power_type=POWER_TYPE.WAKE_ON_LAN,
@@ -718,11 +719,11 @@ class NodeManagerTest(TestCase):
         self.assertItemsEqual([], output)
         self.assertEqual([], self.celery.tasks)
 
-    def test_start_nodes_wakeonlan_ignores_empty_mac_parameter(self):
+    def test_start_nodes_wakeonlan_ignores_empty_mac_address_parameter(self):
         user = factory.make_user()
         node, mac = self.make_node_with_mac(
             user, power_type=POWER_TYPE.WAKE_ON_LAN,
-            power_parameters=dict(mac=""))
+            power_parameters=dict(mac_address=""))
         output = Node.objects.start_nodes([node.system_id], user)
         self.assertItemsEqual([], output)
         self.assertEqual([], self.celery.tasks)

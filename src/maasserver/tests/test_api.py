@@ -53,6 +53,7 @@ from maasserver.enum import (
     NODE_STATUS_CHOICES_DICT,
     )
 from maasserver.exceptions import Unauthorized
+from maasserver.fields import mac_error_msg
 from maasserver.kernel_opts import (
     compose_enlistment_preseed_url,
     compose_preseed_url,
@@ -593,13 +594,13 @@ class AdminLoggedInEnlistmentAPITest(APIv10TestMixin, AdminLoggedInTestCase):
     def test_POST_new_sets_power_parameters_field(self):
         # The api allows the setting of a Node's power_parameters field.
         # Create a power_parameter valid for the selected power_type.
-        new_power_address = factory.getRandomString()
+        new_mac_address = factory.getRandomMACAddress()
         response = self.client.post(
             self.get_uri('nodes/'), {
                 'op': 'new',
                 'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
                 'power_type': POWER_TYPE.WAKE_ON_LAN,
-                'power_parameters_power_address': new_power_address,
+                'power_parameters_mac_address': new_mac_address,
                 'mac_addresses': ['AA:BB:CC:DD:EE:FF'],
                 })
 
@@ -607,7 +608,7 @@ class AdminLoggedInEnlistmentAPITest(APIv10TestMixin, AdminLoggedInTestCase):
             system_id=json.loads(response.content)['system_id'])
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(
-            {'power_address': new_power_address},
+            {'mac_address': new_mac_address},
             reload_object(node).power_parameters)
 
     def test_POST_updates_power_parameters_rejects_unknown_param(self):
@@ -1127,15 +1128,34 @@ class TestNodeAPI(APITestCase):
             owner=self.logged_in_user,
             power_type=POWER_TYPE.WAKE_ON_LAN)
         # Create a power_parameter valid for the selected power_type.
-        new_power_address = factory.getRandomString()
+        new_power_address = factory.getRandomMACAddress()
         response = self.client.put(
             self.get_node_uri(node),
-            {'power_parameters_power_address': new_power_address})
+            {'power_parameters_mac_address': new_power_address})
 
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(
-            {'power_address': new_power_address},
+            {'mac_address': new_power_address},
             reload_object(node).power_parameters)
+
+    def test_PUT_updates_power_parameters_accepts_only_mac_for_wol(self):
+        self.become_admin()
+        node = factory.make_node(
+            owner=self.logged_in_user,
+            power_type=POWER_TYPE.WAKE_ON_LAN)
+        # Create an invalid power_parameter for WoL (not a valid
+        # MAC address).
+        new_power_address = factory.getRandomString()
+        response = self.client.put(
+            self.get_node_uri(node),
+            {'power_parameters_mac_address': new_power_address})
+
+        self.assertEqual(
+            (
+                httplib.BAD_REQUEST,
+                {'power_parameters': ["MAC Address: %s" % mac_error_msg]},
+            ),
+            (response.status_code, json.loads(response.content)))
 
     def test_PUT_updates_power_parameters_rejects_unknown_param(self):
         self.become_admin()
@@ -1250,11 +1270,11 @@ class TestNodeAPI(APITestCase):
             power_parameters=factory.getRandomString())
         response = self.client.put(
             self.get_node_uri(node),
-            {'power_parameters_power_address': ''})
+            {'power_parameters_mac_address': ''})
 
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(
-            {'power_address': ''},
+            {'mac_address': ''},
             reload_object(node).power_parameters)
 
     def test_DELETE_deletes_node(self):
