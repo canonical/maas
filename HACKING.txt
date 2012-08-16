@@ -174,12 +174,9 @@ Optionally, populate your database with the sample data::
 
     $ make sampledata
 
-Install Cobbler (via the maas-provision package), and install the preseed
-files and snippets::
+Install the provisioning server::
 
-    $ sudo apt-get install apache2 maas-provision
-    $ sudo cp contrib/preseeds/* /var/lib/cobbler/kickstarts/
-    $ sudo cp contrib/snippets/* /var/lib/cobbler/snippets/
+    $ sudo apt-get install maas-provision
 
 By default, the snippet ``maas_proxy`` includes a definition for an http
 proxy running on port 8000 on the same host as the MAAS server.  This
@@ -187,7 +184,7 @@ means you can *either* install ``squid-deb-proxy``::
 
     $ sudo apt-get install squid-deb-proxy
 
-*or* you can edit ``contrib/snippets/maas_proxy`` to remove the proxy
+*or* you can edit ``contrib/snippets_v2/generic`` to remove the proxy
 definition.
 
 Set the iSCSI config to include the MAAS configs::
@@ -207,11 +204,6 @@ The http_proxy variable is only needed if you're downloading through a
 proxy; "sudo" wouldn't pass it on to the script without the assignment.
 Or if you don't have it set but do want to download through a proxy, pass
 your proxy's URL: "http_proxy=http://proxy.example.com/"
-
-Now add yourself as a user in Cobbler. For convenience, give yourself the
-password ``test``::
-
-    $ sudo htdigest /etc/cobbler/users.digest Cobbler $USER
 
 Run the development webserver and watch all the logs go by::
 

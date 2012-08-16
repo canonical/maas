@@ -125,9 +125,9 @@ makes it easy to follow on progress::
 
 ..
 
-  ``zimmer`` is the machine on which Cobbler [#whatiscobbler]_ is
-  running. Here ``odev-node02`` is the machine being bootstrapped as
-  the Juju master node.
+  ``zimmer`` is the machine on which the MAAS server is running. Here
+  ``odev-node02`` is the machine being bootstrapped as the Juju master
+  node.
 
 Once the master node has been installed a status command should come
 up with something a bit more interesting::
@@ -158,9 +158,3 @@ actually take as long as it took to bootstrap. Have a beer, drown your
 sorrows in liquor, or, my preference, have another cup of tea.
 
 ----
-
-.. [#whatiscobbler] `Cobbler <http://cobbler.github.com/>`_ is a
-  back-end service used by MAAS; ``vdenv`` provides a Cobbler server
-  host - ``zimmer`` - and three nodes - ``odev-node0{1,2,3}`` - in
-  virtual machines to aid development of MAAS. Cobbler is generally
-  uninteresting for a user of MAAS.

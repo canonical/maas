@@ -53,10 +53,7 @@ dnsmasq should already be installed; install it if not::
 
   $ sudo apt-get install dnsmasq
 
-MAAS enlists nodes using a tool called Cobbler. Cobbler provides a
-configuration file for dnsmasq: ``/etc/cobbler/dnsmasq.template``.
-
-Make the following changes:
+Make the following configuration changes:
 
 ``domain``
   If applicable, specify your network's domain.
@@ -67,17 +64,6 @@ Make the following changes:
 
 ``dhcp-option=3,next_server``
   Replace ``next_server`` with the current server's IP address.
-
-Save that file and now edit the Cobbler settings file:
-``/etc/cobbler/settings``.
-
-You need to change two settings:
-
-``manage_dns``
-  Change the 0 to 1
-
-``manage_dhcp``
-  Again, change the 0 to 1.
 
 Now restart dnsmasq::
 
