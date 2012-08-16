@@ -101,11 +101,6 @@ class MAASAuthorizationBackend(ModelBackend):
                     perm)
 
 
-# 'provisioning' is imported so that it can register its signal handlers early
-# on, before it misses anything.
-from maasserver import provisioning
-ignore_unused(provisioning)
-
 from maasserver import messages
 ignore_unused(messages)
 

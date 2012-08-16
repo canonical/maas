@@ -31,7 +31,6 @@ import shutil
 from django.conf import settings
 from django.contrib.auth.models import AnonymousUser
 from django.core.urlresolvers import reverse
-from django.db.models.signals import post_save
 from django.http import QueryDict
 from fixtures import Fixture
 from maasserver import (
@@ -354,27 +353,6 @@ class EnlistmentAPITest(APIv10TestMixin, MultipleUsersScenarios, TestCase):
         self.assertEqual(
             ["Mac address %s already in use." % mac],
             parsed_result['mac_addresses'])
-
-    def test_POST_fails_if_mac_duplicated_does_not_trigger_post_save(self):
-        # Mac Addresses should be unique, if the check fails,
-        # Node.post_save is not triggered.
-        mac = 'aa:bb:cc:dd:ee:ff'
-        factory.make_mac_address(mac)
-        architecture = factory.getRandomChoice(ARCHITECTURE_CHOICES)
-
-        def node_created(sender, instance, created, **kwargs):
-            self.fail("post_save should not have been called")
-
-        post_save.connect(node_created, sender=Node)
-        self.addCleanup(post_save.disconnect, node_created, sender=Node)
-        self.client.post(
-            self.get_uri('nodes/'),
-            {
-                'op': 'new',
-                'architecture': architecture,
-                'hostname': factory.getRandomString(),
-                'mac_addresses': [mac],
-            })
 
     def test_POST_fails_with_bad_operation(self):
         # If the operation ('op=operation_name') specified in the
@@ -2226,33 +2204,6 @@ class APIErrorsTest(APIv10TestMixin, TransactionTestCase):
         self.assertEqual(
             (httplib.INTERNAL_SERVER_ERROR, error_message),
             (response.status_code, response.content))
-
-    def test_Node_post_save_error_rollbacks_transaction(self):
-        # If post_save raises an exception after a Node is added, the
-        # whole transaction is rolledback.
-        error_message = factory.getRandomString()
-
-        def raise_exception(*args, **kwargs):
-            raise RuntimeError(error_message)
-        post_save.connect(raise_exception, sender=Node)
-        self.addCleanup(post_save.disconnect, raise_exception, sender=Node)
-
-        architecture = factory.getRandomChoice(ARCHITECTURE_CHOICES)
-        hostname = factory.getRandomString()
-        response = self.client.post(self.get_uri('nodes/'), {
-            'op': 'new',
-            'hostname': hostname,
-            'architecture': architecture,
-            'after_commissioning_action':
-                NODE_AFTER_COMMISSIONING_ACTION.DEFAULT,
-            'mac_addresses': ['aa:bb:cc:dd:ee:ff'],
-        })
-
-        self.assertEqual(
-            (httplib.INTERNAL_SERVER_ERROR, error_message),
-            (response.status_code, response.content))
-        self.assertRaises(
-            Node.DoesNotExist, Node.objects.get, hostname=hostname)
 
 
 class TestAnonymousCommissioningTimeout(APIv10TestMixin, TestCase):

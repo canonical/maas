@@ -1,7 +1,7 @@
 # Copyright 2012 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for `maasserver.provisioning`."""
+"""Tests for `maasserver.compose_preseed`."""
 
 from __future__ import (
     absolute_import,
@@ -12,8 +12,8 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
+from maasserver.compose_preseed import compose_preseed
 from maasserver.enum import NODE_STATUS
-from maasserver.provisioning import compose_preseed
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
 from maasserver.utils import absolute_reverse
@@ -25,8 +25,7 @@ from testtools.matchers import (
 import yaml
 
 
-class TestHelpers(TestCase):
-    """Tests for helpers that don't actually need any kind of pserv."""
+class TestComposePreseed(TestCase):
 
     def test_compose_preseed_for_commissioning_node_produces_yaml(self):
         node = factory.make_node(status=NODE_STATUS.COMMISSIONING)

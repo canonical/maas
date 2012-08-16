@@ -21,11 +21,11 @@ from pipes import quote
 from urllib import urlencode
 
 from django.conf import settings
+from maasserver.compose_preseed import compose_preseed
 from maasserver.enum import (
     NODE_STATUS,
     PRESEED_TYPE,
     )
-from maasserver.provisioning import compose_preseed
 from maasserver.server_address import get_maas_facing_server_host
 from maasserver.utils import absolute_reverse
 import tempita
