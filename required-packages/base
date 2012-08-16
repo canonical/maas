@@ -5,6 +5,7 @@ bind9utils
 daemontools
 distro-info
 dnsutils
+ipmitool
 isc-dhcp-common
 libpq-dev
 postgresql-9.1
