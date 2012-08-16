@@ -2,22 +2,6 @@
 ## Provisioning Server (pserv) configuration.
 ##
 
-## The port on which the Provisioning API will be made available.
-#
-# port: 5241
-
-## The credentials which the Provisioning API will require.
-#
-# username: <current user>
-# password:
-password: "test"
-
-## Network interface to bind the service on.
-# Keep this pointed at the loopback interface unless you really know what
-# you're doing.
-#
-# interface: "127.0.0.1"
-
 ## Where to log. This log can be rotated by sending SIGUSR1 to the
 ## running server.
 #
@@ -43,19 +27,6 @@ broker:
   # username: <current user>
   # password: "test"
   # vhost: "/"
-
-## Cobbler configuration.  Defaults to the virtual development environment
-# (vdenv) cobbler.
-#
-cobbler:
-  # url: http://localhost/cobbler_api
-  # username: <current user>
-  # password: "test"
-
-  # vdenv specific; see vdenv/README.txt.
-  url: http://local.cobbler.dev/cobbler_api
-  username: cobbler
-  password: xcobbler
 
 ## TFTP configuration.
 #

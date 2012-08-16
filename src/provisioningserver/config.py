@@ -15,10 +15,7 @@ __all__ = [
     ]
 
 from getpass import getuser
-from os import (
-    environ,
-    urandom,
-    )
+from os import environ
 from os.path import abspath
 from threading import RLock
 
@@ -56,19 +53,6 @@ class ConfigBroker(Schema):
     username = String(if_missing=getuser())
     password = String(if_missing=b"test")
     vhost = String(if_missing="/")
-
-
-class ConfigCobbler(Schema):
-    """Configuration validator for connecting to Cobbler."""
-
-    if_key_missing = None
-
-    url = URL(
-        add_http=True, require_tld=False,
-        if_missing=b"http://localhost/cobbler_api",
-        )
-    username = String(if_missing=getuser())
-    password = String(if_missing=b"test")
 
 
 class ConfigTFTP(Schema):
@@ -117,14 +101,9 @@ class Config(Schema):
 
     if_key_missing = None
 
-    interface = String(if_empty=b"", if_missing=b"127.0.0.1")
-    port = Int(min=1, max=65535, if_missing=5241)
-    username = String(not_empty=True, if_missing=getuser())
-    password = String(not_empty=True, if_missing=urandom(12))
     logfile = String(if_empty=b"pserv.log", if_missing=b"pserv.log")
     oops = ConfigOops
     broker = ConfigBroker
-    cobbler = ConfigCobbler
     tftp = ConfigTFTP
 
     @classmethod

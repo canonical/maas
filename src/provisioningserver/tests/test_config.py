@@ -101,7 +101,6 @@ class TestConfig(TestCase):
     """Tests for `provisioningserver.config.Config`."""
 
     def test_defaults(self):
-        dummy_password = factory.make_name("password")
         expected = {
             'broker': {
                 'host': 'localhost',
@@ -109,11 +108,6 @@ class TestConfig(TestCase):
                 'username': getuser(),
                 'password': 'test',
                 'vhost': '/',
-                },
-            'cobbler': {
-                'url': 'http://localhost/cobbler_api',
-                'username': getuser(),
-                'password': 'test',
                 },
             'logfile': 'pserv.log',
             'oops': {
@@ -125,24 +119,13 @@ class TestConfig(TestCase):
                 'port': 5244,
                 'root': "/var/lib/tftpboot",
                 },
-            'interface': '127.0.0.1',
-            'port': 5241,
-            'username': getuser(),
-            'password': dummy_password,
             }
-        # The password field is set to a random 12-digit string if not
-        # specified. This prevents access, but makes testing easier in other
-        # parts.
-        self.patch(Config.field("password"), "if_missing", dummy_password)
         observed = Config.to_python({})
         self.assertEqual(expected, observed)
 
     def test_parse(self):
         # Configuration can be parsed from a snippet of YAML.
-        observed = Config.parse(
-            b'logfile: "/some/where.log"\n'
-            b'password: "black_sabbath"\n'
-            )
+        observed = Config.parse(b'logfile: "/some/where.log"\n')
         self.assertEqual("/some/where.log", observed["logfile"])
 
     def test_load(self):

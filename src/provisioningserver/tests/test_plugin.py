@@ -74,7 +74,6 @@ class TestProvisioningServiceMaker(TestCase):
         self.tempdir = self.make_dir()
 
     def write_config(self, config):
-        config.setdefault("password", factory.getRandomString())
         config_filename = os.path.join(self.tempdir, "config.yaml")
         with open(config_filename, "wb") as stream:
             yaml.safe_dump(config, stream)
