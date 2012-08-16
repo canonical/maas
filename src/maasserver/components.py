@@ -20,7 +20,6 @@ import threading
 
 
 class COMPONENT:
-    COBBLER = 'cobbler server'
     PSERV = 'provisioning server'
     IMPORT_PXE_FILES = 'maas-import-pxe-files script'
 
