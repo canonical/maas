@@ -13,6 +13,7 @@ __metaclass__ = type
 __all__ = []
 
 import httplib
+from random import randint
 from xmlrpclib import Fault
 
 from django.conf.urls.defaults import patterns
@@ -31,11 +32,9 @@ from maasserver.testing.testcase import (
     LoggedInTestCase,
     TestCase,
     )
-from maasserver.utils import map_enum
 from maasserver.views import HelpfulDeleteView
 from maasserver.views.nodes import NodeEdit
 from maastesting.matchers import ContainsAll
-from provisioningserver.enum import PSERV_FAULT
 
 
 class Test404500(LoggedInTestCase):
@@ -280,9 +279,12 @@ class PermanentErrorDisplayTest(LoggedInTestCase):
 
     def test_permanent_error_displayed(self):
         self.patch(components, '_PERSISTENT_ERRORS', {})
-        pserv_fault = set(map_enum(PSERV_FAULT).values())
+        fault_codes = [
+            randint(1, 100),
+            randint(101, 200),
+            ]
         errors = []
-        for fault in pserv_fault:
+        for fault in fault_codes:
             # Create component with getRandomString to be sure
             # to display all the errors.
             component = factory.getRandomString()

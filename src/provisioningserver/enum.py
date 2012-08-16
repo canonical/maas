@@ -14,30 +14,7 @@ __all__ = [
     'ARP_HTYPE',
     'POWER_TYPE',
     'POWER_TYPE_CHOICES',
-    'PSERV_FAULT',
     ]
-
-
-class PSERV_FAULT:
-    """Fault codes for errors raised by the provisioning server."""
-
-    # Could not communicate with Cobbler.
-    NO_COBBLER = 2
-
-    # Failed to authenticate with Cobbler.
-    COBBLER_AUTH_FAILED = 3
-
-    # Cobbler no longer accepts the provisioning server's login token.
-    COBBLER_AUTH_ERROR = 4
-
-    # Profile does not exist.
-    NO_SUCH_PROFILE = 5
-
-    # Error looking up cobbler server.
-    COBBLER_DNS_LOOKUP_ERROR = 6
-
-    # Non-specific error inside Cobbler.
-    GENERIC_COBBLER_ERROR = 99
 
 
 class POWER_TYPE:
