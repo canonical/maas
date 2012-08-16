@@ -11,13 +11,11 @@ from __future__ import (
 
 __metaclass__ = type
 __all__ = [
-    'CobblerFakeFactory',
     'ProvisioningFakeFactory',
     ]
 
 from abc import ABCMeta
 from itertools import count
-from random import randint
 from time import time
 from xmlrpclib import Fault
 
@@ -128,60 +126,3 @@ class ProvisioningFakeFactory:
             papi.delete_nodes_by_name,
             node_name)
         returnValue(node_name)
-
-
-class CobblerFakeFactory:
-    """Mixin for test cases: factory of fake objects in Cobbler.
-
-    Warning: there is no cleanup for these yet.  Don't just run this against
-    a real cobbler, or there will be trouble.
-    """
-
-    def default_to_file(self, attributes, attribute, required_attrs):
-        """If `attributes[attribute]` is missing, make it a file.
-
-        Sets the given attribute to a newly-created file, if it is a required
-        attribute and not already set in attributes.
-        """
-        if attribute in required_attrs and attribute not in attributes:
-            attributes[attribute] = self.make_file()
-
-    @inlineCallbacks
-    def default_to_object(self, attributes, attribute, required_attrs,
-                          session, cobbler_class):
-        """If `attributes[attribute]` is missing, make it an object.
-
-        Sets the given attribute to a newly-created Cobbler object, if it is
-        a required attribute and not already set in attributes.
-        """
-        if attribute in required_attrs and attribute not in attributes:
-            other_obj = yield self.fake_cobbler_object(session, cobbler_class)
-            attributes[attribute] = other_obj.name
-
-    @inlineCallbacks
-    def fake_cobbler_object(self, session, object_class, name=None,
-                            attributes=None):
-        """Create a fake Cobbler object.
-
-        :param session: `CobblerSession`.
-        :param object_class: concrete `CobblerObject` class to instantiate.
-        :param name: Option name for the object.
-        :param attributes: Optional dict of attribute values for the object.
-        """
-        if attributes is None:
-            attributes = {}
-        else:
-            attributes = attributes.copy()
-        unique_int = randint(1, 9999)
-        if name is None:
-            name = 'name-%s-%d' % (object_class.object_type, unique_int)
-        attributes['name'] = name
-        self.default_to_file(
-            attributes, 'kernel', object_class.required_attributes),
-        self.default_to_file(
-            attributes, 'initrd', object_class.required_attributes),
-        for attr in object_class.required_attributes:
-            if attr not in attributes:
-                attributes[attr] = '%s-%d' % (attr, unique_int)
-        new_object = yield object_class.new(session, name, attributes)
-        returnValue(new_object)
