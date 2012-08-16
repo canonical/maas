@@ -11,7 +11,6 @@ from __future__ import (
 
 __metaclass__ = type
 
-from getpass import getuser
 import os
 from urlparse import urljoin
 
@@ -278,18 +277,6 @@ if DEBUG:
 LOGGING = {
     'version': 1,
 }
-
-# The location of the Provisioning API XML-RPC endpoint.  This should
-# match the setting in etc/pserv.yaml.
-PSERV_URL = "http://%s:test@localhost:5241/api" % getuser()
-
-# Time-out for socket operations against the Provisioning API.
-PSERV_TIMEOUT = 7.0  # seconds.
-
-# Use a real provisioning server?  If yes, the URL for the provisioning
-# server's API should be set in PSERV_URL.  If this is set to False, for
-# testing or demo purposes, MAAS will use an internal fake service.
-USE_REAL_PSERV = True
 
 # The location of the commissioning script that is executed on nodes as
 # part of commissioning.  Only override this if you know what you are

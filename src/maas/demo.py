@@ -39,9 +39,6 @@ LONGPOLL_PATH = '/longpoll/'
 # Connect to the DNS server.
 DNS_CONNECT = True
 
-# For demo purposes, use a real provisioning server.
-USE_REAL_PSERV = True
-
 MAAS_CLI = abspath("bin/maas")
 
 RABBITMQ_PUBLISH = True

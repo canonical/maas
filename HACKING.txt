@@ -104,19 +104,6 @@ adulterated.
 .. _nose: http://readthedocs.org/docs/nose/en/latest/
 
 
-Running tests with a real Cobbler
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Once you have a Cobbler instance running somewhere there are some
-tests that can be run against it::
-
-    $ PSERV_TEST_COBBLER_URL=http://user:pass@localhost/cobbler_api \
-        bin/test.pserv provisioningserver.tests.test_api
-
-Adjust ``PSERV_TEST_COBBLER_URL`` as necessary. **Warning:** these
-tests will modify your Cobbler database.
-
-
 Running JavaScript tests
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -225,11 +212,6 @@ Now add yourself as a user in Cobbler. For convenience, give yourself the
 password ``test``::
 
     $ sudo htdigest /etc/cobbler/users.digest Cobbler $USER
-
-Alternatively, if you're not interested in the Provisioning Server or
-Cobbler, set ``USE_REAL_PSERV`` to ``False`` in one of ``maas``'s
-settings files (typically ``src/maas/demo.py``), and a fake Provisioning
-Server will be used instead.
 
 Run the development webserver and watch all the logs go by::
 

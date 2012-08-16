@@ -20,7 +20,6 @@ from textwrap import dedent
 from urllib import urlencode
 import xmlrpclib
 
-from django.conf import settings
 from maasserver.components import (
     COMPONENT,
     discard_persistent_error,
@@ -75,9 +74,6 @@ DETAILED_PRESENTATIONS = {
         """,
     8002: """
         Unable to reach provisioning server (%(fault_string)s).
-
-        Check pserv.log and your PSERV_URL setting, and restart MAAS if
-        needed.
         """,
 }
 
@@ -265,23 +261,6 @@ class ProvisioningProxy:
         else:
             # This is a regular attribute.  Return it as-is.
             return attribute
-
-
-class ProvisioningTransport(xmlrpclib.Transport):
-    """An XML-RPC transport that sets a low socket timeout."""
-
-    @property
-    def timeout(self):
-        return settings.PSERV_TIMEOUT
-
-    def make_connection(self, host):
-        """See `xmlrpclib.Transport.make_connection`.
-
-        This also sets the desired socket timeout.
-        """
-        connection = xmlrpclib.Transport.make_connection(self, host)
-        connection.timeout = self.timeout
-        return connection
 
 
 def compose_cloud_init_preseed(token):

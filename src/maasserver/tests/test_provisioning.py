@@ -20,7 +20,6 @@ from maasserver.provisioning import (
     DETAILED_PRESENTATIONS,
     present_detailed_user_friendly_fault,
     present_user_friendly_fault,
-    ProvisioningTransport,
     SHORT_PRESENTATIONS,
     )
 from maasserver.testing.factory import factory
@@ -197,15 +196,3 @@ class TestHelpers(TestCase):
         self.assertIn(
             "Unknown problem encountered with the Cobbler server.",
             friendly_text)
-
-
-class TestProvisioningTransport(TestCase):
-    """Tests for :class:`ProvisioningTransport`."""
-
-    def test_make_connection(self):
-        transport = ProvisioningTransport()
-        connection = transport.make_connection("nowhere.example.com")
-        # The connection has not yet been established.
-        self.assertIsNone(connection.sock)
-        # The desired timeout has been modified.
-        self.assertEqual(transport.timeout, connection.timeout)

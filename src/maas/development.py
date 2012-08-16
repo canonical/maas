@@ -37,9 +37,6 @@ DEFAULT_MAAS_URL = "http://%s:5240/" % guess_server_address()
 # cluster is running in the branch.
 TEST_RUNNER = 'maastesting.runner.TestRunner'
 
-# Use a fake provisioning server for test/demo purposes.
-USE_REAL_PSERV = False
-
 # Don't connect to the DNS server in tests, this will be enabled on a case per
 # case basis.
 DNS_CONNECT = False

@@ -74,6 +74,3 @@ DATABASES = {
         'HOST': 'localhost',
     }
 }
-
-# The location of the Provisioning API XML-RPC endpoint.
-PSERV_URL = "http://maas:password@localhost:5241/api"
