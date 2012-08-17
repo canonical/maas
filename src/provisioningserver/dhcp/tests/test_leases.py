@@ -25,7 +25,10 @@ from maastesting.utils import (
     age_file,
     get_write_time,
     )
-from provisioningserver.auth import NODEGROUP_NAME_CACHE_KEY
+from provisioningserver.auth import (
+    MAAS_URL_CACHE_KEY,
+    NODEGROUP_NAME_CACHE_KEY,
+    )
 from provisioningserver.cache import cache
 from provisioningserver.dhcp import leases as leases_module
 from provisioningserver.dhcp.leases import (
@@ -125,17 +128,48 @@ class TestUpdateLeases(PservTestCase):
             key = factory.getRandomString()
         cache.set(OMAPI_KEY_CACHE_KEY, key)
 
+    def clear_omapi_key(self):
+        """Clear the recorded omapi key."""
+        cache.set(OMAPI_KEY_CACHE_KEY, None)
+
     def set_nodegroup_name(self):
         """Set the recorded nodegroup name for the duration of this test."""
         name = factory.make_name('nodegroup')
         cache.set(NODEGROUP_NAME_CACHE_KEY, name)
         return name
 
+    def clear_nodegroup_name(self):
+        """Clear the recorded nodegroup name."""
+        cache.set(NODEGROUP_NAME_CACHE_KEY, None)
+
+    def set_maas_url(self):
+        """Set the recorded MAAS URL for the duration of this test."""
+        maas_url = 'http://%s.example.com/%s/' % (
+            factory.make_name('host'),
+            factory.getRandomString(),
+            )
+        cache.set(MAAS_URL_CACHE_KEY, maas_url)
+
+    def clear_maas_url(self):
+        """Clear the recorded MAAS API URL."""
+        cache.set(MAAS_URL_CACHE_KEY, None)
+
     def set_api_credentials(self):
         """Set recorded API credentials for the duration of this test."""
         creds_string = ':'.join(
             factory.getRandomString() for counter in range(3))
         cache.set('api_credentials', creds_string)
+
+    def clear_api_credentials(self):
+        """Clear recorded API credentials."""
+        cache.set('api_credentials', None)
+
+    def set_items_needed_for_lease_update(self):
+        """Set the recorded items required by `update_leases`."""
+        self.set_maas_url()
+        self.set_api_credentials()
+        self.set_omapi_key()
+        self.set_nodegroup_name()
 
     def set_lease_state(self, time=None, leases=None):
         """Set the recorded state of DHCP leases.
@@ -260,8 +294,9 @@ class TestUpdateLeases(PservTestCase):
 
     def test_process_leases_registers_new_leases(self):
         self.set_lease_state()
-        self.set_omapi_key()
+        self.set_items_needed_for_lease_update()
         self.patch(Omshell, 'create', FakeMethod())
+        self.patch(leases_module, 'send_leases', FakeMethod())
         ip = factory.getRandomIPAddress()
         mac = factory.getRandomMACAddress()
         process_leases(datetime.utcnow(), {ip: mac})
@@ -273,7 +308,8 @@ class TestUpdateLeases(PservTestCase):
             pass
 
         self.set_lease_state()
-        self.set_omapi_key()
+        self.set_items_needed_for_lease_update()
+        self.patch(leases_module, 'send_leases', FakeMethod())
         self.patch(Omshell, 'create', FakeMethod(failure=OmshellFailure()))
         ip = factory.getRandomIPAddress()
         mac = factory.getRandomMACAddress()
@@ -365,16 +401,8 @@ class TestUpdateLeases(PservTestCase):
     def test_register_new_leases_does_nothing_without_omapi_key(self):
         self.patch(Omshell, 'create', FakeMethod())
         self.set_lease_state()
-        self.set_nodegroup_name()
-        new_leases = {
-            factory.getRandomIPAddress(): factory.getRandomMACAddress(),
-        }
-        register_new_leases(new_leases)
-        self.assertEqual([], Omshell.create.calls)
-
-    def test_register_new_leases_does_nothing_without_nodegroup_name(self):
-        self.patch(Omshell, 'create', FakeMethod())
-        self.set_lease_state()
+        self.set_items_needed_for_lease_update()
+        self.clear_omapi_key()
         new_leases = {
             factory.getRandomIPAddress(): factory.getRandomMACAddress(),
         }
@@ -383,7 +411,7 @@ class TestUpdateLeases(PservTestCase):
 
     def test_send_leases_posts_to_API(self):
         self.patch(Omshell, 'create', FakeMethod())
-        self.set_api_credentials()
+        self.set_items_needed_for_lease_update()
         nodegroup_name = self.set_nodegroup_name()
         self.patch(MAASClient, 'post', FakeMethod())
         leases = {
@@ -396,10 +424,30 @@ class TestUpdateLeases(PservTestCase):
                 )],
             MAASClient.post.calls)
 
+    def test_send_leases_does_nothing_without_maas_url(self):
+        self.patch(MAASClient, 'post', FakeMethod())
+        self.set_lease_state()
+        self.set_items_needed_for_lease_update()
+        self.clear_maas_url()
+        leases = {factory.getRandomIPAddress(): factory.getRandomMACAddress()}
+        send_leases(leases)
+        self.assertEqual([], MAASClient.post.calls)
+
     def test_send_leases_does_nothing_without_credentials(self):
         self.patch(MAASClient, 'post', FakeMethod())
+        self.set_items_needed_for_lease_update()
+        self.clear_api_credentials()
         leases = {
             factory.getRandomIPAddress(): factory.getRandomMACAddress(),
         }
+        send_leases(leases)
+        self.assertEqual([], MAASClient.post.calls)
+
+    def test_send_leases_does_nothing_without_nodegroup_name(self):
+        self.patch(MAASClient, 'post', FakeMethod())
+        self.set_lease_state()
+        self.set_items_needed_for_lease_update()
+        self.clear_nodegroup_name()
+        leases = {factory.getRandomIPAddress(): factory.getRandomMACAddress()}
         send_leases(leases)
         self.assertEqual([], MAASClient.post.calls)

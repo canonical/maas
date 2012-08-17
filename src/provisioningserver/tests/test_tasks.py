@@ -89,6 +89,11 @@ class TestRefreshSecrets(PservTestCase):
     def test_works_as_a_task(self):
         self.assertTrue(refresh_secrets.delay().successful())
 
+    def test_updates_maas_url(self):
+        maas_url = 'http://example.com/%s/' % factory.getRandomString()
+        refresh_secrets(maas_url=maas_url)
+        self.assertEqual(maas_url, auth.get_recorded_maas_url())
+
     def test_updates_api_credentials(self):
         credentials = (
             factory.make_name('key'),

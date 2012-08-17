@@ -31,6 +31,7 @@ from celery.task import task
 from celeryconfig import DHCP_CONFIG_FILE
 from provisioningserver.auth import (
     record_api_credentials,
+    record_maas_url,
     record_nodegroup_name,
     )
 from provisioningserver.dhcp import (
@@ -52,6 +53,7 @@ from provisioningserver.utils import atomic_write
 # For each item passed to refresh_secrets, a refresh function to give it to.
 refresh_functions = {
     'api_credentials': record_api_credentials,
+    'maas_url': record_maas_url,
     'omapi_key': leases.record_omapi_key,
     'nodegroup_name': record_nodegroup_name,
 }

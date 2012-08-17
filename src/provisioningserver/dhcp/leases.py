@@ -45,8 +45,8 @@ from apiclient.maas_client import (
 from celeryconfig import DHCP_LEASES_FILE
 from provisioningserver.auth import (
     get_recorded_api_credentials,
+    get_recorded_maas_url,
     get_recorded_nodegroup_name,
-    locate_maas_api,
     )
 from provisioningserver.cache import cache
 from provisioningserver.dhcp.leases_parser import parse_leases
@@ -93,9 +93,9 @@ def parse_leases_file():
 
 def check_lease_changes():
     """Has the DHCP leases file changed in any significant way?"""
-    # These variables are shared between threads.  A bit of
-    # inconsistency due to concurrent updates is not a problem, but read
-    # them both at once here to reduce the scope for trouble.
+    # These variables are shared between worker threads/processes.
+    # A bit of inconsistency due to concurrent updates is not a problem,
+    # but read them both at once here to reduce the scope for trouble.
     previous_leases = cache.get(LEASES_CACHE_KEY)
     previous_leases_time = cache.get(LEASES_TIME_CACHE_KEY)
 
@@ -126,8 +126,8 @@ def identify_new_leases(current_leases):
     :param current_leases: A dict mapping IP addresses to the respective
         MAC addresses that own them.
     """
-    # The recorded leases is shared between threads.  Read it
-    # just once to reduce the impact of concurrent changes.
+    # The recorded leases is shared between worker threads/processes.
+    # Read it just once to reduce the impact of concurrent changes.
     previous_leases = cache.get(LEASES_CACHE_KEY)
     if previous_leases is None:
         return current_leases
@@ -146,9 +146,9 @@ def register_new_leases(current_leases):
     # Avoid circular imports.
     from provisioningserver.tasks import add_new_dhcp_host_map
 
-    # The recorded_omapi_key is shared between threads, so read it just
-    # once, atomically.
-    omapi_key = cache.get(OMAPI_KEY_CACHE_KEY)
+    # The recorded_omapi_key is shared between worker threads or
+    # processes, so read it just once, atomically.
+    omapi_key = get_recorded_omapi_key()
     if omapi_key is None:
         task_logger.info(
             "Not registering new leases: "
@@ -158,26 +158,32 @@ def register_new_leases(current_leases):
         add_new_dhcp_host_map(new_leases, 'localhost', omapi_key)
 
 
+def list_missing_items(knowledge):
+    """Report items from dict `knowledge` that are still `None`."""
+    return sorted(name for name, value in knowledge.items() if value is None)
+
+
 def send_leases(leases):
     """Send lease updates to the server API."""
-    api_credentials = get_recorded_api_credentials()
-    nodegroup_name = get_recorded_nodegroup_name()
-    if None in (api_credentials, nodegroup_name):
+    # Items that the server must have sent us before we can do this.
+    knowledge = {
+        'maas_url': get_recorded_maas_url(),
+        'api_credentials': get_recorded_api_credentials(),
+        'nodegroup_name': get_recorded_nodegroup_name(),
+    }
+    if None in knowledge.values():
         # The MAAS server hasn't sent us enough information for us to do
         # this yet.  Leave it for another time.
-        if api_credentials is None:
-            task_logger.info(
-                "Not sending DHCP leases to server: "
-                "No MAAS API credentials received from server yet.")
-        if nodegroup_name is None:
-            task_logger.info(
-                "Not sending DHCP leases to server: "
-                "No MAAS API URL received from server yet.")
+        task_logger.info(
+            "Not sending DHCP leases to server: not all required knowledge "
+            "received from server yet.  "
+            "Missing: %s"
+            % ', '.join(list_missing_items(knowledge)))
         return
 
-    api_path = 'nodegroups/%s/' % nodegroup_name
-    oauth = MAASOAuth(*api_credentials)
-    MAASClient(oauth, MAASDispatcher(), locate_maas_api()).post(
+    api_path = 'nodegroups/%s/' % knowledge['nodegroup_name']
+    oauth = MAASOAuth(*knowledge['api_credentials'])
+    MAASClient(oauth, MAASDispatcher(), knowledge['maas_url']).post(
         api_path, 'update_leases', leases=leases)
 
 

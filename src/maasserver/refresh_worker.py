@@ -15,6 +15,7 @@ __all__ = [
     ]
 
 from apiclient.creds import convert_tuple_to_string
+from django.conf import settings
 from maasserver.models.user import get_creds_tuple
 from provisioningserver.tasks import refresh_secrets
 
@@ -31,14 +32,14 @@ def refresh_worker(nodegroup):
     """
 
     items = {
+        'api_credentials': convert_tuple_to_string(
+            get_creds_tuple(nodegroup.api_token)),
+        'maas_url': settings.DEFAULT_MAAS_URL,
         'nodegroup_name': nodegroup.name,
     }
 
     if nodegroup.dhcp_key is not None and len(nodegroup.dhcp_key) > 0:
         items['omapi_key'] = nodegroup.dhcp_key
-
-    items['api_credentials'] = convert_tuple_to_string(
-        get_creds_tuple(nodegroup.api_token))
 
     # TODO: Route this to the right worker, once we have multiple.
     refresh_secrets.delay(**items)
