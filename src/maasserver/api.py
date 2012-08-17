@@ -918,7 +918,7 @@ class NodeGroupHandler(BaseHandler):
         return get_object_or_404(NodeGroup, name=name)
 
     @classmethod
-    def resource_uri(cls, nodegroup):
+    def resource_uri(cls, nodegroup=None):
         if nodegroup is None:
             name = 'name'
         else:

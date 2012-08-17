@@ -2392,12 +2392,13 @@ class TestPXEConfigAPI(AnonAPITestCase):
 class TestNodeGroupsAPI(AnonAPITestCase):
 
     def test_reverse_points_to_nodegroups_api(self):
-        self.assertEqual(self.get_uri('nodegroups/'), reverse('nodegroups'))
+        self.assertEqual(
+            self.get_uri('nodegroups/'), reverse('nodegroups_handler'))
 
     def test_nodegroups_index_lists_nodegroups(self):
         # The nodegroups index lists node groups for the MAAS.
         nodegroup = factory.make_node_group()
-        response = self.client.get(reverse('nodegroups'))
+        response = self.client.get(reverse('nodegroups_handler'))
         self.assertEqual(httplib.OK, response.status_code)
         self.assertIn(nodegroup.name, json.loads(response.content))
 
@@ -2406,7 +2407,7 @@ class TestNodeGroupsAPI(AnonAPITestCase):
         self.patch(refresh_worker.refresh_secrets, 'delay', recorder)
         nodegroup = factory.make_node_group()
         response = self.client.post(
-            reverse('nodegroups'), {'op': 'refresh_workers'})
+            reverse('nodegroups_handler'), {'op': 'refresh_workers'})
         self.assertEqual(httplib.OK, response.status_code)
         self.assertIn(
             nodegroup.name, [
@@ -2418,7 +2419,7 @@ class TestNodeGroupsAPI(AnonAPITestCase):
         # confirmation.  Anyone can call this method, so it mustn't
         # reveal anything sensitive.
         response = self.client.post(
-            reverse('nodegroups'), {'op': 'refresh_workers'})
+            reverse('nodegroups_handler'), {'op': 'refresh_workers'})
         self.assertEqual(
             (httplib.OK, "Sending worker refresh."),
             (response.status_code, response.content))
@@ -2445,11 +2446,12 @@ class TestNodeGroupAPI(APITestCase):
         nodegroup = factory.make_node_group()
         self.assertEqual(
             self.get_uri('nodegroups/%s/' % nodegroup.name),
-            reverse('nodegroup', args=[nodegroup.name]))
+            reverse('nodegroup_handler', args=[nodegroup.name]))
 
     def test_GET_returns_node_group(self):
         nodegroup = factory.make_node_group()
-        response = self.client.get(reverse('nodegroup', args=[nodegroup.name]))
+        response = self.client.get(
+            reverse('nodegroup_handler', args=[nodegroup.name]))
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(
             nodegroup.name, json.loads(response.content).get('name'))
@@ -2464,7 +2466,7 @@ class TestNodeGroupAPI(APITestCase):
         factory.make_dhcp_lease(nodegroup=nodegroup)
         client = make_worker_client(nodegroup)
         response = client.post(
-            reverse('nodegroup', args=[nodegroup.name]),
+            reverse('nodegroup_handler', args=[nodegroup.name]),
             {
                 'op': 'update_leases',
                 'leases': json.dumps({}),
@@ -2481,7 +2483,7 @@ class TestNodeGroupAPI(APITestCase):
         mac = factory.getRandomMACAddress()
         client = make_worker_client(nodegroup)
         response = client.post(
-            reverse('nodegroup', args=[nodegroup.name]),
+            reverse('nodegroup_handler', args=[nodegroup.name]),
             {
                 'op': 'update_leases',
                 'leases': json.dumps({ip: mac}),
@@ -2505,14 +2507,15 @@ class TestNodeGroupAPIAuth(APIv10TestMixin, TestCase):
 
     def test_nodegroup_requires_authentication(self):
         nodegroup = factory.make_node_group()
-        response = self.client.get(reverse('nodegroup', args=[nodegroup.name]))
+        response = self.client.get(
+            reverse('nodegroup_handler', args=[nodegroup.name]))
         self.assertEqual(httplib.UNAUTHORIZED, response.status_code)
 
     def test_update_leases_works_for_nodegroup_worker(self):
         nodegroup = factory.make_node_group()
         client = make_worker_client(nodegroup)
         response = client.post(
-            reverse('nodegroup', args=[nodegroup.name]),
+            reverse('nodegroup_handler', args=[nodegroup.name]),
             {'op': 'update_leases', 'leases': json.dumps({})})
         self.assertEqual(
             httplib.OK, response.status_code,
@@ -2522,7 +2525,7 @@ class TestNodeGroupAPIAuth(APIv10TestMixin, TestCase):
         nodegroup = factory.make_node_group()
         self.log_in_as_normal_user()
         response = self.client.post(
-            reverse('nodegroup', args=[nodegroup.name]),
+            reverse('nodegroup_handler', args=[nodegroup.name]),
             {'op': 'update_leases', 'leases': json.dumps({})})
         self.assertEqual(
             httplib.FORBIDDEN, response.status_code,
@@ -2533,7 +2536,7 @@ class TestNodeGroupAPIAuth(APIv10TestMixin, TestCase):
         about_nodegroup = factory.make_node_group()
         client = make_worker_client(requesting_nodegroup)
         response = client.post(
-            reverse('nodegroup', args=[about_nodegroup.name]),
+            reverse('nodegroup_handler', args=[about_nodegroup.name]),
             {'op': 'update_leases', 'leases': json.dumps({})})
         self.assertEqual(
             httplib.FORBIDDEN, response.status_code,
