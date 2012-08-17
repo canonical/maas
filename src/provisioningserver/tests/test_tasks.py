@@ -30,6 +30,7 @@ from provisioningserver import (
     tasks,
     )
 from provisioningserver.cache import cache
+from provisioningserver.dhcp.leases import get_recorded_omapi_key
 from provisioningserver.dns.config import (
     conf,
     DNSZoneConfig,
@@ -103,10 +104,10 @@ class TestRefreshSecrets(PservTestCase):
         refresh_secrets(nodegroup_name=nodegroup_name)
         self.assertEqual(nodegroup_name, cache.get('nodegroup_name'))
 
-    def test_updates_omapi_shared_key(self):
-        key = factory.make_name('omapi-shared-key')
-        refresh_secrets(omapi_shared_key=key)
-        self.assertEqual(key, cache.get('omapi_shared_key'))
+    def test_updates_omapi_key(self):
+        key = factory.make_name('omapi-key')
+        refresh_secrets(omapi_key=key)
+        self.assertEqual(key, get_recorded_omapi_key())
 
 
 class TestPowerTasks(PservTestCase):
@@ -178,7 +179,7 @@ class TestDHCPTasks(PservTestCase):
         key = factory.getRandomString()
         self.patch(Omshell, '_run', FakeMethod())
         add_new_dhcp_host_map({}, factory.make_name('server'), key)
-        self.assertEqual(key, cache.get('omapi_shared_key'))
+        self.assertEqual(key, get_recorded_omapi_key())
 
     def test_remove_dhcp_host_map(self):
         # We don't want to actually run omshell in the task, so we stub
@@ -209,7 +210,7 @@ class TestDHCPTasks(PservTestCase):
         self.patch(Omshell, '_run', FakeMethod((0, "obj: <null>")))
         remove_dhcp_host_map(
             factory.getRandomIPAddress(), factory.make_name('server'), key)
-        self.assertEqual(key, cache.get('omapi_shared_key'))
+        self.assertEqual(key, get_recorded_omapi_key())
 
     def test_write_dhcp_config_writes_config(self):
         conf_file = self.make_file(contents=factory.getRandomString())
@@ -217,9 +218,10 @@ class TestDHCPTasks(PservTestCase):
         recorder = FakeMethod()
         self.patch(tasks, 'check_call', recorder)
         param_names = [
-             'omapi_shared_key', 'subnet', 'subnet_mask', 'next_server',
+             'omapi_key', 'subnet', 'subnet_mask', 'next_server',
              'broadcast_ip', 'dns_servers', 'router_ip', 'ip_range_low',
-             'ip_range_high']
+             'ip_range_high',
+             ]
         params = {param: factory.getRandomString() for param in param_names}
         write_dhcp_config(**params)
         self.assertThat(

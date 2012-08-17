@@ -53,8 +53,8 @@ def add_arguments(parser):
             "The last IP address in the range of IP addresses to "
             "allocate"))
     parser.add_argument(
-        "--omapi-shared-key", action="store", required=True, help=(
-            "The shared key"))
+        "--omapi-key", action="store", required=True, help=(
+            "The shared key for authentication to OMAPI"))
     parser.add_argument(
         "-o", "--outfile", action="store", required=False, help=(
             "A file to save to. When left unspecified the configuration "

@@ -35,7 +35,7 @@ def refresh_worker(nodegroup):
     }
 
     if nodegroup.dhcp_key is not None and len(nodegroup.dhcp_key) > 0:
-        items['omapi_shared_key'] = nodegroup.dhcp_key
+        items['omapi_key'] = nodegroup.dhcp_key
 
     items['api_credentials'] = convert_tuple_to_string(
         get_creds_tuple(nodegroup.api_token))

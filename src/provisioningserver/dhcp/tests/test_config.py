@@ -24,7 +24,7 @@ from testtools.matchers import MatchesRegex
 # Simple test version of the DHCP template.  Contains parameter
 # substitutions, but none that aren't also in the real template.
 sample_template = dedent("""\
-    {{omapi_shared_key}}
+    {{omapi_key}}
     {{subnet}}
     {{subnet_mask}}
     {{next_server}}
@@ -42,7 +42,7 @@ def make_sample_params():
     The sample provides all parameters used by the DHCP template.
     """
     return dict(
-        omapi_shared_key="random",
+        omapi_key="random",
         subnet="10.0.0.0",
         subnet_mask="255.0.0.0",
         next_server="10.0.0.1",

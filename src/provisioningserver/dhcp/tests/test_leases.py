@@ -25,18 +25,19 @@ from maastesting.utils import (
     age_file,
     get_write_time,
     )
+from provisioningserver.auth import NODEGROUP_NAME_CACHE_KEY
 from provisioningserver.cache import cache
 from provisioningserver.dhcp import leases as leases_module
 from provisioningserver.dhcp.leases import (
     check_lease_changes,
     identify_new_leases,
-    LEASES_KEY_CACHE_NAME,
-    LEASES_TIME_KEY_CACHE_NAME,
-    OMAPI_SHARED_KEY_CACHE_NAME,
+    LEASES_CACHE_KEY,
+    LEASES_TIME_CACHE_KEY,
+    OMAPI_KEY_CACHE_KEY,
     parse_leases_file,
     process_leases,
     record_lease_state,
-    record_omapi_shared_key,
+    record_omapi_key,
     register_new_leases,
     send_leases,
     update_leases,
@@ -49,20 +50,18 @@ from testtools.testcase import ExpectedException
 
 class TestHelpers(PservTestCase):
 
-    def test_record_omapi_shared_key_records_shared_key(self):
+    def test_record_omapi_key_records_key(self):
         key = factory.getRandomString()
-        record_omapi_shared_key(key)
-        self.assertEqual(key, cache.get(OMAPI_SHARED_KEY_CACHE_NAME))
+        record_omapi_key(key)
+        self.assertEqual(key, cache.get(OMAPI_KEY_CACHE_KEY))
 
     def test_record_lease_state_records_time_and_leases(self):
         time = datetime.utcnow()
         leases = {factory.getRandomIPAddress(): factory.getRandomMACAddress()}
         record_lease_state(time, leases)
         self.assertEqual(
-            (time, leases), (
-                cache.get(LEASES_TIME_KEY_CACHE_NAME),
-                cache.get(LEASES_KEY_CACHE_NAME),
-                ))
+            (time, leases),
+            (cache.get(LEASES_TIME_CACHE_KEY), cache.get(LEASES_CACHE_KEY)))
 
 
 class StopExecuting(BaseException):
@@ -124,12 +123,12 @@ class TestUpdateLeases(PservTestCase):
         """Set a recorded omapi key for the duration of this test."""
         if key is None:
             key = factory.getRandomString()
-        cache.set(OMAPI_SHARED_KEY_CACHE_NAME, key)
+        cache.set(OMAPI_KEY_CACHE_KEY, key)
 
     def set_nodegroup_name(self):
         """Set the recorded nodegroup name for the duration of this test."""
         name = factory.make_name('nodegroup')
-        cache.set('nodegroup_name', name)
+        cache.set(NODEGROUP_NAME_CACHE_KEY, name)
         return name
 
     def set_api_credentials(self):
@@ -145,8 +144,8 @@ class TestUpdateLeases(PservTestCase):
         state so that it gets reset at the end of the test.  Using this will
         prevent recorded lease state from leaking into other tests.
         """
-        cache.set(LEASES_TIME_KEY_CACHE_NAME, time)
-        cache.set(LEASES_KEY_CACHE_NAME, leases)
+        cache.set(LEASES_TIME_CACHE_KEY, time)
+        cache.set(LEASES_CACHE_KEY, leases)
 
     def test_record_lease_state_sets_leases_and_timestamp(self):
         time = datetime.utcnow()
@@ -154,10 +153,8 @@ class TestUpdateLeases(PservTestCase):
         self.set_lease_state()
         record_lease_state(time, leases)
         self.assertEqual(
-            (time, leases), (
-                cache.get(LEASES_TIME_KEY_CACHE_NAME),
-                cache.get(LEASES_KEY_CACHE_NAME),
-                ))
+            (time, leases),
+            (cache.get(LEASES_TIME_CACHE_KEY), cache.get(LEASES_CACHE_KEY)))
 
     def test_check_lease_changes_returns_tuple_if_no_state_cached(self):
         self.set_lease_state()
@@ -336,7 +333,7 @@ class TestUpdateLeases(PservTestCase):
         old_leases = {
             factory.getRandomIPAddress(): factory.getRandomMACAddress(),
         }
-        cache.set(LEASES_KEY_CACHE_NAME, old_leases)
+        cache.set(LEASES_CACHE_KEY, old_leases)
         new_leases = {
             factory.getRandomIPAddress(): factory.getRandomMACAddress(),
         }

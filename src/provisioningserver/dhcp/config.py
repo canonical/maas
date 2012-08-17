@@ -57,7 +57,7 @@ template_content = dedent("""\
     omapi-port 7911;
     key omapi_key {
         algorithm HMAC-MD5;
-        secret "{{omapi_shared_key}}";
+        secret "{{omapi_key}}";
     };
     omapi-key omapi_key;
 """)

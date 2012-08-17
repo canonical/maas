@@ -133,7 +133,7 @@ class NodeGroup(TimestampedModel):
         write_dhcp_config.delay(
             subnet=self.ip_range_low,
             next_server=self.worker_ip,
-            omapi_shared_key=self.dhcp_key, subnet_mask=self.subnet_mask,
+            omapi_key=self.dhcp_key, subnet_mask=self.subnet_mask,
             broadcast_ip=self.broadcast_ip, router_ip=self.router_ip,
             dns_servers=get_dns_server_address(),
             ip_range_low=self.ip_range_low, ip_range_high=self.ip_range_high)
