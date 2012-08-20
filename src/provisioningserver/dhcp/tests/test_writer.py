@@ -14,12 +14,13 @@ __all__ = []
 
 from argparse import ArgumentParser
 from io import BytesIO
-from os import path
+import os
 from subprocess import Popen, PIPE
 import sys
 
 from maastesting.matchers import ContainsAll
 from maastesting.testcase import TestCase
+import provisioningserver
 from provisioningserver.dhcp import writer
 from testtools.matchers import MatchesStructure
 
@@ -40,14 +41,17 @@ class TestScript(TestCase):
         )
 
     def test_script_executable(self):
-        script = ["bin/maas-provision", "generate-dhcp-config"]
+        dev_root = os.path.join(
+            os.path.dirname(provisioningserver.__file__),
+            os.pardir, os.pardir)
+        script = ["%s/bin/maas-provision" % dev_root, "generate-dhcp-config"]
         script.extend(self.test_args)
         cmd = Popen(
             script, stdout=PIPE, env=dict(PYTHONPATH=":".join(sys.path)))
         output, err = cmd.communicate()
         contains_all_params = ContainsAll(
             ['subnet', 'subnet-mask', 'next-server', 'broadcast-ip',
-             'omapi-shared-key', 'dns-servers', 'router-ip',
+             'omapi-key', 'dns-servers', 'router-ip',
              'ip-range-low', 'ip-range-high'])
         self.assertThat(output, contains_all_params)
 
@@ -90,7 +94,7 @@ class TestScript(TestCase):
     def test_run_save_to_file(self):
         parser = ArgumentParser()
         writer.add_arguments(parser)
-        outfile = path.join(self.make_dir(), "outfile.txt")
+        outfile = os.path.join(self.make_dir(), "outfile.txt")
         args = parser.parse_args(
             self.test_args + ("--outfile", outfile))
         writer.run(args)

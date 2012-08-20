@@ -263,6 +263,29 @@ Then as for TFTP above, create an authbind authorisation::
 and run as for TFTP.
 
 
+Configuring DHCP
+^^^^^^^^^^^^^^^^
+
+MAAS requires a properly configured DHCP server so it can boot machines using
+PXE.  MAAS works with the ISC DHCP server; install it if it's not already
+installed::
+
+    $ sudo apt-get install isc-dhcp-server
+
+There is a tool to generate a configuration that will work with MAAS::
+
+    $ maas-provision generate-dhcp-config [options]
+
+Run ``maas-provision generate-dhcp-config -h`` to see the options.  You will
+need to provide various IP details such as the range of IP addresses to assign
+to clients.  You can use the generated output to configure your system's ISC
+DHCP server, by putting the configuration in the ``/etc/dhcp/dhcpd.conf`` file.
+
+Now restart dhcpd::
+
+    $ sudo /etc/init.d/isc-dhcp-server restart
+
+
 Development services
 ====================
 

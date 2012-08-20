@@ -45,29 +45,24 @@ later use to log in.
 Configuring a DHCP server
 =========================
 
-So that MAAS can PXE boot machines, you'll need a DHCP server. MAAS
-can work with your existing DHCP set-up but for this guide we'll use
-dnsmasq.
+MAAS requires a properly configured DHCP server so it can boot machines using
+PXE.  MAAS works with the ISC DHCP server; install it if it's not already
+installed::
 
-dnsmasq should already be installed; install it if not::
+    $ sudo apt-get install isc-dhcp-server
 
-  $ sudo apt-get install dnsmasq
+There is a tool to generate a configuration for it that will work with MAAS::
 
-Make the following configuration changes:
+    $ maas-provision generate-dhcp-config [options]
 
-``domain``
-  If applicable, specify your network's domain.
+Run ``maas-provision generate-dhcp-config -h`` to see the options.  You will
+need to provide various IP details such as the range of IP addresses to assign
+to clients.  You can use the generated output to configure your system's ISC
+DHCP server, by putting the configuration in the ``/etc/dhcp/dhcpd.conf`` file.
 
-``dhcp-range``
-  Specify the range from which dnsmasq should allocate IP
-  addresses to servers in your MAAS.
+Now restart dhcpd::
 
-``dhcp-option=3,next_server``
-  Replace ``next_server`` with the current server's IP address.
-
-Now restart dnsmasq::
-
-  $ sudo /etc/init.d/dnsmasq restart
+  $ sudo /etc/init.d/isc-dhcp-server restart
 
 
 Import the Ubuntu images
