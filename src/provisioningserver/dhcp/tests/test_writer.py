@@ -15,6 +15,7 @@ __all__ = []
 from argparse import ArgumentParser
 from io import BytesIO
 from os import path
+from subprocess import Popen, PIPE
 import sys
 
 from maastesting.matchers import ContainsAll
@@ -37,6 +38,18 @@ class TestScript(TestCase):
         '--ip-range-high', 'ip-range-high',
         '--omapi-key', 'omapi-key',
         )
+
+    def test_script_executable(self):
+        script = ["bin/maas-provision", "generate-dhcp-config"]
+        script.extend(self.test_args)
+        cmd = Popen(
+            script, stdout=PIPE, env=dict(PYTHONPATH=":".join(sys.path)))
+        output, err = cmd.communicate()
+        contains_all_params = ContainsAll(
+            ['subnet', 'subnet-mask', 'next-server', 'broadcast-ip',
+             'omapi-shared-key', 'dns-servers', 'router-ip',
+             'ip-range-low', 'ip-range-high'])
+        self.assertThat(output, contains_all_params)
 
     def test_arg_setup(self):
         parser = ArgumentParser()

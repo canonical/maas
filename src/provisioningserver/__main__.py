@@ -12,6 +12,7 @@ from __future__ import (
 
 __metaclass__ = type
 
+import provisioningserver.dhcp.writer
 import provisioningserver.pxe.install_bootloader
 import provisioningserver.pxe.install_image
 from provisioningserver.utils import MainScript
@@ -24,4 +25,7 @@ main.register(
 main.register(
     "install-pxe-image",
     provisioningserver.pxe.install_image)
+main.register(
+    "generate-dhcp-config",
+    provisioningserver.dhcp.writer)
 main()
