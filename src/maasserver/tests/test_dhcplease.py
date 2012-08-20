@@ -59,10 +59,9 @@ class TestDHCPLeaseManager(TestCase):
 
     def test_update_leases_creates_new_lease(self):
         nodegroup = factory.make_node_group()
-        ip = factory.getRandomIPAddress()
-        mac = factory.getRandomMACAddress()
-        DHCPLease.objects.update_leases(nodegroup, {ip: mac})
-        self.assertEqual({ip: mac}, map_leases(nodegroup))
+        lease = factory.make_random_leases()
+        DHCPLease.objects.update_leases(nodegroup, lease)
+        self.assertEqual(lease, map_leases(nodegroup))
 
     def test_update_leases_deletes_obsolete_lease(self):
         nodegroup = factory.make_node_group()
@@ -108,8 +107,7 @@ class TestDHCPLeaseManager(TestCase):
         innocent_nodegroup = factory.make_node_group()
         innocent_lease = factory.make_dhcp_lease(nodegroup=innocent_nodegroup)
         DHCPLease.objects.update_leases(
-            factory.make_node_group(),
-            {factory.getRandomIPAddress(): factory.getRandomMACAddress()})
+            factory.make_node_group(), factory.make_random_leases())
         self.assertItemsEqual(
             [innocent_lease], get_leases(innocent_nodegroup))
 

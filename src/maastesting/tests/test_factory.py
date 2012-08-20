@@ -79,6 +79,31 @@ class TestFactory(TestCase):
         mac_address = factory.getRandomMACAddress(delimiter=b"-")
         self.assertEqual("3a-3b-3c-3d-3e-3f", mac_address)
 
+    def test_make_random_leases_maps_ips_to_macs(self):
+        [(ip, mac)] = factory.make_random_leases().items()
+        self.assertEqual(
+            4, len(ip.split('.')),
+            "IP address does not look like an IP address: '%s'" % ip)
+        self.assertEqual(
+            6, len(mac.split(':')),
+            "MAC address does not look like a MAC address: '%s'" % mac)
+
+    def test_make_random_leases_randomizes_ips(self):
+        self.assertNotEqual(
+            factory.make_random_leases().keys(),
+            factory.make_random_leases().keys())
+
+    def test_make_random_leases_randomizes_macs(self):
+        self.assertNotEqual(
+            factory.make_random_leases().values(),
+            factory.make_random_leases().values())
+
+    def test_make_random_leases_returns_requested_number_of_leases(self):
+        num_leases = randint(0, 3)
+        self.assertEqual(
+            num_leases,
+            len(factory.make_random_leases(num_leases)))
+
     def test_make_file_creates_file(self):
         self.assertThat(factory.make_file(self.make_dir()), FileExists())
 

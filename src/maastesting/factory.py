@@ -87,6 +87,15 @@ class Factory:
         octets = islice(self.random_octets, 6)
         return delimiter.join(format(octet, b"02x") for octet in octets)
 
+    def make_random_leases(self, num_leases=1):
+        """Create a dict of arbitrary ip-to-mac address mappings."""
+        # This could be a dict comprehension, but the current loop
+        # guards against shortfalls as random IP addresses collide.
+        leases = {}
+        while len(leases) < num_leases:
+            leases[self.getRandomIPAddress()] = self.getRandomMACAddress()
+        return leases
+
     def getRandomDate(self, year=2011):
         start = time.mktime(datetime.datetime(year, 1, 1).timetuple())
         end = time.mktime(datetime.datetime(year + 1, 1, 1).timetuple())
