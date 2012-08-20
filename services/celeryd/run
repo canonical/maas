@@ -15,4 +15,4 @@ cd "$(dirname "$0")/../.."
 # Run celeryd.
 export PYTHONPATH=$PYTHONPATH:`pwd`/src:`pwd`/etc
 export CELERY_CONFIG_MODULE=democeleryconfig
-celeryd -l INFO
+exec celeryd -l INFO
