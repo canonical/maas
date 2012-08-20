@@ -37,7 +37,8 @@ all: build doc
 # Install all packages required for MAAS development & operation on
 # the system. This may prompt for a password.
 install-dependencies:
-	sudo apt-get install $(shell sort -u required-packages/*)
+	sudo DEBIAN_FRONTEND=noninteractive apt-get -y install \
+		$(shell sort -u required-packages/*)
 
 bin/python bin/pip:
 	$(virtualenv) --python=$(python) --system-site-packages $(CURDIR)
