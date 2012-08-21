@@ -928,8 +928,14 @@ class NodeGroupHandler(BaseHandler):
     @api_exported('POST')
     def update_leases(self, request, name):
         leases = get_mandatory_param(request.data, 'leases')
+        new_leases = request.data.get('new_leases', None)
         nodegroup = get_nodegroup_for_worker(request, name)
-        DHCPLease.objects.update_leases(nodegroup, json.loads(leases))
+        leases = json.loads(leases)
+        DHCPLease.objects.update_leases(nodegroup, leases)
+        if new_leases is not None:
+            new_leases = json.loads(new_leases)
+            nodegroup.add_dhcp_host_maps(
+                {ip: mac for ip, mac in leases.items() if ip in new_leases})
         return HttpResponse("Leases updated.", status=httplib.OK)
 
 

@@ -60,20 +60,6 @@ LEASES_TIME_CACHE_KEY = 'leases_time'
 LEASES_CACHE_KEY = 'recorded_leases'
 
 
-# Cache key for the key we use to authenticate to omshell.
-OMAPI_KEY_CACHE_KEY = 'omapi_key'
-
-
-def record_omapi_key(omapi_key):
-    """Record the OMAPI key as received from the server."""
-    cache.set(OMAPI_KEY_CACHE_KEY, omapi_key)
-
-
-def get_recorded_omapi_key():
-    """Return the current OMAPI key as received from the server."""
-    return cache.get(OMAPI_KEY_CACHE_KEY)
-
-
 def get_leases_timestamp():
     """Return the last modification timestamp of the DHCP leases file."""
     return stat(DHCP_LEASES_FILE).st_mtime
@@ -120,44 +106,6 @@ def record_lease_state(last_change, leases):
     cache.set(LEASES_CACHE_KEY, leases)
 
 
-def identify_new_leases(current_leases):
-    """Return a dict of those leases that weren't previously recorded.
-
-    :param current_leases: A dict mapping IP addresses to the respective
-        MAC addresses that own them.
-    """
-    # The recorded leases is shared between worker threads/processes.
-    # Read it just once to reduce the impact of concurrent changes.
-    previous_leases = cache.get(LEASES_CACHE_KEY)
-    if previous_leases is None:
-        return current_leases
-    else:
-        return {
-            ip: current_leases[ip]
-            for ip in set(current_leases).difference(previous_leases)}
-
-
-def register_new_leases(current_leases):
-    """Register new DHCP leases with the OMAPI.
-
-    :param current_leases: A dict mapping IP addresses to the respective
-        MAC addresses that own them.
-    """
-    # Avoid circular imports.
-    from provisioningserver.tasks import add_new_dhcp_host_map
-
-    # The recorded_omapi_key is shared between worker threads or
-    # processes, so read it just once, atomically.
-    omapi_key = get_recorded_omapi_key()
-    if omapi_key is None:
-        task_logger.info(
-            "Not registering new leases: "
-            "no OMAPI key received from server yet.")
-    else:
-        new_leases = identify_new_leases(current_leases)
-        add_new_dhcp_host_map(new_leases, 'localhost', omapi_key)
-
-
 def list_missing_items(knowledge):
     """Report items from dict `knowledge` that are still `None`."""
     return sorted(name for name, value in knowledge.items() if value is None)
@@ -188,11 +136,7 @@ def send_leases(leases):
 
 
 def process_leases(timestamp, leases):
-    """Register leases with the DHCP server, and send to the MAAS server."""
-    # Register new leases before recording them.  That way, any
-    # failure to register a lease will cause it to be retried at the
-    # next opportunity.
-    register_new_leases(leases)
+    """Send new leases to the MAAS server."""
     record_lease_state(timestamp, leases)
     send_leases(leases)
 

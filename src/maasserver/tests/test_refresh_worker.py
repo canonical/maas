@@ -50,23 +50,6 @@ class TestRefreshWorker(TestCase):
             [(creds_string, )],
             refresh_functions['api_credentials'].extract_args())
 
-    def test_refreshes_omapi_key(self):
-        refresh_functions = self.patch_refresh_functions()
-        dhcp_key = factory.getRandomString()
-        nodegroup = factory.make_node_group(dhcp_key=dhcp_key)
-        refresh_worker(nodegroup)
-        self.assertEqual(
-            [(dhcp_key, )],
-            refresh_functions['omapi_key'].extract_args())
-
-    def test_omits_omapi_key_if_not_set(self):
-        refresh_functions = self.patch_refresh_functions()
-        nodegroup = factory.make_node_group()
-        refresh_worker(nodegroup)
-        self.assertEqual(
-            [],
-            refresh_functions['omapi_key'].extract_args())
-
     def test_refreshes_nodegroup_name(self):
         refresh_functions = self.patch_refresh_functions()
         nodegroup = factory.make_node_group()

@@ -17,10 +17,15 @@ from maasserver.testing import reload_object
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
 from maasserver.worker_user import get_worker_user
+from maastesting.celery import CeleryFixture
 from maastesting.fakemethod import FakeMethod
 from maastesting.matchers import ContainsAll
 from provisioningserver import tasks
-from provisioningserver.omshell import generate_omapi_key
+from provisioningserver.omshell import (
+    generate_omapi_key,
+    Omshell,
+    )
+from testresources import FixtureResource
 from testtools.matchers import (
     FileContains,
     GreaterThan,
@@ -150,6 +155,10 @@ class TestNodeGroupManager(TestCase):
 
 class TestNodeGroup(TestCase):
 
+    resources = (
+        ('celery', FixtureResource(CeleryFixture())),
+        )
+
     def test_is_dhcp_enabled_false_if_one_element_is_none(self):
         required_fields = [
             'subnet_mask', 'broadcast_ip', 'ip_range_low', 'ip_range_high']
@@ -196,3 +205,20 @@ class TestNodeGroup(TestCase):
         nodegroup = factory.make_node_group()
         nodegroup.set_up_dhcp()
         self.assertEqual(1, recorder.call_count)
+
+    def test_add_dhcp_host_maps_adds_maps_if_managing_dhcp(self):
+        self.patch(Omshell, 'create', FakeMethod())
+        nodegroup = factory.make_node_group()
+        leases = factory.make_random_leases()
+        nodegroup.add_dhcp_host_maps(leases)
+        self.assertEqual(
+            [(leases.keys()[0], leases.values()[0])],
+            Omshell.create.extract_args())
+
+    def test_add_dhcp_host_maps_does_nothing_if_not_managing_dhcp(self):
+        self.patch(Omshell, 'create', FakeMethod())
+        nodegroup = factory.make_node_group()
+        self.patch(nodegroup, 'is_dhcp_enabled', FakeMethod(result=False))
+        leases = factory.make_random_leases()
+        nodegroup.add_dhcp_host_maps(leases)
+        self.assertEqual([], Omshell.create.extract_args())

@@ -36,7 +36,6 @@ from fixtures import Fixture
 from maasserver import (
     api,
     kernel_opts,
-    refresh_worker,
     )
 from maasserver.api import (
     extract_constraints,
@@ -81,6 +80,7 @@ from maasserver.testing.testcase import (
     )
 from maasserver.utils import map_enum
 from maasserver.worker_user import get_worker_user
+from maastesting.celery import CeleryFixture
 from maastesting.djangotestcase import TransactionTestCase
 from maastesting.fakemethod import FakeMethod
 from maastesting.matchers import ContainsAll
@@ -89,10 +89,14 @@ from metadataserver.models import (
     NodeUserData,
     )
 from metadataserver.nodeinituser import get_node_init_user
+from provisioningserver import tasks
+from provisioningserver.auth import get_recorded_nodegroup_name
 from provisioningserver.enum import (
     POWER_TYPE,
     POWER_TYPE_CHOICES,
     )
+from provisioningserver.omshell import Omshell
+from testresources import FixtureResource
 from testtools.matchers import (
     Contains,
     Equals,
@@ -2391,6 +2395,10 @@ class TestPXEConfigAPI(AnonAPITestCase):
 
 class TestNodeGroupsAPI(AnonAPITestCase):
 
+    resources = (
+        ('celery', FixtureResource(CeleryFixture())),
+        )
+
     def test_reverse_points_to_nodegroups_api(self):
         self.assertEqual(
             self.get_uri('nodegroups/'), reverse('nodegroups_handler'))
@@ -2403,16 +2411,11 @@ class TestNodeGroupsAPI(AnonAPITestCase):
         self.assertIn(nodegroup.name, json.loads(response.content))
 
     def test_refresh_calls_refresh_worker(self):
-        recorder = FakeMethod()
-        self.patch(refresh_worker.refresh_secrets, 'delay', recorder)
         nodegroup = factory.make_node_group()
         response = self.client.post(
             reverse('nodegroups_handler'), {'op': 'refresh_workers'})
         self.assertEqual(httplib.OK, response.status_code)
-        self.assertIn(
-            nodegroup.name, [
-                kwargs['nodegroup_name']
-                for kwargs in recorder.extract_kwargs()])
+        self.assertEqual(nodegroup.name, get_recorded_nodegroup_name())
 
     def test_refresh_does_not_return_secrets(self):
         # The response from "refresh" contains only an innocuous
@@ -2440,7 +2443,21 @@ def make_worker_client(nodegroup):
         get_worker_user(), token=nodegroup.api_token)
 
 
+def disable_dhcp_management(nodegroup):
+    """Turn off MAAS DHCP management on `nodegroup`."""
+    nodegroup.subnet_mask = None
+    nodegroup.broadcast_ip = None
+    nodegroup.router_ip = None
+    nodegroup.ip_range_low = None
+    nodegroup.ip_range_high = None
+    nodegroup.save()
+
+
 class TestNodeGroupAPI(APITestCase):
+
+    resources = (
+        ('celery', FixtureResource(CeleryFixture())),
+        )
 
     def test_reverse_points_to_nodegroup(self):
         nodegroup = factory.make_node_group()
@@ -2479,21 +2496,74 @@ class TestNodeGroupAPI(APITestCase):
 
     def test_update_leases_stores_leases(self):
         nodegroup = factory.make_node_group()
-        ip = factory.getRandomIPAddress()
-        mac = factory.getRandomMACAddress()
+        lease = factory.make_random_leases()
         client = make_worker_client(nodegroup)
         response = client.post(
             reverse('nodegroup_handler', args=[nodegroup.name]),
             {
                 'op': 'update_leases',
-                'leases': json.dumps({ip: mac}),
+                'leases': json.dumps(lease),
             })
         self.assertEqual(
             (httplib.OK, "Leases updated."),
             (response.status_code, response.content))
-        self.assertEqual([ip], [
+        self.assertItemsEqual(
+            lease.keys(), [
+                lease.ip
+                for lease in DHCPLease.objects.filter(nodegroup=nodegroup)])
+
+    def test_update_leases_stores_leases_even_if_not_managing_dhcp(self):
+        nodegroup = factory.make_node_group()
+        disable_dhcp_management(nodegroup)
+        lease = factory.make_random_leases()
+        client = make_worker_client(nodegroup)
+        response = client.post(
+            reverse('nodegroup_handler', args=[nodegroup.name]),
+            {
+                'op': 'update_leases',
+                'leases': json.dumps(lease),
+            })
+        self.assertEqual(
+            (httplib.OK, "Leases updated."),
+            (response.status_code, response.content))
+        self.assertItemsEqual(lease.keys(), [
             lease.ip
             for lease in DHCPLease.objects.filter(nodegroup=nodegroup)])
+
+    def test_update_leases_adds_new_leases_on_worker(self):
+        nodegroup = factory.make_node_group()
+        client = make_worker_client(nodegroup)
+        self.patch(Omshell, 'create', FakeMethod())
+        new_leases = factory.make_random_leases()
+        response = client.post(
+            reverse('nodegroup_handler', args=[nodegroup.name]),
+            {
+                'op': 'update_leases',
+                'leases': json.dumps(new_leases),
+                'new_leases': json.dumps(new_leases.keys()),
+            })
+        self.assertEqual(
+            (httplib.OK, "Leases updated."),
+            (response.status_code, response.content))
+        self.assertEqual(
+            [(new_leases.keys()[0], new_leases.values()[0])],
+            Omshell.create.extract_args())
+
+    def test_update_leases_does_not_add_old_leases(self):
+        nodegroup = factory.make_node_group()
+        client = make_worker_client(nodegroup)
+        self.patch(tasks, 'add_new_dhcp_host_map', FakeMethod())
+        response = client.post(
+            reverse('nodegroup_handler', args=[nodegroup.name]),
+            {
+                'op': 'update_leases',
+                'leases': json.dumps(factory.make_random_leases()),
+                'new_leases': json.dumps([]),
+            })
+        self.assertEqual(
+            (httplib.OK, "Leases updated."),
+            (response.status_code, response.content))
+        self.assertEqual([], tasks.add_new_dhcp_host_map.calls)
 
 
 class TestNodeGroupAPIAuth(APIv10TestMixin, TestCase):

@@ -30,7 +30,6 @@ from provisioningserver import (
     tasks,
     )
 from provisioningserver.cache import cache
-from provisioningserver.dhcp.leases import get_recorded_omapi_key
 from provisioningserver.dns.config import (
     conf,
     DNSZoneConfig,
@@ -109,11 +108,6 @@ class TestRefreshSecrets(PservTestCase):
         refresh_secrets(nodegroup_name=nodegroup_name)
         self.assertEqual(nodegroup_name, cache.get('nodegroup_name'))
 
-    def test_updates_omapi_key(self):
-        key = factory.make_name('omapi-key')
-        refresh_secrets(omapi_key=key)
-        self.assertEqual(key, get_recorded_omapi_key())
-
 
 class TestPowerTasks(PservTestCase):
 
@@ -180,12 +174,6 @@ class TestDHCPTasks(PservTestCase):
             CalledProcessError, add_new_dhcp_host_map.delay,
             {mac: ip}, server_address, key)
 
-    def test_add_new_dhcp_host_map_records_shared_key(self):
-        key = factory.getRandomString()
-        self.patch(Omshell, '_run', FakeMethod())
-        add_new_dhcp_host_map({}, factory.make_name('server'), key)
-        self.assertEqual(key, get_recorded_omapi_key())
-
     def test_remove_dhcp_host_map(self):
         # We don't want to actually run omshell in the task, so we stub
         # out the wrapper class's _run method and record what it would
@@ -209,13 +197,6 @@ class TestDHCPTasks(PservTestCase):
         self.assertRaises(
             CalledProcessError, remove_dhcp_host_map.delay,
             ip, server_address, key)
-
-    def test_remove_dhcp_host_map_records_shared_key(self):
-        key = factory.getRandomString()
-        self.patch(Omshell, '_run', FakeMethod((0, "obj: <null>")))
-        remove_dhcp_host_map(
-            factory.getRandomIPAddress(), factory.make_name('server'), key)
-        self.assertEqual(key, get_recorded_omapi_key())
 
     def test_write_dhcp_config_writes_config(self):
         conf_file = self.make_file(contents=factory.getRandomString())

@@ -28,7 +28,10 @@ from piston.models import (
     Token,
     )
 from provisioningserver.omshell import generate_omapi_key
-from provisioningserver.tasks import write_dhcp_config
+from provisioningserver.tasks import (
+    add_new_dhcp_host_map,
+    write_dhcp_config,
+    )
 
 
 class NodeGroupManager(Manager):
@@ -146,3 +149,11 @@ class NodeGroup(TimestampedModel):
                 self.ip_range_low,
                 self.ip_range_high
                 ])
+
+    def add_dhcp_host_maps(self, new_leases):
+        if self.is_dhcp_enabled() and len(new_leases) > 0:
+            # XXX JeroenVermeulen 2012-08-21, bug=1039362: the DHCP
+            # server is currently always local to the worker system, so
+            # use 127.0.0.1 as the DHCP server address.
+            add_new_dhcp_host_map.delay(
+                new_leases, '127.0.0.1', self.dhcp_key)

@@ -33,30 +33,20 @@ from provisioningserver.cache import cache
 from provisioningserver.dhcp import leases as leases_module
 from provisioningserver.dhcp.leases import (
     check_lease_changes,
-    identify_new_leases,
     LEASES_CACHE_KEY,
     LEASES_TIME_CACHE_KEY,
-    OMAPI_KEY_CACHE_KEY,
     parse_leases_file,
     process_leases,
     record_lease_state,
-    record_omapi_key,
-    register_new_leases,
     send_leases,
     update_leases,
     upload_leases,
     )
 from provisioningserver.omshell import Omshell
 from provisioningserver.testing.testcase import PservTestCase
-from testtools.testcase import ExpectedException
 
 
 class TestHelpers(PservTestCase):
-
-    def test_record_omapi_key_records_key(self):
-        key = factory.getRandomString()
-        record_omapi_key(key)
-        self.assertEqual(key, cache.get(OMAPI_KEY_CACHE_KEY))
 
     def test_record_lease_state_records_time_and_leases(self):
         time = datetime.utcnow()
@@ -118,16 +108,6 @@ class TestUpdateLeases(PservTestCase):
         self.redirect_parser(leases_file)
         return leases_file
 
-    def set_omapi_key(self, key=None):
-        """Set a recorded omapi key for the duration of this test."""
-        if key is None:
-            key = factory.getRandomString()
-        cache.set(OMAPI_KEY_CACHE_KEY, key)
-
-    def clear_omapi_key(self):
-        """Clear the recorded omapi key."""
-        cache.set(OMAPI_KEY_CACHE_KEY, None)
-
     def set_nodegroup_name(self):
         """Set the recorded nodegroup name for the duration of this test."""
         name = factory.make_name('nodegroup')
@@ -164,7 +144,6 @@ class TestUpdateLeases(PservTestCase):
         """Set the recorded items required by `update_leases`."""
         self.set_maas_url()
         self.set_api_credentials()
-        self.set_omapi_key()
         self.set_nodegroup_name()
 
     def set_lease_state(self, time=None, leases=None):
@@ -285,35 +264,6 @@ class TestUpdateLeases(PservTestCase):
         self.fake_leases_file(new_leases)
         self.assertIsNone(check_lease_changes())
 
-    def test_process_leases_registers_new_leases(self):
-        self.set_lease_state()
-        self.set_items_needed_for_lease_update()
-        self.patch(Omshell, 'create', FakeMethod())
-        self.patch(leases_module, 'send_leases', FakeMethod())
-        ip = factory.getRandomIPAddress()
-        mac = factory.getRandomMACAddress()
-        process_leases(datetime.utcnow(), {ip: mac})
-        self.assertEqual([(ip, mac)], Omshell.create.extract_args())
-
-    def test_process_leases_retries_failed_registrations(self):
-
-        class OmshellFailure(Exception):
-            pass
-
-        self.set_lease_state()
-        self.set_items_needed_for_lease_update()
-        self.patch(leases_module, 'send_leases', FakeMethod())
-        self.patch(Omshell, 'create', FakeMethod(failure=OmshellFailure()))
-        ip = factory.getRandomIPAddress()
-        mac = factory.getRandomMACAddress()
-        with ExpectedException(OmshellFailure):
-            process_leases(datetime.utcnow(), {ip: mac})
-        # At this point {ip: mac} has not been successfully registered.
-        # But if we re-run process_leases later, it will retry.
-        self.patch(Omshell, 'create', FakeMethod())
-        process_leases(datetime.utcnow(), {ip: mac})
-        self.assertEqual([(ip, mac)], Omshell.create.extract_args())
-
     def test_upload_leases_processes_leases_unconditionally(self):
         leases = factory.make_random_leases()
         leases_file = self.fake_leases_file(leases)
@@ -342,52 +292,6 @@ class TestUpdateLeases(PservTestCase):
         self.assertEqual(
             (get_write_time(leases_file), {params['ip']: params['mac']}),
             parse_leases_file())
-
-    def test_identify_new_leases_identifies_everything_first_time(self):
-        self.patch(leases_module, 'recorded_leases', None)
-        current_leases = factory.make_random_leases(2)
-        self.assertEqual(current_leases, identify_new_leases(current_leases))
-
-    def test_identify_new_leases_identifies_previously_unknown_leases(self):
-        self.patch(leases_module, 'recorded_leases', {})
-        current_leases = factory.make_random_leases()
-        self.assertEqual(current_leases, identify_new_leases(current_leases))
-
-    def test_identify_new_leases_leaves_out_previously_known_leases(self):
-        old_leases = factory.make_random_leases()
-        cache.set(LEASES_CACHE_KEY, old_leases)
-        new_leases = factory.make_random_leases()
-        current_leases = old_leases.copy()
-        current_leases.update(new_leases)
-        self.assertEqual(new_leases, identify_new_leases(current_leases))
-
-    def test_register_new_leases_registers_new_leases(self):
-        self.patch(Omshell, 'create', FakeMethod())
-        self.set_lease_state()
-        self.set_omapi_key()
-        ip = factory.getRandomIPAddress()
-        mac = factory.getRandomMACAddress()
-        register_new_leases({ip: mac})
-        [create_args] = Omshell.create.extract_args()
-        self.assertEqual((ip, mac), create_args)
-
-    def test_register_new_leases_ignores_known_leases(self):
-        self.patch(Omshell, 'create', FakeMethod())
-        self.set_omapi_key()
-        self.set_nodegroup_name()
-        old_leases = factory.make_random_leases()
-        self.set_lease_state(None, old_leases)
-        register_new_leases(old_leases)
-        self.assertEqual([], Omshell.create.calls)
-
-    def test_register_new_leases_does_nothing_without_omapi_key(self):
-        self.patch(Omshell, 'create', FakeMethod())
-        self.set_lease_state()
-        self.set_items_needed_for_lease_update()
-        self.clear_omapi_key()
-        new_leases = factory.make_random_leases()
-        register_new_leases(new_leases)
-        self.assertEqual([], Omshell.create.calls)
 
     def test_send_leases_posts_to_API(self):
         self.patch(Omshell, 'create', FakeMethod())
