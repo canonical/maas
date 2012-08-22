@@ -169,7 +169,6 @@ class TFTPBootstrap(DatagramProtocol):
             self.transport.write(ERRORDatagram.from_code(ERR_TID_UNKNOWN).to_wire())
             return# Does not belong to this transfer
         datagram = TFTPDatagramFactory(*split_opcode(datagram))
-        log.msg("Datagram received from %s: %s" % (addr, datagram))
         if datagram.opcode == OP_ERROR:
             return self.tftp_ERROR(datagram)
         return self._datagramReceived(datagram)
