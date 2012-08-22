@@ -22,6 +22,7 @@ from django.db.models import (
     Manager,
     )
 from maasserver import DefaultMeta
+from maasserver.dhcp import is_dhcp_management_enabled
 from maasserver.models.timestampedmodel import TimestampedModel
 from piston.models import (
     KEY_SIZE,
@@ -143,7 +144,7 @@ class NodeGroup(TimestampedModel):
 
     def is_dhcp_enabled(self):
         """Is the DHCP for this nodegroup enabled?"""
-        return all([
+        return is_dhcp_management_enabled() and all([
                 self.subnet_mask,
                 self.broadcast_ip,
                 self.ip_range_low,

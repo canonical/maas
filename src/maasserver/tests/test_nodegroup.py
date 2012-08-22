@@ -12,7 +12,10 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
-from maasserver.models import NodeGroup
+from maasserver.models import (
+    Config,
+    NodeGroup,
+    )
 from maasserver.testing import reload_object
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
@@ -159,27 +162,32 @@ class TestNodeGroup(TestCase):
         ('celery', FixtureResource(CeleryFixture())),
         )
 
-    def test_is_dhcp_enabled_false_if_one_element_is_none(self):
+    def test_is_dhcp_enabled_returns_True_if_fully_set_up(self):
+        Config.objects.set_config('manage_dhcp', True)
+        self.assertTrue(factory.make_node_group().is_dhcp_enabled())
+
+    def test_is_dhcp_enabled_returns_False_if_disabled(self):
+        Config.objects.set_config('manage_dhcp', False)
+        self.assertFalse(factory.make_node_group().is_dhcp_enabled())
+
+    def test_is_dhcp_enabled_returns_False_if_config_is_missing(self):
+        Config.objects.set_config('manage_dhcp', True)
         required_fields = [
             'subnet_mask', 'broadcast_ip', 'ip_range_low', 'ip_range_high']
-        nodegroups = []
-        for required_field in required_fields:
-            nodegroup = factory.make_node_group()
-            setattr(nodegroup, required_field, None)
+        # Map each required field's name to a nodegroup that has just
+        # that field set to None.
+        nodegroups = {
+            field: factory.make_node_group()
+            for field in required_fields}
+        for field, nodegroup in nodegroups.items():
+            setattr(nodegroup, field, None)
             nodegroup.save()
-            nodegroups.append(nodegroup)
-        self.assertEquals(
-                [nodegroup.is_dhcp_enabled() for nodegroup in nodegroups],
-                [False] * len(nodegroups))
-
-    def test_is_dhcp_enabled_true_if_all_the_elements_defined(self):
-        nodegroup = factory.make_node_group(
-            subnet_mask=factory.getRandomIPAddress(),
-            broadcast_ip=factory.getRandomIPAddress(),
-            ip_range_low=factory.getRandomIPAddress(),
-            ip_range_high=factory.getRandomIPAddress(),
-            )
-        self.assertTrue(nodegroup.is_dhcp_enabled())
+        # List any nodegroups from this mapping that have DHCP
+        # management enabled.  There should not be any.
+        self.assertEqual([], [
+            field
+            for field, nodegroup in nodegroups.items()
+                if nodegroup.is_dhcp_enabled()])
 
     def test_set_up_dhcp_writes_dhcp_config(self):
         conf_file = self.make_file(contents=factory.getRandomString())

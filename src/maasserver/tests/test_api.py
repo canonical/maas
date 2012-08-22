@@ -2443,14 +2443,14 @@ def make_worker_client(nodegroup):
         get_worker_user(), token=nodegroup.api_token)
 
 
-def disable_dhcp_management(nodegroup):
-    """Turn off MAAS DHCP management on `nodegroup`."""
-    nodegroup.subnet_mask = None
-    nodegroup.broadcast_ip = None
-    nodegroup.router_ip = None
-    nodegroup.ip_range_low = None
-    nodegroup.ip_range_high = None
-    nodegroup.save()
+def enable_dhcp_management():
+    """Turn MAAS DHCP management on."""
+    Config.objects.set_config('manage_dhcp', True)
+
+
+def disable_dhcp_management():
+    """Turn MAAS DHCP management on, or off."""
+    Config.objects.set_config('manage_dhcp', False)
 
 
 class TestNodeGroupAPI(APITestCase):
@@ -2479,6 +2479,7 @@ class TestNodeGroupAPI(APITestCase):
         self.assertEqual(httplib.NOT_FOUND, response.status_code)
 
     def test_update_leases_processes_empty_leases_dict(self):
+        enable_dhcp_management()
         nodegroup = factory.make_node_group()
         factory.make_dhcp_lease(nodegroup=nodegroup)
         client = make_worker_client(nodegroup)
@@ -2513,8 +2514,8 @@ class TestNodeGroupAPI(APITestCase):
                 for lease in DHCPLease.objects.filter(nodegroup=nodegroup)])
 
     def test_update_leases_stores_leases_even_if_not_managing_dhcp(self):
+        disable_dhcp_management()
         nodegroup = factory.make_node_group()
-        disable_dhcp_management(nodegroup)
         lease = factory.make_random_leases()
         client = make_worker_client(nodegroup)
         response = client.post(
@@ -2531,6 +2532,7 @@ class TestNodeGroupAPI(APITestCase):
             for lease in DHCPLease.objects.filter(nodegroup=nodegroup)])
 
     def test_update_leases_adds_new_leases_on_worker(self):
+        enable_dhcp_management()
         nodegroup = factory.make_node_group()
         client = make_worker_client(nodegroup)
         self.patch(Omshell, 'create', FakeMethod())
@@ -2550,6 +2552,7 @@ class TestNodeGroupAPI(APITestCase):
             Omshell.create.extract_args())
 
     def test_update_leases_does_not_add_old_leases(self):
+        enable_dhcp_management()
         nodegroup = factory.make_node_group()
         client = make_worker_client(nodegroup)
         self.patch(tasks, 'add_new_dhcp_host_map', FakeMethod())

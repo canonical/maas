@@ -79,6 +79,7 @@ class SettingsTest(AdminLoggedInTestCase):
         new_name = factory.getRandomString()
         new_domain = factory.getRandomString()
         new_enable_dns = factory.getRandomBoolean()
+        new_manage_dhcp = factory.getRandomBoolean()
         response = self.client.post(
             reverse('settings'),
             get_prefixed_form_data(
@@ -87,6 +88,7 @@ class SettingsTest(AdminLoggedInTestCase):
                     'maas_name': new_name,
                     'enlistment_domain': new_domain,
                     'enable_dns ': new_enable_dns,
+                    'manage_dhcp': new_manage_dhcp,
                 }))
 
         self.assertEqual(httplib.FOUND, response.status_code)
@@ -95,6 +97,8 @@ class SettingsTest(AdminLoggedInTestCase):
             new_domain, Config.objects.get_config('enlistment_domain'))
         self.assertEqual(
             new_enable_dns, Config.objects.get_config('enable_dns'))
+        self.assertEqual(
+            new_manage_dhcp, Config.objects.get_config('manage_dhcp'))
 
     def test_settings_commissioning_POST(self):
         new_after_commissioning = factory.getRandomEnum(

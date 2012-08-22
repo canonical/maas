@@ -48,8 +48,8 @@ def get_default_config():
         # Network section configuration.
         'maas_name': gethostname(),
         'enlistment_domain': b'local',
-        # DNS config.
         'enable_dns': True,
+        'manage_dhcp': False,
         ## /settings
         }
 
