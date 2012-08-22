@@ -32,8 +32,12 @@ from provisioningserver.utils import parse_key_value_file
 
 
 def call_dnssec_keygen(tmpdir):
+    dnssec_keygen = 'dnssec-keygen'
+    if os.path.exists('/usr/sbin/dnssec-keygen'):
+        dnssec_keygen = '/usr/sbin/dnssec-keygen'
+
     return check_output(
-        ['dnssec-keygen', '-r', '/dev/urandom', '-a', 'HMAC-MD5',
+        [dnssec_keygen, '-r', '/dev/urandom', '-a', 'HMAC-MD5',
          '-b', '512', '-n', 'HOST', '-K', tmpdir, '-q', 'omapi_key'])
 
 
