@@ -24,6 +24,7 @@ from django.db.models import (
 from maasserver import DefaultMeta
 from maasserver.dhcp import is_dhcp_management_enabled
 from maasserver.models.timestampedmodel import TimestampedModel
+from maasserver.refresh_worker import refresh_worker
 from piston.models import (
     KEY_SIZE,
     Token,
@@ -94,6 +95,11 @@ class NodeGroupManager(Manager):
     def get_by_natural_key(self, name):
         """For Django, a node group's name is a natural key."""
         return self.get(name=name)
+
+    def refresh_workers(self):
+        """Send refresh tasks to all node-group workers."""
+        for nodegroup in self.all():
+            refresh_worker(nodegroup)
 
 
 class NodeGroup(TimestampedModel):

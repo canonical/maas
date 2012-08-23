@@ -60,3 +60,6 @@ def inner_start_up():
 
     # Regenerate MAAS's DNS configuration.
     write_full_dns_config(reload_retry=True)
+
+    # Send secrets etc. to workers.
+    NodeGroup.objects.refresh_workers()
