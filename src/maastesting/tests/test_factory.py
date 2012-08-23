@@ -164,3 +164,9 @@ class TestFactory(TestCase):
         self.assertThat(
             factory.make_name(size=100),
             MatchesAll(*[Not(Contains(char)) for char in '/ \t\n\r\\']))
+
+    def test_make_names_calls_make_name_with_each_prefix(self):
+        self.patch(factory, "make_name", lambda prefix: prefix + "-xxx")
+        self.assertSequenceEqual(
+            ["abc-xxx", "def-xxx", "ghi-xxx"],
+            list(factory.make_names("abc", "def", "ghi")))

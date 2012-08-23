@@ -12,11 +12,15 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
+import errno
+from os import path
 import re
 
 from maastesting.factory import factory
 from maastesting.testcase import TestCase
+import mock
 import posixpath
+from provisioningserver.pxe import config
 from provisioningserver.pxe.config import render_pxe_config
 from provisioningserver.pxe.tftppath import compose_image_path
 from testtools.matchers import (
@@ -25,6 +29,70 @@ from testtools.matchers import (
     MatchesRegex,
     StartsWith,
     )
+
+
+class TestFunctions(TestCase):
+    """Test for functions in `provisioningserver.pxe.config`."""
+
+    def test_gen_pxe_template_filenames(self):
+        purpose = factory.make_name("purpose")
+        arch, subarch = factory.make_names("arch", "subarch")
+        expected = [
+            "config.%s.%s.%s.template" % (purpose, arch, subarch),
+            "config.%s.%s.template" % (purpose, arch),
+            "config.%s.template" % (purpose, ),
+            "config.template",
+            ]
+        observed = config.gen_pxe_template_filenames(purpose, arch, subarch)
+        self.assertSequenceEqual(expected, list(observed))
+
+    @mock.patch("tempita.Template.from_filename")
+    @mock.patch.object(config, "gen_pxe_template_filenames")
+    def test_get_pxe_template(self, gen_filenames, from_filename):
+        purpose = factory.make_name("purpose")
+        arch, subarch = factory.make_names("arch", "subarch")
+        filename = factory.make_name("filename")
+        # Set up the mocks that we've patched in.
+        gen_filenames.return_value = [filename]
+        from_filename.return_value = mock.sentinel.template
+        # The template returned matches the return value above.
+        template = config.get_pxe_template(purpose, arch, subarch)
+        self.assertEqual(mock.sentinel.template, template)
+        # gen_pxe_template_filenames is called to obtain filenames.
+        gen_filenames.assert_called_once_with(purpose, arch, subarch)
+        # Tempita.from_filename is called with an absolute path derived from
+        # the filename returned from gen_pxe_template_filenames.
+        from_filename.assert_called_once_with(
+            path.join(config.template_dir, filename), encoding="UTF-8")
+
+    def test_get_pxe_template_gets_default(self):
+        # There will not be a template matching the following purpose, arch,
+        # and subarch, so get_pxe_template() returns the default template.
+        purpose = factory.make_name("purpose")
+        arch, subarch = factory.make_names("arch", "subarch")
+        template = config.get_pxe_template(purpose, arch, subarch)
+        self.assertEqual(
+            path.join(config.template_dir, "config.template"),
+            template.name)
+
+    @mock.patch.object(config, "gen_pxe_template_filenames")
+    def test_get_pxe_template_not_found(self, gen_filenames):
+        # It is a critical and unrecoverable error if the default PXE template
+        # is not found.
+        gen_filenames.return_value = []
+        self.assertRaises(
+            AssertionError, config.get_pxe_template,
+            *factory.make_names("purpose", "arch", "subarch"))
+
+    @mock.patch("tempita.Template.from_filename")
+    def test_get_pxe_templates_only_suppresses_ENOENT(self, from_filename):
+        # The IOError arising from trying to load a template that doesn't
+        # exist is suppressed, but other errors are not.
+        from_filename.side_effect = IOError()
+        from_filename.side_effect.errno = errno.EACCES
+        self.assertRaises(
+            IOError, config.get_pxe_template,
+            *factory.make_names("purpose", "arch", "subarch"))
 
 
 class TestRenderPXEConfig(TestCase):

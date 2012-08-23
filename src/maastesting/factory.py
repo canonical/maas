@@ -144,6 +144,16 @@ class Factory:
         return sep.join(
             filter(None, [prefix, self.getRandomString(size=size)]))
 
+    def make_names(self, *prefixes):
+        """Generate random names.
+
+        Yields a name for each prefix specified.
+
+        :param prefixes: Zero or more prefixes. See `make_name`.
+        """
+        for prefix in prefixes:
+            yield self.make_name(prefix)
+
 
 # Create factory singleton.
 factory = Factory()

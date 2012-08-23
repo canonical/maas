@@ -3,8 +3,8 @@ TIMEOUT 20
 SAY Booting under MAAS direction in 20 seconds.
 
 LABEL execute
-        SAY Booting under MAAS direction...
-        KERNEL {{kernel|relpath}}
-        INITRD {{initrd|relpath}}
-        APPEND {{append}}
-        IPAPPEND 2
+  SAY Booting under MAAS direction...
+  KERNEL {{kernel|relpath}}
+  INITRD {{initrd|relpath}}
+  APPEND {{append}}
+  IPAPPEND 2

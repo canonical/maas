@@ -1,0 +1,5 @@
+DEFAULT local
+
+LABEL local
+  SAY Booting local disk ...
+  KERNEL chain.c32

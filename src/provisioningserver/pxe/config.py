@@ -20,6 +20,7 @@ __all__ = [
     ]
 
 
+from errno import ENOENT
 from functools import partial
 from os import path
 
@@ -27,13 +28,47 @@ import posixpath
 from provisioningserver.pxe.tftppath import compose_image_path
 import tempita
 
-
+# TODO: make this configurable.
 template_dir = path.dirname(__file__)
-template_filename = path.join(template_dir, "config.template")
-template_localboot_filename = path.join(
-    template_dir, "config.localboot.template")
-template_localboot_intel_filename = path.join(
-    template_dir, "config.localboot-intel.template")
+
+
+def gen_pxe_template_filenames(purpose, arch, subarch):
+    """List possible PXE template filenames.
+
+    :param purpose: The boot purpose, e.g. "local".
+    :param arch: Main machine architecture.
+    :param subarch: Sub-architecture, or "generic" if there is none.
+    :param release: The Ubuntu release to be used.
+
+    Returns a list of possible PXE template filenames using the following
+    lookup order:
+
+      config.{purpose}.{arch}.{subarch}.template
+      config.{purpose}.{arch}.template
+      config.{purpose}.template
+      config.template
+
+    """
+    elements = [purpose, arch, subarch]
+    while len(elements) >= 1:
+        yield "config.%s.template" % ".".join(elements)
+        elements.pop()
+    yield "config.template"
+
+
+def get_pxe_template(purpose, arch, subarch):
+    # Templates are loaded each time here so that they can be changed on
+    # the fly without restarting the provisioning server.
+    for filename in gen_pxe_template_filenames(purpose, arch, subarch):
+        try:
+            return tempita.Template.from_filename(
+                path.join(template_dir, filename), encoding="UTF-8")
+        except IOError as error:
+            if error.errno != ENOENT:
+                raise
+    else:
+        raise AssertionError(
+            "No PXE template found in %r!" % template_dir)
 
 
 def render_pxe_config(
@@ -50,21 +85,7 @@ def render_pxe_config(
         parameters generated in another component (for example, see
         `TFTPBackend.get_config_reader`) won't cause this to break.
     """
-    # Templates are loaded each time here so that they can be changed on
-    # the fly without restarting the provisioning server.
-    if purpose == "local":
-        if arch in ("i386", "amd64"):
-            template = tempita.Template.from_filename(
-                template_localboot_intel_filename, encoding="UTF-8")
-        else:
-            template = tempita.Template.from_filename(
-                template_localboot_filename, encoding="UTF-8")
-        # No params in local boot pxeconfig, but using a template anyway
-        # in case we decide to do so in the future.
-        return template.substitute()
-
-    template = tempita.Template.from_filename(
-        template_filename, encoding="UTF-8")
+    template = get_pxe_template(purpose, arch, subarch)
     image_dir = compose_image_path(arch, subarch, release, purpose)
     # The locations of the kernel image and the initrd are defined by
     # update_install_files(), in scripts/maas-import-pxe-files.

@@ -117,6 +117,7 @@ setup(
             'lxml',
             'sst',
             'fixtures',
+            'mock',
             'nose',
             'nose-subunit',
             'python-subunit',
