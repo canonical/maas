@@ -12,6 +12,7 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
+from copy import deepcopy
 from functools import partial
 from getpass import getuser
 import os
@@ -100,33 +101,42 @@ class TestConfig_DEFAULT_FILENAME(TestCase):
 class TestConfig(TestCase):
     """Tests for `provisioningserver.config.Config`."""
 
+    default_production_config = {
+        'boot': {
+            'ephemeral': {
+                'directory': '/var/lib/maas/ephemeral',
+                },
+            },
+        'broker': {
+            'host': 'localhost',
+            'port': 5673,
+            'username': getuser(),
+            'password': 'test',
+            'vhost': '/',
+            },
+        'logfile': 'pserv.log',
+        'oops': {
+            'directory': '',
+            'reporter': '',
+            },
+        'tftp': {
+            'generator': 'http://localhost/MAAS/api/1.0/pxeconfig/',
+            'port': 69,
+            'root': "/var/lib/tftpboot",
+            },
+        }
+
+    default_development_config = deepcopy(default_production_config)
+    default_development_config.update(logfile="/dev/null")
+    default_development_config["oops"].update(
+        directory="logs/oops", reporter="maas-pserv")
+    default_development_config["tftp"].update(
+        port=5244, generator="http://localhost:5243/api/1.0/pxeconfig/")
+
     def test_defaults(self):
-        expected = {
-            'boot': {
-                'ephemeral': {
-                    'directory': '/var/lib/maas/ephemeral',
-                    },
-                },
-            'broker': {
-                'host': 'localhost',
-                'port': 5673,
-                'username': getuser(),
-                'password': 'test',
-                'vhost': '/',
-                },
-            'logfile': 'pserv.log',
-            'oops': {
-                'directory': '',
-                'reporter': '',
-                },
-            'tftp': {
-                'generator': 'http://localhost:5243/api/1.0/pxeconfig/',
-                'port': 5244,
-                'root': "/var/lib/tftpboot",
-                },
-            }
+        # The default configuration is production-ready.
         observed = Config.to_python({})
-        self.assertEqual(expected, observed)
+        self.assertEqual(self.default_production_config, observed)
 
     def test_parse(self):
         # Configuration can be parsed from a snippet of YAML.
@@ -143,11 +153,13 @@ class TestConfig(TestCase):
         self.assertEqual("/some/where.log", observed["logfile"])
 
     def test_load_example(self):
-        # The example configuration can be loaded and validated.
+        # The example configuration is designed for development.
         filename = os.path.join(
             os.path.dirname(__file__), os.pardir,
             os.pardir, os.pardir, "etc", "pserv.yaml")
-        Config.load(filename)
+        self.assertEqual(
+            self.default_development_config,
+            Config.load(filename))
 
     def test_load_from_cache(self):
         # A config loaded by Config.load_from_cache() is never reloaded.

@@ -32,9 +32,11 @@ broker:
 #
 tftp:
   # root: /var/lib/tftpboot
-  # port: 5244
+  # port: 69
+  port: 5244
   ## The URL to be contacted to generate PXE configurations.
-  # generator: http://localhost:5243/api/1.0/pxeconfig/
+  # generator: http://localhost/MAAS/api/1.0/pxeconfig/
+  generator: http://localhost:5243/api/1.0/pxeconfig/
 
 ## Boot configuration.
 boot:

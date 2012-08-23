@@ -34,3 +34,4 @@ python-yaml
 rabbitmq-server
 syslinux-common
 tgt
+wget

@@ -25,7 +25,6 @@ from formencode.validators import (
     Int,
     RequireIfPresent,
     String,
-    URL,
     )
 import yaml
 
@@ -61,11 +60,8 @@ class ConfigTFTP(Schema):
     if_key_missing = None
 
     root = String(if_missing="/var/lib/tftpboot")
-    port = Int(min=1, max=65535, if_missing=5244)
-    generator = URL(
-        add_http=True, require_tld=False,
-        if_missing=b"http://localhost:5243/api/1.0/pxeconfig/",
-        )
+    port = Int(min=1, max=65535, if_missing=69)
+    generator = String(if_missing=b"http://localhost/MAAS/api/1.0/pxeconfig/")
 
 
 class ConfigBootEphemeral(Schema):
