@@ -32,13 +32,13 @@ from provisioningserver.utils import parse_key_value_file
 
 
 def call_dnssec_keygen(tmpdir):
-    dnssec_keygen = 'dnssec-keygen'
-    if os.path.exists('/usr/sbin/dnssec-keygen'):
-        dnssec_keygen = '/usr/sbin/dnssec-keygen'
-
+    path = os.environ.get("PATH", "").split(os.pathsep)
+    path.append("/usr/sbin")
+    env = dict(os.environ, PATH=os.pathsep.join(path))
     return check_output(
-        [dnssec_keygen, '-r', '/dev/urandom', '-a', 'HMAC-MD5',
-         '-b', '512', '-n', 'HOST', '-K', tmpdir, '-q', 'omapi_key'])
+        ['dnssec-keygen', '-r', '/dev/urandom', '-a', 'HMAC-MD5',
+         '-b', '512', '-n', 'HOST', '-K', tmpdir, '-q', 'omapi_key'],
+        env=env)
 
 
 def generate_omapi_key():
