@@ -115,7 +115,7 @@ from maasserver.forms import (
     get_node_create_form,
     get_node_edit_form,
     )
-from maasserver.kernel_opts import compose_kernel_command_line
+from maasserver.kernel import compose_kernel_command_line
 from maasserver.models import (
     Config,
     DHCPLease,

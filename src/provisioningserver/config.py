@@ -68,6 +68,22 @@ class ConfigTFTP(Schema):
         )
 
 
+class ConfigBootEphemeral(Schema):
+    """Configuration validator for ephemeral boot configuration."""
+
+    if_key_missing = None
+
+    directory = String(if_missing="/var/lib/maas/ephemeral")
+
+
+class ConfigBoot(Schema):
+    """Configuration validator for boot configuration."""
+
+    if_key_missing = None
+
+    ephemeral = ConfigBootEphemeral
+
+
 class ConfigMeta(DeclarativeMeta):
     """Metaclass for the root configuration schema."""
 
@@ -105,6 +121,7 @@ class Config(Schema):
     oops = ConfigOops
     broker = ConfigBroker
     tftp = ConfigTFTP
+    boot = ConfigBoot
 
     @classmethod
     def parse(cls, stream):

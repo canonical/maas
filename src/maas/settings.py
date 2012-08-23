@@ -283,9 +283,6 @@ LOGGING = {
 # doing.
 COMMISSIONING_SCRIPT = '/etc/maas/commissioning-user-data'
 
-# The location of the ephemeral images/infos.
-EPHEMERAL_ROOT = "/var/lib/maas/ephemeral"
-
 # The duration, in minutes, after which we consider a commissioning node
 # to have failed and mark it as FAILED_TESTS.
 COMMISSIONING_TIMEOUT = 60

@@ -11,17 +11,34 @@ from __future__ import (
 
 __metaclass__ = type
 __all__ = [
-    'compose_kernel_command_line',
+    'compose_kernel_command_line_new',
+    'KernelParameters',
     ]
 
+from collections import namedtuple
 import os
 
-from django.conf import settings
-from maasserver.exceptions import EphemeralImagesDirectoryNotFound
-from maasserver.server_address import get_maas_facing_server_address
-from maasserver.utils import absolute_reverse
+from provisioningserver.config import Config
 from provisioningserver.pxe.tftppath import compose_image_path
 from provisioningserver.utils import parse_key_value_file
+
+
+class EphemeralImagesDirectoryNotFound(Exception):
+    """The ephemeral images directory cannot be found."""
+
+
+KernelParameters = namedtuple(
+    "KernelParameters", (
+        "arch",  # Machine architecture, e.g. "i386"
+        "subarch",  # Machine subarchitecture, e.g. "generic"
+        "release",  # Ubuntu release, e.g. "precise"
+        "purpose",  # Boot purpose, e.g. "commissioning"
+        "hostname",  # Machine hostname, e.g. "coleman"
+        "domain",  # Machine domain name, e.g. "example.com"
+        "preseed_url",  # URL from which a preseed can be obtained.
+        "log_host",  # Host/IP to which syslog can be streamed.
+        "fs_host",  # Host/IP on which ephemeral filesystems are hosted.
+        ))
 
 
 def compose_initrd_opt(arch, subarch, release, purpose):
@@ -29,33 +46,11 @@ def compose_initrd_opt(arch, subarch, release, purpose):
     return "initrd=%s" % path
 
 
-def compose_enlistment_preseed_url():
-    """Compose enlistment preseed URL."""
-    # Always uses the latest version of the metadata API.
-    version = 'latest'
-    return absolute_reverse(
-        'metadata-enlist-preseed', args=[version],
-        query={'op': 'get_enlist_preseed'})
+def compose_preseed_opt(preseed_url):
+    """Compose a kernel option for preseed URL.
 
-
-def compose_preseed_url(node):
-    """Compose a metadata URL for `node`'s preseed data."""
-    # Always uses the latest version of the metadata API.
-    version = 'latest'
-    return absolute_reverse(
-        'metadata-node-by-id', args=[version, node.system_id],
-        query={'op': 'get_preseed'})
-
-
-def compose_preseed_opt(node):
-    """Compose a kernel option for preseed URL for given `node`.
-
-    :param mac_address: A `Node`, or `None`.
+    :param preseed_url: The URL from which a preseed can be fetched.
     """
-    if node is None:
-        preseed_url = compose_enlistment_preseed_url()
-    else:
-        preseed_url = compose_preseed_url(node)
     return "auto url=%s" % preseed_url
 
 
@@ -63,18 +58,11 @@ def compose_suite_opt(release):
     return "suite=%s" % release
 
 
-def compose_hostname_opt(node):
-    if node is None:
-        # Not a known host; still needs enlisting.  Make up a name.
-        hostname = 'maas-enlist'
-    else:
-        hostname = node.hostname
+def compose_hostname_opt(hostname):
     return "hostname=%s" % hostname
 
 
-def compose_domain_opt(node):
-    # TODO: This is probably not enough!
-    domain = 'local.lan'
+def compose_domain_opt(domain):
     return "domain=%s" % domain
 
 
@@ -83,9 +71,9 @@ def compose_locale_opt():
     return "locale=%s" % locale
 
 
-def compose_logging_opts():
+def compose_logging_opts(log_host):
     return [
-        'log_host=%s' % get_maas_facing_server_address(),
+        'log_host=%s' % log_host,
         'log_port=%d' % 514,
         'text priority=%s' % 'critical',
         ]
@@ -115,7 +103,10 @@ def get_ephemeral_name(release, arch):
     ephemeral directory e.g:
     /var/lib/maas/ephemeral/precise/ephemeral/i386/20120424/info
     """
-    root = os.path.join(settings.EPHEMERAL_ROOT, release, 'ephemeral', arch)
+    config = Config.load_from_cache()
+    root = os.path.join(
+        config["boot"]["ephemeral"]["directory"],
+        release, 'ephemeral', arch)
     try:
         filename = os.path.join(get_last_directory(root), 'info')
     except OSError:
@@ -127,15 +118,16 @@ def get_ephemeral_name(release, arch):
     return name
 
 
-def compose_purpose_opts(release, arch, purpose):
+def compose_purpose_opts(params):
     """Return the list of the purpose-specific kernel options."""
-    if purpose == "commissioning":
+    if params.purpose == "commissioning":
         return [
             "iscsi_target_name=%s:%s" % (
-                ISCSI_TARGET_NAME_PREFIX, get_ephemeral_name(release, arch)),
+                ISCSI_TARGET_NAME_PREFIX,
+                get_ephemeral_name(params.release, params.arch)),
             "ip=dhcp",
             "ro root=LABEL=cloudimg-rootfs",
-            "iscsi_target_ip=%s" % get_maas_facing_server_address(),
+            "iscsi_target_ip=%s" % params.fs_host,
             "iscsi_target_port=3260",
             ]
     else:
@@ -144,24 +136,21 @@ def compose_purpose_opts(release, arch, purpose):
             ]
 
 
-def compose_kernel_command_line(node, arch, subarch, purpose):
+def compose_kernel_command_line_new(params):
     """Generate a line of kernel options for booting `node`.
 
-    Include these options in the PXE config file's APPEND argument.
-
-    The node may be None, in which case it will boot into enlistment.
+    :type params: `KernelParameters`.
     """
-    # XXX JeroenVermeulen 2012-08-06 bug=1013146: Stop hard-coding this.
-    release = 'precise'
-
     options = [
-        compose_initrd_opt(arch, subarch, release, purpose),
-        compose_preseed_opt(node),
-        compose_suite_opt(release),
-        compose_hostname_opt(node),
-        compose_domain_opt(node),
+        compose_initrd_opt(
+            params.arch, params.subarch,
+            params.release, params.purpose),
+        compose_preseed_opt(params.preseed_url),
+        compose_suite_opt(params.release),
+        compose_hostname_opt(params.hostname),
+        compose_domain_opt(params.domain),
         compose_locale_opt(),
         ]
-    options += compose_purpose_opts(release, arch, purpose)
-    options += compose_logging_opts()
+    options += compose_purpose_opts(params)
+    options += compose_logging_opts(params.log_host)
     return ' '.join(options)

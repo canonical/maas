@@ -102,6 +102,11 @@ class TestConfig(TestCase):
 
     def test_defaults(self):
         expected = {
+            'boot': {
+                'ephemeral': {
+                    'directory': '/var/lib/maas/ephemeral',
+                    },
+                },
             'broker': {
                 'host': 'localhost',
                 'port': 5673,

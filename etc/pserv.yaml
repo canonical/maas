@@ -35,3 +35,9 @@ tftp:
   # port: 5244
   ## The URL to be contacted to generate PXE configurations.
   # generator: http://localhost:5243/api/1.0/pxeconfig/
+
+## Boot configuration.
+boot:
+  # ephemeral:
+  ## Directory containing ephemeral boot images, etc.
+  #   directory: /var/lib/maas/ephemeral
