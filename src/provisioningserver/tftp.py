@@ -87,10 +87,6 @@ class TFTPBackend(FilesystemSynchronousBackend):
         ^/?
         (?P<bootpath>
           maas     # Static namespacing.
-          /
-          (?P<arch>[^/]+)     # Capture arch.
-          /
-          (?P<subarch>[^/]+)    # Capture subarch.
         )    # Capture boot directory.
         /
         pxelinux[.]cfg    # PXELINUX expects this.

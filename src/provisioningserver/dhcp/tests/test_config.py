@@ -14,7 +14,7 @@ __all__ = []
 
 from textwrap import dedent
 
-from maastesting.matchers import ContainsAll
+from maastesting.matchers import Contains
 from provisioningserver.dhcp import config
 from provisioningserver.pxe.tftppath import compose_bootloader_path
 import tempita
@@ -83,19 +83,7 @@ class TestDHCPConfig(TestCase):
                 "name 'subnet' is not defined at line \d+ column \d+ "
                 "in file %s" % template.name))
 
-    def test_config_refers_to_PXE_for_supported_architectures(self):
+    def test_config_refers_to_bootloader(self):
         params = make_sample_params()
-        bootloaders = config.compose_bootloaders()
-        archs = [
-            ('i386', 'generic'),
-            ('arm', 'highbank'),
-            ]
-        paths = [bootloaders[arch] for arch in archs]
         output = config.get_config(**params)
-        self.assertThat(output, ContainsAll(paths))
-
-    def test_compose_bootloaders_lists_tftp_paths(self):
-        sample_arch = ('i386', 'generic')
-        self.assertEqual(
-            compose_bootloader_path(*sample_arch),
-            config.compose_bootloaders()[sample_arch])
+        self.assertThat(output, Contains(compose_bootloader_path()))

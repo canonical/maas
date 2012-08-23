@@ -47,18 +47,16 @@ class TestInstallPXEBootloader(TestCase):
         self.useFixture(config_fixture)
 
         loader = self.make_file()
-        arch = factory.make_name('arch')
-        subarch = factory.make_name('subarch')
 
         action = factory.make_name("action")
         script = MainScript(action)
         script.register(action, provisioningserver.pxe.install_bootloader)
         script.execute(
-            ("--config-file", config_fixture.filename, action, "--arch", arch,
-             "--subarch", subarch, "--loader", loader))
+            ("--config-file", config_fixture.filename, action,
+             "--loader", loader))
 
         bootloader_filename = os.path.join(
-            os.path.dirname(compose_bootloader_path(arch, subarch)),
+            os.path.dirname(compose_bootloader_path()),
             os.path.basename(loader))
         self.assertThat(
             locate_tftp_path(
@@ -67,17 +65,13 @@ class TestInstallPXEBootloader(TestCase):
 
     def test_make_destination_creates_directory_if_not_present(self):
         tftproot = self.make_dir()
-        arch = factory.make_name('arch')
-        subarch = factory.make_name('subarch')
-        dest = make_destination(tftproot, arch, subarch)
+        dest = make_destination(tftproot)
         self.assertThat(dest, DirExists())
 
     def test_make_destination_returns_existing_directory(self):
         tftproot = self.make_dir()
-        arch = factory.make_name('arch')
-        subarch = factory.make_name('subarch')
-        make_destination(tftproot, arch, subarch)
-        dest = make_destination(tftproot, arch, subarch)
+        make_destination(tftproot)
+        dest = make_destination(tftproot)
         self.assertThat(dest, DirExists())
 
     def test_install_bootloader_installs_new_bootloader(self):

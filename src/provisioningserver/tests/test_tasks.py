@@ -215,7 +215,7 @@ class TestDHCPTasks(PservTestCase):
             FileContains(
                 matcher=ContainsAll(
                     [
-                        'class "pxe"',
+                        "next-server ",
                         "option subnet-mask",
                     ])))
         self.assertEqual(

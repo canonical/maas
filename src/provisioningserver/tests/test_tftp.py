@@ -70,15 +70,10 @@ class TestTFTPBackendRegex(TestCase):
         the expected groups from a match.
         """
         components = {
-            "arch": factory.make_name("arch"),
-            "subarch": factory.make_name("subarch"),
+            "bootpath": b"maas",  # Static.
             "mac": factory.getRandomMACAddress(b"-"),
             }
-        # The bootpath component is a superset of arch and subarch.
-        components["bootpath"] = "maas/{arch}/{subarch}".format(**components)
-        config_path = compose_config_path(
-            arch=components["arch"], subarch=components["subarch"],
-            name=components["mac"])
+        config_path = compose_config_path(components["mac"])
         return config_path, components
 
     def test_re_config_file(self):
@@ -168,10 +163,8 @@ class TestTFTPBackend(TestCase):
     def test_get_reader_config_file(self):
         # For paths matching re_config_file, TFTPBackend.get_reader() returns
         # a Deferred that will yield a BytesReader.
-        arch = factory.make_name("arch").encode("ascii")
-        subarch = factory.make_name("subarch").encode("ascii")
         mac = factory.getRandomMACAddress(b"-")
-        config_path = compose_config_path(arch, subarch, mac)
+        config_path = compose_config_path(mac)
         backend = TFTPBackend(self.make_dir(), b"http://example.com/")
 
         @partial(self.patch, backend, "get_config_reader")
@@ -184,9 +177,7 @@ class TestTFTPBackend(TestCase):
         output = reader.read(10000)
         # The expected parameters include bootpath; this is extracted from the
         # file path by re_config_file.
-        expected_params = dict(
-            arch=arch, subarch=subarch, mac=mac,
-            bootpath="maas/%s/%s" % (arch, subarch))
+        expected_params = dict(mac=mac, bootpath="maas")
         observed_params = json.loads(output)
         self.assertEqual(expected_params, observed_params)
 

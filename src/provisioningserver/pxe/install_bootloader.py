@@ -26,20 +26,16 @@ from provisioningserver.pxe.tftppath import (
     )
 
 
-def make_destination(tftproot, arch, subarch):
+def make_destination(tftproot):
     """Locate a loader's destination, creating the directory if needed.
 
     :param tftproot: The root directory served up by the TFTP server,
         e.g. /var/lib/tftpboot/.
-    :param arch: Main architecture to locate the destination for.
-    :param subarch: Sub-architecture of the main architecture.
     :return: Full path describing the directory that the installed loader
-        should end up having.  For example, the loader for i386 (with
-        sub-architecture "generic") should install at
-        /maas/i386/generic/
+        should end up having.
     """
     path = locate_tftp_path(
-        compose_bootloader_path(arch, subarch),
+        compose_bootloader_path(),
         tftproot=tftproot)
     directory = os.path.dirname(path)
     if not os.path.isdir(directory):
@@ -89,12 +85,6 @@ def install_bootloader(loader, destination):
 
 def add_arguments(parser):
     parser.add_argument(
-        '--arch', dest='arch', default=None,
-        help="Main system architecture that the bootloader is for.")
-    parser.add_argument(
-        '--subarch', dest='subarch', default='generic',
-        help="Sub-architecture of the main architecture [%(default)s].")
-    parser.add_argument(
         '--loader', dest='loader', default=None,
         help="PXE pre-boot loader to install.")
 
@@ -106,6 +96,6 @@ def run(args):
     """
     config = Config.load(args.config_file)
     tftproot = config["tftp"]["root"]
-    destination_path = make_destination(tftproot, args.arch, args.subarch)
+    destination_path = make_destination(tftproot)
     destination = os.path.join(destination_path, os.path.basename(args.loader))
     install_bootloader(args.loader, destination)
