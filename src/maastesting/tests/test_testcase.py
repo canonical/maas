@@ -16,7 +16,9 @@ import os.path
 from shutil import rmtree
 from tempfile import mkdtemp
 
+from maastesting.factory import factory
 from maastesting.testcase import TestCase
+from mock import MagicMock
 from testtools.matchers import (
     DirExists,
     FileExists,
@@ -48,3 +50,12 @@ class TestTestCase(TestCase):
         self.patch(self, 'make_dir', lambda: directory)
         dir_part, file_part = os.path.split(self.make_file())
         self.assertEqual(directory, dir_part)
+
+    def test_patch_can_mock(self):
+        # The patch method patches-in and returns a new MagicMock() instance
+        # if no attribute value is given.
+        attribute_name = factory.make_name("attribute")
+        self.assertRaises(AttributeError, getattr, self, attribute_name)
+        attribute = self.patch(self, attribute_name)
+        self.assertIs(getattr(self, attribute_name), attribute)
+        self.assertIsInstance(attribute, MagicMock)
