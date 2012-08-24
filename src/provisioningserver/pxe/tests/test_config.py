@@ -23,6 +23,7 @@ import posixpath
 from provisioningserver.pxe import config
 from provisioningserver.pxe.config import render_pxe_config
 from provisioningserver.pxe.tftppath import compose_image_path
+from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
 from testtools.matchers import (
     IsInstance,
     MatchesAll,
@@ -101,15 +102,9 @@ class TestRenderPXEConfig(TestCase):
     def test_render(self):
         # Given the right configuration options, the PXE configuration is
         # correctly rendered.
-        options = {
-            "arch": factory.make_name("arch"),
-            "subarch": factory.make_name("subarch"),
-            "release": factory.make_name("release"),
-            "purpose": factory.make_name("purpose"),
-            "append": factory.make_name("append"),
-            }
-        options["bootpath"] = "maas/%(arch)s/%(subarch)s" % options
-        output = render_pxe_config(**options)
+        bootpath = factory.make_name("bootpath")
+        params = make_kernel_parameters()
+        output = render_pxe_config(bootpath=bootpath, kernel_params=params)
         # The output is always a Unicode string.
         self.assertThat(output, IsInstance(unicode))
         # The template has rendered without error. PXELINUX configurations
@@ -117,9 +112,9 @@ class TestRenderPXEConfig(TestCase):
         self.assertThat(output, StartsWith("DEFAULT "))
         # The PXE parameters are all set according to the options.
         image_dir = compose_image_path(
-            arch=options["arch"], subarch=options["subarch"],
-            release=options["release"], purpose=options["purpose"])
-        image_dir = posixpath.relpath(image_dir, options["bootpath"])
+            arch=params.arch, subarch=params.subarch,
+            release=params.release, purpose=params.purpose)
+        image_dir = posixpath.relpath(image_dir, bootpath)
         self.assertThat(
             output, MatchesAll(
                 MatchesRegex(
@@ -129,18 +124,14 @@ class TestRenderPXEConfig(TestCase):
                     r'.*^\s+INITRD %s/initrd[.]gz$' % re.escape(image_dir),
                     re.MULTILINE | re.DOTALL),
                 MatchesRegex(
-                    r'.*^\s+APPEND %s$' % re.escape(options["append"]),
+                    r'.*^\s+APPEND .+?$',
                     re.MULTILINE | re.DOTALL)))
 
     def test_render_with_extra_arguments_does_not_affect_output(self):
         # render_pxe_config() allows any keyword arguments as a safety valve.
         options = {
-            "arch": factory.make_name("arch"),
-            "subarch": factory.make_name("subarch"),
-            "release": factory.make_name("release"),
-            "purpose": factory.make_name("purpose"),
             "bootpath": factory.make_name("bootpath"),
-            "append": factory.make_name("append"),
+            "kernel_params": make_kernel_parameters(),
             }
         # Capture the output before sprinking in some random options.
         output_before = render_pxe_config(**options)
@@ -157,12 +148,9 @@ class TestRenderPXEConfig(TestCase):
         # If purpose is "local", the config.localboot.template should be
         # used.
         options = {
-            "arch": factory.make_name("arch"),
-            "subarch": factory.make_name("subarch"),
-            "release": factory.make_name("release"),
-            "purpose": "local",
             "bootpath": factory.make_name("bootpath"),
-            "append": factory.make_name("append"),
+            "kernel_params":
+                make_kernel_parameters()._replace(purpose="local"),
             }
         output = render_pxe_config(**options)
         self.assertIn("LOCALBOOT 0", output)
@@ -171,12 +159,9 @@ class TestRenderPXEConfig(TestCase):
         # Intel i386 is a special case and needs to use the chain.c32
         # loader as the LOCALBOOT PXE directive is unreliable.
         options = {
-            "arch": "i386",
-            "subarch": factory.make_name("subarch"),
-            "release": factory.make_name("release"),
-            "purpose": "local",
             "bootpath": factory.make_name("bootpath"),
-            "append": factory.make_name("append"),
+            "kernel_params": make_kernel_parameters()._replace(
+                arch="i386", purpose="local"),
             }
         output = render_pxe_config(**options)
         self.assertIn("chain.c32", output)
@@ -186,12 +171,9 @@ class TestRenderPXEConfig(TestCase):
         # Intel amd64 is a special case and needs to use the chain.c32
         # loader as the LOCALBOOT PXE directive is unreliable.
         options = {
-            "arch": "amd64",
-            "subarch": factory.make_name("subarch"),
-            "release": factory.make_name("release"),
-            "purpose": "local",
             "bootpath": factory.make_name("bootpath"),
-            "append": factory.make_name("append"),
+            "kernel_params": make_kernel_parameters()._replace(
+                arch="amd64", purpose="local"),
             }
         output = render_pxe_config(**options)
         self.assertIn("chain.c32", output)

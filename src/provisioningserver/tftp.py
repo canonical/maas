@@ -25,6 +25,7 @@ from urlparse import (
     )
 
 from provisioningserver.enum import ARP_HTYPE
+from provisioningserver.kernel_opts import KernelParameters
 from provisioningserver.pxe.config import render_pxe_config
 from provisioningserver.utils import deferred
 from tftp.backend import (
@@ -130,21 +131,36 @@ class TFTPBackend(FilesystemSynchronousBackend):
         return url.geturl().encode("ascii")
 
     @deferred
+    def get_kernel_params(self, params):
+        """Return kernel parameters obtained from the API.
+
+        :param params: Parameters so far obtained, typically from the file
+            path requested.
+        :return: A `KernelParameters` instance.
+        """
+        url = self.get_generator_url(params)
+
+        def reassemble(data):
+            return KernelParameters(**data)
+
+        d = self.get_page(url)
+        d.addCallback(json.loads)
+        d.addCallback(reassemble)
+        return d
+
+    @deferred
     def get_config_reader(self, params):
         """Return an `IReader` for a PXE config.
 
         :param params: Parameters so far obtained, typically from the file
             path requested.
         """
-        url = self.get_generator_url(params)
-
-        def generate_config(api_params):
-            params.update(api_params)
-            config = self.render_pxe_config(**params)
+        def generate_config(kernel_params):
+            config = self.render_pxe_config(
+                kernel_params=kernel_params, **params)
             return config.encode("utf-8")
 
-        d = self.get_page(url)
-        d.addCallback(json.loads)
+        d = self.get_kernel_params(params)
         d.addCallback(generate_config)
         d.addCallback(BytesReader)
         return d

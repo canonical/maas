@@ -25,6 +25,7 @@ from functools import partial
 from os import path
 
 import posixpath
+from provisioningserver.kernel_opts import compose_kernel_command_line_new
 from provisioningserver.pxe.tftppath import compose_image_path
 import tempita
 
@@ -71,26 +72,25 @@ def get_pxe_template(purpose, arch, subarch):
             "No PXE template found in %r!" % template_dir)
 
 
-def render_pxe_config(
-    arch, subarch, release, purpose, append, bootpath, **extra):
+def render_pxe_config(bootpath, kernel_params, **extra):
     """Render a PXE configuration file as a unicode string.
 
-    :param arch: Main machine architecture.
-    :param subarch: Sub-architecture, or "generic" if there is none.
-    :param release: The OS release, e.g. "precise".
-    :param purpose: What's the purpose of this boot, e.g. "install".
-    :param append: Additional kernel parameters.
     :param bootpath: The directory path of `pxelinux.0`.
+    :param kernel_params: An instance of `KernelParameters`.
     :param extra: Allow for other arguments. This is a safety valve;
         parameters generated in another component (for example, see
         `TFTPBackend.get_config_reader`) won't cause this to break.
     """
-    template = get_pxe_template(purpose, arch, subarch)
-    image_dir = compose_image_path(arch, subarch, release, purpose)
+    template = get_pxe_template(
+        kernel_params.purpose, kernel_params.arch,
+        kernel_params.subarch)
+    image_dir = compose_image_path(
+        kernel_params.arch, kernel_params.subarch,
+        kernel_params.release, kernel_params.purpose)
     # The locations of the kernel image and the initrd are defined by
     # update_install_files(), in scripts/maas-import-pxe-files.
     namespace = {
-        "append": append,
+        "append": compose_kernel_command_line_new(kernel_params),
         "initrd": "%s/initrd.gz" % image_dir,
         "kernel": "%s/linux" % image_dir,
         "relpath": partial(posixpath.relpath, start=bootpath),

@@ -23,7 +23,9 @@ from urlparse import (
 
 from maastesting.factory import factory
 from maastesting.testcase import TestCase
+import mock
 from provisioningserver.pxe.tftppath import compose_config_path
+from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
 from provisioningserver.tftp import (
     BytesReader,
     TFTPBackend,
@@ -126,21 +128,19 @@ class TestTFTPBackend(TestCase):
     def test_get_generator_url(self):
         # get_generator_url() merges the parameters obtained from the request
         # file path (arch, subarch, name) into the configured generator URL.
-        arch = factory.make_name("arch").encode("ascii")
-        subarch = factory.make_name("subarch").encode("ascii")
+        bootpath = factory.make_name("bootpath")
         mac = factory.getRandomMACAddress(b"-")
-        append = factory.make_name("append").encode("ascii")
-        backend_url = b"http://example.com/?" + urlencode({b"append": append})
+        dummy = factory.make_name("dummy").encode("ascii")
+        backend_url = b"http://example.com/?" + urlencode({b"dummy": dummy})
         backend = TFTPBackend(self.make_dir(), backend_url)
         # params is an example of the parameters obtained from a request.
-        params = {"arch": arch, "subarch": subarch, "mac": mac}
+        params = {"bootpath": bootpath, "mac": mac}
         generator_url = urlparse(backend.get_generator_url(params))
         self.assertEqual("example.com", generator_url.hostname)
         query = parse_qsl(generator_url.query)
         query_expected = [
-            ("append", append),
-            ("arch", arch),
-            ("subarch", subarch),
+            ("bootpath", bootpath),
+            ("dummy", dummy),
             ("mac", mac),
             ]
         self.assertItemsEqual(query_expected, query)
@@ -187,36 +187,34 @@ class TestTFTPBackend(TestCase):
         # `IReader` of a PXE configuration, rendered by `render_pxe_config`.
         backend = TFTPBackend(self.make_dir(), b"http://example.com/")
         # Fake configuration parameters, as discovered from the file path.
-        fake_params = dict(
-            arch=factory.make_name("arch"),
-            subarch=factory.make_name("subarch"),
-            mac=factory.getRandomMACAddress(b"-"))
-        fake_params.update(
-            bootpath="maas/%(arch)s/%(subarch)s" % fake_params)
-        # Fake configuration parameters, as returned from the API call.
-        fake_api_params = dict(fake_params)
-        fake_api_params.update(
-            append=factory.make_name("append"),
-            purpose=factory.make_name("purpose"),
-            release=factory.make_name("release"))
-        # Add a purpose to the first set of parameters. This will later help
-        # demonstrate that the API parameters take precedence over the file
-        # path parameters.
-        fake_params["purpose"] = factory.make_name("original-purpose")
+        fake_params = {
+            "bootpath": "maas",
+            "mac": factory.getRandomMACAddress(b"-"),
+            }
+        # Fake kernel configuration parameters, as returned from the API call.
+        fake_kernel_params = make_kernel_parameters()
+
         # Stub get_page to return the fake API configuration parameters.
-        fake_api_params_json = json.dumps(fake_api_params)
-        backend.get_page = lambda url: succeed(fake_api_params_json)
+        fake_get_page_result = json.dumps(fake_kernel_params._asdict())
+        get_page_patch = mock.patch.object(backend, "get_page")
+        get_page_patch.start().return_value = succeed(fake_get_page_result)
+
         # Stub render_pxe_config to return the render parameters.
-        backend.render_pxe_config = lambda **kwargs: json.dumps(kwargs)
+        fake_render_result = factory.make_name("render")
+        render_patch = mock.patch.object(backend, "render_pxe_config")
+        render_patch.start().return_value = fake_render_result
+
         # Get the rendered configuration, which will actually be a JSON dump
         # of the render-time parameters.
-        reader = yield backend.get_config_reader(fake_api_params)
+        reader = yield backend.get_config_reader(fake_params)
         self.addCleanup(reader.finish)
         self.assertIsInstance(reader, BytesReader)
         output = reader.read(10000)
-        # The expected render-time parameters are a merge of previous
-        # parameters. Note that the API parameters take precedence.
-        expected_render_params = dict(fake_params)
-        expected_render_params.update(fake_api_params)
-        observed_render_params = json.loads(output)
-        self.assertEqual(expected_render_params, observed_render_params)
+
+        # The kernel parameters were fetched using `backend.get_page`.
+        backend.get_page.assert_called_once()
+
+        # The result has been rendered by `backend.render_pxe_config`.
+        self.assertEqual(fake_render_result.encode("utf-8"), output)
+        backend.render_pxe_config.assert_called_once_with(
+            kernel_params=fake_kernel_params, **fake_params)

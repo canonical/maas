@@ -10,7 +10,9 @@ from __future__ import (
     )
 
 __metaclass__ = type
-__all__ = []
+__all__ = [
+    "make_kernel_parameters",
+    ]
 
 import os
 
