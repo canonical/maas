@@ -22,6 +22,7 @@ from django.core.cache import cache
 from django.core.management import call_command
 from maasserver.models import FileStorage
 from maasserver.testing.factory import factory
+from maasserver.utils.orm import get_one
 from maastesting.djangotestcase import DjangoTestCase
 
 
@@ -95,14 +96,13 @@ class TestCommands(DjangoTestCase):
         call_command(
             'createadmin', username=username, password=password,
             email=email, stderr=stderr, stdout=stdout)
-        users = list(User.objects.filter(username=username))
+        user = get_one(User.objects.filter(username=username))
 
         self.assertEquals('', stderr.getvalue().strip())
         self.assertEquals('', stdout.getvalue().strip())
-        self.assertEqual(1, len(users))  # One user with that name.
-        self.assertTrue(users[0].check_password(password))
-        self.assertTrue(users[0].is_superuser)
-        self.assertEqual(email, users[0].email)
+        self.assertTrue(user.check_password(password))
+        self.assertTrue(user.is_superuser)
+        self.assertEqual(email, user.email)
 
     def test_clearcache_clears_entire_cache(self):
         key = factory.getRandomString()

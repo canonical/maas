@@ -22,6 +22,7 @@ from urlparse import urljoin
 
 from django.conf import settings
 from django.core.urlresolvers import reverse
+from maasserver.utils.orm import get_one
 
 
 def get_db_state(instance, field_name):
@@ -32,11 +33,11 @@ def get_db_state(instance, field_name):
     :param field_name: The name of the field to return.
     :type field_name: basestring
     """
-    try:
-        return getattr(
-            instance.__class__.objects.get(pk=instance.pk), field_name)
-    except instance.DoesNotExist:
+    obj = get_one(instance.__class__.objects.filter(pk=instance.pk))
+    if obj is None:
         return None
+    else:
+        return getattr(obj, field_name)
 
 
 def ignore_unused(*args):

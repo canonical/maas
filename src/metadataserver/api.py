@@ -47,6 +47,7 @@ from maasserver.preseed import (
     get_enlist_userdata,
     get_preseed,
     )
+from maasserver.utils.orm import get_one
 from metadataserver.models import (
     NodeCommissionResult,
     NodeKey,
@@ -88,10 +89,9 @@ def get_node_for_mac(mac):
     if not settings.ALLOW_UNSAFE_METADATA_ACCESS:
         raise PermissionDenied(
             "Unauthenticated metadata access is not allowed on this MAAS.")
-    matching_macs = list(MACAddress.objects.filter(mac_address=mac))
-    if len(matching_macs) == 0:
+    match = get_one(MACAddress.objects.filter(mac_address=mac))
+    if match is None:
         raise MAASAPINotFound()
-    [match] = matching_macs
     return match.node
 
 

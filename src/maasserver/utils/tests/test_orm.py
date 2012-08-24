@@ -12,8 +12,13 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
+from itertools import repeat
+
 from django.core.exceptions import MultipleObjectsReturned
-from maasserver.utils.orm import get_one
+from maasserver.utils.orm import (
+    get_first,
+    get_one,
+    )
 from maastesting.factory import factory
 from maastesting.testcase import TestCase
 from mock import Mock
@@ -95,3 +100,27 @@ class TestGetOne(TestCase):
 
     def test_get_one_raises_generic_error_if_other_sequence_is_too_big(self):
         self.assertRaises(MultipleObjectsReturned, get_one, range(2))
+
+
+class TestGetFirst(TestCase):
+    def test_get_first_returns_None_for_empty_list(self):
+        self.assertIsNone(get_first([]))
+
+    def test_get_first_returns_first_item(self):
+        items = [factory.getRandomString() for counter in range(10)]
+        self.assertEqual(items[0], get_first(items))
+
+    def test_get_first_accepts_any_sequence(self):
+        item = factory.getRandomString()
+        self.assertEqual(item, get_first(repeat(item)))
+
+    def test_get_first_does_not_retrieve_beyond_first_item(self):
+
+        class SecondItemRetrieved(Exception):
+            """Second item as retrieved.  It shouldn't be."""
+
+        def multiple_items():
+            yield "Item 1"
+            raise SecondItemRetrieved()
+
+        self.assertEqual("Item 1", get_first(multiple_items()))

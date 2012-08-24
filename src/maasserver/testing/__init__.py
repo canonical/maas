@@ -24,6 +24,7 @@ import os
 from urlparse import urlparse
 
 from lxml.html import fromstring
+from maasserver.utils.orm import get_one
 
 
 def extract_redirect(http_response):
@@ -55,19 +56,15 @@ def reload_object(model_object):
     Use this when a test needs to inspect changes to model objects made by
     the API.
 
-    If the object has been deleted, this will raise the `DoesNotExist`
-    exception for its model class.
+    If the object has been deleted, this will return None.
 
     :param model_object: Model object to reload.
     :type model_object: Concrete `Model` subtype.
-    :return: Freshly-loaded instance of `model_object`.
+    :return: Freshly-loaded instance of `model_object`, or None.
     :rtype: Same as `model_object`.
     """
     model_class = model_object.__class__
-    try:
-        return model_class.objects.get(id=model_object.id)
-    except model_class.DoesNotExist:
-        return None
+    return get_one(model_class.objects.filter(id=model_object.id))
 
 
 def reload_objects(model_class, model_objects):

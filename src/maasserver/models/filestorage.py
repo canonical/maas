@@ -30,6 +30,7 @@ from django.db.models import (
     )
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
+from maasserver.utils.orm import get_one
 
 
 class FileStorageManager(Manager):
@@ -52,15 +53,7 @@ class FileStorageManager(Manager):
 
     def get_existing_storage(self, filename):
         """Return an existing `FileStorage` of this name, or None."""
-        existing_storage = self.filter(filename=filename)
-        if len(existing_storage) == 0:
-            return None
-        elif len(existing_storage) == 1:
-            return existing_storage[0]
-        else:
-            raise AssertionError(
-                "There are %d files called '%s'."
-                % (len(existing_storage), filename))
+        return get_one(self.filter(filename=filename))
 
     def save_file(self, filename, file_object):
         """Save the file to the filesystem and persist to the database.

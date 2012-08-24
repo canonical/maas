@@ -11,6 +11,7 @@ from __future__ import (
 
 __metaclass__ = type
 __all__ = [
+    'get_first',
     'get_one',
     ]
 
@@ -52,3 +53,12 @@ def get_one(items):
         return retrieved_items[0]
     else:
         raise get_exception_class(items)("Got more than one item.")
+
+
+def get_first(items):
+    """Get the first of `items`, or None."""
+    first_item = tuple(islice(items, 0, 1))
+    if len(first_item) == 0:
+        return None
+    else:
+        return first_item[0]

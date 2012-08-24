@@ -77,19 +77,20 @@ class NodeTest(TestCase):
         self.assertEqual(token, node.token)
 
     def test_add_mac_address(self):
+        mac = factory.getRandomMACAddress()
         node = factory.make_node()
-        node.add_mac_address('AA:BB:CC:DD:EE:FF')
-        macs = MACAddress.objects.filter(
-            node=node, mac_address='AA:BB:CC:DD:EE:FF').count()
+        node.add_mac_address(mac)
+        macs = MACAddress.objects.filter(node=node, mac_address=mac).count()
         self.assertEqual(1, macs)
 
     def test_remove_mac_address(self):
+        mac = factory.getRandomMACAddress()
         node = factory.make_node()
-        node.add_mac_address('AA:BB:CC:DD:EE:FF')
-        node.remove_mac_address('AA:BB:CC:DD:EE:FF')
-        macs = MACAddress.objects.filter(
-            node=node, mac_address='AA:BB:CC:DD:EE:FF').count()
-        self.assertEqual(0, macs)
+        node.add_mac_address(mac)
+        node.remove_mac_address(mac)
+        self.assertItemsEqual(
+            [],
+            MACAddress.objects.filter(node=node, mac_address=mac))
 
     def test_get_primary_mac_returns_mac_address(self):
         node = factory.make_node()

@@ -74,6 +74,7 @@ from maasserver.testing.testcase import (
     TestCase,
     )
 from maasserver.utils import map_enum
+from maasserver.utils.orm import get_one
 from maasserver.worker_user import get_worker_user
 from maastesting.celery import CeleryFixture
 from maastesting.djangotestcase import TransactionTestCase
@@ -289,7 +290,7 @@ class EnlistmentAPITest(APIv10TestMixin, MultipleUsersScenarios, TestCase):
                     NODE_AFTER_COMMISSIONING_ACTION.DEFAULT,
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
             })
-        [diane] = Node.objects.filter(hostname='diane')
+        diane = get_one(Node.objects.filter(hostname='diane'))
         self.assertItemsEqual(
             ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
             [mac.mac_address for mac in diane.macaddress_set.all()])

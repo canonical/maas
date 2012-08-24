@@ -51,6 +51,7 @@ from maasserver.models.cleansave import CleanSave
 from maasserver.models.config import Config
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils import get_db_state
+from maasserver.utils.orm import get_first
 from piston.models import Token
 from provisioningserver.enum import (
     POWER_TYPE,
@@ -249,11 +250,7 @@ class NodeManager(Manager):
             available_nodes = available_nodes.filter(
                 hostname=constraints['name'])
 
-        available_nodes = list(available_nodes[:1])
-        if len(available_nodes) == 0:
-            return None
-        else:
-            return available_nodes[0]
+        return get_first(available_nodes)
 
     def stop_nodes(self, ids, by_user):
         """Request on given user's behalf that the given nodes be shut down.

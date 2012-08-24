@@ -23,6 +23,7 @@ from django.db.models import (
     )
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.user import create_auth_token
+from maasserver.utils.orm import get_one
 from metadataserver import DefaultMeta
 from metadataserver.nodeinituser import get_node_init_user
 from piston.models import (
@@ -82,14 +83,10 @@ class NodeKeyManager(Manager):
             uniquely associated with this node.
         :rtype: piston.models.Token
         """
-        existing_nodekey = self.filter(node=node)
-        assert len(existing_nodekey) in (0, 1), (
-            "Found %d keys for node (expected at most one)."
-            % len(existing_nodekey))
-        if len(existing_nodekey) == 0:
+        nodekey = get_one(self.filter(node=node))
+        if nodekey is None:
             return self._create_token(node)
         else:
-            [nodekey] = existing_nodekey
             return nodekey.token
 
     def get_node_for_key(self, key):

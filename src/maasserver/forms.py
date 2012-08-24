@@ -304,7 +304,7 @@ class WithMACAddressesMixin:
     def clean_mac_addresses(self):
         data = self.cleaned_data['mac_addresses']
         for mac in data:
-            if MACAddress.objects.filter(mac_address=mac.lower()).count() > 0:
+            if MACAddress.objects.filter(mac_address=mac.lower()).exists():
                 raise ValidationError(
                     {'mac_addresses': [
                         'Mac address %s already in use.' % mac]})
@@ -449,8 +449,7 @@ class NewUserCreationForm(UserCreationForm):
         site.
         """
         email = self.cleaned_data['email']
-        email_count = User.objects.filter(email__iexact=email).count()
-        if email_count != 0:
+        if User.objects.filter(email__iexact=email).exists():
             raise forms.ValidationError(
                 "User with this E-mail address already exists.")
         return email

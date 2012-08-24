@@ -124,6 +124,7 @@ from maasserver.models import (
     Node,
     NodeGroup,
     )
+from maasserver.utils.orm import get_one
 from piston.doc import generate_doc
 from piston.handler import (
     AnonymousBaseHandler,
@@ -1124,11 +1125,9 @@ def pxeconfig(request):
     arch = get_mandatory_param(request.GET, 'arch')
     subarch = request.GET.get('subarch', 'generic')
 
-    # See if we have a record of this MAC address, and thus node.
-    try:
-        macaddress = MACAddress.objects.get(mac_address=mac)
-    except MACAddress.DoesNotExist:
-        macaddress = node = None
+    macaddress = get_one(MACAddress.objects.filter(mac_address=mac))
+    if macaddress is None:
+        node = None
     else:
         node = macaddress.node
 

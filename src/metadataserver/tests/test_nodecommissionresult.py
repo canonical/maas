@@ -15,6 +15,7 @@ __all__ = []
 from django.core.exceptions import ValidationError
 from django.http import Http404
 from maasserver.testing.factory import factory
+from maasserver.utils.orm import get_one
 from maastesting.djangotestcase import DjangoTestCase
 from metadataserver.models import NodeCommissionResult
 
@@ -82,9 +83,9 @@ class TestNodeCommissionResultManager(DjangoTestCase):
         NodeCommissionResult.objects.store_data(
             node, name=name, data=data)
 
-        results = NodeCommissionResult.objects.filter(node=node)
-        [ncr] = results
-        self.assertAttributes(ncr, dict(name=name, data=data))
+        self.assertAttributes(
+            get_one(NodeCommissionResult.objects.filter(node=node)),
+            dict(name=name, data=data))
 
     def test_store_data_updates_existing(self):
         node = factory.make_node()
@@ -94,9 +95,9 @@ class TestNodeCommissionResultManager(DjangoTestCase):
         NodeCommissionResult.objects.store_data(
             node, name=name, data=data)
 
-        results = NodeCommissionResult.objects.filter(node=node)
-        [ncr] = results
-        self.assertAttributes(ncr, dict(name=name, data=data))
+        self.assertAttributes(
+            get_one(NodeCommissionResult.objects.filter(node=node)),
+            dict(name=name, data=data))
 
     def test_get_data(self):
         ncr = factory.make_node_commission_result()
