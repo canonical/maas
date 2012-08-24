@@ -100,6 +100,7 @@ from docutils import core
 from formencode import validators
 from formencode.validators import Invalid
 from maasserver.enum import (
+    ARCHITECTURE,
     NODE_PERMISSION,
     NODE_STATUS,
     )
@@ -115,7 +116,6 @@ from maasserver.forms import (
     get_node_create_form,
     get_node_edit_form,
     )
-from maasserver.kernel import compose_kernel_command_line
 from maasserver.models import (
     Config,
     DHCPLease,
@@ -124,6 +124,11 @@ from maasserver.models import (
     Node,
     NodeGroup,
     )
+from maasserver.preseed import (
+    compose_enlistment_preseed_url,
+    compose_preseed_url,
+    )
+from maasserver.server_address import get_maas_facing_server_address
 from maasserver.utils.orm import get_one
 from piston.doc import generate_doc
 from piston.handler import (
@@ -134,6 +139,7 @@ from piston.handler import (
 from piston.models import Token
 from piston.resource import Resource
 from piston.utils import rc
+from provisioningserver.kernel_opts import KernelParameters
 
 
 dispatch_methods = {
@@ -1115,31 +1121,38 @@ def get_boot_purpose(node):
 def pxeconfig(request):
     """Get the PXE configuration given a node's details.
 
-    :param mac: MAC address to produce a boot configuration for.  This
-        parameter is optional.  If it is not given, the configuration
-        will be the "default" one which boots into an enlistment image.
-    :param arch: Main machine architecture.
-    :param subarch: Sub-architecture, or "generic" if there is none.
+    Returns a JSON object corresponding to a
+    :class:`provisioningserver.kernel_opts.KernelParameters` instance.
+
+    :param mac: MAC address to produce a boot configuration for.
     """
-    mac = request.GET.get('mac', None)
-    arch = get_mandatory_param(request.GET, 'arch')
-    subarch = request.GET.get('subarch', 'generic')
+    mac = get_mandatory_param(request.GET, 'mac')
 
     macaddress = get_one(MACAddress.objects.filter(mac_address=mac))
     if macaddress is None:
+        # Default to i386 as a works-for-all solution. This will not support
+        # non-x86 architectures, but for now this assumption holds.
         node = None
+        arch, subarch = ARCHITECTURE.i386, "generic"
+        preseed_url = compose_enlistment_preseed_url()
+        hostname = 'maas-enlist'
     else:
         node = macaddress.node
+        arch, subarch = node.architecture, "generic"
+        preseed_url = compose_preseed_url(node)
+        hostname = node.hostname
 
+    # XXX JeroenVermeulen 2012-08-06 bug=1013146: Stop hard-coding this.
+    release = 'precise'
     purpose = get_boot_purpose(node)
-    append = compose_kernel_command_line(node, arch, subarch, purpose=purpose)
+    domain = 'local.lan'  # TODO: This is probably not enough!
+    server_address = get_maas_facing_server_address()
 
-    # XXX: allenap 2012-07-31 bug=1013146: 'precise' is hardcoded here.
-    release = "precise"
-
-    params = dict(
+    params = KernelParameters(
         arch=arch, subarch=subarch, release=release, purpose=purpose,
-        append=append)
+        hostname=hostname, domain=domain, preseed_url=preseed_url,
+        log_host=server_address, fs_host=server_address)
 
     return HttpResponse(
-        json.dumps(params), content_type="application/json")
+        json.dumps(params._asdict()),
+        content_type="application/json")
