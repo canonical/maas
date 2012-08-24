@@ -14,8 +14,10 @@ __all__ = []
 
 from apiclient.creds import convert_tuple_to_string
 from maastesting.factory import factory
-from provisioningserver import auth
-from provisioningserver.cache import cache
+from provisioningserver import (
+    auth,
+    cache,
+    )
 from provisioningserver.testing.testcase import PservTestCase
 
 
@@ -34,7 +36,7 @@ class TestAuth(PservTestCase):
         creds_string = convert_tuple_to_string(make_credentials())
         auth.record_api_credentials(creds_string)
         self.assertEqual(
-            creds_string, cache.get(auth.API_CREDENTIALS_CACHE_KEY))
+            creds_string, cache.cache.get(auth.API_CREDENTIALS_CACHE_KEY))
 
     def test_get_recorded_api_credentials_returns_credentials_as_tuple(self):
         creds = make_credentials()

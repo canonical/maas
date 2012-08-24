@@ -15,4 +15,7 @@ cd "$(dirname "$0")/../.."
 # Run celeryd.
 export PYTHONPATH=$PYTHONPATH:`pwd`/src:`pwd`/etc
 export CELERY_CONFIG_MODULE=democeleryconfig
-exec celeryd -l INFO
+
+# XXX JeroenVermeulen 2012-08-23, bug=1040529: Kludge around hanging
+# celery shutdown.
+exec fghack "$(type -p celeryd)" -l INFO

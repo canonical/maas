@@ -27,9 +27,9 @@ from maastesting.matchers import ContainsAll
 from netaddr import IPNetwork
 from provisioningserver import (
     auth,
+    cache,
     tasks,
     )
-from provisioningserver.cache import cache
 from provisioningserver.dns.config import (
     conf,
     DNSZoneConfig,
@@ -106,7 +106,7 @@ class TestRefreshSecrets(PservTestCase):
     def test_updates_nodegroup_name(self):
         nodegroup_name = factory.make_name('nodegroup')
         refresh_secrets(nodegroup_name=nodegroup_name)
-        self.assertEqual(nodegroup_name, cache.get('nodegroup_name'))
+        self.assertEqual(nodegroup_name, cache.cache.get('nodegroup_name'))
 
 
 class TestPowerTasks(PservTestCase):

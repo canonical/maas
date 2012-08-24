@@ -43,12 +43,12 @@ from apiclient.maas_client import (
     MAASOAuth,
     )
 from celeryconfig import DHCP_LEASES_FILE
+from provisioningserver import cache
 from provisioningserver.auth import (
     get_recorded_api_credentials,
     get_recorded_maas_url,
     get_recorded_nodegroup_name,
     )
-from provisioningserver.cache import cache
 from provisioningserver.dhcp.leases_parser import parse_leases
 from provisioningserver.logging import task_logger
 
@@ -82,8 +82,8 @@ def check_lease_changes():
     # These variables are shared between worker threads/processes.
     # A bit of inconsistency due to concurrent updates is not a problem,
     # but read them both at once here to reduce the scope for trouble.
-    previous_leases = cache.get(LEASES_CACHE_KEY)
-    previous_leases_time = cache.get(LEASES_TIME_CACHE_KEY)
+    previous_leases = cache.cache.get(LEASES_CACHE_KEY)
+    previous_leases_time = cache.cache.get(LEASES_TIME_CACHE_KEY)
 
     if get_leases_timestamp() == previous_leases_time:
         return None
@@ -102,8 +102,8 @@ def record_lease_state(last_change, leases):
     :param leases: A dict mapping each leased IP address to the MAC address
         that it has been assigned to.
     """
-    cache.set(LEASES_TIME_CACHE_KEY, last_change)
-    cache.set(LEASES_CACHE_KEY, leases)
+    cache.cache.set(LEASES_TIME_CACHE_KEY, last_change)
+    cache.cache.set(LEASES_CACHE_KEY, leases)
 
 
 def list_missing_items(knowledge):

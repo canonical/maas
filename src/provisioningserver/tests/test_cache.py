@@ -15,22 +15,25 @@ __all__ = []
 from multiprocessing.managers import DictProxy
 
 from maastesting.factory import factory
-from provisioningserver.cache import cache
+from provisioningserver import cache
 from provisioningserver.testing.testcase import PservTestCase
 
 
 class TestCache(PservTestCase):
 
-    def test_cache_has_initialized_backend(self):
-        self.assertIsInstance(cache.cache_backend, DictProxy)
+    def test_initialize_initializes_backend(self):
+        self.patch(cache, 'initialized', False)
+        cache.initialize()
+        self.addCleanup(cache._manager.shutdown)
+        self.assertIsInstance(cache.cache.cache_backend, DictProxy)
 
     def test_cache_stores_value(self):
         key = factory.getRandomString()
         value = factory.getRandomString()
-        cache.set(key, value)
-        self.assertEqual(value, cache.get(key))
+        cache.cache.set(key, value)
+        self.assertEqual(value, cache.cache.get(key))
 
     def test_cache_clears_cache(self):
-        cache.set(factory.getRandomString(), factory.getRandomString())
-        cache.clear()
-        self.assertEqual(0, len(cache.cache_backend))
+        cache.cache.set(factory.getRandomString(), factory.getRandomString())
+        cache.cache.clear()
+        self.assertEqual(0, len(cache.cache.cache_backend))

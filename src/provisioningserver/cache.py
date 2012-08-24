@@ -12,6 +12,7 @@ from __future__ import (
 __metaclass__ = type
 __all__ = [
     'cache',
+    'initialize',
     ]
 
 
@@ -34,8 +35,23 @@ class Cache(object):
         self.cache_backend.clear()
 
 
-_manager = Manager()
+_manager = None
+
+cache = None
+
+initialized = False
 
 
-# Initialize the process-safe singleton cache.
-cache = Cache(_manager.dict())
+def initialize():
+    """Initialize cache of shared data between processes.
+
+    This needs to be done exactly once, by the parent process, before it
+    start forking off workers.
+    """
+    global _manager
+    global cache
+    global initialized
+    if not initialized:
+        _manager = Manager()
+        cache = Cache(_manager.dict())
+        initialized = True

@@ -19,7 +19,7 @@ __all__ = [
     ]
 
 from apiclient.creds import convert_string_to_tuple
-from provisioningserver.cache import cache
+from provisioningserver import cache
 
 # Cache key for URL to the central MAAS server.
 MAAS_URL_CACHE_KEY = 'maas_url'
@@ -33,12 +33,12 @@ NODEGROUP_NAME_CACHE_KEY = 'nodegroup_name'
 
 def record_maas_url(maas_url):
     """Record the MAAS server URL as sent by the server."""
-    cache.set(MAAS_URL_CACHE_KEY, maas_url)
+    cache.cache.set(MAAS_URL_CACHE_KEY, maas_url)
 
 
 def get_recorded_maas_url():
     """Return the base URL for the MAAS server."""
-    return cache.get(MAAS_URL_CACHE_KEY)
+    return cache.cache.get(MAAS_URL_CACHE_KEY)
 
 
 def record_api_credentials(api_credentials):
@@ -48,7 +48,7 @@ def record_api_credentials(api_credentials):
         a single string: consumer key, resource token, and resource seret
         separated by colons.
     """
-    cache.set(API_CREDENTIALS_CACHE_KEY, api_credentials)
+    cache.cache.set(API_CREDENTIALS_CACHE_KEY, api_credentials)
 
 
 def get_recorded_api_credentials():
@@ -58,7 +58,7 @@ def get_recorded_api_credentials():
         (consumer_key, resource_token, resource_secret) as expected by
         :class:`MAASOauth`.  Otherwise, None.
     """
-    credentials_string = cache.get(API_CREDENTIALS_CACHE_KEY)
+    credentials_string = cache.cache.get(API_CREDENTIALS_CACHE_KEY)
     if credentials_string is None:
         return None
     else:
@@ -67,7 +67,7 @@ def get_recorded_api_credentials():
 
 def record_nodegroup_name(nodegroup_name):
     """Record the name of the nodegroup we manage, as sent by the server."""
-    cache.set(NODEGROUP_NAME_CACHE_KEY, nodegroup_name)
+    cache.cache.set(NODEGROUP_NAME_CACHE_KEY, nodegroup_name)
 
 
 def get_recorded_nodegroup_name():
@@ -75,4 +75,4 @@ def get_recorded_nodegroup_name():
 
     If the server has not sent the name yet, returns None.
     """
-    return cache.get(NODEGROUP_NAME_CACHE_KEY)
+    return cache.cache.get(NODEGROUP_NAME_CACHE_KEY)

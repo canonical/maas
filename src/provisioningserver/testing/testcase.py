@@ -15,11 +15,11 @@ __all__ = [
     ]
 
 from maastesting import testcase
-from provisioningserver.cache import cache as pserv_cache
+from provisioningserver.testing.worker_cache import WorkerCacheFixture
 
 
 class PservTestCase(testcase.TestCase):
 
     def setUp(self):
         super(PservTestCase, self).setUp()
-        self.addCleanup(pserv_cache.clear)
+        self.useFixture(WorkerCacheFixture())
