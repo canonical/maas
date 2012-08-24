@@ -12,6 +12,7 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
+from datetime import datetime
 import os
 import random
 from subprocess import CalledProcessError
@@ -24,12 +25,14 @@ from maastesting.fakemethod import (
     MultiFakeMethod,
     )
 from maastesting.matchers import ContainsAll
+from mock import Mock
 from netaddr import IPNetwork
 from provisioningserver import (
     auth,
     cache,
     tasks,
     )
+from provisioningserver.dhcp import leases
 from provisioningserver.dns.config import (
     conf,
     DNSZoneConfig,
@@ -147,6 +150,14 @@ class TestDHCPTasks(PservTestCase):
         self.assertThat(
             recorder.extract_args()[0][0],
             ContainsAll(args))
+
+    def test_upload_dhcp_leases(self):
+        self.patch(
+            leases, 'parse_leases_file',
+            Mock(return_value=(datetime.utcnow(), {})))
+        self.patch(leases, 'process_leases', Mock())
+        tasks.upload_dhcp_leases.delay()
+        self.assertEqual(1, leases.process_leases.call_count)
 
     def test_add_new_dhcp_host_map(self):
         # We don't want to actually run omshell in the task, so we stub

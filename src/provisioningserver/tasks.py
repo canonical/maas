@@ -36,6 +36,7 @@ from provisioningserver.auth import (
     record_nodegroup_name,
     )
 from provisioningserver.dhcp import config
+from provisioningserver.dhcp.leases import upload_leases
 from provisioningserver.dns.config import (
     DNSConfig,
     execute_rndc_command,
@@ -242,6 +243,16 @@ def setup_rndc_configuration(callback=None):
 # =====================================================================
 # DHCP-related tasks
 # =====================================================================
+
+
+@task
+def upload_dhcp_leases():
+    """Upload DHCP leases.
+
+    Uploads leases to the MAAS API, using cached credentials -- the task
+    originates with celerybeat, not with a server request.
+    """
+    upload_leases()
 
 
 @task
