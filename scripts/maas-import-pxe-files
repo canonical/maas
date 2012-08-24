@@ -34,9 +34,6 @@ CURRENT_RELEASE=${CURRENT_RELEASE:-$STABLE_RELEASE}
 # Supported architectures.
 ARCHES=${ARCHES:-amd64 i386}
 
-# Path to the provisioning configuration. Mandatory.
-MAAS_PROVISIONING_SETTINGS=${MAAS_PROVISIONING_SETTINGS?}
-
 # Command line to download a resource at a given URL into the current
 # directory.  A wget command line will work here, but curl will do as well.
 DOWNLOAD=${DOWNLOAD:-wget --no-verbose}
