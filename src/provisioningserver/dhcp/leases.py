@@ -129,7 +129,7 @@ def send_leases(leases):
             % ', '.join(list_missing_items(knowledge)))
         return
 
-    api_path = 'nodegroups/%s/' % knowledge['nodegroup_name']
+    api_path = 'api/1.0/nodegroups/%s/' % knowledge['nodegroup_name']
     oauth = MAASOAuth(*knowledge['api_credentials'])
     MAASClient(oauth, MAASDispatcher(), knowledge['maas_url']).post(
         api_path, 'update_leases', leases=leases)

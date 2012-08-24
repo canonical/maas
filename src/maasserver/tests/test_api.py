@@ -28,6 +28,7 @@ import os
 import random
 import shutil
 
+from apiclient.maas_client import MAASClient
 from django.conf import settings
 from django.contrib.auth.models import AnonymousUser
 from django.core.urlresolvers import reverse
@@ -63,6 +64,7 @@ from maasserver.models.user import (
     get_auth_tokens,
     )
 from maasserver.preseed import compose_preseed_url
+from maasserver.refresh_worker import refresh_worker
 from maasserver.testing import (
     reload_object,
     reload_objects,
@@ -86,11 +88,13 @@ from metadataserver.models import (
     NodeUserData,
     )
 from metadataserver.nodeinituser import get_node_init_user
+from mock import Mock
 from provisioningserver import (
     kernel_opts,
     tasks,
     )
 from provisioningserver.auth import get_recorded_nodegroup_name
+from provisioningserver.dhcp.leases import send_leases
 from provisioningserver.enum import (
     POWER_TYPE,
     POWER_TYPE_CHOICES,
@@ -2534,6 +2538,20 @@ class TestNodeGroupAPI(APITestCase):
             (httplib.OK, "Leases updated."),
             (response.status_code, response.content))
         self.assertEqual([], tasks.add_new_dhcp_host_map.calls)
+
+    def test_worker_calls_update_leases(self):
+        # In bug 1041158, the worker's upload_leases task tried to call
+        # the update_leases API at the wrong URL path.  It has the right
+        # path now.
+        nodegroup = factory.make_node_group()
+        refresh_worker(nodegroup)
+        self.patch(MAASClient, 'post', Mock())
+        leases = factory.make_random_leases()
+        send_leases(leases)
+        nodegroup_path = reverse('nodegroup_handler', args=[nodegroup.name])
+        nodegroup_path = nodegroup_path.decode('ascii').lstrip('/')
+        MAASClient.post.assert_called_once_with(
+            nodegroup_path, 'update_leases', leases=leases)
 
 
 class TestNodeGroupAPIAuth(APIv10TestMixin, TestCase):

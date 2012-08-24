@@ -297,19 +297,6 @@ class TestUpdateLeases(PservTestCase):
             (get_write_time(leases_file), {params['ip']: params['mac']}),
             parse_leases_file())
 
-    def test_send_leases_posts_to_API(self):
-        self.patch(Omshell, 'create', FakeMethod())
-        self.set_items_needed_for_lease_update()
-        nodegroup_name = self.set_nodegroup_name()
-        self.patch(MAASClient, 'post', FakeMethod())
-        leases = factory.make_random_leases()
-        send_leases(leases)
-        self.assertEqual([(
-                ('nodegroups/%s/' % nodegroup_name, 'update_leases'),
-                {'leases': leases},
-                )],
-            MAASClient.post.calls)
-
     def test_send_leases_does_nothing_without_maas_url(self):
         self.patch(MAASClient, 'post', FakeMethod())
         self.set_lease_state()
