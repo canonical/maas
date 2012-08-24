@@ -1,0 +1,19 @@
+DEFAULT execute
+
+LABEL execute
+  KERNEL ifcpu64.c32
+  APPEND amd64 -- i386
+
+LABEL amd64
+  SAY Booting (amd64) under MAAS direction...
+  KERNEL {{kernel_params(arch="amd64") | kernel_path | relative}}
+  INITRD {{kernel_params(arch="amd64") | initrd_path | relative}}
+  APPEND {{kernel_params(arch="amd64") | kernel_command}}
+  IPAPPEND 2
+
+LABEL i386
+  SAY Booting (i386) under MAAS direction...
+  KERNEL {{kernel_params(arch="i386") | kernel_path | relative}}
+  INITRD {{kernel_params(arch="i386") | initrd_path | relative}}
+  APPEND {{kernel_params(arch="i386") | kernel_command}}
+  IPAPPEND 2

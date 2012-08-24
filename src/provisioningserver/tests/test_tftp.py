@@ -196,13 +196,13 @@ class TestTFTPBackend(TestCase):
 
         # Stub get_page to return the fake API configuration parameters.
         fake_get_page_result = json.dumps(fake_kernel_params._asdict())
-        get_page_patch = mock.patch.object(backend, "get_page")
-        get_page_patch.start().return_value = succeed(fake_get_page_result)
+        get_page_patch = self.patch(backend, "get_page")
+        get_page_patch.return_value = succeed(fake_get_page_result)
 
         # Stub render_pxe_config to return the render parameters.
         fake_render_result = factory.make_name("render")
-        render_patch = mock.patch.object(backend, "render_pxe_config")
-        render_patch.start().return_value = fake_render_result
+        render_patch = self.patch(backend, "render_pxe_config")
+        render_patch.return_value = fake_render_result
 
         # Get the rendered configuration, which will actually be a JSON dump
         # of the render-time parameters.

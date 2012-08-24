@@ -27,8 +27,8 @@ class EphemeralImagesDirectoryNotFound(Exception):
     """The ephemeral images directory cannot be found."""
 
 
-KernelParameters = namedtuple(
-    "KernelParameters", (
+KernelParametersBase = namedtuple(
+    "KernelParametersBase", (
         "arch",  # Machine architecture, e.g. "i386"
         "subarch",  # Machine subarchitecture, e.g. "generic"
         "release",  # Ubuntu release, e.g. "precise"
@@ -39,6 +39,12 @@ KernelParameters = namedtuple(
         "log_host",  # Host/IP to which syslog can be streamed.
         "fs_host",  # Host/IP on which ephemeral filesystems are hosted.
         ))
+
+
+class KernelParameters(KernelParametersBase):
+
+    # foo._replace() is just ugly, so alias it to __call__.
+    __call__ = KernelParametersBase._replace
 
 
 def compose_initrd_opt(arch, subarch, release, purpose):

@@ -74,6 +74,8 @@ update_pre_boot_loader() {
         maas-provision install-pxe-bootloader --loader='pxelinux.0'
         maas-provision install-pxe-bootloader \
             --loader='/usr/lib/syslinux/chain.c32'
+        maas-provision install-pxe-bootloader \
+            --loader='/usr/lib/syslinux/ifcpu64.c32'
     fi
 }
 

@@ -31,6 +31,14 @@ from provisioningserver.pxe.tftppath import compose_image_path
 from provisioningserver.testing.config import ConfigFixture
 
 
+def make_kernel_parameters():
+    """Make a randomly populated `KernelParameters` instance."""
+    return KernelParameters(**{
+            field: factory.make_name(field)
+            for field in KernelParameters._fields
+            })
+
+
 class TestUtilitiesKernelOpts(TestCase):
 
     def test_get_last_directory(self):
@@ -43,13 +51,11 @@ class TestUtilitiesKernelOpts(TestCase):
         os.makedirs(dir3)
         self.assertEqual(dir1, get_last_directory(root))
 
-
-def make_kernel_parameters():
-    """Make a randomly populated `KernelParameters` instance."""
-    return KernelParameters(**{
-            field: factory.make_name(field)
-            for field in KernelParameters._fields
-            })
+    def test_kernel_parameters_callable(self):
+        # KernelParameters instances are callable; an alias for _replace().
+        params = make_kernel_parameters()
+        self.assertTrue(callable(params))
+        self.assertIs(params._replace.im_func, params.__call__.im_func)
 
 
 class TestKernelOpts(TestCase):

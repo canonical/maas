@@ -12,19 +12,24 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
+from collections import OrderedDict
 import errno
 from os import path
 import re
 
 from maastesting.factory import factory
+from maastesting.matchers import ContainsAll
 from maastesting.testcase import TestCase
 import mock
 import posixpath
+from provisioningserver import kernel_opts
 from provisioningserver.pxe import config
 from provisioningserver.pxe.config import render_pxe_config
 from provisioningserver.pxe.tftppath import compose_image_path
 from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
+import tempita
 from testtools.matchers import (
+    Contains,
     IsInstance,
     MatchesAll,
     MatchesRegex,
@@ -47,14 +52,14 @@ class TestFunctions(TestCase):
         observed = config.gen_pxe_template_filenames(purpose, arch, subarch)
         self.assertSequenceEqual(expected, list(observed))
 
-    @mock.patch("tempita.Template.from_filename")
-    @mock.patch.object(config, "gen_pxe_template_filenames")
-    def test_get_pxe_template(self, gen_filenames, from_filename):
+    def test_get_pxe_template(self):
         purpose = factory.make_name("purpose")
         arch, subarch = factory.make_names("arch", "subarch")
         filename = factory.make_name("filename")
         # Set up the mocks that we've patched in.
+        gen_filenames = self.patch(config, "gen_pxe_template_filenames")
         gen_filenames.return_value = [filename]
+        from_filename = self.patch(tempita.Template, "from_filename")
         from_filename.return_value = mock.sentinel.template
         # The template returned matches the return value above.
         template = config.get_pxe_template(purpose, arch, subarch)
@@ -76,24 +81,67 @@ class TestFunctions(TestCase):
             path.join(config.template_dir, "config.template"),
             template.name)
 
-    @mock.patch.object(config, "gen_pxe_template_filenames")
-    def test_get_pxe_template_not_found(self, gen_filenames):
+    def test_get_pxe_template_not_found(self):
         # It is a critical and unrecoverable error if the default PXE template
         # is not found.
-        gen_filenames.return_value = []
+        self.patch(config, "gen_pxe_template_filenames").return_value = []
         self.assertRaises(
             AssertionError, config.get_pxe_template,
             *factory.make_names("purpose", "arch", "subarch"))
 
-    @mock.patch("tempita.Template.from_filename")
-    def test_get_pxe_templates_only_suppresses_ENOENT(self, from_filename):
+    def test_get_pxe_templates_only_suppresses_ENOENT(self):
         # The IOError arising from trying to load a template that doesn't
         # exist is suppressed, but other errors are not.
+        from_filename = self.patch(tempita.Template, "from_filename")
         from_filename.side_effect = IOError()
         from_filename.side_effect.errno = errno.EACCES
         self.assertRaises(
             IOError, config.get_pxe_template,
             *factory.make_names("purpose", "arch", "subarch"))
+
+
+def parse_pxe_config(text):
+    """Parse a PXE config file.
+
+    Returns a structure like the following, defining the sections::
+
+      {"section_label": {"KERNEL": "...", "INITRD": "...", ...}, ...}
+
+    Additionally, the returned dict - which is actually an `OrderedDict`, as
+    are all mappings returned from this function - has a `header` attribute.
+    This is an `OrderedDict` of the settings in the top part of the PXE config
+    file, the part before any labelled sections.
+    """
+    result = OrderedDict()
+    sections = re.split("^LABEL ", text, flags=re.MULTILINE)
+    for index, section in enumerate(sections):
+        elements = [
+            line.split(None, 1) for line in section.splitlines()
+            if line and not line.isspace()
+            ]
+        if index == 0:
+            result.header = OrderedDict(elements)
+        else:
+            [label] = elements.pop(0)
+            if label in result:
+                raise AssertionError(
+                    "Section %r already defined" % label)
+            result[label] = OrderedDict(elements)
+    return result
+
+
+class TestParsePXEConfig(TestCase):
+    """Tests for `parse_pxe_config`."""
+
+    def test_parse_with_no_header(self):
+        config = parse_pxe_config("LABEL foo\nOPTION setting")
+        self.assertEqual({"foo": {"OPTION": "setting"}}, config)
+        self.assertEqual({}, config.header)
+
+    def test_parse_with_no_labels(self):
+        config = parse_pxe_config("OPTION setting")
+        self.assertEqual({"OPTION": "setting"}, config.header)
+        self.assertEqual({}, config)
 
 
 class TestRenderPXEConfig(TestCase):
@@ -178,3 +226,38 @@ class TestRenderPXEConfig(TestCase):
         output = render_pxe_config(**options)
         self.assertIn("chain.c32", output)
         self.assertNotIn("LOCALBOOT", output)
+
+    def test_render_pxe_config_for_commissioning(self):
+        # The commissioning config uses an extra PXELINUX module to auto
+        # select between i386 and amd64.
+        get_ephemeral_name = self.patch(kernel_opts, "get_ephemeral_name")
+        get_ephemeral_name.return_value = factory.make_name("ephemeral")
+        options = {
+            "bootpath": factory.make_name("bootpath"),
+            "kernel_params": make_kernel_parameters()._replace(
+                purpose="commissioning"),
+            }
+        output = render_pxe_config(**options)
+        config = parse_pxe_config(output)
+        # The default section is defined.
+        default_section_label = config.header["DEFAULT"]
+        self.assertThat(config, Contains(default_section_label))
+        default_section = config[default_section_label]
+        # The default section uses the ifcpu64 module, branching to the "i386"
+        # or "amd64" labels accordingly.
+        self.assertEqual("ifcpu64.c32", default_section["KERNEL"])
+        self.assertEqual(
+            ["amd64", "--", "i386"],
+            default_section["APPEND"].split())
+        # Both "i386" and "amd64" sections exist.
+        self.assertThat(config, ContainsAll(("i386", "amd64")))
+        # Each section defines KERNEL, INITRD, and APPEND settings, each
+        # containing paths referring to their architectures.
+        for section_label in ("i386", "amd64"):
+            section = config[section_label]
+            self.assertThat(
+                section, ContainsAll(("KERNEL", "INITRD", "APPEND")))
+            contains_arch_path = Contains("/%s/" % section_label)
+            self.assertThat(section["KERNEL"], contains_arch_path)
+            self.assertThat(section["INITRD"], contains_arch_path)
+            self.assertThat(section["APPEND"], contains_arch_path)

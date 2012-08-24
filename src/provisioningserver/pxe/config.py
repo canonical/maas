@@ -21,7 +21,6 @@ __all__ = [
 
 
 from errno import ENOENT
-from functools import partial
 from os import path
 
 import posixpath
@@ -84,15 +83,33 @@ def render_pxe_config(bootpath, kernel_params, **extra):
     template = get_pxe_template(
         kernel_params.purpose, kernel_params.arch,
         kernel_params.subarch)
-    image_dir = compose_image_path(
-        kernel_params.arch, kernel_params.subarch,
-        kernel_params.release, kernel_params.purpose)
+
     # The locations of the kernel image and the initrd are defined by
     # update_install_files(), in scripts/maas-import-pxe-files.
+
+    def image_dir(params):
+        return compose_image_path(
+            params.arch, params.subarch,
+            params.release, params.purpose)
+
+    def initrd(params):
+        return "%s/initrd.gz" % image_dir(params)
+
+    def kernel(params):
+        return "%s/linux" % image_dir(params)
+
+    def kernel_command(params):
+        return compose_kernel_command_line_new(params)
+
+    def relative(path):
+        # Return `path` relative to `bootpath`.
+        return posixpath.relpath(path, start=bootpath)
+
     namespace = {
-        "append": compose_kernel_command_line_new(kernel_params),
-        "initrd": "%s/initrd.gz" % image_dir,
-        "kernel": "%s/linux" % image_dir,
-        "relpath": partial(posixpath.relpath, start=bootpath),
+        "initrd_path": initrd,
+        "kernel_command": kernel_command,
+        "kernel_params": kernel_params,
+        "kernel_path": kernel,
+        "relative": relative,
         }
     return template.substitute(namespace)

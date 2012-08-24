@@ -1,10 +1,8 @@
 DEFAULT execute
-TIMEOUT 20
-SAY Booting under MAAS direction in 20 seconds.
 
 LABEL execute
   SAY Booting under MAAS direction...
-  KERNEL {{kernel|relpath}}
-  INITRD {{initrd|relpath}}
-  APPEND {{append}}
+  KERNEL {{kernel_params | kernel_path | relative}}
+  INITRD {{kernel_params | initrd_path | relative}}
+  APPEND {{kernel_params | kernel_command}}
   IPAPPEND 2
