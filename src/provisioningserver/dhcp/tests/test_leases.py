@@ -16,7 +16,6 @@ from datetime import (
     datetime,
     timedelta,
     )
-import json
 from textwrap import dedent
 
 from apiclient.maas_client import MAASClient
@@ -26,7 +25,6 @@ from maastesting.utils import (
     age_file,
     get_write_time,
     )
-from mock import Mock
 from provisioningserver import cache
 from provisioningserver.auth import (
     MAAS_URL_CACHE_KEY,
@@ -324,15 +322,3 @@ class TestUpdateLeases(PservTestCase):
         leases = factory.make_random_leases()
         send_leases(leases)
         self.assertEqual([], MAASClient.post.calls)
-
-    def test_send_leases_encodes_lease_data_with_json(self):
-        self.patch(MAASClient, 'post', Mock())
-        self.set_lease_state()
-        self.set_items_needed_for_lease_update()
-        leases = factory.make_random_leases()
-        send_leases(leases)
-
-        args, kwargs = MAASClient.post.call_args
-        leases = kwargs['leases']
-        decoded = json.loads(leases)
-        self.assertIsInstance(decoded, dict)

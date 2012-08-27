@@ -2553,7 +2553,7 @@ class TestNodeGroupAPI(APITestCase):
         nodegroup_path = reverse('nodegroup_handler', args=[nodegroup.name])
         nodegroup_path = nodegroup_path.decode('ascii').lstrip('/')
         MAASClient.post.assert_called_once_with(
-            nodegroup_path, 'update_leases', leases=leases)
+            nodegroup_path, 'update_leases', leases=json.dumps(leases))
 
 
 class TestNodeGroupAPIAuth(APIv10TestMixin, TestCase):
