@@ -51,7 +51,6 @@ from maasserver.enum import (
     )
 from maasserver.exceptions import Unauthorized
 from maasserver.fields import mac_error_msg
-from maasserver.kernel import compose_enlistment_preseed_url
 from maasserver.models import (
     Config,
     DHCPLease,
@@ -63,7 +62,10 @@ from maasserver.models.user import (
     create_auth_token,
     get_auth_tokens,
     )
-from maasserver.preseed import compose_preseed_url
+from maasserver.preseed import (
+    compose_enlistment_preseed_url,
+    compose_preseed_url,
+    )
 from maasserver.refresh_worker import refresh_worker
 from maasserver.testing import (
     reload_object,
