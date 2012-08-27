@@ -55,7 +55,8 @@ other_statement = (
         caseless=True) + args
     )
 
-lease_statement = (hardware | ends | set_statement | other_statement) + Suppress(';')
+lease_statement = (
+    hardware | ends | set_statement | other_statement) + Suppress(';')
 lease_parser = (
     CaselessKeyword("lease") + ip("ip") +
     Suppress('{') +

@@ -17,7 +17,6 @@ from datetime import (
     timedelta,
     )
 import json
-from mock import Mock
 from textwrap import dedent
 
 from apiclient.maas_client import MAASClient
@@ -27,6 +26,7 @@ from maastesting.utils import (
     age_file,
     get_write_time,
     )
+from mock import Mock
 from provisioningserver import cache
 from provisioningserver.auth import (
     MAAS_URL_CACHE_KEY,
@@ -336,4 +336,3 @@ class TestUpdateLeases(PservTestCase):
         leases = kwargs['leases']
         decoded = json.loads(leases)
         self.assertIsInstance(decoded, dict)
-
