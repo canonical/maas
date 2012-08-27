@@ -80,6 +80,9 @@ def render_pxe_config(bootpath, kernel_params, **extra):
         parameters generated in another component (for example, see
         `TFTPBackend.get_config_reader`) won't cause this to break.
     """
+    if bootpath is None:
+        bootpath = ''
+
     template = get_pxe_template(
         kernel_params.purpose, kernel_params.arch,
         kernel_params.subarch)

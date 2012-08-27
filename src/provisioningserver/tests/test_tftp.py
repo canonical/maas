@@ -77,7 +77,7 @@ class TestTFTPBackendRegex(TestCase):
         config_path = compose_config_path(components["mac"])
         return config_path, components
 
-    def test_re_config_file(self):
+    def test_re_config_file_is_compatible_with_config_path_generator(self):
         # The regular expression for extracting components of the file path is
         # compatible with the PXE config path generator.
         regex = TFTPBackend.re_config_file
@@ -108,6 +108,32 @@ class TestTFTPBackendRegex(TestCase):
         match = TFTPBackend.re_config_file.match(config_path)
         self.assertIsNotNone(match, config_path)
         self.assertEqual(args, match.groupdict())
+
+    def test_re_config_file_matches_classic_pxelinux_cfg(self):
+        # The default config path is simply "pxelinux.cfg" (without
+        # leading slash).  The regex matches this.
+        mac = 'aa-bb-cc-dd-ee-ff'
+        match = TFTPBackend.re_config_file.match('pxelinux.cfg/01-%s' % mac)
+        self.assertIsNotNone(match)
+        self.assertEqual({'mac': mac, 'bootpath': None}, match.groupdict())
+
+    def test_re_config_file_matches_pxelinux_cfg_with_leading_slash(self):
+        mac = 'aa-bb-cc-dd-ee-ff'
+        match = TFTPBackend.re_config_file.match('/pxelinux.cfg/01-%s' % mac)
+        self.assertIsNotNone(match)
+        self.assertEqual({'mac': mac, 'bootpath': None}, match.groupdict())
+
+    def test_re_config_file_does_not_match_non_config_file(self):
+        self.assertIsNone(
+            TFTPBackend.re_config_file.match('maas/pxelinux.cfg/kernel'))
+
+    def test_re_config_file_does_not_match_file_in_root(self):
+        self.assertIsNone(
+            TFTPBackend.re_config_file.match('01-aa-bb-cc-dd-ee-ff'))
+
+    def test_re_config_file_does_not_match_file_not_in_pxelinux_cfg(self):
+        self.assertIsNone(
+            TFTPBackend.re_config_file.match('foo/01-aa-bb-cc-dd-ee-ff'))
 
 
 class TestTFTPBackend(TestCase):

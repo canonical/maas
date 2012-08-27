@@ -85,11 +85,15 @@ class TFTPBackend(FilesystemSynchronousBackend):
     # always Ethernet.
     re_config_file = re.compile(
         r'''
+        # Optional leading slash(es).
         ^/?
-        (?P<bootpath>
-          maas     # Static namespacing.
-        )    # Capture boot directory.
-        /
+        # Optional boot path prefix (separated from the rest by slash):
+        (?:
+            (?P<bootpath>
+                maas
+            )
+            /
+        )?
         pxelinux[.]cfg    # PXELINUX expects this.
         /
         {htype:02x}    # ARP HTYPE.
@@ -170,7 +174,7 @@ class TFTPBackend(FilesystemSynchronousBackend):
         """See `IBackend.get_reader()`.
 
         If `file_name` matches `re_config_file` then the response is obtained
-        from a remote server. Otherwise the filesystem is used to service the
+        from a server. Otherwise the filesystem is used to service the
         response.
         """
         config_file_match = self.re_config_file.match(file_name)
