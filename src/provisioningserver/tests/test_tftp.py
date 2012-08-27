@@ -23,7 +23,6 @@ from urlparse import (
 
 from maastesting.factory import factory
 from maastesting.testcase import TestCase
-import mock
 from provisioningserver.pxe.tftppath import compose_config_path
 from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
 from provisioningserver.tftp import (
