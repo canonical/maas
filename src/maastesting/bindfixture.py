@@ -208,6 +208,7 @@ class BINDServerRunner(fixtures.Fixture):
                     stdout=log_file, stderr=log_file,
                     close_fds=True, cwd=self.config.homedir,
                     env=env, preexec_fn=preexec_fn)
+        self.addCleanup(self._stop)
         # Keep the log_file open for reading so that we can still get the log
         # even if the log is deleted.
         open_log_file = open(self.config.log_file, "rb")
@@ -246,7 +247,6 @@ class BINDServerRunner(fixtures.Fixture):
             raise Exception(
                 "Timeout waiting for BIND server to start: log in %r." %
                 (self.config.log_file,))
-        self.addCleanup(self._stop)
 
     def _request_stop(self):
         outstr, errstr = self.rndc("stop")
@@ -258,15 +258,7 @@ class BINDServerRunner(fixtures.Fixture):
     def _stop(self):
         """Stop the running server. Normally called by cleanups."""
         self._request_stop()
-        # Wait for the server to go down...
-        timeout = time.time() + 15
-        while time.time() < timeout:
-            if not self.is_server_running():
-                break
-            time.sleep(0.3)
-        else:
-            raise Exception(
-                "Timeout waiting for BIND server to go down.")
+        self.process.wait()
 
 
 class BINDServer(fixtures.Fixture):
