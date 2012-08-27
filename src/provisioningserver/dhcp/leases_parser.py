@@ -40,16 +40,22 @@ mac = Regex("[0-9a-fA-F]{2}(:[0-9a-fA-F]{2}){5}")
 hardware_type = Regex('[A-Za-z0-9_-]+')
 args = Regex('[^"{;]+') | QuotedString('"')
 expiry = Regex('[0-9]\s+[0-9/-]+\s+[0-9:]+') | 'never'
+identifier = Regex("[A-Za-z_][0-9A-Za-z_-]*")
+set_statement = (
+    CaselessKeyword('set') +
+    identifier +
+    Suppress('=') +
+    QuotedString('"'))
 
 hardware = CaselessKeyword("hardware") + hardware_type("type") + mac("mac")
 ends = CaselessKeyword("ends") + expiry("expiry")
 other_statement = (
     oneOf(
-        ['starts', 'tstp', 'tsfp', 'uid', 'binding'], caseless=True) +
-    args
+        ['starts', 'tstp', 'tsfp', 'cltt', 'uid', 'binding', 'next'],
+        caseless=True) + args
     )
 
-lease_statement = (hardware | ends | other_statement) + Suppress(';')
+lease_statement = (hardware | ends | set_statement | other_statement) + Suppress(';')
 lease_parser = (
     CaselessKeyword("lease") + ip("ip") +
     Suppress('{') +

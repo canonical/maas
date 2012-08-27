@@ -79,8 +79,12 @@ class TestLeasesParser(TestCase):
                 ends never;
                 tstp 6 2010/01/02 05:00:00;
                 tsfp 6 2010/01/02 05:00:00;
+                cltt 1 2010/01/02 05:00:00;
                 binding state free;
+                next binding state free;
                 hardware ethernet %(mac)s;
+                uid "\001\000\234\002\242\2020";
+                set vendorclass = "PXEClient:Arch:00000:UNDI:002001";
             }
             """ % params))
         self.assertEqual({params['ip']: params['mac']}, leases)

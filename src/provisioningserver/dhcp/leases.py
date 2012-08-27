@@ -32,6 +32,7 @@ __all__ = [
     ]
 
 
+import json
 from os import (
     fstat,
     stat,
@@ -132,7 +133,7 @@ def send_leases(leases):
     api_path = 'api/1.0/nodegroups/%s/' % knowledge['nodegroup_name']
     oauth = MAASOAuth(*knowledge['api_credentials'])
     MAASClient(oauth, MAASDispatcher(), knowledge['maas_url']).post(
-        api_path, 'update_leases', leases=leases)
+        api_path, 'update_leases', leases=json.dumps(leases))
 
 
 def process_leases(timestamp, leases):
