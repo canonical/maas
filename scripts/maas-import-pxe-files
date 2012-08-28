@@ -42,6 +42,19 @@ DOWNLOAD=${DOWNLOAD:-wget --no-verbose}
 # Default is yes.
 IMPORT_EPHEMERALS=${IMPORT_EPHEMERALS:-1}
 
+# show script usage/summary 
+show_usage() { 
+    echo 
+    echo "Usage:  ${0##*/}"
+    echo "This helper script downloads the relevant boot images from ubuntu.com and uses"
+    echo "'maas' to provision them for PXE booting from tftp. "
+    echo "The script takes no arguments, but you can adjust some parameters by editing"
+    echo "the config file found at \033[1m$settings\033[0m."
+    echo 
+    echo "MAAS homepage:<http://maas.ubuntu.com>"
+    echo
+    exit
+}
 
 # Put together a full URL for where the installer files for architecture $1
 # and release $2 can be downloaded.
@@ -139,9 +152,19 @@ import_ephemeral_images() {
 
 
 main() {
+
     import_install_images
     import_ephemeral_images
 }
 
+# check for commandline arguments
+if [ $# -gt 0 ]
+  then
+   case $1 in
+    "-h"|"--help") show_usage ; exit ;;
+    *) show_usage ; exit ;;
+    esac
+fi
 
 main
+
