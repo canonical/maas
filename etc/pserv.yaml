@@ -31,7 +31,7 @@ broker:
 ## TFTP configuration.
 #
 tftp:
-  # root: /var/lib/tftpboot
+  # root: /var/lib/tftpboot/maas
   # port: 69
   port: 5244
   ## The URL to be contacted to generate PXE configurations.
