@@ -51,12 +51,18 @@ hardware = CaselessKeyword("hardware") + hardware_type("type") + mac("mac")
 ends = CaselessKeyword("ends") + expiry("expiry")
 other_statement = (
     oneOf(
-        ['starts', 'tstp', 'tsfp', 'cltt', 'uid', 'binding', 'next'],
+        ['starts', 'tstp', 'atsfp', 'tsfp', 'cltt', 'uid', 'binding', 'next',
+         'client-hostname', 'abandoned', 'option', 'ddns-text',
+         'ddns-fwd-name', 'ddns-client-fqdn', 'ddns-rev-name',
+         'vendor-class-identifier', 'bootp', 'reserved'],
         caseless=True) + args
     )
+lone_statement = (
+    oneOf(['abandoned', 'bootp', 'reserved'], caseless=True))
 
 lease_statement = (
-    hardware | ends | set_statement | other_statement) + Suppress(';')
+    hardware | ends | set_statement | lone_statement | other_statement
+    ) + Suppress(';')
 lease_parser = (
     CaselessKeyword("lease") + ip("ip") +
     Suppress('{') +
