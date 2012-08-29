@@ -70,6 +70,7 @@ setup(
             ['contrib/preseeds_v2/commissioning',
              'contrib/preseeds_v2/enlist',
              'contrib/preseeds_v2/generic',
+             'contrib/preseeds_v2/enlist_userdata',
              'contrib/preseeds_v2/preseed_master']),
         ('/usr/sbin',
             ['scripts/maas-import-ephemerals',
