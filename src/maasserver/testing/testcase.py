@@ -25,6 +25,7 @@ from provisioningserver.testing.worker_cache import WorkerCacheFixture
 
 
 class TestCase(maastesting.djangotestcase.DjangoTestCase):
+    """:class:`TestCase` variant with the basics for maasserver testing."""
 
     def setUp(self):
         super(TestCase, self).setUp()
@@ -35,10 +36,15 @@ class TestCase(maastesting.djangotestcase.DjangoTestCase):
 
 class TestModelTestCase(TestCase,
                         maastesting.djangotestcase.TestModelTestCase):
-    pass
+    """:class:`TestCase` variant that lets you create testing models."""
 
 
 class LoggedInTestCase(TestCase):
+    """:class:`TestCase` variant with a logged-in web client.
+
+    :ivar client: Django http test client, logged in for MAAS access.
+    :ivar logged_in_user: User identity that `client` is authenticated for.
+    """
 
     def setUp(self):
         super(LoggedInTestCase, self).setUp()
@@ -53,6 +59,7 @@ class LoggedInTestCase(TestCase):
 
 
 class AdminLoggedInTestCase(LoggedInTestCase):
+    """:class:`LoggedInTestCase` variant that is logged in as an admin."""
 
     def setUp(self):
         super(AdminLoggedInTestCase, self).setUp()

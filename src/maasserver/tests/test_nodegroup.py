@@ -217,6 +217,7 @@ class TestNodeGroup(TestCase):
     def test_add_dhcp_host_maps_adds_maps_if_managing_dhcp(self):
         self.patch(Omshell, 'create', FakeMethod())
         nodegroup = factory.make_node_group()
+        self.patch(nodegroup, 'is_dhcp_enabled', FakeMethod(result=True))
         leases = factory.make_random_leases()
         nodegroup.add_dhcp_host_maps(leases)
         self.assertEqual(

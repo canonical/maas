@@ -105,12 +105,11 @@ class ConfigManager(Manager):
         :param value: The value of the config item to set.
         :type value: Any jsonizable object
         """
-        try:
-            existing = self.get(name=name)
-            existing.value = value
-            existing.save()
-        except Config.DoesNotExist:
-            self.create(name=name, value=value)
+        config, freshly_created = self.get_or_create(
+            name=name, defaults=dict(value=value))
+        if not freshly_created:
+            config.value = value
+            config.save()
 
     def config_changed_connect(self, config_name, method):
         """Connect a method to Django's 'update' signal for given config name.
