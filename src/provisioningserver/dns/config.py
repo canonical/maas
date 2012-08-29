@@ -55,9 +55,8 @@ def generate_rndc(port=953, key_name='rndc-maas-key'):
     part is commented out) the named configuration.
     """
     # Generate the configuration:
-    # - 256 bits is the recommanded size for the key nowadays;
-    # - Use the unlocked random source to make the executing
-    # non-blocking.
+    # - 256 bits is the recommended size for the key nowadays.
+    # - Use urandom to avoid blocking on the random generator.
     rndc_content = check_output(
         ['rndc-confgen', '-b', '256', '-r', '/dev/urandom',
          '-k', key_name, '-p', str(port)])
@@ -102,12 +101,11 @@ def setup_rndc():
 
 def execute_rndc_command(arguments):
     """Execute a rndc command."""
-    rndc_conf = os.path.join(
-        conf.DNS_CONFIG_DIR, MAAS_RNDC_CONF_NAME)
+    rndc_conf = os.path.join(conf.DNS_CONFIG_DIR, MAAS_RNDC_CONF_NAME)
     with open(os.devnull, "ab") as devnull:
         check_call(
-        ['rndc', '-c', rndc_conf] + map(str, arguments),
-        stdout=devnull)
+            ['rndc', '-c', rndc_conf] + map(str, arguments),
+            stdout=devnull)
 
 
 # Directory where the DNS configuration template files can be found.

@@ -117,9 +117,9 @@ class BINDServerResources(fixtures.Fixture):
     def set_up_named(self, overwrite_config=True):
         """Setup an environment to run 'named'.
 
-        - Create the default configuration for 'named' and setup rndc.
-        - Copies the 'named' executable inside homedir (to by-pass the
-        restrictions that apparmor imposes
+        - Create the default configuration for 'named' and set up rndc.
+        - Copies the 'named' executable inside homedir.  AppArmor won't
+          let us run the installed version the way we want.
         """
         # Generate rndc configuration (rndc config and named snippet).
         rndcconf, namedrndcconf = generate_rndc(
