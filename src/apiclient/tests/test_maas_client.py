@@ -28,7 +28,6 @@ from apiclient.maas_client import (
     )
 from maastesting.factory import factory
 from maastesting.testcase import TestCase
-from testtools.matchers import StartsWith
 
 
 class TestHelpers(TestCase):

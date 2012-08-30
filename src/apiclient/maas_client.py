@@ -18,10 +18,7 @@ __all__ = [
 
 from urllib import urlencode
 import urllib2
-from urlparse import (
-    urljoin,
-    urlparse,
-    )
+from urlparse import urlparse
 
 from apiclient.multipart import encode_multipart_data
 import oauth.oauth as oauth
