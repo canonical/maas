@@ -86,14 +86,7 @@ class TFTPBackend(FilesystemSynchronousBackend):
     re_config_file = re.compile(
         r'''
         # Optional leading slash(es).
-        ^/?
-        # Optional boot path prefix (separated from the rest by slash):
-        (?:
-            (?P<bootpath>
-                maas
-            )
-            /
-        )?
+        ^/*
         pxelinux[.]cfg    # PXELINUX expects this.
         /
         {htype:02x}    # ARP HTYPE.

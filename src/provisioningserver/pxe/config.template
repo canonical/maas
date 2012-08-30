@@ -2,7 +2,7 @@ DEFAULT execute
 
 LABEL execute
   SAY Booting under MAAS direction...
-  KERNEL {{kernel_params | kernel_path | relative}}
-  INITRD {{kernel_params | initrd_path | relative}}
+  KERNEL {{kernel_params | kernel_path }}
+  INITRD {{kernel_params | initrd_path }}
   APPEND {{kernel_params | kernel_command}}
   IPAPPEND 2

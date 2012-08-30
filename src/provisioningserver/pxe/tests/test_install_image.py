@@ -79,13 +79,13 @@ class TestInstallPXEImage(TestCase):
     def test_make_destination_follows_pxe_path_conventions(self):
         # The directory that make_destination returns follows the PXE
         # directory hierarchy specified for MAAS:
-        # /var/lib/tftproot/maas/<arch>/<subarch>/<release>/<purpose>
-        # (Where the /var/lib/tftproot/ part is configurable, so we
+        # /var/lib/maas/tftp/<arch>/<subarch>/<release>/<purpose>
+        # (Where the /var/lib/maas/tftp/ part is configurable, so we
         # can test this without overwriting system files).
         tftproot = self.make_dir()
         arch, subarch, release, purpose = make_arch_subarch_release_purpose()
         self.assertEqual(
-            os.path.join(tftproot, 'maas', arch, subarch, release, purpose),
+            os.path.join(tftproot, arch, subarch, release, purpose),
             make_destination(tftproot, arch, subarch, release, purpose))
 
     def test_make_destination_creates_directory_if_not_present(self):

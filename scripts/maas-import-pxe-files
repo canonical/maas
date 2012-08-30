@@ -6,7 +6,7 @@
 # pre-boot loader, kernels, and initrd images.
 #
 # This script downloads the required files into the TFTP home directory
-# (by default, /var/lib/tftpboot).  Run it with the necessarily privileges
+# (by default, /var/lib/maas/tftp).  Run it with the necessarily privileges
 # to write them there.
 
 # Exit immediately if a command exits with a non-zero status.
@@ -64,31 +64,15 @@ compose_installer_download_url() {
 }
 
 
-# Download the pre-boot loader, pxelinux.0, for architecture $1.  If
-# successful, install it for netboot use.  (Not all architectures need this
-# file, and there's rarely an urgent need for the very latest file, so if
-# the download fails this function just skips it.)
+# Copy the pre-boot loader pxelinux.0, and modules we need, from the
+# installed syslinux version.  Install it into the TFTP tree for
+# netbooting.
 update_pre_boot_loader() {
-    local arch=$1
-    local url=$(compose_installer_download_url $arch $CURRENT_RELEASE)
-    if ! $DOWNLOAD $url/pxelinux.0
-    then
-        echo "Could not download pre-boot loader for $arch; skipping."
-        return
-    fi
-
-    # If the file has changed, move it into place (replacing any previous
-    # version).  Otherwise, leave the filesystem alone.
-    if [ -f pxelinux.0 ]
-    then
-        # TODO: pxelinux.0 is downloaded but there's no reason why it can't
-        # come from the syslinux package like chain.c32 is.
-        maas-provision install-pxe-bootloader --loader='pxelinux.0'
+    for loader_file in pxelinux.0 chain.c32 ifcpu64.c32
+    do
         maas-provision install-pxe-bootloader \
-            --loader='/usr/lib/syslinux/chain.c32'
-        maas-provision install-pxe-bootloader \
-            --loader='/usr/lib/syslinux/ifcpu64.c32'
-    fi
+            --loader="/usr/lib/syslinux/$loader_file"
+    done
 }
 
 
@@ -122,14 +106,8 @@ import_install_images() {
     echo "Downloading to temporary location $DOWNLOAD_DIR."
     pushd -- $DOWNLOAD_DIR
 
-    # All files we create here are public.  The TFTP user will need to be
-    # able to read them.
-    umask a+r
-
     for arch in $ARCHES
     do
-        update_pre_boot_loader $arch
-
         for release in $RELEASES
         do
             update_install_files $arch $release
@@ -151,7 +129,11 @@ import_ephemeral_images() {
 
 
 main() {
+    # All files we create here are public.  The TFTP user will need to be
+    # able to read them.
+    umask a+r
 
+    update_pre_boot_loader
     import_install_images
     import_ephemeral_images
 }

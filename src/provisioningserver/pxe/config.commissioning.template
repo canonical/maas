@@ -6,14 +6,14 @@ LABEL execute
 
 LABEL amd64
   SAY Booting (amd64) under MAAS direction...
-  KERNEL {{kernel_params(arch="amd64") | kernel_path | relative}}
-  INITRD {{kernel_params(arch="amd64") | initrd_path | relative}}
+  KERNEL {{kernel_params(arch="amd64") | kernel_path }}
+  INITRD {{kernel_params(arch="amd64") | initrd_path }}
   APPEND {{kernel_params(arch="amd64") | kernel_command}}
   IPAPPEND 2
 
 LABEL i386
   SAY Booting (i386) under MAAS direction...
-  KERNEL {{kernel_params(arch="i386") | kernel_path | relative}}
-  INITRD {{kernel_params(arch="i386") | initrd_path | relative}}
+  KERNEL {{kernel_params(arch="i386") | kernel_path }}
+  INITRD {{kernel_params(arch="i386") | initrd_path }}
   APPEND {{kernel_params(arch="i386") | kernel_command}}
   IPAPPEND 2

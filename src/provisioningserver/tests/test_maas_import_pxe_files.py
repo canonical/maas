@@ -23,11 +23,7 @@ from maastesting.utils import (
     )
 from provisioningserver.pxe import tftppath
 from provisioningserver.testing.config import ConfigFixture
-from testtools.matchers import (
-    FileContains,
-    FileExists,
-    Not,
-    )
+from testtools.matchers import FileContains
 
 
 def read_file(path, name):
@@ -97,7 +93,7 @@ class TestImportPXEFiles(TestCase):
         archive = self.make_dir()
         download = compose_download_dir(archive, arch, release)
         os.makedirs(download)
-        for filename in ['initrd.gz', 'linux', 'pxelinux.0']:
+        for filename in ['initrd.gz', 'linux']:
             factory.make_file(download, filename)
         return archive
 
@@ -135,40 +131,27 @@ class TestImportPXEFiles(TestCase):
         with open(os.devnull, 'wb') as dev_null:
             check_call(script, env=env, stdout=dev_null)
 
-    def test_downloads_pre_boot_loader(self):
+    def test_procures_pre_boot_loader(self):
         arch = factory.make_name('arch')
         release = 'precise'
         archive = self.make_downloads(arch=arch, release=release)
         self.call_script(archive, self.tftproot, arch=arch, release=release)
         tftp_path = compose_tftp_bootloader_path(self.tftproot)
-        download_path = compose_download_dir(archive, arch, release)
-        expected_contents = read_file(download_path, 'pxelinux.0')
+        expected_contents = read_file('/usr/lib/syslinux', 'pxelinux.0')
         self.assertThat(tftp_path, FileContains(expected_contents))
-
-    def test_ignores_missing_pre_boot_loader(self):
-        arch = factory.make_name('arch')
-        release = 'precise'
-        archive = self.make_downloads(arch=arch, release=release)
-        download_path = compose_download_dir(archive, arch, release)
-        os.remove(os.path.join(download_path, 'pxelinux.0'))
-        self.call_script(archive, self.tftproot, arch=arch, release=release)
-        tftp_path = compose_tftp_bootloader_path(self.tftproot)
-        self.assertThat(tftp_path, Not(FileExists()))
 
     def test_updates_pre_boot_loader(self):
         arch = factory.make_name('arch')
         release = 'precise'
         tftp_path = compose_tftp_bootloader_path(self.tftproot)
-        os.makedirs(os.path.dirname(tftp_path))
         with open(tftp_path, 'w') as existing_file:
             existing_file.write(factory.getRandomString())
         archive = self.make_downloads(arch=arch, release=release)
         self.call_script(archive, self.tftproot, arch=arch, release=release)
-        download_path = compose_download_dir(archive, arch, release)
-        expected_contents = read_file(download_path, 'pxelinux.0')
+        expected_contents = read_file('/usr/lib/syslinux', 'pxelinux.0')
         self.assertThat(tftp_path, FileContains(expected_contents))
 
-    def test_downloads_install_image(self):
+    def test_procures_install_image(self):
         arch = factory.make_name('arch')
         release = 'precise'
         archive = self.make_downloads(arch=arch, release=release)

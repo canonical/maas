@@ -70,10 +70,7 @@ class TestTFTPBackendRegex(TestCase):
         The path is intended to match `re_config_file`, and the components are
         the expected groups from a match.
         """
-        components = {
-            "bootpath": b"maas",  # Static.
-            "mac": factory.getRandomMACAddress(b"-"),
-            }
+        components = {"mac": factory.getRandomMACAddress(b"-")}
         config_path = compose_config_path(components["mac"])
         return config_path, components
 
@@ -115,17 +112,17 @@ class TestTFTPBackendRegex(TestCase):
         mac = 'aa-bb-cc-dd-ee-ff'
         match = TFTPBackend.re_config_file.match('pxelinux.cfg/01-%s' % mac)
         self.assertIsNotNone(match)
-        self.assertEqual({'mac': mac, 'bootpath': None}, match.groupdict())
+        self.assertEqual({'mac': mac}, match.groupdict())
 
     def test_re_config_file_matches_pxelinux_cfg_with_leading_slash(self):
         mac = 'aa-bb-cc-dd-ee-ff'
         match = TFTPBackend.re_config_file.match('/pxelinux.cfg/01-%s' % mac)
         self.assertIsNotNone(match)
-        self.assertEqual({'mac': mac, 'bootpath': None}, match.groupdict())
+        self.assertEqual({'mac': mac}, match.groupdict())
 
     def test_re_config_file_does_not_match_non_config_file(self):
         self.assertIsNone(
-            TFTPBackend.re_config_file.match('maas/pxelinux.cfg/kernel'))
+            TFTPBackend.re_config_file.match('pxelinux.cfg/kernel'))
 
     def test_re_config_file_does_not_match_file_in_root(self):
         self.assertIsNone(
@@ -153,18 +150,16 @@ class TestTFTPBackend(TestCase):
     def test_get_generator_url(self):
         # get_generator_url() merges the parameters obtained from the request
         # file path (arch, subarch, name) into the configured generator URL.
-        bootpath = factory.make_name("bootpath")
         mac = factory.getRandomMACAddress(b"-")
         dummy = factory.make_name("dummy").encode("ascii")
         backend_url = b"http://example.com/?" + urlencode({b"dummy": dummy})
         backend = TFTPBackend(self.make_dir(), backend_url)
         # params is an example of the parameters obtained from a request.
-        params = {"bootpath": bootpath, "mac": mac}
+        params = {"mac": mac}
         generator_url = urlparse(backend.get_generator_url(params))
         self.assertEqual("example.com", generator_url.hostname)
         query = parse_qsl(generator_url.query)
         query_expected = [
-            ("bootpath", bootpath),
             ("dummy", dummy),
             ("mac", mac),
             ]
@@ -200,9 +195,7 @@ class TestTFTPBackend(TestCase):
 
         reader = yield backend.get_reader(config_path)
         output = reader.read(10000)
-        # The expected parameters include bootpath; this is extracted from the
-        # file path by re_config_file.
-        expected_params = dict(mac=mac, bootpath="maas")
+        expected_params = dict(mac=mac)
         observed_params = json.loads(output)
         self.assertEqual(expected_params, observed_params)
 
@@ -212,10 +205,7 @@ class TestTFTPBackend(TestCase):
         # `IReader` of a PXE configuration, rendered by `render_pxe_config`.
         backend = TFTPBackend(self.make_dir(), b"http://example.com/")
         # Fake configuration parameters, as discovered from the file path.
-        fake_params = {
-            "bootpath": "maas",
-            "mac": factory.getRandomMACAddress(b"-"),
-            }
+        fake_params = {"mac": factory.getRandomMACAddress(b"-")}
         # Fake kernel configuration parameters, as returned from the API call.
         fake_kernel_params = make_kernel_parameters()
 

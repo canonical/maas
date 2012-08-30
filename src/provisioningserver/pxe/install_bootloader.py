@@ -30,7 +30,7 @@ def make_destination(tftproot):
     """Locate a loader's destination, creating the directory if needed.
 
     :param tftproot: The root directory served up by the TFTP server,
-        e.g. /var/lib/tftpboot/.
+        e.g. /var/lib/maas/tftp/.
     :return: Full path describing the directory that the installed loader
         should end up having.
     """

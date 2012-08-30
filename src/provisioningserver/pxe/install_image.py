@@ -33,7 +33,7 @@ def make_destination(tftproot, arch, subarch, release, purpose):
     """Locate an image's destination.  Create containing directory if needed.
 
     :param tftproot: The root directory served up by the TFTP server,
-        e.g. /var/lib/tftpboot/.
+        e.g. /var/lib/maas/tftp/.
     :param arch: Main architecture to locate the destination for.
     :param subarch: Sub-architecture of the main architecture.
     :param release: OS release name, e.g. "precise".

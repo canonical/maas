@@ -21,7 +21,6 @@ from maastesting.factory import factory
 from maastesting.matchers import ContainsAll
 from maastesting.testcase import TestCase
 import mock
-import posixpath
 from provisioningserver import kernel_opts
 from provisioningserver.pxe import config
 from provisioningserver.pxe.config import render_pxe_config
@@ -150,9 +149,8 @@ class TestRenderPXEConfig(TestCase):
     def test_render(self):
         # Given the right configuration options, the PXE configuration is
         # correctly rendered.
-        bootpath = factory.make_name("bootpath")
         params = make_kernel_parameters()
-        output = render_pxe_config(bootpath=bootpath, kernel_params=params)
+        output = render_pxe_config(kernel_params=params)
         # The output is always a Unicode string.
         self.assertThat(output, IsInstance(unicode))
         # The template has rendered without error. PXELINUX configurations
@@ -162,7 +160,6 @@ class TestRenderPXEConfig(TestCase):
         image_dir = compose_image_path(
             arch=params.arch, subarch=params.subarch,
             release=params.release, purpose=params.purpose)
-        image_dir = posixpath.relpath(image_dir, bootpath)
         self.assertThat(
             output, MatchesAll(
                 MatchesRegex(
@@ -177,10 +174,7 @@ class TestRenderPXEConfig(TestCase):
 
     def test_render_with_extra_arguments_does_not_affect_output(self):
         # render_pxe_config() allows any keyword arguments as a safety valve.
-        options = {
-            "bootpath": factory.make_name("bootpath"),
-            "kernel_params": make_kernel_parameters(),
-            }
+        options = {"kernel_params": make_kernel_parameters()}
         # Capture the output before sprinking in some random options.
         output_before = render_pxe_config(**options)
         # Sprinkle some magic in.
@@ -196,7 +190,6 @@ class TestRenderPXEConfig(TestCase):
         # If purpose is "local", the config.localboot.template should be
         # used.
         options = {
-            "bootpath": factory.make_name("bootpath"),
             "kernel_params":
                 make_kernel_parameters()._replace(purpose="local"),
             }
@@ -207,7 +200,6 @@ class TestRenderPXEConfig(TestCase):
         # Intel i386 is a special case and needs to use the chain.c32
         # loader as the LOCALBOOT PXE directive is unreliable.
         options = {
-            "bootpath": factory.make_name("bootpath"),
             "kernel_params": make_kernel_parameters()._replace(
                 arch="i386", purpose="local"),
             }
@@ -219,7 +211,6 @@ class TestRenderPXEConfig(TestCase):
         # Intel amd64 is a special case and needs to use the chain.c32
         # loader as the LOCALBOOT PXE directive is unreliable.
         options = {
-            "bootpath": factory.make_name("bootpath"),
             "kernel_params": make_kernel_parameters()._replace(
                 arch="amd64", purpose="local"),
             }
@@ -233,7 +224,6 @@ class TestRenderPXEConfig(TestCase):
         get_ephemeral_name = self.patch(kernel_opts, "get_ephemeral_name")
         get_ephemeral_name.return_value = factory.make_name("ephemeral")
         options = {
-            "bootpath": factory.make_name("bootpath"),
             "kernel_params": make_kernel_parameters()._replace(
                 purpose="commissioning"),
             }
@@ -251,13 +241,14 @@ class TestRenderPXEConfig(TestCase):
             default_section["APPEND"].split())
         # Both "i386" and "amd64" sections exist.
         self.assertThat(config, ContainsAll(("i386", "amd64")))
-        # Each section defines KERNEL, INITRD, and APPEND settings, each
-        # containing paths referring to their architectures.
+        # Each section defines KERNEL, INITRD, and APPEND settings.  The
+        # KERNEL and INITRD ones contain paths referring to their
+        # architectures.
         for section_label in ("i386", "amd64"):
             section = config[section_label]
             self.assertThat(
                 section, ContainsAll(("KERNEL", "INITRD", "APPEND")))
-            contains_arch_path = Contains("/%s/" % section_label)
+            contains_arch_path = StartsWith("%s/" % section_label)
             self.assertThat(section["KERNEL"], contains_arch_path)
             self.assertThat(section["INITRD"], contains_arch_path)
-            self.assertThat(section["APPEND"], contains_arch_path)
+            self.assertIn("APPEND", section)

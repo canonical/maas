@@ -147,7 +147,7 @@ class TestConfig(TestCase):
         'tftp': {
             'generator': 'http://localhost/MAAS/api/1.0/pxeconfig/',
             'port': 69,
-            'root': "/var/lib/tftpboot",
+            'root': "/var/lib/maas/tftp",
             },
         }
 

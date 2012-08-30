@@ -29,7 +29,7 @@ def compose_bootloader_path():
     simulate PXELINUX and don't actually load `pxelinux.0`, but use its path
     to figure out where configuration files are located.
     """
-    return "maas/pxelinux.0"
+    return "pxelinux.0"
 
 
 # TODO: move this; it is now only used for testing.
@@ -48,7 +48,7 @@ def compose_config_path(mac):
     # Not using os.path.join: this is a TFTP path, not a native path. Yes, in
     # practice for us they're the same. We always assume that the ARP HTYPE
     # (hardware type) that PXELINUX sends is Ethernet.
-    return "maas/pxelinux.cfg/{htype:02x}-{mac}".format(
+    return "pxelinux.cfg/{htype:02x}-{mac}".format(
         htype=ARP_HTYPE.ETHERNET, mac=mac)
 
 
@@ -66,7 +66,7 @@ def compose_image_path(arch, subarch, release, purpose):
     :return: Path for the corresponding image directory (containing a
         kernel and initrd) as exposed over TFTP.
     """
-    return '/'.join(['maas', arch, subarch, release, purpose])
+    return '/'.join([arch, subarch, release, purpose])
 
 
 def locate_tftp_path(path, tftproot):

@@ -59,7 +59,7 @@ class ConfigTFTP(Schema):
 
     if_key_missing = None
 
-    root = String(if_missing="/var/lib/tftpboot")
+    root = String(if_missing="/var/lib/maas/tftp")
     port = Int(min=1, max=65535, if_missing=69)
     generator = String(if_missing=b"http://localhost/MAAS/api/1.0/pxeconfig/")
 

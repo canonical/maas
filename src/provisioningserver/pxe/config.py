@@ -23,7 +23,6 @@ __all__ = [
 from errno import ENOENT
 from os import path
 
-import posixpath
 from provisioningserver.kernel_opts import compose_kernel_command_line_new
 from provisioningserver.pxe.tftppath import compose_image_path
 import tempita
@@ -71,18 +70,14 @@ def get_pxe_template(purpose, arch, subarch):
             "No PXE template found in %r!" % template_dir)
 
 
-def render_pxe_config(bootpath, kernel_params, **extra):
+def render_pxe_config(kernel_params, **extra):
     """Render a PXE configuration file as a unicode string.
 
-    :param bootpath: The directory path of `pxelinux.0`.
     :param kernel_params: An instance of `KernelParameters`.
     :param extra: Allow for other arguments. This is a safety valve;
         parameters generated in another component (for example, see
         `TFTPBackend.get_config_reader`) won't cause this to break.
     """
-    if bootpath is None:
-        bootpath = ''
-
     template = get_pxe_template(
         kernel_params.purpose, kernel_params.arch,
         kernel_params.subarch)
@@ -95,24 +90,19 @@ def render_pxe_config(bootpath, kernel_params, **extra):
             params.arch, params.subarch,
             params.release, params.purpose)
 
-    def initrd(params):
+    def initrd_path(params):
         return "%s/initrd.gz" % image_dir(params)
 
-    def kernel(params):
+    def kernel_path(params):
         return "%s/linux" % image_dir(params)
 
     def kernel_command(params):
         return compose_kernel_command_line_new(params)
 
-    def relative(path):
-        # Return `path` relative to `bootpath`.
-        return posixpath.relpath(path, start=bootpath)
-
     namespace = {
-        "initrd_path": initrd,
+        "initrd_path": initrd_path,
         "kernel_command": kernel_command,
         "kernel_params": kernel_params,
-        "kernel_path": kernel,
-        "relative": relative,
+        "kernel_path": kernel_path,
         }
     return template.substitute(namespace)
