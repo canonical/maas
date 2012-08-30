@@ -14,7 +14,7 @@ __all__ = []
 
 from maasserver.dhcp import is_dhcp_management_enabled
 from maasserver.models import Config
-from maastesting.testcase import TestCase
+from maasserver.testing.testcase import TestCase
 
 
 class TestDHCPManagement(TestCase):

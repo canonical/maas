@@ -93,6 +93,7 @@ class TestDNSUtilities(TestCase):
         self.assertRaises(dns.DNSException, dns.get_dns_server_address)
 
     def test_get_zone_creates_DNSZoneConfig(self):
+        Config.objects.set_config('manage_dhcp', True)
         nodegroup = factory.make_node_group()
         serial = random.randint(1, 100)
         zone = dns.get_zone(nodegroup, serial)
@@ -123,6 +124,7 @@ class TestDNSConfigModifications(TestCase):
 
     def setUp(self):
         super(TestDNSConfigModifications, self).setUp()
+        Config.objects.set_config('manage_dhcp', True)
         self.bind = self.useFixture(BINDServer())
         self.patch(conf, 'DNS_CONFIG_DIR', self.bind.config.homedir)
 
