@@ -43,12 +43,14 @@ IMPORT_EPHEMERALS=${IMPORT_EPHEMERALS:-1}
 
 # show script usage/summary.
 show_usage() {
+    echo "Usage: ${0##*/}"
     echo
-    echo "Usage:  ${0##*/}"
-    echo "This helper script downloads the relevant boot images from ubuntu.com and uses"
-    echo "'maas' to provision them for PXE booting from tftp. "
-    echo "The script takes no arguments, but you can adjust some parameters by editing"
-    echo "the config file found at \033[1m$settings\033[0m."
+    echo "This helper script downloads the relevant boot images from an "
+    echo "Ubuntu archive and uses 'maas' to provision them for PXE booting "
+    echo "from TFTP."
+    echo
+    echo "This script takes no arguments, but you can adjust some parameters "
+    echo -e "by editing the config file found at \033[1m$settings\033[0m."
     echo
     echo "MAAS homepage:<http://maas.ubuntu.com>"
     echo
