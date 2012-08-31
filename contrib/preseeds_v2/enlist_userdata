@@ -8,7 +8,10 @@ misc_bucket:
    # we could obtain the interface that booted from the kernel cmdline
    # thanks to 'IPAPPEND' (http://www.syslinux.org/wiki/index.php/SYSLINUX)
    url="{{server_url}}"
-   maas-enlist --serverurl "$url" >/tmp/enlist.out
+   host=""
+   ip=$(ifconfig eth0 | awk '$1 == "inet" { sub("addr:","",$2); print $2; }') &&
+     [ -n "${ip}" ] && host=$(dig +short -x $ip)  && host=${host%.}
+   maas-enlist --serverurl "$url" ${host:+--hostname "${host}"} >/tmp/enlist.out
    if [ $? -eq 0 ]; then
       echo
       echo "=== $(date -R): successfully enlisted system to $host ==="
