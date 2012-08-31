@@ -126,7 +126,6 @@ class TestImportPXEFiles(TestCase):
             env['ARCHES'] = arch
         if release is not None:
             env['RELEASES'] = release
-            env['CURRENT_RELEASE'] = release
 
         with open(os.devnull, 'wb') as dev_null:
             check_call(script, env=env, stdout=dev_null)

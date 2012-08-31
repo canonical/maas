@@ -29,7 +29,6 @@ RELEASES=${RELEASES:-$SUPPORTED_RELEASES}
 
 # The current Ubuntu release.
 STABLE_RELEASE=$(distro-info --stable)
-CURRENT_RELEASE=${CURRENT_RELEASE:-$STABLE_RELEASE}
 
 # Supported architectures.
 ARCHES=${ARCHES:-amd64 i386}

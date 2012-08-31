@@ -12,7 +12,6 @@ The script reads a configuration file \fI/etc/maas/import_pxe_files\fP in
 order to determine:
  - ARCHIVE: Location of the Ubuntu download archive
  - RELEASES: Ubuntu releases to download
- - CURRENT_RELEASE: Most up-to-date Ubuntu release
  - ARCHES: Architectures for which images should be downloaded
 
 (To support development setups that run directly from a code branch, it will
@@ -20,9 +19,10 @@ also look for \fIetc/maas/import_pxe_files\fP relative to the current
 directory).
 
 The script uses \fBwget\fP(1) to download the kernel and initrd image for
-each architecture in ARCHES and each release in RELEASES.  It will also
-download the current pre-boot loader for each architecture in ARCHES that
-uses this loader.  It always uses the loader from CURRENT_RELEASE.
+each architecture in ARCHES and each release in RELEASES.  In addition it
+copies the Intel-architecture pre-boot loader \fBpxelinux.0\fP (plus some
+of its modules such as \fBchain.c32\fP) from its installed location in
+\fI/usr/lib/syslinux/\fP.
 
 These images are the minimum that's required to start installng a node.
 During installation, a node may download its packages over the network.
