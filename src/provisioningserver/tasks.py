@@ -308,7 +308,7 @@ def write_dhcp_config(**kwargs):
     :param **kwargs: Keyword args passed to dhcp.config.get_config()
     """
     output = config.get_config(**kwargs).encode("ascii")
-    atomic_write(output, DHCP_CONFIG_FILE)
+    atomic_write(output, DHCP_CONFIG_FILE, mode=0744)
     restart_dhcp_server()
 
 

@@ -151,7 +151,8 @@ class DNSConfigBase:
         template = self.get_template()
         kwargs.update(self.get_context())
         rendered = self.render_template(template, **kwargs)
-        atomic_write(rendered, self.target_path, overwrite=overwrite)
+        atomic_write(
+            rendered, self.target_path, overwrite=overwrite, mode=0744)
 
 
 class DNSConfig(DNSConfigBase):

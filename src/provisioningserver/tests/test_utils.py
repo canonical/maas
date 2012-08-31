@@ -18,6 +18,7 @@ from argparse import (
     )
 import os
 from random import randint
+import stat
 import StringIO
 from subprocess import CalledProcessError
 import sys
@@ -27,6 +28,7 @@ import types
 from maastesting.factory import factory
 from maastesting.fakemethod import FakeMethod
 from maastesting.testcase import TestCase
+from mock import Mock
 from provisioningserver.utils import (
     ActionScript,
     atomic_write,
@@ -39,6 +41,7 @@ from provisioningserver.utils import (
     ShellTemplate,
     )
 from testtools.matchers import FileContains
+from testtools.testcase import ExpectedException
 
 
 class TestSafe(TestCase):
@@ -77,17 +80,51 @@ class TestWriteAtomic(TestCase):
         atomic_write(content, filename, overwrite=False)
         self.assertThat(filename, FileContains(content))
 
-    def test_atomic_write_cleans_up_temp_file(self):
-        # If the writing of the file is skipped because overwrite is
-        # False and the file already exists, the temporary file which
-        # would have been used for the copy operation is removed.
-        content = factory.getRandomString()
-        random_content = factory.getRandomString()
-        filename = self.make_file(contents=random_content)
-        atomic_write(content, filename, overwrite=False)
+    def test_atomic_write_does_not_leak_temp_file_when_not_overwriting(self):
+        # If the file is not written because it already exists and
+        # overwriting was disabled, atomic_write does not leak its
+        # temporary file.
+        filename = self.make_file()
+        atomic_write(factory.getRandomString(), filename, overwrite=False)
         self.assertEqual(
             [os.path.basename(filename)],
             os.listdir(os.path.dirname(filename)))
+
+    def test_atomic_write_does_not_leak_temp_file_on_failure(self):
+        # If the overwrite fails, atomic_write does not leak its
+        # temporary file.
+        self.patch(os, 'rename', Mock(side_effect=OSError()))
+        filename = self.make_file()
+        with ExpectedException(OSError):
+            atomic_write(factory.getRandomString(), filename)
+        self.assertEqual(
+            [os.path.basename(filename)],
+            os.listdir(os.path.dirname(filename)))
+
+    def test_atomic_write_sets_permissions(self):
+        atomic_file = self.make_file()
+        # Pick an unusual mode that is also likely to fall outside our
+        # umask.  We want this mode set, not treated as advice that may
+        # be tightened up by umask later.
+        mode = 0323
+        atomic_write(factory.getRandomString(), atomic_file, mode=mode)
+        self.assertEqual(mode, stat.S_IMODE(os.stat(atomic_file).st_mode))
+
+    def test_atomic_write_sets_permissions_before_moving_into_place(self):
+
+        recorded_modes = []
+
+        def record_mode(source, dest):
+            """Stub for os.rename: get source file's access mode."""
+            recorded_modes.append(os.stat(source).st_mode)
+
+        self.patch(os, 'rename', Mock(side_effect=record_mode))
+        playground = self.make_dir()
+        atomic_file = os.path.join(playground, factory.make_name('atomic'))
+        mode = 0323
+        atomic_write(factory.getRandomString(), atomic_file, mode=mode)
+        [recorded_mode] = recorded_modes
+        self.assertEqual(mode, stat.S_IMODE(recorded_mode))
 
 
 class TestIncrementalWrite(TestCase):

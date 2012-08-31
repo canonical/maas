@@ -15,6 +15,7 @@ __all__ = []
 from datetime import datetime
 import os
 import random
+import stat
 from subprocess import CalledProcessError
 
 from apiclient.creds import convert_tuple_to_string
@@ -151,6 +152,21 @@ class TestDHCPTasks(PservTestCase):
             recorder.extract_args()[0][0],
             ContainsAll(args))
 
+    def make_dhcp_config_params(self):
+        """Fake up a dict of dhcp configuration parameters."""
+        param_names = [
+             'omapi_key',
+             'subnet',
+             'subnet_mask',
+             'next_server',
+             'broadcast_ip',
+             'dns_servers',
+             'router_ip',
+             'ip_range_low',
+             'ip_range_high',
+             ]
+        return {param: factory.getRandomString() for param in param_names}
+
     def test_upload_dhcp_leases(self):
         self.patch(
             leases, 'parse_leases_file',
@@ -210,17 +226,11 @@ class TestDHCPTasks(PservTestCase):
             ip, server_address, key)
 
     def test_write_dhcp_config_writes_config(self):
-        conf_file = self.make_file(contents=factory.getRandomString())
+        conf_file = self.make_file()
         self.patch(tasks, 'DHCP_CONFIG_FILE', conf_file)
         recorder = FakeMethod()
         self.patch(tasks, 'check_call', recorder)
-        param_names = [
-             'omapi_key', 'subnet', 'subnet_mask', 'next_server',
-             'broadcast_ip', 'dns_servers', 'router_ip', 'ip_range_low',
-             'ip_range_high',
-             ]
-        params = {param: factory.getRandomString() for param in param_names}
-        write_dhcp_config(**params)
+        write_dhcp_config(**self.make_dhcp_config_params())
         self.assertThat(
             conf_file,
             FileContains(
@@ -232,6 +242,15 @@ class TestDHCPTasks(PservTestCase):
         self.assertEqual(
             (1, (['sudo', 'service', 'isc-dhcp-server', 'restart'],)),
             (recorder.call_count, recorder.extract_args()[0]))
+
+    def test_write_dhcp_config_writes_world_readable_config(self):
+        self.patch(tasks, 'check_call', Mock())
+        conf_file = self.make_file()
+        self.patch(tasks, 'DHCP_CONFIG_FILE', conf_file)
+        write_dhcp_config(**self.make_dhcp_config_params())
+        self.assertEqual(
+            stat.S_IROTH,
+            os.stat(conf_file).st_mode & stat.S_IROTH)
 
     def test_restart_dhcp_server_sends_command(self):
         recorder = FakeMethod()

@@ -14,6 +14,7 @@ __all__ = []
 
 import os.path
 import random
+import stat
 
 from celery.conf import conf
 from maastesting.factory import factory
@@ -164,6 +165,15 @@ class TestDNSConfig(TestCase):
                         'zone.rev.0.168.192.in-addr.arpa',
                         MAAS_NAMED_RNDC_CONF_NAME,
                     ])))
+
+    def test_write_config_makes_config_world_readable(self):
+        target_dir = self.make_dir()
+        self.patch(DNSConfig, 'target_dir', target_dir)
+        DNSConfig().write_config()
+        config_file = os.path.join(target_dir, MAAS_NAMED_CONF_NAME)
+        self.assertEqual(
+            stat.S_IROTH,
+            os.stat(config_file).st_mode & stat.S_IROTH)
 
     def test_get_include_snippet_returns_snippet(self):
         target_dir = self.make_dir()

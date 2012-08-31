@@ -63,26 +63,34 @@ def _write_temp_file(content, filename):
     return temp_file
 
 
-def atomic_write(content, filename, overwrite=True):
-    """Write `content` into the file `filename` in an atomic fashion."""
-    # If not overwrite: use filelock to gain an exclusive access to the
-    # destination file.
-    if not overwrite:
-        lock = FileLock(filename)
-        # Acquire an exclusive lock on this file.
-        lock.acquire()
-        try:
-            if not os.path.isfile(filename):
-                temp_file = _write_temp_file(content, filename)
-                os.rename(temp_file, filename)
-        finally:
-            # Release the lock.
-            lock.release()
-    else:
-        # Rename the temporary file to `filename`, that operation is atomic on
-        # POSIX systems.
-        temp_file = _write_temp_file(content, filename)
-        os.rename(temp_file, filename)
+def atomic_write(content, filename, overwrite=True, mode=0600):
+    """Write `content` into the file `filename` in an atomic fashion.
+
+    This requires write permissions to the directory that `filename` is in.
+    It creates a temporary file in the same directory (so that it will be
+    on the same filesystem as the destination) and then renames it to
+    replace the original, if any.  Such a rename is atomic in POSIX.
+
+    :param overwrite: Overwrite `filename` if it already exists?  Default
+        is True.
+    :param mode: Access permissions for the file, if written.
+    """
+    temp_file = _write_temp_file(content, filename)
+    os.chmod(temp_file, mode)
+    try:
+        if overwrite:
+            os.rename(temp_file, filename)
+        else:
+            lock = FileLock(filename)
+            lock.acquire()
+            try:
+                if not os.path.isfile(filename):
+                    os.rename(temp_file, filename)
+            finally:
+                lock.release()
+    finally:
+        if os.path.isfile(temp_file):
+            os.remove(temp_file)
 
 
 def incremental_write(content, filename):
