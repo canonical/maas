@@ -1,3 +1,4 @@
+build-essential
 avahi-utils
 curl
 firefox
