@@ -68,13 +68,13 @@ class TestWriteAtomic(TestCase):
         content = factory.getRandomString()
         random_content = factory.getRandomString()
         filename = self.make_file(contents=random_content)
-        atomic_write(content, filename, False)
+        atomic_write(content, filename, overwrite=False)
         self.assertThat(filename, FileContains(random_content))
 
     def test_atomic_write_writes_file_if_no_file_present(self):
         filename = os.path.join(self.make_dir(), factory.getRandomString())
         content = factory.getRandomString()
-        atomic_write(content, filename, False)
+        atomic_write(content, filename, overwrite=False)
         self.assertThat(filename, FileContains(content))
 
     def test_atomic_write_cleans_up_temp_file(self):
@@ -84,7 +84,7 @@ class TestWriteAtomic(TestCase):
         content = factory.getRandomString()
         random_content = factory.getRandomString()
         filename = self.make_file(contents=random_content)
-        atomic_write(content, filename, False)
+        atomic_write(content, filename, overwrite=False)
         self.assertEqual(
             [os.path.basename(filename)],
             os.listdir(os.path.dirname(filename)))
