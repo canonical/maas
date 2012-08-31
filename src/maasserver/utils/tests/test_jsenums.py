@@ -14,6 +14,7 @@ __all__ = []
 
 from inspect import getsourcefile
 
+from maasserver.utils import map_enum
 from maasserver.utils.jsenums import (
     dump,
     footer,
@@ -21,7 +22,6 @@ from maasserver.utils.jsenums import (
     header,
     serialize_enum,
     )
-from maasserver.utils import map_enum
 from maastesting.testcase import TestCase
 
 

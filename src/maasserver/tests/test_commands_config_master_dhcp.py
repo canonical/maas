@@ -15,7 +15,6 @@ __all__ = []
 from optparse import OptionValueError
 
 from django.core.management import call_command
-from mock import Mock
 from maasserver.management.commands.config_master_dhcp import name_option
 from maasserver.models import (
     Config,
@@ -23,6 +22,7 @@ from maasserver.models import (
     )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
+from mock import Mock
 from provisioningserver import tasks
 from testtools.matchers import MatchesStructure
 

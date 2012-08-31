@@ -15,7 +15,10 @@ __metaclass__ = type
 import provisioningserver.dhcp.writer
 import provisioningserver.pxe.install_bootloader
 import provisioningserver.pxe.install_image
-from provisioningserver.utils import AtomicWriteScript, MainScript
+from provisioningserver.utils import (
+    AtomicWriteScript,
+    MainScript,
+    )
 
 
 main = MainScript(__doc__)

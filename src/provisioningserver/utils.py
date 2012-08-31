@@ -306,7 +306,7 @@ class MainScript(ActionScript):
 
 class AtomicWriteScript:
     """Wrap the atomic_write function turning it into an ActionScript.
-    
+
     To use:
     >>> main = MainScript(atomic_write.__doc__)
     >>> main.register("myscriptname", AtomicWriteScript)

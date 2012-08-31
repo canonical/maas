@@ -36,8 +36,8 @@ from mock import Mock
 import provisioningserver
 from provisioningserver.utils import (
     ActionScript,
-    AtomicWriteScript,
     atomic_write,
+    AtomicWriteScript,
     get_mtime,
     incremental_write,
     MainScript,

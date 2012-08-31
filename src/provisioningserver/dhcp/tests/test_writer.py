@@ -15,7 +15,10 @@ __all__ = []
 from argparse import ArgumentParser
 from io import BytesIO
 import os
-from subprocess import Popen, PIPE
+from subprocess import (
+    PIPE,
+    Popen,
+    )
 import sys
 
 from maastesting.matchers import ContainsAll

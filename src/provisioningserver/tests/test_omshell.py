@@ -12,12 +12,12 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
-from fixtures import TempDir
 import os
 from subprocess import CalledProcessError
 import tempfile
 from textwrap import dedent
 
+from fixtures import TempDir
 from maastesting.factory import factory
 from maastesting.fakemethod import FakeMethod
 from maastesting.testcase import TestCase
