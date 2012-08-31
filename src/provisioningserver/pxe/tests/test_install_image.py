@@ -34,6 +34,7 @@ from testtools.matchers import (
     FileExists,
     Not,
     )
+from twisted.python.filepath import FilePath
 
 
 def make_arch_subarch_release_purpose():
@@ -191,3 +192,20 @@ class TestInstallPXEImage(TestCase):
             FileContains(contents))
         self.assertThat('%s.old' % published_image, Not(DirExists()))
         self.assertThat('%s.new' % published_image, Not(DirExists()))
+
+    def test_install_dir_normalises_permissions(self):
+        # install_dir() normalises directory permissions to 0755 and file
+        # permissions to 0644.
+        target_dir = FilePath(self.make_dir())
+        new_dir = FilePath(self.make_dir())
+        new_dir.chmod(0700)
+        new_image = new_dir.child("image")
+        new_image.touch()
+        new_image.chmod(0600)
+        install_dir(new_dir.path, target_dir.path)
+        self.assertEqual(
+            "rwxr-xr-x",
+            target_dir.getPermissions().shorthand())
+        self.assertEqual(
+            "rw-r--r--",
+            target_dir.child("image").getPermissions().shorthand())

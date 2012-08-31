@@ -342,12 +342,6 @@ default-driver iscsi
 EOF
 fi
 
-
-# All files we create here are public.  The TFTP user will need to be
-# able to read them.
-umask a+r
-
-
 updates=0
 for release in $RELEASES; do
     for arch in $ARCHES; do
@@ -374,7 +368,6 @@ for release in $RELEASES; do
                 "$r_serial" "$r_arch" "$r_url" "$r_name" ||
                 fail "failed to prepare image for $release/$arch"
 
-            chmod -R a+rX "$wd"
             install_tftp_image "$wd" "$r_arch" "generic" "$r_release"
 
             target_name="${TARGET_NAME_PREFIX}${r_name}"

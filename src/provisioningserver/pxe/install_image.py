@@ -27,6 +27,7 @@ from provisioningserver.pxe.tftppath import (
     compose_image_path,
     locate_tftp_path,
     )
+from twisted.python.filepath import FilePath
 
 
 def make_destination(tftproot, arch, subarch, release, purpose):
@@ -103,6 +104,13 @@ def install_dir(new, old):
     # work happens outside the critical window so it shouldn't matter
     # much.
     copytree(new, '%s.new' % old)
+
+    # Normalise permissions.
+    for filepath in FilePath('%s.new' % old).walk():
+        if filepath.isdir():
+            filepath.chmod(0755)
+        else:
+            filepath.chmod(0644)
 
     # Start of critical window.
     if os.path.isdir(old):
