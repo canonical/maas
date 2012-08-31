@@ -302,3 +302,33 @@ class MainScript(ActionScript):
             "-c", "--config-file", metavar="FILENAME",
             help="Configuration file to load [%(default)s].",
             default=Config.DEFAULT_FILENAME)
+
+
+class AtomicWriteScript:
+    """Wrap the atomic_write function turning it into an ActionScript.
+    
+    To use:
+    >>> main = MainScript(atomic_write.__doc__)
+    >>> main.register("myscriptname", AtomicWriteScript)
+    >>> main()
+    """
+
+    @staticmethod
+    def add_arguments(parser):
+        """Initialise options for writing files atomically.
+
+        :param parser: An instance of :class:`ArgumentParser`.
+        """
+        parser.add_argument(
+            "--no-overwrite", action="store_true", required=False,
+            default=False, help="Don't overwrite file if it exists")
+        parser.add_argument(
+            "--filename", action="store", required=True, help=(
+            "The name of the file in which to store contents of stdin"))
+
+    @staticmethod
+    def run(args):
+        """Take content from stdin and write it atomically to a file."""
+        content = sys.stdin.read()
+        atomic_write(
+            content, args.filename, overwrite=not args.no_overwrite)

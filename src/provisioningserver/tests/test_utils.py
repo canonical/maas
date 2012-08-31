@@ -20,7 +20,11 @@ import os
 from random import randint
 import stat
 import StringIO
-from subprocess import CalledProcessError
+from subprocess import (
+    CalledProcessError,
+    PIPE,
+    Popen,
+    )
 import sys
 import time
 import types
@@ -29,8 +33,10 @@ from maastesting.factory import factory
 from maastesting.fakemethod import FakeMethod
 from maastesting.testcase import TestCase
 from mock import Mock
+import provisioningserver
 from provisioningserver.utils import (
     ActionScript,
+    AtomicWriteScript,
     atomic_write,
     get_mtime,
     incremental_write,
@@ -40,7 +46,10 @@ from provisioningserver.utils import (
     Safe,
     ShellTemplate,
     )
-from testtools.matchers import FileContains
+from testtools.matchers import (
+    FileContains,
+    MatchesStructure,
+    )
 from testtools.testcase import ExpectedException
 
 
@@ -390,3 +399,66 @@ class TestMainScript(TestActionScript):
         self.assertEqual(
             {"config_file": dummy_config_file, "handler": handler},
             vars(namespace))
+
+
+class TestAtomicWriteScript(TestCase):
+
+    def setUp(self):
+        super(TestAtomicWriteScript, self).setUp()
+        # Silence ArgumentParser.
+        self.patch(sys, "stdout", StringIO.StringIO())
+        self.patch(sys, "stderr", StringIO.StringIO())
+
+    def get_parser(self):
+        parser = ArgumentParser()
+        AtomicWriteScript.add_arguments(parser)
+        return parser
+
+    def test_arg_setup(self):
+        parser = self.get_parser()
+        filename = factory.getRandomString()
+        args = parser.parse_args((
+            '--no-overwrite',
+            '--filename', filename))
+        self.assertThat(
+            args, MatchesStructure.byEquality(
+                no_overwrite=True,
+                filename=filename))
+
+    def test_filename_arg_required(self):
+        parser = self.get_parser()
+        self.assertRaises(SystemExit, parser.parse_args, ('--no-overwrite',))
+
+    def test_no_overwrite_defaults_to_false(self):
+        parser = self.get_parser()
+        filename = factory.getRandomString()
+        args = parser.parse_args(('--filename', filename))
+        self.assertFalse(args.no_overwrite)
+
+    def test_script_executable(self):
+        dev_root = os.path.join(
+            os.path.dirname(provisioningserver.__file__),
+            os.pardir, os.pardir)
+        content = factory.getRandomString()
+        test_data_file = self.make_file(contents=content)
+        script = ["%s/bin/maas-provision" % dev_root, 'atomic_write']
+        target_file = self.make_file()
+        script.extend(('--filename', target_file))
+        with open(test_data_file, "rb") as stdin:
+            cmd = Popen(
+                script, stdin=stdin, stdout=PIPE,
+                env=dict(PYTHONPATH=":".join(sys.path)))
+            cmd.communicate()
+        self.assertThat(target_file, FileContains(content))
+
+    def test_passes_overwrite_flag(self):
+        content = factory.getRandomString()
+        self.patch(sys, "stdin", StringIO.StringIO(content))
+        parser = self.get_parser()
+        filename = factory.getRandomString()
+        args = parser.parse_args(('--filename', filename, '--no-overwrite'))
+        mock = Mock()
+        self.patch(provisioningserver.utils, 'atomic_write', mock)
+        AtomicWriteScript.run(args)
+
+        mock.assert_called_once_with(content, filename, overwrite=False)

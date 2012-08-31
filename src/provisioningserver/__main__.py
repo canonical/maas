@@ -15,7 +15,7 @@ __metaclass__ = type
 import provisioningserver.dhcp.writer
 import provisioningserver.pxe.install_bootloader
 import provisioningserver.pxe.install_image
-from provisioningserver.utils import MainScript
+from provisioningserver.utils import AtomicWriteScript, MainScript
 
 
 main = MainScript(__doc__)
@@ -28,4 +28,7 @@ main.register(
 main.register(
     "generate-dhcp-config",
     provisioningserver.dhcp.writer)
+main.register(
+    "atomic_write",
+    AtomicWriteScript)
 main()
