@@ -26,6 +26,7 @@ from subprocess import (
     Popen,
     )
 import sys
+import tempfile
 import time
 import types
 
@@ -134,6 +135,31 @@ class TestWriteAtomic(TestCase):
         atomic_write(factory.getRandomString(), atomic_file, mode=mode)
         [recorded_mode] = recorded_modes
         self.assertEqual(mode, stat.S_IMODE(recorded_mode))
+
+    def test_atomic_write_sets_OSError_filename_if_undefined(self):
+        # When the filename attribute of an OSError is undefined when
+        # attempting to create a temporary file, atomic_write fills it in with
+        # a representative filename, similar to the specification required by
+        # mktemp(1).
+        mock_mkstemp = self.patch(tempfile, "mkstemp")
+        mock_mkstemp.side_effect = OSError()
+        filename = os.path.join("directory", "basename")
+        error = self.assertRaises(OSError, atomic_write, "content", filename)
+        self.assertEqual(
+            os.path.join("directory", ".basename.XXXXXX.tmp"),
+            error.filename)
+
+    def test_atomic_write_does_not_set_OSError_filename_if_defined(self):
+        # When the filename attribute of an OSError is defined when attempting
+        # to create a temporary file, atomic_write leaves it alone.
+        mock_mkstemp = self.patch(tempfile, "mkstemp")
+        mock_mkstemp.side_effect = OSError()
+        mock_mkstemp.side_effect.filename = factory.make_name("filename")
+        filename = os.path.join("directory", "basename")
+        error = self.assertRaises(OSError, atomic_write, "content", filename)
+        self.assertEqual(
+            mock_mkstemp.side_effect.filename,
+            error.filename)
 
 
 class TestIncrementalWrite(TestCase):
