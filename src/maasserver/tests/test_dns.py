@@ -25,10 +25,7 @@ from maasserver import (
     server_address,
     )
 from maasserver.models import Config
-from maasserver.models.dhcplease import (
-    DHCPLease,
-    post_updates,
-    )
+from maasserver.models.dhcplease import DHCPLease
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
 from maastesting.bindfixture import BINDServer
@@ -154,9 +151,8 @@ class TestDNSConfigModifications(TestCase):
         lease = factory.make_dhcp_lease(
             nodegroup=nodegroup, mac=mac.mac_address, ip=lease_ip)
         # Simulate that this lease was created by
-        # DHCPLease.objects.update_leases: fire the 'post_updates'
-        # signal.
-        post_updates.send(sender=DHCPLease.objects)
+        # DHCPLease.objects.update_leases: update its DNS config.
+        dns.change_dns_zones([nodegroup])
         return nodegroup, node, lease
 
     def dig_resolve(self, fqdn):

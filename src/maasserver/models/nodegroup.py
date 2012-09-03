@@ -141,6 +141,9 @@ class NodeGroup(TimestampedModel):
     ip_range_high = IPAddressField(
         editable=True, unique=True, blank=True, null=True, default='')
 
+    def __repr__(self):
+        return "<NodeGroup %r>" % self.name
+
     def set_up_dhcp(self):
         """Write the DHCP configuration file and restart the DHCP server."""
         # Circular imports.

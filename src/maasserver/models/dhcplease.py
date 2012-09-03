@@ -12,7 +12,6 @@ from __future__ import (
 __metaclass__ = type
 __all__ = [
     'DHCPLease',
-    'post_updates'
     ]
 
 
@@ -23,13 +22,9 @@ from django.db.models import (
     Manager,
     Model,
     )
-from django.dispatch import Signal
 from maasserver import DefaultMeta
 from maasserver.fields import MACAddressField
 from maasserver.models.cleansave import CleanSave
-
-# A signal indicating that the record of leases has changed.
-post_updates = Signal()
 
 
 class DHCPLeaseManager(Manager):
@@ -102,9 +97,13 @@ class DHCPLeaseManager(Manager):
             deleted.
         :return: Iterable of IP addresses that were newly leased.
         """
+        # Avoid circular imports.
+        from maasserver import dns
+
         self._delete_obsolete_leases(nodegroup, leases)
         new_leases = self._add_missing_leases(nodegroup, leases)
-        post_updates.send(sender=self)
+        if len(new_leases) > 0:
+            dns.change_dns_zones([nodegroup])
         return new_leases
 
     def get_hostname_ip_mapping(self, nodegroup):

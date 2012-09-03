@@ -22,7 +22,6 @@ import stat
 import StringIO
 from subprocess import (
     CalledProcessError,
-    PIPE,
     Popen,
     )
 import sys
