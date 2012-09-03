@@ -38,6 +38,7 @@ def make_master_constants():
 def make_dhcp_settings():
     """Return an arbitrary dict of DHCP settings."""
     return {
+        'dhcp_interface': factory.make_name('interface'),
         'subnet_mask': '255.255.0.0',
         'broadcast_ip': '10.111.255.255',
         'router_ip': factory.getRandomIPAddress(),
