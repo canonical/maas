@@ -175,6 +175,12 @@ class TestIncrementalWrite(TestCase):
         self.assertAlmostEqual(
             os.stat(filename).st_mtime, old_mtime + 1, delta=0.01)
 
+    def test_incremental_write_sets_permissions(self):
+        atomic_file = self.make_file()
+        mode = 0323
+        incremental_write(factory.getRandomString(), atomic_file, mode=mode)
+        self.assertEqual(mode, stat.S_IMODE(os.stat(atomic_file).st_mode))
+
 
 class TestGetMTime(TestCase):
     """Test `get_mtime`."""

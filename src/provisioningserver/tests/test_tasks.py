@@ -15,7 +15,6 @@ __all__ = []
 from datetime import datetime
 import os
 import random
-import stat
 from subprocess import CalledProcessError
 
 from apiclient.creds import convert_tuple_to_string
@@ -68,6 +67,7 @@ from testtools.matchers import (
     FileExists,
     MatchesListwise,
     )
+from twisted.python.filepath import FilePath
 
 # An arbitrary MAC address.  Not using a properly random one here since
 # we might accidentally affect real machines on the network.
@@ -248,9 +248,8 @@ class TestDHCPTasks(PservTestCase):
         conf_file = self.make_file()
         self.patch(tasks, 'DHCP_CONFIG_FILE', conf_file)
         write_dhcp_config(**self.make_dhcp_config_params())
-        self.assertEqual(
-            stat.S_IROTH,
-            os.stat(conf_file).st_mode & stat.S_IROTH)
+        config_file = FilePath(conf_file)
+        self.assertTrue(config_file.getPermissions().other.read)
 
     def test_restart_dhcp_server_sends_command(self):
         recorder = FakeMethod()

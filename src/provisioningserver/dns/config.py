@@ -128,6 +128,11 @@ class DNSConfigBase:
         return TEMPLATES_PATH
 
     @property
+    def access_permissions(self):
+        """The access permissions for the config file."""
+        return 0644
+
+    @property
     def target_dir(self):
         return conf.DNS_CONFIG_DIR
 
@@ -152,7 +157,8 @@ class DNSConfigBase:
         kwargs.update(self.get_context())
         rendered = self.render_template(template, **kwargs)
         atomic_write(
-            rendered, self.target_path, overwrite=overwrite, mode=0744)
+            rendered, self.target_path, overwrite=overwrite,
+            mode=self.access_permissions)
 
 
 class DNSConfig(DNSConfigBase):
@@ -322,11 +328,13 @@ class DNSZoneConfig(DNSConfig):
         template = self.get_template()
         kwargs.update(self.get_context())
         rendered = self.render_template(template, **kwargs)
-        incremental_write(rendered, self.target_path)
+        incremental_write(
+            rendered, self.target_path, mode=self.access_permissions)
 
     def write_reverse_config(self, **kwargs):
         """Write out the DNS reverse config file for this zone."""
         template = self.get_template()
         kwargs.update(self.get_reverse_context())
         rendered = self.render_template(template, **kwargs)
-        incremental_write(rendered, self.target_reverse_path)
+        incremental_write(
+            rendered, self.target_reverse_path, mode=self.access_permissions)

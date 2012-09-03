@@ -101,12 +101,14 @@ def atomic_write(content, filename, overwrite=True, mode=0600):
             os.remove(temp_file)
 
 
-def incremental_write(content, filename):
+def incremental_write(content, filename, mode=0600):
     """Write the given `content` into the file `filename` and
     increment the modification time by 1 sec.
+
+    :param mode: Access permissions for the file.
     """
     old_mtime = get_mtime(filename)
-    atomic_write(content, filename)
+    atomic_write(content, filename, mode=mode)
     new_mtime = pick_new_mtime(old_mtime)
     os.utime(filename, (new_mtime, new_mtime))
 

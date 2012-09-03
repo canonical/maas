@@ -14,7 +14,6 @@ __all__ = []
 
 import os.path
 import random
-import stat
 
 from celery.conf import conf
 from maastesting.factory import factory
@@ -50,6 +49,7 @@ from testtools.matchers import (
     MatchesStructure,
     StartsWith,
     )
+from twisted.python.filepath import FilePath
 
 
 class TestRNDCUtilities(TestCase):
@@ -170,10 +170,8 @@ class TestDNSConfig(TestCase):
         target_dir = self.make_dir()
         self.patch(DNSConfig, 'target_dir', target_dir)
         DNSConfig().write_config()
-        config_file = os.path.join(target_dir, MAAS_NAMED_CONF_NAME)
-        self.assertEqual(
-            stat.S_IROTH,
-            os.stat(config_file).st_mode & stat.S_IROTH)
+        config_file = FilePath(os.path.join(target_dir, MAAS_NAMED_CONF_NAME))
+        self.assertTrue(config_file.getPermissions().other.read)
 
     def test_get_include_snippet_returns_snippet(self):
         target_dir = self.make_dir()
@@ -382,3 +380,23 @@ class TestDNSZoneConfig(TestCase):
                 )
             )
         )
+
+    def test_DNSZoneConfig_config_file_is_world_readable(self):
+        self.patch(DNSConfig, 'target_dir', self.make_dir())
+        dns_zone_config = DNSZoneConfig(
+            factory.getRandomString(), serial=random.randint(1, 100),
+            dns_ip=factory.getRandomIPAddress(),
+            **network_infos(factory.getRandomNetwork()))
+        dns_zone_config.write_config()
+        filepath = FilePath(dns_zone_config.target_path)
+        self.assertTrue(filepath.getPermissions().other.read)
+
+    def test_DNSZoneConfig_reverse_config_file_is_world_readable(self):
+        self.patch(DNSConfig, 'target_dir', self.make_dir())
+        dns_zone_config = DNSZoneConfig(
+            factory.getRandomString(), serial=random.randint(1, 100),
+            dns_ip=factory.getRandomIPAddress(),
+            **network_infos(factory.getRandomNetwork()))
+        dns_zone_config.write_reverse_config()
+        filepath = FilePath(dns_zone_config.target_reverse_path)
+        self.assertTrue(filepath.getPermissions().other.read)
