@@ -45,7 +45,7 @@ class NodeGroupManager(Manager):
 
     def new(self, name, worker_ip, subnet_mask=None, broadcast_ip=None,
             router_ip=None, ip_range_low=None, ip_range_high=None,
-            dhcp_key=''):
+            dhcp_key='', dhcp_interface=''):
         """Create a :class:`NodeGroup` with the given parameters.
 
         This method will generate API credentials for the nodegroup's
@@ -56,6 +56,7 @@ class NodeGroupManager(Manager):
         from maasserver.worker_user import get_worker_user
 
         dhcp_values = [
+            dhcp_interface,
             subnet_mask,
             broadcast_ip,
             router_ip,
@@ -70,7 +71,8 @@ class NodeGroupManager(Manager):
             name=name, worker_ip=worker_ip, subnet_mask=subnet_mask,
             broadcast_ip=broadcast_ip, router_ip=router_ip,
             ip_range_low=ip_range_low, ip_range_high=ip_range_high,
-            api_token=api_token, api_key=api_token.key, dhcp_key=dhcp_key)
+            api_token=api_token, api_key=api_token.key, dhcp_key=dhcp_key,
+            dhcp_interface=dhcp_interface)
         nodegroup.save()
         return nodegroup
 
@@ -124,6 +126,9 @@ class NodeGroup(TimestampedModel):
 
     # DHCP server settings.
     dhcp_key = CharField(
+        blank=True, editable=False, max_length=255, default='')
+    # Network interface to serve DHCP on.
+    dhcp_interface = CharField(
         blank=True, editable=False, max_length=255, default='')
     subnet_mask = IPAddressField(
         editable=True, unique=False, blank=True, null=True, default='')

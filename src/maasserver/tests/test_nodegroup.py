@@ -39,6 +39,7 @@ from testtools.matchers import (
 def make_dhcp_settings():
     """Create a dict of arbitrary nodegroup configuration parameters."""
     return {
+        'dhcp_interface': factory.make_name('interface'),
         'subnet_mask': '255.0.0.0',
         'broadcast_ip': '10.255.255.255',
         'router_ip': factory.getRandomIPAddress(),
