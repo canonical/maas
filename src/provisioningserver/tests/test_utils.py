@@ -467,12 +467,12 @@ class TestAtomicWriteScript(TestCase):
             os.pardir, os.pardir)
         content = factory.getRandomString()
         test_data_file = self.make_file(contents=content)
-        script = ["%s/bin/maas-provision" % dev_root, 'atomic_write']
+        script = ["%s/bin/maas-provision" % dev_root, 'atomic-write']
         target_file = self.make_file()
         script.extend(('--filename', target_file))
         with open(test_data_file, "rb") as stdin:
             cmd = Popen(
-                script, stdin=stdin, stdout=PIPE,
+                script, stdin=stdin,
                 env=dict(PYTHONPATH=":".join(sys.path)))
             cmd.communicate()
         self.assertThat(target_file, FileContains(content))
@@ -483,8 +483,9 @@ class TestAtomicWriteScript(TestCase):
         parser = self.get_parser()
         filename = factory.getRandomString()
         args = parser.parse_args(('--filename', filename, '--no-overwrite'))
-        mock = Mock()
-        self.patch(provisioningserver.utils, 'atomic_write', mock)
+        mocked_atomic_write = self.patch(
+            provisioningserver.utils, 'atomic_write')
         AtomicWriteScript.run(args)
 
-        mock.assert_called_once_with(content, filename, overwrite=False)
+        mocked_atomic_write.assert_called_once_with(
+            content, filename, overwrite=False)
