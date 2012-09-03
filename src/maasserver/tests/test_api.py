@@ -2515,7 +2515,6 @@ class TestNodeGroupAPI(APITestCase):
             {
                 'op': 'update_leases',
                 'leases': json.dumps(new_leases),
-                'new_leases': json.dumps(new_leases.keys()),
             })
         self.assertEqual(
             (httplib.OK, "Leases updated."),
@@ -2525,6 +2524,7 @@ class TestNodeGroupAPI(APITestCase):
             Omshell.create.extract_args())
 
     def test_update_leases_does_not_add_old_leases(self):
+        self.patch(Omshell, 'create')
         enable_dhcp_management()
         nodegroup = factory.make_node_group()
         client = make_worker_client(nodegroup)
@@ -2534,7 +2534,6 @@ class TestNodeGroupAPI(APITestCase):
             {
                 'op': 'update_leases',
                 'leases': json.dumps(factory.make_random_leases()),
-                'new_leases': json.dumps([]),
             })
         self.assertEqual(
             (httplib.OK, "Leases updated."),

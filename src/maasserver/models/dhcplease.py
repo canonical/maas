@@ -71,6 +71,8 @@ class DHCPLeaseManager(Manager):
         `nodegroup` has a DHCPLease with the same `ip` field.  There
         can't be any DHCPLease entries with the same `ip` as in `leases`
         but a different `mac`.
+
+        :return: Iterable of newly-leased IP addresses.
         """
         leased_ips = self._get_leased_ips(nodegroup)
         new_leases = tuple(
@@ -84,6 +86,7 @@ class DHCPLeaseManager(Manager):
                 INSERT INTO maasserver_dhcplease (nodegroup_id, ip, mac)
                 VALUES %s
                 """ % new_tuples)
+        return [ip for nodegroup_id, ip, mac in new_leases]
 
     def update_leases(self, nodegroup, leases):
         """Refresh our knowledge of a node group's IP mappings.
@@ -97,10 +100,12 @@ class DHCPLeaseManager(Manager):
             addresses, values are MAC addresses.  Any :class:`DHCPLease`
             entries for `nodegroup` that are not in `leases` will be
             deleted.
+        :return: Iterable of IP addresses that were newly leased.
         """
         self._delete_obsolete_leases(nodegroup, leases)
-        self._add_missing_leases(nodegroup, leases)
+        new_leases = self._add_missing_leases(nodegroup, leases)
         post_updates.send(sender=self)
+        return new_leases
 
     def get_hostname_ip_mapping(self, nodegroup):
         """Return a mapping {hostnames -> ips} for the currently leased
