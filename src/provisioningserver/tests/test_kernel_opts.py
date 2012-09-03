@@ -29,6 +29,10 @@ from provisioningserver.kernel_opts import (
     )
 from provisioningserver.pxe.tftppath import compose_image_path
 from provisioningserver.testing.config import ConfigFixture
+from testtools.matchers import (
+    Contains,
+    Not,
+    )
 
 
 def make_kernel_parameters():
@@ -170,3 +174,17 @@ class TestKernelOpts(TestCase):
         self.assertEqual(
             "auto url=%s" % dummy_preseed_url,
             compose_preseed_opt(dummy_preseed_url))
+
+    def test_compose_kernel_command_line_inc_arm_specific_option(self):
+        params = make_kernel_parameters()
+        params = params._replace(arch="armhf", subarch="highbank")
+        self.assertThat(
+            compose_kernel_command_line_new(params),
+            Contains("console=ttyAMA0"))
+
+    def test_compose_kernel_command_line_not_inc_arm_specific_option(self):
+        params = make_kernel_parameters()
+        params = params._replace(arch="i386")
+        self.assertThat(
+            compose_kernel_command_line_new(params),
+            Not(Contains("console=ttyAMA0")))
