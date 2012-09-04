@@ -18,6 +18,7 @@ import random
 from subprocess import CalledProcessError
 
 from apiclient.creds import convert_tuple_to_string
+from celeryconfig import DHCP_CONFIG_FILE
 from maastesting.celery import CeleryFixture
 from maastesting.factory import factory
 from maastesting.fakemethod import (
@@ -32,7 +33,10 @@ from provisioningserver import (
     cache,
     tasks,
     )
-from provisioningserver.dhcp import leases
+from provisioningserver.dhcp import (
+    config,
+    leases,
+    )
 from provisioningserver.dns.config import (
     conf,
     DNSZoneConfig,
@@ -63,11 +67,9 @@ from provisioningserver.testing.testcase import PservTestCase
 from testresources import FixtureResource
 from testtools.matchers import (
     Equals,
-    FileContains,
     FileExists,
     MatchesListwise,
     )
-from twisted.python.filepath import FilePath
 
 # An arbitrary MAC address.  Not using a properly random one here since
 # we might accidentally affect real machines on the network.
@@ -225,31 +227,31 @@ class TestDHCPTasks(PservTestCase):
             CalledProcessError, remove_dhcp_host_map.delay,
             ip, server_address, key)
 
-    def test_write_dhcp_config_writes_config(self):
-        conf_file = self.make_file()
-        self.patch(tasks, 'DHCP_CONFIG_FILE', conf_file)
-        recorder = FakeMethod()
-        self.patch(tasks, 'check_call', recorder)
-        write_dhcp_config(**self.make_dhcp_config_params())
-        self.assertThat(
-            conf_file,
-            FileContains(
-                matcher=ContainsAll(
-                    [
-                        "next-server ",
-                        "option subnet-mask",
-                    ])))
-        self.assertEqual(
-            (1, (['sudo', 'service', 'isc-dhcp-server', 'restart'],)),
-            (recorder.call_count, recorder.extract_args()[0]))
+    def test_write_dhcp_config_invokes_script_correctly(self):
+        mocked_proc = Mock()
+        mocked_popen = self.patch(
+            tasks, "Popen", Mock(return_value=mocked_proc))
+        mocked_check_call = self.patch(tasks, "check_call")
 
-    def test_write_dhcp_config_writes_world_readable_config(self):
-        self.patch(tasks, 'check_call', Mock())
-        conf_file = self.make_file()
-        self.patch(tasks, 'DHCP_CONFIG_FILE', conf_file)
-        write_dhcp_config(**self.make_dhcp_config_params())
-        config_file = FilePath(conf_file)
-        self.assertTrue(config_file.getPermissions().other.read)
+        config_params = self.make_dhcp_config_params()
+        write_dhcp_config(**config_params)
+
+        # It should construct Popen with the right parameters.
+        popen_args = mocked_popen.call_args[0][0]
+        self.assertEqual(
+            popen_args,
+            ["sudo", "maas-provision", "atomic-write", "--filename",
+            DHCP_CONFIG_FILE, "--mode", "744"])
+
+        # It should then pass the content to communicate().
+        content = config.get_config(**config_params).encode("ascii")
+        mocked_proc.communicate.assert_called_once_with(content)
+
+        # Finally it should restart the dhcp server.
+        check_call_args = mocked_check_call.call_args
+        self.assertEqual(
+            check_call_args[0][0],
+            ['sudo', 'service', 'isc-dhcp-server', 'restart'])
 
     def test_restart_dhcp_server_sends_command(self):
         recorder = FakeMethod()

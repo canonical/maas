@@ -12,6 +12,8 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
+import maasserver
+from maasserver.dns import get_dns_server_address
 from maasserver.models import (
     Config,
     NodeGroup,
@@ -22,15 +24,12 @@ from maasserver.testing.testcase import TestCase
 from maasserver.worker_user import get_worker_user
 from maastesting.celery import CeleryFixture
 from maastesting.fakemethod import FakeMethod
-from maastesting.matchers import ContainsAll
-from provisioningserver import tasks
 from provisioningserver.omshell import (
     generate_omapi_key,
     Omshell,
     )
 from testresources import FixtureResource
 from testtools.matchers import (
-    FileContains,
     GreaterThan,
     MatchesStructure,
     )
@@ -191,29 +190,24 @@ class TestNodeGroup(TestCase):
                 if nodegroup.is_dhcp_enabled()])
 
     def test_set_up_dhcp_writes_dhcp_config(self):
-        conf_file = self.make_file(contents=factory.getRandomString())
-        self.patch(tasks, 'DHCP_CONFIG_FILE', conf_file)
-        # Silence dhcpd restart.
-        self.patch(tasks, 'check_call', FakeMethod())
+        mocked_task = self.patch(
+            maasserver.models.nodegroup, 'write_dhcp_config')
         nodegroup = factory.make_node_group(
             dhcp_key=factory.getRandomString())
         nodegroup.set_up_dhcp()
         dhcp_params = [
-            'dhcp_key', 'subnet_mask', 'broadcast_ip', 'router_ip',
+            'subnet_mask', 'broadcast_ip', 'router_ip',
             'ip_range_low', 'ip_range_high']
-        expected = [getattr(nodegroup, param) for param in dhcp_params]
-        self.assertThat(
-            conf_file,
-            FileContains(
-                matcher=ContainsAll(expected)))
-
-    def test_set_up_dhcp_reloads_dhcp_server(self):
-        self.patch(tasks, 'DHCP_CONFIG_FILE', self.make_file())
-        recorder = FakeMethod()
-        self.patch(tasks, 'check_call', recorder)
-        nodegroup = factory.make_node_group()
-        nodegroup.set_up_dhcp()
-        self.assertEqual(1, recorder.call_count)
+        expected_params = {}
+        for param in dhcp_params:
+            expected_params[param] = getattr(nodegroup, param)
+        expected_params["next_server"] = nodegroup.worker_ip
+        expected_params["omapi_key"] = nodegroup.dhcp_key
+        expected_params["dns_servers"] = get_dns_server_address()
+        # XXX bug=1045589
+        # subnet is calculated incorrectly, see the bug.
+        expected_params["subnet"] = nodegroup.ip_range_low
+        mocked_task.delay.assert_called_once_with(**expected_params)
 
     def test_add_dhcp_host_maps_adds_maps_if_managing_dhcp(self):
         self.patch(Omshell, 'create', FakeMethod())

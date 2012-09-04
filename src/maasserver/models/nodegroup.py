@@ -148,6 +148,8 @@ class NodeGroup(TimestampedModel):
         """Write the DHCP configuration file and restart the DHCP server."""
         # Circular imports.
         from maasserver.dns import get_dns_server_address
+        # XXX bug=1045589
+        # subnet is calculated incorrectly, see the bug.
         write_dhcp_config.delay(
             subnet=self.ip_range_low,
             next_server=self.worker_ip,

@@ -26,6 +26,8 @@ __all__ = [
 from subprocess import (
     CalledProcessError,
     check_call,
+    PIPE,
+    Popen,
     )
 
 from celery.task import task
@@ -47,7 +49,6 @@ from provisioningserver.power.poweraction import (
     PowerAction,
     PowerActionFail,
     )
-from provisioningserver.utils import atomic_write
 
 # For each item passed to refresh_secrets, a refresh function to give it to.
 refresh_functions = {
@@ -308,7 +309,10 @@ def write_dhcp_config(**kwargs):
     :param **kwargs: Keyword args passed to dhcp.config.get_config()
     """
     output = config.get_config(**kwargs).encode("ascii")
-    atomic_write(output, DHCP_CONFIG_FILE, mode=0744)
+    proc = Popen(
+        ["sudo", "maas-provision", "atomic-write", "--filename",
+        DHCP_CONFIG_FILE, "--mode", "744"], stdin=PIPE)
+    proc.communicate(output)
     restart_dhcp_server()
 
 

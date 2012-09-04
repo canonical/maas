@@ -335,10 +335,19 @@ class AtomicWriteScript:
         parser.add_argument(
             "--filename", action="store", required=True, help=(
             "The name of the file in which to store contents of stdin"))
+        parser.add_argument(
+            "--mode", action="store", required=False, default=None, help=(
+            "The permissions to set on the file. If not set will be r/w only "
+            "to owner"))
 
     @staticmethod
     def run(args):
         """Take content from stdin and write it atomically to a file."""
         content = sys.stdin.read()
+        if args.mode is not None:
+            mode = int(args.mode, 8)
+        else:
+            mode = 0600
         atomic_write(
-            content, args.filename, overwrite=not args.no_overwrite)
+            content, args.filename, overwrite=not args.no_overwrite,
+            mode=mode)
