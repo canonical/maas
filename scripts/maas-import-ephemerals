@@ -383,6 +383,10 @@ for release in $RELEASES; do
             fpfinal_d="${l_dir}"
             final_d="${l_release}/${l_stream}/${l_arch}/${l_serial}"
 
+            # Even if there was no need to update the image, we make sure it
+            # gets installed.
+            install_tftp_image "$fpfinal_d" "$r_arch" "generic" "$r_release"
+
             name="${l_name}"
             target_name="${TARGET_NAME_PREFIX}${name}"
             debug 1 "updating ${release}-${arch} $final_d"
