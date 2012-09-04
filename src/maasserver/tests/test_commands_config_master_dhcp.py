@@ -58,12 +58,8 @@ class TestConfigMasterDHCP(TestCase):
 
     def setUp(self):
         super(TestConfigMasterDHCP, self).setUp()
-        # Make sure any attempts to write a dhcp config end up in a temp
-        # file rather than the system one.
-        conf_file = self.make_file()
-        self.patch(tasks, "DHCP_CONFIG_FILE", conf_file)
-        # Prevent DHCPD restarts.
-        self.patch(tasks, 'check_call', Mock())
+        # Make sure any attempts to write a dhcp config do nothing.
+        self.patch(NodeGroup, 'set_up_dhcp')
 
     def test_configures_dhcp_for_master_nodegroup(self):
         settings = make_dhcp_settings()
@@ -133,18 +129,10 @@ class TestConfigMasterDHCP(TestCase):
     def test_name_option_turns_dhcp_setting_name_into_option(self):
         self.assertEqual('--subnet-mask', name_option('subnet_mask'))
 
-    def test_sets_up_dhcp_if_dhcp_enabled(self):
+    def test_sets_up_dhcp_and_enables_it(self):
         master = NodeGroup.objects.ensure_master()
-        self.patch(NodeGroup, 'set_up_dhcp', Mock())
-        settings = make_dhcp_settings()
-        Config.objects.set_config('manage_dhcp', True)
-        call_command('config_master_dhcp', **settings)
-        self.assertEqual(1, master.set_up_dhcp.call_count)
-
-    def test_ignores_set_up_dhcp_if_dhcp_disabled(self):
-        master = NodeGroup.objects.ensure_master()
-        self.patch(NodeGroup, 'set_up_dhcp', Mock())
         settings = make_dhcp_settings()
         Config.objects.set_config('manage_dhcp', False)
         call_command('config_master_dhcp', **settings)
-        self.assertEqual(0, master.set_up_dhcp.call_count)
+        self.assertEqual(1, master.set_up_dhcp.call_count)
+        self.assertTrue(Config.objects.get_config('manage_dhcp'))
