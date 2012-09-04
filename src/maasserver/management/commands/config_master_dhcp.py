@@ -32,7 +32,9 @@ from maasserver.models import (
 
 
 dhcp_items = {
-    'dhcp_interface': "Network interface that should service DHCP requests.",
+    'dhcp_interfaces':
+        "Space-separated list of network interfaces that should service "
+        "DHCP requests.",
     'subnet_mask': "Subnet mask, e.g. 255.0.0.0",
     'broadcast_ip': "Broadcast address for this subnet, e.g. 10.255.255.255",
     'router_ip': "Address of default gateway.",
@@ -46,7 +48,7 @@ clear_settings = {item: None for item in dhcp_items}
 
 # Django is weird with null strings.  Not all settings use None as the
 # not-set value.
-clear_settings['dhcp_interface'] = ''
+clear_settings['dhcp_interfaces'] = ''
 
 
 def get_settings(options):
