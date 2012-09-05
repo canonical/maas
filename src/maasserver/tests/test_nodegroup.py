@@ -193,7 +193,9 @@ class TestNodeGroup(TestCase):
         mocked_task = self.patch(
             maasserver.models.nodegroup, 'write_dhcp_config')
         nodegroup = factory.make_node_group(
-            dhcp_key=factory.getRandomString())
+            dhcp_key=factory.getRandomString(),
+            ip_range_low='192.168.102.1', ip_range_high='192.168.103.254',
+            subnet_mask='255.255.252.0', broadcast_ip='192.168.103.255')
         nodegroup.set_up_dhcp()
         dhcp_params = [
             'subnet_mask', 'broadcast_ip', 'router_ip',
@@ -204,9 +206,7 @@ class TestNodeGroup(TestCase):
         expected_params["next_server"] = nodegroup.worker_ip
         expected_params["omapi_key"] = nodegroup.dhcp_key
         expected_params["dns_servers"] = get_dns_server_address()
-        # XXX bug=1045589
-        # subnet is calculated incorrectly, see the bug.
-        expected_params["subnet"] = nodegroup.ip_range_low
+        expected_params["subnet"] = '192.168.100.0'
         mocked_task.delay.assert_called_once_with(**expected_params)
 
     def test_add_dhcp_host_maps_adds_maps_if_managing_dhcp(self):

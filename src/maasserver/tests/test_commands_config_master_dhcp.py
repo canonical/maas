@@ -22,8 +22,6 @@ from maasserver.models import (
     )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
-from mock import Mock
-from provisioningserver import tasks
 from testtools.matchers import MatchesStructure
 
 

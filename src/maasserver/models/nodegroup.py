@@ -25,6 +25,7 @@ from maasserver import DefaultMeta
 from maasserver.dhcp import is_dhcp_management_enabled
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.refresh_worker import refresh_worker
+from netaddr import IPAddress
 from piston.models import (
     KEY_SIZE,
     Token,
@@ -148,11 +149,10 @@ class NodeGroup(TimestampedModel):
         """Write the DHCP configuration file and restart the DHCP server."""
         # Circular imports.
         from maasserver.dns import get_dns_server_address
-        # XXX bug=1045589
-        # subnet is calculated incorrectly, see the bug.
+        subnet = str(
+            IPAddress(self.ip_range_low) & IPAddress(self.subnet_mask))
         write_dhcp_config.delay(
-            subnet=self.ip_range_low,
-            next_server=self.worker_ip,
+            subnet=subnet, next_server=self.worker_ip,
             omapi_key=self.dhcp_key, subnet_mask=self.subnet_mask,
             broadcast_ip=self.broadcast_ip, router_ip=self.router_ip,
             dns_servers=get_dns_server_address(),
