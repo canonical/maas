@@ -17,8 +17,8 @@ from textwrap import dedent
 from maastesting.matchers import Contains
 from provisioningserver.dhcp import config
 from provisioningserver.pxe.tftppath import compose_bootloader_path
+from provisioningserver.testing.testcase import PservTestCase
 import tempita
-from testtools import TestCase
 from testtools.matchers import MatchesRegex
 
 # Simple test version of the DHCP template.  Contains parameter
@@ -54,7 +54,7 @@ def make_sample_params():
         )
 
 
-class TestDHCPConfig(TestCase):
+class TestDHCPConfig(PservTestCase):
 
     def patch_template(self, template_content=sample_template):
         """Patch the DHCP config template with the given contents."""

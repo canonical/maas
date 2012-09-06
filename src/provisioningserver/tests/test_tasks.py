@@ -15,7 +15,10 @@ __all__ = []
 from datetime import datetime
 import os
 import random
-from subprocess import CalledProcessError
+from subprocess import (
+    CalledProcessError,
+    PIPE,
+    )
 
 from apiclient.creds import convert_tuple_to_string
 from celeryconfig import DHCP_CONFIG_FILE
@@ -157,6 +160,7 @@ class TestDHCPTasks(PservTestCase):
     def make_dhcp_config_params(self):
         """Fake up a dict of dhcp configuration parameters."""
         param_names = [
+            'dhcp_interfaces',
             'omapi_key',
             'subnet',
             'subnet_mask',
@@ -237,15 +241,13 @@ class TestDHCPTasks(PservTestCase):
         write_dhcp_config(**config_params)
 
         # It should construct Popen with the right parameters.
-        popen_args = mocked_popen.call_args[0][0]
-        self.assertEqual(
-            popen_args,
+        mocked_popen.assert_any_call(
             ["sudo", "maas-provision", "atomic-write", "--filename",
-            DHCP_CONFIG_FILE, "--mode", "744"])
+            DHCP_CONFIG_FILE, "--mode", "744"], stdin=PIPE)
 
         # It should then pass the content to communicate().
         content = config.get_config(**config_params).encode("ascii")
-        mocked_proc.communicate.assert_called_once_with(content)
+        mocked_proc.communicate.assert_any_call(content)
 
         # Finally it should restart the dhcp server.
         check_call_args = mocked_check_call.call_args
