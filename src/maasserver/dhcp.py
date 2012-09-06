@@ -14,12 +14,14 @@ __all__ = [
     'is_dhcp_management_enabled',
     ]
 
+from maasserver.enum import DNS_DHCP_MANAGEMENT
 from maasserver.models import Config
 
 
 def is_dhcp_management_enabled():
     """Is MAAS configured to manage DHCP?
 
-    This status is controlled by the `manage_dhcp` configuration item.
+    This status is controlled by the `dns_dhcp_management` configuration item.
     """
-    return Config.objects.get_config('manage_dhcp')
+    dns_dhcp_management = Config.objects.get_config('dns_dhcp_management')
+    return dns_dhcp_management != DNS_DHCP_MANAGEMENT.NONE

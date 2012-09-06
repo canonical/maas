@@ -14,11 +14,12 @@ __all__ = []
 
 import maasserver
 from maasserver.dns import get_dns_server_address
-from maasserver.models import (
-    Config,
-    NodeGroup,
+from maasserver.models import NodeGroup
+from maasserver.testing import (
+    disable_dhcp_management,
+    enable_dhcp_management,
+    reload_object,
     )
-from maasserver.testing import reload_object
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
 from maasserver.worker_user import get_worker_user
@@ -163,15 +164,15 @@ class TestNodeGroup(TestCase):
         )
 
     def test_is_dhcp_enabled_returns_True_if_fully_set_up(self):
-        Config.objects.set_config('manage_dhcp', True)
+        enable_dhcp_management()
         self.assertTrue(factory.make_node_group().is_dhcp_enabled())
 
     def test_is_dhcp_enabled_returns_False_if_disabled(self):
-        Config.objects.set_config('manage_dhcp', False)
+        disable_dhcp_management()
         self.assertFalse(factory.make_node_group().is_dhcp_enabled())
 
     def test_is_dhcp_enabled_returns_False_if_config_is_missing(self):
-        Config.objects.set_config('manage_dhcp', True)
+        enable_dhcp_management()
         required_fields = [
             'subnet_mask', 'broadcast_ip', 'ip_range_low', 'ip_range_high']
         # Map each required field's name to a nodegroup that has just

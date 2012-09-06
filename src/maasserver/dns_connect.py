@@ -19,6 +19,7 @@ from django.db.models.signals import (
     post_save,
     )
 from django.dispatch import receiver
+from maasserver.enum import DNS_DHCP_MANAGEMENT
 from maasserver.models import (
     Config,
     Node,
@@ -30,10 +31,12 @@ from maasserver.signals import connect_to_field_change
 def dns_config_changed(sender, config, created, **kwargs):
     """Signal callback called when the DNS config has changed."""
     from maasserver.dns import write_full_dns_config
-    write_full_dns_config(active=config.value)
+    dns_enabled = (config.value == DNS_DHCP_MANAGEMENT.DNS_AND_DHCP)
+    write_full_dns_config(active=dns_enabled)
 
 
-Config.objects.config_changed_connect('enable_dns', dns_config_changed)
+Config.objects.config_changed_connect(
+    'dns_dhcp_management', dns_config_changed)
 
 
 @receiver(post_save, sender=NodeGroup)

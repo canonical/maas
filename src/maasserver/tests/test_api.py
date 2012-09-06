@@ -68,6 +68,8 @@ from maasserver.preseed import (
     )
 from maasserver.refresh_worker import refresh_worker
 from maasserver.testing import (
+    disable_dhcp_management,
+    enable_dhcp_management,
     reload_object,
     reload_objects,
     )
@@ -2414,16 +2416,6 @@ def make_worker_client(nodegroup):
     """Create a test client logged in as if it were `nodegroup`."""
     return OAuthAuthenticatedClient(
         get_worker_user(), token=nodegroup.api_token)
-
-
-def enable_dhcp_management():
-    """Turn MAAS DHCP management on."""
-    Config.objects.set_config('manage_dhcp', True)
-
-
-def disable_dhcp_management():
-    """Turn MAAS DHCP management on, or off."""
-    Config.objects.set_config('manage_dhcp', False)
 
 
 class TestNodeGroupAPI(APITestCase):

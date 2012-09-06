@@ -11,6 +11,10 @@ from __future__ import (
 
 __metaclass__ = type
 __all__ = [
+    "disable_dhcp_management",
+    "disable_dns_management",
+    "enable_dhcp_management",
+    "enable_dns_management",
     "extract_redirect",
     "get_content_links",
     "get_data",
@@ -24,6 +28,8 @@ import os
 from urlparse import urlparse
 
 from lxml.html import fromstring
+from maasserver.enum import DNS_DHCP_MANAGEMENT
+from maasserver.models import Config
 from maasserver.utils.orm import get_one
 
 
@@ -121,3 +127,32 @@ def get_content_links(response, element='#content'):
     doc = fromstring(response.content)
     [content_node] = doc.cssselect(element)
     return [elem.get('href') for elem in content_node.cssselect('a')]
+
+
+def enable_dhcp_management():
+    """Turn MAAS DHCP management on."""
+    # Circular import.
+    from maasserver.testing.factory import factory
+    config = factory.getRandomEnum(
+        DNS_DHCP_MANAGEMENT, but_not=(DNS_DHCP_MANAGEMENT.NONE,))
+    Config.objects.set_config('dns_dhcp_management', config)
+
+
+def enable_dns_management():
+    """Turn MAAS DNS management on."""
+    Config.objects.set_config(
+        'dns_dhcp_management', DNS_DHCP_MANAGEMENT.DNS_AND_DHCP)
+
+
+def disable_dhcp_management():
+    """Turn MAAS DHCP management off."""
+    Config.objects.set_config('dns_dhcp_management', DNS_DHCP_MANAGEMENT.NONE)
+
+
+def disable_dns_management():
+    """Turn MAAS DNS management off."""
+    # Circular import.
+    from maasserver.testing.factory import factory
+    config = factory.getRandomEnum(
+        DNS_DHCP_MANAGEMENT, but_not=(DNS_DHCP_MANAGEMENT.DNS_AND_DHCP,))
+    Config.objects.set_config('dns_dhcp_management', config)

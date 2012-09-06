@@ -13,7 +13,10 @@ __metaclass__ = type
 __all__ = []
 
 from maasserver.dhcp import is_dhcp_management_enabled
-from maasserver.models import Config
+from maasserver.testing import (
+    disable_dhcp_management,
+    enable_dhcp_management,
+    )
 from maasserver.testing.testcase import TestCase
 
 
@@ -22,6 +25,10 @@ class TestDHCPManagement(TestCase):
     def test_is_dhcp_management_enabled_defaults_to_False(self):
         self.assertFalse(is_dhcp_management_enabled())
 
-    def test_is_dhcp_management_enabled_follows_manage_dhcp_config(self):
-        Config.objects.set_config('manage_dhcp', True)
+    def test_is_dhcp_management_enabled_dns_dhcp_management_True(self):
+        enable_dhcp_management()
         self.assertTrue(is_dhcp_management_enabled())
+
+    def test_is_dhcp_management_enabled_dns_dhcp_management_False(self):
+        disable_dhcp_management()
+        self.assertFalse(is_dhcp_management_enabled())

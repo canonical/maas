@@ -15,11 +15,13 @@ __all__ = []
 from optparse import OptionValueError
 
 from django.core.management import call_command
+from maasserver.enum import DNS_DHCP_MANAGEMENT
 from maasserver.management.commands.config_master_dhcp import name_option
 from maasserver.models import (
     Config,
     NodeGroup,
     )
+from maasserver.testing import disable_dhcp_management
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
 from testtools.matchers import MatchesStructure
@@ -130,7 +132,20 @@ class TestConfigMasterDHCP(TestCase):
     def test_sets_up_dhcp_and_enables_it(self):
         master = NodeGroup.objects.ensure_master()
         settings = make_dhcp_settings()
-        Config.objects.set_config('manage_dhcp', False)
+        disable_dhcp_management()
         call_command('config_master_dhcp', **settings)
         self.assertEqual(1, master.set_up_dhcp.call_count)
-        self.assertTrue(Config.objects.get_config('manage_dhcp'))
+        self.assertEqual(
+            Config.objects.get_config('dns_dhcp_management'),
+            DNS_DHCP_MANAGEMENT.DHCP_ONLY)
+
+    def test_sets_up_dhcp_preserves_dns_dhcp_setting_if_dhcp_enabled(self):
+        master = NodeGroup.objects.ensure_master()
+        settings = make_dhcp_settings()
+        dns_dhcp_config = DNS_DHCP_MANAGEMENT.DNS_AND_DHCP
+        Config.objects.set_config('dns_dhcp_management', dns_dhcp_config)
+        call_command('config_master_dhcp', **settings)
+        self.assertEqual(1, master.set_up_dhcp.call_count)
+        self.assertEqual(
+            Config.objects.get_config('dns_dhcp_management'),
+            dns_dhcp_config)

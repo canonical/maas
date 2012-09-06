@@ -13,6 +13,8 @@ __metaclass__ = type
 __all__ = [
     'ARCHITECTURE',
     'ARCHITECTURE_CHOICES',
+    'DNS_DHCP_MANAGEMENT',
+    'DNS_DHCP_MANAGEMENT_CHOICES',
     'NODE_PERMISSION',
     'NODE_STATUS',
     'NODE_STATUS_CHOICES',
@@ -123,3 +125,16 @@ class PRESEED_TYPE:
     COMMISSIONING = 'commissioning'
     ENLIST = 'enlist'
     ENLIST_USERDATA = 'enlist_userdata'
+
+
+class DNS_DHCP_MANAGEMENT:
+    NONE = 'none'
+    DHCP_ONLY = 'dhcp_only'
+    DNS_AND_DHCP = 'dns_and_dhcp'
+
+
+DNS_DHCP_MANAGEMENT_CHOICES = (
+    (DNS_DHCP_MANAGEMENT.NONE, "Don't manage either"),
+    (DNS_DHCP_MANAGEMENT.DHCP_ONLY, "Manage DHCP"),
+    (DNS_DHCP_MANAGEMENT.DNS_AND_DHCP, "Manage DNS and DHCP"),
+)

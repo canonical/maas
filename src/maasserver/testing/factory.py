@@ -51,13 +51,19 @@ ALL_NODE_STATES = map_enum(NODE_STATUS).values()
 
 class Factory(maastesting.factory.Factory):
 
-    def getRandomEnum(self, enum):
+    def getRandomEnum(self, enum, but_not=None):
         """Pick a random item from an enumeration class.
 
         :param enum: An enumeration class such as `NODE_STATUS`.
         :return: The value of one of its items.
+        :param but_not: A list of choices' IDs to exclude.
+        :type but_not: Sequence.
         """
-        return random.choice(list(map_enum(enum).values()))
+        if but_not is None:
+            but_not = ()
+        return random.choice([
+            value for value in list(map_enum(enum).values())
+            if value not in but_not])
 
     def getRandomChoice(self, choices, but_not=None):
         """Pick a random item from `choices`.
