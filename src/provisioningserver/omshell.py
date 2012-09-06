@@ -111,6 +111,8 @@ class Omshell:
         return proc.returncode, stdout
 
     def create(self, ip_address, mac_address):
+        # The "name" is not a host name; it's an identifier used within
+        # the DHCP server.  We just happen to use the IP address.
         stdin = dedent("""\
             server {self.server_address}
             key omapi_key {self.shared_key}
@@ -118,7 +120,8 @@ class Omshell:
             new host
             set ip-address = {ip_address}
             set hardware-address = {mac_address}
-            set name = {ip_address}
+            set hardware-type = 1
+            set name = "{ip_address}"
             create
             """)
         stdin = stdin.format(
@@ -134,12 +137,14 @@ class Omshell:
             raise CalledProcessError(returncode, "omshell", output)
 
     def remove(self, ip_address):
+        # The "name" is not a host name; it's an identifier used within
+        # the DHCP server.  We just happen to use the IP address.
         stdin = dedent("""\
             server {self.server_address}
             key omapi_key {self.shared_key}
             connect
             new host
-            set name = {ip_address}
+            set name = "{ip_address}"
             open
             remove
             """)

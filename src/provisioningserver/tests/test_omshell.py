@@ -64,7 +64,8 @@ class TestOmshell(TestCase):
             new host
             set ip-address = {ip}
             set hardware-address = {mac}
-            set name = {ip}
+            set hardware-type = 1
+            set name = "{ip}"
             create
             """).format(
                 server=server_address,
@@ -116,7 +117,7 @@ class TestOmshell(TestCase):
             key omapi_key {key}
             connect
             new host
-            set name = {ip}
+            set name = "{ip}"
             open
             remove
             """).format(
