@@ -133,7 +133,13 @@ class Omshell:
         # that the 'create' command failed.  Unfortunately there's no
         # other output like "successful" to check so this is the best we
         # can do.
-        if "hardware-type" not in output:
+        if "hardware-type" in output:
+            # Success.
+            pass
+        elif "can't open object: I/O error" in output:
+            # Host map already existed.  Treat as success.
+            pass
+        else:
             raise CalledProcessError(returncode, "omshell", output)
 
     def remove(self, ip_address):

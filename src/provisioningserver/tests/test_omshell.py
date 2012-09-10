@@ -21,6 +21,7 @@ from fixtures import TempDir
 from maastesting.factory import factory
 from maastesting.fakemethod import FakeMethod
 from maastesting.testcase import TestCase
+from mock import Mock
 from provisioningserver import omshell
 from provisioningserver.omshell import (
     generate_omapi_key,
@@ -98,6 +99,35 @@ class TestOmshell(TestCase):
         exc = self.assertRaises(
             CalledProcessError, shell.create, ip_address, mac_address)
         self.assertEqual(random_output, exc.output)
+
+    def test_create_succeeds_when_host_map_already_exists(self):
+        # To omshell, creating the same host map twice is an error.  But
+        # Omshell.create swallows the error and makes it look like
+        # success.
+        params = {
+            'ip': factory.getRandomIPAddress(),
+            'mac': factory.getRandomMACAddress(),
+            'hostname': factory.make_name('hostname')
+        }
+        shell = Omshell(factory.make_name('server'), factory.make_name('key'))
+        # This is the kind of error output we get if a host map has
+        # already been created.
+        error_output = dedent("""\
+            obj: host
+            ip-address = %(ip)s
+            hardware-address = %(mac)s
+            name = "%(hostname)s"
+            >
+            can't open object: I/O error
+            obj: host
+            ip-address = %(ip)s
+            hardware-address = %(mac)s
+            name = "%(hostname)s"
+            """) % params
+        shell._run = Mock(return_value=(0, error_output))
+        shell.create(params['ip'], params['mac'])
+        # The test is that we get here without error.
+        pass
 
     def test_remove_calls_omshell_correctly(self):
         server_address = factory.getRandomString()
