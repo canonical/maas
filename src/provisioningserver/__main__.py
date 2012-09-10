@@ -12,6 +12,7 @@ from __future__ import (
 
 __metaclass__ = type
 
+import provisioningserver.customize_config
 import provisioningserver.dhcp.writer
 import provisioningserver.pxe.install_bootloader
 import provisioningserver.pxe.install_image
@@ -21,17 +22,16 @@ from provisioningserver.utils import (
     )
 
 
+script_commands = {
+    'atomic-write': AtomicWriteScript,
+    'customize-config': provisioningserver.customize_config,
+    'generate-dhcp-config': provisioningserver.dhcp.writer,
+    'install-pxe-bootloader': provisioningserver.pxe.install_bootloader,
+    'install-pxe-image': provisioningserver.pxe.install_image,
+}
+
+
 main = MainScript(__doc__)
-main.register(
-    "install-pxe-bootloader",
-    provisioningserver.pxe.install_bootloader)
-main.register(
-    "install-pxe-image",
-    provisioningserver.pxe.install_image)
-main.register(
-    "generate-dhcp-config",
-    provisioningserver.dhcp.writer)
-main.register(
-    "atomic-write",
-    AtomicWriteScript)
+for name, command in sorted(script_commands.items()):
+    main.register(name, command)
 main()
