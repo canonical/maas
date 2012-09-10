@@ -18,6 +18,7 @@ __all__ = [
     "MainScript",
     "parse_key_value_file",
     "ShellTemplate",
+    "write_custom_config_section",
     ]
 
 from argparse import ArgumentParser
@@ -188,6 +189,77 @@ def parse_key_value_file(file_name, separator=":"):
     """
     with open(file_name, 'rb') as input:
         return dict(strip_pairs(split_lines(input, separator)))
+
+
+# Header and footer comments for MAAS custom config sections, as managed
+# by write_custom_config_section.
+maas_custom_config_markers = (
+    "## Begin MAAS settings.  Do not edit; MAAS will overwrite this section.",
+    "## End MAAS settings.",
+    )
+
+
+def find_list_item(item, in_list, starting_at=0):
+    """Return index of `item` in `in_list`, or None if not found."""
+    try:
+        return in_list.index(item, starting_at)
+    except ValueError:
+        return None
+
+
+def write_custom_config_section(original_text, custom_section):
+    """Insert or replace a custom section in a configuration file's text.
+
+    This allows you to rewrite configuration files that are not owned by
+    MAAS, but where MAAS will have one section for its own settings.  It
+    doesn't read or write any files; this is a pure text operation.
+
+    Appends `custom_section` to the end of `original_text` if there was no
+    custom MAAS section yet.  Otherwise, replaces the existing custom MAAS
+    section with `custom_section`.  Returns the new text.
+
+    Assumes that the configuration file's format accepts lines starting with
+    hash marks (#) as comments.  The custom section will be bracketed by
+    special marker comments that make it clear that MAAS wrote the section
+    and it should not be edited by hand.
+
+    :param original_text: The config file's current text.
+    :type original_text: unicode
+    :param custom_section: Custom config section to insert.
+    :type custom_section: unicode
+    :return: New config file text.
+    :rtype: unicode
+    """
+    header, footer = maas_custom_config_markers
+    lines = original_text.splitlines()
+    header_index = find_list_item(header, lines)
+    if header_index is not None:
+        footer_index = find_list_item(footer, lines, header_index)
+        if footer_index is None:
+            # There's a header but no footer.  Pretend we didn't see the
+            # header; just append a new custom section at the end.  Any
+            # subsequent rewrite will replace the part starting at the
+            # header and ending at the header we will add here.  At that
+            # point there will be no trace of the strange situation
+            # left.
+            header_index = None
+
+    if header_index is None:
+        # There was no MAAS custom section in this file.  Append it at
+        # the end.
+        lines += [
+            header,
+            custom_section,
+            footer,
+            ]
+    else:
+        # There is a MAAS custom section in the file.  Replace it.
+        lines = (
+            lines[:(header_index + 1)] +
+            [custom_section] +
+            lines[footer_index:])
+
+    return '\n'.join(lines) + '\n'
 
 
 class Safe:
