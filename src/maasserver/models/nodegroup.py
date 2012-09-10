@@ -25,6 +25,7 @@ from maasserver import DefaultMeta
 from maasserver.dhcp import is_dhcp_management_enabled
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.refresh_worker import refresh_worker
+from maasserver.server_address import get_maas_facing_server_address
 from netaddr import IPAddress
 from piston.models import (
     KEY_SIZE,
@@ -149,13 +150,19 @@ class NodeGroup(TimestampedModel):
         """Write the DHCP configuration file and restart the DHCP server."""
         # Circular imports.
         from maasserver.dns import get_dns_server_address
+
+        # Use the server's address (which is where the central TFTP
+        # server is) for the next_server setting.  We'll want to proxy
+        # it on the local worker later, and then we can use
+        # next_server=self.worker_ip.
+        next_server = get_maas_facing_server_address()
+
         subnet = str(
             IPAddress(self.ip_range_low) & IPAddress(self.subnet_mask))
         write_dhcp_config.delay(
-            subnet=subnet, next_server=self.worker_ip,
-            omapi_key=self.dhcp_key, subnet_mask=self.subnet_mask,
-            broadcast_ip=self.broadcast_ip, router_ip=self.router_ip,
-            dns_servers=get_dns_server_address(),
+            subnet=subnet, next_server=next_server, omapi_key=self.dhcp_key,
+            subnet_mask=self.subnet_mask, broadcast_ip=self.broadcast_ip,
+            router_ip=self.router_ip, dns_servers=get_dns_server_address(),
             ip_range_low=self.ip_range_low, ip_range_high=self.ip_range_high)
 
     def is_dhcp_enabled(self):
