@@ -188,14 +188,16 @@ class HelpfulDeleteViewTest(TestCase):
 
     def test_delete_deletes_object(self):
         obj = FakeDeletableModel()
-        view = FakeDeleteView(obj)
+        # HttpResponseRedirect does not allow next_url to be None.
+        view = FakeDeleteView(obj, next_url=factory.getRandomString())
         view.delete()
         self.assertTrue(obj.deleted)
         self.assertEqual([view.compose_feedback_deleted(obj)], view.notices)
 
     def test_delete_is_gentle_with_missing_objects(self):
         # Deleting a nonexistent object is basically treated as successful.
-        view = FakeDeleteView()
+        # HttpResponseRedirect does not allow next_url to be None.
+        view = FakeDeleteView(next_url=factory.getRandomString())
         response = view.delete()
         self.assertEqual(httplib.FOUND, response.status_code)
         self.assertEqual([view.compose_feedback_nonexistent()], view.notices)
