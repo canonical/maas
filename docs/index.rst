@@ -21,6 +21,7 @@ Overview
    hacking
    install
    juju-quick-start
+   troubleshooting
    api
 
 MAAS API
