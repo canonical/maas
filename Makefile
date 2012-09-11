@@ -180,37 +180,45 @@ endef
 # Development services.
 #
 
-service_names := celeryd database dns pserv reloader txlongpoll web webapp
-services := $(patsubst %,services/%/,$(service_names))
+service_names_region := database dns reloader txlongpoll web webapp
+service_names_cluster := celeryd pserv reloader
 
-run:
-	@services/run $(service_names)
-
-run+webapp:
-	@services/run $(service_names) +webapp
-
-start: $(addsuffix @start,$(services))
-
-pause: $(addsuffix @pause,$(services))
-
-status: $(addsuffix @status,$(services))
-
-restart: $(addsuffix @restart,$(services))
-
-stop: $(addsuffix @stop,$(services))
-
-supervise: $(addsuffix @supervise,$(services))
-
-define phony_services_targets
-  pause
-  restart
-  run
-  run+webapp
-  start
-  status
-  stop
-  supervise
+# The following template is intended to be used with `call`, and it
+# accepts a single argument: a target name. The target name must
+# correspond to a service action (see "Pseudo-magic targets" below).
+# A region- and cluster-specific variant of the target will be
+# created, in addition to the target itself. These can be used to
+# apply the service action to the region services, the cluster
+# services, or all services, at the same time.
+define service_template
+$(1)-region: $(patsubst %,services/%/@$(1),$(service_names_region))
+$(1)-cluster: $(patsubst %,services/%/@$(1),$(service_names_cluster))
+$(1): $(1)-region $(1)-cluster
+phony_services_targets += $(1)-region $(1)-cluster $(1)
 endef
+
+# Expand out aggregate service targets using `service_template`.
+$(eval $(call service_template,pause))
+$(eval $(call service_template,restart))
+$(eval $(call service_template,start))
+$(eval $(call service_template,status))
+$(eval $(call service_template,stop))
+$(eval $(call service_template,supervise))
+
+# The `run` targets do not fit into the mould of the others.
+run-region:
+	@services/run $(service_names_region)
+run-cluster:
+	@services/run $(service_names_cluster)
+run: run-region run-cluster
+
+phony_services_targets += run-region run-cluster run
+
+# This one's for the rapper, yo.
+run+webapp:
+	@services/run $(service_names_region) +webapp
+
+phony_services_targets += run+webapp
 
 # Convenient variables and functions for service control.
 
