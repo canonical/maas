@@ -12,10 +12,10 @@ from __future__ import (
 __metaclass__ = type
 __all__ = [
     'get_recorded_api_credentials',
-    'get_recorded_nodegroup_name',
+    'get_recorded_nodegroup_uuid',
     'get_recorded_maas_url',
     'record_api_credentials',
-    'record_nodegroup_name',
+    'record_nodegroup_uuid',
     ]
 
 from apiclient.creds import convert_string_to_tuple
@@ -27,8 +27,8 @@ MAAS_URL_CACHE_KEY = 'maas_url'
 # Cache key for the API credentials as last sent by the server.
 API_CREDENTIALS_CACHE_KEY = 'api_credentials'
 
-# Cache key for the name of the nodegroup that this worker manages.
-NODEGROUP_NAME_CACHE_KEY = 'nodegroup_name'
+# Cache key for the uuid of the nodegroup that this worker manages.
+NODEGROUP_UUID_CACHE_KEY = 'nodegroup_uuid'
 
 
 def record_maas_url(maas_url):
@@ -65,14 +65,14 @@ def get_recorded_api_credentials():
         return convert_string_to_tuple(credentials_string)
 
 
-def record_nodegroup_name(nodegroup_name):
-    """Record the name of the nodegroup we manage, as sent by the server."""
-    cache.cache.set(NODEGROUP_NAME_CACHE_KEY, nodegroup_name)
+def record_nodegroup_uuid(nodegroup_uuid):
+    """Record the uuid of the nodegroup we manage, as sent by the server."""
+    cache.cache.set(NODEGROUP_UUID_CACHE_KEY, nodegroup_uuid)
 
 
-def get_recorded_nodegroup_name():
-    """Return the name of this worker's nodegroup, as sent by the server.
+def get_recorded_nodegroup_uuid():
+    """Return the uuid of this worker's nodegroup, as sent by the server.
 
     If the server has not sent the name yet, returns None.
     """
-    return cache.cache.get(NODEGROUP_NAME_CACHE_KEY)
+    return cache.cache.get(NODEGROUP_UUID_CACHE_KEY)

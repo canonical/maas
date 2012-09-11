@@ -64,11 +64,11 @@ class TestStartUp(TestCase):
 
     def test_start_up_refreshes_workers(self):
         patched_handlers = tasks.refresh_functions.copy()
-        patched_handlers['nodegroup_name'] = Mock()
+        patched_handlers['nodegroup_uuid'] = Mock()
         self.patch(tasks, 'refresh_functions', patched_handlers)
         start_up.start_up()
-        patched_handlers['nodegroup_name'].assert_called_once_with(
-            NodeGroup.objects.ensure_master().name)
+        patched_handlers['nodegroup_uuid'].assert_called_once_with(
+            NodeGroup.objects.ensure_master().uuid)
 
     def test_start_up_runs_in_exclusion(self):
         called = Value('b', False)

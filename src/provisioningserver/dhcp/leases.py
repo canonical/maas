@@ -48,7 +48,7 @@ from provisioningserver import cache
 from provisioningserver.auth import (
     get_recorded_api_credentials,
     get_recorded_maas_url,
-    get_recorded_nodegroup_name,
+    get_recorded_nodegroup_uuid,
     )
 from provisioningserver.dhcp.leases_parser import parse_leases
 from provisioningserver.logging import task_logger
@@ -118,7 +118,7 @@ def send_leases(leases):
     knowledge = {
         'maas_url': get_recorded_maas_url(),
         'api_credentials': get_recorded_api_credentials(),
-        'nodegroup_name': get_recorded_nodegroup_name(),
+        'nodegroup_uuid': get_recorded_nodegroup_uuid(),
     }
     if None in knowledge.values():
         # The MAAS server hasn't sent us enough information for us to do
@@ -130,7 +130,7 @@ def send_leases(leases):
             % ', '.join(list_missing_items(knowledge)))
         return
 
-    api_path = 'api/1.0/nodegroups/%s/' % knowledge['nodegroup_name']
+    api_path = 'api/1.0/nodegroups/%s/' % knowledge['nodegroup_uuid']
     oauth = MAASOAuth(*knowledge['api_credentials'])
     MAASClient(oauth, MAASDispatcher(), knowledge['maas_url']).post(
         api_path, 'update_leases', leases=json.dumps(leases))

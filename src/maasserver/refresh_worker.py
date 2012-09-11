@@ -35,7 +35,7 @@ def refresh_worker(nodegroup):
         'api_credentials': convert_tuple_to_string(
             get_creds_tuple(nodegroup.api_token)),
         'maas_url': settings.DEFAULT_MAAS_URL,
-        'nodegroup_name': nodegroup.name,
+        'nodegroup_uuid': nodegroup.uuid,
     }
 
     # XXX JeroenVermeulen 2012-08-21, bug=1039366: Route this to the

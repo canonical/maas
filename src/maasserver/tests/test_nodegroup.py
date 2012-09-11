@@ -156,10 +156,11 @@ class TestNodeGroupManager(TestCase):
         master.save()
         self.assertEqual(ip, NodeGroup.objects.ensure_master().worker_ip)
 
-    def test_get_by_natural_key_looks_up_by_name(self):
+    def test_get_by_natural_key_looks_up_by_uuid(self):
         nodegroup = factory.make_node_group()
         self.assertEqual(
-            nodegroup, NodeGroup.objects.get_by_natural_key(nodegroup.name))
+            nodegroup,
+            NodeGroup.objects.get_by_natural_key(nodegroup.uuid))
 
     def test_get_by_natural_key_will_not_return_other_nodegroup(self):
         factory.make_node_group()

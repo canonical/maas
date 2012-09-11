@@ -28,7 +28,7 @@ from maastesting.utils import (
 from provisioningserver import cache
 from provisioningserver.auth import (
     MAAS_URL_CACHE_KEY,
-    NODEGROUP_NAME_CACHE_KEY,
+    NODEGROUP_UUID_CACHE_KEY,
     )
 from provisioningserver.dhcp import leases as leases_module
 from provisioningserver.dhcp.leases import (
@@ -110,15 +110,15 @@ class TestUpdateLeases(PservTestCase):
         self.redirect_parser(leases_file)
         return leases_file
 
-    def set_nodegroup_name(self):
-        """Set the recorded nodegroup name for the duration of this test."""
-        name = factory.make_name('nodegroup')
-        cache.cache.set(NODEGROUP_NAME_CACHE_KEY, name)
-        return name
+    def set_nodegroup_uuid(self):
+        """Set the recorded nodegroup uuid for the duration of this test."""
+        uuid = factory.getRandomUUID()
+        cache.cache.set(NODEGROUP_UUID_CACHE_KEY, uuid)
+        return uuid
 
-    def clear_nodegroup_name(self):
-        """Clear the recorded nodegroup name."""
-        cache.cache.set(NODEGROUP_NAME_CACHE_KEY, None)
+    def clear_nodegroup_uuid(self):
+        """Clear the recorded nodegroup uuid."""
+        cache.cache.set(NODEGROUP_UUID_CACHE_KEY, None)
 
     def set_maas_url(self):
         """Set the recorded MAAS URL for the duration of this test."""
@@ -146,7 +146,7 @@ class TestUpdateLeases(PservTestCase):
         """Set the recorded items required by `update_leases`."""
         self.set_maas_url()
         self.set_api_credentials()
-        self.set_nodegroup_name()
+        self.set_nodegroup_uuid()
 
     def set_lease_state(self, time=None, leases=None):
         """Set the recorded state of DHCP leases.
@@ -318,7 +318,7 @@ class TestUpdateLeases(PservTestCase):
         self.patch(MAASClient, 'post', FakeMethod())
         self.set_lease_state()
         self.set_items_needed_for_lease_update()
-        self.clear_nodegroup_name()
+        self.clear_nodegroup_uuid()
         leases = factory.make_random_leases()
         send_leases(leases)
         self.assertEqual([], MAASClient.post.calls)

@@ -870,7 +870,7 @@ class NodeGroupsHandler(BaseHandler):
     def read(self, request):
         """Index of node groups."""
         return HttpResponse(sorted(
-            [nodegroup.name for nodegroup in NodeGroup.objects.all()]))
+            [nodegroup.uuid for nodegroup in NodeGroup.objects.all()]))
 
     @classmethod
     def resource_uri(cls):
@@ -891,14 +891,14 @@ class NodeGroupsHandler(BaseHandler):
         return HttpResponse("Sending worker refresh.", status=httplib.OK)
 
 
-def get_nodegroup_for_worker(request, nodegroup_name):
-    """Get :class:`NodeGroup` by name, for access by its worker.
+def get_nodegroup_for_worker(request, uuid):
+    """Get :class:`NodeGroup` by uuid, for access by its worker.
 
     This supports a nodegroup worker accessing its nodegroup object on
-    the API.  If the request is done by ayone but the worker for this
+    the API.  If the request is done by anyone but the worker for this
     particular nodegroup, the function raises :class:`PermissionDenied`.
     """
-    nodegroup = get_object_or_404(NodeGroup, name=nodegroup_name)
+    nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
     try:
         key = extract_oauth_key(request)
     except Unauthorized as e:
@@ -906,7 +906,7 @@ def get_nodegroup_for_worker(request, nodegroup_name):
 
     if key != nodegroup.api_key:
         raise PermissionDenied(
-            "Only allowed for the %r worker." % nodegroup.name)
+            "Only allowed for the %r worker." % nodegroup.uuid)
 
     return nodegroup
 
@@ -916,24 +916,24 @@ class NodeGroupHandler(BaseHandler):
     """Node-group API."""
 
     allowed_methods = ('GET', 'POST')
-    fields = ('name', )
+    fields = ('name', 'uuid')
 
-    def read(self, request, name):
+    def read(self, request, uuid):
         """GET a node group."""
-        return get_object_or_404(NodeGroup, name=name)
+        return get_object_or_404(NodeGroup, uuid=uuid)
 
     @classmethod
     def resource_uri(cls, nodegroup=None):
         if nodegroup is None:
-            name = 'name'
+            uuid = 'uuid'
         else:
-            name = nodegroup.name
-        return ('nodegroup_handler', [name])
+            uuid = nodegroup.uuid
+        return ('nodegroup_handler', [uuid])
 
     @api_exported('POST')
-    def update_leases(self, request, name):
+    def update_leases(self, request, uuid):
         leases = get_mandatory_param(request.data, 'leases')
-        nodegroup = get_nodegroup_for_worker(request, name)
+        nodegroup = get_nodegroup_for_worker(request, uuid)
         leases = json.loads(leases)
         new_leases = DHCPLease.objects.update_leases(nodegroup, leases)
         if len(new_leases) > 0:

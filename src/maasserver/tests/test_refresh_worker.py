@@ -50,10 +50,10 @@ class TestRefreshWorker(TestCase):
             [(creds_string, )],
             refresh_functions['api_credentials'].extract_args())
 
-    def test_refreshes_nodegroup_name(self):
+    def test_refreshes_nodegroup_uuid(self):
         refresh_functions = self.patch_refresh_functions()
         nodegroup = factory.make_node_group()
         refresh_worker(nodegroup)
         self.assertEqual(
-            [(nodegroup.name, )],
-            refresh_functions['nodegroup_name'].extract_args())
+            [(nodegroup.uuid, )],
+            refresh_functions['nodegroup_uuid'].extract_args())

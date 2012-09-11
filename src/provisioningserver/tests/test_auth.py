@@ -46,7 +46,7 @@ class TestAuth(PservTestCase):
     def test_get_recorded_api_credentials_returns_None_without_creds(self):
         self.assertIsNone(auth.get_recorded_api_credentials())
 
-    def test_get_recorded_nodegroup_name_vs_record_nodegroup_name(self):
-        nodegroup_name = factory.make_name('nodegroup')
-        auth.record_nodegroup_name(nodegroup_name)
-        self.assertEqual(nodegroup_name, auth.get_recorded_nodegroup_name())
+    def test_get_recorded_nodegroup_uuid_vs_record_nodegroup_uuid(self):
+        nodegroup_uuid = factory.make_name('nodegroupuuid')
+        auth.record_nodegroup_uuid(nodegroup_uuid)
+        self.assertEqual(nodegroup_uuid, auth.get_recorded_nodegroup_uuid())

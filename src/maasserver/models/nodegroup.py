@@ -102,9 +102,9 @@ class NodeGroupManager(Manager):
 
         return master
 
-    def get_by_natural_key(self, name):
-        """For Django, a node group's name is a natural key."""
-        return self.get(name=name)
+    def get_by_natural_key(self, uuid):
+        """For Django, a node group's uuid is a natural key."""
+        return self.get(uuid=uuid)
 
     def refresh_workers(self):
         """Send refresh tasks to all node-group workers."""
