@@ -26,6 +26,7 @@ import os.path
 import random
 import string
 import time
+from uuid import uuid1
 
 from netaddr import (
     IPAddress,
@@ -70,6 +71,9 @@ class Factory:
     def getRandomIPAddress(self):
         octets = islice(self.random_octets, 4)
         return b'%d.%d.%d.%d' % tuple(octets)
+
+    def getRandomUUID(self):
+        return str(uuid1())
 
     def getRandomNetwork(self, slash=None):
         ip = self.getRandomIPAddress()

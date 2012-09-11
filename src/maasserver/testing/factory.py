@@ -116,10 +116,10 @@ class Factory(maastesting.factory.Factory):
             Node.objects.filter(id=node.id).update(created=created)
         return reload_object(node)
 
-    def make_node_group(self, name=None, worker_ip=None, router_ip=None,
-                        network=None, subnet_mask=None, broadcast_ip=None,
-                        ip_range_low=None, ip_range_high=None,
-                        dhcp_interfaces=None, **kwargs):
+    def make_node_group(self, name=None, uuid=None, worker_ip=None,
+                        router_ip=None, network=None, subnet_mask=None,
+                        broadcast_ip=None, ip_range_low=None,
+                        ip_range_high=None, dhcp_interfaces=None, **kwargs):
         """Create a :class:`NodeGroup`.
 
         If network (an instance of IPNetwork) is provided, use it to populate
@@ -132,6 +132,8 @@ class Factory(maastesting.factory.Factory):
         """
         if name is None:
             name = self.make_name('nodegroup')
+        if uuid is None:
+            uuid = factory.getRandomUUID()
         if network is not None:
             subnet_mask = str(network.netmask)
             broadcast_ip = str(network.broadcast)
@@ -155,10 +157,11 @@ class Factory(maastesting.factory.Factory):
         if dhcp_interfaces is None:
             dhcp_interfaces = self.make_name('interface')
         ng = NodeGroup.objects.new(
-            name=name, worker_ip=worker_ip, subnet_mask=subnet_mask,
-            broadcast_ip=broadcast_ip, router_ip=router_ip,
-            ip_range_low=ip_range_low, ip_range_high=ip_range_high,
-            dhcp_interfaces=dhcp_interfaces, **kwargs)
+            name=name, uuid=uuid, worker_ip=worker_ip,
+            subnet_mask=subnet_mask, broadcast_ip=broadcast_ip,
+            router_ip=router_ip, ip_range_low=ip_range_low,
+            ip_range_high=ip_range_high, dhcp_interfaces=dhcp_interfaces,
+            **kwargs)
         ng.save()
         return ng
 

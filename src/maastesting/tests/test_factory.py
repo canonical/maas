@@ -54,6 +54,11 @@ class TestFactory(TestCase):
         for octet in octets:
             self.assertTrue(0 <= int(octet) <= 255)
 
+    def test_getRandomUUID(self):
+        uuid = factory.getRandomUUID()
+        self.assertIsInstance(uuid, str)
+        self.assertEqual(36, len(uuid))
+
     def test_getRandomNetwork(self):
         network = factory.getRandomNetwork()
         self.assertIsInstance(network, IPNetwork)

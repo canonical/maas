@@ -54,15 +54,18 @@ class TestNodeGroupManager(TestCase):
 
     def test_new_creates_nodegroup(self):
         name = factory.make_name('nodegroup')
+        uuid = factory.getRandomUUID()
         ip = factory.getRandomIPAddress()
         self.assertThat(
-            NodeGroup.objects.new(name, ip),
-            MatchesStructure.fromExample({'name': name, 'worker_ip': ip}))
+            NodeGroup.objects.new(name, uuid, ip),
+            MatchesStructure.fromExample(
+                {'name': name, 'uuid': uuid, 'worker_ip': ip}))
 
     def test_new_does_not_require_dhcp_settings(self):
         name = factory.make_name('nodegroup')
+        uuid = factory.getRandomUUID()
         ip = factory.getRandomIPAddress()
-        nodegroup = NodeGroup.objects.new(name, ip)
+        nodegroup = NodeGroup.objects.new(name, uuid, ip)
         self.assertThat(
             nodegroup,
             MatchesStructure.fromExample({
@@ -71,16 +74,18 @@ class TestNodeGroupManager(TestCase):
 
     def test_new_requires_all_dhcp_settings_or_none(self):
         name = factory.make_name('nodegroup')
+        uuid = factory.make_name('uuid')
         ip = factory.getRandomIPAddress()
         self.assertRaises(
             AssertionError,
-            NodeGroup.objects.new, name, ip, subnet_mask='255.0.0.0')
+            NodeGroup.objects.new, name, uuid, ip, subnet_mask='255.0.0.0')
 
     def test_new_creates_nodegroup_with_given_dhcp_settings(self):
         name = factory.make_name('nodegroup')
+        uuid = factory.make_name('uuid')
         ip = factory.getRandomIPAddress()
         dhcp_settings = make_dhcp_settings()
-        nodegroup = NodeGroup.objects.new(name, ip, **dhcp_settings)
+        nodegroup = NodeGroup.objects.new(name, uuid, ip, **dhcp_settings)
         nodegroup = reload_object(nodegroup)
         self.assertEqual(name, nodegroup.name)
         self.assertThat(
@@ -88,7 +93,8 @@ class TestNodeGroupManager(TestCase):
 
     def test_new_assigns_token_and_key_for_worker_user(self):
         nodegroup = NodeGroup.objects.new(
-            factory.make_name('nodegroup'), factory.getRandomIPAddress())
+            factory.make_name('nodegroup'), factory.make_name('uuid'),
+            factory.getRandomIPAddress())
         self.assertIsNotNone(nodegroup.api_token)
         self.assertIsNotNone(nodegroup.api_key)
         self.assertEqual(get_worker_user(), nodegroup.api_token.user)
@@ -96,13 +102,15 @@ class TestNodeGroupManager(TestCase):
 
     def test_new_creates_nodegroup_with_empty_dhcp_key(self):
         nodegroup = NodeGroup.objects.new(
-            factory.make_name('nodegroup'), factory.getRandomIPAddress())
+            factory.make_name('nodegroup'), factory.make_name('uuid'),
+            factory.getRandomIPAddress())
         self.assertEqual('', nodegroup.dhcp_key)
 
     def test_new_stores_dhcp_key_on_nodegroup(self):
         key = generate_omapi_key()
         nodegroup = NodeGroup.objects.new(
-            factory.make_name('nodegroup'), factory.getRandomIPAddress(),
+            factory.make_name('nodegroup'), factory.make_name('uuid'),
+            factory.getRandomIPAddress(),
             dhcp_key=key)
         self.assertEqual(key, nodegroup.dhcp_key)
 
@@ -111,6 +119,7 @@ class TestNodeGroupManager(TestCase):
             NodeGroup.objects.ensure_master(),
             MatchesStructure.fromExample({
                 'name': 'master',
+                'workder_id': 'master',
                 'worker_ip': '127.0.0.1',
                 'subnet_mask': None,
                 'broadcast_ip': None,
@@ -136,7 +145,8 @@ class TestNodeGroupManager(TestCase):
     def test_ensure_master_does_not_return_other_nodegroup(self):
         self.assertNotEqual(
             NodeGroup.objects.new(
-                factory.make_name('nodegroup'), factory.getRandomIPAddress()),
+                factory.make_name('nodegroup'), factory.make_name('uuid'),
+                factory.getRandomIPAddress()),
             NodeGroup.objects.ensure_master())
 
     def test_ensure_master_preserves_existing_attributes(self):
