@@ -15,6 +15,8 @@ __all__ = [
     'ARCHITECTURE_CHOICES',
     'DNS_DHCP_MANAGEMENT',
     'DNS_DHCP_MANAGEMENT_CHOICES',
+    'NODEGROUP_STATUS',
+    'NODEGROUP_STATUS_CHOICES',
     'NODE_PERMISSION',
     'NODE_STATUS',
     'NODE_STATUS_CHOICES',
@@ -138,3 +140,23 @@ DNS_DHCP_MANAGEMENT_CHOICES = (
     (DNS_DHCP_MANAGEMENT.DHCP_ONLY, "Manage DHCP"),
     (DNS_DHCP_MANAGEMENT.DNS_AND_DHCP, "Manage DNS and DHCP"),
 )
+
+
+class NODEGROUP_STATUS:
+    """The vocabulary of a `NodeGroup`'s possible statuses."""
+    # A nodegroup starts out as PENDING.
+    DEFAULT_STATUS = 0
+
+    #: The nodegroup has been created and awaits approval.
+    PENDING = 0
+    ACCEPTED = 1
+    REJECTED = 2
+
+
+# Django choices for NODEGROUP_STATUS: sequence of tuples (key, UI
+# representation).
+NODEGROUP_STATUS_CHOICES = (
+    (NODEGROUP_STATUS.PENDING, "Pending"),
+    (NODEGROUP_STATUS.ACCEPTED, "Accepted"),
+    (NODEGROUP_STATUS.REJECTED, "Rejected"),
+    )

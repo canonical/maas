@@ -18,11 +18,16 @@ __all__ = [
 from django.db.models import (
     CharField,
     ForeignKey,
+    IntegerField,
     IPAddressField,
     Manager,
     )
 from maasserver import DefaultMeta
 from maasserver.dhcp import is_dhcp_management_enabled
+from maasserver.enum import (
+    NODEGROUP_STATUS,
+    NODEGROUP_STATUS_CHOICES,
+    )
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.refresh_worker import refresh_worker
 from maasserver.server_address import get_maas_facing_server_address
@@ -116,6 +121,10 @@ class NodeGroup(TimestampedModel):
     # A node group's name is also used for the group's DNS zone.
     name = CharField(
         max_length=80, unique=True, editable=True, blank=False, null=False)
+
+    status = IntegerField(
+        choices=NODEGROUP_STATUS_CHOICES, editable=False,
+        default=NODEGROUP_STATUS.DEFAULT_STATUS)
 
     # Credentials for the worker to access the API with.
     api_token = ForeignKey(Token, null=False, editable=False, unique=True)
