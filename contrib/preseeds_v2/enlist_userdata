@@ -19,14 +19,24 @@ misc_bucket:
       echo =============================================
       sleep 10
    else
-      # we could set a password here and allow user at console to login
+      user="ubuntu"
+      pass="ubuntu"
+
+      echo "$user:$pass" | chpasswd
+      bfile="/tmp/block-reboot"
+      { echo "#!/bin/sh"; echo "touch $bfile"; } > /etc/profile.d/A01-block.sh
+      chmod 755 /etc/profile.d/A01-block.sh
       echo
       echo =============================================
       echo "failed to enlist system maas server '$host'"
       echo "sleeping 60 seconds then poweroff"
+      echo
+      echo "login with '$user:$pass' to debug and disable poweroff"
+      echo 
       cat /tmp/enlist.out
       echo =============================================
       sleep 60
+      [ -e $bfile ] && exit 0
    fi
    poweroff
 
