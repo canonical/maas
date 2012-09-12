@@ -2,8 +2,8 @@
 DEBUG = False
 
 # Default URL specifying protocol, host, and (if necessary) port where
-# this MAAS can be found.  Configuration can, and probably should,
-# override this.
+# systems in this MAAS can find the MAAS server.  Configuration can, and
+# probably should, override this.
 DEFAULT_MAAS_URL = "http://maas.internal.example.com/"
 
 # Absolute path to the directory static files should be collected to.
