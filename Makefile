@@ -19,7 +19,9 @@ export PGDATABASE := maas
 build: \
     bin/buildout \
     bin/database \
-    bin/maas bin/test.maas bin/test.maastesting \
+    bin/maas bin/test.maas \
+    bin/maascli bin/test.maascli \
+    bin/test.maastesting \
     bin/twistd.pserv bin/test.pserv \
     bin/twistd.txlongpoll \
     bin/py bin/ipy \
@@ -60,6 +62,14 @@ bin/maas: bin/buildout buildout.cfg versions.cfg setup.py $(js_enums)
 
 bin/test.maas: bin/buildout buildout.cfg versions.cfg setup.py $(js_enums)
 	$(buildout) install maas-test
+	@touch --no-create $@
+
+bin/maascli: bin/buildout buildout.cfg versions.cfg setup.py
+	$(buildout) install maascli
+	@touch --no-create $@
+
+bin/test.maascli: bin/buildout buildout.cfg versions.cfg setup.py
+	$(buildout) install maascli-test
 	@touch --no-create $@
 
 bin/test.maastesting: bin/buildout buildout.cfg versions.cfg setup.py

@@ -11,6 +11,7 @@ libpq-dev
 postgresql-9.1
 python-amqplib
 python-avahi
+python-bzrlib
 python-celery
 python-convoy
 python-dbus
