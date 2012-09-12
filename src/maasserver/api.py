@@ -54,19 +54,19 @@ from __future__ import (
 
 __metaclass__ = type
 __all__ = [
-    "api_doc",
-    "api_doc_title",
-    "generate_api_doc",
-    "get_oauth_token",
     "AccountHandler",
     "AnonNodesHandler",
+    "api_doc",
+    "api_doc_title",
     "FilesHandler",
+    "get_oauth_token",
     "NodeGroupsHandler",
     "NodeHandler",
-    "NodesHandler",
     "NodeMacHandler",
     "NodeMacsHandler",
+    "NodesHandler",
     "pxeconfig",
+    "render_api_docs",
     ]
 
 from base64 import b64decode
@@ -99,6 +99,11 @@ from django.template import RequestContext
 from docutils import core
 from formencode import validators
 from formencode.validators import Invalid
+from maasserver.apidoc import (
+    describe_handler,
+    find_api_handlers,
+    generate_api_docs,
+    )
 from maasserver.enum import (
     ARCHITECTURE,
     NODE_PERMISSION,
@@ -130,11 +135,9 @@ from maasserver.preseed import (
     )
 from maasserver.server_address import get_maas_facing_server_address
 from maasserver.utils.orm import get_one
-from piston.doc import generate_doc
 from piston.handler import (
     AnonymousBaseHandler,
     BaseHandler,
-    HandlerMetaClass,
     )
 from piston.models import Token
 from piston.resource import Resource
@@ -1015,7 +1018,7 @@ class MAASHandler(BaseHandler):
 
 
 # Title section for the API documentation.  Matches in style, format,
-# etc. whatever generate_api_doc() produces, so that you can concatenate
+# etc. whatever render_api_docs() produces, so that you can concatenate
 # the two.
 api_doc_title = dedent("""
     ========
@@ -1024,8 +1027,8 @@ api_doc_title = dedent("""
     """.lstrip('\n'))
 
 
-def generate_api_doc():
-    """Generate ReST documentation for the REST API.
+def render_api_docs():
+    """Render ReST documentation for the REST API.
 
     This module's docstring forms the head of the documentation; details of
     the API methods follow.
@@ -1033,24 +1036,7 @@ def generate_api_doc():
     :return: Documentation, in ReST, for the API.
     :rtype: :class:`unicode`
     """
-
-    # Fetch all the API Handlers (objects with the class
-    # HandlerMetaClass).
     module = sys.modules[__name__]
-
-    all = [getattr(module, name) for name in module.__all__]
-    handlers = [obj for obj in all if isinstance(obj, HandlerMetaClass)]
-
-    # Make sure each handler defines a 'resource_uri' method (this is
-    # easily forgotten and essential to have a proper documentation).
-    for handler in handlers:
-        sentinel = object()
-        resource_uri = getattr(handler, "resource_uri", sentinel)
-        assert resource_uri is not sentinel, "Missing resource_uri in %s" % (
-            handler.__name__)
-
-    docs = [generate_doc(handler) for handler in handlers]
-
     messages = [
         __doc__.strip(),
         '',
@@ -1059,7 +1045,8 @@ def generate_api_doc():
         '----------',
         '',
         ]
-    for doc in docs:
+    handlers = find_api_handlers(module)
+    for doc in generate_api_docs(handlers):
         for method in doc.get_methods():
             messages.append(
                 "%s %s\n  %s\n" % (
@@ -1073,20 +1060,14 @@ def reST_to_html_fragment(a_str):
     return parts['body_pre_docinfo'] + parts['fragment']
 
 
-_API_DOC = None
-
-
 def api_doc(request):
     """Get ReST documentation for the REST API."""
     # Generate the documentation and keep it cached.  Note that we can't do
     # that at the module level because the API doc generation needs Django
     # fully initialized.
-    global _API_DOC
-    if _API_DOC is None:
-        _API_DOC = generate_api_doc()
     return render_to_response(
         'maasserver/api_doc.html',
-        {'doc': reST_to_html_fragment(generate_api_doc())},
+        {'doc': reST_to_html_fragment(render_api_docs())},
         context_instance=RequestContext(request))
 
 
@@ -1153,4 +1134,22 @@ def pxeconfig(request):
 
     return HttpResponse(
         json.dumps(params._asdict()),
+        content_type="application/json")
+
+
+def describe(request):
+    """Return a description of the whole MAAS API.
+
+    Returns a JSON object describing the whole MAAS API.
+    """
+    module = sys.modules[__name__]
+    description = {
+        "doc": "MAAS API",
+        "handlers": [
+            describe_handler(handler)
+            for handler in find_api_handlers(module)
+            ],
+        }
+    return HttpResponse(
+        json.dumps(description),
         content_type="application/json")
