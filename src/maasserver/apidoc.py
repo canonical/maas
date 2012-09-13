@@ -18,7 +18,6 @@ __all__ = [
 
 from inspect import getdoc
 from itertools import izip_longest
-from urllib import quote
 from urlparse import urljoin
 
 from django.conf import settings
@@ -82,15 +81,47 @@ def merge(*iterables):
         yield next(value for value in values if value is not undefined)
 
 
+def describe_actions(handler):
+    """Describe the actions that `handler` supports.
+
+    For each action, which could be a CRUD operation or a custom (piggybacked)
+    operation, a dict with the following entries is generated:
+
+      method: string, HTTP method.
+      name: string, a human-friendly name for the action.
+      doc: string, documentation about the action.
+      op: string or None, the op parameter to pass in requests for
+          non-CRUD/ReSTful requests.
+      restful: Indicates if this is a CRUD/ReSTful action.
+
+    """
+    from maasserver.api import dispatch_methods  # Avoid circular imports.
+    operation_methods = getattr(handler, "_available_api_methods", {})
+    for http_method in handler.allowed_methods:
+        desc_base = dict(method=http_method)
+        if http_method in operation_methods:
+            # Default Piston CRUD method has been overridden; inspect
+            # custom operations instead.
+            operations = handler._available_api_methods[http_method]
+            for op, func in operations.items():
+                yield dict(
+                    desc_base, name=op, doc=getdoc(func),
+                    op=op, restful=False)
+        else:
+            # Default Piston CRUD method still stands.
+            name = dispatch_methods[http_method]
+            func = getattr(handler, name)
+            yield dict(
+                desc_base, name=name, doc=getdoc(func),
+                op=None, restful=True)
+
+
 def describe_handler(handler):
     """Return a serialisable description of a handler.
 
     :type handler: :class:`BaseHandler` instance that has been decorated by
         `api_operations`.
     """
-    # Avoid circular imports.
-    from maasserver.api import dispatch_methods
-
     uri_template = generate_doc(handler).resource_uri_template
     if uri_template is None:
         uri_template = settings.DEFAULT_MAAS_URL
@@ -103,36 +134,10 @@ def describe_handler(handler):
         "Resource URI specifications with keyword parameters are not yet "
         "supported: handler=%r; view_name=%r" % (handler, view_name))
 
-    actions = []
-    operation_methods = getattr(handler, "_available_api_methods", {})
-    for http_method in handler.allowed_methods:
-        if http_method in operation_methods:
-            # Default Piston CRUD method has been overridden; inspect
-            # custom operations instead.
-            operations = handler._available_api_methods[http_method]
-            for op, func in operations.items():
-                desc = {
-                    "doc": getdoc(func),
-                    "method": http_method,
-                    "op": op,
-                    "uri": "%s?op=%s" % (uri_template, quote(op)),
-                    "uri_params": uri_params,
-                    }
-                actions.append(desc)
-        else:
-            # Default Piston CRUD method still stands.
-            op = dispatch_methods[http_method]
-            func = getattr(handler, op)
-            desc = {
-                "doc": getdoc(func),
-                "method": http_method,
-                "uri": uri_template,
-                "uri_params": uri_params,
-                }
-            actions.append(desc)
-
     return {
-        "name": handler.__name__,
+        "actions": list(describe_actions(handler)),
         "doc": getdoc(handler),
-        "actions": actions,
+        "name": handler.__name__,
+        "params": uri_params,
+        "uri": uri_template,
         }
