@@ -1,10 +1,8 @@
 # encoding: utf-8
 import datetime
-
-from django.db import models
 from south.db import db
 from south.v2 import SchemaMigration
-
+from django.db import models
 
 class Migration(SchemaMigration):
 
@@ -119,7 +117,7 @@ class Migration(SchemaMigration):
             'power_parameters': ('maasserver.fields.JSONObjectField', [], {'default': "u''", 'blank': 'True'}),
             'power_type': ('django.db.models.fields.CharField', [], {'default': "u''", 'max_length': '10', 'blank': 'True'}),
             'status': ('django.db.models.fields.IntegerField', [], {'default': '0', 'max_length': '10'}),
-            'system_id': ('django.db.models.fields.CharField', [], {'default': "u'node-ee3df1b4-fbcb-11e1-8b8f-002608dc6120'", 'unique': 'True', 'max_length': '41'}),
+            'system_id': ('django.db.models.fields.CharField', [], {'default': "u'node-4571ce2a-fd74-11e1-b71c-3c970e0e56dc'", 'unique': 'True', 'max_length': '41'}),
             'token': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['piston.Token']", 'null': 'True'}),
             'updated': ('django.db.models.fields.DateTimeField', [], {})
         },
@@ -136,8 +134,10 @@ class Migration(SchemaMigration):
             'ip_range_low': ('django.db.models.fields.IPAddressField', [], {'default': "u''", 'max_length': '15', 'unique': 'True', 'null': 'True', 'blank': 'True'}),
             'name': ('django.db.models.fields.CharField', [], {'unique': 'True', 'max_length': '80'}),
             'router_ip': ('django.db.models.fields.IPAddressField', [], {'default': "u''", 'max_length': '15', 'null': 'True', 'blank': 'True'}),
+            'status': ('django.db.models.fields.IntegerField', [], {'default': '0'}),
             'subnet_mask': ('django.db.models.fields.IPAddressField', [], {'default': "u''", 'max_length': '15', 'null': 'True', 'blank': 'True'}),
             'updated': ('django.db.models.fields.DateTimeField', [], {}),
+            'uuid': ('django.db.models.fields.CharField', [], {'unique': 'True', 'max_length': '36'}),
             'worker_ip': ('django.db.models.fields.IPAddressField', [], {'unique': 'True', 'max_length': '15'})
         },
         u'maasserver.sshkey': {
@@ -172,7 +172,7 @@ class Migration(SchemaMigration):
             'is_approved': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
             'key': ('django.db.models.fields.CharField', [], {'max_length': '18'}),
             'secret': ('django.db.models.fields.CharField', [], {'max_length': '32'}),
-            'timestamp': ('django.db.models.fields.IntegerField', [], {'default': '1347338908L'}),
+            'timestamp': ('django.db.models.fields.IntegerField', [], {'default': '1347521161L'}),
             'token_type': ('django.db.models.fields.IntegerField', [], {}),
             'user': ('django.db.models.fields.related.ForeignKey', [], {'blank': 'True', 'related_name': "'tokens'", 'null': 'True', 'to': "orm['auth.User']"}),
             'verifier': ('django.db.models.fields.CharField', [], {'max_length': '10'})

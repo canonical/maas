@@ -119,7 +119,8 @@ class Migration(SchemaMigration):
             'status': ('django.db.models.fields.IntegerField', [], {'default': '0'}),
             'subnet_mask': ('django.db.models.fields.IPAddressField', [], {'default': "u''", 'max_length': '15', 'null': 'True', 'blank': 'True'}),
             'updated': ('django.db.models.fields.DateTimeField', [], {}),
-            'worker_ip': ('django.db.models.fields.IPAddressField', [], {'unique': 'True', 'max_length': '15'})
+            'worker_ip': ('django.db.models.fields.IPAddressField', [], {'unique': 'True', 'max_length': '15'}),
+            'uuid': ('django.db.models.fields.CharField', [], {'unique': 'True', 'max_length': '36'})
         },
         u'maasserver.sshkey': {
             'Meta': {'unique_together': "((u'user', u'key'),)", 'object_name': 'SSHKey'},
