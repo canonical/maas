@@ -17,6 +17,8 @@ __all__ = [
     'DNS_DHCP_MANAGEMENT_CHOICES',
     'NODEGROUP_STATUS',
     'NODEGROUP_STATUS_CHOICES',
+    'NODEGROUPINTERFACE_MANAGEMENT',
+    'NODEGROUPINTERFACE_MANAGEMENT_CHOICES',
     'NODE_PERMISSION',
     'NODE_STATUS',
     'NODE_STATUS_CHOICES',
@@ -159,4 +161,26 @@ NODEGROUP_STATUS_CHOICES = (
     (NODEGROUP_STATUS.PENDING, "Pending"),
     (NODEGROUP_STATUS.ACCEPTED, "Accepted"),
     (NODEGROUP_STATUS.REJECTED, "Rejected"),
+    )
+
+
+class NODEGROUPINTERFACE_MANAGEMENT:
+    """The vocabulary of a `NodeGroupInterface`'s possible statuses."""
+    # A nodegroupinterface starts out as UNMANAGED.
+    DEFAULT_STATUS = 0
+
+    # Do not manage DHCP or DNS for this interface.
+    UNMANAGED = 0
+    # Manage DHCP for this interface.
+    DHCP = 1
+    # Manage DHCP and DNS for this interface.
+    DHCP_AND_DNS = 2
+
+
+# Django choices for NODEGROUP_STATUS: sequence of tuples (key, UI
+# representation).
+NODEGROUPINTERFACE_MANAGEMENT_CHOICES = (
+    (NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED, "Unmanaged"),
+    (NODEGROUPINTERFACE_MANAGEMENT.DHCP, "Manage DHCP"),
+    (NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS, "Manage DHCP and DNS"),
     )
