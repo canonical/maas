@@ -22,6 +22,7 @@ from django.contrib.auth.models import User
 from maasserver.enum import (
     ARCHITECTURE,
     NODE_STATUS,
+    NODEGROUPINTERFACE_MANAGEMENT,
     )
 from maasserver.models import (
     BootImage,
@@ -117,10 +118,11 @@ class Factory(maastesting.factory.Factory):
             Node.objects.filter(id=node.id).update(created=created)
         return reload_object(node)
 
-    def make_node_group(self, name=None, uuid=None, worker_ip=None,
+    def make_node_group(self, name=None, uuid=None, ip=None,
                         router_ip=None, network=None, subnet_mask=None,
                         broadcast_ip=None, ip_range_low=None,
-                        ip_range_high=None, dhcp_interfaces=None, **kwargs):
+                        ip_range_high=None, interface=None, management=None,
+                        **kwargs):
         """Create a :class:`NodeGroup`.
 
         If network (an instance of IPNetwork) is provided, use it to populate
@@ -131,6 +133,8 @@ class Factory(maastesting.factory.Factory):
         Otherwise, use the provided values for these values or use random IP
         addresses if they are not provided.
         """
+        if management is None:
+            management = NODEGROUPINTERFACE_MANAGEMENT.DHCP
         if name is None:
             name = self.make_name('nodegroup')
         if uuid is None:
@@ -141,7 +145,7 @@ class Factory(maastesting.factory.Factory):
             ip_range_low = str(IPAddress(network.first))
             ip_range_high = str(IPAddress(network.last))
             router_ip = factory.getRandomIPInNetwork(network)
-            worker_ip = factory.getRandomIPInNetwork(network)
+            ip = factory.getRandomIPInNetwork(network)
         else:
             if subnet_mask is None:
                 subnet_mask = self.getRandomIPAddress()
@@ -153,16 +157,16 @@ class Factory(maastesting.factory.Factory):
                 ip_range_high = self.getRandomIPAddress()
             if router_ip is None:
                 router_ip = self.getRandomIPAddress()
-            if worker_ip is None:
-                worker_ip = self.getRandomIPAddress()
-        if dhcp_interfaces is None:
-            dhcp_interfaces = self.make_name('interface')
+            if ip is None:
+                ip = self.getRandomIPAddress()
+        if interface is None:
+            interface = self.make_name('interface')
         ng = NodeGroup.objects.new(
-            name=name, uuid=uuid, worker_ip=worker_ip,
+            name=name, uuid=uuid, ip=ip,
             subnet_mask=subnet_mask, broadcast_ip=broadcast_ip,
             router_ip=router_ip, ip_range_low=ip_range_low,
-            ip_range_high=ip_range_high, dhcp_interfaces=dhcp_interfaces,
-            **kwargs)
+            ip_range_high=ip_range_high, interface=interface,
+            management=management, **kwargs)
         ng.save()
         return ng
 

@@ -24,6 +24,7 @@ from maasserver.models import (
     Config,
     Node,
     NodeGroup,
+    NodeGroupInterface,
     )
 from maasserver.signals import connect_to_field_change
 
@@ -41,10 +42,23 @@ Config.objects.config_changed_connect(
 
 @receiver(post_save, sender=NodeGroup)
 def dns_post_save_NodeGroup(sender, instance, created, **kwargs):
-    """Create or update DNS zones related to the new nodegroup."""
+    """Create or update DNS zones related to the saved nodegroup."""
     from maasserver.dns import write_full_dns_config, add_zone
     if created:
         add_zone(instance)
+    else:
+        write_full_dns_config()
+
+
+# XXX rvb 2012-09-12: This is only needed because we use that
+# information to pre-populate the zone file.  Once we stop doing that,
+# this can be removed.
+@receiver(post_save, sender=NodeGroupInterface)
+def dns_post_save_NodeGroupInterface(sender, instance, created, **kwargs):
+    """Create or update DNS zones related to the saved nodegroupinterface."""
+    from maasserver.dns import write_full_dns_config, add_zone
+    if created:
+        add_zone(instance.nodegroup)
     else:
         write_full_dns_config()
 

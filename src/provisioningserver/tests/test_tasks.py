@@ -160,7 +160,7 @@ class TestDHCPTasks(PservTestCase):
     def make_dhcp_config_params(self):
         """Fake up a dict of dhcp configuration parameters."""
         param_names = [
-            'dhcp_interfaces',
+            'interface',
             'omapi_key',
             'subnet',
             'subnet_mask',
