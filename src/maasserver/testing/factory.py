@@ -24,6 +24,7 @@ from maasserver.enum import (
     NODE_STATUS,
     )
 from maasserver.models import (
+    BootImage,
     DHCPLease,
     FileStorage,
     MACAddress,
@@ -270,6 +271,22 @@ class Factory(maastesting.factory.Factory):
         items.update(kwargs)
         return "OAuth " + ", ".join([
             '%s="%s"' % (key, value) for key, value in items.items()])
+
+    def make_boot_image(self, architecture=None, subarchitecture=None,
+                        release=None, purpose=None):
+        if architecture is None:
+            architecture = self.make_name('architecture')
+        if subarchitecture is None:
+            subarchitecture = self.make_name('subarchitecture')
+        if release is None:
+            release = self.make_name('release')
+        if purpose is None:
+            purpose = self.make_name('purpose')
+        return BootImage.objects.create(
+            architecture=architecture,
+            subarchitecture=subarchitecture,
+            release=release,
+            purpose=purpose)
 
 
 # Create factory singleton.

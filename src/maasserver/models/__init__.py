@@ -11,6 +11,7 @@ from __future__ import (
 
 __metaclass__ = type
 __all__ = [
+    'BootImage',
     'Config',
     'DHCPLease',
     'FileStorage',
@@ -29,6 +30,7 @@ from django.contrib.auth.backends import ModelBackend
 from django.contrib.auth.models import User
 from django.db.models.signals import post_save
 from maasserver.enum import NODE_PERMISSION
+from maasserver.models.bootimage import BootImage
 from maasserver.models.config import Config
 from maasserver.models.dhcplease import DHCPLease
 from maasserver.models.filestorage import FileStorage
@@ -61,8 +63,9 @@ User._meta.get_field('email')._unique = True
 
 
 # Register the models in the admin site.
-admin.site.register(Consumer)
+admin.site.register(BootImage)
 admin.site.register(Config)
+admin.site.register(Consumer)
 admin.site.register(FileStorage)
 admin.site.register(MACAddress)
 admin.site.register(Node)
