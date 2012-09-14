@@ -19,6 +19,7 @@ import os
 from maastesting.factory import factory
 from maastesting.matchers import ContainsAll
 from maastesting.testcase import TestCase
+from provisioningserver import kernel_opts
 from provisioningserver.kernel_opts import (
     compose_kernel_command_line_new,
     compose_preseed_opt,
@@ -27,6 +28,7 @@ from provisioningserver.kernel_opts import (
     ISCSI_TARGET_NAME_PREFIX,
     KernelParameters,
     )
+
 from provisioningserver.pxe.tftppath import compose_image_path
 from provisioningserver.testing.config import ConfigFixture
 from testtools.matchers import (
@@ -35,12 +37,15 @@ from testtools.matchers import (
     )
 
 
-def make_kernel_parameters():
+def make_kernel_parameters(extra_parameters=None):
     """Make a randomly populated `KernelParameters` instance."""
-    return KernelParameters(**{
+    parms = {
             field: factory.make_name(field)
             for field in KernelParameters._fields
-            })
+            }
+    if extra_parameters is not None:
+        parms.update(extra_parameters)
+    return KernelParameters(**parms)
 
 
 class TestUtilitiesKernelOpts(TestCase):
@@ -70,24 +75,8 @@ class TestKernelOpts(TestCase):
             "auto url=%s" % params.preseed_url,
             compose_kernel_command_line_new(params))
 
-    def test_compose_kernel_command_line_includes_initrd(self):
-        params = make_kernel_parameters()
-        initrd_path = compose_image_path(
-            params.arch, params.subarch, params.release,
-            purpose=params.purpose)
-        self.assertIn(
-            "initrd=%s" % initrd_path,
-            compose_kernel_command_line_new(params))
-
-    def test_compose_kernel_command_line_includes_suite(self):
-        # At the moment, the OS release we use is hard-coded to "precise."
-        params = make_kernel_parameters()
-        self.assertIn(
-            "suite=%s" % params.release,
-            compose_kernel_command_line_new(params))
-
-    def test_compose_kernel_command_line_includes_hostname_and_domain(self):
-        params = make_kernel_parameters()
+    def test_install_compose_kernel_command_line_includes_name_domain(self):
+        params = make_kernel_parameters({"purpose": "install"})
         self.assertThat(
             compose_kernel_command_line_new(params),
             ContainsAll([
@@ -95,15 +84,15 @@ class TestKernelOpts(TestCase):
                 "domain=%s" % params.domain,
                 ]))
 
-    def test_compose_kernel_command_line_includes_locale(self):
-        params = make_kernel_parameters()
+    def test_install_compose_kernel_command_line_includes_locale(self):
+        params = make_kernel_parameters({"purpose": "install"})
         locale = "en_US"
         self.assertIn(
             "locale=%s" % locale,
             compose_kernel_command_line_new(params))
 
-    def test_compose_kernel_command_line_includes_log_settings(self):
-        params = make_kernel_parameters()
+    def test_install_compose_kernel_command_line_includes_log_settings(self):
+        params = make_kernel_parameters({"purpose": "install"})
         # Port 514 (UDP) is syslog.
         log_port = "514"
         text_priority = "critical"
@@ -115,13 +104,45 @@ class TestKernelOpts(TestCase):
                 "text priority=%s" % text_priority,
                 ]))
 
-    def test_compose_kernel_command_line_inc_purpose_opts(self):
+    def test_install_compose_kernel_command_line_inc_purpose_opts(self):
         # The result of compose_kernel_command_line includes the purpose
         # options for a non "commissioning" node.
-        params = make_kernel_parameters()
+        params = make_kernel_parameters({"purpose": "install"})
         self.assertIn(
             "netcfg/choose_interface=auto",
             compose_kernel_command_line_new(params))
+
+    def test_commissioning_compose_kernel_command_line_inc_purpose_opts(self):
+        # The result of compose_kernel_command_line includes the purpose
+        # options for a non "commissioning" node.
+        self.patch(kernel_opts,
+                   "get_ephemeral_name").return_value = "RELEASE-ARCH"
+        params = make_kernel_parameters({"purpose": "commissioning"})
+        cmdline = compose_kernel_command_line_new(params)
+        self.assertThat(
+            cmdline,
+            ContainsAll([
+                "root=LABEL=cloudimg-rootfs",
+                "iscsi_initiator=",
+                "overlayroot=tmpfs",
+                "ip=::::%s" % params.hostname]))
+
+    def test_compose_kernel_command_line_inc_common_opts(self):
+        # Test that some kernel arguments appear on both commissioning
+        # and install command lines.
+        self.patch(kernel_opts,
+                   "get_ephemeral_name").return_value = "RELEASE-ARCH"
+        expected = ["console=tty1", "console=ttyS0", "nomodeset"]
+
+        params = make_kernel_parameters({
+            "purpose": "commissioning", "arch": "i386" })
+        cmdline = compose_kernel_command_line_new(params)
+        self.assertThat(cmdline, ContainsAll(expected))
+
+        params = make_kernel_parameters({
+            "purpose": "install", "arch": "i386" })
+        cmdline = compose_kernel_command_line_new(params)
+        self.assertThat(cmdline, ContainsAll(expected))
 
     def create_ephemeral_info(self, name, arch, release):
         """Create a pseudo-real ephemeral info file."""
