@@ -62,10 +62,6 @@ class NodeGroupManager(Manager):
         - create the related NodeGroupInterface.
         - generate API credentials for the nodegroup's worker to use.
         """
-        # Avoid circular imports.
-        from maasserver.models.user import create_auth_token
-        from maasserver.worker_user import get_worker_user
-
         dhcp_values = [
             interface,
             subnet_mask,
@@ -77,10 +73,7 @@ class NodeGroupManager(Manager):
         assert all(dhcp_values) or not any(dhcp_values), (
             "Provide all DHCP settings, or none at all.")
 
-        api_token = create_auth_token(get_worker_user())
-        nodegroup = NodeGroup(
-            name=name, uuid=uuid,
-            api_token=api_token, api_key=api_token.key, dhcp_key=dhcp_key)
+        nodegroup = NodeGroup(name=name, uuid=uuid, dhcp_key=dhcp_key)
         nodegroup.save()
         nginterface = NodeGroupInterface(
             nodegroup=nodegroup, ip=ip, subnet_mask=subnet_mask,
@@ -144,10 +137,21 @@ class NodeGroup(TimestampedModel):
 
     # Unique identifier of the worker.
     uuid = CharField(
-        max_length=36, unique=True, null=False, blank=False, editable=False)
+        max_length=36, unique=True, null=False, blank=False, editable=True)
 
     def __repr__(self):
         return "<NodeGroup %r>" % self.name
+
+    def save(self, *args, **kwargs):
+        if self.api_token_id is None:
+            # Avoid circular imports.
+            from maasserver.models.user import create_auth_token
+            from maasserver.worker_user import get_worker_user
+
+            api_token = create_auth_token(get_worker_user())
+            self.api_token = api_token
+            self.api_key = api_token.key
+        return super(NodeGroup, self).save(*args, **kwargs)
 
     def get_managed_interface(self):
         """Return the interface for which MAAS managed the DHCP service.

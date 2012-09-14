@@ -12,6 +12,8 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
+import json
+
 from django import forms
 from django.contrib.auth.models import User
 from django.core.exceptions import (
@@ -21,9 +23,11 @@ from django.core.exceptions import (
 from django.http import QueryDict
 from maasserver.enum import (
     ARCHITECTURE,
+    NODEGROUP_STATUS,
     ARCHITECTURE_CHOICES,
     NODE_AFTER_COMMISSIONING_ACTION_CHOICES,
     NODE_STATUS,
+    NODEGROUPINTERFACE_MANAGEMENT,
     )
 from maasserver.forms import (
     AdminNodeForm,
@@ -35,10 +39,13 @@ from maasserver.forms import (
     get_node_edit_form,
     HostnameFormField,
     initialize_node_group,
+    INTERFACES_VALIDATION_ERROR_MESSAGE,
     MACAddressForm,
     NewUserCreationForm,
     NodeActionForm,
     NodeForm,
+    NodeGroupInterfaceForm,
+    NodeGroupWithInterfacesForm,
     NodeWithMACAddressesForm,
     ProfileForm,
     remove_None_values,
@@ -58,6 +65,7 @@ from maasserver.node_action import (
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
 from provisioningserver.enum import POWER_TYPE_CHOICES
+from testtools.matchers import MatchesStructure
 from testtools.testcase import ExpectedException
 
 
@@ -565,3 +573,131 @@ class TestMACAddressForm(TestCase):
             form._errors)
         self.assertFalse(
             MACAddress.objects.filter(node=node, mac_address=mac).exists())
+
+
+def make_interface_settings():
+    """Create a dict of arbitrary interface configuration parameters."""
+    return {
+        'ip': factory.getRandomIPAddress(),
+        'interface': factory.make_name('interface'),
+        'subnet_mask': factory.getRandomIPAddress(),
+        'broadcast_ip': factory.getRandomIPAddress(),
+        'router_ip': factory.getRandomIPAddress(),
+        'ip_range_low': factory.getRandomIPAddress(),
+        'ip_range_high': factory.getRandomIPAddress(),
+    }
+
+
+class TestNodeGroupInterfaceForm(TestCase):
+
+    def test_NodeGroupInterfaceForm_uses_initial_parameters(self):
+        nodegroup = factory.make_node_group()
+        management = factory.getRandomEnum(NODEGROUPINTERFACE_MANAGEMENT)
+        form = NodeGroupInterfaceForm(data=make_interface_settings())
+        interface = form.save(nodegroup=nodegroup, management=management)
+        self.assertEqual(
+            (nodegroup, management),
+            (interface.nodegroup, interface.management))
+
+    def test_NodeGroupInterfaceForm_validates_parameters(self):
+        form = NodeGroupInterfaceForm(data={'ip': factory.getRandomString()})
+        self.assertFalse(form.is_valid())
+        self.assertEquals(
+            {'ip': ['Enter a valid IPv4 address.']}, form._errors)
+
+
+class TestNodeGroupWithInterfacesForm(TestCase):
+
+    def test_NodeGroupWithInterfacesForm_creates_pending_nodegroup(self):
+        name = factory.make_name('name')
+        uuid = factory.getRandomUUID()
+        form = NodeGroupWithInterfacesForm(
+            data={'name': name, 'uuid': uuid})
+        self.assertTrue(form.is_valid(), form._errors)
+        nodegroup = form.save()
+        self.assertEqual(
+            (uuid, name, NODEGROUP_STATUS.PENDING, 0),
+            (
+                nodegroup.uuid,
+                nodegroup.name,
+                nodegroup.status,
+                nodegroup.nodegroupinterface_set.count(),
+            ))
+
+    def test_NodeGroupWithInterfacesForm_validates_parameters(self):
+        name = factory.make_name('name')
+        too_long_uuid = 'test' * 30
+        form = NodeGroupWithInterfacesForm(
+            data={'name': name, 'uuid': too_long_uuid})
+        self.assertFalse(form.is_valid())
+        self.assertEquals(
+            {'uuid':
+                ['Ensure this value has at most 36 characters (it has 120).']},
+            form._errors)
+
+    def test_NodeGroupWithInterfacesForm_rejects_invalid_json_interfaces(self):
+        name = factory.make_name('name')
+        uuid = factory.getRandomUUID()
+        invalid_interfaces = factory.make_name('invalid_json_interfaces')
+        form = NodeGroupWithInterfacesForm(
+            data={
+                'name': name, 'uuid': uuid, 'interfaces': invalid_interfaces})
+        self.assertFalse(form.is_valid())
+        self.assertEquals(
+            {'interfaces': ['Invalid json value.']},
+            form._errors)
+
+    def test_NodeGroupWithInterfacesForm_rejects_invalid_list_interfaces(self):
+        name = factory.make_name('name')
+        uuid = factory.getRandomUUID()
+        invalid_interfaces = json.dumps('invalid interface list')
+        form = NodeGroupWithInterfacesForm(
+            data={
+                'name': name, 'uuid': uuid, 'interfaces': invalid_interfaces})
+        self.assertFalse(form.is_valid())
+        self.assertEquals(
+            {'interfaces': [INTERFACES_VALIDATION_ERROR_MESSAGE]},
+            form._errors)
+
+    def test_NodeGroupWithInterfacesForm_rejects_invalid_interface(self):
+        name = factory.make_name('name')
+        uuid = factory.getRandomUUID()
+        interface = make_interface_settings()
+        # Make the interface invalid.
+        interface['ip_range_high'] = 'invalid IP address'
+        interfaces = json.dumps([interface])
+        form = NodeGroupWithInterfacesForm(
+            data={'name': name, 'uuid': uuid, 'interfaces': interfaces})
+        self.assertFalse(form.is_valid())
+        self.assertIn(
+            "Enter a valid IPv4 address", form._errors['interfaces'][0])
+
+    def test_NodeGroupWithInterfacesForm_creates_interface_from_params(self):
+        name = factory.make_name('name')
+        uuid = factory.getRandomUUID()
+        interface = make_interface_settings()
+        interfaces = json.dumps([interface])
+        form = NodeGroupWithInterfacesForm(
+            data={'name': name, 'uuid': uuid, 'interfaces': interfaces})
+        self.assertTrue(form.is_valid())
+        form.save()
+        nodegroup = NodeGroup.objects.get(uuid=uuid)
+        self.assertThat(
+            nodegroup.nodegroupinterface_set.all()[0],
+            MatchesStructure.byEquality(**interface))
+        self.assertEqual(
+            NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED,
+            nodegroup.nodegroupinterface_set.all()[0].management)
+
+    def test_NodeGroupWithInterfacesForm_creates_multiple_interfaces(self):
+        name = factory.make_name('name')
+        uuid = factory.getRandomUUID()
+        interface1 = make_interface_settings()
+        interface2 = make_interface_settings()
+        interfaces = json.dumps([interface1, interface2])
+        form = NodeGroupWithInterfacesForm(
+            data={'name': name, 'uuid': uuid, 'interfaces': interfaces})
+        self.assertTrue(form.is_valid())
+        form.save()
+        nodegroup = NodeGroup.objects.get(uuid=uuid)
+        self.assertEqual(2,  nodegroup.nodegroupinterface_set.count())

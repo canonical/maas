@@ -47,7 +47,7 @@ class NodeGroupInterface(TimestampedModel):
 
     # DHCP server settings.
     interface = CharField(
-        blank=True, editable=False, max_length=255, default='')
+        blank=True, editable=True, max_length=255, default='')
     subnet_mask = IPAddressField(
         editable=True, unique=False, blank=True, null=True, default=None)
     broadcast_ip = IPAddressField(
