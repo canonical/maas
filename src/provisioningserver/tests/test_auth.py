@@ -13,6 +13,7 @@ __metaclass__ = type
 __all__ = []
 
 from apiclient.creds import convert_tuple_to_string
+from apiclient.testing.credentials import make_api_credentials
 from maastesting.factory import factory
 from provisioningserver import (
     auth,
@@ -21,25 +22,16 @@ from provisioningserver import (
 from provisioningserver.testing.testcase import PservTestCase
 
 
-def make_credentials():
-    """Produce a tuple of API credentials."""
-    return (
-        factory.make_name('consumer-key'),
-        factory.make_name('resource-token'),
-        factory.make_name('resource-secret'),
-        )
-
-
 class TestAuth(PservTestCase):
 
     def test_record_api_credentials_records_credentials_string(self):
-        creds_string = convert_tuple_to_string(make_credentials())
+        creds_string = convert_tuple_to_string(make_api_credentials())
         auth.record_api_credentials(creds_string)
         self.assertEqual(
             creds_string, cache.cache.get(auth.API_CREDENTIALS_CACHE_KEY))
 
     def test_get_recorded_api_credentials_returns_credentials_as_tuple(self):
-        creds = make_credentials()
+        creds = make_api_credentials()
         auth.record_api_credentials(convert_tuple_to_string(creds))
         self.assertEqual(creds, auth.get_recorded_api_credentials())
 

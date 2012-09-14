@@ -14,6 +14,7 @@ __all__ = [
     'compose_bootloader_path',
     'compose_config_path',
     'compose_image_path',
+    'list_boot_images',
     'locate_tftp_path',
     ]
 
@@ -83,3 +84,86 @@ def locate_tftp_path(path, tftproot):
     if path is None:
         return tftproot
     return os.path.join(tftproot, path.lstrip('/'))
+
+
+def is_visible_subdir(directory, subdir):
+    """Is `subdir` a non-hidden sub-directory of `directory`?"""
+    if subdir.startswith('.'):
+        return False
+    else:
+        return os.path.isdir(os.path.join(directory, subdir))
+
+
+def list_subdirs(directory):
+    """Return a list of non-hidden directories in `directory`."""
+    return [
+        subdir
+        for subdir in os.listdir(directory)
+            if is_visible_subdir(directory, subdir)]
+
+
+def extend_path(directory, path):
+    """Dig one directory level deeper on `os.path.join(directory, *path)`.
+
+    If `path` is a list of consecutive path elements drilling down from
+    `directory`, return a list of sub-directory paths leading one step
+    further down.
+
+    :param directory: Base directory that `path` is relative to.
+    :param path: A path to a subdirectory of `directory`, represented as
+        a list of path elements relative to `directory`.
+    :return: A list of paths that go one sub-directory level further
+        down from `path`.
+    """
+    return [
+        path + [subdir]
+        for subdir in list_subdirs(os.path.join(directory, *path))]
+
+
+def drill_down(directory, paths):
+    """Find the extensions of `paths` one level deeper into the filesystem.
+
+    :param directory: Base directory that each path in `paths` is relative to.
+    :param paths: A list of "path lists."  Each path list is a list of
+        path elements drilling down into the filesystem from `directory`.
+    :return: A list of paths, each of which drills one level deeper down into
+        the filesystem hierarchy than the originals in `paths`.
+    """
+    return sum([extend_path(directory, path) for path in paths], [])
+
+
+def extract_image_params(path):
+    """Represent a list of TFTP path elements as a boot-image dict.
+
+    The path must consist of a full [architecture, subarchitecture, release,
+    purpose] that identify a kind of boot that we may need an image for.
+    """
+    arch, subarch, release, purpose = path
+    return dict(
+        architecture=arch, subarchitecture=subarch, release=release,
+        purpose=purpose)
+
+
+def list_boot_images(tftproot):
+    """List the available boot images.
+
+    :param tftproot: TFTP root directory.
+    :return: An iterable of dicts, describing boot images as consumed by
+        the report_boot_images API call.
+    """
+    # The sub-directories directly under tftproot, if they contain
+    # images, represent architectures.
+    potential_archs = list_subdirs(tftproot)
+
+    # Starting point for iteration: paths that contain only the
+    # top-level subdirectory of tftproot, i.e. the architecture name.
+    paths = [[subdir] for subdir in potential_archs]
+
+    # Extend paths deeper into the filesystem, through the levels that
+    # represent sub-architecture, release, and purpose.  Any directory
+    # that doesn't extend this deep isn't a boot image.
+    for level in ['subarch', 'release', 'purpose']:
+        paths = drill_down(tftproot, paths)
+
+    # Each path we find this way should be a boot image.
+    return [extract_image_params(path) for path in paths]

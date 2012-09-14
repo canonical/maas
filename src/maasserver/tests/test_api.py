@@ -108,6 +108,7 @@ from provisioningserver.enum import (
     )
 from provisioningserver.kernel_opts import KernelParameters
 from provisioningserver.omshell import Omshell
+from provisioningserver.pxe import tftppath
 from testresources import FixtureResource
 from testtools.matchers import (
     Contains,
@@ -2698,6 +2699,10 @@ class TestNodeGroupAPIAuth(APIv10TestMixin, TestCase):
 
 class TestBootImagesAPI(APITestCase):
 
+    resources = (
+        ('celery', FixtureResource(CeleryFixture())),
+        )
+
     def report_images(self, images, client=None):
         if client is None:
             client = self.client
@@ -2750,6 +2755,17 @@ class TestBootImagesAPI(APITestCase):
         self.assertEqual(
             (httplib.OK, "OK"),
             (response.status_code, response.content))
+
+    def test_worker_calls_report_boot_images(self):
+        refresh_worker(NodeGroup.objects.ensure_master())
+        self.patch(MAASClient, 'post')
+        self.patch(tftppath, 'list_boot_images', Mock(return_value=[]))
+
+        tasks.report_boot_images.delay()
+
+        MAASClient.post.assert_called_once_with(
+            reverse('boot_images_handler').lstrip('/'), 'report_boot_images',
+            images=json.dumps([]))
 
 
 class TestDescribe(AnonAPITestCase):

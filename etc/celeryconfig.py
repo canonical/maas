@@ -72,4 +72,11 @@ CELERYBEAT_SCHEDULE = {
         'task': 'provisioningserver.tasks.upload_dhcp_leases',
         'schedule': timedelta(minutes=1),
     },
+
+    # XXX JeroenVermeulen 2012-09-12, bug=1039366: this task should run
+    # only on the master worker.
+    'report-boot-images': {
+        'task': 'provisioningserver.report_boot_images',
+        'schedule': timedelta(minutes=5),
+    },
 }

@@ -13,6 +13,7 @@ __metaclass__ = type
 __all__ = []
 
 from datetime import datetime
+import json
 import os
 import random
 from subprocess import (
@@ -21,6 +22,8 @@ from subprocess import (
     )
 
 from apiclient.creds import convert_tuple_to_string
+from apiclient.maas_client import MAASClient
+from apiclient.testing.credentials import make_api_credentials
 from celeryconfig import DHCP_CONFIG_FILE
 from maastesting.celery import CeleryFixture
 from maastesting.factory import factory
@@ -49,6 +52,7 @@ from provisioningserver.dns.config import (
     )
 from provisioningserver.enum import POWER_TYPE
 from provisioningserver.power.poweraction import PowerActionFail
+from provisioningserver.pxe import tftppath
 from provisioningserver.tasks import (
     add_new_dhcp_host_map,
     Omshell,
@@ -56,6 +60,7 @@ from provisioningserver.tasks import (
     power_on,
     refresh_secrets,
     remove_dhcp_host_map,
+    report_boot_images,
     restart_dhcp_server,
     rndc_command,
     RNDC_COMMAND_MAX_RETRY,
@@ -66,6 +71,7 @@ from provisioningserver.tasks import (
     write_full_dns_config,
     )
 from provisioningserver.testing import network_infos
+from provisioningserver.testing.config import ConfigFixture
 from provisioningserver.testing.testcase import PservTestCase
 from testresources import FixtureResource
 from testtools.matchers import (
@@ -103,11 +109,7 @@ class TestRefreshSecrets(PservTestCase):
         self.assertEqual(maas_url, auth.get_recorded_maas_url())
 
     def test_updates_api_credentials(self):
-        credentials = (
-            factory.make_name('key'),
-            factory.make_name('token'),
-            factory.make_name('secret'),
-            )
+        credentials = make_api_credentials()
         refresh_secrets(
             api_credentials=convert_tuple_to_string(credentials))
         self.assertEqual(credentials, auth.get_recorded_api_credentials())
@@ -423,3 +425,33 @@ class TestDNSTasks(PservTestCase):
                     FileExists(),
                     FileExists(),
                 )))
+
+
+class TestBootImagesTasks(PservTestCase):
+
+    resources = (
+        ("celery", FixtureResource(CeleryFixture())),
+        )
+
+    def make_image_params(self):
+        """Create a dict of parameters describing a boot image."""
+        return {
+            'architecture': factory.make_name('architecture'),
+            'subarchitecture': factory.make_name('subarchitecture'),
+            'release': factory.make_name('release'),
+            'purpose': factory.make_name('purpose'),
+        }
+
+    def test_sends_boot_images_to_server(self):
+        self.useFixture(ConfigFixture({'tftp': {'root': self.make_dir()}}))
+        auth.record_maas_url('http://127.0.0.1/%s' % factory.make_name('path'))
+        auth.record_api_credentials(':'.join(make_api_credentials()))
+        image = self.make_image_params()
+        self.patch(tftppath, 'list_boot_images', Mock(return_value=[image]))
+        self.patch(MAASClient, 'post')
+
+        report_boot_images.delay()
+
+        self.assertItemsEqual(
+            [image],
+            json.loads(MAASClient.post.call_args[1]['images']))

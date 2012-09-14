@@ -32,6 +32,7 @@ from subprocess import (
 
 from celery.task import task
 from celeryconfig import DHCP_CONFIG_FILE
+from provisioningserver import boot_images
 from provisioningserver.auth import (
     record_api_credentials,
     record_maas_url,
@@ -320,3 +321,14 @@ def write_dhcp_config(**kwargs):
 def restart_dhcp_server():
     """Restart the DHCP server."""
     check_call(['sudo', 'service', 'isc-dhcp-server', 'restart'])
+
+
+# =====================================================================
+# Boot images-related tasks
+# =====================================================================
+
+
+@task
+def report_boot_images():
+    """For master worker only: report available netboot images."""
+    boot_images.report_to_server()
