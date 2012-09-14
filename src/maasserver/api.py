@@ -58,6 +58,7 @@ __all__ = [
     "AnonNodesHandler",
     "api_doc",
     "api_doc_title",
+    "BootImagesHandler",
     "FilesHandler",
     "get_oauth_token",
     "NodeGroupsHandler",
@@ -122,6 +123,7 @@ from maasserver.forms import (
     get_node_edit_form,
     )
 from maasserver.models import (
+    BootImage,
     Config,
     DHCPLease,
     FileStorage,
@@ -894,14 +896,13 @@ class NodeGroupsHandler(BaseHandler):
         return HttpResponse("Sending worker refresh.", status=httplib.OK)
 
 
-def get_nodegroup_for_worker(request, uuid):
-    """Get :class:`NodeGroup` by uuid, for access by its worker.
+def check_nodegroup_access(request, nodegroup):
+    """Validate API access by worker for `nodegroup`.
 
     This supports a nodegroup worker accessing its nodegroup object on
     the API.  If the request is done by anyone but the worker for this
     particular nodegroup, the function raises :class:`PermissionDenied`.
     """
-    nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
     try:
         key = extract_oauth_key(request)
     except Unauthorized as e:
@@ -909,9 +910,7 @@ def get_nodegroup_for_worker(request, uuid):
 
     if key != nodegroup.api_key:
         raise PermissionDenied(
-            "Only allowed for the %r worker." % nodegroup.uuid)
-
-    return nodegroup
+            "Only allowed for the %r worker." % nodegroup.name)
 
 
 @api_operations
@@ -936,7 +935,8 @@ class NodeGroupHandler(BaseHandler):
     @api_exported('POST')
     def update_leases(self, request, uuid):
         leases = get_mandatory_param(request.data, 'leases')
-        nodegroup = get_nodegroup_for_worker(request, uuid)
+        nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
+        check_nodegroup_access(request, nodegroup)
         leases = json.loads(leases)
         new_leases = DHCPLease.objects.update_leases(nodegroup, leases)
         if len(new_leases) > 0:
@@ -1135,6 +1135,33 @@ def pxeconfig(request):
     return HttpResponse(
         json.dumps(params._asdict()),
         content_type="application/json")
+
+
+@api_operations
+class BootImagesHandler(BaseHandler):
+
+    @classmethod
+    def resource_uri(cls):
+        return ('boot_images_handler', [])
+
+    @api_exported('POST')
+    def report_boot_images(self, request):
+        """Report images available to net-boot nodes from.
+
+        :param images: A list of dicts, each describing a boot image with
+            these properties: `architecture`, `subarchitecture`, `release`,
+            `purpose`, all as in the code that determines TFTP paths for
+            these images.
+        """
+        check_nodegroup_access(request, NodeGroup.objects.ensure_master())
+        images = json.loads(get_mandatory_param(request.data, 'images'))
+        for image in images:
+            BootImage.objects.register_image(
+                architecture=image['architecture'],
+                subarchitecture=image.get('subarchitecture', 'generic'),
+                release=image['release'],
+                purpose=image['purpose'])
+        return HttpResponse("OK")
 
 
 def describe(request):

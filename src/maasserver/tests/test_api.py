@@ -52,6 +52,7 @@ from maasserver.enum import (
 from maasserver.exceptions import Unauthorized
 from maasserver.fields import mac_error_msg
 from maasserver.models import (
+    BootImage,
     Config,
     DHCPLease,
     MACAddress,
@@ -2548,14 +2549,16 @@ class TestNodeGroupAPI(APITestCase):
             nodegroup_path, 'update_leases', leases=json.dumps(leases))
 
 
+def log_in_as_normal_user(client):
+    """Log `client` in as a normal user."""
+    password = factory.getRandomString()
+    user = factory.make_user(password=password)
+    client.login(username=user.username, password=password)
+    return user
+
+
 class TestNodeGroupAPIAuth(APIv10TestMixin, TestCase):
     """Authorization tests for nodegroup API."""
-
-    def log_in_as_normal_user(self):
-        """Log `self.client` in as a normal user."""
-        password = factory.getRandomString()
-        user = factory.make_user(password=password)
-        self.client.login(username=user.username, password=password)
 
     def test_nodegroup_requires_authentication(self):
         nodegroup = factory.make_node_group()
@@ -2575,7 +2578,7 @@ class TestNodeGroupAPIAuth(APIv10TestMixin, TestCase):
 
     def test_update_leases_does_not_work_for_normal_user(self):
         nodegroup = factory.make_node_group()
-        self.log_in_as_normal_user()
+        log_in_as_normal_user(self.client)
         response = self.client.post(
             reverse('nodegroup_handler', args=[nodegroup.uuid]),
             {'op': 'update_leases', 'leases': json.dumps({})})
@@ -2593,6 +2596,62 @@ class TestNodeGroupAPIAuth(APIv10TestMixin, TestCase):
         self.assertEqual(
             httplib.FORBIDDEN, response.status_code,
             explain_unexpected_response(httplib.FORBIDDEN, response))
+
+
+class TestBootImagesAPI(APITestCase):
+
+    def report_images(self, images, client=None):
+        if client is None:
+            client = self.client
+        return client.post(
+            reverse('boot_images_handler'),
+            {'op': 'report_boot_images', 'images': json.dumps(images)})
+
+    def test_report_boot_images_does_not_work_for_normal_user(self):
+        NodeGroup.objects.ensure_master()
+        log_in_as_normal_user(self.client)
+        response = self.report_images([])
+        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+
+    def test_report_boot_images_works_for_master_worker(self):
+        client = make_worker_client(NodeGroup.objects.ensure_master())
+        response = self.report_images([], client=client)
+        self.assertEqual(httplib.OK, response.status_code)
+
+    def test_report_boot_images_does_not_work_for_other_workers(self):
+        NodeGroup.objects.ensure_master()
+        client = make_worker_client(factory.make_node_group())
+        response = self.report_images([], client=client)
+        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+
+    def test_report_boot_images_stores_images(self):
+        image = {
+            'architecture': factory.make_name('architecture'),
+            'subarchitecture': factory.make_name('subarchitecture'),
+            'release': factory.make_name('release'),
+            'purpose': factory.make_name('purpose'),
+        }
+        client = make_worker_client(NodeGroup.objects.ensure_master())
+        response = self.report_images([image], client=client)
+        self.assertEqual(
+            (httplib.OK, "OK"),
+            (response.status_code, response.content))
+        self.assertTrue(
+            BootImage.objects.have_image(**image))
+
+    def test_report_boot_images_ignores_unknown_image_properties(self):
+        image = {
+            'architecture': factory.make_name('architecture'),
+            'subarchitecture': factory.make_name('subarchitecture'),
+            'release': factory.make_name('release'),
+            'purpose': factory.make_name('purpose'),
+            'nonesuch': factory.make_name('nonesuch'),
+        }
+        client = make_worker_client(NodeGroup.objects.ensure_master())
+        response = self.report_images([image], client=client)
+        self.assertEqual(
+            (httplib.OK, "OK"),
+            (response.status_code, response.content))
 
 
 class TestDescribe(AnonAPITestCase):

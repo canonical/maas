@@ -20,6 +20,7 @@ from maasserver.api import (
     AccountHandler,
     AdminRestrictedResource,
     api_doc,
+    BootImagesHandler,
     describe,
     FilesHandler,
     MAASHandler,
@@ -45,6 +46,8 @@ node_macs_handler = RestrictedResource(
     NodeMacsHandler, authentication=api_auth)
 nodegroup_handler = RestrictedResource(
     NodeGroupHandler, authentication=api_auth)
+boot_images_handler = RestrictedResource(
+    BootImagesHandler, authentication=api_auth)
 
 # The nodegroups view is anonymously accessible, but anonymous users
 # can't drill down into individual nodegruops.
@@ -82,6 +85,7 @@ urlpatterns += patterns('',
         nodegroup_handler, name='nodegroup_handler'),
     url(r'files/$', files_handler, name='files_handler'),
     url(r'account/$', account_handler, name='account_handler'),
+    url(r'boot-images/$', boot_images_handler, name='boot_images_handler'),
 )
 
 
