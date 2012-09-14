@@ -15,33 +15,27 @@ __all__ = []
 from maasserver.models import BootImage
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
+from provisioningserver.testing.boot_images import make_boot_image_params
 
 
 class TestBootImageManager(TestCase):
 
-    def make_image_params(self):
-        return dict(
-            architecture=factory.make_name('architecture'),
-            subarchitecture=factory.make_name('subarchitecture'),
-            release=factory.make_name('release'),
-            purpose=factory.make_name('purpose'))
-
     def test_have_image_returns_False_if_image_not_available(self):
         self.assertFalse(
-            BootImage.objects.have_image(**self.make_image_params()))
+            BootImage.objects.have_image(**make_boot_image_params()))
 
     def test_have_image_returns_True_if_image_available(self):
-        params = self.make_image_params()
+        params = make_boot_image_params()
         factory.make_boot_image(**params)
         self.assertTrue(BootImage.objects.have_image(**params))
 
     def test_register_image_registers_new_image(self):
-        params = self.make_image_params()
+        params = make_boot_image_params()
         BootImage.objects.register_image(**params)
         self.assertTrue(BootImage.objects.have_image(**params))
 
     def test_register_image_leaves_existing_image_intact(self):
-        params = self.make_image_params()
+        params = make_boot_image_params()
         factory.make_boot_image(**params)
         BootImage.objects.register_image(**params)
         self.assertTrue(BootImage.objects.have_image(**params))

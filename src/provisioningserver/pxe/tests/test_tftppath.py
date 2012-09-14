@@ -28,6 +28,7 @@ from provisioningserver.pxe.tftppath import (
     list_subdirs,
     locate_tftp_path,
     )
+from provisioningserver.testing.boot_images import make_boot_image_params
 from provisioningserver.testing.config import ConfigFixture
 from testtools.matchers import (
     Not,
@@ -42,15 +43,6 @@ class TestTFTPPath(TestCase):
         self.tftproot = self.make_dir()
         self.config = {"tftp": {"root": self.tftproot}}
         self.useFixture(ConfigFixture(self.config))
-
-    def make_boot_image_params(self):
-        """Create a dict of boot-image parameters, as in list_boot_images."""
-        return {
-            'architecture': factory.make_name('architecture'),
-            'subarchitecture': factory.make_name('subarchitecture'),
-            'release': factory.make_name('release'),
-            'purpose': factory.make_name('purpose'),
-        }
 
     def make_image_dir(self, image_params, tftproot):
         """Fake a boot image matching `image_params` under `tftproot`."""
@@ -122,12 +114,12 @@ class TestTFTPPath(TestCase):
         self.assertItemsEqual([], list_boot_images(self.tftproot))
 
     def test_list_boot_images_finds_boot_image(self):
-        image = self.make_boot_image_params()
+        image = make_boot_image_params()
         self.make_image_dir(image, self.tftproot)
         self.assertItemsEqual([image], list_boot_images(self.tftproot))
 
     def test_list_boot_images_enumerates_boot_images(self):
-        images = [self.make_boot_image_params() for counter in range(3)]
+        images = [make_boot_image_params() for counter in range(3)]
         for image in images:
             self.make_image_dir(image, self.tftproot)
         self.assertItemsEqual(images, list_boot_images(self.tftproot))

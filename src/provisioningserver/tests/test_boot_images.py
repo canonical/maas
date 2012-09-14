@@ -24,6 +24,7 @@ from provisioningserver.auth import (
     record_maas_url,
     )
 from provisioningserver.pxe import tftppath
+from provisioningserver.testing.boot_images import make_boot_image_params
 from provisioningserver.testing.config import ConfigFixture
 from provisioningserver.testing.testcase import PservTestCase
 
@@ -33,15 +34,6 @@ class TestBootImagesTasks(PservTestCase):
     def setUp(self):
         super(TestBootImagesTasks, self).setUp()
         self.useFixture(ConfigFixture({'tftp': {'root': self.make_dir()}}))
-
-    def make_image_params(self):
-        """Create a dict of parameters describing a boot image."""
-        return {
-            'architecture': factory.make_name('architecture'),
-            'subarchitecture': factory.make_name('subarchitecture'),
-            'release': factory.make_name('release'),
-            'purpose': factory.make_name('purpose'),
-        }
 
     def set_maas_url(self):
         record_maas_url(
@@ -53,7 +45,7 @@ class TestBootImagesTasks(PservTestCase):
     def test_sends_boot_images_to_server(self):
         self.set_maas_url()
         self.set_api_credentials()
-        image = self.make_image_params()
+        image = make_boot_image_params()
         self.patch(tftppath, 'list_boot_images', Mock(return_value=[image]))
         self.patch(MAASClient, 'post')
 
@@ -67,7 +59,7 @@ class TestBootImagesTasks(PservTestCase):
         self.set_api_credentials()
         self.patch(
             tftppath, 'list_boot_images',
-            Mock(return_value=self.make_image_params()))
+            Mock(return_value=make_boot_image_params()))
         boot_images.report_to_server()
         self.assertItemsEqual([], tftppath.list_boot_images.call_args_list)
 
@@ -75,6 +67,6 @@ class TestBootImagesTasks(PservTestCase):
         self.set_maas_url()
         self.patch(
             tftppath, 'list_boot_images',
-            Mock(return_value=self.make_image_params()))
+            Mock(return_value=make_boot_image_params()))
         boot_images.report_to_server()
         self.assertItemsEqual([], tftppath.list_boot_images.call_args_list)

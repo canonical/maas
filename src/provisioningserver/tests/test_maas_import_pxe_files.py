@@ -98,7 +98,7 @@ class TestImportPXEFiles(TestCase):
         return archive
 
     def call_script(self, archive_dir, tftproot, arch=None, release=None):
-        """Call the maas-download-pxe-files script with given settings.
+        """Call the maas-import-pxe-files script with given settings.
 
         The ARCHIVE URL and TFTPROOT path must be set, or the script will try
         to download from the Ubuntu server and store into the system's real

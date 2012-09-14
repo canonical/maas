@@ -71,6 +71,7 @@ from provisioningserver.tasks import (
     write_full_dns_config,
     )
 from provisioningserver.testing import network_infos
+from provisioningserver.testing.boot_images import make_boot_image_params
 from provisioningserver.testing.config import ConfigFixture
 from provisioningserver.testing.testcase import PservTestCase
 from testresources import FixtureResource
@@ -433,20 +434,11 @@ class TestBootImagesTasks(PservTestCase):
         ("celery", FixtureResource(CeleryFixture())),
         )
 
-    def make_image_params(self):
-        """Create a dict of parameters describing a boot image."""
-        return {
-            'architecture': factory.make_name('architecture'),
-            'subarchitecture': factory.make_name('subarchitecture'),
-            'release': factory.make_name('release'),
-            'purpose': factory.make_name('purpose'),
-        }
-
     def test_sends_boot_images_to_server(self):
         self.useFixture(ConfigFixture({'tftp': {'root': self.make_dir()}}))
         auth.record_maas_url('http://127.0.0.1/%s' % factory.make_name('path'))
         auth.record_api_credentials(':'.join(make_api_credentials()))
-        image = self.make_image_params()
+        image = make_boot_image_params()
         self.patch(tftppath, 'list_boot_images', Mock(return_value=[image]))
         self.patch(MAASClient, 'post')
 

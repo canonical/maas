@@ -42,6 +42,7 @@ from maasserver.api import (
     get_oauth_token,
     get_overrided_query_dict,
     )
+from maasserver.components import COMPONENT
 from maasserver.enum import (
     ARCHITECTURE,
     ARCHITECTURE_CHOICES,
@@ -109,6 +110,7 @@ from provisioningserver.enum import (
 from provisioningserver.kernel_opts import KernelParameters
 from provisioningserver.omshell import Omshell
 from provisioningserver.pxe import tftppath
+from provisioningserver.testing.boot_images import make_boot_image_params
 from testresources import FixtureResource
 from testtools.matchers import (
     Contains,
@@ -2728,12 +2730,7 @@ class TestBootImagesAPI(APITestCase):
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
     def test_report_boot_images_stores_images(self):
-        image = {
-            'architecture': factory.make_name('architecture'),
-            'subarchitecture': factory.make_name('subarchitecture'),
-            'release': factory.make_name('release'),
-            'purpose': factory.make_name('purpose'),
-        }
+        image = make_boot_image_params()
         client = make_worker_client(NodeGroup.objects.ensure_master())
         response = self.report_images([image], client=client)
         self.assertEqual(
@@ -2743,18 +2740,43 @@ class TestBootImagesAPI(APITestCase):
             BootImage.objects.have_image(**image))
 
     def test_report_boot_images_ignores_unknown_image_properties(self):
-        image = {
-            'architecture': factory.make_name('architecture'),
-            'subarchitecture': factory.make_name('subarchitecture'),
-            'release': factory.make_name('release'),
-            'purpose': factory.make_name('purpose'),
-            'nonesuch': factory.make_name('nonesuch'),
-        }
+        image = make_boot_image_params()
+        image['nonesuch'] = factory.make_name('nonesuch'),
         client = make_worker_client(NodeGroup.objects.ensure_master())
         response = self.report_images([image], client=client)
         self.assertEqual(
             (httplib.OK, "OK"),
             (response.status_code, response.content))
+
+    def test_report_boot_images_warns_if_no_images_found(self):
+        recorder = self.patch(api, 'register_persistent_error')
+        client = make_worker_client(NodeGroup.objects.ensure_master())
+
+        response = self.report_images([], client=client)
+        self.assertEqual(
+            (httplib.OK, "OK"),
+            (response.status_code, response.content))
+
+        self.assertIn(
+            COMPONENT.IMPORT_PXE_FILES,
+            [args[0][0] for args in recorder.call_args_list])
+
+    def test_report_boot_images_removes_warning_if_images_found(self):
+        self.patch(api, 'register_persistent_error')
+        self.patch(api, 'discard_persistent_error')
+        client = make_worker_client(NodeGroup.objects.ensure_master())
+
+        response = self.report_images(
+            [make_boot_image_params()], client=client)
+        self.assertEqual(
+            (httplib.OK, "OK"),
+            (response.status_code, response.content))
+
+        self.assertItemsEqual(
+            [],
+            api.register_persistent_error.call_args_list)
+        api.discard_persistent_error.assert_called_once_with(
+            COMPONENT.IMPORT_PXE_FILES)
 
     def test_worker_calls_report_boot_images(self):
         refresh_worker(NodeGroup.objects.ensure_master())

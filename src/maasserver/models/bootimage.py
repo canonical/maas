@@ -87,3 +87,11 @@ class BootImage(Model):
 
     # Boot purpose (e.g. "commissioning" or "install") that the image is for.
     purpose = CharField(max_length=255, blank=False, editable=False)
+
+    def __repr__(self):
+        return "<BootImage %s/%s-%s-%s>" % (
+            self.architecture,
+            self.subarchitecture,
+            self.release,
+            self.purpose,
+            )

@@ -105,6 +105,11 @@ from maasserver.apidoc import (
     find_api_handlers,
     generate_api_docs,
     )
+from maasserver.components import (
+    COMPONENT,
+    discard_persistent_error,
+    register_persistent_error,
+    )
 from maasserver.enum import (
     ARCHITECTURE,
     NODE_PERMISSION,
@@ -1214,12 +1219,26 @@ class BootImagesHandler(BaseHandler):
         """
         check_nodegroup_access(request, NodeGroup.objects.ensure_master())
         images = json.loads(get_mandatory_param(request.data, 'images'))
+
         for image in images:
             BootImage.objects.register_image(
                 architecture=image['architecture'],
                 subarchitecture=image.get('subarchitecture', 'generic'),
                 release=image['release'],
                 purpose=image['purpose'])
+
+        if len(images) == 0:
+            warning = dedent("""\
+                No boot images have been imported yet.  Either the
+                maas-import-pxe-files script has not run yet, or it failed.
+
+                Try running it manually.  If it succeeds, this message will
+                go away within 5 minutes.
+                """)
+            register_persistent_error(COMPONENT.IMPORT_PXE_FILES, warning)
+        else:
+            discard_persistent_error(COMPONENT.IMPORT_PXE_FILES)
+
         return HttpResponse("OK")
 
 

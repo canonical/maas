@@ -23,10 +23,10 @@ from django.core.exceptions import (
 from django.http import QueryDict
 from maasserver.enum import (
     ARCHITECTURE,
-    NODEGROUP_STATUS,
     ARCHITECTURE_CHOICES,
     NODE_AFTER_COMMISSIONING_ACTION_CHOICES,
     NODE_STATUS,
+    NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
     )
 from maasserver.forms import (
