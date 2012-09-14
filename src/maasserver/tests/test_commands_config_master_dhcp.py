@@ -15,7 +15,10 @@ __all__ = []
 from optparse import OptionValueError
 
 from django.core.management import call_command
-from maasserver.enum import DNS_DHCP_MANAGEMENT
+from maasserver.enum import (
+    DNS_DHCP_MANAGEMENT,
+    NODEGROUPINTERFACE_MANAGEMENT,
+    )
 from maasserver.management.commands.config_master_dhcp import name_option
 from maasserver.models import (
     Config,
@@ -31,13 +34,13 @@ def make_master_constants():
     """Return the standard, unchanging config for the master nodegroup."""
     return {
         'name': 'master',
-        'worker_ip': '127.0.0.1',
     }
 
 
 def make_dhcp_settings():
     """Return an arbitrary dict of DHCP settings."""
     return {
+        'ip': '10.111.123.10',
         'interface': factory.make_name('interface'),
         'subnet_mask': '255.255.0.0',
         'broadcast_ip': '10.111.255.255',
@@ -65,10 +68,24 @@ class TestConfigMasterDHCP(TestCase):
         settings = make_dhcp_settings()
         call_command('config_master_dhcp', **settings)
         master = NodeGroup.objects.get(name='master')
+        interface = master.get_managed_interface()
         self.assertThat(
             master,
-            MatchesStructure.fromExample(make_master_constants()))
-        self.assertThat(master, MatchesStructure.fromExample(settings))
+            MatchesStructure.byEquality(**make_master_constants()))
+        self.assertThat(
+            interface, MatchesStructure.byEquality(
+                management=NODEGROUPINTERFACE_MANAGEMENT.DHCP, **settings))
+
+    def test_configures_dhcp_for_master_nodegroup_existing_master(self):
+        management = NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS
+        master = factory.make_node_group(name='master', management=management)
+        settings = make_dhcp_settings()
+        call_command('config_master_dhcp', **settings)
+        master = NodeGroup.objects.ensure_master()
+        interface = master.get_managed_interface()
+        self.assertThat(
+            interface, MatchesStructure.byEquality(
+                management=interface.management, **settings))
 
     def test_clears_dhcp_settings(self):
         master = NodeGroup.objects.ensure_master()
@@ -78,10 +95,8 @@ class TestConfigMasterDHCP(TestCase):
         call_command('config_master_dhcp', clear=True)
         self.assertThat(
             master,
-            MatchesStructure.fromExample(make_master_constants()))
-        self.assertThat(
-            master,
-            MatchesStructure.fromExample(make_cleared_dhcp_settings()))
+            MatchesStructure.byEquality(**make_master_constants()))
+        self.assertIsNone(master.get_managed_interface())
 
     def test_does_not_accept_partial_dhcp_settings(self):
         settings = make_dhcp_settings()
@@ -96,9 +111,8 @@ class TestConfigMasterDHCP(TestCase):
         settings['subnet_mask'] = '@%$^&'
         settings['broadcast_ip'] = ''
         call_command('config_master_dhcp', clear=True, **settings)
-        self.assertThat(
-            NodeGroup.objects.get(name='master'),
-            MatchesStructure.fromExample(make_cleared_dhcp_settings()))
+        master = NodeGroup.objects.get(name='master')
+        self.assertIsNone(master.get_managed_interface())
 
     def test_clear_conflicts_with_ensure(self):
         self.assertRaises(
@@ -107,24 +121,22 @@ class TestConfigMasterDHCP(TestCase):
 
     def test_ensure_creates_master_nodegroup_without_dhcp_settings(self):
         call_command('config_master_dhcp', ensure=True)
-        self.assertThat(
-            NodeGroup.objects.get(name='master'),
-            MatchesStructure.fromExample(make_cleared_dhcp_settings()))
+        self.assertIsNone(
+            NodeGroup.objects.get(name='master').get_managed_interface())
 
     def test_ensure_leaves_cleared_settings_cleared(self):
         call_command('config_master_dhcp', clear=True)
         call_command('config_master_dhcp', ensure=True)
-        self.assertThat(
-            NodeGroup.objects.get(name='master'),
-            MatchesStructure.fromExample(make_cleared_dhcp_settings()))
+        master = NodeGroup.objects.get(name='master')
+        self.assertIsNone(master.get_managed_interface())
 
     def test_ensure_leaves_dhcp_settings_intact(self):
         settings = make_dhcp_settings()
         call_command('config_master_dhcp', **settings)
         call_command('config_master_dhcp', ensure=True)
         self.assertThat(
-            NodeGroup.objects.get(name='master'),
-            MatchesStructure.fromExample(settings))
+            NodeGroup.objects.get(name='master').get_managed_interface(),
+            MatchesStructure.byEquality(**settings))
 
     def test_name_option_turns_dhcp_setting_name_into_option(self):
         self.assertEqual('--subnet-mask', name_option('subnet_mask'))
