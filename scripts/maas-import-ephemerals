@@ -292,13 +292,17 @@ install_tftp_image() {
 
     for filename in linux initrd.gz
     do
-        cp -- "$src/$filename" "$tmpdir/"
+        cp -- "$src/$filename" "$tmpdir/" ||
+            { error "cp of $filename from $src failed"; return 1; }
     done
 
-    debug 1 "maas-provision install-pxe-image --arch=$arch --subarch=$subarch --release=$release --purpose=commissioning --image=$tmpdir"
-    maas-provision install-pxe-image \
-        --arch=$arch --subarch=$subarch --release=$release \
-        --purpose="commissioning" --image="$tmpdir"
+    local cmd
+    cmd=( maas-provision install-pxe-image
+          "--arch=$arch" "--subarch=$subarch" "--release=$release"
+          --purpose="commissioning" --image="$tmpdir" )
+    debug 1 "${cmd[@]}"
+    "${cmd[@]}" ||
+        { error "cmd failed:" "${cmd[@]}"; return 1; }
 }
 
 
@@ -352,6 +356,7 @@ for release in $RELEASES; do
         query_remote "$arch_u" "$release" "$BUILD_NAME" ||
             fail "remote query of $REMOTE_IMAGES_MIRROR failed"
 
+        info="rel: $r_release, arch: $r_arch: name: $r_name"
         if [ -z "$l_dir" ]; then
             serial_gt "$r_serial" "$l_serial" || {
                 debug 1 "$release-${arch_u} in ${l_dir} is up to date";
@@ -368,7 +373,8 @@ for release in $RELEASES; do
                 "$r_serial" "$r_arch" "$r_url" "$r_name" ||
                 fail "failed to prepare image for $release/$arch"
 
-            install_tftp_image "$wd" "$r_arch" "generic" "$r_release"
+            install_tftp_image "$wd" "$r_arch" "generic" "$r_release" ||
+                fail "failed to install ftp image [$info]"
 
             target_name="${TARGET_NAME_PREFIX}${r_name}"
 
@@ -385,7 +391,8 @@ for release in $RELEASES; do
 
             # Even if there was no need to update the image, we make sure it
             # gets installed.
-            install_tftp_image "$fpfinal_d" "$r_arch" "generic" "$r_release"
+            install_tftp_image "$fpfinal_d" "$r_arch" "generic" "$r_release" ||
+                fail "failed to install ftp image [$info]"
 
             name="${l_name}"
             target_name="${TARGET_NAME_PREFIX}${name}"
