@@ -29,6 +29,7 @@ import random
 import shutil
 
 from apiclient.maas_client import MAASClient
+from celery.app import app_or_default
 from django.conf import settings
 from django.contrib.auth.models import AnonymousUser
 from django.core.urlresolvers import reverse
@@ -2486,6 +2487,9 @@ class TestNodeGroupsAPI(AnonAPITestCase):
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
     def test_register_accepted_cluster_gets_credentials(self):
+        fake_broker_url = factory.make_name('fake-broker_url')
+        celery_conf = app_or_default().conf
+        self.patch(celery_conf, 'BROKER_URL', fake_broker_url)
         nodegroup = factory.make_node_group()
         nodegroup.status = NODEGROUP_STATUS.ACCEPTED
         nodegroup.save()
@@ -2499,10 +2503,7 @@ class TestNodeGroupsAPI(AnonAPITestCase):
         self.assertEqual(httplib.OK, response.status_code)
         parsed_result = json.loads(response.content)
         self.assertIn('application/json', response['Content-Type'])
-        # XXX: rvb 2012-09-13 bug=1050492: MAAS uses the 'guest' account to
-        # communicate with RabbitMQ, hence none of the connection information
-        # are defined.
-        self.assertEqual({'test': 'test'}, parsed_result)
+        self.assertEqual({'BROKER_URL': fake_broker_url}, parsed_result)
 
 
 def explain_unexpected_response(expected_status, response):

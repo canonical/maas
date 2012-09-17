@@ -81,6 +81,7 @@ import sys
 from textwrap import dedent
 import types
 
+from celery.app import app_or_default
 from django.conf import settings
 from django.core.exceptions import (
     PermissionDenied,
@@ -910,7 +911,8 @@ class NodeGroupsHandler(BaseHandler):
         call:
 
         - 200 (OK): the nodegroup has been accepted, the response will
-          contrain the RabbitMQ credentials in JSON format.
+          contain the RabbitMQ credentials in JSON format: e.g.:
+          '{"BROKER_URL" = "amqp://guest:guest@localhost:5672//"}'
         - 202 (Accepted): the registration of the nodegroup has been accepted,
           it now needs to be validated by an administrator.  Please issue
           the same request later.
@@ -946,12 +948,9 @@ class NodeGroupsHandler(BaseHandler):
             if existing_nodegroup.status == NODEGROUP_STATUS.ACCEPTED:
                 # The nodegroup exists and is validated, return the RabbitMQ
                 # credentials as JSON.
-                # XXX: rvb 2012-09-13 bug=1050492: MAAS uses the 'guest'
-                # account to communicate with RabbitMQ, hence none of the
-                # connection information are defined.
+                celery_conf = app_or_default().conf
                 return {
-                    # TODO: send RabbiMQ credentials.
-                    'test': 'test',
+                    'BROKER_URL': celery_conf.BROKER_URL,
                 }
             elif existing_nodegroup.status == NODEGROUP_STATUS.REJECTED:
                 raise PermissionDenied('Rejected cluster.')

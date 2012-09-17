@@ -40,6 +40,9 @@ DHCP_LEASES_FILE = '/var/lib/dhcp/dhcpd.leases'
 # ISC dhcpd configuration file.
 DHCP_CONFIG_FILE = '/etc/dhcp/dhcpd.conf'
 
+# Broken connection information.
+# Format: transport://userid:password@hostname:port/virtual_host
+BROKER_URL = 'amqp://guest:guest@localhost:5672//'
 
 try:
     import user_maasceleryconfig
