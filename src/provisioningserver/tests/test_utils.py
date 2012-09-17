@@ -48,6 +48,7 @@ from provisioningserver.utils import (
     pick_new_mtime,
     Safe,
     ShellTemplate,
+    sudo_write_file,
     write_custom_config_section,
     )
 from testtools.matchers import (
@@ -388,8 +389,46 @@ class WriteCustomConfigSectionTest(TestCase):
             write_custom_config_section(original, new_custom_section))
 
 
+class SudoWriteFileTest(TestCase):
+    """Testing for `sudo_write_file`."""
+
+    def patch_popen(self, return_value=0):
+        process = Mock()
+        process.returncode = return_value
+        process.communicate = Mock(return_value=('output', 'error output'))
+        self.patch(
+            provisioningserver.utils, 'Popen', Mock(return_value=process))
+        return process
+
+    def test_calls_atomic_write(self):
+        self.patch_popen()
+        path = os.path.join(self.make_dir(), factory.make_name('file'))
+        contents = factory.getRandomString()
+
+        sudo_write_file(path, contents)
+
+        provisioningserver.utils.Popen.assert_called_once_with([
+            'sudo', '-n', 'maas-provision', 'atomic-write',
+            '--filename', path, '--mode', '0744',
+            ],
+            stdin=PIPE)
+
+    def test_encodes_contents(self):
+        process = self.patch_popen()
+        contents = factory.getRandomString()
+        encoding = 'utf-16'
+        sudo_write_file(self.make_file(), contents, encoding=encoding)
+        process.communicate.assert_called_once_with(contents.encode(encoding))
+
+    def test_catches_failures(self):
+        self.patch_popen(1)
+        self.assertRaises(
+            CalledProcessError,
+            sudo_write_file, self.make_file(), factory.getRandomString())
+
+
 class ParseConfigTest(TestCase):
-    """Testing for the method `parse_key_value_file`."""
+    """Testing for `parse_key_value_file`."""
 
     def test_parse_key_value_file_parses_config_file(self):
         contents = """
