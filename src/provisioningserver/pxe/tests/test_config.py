@@ -190,8 +190,7 @@ class TestRenderPXEConfig(TestCase):
         # If purpose is "local", the config.localboot.template should be
         # used.
         options = {
-            "kernel_params":
-                make_kernel_parameters()._replace(purpose="local"),
+            "kernel_params": make_kernel_parameters(purpose="local"),
             }
         output = render_pxe_config(**options)
         self.assertIn("LOCALBOOT 0", output)
@@ -200,8 +199,8 @@ class TestRenderPXEConfig(TestCase):
         # Intel i386 is a special case and needs to use the chain.c32
         # loader as the LOCALBOOT PXE directive is unreliable.
         options = {
-            "kernel_params": make_kernel_parameters()._replace(
-                arch="i386", purpose="local"),
+            "kernel_params":
+                make_kernel_parameters(arch="i386", purpose="local"),
             }
         output = render_pxe_config(**options)
         self.assertIn("chain.c32", output)
@@ -211,8 +210,8 @@ class TestRenderPXEConfig(TestCase):
         # Intel amd64 is a special case and needs to use the chain.c32
         # loader as the LOCALBOOT PXE directive is unreliable.
         options = {
-            "kernel_params": make_kernel_parameters()._replace(
-                arch="amd64", purpose="local"),
+            "kernel_params":
+                make_kernel_parameters(arch="amd64", purpose="local"),
             }
         output = render_pxe_config(**options)
         self.assertIn("chain.c32", output)
@@ -224,8 +223,8 @@ class TestRenderPXEConfig(TestCase):
         get_ephemeral_name = self.patch(kernel_opts, "get_ephemeral_name")
         get_ephemeral_name.return_value = factory.make_name("ephemeral")
         options = {
-            "kernel_params": make_kernel_parameters()._replace(
-                purpose="commissioning"),
+            "kernel_params":
+                make_kernel_parameters(purpose="commissioning"),
             }
         output = render_pxe_config(**options)
         config = parse_pxe_config(output)

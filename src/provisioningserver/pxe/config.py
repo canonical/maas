@@ -23,7 +23,7 @@ __all__ = [
 from errno import ENOENT
 from os import path
 
-from provisioningserver.kernel_opts import compose_kernel_command_line_new
+from provisioningserver.kernel_opts import compose_kernel_command_line
 from provisioningserver.pxe.tftppath import compose_image_path
 import tempita
 
@@ -97,7 +97,7 @@ def render_pxe_config(kernel_params, **extra):
         return "%s/linux" % image_dir(params)
 
     def kernel_command(params):
-        return compose_kernel_command_line_new(params)
+        return compose_kernel_command_line(params)
 
     namespace = {
         "initrd_path": initrd_path,
