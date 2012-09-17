@@ -20,9 +20,8 @@
 import os
 import sys
 
-from twisted.internet.defer import Deferred
-
 from bzrlib.commands import Command
+from twisted.internet.defer import Deferred
 
 
 class ExecutableCommand(Command):

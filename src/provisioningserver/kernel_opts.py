@@ -19,7 +19,6 @@ from collections import namedtuple
 import os
 
 from provisioningserver.config import Config
-from provisioningserver.pxe.tftppath import compose_image_path
 from provisioningserver.utils import parse_key_value_file
 
 

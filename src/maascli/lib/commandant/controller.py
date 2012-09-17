@@ -23,9 +23,11 @@ import stat
 import sys
 import tempfile
 
+from bzrlib.commands import (
+    Command,
+    run_bzr,
+    )
 import bzrlib.ui
-from bzrlib.commands import run_bzr, Command
-
 from commandant import __version__
 from commandant.commands import ExecutableCommand
 from commandant.help_topics import FileHelpTopic

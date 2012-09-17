@@ -28,8 +28,6 @@ from provisioningserver.kernel_opts import (
     ISCSI_TARGET_NAME_PREFIX,
     KernelParameters,
     )
-
-from provisioningserver.pxe.tftppath import compose_image_path
 from provisioningserver.testing.config import ConfigFixture
 from testtools.matchers import (
     Contains,
@@ -135,12 +133,16 @@ class TestKernelOpts(TestCase):
         expected = ["console=tty1", "console=ttyS0", "nomodeset"]
 
         params = make_kernel_parameters({
-            "purpose": "commissioning", "arch": "i386" })
+            "purpose": "commissioning",
+            "arch": "i386",
+            })
         cmdline = compose_kernel_command_line_new(params)
         self.assertThat(cmdline, ContainsAll(expected))
 
         params = make_kernel_parameters({
-            "purpose": "install", "arch": "i386" })
+            "purpose": "install",
+            "arch": "i386",
+            })
         cmdline = compose_kernel_command_line_new(params)
         self.assertThat(cmdline, ContainsAll(expected))
 

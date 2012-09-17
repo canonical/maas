@@ -24,10 +24,12 @@ from platform import platform
 import bzrlib
 from bzrlib.commands import Command
 from bzrlib.option import Option
-
 import commandant
-from commandant.help_topics import HelpTopic, CommandHelpTopic
 from commandant.formatting import print_columns
+from commandant.help_topics import (
+    CommandHelpTopic,
+    HelpTopic,
+    )
 
 
 class cmd_version(Command):

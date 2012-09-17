@@ -18,8 +18,8 @@
 """Bootstrap code starts and runs Commandant."""
 
 from commandant import builtins
-from commandant.errors import UsageError
 from commandant.controller import CommandController
+from commandant.errors import UsageError
 
 
 def main(argv):
