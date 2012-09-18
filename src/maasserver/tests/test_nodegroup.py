@@ -15,7 +15,10 @@ __all__ = []
 from django.conf import settings
 import maasserver
 from maasserver.dns import get_dns_server_address
-from maasserver.enum import NODEGROUPINTERFACE_MANAGEMENT
+from maasserver.enum import (
+    NODEGROUP_STATUS,
+    NODEGROUPINTERFACE_MANAGEMENT,
+    )
 from maasserver.models import NodeGroup
 from maasserver.server_address import get_maas_facing_server_address
 from maasserver.testing import reload_object
@@ -248,3 +251,15 @@ class TestNodeGroup(TestCase):
         interface.management = NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED
         interface.save()
         self.assertIsNone(nodegroup.get_managed_interface())
+
+    def test_accept_node_changes_status(self):
+        nodegroup = factory.make_node_group(
+            status=factory.getRandomEnum(NODEGROUP_STATUS))
+        nodegroup.accept()
+        self.assertEqual(nodegroup.status, NODEGROUP_STATUS.ACCEPTED)
+
+    def test_reject_node_changes_status(self):
+        nodegroup = factory.make_node_group(
+            status=factory.getRandomEnum(NODEGROUP_STATUS))
+        nodegroup.reject()
+        self.assertEqual(nodegroup.status, NODEGROUP_STATUS.REJECTED)

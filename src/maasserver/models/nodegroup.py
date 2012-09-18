@@ -142,6 +142,16 @@ class NodeGroup(TimestampedModel):
     def __repr__(self):
         return "<NodeGroup %r>" % self.name
 
+    def accept(self):
+        """Accept this nodegroup's enlistment."""
+        self.status = NODEGROUP_STATUS.ACCEPTED
+        self.save()
+
+    def reject(self):
+        """Reject this nodegroup's enlistment."""
+        self.status = NODEGROUP_STATUS.REJECTED
+        self.save()
+
     def save(self, *args, **kwargs):
         if self.api_token_id is None:
             # Avoid circular imports.
