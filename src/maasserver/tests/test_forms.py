@@ -585,19 +585,19 @@ def make_interface_settings():
         'router_ip': factory.getRandomIPAddress(),
         'ip_range_low': factory.getRandomIPAddress(),
         'ip_range_high': factory.getRandomIPAddress(),
+        'management': factory.getRandomEnum(NODEGROUPINTERFACE_MANAGEMENT),
     }
 
 
 class TestNodeGroupInterfaceForm(TestCase):
 
-    def test_NodeGroupInterfaceForm_uses_initial_parameters(self):
-        nodegroup = factory.make_node_group()
-        management = factory.getRandomEnum(NODEGROUPINTERFACE_MANAGEMENT)
+    def test_NodeGroupInterfaceForm_save_sets_nodegroup(self):
+        nodegroup = factory.make_node_group(
+            management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
         form = NodeGroupInterfaceForm(data=make_interface_settings())
-        interface = form.save(nodegroup=nodegroup, management=management)
-        self.assertEqual(
-            (nodegroup, management),
-            (interface.nodegroup, interface.management))
+        self.assertTrue(form.is_valid(), form._errors)
+        interface = form.save(nodegroup=nodegroup)
+        self.assertEqual(nodegroup, interface.nodegroup)
 
     def test_NodeGroupInterfaceForm_validates_parameters(self):
         form = NodeGroupInterfaceForm(data={'ip': factory.getRandomString()})
@@ -679,25 +679,60 @@ class TestNodeGroupWithInterfacesForm(TestCase):
         interfaces = json.dumps([interface])
         form = NodeGroupWithInterfacesForm(
             data={'name': name, 'uuid': uuid, 'interfaces': interfaces})
-        self.assertTrue(form.is_valid())
+        self.assertTrue(form.is_valid(), form._errors)
         form.save()
         nodegroup = NodeGroup.objects.get(uuid=uuid)
         self.assertThat(
             nodegroup.nodegroupinterface_set.all()[0],
             MatchesStructure.byEquality(**interface))
-        self.assertEqual(
-            NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED,
-            nodegroup.nodegroupinterface_set.all()[0].management)
+
+    def test_form_checks_presence_of_other_managed_interfaces(self):
+        name = factory.make_name('name')
+        uuid = factory.getRandomUUID()
+        interfaces = []
+        for index in range(2):
+            interface = make_interface_settings()
+            interface['management'] = factory.getRandomEnum(
+                NODEGROUPINTERFACE_MANAGEMENT,
+                but_not=(NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED, ))
+            interfaces.append(interface)
+        interfaces = json.dumps(interfaces)
+        form = NodeGroupWithInterfacesForm(
+            data={'name': name, 'uuid': uuid, 'interfaces': interfaces})
+        self.assertFalse(form.is_valid())
+        self.assertIn(
+            "Only one managed interface can be configured for this nodegroup",
+            form._errors['interfaces'][0])
 
     def test_NodeGroupWithInterfacesForm_creates_multiple_interfaces(self):
         name = factory.make_name('name')
         uuid = factory.getRandomUUID()
         interface1 = make_interface_settings()
+        # Only one interface at most can be 'managed'.
         interface2 = make_interface_settings()
+        interface2['management'] = NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED
         interfaces = json.dumps([interface1, interface2])
         form = NodeGroupWithInterfacesForm(
             data={'name': name, 'uuid': uuid, 'interfaces': interfaces})
-        self.assertTrue(form.is_valid())
+        self.assertTrue(form.is_valid(), form._errors)
         form.save()
         nodegroup = NodeGroup.objects.get(uuid=uuid)
         self.assertEqual(2,  nodegroup.nodegroupinterface_set.count())
+
+    def test_NodeGroupWithInterfacesForm_creates_unmanaged_interfaces(self):
+        name = factory.make_name('name')
+        uuid = factory.getRandomUUID()
+        interface = make_interface_settings()
+        del interface['management']
+        interfaces = json.dumps([interface])
+        form = NodeGroupWithInterfacesForm(
+            data={'name': name, 'uuid': uuid, 'interfaces': interfaces})
+        self.assertTrue(form.is_valid(), form._errors)
+        form.save()
+        nodegroup = NodeGroup.objects.get(uuid=uuid)
+        self.assertEqual(
+            [NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED],
+            [
+                nodegroup.management for nodegroup in
+                nodegroup.nodegroupinterface_set.all()
+            ])

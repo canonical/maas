@@ -170,7 +170,7 @@ NODEGROUP_STATUS_CHOICES = (
 class NODEGROUPINTERFACE_MANAGEMENT:
     """The vocabulary of a `NodeGroupInterface`'s possible statuses."""
     # A nodegroupinterface starts out as UNMANAGED.
-    DEFAULT_STATUS = 0
+    DEFAULT = 0
 
     # Do not manage DHCP or DNS for this interface.
     UNMANAGED = 0

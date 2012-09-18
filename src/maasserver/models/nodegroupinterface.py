@@ -42,8 +42,8 @@ class NodeGroupInterface(TimestampedModel):
         'maasserver.NodeGroup', editable=True, null=False, blank=False)
 
     management = IntegerField(
-        choices=NODEGROUPINTERFACE_MANAGEMENT_CHOICES, editable=False,
-        default=NODEGROUPINTERFACE_MANAGEMENT.DEFAULT_STATUS)
+        choices=NODEGROUPINTERFACE_MANAGEMENT_CHOICES, editable=True,
+        default=NODEGROUPINTERFACE_MANAGEMENT.DEFAULT)
 
     # DHCP server settings.
     interface = CharField(

@@ -25,6 +25,8 @@ from maasserver.api import (
     FilesHandler,
     MAASHandler,
     NodeGroupHandler,
+    NodeGroupInterfaceHandler,
+    NodeGroupInterfacesHandler,
     NodeGroupsHandler,
     NodeHandler,
     NodeMacHandler,
@@ -53,7 +55,10 @@ boot_images_handler = RestrictedResource(
 
 # Admin handlers.
 maas_handler = AdminRestrictedResource(MAASHandler, authentication=api_auth)
-
+nodegroupinterface_handler = AdminRestrictedResource(
+    NodeGroupInterfaceHandler, authentication=api_auth)
+nodegroupinterfaces_handler = AdminRestrictedResource(
+    NodeGroupInterfacesHandler, authentication=api_auth)
 
 # API URLs accessible to anonymous users.
 urlpatterns = patterns('',
@@ -80,6 +85,10 @@ urlpatterns += patterns('',
         r'nodegroups/(?P<uuid>[^/]+)/$',
         nodegroup_handler, name='nodegroup_handler'),
     url(r'nodegroups/$', nodegroups_handler, name='nodegroups_handler'),
+    url(r'nodegroups/(?P<uuid>[^/]+)/interfaces/$',
+        nodegroupinterfaces_handler, name='nodegroupinterfaces_handler'),
+    url(r'nodegroups/(?P<uuid>[^/]+)/interfaces/(?P<interface>[^/]+)/$',
+        nodegroupinterface_handler, name='nodegroupinterface_handler'),
     url(r'files/$', files_handler, name='files_handler'),
     url(r'account/$', account_handler, name='account_handler'),
     url(r'boot-images/$', boot_images_handler, name='boot_images_handler'),

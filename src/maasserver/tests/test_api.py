@@ -36,7 +36,9 @@ from django.core.urlresolvers import reverse
 from django.http import QueryDict
 from fixtures import Fixture
 from maasserver import api
+from itertools import izip
 from maasserver.api import (
+    DISPLAYED_NODEGROUP_FIELDS,
     extract_constraints,
     extract_oauth_key,
     extract_oauth_key_from_auth_header,
@@ -51,6 +53,7 @@ from maasserver.enum import (
     NODE_STATUS,
     NODE_STATUS_CHOICES_DICT,
     NODEGROUP_STATUS,
+    NODEGROUPINTERFACE_MANAGEMENT,
     )
 from maasserver.exceptions import Unauthorized
 from maasserver.fields import mac_error_msg
@@ -61,6 +64,7 @@ from maasserver.models import (
     MACAddress,
     Node,
     NodeGroup,
+    NodeGroupInterface,
     )
 from maasserver.models.user import (
     create_auth_token,
@@ -2377,7 +2381,12 @@ class TestPXEConfigAPI(AnonAPITestCase):
             json.loads(response.content)["purpose"])
 
 
-class TestNodeGroupsAPI(AnonAPITestCase):
+class TestNodeGroupsAPI(APIv10TestMixin, MultipleUsersScenarios, TestCase):
+    scenarios = [
+        ('anon', dict(userfactory=lambda: AnonymousUser())),
+        ('user', dict(userfactory=factory.make_user)),
+        ('admin', dict(userfactory=factory.make_admin)),
+        ]
 
     resources = (
         ('celery', FixtureResource(CeleryFixture())),
@@ -2390,9 +2399,23 @@ class TestNodeGroupsAPI(AnonAPITestCase):
     def test_nodegroups_index_lists_nodegroups(self):
         # The nodegroups index lists node groups for the MAAS.
         nodegroup = factory.make_node_group()
-        response = self.client.get(reverse('nodegroups_handler'))
+        response = self.client.get(
+            reverse('nodegroups_handler'), {'op': 'list'})
         self.assertEqual(httplib.OK, response.status_code)
-        self.assertIn(nodegroup.uuid, json.loads(response.content))
+        self.assertEqual(
+            [{
+                'uuid': nodegroup.uuid,
+                'status': nodegroup.status,
+                'name': nodegroup.name,
+            }],
+            json.loads(response.content))
+
+
+class TestAnonNodeGroupsAPI(AnonAPITestCase):
+
+    resources = (
+        ('celery', FixtureResource(CeleryFixture())),
+        )
 
     def test_refresh_calls_refresh_worker(self):
         nodegroup = factory.make_node_group()
@@ -2435,6 +2458,32 @@ class TestNodeGroupsAPI(AnonAPITestCase):
         # The response code is 'ACCEPTED': the nodegroup now needs to be
         # validated by an admin.
         self.assertEqual(httplib.ACCEPTED, response.status_code)
+
+    def test_register_accepts_only_one_managed_interface(self):
+        name = factory.make_name('name')
+        uuid = factory.getRandomUUID()
+        # This will try to create 2 "managed" interfaces.
+        interface1 = make_interface_settings()
+        interface1['management'] = NODEGROUPINTERFACE_MANAGEMENT.DHCP
+        interface2 = interface1.copy()
+        response = self.client.post(
+            reverse('nodegroups_handler'),
+            {
+                'op': 'register',
+                'name': name,
+                'uuid': uuid,
+                'interfaces': json.dumps([interface1, interface2]),
+            })
+        self.assertEqual(
+            (
+                httplib.BAD_REQUEST,
+                {'interfaces':
+                    [
+                        "Only one managed interface can be configured for "
+                        "this nodegroup"
+                    ]},
+            ),
+            (response.status_code, json.loads(response.content)))
 
     def test_register_nodegroup_validates_data(self):
         response = self.client.post(
@@ -2505,6 +2554,108 @@ class TestNodeGroupsAPI(AnonAPITestCase):
         parsed_result = json.loads(response.content)
         self.assertIn('application/json', response['Content-Type'])
         self.assertEqual({'BROKER_URL': fake_broker_url}, parsed_result)
+
+
+def dict_subset(obj, fields):
+    """Return a dict of a subset of the fields/values of an object."""
+    undefined = object()
+    values = (getattr(obj, field, undefined) for field in fields)
+    return {
+        field: value for field, value in izip(fields, values)
+        if value is not undefined
+     }
+
+
+class TestNodeGroupInterfacesAPI(APITestCase):
+
+    def test_list_lists_interfaces(self):
+        self.become_admin()
+        nodegroup = factory.make_node_group()
+        response = self.client.get(
+            reverse('nodegroupinterfaces_handler', args=[nodegroup.uuid]),
+            {'op': 'list'})
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(
+            [
+                dict_subset(interface, DISPLAYED_NODEGROUP_FIELDS)
+                for interface in nodegroup.nodegroupinterface_set.all()
+            ],
+            json.loads(response.content))
+
+    def test_list_only_available_to_admin(self):
+        nodegroup = factory.make_node_group()
+        response = self.client.get(
+            reverse('nodegroupinterfaces_handler', args=[nodegroup.uuid]),
+            {'op': 'list'})
+        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+
+    def test_new_creates_interface(self):
+        self.become_admin()
+        nodegroup = factory.make_node_group(
+            management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
+
+        settings = make_interface_settings()
+        query_data = dict(settings, op="new")
+        response = self.client.post(
+            reverse('nodegroupinterfaces_handler', args=[nodegroup.uuid]),
+            query_data)
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        expected_result = settings
+        new_interface = NodeGroupInterface.objects.get(
+            nodegroup=nodegroup, interface=settings['interface'])
+        self.assertThat(
+            new_interface,
+            MatchesStructure.byEquality(**expected_result))
+
+    def test_new_validates_data(self):
+        self.become_admin()
+        nodegroup = factory.make_node_group()
+        response = self.client.post(
+            reverse('nodegroupinterfaces_handler', args=[nodegroup.uuid]),
+            {'op': 'new', 'ip': 'invalid ip'})
+        self.assertEqual(
+            (
+                httplib.BAD_REQUEST,
+                {'ip': ["Enter a valid IPv4 address."]},
+            ),
+            (response.status_code, json.loads(response.content)))
+
+    def test_new_only_available_to_admin(self):
+        nodegroup = factory.make_node_group()
+        response = self.client.get(
+            reverse('nodegroupinterfaces_handler', args=[nodegroup.uuid]),
+            {'op': 'new'})
+        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+
+
+class TestNodeGroupInterfaceAPI(APITestCase):
+
+    def test_read_interface(self):
+        self.become_admin()
+        nodegroup = factory.make_node_group()
+        interface = nodegroup.get_managed_interface()
+        response = self.client.get(
+            reverse(
+                'nodegroupinterface_handler',
+                args=[nodegroup.uuid, interface.interface]))
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(
+            dict_subset(interface, DISPLAYED_NODEGROUP_FIELDS),
+            json.loads(response.content))
+
+    def test_update_interface(self):
+        self.become_admin()
+        nodegroup = factory.make_node_group()
+        interface = nodegroup.get_managed_interface()
+        new_ip_range_high = factory.getRandomIPAddress()
+        response = self.client.put(
+            reverse(
+                'nodegroupinterface_handler',
+                args=[nodegroup.uuid, interface.interface]),
+            {'ip_range_high': new_ip_range_high})
+        self.assertEqual(
+            (httplib.OK, new_ip_range_high),
+            (response.status_code, reload_object(interface).ip_range_high))
 
 
 def explain_unexpected_response(expected_status, response):

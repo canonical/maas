@@ -63,6 +63,8 @@ __all__ = [
     "FilesHandler",
     "get_oauth_token",
     "NodeGroupsHandler",
+    "NodeGroupInterfaceHandler",
+    "NodeGroupInterfacesHandler",
     "NodeHandler",
     "NodeMacHandler",
     "NodeMacsHandler",
@@ -129,6 +131,7 @@ from maasserver.fields import validate_mac
 from maasserver.forms import (
     get_node_create_form,
     get_node_edit_form,
+    NodeGroupInterfaceForm,
     NodeGroupWithInterfacesForm,
     )
 from maasserver.models import (
@@ -139,6 +142,7 @@ from maasserver.models import (
     MACAddress,
     Node,
     NodeGroup,
+    NodeGroupInterface,
     )
 from maasserver.preseed import (
     compose_enlistment_preseed_url,
@@ -872,16 +876,19 @@ class FilesHandler(BaseHandler):
         return ('files_handler', [])
 
 
+DISPLAYED_NODEGROUP_FIELDS = ('uuid', 'status', 'name')
+
+
 @api_operations
 class AnonNodeGroupsHandler(AnonymousBaseHandler):
     """Anon Node-groups API."""
-
     allowed_methods = ('GET', 'POST')
+    fields = DISPLAYED_NODEGROUP_FIELDS
 
-    def read(self, request):
-        """Index of node groups."""
-        return HttpResponse(sorted(
-            [nodegroup.uuid for nodegroup in NodeGroup.objects.all()]))
+    @api_exported('GET')
+    def list(self, request):
+        """List of node groups."""
+        return NodeGroup.objects.all()
 
     @classmethod
     def resource_uri(cls):
@@ -962,6 +969,12 @@ class NodeGroupsHandler(BaseHandler):
     """Node-groups API."""
     anonymous = AnonNodeGroupsHandler
     allowed_methods = ('GET', 'POST')
+    fields = DISPLAYED_NODEGROUP_FIELDS
+
+    @api_exported('GET')
+    def list(self, request):
+        """List of node groups."""
+        return NodeGroup.objects.all()
 
     @api_exported('POST')
     def accept(self, request):
@@ -1026,7 +1039,7 @@ class NodeGroupHandler(BaseHandler):
     """Node-group API."""
 
     allowed_methods = ('GET', 'POST')
-    fields = ('name', 'uuid')
+    fields = DISPLAYED_NODEGROUP_FIELDS
 
     def read(self, request, uuid):
         """GET a node group."""
@@ -1051,6 +1064,117 @@ class NodeGroupHandler(BaseHandler):
             nodegroup.add_dhcp_host_maps(
                 {ip: leases[ip] for ip in new_leases if ip in leases})
         return HttpResponse("Leases updated.", status=httplib.OK)
+
+
+DISPLAYED_NODEGROUP_FIELDS = (
+    'ip', 'management', 'interface', 'subnet_mask',
+    'broadcast_ip', 'ip_range_low', 'ip_range_high')
+
+
+@api_operations
+class NodeGroupInterfacesHandler(BaseHandler):
+    """NodeGroupInterfaces API."""
+    allowed_methods = ('GET', 'POST')
+    fields = DISPLAYED_NODEGROUP_FIELDS
+
+    @api_exported('GET')
+    def list(self, request, uuid):
+        """List of NodeGroupInterfaces of a NodeGroup."""
+        nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
+        return NodeGroupInterface.objects.filter(nodegroup=nodegroup)
+
+    @api_exported('POST')
+    def new(self, request, uuid):
+        """Create a new NodeGroupInterface for this NodeGroup.
+
+        :param ip: Static IP of the interface.
+        :type ip: basestring (IP Address)
+        :param interface: Name of the interface.
+        :type interface: basestring
+        :param management: The service(s) MAAS should manage on this interface.
+        :type management: Vocabulary `NODEGROUPINTERFACE_MANAGEMENT`
+        :param subnet_mask: Subnet mask, e.g. 255.0.0.0.
+        :type subnet_mask: basestring (IP Address)
+        :param broadcast_ip: Broadcast address for this subnet.
+        :type broadcast_ip: basestring (IP Address)
+        :param router_ip: Address of default gateway.
+        :type router_ip: basestring (IP Address)
+        :param ip_range_low: Lowest IP address to assign to clients.
+        :type ip_range_low: basestring (IP Address)
+        :param ip_range_high: Highest IP address to assign to clients.
+        :type ip_range_high: basestring (IP Address)
+        """
+        nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
+        form = NodeGroupInterfaceForm(request.data)
+        if form.is_valid():
+            return form.save(
+                nodegroup=nodegroup)
+        else:
+            raise ValidationError(form.errors)
+
+    @classmethod
+    def resource_uri(cls, nodegroup=None):
+        if nodegroup is None:
+            uuid = 'uuid'
+        else:
+            uuid = nodegroup.uuid
+        return ('nodegroupinterfaces_handler', [uuid])
+
+
+class NodeGroupInterfaceHandler(BaseHandler):
+    """NodeGroupInterface API."""
+    allowed_methods = ('GET', 'PUT')
+    fields = DISPLAYED_NODEGROUP_FIELDS
+
+    def read(self, request, uuid, interface):
+        """List of NodeGroupInterfaces of a NodeGroup."""
+        nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
+        nodegroupinterface = get_object_or_404(
+            NodeGroupInterface, nodegroup=nodegroup, interface=interface)
+        return nodegroupinterface
+
+    def update(self, request, uuid, interface):
+        """Update a specific NodeGroupInterface.
+
+        :param ip: Static IP of the interface.
+        :type ip: basestring (IP Address)
+        :param interface: Name of the interface.
+        :type interface: basestring
+        :param management: The service(s) MAAS should manage on this interface.
+        :type management: Vocabulary `NODEGROUPINTERFACE_MANAGEMENT`
+        :param subnet_mask: Subnet mask, e.g. 255.0.0.0.
+        :type subnet_mask: basestring (IP Address)
+        :param broadcast_ip: Broadcast address for this subnet.
+        :type broadcast_ip: basestring (IP Address)
+        :param router_ip: Address of default gateway.
+        :type router_ip: basestring (IP Address)
+        :param ip_range_low: Lowest IP address to assign to clients.
+        :type ip_range_low: basestring (IP Address)
+        :param ip_range_high: Highest IP address to assign to clients.
+        :type ip_range_high: basestring (IP Address)
+        """
+        nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
+        nodegroupinterface = get_object_or_404(
+            NodeGroupInterface, nodegroup=nodegroup, interface=interface)
+        data = get_overrided_query_dict(
+            model_to_dict(nodegroupinterface), request.data)
+        form = NodeGroupInterfaceForm(data, instance=nodegroupinterface)
+        if form.is_valid():
+            return form.save()
+        else:
+            raise ValidationError(form.errors)
+
+    @classmethod
+    def resource_uri(cls, nodegroup=None, interface=None):
+        if nodegroup is None:
+            uuid = 'uuid'
+        else:
+            uuid = nodegroup.uuid
+        if interface is None:
+            interface_name = 'interface'
+        else:
+            interface_name = interface.interface
+        return ('nodegroupinterface_handler', [uuid, interface_name])
 
 
 @api_operations
