@@ -19,6 +19,7 @@ python-dev
 python-django
 python-django-south
 python-formencode
+python-httplib2
 python-lockfile
 python-netaddr
 python-oauth

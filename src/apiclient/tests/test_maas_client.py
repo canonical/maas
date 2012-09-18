@@ -21,26 +21,12 @@ from urlparse import (
     )
 
 from apiclient.maas_client import (
-    _ascii_url,
     MAASClient,
     MAASDispatcher,
     MAASOAuth,
     )
 from maastesting.factory import factory
 from maastesting.testcase import TestCase
-
-
-class TestHelpers(TestCase):
-
-    def test_ascii_url_leaves_ascii_bytes_unchanged(self):
-        self.assertEqual(
-            b'http://example.com/', _ascii_url(b'http://example.com/'))
-        self.assertIsInstance(_ascii_url(b'http://example.com'), bytes)
-
-    def test_ascii_url_asciifies_unicode(self):
-        self.assertEqual(
-            b'http://example.com/', _ascii_url('http://example.com/'))
-        self.assertIsInstance(_ascii_url('http://example.com'), bytes)
 
 
 class TestMAASOAuth(TestCase):

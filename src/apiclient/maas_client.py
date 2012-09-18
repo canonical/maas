@@ -18,20 +18,9 @@ __all__ = [
 
 from urllib import urlencode
 import urllib2
-from urlparse import urlparse
 
 from apiclient.multipart import encode_multipart_data
 import oauth.oauth as oauth
-
-
-def _ascii_url(url):
-    """Encode `url` as ASCII if it isn't already."""
-    if isinstance(url, unicode):
-        urlparts = urlparse(url)
-        urlparts = urlparts._replace(
-            netloc=urlparts.netloc.encode("idna"))
-        url = urlparts.geturl()
-    return url.encode("ascii")
 
 
 class MAASOAuth:

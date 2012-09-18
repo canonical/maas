@@ -10,30 +10,126 @@ from __future__ import (
     )
 
 __metaclass__ = type
-__all__ = []
+__all__ = [
+    "Command",
+    "CommandError",
+    "register",
+    ]
 
-from os.path import (
-    dirname,
-    join,
+from abc import (
+    ABCMeta,
+    abstractmethod,
     )
+import argparse
+import locale
 import sys
 
-# Add `lib` in this package's directory to sys.path.
-sys.path.insert(0, join(dirname(__file__), "lib"))
+from bzrlib import osutils
+from maascli.utils import (
+    parse_docstring,
+    safe_name,
+    )
 
-from commandant import builtins
-from commandant.controller import CommandController
+
+modules = {
+    "api": "maascli.api",
+    }
 
 
-def main(argv=sys.argv):
-    controller = CommandController(
-        program_name=argv[0],
-        program_version="1.0",
-        program_summary="Control MAAS using its API from the command-line.",
-        program_url="http://maas.ubuntu.com/")
-    # At this point controller.load_path(...) can be used to load commands
-    # from a pre-agreed location on the filesystem, so that the command set
-    # will grow and shrink with the installed packages.
-    controller.load_module(builtins)
-    controller.install_bzrlib_hooks()
-    controller.run(argv[1:])
+class ArgumentParser(argparse.ArgumentParser):
+    """Specialisation of argparse's parser with better support for subparsers.
+
+    Specifically, the one-shot `add_subparsers` call is disabled, replaced by
+    a lazily evaluated `subparsers` property.
+    """
+
+    def add_subparsers(self):
+        raise NotImplementedError(
+            "add_subparsers has been disabled")
+
+    @property
+    def subparsers(self):
+        try:
+            return self.__subparsers
+        except AttributeError:
+            parent = super(ArgumentParser, self)
+            self.__subparsers = parent.add_subparsers(title="commands")
+            return self.__subparsers
+
+
+def main(argv=None):
+    # Set up the process's locale; this helps bzrlib decode command-line
+    # arguments in the next step.
+    locale.setlocale(locale.LC_ALL, "")
+    if argv is None:
+        argv = sys.argv[:1] + osutils.get_unicode_argv()
+
+    # Create the base argument parser.
+    parser = ArgumentParser(
+        description="Control MAAS from the command-line.",
+        prog=argv[0], epilog="http://maas.ubuntu.com/")
+
+    # Register declared modules.
+    for name, module in sorted(modules.items()):
+        if isinstance(module, basestring):
+            module = __import__(module, fromlist=True)
+        help_title, help_body = parse_docstring(module)
+        module_parser = parser.subparsers.add_parser(
+            name, help=help_title, description=help_body)
+        register(module, module_parser)
+
+    # Run, doing polite things with exceptions.
+    try:
+        options = parser.parse_args(argv[1:])
+        options.execute(options)
+    except KeyboardInterrupt:
+        raise SystemExit(1)
+    except StandardError as error:
+        parser.error("%s" % error)
+
+
+class Command:
+    """A base class for composing commands.
+
+    This adheres to the expectations of `register`.
+    """
+
+    __metaclass__ = ABCMeta
+
+    def __init__(self, parser):
+        super(Command, self).__init__()
+        self.parser = parser
+
+    @abstractmethod
+    def __call__(self, options):
+        """Execute this command."""
+
+
+CommandError = SystemExit
+
+
+def register(module, parser, prefix="cmd_"):
+    """Register commands in `module` with the given argument parser.
+
+    This looks for callable objects named `cmd_*` by default, calls them with
+    a new subparser, and registers them as the default value for `execute` in
+    the namespace.
+
+    If the module also has a `register` function, this is also called, passing
+    in the module being scanned, and the parser given to this function.
+    """
+    # Register commands.
+    trim = slice(len(prefix), None)
+    commands = {
+        name[trim]: command for name, command in vars(module).items()
+        if name.startswith(prefix) and callable(command)
+        }
+    for name, command in commands.items():
+        help_title, help_body = parse_docstring(command)
+        command_parser = parser.subparsers.add_parser(
+            safe_name(name), help=help_title, description=help_body)
+        command_parser.set_defaults(execute=command(command_parser))
+    # Extra subparser registration.
+    register_module = getattr(module, "register", None)
+    if callable(register_module):
+        register_module(module, parser)

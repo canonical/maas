@@ -124,7 +124,7 @@ class TFTPBackend(FilesystemSynchronousBackend):
         # Merge updated query into the generator URL.
         url = self.generator_url._replace(query=urlencode(query))
         # TODO: do something more intelligent with unicode URLs here; see
-        # maas_client._ascii_url() for inspiration.
+        # apiclient.utils.ascii_url() for inspiration.
         return url.geturl().encode("ascii")
 
     @deferred

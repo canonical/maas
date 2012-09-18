@@ -29,6 +29,14 @@ MAAS API
 
 Other services interact with a MAAS server using its :doc:`api`.
 
+
+MAAS from the command-line
+==========================
+
+MAAS comes with a few command-line tools, including `maascli`, which
+exposes the entire :doc:`api` to command-line users.
+
+
 Code
 ====
 
