@@ -158,7 +158,10 @@ from_import_multi_regex = re.compile(
 comment_regex = re.compile(
     "(?P<comment>(^#.+\n)+)(^import|^from) +(?P<module>[a-zA-Z0-9_.]+)", re.M)
 split_regex = re.compile(",\s*")
-module_base_regex = re.compile("([^. ]+)")
+
+# The base part of an import is its leading part: either a series of
+# dots, or a leading identifier.
+module_base_regex = re.compile("([.]+|[^. ]+)")
 
 # Module docstrings are multiline (""") strings that are not indented and are
 # followed at some point by an import .
@@ -296,7 +299,7 @@ def parse_import_statements(import_section):
     return imports
 
 LOCAL_PACKAGES = (
-    'canonical', 'lp', 'launchpad_loggerhead', 'devscripts',
+    '.', 'canonical', 'lp', 'launchpad_loggerhead', 'devscripts',
     # database/* have some implicit relative imports.
     'fti', 'replication', 'preflight', 'security', 'upgrade',
     )
