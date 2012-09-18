@@ -107,12 +107,15 @@ class ARCHITECTURE:
     i386 = 'i386'
     #:
     amd64 = 'amd64'
+    #:
+    armhf = 'armhf'
 
 
 # Architecture names.
 ARCHITECTURE_CHOICES = (
     (ARCHITECTURE.i386, "i386"),
     (ARCHITECTURE.amd64, "amd64"),
+    (ARCHITECTURE.armhf, "armhf"),
 )
 
 
