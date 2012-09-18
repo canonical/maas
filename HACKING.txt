@@ -244,9 +244,8 @@ port 5244 for testing purposes.  Make these changes::
       $ sudo touch /etc/authbind/byport/69
       $ sudo chmod a+x /etc/authbind/byport/69
 
-Now when starting up the MAAS development webserver, do it like this::
-
-    $ authbind --deep make run
+Now when starting up the MAAS development webserver, "make run" and "make
+start" will detect authbind's presence and use it automatically.
 
 
 Running the BIND daemon for real
@@ -264,7 +263,7 @@ Then as for TFTP above, create an authbind authorisation::
     $ sudo touch /etc/authbind/byport/53
     $ sudo chmod a+x /etc/authbind/byport/53
 
-and run as for TFTP.
+and run as normal.
 
 
 Configuring DHCP
