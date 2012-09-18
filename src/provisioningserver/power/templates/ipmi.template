@@ -1,6 +1,6 @@
 # -*- mode: shell-script -*-
 #
-# Control a system via ipmitool
+# Control a system via ipmipower
 #
 
 # Parameters.
@@ -8,29 +8,28 @@ power_change={{power_change}}
 power_address={{power_address}}
 power_user={{power_user}}
 power_pass={{power_pass}}
-ipmitool={{ipmitool}}
-interface={{power_ipmi_interface}}
+ipmipower={{ipmipower}}
 
 
 formulate_power_state() {
-    case $1 in
-    'Chassis Power is on') echo 'on' ;;
-    'Chassis Power is off') echo 'off' ;;
+    case $2 in
+    'on') echo 'on' ;;
+    'off') echo 'off' ;;
     *)
-        echo "Got unknown power state from ipmitool: '$1'" >&2
+        echo "Got unknown power state from ipmipower: '$2'" >&2
         exit 1
     esac
 }
 
-# Issue command to ipmitool, for the given system.
+# Issue command to ipmipower, for the given system.
 issue_ipmi_command() {
-    ${ipmitool} -I ${interface} -H ${power_address} -U ${power_user} -P ${power_pass} power $1
+    ${ipmipower} -h ${power_address} -u ${power_user} -p ${power_pass} --$1
 }
 
 
 # Get the given system's power state: 'on' or 'off'.
 get_power_state() {
-    ipmi_state=$(issue_ipmi_command status)
+    ipmi_state=$(issue_ipmi_command stat)
     formulate_power_state ${ipmi_state}
 }
 
