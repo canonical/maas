@@ -38,6 +38,8 @@ from maasserver import DefaultMeta
 from maasserver.enum import (
     ARCHITECTURE,
     ARCHITECTURE_CHOICES,
+    DISTRO_SERIES,
+    DISTRO_SERIES_CHOICES,
     NODE_AFTER_COMMISSIONING_ACTION,
     NODE_AFTER_COMMISSIONING_ACTION_CHOICES,
     NODE_PERMISSION,
@@ -352,6 +354,10 @@ class Node(CleanSave, TimestampedModel):
     after_commissioning_action = IntegerField(
         choices=NODE_AFTER_COMMISSIONING_ACTION_CHOICES,
         default=NODE_AFTER_COMMISSIONING_ACTION.DEFAULT)
+
+    distro_series = CharField(
+        max_length=10, choices=DISTRO_SERIES_CHOICES, null=True,
+        blank=True, default='')
 
     architecture = CharField(
         max_length=10, choices=ARCHITECTURE_CHOICES, blank=False,

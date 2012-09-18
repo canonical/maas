@@ -24,6 +24,8 @@ __all__ = [
     'NODE_STATUS_CHOICES',
     'NODE_STATUS_CHOICES_DICT',
     'PRESEED_TYPE',
+    'DISTRO_SERIES',
+    'DISTRO_SERIES_CHOICES',
     ]
 
 from collections import OrderedDict
@@ -116,6 +118,22 @@ ARCHITECTURE_CHOICES = (
     (ARCHITECTURE.i386, "i386"),
     (ARCHITECTURE.amd64, "amd64"),
     (ARCHITECTURE.armhf, "armhf"),
+)
+
+
+class DISTRO_SERIES:
+    """List of supported ubuntu releases."""
+    #:
+    default = ''
+    #:
+    precise = 'precise'
+    #:
+    quantal = 'quantal'
+
+DISTRO_SERIES_CHOICES = (
+    (DISTRO_SERIES.default, 'Default Ubuntu Release'),
+    (DISTRO_SERIES.precise, 'Ubuntu 12.04 LTS "Precise Pangolin"'),
+    (DISTRO_SERIES.quantal, 'Ubuntu 12.10 "Quantal Quetzal"'),
 )
 
 
