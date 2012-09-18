@@ -125,7 +125,7 @@ class TestKernelOpts(TestCase):
                 "root=LABEL=cloudimg-rootfs",
                 "iscsi_initiator=",
                 "overlayroot=tmpfs",
-                "ip=::::%s" % params.hostname]))
+                "ip=dhcp")
 
     def test_compose_kernel_command_line_inc_common_opts(self):
         # Test that some kernel arguments appear on both commissioning

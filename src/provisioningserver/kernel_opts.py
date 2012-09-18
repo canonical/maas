@@ -120,7 +120,7 @@ def compose_purpose_opts(params):
             "iscsi_target_port=3260",
             "iscsi_initiator=%s" % params.hostname,
             # Read by klibc 'ipconfig' in initramfs.
-            "ip=::::%s" % params.hostname,
+            "ip=dhcp",
             # cloud-images have this filesystem label.
             "ro root=LABEL=cloudimg-rootfs",
             # Read by overlayroot package.
