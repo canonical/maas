@@ -518,14 +518,23 @@ class NodeHandler(BaseHandler):
         The user_data parameter, if set in the POST data, is taken as
         base64-encoded binary data.
 
+        The distro_series parameter, if set in the POST data, is taken as
+        clear text. This parameter specifies the Ubuntu Release the node
+        will use.
+
         Ideally we'd have MIME multipart and content-transfer-encoding etc.
         deal with the encapsulation of binary data, but couldn't make it work
         with the framework in reasonable time so went for a dumb, manual
         encoding instead.
         """
         user_data = request.POST.get('user_data', None)
+        series = request.POST.get('distro_series', None)
         if user_data is not None:
             user_data = b64decode(user_data)
+        if series is not None:
+            node = Node.objects.get_node_or_404(
+                system_id=system_id, user=request.user, perm=NODE_PERMISSION.EDIT)
+            node.set_distro_series(series=series)
         nodes = Node.objects.start_nodes(
             [system_id], request.user, user_data=user_data)
         if len(nodes) == 0:
@@ -538,6 +547,7 @@ class NodeHandler(BaseHandler):
         """Release a node.  Opposite of `NodesHandler.acquire`."""
         node = Node.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NODE_PERMISSION.EDIT)
+        node.set_distro_series(series='')
         if node.status == NODE_STATUS.READY:
             # Nothing to do.  This may be a redundant retry, and the
             # postcondition is achieved, so call this success.

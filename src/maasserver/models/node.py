@@ -567,6 +567,11 @@ class Node(CleanSave, TimestampedModel):
         else:
             return self.distro_series
 
+    def set_distro_series(self, series=''):
+        """Set the distro series to install that node."""
+        self.distro_series = series
+        self.save()
+
     def get_effective_power_parameters(self):
         """Return effective power parameters, including any defaults."""
         if self.power_parameters:
