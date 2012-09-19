@@ -14,10 +14,7 @@ __all__ = []
 
 
 import os
-from subprocess import (
-    CalledProcessError,
-    check_output,
-    )
+from subprocess import check_output
 
 from maastesting.bindfixture import (
     BINDServer,
@@ -48,7 +45,7 @@ def dig_call(port=53, server='127.0.0.1', commands=None):
     :rtype: basestring
     """
     cmd = [
-        'dig', '+time=10', '+tries=5', '@%s' % server, '-p',
+        'dig', '+time=2', '+tries=2', '@%s' % server, '-p',
         '%d' % port]
     if commands is not None:
         if not isinstance(commands, list):
@@ -71,10 +68,7 @@ class TestBINDFixture(TestCase):
                 # responsible for propagating fixture details.
                 gather_details(fixture.getDetails(), self.getDetails())
                 raise
-        error = self.assertRaises(
-            CalledProcessError, dig_call, fixture.config.port)
-        self.assertEqual(9, error.returncode)
-        # return code 9 means timeout.
+        self.assertFalse(fixture.runner.is_running())
 
     def test_config(self):
         # The configuration can be passed in.
