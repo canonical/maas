@@ -4,6 +4,10 @@
 ./.coverage
 ./.installed.cfg
 ./.noseids
+./acceptance/*.build
+./acceptance/*.changes
+./acceptance/*.deb
+./acceptance/source
 ./bin
 ./build
 ./celerybeat-schedule
@@ -13,7 +17,6 @@
 ./docs/_autosummary
 ./docs/_build
 ./docs/api.rst
-dropin.cache
 ./eggs
 ./include
 ./lib
@@ -27,3 +30,4 @@ dropin.cache
 ./src/maasserver/static/js/enums.js
 ./TAGS
 ./tags
+dropin.cache

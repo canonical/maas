@@ -1,0 +1,13 @@
+MAAS Packaging Acceptance Testing
+---------------------------------
+
+The `test` make target will build binary packages for the current
+branch using the latest packaging branch from Launchpad, *in a clean
+ephemeral container*. The `build` target will install these packages
+in another clean ephemeral LXC container.
+
+Consider the `build-inner` and `test-inner` targets as bootstrap
+points for further work. It may not be suitable for full automated
+end-to-end testing of MAAS, so be clear about what you need to test
+before investing work here. OTOH, it is a good place to quickly test
+that the packages build, install and configure themselves as expected.

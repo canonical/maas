@@ -136,6 +136,7 @@ $(js_enums): bin/py src/maasserver/utils/jsenums.py $(py_enums)
 	 bin/py -m src/maasserver/utils/jsenums $(py_enums) > $@
 
 clean:
+	$(MAKE) -C acceptance $@
 	find . -type f -name '*.py[co]' -print0 | xargs -r0 $(RM)
 	find . -type f -name '*~' -print0 | xargs -r0 $(RM)
 	$(RM) -r media/demo/* media/development
