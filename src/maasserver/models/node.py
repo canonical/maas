@@ -359,6 +359,10 @@ class Node(CleanSave, TimestampedModel):
         max_length=10, choices=DISTRO_SERIES_CHOICES, null=True,
         blank=True, default='')
 
+    distro_series = CharField(
+        max_length=10, choices=DISTRO_SERIES_CHOICES, null=True,
+        blank=True, default=None)
+
     architecture = CharField(
         max_length=10, choices=ARCHITECTURE_CHOICES, blank=False,
         default=ARCHITECTURE.i386)
@@ -555,6 +559,13 @@ class Node(CleanSave, TimestampedModel):
             return macs[0]
         else:
             return None
+
+    def get_distro_series(self):
+        """Return the distro series to install that node."""
+        if not self.distro_series or self.distro_series == DISTRO_SERIES.default:
+            return Config.objects.get_config('default_distro_series')
+        else:
+            return self.distro_series
 
     def get_effective_power_parameters(self):
         """Return effective power parameters, including any defaults."""

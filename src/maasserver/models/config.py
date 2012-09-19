@@ -26,7 +26,10 @@ from django.db.models import (
     )
 from django.db.models.signals import post_save
 from maasserver import DefaultMeta
-from maasserver.enum import NODE_AFTER_COMMISSIONING_ACTION
+from maasserver.enum import (
+    DISTRO_SERIES,
+    NODE_AFTER_COMMISSIONING_ACTION,
+    )
 from maasserver.fields import JSONObjectField
 from provisioningserver.enum import POWER_TYPE
 
@@ -49,6 +52,8 @@ def get_default_config():
         'maas_name': gethostname(),
         'enlistment_domain': b'local',
         ## /settings
+        'default_distro_series': DISTRO_SERIES.precise,
+        'commissioning_distro_series': DISTRO_SERIES.precise,
         }
 
 

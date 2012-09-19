@@ -59,6 +59,8 @@ from maasserver.enum import (
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
     NODEGROUPINTERFACE_MANAGEMENT_CHOICES,
+    DISTRO_SERIES,
+    DISTRO_SERIES_CHOICES,
     )
 from maasserver.fields import MACAddressFormField
 from maasserver.models import (
@@ -97,12 +99,21 @@ def compose_invalid_choice_text(choice_of_what, valid_choices):
 INVALID_ARCHITECTURE_MESSAGE = compose_invalid_choice_text(
     'architecture', ARCHITECTURE_CHOICES)
 
+INVALID_DISTRO_SERIES_MESSAGE = compose_invalid_choice_text(
+    'distro_series', DISTRO_SERIES_CHOICES)
+
 
 class NodeForm(ModelForm):
     after_commissioning_action = forms.TypedChoiceField(
         label="After commissioning",
         choices=NODE_AFTER_COMMISSIONING_ACTION_CHOICES, required=False,
         empty_value=NODE_AFTER_COMMISSIONING_ACTION.DEFAULT)
+
+    distro_series = forms.ChoiceField(
+        choices=DISTRO_SERIES_CHOICES, required=False,
+        initial=DISTRO_SERIES.default,
+        label="Release",
+        error_messages={'invalid_choice': INVALID_DISTRO_SERIES_MESSAGE})
 
     architecture = forms.ChoiceField(
         choices=ARCHITECTURE_CHOICES, required=True,
@@ -115,6 +126,7 @@ class NodeForm(ModelForm):
             'hostname',
             'after_commissioning_action',
             'architecture',
+            'distro_series',
             )
 
 
@@ -154,6 +166,7 @@ class AdminNodeForm(APIEditMixin, NodeForm):
             'hostname',
             'after_commissioning_action',
             'architecture',
+            'distro_series',
             'power_type',
             'power_parameters',
             )

@@ -226,6 +226,7 @@ class NodeEditForms(TestCase):
                 'hostname',
                 'after_commissioning_action',
                 'architecture',
+                'distro_series',
             ], list(form.fields))
 
     def test_NodeForm_changes_node(self):
@@ -256,6 +257,7 @@ class NodeEditForms(TestCase):
                 'hostname',
                 'after_commissioning_action',
                 'architecture',
+                'distro_series',
                 'power_type',
                 'power_parameters',
             ],

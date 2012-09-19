@@ -1353,14 +1353,17 @@ def pxeconfig(request):
         preseed_url = compose_preseed_url(node)
         hostname = node.hostname
 
-    # XXX JeroenVermeulen 2012-08-06 bug=1013146: Stop hard-coding this.
-    release = 'precise'
+    if node is None or node.status == NODE_STATUS.COMMISSIONING:
+        series = Config.objects.get_config('commissioning_distro_series')
+    else:
+        series = node.get_distro_series()
+
     purpose = get_boot_purpose(node)
     domain = 'local.lan'  # TODO: This is probably not enough!
     server_address = get_maas_facing_server_address()
 
     params = KernelParameters(
-        arch=arch, subarch=subarch, release=release, purpose=purpose,
+        arch=arch, subarch=subarch, release=series, purpose=purpose,
         hostname=hostname, domain=domain, preseed_url=preseed_url,
         log_host=server_address, fs_host=server_address)
 

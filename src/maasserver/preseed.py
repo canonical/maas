@@ -30,6 +30,7 @@ from maasserver.enum import (
     )
 from maasserver.server_address import get_maas_facing_server_host
 from maasserver.utils import absolute_reverse
+from maasserver.models import Config
 import tempita
 
 
@@ -54,28 +55,26 @@ def get_enlist_userdata():
     return render_preseed(None, PRESEED_TYPE.ENLIST_USERDATA)
 
 
-# XXX: rvb 2012-06-21 bug=1013146:  'precise' is hardcoded here.
-def get_preseed(node, release="precise"):
+def get_preseed(node):
     """Return the preseed for a given node.  Depending on the node's status
     this will be a commissioning preseed (if the node is commissioning) or the
     standard preseed (normal installation preseed).
 
     :param node: The node to return preseed for.
     :type node: :class:`maasserver.models.Node`
-    :param release: The Ubuntu release to be used.
-    :type release: basestring
     :return: The rendered preseed string.
     :rtype: basestring.
     """
     if node.status == NODE_STATUS.COMMISSIONING:
         return render_preseed(
-            node, PRESEED_TYPE.COMMISSIONING, release=release)
+            node, PRESEED_TYPE.COMMISSIONING, 
+            release=Config.objects.get_config('commissioning_distro_series'))
     else:
-        return render_preseed(node, PRESEED_TYPE.DEFAULT, release=release)
+        return render_preseed(node, PRESEED_TYPE.DEFAULT,
+            release=node.get_distro_series())
 
 
-# XXX: rvb 2012-06-14 bug=1013146:  'precise' is hardcoded here.
-def get_preseed_filenames(node, prefix='', release='precise', default=False):
+def get_preseed_filenames(node, prefix='', release='', default=False):
     """List possible preseed template filenames for the given node.
 
     :param node: The node to return template preseed filenames for.
@@ -174,8 +173,7 @@ class TemplateNotFoundError(Exception):
         self.name = name
 
 
-# XXX: rvb 2012-06-18 bug=1013146:  'precise' is hardcoded here.
-def load_preseed_template(node, prefix, release="precise"):
+def load_preseed_template(node, prefix, release=''):
     """Find and load a `PreseedTemplate` for the given node.
 
     :param node: See `get_preseed_filenames`.
@@ -201,8 +199,7 @@ def load_preseed_template(node, prefix, release="precise"):
     return get_template(prefix, None, default=True)
 
 
-# XXX: rvb 2012-06-19 bug=1013146:  'precise' is hardcoded here.
-def get_preseed_context(node, release="precise"):
+def get_preseed_context(node, release=''):
     """Return the context dictionary to be used to render preseed templates
     for this node.
 
@@ -236,8 +233,7 @@ def get_preseed_context(node, release="precise"):
     return context
 
 
-# XXX: rvb 2012-06-19 bug=1013146:  'precise' is hardcoded here.
-def render_preseed(node, prefix, release="precise"):
+def render_preseed(node, prefix, release=''):
     """Find and load a `PreseedTemplate` for the given node.
 
     :param node: See `get_preseed_filenames`.
