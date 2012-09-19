@@ -16,6 +16,7 @@ from collections import OrderedDict
 import errno
 from os import path
 import re
+import unittest
 
 from maastesting.factory import factory
 from maastesting.matchers import ContainsAll
@@ -70,6 +71,10 @@ class TestFunctions(TestCase):
         from_filename.assert_called_once_with(
             path.join(config.template_dir, filename), encoding="UTF-8")
 
+    config_template_path = path.join(config.template_dir, "config.template")
+
+    @unittest.skipUnless(path.exists(config_template_path),
+                         "no default template in use")
     def test_get_pxe_template_gets_default(self):
         # There will not be a template matching the following purpose, arch,
         # and subarch, so get_pxe_template() returns the default template.
@@ -149,7 +154,7 @@ class TestRenderPXEConfig(TestCase):
     def test_render(self):
         # Given the right configuration options, the PXE configuration is
         # correctly rendered.
-        params = make_kernel_parameters()
+        params = make_kernel_parameters(purpose="install")
         output = render_pxe_config(kernel_params=params)
         # The output is always a Unicode string.
         self.assertThat(output, IsInstance(unicode))
@@ -174,7 +179,8 @@ class TestRenderPXEConfig(TestCase):
 
     def test_render_with_extra_arguments_does_not_affect_output(self):
         # render_pxe_config() allows any keyword arguments as a safety valve.
-        options = {"kernel_params": make_kernel_parameters()}
+        options = {"kernel_params":
+                        make_kernel_parameters(purpose="install")}
         # Capture the output before sprinking in some random options.
         output_before = render_pxe_config(**options)
         # Sprinkle some magic in.
