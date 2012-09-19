@@ -24,6 +24,7 @@ from maasserver.enum import (
     NODE_STATUS,
     NODE_STATUS_CHOICES,
     NODE_STATUS_CHOICES_DICT,
+    DISTRO_SERIES,
     )
 from maasserver.exceptions import NodeStateViolation
 from maasserver.models import (
@@ -112,6 +113,18 @@ class NodeTest(TestCase):
             mac_address.save()
             offset += timedelta(1)
         self.assertEqual(macs[0], node.get_primary_mac().mac_address)
+
+    def test_get_distro_series_returns_default_series(self):
+        node = factory.make_node()
+        # default_distro_series is DISTRO_SERIES.precise
+        series = DISTRO_SERIES.precise
+        self.assertEqual(series, node.get_distro_series())
+
+    def test_set_get_distro_series_returns_series(self):
+        node = factory.make_node()
+        series = DISTRO_SERIES.quantal
+        node.set_distro_series(series)
+        self.assertEqual(series, node.get_distro_series())
 
     def test_delete_node_deletes_related_mac(self):
         node = factory.make_node()
