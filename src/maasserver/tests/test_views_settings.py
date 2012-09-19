@@ -18,10 +18,7 @@ from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse
 from lxml.html import fromstring
-from maasserver.enum import (
-    DNS_DHCP_MANAGEMENT,
-    NODE_AFTER_COMMISSIONING_ACTION,
-    )
+from maasserver.enum import NODE_AFTER_COMMISSIONING_ACTION
 from maasserver.models import (
     Config,
     UserProfile,
@@ -81,7 +78,6 @@ class SettingsTest(AdminLoggedInTestCase):
         self.patch(settings, "DNS_CONNECT", False)
         new_name = factory.getRandomString()
         new_domain = factory.getRandomString()
-        new_dns_dhcp_management = factory.getRandomEnum(DNS_DHCP_MANAGEMENT)
         response = self.client.post(
             reverse('settings'),
             get_prefixed_form_data(
@@ -89,16 +85,12 @@ class SettingsTest(AdminLoggedInTestCase):
                 data={
                     'maas_name': new_name,
                     'enlistment_domain': new_domain,
-                    'dns_dhcp_management': new_dns_dhcp_management,
                 }))
 
         self.assertEqual(httplib.FOUND, response.status_code)
         self.assertEqual(new_name, Config.objects.get_config('maas_name'))
         self.assertEqual(
             new_domain, Config.objects.get_config('enlistment_domain'))
-        self.assertEqual(
-            new_dns_dhcp_management,
-            Config.objects.get_config('dns_dhcp_management'))
 
     def test_settings_commissioning_POST(self):
         new_after_commissioning = factory.getRandomEnum(

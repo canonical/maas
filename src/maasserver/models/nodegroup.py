@@ -22,7 +22,6 @@ from django.db.models import (
     Manager,
     )
 from maasserver import DefaultMeta
-from maasserver.dhcp import is_dhcp_management_enabled
 from maasserver.enum import (
     NODEGROUP_STATUS,
     NODEGROUP_STATUS_CHOICES,
@@ -199,22 +198,9 @@ class NodeGroup(TimestampedModel):
             ip_range_high=interface.ip_range_high)
 
     def add_dhcp_host_maps(self, new_leases):
-        if self.is_dhcp_enabled() and len(new_leases) > 0:
+        if self.get_managed_interface() is not None and len(new_leases) > 0:
             # XXX JeroenVermeulen 2012-08-21, bug=1039362: the DHCP
             # server is currently always local to the worker system, so
             # use 127.0.0.1 as the DHCP server address.
             add_new_dhcp_host_map.delay(
                 new_leases, '127.0.0.1', self.dhcp_key)
-
-    def is_dhcp_enabled(self):
-        """Is the DHCP for this nodegroup enabled?"""
-        # Once we have support for multiple managed interfaces, this
-        # method will have to be improved to cope with that.
-        if not is_dhcp_management_enabled():
-            return False
-
-        interface = self.get_managed_interface()
-        if interface is not None:
-            return True
-        else:
-            return False

@@ -176,13 +176,6 @@ class TestNodeGroup(TestCase):
         ('celery', FixtureResource(CeleryFixture())),
         )
 
-    def test_is_dhcp_enabled_returns_False_if_interface_not_managed(self):
-        nodegroup = factory.make_node_group()
-        interface = nodegroup.get_managed_interface()
-        interface.management = NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED
-        interface.save()
-        self.assertFalse(nodegroup.is_dhcp_enabled())
-
     def test_set_up_dhcp_writes_dhcp_config(self):
         mocked_task = self.patch(
             maasserver.models.nodegroup, 'write_dhcp_config')
@@ -216,7 +209,6 @@ class TestNodeGroup(TestCase):
     def test_add_dhcp_host_maps_adds_maps_if_managing_dhcp(self):
         self.patch(Omshell, 'create', FakeMethod())
         nodegroup = factory.make_node_group()
-        self.patch(nodegroup, 'is_dhcp_enabled', FakeMethod(result=True))
         leases = factory.make_random_leases()
         nodegroup.add_dhcp_host_maps(leases)
         self.assertEqual(
@@ -225,8 +217,8 @@ class TestNodeGroup(TestCase):
 
     def test_add_dhcp_host_maps_does_nothing_if_not_managing_dhcp(self):
         self.patch(Omshell, 'create', FakeMethod())
-        nodegroup = factory.make_node_group()
-        self.patch(nodegroup, 'is_dhcp_enabled', FakeMethod(result=False))
+        nodegroup = factory.make_node_group(
+            management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
         leases = factory.make_random_leases()
         nodegroup.add_dhcp_host_maps(leases)
         self.assertEqual([], Omshell.create.extract_args())

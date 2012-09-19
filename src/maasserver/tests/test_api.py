@@ -23,6 +23,7 @@ from datetime import (
     timedelta,
     )
 import httplib
+from itertools import izip
 import json
 import os
 import random
@@ -36,7 +37,6 @@ from django.core.urlresolvers import reverse
 from django.http import QueryDict
 from fixtures import Fixture
 from maasserver import api
-from itertools import izip
 from maasserver.api import (
     DISPLAYED_NODEGROUP_FIELDS,
     extract_constraints,
@@ -76,8 +76,6 @@ from maasserver.preseed import (
     )
 from maasserver.refresh_worker import refresh_worker
 from maasserver.testing import (
-    disable_dhcp_management,
-    enable_dhcp_management,
     reload_object,
     reload_objects,
     )
@@ -2699,7 +2697,6 @@ class TestNodeGroupAPI(APITestCase):
         self.assertEqual(httplib.NOT_FOUND, response.status_code)
 
     def test_update_leases_processes_empty_leases_dict(self):
-        enable_dhcp_management()
         nodegroup = factory.make_node_group()
         factory.make_dhcp_lease(nodegroup=nodegroup)
         client = make_worker_client(nodegroup)
@@ -2716,6 +2713,7 @@ class TestNodeGroupAPI(APITestCase):
             [], DHCPLease.objects.filter(nodegroup=nodegroup))
 
     def test_update_leases_stores_leases(self):
+        self.patch(Omshell, 'create')
         nodegroup = factory.make_node_group()
         lease = factory.make_random_leases()
         client = make_worker_client(nodegroup)
@@ -2733,26 +2731,7 @@ class TestNodeGroupAPI(APITestCase):
                 lease.ip
                 for lease in DHCPLease.objects.filter(nodegroup=nodegroup)])
 
-    def test_update_leases_stores_leases_even_if_not_managing_dhcp(self):
-        disable_dhcp_management()
-        nodegroup = factory.make_node_group()
-        lease = factory.make_random_leases()
-        client = make_worker_client(nodegroup)
-        response = client.post(
-            reverse('nodegroup_handler', args=[nodegroup.uuid]),
-            {
-                'op': 'update_leases',
-                'leases': json.dumps(lease),
-            })
-        self.assertEqual(
-            (httplib.OK, "Leases updated."),
-            (response.status_code, response.content))
-        self.assertItemsEqual(lease.keys(), [
-            lease.ip
-            for lease in DHCPLease.objects.filter(nodegroup=nodegroup)])
-
     def test_update_leases_adds_new_leases_on_worker(self):
-        enable_dhcp_management()
         nodegroup = factory.make_node_group()
         client = make_worker_client(nodegroup)
         self.patch(Omshell, 'create', FakeMethod())
@@ -2772,7 +2751,6 @@ class TestNodeGroupAPI(APITestCase):
 
     def test_update_leases_does_not_add_old_leases(self):
         self.patch(Omshell, 'create')
-        enable_dhcp_management()
         nodegroup = factory.make_node_group()
         client = make_worker_client(nodegroup)
         self.patch(tasks, 'add_new_dhcp_host_map', FakeMethod())

@@ -26,10 +26,7 @@ from django.db.models import (
     )
 from django.db.models.signals import post_save
 from maasserver import DefaultMeta
-from maasserver.enum import (
-    DNS_DHCP_MANAGEMENT,
-    NODE_AFTER_COMMISSIONING_ACTION,
-    )
+from maasserver.enum import NODE_AFTER_COMMISSIONING_ACTION
 from maasserver.fields import JSONObjectField
 from provisioningserver.enum import POWER_TYPE
 
@@ -51,7 +48,6 @@ def get_default_config():
         # Network section configuration.
         'maas_name': gethostname(),
         'enlistment_domain': b'local',
-        'dns_dhcp_management': DNS_DHCP_MANAGEMENT.NONE,
         ## /settings
         }
 

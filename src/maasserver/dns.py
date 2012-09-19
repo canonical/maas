@@ -24,10 +24,8 @@ import logging
 import socket
 
 from django.conf import settings
-from maasserver.enum import DNS_DHCP_MANAGEMENT
 from maasserver.exceptions import MAASException
 from maasserver.models import (
-    Config,
     DHCPLease,
     NodeGroup,
     )
@@ -55,15 +53,8 @@ def next_zone_serial():
 
 
 def is_dns_enabled():
-    """Is MAAS configured to manage DNS?
-
-    This status is controlled by the `dns_dhcp_management` configuration item.
-    """
-    dns_dhcp_config = Config.objects.get_config('dns_dhcp_management')
-    return (
-        settings.DNS_CONNECT and
-        dns_dhcp_config == DNS_DHCP_MANAGEMENT.DNS_AND_DHCP
-        )
+    """Is MAAS configured to manage DNS?"""
+    return settings.DNS_CONNECT
 
 
 class DNSException(MAASException):
@@ -112,9 +103,6 @@ def get_zone(nodegroup, serial=None):
     This method also accepts a serial to reuse the same serial when
     we are creating DNSZoneConfig objects in bulk.
     """
-    if not nodegroup.is_dhcp_enabled():
-        return None
-
     interface = nodegroup.get_managed_interface()
     if interface is None:
         return None
