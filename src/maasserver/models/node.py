@@ -581,8 +581,8 @@ class Node(CleanSave, TimestampedModel):
             power_params = {}
 
         power_params.setdefault('system_id', self.system_id)
-        power_params.setdefault('virsh', '/usr/sbin/virsh')
-        power_params.setdefault('ipmipower', '/usr/bin/ipmipower')
+        power_params.setdefault('virsh', '/usr/bin/virsh')
+        power_params.setdefault('ipmipower', '/usr/sbin/ipmipower')
         power_params.setdefault('power_address', 'qemu://localhost/system')
         power_params.setdefault('username', '')
         power_params.setdefault('power_id', self.system_id)
