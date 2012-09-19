@@ -13,8 +13,11 @@ misc_bucket:
      [ -n "${ip}" ] && host=$(dig +short -x $ip)  && host=${host%.}
    maas-enlist --serverurl "$url" ${host:+--hostname "${host}"} >/tmp/enlist.out
    if [ $? -eq 0 ]; then
+      msg="successfully enlisted to '$url'"
+      [ -n "$host" ] && msg="$msg with hostname '$host'" ||
+         msg="$msg without hostname"
       echo
-      echo "=== $(date -R): successfully enlisted system to $host ==="
+      echo "=== $(date -R): $msg"
       cat  /tmp/enlist.out
       echo =============================================
       sleep 10
