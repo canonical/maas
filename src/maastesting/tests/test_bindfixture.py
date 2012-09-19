@@ -44,8 +44,11 @@ def dig_call(port=53, server='127.0.0.1', commands=None):
     :return: The output as a string.
     :rtype: basestring
     """
+    # The time and tries below are high so that tests pass in environments
+    # that are much slower than the average developer's machine, so beware
+    # before lowering. Many Bothans died to discover these parameters.
     cmd = [
-        'dig', '+time=5', '+tries=3', '@%s' % server, '-p',
+        'dig', '+time=10', '+tries=5', '@%s' % server, '-p',
         '%d' % port]
     if commands is not None:
         if not isinstance(commands, list):
