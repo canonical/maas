@@ -45,7 +45,7 @@ def dig_call(port=53, server='127.0.0.1', commands=None):
     :rtype: basestring
     """
     cmd = [
-        'dig', '+time=2', '+tries=2', '@%s' % server, '-p',
+        'dig', '+time=5', '+tries=3', '@%s' % server, '-p',
         '%d' % port]
     if commands is not None:
         if not isinstance(commands, list):
