@@ -14,6 +14,7 @@ __all__ = [
     'add_zone',
     'change_dns_zones',
     'is_dns_enabled',
+    'is_dns_managed',
     'next_zone_serial',
     'write_full_dns_config',
     ]
@@ -24,6 +25,10 @@ import logging
 import socket
 
 from django.conf import settings
+from maasserver.enum import (
+    NODEGROUP_STATUS,
+    NODEGROUPINTERFACE_MANAGEMENT,
+    )
 from maasserver.exceptions import MAASException
 from maasserver.models import (
     DHCPLease,
@@ -59,6 +64,15 @@ def is_dns_enabled():
 
 class DNSException(MAASException):
     """An error occured when setting up MAAS's DNS server."""
+
+
+def is_dns_managed(nodegroup):
+    """Does MAAS manage a DNS zone for this Nodegroup?"""
+    interface = nodegroup.get_managed_interface()
+    return (
+        nodegroup.status == NODEGROUP_STATUS.ACCEPTED and
+        interface is not None and
+        interface.management == NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
 
 
 def warn_loopback(ip):
@@ -103,9 +117,9 @@ def get_zone(nodegroup, serial=None):
     This method also accepts a serial to reuse the same serial when
     we are creating DNSZoneConfig objects in bulk.
     """
-    interface = nodegroup.get_managed_interface()
-    if interface is None:
+    if not is_dns_managed(nodegroup):
         return None
+    interface = nodegroup.get_managed_interface()
 
     if serial is None:
         serial = next_zone_serial()
