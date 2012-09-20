@@ -21,6 +21,7 @@ __all__ = [
     'NodeGroup',
     'NodeGroupInterface',
     'SSHKey',
+    'Tag',
     'UserProfile',
     ]
 
@@ -40,6 +41,7 @@ from maasserver.models.node import Node
 from maasserver.models.nodegroup import NodeGroup
 from maasserver.models.nodegroupinterface import NodeGroupInterface
 from maasserver.models.sshkey import SSHKey
+from maasserver.models.tag import Tag
 from maasserver.models.user import create_user
 from maasserver.models.userprofile import UserProfile
 from maasserver.utils import ignore_unused
@@ -53,7 +55,7 @@ logger = getLogger('maasserver')
 # export in __all__.
 ignore_unused(
     Config, DHCPLease, FileStorage, MACAddress, NodeGroup, SSHKey,
-    UserProfile, NodeGroupInterface)
+    Tag, UserProfile, NodeGroupInterface)
 
 
 # Connect the 'create_user' method to the post save signal of User.
@@ -71,6 +73,7 @@ admin.site.register(Consumer)
 admin.site.register(FileStorage)
 admin.site.register(MACAddress)
 admin.site.register(Node)
+admin.site.register(Tag)
 admin.site.register(SSHKey)
 
 

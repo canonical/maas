@@ -33,6 +33,7 @@ from maasserver.models import (
     Node,
     NodeGroup,
     SSHKey,
+    Tag,
     )
 from maasserver.models.node import NODE_TRANSITIONS
 from maasserver.testing import (
@@ -223,6 +224,21 @@ class Factory(maastesting.factory.Factory):
         key = SSHKey(key=key_string, user=user)
         key.save()
         return key
+
+    def make_tag(self, name, definition=None, comment='', created=None,
+                 updated=None):
+        if definition is None:
+            # Is there a 'node' in this xml?
+            definition = '//node'
+        tag = Tag(name=name, definition=definition, comment=comment)
+        self._save_node_unchecked(tag)
+        # Update the 'updated'/'created' fields with a call to 'update'
+        # preventing a call to save() from overriding the values.
+        if updated is not None:
+            Tag.objects.filter(id=tag.id).update(updated=updated)
+        if created is not None:
+            Tag.objects.filter(id=tag.id).update(created=created)
+        return reload_object(tag)
 
     def make_user_with_keys(self, n_keys=2, user=None, **kwargs):
         """Create a user with n `SSHKey`.  If user is not None, use this user
