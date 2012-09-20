@@ -12,15 +12,11 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
-from django.conf import settings
-import maasserver
-from maasserver.dns import get_dns_server_address
 from maasserver.enum import (
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
     )
 from maasserver.models import NodeGroup
-from maasserver.server_address import get_maas_facing_server_address
 from maasserver.testing import reload_object
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
@@ -156,6 +152,10 @@ class TestNodeGroupManager(TestCase):
         master.save()
         self.assertEqual(key, NodeGroup.objects.ensure_master().dhcp_key)
 
+    def test_ensure_master_creates_accepted_nodegroup(self):
+        master = NodeGroup.objects.ensure_master()
+        self.assertEqual(NODEGROUP_STATUS.ACCEPTED, master.status)
+
     def test_get_by_natural_key_looks_up_by_uuid(self):
         nodegroup = factory.make_node_group()
         self.assertEqual(
@@ -175,36 +175,6 @@ class TestNodeGroup(TestCase):
     resources = (
         ('celery', FixtureResource(CeleryFixture())),
         )
-
-    def test_set_up_dhcp_writes_dhcp_config(self):
-        mocked_task = self.patch(
-            maasserver.models.nodegroup, 'write_dhcp_config')
-        self.patch(
-            settings, 'DEFAULT_MAAS_URL',
-            'http://%s/' % factory.getRandomIPAddress())
-        nodegroup = factory.make_node_group(
-            dhcp_key=factory.getRandomString(),
-            ip_range_low='192.168.102.1', ip_range_high='192.168.103.254',
-            subnet_mask='255.255.252.0', broadcast_ip='192.168.103.255')
-        nodegroup.set_up_dhcp()
-        dhcp_params = [
-            'subnet_mask', 'broadcast_ip', 'router_ip',
-            'ip_range_low', 'ip_range_high']
-
-        interface = nodegroup.get_managed_interface()
-        expected_params = {
-            param: getattr(interface, param)
-            for param in dhcp_params}
-
-        # Currently all nodes use the central TFTP server.  This will be
-        # decentralized to use NodeGroup.worker_ip later.
-        expected_params["next_server"] = get_maas_facing_server_address()
-
-        expected_params["omapi_key"] = nodegroup.dhcp_key
-        expected_params["dns_servers"] = get_dns_server_address()
-        expected_params["subnet"] = '192.168.100.0'
-
-        mocked_task.delay.assert_called_once_with(**expected_params)
 
     def test_add_dhcp_host_maps_adds_maps_if_managing_dhcp(self):
         self.patch(Omshell, 'create', FakeMethod())

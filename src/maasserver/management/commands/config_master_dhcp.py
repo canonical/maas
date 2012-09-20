@@ -105,6 +105,3 @@ class Command(BaseCommand):
             for item, value in settings.items():
                 setattr(interface, item, value)
             interface.save()
-
-            # Create a Task that will write the config out.
-            master_nodegroup.set_up_dhcp()

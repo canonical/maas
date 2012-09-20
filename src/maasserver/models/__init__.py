@@ -111,3 +111,6 @@ ignore_unused(messages)
 
 from maasserver import dns_connect
 ignore_unused(dns_connect)
+
+from maasserver import dhcp_connect
+ignore_unused(dhcp_connect)

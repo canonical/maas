@@ -41,6 +41,10 @@ TEST_RUNNER = 'maastesting.runner.TestRunner'
 # case basis.
 DNS_CONNECT = False
 
+# Don't setup DHCP servers in tests, this will be enabled on a case per case
+# basis.
+DHCP_CONNECT = False
+
 # Invalid strings should be visible.
 TEMPLATE_STRING_IF_INVALID = '#### INVALID STRING ####'
 

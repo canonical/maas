@@ -39,6 +39,8 @@ LONGPOLL_PATH = '/longpoll/'
 # Connect to the DNS server.
 DNS_CONNECT = True
 
+DHCP_CONNECT = True
+
 MAAS_CLI = abspath("bin/maas")
 
 RABBITMQ_PUBLISH = True

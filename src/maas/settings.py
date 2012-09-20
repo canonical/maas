@@ -46,11 +46,15 @@ LOGOUT_URL = '/'
 LOGIN_REDIRECT_URL = '/'
 LOGIN_URL = '/accounts/login/'
 
-# Should the DNS features be enabled?  Note that the MAAS' DNS features can
-# also be enabled/disabled by an admin using a config option.  Having this
-# config option is a debugging/testing feature to be able to quickly
-# disconnect the DNS machinery.
+# Should the DNS features be enabled?  Having this config option is a
+# debugging/testing feature to be able to quickly disconnect the DNS
+# machinery.
 DNS_CONNECT = True
+
+# Should the DHCP features be enabled?  Having this config option is a
+# debugging/testing feature to be able to quickly disconnect the DNS
+# machinery.
+DHCP_CONNECT = True
 
 # The MAAS CLI.
 MAAS_CLI = 'sudo maas'

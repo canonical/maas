@@ -14,7 +14,9 @@ __all__ = []
 
 from optparse import OptionValueError
 
+from django.conf import settings
 from django.core.management import call_command
+from maasserver import dhcp
 from maasserver.enum import NODEGROUPINTERFACE_MANAGEMENT
 from maasserver.management.commands.config_master_dhcp import name_option
 from maasserver.models import NodeGroup
@@ -55,7 +57,8 @@ class TestConfigMasterDHCP(TestCase):
     def setUp(self):
         super(TestConfigMasterDHCP, self).setUp()
         # Make sure any attempts to write a dhcp config do nothing.
-        self.patch(NodeGroup, 'set_up_dhcp')
+        self.patch(dhcp, 'configure_dhcp')
+        self.patch(settings, 'DHCP_CONNECT', True)
 
     def test_configures_dhcp_for_master_nodegroup(self):
         settings = make_dhcp_settings()
@@ -134,8 +137,9 @@ class TestConfigMasterDHCP(TestCase):
     def test_name_option_turns_dhcp_setting_name_into_option(self):
         self.assertEqual('--subnet-mask', name_option('subnet_mask'))
 
-    def test_sets_up_dhcp(self):
-        master = NodeGroup.objects.ensure_master()
+    def test_configures_dhcp(self):
+        NodeGroup.objects.ensure_master()
+        self.patch(dhcp, 'configure_dhcp')
         settings = make_dhcp_settings()
         call_command('config_master_dhcp', **settings)
-        self.assertEqual(1, master.set_up_dhcp.call_count)
+        self.assertEqual(1, dhcp.configure_dhcp.call_count)
