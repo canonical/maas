@@ -28,9 +28,9 @@ from maasserver.enum import (
     NODE_STATUS,
     PRESEED_TYPE,
     )
+from maasserver.models import Config
 from maasserver.server_address import get_maas_facing_server_host
 from maasserver.utils import absolute_reverse
-from maasserver.models import Config
 import tempita
 
 

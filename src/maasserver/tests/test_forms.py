@@ -62,6 +62,7 @@ from maasserver.node_action import (
     AcceptAndCommission,
     Delete,
     )
+from maasserver.testing import reload_object
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
 from provisioningserver.enum import POWER_TYPE_CHOICES
@@ -71,18 +72,26 @@ from testtools.testcase import ExpectedException
 
 class TestHelpers(TestCase):
 
-    def test_initialize_node_group_initializes_nodegroup_to_master(self):
-        node = Node(
-            NODE_STATUS.DECLARED,
-            architecture=factory.getRandomEnum(ARCHITECTURE))
-        initialize_node_group(node)
-        self.assertEqual(NodeGroup.objects.ensure_master(), node.nodegroup)
-
     def test_initialize_node_group_leaves_nodegroup_reference_intact(self):
         preselected_nodegroup = factory.make_node_group()
         node = factory.make_node(nodegroup=preselected_nodegroup)
         initialize_node_group(node)
         self.assertEqual(preselected_nodegroup, node.nodegroup)
+
+    def test_initialize_node_group_initializes_nodegroup_to_form_value(self):
+        node = Node(
+            NODE_STATUS.DECLARED,
+            architecture=factory.getRandomEnum(ARCHITECTURE))
+        nodegroup = factory.make_node_group()
+        initialize_node_group(node, nodegroup)
+        self.assertEqual(nodegroup, node.nodegroup)
+
+    def test_initialize_node_group_defaults_to_master(self):
+        node = Node(
+            NODE_STATUS.DECLARED,
+            architecture=factory.getRandomEnum(ARCHITECTURE))
+        initialize_node_group(node)
+        self.assertEqual(NodeGroup.objects.ensure_master(), node.nodegroup)
 
 
 class NodeWithMACAddressesFormTest(TestCase):
@@ -96,15 +105,19 @@ class NodeWithMACAddressesFormTest(TestCase):
                 query_dict[k] = v
         return query_dict
 
-    def make_params(self, mac_addresses=None, architecture=None):
+    def make_params(self, mac_addresses=None, architecture=None,
+                    nodegroup=None):
         if mac_addresses is None:
             mac_addresses = [factory.getRandomMACAddress()]
         if architecture is None:
             architecture = factory.getRandomEnum(ARCHITECTURE)
-        return self.get_QueryDict({
+        params = {
             'mac_addresses': mac_addresses,
             'architecture': architecture,
-        })
+        }
+        if nodegroup is not None:
+            params['nodegroup'] = nodegroup
+        return self.get_QueryDict(params)
 
     def test_NodeWithMACAddressesForm_valid(self):
         architecture = factory.getRandomEnum(ARCHITECTURE)
@@ -163,10 +176,43 @@ class NodeWithMACAddressesFormTest(TestCase):
             macs,
             [mac.mac_address for mac in node.macaddress_set.all()])
 
+    def test_includes_nodegroup_field_for_new_node(self):
+        self.assertIn(
+            'nodegroup',
+            NodeWithMACAddressesForm(self.make_params()).fields)
+
+    def test_does_not_include_nodegroup_field_for_existing_node(self):
+        params = self.make_params()
+        node = factory.make_node()
+        self.assertNotIn(
+            'nodegroup',
+            NodeWithMACAddressesForm(params, instance=node).fields)
+
     def test_sets_nodegroup_to_master_by_default(self):
         self.assertEqual(
             NodeGroup.objects.ensure_master(),
             NodeWithMACAddressesForm(self.make_params()).save().nodegroup)
+
+    def test_sets_nodegroup_on_new_node_if_requested(self):
+        nodegroup = factory.make_node_group(
+            ip_range_low='192.168.14.2', ip_range_high='192.168.14.254',
+            ip='192.168.14.1', subnet_mask='255.255.255.0')
+        form = NodeWithMACAddressesForm(
+            self.make_params(nodegroup=nodegroup.get_managed_interface().ip))
+        self.assertEqual(nodegroup, form.save().nodegroup)
+
+    def test_leaves_nodegroup_alone_if_unset_on_existing_node(self):
+        # Selecting a node group for a node is only supported on new
+        # nodes.  You can't change it later.
+        original_nodegroup = factory.make_node_group()
+        node = factory.make_node(nodegroup=original_nodegroup)
+        factory.make_node_group(
+            ip_range_low='10.0.0.1', ip_range_high='10.0.0.2',
+            ip='10.0.0.1', subnet_mask='255.0.0.0')
+        form = NodeWithMACAddressesForm(
+            self.make_params(nodegroup='10.0.0.1'), instance=node)
+        form.save()
+        self.assertEqual(original_nodegroup, reload_object(node).nodegroup)
 
 
 class TestOptionForm(ConfigForm):
@@ -227,6 +273,7 @@ class NodeEditForms(TestCase):
                 'after_commissioning_action',
                 'architecture',
                 'distro_series',
+                'nodegroup',
             ], list(form.fields))
 
     def test_NodeForm_changes_node(self):

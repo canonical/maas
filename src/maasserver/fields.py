@@ -22,12 +22,17 @@ from json import (
     )
 import re
 
+from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
 from django.db.models import (
     Field,
     SubfieldBase,
     )
-from django.forms import RegexField
+from django.forms import (
+    ModelChoiceField,
+    RegexField,
+    )
+from maasserver.utils.orm import get_one
 import psycopg2.extensions
 from south.modelsinspector import add_introspection_rules
 
@@ -52,6 +57,81 @@ add_introspection_rules(
         "^maasserver\.fields\.JSONObjectField",
         "^maasserver\.fields\.XMLField",
     ])
+
+
+class NodeGroupFormField(ModelChoiceField):
+    """Form field: reference to a :class:`NodeGroup`.
+
+    Node groups are identified by their subnets.  More precisely: this
+    field will accept any IP as an identifier for the nodegroup whose subnet
+    contains the IP address.
+
+    Unless `queryset` is explicitly given, this field covers all NodeGroup
+    objects.
+    """
+
+    def __init__(self, **kwargs):
+        # Avoid circular imports.
+        from maasserver.models import NodeGroup
+
+        kwargs.setdefault('queryset', NodeGroup.objects.all())
+        super(NodeGroupFormField, self).__init__(**kwargs)
+
+    def label_from_instance(self, nodegroup):
+        """Django method: get human-readable choice label for nodegroup."""
+        interface = nodegroup.get_managed_interface()
+        if interface is None:
+            return nodegroup.name
+        else:
+            return "%s: %s" % (nodegroup.name, interface.ip)
+
+    def find_nodegroup(self, ip_address):
+        """Find the nodegroup whose subnet contains `ip_address`.
+
+        The matching nodegroup may have multiple interfaces on the subnet,
+        but there can be only one matching nodegroup.
+        """
+        # Avoid circular imports.
+        from maasserver.models import NodeGroup
+
+        return get_one(NodeGroup.objects.raw("""
+            SELECT *
+            FROM maasserver_nodegroup
+            WHERE id IN (
+                SELECT nodegroup_id
+                FROM maasserver_nodegroupinterface
+                WHERE (inet '%s' & subnet_mask) = (ip & subnet_mask)
+                )
+            """ % ip_address))
+
+    def clean(self, value):
+        """Django method: provide expected output for various inputs.
+
+        There seems to be no clear specification on what `value` can be.
+        This method accepts the types that we see in practice: raw bytes
+        containing an IP address, a :class:`NodeGroup`, or the nodegroup's
+        numerical id in text form.
+
+        If no nodegroup is indicated, defaults to the master.
+        """
+        # Avoid circular imports.
+        from maasserver.models import NodeGroup
+
+        if value in (None, '', b''):
+            nodegroup_id = NodeGroup.objects.ensure_master().id
+        elif isinstance(value, NodeGroup):
+            nodegroup_id = value.id
+        elif isinstance(value, unicode) and value.isnumeric():
+            nodegroup_id = int(value)
+        elif isinstance(value, bytes) and '.' not in value:
+            nodegroup_id = int(value)
+        else:
+            nodegroup = self.find_nodegroup(value)
+            if nodegroup is None:
+                raise ValidationError(
+                    "No known subnet contains %s." % value)
+            nodegroup_id = nodegroup.id
+        return super(NodeGroupFormField, self).clean(nodegroup_id)
 
 
 class MACAddressFormField(RegexField):

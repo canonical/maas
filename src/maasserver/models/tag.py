@@ -16,8 +16,8 @@ __all__ = [
 
 from django.db.models import (
     CharField,
-    TextField,
     Manager,
+    TextField,
     )
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave

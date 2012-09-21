@@ -20,11 +20,11 @@ from django.core.exceptions import (
     ValidationError,
     )
 from maasserver.enum import (
+    DISTRO_SERIES,
     NODE_PERMISSION,
     NODE_STATUS,
     NODE_STATUS_CHOICES,
     NODE_STATUS_CHOICES_DICT,
-    DISTRO_SERIES,
     )
 from maasserver.exceptions import NodeStateViolation
 from maasserver.models import (
