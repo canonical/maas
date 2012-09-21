@@ -515,12 +515,12 @@ class NodeHandler(BaseHandler):
     def start(self, request, system_id):
         """Power up a node.
 
-        The user_data parameter, if set in the POST data, is taken as
-        base64-encoded binary data.
-
-        The distro_series parameter, if set in the POST data, is taken as
-        clear text. This parameter specifies the Ubuntu Release the node
-        will use.
+        :param user_data: If present, this blob of user-data to be made
+            available to the nodes through the metadata service.
+        :type user_data: base64-encoded basestring
+        :param distro_series: If present, this parameter specifies the
+            Ubuntu Release the node will use.
+        :type distro_series: basestring
 
         Ideally we'd have MIME multipart and content-transfer-encoding etc.
         deal with the encapsulation of binary data, but couldn't make it work
@@ -533,7 +533,8 @@ class NodeHandler(BaseHandler):
             user_data = b64decode(user_data)
         if series is not None:
             node = Node.objects.get_node_or_404(
-                system_id=system_id, user=request.user, perm=NODE_PERMISSION.EDIT)
+                system_id=system_id, user=request.user,
+                perm=NODE_PERMISSION.EDIT)
             node.set_distro_series(series=series)
         nodes = Node.objects.start_nodes(
             [system_id], request.user, user_data=user_data)

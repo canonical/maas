@@ -67,7 +67,7 @@ def get_preseed(node):
     """
     if node.status == NODE_STATUS.COMMISSIONING:
         return render_preseed(
-            node, PRESEED_TYPE.COMMISSIONING, 
+            node, PRESEED_TYPE.COMMISSIONING,
             release=Config.objects.get_config('commissioning_distro_series'))
     else:
         return render_preseed(node, PRESEED_TYPE.DEFAULT,

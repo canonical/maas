@@ -567,7 +567,10 @@ class Node(CleanSave, TimestampedModel):
 
     def get_distro_series(self):
         """Return the distro series to install that node."""
-        if not self.distro_series or self.distro_series == DISTRO_SERIES.default:
+        use_default_distro_series = (
+            not self.distro_series or
+            self.distro_series == DISTRO_SERIES.default)
+        if use_default_distro_series:
             return Config.objects.get_config('default_distro_series')
         else:
             return self.distro_series

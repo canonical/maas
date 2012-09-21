@@ -49,6 +49,7 @@ from maasserver.components import COMPONENT
 from maasserver.enum import (
     ARCHITECTURE,
     ARCHITECTURE_CHOICES,
+    DISTRO_SERIES,
     NODE_AFTER_COMMISSIONING_ACTION,
     NODE_STATUS,
     NODE_STATUS_CHOICES_DICT,
@@ -881,6 +882,36 @@ class TestNodeAPI(APITestCase):
         self.assertEqual(
             node.system_id, json.loads(response.content)['system_id'])
 
+    def test_POST_start_sets_distro_series(self):
+        node = factory.make_node(
+            owner=self.logged_in_user, mac=True,
+            power_type=POWER_TYPE.WAKE_ON_LAN)
+        distro_series = factory.getRandomEnum(DISTRO_SERIES)
+        response = self.client.post(
+            self.get_node_uri(node),
+            {'op': 'start', 'distro_series': distro_series})
+        self.assertEqual(
+            (httplib.OK, node.system_id),
+            (response.status_code, json.loads(response.content)['system_id']))
+        self.assertEqual(
+            distro_series, reload_object(node).distro_series)
+
+    def test_POST_start_validates_distro_series(self):
+        node = factory.make_node(
+            owner=self.logged_in_user, mac=True,
+            power_type=POWER_TYPE.WAKE_ON_LAN)
+        invalid_distro_series = factory.getRandomString()
+        response = self.client.post(
+            self.get_node_uri(node),
+            {'op': 'start', 'distro_series': invalid_distro_series})
+        self.assertEqual(
+            (
+                httplib.BAD_REQUEST,
+                {'distro_series': ["Value u'%s' is not a valid choice." %
+                    invalid_distro_series]}
+            ),
+            (response.status_code, json.loads(response.content)))
+
     def test_POST_start_may_be_repeated(self):
         node = factory.make_node(
             owner=self.logged_in_user, mac=True,
@@ -928,6 +959,13 @@ class TestNodeAPI(APITestCase):
         node.set_netboot(on=False)
         self.client.post(self.get_node_uri(node), {'op': 'release'})
         self.assertTrue(reload_object(node).netboot)
+
+    def test_POST_release_resets_distro_series(self):
+        node = factory.make_node(
+            status=NODE_STATUS.ALLOCATED, owner=self.logged_in_user,
+            distro_series=factory.getRandomEnum(DISTRO_SERIES))
+        self.client.post(self.get_node_uri(node), {'op': 'release'})
+        self.assertEqual('', reload_object(node).distro_series)
 
     def test_POST_release_removes_token_and_user(self):
         node = factory.make_node(status=NODE_STATUS.READY)
