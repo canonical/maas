@@ -20,8 +20,9 @@ settings="/etc/maas/import_pxe_files"
 local_settings="$(pwd)/$settings"
 [ -r $local_settings ] && . $local_settings
 
-# Download location for Ubuntu releases.
-ARCHIVE=${ARCHIVE:-http://archive.ubuntu.com/ubuntu/}
+# Download locations for Ubuntu releases.
+MAIN_ARCHIVE=${ARCHIVE:-http://archive.ubuntu.com/ubuntu/}
+PORTS_ARCHIVE=${ARCHIVE:-http://ports.ubuntu.com/ubuntu-ports/}
 
 # Ubuntu releases that are to be downloaded.
 SUPPORTED_RELEASES=$(distro-info --supported)
@@ -31,7 +32,10 @@ RELEASES=${RELEASES:-$SUPPORTED_RELEASES}
 STABLE_RELEASE=$(distro-info --stable)
 
 # Supported architectures.
-ARCHES=${ARCHES:-amd64 i386}
+# armhf/highbank is also supported by this script, but cannot be enabled here
+# until maas-import-ephemerals also supports it or IMPORT_EPHEMERALS is set to
+# 0.
+ARCHES=${ARCHES:-amd64/generic i386/generic}
 
 # Command line to download a resource at a given URL into the current
 # directory.  A wget command line will work here, but curl will do as well.
@@ -60,10 +64,62 @@ show_usage() {
 # and release $2 can be downloaded.
 compose_installer_download_url() {
     local arch=$1 release=$2
-    local installer_url="$ARCHIVE/dists/$release/main/installer-$arch"
-    echo "$installer_url/current/images/netboot/ubuntu-installer/$arch/"
+
+    case $arch in
+        amd64/*|i386/*)
+            local installer_url="$MAIN_ARCHIVE/dists/$release/main/installer-${arch%%/*}"
+            echo "$installer_url/current/images/netboot/ubuntu-installer/${arch%%/*}/"
+            ;;
+        armhf/*)
+            # No ARM server installers were available in precise, so always go for -updates for now
+            # A better general fix is LP: #1052397
+            local installer_url="$PORTS_ARCHIVE/dists/$release-updates/main/installer-${arch%%/*}"
+            echo "$installer_url/current/images/${arch#*/}/netboot/"
+            ;;
+        *)
+            echo "Unknown architecture: $arch" >&2
+            exit 1
+            ;;
+    esac
 }
 
+# Return a list of files for architecture $1 and release $2 that need to be
+# downloaded
+compose_installer_download_files() {
+    local arch=$1 release=$2
+
+    case $arch in
+        amd64/*|i386/*)
+            echo "linux initrd.gz"
+            ;;
+        armhf/highbank)
+            echo "vmlinuz initrd.gz"
+            ;;
+        *)
+            echo "Unknown architecture: $arch" >&2
+            exit 1
+            ;;
+    esac
+}
+
+# Rename downloaded files for architecture $1 and release $2 into the form that
+# MAAS expects them
+rename_installer_download_files() {
+    local arch=$1 release=$2
+
+    case $arch in
+        amd64/*|i386/*)
+            # do nothing
+            ;;
+        armhf/highbank)
+            mv vmlinuz linux
+            ;;
+        *)
+            echo "Unknown architecture: $arch" >&2
+            exit 1
+            ;;
+    esac
+}
 
 # Copy the pre-boot loader pxelinux.0, and modules we need, from the
 # installed syslinux version.  Install it into the TFTP tree for
@@ -81,7 +137,7 @@ update_pre_boot_loader() {
 # architecture $1 and install it into the TFTP directory hierarchy.
 update_install_files() {
     local arch=$1 release=$2
-    local files="initrd.gz linux"
+    local files=$(compose_installer_download_files $arch $release)
     local url=$(compose_installer_download_url $arch $release)
     local file
 
@@ -91,10 +147,12 @@ update_install_files() {
     do
         $DOWNLOAD $url/$file
     done
+    rename_installer_download_files $arch $release
     popd >/dev/null
 
     maas-provision install-pxe-image \
-        --arch=$arch --release=$release --purpose="install" \
+        --arch="${arch%%/*}" --subarch="${arch#*/}" \
+        --release=$release --purpose="install" \
         --image="install"
 }
 

@@ -47,9 +47,45 @@ def compose_download_dir(archive, arch, release):
     :return: Full absolute path to the directory holding the requisite files
         for this archive, arch, and release.
     """
-    return os.path.join(
-        archive, 'dists', release, 'main', 'installer-%s' % arch, 'current',
-        'images', 'netboot', 'ubuntu-installer', arch)
+    if arch[0] in {'amd64', 'i386'}:
+        return os.path.join(
+            archive, 'dists', release, 'main', 'installer-%s' % arch[0],
+            'current', 'images', 'netboot', 'ubuntu-installer', arch[0])
+    elif arch[0] == 'armhf':
+        return os.path.join(
+            archive, 'dists', '%s-updates' % release, 'main',
+            'installer-%s' % arch[0], 'current', 'images', arch[1], 'netboot')
+    else:
+        raise NotImplementedError('Unknown architecture: %r' % arch)
+
+
+def compose_download_kernel_name(arch, release):
+    """Name the kernel file expected to be found in a netboot archive.
+
+    :param archive: Archive directory (corresponding to the script's ARCHIVE
+        setting, except here it's a filesystem path not a URL).
+    :param arch: Architecture.
+    :return: the kernel name string, eg. "vmlinuz" or "linux" as appropriate
+    """
+    if arch[0] in {'amd64', 'i386'}:
+        return 'linux'
+    elif arch[0] == 'armhf':
+        return 'vmlinuz'
+    else:
+        raise NotImplementedError('Unknown architecture: %r' % arch)
+
+
+def compose_download_filenames(arch, release):
+    """Name files expected to be found in the directory of a netboot archive.
+
+    :param archive: Archive directory (corresponding to the script's ARCHIVE
+        setting, except here it's a filesystem path not a URL).
+    :param arch: Architecture.
+    :return: list of names to be found in the netboot directory for this
+        particular arch and release. Eg: ['vmlinuz', 'initrd.gz'] or
+        ['linux', 'initrd.gz'] as appropriate.
+    """
+    return [compose_download_kernel_name(arch, release), 'initrd.gz']
 
 
 def compose_tftp_bootloader_path(tftproot):
@@ -67,12 +103,18 @@ def compose_tftp_path(tftproot, arch, release, purpose, *path):
     """
     return os.path.join(
         tftppath.locate_tftp_path(
-            tftppath.compose_image_path(arch, "generic", release, purpose),
+            tftppath.compose_image_path(arch[0], arch[1], release, purpose),
             tftproot),
         *path)
 
 
 class TestImportPXEFiles(TestCase):
+
+    scenarios = (
+        ("i386/generic", dict(arch=("i386", "generic"))),
+        ("amd64/generic", dict(arch=("amd64", "generic"))),
+        ("armhf/highbank", dict(arch=("armhf", "highbank"))),
+        )
 
     def setUp(self):
         super(TestImportPXEFiles, self).setUp()
@@ -88,12 +130,10 @@ class TestImportPXEFiles(TestCase):
         """
         if release is None:
             release = factory.make_name('release')
-        if arch is None:
-            arch = factory.make_name('arch')
         archive = self.make_dir()
         download = compose_download_dir(archive, arch, release)
         os.makedirs(download)
-        for filename in ['initrd.gz', 'linux']:
+        for filename in compose_download_filenames(arch, release):
             factory.make_file(download, filename)
         return archive
 
@@ -123,7 +163,7 @@ class TestImportPXEFiles(TestCase):
         }
         env.update(self.config_fixture.environ)
         if arch is not None:
-            env['ARCHES'] = arch
+            env['ARCHES'] = '/'.join(arch)
         if release is not None:
             env['RELEASES'] = release
 
@@ -131,58 +171,61 @@ class TestImportPXEFiles(TestCase):
             check_call(script, env=env, stdout=dev_null)
 
     def test_procures_pre_boot_loader(self):
-        arch = factory.make_name('arch')
         release = 'precise'
-        archive = self.make_downloads(arch=arch, release=release)
-        self.call_script(archive, self.tftproot, arch=arch, release=release)
+        archive = self.make_downloads(arch=self.arch, release=release)
+        self.call_script(
+            archive, self.tftproot, arch=self.arch, release=release)
         tftp_path = compose_tftp_bootloader_path(self.tftproot)
         expected_contents = read_file('/usr/lib/syslinux', 'pxelinux.0')
         self.assertThat(tftp_path, FileContains(expected_contents))
 
     def test_updates_pre_boot_loader(self):
-        arch = factory.make_name('arch')
         release = 'precise'
         tftp_path = compose_tftp_bootloader_path(self.tftproot)
         with open(tftp_path, 'w') as existing_file:
             existing_file.write(factory.getRandomString())
-        archive = self.make_downloads(arch=arch, release=release)
-        self.call_script(archive, self.tftproot, arch=arch, release=release)
+        archive = self.make_downloads(arch=self.arch, release=release)
+        self.call_script(
+            archive, self.tftproot, arch=self.arch, release=release)
         expected_contents = read_file('/usr/lib/syslinux', 'pxelinux.0')
         self.assertThat(tftp_path, FileContains(expected_contents))
 
     def test_procures_install_image(self):
-        arch = factory.make_name('arch')
         release = 'precise'
-        archive = self.make_downloads(arch=arch, release=release)
-        self.call_script(archive, self.tftproot, arch=arch, release=release)
+        archive = self.make_downloads(arch=self.arch, release=release)
+        self.call_script(
+            archive, self.tftproot, arch=self.arch, release=release)
         tftp_path = compose_tftp_path(
-            self.tftproot, arch, release, 'install', 'linux')
-        download_path = compose_download_dir(archive, arch, release)
-        expected_contents = read_file(download_path, 'linux')
+            self.tftproot, self.arch, release, 'install', 'linux')
+        download_path = compose_download_dir(archive, self.arch, release)
+        expected_contents = read_file(download_path,
+            compose_download_kernel_name(self.arch, release))
         self.assertThat(tftp_path, FileContains(expected_contents))
 
     def test_updates_install_image(self):
-        arch = factory.make_name('arch')
         release = 'precise'
         tftp_path = compose_tftp_path(
-            self.tftproot, arch, release, 'install', 'linux')
+            self.tftproot, self.arch, release, 'install', 'linux')
         os.makedirs(os.path.dirname(tftp_path))
         with open(tftp_path, 'w') as existing_file:
             existing_file.write(factory.getRandomString())
-        archive = self.make_downloads(arch=arch, release=release)
-        self.call_script(archive, self.tftproot, arch=arch, release=release)
-        download_path = compose_download_dir(archive, arch, release)
-        expected_contents = read_file(download_path, 'linux')
+        archive = self.make_downloads(arch=self.arch, release=release)
+        self.call_script(
+            archive, self.tftproot, arch=self.arch, release=release)
+        download_path = compose_download_dir(archive, self.arch, release)
+        expected_contents = read_file(download_path,
+            compose_download_kernel_name(self.arch, release))
         self.assertThat(tftp_path, FileContains(expected_contents))
 
     def test_leaves_install_image_untouched_if_unchanged(self):
-        arch = factory.make_name('arch')
         release = 'precise'
-        archive = self.make_downloads(arch=arch, release=release)
-        self.call_script(archive, self.tftproot, arch=arch, release=release)
+        archive = self.make_downloads(arch=self.arch, release=release)
+        self.call_script(
+            archive, self.tftproot, arch=self.arch, release=release)
         tftp_path = compose_tftp_path(
-            self.tftproot, arch, release, 'install', 'linux')
+            self.tftproot, self.arch, release, 'install', 'linux')
         backdate(tftp_path)
         original_timestamp = get_write_time(tftp_path)
-        self.call_script(archive, self.tftproot, arch=arch, release=release)
+        self.call_script(
+            archive, self.tftproot, arch=self.arch, release=release)
         self.assertEqual(original_timestamp, get_write_time(tftp_path))

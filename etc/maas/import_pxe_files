@@ -14,6 +14,6 @@ fi
 
 #RELEASES="oneiric precise"
 RELEASES="precise"
-#ARCHES="amd64 i386"
+#ARCHES="amd64/generic i386/generic"
 #LOCALE="en_US"
 #IMPORT_EPHEMERALS=1
