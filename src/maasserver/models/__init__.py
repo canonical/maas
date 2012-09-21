@@ -30,6 +30,11 @@ from logging import getLogger
 from django.contrib import admin
 from django.contrib.auth.backends import ModelBackend
 from django.contrib.auth.models import User
+from django.core.urlresolvers import (
+    get_callable,
+    get_resolver,
+    get_script_prefix,
+    )
 from django.db.models.signals import post_save
 from maasserver.enum import NODE_PERMISSION
 from maasserver.models.bootimage import BootImage
@@ -45,6 +50,7 @@ from maasserver.models.tag import Tag
 from maasserver.models.user import create_user
 from maasserver.models.userprofile import UserProfile
 from maasserver.utils import ignore_unused
+from piston.doc import HandlerDocumentation
 from piston.models import Consumer
 
 
@@ -64,6 +70,54 @@ post_save.connect(create_user, sender=User)
 
 # Monkey patch django.contrib.auth.models.User to force email to be unique.
 User._meta.get_field('email')._unique = True
+
+
+# Monkey patch piston's usage of Django's get_resolver to be compatible
+# with Django 1.4.
+# XXX: rvb 2012-09-21 bug=1054040
+# See https://bitbucket.org/jespern/django-piston/issue/218 for details.
+def get_resource_uri_template(self):
+    """
+    URI template processor.
+    See http://bitworking.org/projects/URI-Templates/
+    """
+    def _convert(template, params=[]):
+        """URI template converter"""
+        paths = template % dict([p, "{%s}" % p] for p in params)
+        return u'%s%s' % (get_script_prefix(), paths)
+    try:
+        resource_uri = self.handler.resource_uri()
+        components = [None, [], {}]
+
+        for i, value in enumerate(resource_uri):
+            components[i] = value
+        lookup_view, args, kwargs = components
+        lookup_view = get_callable(lookup_view, True)
+
+        possibilities = get_resolver(None).reverse_dict.getlist(lookup_view)
+        # The monkey patch is right here: we need to cope with 'possibilities'
+        # being a list of tuples with 2 or 3 elements.
+        for possibility_data in possibilities:
+            possibility = possibility_data[0]
+            for result, params in possibility:
+                if args:
+                    if len(args) != len(params):
+                        continue
+                    return _convert(result, params)
+                else:
+                    if set(kwargs.keys()) != set(params):
+                        continue
+                    return _convert(result, params)
+    except:
+        return None
+
+
+HandlerDocumentation.get_resource_uri_template = get_resource_uri_template
+
+# Monkey patch the property resource_uri_template: it hold a reference to
+# get_resource_uri_template.
+HandlerDocumentation.resource_uri_template = (
+    property(get_resource_uri_template))
 
 
 # Register the models in the admin site.
