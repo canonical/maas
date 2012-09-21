@@ -1,21 +1,45 @@
+#
+# Build and test everything in ephemeral containers:
+#
+#   $ make
+#
+# Use a different packaging branch:
+#
+#   $ make packaging=/path/to/branch
+#
+# Note: /path/to/branch can be anything that bzr recognises, so an lp:
+# link, or bzr+ssh, and so on.
+#
+# Build and test with a different Ubuntu series:
+#
+#   $ make series=randy
+#
+
 include /etc/lsb-release
 
-packaging := lp:~maas-maintainers/maas/packaging
+# Default to the newer of Quantal or the local series.
+series := $(lastword $(sort quantal $(DISTRIB_CODENAME)))
 
-# Special-case Precise.
-ifeq ($(DISTRIB_CODENAME),precise)
-packaging := $(packaging).precise
+# Default to the main packaging branch on Launchpad, but treat Precise
+# specially.
+ifeq ($(series),precise)
+packaging := lp:~maas-maintainers/maas/packaging.precise
+else
+packaging := lp:~maas-maintainers/maas/packaging
 endif
 
+# Assume we're testing this branch.
 upstream := $(abspath ..)
-packages = $(abspath $(wildcard *.deb))
-image := maas-$(DISTRIB_CODENAME)
 
-##
+# The container on which to base ephemerals.
+container := maas-$(series)
+containerdir := /var/lib/lxc/$(container)
+
+## Convenience definitions.
 
 define ephexec
 sudo LC_ALL=C SSH_ASKPASS=$(abspath ubuntupass) setsid \
-    lxc-start-ephemeral -b $(abspath .) -o $(image) -u ubuntu -- \
+    lxc-start-ephemeral -b $(abspath .) -o $(container) -u ubuntu -- \
     DEBIAN_FRONTEND=noninteractive SUDO_ASKPASS=$(abspath ubuntupass)
 endef
 
@@ -27,35 +51,55 @@ define check-service
 test $(2) = $(wordlist 2,2,$(shell service $(1) status))  # $(1)
 endef
 
-##
+## Top-level targets.
 
-test: services sudo image build
+test: build | services sudo container
 	$(ephexec-make) $@-inner
 
-build: services sudo image source source/debian
+# lxc-start-ephemeral does not return the exit code of any command it
+# runs, so we delete any existing packages before building and check
+# for their presence afterwards instead.
+build: source source/debian | services sudo container
+	@$(RM) *.deb
 	$(ephexec-make) $@-inner
+	@ls -1 *.deb
+	@touch $@
 
-image: /var/lib/lxc/$(image)
+container: $(containerdir)
 
 services:
 	$(call check-service,lxc,start/running)
 	$(call check-service,lxc-net,start/running)
 
 define phony-outer-targets
-  build
-  image
+  container
   services
   test
 endef
 
-##
+## Targets that run within an LXC container.
+
+# XXX: These packages appear to be missing from the dependencies
+# declared in the packaging branch.
+define missing-packages
+  python-distribute
+  python-django
+endef
 
 test-inner: upgrade-inner
-	sudo -AE dpkg --install -- $(packages)
+	sudo -AE apt-get --assume-yes install $(strip $(missing-packages))
+	sudo -AE dpkg --unpack --force-depends -- *.deb
 	sudo -AE apt-get --fix-broken --assume-yes install
 
+define build-packages
+  debhelper
+  devscripts
+  dh-apport
+endef
+
 build-inner: upgrade-inner
-	sudo -AE apt-get --assume-yes install devscripts debhelper dh-apport
+	sudo -AE apt-get --assume-yes install $(strip $(missing-packages))
+	sudo -AE apt-get --assume-yes install $(strip $(build-packages))
 	cd source && debuild -i -us -uc -b
 
 upgrade-inner:
@@ -68,7 +112,7 @@ define phony-inner-targets
   upgrade-inner
 endef
 
-##
+## Dependencies.
 
 source:
 	bzr export --uncommitted $@ $(upstream)
@@ -76,23 +120,24 @@ source:
 source/debian: | source
 	bzr export $@ $(packaging)/debian
 
-/var/lib/lxc/$(image): sudo
-	sudo lxc-create -n $(image) -t ubuntu
+$(containerdir): | sudo
+	sudo lxc-create -n $(container) \
+	    -t ubuntu -- --release $(series)
 
-##
+## Miscellaneous.
 
 sudo:
 	@sudo -v
 
 clean:
-	$(RM) -r source *.build *.changes *.deb
+	$(RM) -r source build *.build *.changes *.deb
 
 define phony-misc-targets
   clean
   sudo
 endef
 
-##
+## Phony.
 
 define phony
   $(phony-inner-targets)
