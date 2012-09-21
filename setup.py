@@ -57,7 +57,7 @@ setup(
             ['etc/pserv.yaml',
              'etc/txlongpoll.yaml',
              'etc/celeryconfig.py',
-             'contrib/maas_local_celerysettings.py',
+             'contrib/maas_local_celeryconfig.py',
              'etc/maas/import_ephemerals',
              'etc/maas/import_pxe_files',
              'etc/maas/commissioning-user-data',
