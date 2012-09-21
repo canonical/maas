@@ -74,7 +74,7 @@ class TestConfigMasterDHCP(TestCase):
 
     def test_configures_dhcp_for_master_nodegroup_existing_master(self):
         management = NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS
-        master = factory.make_node_group(name='master', management=management)
+        master = factory.make_node_group(uuid='master', management=management)
         settings = make_dhcp_settings()
         call_command('config_master_dhcp', **settings)
         master = NodeGroup.objects.ensure_master()
