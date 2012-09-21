@@ -193,6 +193,7 @@ endef
 
 service_names_region := database dns reloader txlongpoll web webapp
 service_names_cluster := celeryd pserv reloader
+service_names_all := $(service_names_region) $(service_names_cluster)
 
 # The following template is intended to be used with `call`, and it
 # accepts a single argument: a target name. The target name must
@@ -221,7 +222,8 @@ run-region:
 	@services/run $(service_names_region)
 run-cluster:
 	@services/run $(service_names_cluster)
-run: run-region run-cluster
+run:
+	@services/run $(service_names_all)
 
 phony_services_targets += run-region run-cluster run
 
