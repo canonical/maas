@@ -17,6 +17,7 @@ python-convoy
 python-dbus
 python-dev
 python-django
+python-django-piston
 python-django-south
 python-formencode
 python-httplib2
