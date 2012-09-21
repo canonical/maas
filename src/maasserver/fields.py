@@ -141,7 +141,7 @@ class XMLField(Field):
     def db_type(self, connection):
         return "xml"
 
-    def get_db_prep_lookup(self, lookup_type, value):
+    def get_db_prep_lookup(self, lookup_type, value, **kwargs):
         """Limit lookup types to those that work on xml.
 
         Unlike character fields the xml type is non-comparible, see:
@@ -149,4 +149,5 @@ class XMLField(Field):
         """
         if lookup_type != 'isnull':
             raise TypeError("Lookup type %s is not supported." % lookup_type)
-        return super(XMLField, self).get_db_prep_lookup(lookup_type, value)
+        return super(XMLField, self).get_db_prep_lookup(
+            lookup_type, value, **kwargs)
