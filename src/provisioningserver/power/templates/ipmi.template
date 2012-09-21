@@ -23,6 +23,8 @@ formulate_power_state() {
 
 # Issue command to ipmipower, for the given system.
 issue_ipmi_command() {
+    # See https://launchpad.net/bugs/1053391 for details of this workaround
+    echo workaround |\
     ${ipmipower} -h ${power_address} -u ${power_user} -p ${power_pass} --$1
 }
 
