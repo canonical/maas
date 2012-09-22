@@ -708,6 +708,25 @@ class NodesHandler(BaseHandler):
         return filter(
             None, [node.accept_enlistment(request.user) for node in nodes])
 
+    @api_exported('POST')
+    def accept_all(self, request):
+        """Accept all declared nodes into the MAAS.
+
+        Nodes can be enlisted in the MAAS anonymously or by non-admin users,
+        as opposed to by an admin.  These nodes are held in the Declared
+        state; a MAAS admin must first verify the authenticity of these
+        enlistments, and accept them.
+
+        :return: Representations of any nodes that have their status changed
+            by this call.  Thus, nodes that were already accepted are excluded
+            from the result.
+        """
+        nodes = Node.objects.get_nodes(
+            request.user, perm=NODE_PERMISSION.ADMIN)
+        nodes = nodes.filter(status=NODE_STATUS.DECLARED)
+        nodes = [node.accept_enlistment(request.user) for node in nodes]
+        return filter(None, nodes)
+
     @api_exported('GET')
     def list(self, request):
         """List Nodes visible to the user, optionally filtered by criteria.
