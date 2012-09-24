@@ -1,7 +1,8 @@
-build-essential
 avahi-utils
+build-essential
 curl
 firefox
+ipython
 make
 python-lxml
 python-pip
