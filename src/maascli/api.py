@@ -278,8 +278,18 @@ class Action(Command):
         auth = MAASOAuth(*credentials)
         auth.sign_request(uri, headers)
 
+    @classmethod
+    def print_response(cls, response, content):
+        """Show an HTTP response in a human-friendly way."""
+        # Print the response.
+        print(response.status, response.reason)
+        print()
+        cls.print_headers(response)
+        print()
+        print(content)
+
     @staticmethod
-    def print_response(response, content):
+    def print_headers(headers):
         """Show an HTTP response in a human-friendly way."""
         # Function to change headers like "transfer-encoding" into
         # "Transfer-Encoding".
@@ -287,14 +297,10 @@ class Action(Command):
             part.capitalize() for part in header.split("-"))
         # Format string to prettify reporting of response headers.
         form = "%%%ds: %%s" % (
-            max(len(header) for header in response) + 2)
+            max(len(header) for header in headers) + 2)
         # Print the response.
-        print(response.status, response.reason)
-        print()
-        for header in sorted(response):
-            print(form % (cap(header), response[header]))
-        print()
-        print(content)
+        for header in sorted(headers):
+            print(form % (cap(header), headers[header]))
 
 
 def register_actions(profile, handler, parser):

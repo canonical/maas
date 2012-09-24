@@ -12,7 +12,6 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
-from email.parser import Parser
 from random import randint
 from urlparse import (
     parse_qs,
@@ -25,6 +24,7 @@ from apiclient.maas_client import (
     MAASDispatcher,
     MAASOAuth,
     )
+from apiclient.testing.django import parse_headers_and_body_with_django
 from maastesting.factory import factory
 from maastesting.testcase import TestCase
 
@@ -142,9 +142,9 @@ class TestMAASClient(TestCase):
         params = {factory.getRandomString(): factory.getRandomString()}
         url, headers, body = make_client()._formulate_change(
             make_path(), params)
-        body = Parser().parsestr(body).get_payload()
-        self.assertIn('name="%s"' % params.keys()[0], body)
-        self.assertIn('\r\n%s\r\n' % params.values()[0], body)
+        post, _ = parse_headers_and_body_with_django(headers, body)
+        self.assertEqual(
+            {name: [value] for name, value in params.items()}, post)
 
     def test_get_dispatches_to_resource(self):
         path = make_path()
@@ -198,11 +198,9 @@ class TestMAASClient(TestCase):
         client = make_client()
         client.post(make_path(), method, parameter=param)
         request = client.dispatcher.last_call
-        body = Parser().parsestr(request['data']).get_payload()
-        self.assertIn('name="op"', body)
-        self.assertIn('\r\n%s\r\n' % method, body)
-        self.assertIn('name="parameter"', body)
-        self.assertIn('\r\n%s\r\n' % param, body)
+        post, _ = parse_headers_and_body_with_django(
+            request["headers"], request["data"])
+        self.assertEqual({"parameter": [param], "op": [method]}, post)
 
     def test_put_dispatches_to_resource(self):
         path = make_path()
