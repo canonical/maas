@@ -1,6 +1,14 @@
 python := python2.7
+
+# Network activity can be suppressed by setting offline=true (or any
+# non-empty string) at the command-line.
+ifeq ($(offline),)
 buildout := bin/buildout
 virtualenv := virtualenv
+else
+buildout := bin/buildout buildout:offline=true
+virtualenv := virtualenv --never-download
+endif
 
 # Python enum modules.
 py_enums := $(wildcard src/*/enum.py)
@@ -26,13 +34,6 @@ build: \
     bin/twistd.txlongpoll \
     bin/py bin/ipy \
     $(js_enums)
-
-# Note: the following target may not be needed. It remains as an
-# experiment, to see if it helps the situation with building MAAS in
-# the QA environment, which is isolated from the Internet at large.
-build-offline: buildout := $(buildout) buildout:offline=true
-build-offline: virtualenv := $(virtualenv) --never-download
-build-offline: build
 
 all: build doc
 
@@ -170,7 +171,6 @@ syncdb: bin/maas bin/database
 
 define phony_targets
   build
-  build-offline
   check
   clean
   dbharness
