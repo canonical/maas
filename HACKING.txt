@@ -270,23 +270,32 @@ Configuring DHCP
 ^^^^^^^^^^^^^^^^
 
 MAAS requires a properly configured DHCP server so it can boot machines using
-PXE.  MAAS works with the ISC DHCP server; install it if it's not already
-installed::
+PXE.  MAAS can work with its own instance of the ISC DHCP server, if you
+install the maas-dhcp package::
 
-    $ sudo apt-get install isc-dhcp-server
+    $ sudo apt-get install maas-dhcp
 
-There is a tool to generate a configuration that will work with MAAS::
+If you choose to run your own ISC DHCP server, there is a bit more
+configuration to do.  First, run this tool to generate a configuration that
+will work with MAAS::
 
     $ maas-provision generate-dhcp-config [options]
 
 Run ``maas-provision generate-dhcp-config -h`` to see the options.  You will
 need to provide various IP details such as the range of IP addresses to assign
 to clients.  You can use the generated output to configure your system's ISC
-DHCP server, by putting the configuration in the ``/etc/dhcp/dhcpd.conf`` file.
+DHCP server, by inserting the configuration in the ``/etc/dhcp/dhcpd.conf``
+file.
+
+Also, edit /etc/default/isc-dhcp-server to set the INTERFACES variable to just
+the network interfaces that should be serviced by this DHCP server.
 
 Now restart dhcpd::
 
-    $ sudo /etc/init.d/isc-dhcp-server restart
+    $ sudo service isc-dhcp-server restart
+
+None of this work is needed if you let MAAS run its own DHCP server by
+installing ``maas-dhcp``.
 
 
 Development services

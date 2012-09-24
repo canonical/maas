@@ -35,10 +35,13 @@ DNS_CONFIG_DIR = '/etc/bind/maas'
 DNS_RNDC_PORT = 954
 
 # DHCP leases file, as maintained by ISC dhcpd.
-DHCP_LEASES_FILE = '/var/lib/dhcp/dhcpd.leases'
+DHCP_LEASES_FILE = '/var/lib/maas/dhcpd.leases'
 
 # ISC dhcpd configuration file.
-DHCP_CONFIG_FILE = '/etc/dhcp/dhcpd.conf'
+DHCP_CONFIG_FILE = '/etc/maas/dhcpd.conf'
+
+# List of interfaces that the dhcpd should service (if managed by MAAS).
+DHCP_INTERFACES_FILE = '/var/lib/maas/dhcpd-interfaces'
 
 # Broken connection information.
 # Format: transport://userid:password@hostname:port/virtual_host

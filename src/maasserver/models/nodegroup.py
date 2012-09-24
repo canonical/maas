@@ -30,13 +30,18 @@ from maasserver.enum import (
 from maasserver.models.nodegroupinterface import NodeGroupInterface
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.refresh_worker import refresh_worker
+from maasserver.server_address import get_maas_facing_server_address
 from maasserver.utils.orm import get_one
+from netaddr import IPAddress
 from piston.models import (
     KEY_SIZE,
     Token,
     )
 from provisioningserver.omshell import generate_omapi_key
-from provisioningserver.tasks import add_new_dhcp_host_map
+from provisioningserver.tasks import (
+    add_new_dhcp_host_map,
+    write_dhcp_config,
+    )
 
 
 class NodeGroupManager(Manager):
