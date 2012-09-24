@@ -1663,17 +1663,6 @@ class TestNodesAPI(APITestCase):
         self.assertEqual(
             node.hostname, json.loads(response.content)['hostname'])
 
-    def test_POST_acquire_constrains_by_name(self):
-        # Negative test for name constraint.
-        # If a name constraint is given, "acquire" will only consider a
-        # node with that name.
-        factory.make_node(status=NODE_STATUS.READY, owner=None)
-        response = self.client.post(self.get_uri('nodes/'), {
-            'op': 'acquire',
-            'name': factory.getRandomString(),
-        })
-        self.assertEqual(httplib.CONFLICT, response.status_code)
-
     def test_POST_acquire_treats_unknown_name_as_resource_conflict(self):
         # A name constraint naming an unknown node produces a resource
         # conflict: most likely the node existed but has changed or
@@ -1684,6 +1673,27 @@ class TestNodesAPI(APITestCase):
         response = self.client.post(self.get_uri('nodes/'), {
             'op': 'acquire',
             'name': factory.getRandomString(),
+        })
+        self.assertEqual(httplib.CONFLICT, response.status_code)
+
+    def test_POST_acquire_allocates_node_by_arch(self):
+        # Asking for a particular arch acquires a node with that arch.
+        node = factory.make_node(
+            status=NODE_STATUS.READY, architecture=ARCHITECTURE.i386)
+        response = self.client.post(self.get_uri('nodes/'), {
+            'op': 'acquire',
+            'arch': 'i386',
+        })
+        self.assertEqual(httplib.OK, response.status_code)
+        response_json = json.loads(response.content)
+        self.assertEqual(node.architecture, response_json['architecture'])
+
+    def test_POST_acquire_treats_unknown_arch_as_resource_conflict(self):
+        # Asking for an unknown arch returns an HTTP conflict
+        factory.make_node(status=NODE_STATUS.READY)
+        response = self.client.post(self.get_uri('nodes/'), {
+            'op': 'acquire',
+            'arch': 'sparc',
         })
         self.assertEqual(httplib.CONFLICT, response.status_code)
 

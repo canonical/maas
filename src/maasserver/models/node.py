@@ -253,6 +253,11 @@ class NodeManager(Manager):
         if constraints.get('name'):
             available_nodes = available_nodes.filter(
                 hostname=constraints['name'])
+        if constraints.get('arch'):
+            # GZ 2012-09-11: This only supports an exact match on arch type,
+            #                using an i386 image on amd64 hardware will wait.
+            available_nodes = available_nodes.filter(
+                architecture=constraints['arch'])
 
         return get_first(available_nodes)
 

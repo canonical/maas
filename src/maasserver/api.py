@@ -645,11 +645,10 @@ def extract_constraints(request_params):
     :return: A mapping of applicable constraint names to their values.
     :rtype: :class:`dict`
     """
-    name = request_params.get('name', None)
-    if name is None:
-        return {}
-    else:
-        return {'name': name}
+    supported_constraints = ('name', 'arch')
+    return {constraint: request_params[constraint]
+        for constraint in supported_constraints
+            if constraint in request_params}
 
 
 @api_operations
