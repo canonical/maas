@@ -494,6 +494,15 @@ class TestViews(DjangoTestCase):
             node, 'output.txt')
         self.assertEqual(size_limit, len(stored_data))
 
+    def test_signal_stores_lshw_file_on_node(self):
+        node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
+        client = self.make_node_client(node=node)
+        xmlbytes = "<t\xe9st/>".encode("utf-8")
+        response = self.call_signal(client, files={'01-lshw.out': xmlbytes})
+        self.assertEqual(httplib.OK, response.status_code)
+        node = reload_object(node)
+        self.assertEqual(xmlbytes, node.hardware_details)
+
     def test_api_retrieves_node_metadata_by_mac(self):
         mac = factory.make_mac_address()
         url = reverse(
