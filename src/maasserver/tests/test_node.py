@@ -447,6 +447,12 @@ class NodeTest(TestCase):
         node.nodegroup = None
         self.assertRaises(ValidationError, node.save)
 
+    def test_set_hardware_details(self):
+        xmlbytes = "<test/>"
+        node = factory.make_node(owner=factory.make_user())
+        node.set_hardware_details(xmlbytes)
+        self.assertEqual(xmlbytes, node.hardware_details)
+
 
 class NodeTransitionsTests(TestCase):
     """Test the structure of NODE_TRANSITIONS."""
