@@ -1,8 +1,13 @@
 {{inherit "preseed_master"}}
 {{def proxy}}
 d-i     mirror/country string manual
+{{if node.architecture in {'i386', 'amd64'} }}
 d-i     mirror/http/hostname string archive.ubuntu.com
 d-i     mirror/http/directory string /ubuntu
+{{else}}
+d-i     mirror/http/hostname string ports.ubuntu.com
+d-i     mirror/http/directory string /ubuntu-ports
+{{endif}}
 d-i     mirror/http/proxy string http://{{server_host}}:8000/
 {{enddef}}
 
