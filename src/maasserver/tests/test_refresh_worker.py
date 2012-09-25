@@ -13,6 +13,7 @@ __metaclass__ = type
 __all__ = []
 
 from apiclient.creds import convert_tuple_to_string
+from maasserver import refresh_worker as refresh_worker_module
 from maasserver.models.user import get_creds_tuple
 from maasserver.refresh_worker import refresh_worker
 from maasserver.testing.factory import factory
@@ -57,3 +58,10 @@ class TestRefreshWorker(TestCase):
         self.assertEqual(
             [(nodegroup.uuid, )],
             refresh_functions['nodegroup_uuid'].extract_args())
+
+    def test_refresh_worker_task_routed_to_nodegroup_worker(self):
+        nodegroup = factory.make_node_group()
+        task = self.patch(refresh_worker_module, 'refresh_secrets')
+        refresh_worker(nodegroup)
+        args, kwargs = task.apply_async.call_args
+        self.assertEqual(nodegroup.work_queue, kwargs['queue'])

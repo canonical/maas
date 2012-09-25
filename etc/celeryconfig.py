@@ -50,12 +50,23 @@ DHCP_INTERFACES_FILE = '/var/lib/maas/dhcpd-interfaces'
 # this setting.
 BROKER_URL = 'amqp://guest:guest@localhost:5672//'
 
+
+WORKER_QUEUE_DNS = 'celery'
+WORKER_QUEUE_BOOT_IMAGES = 'celery'
+# XXX rvb 2012-09-25, bug=1056250: the WORKER_QUEUE_CLUSTER should be
+# the uuid of the cluster controller.
+WORKER_QUEUE_CLUSTER = 'celery'
+
 try:
     import maas_local_celeryconfig
 except ImportError:
     pass
 else:
     import_settings(maas_local_celeryconfig)
+
+
+# Each cluster should have its own queue created automatically by Celery.
+CELERY_CREATE_MISSING_QUEUES = True
 
 
 CELERY_IMPORTS = (
@@ -75,17 +86,17 @@ CELERY_IGNORE_RESULT = True
 
 
 CELERYBEAT_SCHEDULE = {
-    # XXX JeroenVermeulen 2012-08-24, bug=1039366: once we have multiple
-    # workers, make sure each worker gets one of these.
     'unconditional-dhcp-lease-upload': {
         'task': 'provisioningserver.tasks.upload_dhcp_leases',
         'schedule': timedelta(minutes=1),
+        'options': {'queue': WORKER_QUEUE_CLUSTER},
     },
 
-    # XXX JeroenVermeulen 2012-09-12, bug=1039366: this task should run
+    # XXX rvb 2012-09-25, bug=1056250: this task should
     # only on the master worker.
     'report-boot-images': {
         'task': 'provisioningserver.tasks.report_boot_images',
         'schedule': timedelta(minutes=5),
+        'options': {'queue': WORKER_QUEUE_BOOT_IMAGES},
     },
 }

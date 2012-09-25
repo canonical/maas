@@ -51,9 +51,8 @@ class TestBootImagesTasks(PservTestCase):
 
         boot_images.report_to_server()
 
-        self.assertItemsEqual(
-            [image],
-            json.loads(MAASClient.post.call_args[1]['images']))
+        args, kwargs = MAASClient.post.call_args
+        self.assertItemsEqual([image], json.loads(kwargs['images']))
 
     def test_does_nothing_without_maas_url(self):
         self.set_api_credentials()

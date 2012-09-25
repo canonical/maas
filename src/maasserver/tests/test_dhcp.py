@@ -24,7 +24,7 @@ from maasserver.server_address import get_maas_facing_server_address
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
 from maastesting.celery import CeleryFixture
-from mock import Mock
+from provisioningserver import tasks
 from testresources import FixtureResource
 
 
@@ -33,15 +33,6 @@ class TestDHCP(TestCase):
     resources = (
         ('celery', FixtureResource(CeleryFixture())),
         )
-
-    def setUp(self):
-        super(TestDHCP, self).setUp()
-        # XXX: rvb 2012-09-19 bug=1039366: Tasks are not routed yet.
-        # This call to self.patch() can be removed once the bug referenced
-        # above will be fixed.
-        self.patch(
-            dhcp, 'is_dhcp_disabled_until_task_routing_in_place',
-            Mock(return_value=False))
 
     def test_is_dhcp_managed_follows_nodegroup_status(self):
         expected_results = {
@@ -96,14 +87,47 @@ class TestDHCP(TestCase):
         expected_params["subnet"] = '192.168.100.0'
         expected_params["dhcp_interfaces"] = interface.interface
 
-        mocked_task.delay.assert_called_once_with(**expected_params)
+        args, kwargs = mocked_task.apply_async.call_args
+        result_params = kwargs['kwargs']
+        # The check that the callback is correct is done in
+        # test_configure_dhcp_restart_dhcp_server.
+        del result_params['callback']
+
+        self.assertEqual(expected_params, result_params)
+
+    def test_configure_dhcp_restart_dhcp_server(self):
+        self.patch(tasks, "sudo_write_file")
+        mocked_check_call = self.patch(tasks, "check_call")
+        self.patch(settings, "DHCP_CONNECT", True)
+        nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
+        configure_dhcp(nodegroup)
+        self.assertEqual(
+            mocked_check_call.call_args[0][0],
+            ['sudo', '-n', 'service', 'maas-dhcp-server', 'restart'])
 
     def test_dhcp_config_gets_written_when_nodegroup_becomes_active(self):
         nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.PENDING)
         self.patch(settings, "DHCP_CONNECT", True)
         self.patch(dhcp, 'write_dhcp_config')
         nodegroup.accept()
-        self.assertEqual(1, dhcp.write_dhcp_config.delay.call_count)
+        self.assertEqual(1, dhcp.write_dhcp_config.apply_async.call_count)
+
+    def test_write_dhcp_config_task_routed_to_nodegroup_worker(self):
+        nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.PENDING)
+        self.patch(settings, "DHCP_CONNECT", True)
+        self.patch(dhcp, 'write_dhcp_config')
+        nodegroup.accept()
+        args, kwargs = dhcp.write_dhcp_config.apply_async.call_args
+        self.assertEqual(nodegroup.work_queue, kwargs['queue'])
+
+    def test_write_dhcp_config_restart_task_routed_to_nodegroup_worker(self):
+        nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.PENDING)
+        self.patch(settings, "DHCP_CONNECT", True)
+        self.patch(tasks, 'sudo_write_file')
+        task = self.patch(dhcp, 'restart_dhcp_server')
+        nodegroup.accept()
+        args, kwargs = task.subtask.call_args
+        self.assertEqual(nodegroup.work_queue, kwargs['options']['queue'])
 
     def test_dhcp_config_gets_written_when_nodegroupinterface_changes(self):
         nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
@@ -113,33 +137,10 @@ class TestDHCP(TestCase):
         new_router_ip = factory.getRandomIPAddress()
         interface.router_ip = new_router_ip
         interface.save()
+        args, kwargs = dhcp.write_dhcp_config.apply_async.call_args
         self.assertEqual(
             (1, new_router_ip),
             (
-                dhcp.write_dhcp_config.delay.call_count,
-                dhcp.write_dhcp_config.delay.call_args[1]['router_ip'],
+                dhcp.write_dhcp_config.apply_async.call_count,
+                kwargs['kwargs']['router_ip'],
             ))
-
-
-class TestDHCPDisabledMultipleNodegroup(TestCase):
-    """Writing DHCP config files is disabled for non-master Nodegroups.
-
-    # XXX: rvb 2012-09-19 bug=1039366: Tasks are not routed yet.
-    These tests could be removed once proper routing is in place.
-    """
-
-    def test_dhcp_config_does_not_get_written_for_non_master_nodegroup(self):
-        nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.PENDING)
-        self.patch(settings, "DHCP_CONNECT", True)
-        self.patch(dhcp, 'write_dhcp_config')
-        nodegroup.accept()
-        self.assertEqual(0, dhcp.write_dhcp_config.delay.call_count)
-
-    def test_dhcp_config_gets_written_for_master_nodegroup(self):
-        # Create a fake master nodegroup with a configured interface.
-        nodegroup = factory.make_node_group(
-            name='master', uuid='master', status=NODEGROUP_STATUS.PENDING)
-        self.patch(settings, "DHCP_CONNECT", True)
-        self.patch(dhcp, 'write_dhcp_config')
-        nodegroup.accept()
-        self.assertEqual(1, dhcp.write_dhcp_config.delay.call_count)

@@ -287,7 +287,9 @@ class NodeManager(Manager):
             node_power_type = node.get_effective_power_type()
             # WAKE_ON_LAN does not support poweroff.
             if node_power_type != POWER_TYPE.WAKE_ON_LAN:
-                power_off.delay(node_power_type, **power_params)
+                power_off.apply_async(
+                    queue=node.work_queue, args=[node_power_type],
+                    kwargs=power_params)
             processed_nodes.append(node)
         return processed_nodes
 
@@ -324,7 +326,9 @@ class NodeManager(Manager):
             else:
                 do_start = True
             if do_start:
-                power_on.delay(node_power_type, **power_params)
+                power_on.apply_async(
+                    queue=node.work_queue, args=[node_power_type],
+                    kwargs=power_params)
                 processed_nodes.append(node)
         return processed_nodes
 
@@ -625,6 +629,11 @@ class Node(CleanSave, TimestampedModel):
             return macs[0]
         else:
             return None
+
+    @property
+    def work_queue(self):
+        """The name of the queue for tasks specific to this node."""
+        return self.nodegroup.work_queue
 
     def get_distro_series(self):
         """Return the distro series to install that node."""

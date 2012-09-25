@@ -16,7 +16,10 @@ from maasserver.enum import (
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
     )
-from maasserver.models import NodeGroup
+from maasserver.models import (
+    NodeGroup,
+    nodegroup as nodegroup_module,
+    )
 from maasserver.testing import reload_object
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
@@ -176,6 +179,10 @@ class TestNodeGroup(TestCase):
         ('celery', FixtureResource(CeleryFixture())),
         )
 
+    def test_work_queue_returns_uuid(self):
+        nodegroup = factory.make_node_group()
+        self.assertEqual(nodegroup.uuid, nodegroup.work_queue)
+
     def test_add_dhcp_host_maps_adds_maps_if_managing_dhcp(self):
         self.patch(Omshell, 'create', FakeMethod())
         nodegroup = factory.make_node_group()
@@ -192,6 +199,14 @@ class TestNodeGroup(TestCase):
         leases = factory.make_random_leases()
         nodegroup.add_dhcp_host_maps(leases)
         self.assertEqual([], Omshell.create.extract_args())
+
+    def test_fires_tasks_routed_to_nodegroup_worker(self):
+        nodegroup = factory.make_node_group()
+        task = self.patch(nodegroup_module, 'add_new_dhcp_host_map')
+        leases = factory.make_random_leases()
+        nodegroup.add_dhcp_host_maps(leases)
+        args, kwargs = task.apply_async.call_args
+        self.assertEqual(nodegroup.work_queue, kwargs['queue'])
 
     def test_get_managed_interface_returns_managed_interface(self):
         nodegroup = factory.make_node_group()

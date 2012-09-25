@@ -38,6 +38,4 @@ def refresh_worker(nodegroup):
         'nodegroup_uuid': nodegroup.uuid,
     }
 
-    # XXX JeroenVermeulen 2012-08-21, bug=1039366: Route this to the
-    # right worker, once we support it.
-    refresh_secrets.delay(**items)
+    refresh_secrets.apply_async(queue=nodegroup.work_queue, kwargs=items)

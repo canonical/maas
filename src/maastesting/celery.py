@@ -66,5 +66,14 @@ class CeleryFixture(Fixture):
         signals.task_postrun.connect(on_task_postrun, weak=False)
         self.addCleanup(lambda: self.cleanup_tasks())
 
+    def get_task_routing(self):
+        """Get a mapping between the name of the tasks and the queue they
+        were sent to.
+        """
+        return {
+            task_info['task'].name: task_info['task'].queue
+            for task_info in self.tasks
+        }
+
     def cleanup_tasks(self):
         self.tasks = []
