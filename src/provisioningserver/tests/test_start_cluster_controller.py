@@ -23,6 +23,8 @@ from urllib2 import (
     )
 
 from apiclient.maas_client import MAASDispatcher
+from apiclient.testing.django import parse_headers_and_body_with_django
+from fixtures import EnvironmentVariableFixture
 from maastesting.factory import factory
 from provisioningserver import start_cluster_controller
 from provisioningserver.testing.testcase import PservTestCase
@@ -162,7 +164,16 @@ class TestStartClusterController(PservTestCase):
         (args, kwargs) = MAASDispatcher.dispatch_query.call_args
         self.assertEqual(url + 'api/1.0/nodegroups', args[0])
         self.assertEqual('POST', kwargs['method'])
-        self.assertIn('refresh_workers', kwargs['data'])
+
+        # Make Django STFU; just using Django's multipart code causes it to
+        # pull in a settings module, and it will throw up if it can't.
+        self.useFixture(
+            EnvironmentVariableFixture(
+                "DJANGO_SETTINGS_MODULE", __name__))
+
+        headers, body = kwargs["headers"], kwargs["data"]
+        post, files = parse_headers_and_body_with_django(headers, body)
+        self.assertEqual("refresh_workers", post["op"])
 
     def test_start_up_ignores_failure_on_refresh_secrets(self):
         self.patch(start_cluster_controller, 'Popen')
