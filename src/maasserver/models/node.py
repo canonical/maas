@@ -13,8 +13,10 @@ __metaclass__ = type
 __all__ = [
     "NODE_TRANSITIONS",
     "Node",
+    "update_hardware_details",
     ]
 
+import contextlib
 import os
 from string import whitespace
 from uuid import uuid1
@@ -25,6 +27,7 @@ from django.core.exceptions import (
     PermissionDenied,
     ValidationError,
     )
+from django.db import connection
 from django.db.models import (
     BooleanField,
     CharField,
@@ -49,7 +52,10 @@ from maasserver.enum import (
     NODE_STATUS_CHOICES_DICT,
     )
 from maasserver.exceptions import NodeStateViolation
-from maasserver.fields import JSONObjectField, XMLField
+from maasserver.fields import (
+    JSONObjectField,
+    XMLField,
+    )
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.config import Config
 from maasserver.models.tag import Tag
@@ -321,6 +327,34 @@ class NodeManager(Manager):
                 power_on.delay(node_power_type, **power_params)
                 processed_nodes.append(node)
         return processed_nodes
+
+
+def update_hardware_details(node, xmlbytes):
+    """Set node hardware_details from lshw output and update related fields
+
+    There are a bunch of suboptimal things here:
+    * Is a function rather than method in hope south migration can reuse.
+    * Doing UPDATE then transaction.commit_unless_managed doesn't work?
+    * Scalar returns from xpath() work in postgres 9.2 or later only.
+    """
+    node.hardware_details = xmlbytes
+    node.save()
+    with contextlib.closing(connection.cursor()) as cursor:
+        cursor.execute("SELECT"
+            " array_length(xpath(%s, hardware_details), 1) AS count,"
+            " (xpath(%s, hardware_details))[1]::text::bigint / 1048576 AS mem"
+            " FROM maasserver_node"
+            " WHERE id = %s",
+            [
+                "//node[@id='core']/node[@class='processor']",
+                "//node[@id='memory']/size[@units='bytes']/text()",
+                node.id,
+            ])
+        cpu_count, memory = cursor.fetchone()
+    node.cpu_count = cpu_count or 0
+    node.memory = memory or 0
+    # TODO: update node-tag links
+    node.save()
 
 
 class Node(CleanSave, TimestampedModel):
@@ -640,5 +674,4 @@ class Node(CleanSave, TimestampedModel):
 
     def set_hardware_details(self, xmlbytes):
         """Set the `lshw -xml` output"""
-        self.hardware_details = xmlbytes
-        self.save()
+        update_hardware_details(self, xmlbytes)

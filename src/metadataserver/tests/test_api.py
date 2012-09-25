@@ -503,6 +503,31 @@ class TestViews(DjangoTestCase):
         node = reload_object(node)
         self.assertEqual(xmlbytes, node.hardware_details)
 
+    def test_signal_stores_lshw_with_cpu_count(self):
+        node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
+        client = self.make_node_client(node=node)
+        xmlbytes = (
+            '<node id="core">'
+                '<node id="cpu:0" class="processor"/>'
+                '<node id="cpu:1" class="processor"/>'
+            '</node>').encode("utf-8")
+        response = self.call_signal(client, files={'01-lshw.out': xmlbytes})
+        self.assertEqual(httplib.OK, response.status_code)
+        node = reload_object(node)
+        self.assertEqual(2, node.cpu_count)
+
+    def test_signal_stores_lshw_with_memory(self):
+        node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
+        client = self.make_node_client(node=node)
+        xmlbytes = (
+            '<node id="memory">'
+                '<size units="bytes">4294967296</size>'
+            '</node>').encode("utf-8")
+        response = self.call_signal(client, files={'01-lshw.out': xmlbytes})
+        self.assertEqual(httplib.OK, response.status_code)
+        node = reload_object(node)
+        self.assertEqual(4096, node.memory)
+
     def test_api_retrieves_node_metadata_by_mac(self):
         mac = factory.make_mac_address()
         url = reverse(
