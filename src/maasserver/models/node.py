@@ -332,6 +332,9 @@ class NodeManager(Manager):
 def update_hardware_details(node, xmlbytes):
     """Set node hardware_details from lshw output and update related fields
 
+    This is designed to be called with individual nodes on commissioning and
+    is not optimised for batch updates.
+
     There are a bunch of suboptimal things here:
     * Is a function rather than method in hope south migration can reuse.
     * Doing UPDATE then transaction.commit_unless_managed doesn't work?
@@ -351,9 +354,18 @@ def update_hardware_details(node, xmlbytes):
                 node.id,
             ])
         cpu_count, memory = cursor.fetchone()
-    node.cpu_count = cpu_count or 0
-    node.memory = memory or 0
-    # TODO: update node-tag links
+        node.cpu_count = cpu_count or 0
+        node.memory = memory or 0
+        for tag in Tag.objects.all():
+            cursor.execute(
+                "SELECT xpath_exists(%s, hardware_details)"
+                " FROM maasserver_node WHERE id = %s",
+                [tag.definition,  node.id])
+            has_tag, = cursor.fetchone()
+            if has_tag:
+                node.tags.add(tag)
+            else:
+                node.tags.remove(tag)
     node.save()
 
 
