@@ -68,14 +68,19 @@ class TestDHCP(TestCase):
         nodegroup = factory.make_node_group(
             status=NODEGROUP_STATUS.ACCEPTED,
             dhcp_key=factory.getRandomString(),
+            interface=factory.make_name('eth'),
             ip_range_low='192.168.102.1', ip_range_high='192.168.103.254',
             subnet_mask='255.255.252.0', broadcast_ip='192.168.103.255')
 
         self.patch(settings, "DHCP_CONNECT", True)
         configure_dhcp(nodegroup)
         dhcp_params = [
-            'subnet_mask', 'broadcast_ip', 'router_ip',
-            'ip_range_low', 'ip_range_high']
+            'subnet_mask',
+            'broadcast_ip',
+            'router_ip',
+            'ip_range_low',
+            'ip_range_high',
+            ]
 
         interface = nodegroup.get_managed_interface()
         expected_params = {
@@ -89,6 +94,7 @@ class TestDHCP(TestCase):
         expected_params["omapi_key"] = nodegroup.dhcp_key
         expected_params["dns_servers"] = get_dns_server_address()
         expected_params["subnet"] = '192.168.100.0'
+        expected_params["dhcp_interfaces"] = interface.interface
 
         mocked_task.delay.assert_called_once_with(**expected_params)
 

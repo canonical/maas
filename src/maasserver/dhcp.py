@@ -75,8 +75,11 @@ def configure_dhcp(nodegroup):
         IPAddress(interface.ip_range_low) &
         IPAddress(interface.subnet_mask))
     write_dhcp_config.delay(
-        subnet=subnet, next_server=next_server, omapi_key=nodegroup.dhcp_key,
+        subnet=subnet,
+        next_server=next_server,
+        omapi_key=nodegroup.dhcp_key,
         subnet_mask=interface.subnet_mask,
+        dhcp_interfaces=interface.interface,
         broadcast_ip=interface.broadcast_ip,
         router_ip=interface.router_ip,
         dns_servers=get_dns_server_address(),
