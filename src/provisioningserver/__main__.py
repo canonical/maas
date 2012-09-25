@@ -16,6 +16,7 @@ import provisioningserver.customize_config
 import provisioningserver.dhcp.writer
 import provisioningserver.pxe.install_bootloader
 import provisioningserver.pxe.install_image
+import provisioningserver.start_cluster_controller
 from provisioningserver.utils import (
     AtomicWriteScript,
     MainScript,
@@ -28,6 +29,7 @@ script_commands = {
     'generate-dhcp-config': provisioningserver.dhcp.writer,
     'install-pxe-bootloader': provisioningserver.pxe.install_bootloader,
     'install-pxe-image': provisioningserver.pxe.install_image,
+    'start-cluster-controller': provisioningserver.start_cluster_controller,
 }
 
 

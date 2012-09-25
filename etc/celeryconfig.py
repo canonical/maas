@@ -43,8 +43,11 @@ DHCP_CONFIG_FILE = '/etc/maas/dhcpd.conf'
 # List of interfaces that the dhcpd should service (if managed by MAAS).
 DHCP_INTERFACES_FILE = '/var/lib/maas/dhcpd-interfaces'
 
-# Broken connection information.
-# Format: transport://userid:password@hostname:port/virtual_host
+# Broker connection information.  This is read by the region controller
+# and sent to connecting cluster controllers.
+# The cluster controllers currently read this same configuration file,
+# but the broker URL they receive from the region controller overrides
+# this setting.
 BROKER_URL = 'amqp://guest:guest@localhost:5672//'
 
 try:

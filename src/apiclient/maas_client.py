@@ -47,6 +47,19 @@ class MAASOAuth:
         headers.update(oauth_request.to_header())
 
 
+class NoAuth:
+    """Anonymous authentication class for making unauthenticated requests."""
+
+    def __init__(self, *args, **kwargs):
+        pass
+
+    def sign_request(self, *args, **kwargs):
+        """Go through the motions of signing a request.
+
+        Since this class does not really authenticate, this does nothing.
+        """
+
+
 class MAASDispatcher:
     """Helper class to connect to a MAAS server using blocking requests.
 
