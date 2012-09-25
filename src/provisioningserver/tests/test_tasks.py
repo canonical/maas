@@ -252,7 +252,7 @@ class TestDHCPTasks(PservTestCase):
         # It should construct Popen with the right parameters.
         mocked_popen.assert_any_call(
             ["sudo", "-n", "maas-provision", "atomic-write", "--filename",
-            DHCP_CONFIG_FILE, "--mode", "0744"], stdin=PIPE)
+            DHCP_CONFIG_FILE, "--mode", "0644"], stdin=PIPE)
 
         # It should then pass the content to communicate().
         content = config.get_config(**config_params).encode("ascii")
@@ -262,7 +262,7 @@ class TestDHCPTasks(PservTestCase):
         # /var/lib/maas/dhcpd-interfaces.
         mocked_popen.assert_any_call(
             ["sudo", "-n", "maas-provision", "atomic-write", "--filename",
-            DHCP_INTERFACES_FILE, "--mode", "0744"], stdin=PIPE)
+            DHCP_INTERFACES_FILE, "--mode", "0644"], stdin=PIPE)
 
         # Finally it should restart the dhcp server.
         check_call_args = mocked_check_call.call_args

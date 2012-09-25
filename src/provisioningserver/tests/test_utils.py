@@ -409,7 +409,7 @@ class SudoWriteFileTest(TestCase):
 
         provisioningserver.utils.Popen.assert_called_once_with([
             'sudo', '-n', 'maas-provision', 'atomic-write',
-            '--filename', path, '--mode', '0744',
+            '--filename', path, '--mode', '0644',
             ],
             stdin=PIPE)
 
@@ -702,12 +702,14 @@ class TestAtomicWriteScript(TestCase):
     def test_passes_mode_flag(self):
         content = factory.getRandomString()
         filename = factory.getRandomString()
+        # Mode that's unlikely to occur in the wild.
+        mode = 0377
         mocked_atomic_write = self.get_and_run_mocked_script(
             content, filename,
-            ('--filename', filename, '--mode', "744"))
+            ('--filename', filename, '--mode', oct(mode)))
 
         mocked_atomic_write.assert_called_once_with(
-            content, filename, mode=0744, overwrite=True)
+            content, filename, mode=mode, overwrite=True)
 
     def test_default_mode(self):
         content = factory.getRandomString()

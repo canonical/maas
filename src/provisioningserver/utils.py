@@ -267,7 +267,7 @@ def write_custom_config_section(original_text, custom_section):
     return '\n'.join(lines) + '\n'
 
 
-def sudo_write_file(filename, contents, encoding='utf-8', mode=0744):
+def sudo_write_file(filename, contents, encoding='utf-8', mode=0644):
     """Write (or overwrite) file as root.  USE WITH EXTREME CARE.
 
     Runs an atomic update using non-interactive `sudo`.  This will fail if
