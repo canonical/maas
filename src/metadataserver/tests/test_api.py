@@ -495,62 +495,14 @@ class TestViews(DjangoTestCase):
         self.assertEqual(size_limit, len(stored_data))
 
     def test_signal_stores_lshw_file_on_node(self):
-        node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_node(status=NODE_STATUS.COMMISSIONING, memory=512)
         client = self.make_node_client(node=node)
         xmlbytes = "<t\xe9st/>".encode("utf-8")
         response = self.call_signal(client, files={'01-lshw.out': xmlbytes})
         self.assertEqual(httplib.OK, response.status_code)
         node = reload_object(node)
         self.assertEqual(xmlbytes, node.hardware_details)
-
-    def test_signal_stores_lshw_with_cpu_count(self):
-        node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
-        client = self.make_node_client(node=node)
-        xmlbytes = (
-            '<node id="core">'
-                '<node id="cpu:0" class="processor"/>'
-                '<node id="cpu:1" class="processor"/>'
-            '</node>').encode("utf-8")
-        response = self.call_signal(client, files={'01-lshw.out': xmlbytes})
-        self.assertEqual(httplib.OK, response.status_code)
-        node = reload_object(node)
-        self.assertEqual(2, node.cpu_count)
-
-    def test_signal_stores_lshw_with_memory(self):
-        node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
-        client = self.make_node_client(node=node)
-        xmlbytes = (
-            '<node id="memory">'
-                '<size units="bytes">4294967296</size>'
-            '</node>').encode("utf-8")
-        response = self.call_signal(client, files={'01-lshw.out': xmlbytes})
-        self.assertEqual(httplib.OK, response.status_code)
-        node = reload_object(node)
-        self.assertEqual(4096, node.memory)
-
-    def test_signal_lshw_tags_match(self):
-        tag1 = factory.make_tag(factory.getRandomString(10), "/node")
-        tag2 = factory.make_tag(factory.getRandomString(10), "//node")
-        node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
-        client = self.make_node_client(node=node)
-        xmlbytes = '<node/>'.encode("utf-8")
-        response = self.call_signal(client, files={'01-lshw.out': xmlbytes})
-        self.assertEqual(httplib.OK, response.status_code)
-        node = reload_object(node)
-        self.assertEqual([tag1, tag2], list(node.tags.all()))
-
-    def test_signal_lshw_tags_no_match(self):
-        tag1 = factory.make_tag(factory.getRandomString(10), "/missing")
-        tag2 = factory.make_tag(factory.getRandomString(10), "/nothing")
-        node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
-        node.tags = [tag2]
-        node.save()
-        client = self.make_node_client(node=node)
-        xmlbytes = '<node/>'.encode("utf-8")
-        response = self.call_signal(client, files={'01-lshw.out': xmlbytes})
-        self.assertEqual(httplib.OK, response.status_code)
-        node = reload_object(node)
-        self.assertEqual([], list(node.tags.all()))
+        self.assertEqual(0, node.memory)
 
     def test_api_retrieves_node_metadata_by_mac(self):
         mac = factory.make_mac_address()

@@ -454,6 +454,47 @@ class NodeTest(TestCase):
         node.set_hardware_details(xmlbytes)
         self.assertEqual(xmlbytes, node.hardware_details)
 
+    def test_hardware_updates_cpu_count(self):
+        node = factory.make_node()
+        xmlbytes = (
+            '<node id="core">'
+                '<node id="cpu:0" class="processor"/>'
+                '<node id="cpu:1" class="processor"/>'
+            '</node>')
+        node.set_hardware_details(xmlbytes)
+        node = reload_object(node)
+        self.assertEqual(2, node.cpu_count)
+
+    def test_hardware_updates_memory(self):
+        node = factory.make_node()
+        xmlbytes = (
+            '<node id="memory">'
+                '<size units="bytes">4294967296</size>'
+            '</node>')
+        node.set_hardware_details(xmlbytes)
+        node = reload_object(node)
+        self.assertEqual(4096, node.memory)
+
+    def test_hardware_updates_tags_match(self):
+        tag1 = factory.make_tag(factory.getRandomString(10), "/node")
+        tag2 = factory.make_tag(factory.getRandomString(10), "//node")
+        node = factory.make_node()
+        xmlbytes = '<node/>'
+        node.set_hardware_details(xmlbytes)
+        node = reload_object(node)
+        self.assertEqual([tag1, tag2], list(node.tags.all()))
+
+    def test_hardware_updates_tags_no_match(self):
+        tag1 = factory.make_tag(factory.getRandomString(10), "/missing")
+        tag2 = factory.make_tag(factory.getRandomString(10), "/nothing")
+        node = factory.make_node()
+        node.tags = [tag2]
+        node.save()
+        xmlbytes = '<node/>'
+        node.set_hardware_details(xmlbytes)
+        node = reload_object(node)
+        self.assertEqual([], list(node.tags.all()))
+
 
 class NodeTransitionsTests(TestCase):
     """Test the structure of NODE_TRANSITIONS."""
