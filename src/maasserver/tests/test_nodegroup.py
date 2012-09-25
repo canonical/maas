@@ -12,15 +12,11 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
-from django.conf import settings
-import maasserver
-from maasserver.dns import get_dns_server_address
 from maasserver.enum import (
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
     )
 from maasserver.models import NodeGroup
-from maasserver.server_address import get_maas_facing_server_address
 from maasserver.testing import reload_object
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
