@@ -14,19 +14,46 @@ __all__ = [
     "Tag",
     ]
 
+from django.core.exceptions import (
+    PermissionDenied,
+    )
 from django.db.models import (
     CharField,
     Manager,
     TextField,
     )
+from django.shortcuts import get_object_or_404
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 
 
+# Permission model for tags. Everyone can see all tags, but only superusers can
+# edit tags.
 class TagManager(Manager):
     """A utility to manage the collection of Tags."""
-    pass
+
+    def get_tag_or_404(self, name, user, to_edit=False):
+        """Fetch a `Tag` by name.  Raise exceptions if no `Tag` with
+        this name exist.
+
+        :param name: The Tag.name.
+        :type name: str
+        :param user: The user that should be used in the permission check.
+        :type user: django.contrib.auth.models.User
+        :param to_edit: Are we going to edit this tag, or just view it?
+        :type to_edit: bool
+        :raises: django.http.Http404_,
+            :class:`maasserver.exceptions.PermissionDenied`.
+
+        .. _django.http.Http404: https://
+           docs.djangoproject.com/en/dev/topics/http/views/
+           #the-http404-exception
+        """
+        if to_edit and not user.is_superuser:
+            raise PermissionDenied()
+        tag = get_object_or_404(Tag, name=name)
+        return tag
 
 
 class Tag(CleanSave, TimestampedModel):

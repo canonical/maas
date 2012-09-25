@@ -69,6 +69,8 @@ __all__ = [
     "NodeMacHandler",
     "NodeMacsHandler",
     "NodesHandler",
+    "TagHandler",
+    "TagsHandler",
     "pxeconfig",
     "render_api_docs",
     ]
@@ -133,6 +135,7 @@ from maasserver.forms import (
     get_node_edit_form,
     NodeGroupInterfaceForm,
     NodeGroupWithInterfacesForm,
+    TagForm,
     )
 from maasserver.models import (
     BootImage,
@@ -143,6 +146,7 @@ from maasserver.models import (
     Node,
     NodeGroup,
     NodeGroupInterface,
+    Tag,
     )
 from maasserver.preseed import (
     compose_enlistment_preseed_url,
@@ -429,6 +433,7 @@ DISPLAYED_NODE_FIELDS = (
     'netboot',
     'power_type',
     'power_parameters',
+    'tag_names',
     )
 
 
@@ -1244,6 +1249,100 @@ class AccountHandler(BaseHandler):
     @classmethod
     def resource_uri(cls, *args, **kwargs):
         return ('account_handler', [])
+
+
+@api_operations
+class TagHandler(BaseHandler):
+    """Manage individual Tags."""
+    allowed_methods = ('GET', 'DELETE', 'POST', 'PUT')
+    model = Tag
+    fields = (
+        'name',
+        'definition',
+        'comment',
+        )
+
+    def read(self, request, name):
+        """Read a specific Node."""
+        return Tag.objects.get_tag_or_404(name=name, user=request.user)
+
+    def update(self, request, name):
+        """Update a specific `Tag`.
+        """
+        tag = Tag.objects.get_tag_or_404(name=name, user=request.user,
+            to_edit=True)
+        data = get_overrided_query_dict(model_to_dict(tag), request.data)
+        form = TagForm(data, instance=tag)
+        if form.is_valid():
+            return form.save()
+        else:
+            raise ValidationError(form.errors)
+
+    def delete(self, request, name):
+        """Delete a specific Node."""
+        tag = Tag.objects.get_tag_or_404(name=name,
+            user=request.user, to_edit=True)
+        tag.delete()
+        return rc.DELETED
+
+    # XXX: JAM 2012-09-25 This is currently a POST because of bug:
+    #      http://pad.lv/1049933
+    #      Essentially, if you have one 'GET' op, then you can no longer get
+    #      the Tag object itself from a plain 'GET' without op.
+    @api_exported('POST')
+    def nodes(self, request, name):
+        """Get the list of nodes that have this tag."""
+        tag = Tag.objects.get_tag_or_404(name=name, user=request.user)
+        # XXX: JAM 2012-09-25 We need to filter the node set returned by the
+        #      visibility defined by the user.
+        return tag.node_set.all()
+
+    @classmethod
+    def resource_uri(cls, tag=None):
+        # See the comment in NodeHandler.resource_uri
+        tag_name = 'tag_name'
+        if tag is not None:
+            tag_name = tag.name
+        return ('tag_handler', (tag_name, ))
+
+
+@api_operations
+class TagsHandler(BaseHandler):
+    """Manage collection of Tags."""
+    allowed_methods = ('GET', 'POST')
+
+    @api_exported('POST')
+    def new(self, request):
+        """Create a new `Tag`.
+        """
+        return create_tag(request)
+
+    @api_exported('GET')
+    def list(self, request):
+        """List Tags.
+        """
+        return Tag.objects.all()
+
+    @classmethod
+    def resource_uri(cls, *args, **kwargs):
+        return ('tags_handler', [])
+
+
+def create_tag(request):
+    """Service an http request to create a tag.
+
+    :param request: The http request for this node to be created.
+    :return: A `Tag`.
+    :rtype: :class:`maasserver.models.Tag`.
+    :raises: ValidationError
+    """
+    if not request.user.is_superuser:
+        raise PermissionDenied()
+    form = TagForm(request.data)
+    if form.is_valid():
+        return form.save()
+    else:
+        raise ValidationError(form.errors)
 
 
 @api_operations

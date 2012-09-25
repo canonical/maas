@@ -32,7 +32,7 @@ class TagTest(TestCase):
 
     def test_add_tag_to_node(self):
         node = factory.make_node()
-        tag = factory.make_tag('tag-name')
+        tag = factory.make_tag()
         tag.save()
         node.tags.add(tag)
         self.assertEqual([tag.id], [t.id for t in node.tags.all()])

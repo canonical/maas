@@ -66,6 +66,7 @@ from maasserver.models import (
     Node,
     NodeGroup,
     NodeGroupInterface,
+    Tag,
     )
 from maasserver.models.user import (
     create_auth_token,
@@ -496,6 +497,7 @@ class AnonymousEnlistmentAPITest(APIv10TestMixin, TestCase):
                 'netboot',
                 'power_type',
                 'power_parameters',
+                'tag_names',
             ],
             list(parsed_result))
 
@@ -570,6 +572,7 @@ class SimpleUserLoggedInEnlistmentAPITest(APIv10TestMixin, LoggedInTestCase):
                 'power_type',
                 'power_parameters',
                 'resource_uri',
+                'tag_names',
             ],
             list(parsed_result))
 
@@ -710,6 +713,7 @@ class AdminLoggedInEnlistmentAPITest(APIv10TestMixin, AdminLoggedInTestCase):
                 'power_type',
                 'power_parameters',
                 'resource_uri',
+                'tag_names',
             ],
             list(parsed_result))
 
@@ -852,11 +856,21 @@ class TestNodeAPI(APITestCase):
         # The api allows for fetching a single Node (using system_id).
         node = factory.make_node(set_hostname=True)
         response = self.client.get(self.get_node_uri(node))
-        parsed_result = json.loads(response.content)
 
         self.assertEqual(httplib.OK, response.status_code)
+        parsed_result = json.loads(response.content)
         self.assertEqual(node.hostname, parsed_result['hostname'])
         self.assertEqual(node.system_id, parsed_result['system_id'])
+
+    def test_GET_returns_associated_tag(self):
+        node = factory.make_node(set_hostname=True)
+        tag = factory.make_tag()
+        node.tags.add(tag)
+        response = self.client.get(self.get_node_uri(node))
+
+        self.assertEqual(httplib.OK, response.status_code)
+        parsed_result = json.loads(response.content)
+        self.assertEqual([tag.name], parsed_result['tag_names'])
 
     def test_GET_refuses_to_access_invisible_node(self):
         # The request to fetch a single node is denied if the node isn't
@@ -2158,6 +2172,138 @@ class FileStorageAPITest(FileStorageAPITestMixin, APITestCase):
         self.assertEqual(httplib.NOT_FOUND, response.status_code)
         self.assertIn('text/plain', response['Content-Type'])
         self.assertEqual("File not found", response.content)
+
+
+class TestTagAPI(APITestCase):
+    """Tests for /api/1.0/tags/<tagname>/."""
+
+    def get_tag_uri(self, tag):
+        """Get the API URI for `tag`."""
+        return self.get_uri('tags/%s/') % tag.name
+
+    def test_DELETE_requires_admin(self):
+        tag = factory.make_tag()
+        response = self.client.delete(self.get_tag_uri(tag))
+        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertItemsEqual([tag], Tag.objects.filter(id=tag.id))
+
+    def test_DELETE_removes_tag(self):
+        self.become_admin()
+        tag = factory.make_tag()
+        response = self.client.delete(self.get_tag_uri(tag))
+        self.assertEqual(httplib.NO_CONTENT, response.status_code)
+        self.assertFalse(Tag.objects.filter(id=tag.id).exists())
+
+    def test_DELETE_404(self):
+        self.become_admin()
+        response = self.client.delete(self.get_uri('tags/no-tag/'))
+        self.assertEqual(httplib.NOT_FOUND, response.status_code)
+
+    def test_GET_returns_tag(self):
+        # The api allows for fetching a single Node (using system_id).
+        tag = factory.make_tag('tag-name')
+        response = self.client.get(self.get_uri('tags/tag-name/'))
+
+        self.assertEqual(httplib.OK, response.status_code)
+        parsed_result = json.loads(response.content)
+        self.assertEqual(tag.name, parsed_result['name'])
+        self.assertEqual(tag.definition, parsed_result['definition'])
+        self.assertEqual(tag.comment, parsed_result['comment'])
+
+    def test_GET_refuses_to_access_nonexistent_node(self):
+        # When fetching a Tag, the api returns a 'Not Found' (404) error
+        # if no tag is found.
+        response = self.client.get(self.get_uri('tags/no-such-tag/'))
+        self.assertEqual(httplib.NOT_FOUND, response.status_code)
+
+    def test_PUT_refuses_non_superuser(self):
+        tag = factory.make_tag()
+        response = self.client.put(self.get_tag_uri(tag),
+                                   {'comment': 'A special comment'})
+        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+
+    def test_PUT_invalid_field(self):
+        self.become_admin()
+        tag = factory.make_tag()
+        response = self.client.put(self.get_tag_uri(tag),
+            {'not-a-field': 'content'})
+        self.assertEqual(httplib.OK, response.status_code)
+
+    def test_PUT_updates_tag(self):
+        self.become_admin()
+        tag = factory.make_tag()
+        # Note that 'definition' is not being sent
+        response = self.client.put(self.get_tag_uri(tag),
+            {'name': 'new-tag-name', 'comment': 'A random comment'})
+
+        self.assertEqual(httplib.OK, response.status_code)
+        parsed_result = json.loads(response.content)
+        self.assertEqual('new-tag-name', parsed_result['name'])
+        self.assertEqual('A random comment', parsed_result['comment'])
+        self.assertEqual(tag.definition, parsed_result['definition'])
+        self.assertFalse(Tag.objects.filter(name=tag.name).exists())
+        self.assertTrue(Tag.objects.filter(name='new-tag-name').exists())
+
+    def test_POST_nodes_with_no_nodes(self):
+        tag = factory.make_tag()
+        response = self.client.post(self.get_tag_uri(tag), {'op': 'nodes'})
+
+        self.assertEqual(httplib.OK, response.status_code)
+        parsed_result = json.loads(response.content)
+        self.assertEqual([], parsed_result)
+
+    def test_POST_nodes_returns_nodes(self):
+        tag = factory.make_tag()
+        node1 = factory.make_node()
+        # Create a second node that isn't tagged.
+        factory.make_node()
+        node1.tags.add(tag)
+        response = self.client.post(self.get_tag_uri(tag), {'op': 'nodes'})
+
+        self.assertEqual(httplib.OK, response.status_code)
+        parsed_result = json.loads(response.content)
+        self.assertEqual([node1.system_id],
+                         [r['system_id'] for r in parsed_result])
+
+
+class TestTagsAPI(APITestCase):
+
+    def test_GET_list_without_tags_returns_empty_list(self):
+        response = self.client.get(self.get_uri('tags/'), {'op': 'list'})
+        self.assertItemsEqual([], json.loads(response.content))
+
+    def test_POST_new_refuses_non_admin(self):
+        name = factory.getRandomString()
+        response = self.client.post(
+            self.get_uri('tags/'),
+            {
+                'op': 'new',
+                'name': name,
+                'comment': factory.getRandomString(),
+                'definition': factory.getRandomString(),
+            })
+        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertFalse(Tag.objects.filter(name=name).exists())
+
+    def test_POST_new_creates_tag(self):
+        self.become_admin()
+        name = factory.getRandomString()
+        definition = '//node'
+        comment = factory.getRandomString()
+        response = self.client.post(
+            self.get_uri('tags/'),
+            {
+                'op': 'new',
+                'name': name,
+                'comment': comment,
+                'definition': definition,
+            })
+        self.assertEqual(httplib.OK, response.status_code)
+        parsed_result = json.loads(response.content)
+        self.assertEqual(name, parsed_result['name'])
+        self.assertEqual(comment, parsed_result['comment'])
+        self.assertEqual(definition, parsed_result['definition'])
+        self.assertTrue(Tag.objects.filter(name=name).exists())
 
 
 class MAASAPIAnonTest(APIv10TestMixin, TestCase):
