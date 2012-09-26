@@ -88,16 +88,6 @@ debug() {
 }
 
 
-arch2u() {
-    # Normalize architecture name to an Ubuntu architecture name.
-    _RET=$1
-    case "$1" in
-        i?86) _RET=i386;;
-        x86_64) _RET=amd64;;
-    esac
-}
-
-
 query_remote() {
     # query /query data at REMOTE_IMAGES_MIRROR
     # returns 7 values prefixed with 'r_'
@@ -146,7 +136,7 @@ query_local() {
         [ -n "$f" ] && echo "$PWD/$f/info")
 
     l_release=""; l_stream=""; l_label=""; l_serial="";
-    l_arch=""; l_url=""; l_name=""
+    l_arch=""; l_url=""; l_name=""; l_dir="";
     if [ -n "$found" ]; then
         . "$found"
         l_release="$release";
@@ -296,13 +286,13 @@ install_tftp_image() {
             { error "cp of $filename from $src failed"; return 1; }
     done
 
-    local cmd
+    local cmd out=""
     cmd=( maas-provision install-pxe-image
           "--arch=$arch" "--subarch=$subarch" "--release=$release"
           --purpose="commissioning" --image="$tmpdir" )
-    debug 1 "${cmd[@]}"
-    "${cmd[@]}" ||
-        { error "cmd failed:" "${cmd[@]}"; return 1; }
+    debug 2 "${cmd[@]}"
+    out=$("${cmd[@]}" 2>&1) ||
+        { error "cmd failed:" "${cmd[@]}"; error "$out"; return 1; }
 }
 
 
@@ -349,34 +339,30 @@ fi
 updates=0
 for release in $RELEASES; do
     for arch in $ARCHES; do
-        arch2u "$arch"; arch_u=$_RET
 
-        query_local "$arch_u" "$release" "$BUILD_NAME" ||
+        query_local "$arch" "$release" "$BUILD_NAME" ||
             fail "failed to query local for $release/$arch"
-        query_remote "$arch_u" "$release" "$BUILD_NAME" ||
+        query_remote "$arch" "$release" "$BUILD_NAME" ||
             fail "remote query of $REMOTE_IMAGES_MIRROR failed"
 
-        info="rel: $r_release, arch: $r_arch: name: $r_name"
-        if [ -z "$l_dir" ]; then
-            serial_gt "$r_serial" "$l_serial" || {
-                debug 1 "$release-${arch_u} in ${l_dir} is up to date";
-                continue;
-            }
+        info="rel: $r_release, arch: $arch: name: $r_name"
+        debug 2 "$info"
+        debug 2 "local  serial=$l_serial l_name=$l_name dir=$l_dir"
+        debug 2 "remote serial=$r_serial r_name=$r_name url=$r_url"
 
+        # if remote is newer, need to update.  Note that if there is no local
+        # data, 'l_serial' will be "", which serial_gt considers zero
+        if serial_gt "$r_serial" "$l_serial"; then
             # an update is needed remote serial is newer than local
             updates=$(($updates+1))
 
-            debug 1 "updating $release-$arch ($l_name => $r_name)"
+            msg="updating [${l_name:+${l_name} to }$r_name]"
+            debug 0 "$release/$arch: $msg"
             wd="${TEMP_D}/$release/$arch"
             prep_dir "$wd" \
                 "$r_release" "$r_stream" "$r_label" \
                 "$r_serial" "$r_arch" "$r_url" "$r_name" ||
                 fail "failed to prepare image for $release/$arch"
-
-            install_tftp_image "$wd" "$r_arch" "generic" "$r_release" ||
-                fail "failed to install ftp image [$info]"
-
-            target_name="${TARGET_NAME_PREFIX}${r_name}"
 
             final_d="${r_release}/${r_stream}/${r_arch}/${r_serial}"
             fpfinal_d="${DATA_DIR}/${final_d}"
@@ -386,19 +372,21 @@ for release in $RELEASES; do
                 fail "failed to move contents to final directory ${fpfinal_d}"
             name="${r_name}"
         else
+            debug 0 "$release/$arch: up to date [$l_name]"
+
             fpfinal_d="${l_dir}"
             final_d="${l_release}/${l_stream}/${l_arch}/${l_serial}"
 
-            # Even if there was no need to update the image, we make sure it
-            # gets installed.
-            install_tftp_image "$fpfinal_d" "$r_arch" "generic" "$r_release" ||
-                fail "failed to install ftp image [$info]"
-
             name="${l_name}"
-            target_name="${TARGET_NAME_PREFIX}${name}"
-            debug 1 "updating ${release}-${arch} $final_d"
         fi
 
+        # Even if there was no need to update the image, we make sure it
+        # gets installed.
+        debug 1 "adding images for $release/$arch/generic to maas"
+        install_tftp_image "$fpfinal_d" "$arch" "generic" "$release" ||
+            fail "failed to install ftp image [$info]"
+
+        target_name="${TARGET_NAME_PREFIX}${name}"
         rel_tgt="../${final_d}/tgt.conf"
 
         # iscsi_update
