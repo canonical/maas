@@ -193,7 +193,7 @@ class Action(Command):
 
     uri = property(lambda self: self.handler["uri"])
     method = property(lambda self: self.action["method"])
-    restful = property(lambda self: self.action["restful"])
+    is_restful = property(lambda self: self.action["restful"])
     credentials = property(lambda self: self.profile["credentials"])
     op = property(lambda self: self.action["op"])
 
@@ -210,13 +210,13 @@ class Action(Command):
         # <https://github.com/uri-templates/uritemplate-py> here?
         uri = self.uri.format(**vars(options))
 
-        # Parse data out of the positional arguments.
-        data = dict(options.data)
+        # Add the operation to the data set.
         if self.op is not None:
-            data["op"] = self.op
+            options.data.append(("op", self.op))
 
         # Bundle things up ready to throw over the wire.
-        uri, body, headers = self.prepare_payload(uri, data)
+        uri, body, headers = self.prepare_payload(
+            self.method, self.is_restful, uri, options.data)
 
         # Sign request if credentials have been provided.
         if self.credentials is not None:
@@ -246,15 +246,17 @@ class Action(Command):
             raise CommandError(
                 "%r is not a name=value pair" % string)
 
-    def prepare_payload(self, uri, data):
+    @staticmethod
+    def prepare_payload(method, is_restful, uri, data):
         """Return the URI (modified perhaps) and body and headers.
 
         :param method: The HTTP method.
+        :param is_restful: Is this a ReSTful operation?
         :param uri: The URI of the action.
         :param data: A dict or iterable of name=value pairs to pack into the
             body or headers, depending on the type of request.
         """
-        if self.method == "POST" and not self.restful:
+        if method == "POST" and not is_restful:
             # Encode the data as multipart for non-ReSTful POST requests; all
             # others should use query parameters. TODO: encode_multipart_data
             # insists on a dict for the data, which prevents specifying

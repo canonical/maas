@@ -25,6 +25,11 @@ from maascli import (
 from maastesting.factory import factory
 from maastesting.testcase import TestCase
 from mock import sentinel
+from testtools.matchers import (
+    Equals,
+    Is,
+    MatchesListwise,
+    )
 
 
 class TestFunctions(TestCase):
@@ -120,3 +125,59 @@ class TestFunctions(TestCase):
         self.assertEqual(
             "Expected application/json, got: text/css",
             "%s" % error)
+
+
+class TestActionReSTful(TestCase):
+    """Tests for ReSTful operations in `maascli.api.Action`."""
+
+    scenarios = (
+        ("create", dict(method="POST")),
+        ("read", dict(method="GET")),
+        ("update", dict(method="PUT")),
+        ("delete", dict(method="DELETE")),
+        )
+
+    def test_prepare_payload_without_data(self):
+        # prepare_payload() is almost a no-op for ReSTful methods that don't
+        # specify any extra data.
+        uri_base = "http://example.com/MAAS/api/1.0/"
+        payload = api.Action.prepare_payload(
+            method=self.method, is_restful=True, uri=uri_base, data=[])
+        expected = (
+            Equals(uri_base),  # uri
+            Is(None),  # body
+            Equals({}),  # headers
+            )
+        self.assertThat(payload, MatchesListwise(expected))
+
+    def test_prepare_payload_with_data(self):
+        # Given data is always encoded as query parameters.
+        uri_base = "http://example.com/MAAS/api/1.0/"
+        payload = api.Action.prepare_payload(
+            method=self.method, is_restful=True, uri=uri_base,
+            data=[("foo", "bar"), ("foo", "baz")])
+        expected = (
+            Equals(uri_base + "?foo=bar&foo=baz"),  # uri
+            Is(None),  # body
+            Equals({}),  # headers
+            )
+        self.assertThat(payload, MatchesListwise(expected))
+
+
+class TestActionOperations(TestCase):
+    """Tests for non-ReSTful operations in `maascli.api.Action`."""
+
+    def test_prepare_payload_POST_non_restful(self):
+        # Non-ReSTful POSTs encode the given data using encode_multipart_data.
+        encode_multipart_data = self.patch(api, "encode_multipart_data")
+        encode_multipart_data.return_value = sentinel.body, sentinel.headers
+        uri_base = "http://example.com/MAAS/api/1.0/"
+        payload = api.Action.prepare_payload(
+            method="POST", is_restful=False, uri=uri_base,
+            data=[("foo", "bar"), ("foo", "baz")])
+        expected = (
+            Equals(uri_base),  # uri
+            Is(sentinel.body),  # body
+            Is(sentinel.headers),  # headers
+            )
+        self.assertThat(payload, MatchesListwise(expected))
