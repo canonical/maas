@@ -39,7 +39,10 @@ from maasserver.models.user import create_auth_token
 from maasserver.testing import reload_object
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
-from maasserver.utils import map_enum
+from maasserver.utils import (
+    ignore_unused,
+    map_enum,
+    )
 from metadataserver.models import (
     NodeCommissionResult,
     NodeUserData,
@@ -492,6 +495,7 @@ class NodeTest(TestCase):
 
     def test_hardware_updates_tags_no_match(self):
         tag1 = factory.make_tag(factory.getRandomString(10), "/missing")
+        ignore_unused(tag1)
         tag2 = factory.make_tag(factory.getRandomString(10), "/nothing")
         node = factory.make_node()
         node.tags = [tag2]

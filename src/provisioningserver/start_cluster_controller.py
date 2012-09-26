@@ -69,7 +69,7 @@ def register(server_url):
     known_responses = {httplib.OK, httplib.FORBIDDEN, httplib.ACCEPTED}
     client = make_anonymous_api_client(server_url)
     try:
-        response = client.post('api/1.0/nodegroups', 'register')
+        response = client.post('api/1.0/nodegroups/', 'register')
     except HTTPError as e:
         status_code = e.code
         if e.code not in known_responses:
@@ -126,7 +126,7 @@ def start_celery(connection_details):
 def request_refresh(server_url):
     client = make_anonymous_api_client(server_url)
     try:
-        client.post('api/1.0/nodegroups', 'refresh_workers')
+        client.post('api/1.0/nodegroups/', 'refresh_workers')
     except URLError as e:
         task_logger.warn(
             "Could not request secrets from region controller: %s"

@@ -117,7 +117,7 @@ class TestStartClusterController(PservTestCase):
         self.prepare_success_response()
         start_cluster_controller.run(FakeArgs(url))
         (args, kwargs) = MAASDispatcher.dispatch_query.call_args
-        self.assertEqual(url + 'api/1.0/nodegroups', args[0])
+        self.assertEqual(url + 'api/1.0/nodegroups/', args[0])
 
     def test_fails_if_declined(self):
         self.patch(start_cluster_controller, 'start_up')
@@ -162,7 +162,7 @@ class TestStartClusterController(PservTestCase):
         start_cluster_controller.start_up(url, connection_details)
 
         (args, kwargs) = MAASDispatcher.dispatch_query.call_args
-        self.assertEqual(url + 'api/1.0/nodegroups', args[0])
+        self.assertEqual(url + 'api/1.0/nodegroups/', args[0])
         self.assertEqual('POST', kwargs['method'])
 
         # Make Django STFU; just using Django's multipart code causes it to
