@@ -756,3 +756,7 @@ class TagForm(ModelForm):
             'comment',
             'definition',
             )
+
+    def clean(self):
+        cleaned_data = super(TagForm, self).clean()
+        return cleaned_data

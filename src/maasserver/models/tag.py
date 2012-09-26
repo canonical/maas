@@ -78,3 +78,18 @@ class Tag(CleanSave, TimestampedModel):
 
     def __unicode__(self):
         return self.name
+
+    def populate_nodes(self):
+        """Find all nodes that match this tag, and update them."""
+        # Local import to avoid circular reference
+        from maasserver.models import Node
+        # First destroy the existing tags
+        self.node_set.clear()
+        # Now figure out what matches the new definition
+        for node in Node.objects.raw(
+                'SELECT id FROM maasserver_node'
+                ' WHERE xpath_exists(%s, hardware_details)',
+                [self.definition]):
+            # Is there an efficiency difference between doing
+            # 'node.tags.add(self)' and 'self.node_set.add(node)' ?
+            node.tags.add(self)

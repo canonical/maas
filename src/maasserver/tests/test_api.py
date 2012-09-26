@@ -34,6 +34,7 @@ from celery.app import app_or_default
 from django.conf import settings
 from django.contrib.auth.models import AnonymousUser
 from django.core.urlresolvers import reverse
+from django.db.utils import DatabaseError
 from django.http import QueryDict
 from fixtures import Fixture
 from maasserver import api
@@ -2222,13 +2223,6 @@ class TestTagAPI(APITestCase):
                                    {'comment': 'A special comment'})
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
-    def test_PUT_invalid_field(self):
-        self.become_admin()
-        tag = factory.make_tag()
-        response = self.client.put(self.get_tag_uri(tag),
-            {'not-a-field': 'content'})
-        self.assertEqual(httplib.OK, response.status_code)
-
     def test_PUT_updates_tag(self):
         self.become_admin()
         tag = factory.make_tag()
@@ -2243,6 +2237,22 @@ class TestTagAPI(APITestCase):
         self.assertEqual(tag.definition, parsed_result['definition'])
         self.assertFalse(Tag.objects.filter(name=tag.name).exists())
         self.assertTrue(Tag.objects.filter(name='new-tag-name').exists())
+
+    def test_PUT_updates_node_associations(self):
+        node1 = factory.make_node()
+        node1.set_hardware_details('<node><foo /></node>')
+        node2 = factory.make_node()
+        node2.set_hardware_details('<node><bar /></node>')
+        tag = factory.make_tag(definition='/node/foo')
+        tag.populate_nodes()
+        self.assertItemsEqual([tag.name], node1.tag_names())
+        self.assertItemsEqual([], node2.tag_names())
+        self.become_admin()
+        response = self.client.put(self.get_tag_uri(tag),
+            {'definition': '/node/bar'})
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertItemsEqual([], node1.tag_names())
+        self.assertItemsEqual([tag.name], node2.tag_names())
 
     def test_POST_nodes_with_no_nodes(self):
         tag = factory.make_tag()
@@ -2264,6 +2274,30 @@ class TestTagAPI(APITestCase):
         parsed_result = json.loads(response.content)
         self.assertEqual([node1.system_id],
                          [r['system_id'] for r in parsed_result])
+
+    def test_PUT_invalid_definition(self):
+        self.become_admin()
+        node = factory.make_node()
+        node.set_hardware_details('<node ><child /></node>')
+        tag = factory.make_tag(definition='//child')
+        tag.populate_nodes()
+        self.assertItemsEqual([tag.name], node.tag_names())
+        response = self.client.put(self.get_tag_uri(tag),
+            {'definition': 'invalid::tag'})
+
+        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+        # Note: JAM 2012-09-26 we'd like to assert that the state in the DB is
+        #       properly aborted. However, the transactions are being handled
+        #       by TransactionMiddleware and are not hooked up in the test
+        #       suite. And the DB is currently in 'pending rollback' state, so
+        #       we cannot inspect it. So we test that we get a proper error
+        #       back, and test that the DB is in abort state. To test that
+        #       TransactionMiddleware is properly functioning needs a higher
+        #       level test.
+        self.assertRaises(DatabaseError, Tag.objects.all().count)
+        # tag = reload_object(tag)
+        # self.assertItemsEqual([tag.name], node.tag_names())
+        # self.assertEqual('/node/foo', tag.definition)
 
 
 class TestTagsAPI(APITestCase):
@@ -2304,6 +2338,30 @@ class TestTagsAPI(APITestCase):
         self.assertEqual(comment, parsed_result['comment'])
         self.assertEqual(definition, parsed_result['definition'])
         self.assertTrue(Tag.objects.filter(name=name).exists())
+
+    def test_POST_new_populates_nodes(self):
+        self.become_admin()
+        node1 = factory.make_node()
+        node1.set_hardware_details('<node><child /></node>')
+        # Create another node that doesn't have a 'child'
+        node2 = factory.make_node()
+        node2.set_hardware_details('<node />')
+        self.assertItemsEqual([], node1.tag_names())
+        self.assertItemsEqual([], node2.tag_names())
+        name = factory.getRandomString()
+        definition = '/node/child'
+        comment = factory.getRandomString()
+        response = self.client.post(
+            self.get_uri('tags/'),
+            {
+                'op': 'new',
+                'name': name,
+                'comment': comment,
+                'definition': definition,
+            })
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertItemsEqual([name], node1.tag_names())
+        self.assertItemsEqual([], node2.tag_names())
 
 
 class MAASAPIAnonTest(APIv10TestMixin, TestCase):
