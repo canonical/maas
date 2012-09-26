@@ -2275,6 +2275,28 @@ class TestTagAPI(APITestCase):
         self.assertEqual([node1.system_id],
                          [r['system_id'] for r in parsed_result])
 
+    def test_POST_nodes_hides_invisible_nodes(self):
+        user2 = factory.make_user()
+        node1 = factory.make_node()
+        node1.set_hardware_details('<node><foo /></node>')
+        node2 = factory.make_node(status=NODE_STATUS.ALLOCATED, owner=user2)
+        node2.set_hardware_details('<node><bar /></node>')
+        tag = factory.make_tag(definition='/node')
+        tag.populate_nodes()
+        response = self.client.post(self.get_tag_uri(tag), {'op': 'nodes'})
+
+        self.assertEqual(httplib.OK, response.status_code)
+        parsed_result = json.loads(response.content)
+        self.assertEqual([node1.system_id],
+                         [r['system_id'] for r in parsed_result])
+        # However, for the other user, they should see the result
+        client2 = OAuthAuthenticatedClient(user2)
+        response = client2.post(self.get_tag_uri(tag), {'op': 'nodes'})
+        self.assertEqual(httplib.OK, response.status_code)
+        parsed_result = json.loads(response.content)
+        self.assertItemsEqual([node1.system_id, node2.system_id],
+                              [r['system_id'] for r in parsed_result])
+
     def test_PUT_invalid_definition(self):
         self.become_admin()
         node = factory.make_node()

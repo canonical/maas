@@ -21,6 +21,7 @@ from django.db.models import (
     CharField,
     Manager,
     TextField,
+    Q,
     )
 from django.shortcuts import get_object_or_404
 from maasserver import DefaultMeta
@@ -54,6 +55,23 @@ class TagManager(Manager):
             raise PermissionDenied()
         tag = get_object_or_404(Tag, name=name)
         return tag
+
+    def get_nodes(self, tag_name, user):
+        """Get the list of nodes that have this tag.
+
+        This list is restricted to only nodes that the user has VIEW permission
+        for.
+        """
+        tag = self.get_tag_or_404(name=tag_name, user=user)
+        # The privacy logic is taken from Node. Note that we could filter in
+        # python by iterating over all nodes and checking
+        #   user.has_perm(VIEW, node)
+        # It seems better to do this in the DB, though.
+        if user.is_superuser:
+            return tag.node_set.all()
+        else:
+            return tag.node_set.filter(
+                Q(owner__isnull=True) | Q(owner=user))
 
 
 class Tag(CleanSave, TimestampedModel):

@@ -1303,10 +1303,7 @@ class TagHandler(BaseHandler):
     @api_exported('POST')
     def nodes(self, request, name):
         """Get the list of nodes that have this tag."""
-        tag = Tag.objects.get_tag_or_404(name=name, user=request.user)
-        # XXX: JAM 2012-09-25 We need to filter the node set returned by the
-        #      visibility defined by the user.
-        return tag.node_set.all()
+        return Tag.objects.get_nodes(name, user=request.user)
 
     @classmethod
     def resource_uri(cls, tag=None):

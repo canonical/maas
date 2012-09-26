@@ -15,6 +15,8 @@ __all__ = []
 from django.db import transaction
 from django.db.utils import DatabaseError
 from maastesting.djangotestcase import TransactionTestCase
+from maasserver.enum import NODE_STATUS
+from maasserver.models import Tag
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
 
@@ -78,6 +80,40 @@ class TagTest(TestCase):
         tag2.populate_nodes()
         self.assertItemsEqual([tag1.name], node1.tag_names())
         self.assertItemsEqual([tag2.name], node2.tag_names())
+
+    def test_get_nodes_returns_unowned_nodes(self):
+        user1 = factory.make_user()
+        node1 = factory.make_node()
+        tag = factory.make_tag()
+        node1.tags.add(tag)
+        self.assertItemsEqual([node1], Tag.objects.get_nodes(tag.name, user1))
+
+    def test_get_nodes_returns_self_owned_nodes(self):
+        user1 = factory.make_user()
+        node1 = factory.make_node(owner=user1)
+        tag = factory.make_tag()
+        node1.tags.add(tag)
+        self.assertItemsEqual([node1], Tag.objects.get_nodes(tag.name, user1))
+
+    def test_get_nodes_doesnt_return_other_owned_nodes(self):
+        user1 = factory.make_user()
+        user2 = factory.make_user()
+        node1 = factory.make_node(owner=user1)
+        tag = factory.make_tag()
+        node1.tags.add(tag)
+        self.assertItemsEqual([], Tag.objects.get_nodes(tag.name, user2))
+
+    def test_get_nodes_returns_everything_for_superuser(self):
+        user1 = factory.make_user()
+        user2 = factory.make_user()
+        user2.is_superuser = True
+        node1 = factory.make_node(owner=user1)
+        node2 = factory.make_node()
+        tag = factory.make_tag()
+        node1.tags.add(tag)
+        node2.tags.add(tag)
+        self.assertItemsEqual([node1, node2],
+                              Tag.objects.get_nodes(tag.name, user2))
 
 
 class TestTagTransactions(TransactionTestCase):
