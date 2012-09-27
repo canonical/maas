@@ -673,6 +673,16 @@ class TestNodeGroupWithInterfacesForm(TestCase):
                 nodegroup.nodegroupinterface_set.count(),
             ))
 
+    def test_NodeGroupWithInterfacesForm_creates_nodegroup_with_status(self):
+        name = factory.make_name('name')
+        uuid = factory.getRandomUUID()
+        form = NodeGroupWithInterfacesForm(
+            status=NODEGROUP_STATUS.ACCEPTED,
+            data={'name': name, 'uuid': uuid})
+        self.assertTrue(form.is_valid(), form._errors)
+        nodegroup = form.save()
+        self.assertEqual(NODEGROUP_STATUS.ACCEPTED, nodegroup.status)
+
     def test_NodeGroupWithInterfacesForm_validates_parameters(self):
         name = factory.make_name('name')
         too_long_uuid = 'test' * 30

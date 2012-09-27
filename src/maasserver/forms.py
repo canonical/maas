@@ -59,7 +59,6 @@ from maasserver.enum import (
     DISTRO_SERIES_CHOICES,
     NODE_AFTER_COMMISSIONING_ACTION,
     NODE_AFTER_COMMISSIONING_ACTION_CHOICES,
-    NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
     NODEGROUPINTERFACE_MANAGEMENT_CHOICES,
     )
@@ -688,7 +687,7 @@ INTERFACES_VALIDATION_ERROR_MESSAGE = (
 
 
 class NodeGroupWithInterfacesForm(ModelForm):
-    """Create a pending NodeGroup with unmanaged interfaces."""
+    """Create a NodeGroup with unmanaged interfaces."""
 
     interfaces = forms.CharField(required=False)
 
@@ -698,6 +697,10 @@ class NodeGroupWithInterfacesForm(ModelForm):
             'name',
             'uuid',
             )
+
+    def __init__(self, status=None, *args, **kwargs):
+        super(NodeGroupWithInterfacesForm, self).__init__(*args, **kwargs)
+        self.status = status
 
     def clean_interfaces(self):
         data = self.cleaned_data['interfaces']
@@ -741,9 +744,9 @@ class NodeGroupWithInterfacesForm(ModelForm):
         for interface in self.cleaned_data['interfaces']:
             form = NodeGroupInterfaceForm(data=interface)
             form.save(nodegroup=nodegroup)
-        # Set the nodegroup to be 'PENDING'.
-        nodegroup.status = NODEGROUP_STATUS.PENDING
-        nodegroup.save()
+        if self.status is not None:
+            nodegroup.status = self.status
+            nodegroup.save()
         return nodegroup
 
 

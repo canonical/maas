@@ -911,6 +911,14 @@ class FilesHandler(BaseHandler):
         return ('files_handler', [])
 
 
+def get_celery_credentials():
+    """Return the credentials needed to connect to the broker."""
+    celery_conf = app_or_default().conf
+    return {
+        'BROKER_URL': celery_conf.BROKER_URL,
+    }
+
+
 DISPLAYED_NODEGROUP_FIELDS = ('uuid', 'status', 'name')
 
 
@@ -974,24 +982,33 @@ class AnonNodeGroupsHandler(AnonymousBaseHandler):
         uuid = get_mandatory_param(request.data, 'uuid')
         existing_nodegroup = get_one(NodeGroup.objects.filter(uuid=uuid))
         if existing_nodegroup is None:
-            # This nodegroup (identified by its uuid), does not exist yet,
-            # create it if the data validates.
-            form = NodeGroupWithInterfacesForm(request.data)
-            if form.is_valid():
-                form.save()
-                return HttpResponse(
-                    "Cluster registered.  Awaiting admin approval.",
-                    status=httplib.ACCEPTED)
+            master = NodeGroup.objects.ensure_master()
+            # Does master.uuid look like it's a proper uuid?
+            if master.uuid in ('master', ''):
+                # Master nodegroup not yet configured, configure it.
+                form = NodeGroupWithInterfacesForm(
+                    data=request.data, instance=master)
+                if form.is_valid():
+                    form.save()
+                    return get_celery_credentials()
+                else:
+                    raise ValidationError(form.errors)
             else:
-                raise ValidationError(form.errors)
+                # This nodegroup (identified by its uuid), does not exist yet,
+                # create it if the data validates.
+                form = NodeGroupWithInterfacesForm(
+                    data=request.data, status=NODEGROUP_STATUS.PENDING)
+                if form.is_valid():
+                    form.save()
+                    return HttpResponse(
+                        "Cluster registered.  Awaiting admin approval.",
+                        status=httplib.ACCEPTED)
+                else:
+                    raise ValidationError(form.errors)
         else:
             if existing_nodegroup.status == NODEGROUP_STATUS.ACCEPTED:
                 # The nodegroup exists and is validated, return the RabbitMQ
-                # credentials as JSON.
-                celery_conf = app_or_default().conf
-                return {
-                    'BROKER_URL': celery_conf.BROKER_URL,
-                }
+                return get_celery_credentials()
             elif existing_nodegroup.status == NODEGROUP_STATUS.REJECTED:
                 raise PermissionDenied('Rejected cluster.')
             elif existing_nodegroup.status == NODEGROUP_STATUS.PENDING:
