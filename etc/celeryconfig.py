@@ -50,6 +50,10 @@ DHCP_INTERFACES_FILE = '/var/lib/maas/dhcpd-interfaces'
 # this setting.
 BROKER_URL = 'amqp://guest:guest@localhost:5672//'
 
+# Cluster UUID.  Will be overridden by the customized setting in the
+# local MAAS Celery config.
+CLUSTER_UUID = None
+
 
 WORKER_QUEUE_DNS = 'celery'
 WORKER_QUEUE_BOOT_IMAGES = 'celery'

@@ -79,6 +79,8 @@ class TestStartClusterController(PservTestCase):
         self.patch(start_cluster_controller, 'sleep').side_effect = Sleeping()
         self.patch(start_cluster_controller, 'Popen').side_effect = (
             Executing())
+        self.patch(
+            start_cluster_controller, 'CLUSTER_UUID', factory.getRandomUUID())
 
     def make_connection_details(self):
         return {
@@ -166,7 +168,8 @@ class TestStartClusterController(PservTestCase):
 
     def test_register_passes_cluster_information(self):
         self.prepare_success_response()
-        uuid = factory.getRandomUUID()
+        self.patch(
+            start_cluster_controller, 'CLUSTER_UUID', factory.getRandomUUID())
         interface = {
             'interface': factory.make_name('eth'),
             'ip': factory.getRandomIPAddress(),
@@ -175,14 +178,13 @@ class TestStartClusterController(PservTestCase):
         discover = self.patch(start_cluster_controller, 'discover_networks')
         discover.return_value = [interface]
 
-        start_cluster_controller.register(make_url(), uuid)
+        start_cluster_controller.register(make_url())
 
         (args, kwargs) = MAASDispatcher.dispatch_query.call_args
         headers, body = kwargs["headers"], kwargs["data"]
         post, files = self.parse_headers_and_body(headers, body)
         self.assertEqual([interface], json.loads(post['interfaces']))
-        # XXX JeroenVermeulen 2012-09-27, bug=1055523: Reinstate this.
-        #self.assertEqual(uuid, post['uuid'])
+        self.assertEqual(start_cluster_controller.CLUSTER_UUID, post['uuid'])
 
     def test_starts_up_once_accepted(self):
         self.patch(start_cluster_controller, 'start_up')
