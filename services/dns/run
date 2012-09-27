@@ -4,6 +4,8 @@
 
 # Exit immediately if a command exits with a non-zero status.
 set -o errexit
+# Treat unset variables as an error when substituting.
+set -o nounset
 
 # Move to the project root.
 cd "$(dirname "$0")/../.."
@@ -12,25 +14,25 @@ cd "$(dirname "$0")/../.."
 # because there are race issues when restarting.
 [ -z "${logdir:-}" ] || exec &>> "${logdir}/current"
 
-homedir=`pwd`/run/named
+homedir="$(pwd)/run/named"
 port=5246
 rndc_port=5247
+
 # Create DNS config.
 bin/py -m maastesting.bindfixture -- \
     --create-config-only --overwrite-config \
-    --homedir $homedir \
-    --port $port --rndc-port $rndc_port
+    --homedir "${homedir}" --port "${port}" \
+    --rndc-port "${rndc_port}"
+
 # Create MAAS' DNS config: do not overwrite an existing config file
 # as the writing of the full configuration might have happened already.
-./bin/maas set_up_dns --no-clobber
+bin/maas set_up_dns --no-clobber
+
 # Edit the fixture's named.conf to include MAAS' DNS config.
-./bin/maas get_named_conf --edit --config_path \
-    `pwd`/run/named/named.conf
+bin/maas get_named_conf --edit --config_path "${homedir}/named.conf"
+
 # Run named.
-authbind=""
-if command -v authbind >/dev/null 2>&1; then
-    authbind="authbind --deep"
-fi
-exec $authbind bin/py -m maastesting.bindfixture -- \
-    --homedir $homedir \
-    --port $port --rndc-port $rndc_port
+exec $(command -v authbind && echo --deep) \
+    bin/py -m maastesting.bindfixture -- \
+    --homedir "${homedir}" --port "${port}" \
+    --rndc-port "${rndc_port}"

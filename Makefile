@@ -77,7 +77,8 @@ bin/test.maastesting: bin/buildout buildout.cfg versions.cfg setup.py
 	$(buildout) install maastesting-test
 	@touch --no-create $@
 
-bin/twistd.pserv: bin/buildout buildout.cfg versions.cfg setup.py
+bin/celeryd bin/maas-provision bin/twistd.pserv: \
+    bin/buildout buildout.cfg versions.cfg setup.py
 	$(buildout) install pserv
 	@touch --no-create $@
 
@@ -276,7 +277,7 @@ services/%/@supervise: services/%/@deps
 
 services/dns/@deps: bin/py
 
-services/celeryd/@deps:
+services/celeryd/@deps: bin/celeryd
 
 services/database/@deps: bin/database
 

@@ -4,6 +4,8 @@
 
 # Exit immediately if a command exits with a non-zero status.
 set -o errexit
+# Treat unset variables as an error when substituting.
+set -o nounset
 
 # Move to the project root.
 cd "$(dirname "$0")/../.."
@@ -12,10 +14,9 @@ cd "$(dirname "$0")/../.."
 # because there are race issues when restarting.
 [ -z "${logdir:-}" ] || exec &>> "${logdir}/current"
 
-# Run celeryd.
-export PYTHONPATH=$PYTHONPATH:`pwd`/src:`pwd`/etc
-export CELERY_CONFIG_MODULE=democeleryconfig
-
 # XXX JeroenVermeulen 2012-08-23, bug=1040529: Use fghack to kludge around
 # hanging celery shutdown.
-exec fghack "$(type -p celeryd)" -l INFO --beat --queues celery
+script="$(readlink -f bin/celeryd)"
+exec fghack "${script}" \
+    --loglevel INFO --beat --queues celery \
+    --config democeleryconfig
