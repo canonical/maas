@@ -241,7 +241,7 @@ class Action(Command):
     def name_value_pair(string):
         parts = string.split("=", 1)
         if len(parts) == 2:
-            return parts
+            return tuple(parts)
         else:
             raise CommandError(
                 "%r is not a name=value pair" % string)

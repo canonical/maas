@@ -28,6 +28,8 @@ from mock import sentinel
 from testtools.matchers import (
     Equals,
     Is,
+    IsInstance,
+    MatchesAll,
     MatchesListwise,
     )
 
@@ -125,6 +127,31 @@ class TestFunctions(TestCase):
         self.assertEqual(
             "Expected application/json, got: text/css",
             "%s" % error)
+
+
+class TestAction(TestCase):
+    """Tests for :class:`maascli.api.Action`."""
+
+    def test_name_value_pair_returns_2_tuple(self):
+        # The tuple is important because this is used as input to
+        # urllib.urlencode, which doesn't let the data it consumes walk and
+        # quack like a duck. It insists that the first item in a non-dict
+        # sequence is a tuple. Of any size. It does this in the name of
+        # avoiding *string* input.
+        result = api.Action.name_value_pair("foo=bar")
+        self.assertThat(
+            result, MatchesAll(
+                Equals(("foo", "bar")),
+                IsInstance(tuple)))
+
+    def test_name_value_pair_demands_two_parts(self):
+        self.assertRaises(
+            CommandError, api.Action.name_value_pair, "foo bar")
+
+    def test_name_value_pair_does_not_strip_whitespace(self):
+        self.assertEqual(
+            (" foo ", " bar "),
+            api.Action.name_value_pair(" foo = bar "))
 
 
 class TestActionReSTful(TestCase):
