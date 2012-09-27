@@ -18,9 +18,8 @@ __all__ = [
     'discover_networks',
     ]
 
-from io import BytesIO
 import os
-from subprocess import check_call
+from subprocess import check_output
 
 
 class InterfaceInfo:
@@ -29,34 +28,37 @@ class InterfaceInfo:
     def __init__(self, interface):
         self.interface = interface
         self.ip = None
-        self.mask = None
+        self.subnet_mask = None
 
     def may_be_subnet(self):
         """Could this be a subnet that MAAS is interested in?"""
         return all([
             self.interface != 'lo',
             self.ip is not None,
-            self.mask is not None,
+            self.subnet_mask is not None,
             ])
 
     def as_dict(self):
+        """Return information as a dictionary.
+
+        The return value's format is suitable as an interface description
+        for use with the `register` API call.
+        """
         return {
             'interface': self.interface,
             'ip': self.ip,
-            'mask': self.mask,
+            'subnet_mask': self.subnet_mask,
         }
 
 
 def run_ifconfig():
     """Run `ifconfig` to list active interfaces.  Return output."""
     env = dict(os.environ, LC_ALL='C')
-    stdout = BytesIO()
-    check_call(['/sbin/ifconfig'], env=env, stdout=stdout)
-    stdout.seek(0)
-    return stdout.read().decode('ascii')
+    output = check_output(['/sbin/ifconfig'], env=env)
+    return output.decode('ascii')
 
 
-def extract_ip_and_mask(line):
+def extract_ip_and_subnet_mask(line):
     """Get IP address and subnet mask from an inet address line."""
     # This line consists of key:value pairs separated by double spaces.
     # The "inet addr" key contains a space.  There is typically a
@@ -80,7 +82,7 @@ def parse_stanza(stanza):
     info = InterfaceInfo(header.split()[0])
     for line in lines[1:]:
         if line.split()[0] == 'inet':
-            info.ip, info.mask = extract_ip_and_mask(line)
+            info.ip, info.subnet_mask = extract_ip_and_subnet_mask(line)
     return info
 
 
@@ -100,6 +102,6 @@ def discover_networks():
     """Find the networks attached to this system."""
     output = run_ifconfig()
     return [
-        interface
+        interface.as_dict()
         for interface in parse_ifconfig(output)
             if interface.may_be_subnet()]

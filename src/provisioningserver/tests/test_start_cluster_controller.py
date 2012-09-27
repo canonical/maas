@@ -42,7 +42,20 @@ class Executing(Exception):
     """
 
 
+def make_url(name_hint='host'):
+    return "http://%s.example.com/%s/" % (
+        factory.make_name(name_hint),
+        factory.make_name('path'),
+        )
+
+
 FakeArgs = namedtuple('FakeArgs', ['server_url'])
+
+
+def make_args(server_url=None):
+    if server_url is None:
+        server_url = make_url('region')
+    return FakeArgs(server_url)
 
 
 class FakeURLOpenResponse:
@@ -59,13 +72,6 @@ class FakeURLOpenResponse:
         return self._status_code
 
 
-def make_url(name_hint='host'):
-    return "http://%s.example.com/%s/" % (
-        factory.make_name(name_hint),
-        factory.make_name('path'),
-        )
-
-
 class TestStartClusterController(PservTestCase):
 
     def setUp(self):
@@ -78,6 +84,20 @@ class TestStartClusterController(PservTestCase):
         return {
             'BROKER_URL': make_url('broker'),
         }
+
+    def parse_headers_and_body(self, headers, body):
+        """Parse ingredients of a web request.
+
+        The headers and body are as passed to :class:`MAASDispatcher`.
+        """
+        # Make Django STFU; just using Django's multipart code causes it to
+        # pull in a settings module, and it will throw up if it can't.
+        self.useFixture(
+            EnvironmentVariableFixture(
+                "DJANGO_SETTINGS_MODULE", __name__))
+
+        post, files = parse_headers_and_body_with_django(headers, body)
+        return post, files
 
     def prepare_response(self, http_code, content=""):
         """Prepare to return the given http response from API request."""
@@ -108,14 +128,14 @@ class TestStartClusterController(PservTestCase):
         self.prepare_success_response()
         parser = ArgumentParser()
         start_cluster_controller.add_arguments(parser)
-        start_cluster_controller.run(parser.parse_args((make_url(), )))
+        start_cluster_controller.run(parser.parse_args((make_url(),)))
         self.assertNotEqual(0, start_cluster_controller.Popen.call_count)
 
     def test_uses_given_url(self):
         url = make_url('region')
         self.patch(start_cluster_controller, 'start_up')
         self.prepare_success_response()
-        start_cluster_controller.run(FakeArgs(url))
+        start_cluster_controller.run(make_args(server_url=url))
         (args, kwargs) = MAASDispatcher.dispatch_query.call_args
         self.assertEqual(url + 'api/1.0/nodegroups/', args[0])
 
@@ -124,7 +144,7 @@ class TestStartClusterController(PservTestCase):
         self.prepare_rejection_response()
         self.assertRaises(
             start_cluster_controller.ClusterControllerRejected,
-            start_cluster_controller.run, FakeArgs(make_url()))
+            start_cluster_controller.run, make_args())
         self.assertItemsEqual([], start_cluster_controller.start_up.calls_list)
 
     def test_polls_while_pending(self):
@@ -132,7 +152,7 @@ class TestStartClusterController(PservTestCase):
         self.prepare_pending_response()
         self.assertRaises(
             Sleeping,
-            start_cluster_controller.run, FakeArgs(make_url()))
+            start_cluster_controller.run, make_args())
         self.assertItemsEqual([], start_cluster_controller.start_up.calls_list)
 
     def test_polls_on_unexpected_errors(self):
@@ -141,14 +161,34 @@ class TestStartClusterController(PservTestCase):
             make_url(), httplib.REQUEST_TIMEOUT, "Timeout.", '', BytesIO())
         self.assertRaises(
             Sleeping,
-            start_cluster_controller.run, FakeArgs(make_url()))
+            start_cluster_controller.run, make_args())
         self.assertItemsEqual([], start_cluster_controller.start_up.calls_list)
+
+    def test_register_passes_cluster_information(self):
+        self.prepare_success_response()
+        uuid = factory.getRandomUUID()
+        interface = {
+            'interface': factory.make_name('eth'),
+            'ip': factory.getRandomIPAddress(),
+            'subnet_mask': '255.255.255.0',
+            }
+        discover = self.patch(start_cluster_controller, 'discover_networks')
+        discover.return_value = [interface]
+
+        start_cluster_controller.register(make_url(), uuid)
+
+        (args, kwargs) = MAASDispatcher.dispatch_query.call_args
+        headers, body = kwargs["headers"], kwargs["data"]
+        post, files = self.parse_headers_and_body(headers, body)
+        self.assertEqual([interface], json.loads(post['interfaces']))
+        # XXX JeroenVermeulen 2012-09-27, bug=1055523: Reinstate this.
+        #self.assertEqual(uuid, post['uuid'])
 
     def test_starts_up_once_accepted(self):
         self.patch(start_cluster_controller, 'start_up')
         connection_details = self.prepare_success_response()
         server_url = make_url()
-        start_cluster_controller.run(FakeArgs(server_url))
+        start_cluster_controller.run(make_args(server_url=server_url))
         start_cluster_controller.start_up.assert_called_once_with(
             server_url, connection_details)
 
@@ -157,7 +197,7 @@ class TestStartClusterController(PservTestCase):
         connection_details = self.make_connection_details()
         self.patch(start_cluster_controller, 'Popen')
         self.patch(start_cluster_controller, 'sleep')
-        self.prepare_response('OK', httplib.OK)
+        self.prepare_success_response()
 
         start_cluster_controller.start_up(url, connection_details)
 
@@ -165,14 +205,8 @@ class TestStartClusterController(PservTestCase):
         self.assertEqual(url + 'api/1.0/nodegroups/', args[0])
         self.assertEqual('POST', kwargs['method'])
 
-        # Make Django STFU; just using Django's multipart code causes it to
-        # pull in a settings module, and it will throw up if it can't.
-        self.useFixture(
-            EnvironmentVariableFixture(
-                "DJANGO_SETTINGS_MODULE", __name__))
-
         headers, body = kwargs["headers"], kwargs["data"]
-        post, files = parse_headers_and_body_with_django(headers, body)
+        post, files = self.parse_headers_and_body(headers, body)
         self.assertEqual("refresh_workers", post["op"])
 
     def test_start_up_ignores_failure_on_refresh_secrets(self):

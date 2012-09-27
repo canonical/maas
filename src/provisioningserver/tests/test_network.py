@@ -22,31 +22,18 @@ from maastesting.testcase import TestCase
 from provisioningserver import network
 
 
-class FakeCheckCall:
-    """Test double for `check_call`."""
-
-    def __init__(self, output_text):
-        self.output_text = output_text
-        self.calls = []
-
-    def __call__(self, command, stdout=None, env=None):
-        stdout.write(self.output_text.encode('ascii'))
-        self.calls.append(dict(command=command, env=env))
-        return 0
-
-
 def make_address_line(**kwargs):
     """Create an inet address line."""
     # First word on this line is inet or inet6.
     kwargs.setdefault('inet', 'inet')
     kwargs.setdefault('broadcast', '10.255.255.255')
-    kwargs.setdefault('mask', '255.0.0.0')
+    kwargs.setdefault('subnet_mask', '255.0.0.0')
     items = [
         "%(inet)s addr:%(ip)s"
         ]
     if len(kwargs['broadcast']) > 0:
         items.append("Bcast:%(broadcast)s")
-    items.append("Mask:%(mask)s")
+    items.append("Mask:%(subnet_mask)s")
     return '  '.join(items) % kwargs
 
 
@@ -189,7 +176,7 @@ class TestNetworks(TestCase):
 
     def test_run_ifconfig_returns_ifconfig_output(self):
         text = join_stanzas([make_stanza()])
-        self.patch(network, 'check_call', FakeCheckCall(text))
+        self.patch(network, 'check_output').return_value = text.encode('ascii')
         self.assertEqual(text, network.run_ifconfig())
 
     def test_parse_ifconfig_produces_interface_info(self):
@@ -205,7 +192,7 @@ class TestNetworks(TestCase):
         parms = {
             'interface': factory.make_name('eth'),
             'ip': factory.getRandomIPAddress(),
-            'mask': '255.255.255.128',
+            'subnet_mask': '255.255.255.128',
         }
         info = network.parse_stanza(make_stanza(**parms))
         self.assertEqual(parms, info.as_dict())
@@ -214,7 +201,7 @@ class TestNetworks(TestCase):
         parms = {
             'interface': factory.make_name('eth'),
             'ip': factory.getRandomIPAddress(),
-            'mask': '255.255.255.128',
+            'subnet_mask': '255.255.255.128',
             'interrupt': '',
         }
         info = network.parse_stanza(make_stanza(**parms))
@@ -230,14 +217,14 @@ class TestNetworks(TestCase):
         info = network.parse_stanza(make_stanza(**parms))
         expected = parms.copy()
         expected['ip'] = None
-        expected['mask'] = None
+        expected['subnet_mask'] = None
         self.assertEqual(expected, info.as_dict())
 
     def test_parse_stanza_returns_nothing_for_loopback(self):
         parms = {
             'interface': 'lo',
             'ip': '127.1.2.3',
-            'mask': '255.0.0.0',
+            'subnet_mask': '255.0.0.0',
             'encapsulation': 'Local Loopback',
             'broadcast': '',
             'interrupt': '',
@@ -258,17 +245,21 @@ class TestNetworks(TestCase):
             [stanza.strip() for stanza in stanzas],
             network.split_stanzas(full_output))
 
+    def test_discover_networks_runs_in_real_life(self):
+        interfaces = network.discover_networks()
+        self.assertIsInstance(interfaces, list)
+
     def test_discover_networks_returns_suitable_interfaces(self):
         params = {
             'interface': factory.make_name('eth'),
             'ip': factory.getRandomIPAddress(),
-            'mask': '255.255.255.0',
+            'subnet_mask': '255.255.255.0',
         }
         regular_interface = make_stanza(**params)
         loopback = make_stanza(
             interface='lo', encapsulation='Local loopback', broadcast='',
             interrupt='')
-        disabled_interface = make_stanza(ip='', broadcast='', mask='')
+        disabled_interface = make_stanza(ip='', broadcast='', subnet_mask='')
 
         text = join_stanzas([regular_interface, loopback, disabled_interface])
         self.patch(network, 'run_ifconfig').return_value = text
@@ -277,11 +268,11 @@ class TestNetworks(TestCase):
 
         self.assertEqual(
             [params],
-            [interface.as_dict() for interface in interfaces])
+            [interface for interface in interfaces])
 
     def test_discover_networks_processes_real_ifconfig_output(self):
         self.patch(network, 'run_ifconfig').return_value = sample_output
         info = network.discover_networks()
         self.assertEqual(
             ['eth1', 'maasbr0', 'virbr0'],
-            [interface.interface for interface in info])
+            [interface['interface'] for interface in info])
