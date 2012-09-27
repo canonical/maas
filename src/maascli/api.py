@@ -18,7 +18,6 @@ from getpass import getpass
 import httplib
 import json
 import sys
-from urllib import urlencode
 from urlparse import (
     urljoin,
     urlparse,
@@ -42,6 +41,7 @@ from maascli.utils import (
     handler_command_name,
     parse_docstring,
     safe_name,
+    urlencode,
     )
 
 
