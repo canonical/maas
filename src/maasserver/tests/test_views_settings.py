@@ -18,7 +18,10 @@ from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse
 from lxml.html import fromstring
-from maasserver.enum import NODE_AFTER_COMMISSIONING_ACTION
+from maasserver.enum import (
+    DISTRO_SERIES,
+    NODE_AFTER_COMMISSIONING_ACTION,
+    )
 from maasserver.models import (
     Config,
     UserProfile,
@@ -96,6 +99,7 @@ class SettingsTest(AdminLoggedInTestCase):
         new_after_commissioning = factory.getRandomEnum(
             NODE_AFTER_COMMISSIONING_ACTION)
         new_check_compatibility = factory.getRandomBoolean()
+        new_commissioning_distro_series = factory.getRandomEnum(DISTRO_SERIES)
         response = self.client.post(
             '/settings/',
             get_prefixed_form_data(
@@ -103,15 +107,22 @@ class SettingsTest(AdminLoggedInTestCase):
                 data={
                     'after_commissioning': new_after_commissioning,
                     'check_compatibility': new_check_compatibility,
+                    'commissioning_distro_series':
+                        new_commissioning_distro_series,
                 }))
 
         self.assertEqual(httplib.FOUND, response.status_code)
         self.assertEqual(
-            new_after_commissioning,
-            Config.objects.get_config('after_commissioning'))
-        self.assertEqual(
-            new_check_compatibility,
-            Config.objects.get_config('check_compatibility'))
+            (
+                new_after_commissioning,
+                new_check_compatibility,
+                new_commissioning_distro_series,
+            ),
+            (
+                Config.objects.get_config('after_commissioning'),
+                Config.objects.get_config('check_compatibility'),
+                Config.objects.get_config('commissioning_distro_series'),
+            ))
 
     def test_settings_ubuntu_POST(self):
         new_fallback_master_archive = factory.getRandomBoolean()
@@ -119,6 +130,7 @@ class SettingsTest(AdminLoggedInTestCase):
         new_fetch_new_releases = factory.getRandomBoolean()
         choices = Config.objects.get_config('update_from_choice')
         new_update_from = factory.getRandomChoice(choices)
+        new_default_distro_series = factory.getRandomEnum(DISTRO_SERIES)
         response = self.client.post(
             '/settings/',
             get_prefixed_form_data(
@@ -128,20 +140,25 @@ class SettingsTest(AdminLoggedInTestCase):
                     'keep_mirror_list_uptodate': new_keep_mirror_list_uptodate,
                     'fetch_new_releases': new_fetch_new_releases,
                     'update_from': new_update_from,
+                    'default_distro_series': new_default_distro_series,
                 }))
 
         self.assertEqual(httplib.FOUND, response.status_code)
         self.assertEqual(
-            new_fallback_master_archive,
-            Config.objects.get_config('fallback_master_archive'))
-        self.assertEqual(
-            new_keep_mirror_list_uptodate,
-            Config.objects.get_config('keep_mirror_list_uptodate'))
-        self.assertEqual(
-            new_fetch_new_releases,
-            Config.objects.get_config('fetch_new_releases'))
-        self.assertEqual(
-            new_update_from, Config.objects.get_config('update_from'))
+            (
+                new_fallback_master_archive,
+                new_keep_mirror_list_uptodate,
+                new_fetch_new_releases,
+                new_update_from,
+                new_default_distro_series,
+            ),
+            (
+                Config.objects.get_config('fallback_master_archive'),
+                Config.objects.get_config('keep_mirror_list_uptodate'),
+                Config.objects.get_config('fetch_new_releases'),
+                Config.objects.get_config('update_from'),
+                Config.objects.get_config('default_distro_series'),
+            ))
 
     def test_settings_add_archive_POST(self):
         choices = Config.objects.get_config('update_from_choice')

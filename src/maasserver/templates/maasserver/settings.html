@@ -90,6 +90,9 @@
         {% with field=ubuntu_form.update_from %}
           {% include "maasserver/form_field.html" %}
         {% endwith %}
+        {% with field=ubuntu_form.default_distro_series %}
+          {% include "maasserver/form_field.html" %}
+        {% endwith %}
         <li>
           <label>Custom archives</label>
           <a href="{% url "settings-add-archive" %}">
