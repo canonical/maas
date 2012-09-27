@@ -15,6 +15,7 @@ __all__ = []
 from collections import namedtuple
 import httplib
 from io import BytesIO
+import json
 
 from django.conf import settings
 from django.core.exceptions import PermissionDenied
@@ -503,6 +504,51 @@ class TestViews(DjangoTestCase):
         node = reload_object(node)
         self.assertEqual(xmlbytes, node.hardware_details)
         self.assertEqual(0, node.memory)
+
+    def test_signal_refuses_bad_power_type(self):
+        node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
+        client = self.make_node_client(node=node)
+        response = self.call_signal(client, power_type="foo")
+        self.assertEqual(
+            (httplib.BAD_REQUEST, "Bad power_type 'foo'"),
+            (response.status_code, response.content))
+
+    def test_signal_power_type_stores_params(self):
+        node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
+        client = self.make_node_client(node=node)
+        params = dict(
+            power_address=factory.getRandomString(),
+            power_user=factory.getRandomString(),
+            power_pass=factory.getRandomString())
+        response = self.call_signal(
+            client, power_type="IPMI", power_parameters=json.dumps(params))
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        node = reload_object(node)
+        self.assertEqual(
+            params, node.power_parameters)
+
+    def test_signal_power_type_lower_case_works(self):
+        node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
+        client = self.make_node_client(node=node)
+        params = dict(
+            power_address=factory.getRandomString(),
+            power_user=factory.getRandomString(),
+            power_pass=factory.getRandomString())
+        response = self.call_signal(
+            client, power_type="ipmi", power_parameters=json.dumps(params))
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        node = reload_object(node)
+        self.assertEqual(
+            params, node.power_parameters)
+
+    def test_signal_invalid_power_parameters(self):
+        node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
+        client = self.make_node_client(node=node)
+        response = self.call_signal(
+            client, power_type="ipmi", power_parameters="badjson")
+        self.assertEqual(
+            (httplib.BAD_REQUEST, "Failed to parse json power_parameters"),
+            (response.status_code, response.content))
 
     def test_api_retrieves_node_metadata_by_mac(self):
         mac = factory.make_mac_address()
