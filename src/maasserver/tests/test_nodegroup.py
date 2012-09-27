@@ -141,12 +141,14 @@ class TestNodeGroupManager(TestCase):
             NodeGroup.objects.ensure_master().id,
             NodeGroup.objects.ensure_master().id)
 
-    def test_ensure_master_does_not_return_other_nodegroup(self):
-        self.assertNotEqual(
-            NodeGroup.objects.new(
-                factory.make_name('nodegroup'), factory.make_name('uuid'),
-                factory.getRandomIPAddress()),
-            NodeGroup.objects.ensure_master())
+    def test_ensure_master_returns_oldest_nodegroup(self):
+        first_nodegroup = NodeGroup.objects.new(
+            factory.make_name('nodegroup'), factory.make_name('uuid'),
+            factory.getRandomIPAddress())
+        NodeGroup.objects.new(
+            factory.make_name('nodegroup'), factory.make_name('uuid'),
+            factory.getRandomIPAddress())
+        self.assertEqual(first_nodegroup, NodeGroup.objects.ensure_master())
 
     def test_ensure_master_preserves_existing_attributes(self):
         master = NodeGroup.objects.ensure_master()

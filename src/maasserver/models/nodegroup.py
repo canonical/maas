@@ -85,7 +85,8 @@ class NodeGroupManager(Manager):
         from maasserver.models import Node
 
         try:
-            master = self.get(uuid='master')
+            # Get the first created nodegroup if it exists.
+            master = self.all().order_by('id')[0:1].get()
         except NodeGroup.DoesNotExist:
             # The master did not exist yet; create it on demand.
             master = self.new(

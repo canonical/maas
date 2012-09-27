@@ -3198,12 +3198,6 @@ class TestBootImagesAPI(APITestCase):
         response = self.report_images([], client=client)
         self.assertEqual(httplib.OK, response.status_code)
 
-    def test_report_boot_images_does_not_work_for_other_workers(self):
-        NodeGroup.objects.ensure_master()
-        client = make_worker_client(factory.make_node_group())
-        response = self.report_images([], client=client)
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
-
     def test_report_boot_images_stores_images(self):
         image = make_boot_image_params()
         client = make_worker_client(NodeGroup.objects.ensure_master())
