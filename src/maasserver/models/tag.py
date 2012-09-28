@@ -17,6 +17,7 @@ __all__ = [
 from django.core.exceptions import (
     PermissionDenied,
     )
+from django.core.validators import RegexValidator
 from django.db.models import (
     CharField,
     Manager,
@@ -85,10 +86,13 @@ class Tag(CleanSave, TimestampedModel):
     :ivar objects: The :class:`TagManager`.
     """
 
+    _tag_name_regex = '^[\w-]+$'
+
     class Meta(DefaultMeta):
         """Needed for South to recognize this model."""
 
-    name = CharField(max_length=256, unique=True, editable=True)
+    name = CharField(max_length=256, unique=True, editable=True,
+                     validators=[RegexValidator(_tag_name_regex)])
     definition = TextField()
     comment = TextField(blank=True)
 

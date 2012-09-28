@@ -2361,6 +2361,27 @@ class TestTagsAPI(APITestCase):
         self.assertEqual(definition, parsed_result['definition'])
         self.assertTrue(Tag.objects.filter(name=name).exists())
 
+    def test_POST_new_invalid_tag_name(self):
+        self.become_admin()
+        # We do not check the full possible set of invalid names here, a more
+        # thorough check is done in test_tag, we just check that we get a
+        # reasonable error here.
+        invalid = 'invalid:name'
+        definition = '//node'
+        comment = factory.getRandomString()
+        response = self.client.post(
+            self.get_uri('tags/'),
+            {
+                'op': 'new',
+                'name': invalid,
+                'comment': comment,
+                'definition': definition,
+            })
+        self.assertEqual(httplib.BAD_REQUEST, response.status_code,
+            'We did not get BAD_REQUEST for an invalid tag name: %r'
+            % (invalid,))
+        self.assertFalse(Tag.objects.filter(name=invalid).exists())
+
     def test_POST_new_populates_nodes(self):
         self.become_admin()
         node1 = factory.make_node()
