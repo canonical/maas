@@ -21,10 +21,8 @@ from lockfile import (
     FileLock,
     LockTimeout,
     )
-from maasserver import (
-    components,
-    start_up,
-    )
+from maasserver import start_up
+from maasserver.enum import COMPONENT
 from maasserver.models import (
     BootImage,
     NodeGroup,
@@ -116,7 +114,7 @@ class TestStartUp(TestCase):
         start_up.start_up()
 
         self.assertIn(
-            components.COMPONENT.IMPORT_PXE_FILES,
+            COMPONENT.IMPORT_PXE_FILES,
             [args[0][0] for args in recorder.call_args_list])
 
     def test_start_up_does_not_warn_if_boot_images_are_known(self):
@@ -128,5 +126,5 @@ class TestStartUp(TestCase):
         start_up.start_up()
 
         self.assertNotIn(
-            components.COMPONENT.IMPORT_PXE_FILES,
+            COMPONENT.IMPORT_PXE_FILES,
             [args[0][0] for args in recorder.call_args_list])

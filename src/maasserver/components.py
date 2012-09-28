@@ -19,19 +19,24 @@ __all__ = [
 from maasserver.models import ComponentError
 
 
-class COMPONENT:
-    PSERV = 'provisioning server'
-    IMPORT_PXE_FILES = 'maas-import-pxe-files script'
-
-
 def discard_persistent_error(component):
+    """Drop the persistent error for `component`.
+
+    :param component: An enum value of :class:`COMPONENT`.
+    """
     ComponentError.objects.filter(component=component).delete()
 
 
 def register_persistent_error(component, error_message):
+    """Register a persistent error for `component`.
+
+    :param component: An enum value of :class:`COMPONENT`.
+    :param error_message: Human-readable error text.
+    """
     discard_persistent_error(component)
     ComponentError.objects.create(component=component, error=error_message)
 
 
 def get_persistent_errors():
+    """Return list of current persistent error messages."""
     return sorted(err.error for err in ComponentError.objects.all())

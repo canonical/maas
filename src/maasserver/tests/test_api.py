@@ -46,10 +46,10 @@ from maasserver.api import (
     get_oauth_token,
     get_overrided_query_dict,
     )
-from maasserver.components import COMPONENT
 from maasserver.enum import (
     ARCHITECTURE,
     ARCHITECTURE_CHOICES,
+    COMPONENT,
     DISTRO_SERIES,
     NODE_AFTER_COMMISSIONING_ACTION,
     NODE_STATUS,

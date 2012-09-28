@@ -18,11 +18,9 @@ __all__ = [
 from textwrap import dedent
 
 from lockfile import FileLock
-from maasserver.components import (
-    COMPONENT,
-    register_persistent_error,
-    )
+from maasserver.components import register_persistent_error
 from maasserver.dns import write_full_dns_config
+from maasserver.enum import COMPONENT
 from maasserver.maasavahi import setup_maas_avahi_service
 from maasserver.models import (
     BootImage,

@@ -113,12 +113,12 @@ from maasserver.apidoc import (
     generate_api_docs,
     )
 from maasserver.components import (
-    COMPONENT,
     discard_persistent_error,
     register_persistent_error,
     )
 from maasserver.enum import (
     ARCHITECTURE,
+    COMPONENT,
     NODE_PERMISSION,
     NODE_STATUS,
     NODEGROUP_STATUS,

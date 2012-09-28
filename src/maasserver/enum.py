@@ -13,6 +13,7 @@ __metaclass__ = type
 __all__ = [
     'ARCHITECTURE',
     'ARCHITECTURE_CHOICES',
+    'COMPONENT',
     'NODEGROUP_STATUS',
     'NODEGROUP_STATUS_CHOICES',
     'NODEGROUPINTERFACE_MANAGEMENT',
@@ -27,6 +28,12 @@ __all__ = [
     ]
 
 from collections import OrderedDict
+
+
+class COMPONENT:
+    """Major moving parts of the application that may have failure states."""
+    PSERV = 'provisioning server'
+    IMPORT_PXE_FILES = 'maas-import-pxe-files script'
 
 
 class NODE_STATUS:

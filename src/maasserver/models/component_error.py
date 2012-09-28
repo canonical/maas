@@ -15,14 +15,13 @@ __all__ = [
     ]
 
 
-from django.db.models import (
-    CharField,
-    Model,
-    )
+from django.db.models import CharField
 from maasserver import DefaultMeta
+from maasserver.models.cleansave import CleanSave
+from maasserver.models.timestampedmodel import TimestampedModel
 
 
-class ComponentError(Model):
+class ComponentError(CleanSave, TimestampedModel):
     """Error state of a major component of the system."""
 
     class Meta(DefaultMeta):
