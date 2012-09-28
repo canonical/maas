@@ -201,7 +201,7 @@ class TestModuleHelpers(TestCase):
     def test_extract_constraints_extracts_name(self):
         name = factory.getRandomString()
         self.assertEqual(
-            {'name': name},
+            {'hostname': name},
             extract_constraints(QueryDict('name=%s' % name)))
 
     def test_get_overrided_query_dict_returns_QueryDict(self):
@@ -828,6 +828,11 @@ class APITestCase(APIv10TestMixin, TestCase):
         """Promote the logged-in user to admin."""
         self.logged_in_user.is_superuser = True
         self.logged_in_user.save()
+
+    def assertResponseCode(self, expected_code, response):
+        if response.status_code != expected_code:
+            self.fail("Expected %s response, got %s:\n%s" % (
+                expected_code, response.status_code, response.content))
 
 
 def extract_system_ids(parsed_result):
@@ -1712,6 +1717,81 @@ class TestNodesAPI(APITestCase):
             'arch': 'sparc',
         })
         self.assertEqual(httplib.CONFLICT, response.status_code)
+
+    def test_POST_acquire_allocates_node_by_cpu(self):
+        # Asking for enough cpu acquires a node with at least that.
+        node = factory.make_node(status=NODE_STATUS.READY, cpu_count=3)
+        response = self.client.post(self.get_uri('nodes/'), {
+            'op': 'acquire',
+            'cpu_count': 2,
+        })
+        self.assertResponseCode(httplib.OK, response)
+        response_json = json.loads(response.content)
+        self.assertEqual(node.system_id, response_json['system_id'])
+
+    def test_POST_acquire_fails_with_invalid_cpu(self):
+        # Asking for an invalid amount of cpu returns a bad request.
+        factory.make_node(status=NODE_STATUS.READY)
+        response = self.client.post(self.get_uri('nodes/'), {
+            'op': 'acquire',
+            'cpu_count': 'plenty',
+        })
+        self.assertResponseCode(httplib.BAD_REQUEST, response)
+
+    def test_POST_acquire_allocates_node_by_mem(self):
+        # Asking for enough memory acquires a node with at least that.
+        node = factory.make_node(status=NODE_STATUS.READY, memory=1024)
+        response = self.client.post(self.get_uri('nodes/'), {
+            'op': 'acquire',
+            'mem': 1024,
+        })
+        self.assertResponseCode(httplib.OK, response)
+        response_json = json.loads(response.content)
+        self.assertEqual(node.system_id, response_json['system_id'])
+
+    def test_POST_acquire_fails_with_invalid_mem(self):
+        # Asking for an invalid amount of cpu returns a bad request.
+        factory.make_node(status=NODE_STATUS.READY)
+        response = self.client.post(self.get_uri('nodes/'), {
+            'op': 'acquire',
+            'mem': 'bags',
+        })
+        self.assertResponseCode(httplib.BAD_REQUEST, response)
+
+    def test_POST_acquire_allocates_node_by_tags(self):
+        # Asking for particular tags acquires a node with those tags.
+        node = factory.make_node(status=NODE_STATUS.READY)
+        node_tag_names = ["fast", "stable", "cute"]
+        node.tags = [factory.make_tag(t) for t in node_tag_names]
+        response = self.client.post(self.get_uri('nodes/'), {
+            'op': 'acquire',
+            'tags': 'fast, stable',
+        })
+        self.assertResponseCode(httplib.OK, response)
+        response_json = json.loads(response.content)
+        self.assertEqual(node_tag_names, response_json['tag_names'])
+
+    def test_POST_acquire_fails_without_all_tags(self):
+        # Asking for particular tags does not acquire if no node has all tags.
+        node1 = factory.make_node(status=NODE_STATUS.READY)
+        node1.tags = [factory.make_tag(t) for t in ("fast", "stable", "cute")]
+        node2 = factory.make_node(status=NODE_STATUS.READY)
+        node2.tags = [factory.make_tag("cheap")]
+        response = self.client.post(self.get_uri('nodes/'), {
+            'op': 'acquire',
+            'tags': 'fast, cheap',
+        })
+        self.assertResponseCode(httplib.CONFLICT, response)
+
+    def test_POST_acquire_fails_with_unknown_tags(self):
+        # Asking for a tag that does not exist gives a specific error.
+        node = factory.make_node(status=NODE_STATUS.READY)
+        node.tags = [factory.make_tag("fast")]
+        response = self.client.post(self.get_uri('nodes/'), {
+            'op': 'acquire',
+            'tags': 'fast, hairy',
+        })
+        self.assertResponseCode(httplib.BAD_REQUEST, response)
 
     def test_POST_acquire_sets_a_token(self):
         # "acquire" should set the Token being used in the request on

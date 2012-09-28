@@ -84,6 +84,20 @@ class NodesNotAvailable(NodeStateViolation):
     api_error = httplib.CONFLICT
 
 
+class InvalidConstraint(MAASAPIBadRequest):
+    """Node allocation constraint given cannot be interpreted."""
+
+    def __init__(self, constraint, value, err=None):
+        super(InvalidConstraint, self).__init__(constraint, value)
+        self.err = err
+
+    def __str__(self):
+        s = "Invalid '%s' constraint '%s'" % self.args
+        if self.err:
+            return "%s: %s" % (s, str(self.err))
+        return s
+
+
 class Redirect(MAASAPIException):
     """Redirect.  The exception message is the target URL."""
     api_error = httplib.FOUND

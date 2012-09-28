@@ -250,21 +250,10 @@ class NodeManager(Manager):
         :type constraints: :class:`dict`
         :return: A matching `Node`, or None if none are available.
         """
-        if constraints is None:
-            constraints = {}
-        available_nodes = (
-            self.get_nodes(for_user, NODE_PERMISSION.VIEW)
-                .filter(status=NODE_STATUS.READY))
-
-        if constraints.get('name'):
-            available_nodes = available_nodes.filter(
-                hostname=constraints['name'])
-        if constraints.get('arch'):
-            # GZ 2012-09-11: This only supports an exact match on arch type,
-            #                using an i386 image on amd64 hardware will wait.
-            available_nodes = available_nodes.filter(
-                architecture=constraints['arch'])
-
+        from maasserver.models.node_constraint_filter import constrain_nodes
+        available_nodes = self.get_nodes(for_user, NODE_PERMISSION.VIEW)
+        available_nodes = available_nodes.filter(status=NODE_STATUS.READY)
+        available_nodes = constrain_nodes(available_nodes, constraints)
         return get_first(available_nodes)
 
     def stop_nodes(self, ids, by_user):
