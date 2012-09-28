@@ -14,9 +14,7 @@ cd "$(dirname "$0")/../.."
 # because there are race issues when restarting.
 [ -z "${logdir:-}" ] || exec &>> "${logdir}/current"
 
-# XXX JeroenVermeulen 2012-08-23, bug=1040529: Use fghack to kludge around
-# hanging celery shutdown.
-script="$(readlink -f bin/celeryd)"
-exec fghack "${script}" \
-    --loglevel INFO --beat --queues celery \
-    --config democeleryconfig
+export PYTHONPATH=etc/:src/
+export CELERY_CONFIG_MODULE=democeleryconfig_cluster
+script="$(readlink -f bin/maas-provision)"
+exec fghack "${script}" start-cluster-controller http://0.0.0.0:5240/
