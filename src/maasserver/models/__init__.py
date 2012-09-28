@@ -12,6 +12,7 @@ from __future__ import (
 __metaclass__ = type
 __all__ = [
     'BootImage',
+    'ComponentError',
     'Config',
     'DHCPLease',
     'FileStorage',
@@ -38,6 +39,7 @@ from django.core.urlresolvers import (
 from django.db.models.signals import post_save
 from maasserver.enum import NODE_PERMISSION
 from maasserver.models.bootimage import BootImage
+from maasserver.models.component_error import ComponentError
 from maasserver.models.config import Config
 from maasserver.models.dhcplease import DHCPLease
 from maasserver.models.filestorage import FileStorage
@@ -60,8 +62,8 @@ logger = getLogger('maasserver')
 # Suppress warning about symbols being imported, but only used for
 # export in __all__.
 ignore_unused(
-    Config, DHCPLease, FileStorage, MACAddress, NodeGroup, SSHKey,
-    Tag, UserProfile, NodeGroupInterface)
+    ComponentError, Config, DHCPLease, FileStorage, MACAddress, NodeGroup,
+    SSHKey, Tag, UserProfile, NodeGroupInterface)
 
 
 # Connect the 'create_user' method to the post save signal of User.

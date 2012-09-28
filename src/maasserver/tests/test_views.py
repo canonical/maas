@@ -23,7 +23,6 @@ from django.http import Http404
 from django.test.client import RequestFactory
 from django.utils.html import escape
 from lxml.html import fromstring
-from maasserver import components
 from maasserver.components import register_persistent_error
 from maasserver.exceptions import ExternalComponentException
 from maasserver.testing import extract_redirect
@@ -280,7 +279,6 @@ class MAASExceptionHandledInView(LoggedInTestCase):
 class PermanentErrorDisplayTest(LoggedInTestCase):
 
     def test_permanent_error_displayed(self):
-        self.patch(components, '_PERSISTENT_ERRORS', {})
         fault_codes = [
             randint(1, 100),
             randint(101, 200),
@@ -289,8 +287,8 @@ class PermanentErrorDisplayTest(LoggedInTestCase):
         for fault in fault_codes:
             # Create component with getRandomString to be sure
             # to display all the errors.
-            component = factory.getRandomString()
-            error_message = factory.getRandomString()
+            component = factory.make_name('component')
+            error_message = factory.make_name('error')
             error = Fault(fault, error_message)
             errors.append(error)
             register_persistent_error(component, error_message)

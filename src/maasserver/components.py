@@ -16,7 +16,7 @@ __all__ = [
     "register_persistent_error",
     ]
 
-import threading
+from maasserver.models import ComponentError
 
 
 class COMPONENT:
@@ -24,25 +24,14 @@ class COMPONENT:
     IMPORT_PXE_FILES = 'maas-import-pxe-files script'
 
 
-# Persistent errors are global to a MAAS instance.
-# This is a mapping: component -> error message.
-_PERSISTENT_ERRORS = {}
-
-
-_PERSISTENT_ERRORS_LOCK = threading.Lock()
+def discard_persistent_error(component):
+    ComponentError.objects.filter(component=component).delete()
 
 
 def register_persistent_error(component, error_message):
-    with _PERSISTENT_ERRORS_LOCK:
-        global _PERSISTENT_ERRORS
-        _PERSISTENT_ERRORS[component] = error_message
-
-
-def discard_persistent_error(component):
-    with _PERSISTENT_ERRORS_LOCK:
-        global _PERSISTENT_ERRORS
-        _PERSISTENT_ERRORS.pop(component, None)
+    discard_persistent_error(component)
+    ComponentError.objects.create(component=component, error=error_message)
 
 
 def get_persistent_errors():
-    return _PERSISTENT_ERRORS.values()
+    return sorted(err.error for err in ComponentError.objects.all())
