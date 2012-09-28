@@ -589,16 +589,19 @@ def create_node(request):
     altered_query_data = request.data.copy()
     if given_arch and '/' in given_arch:
         if given_subarch:
-            # architecture with a '/' and a subarchitecture: error
+            # Architecture with a '/' and a subarchitecture: error.
             raise ValidationError('Subarchitecture cannot be specified twice.')
-        # architecture with a '/' in it: use normally
+        # Architecture with a '/' in it: use normally.
     elif given_arch:
         if given_subarch:
-            # architecture without a '/' and a subarchitecture: use as specified
-            altered_query_data['architecture'] = '/'.join([given_arch, given_subarch])
+            # Architecture without a '/' and a subarchitecture:
+            # use as specified.
+            altered_query_data['architecture'] = '/'.join(
+                [given_arch, given_subarch])
             del altered_query_data['subarchitecture']
         else:
-            # architecture without a '/' and no subarchitecture: assume 'generic'
+            # Architecture without a '/' and no subarchitecture:
+            # assume 'generic'.
             altered_query_data['architecture'] += '/generic'
 
     Form = get_node_create_form(request.user)
