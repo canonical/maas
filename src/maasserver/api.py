@@ -1325,7 +1325,7 @@ class TagHandler(BaseHandler):
     @classmethod
     def resource_uri(cls, tag=None):
         # See the comment in NodeHandler.resource_uri
-        tag_name = 'tag_name'
+        tag_name = 'name'
         if tag is not None:
             tag_name = tag.name
         return ('tag_handler', (tag_name, ))
