@@ -55,6 +55,7 @@ setup(
     data_files=[
         ('/etc/maas',
             ['etc/pserv.yaml',
+             'etc/maas_cluster.conf',
              'etc/txlongpoll.yaml',
              'etc/celeryconfig.py',
              'contrib/maas_local_celeryconfig.py',
