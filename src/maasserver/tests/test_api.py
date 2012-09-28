@@ -3064,7 +3064,7 @@ class TestNodeGroupInterfacesAPI(APITestCase):
         self.assertEqual(
             (
                 httplib.BAD_REQUEST,
-                {'ip': ["Enter a valid IPv4 address."]},
+                {'ip': ["Enter a valid IPv4 or IPv6 address."]},
             ),
             (response.status_code, json.loads(response.content)))
 

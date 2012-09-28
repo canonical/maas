@@ -18,8 +18,8 @@ __all__ = [
 from django.db.models import (
     CharField,
     ForeignKey,
+    GenericIPAddressField,
     IntegerField,
-    IPAddressField,
     )
 from maasserver import DefaultMeta
 from maasserver.enum import (
@@ -35,7 +35,7 @@ class NodeGroupInterface(TimestampedModel):
         unique_together = ('nodegroup', 'interface')
 
     # Static IP of the interface.
-    ip = IPAddressField(null=False, editable=True)
+    ip = GenericIPAddressField(null=False, editable=True)
 
     # The `NodeGroup` this interface belongs to.
     nodegroup = ForeignKey(
@@ -48,15 +48,15 @@ class NodeGroupInterface(TimestampedModel):
     # DHCP server settings.
     interface = CharField(
         blank=True, editable=True, max_length=255, default='')
-    subnet_mask = IPAddressField(
+    subnet_mask = GenericIPAddressField(
         editable=True, unique=False, blank=True, null=True, default=None)
-    broadcast_ip = IPAddressField(
+    broadcast_ip = GenericIPAddressField(
         editable=True, unique=False, blank=True, null=True, default=None)
-    router_ip = IPAddressField(
+    router_ip = GenericIPAddressField(
         editable=True, unique=False, blank=True, null=True, default=None)
-    ip_range_low = IPAddressField(
+    ip_range_low = GenericIPAddressField(
         editable=True, unique=True, blank=True, null=True, default=None)
-    ip_range_high = IPAddressField(
+    ip_range_high = GenericIPAddressField(
         editable=True, unique=True, blank=True, null=True, default=None)
 
     def __repr__(self):
