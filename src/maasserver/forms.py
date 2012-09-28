@@ -694,6 +694,10 @@ INTERFACES_VALIDATION_ERROR_MESSAGE = (
     "the information needed to initialize an interface.")
 
 
+# The zone name used for nodegroups when none is explicitly provided.
+DEFAULT_ZONE_NAME = 'master'
+
+
 class NodeGroupWithInterfacesForm(ModelForm):
     """Create a NodeGroup with unmanaged interfaces."""
 
@@ -709,6 +713,13 @@ class NodeGroupWithInterfacesForm(ModelForm):
     def __init__(self, status=None, *args, **kwargs):
         super(NodeGroupWithInterfacesForm, self).__init__(*args, **kwargs)
         self.status = status
+
+    def clean_name(self):
+        data = self.cleaned_data['name']
+        if data == '':
+            return DEFAULT_ZONE_NAME
+        else:
+            return data
 
     def clean_interfaces(self):
         data = self.cleaned_data['interfaces']

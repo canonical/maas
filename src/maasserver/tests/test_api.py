@@ -59,6 +59,7 @@ from maasserver.enum import (
     )
 from maasserver.exceptions import Unauthorized
 from maasserver.fields import mac_error_msg
+from maasserver.forms import DEFAULT_ZONE_NAME
 from maasserver.models import (
     BootImage,
     Config,
@@ -2810,6 +2811,19 @@ class TestAnonNodeGroupsAPI(AnonAPITestCase):
             master.nodegroupinterface_set.all()[0],
             MatchesStructure.byEquality(**interface))
         self.assertEqual(NODEGROUP_STATUS.ACCEPTED, master.status)
+
+    def test_register_nodegroup_uses_default_zone_name(self):
+        uuid = factory.getRandomUUID()
+        self.client.post(
+            reverse('nodegroups_handler'),
+            {
+                'op': 'register',
+                'uuid': uuid,
+            })
+        master = NodeGroup.objects.ensure_master()
+        self.assertEqual(
+            (NODEGROUP_STATUS.ACCEPTED, DEFAULT_ZONE_NAME),
+            (master.status, master.name))
 
     def test_register_accepts_only_one_managed_interface(self):
         self.create_configured_master()
