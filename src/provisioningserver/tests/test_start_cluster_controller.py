@@ -26,6 +26,7 @@ from apiclient.maas_client import MAASDispatcher
 from apiclient.testing.django import parse_headers_and_body_with_django
 from fixtures import EnvironmentVariableFixture
 from maastesting.factory import factory
+from mock import Mock
 from provisioningserver import start_cluster_controller
 from provisioningserver.testing.testcase import PservTestCase
 
@@ -79,8 +80,9 @@ class TestStartClusterController(PservTestCase):
         self.patch(start_cluster_controller, 'sleep').side_effect = Sleeping()
         self.patch(start_cluster_controller, 'Popen').side_effect = (
             Executing())
-        self.patch(
-            start_cluster_controller, 'CLUSTER_UUID', factory.getRandomUUID())
+        self.cluster_uuid = factory.getRandomUUID()
+        self.patch(start_cluster_controller, 'get_cluster_uuid', Mock(
+            return_value=self.cluster_uuid))
 
     def make_connection_details(self):
         return {
@@ -168,8 +170,6 @@ class TestStartClusterController(PservTestCase):
 
     def test_register_passes_cluster_information(self):
         self.prepare_success_response()
-        self.patch(
-            start_cluster_controller, 'CLUSTER_UUID', factory.getRandomUUID())
         interface = {
             'interface': factory.make_name('eth'),
             'ip': factory.getRandomIPAddress(),
@@ -184,7 +184,7 @@ class TestStartClusterController(PservTestCase):
         headers, body = kwargs["headers"], kwargs["data"]
         post, files = self.parse_headers_and_body(headers, body)
         self.assertEqual([interface], json.loads(post['interfaces']))
-        self.assertEqual(start_cluster_controller.CLUSTER_UUID, post['uuid'])
+        self.assertEqual(self.cluster_uuid, post['uuid'])
 
     def test_starts_up_once_accepted(self):
         self.patch(start_cluster_controller, 'start_up')

@@ -43,7 +43,7 @@ from apiclient.maas_client import (
     MAASDispatcher,
     MAASOAuth,
     )
-from celeryconfig import DHCP_LEASES_FILE
+from celery.app import app_or_default
 from provisioningserver import cache
 from provisioningserver.auth import (
     get_recorded_api_credentials,
@@ -61,9 +61,14 @@ LEASES_TIME_CACHE_KEY = 'leases_time'
 LEASES_CACHE_KEY = 'recorded_leases'
 
 
+def get_leases_file():
+    """Get the location of the DHCP leases file from the config."""
+    return app_or_default().conf.DHCP_LEASES_FILE
+
+
 def get_leases_timestamp():
     """Return the last modification timestamp of the DHCP leases file."""
-    return stat(DHCP_LEASES_FILE).st_mtime
+    return stat(get_leases_file()).st_mtime
 
 
 def parse_leases_file():
@@ -73,7 +78,7 @@ def parse_leases_file():
         modification time of the leases file, and `leases` is a dict
         mapping leased IP addresses to their associated MAC addresses.
     """
-    with open(DHCP_LEASES_FILE, 'rb') as leases_file:
+    with open(get_leases_file(), 'rb') as leases_file:
         contents = leases_file.read().decode('utf-8')
         return fstat(leases_file.fileno()).st_mtime, parse_leases(contents)
 

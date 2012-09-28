@@ -30,7 +30,7 @@ from apiclient.maas_client import (
     MAASDispatcher,
     NoAuth,
     )
-from celeryconfig import CLUSTER_UUID
+from celery.app import app_or_default
 from provisioningserver.logging import task_logger
 from provisioningserver.network import discover_networks
 
@@ -56,6 +56,16 @@ def make_anonymous_api_client(server_url):
     return MAASClient(NoAuth(), MAASDispatcher(), server_url)
 
 
+def get_cluster_uuid():
+    """Read this cluster's UUID from the config."""
+    return app_or_default().conf.CLUSTER_UUID
+
+
+def get_maas_celery_log():
+    """Read location for MAAS Celery log file from the config."""
+    return app_or_default().conf.MAAS_CELERY_LOG
+
+
 def register(server_url):
     """Request Rabbit connection details from the domain controller.
 
@@ -73,10 +83,11 @@ def register(server_url):
 
     interfaces = json.dumps(discover_networks())
     client = make_anonymous_api_client(server_url)
+    cluster_uuid = get_cluster_uuid()
     try:
         response = client.post(
             'api/1.0/nodegroups/', 'register',
-            interfaces=interfaces, uuid=CLUSTER_UUID)
+            interfaces=interfaces, uuid=cluster_uuid)
     except HTTPError as e:
         status_code = e.code
         if e.code not in known_responses:
@@ -112,10 +123,10 @@ def start_celery(connection_details):
 
     command = [
         'celeryd',
-        '--logfile=/var/log/maas/celery.log',
+        '--logfile=%s' % get_maas_celery_log(),
         '--loglevel=INFO',
         '--beat',
-        '-Q', CLUSTER_UUID,
+        '-Q', get_cluster_uuid(),
         ]
     Popen(command, env=env)
 

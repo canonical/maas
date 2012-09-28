@@ -18,6 +18,7 @@ import re
 
 from maastesting.factory import factory
 from maastesting.testcase import TestCase
+from mock import Mock
 from provisioningserver.enum import POWER_TYPE
 import provisioningserver.power.poweraction
 from provisioningserver.power.poweraction import (
@@ -38,7 +39,8 @@ class TestPowerAction(TestCase):
     def configure_templates_dir(self, path=None):
         """Configure POWER_TEMPLATES_DIR to `path`."""
         self.patch(
-            provisioningserver.power.poweraction, 'POWER_TEMPLATES_DIR', path)
+            provisioningserver.power.poweraction, 'get_power_templates_dir',
+            Mock(return_value=path))
 
     def test_init_raises_for_unknown_powertype(self):
         powertype = factory.make_name("powertype", sep='')

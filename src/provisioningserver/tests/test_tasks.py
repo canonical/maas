@@ -24,12 +24,7 @@ from subprocess import (
 from apiclient.creds import convert_tuple_to_string
 from apiclient.maas_client import MAASClient
 from apiclient.testing.credentials import make_api_credentials
-from celeryconfig import (
-    DHCP_CONFIG_FILE,
-    DHCP_INTERFACES_FILE,
-    WORKER_QUEUE_BOOT_IMAGES,
-    WORKER_QUEUE_DNS,
-    )
+from celery.app import app_or_default
 from maastesting.celery import CeleryFixture
 from maastesting.factory import factory
 from maastesting.fakemethod import (
@@ -90,6 +85,9 @@ from testtools.matchers import (
 # An arbitrary MAC address.  Not using a properly random one here since
 # we might accidentally affect real machines on the network.
 arbitrary_mac = "AA:BB:CC:DD:EE:FF"
+
+
+celery_config = app_or_default().conf
 
 
 class TestRefreshSecrets(PservTestCase):
@@ -253,7 +251,7 @@ class TestDHCPTasks(PservTestCase):
         # It should construct Popen with the right parameters.
         mocked_popen.assert_any_call(
             ["sudo", "-n", "maas-provision", "atomic-write", "--filename",
-            DHCP_CONFIG_FILE, "--mode", "0644"], stdin=PIPE)
+            celery_config.DHCP_CONFIG_FILE, "--mode", "0644"], stdin=PIPE)
 
         # It should then pass the content to communicate().
         content = config.get_config(**config_params).encode("ascii")
@@ -263,7 +261,7 @@ class TestDHCPTasks(PservTestCase):
         # /var/lib/maas/dhcpd-interfaces.
         mocked_popen.assert_any_call(
             ["sudo", "-n", "maas-provision", "atomic-write", "--filename",
-            DHCP_INTERFACES_FILE, "--mode", "0644"], stdin=PIPE)
+            celery_config.DHCP_INTERFACES_FILE, "--mode", "0644"], stdin=PIPE)
 
     def test_restart_dhcp_server_sends_command(self):
         recorder = FakeMethod()
@@ -313,7 +311,9 @@ class TestDNSTasks(PservTestCase):
             result)
 
     def test_write_dns_config_attached_to_dns_worker_queue(self):
-        self.assertEqual(write_dns_config.queue, WORKER_QUEUE_DNS)
+        self.assertEqual(
+            write_dns_config.queue,
+            celery_config.WORKER_QUEUE_DNS)
 
     def test_write_dns_zone_config_writes_file(self):
         command = factory.getRandomString()
@@ -344,7 +344,9 @@ class TestDNSTasks(PservTestCase):
             result)
 
     def test_write_dns_zone_config_attached_to_dns_worker_queue(self):
-        self.assertEqual(write_dns_zone_config.queue, WORKER_QUEUE_DNS)
+        self.assertEqual(
+            write_dns_zone_config.queue,
+            celery_config.WORKER_QUEUE_DNS)
 
     def test_setup_rndc_configuration_writes_files(self):
         command = factory.getRandomString()
@@ -369,7 +371,9 @@ class TestDNSTasks(PservTestCase):
             result)
 
     def test_setup_rndc_configuration_attached_to_dns_worker_queue(self):
-        self.assertEqual(setup_rndc_configuration.queue, WORKER_QUEUE_DNS)
+        self.assertEqual(
+            setup_rndc_configuration.queue,
+            celery_config.WORKER_QUEUE_DNS)
 
     def test_rndc_command_execute_command(self):
         command = factory.getRandomString()
@@ -412,7 +416,7 @@ class TestDNSTasks(PservTestCase):
             CalledProcessError, rndc_command.delay, command, retry=True)
 
     def test_rndc_command_attached_to_dns_worker_queue(self):
-        self.assertEqual(rndc_command.queue, WORKER_QUEUE_DNS)
+        self.assertEqual(rndc_command.queue, celery_config.WORKER_QUEUE_DNS)
 
     def test_write_full_dns_config_sets_up_config(self):
         # write_full_dns_config writes the config file, writes
@@ -447,7 +451,9 @@ class TestDNSTasks(PservTestCase):
                 )))
 
     def test_write_full_dns_attached_to_dns_worker_queue(self):
-        self.assertEqual(write_full_dns_config.queue, WORKER_QUEUE_DNS)
+        self.assertEqual(
+            write_full_dns_config.queue,
+            celery_config.WORKER_QUEUE_DNS)
 
 
 class TestBootImagesTasks(PservTestCase):
@@ -470,4 +476,6 @@ class TestBootImagesTasks(PservTestCase):
         self.assertItemsEqual([image], json.loads(kwargs['images']))
 
     def test_report_boot_images_attached_to_boot_images_worker_queue(self):
-        self.assertEqual(write_dns_config.queue, WORKER_QUEUE_BOOT_IMAGES)
+        self.assertEqual(
+            write_dns_config.queue,
+            celery_config.WORKER_QUEUE_BOOT_IMAGES)

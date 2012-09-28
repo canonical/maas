@@ -28,13 +28,8 @@ from subprocess import (
     check_call,
     )
 
+from celery.app import app_or_default
 from celery.task import task
-from celeryconfig import (
-    DHCP_CONFIG_FILE,
-    DHCP_INTERFACES_FILE,
-    WORKER_QUEUE_BOOT_IMAGES,
-    WORKER_QUEUE_DNS,
-    )
 from provisioningserver import boot_images
 from provisioningserver.auth import (
     record_api_credentials,
@@ -61,6 +56,9 @@ refresh_functions = {
     'maas_url': record_maas_url,
     'nodegroup_uuid': record_nodegroup_uuid,
 }
+
+
+celery_config = app_or_default().conf
 
 
 @task
@@ -157,7 +155,7 @@ RNDC_COMMAND_MAX_RETRY = 10
 RNDC_COMMAND_RETRY_DELAY = 2
 
 
-@task(max_retries=RNDC_COMMAND_MAX_RETRY, queue=WORKER_QUEUE_DNS)
+@task(max_retries=RNDC_COMMAND_MAX_RETRY, queue=celery_config.WORKER_QUEUE_DNS)
 def rndc_command(arguments, retry=False, callback=None):
     """Use rndc to execute a command.
     :param arguments: Argument list passed down to the rndc command.
@@ -179,7 +177,7 @@ def rndc_command(arguments, retry=False, callback=None):
         callback.delay()
 
 
-@task(queue=WORKER_QUEUE_DNS)
+@task(queue=celery_config.WORKER_QUEUE_DNS)
 def write_full_dns_config(zones=None, callback=None, **kwargs):
     """Write out the DNS configuration files: the main configuration
     file and the zone files.
@@ -200,7 +198,7 @@ def write_full_dns_config(zones=None, callback=None, **kwargs):
         callback.delay()
 
 
-@task(queue=WORKER_QUEUE_DNS)
+@task(queue=celery_config.WORKER_QUEUE_DNS)
 def write_dns_config(zones=(), callback=None, **kwargs):
     """Write out the DNS configuration file.
 
@@ -217,7 +215,7 @@ def write_dns_config(zones=(), callback=None, **kwargs):
         callback.delay()
 
 
-@task(queue=WORKER_QUEUE_DNS)
+@task(queue=celery_config.WORKER_QUEUE_DNS)
 def write_dns_zone_config(zone, callback=None, **kwargs):
     """Write out a DNS zone configuration file.
 
@@ -233,7 +231,7 @@ def write_dns_zone_config(zone, callback=None, **kwargs):
         callback.delay()
 
 
-@task(queue=WORKER_QUEUE_DNS)
+@task(queue=celery_config.WORKER_QUEUE_DNS)
 def setup_rndc_configuration(callback=None):
     """Write out the two rndc configuration files (rndc.conf and
     named.conf.rndc).
@@ -315,8 +313,10 @@ def write_dhcp_config(callback=None, **kwargs):
         DHCP server should listen on.
     :param **kwargs: Keyword args passed to dhcp.config.get_config()
     """
-    sudo_write_file(DHCP_CONFIG_FILE, config.get_config(**kwargs))
-    sudo_write_file(DHCP_INTERFACES_FILE, kwargs.get('dhcp_interfaces', ''))
+    sudo_write_file(
+        celery_config.DHCP_CONFIG_FILE, config.get_config(**kwargs))
+    sudo_write_file(
+        celery_config.DHCP_INTERFACES_FILE, kwargs.get('dhcp_interfaces', ''))
     if callback is not None:
         callback.delay()
 
@@ -332,7 +332,7 @@ def restart_dhcp_server():
 # =====================================================================
 
 
-@task(queue=WORKER_QUEUE_BOOT_IMAGES)
+@task(queue=celery_config.WORKER_QUEUE_BOOT_IMAGES)
 def report_boot_images():
     """For master worker only: report available netboot images."""
     boot_images.report_to_server()

@@ -54,6 +54,8 @@ BROKER_URL = 'amqp://guest:guest@localhost:5672//'
 # local MAAS Celery config.
 CLUSTER_UUID = None
 
+# Location for log file.
+MAAS_CELERY_LOG = '/var/log/maas/celery.log'
 
 WORKER_QUEUE_DNS = 'celery'
 WORKER_QUEUE_BOOT_IMAGES = 'celery'

@@ -72,7 +72,7 @@ class TestUpdateLeases(PservTestCase):
 
     def redirect_parser(self, path):
         """Make the leases parser read from a file at `path`."""
-        self.patch(leases_module, 'DHCP_LEASES_FILE', path)
+        self.patch(leases_module, 'get_leases_file').return_value = path
 
     def fake_leases_file(self, leases=None, age=None):
         """Fake the presence of a leases file.
