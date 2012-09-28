@@ -13,12 +13,12 @@ __metaclass__ = type
 __all__ = []
 
 from maasserver.enum import ARCHITECTURE
-
 from maasserver.exceptions import InvalidConstraint
 from maasserver.models import Node
 from maasserver.models.node_constraint_filter import constrain_nodes
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
+from maasserver.utils import ignore_unused
 
 
 class TestConstrainNodes(TestCase):
@@ -94,6 +94,7 @@ class TestConstrainNodes(TestCase):
         node_big = factory.make_node(architecture=ARCHITECTURE.i386)
         node_big.tags.add(tag_big)
         node_small = factory.make_node(architecture=ARCHITECTURE.i386)
+        ignore_unused(node_small)
         node_big_arm = factory.make_node(architecture=ARCHITECTURE.armhf)
         node_big_arm.tags.add(tag_big)
         self.assertConstrainedNodes([node_big, node_big_arm],

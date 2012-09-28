@@ -19,7 +19,6 @@ from django.core.exceptions import (
     PermissionDenied,
     ValidationError,
     )
-from django.http import Http404
 from maasserver.enum import (
     ARCHITECTURE,
     DISTRO_SERIES,
@@ -28,10 +27,7 @@ from maasserver.enum import (
     NODE_STATUS_CHOICES,
     NODE_STATUS_CHOICES_DICT,
     )
-from maasserver.exceptions import (
-    InvalidConstraint,
-    NodeStateViolation,
-    )
+from maasserver.exceptions import NodeStateViolation
 from maasserver.models import (
     Config,
     MACAddress,

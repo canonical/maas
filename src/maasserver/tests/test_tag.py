@@ -44,14 +44,14 @@ class TagTest(TestCase):
         self.assertEqual([node.id], [n.id for n in tag.node_set.all()])
 
     def test_valid_tag_names(self):
-        for valid in ['valid-dash', 'under_score', 'long'*50]:
+        for valid in ['valid-dash', 'under_score', 'long' * 50]:
             tag = factory.make_tag(name=valid)
             self.assertEqual(valid, tag.name)
 
     def test_validate_traps_invalid_tag_name(self):
         for invalid in ['invalid:name', 'no spaces', 'no\ttabs',
                         'no&ampersand', 'no!shouting', '',
-                        'too-long'*33, '\xb5']:
+                        'too-long' * 33, '\xb5']:
             self.assertRaises(ValidationError, factory.make_tag, name=invalid)
 
     def test_populate_nodes_applies_tags_to_nodes(self):
