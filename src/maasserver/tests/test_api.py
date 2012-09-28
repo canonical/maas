@@ -268,7 +268,6 @@ class EnlistmentAPITest(APIv10TestMixin, MultipleUsersScenarios, TestCase):
         ]
 
     def test_POST_new_creates_node(self):
-        # The API allows a Node to be created.
         architecture = factory.getRandomChoice(ARCHITECTURE_CHOICES)
         response = self.client.post(
             self.get_uri('nodes/'),
@@ -280,14 +279,78 @@ class EnlistmentAPITest(APIv10TestMixin, MultipleUsersScenarios, TestCase):
                     NODE_AFTER_COMMISSIONING_ACTION.DEFAULT,
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
             })
-        parsed_result = json.loads(response.content)
 
         self.assertEqual(httplib.OK, response.status_code)
+        parsed_result = json.loads(response.content)
         self.assertIn('application/json', response['Content-Type'])
         self.assertEqual('diane', parsed_result['hostname'])
         self.assertNotEqual(0, len(parsed_result.get('system_id')))
         [diane] = Node.objects.filter(hostname='diane')
         self.assertEqual(architecture, diane.architecture)
+
+    def test_POST_new_creates_node_with_arch_only(self):
+        architecture = factory.getRandomChoice(
+            [choice for choice in ARCHITECTURE_CHOICES
+             if choice[0].endswith('/generic')])
+        response = self.client.post(
+            self.get_uri('nodes/'),
+            {
+                'op': 'new',
+                'hostname': 'diane',
+                'architecture': architecture.split('/')[0],
+                'after_commissioning_action':
+                    NODE_AFTER_COMMISSIONING_ACTION.DEFAULT,
+                'mac_addresses': ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
+            })
+
+        self.assertEqual(httplib.OK, response.status_code)
+        parsed_result = json.loads(response.content)
+        self.assertIn('application/json', response['Content-Type'])
+        self.assertEqual('diane', parsed_result['hostname'])
+        self.assertNotEqual(0, len(parsed_result.get('system_id')))
+        [diane] = Node.objects.filter(hostname='diane')
+        self.assertEqual(architecture, diane.architecture)
+
+    def test_POST_new_creates_node_with_subarchitecture(self):
+        # The API allows a Node to be created.
+        architecture = factory.getRandomChoice(ARCHITECTURE_CHOICES)
+        response = self.client.post(
+            self.get_uri('nodes/'),
+            {
+                'op': 'new',
+                'hostname': 'diane',
+                'architecture': architecture.split('/')[0],
+                'subarchitecture': architecture.split('/')[1],
+                'after_commissioning_action':
+                    NODE_AFTER_COMMISSIONING_ACTION.DEFAULT,
+                'mac_addresses': ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
+            })
+
+        self.assertEqual(httplib.OK, response.status_code)
+        parsed_result = json.loads(response.content)
+        self.assertIn('application/json', response['Content-Type'])
+        self.assertEqual('diane', parsed_result['hostname'])
+        self.assertNotEqual(0, len(parsed_result.get('system_id')))
+        [diane] = Node.objects.filter(hostname='diane')
+        self.assertEqual(architecture, diane.architecture)
+
+    def test_POST_new_fails_node_with_double_subarchitecture(self):
+        architecture = factory.getRandomChoice(ARCHITECTURE_CHOICES)
+        response = self.client.post(
+            self.get_uri('nodes/'),
+            {
+                'op': 'new',
+                'hostname': 'diane',
+                'architecture': architecture,
+                'subarchitecture': architecture.split('/')[1],
+                'after_commissioning_action':
+                    NODE_AFTER_COMMISSIONING_ACTION.DEFAULT,
+                'mac_addresses': ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
+            })
+        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+        self.assertIn('text/plain', response['Content-Type'])
+        self.assertEqual("Subarchitecture cannot be specified twice.",
+            response.content)
 
     def test_POST_new_power_type_defaults_to_asking_config(self):
         architecture = factory.getRandomChoice(ARCHITECTURE_CHOICES)
@@ -1703,7 +1766,7 @@ class TestNodesAPI(APITestCase):
             status=NODE_STATUS.READY, architecture=ARCHITECTURE.i386)
         response = self.client.post(self.get_uri('nodes/'), {
             'op': 'acquire',
-            'arch': 'i386',
+            'arch': 'i386/generic',
         })
         self.assertEqual(httplib.OK, response.status_code)
         response_json = json.loads(response.content)
@@ -2696,9 +2759,10 @@ class TestPXEConfigAPI(AnonAPITestCase):
     def test_pxeconfig_defaults_to_i386_when_node_unknown(self):
         # As a lowest-common-denominator, i386 is chosen when the node is not
         # yet known to MAAS.
+        expected_arch = tuple(ARCHITECTURE.i386.split('/'))
         params_out = self.get_pxeconfig()
-        self.assertEqual(ARCHITECTURE.i386, params_out["arch"])
-        self.assertEqual("generic", params_out["subarch"])
+        observed_arch = params_out["arch"], params_out["subarch"]
+        self.assertEqual(expected_arch, observed_arch)
 
     def get_without_param(self, param):
         """Request a `pxeconfig()` response, but omit `param` from request."""

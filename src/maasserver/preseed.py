@@ -93,6 +93,7 @@ def get_preseed_filenames(node, prefix='', release='', default=False):
     lookup order:
     {prefix}_{node_architecture}_{node_subarchitecture}_{release}_{node_name}
     {prefix}_{node_architecture}_{node_subarchitecture}_{release}
+    {prefix}_{node_architecture}_{node_subarchitecture}
     {prefix}_{node_architecture}
     {prefix}
     'generic'

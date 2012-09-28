@@ -64,27 +64,7 @@ class TestGetPreseedFilenames(TestCase):
         prefix = factory.getRandomString()
         release = factory.getRandomString()
         node = factory.make_node(hostname=hostname)
-        self.assertSequenceEqual(
-            [
-                '%s_%s_%s_%s' % (prefix, node.architecture, release, hostname),
-                '%s_%s_%s' % (prefix, node.architecture, release),
-                '%s_%s' % (prefix, node.architecture),
-                '%s' % prefix,
-                'generic',
-            ],
-            list(get_preseed_filenames(node, prefix, release, default=True)))
-
-    def test_get_preseed_filenames_returns_filenames_with_subarch(self):
-        arch = factory.getRandomString()
-        subarch = factory.getRandomString()
-        fake_arch = '%s/%s' % (arch, subarch)
-        hostname = factory.getRandomString()
-        prefix = factory.getRandomString()
-        release = factory.getRandomString()
-        node = factory.make_node(hostname=hostname)
-        # Set an architecture of the form '%s/%s' i.e. with a
-        # sub-architecture.
-        node.architecture = fake_arch
+        arch, subarch = node.architecture.split('/')
         self.assertSequenceEqual(
             [
                 '%s_%s_%s_%s_%s' % (prefix, arch, subarch, release, hostname),
@@ -110,11 +90,13 @@ class TestGetPreseedFilenames(TestCase):
         hostname = factory.getRandomString()
         release = factory.getRandomString()
         node = factory.make_node(hostname=hostname)
+        arch, subarch = node.architecture.split('/')
         self.assertSequenceEqual(
             [
-                '%s_%s_%s' % (node.architecture, release, hostname),
-                '%s_%s' % (node.architecture, release),
-                '%s' % node.architecture,
+                '%s_%s_%s_%s' % (arch, subarch, release, hostname),
+                '%s_%s_%s' % (arch, subarch, release),
+                '%s_%s' % (arch, subarch),
+                '%s' % arch,
             ],
             list(get_preseed_filenames(node, '', release)))
 
@@ -266,7 +248,8 @@ class TestLoadPreseedTemplate(TestCase):
         self.create_template(self.location, prefix)
         node = factory.make_node(hostname=factory.getRandomString())
         node_template_name = "%s_%s_%s_%s" % (
-            prefix, node.architecture, release, node.hostname)
+            prefix, node.architecture.replace('/', '_'),
+            release, node.hostname)
         # Create the node-specific template.
         content = self.create_template(self.location, node_template_name)
         template = load_preseed_template(node, prefix, release)

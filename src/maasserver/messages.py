@@ -111,7 +111,7 @@ class MAASMessenger(MessengerBase):
             "instance": {
                 "hostname": "sun",
                 "system_id": "node-17ca41c2-6c39-11e1-a961-00219bd0a2de",
-                "architecture": "i386",
+                "architecture": "i386/generic",
                 [...]
             }
         }

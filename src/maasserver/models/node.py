@@ -411,7 +411,7 @@ class Node(CleanSave, TimestampedModel):
         blank=True, default=None)
 
     architecture = CharField(
-        max_length=10, choices=ARCHITECTURE_CHOICES, blank=False,
+        max_length=31, choices=ARCHITECTURE_CHOICES, blank=False,
         default=ARCHITECTURE.i386)
 
     # Juju expects the following standard constraints, which are stored here
