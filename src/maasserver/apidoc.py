@@ -28,7 +28,8 @@ from piston.handler import HandlerMetaClass
 def find_api_handlers(module):
     """Find the API handlers defined in `module`.
 
-    Handlers are of type :class:`HandlerMetaClass`.
+    Handlers are of type :class:`HandlerMetaClass`, and must define a
+    `resource_uri` method.
 
     :rtype: Generator, yielding handlers.
     """
@@ -41,7 +42,8 @@ def find_api_handlers(module):
     for name in names:
         candidate = getattr(module, name)
         if isinstance(candidate, HandlerMetaClass):
-            yield candidate
+            if getattr(candidate, "resource_uri", None) is not None:
+                yield candidate
 
 
 def generate_api_docs(handlers):
@@ -95,32 +97,21 @@ def describe_actions(handler):
       restful: Indicates if this is a CRUD/ReSTful action.
 
     """
-    from maasserver.api import dispatch_methods  # Avoid circular imports.
-    operation_methods = getattr(handler, "_available_api_methods", {})
-    for http_method in handler.allowed_methods:
-        desc_base = dict(method=http_method)
-        if http_method in operation_methods:
-            # Default Piston CRUD method has been overridden; inspect
-            # custom operations instead.
-            operations = handler._available_api_methods[http_method]
-            for op, func in operations.items():
-                yield dict(
-                    desc_base, name=op, doc=getdoc(func),
-                    op=op, restful=False)
-        else:
-            # Default Piston CRUD method still stands.
-            name = dispatch_methods[http_method]
-            func = getattr(handler, name)
-            yield dict(
-                desc_base, name=name, doc=getdoc(func),
-                op=None, restful=True)
+    from maasserver.api import OperationsResource
+    getname = OperationsResource.crudmap.get
+    for signature, function in handler.exports.items():
+        http_method, operation = signature
+        name = getname(http_method) if operation is None else operation
+        yield dict(
+            method=http_method, name=name, doc=getdoc(function),
+            op=operation, restful=(operation is None))
 
 
 def describe_handler(handler):
     """Return a serialisable description of a handler.
 
-    :type handler: :class:`BaseHandler` instance that has been decorated by
-        `api_operations`.
+    :type handler: :class:`OperationsHandler` or
+        :class:`AnonymousOperationsHandler` instance.
     """
     uri_template = generate_doc(handler).resource_uri_template
     if uri_template is None:
@@ -128,8 +119,8 @@ def describe_handler(handler):
     else:
         uri_template = urljoin(settings.DEFAULT_MAAS_URL, uri_template)
 
-    view_name, uri_params, uri_kw = merge(
-        handler.resource_uri(), (None, (), {}))
+    resource_uri = getattr(handler, "resource_uri", lambda: ())
+    view_name, uri_params, uri_kw = merge(resource_uri(), (None, (), {}))
     assert uri_kw == {}, (
         "Resource URI specifications with keyword parameters are not yet "
         "supported: handler=%r; view_name=%r" % (handler, view_name))

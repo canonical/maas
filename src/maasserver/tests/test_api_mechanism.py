@@ -14,10 +14,7 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
-from maasserver.api import (
-    api_exported,
-    dispatch_methods,
-    )
+from maasserver.api import api_exported
 from maasserver.testing.factory import factory
 from maastesting.testcase import TestCase
 
@@ -31,23 +28,6 @@ class TestApiExported(TestCase):
         random_method = factory.make_name('method', sep='')
         decorate = api_exported(random_method)
         self.assertRaises(ValueError, decorate, lambda: None)
-
-    def test_disallowed_methods(self):
-        # HTTP methods in dispatch_methods should not be allowed.
-        for method in dispatch_methods:
-            decorate = api_exported(method=dispatch_methods.get(method))
-            self.assertRaises(ValueError, decorate, lambda: None)
-
-    def test_defaulted_names_are_checked_for_validity(self):
-        # When not using exported_as, the validity check should apply to
-        # the method name too.
-
-        def read():
-            # 'read' is prohibited for "GET"
-            pass
-
-        decorate = api_exported("GET")
-        self.assertRaises(ValueError, decorate, read)
 
     def test_valid_decoration(self):
         value = "value" + factory.getRandomString()

@@ -17,7 +17,7 @@ import new
 from django.conf import settings
 from maasserver.api import (
     api_exported,
-    api_operations,
+    OperationsHandler,
     )
 from maasserver.apidoc import (
     describe_handler,
@@ -59,12 +59,22 @@ class TestFindingHandlers(TestCase):
         self.assertSequenceEqual(
             [], list(find_api_handlers(module)))
 
-    def test_module_with_handler(self):
-        # Handlers are discovered in a module and returned.
+    def test_module_with_incomplete_handler(self):
+        # Handlers that don't have a resource_uri method are ignored.
         module = self.make_module()
         module.handler = BaseHandler
         self.assertSequenceEqual(
-            [BaseHandler], list(find_api_handlers(module)))
+            [], list(find_api_handlers(module)))
+
+    def test_module_with_handler(self):
+        # Handlers with resource_uri attributes are discovered in a module and
+        # returned. The type of resource_uri is not checked; it must only be
+        # present and not None.
+        module = self.make_module()
+        module.handler = type(
+            b"MetalHander", (BaseHandler,), {"resource_uri": True})
+        self.assertSequenceEqual(
+            [module.handler], list(find_api_handlers(module)))
 
     def test_module_with_handler_not_in_all(self):
         # When __all__ is defined, only the names it defines are searched for
@@ -135,11 +145,10 @@ class TestDescribingAPI(TestCase):
         # describe_handler() returns a description of a handler that can be
         # readily serialised into JSON, for example.
 
-        @api_operations
-        class MegadethHandler(BaseHandler):
+        class MegadethHandler(OperationsHandler):
             """The mighty 'deth."""
 
-            allowed_methods = "GET", "POST", "PUT"
+            create = read = delete = None
 
             @api_exported("POST")
             def peace_sells_but_whos_buying(self, request, vic, rattlehead):
@@ -181,7 +190,7 @@ class TestDescribingAPI(TestCase):
         self.assertEqual(MegadethHandler.__doc__, observed["doc"])
         self.assertEqual(MegadethHandler.__name__, observed["name"])
         self.assertEqual(["vic", "rattlehead"], observed["params"])
-        self.assertSequenceEqual(expected_actions, observed["actions"])
+        self.assertItemsEqual(expected_actions, observed["actions"])
 
     def test_describe_handler_with_maas_handler(self):
         # Ensure that describe_handler() yields something sensible with a

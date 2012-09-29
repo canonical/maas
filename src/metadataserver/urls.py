@@ -18,6 +18,7 @@ from django.conf.urls.defaults import (
     patterns,
     url,
     )
+from maasserver.api import OperationsResource
 from maasserver.api_auth import api_auth
 from metadataserver.api import (
     AnonMetaDataHandler,
@@ -29,29 +30,32 @@ from metadataserver.api import (
     UserDataHandler,
     VersionIndexHandler,
     )
-from piston.resource import Resource
 
 # Handlers for nodes requesting their own metadata.
-meta_data_handler = Resource(MetaDataHandler, authentication=api_auth)
-user_data_handler = Resource(UserDataHandler, authentication=api_auth)
-version_index_handler = Resource(VersionIndexHandler, authentication=api_auth)
-index_handler = Resource(IndexHandler, authentication=api_auth)
+meta_data_handler = OperationsResource(
+    MetaDataHandler, authentication=api_auth)
+user_data_handler = OperationsResource(
+    UserDataHandler, authentication=api_auth)
+version_index_handler = OperationsResource(
+    VersionIndexHandler, authentication=api_auth)
+index_handler = OperationsResource(
+    IndexHandler, authentication=api_auth)
 
 
 # Handlers for anonymous metadata operations.
-meta_data_anon_handler = Resource(AnonMetaDataHandler)
+meta_data_anon_handler = OperationsResource(AnonMetaDataHandler)
 
 
 # Handlers for UNSAFE anonymous random metadata access.
-meta_data_by_mac_handler = Resource(MetaDataHandler)
-user_data_by_mac_handler = Resource(UserDataHandler)
-version_index_by_mac_handler = Resource(VersionIndexHandler)
+meta_data_by_mac_handler = OperationsResource(MetaDataHandler)
+user_data_by_mac_handler = OperationsResource(UserDataHandler)
+version_index_by_mac_handler = OperationsResource(VersionIndexHandler)
 
 # Handlers for the anonymous enlistment metadata service
-enlist_meta_data_handler = Resource(EnlistMetaDataHandler)
-enlist_user_data_handler = Resource(EnlistUserDataHandler)
-enlist_index_handler = Resource(IndexHandler)
-enlist_version_index_handler = Resource(EnlistVersionIndexHandler)
+enlist_meta_data_handler = OperationsResource(EnlistMetaDataHandler)
+enlist_user_data_handler = OperationsResource(EnlistUserDataHandler)
+enlist_index_handler = OperationsResource(IndexHandler)
+enlist_version_index_handler = OperationsResource(EnlistVersionIndexHandler)
 
 # Normal metadata access, available to a node querying its own metadata.
 node_patterns = patterns(

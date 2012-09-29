@@ -57,6 +57,7 @@ __all__ = [
     "AccountHandler",
     "AnonNodeGroupsHandler",
     "AnonNodesHandler",
+    "AnonymousOperationsHandler",
     "api_doc",
     "api_doc_title",
     "BootImagesHandler",
@@ -69,6 +70,7 @@ __all__ = [
     "NodeMacHandler",
     "NodeMacsHandler",
     "NodesHandler",
+    "OperationsHandler",
     "TagHandler",
     "TagsHandler",
     "pxeconfig",
@@ -76,15 +78,17 @@ __all__ = [
     ]
 
 from base64 import b64decode
+from cStringIO import StringIO
 from datetime import (
     datetime,
     timedelta,
     )
+from functools import partial
 import httplib
+from inspect import getdoc
 import json
 import sys
 from textwrap import dedent
-import types
 
 from celery.app import app_or_default
 from django.conf import settings
@@ -158,6 +162,7 @@ from maasserver.utils.orm import get_one
 from piston.handler import (
     AnonymousBaseHandler,
     BaseHandler,
+    HandlerMetaClass,
     )
 from piston.models import Token
 from piston.resource import Resource
@@ -165,15 +170,18 @@ from piston.utils import rc
 from provisioningserver.kernel_opts import KernelParameters
 
 
-dispatch_methods = {
-    'GET': 'read',
-    'POST': 'create',
-    'PUT': 'update',
-    'DELETE': 'delete',
-    }
+class OperationsResource(Resource):
+    """A resource supporting operation dispatch.
+
+    All requests are passed onto the handler's `dispatch` method. See
+    :class:`OperationsHandler`.
+    """
+
+    crudmap = Resource.callmap
+    callmap = dict.fromkeys(crudmap, "dispatch")
 
 
-class RestrictedResource(Resource):
+class RestrictedResource(OperationsResource):
 
     def authenticate(self, request, rm):
         actor, anonymous = super(
@@ -202,123 +210,99 @@ def api_exported(method='POST', exported_as=None):
     :param exported_as: Optional operation name; defaults to the name of the
         exported method.
 
-    See also _`api_operations`.
     """
     def _decorator(func):
-        if method not in dispatch_methods:
+        if method not in OperationsResource.callmap:
             raise ValueError("Invalid method: '%s'" % method)
         if exported_as is None:
             func._api_exported = {method: func.__name__}
         else:
             func._api_exported = {method: exported_as}
-        if func._api_exported.get(method) == dispatch_methods.get(method):
-            raise ValueError(
-                "Cannot define a '%s' operation." % dispatch_methods.get(
-                    method))
         return func
     return _decorator
 
 
-# The parameter used to specify the requested operation for POST API calls.
-OP_PARAM = 'op'
+class OperationsHandlerType(HandlerMetaClass):
+    """Type for handlers that dispatch operations.
 
+    Collects all the exported operations, CRUD and custom, into the class's
+    `exports` attribute. This is a signature:function mapping, where signature
+    is an (http-method, operation-name) tuple. If operation-name is None, it's
+    a CRUD method.
 
-def is_api_exported(thing, method='POST'):
-    # Check for functions and methods; the latter may be from base classes.
-    op_types = types.FunctionType, types.MethodType
-    return (
-        isinstance(thing, op_types) and
-        getattr(thing, "_api_exported", None) is not None and
-        getattr(thing, "_api_exported", None).get(method, None) is not None)
-
-
-# Define a method that will route requests to the methods registered in
-# handler._available_api_methods.
-def perform_api_operation(handler, request, method='POST', *args, **kwargs):
-    if method == 'POST':
-        data = request.POST
-    else:
-        data = request.GET
-    op = data.get(OP_PARAM, None)
-    if not isinstance(op, unicode):
-        return HttpResponseBadRequest("Unknown operation.")
-    elif method not in handler._available_api_methods:
-        return HttpResponseBadRequest("Unknown operation: '%s'." % op)
-    elif op not in handler._available_api_methods[method]:
-        return HttpResponseBadRequest("Unknown operation: '%s'." % op)
-    else:
-        method = handler._available_api_methods[method][op]
-        return method(handler, request, *args, **kwargs)
-
-
-def api_operations(cls):
-    """Class decorator (PEP 3129) to be used on piston-based handler classes
-    (i.e. classes inheriting from piston.handler.BaseHandler).  It will add
-    the required methods {'create','read','update','delete} to the class.
-    These methods (called by piston to handle POST/GET/PUT/DELETE requests),
-    will route requests to methods decorated with
-    @api_exported(method={'POST','GET','PUT','DELETE'} depending on the
-    operation requested using the 'op' parameter.
-
-    E.g.:
-
-    >>> @api_operations
-    >>> class MyHandler(BaseHandler):
-    >>>
-    >>>    @api_exported(method='POST', exported_as='exported_post_name')
-    >>>    def do_x(self, request):
-    >>>        # process request...
-    >>>
-    >>>    @api_exported(method='GET')
-    >>>    def do_y(self, request):
-    >>>        # process request...
-
-    MyHandler's method 'do_x' will service POST requests with
-    'op=exported_post_name' in its request parameters.
-
-    POST /api/path/to/MyHandler/
-    op=exported_post_name&param1=1
-
-    MyHandler's method 'do_y' will service GET requests with
-    'op=do_y' in its request parameters.
-
-    GET /api/path/to/MyHandler/?op=do_y&param1=1
-
+    The `allowed_methods` attribute is calculated as the union of all HTTP
+    methods required for the exported CRUD and custom operations.
     """
-    # Compute the list of methods ('GET', 'POST', etc.) that need to be
-    # overriden.
-    overriden_methods = set()
-    for name, value in vars(cls).items():
-        overriden_methods.update(getattr(value, '_api_exported', {}))
-    # Override the appropriate methods with a 'dispatcher' method.
-    for method in overriden_methods:
+
+    def __new__(metaclass, name, bases, namespace):
+        cls = super(OperationsHandlerType, metaclass).__new__(
+            metaclass, name, bases, namespace)
+
+        # Create an http-method:function mapping for CRUD operations.
+        crud = {
+            http_method: getattr(cls, method)
+            for http_method, method in OperationsResource.crudmap.items()
+            if getattr(cls, method, None) is not None
+            }
+
+        # Create a operation-name:function mapping for non-CRUD operations.
+        # These functions contain an _api_exported attribute that will be
+        # used later on.
         operations = {
-            name: value
-            for name, value in vars(cls).items()
-            if is_api_exported(value, method)}
-        cls._available_api_methods = getattr(
-            cls, "_available_api_methods", {}).copy()
-        cls._available_api_methods[method] = {
-            op._api_exported[method]: op
-                for name, op in operations.items()
-                if method in op._api_exported}
+            name: attribute for name, attribute in vars(cls).items()
+            if getattr(attribute, "_api_exported", None) is not None
+            }
 
-        def dispatcher(self, request, *args, **kwargs):
-            return perform_api_operation(
-                self, request, request.method, *args, **kwargs)
+        # Create the exports mapping.
+        exports = {}
+        exports.update(
+            ((http_method, None), function)
+            for http_method, function in crud.items())
+        exports.update(
+            (signature, function)
+            for name, function in operations.items()
+            for signature in function._api_exported.items())
 
-        method_name = str(dispatch_methods[method])
-        dispatcher.__name__ = method_name
-        dispatcher.__doc__ = (
-            "The actual operation to execute depends on the value of the '%s' "
-            "parameter:\n\n" % OP_PARAM)
-        dispatcher.__doc__ += "\n".join(
-            "- Operation '%s' (op=%s):\n\t%s" % (name, name, op.__doc__)
-            for name, op in cls._available_api_methods[method].items())
+        # Update the class.
+        cls.exports = exports
+        cls.allowed_methods = frozenset(
+            http_method for http_method, name in exports)
 
-        # Add {'create','read','update','delete'} method.
-        setattr(cls, method_name, dispatcher)
-    return cls
+        return cls
+
+
+class OperationsHandlerMixin:
+    """Handler mixin for operations dispatch.
+
+    This enabled dispatch to custom functions that piggyback on HTTP methods
+    that ordinarily, in Piston, are used for CRUD operations.
+
+    This must be used in cooperation with :class:`OperationsResource` and
+    :class:`OperationsHandlerType`.
+    """
+
+    def dispatch(self, request, *args, **kwargs):
+        signature = request.method.upper(), request.REQUEST.get("op")
+        function = self.exports.get(signature)
+        if function is None:
+            return HttpResponseBadRequest(
+                "Unrecognised signature: %s %s" % signature)
+        else:
+            return function(self, request, *args, **kwargs)
+
+
+class OperationsHandler(
+    OperationsHandlerMixin, BaseHandler):
+    """Base handler that supports operation dispatch."""
+
+    __metaclass__ = OperationsHandlerType
+
+
+class AnonymousOperationsHandler(
+    OperationsHandlerMixin, AnonymousBaseHandler):
+    """Anonymous base handler that supports operation dispatch."""
+
+    __metaclass__ = OperationsHandlerType
 
 
 def get_mandatory_param(data, key, validator=None):
@@ -438,10 +422,9 @@ DISPLAYED_NODE_FIELDS = (
     )
 
 
-@api_operations
-class NodeHandler(BaseHandler):
+class NodeHandler(OperationsHandler):
     """Manage individual Nodes."""
-    allowed_methods = ('GET', 'DELETE', 'POST', 'PUT')
+    create = None  # Disable create.
     model = Node
     fields = DISPLAYED_NODE_FIELDS
 
@@ -612,10 +595,9 @@ def create_node(request):
         raise ValidationError(form.errors)
 
 
-@api_operations
-class AnonNodesHandler(AnonymousBaseHandler):
+class AnonNodesHandler(AnonymousOperationsHandler):
     """Create Nodes."""
-    allowed_methods = ('GET', 'POST',)
+    create = read = update = delete = None
     fields = DISPLAYED_NODE_FIELDS
 
     @api_exported('POST')
@@ -696,10 +678,9 @@ def extract_constraints(request_params):
     return constraints
 
 
-@api_operations
-class NodesHandler(BaseHandler):
+class NodesHandler(OperationsHandler):
     """Manage collection of Nodes."""
-    allowed_methods = ('GET', 'POST',)
+    create = read = update = delete = None
     anonymous = AnonNodesHandler
 
     @api_exported('POST')
@@ -815,13 +796,13 @@ class NodesHandler(BaseHandler):
         return ('nodes_handler', [])
 
 
-class NodeMacsHandler(BaseHandler):
+class NodeMacsHandler(OperationsHandler):
     """
     Manage all the MAC addresses linked to a Node / Create a new MAC address
     for a Node.
 
     """
-    allowed_methods = ('GET', 'POST',)
+    update = delete = None
 
     def read(self, request, system_id):
         """Read all MAC addresses related to a Node."""
@@ -842,9 +823,9 @@ class NodeMacsHandler(BaseHandler):
         return ('node_macs_handler', ['system_id'])
 
 
-class NodeMacHandler(BaseHandler):
+class NodeMacHandler(OperationsHandler):
     """Manage a MAC address linked to a Node."""
-    allowed_methods = ('GET', 'DELETE')
+    create = update = None
     fields = ('mac_address',)
     model = MACAddress
 
@@ -894,8 +875,7 @@ def get_file(handler, request):
     return HttpResponse(db_file.data.read(), status=httplib.OK)
 
 
-@api_operations
-class AnonFilesHandler(AnonymousBaseHandler):
+class AnonFilesHandler(AnonymousOperationsHandler):
     """Anonymous file operations.
 
     This is needed for Juju. The story goes something like this:
@@ -907,15 +887,14 @@ class AnonFilesHandler(AnonymousBaseHandler):
       without credentials.
 
     """
-    allowed_methods = ('GET',)
+    create = read = update = delete = None
 
     get = api_exported('GET', exported_as='get')(get_file)
 
 
-@api_operations
-class FilesHandler(BaseHandler):
+class FilesHandler(OperationsHandler):
     """File management operations."""
-    allowed_methods = ('GET', 'POST',)
+    create = read = update = delete = None
     anonymous = AnonFilesHandler
 
     get = api_exported('GET', exported_as='get')(get_file)
@@ -961,10 +940,9 @@ def get_celery_credentials():
 DISPLAYED_NODEGROUP_FIELDS = ('uuid', 'status', 'name')
 
 
-@api_operations
-class AnonNodeGroupsHandler(AnonymousBaseHandler):
+class AnonNodeGroupsHandler(AnonymousOperationsHandler):
     """Anon Node-groups API."""
-    allowed_methods = ('GET', 'POST')
+    create = read = update = delete = None
     fields = DISPLAYED_NODEGROUP_FIELDS
 
     @api_exported('GET')
@@ -1055,11 +1033,10 @@ class AnonNodeGroupsHandler(AnonymousBaseHandler):
                     "Awaiting admin approval.", status=httplib.ACCEPTED)
 
 
-@api_operations
-class NodeGroupsHandler(BaseHandler):
+class NodeGroupsHandler(OperationsHandler):
     """Node-groups API."""
     anonymous = AnonNodeGroupsHandler
-    allowed_methods = ('GET', 'POST')
+    create = read = update = delete = None
     fields = DISPLAYED_NODEGROUP_FIELDS
 
     @api_exported('GET')
@@ -1125,11 +1102,10 @@ def check_nodegroup_access(request, nodegroup):
             "Only allowed for the %r worker." % nodegroup.name)
 
 
-@api_operations
-class NodeGroupHandler(BaseHandler):
+class NodeGroupHandler(OperationsHandler):
     """Node-group API."""
 
-    allowed_methods = ('GET', 'POST')
+    create = update = delete = None
     fields = DISPLAYED_NODEGROUP_FIELDS
 
     def read(self, request, uuid):
@@ -1162,10 +1138,9 @@ DISPLAYED_NODEGROUP_FIELDS = (
     'broadcast_ip', 'ip_range_low', 'ip_range_high')
 
 
-@api_operations
-class NodeGroupInterfacesHandler(BaseHandler):
+class NodeGroupInterfacesHandler(OperationsHandler):
     """NodeGroupInterfaces API."""
-    allowed_methods = ('GET', 'POST')
+    create = read = update = delete = None
     fields = DISPLAYED_NODEGROUP_FIELDS
 
     @api_exported('GET')
@@ -1212,9 +1187,9 @@ class NodeGroupInterfacesHandler(BaseHandler):
         return ('nodegroupinterfaces_handler', [uuid])
 
 
-class NodeGroupInterfaceHandler(BaseHandler):
+class NodeGroupInterfaceHandler(OperationsHandler):
     """NodeGroupInterface API."""
-    allowed_methods = ('GET', 'PUT')
+    create = delete = None
     fields = DISPLAYED_NODEGROUP_FIELDS
 
     def read(self, request, uuid, interface):
@@ -1268,10 +1243,9 @@ class NodeGroupInterfaceHandler(BaseHandler):
         return ('nodegroupinterface_handler', [uuid, interface_name])
 
 
-@api_operations
-class AccountHandler(BaseHandler):
+class AccountHandler(OperationsHandler):
     """Manage the current logged-in user."""
-    allowed_methods = ('POST',)
+    create = read = update = delete = None
 
     @api_exported('POST')
     def create_authorisation_token(self, request):
@@ -1308,10 +1282,9 @@ class AccountHandler(BaseHandler):
         return ('account_handler', [])
 
 
-@api_operations
-class TagHandler(BaseHandler):
+class TagHandler(OperationsHandler):
     """Manage individual Tags."""
-    allowed_methods = ('GET', 'DELETE', 'POST', 'PUT')
+    create = None
     model = Tag
     fields = (
         'name',
@@ -1367,10 +1340,9 @@ class TagHandler(BaseHandler):
         return ('tag_handler', (tag_name, ))
 
 
-@api_operations
-class TagsHandler(BaseHandler):
+class TagsHandler(OperationsHandler):
     """Manage collection of Tags."""
-    allowed_methods = ('GET', 'POST')
+    create = read = update = delete = None
 
     @api_exported('POST')
     def new(self, request):
@@ -1406,10 +1378,9 @@ def create_tag(request):
         raise ValidationError(form.errors)
 
 
-@api_operations
-class MAASHandler(BaseHandler):
+class MAASHandler(OperationsHandler):
     """Manage the MAAS' itself."""
-    allowed_methods = ('POST', 'GET')
+    create = read = update = delete = None
 
     @api_exported('POST')
     def set_config(self, request):
@@ -1458,22 +1429,32 @@ def render_api_docs():
     :rtype: :class:`unicode`
     """
     module = sys.modules[__name__]
-    messages = [
-        __doc__.strip(),
-        '',
-        '',
-        'Operations',
-        '----------',
-        '',
-        ]
+    output = StringIO()
+    line = partial(print, file=output)
+
+    line(getdoc(module))
+    line()
+    line()
+    line('Operations')
+    line('----------')
+    line()
+
     handlers = find_api_handlers(module)
     for doc in generate_api_docs(handlers):
-        for method in doc.get_methods():
-            messages.append(
-                "%s %s\n  %s\n" % (
-                    method.http_name, doc.resource_uri_template,
-                    method.doc))
-    return '\n'.join(messages)
+        uri_template = doc.resource_uri_template
+        exports = doc.handler.exports.items()
+        for (http_method, operation), function in sorted(exports):
+            line("``%s %s``" % (http_method, uri_template), end="")
+            if operation is not None:
+                line(" ``op=%s``" % operation)
+            line()
+            docstring = getdoc(function)
+            if docstring is not None:
+                for docline in docstring.splitlines():
+                    line("  ", docline, sep="")
+                line()
+
+    return output.getvalue()
 
 
 def reST_to_html_fragment(a_str):
@@ -1561,8 +1542,9 @@ def pxeconfig(request):
         content_type="application/json")
 
 
-@api_operations
-class BootImagesHandler(BaseHandler):
+class BootImagesHandler(OperationsHandler):
+
+    create = replace = update = delete = None
 
     @classmethod
     def resource_uri(cls):

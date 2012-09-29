@@ -422,7 +422,9 @@ class EnlistmentAPITest(APIv10TestMixin, MultipleUsersScenarios, TestCase):
 
         self.assertEqual(httplib.BAD_REQUEST, response.status_code)
         self.assertIn('text/html', response['Content-Type'])
-        self.assertEqual("Unknown operation.", response.content)
+        self.assertEqual(
+            "Unrecognised signature: POST None",
+            response.content)
 
     def test_POST_fails_if_mac_duplicated(self):
         # Mac Addresses should be unique.
@@ -458,7 +460,8 @@ class EnlistmentAPITest(APIv10TestMixin, MultipleUsersScenarios, TestCase):
 
         self.assertEqual(httplib.BAD_REQUEST, response.status_code)
         self.assertEqual(
-            "Unknown operation: 'invalid_operation'.", response.content)
+            "Unrecognised signature: POST invalid_operation",
+            response.content)
 
     def test_POST_new_rejects_invalid_data(self):
         # If the data provided to create a node with an invalid MAC
