@@ -98,6 +98,17 @@ class Tag(CleanSave, TimestampedModel):
 
     objects = TagManager()
 
+    def __init__(self, *args, **kwargs):
+        super(Tag, self).__init__(*args, **kwargs)
+        # Track what the original definition is, so we can detect when it
+        # changes and we need to repopulate the node<=>tag mapping.
+        # We have to check for self.id, otherwise we don't see the creation of
+        # a new definition.
+        if self.id is None:
+            self._original_definition = None
+        else:
+            self._original_definition = self.definition
+
     def __unicode__(self):
         return self.name
 
@@ -115,3 +126,9 @@ class Tag(CleanSave, TimestampedModel):
             # Is there an efficiency difference between doing
             # 'node.tags.add(self)' and 'self.node_set.add(node)' ?
             node.tags.add(self)
+
+    def save(self, *args, **kwargs):
+        super(Tag, self).save(*args, **kwargs)
+        if self.definition != self._original_definition:
+            self.populate_nodes()
+        self._original_definition = self.definition

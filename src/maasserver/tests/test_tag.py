@@ -54,41 +54,42 @@ class TagTest(TestCase):
                         'too-long' * 33, '\xb5']:
             self.assertRaises(ValidationError, factory.make_tag, name=invalid)
 
-    def test_populate_nodes_applies_tags_to_nodes(self):
+    def test_applies_tags_to_nodes(self):
         node1 = factory.make_node()
         node1.set_hardware_details('<node><child /></node>')
         node2 = factory.make_node()
         node2.set_hardware_details('<node />')
         tag = factory.make_tag(definition='/node/child')
-        tag.populate_nodes()
         self.assertItemsEqual([tag.name], node1.tag_names())
         self.assertItemsEqual([], node2.tag_names())
 
-    def test_populate_nodes_removes_old_values(self):
+    def test_removes_old_values(self):
         node1 = factory.make_node()
         node1.set_hardware_details('<node><foo /></node>')
         node2 = factory.make_node()
         node2.set_hardware_details('<node><bar /></node>')
         tag = factory.make_tag(definition='/node/foo')
-        tag.populate_nodes()
         self.assertItemsEqual([tag.name], node1.tag_names())
         self.assertItemsEqual([], node2.tag_names())
         tag.definition = '/node/bar'
-        tag.populate_nodes()
+        tag.save()
         self.assertItemsEqual([], node1.tag_names())
         self.assertItemsEqual([tag.name], node2.tag_names())
+        # And we notice if we change it *again* and then save.
+        tag.definition = '/node/foo'
+        tag.save()
+        self.assertItemsEqual([tag.name], node1.tag_names())
+        self.assertItemsEqual([], node2.tag_names())
 
-    def test_populate_nodes_doesnt_touch_other_tags(self):
+    def test_doesnt_touch_other_tags(self):
         node1 = factory.make_node()
         node1.set_hardware_details('<node><foo /></node>')
         node2 = factory.make_node()
         node2.set_hardware_details('<node><bar /></node>')
         tag1 = factory.make_tag(definition='/node/foo')
-        tag1.populate_nodes()
         self.assertItemsEqual([tag1.name], node1.tag_names())
         self.assertItemsEqual([], node2.tag_names())
         tag2 = factory.make_tag(definition='/node/bar')
-        tag2.populate_nodes()
         self.assertItemsEqual([tag1.name], node1.tag_names())
         self.assertItemsEqual([tag2.name], node2.tag_names())
 
@@ -129,13 +130,12 @@ class TagTest(TestCase):
 
 class TestTagTransactions(TransactionTestCase):
 
-    def test_populate_nodes_rollsback_invalid_xpath(self):
+    def test_rollsback_invalid_xpath(self):
         @transaction.commit_manually
         def setup():
             node = factory.make_node()
             node.set_hardware_details('<node><foo /></node>')
             tag = factory.make_tag(definition='/node/foo')
-            tag.populate_nodes()
             self.assertItemsEqual([tag.name], node.tag_names())
             transaction.commit()
             return tag, node
@@ -144,7 +144,7 @@ class TestTagTransactions(TransactionTestCase):
         @transaction.commit_manually
         def trigger_invalid():
             tag.definition = 'invalid::tag'
-            self.assertRaises(DatabaseError, tag.populate_nodes)
+            self.assertRaises(DatabaseError, tag.save)
             transaction.rollback()
         # Because the definition is invalid, the db should not have been
         # updated
