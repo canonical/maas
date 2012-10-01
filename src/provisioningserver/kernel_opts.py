@@ -107,6 +107,19 @@ def get_ephemeral_name(release, arch):
     return name
 
 
+def compose_hostname_opts(params):
+    """Return list of hostname/domain options based on `params`.
+
+    The domain is omitted if `params` does not include it.
+    """
+    options = [
+        'hostname=%s' % params.hostname,
+        ]
+    if params.domain is not None:
+        options.append('domain=%s' % params.domain)
+    return options
+
+
 def compose_purpose_opts(params):
     """Return the list of the purpose-specific kernel options."""
     if params.purpose == "commissioning":
@@ -119,10 +132,6 @@ def compose_purpose_opts(params):
             "iscsi_target_ip=%s" % params.fs_host,
             "iscsi_target_port=3260",
             "iscsi_initiator=%s" % params.hostname,
-            ## TODO(smoser): remove hostname after an ephemeral image is
-            ## released with cloud-initramfs-dyn-netconf. see LP: #1046405 for
-            ## more info. instead use the updated 'ip=' line below.
-            "hostname=%s" % params.hostname,
             # Read by klibc 'ipconfig' in initramfs.
             "ip=dhcp",  # TODO(smoser) remove this
             # "ip=::::%s:BOOTIF" % params.hostname, # TODO(smoser) use this
@@ -132,18 +141,19 @@ def compose_purpose_opts(params):
             "overlayroot=tmpfs",
             # Read by cloud-init.
             "cloud-config-url=%s" % params.preseed_url,
-            ]
+            ## TODO(smoser): remove hostname after an ephemeral image is
+            ## released with cloud-initramfs-dyn-netconf. see LP: #1046405 for
+            ## more info. instead use the updated 'ip=' line above.
+            ] + compose_hostname_opts(params)
     else:
         # These are options used by the Debian Installer.
         return [
             "netcfg/choose_interface=auto",
-            "hostname=%s" % params.hostname,
-            "domain=%s" % params.domain,
             # Use the text installer, display only critical messages.
             "text priority=critical",
             compose_preseed_opt(params.preseed_url),
             compose_locale_opt(),
-            ]
+            ] + compose_hostname_opts(params)
 
 
 def compose_arch_opts(params):

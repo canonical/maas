@@ -585,6 +585,10 @@ class Node(CleanSave, TimestampedModel):
         super(Node, self).delete()
 
     def set_mac_based_hostname(self, mac_address):
+        """Set default `hostname` based on `mac_address`
+
+        The hostname will include the `enlistment_domain` if set.
+        """
         mac_hostname = mac_address.replace(':', '').lower()
         domain = Config.objects.get_config("enlistment_domain")
         domain = domain.strip("." + whitespace)

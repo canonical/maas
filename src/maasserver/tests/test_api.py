@@ -2768,6 +2768,34 @@ class TestPXEConfigAPI(AnonAPITestCase):
         observed_arch = params_out["arch"], params_out["subarch"]
         self.assertEqual(expected_arch, observed_arch)
 
+    def test_pxeconfig_uses_fixed_hostname_for_enlisting_node(self):
+        new_mac = factory.getRandomMACAddress()
+        self.assertEqual(
+            'maas-enlist',
+            self.get_pxeconfig({'mac': new_mac}).get('hostname'))
+
+    def test_pxeconfig_uses_enlistment_domain_for_enlisting_node(self):
+        new_mac = factory.getRandomMACAddress()
+        self.assertEqual(
+            Config.objects.get_config('enlistment_domain'),
+            self.get_pxeconfig({'mac': new_mac}).get('domain'))
+
+    def test_pxeconfig_splits_domain_from_node_hostname(self):
+        host = factory.make_name('host')
+        domain = factory.make_name('domain')
+        full_hostname = '.'.join([host, domain])
+        node = factory.make_node(hostname=full_hostname)
+        mac = factory.make_mac_address(node=node)
+        pxe_config = self.get_pxeconfig(params={'mac': mac.mac_address})
+        self.assertEqual(host, pxe_config.get('hostname'))
+        self.assertNotIn(domain, pxe_config.values())
+
+    def test_pxeconfig_uses_nodegroup_domain_for_node(self):
+        mac = factory.make_mac_address()
+        self.assertEqual(
+            mac.node.nodegroup.name,
+            self.get_pxeconfig({'mac': mac.mac_address}).get('domain'))
+
     def get_without_param(self, param):
         """Request a `pxeconfig()` response, but omit `param` from request."""
         params = self.get_params()

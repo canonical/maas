@@ -1511,11 +1511,15 @@ def pxeconfig(request):
         arch, subarch = ARCHITECTURE.i386.split('/')
         preseed_url = compose_enlistment_preseed_url()
         hostname = 'maas-enlist'
+        domain = Config.objects.get_config('enlistment_domain')
     else:
         node = macaddress.node
         arch, subarch = node.architecture.split('/')
         preseed_url = compose_preseed_url(node)
-        hostname = node.hostname
+        # The node's hostname may include a domain, but we ignore that
+        # and use the one from the nodegroup instead.
+        hostname = node.hostname.split('.', 1)[0]
+        domain = node.nodegroup.name
 
     if node is None or node.status == NODE_STATUS.COMMISSIONING:
         series = Config.objects.get_config('commissioning_distro_series')
@@ -1523,7 +1527,6 @@ def pxeconfig(request):
         series = node.get_distro_series()
 
     purpose = get_boot_purpose(node)
-    domain = 'local.lan'  # TODO: This is probably not enough!
     server_address = get_maas_facing_server_address()
 
     params = KernelParameters(
