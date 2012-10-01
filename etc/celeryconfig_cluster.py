@@ -27,11 +27,11 @@ CLUSTER_UUID = None
 import_settings(celeryconfig_common)
 
 try:
-    import maas_local_celeryconfig
+    import maas_local_celeryconfig_cluster
 except ImportError:
     pass
 else:
-    import_settings(maas_local_celeryconfig)
+    import_settings(maas_local_celeryconfig_cluster)
 
 
 CELERYBEAT_SCHEDULE = {
