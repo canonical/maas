@@ -12,11 +12,13 @@ from __future__ import (
 __metaclass__ = type
 __all__ = [
     "discard_persistent_error",
+    "get_persistent_error",
     "get_persistent_errors",
     "register_persistent_error",
     ]
 
 from maasserver.models import ComponentError
+from maasserver.utils.orm import get_one
 
 
 def discard_persistent_error(component):
@@ -35,6 +37,15 @@ def register_persistent_error(component, error_message):
     """
     discard_persistent_error(component)
     ComponentError.objects.create(component=component, error=error_message)
+
+
+def get_persistent_error(component):
+    """Return persistent error for `component`, or None."""
+    err = get_one(ComponentError.objects.filter(component=component))
+    if err is None:
+        return None
+    else:
+        return err.error
 
 
 def get_persistent_errors():

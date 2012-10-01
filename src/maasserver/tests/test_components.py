@@ -17,6 +17,7 @@ import random
 
 from maasserver.components import (
     discard_persistent_error,
+    get_persistent_error,
     get_persistent_errors,
     register_persistent_error,
     )
@@ -78,3 +79,12 @@ class PersistentErrorsUtilitiesTest(TestCase):
             errors.append(error_message)
             components.append(component)
         self.assertItemsEqual(errors, get_persistent_errors())
+
+    def test_get_persistent_error_returns_None_if_no_error(self):
+        self.assertIsNone(get_persistent_error(factory.make_name('component')))
+
+    def test_get_persistent_error_returns_component_error(self):
+        component = factory.make_name('component')
+        error = factory.make_name('error')
+        register_persistent_error(component, error)
+        self.assertEqual(error, get_persistent_error(component))

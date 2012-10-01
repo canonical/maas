@@ -22,6 +22,10 @@ from lockfile import (
     LockTimeout,
     )
 from maasserver import start_up
+from maasserver.components import (
+    discard_persistent_error,
+    register_persistent_error,
+    )
 from maasserver.enum import COMPONENT
 from maasserver.models import (
     BootImage,
@@ -109,6 +113,7 @@ class TestStartUp(TestCase):
         # the master worker is having trouble reporting its images.  And
         # so start_up registers a persistent warning about this.
         BootImage.objects.all().delete()
+        discard_persistent_error(COMPONENT.IMPORT_PXE_FILES)
         recorder = self.patch(start_up, 'register_persistent_error')
 
         start_up.start_up()
@@ -121,6 +126,22 @@ class TestStartUp(TestCase):
         # If boot images are known, there is no warning about the import
         # script.
         factory.make_boot_image()
+        recorder = self.patch(start_up, 'register_persistent_error')
+
+        start_up.start_up()
+
+        self.assertNotIn(
+            COMPONENT.IMPORT_PXE_FILES,
+            [args[0][0] for args in recorder.call_args_list])
+
+    def test_start_up_does_not_warn_if_already_warning(self):
+        # If there already is a warning about missing boot images, it is
+        # based on more precise knowledge of whether we ever heard from
+        # the region worker at all.  It will not be replaced by a less
+        # knowledgeable warning.
+        BootImage.objects.all().delete()
+        register_persistent_error(
+            COMPONENT.IMPORT_PXE_FILES, factory.getRandomString())
         recorder = self.patch(start_up, 'register_persistent_error')
 
         start_up.start_up()
