@@ -663,14 +663,25 @@ class TestEnlistViews(DjangoTestCase):
 
     def test_get_hostname(self):
         # instance-id must be available
-        md_url = reverse('enlist-metadata-meta-data',
-            args=['latest', 'local-hostname'])
+        md_url = reverse(
+            'enlist-metadata-meta-data', args=['latest', 'local-hostname'])
         response = self.client.get(md_url)
         self.assertEqual(
             (httplib.OK, "text/plain"),
             (response.status_code, response["Content-Type"]))
         # just insist content is non-empty. It doesn't matter what it is.
         self.assertTrue(response.content)
+
+    def test_public_keys_returns_404_but_does_not_raise_exception(self):
+        # An enlisting node has no SSH keys, but it does request them
+        # (bug 1058313).  The request should fail, but without the log
+        # noise of an exception.
+        md_url = reverse(
+            'enlist-metadata-meta-data', args=['latest', 'public-keys'])
+        response = self.client.get(md_url)
+        self.assertEqual(
+            (httplib.NOT_FOUND, "No SSH keys available for this node."),
+            (response.status_code, response.content))
 
     def test_metadata_bogus_is_404(self):
         md_url = reverse('enlist-metadata-meta-data',

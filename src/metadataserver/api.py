@@ -22,7 +22,10 @@ import json
 
 from django.conf import settings
 from django.core.exceptions import PermissionDenied
-from django.http import HttpResponse
+from django.http import (
+    HttpResponse,
+    HttpResponseNotFound,
+    )
 from django.shortcuts import get_object_or_404
 from maasserver.api import (
     api_exported,
@@ -372,6 +375,10 @@ class EnlistMetaDataHandler(OperationsHandler):
         if item is None or len(item) == 0:
             return make_list_response(sorted(self.data.keys()))
 
+        # Enlistment asks for SSH keys.  We don't give it any, but it's
+        # not an error either.
+        if item == 'public-keys':
+            return HttpResponseNotFound("No SSH keys available for this node.")
         if item not in self.data:
             raise MAASAPINotFound("Unknown metadata attribute: %s" % item)
 
