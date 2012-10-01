@@ -76,7 +76,7 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
 
         :return: :class:`IPNetwork`
         """
-        if self.broadcast_ip is not None and self.subnet_mask is not None:
+        if self.broadcast_ip and self.subnet_mask:
             return IPNetwork("%s/%s" % (self.broadcast_ip, self.subnet_mask))
         return None
 
