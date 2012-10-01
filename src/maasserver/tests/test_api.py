@@ -22,6 +22,7 @@ from datetime import (
     datetime,
     timedelta,
     )
+from functools import partial
 import httplib
 from itertools import izip
 import json
@@ -3162,7 +3163,11 @@ class TestNodeGroupInterfaceAPI(APITestCase):
         self.become_admin()
         nodegroup = factory.make_node_group()
         interface = nodegroup.get_managed_interface()
-        new_ip_range_high = factory.getRandomIPAddress()
+        get_ip_in_network = partial(
+            factory.getRandomIPInNetwork, interface.network)
+        new_ip_range_high = next(
+            ip for ip in iter(get_ip_in_network, None)
+            if ip != interface.ip_range_high)
         response = self.client.put(
             reverse(
                 'nodegroupinterface_handler',

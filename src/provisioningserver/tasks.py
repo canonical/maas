@@ -190,7 +190,6 @@ def write_full_dns_config(zones=None, callback=None, **kwargs):
     if zones is not None:
         for zone in zones:
             zone.write_config()
-            zone.write_reverse_config()
     # Write main config file.
     dns_config = DNSConfig(zones=zones)
     dns_config.write_config(**kwargs)
@@ -216,8 +215,8 @@ def write_dns_config(zones=(), callback=None, **kwargs):
 
 
 @task(queue=celery_config.WORKER_QUEUE_DNS)
-def write_dns_zone_config(zone, callback=None, **kwargs):
-    """Write out a DNS zone configuration file.
+def write_dns_zone_config(zones, callback=None, **kwargs):
+    """Write out DNS zones.
 
     :param zone: The zone data to write the configuration for.
     :type zone: :class:`DNSZoneData`
@@ -225,8 +224,8 @@ def write_dns_zone_config(zone, callback=None, **kwargs):
     :type callback: callable
     :param **kwargs: Keyword args passed to DNSZoneConfig.write_config()
     """
-    zone.write_config()
-    zone.write_reverse_config()
+    for zone in zones:
+        zone.write_config()
     if callback is not None:
         callback.delay()
 

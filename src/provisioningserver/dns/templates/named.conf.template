@@ -7,11 +7,3 @@ zone "{{zone.zone_name}}" {
     file "{{zone.target_path}}";
 };
 {{endfor}}
-
-# Reverse zone declarations.
-{{for zone in zones}}
-zone "{{zone.reverse_zone_name}}" {
-    type master;
-    file "{{zone.target_reverse_path}}";
-};
-{{endfor}}

@@ -15,6 +15,7 @@ __all__ = []
 
 from maastesting.factory import factory
 from maastesting.testcase import TestCase
+from netaddr import IPAddress
 from provisioningserver.dns.utils import generated_hostname
 
 
@@ -29,3 +30,7 @@ class TestUtilities(TestCase):
         self.assertEqual(
             '192-168-0-1.%s' % domain,
             generated_hostname('192.168.0.1', domain))
+
+    def test_generated_hostname_accepts_IPAddress(self):
+        address = IPAddress("12.34.56.78")
+        self.assertEqual("12-34-56-78", generated_hostname(address))

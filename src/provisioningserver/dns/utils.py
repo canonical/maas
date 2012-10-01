@@ -23,7 +23,7 @@ def generated_hostname(ip, domain=None):
     >>> generated_hostname('192.168.0.1', 'mydomain.com')
     '192-168-0-1.mydomain.com'
     """
-    hostname = ip.replace('.', '-')
+    hostname = unicode(ip).replace('.', '-')
     if domain is not None:
         return '%s.%s' % (hostname, domain)
     else:

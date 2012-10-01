@@ -46,7 +46,8 @@ from provisioningserver.dhcp import (
     )
 from provisioningserver.dns.config import (
     conf,
-    DNSZoneConfig,
+    DNSForwardZoneConfig,
+    DNSReverseZoneConfig,
     MAAS_NAMED_CONF_NAME,
     MAAS_NAMED_RNDC_CONF_NAME,
     MAAS_RNDC_CONF_NAME,
@@ -71,7 +72,6 @@ from provisioningserver.tasks import (
     write_dns_zone_config,
     write_full_dns_config,
     )
-from provisioningserver.testing import network_infos
 from provisioningserver.testing.boot_images import make_boot_image_params
 from provisioningserver.testing.config import ConfigFixture
 from provisioningserver.testing.testcase import PservTestCase
@@ -317,20 +317,25 @@ class TestDNSTasks(PservTestCase):
 
     def test_write_dns_zone_config_writes_file(self):
         command = factory.getRandomString()
-        zone_name = factory.getRandomString()
+        domain = factory.getRandomString()
         network = IPNetwork('192.168.0.3/24')
         ip = factory.getRandomIPInNetwork(network)
-        zone = DNSZoneConfig(
-            zone_name, serial=random.randint(1, 100),
-            mapping={factory.getRandomString(): ip}, **network_infos(network))
+        forward_zone = DNSForwardZoneConfig(
+            domain, serial=random.randint(1, 100),
+            mapping={factory.getRandomString(): ip}, networks=[network])
+        reverse_zone = DNSReverseZoneConfig(
+            domain, serial=random.randint(1, 100),
+            mapping={factory.getRandomString(): ip}, network=network)
         result = write_dns_zone_config.delay(
-            zone=zone, callback=rndc_command.subtask(args=[command]))
+            zones=[forward_zone, reverse_zone],
+            callback=rndc_command.subtask(args=[command]))
 
-        reverse_file_name = 'zone.rev.0.168.192.in-addr.arpa'
+        forward_file_name = 'zone.%s' % domain
+        reverse_file_name = 'zone.0.168.192.in-addr.arpa'
         self.assertThat(
             (
                 result.successful(),
-                os.path.join(self.dns_conf_dir, 'zone.%s' % zone_name),
+                os.path.join(self.dns_conf_dir, forward_file_name),
                 os.path.join(self.dns_conf_dir, reverse_file_name),
                 self.rndc_recorder.calls,
             ),
@@ -421,23 +426,31 @@ class TestDNSTasks(PservTestCase):
     def test_write_full_dns_config_sets_up_config(self):
         # write_full_dns_config writes the config file, writes
         # the zone files, and reloads the dns service.
-        zone_name = factory.getRandomString()
+        domain = factory.getRandomString()
         network = IPNetwork('192.168.0.3/24')
         ip = factory.getRandomIPInNetwork(network)
-        zones = [DNSZoneConfig(
-            zone_name, serial=random.randint(1, 100),
-            mapping={factory.getRandomString(): ip}, **network_infos(network))]
+        zones = [
+            DNSForwardZoneConfig(
+                domain, serial=random.randint(1, 100),
+                mapping={factory.getRandomString(): ip},
+                networks=[network]),
+            DNSReverseZoneConfig(
+                domain, serial=random.randint(1, 100),
+                mapping={factory.getRandomString(): ip},
+                network=network),
+            ]
         command = factory.getRandomString()
         result = write_full_dns_config.delay(
             zones=zones,
             callback=rndc_command.subtask(args=[command]))
 
-        reverse_file_name = 'zone.rev.0.168.192.in-addr.arpa'
+        forward_file_name = 'zone.%s' % domain
+        reverse_file_name = 'zone.0.168.192.in-addr.arpa'
         self.assertThat(
             (
                 result.successful(),
                 self.rndc_recorder.calls,
-                os.path.join(self.dns_conf_dir, 'zone.%s' % zone_name),
+                os.path.join(self.dns_conf_dir, forward_file_name),
                 os.path.join(self.dns_conf_dir, reverse_file_name),
                 os.path.join(self.dns_conf_dir, MAAS_NAMED_CONF_NAME),
             ),

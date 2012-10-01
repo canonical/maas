@@ -131,9 +131,6 @@ class Factory(maastesting.factory.Factory):
         subnet_mask, broadcast_ip, ip_range_low, ip_range_high, router_ip and
         worker_ip. This is a convenience to setup a coherent network all in
         one go.
-
-        Otherwise, use the provided values for these values or use random IP
-        addresses if they are not provided.
         """
         if status is None:
             status = factory.getRandomEnum(NODEGROUP_STATUS)
@@ -143,26 +140,20 @@ class Factory(maastesting.factory.Factory):
             name = self.make_name('nodegroup')
         if uuid is None:
             uuid = factory.getRandomUUID()
-        if network is not None:
+        if network is None:
+            network = factory.getRandomNetwork()
+        if subnet_mask is None:
             subnet_mask = str(network.netmask)
+        if broadcast_ip is None:
             broadcast_ip = str(network.broadcast)
+        if ip_range_low is None:
             ip_range_low = str(IPAddress(network.first))
+        if ip_range_high is None:
             ip_range_high = str(IPAddress(network.last))
+        if router_ip is None:
             router_ip = factory.getRandomIPInNetwork(network)
+        if ip is None:
             ip = factory.getRandomIPInNetwork(network)
-        else:
-            if subnet_mask is None:
-                subnet_mask = self.getRandomIPAddress()
-            if broadcast_ip is None:
-                broadcast_ip = self.getRandomIPAddress()
-            if ip_range_low is None:
-                ip_range_low = self.getRandomIPAddress()
-            if ip_range_high is None:
-                ip_range_high = self.getRandomIPAddress()
-            if router_ip is None:
-                router_ip = self.getRandomIPAddress()
-            if ip is None:
-                ip = self.getRandomIPAddress()
         if interface is None:
             interface = self.make_name('interface')
         ng = NodeGroup.objects.new(

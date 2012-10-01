@@ -15,6 +15,9 @@ __all__ = [
     ]
 
 
+from collections import defaultdict
+
+from django.core.exceptions import ValidationError
 from django.db.models import (
     CharField,
     ForeignKey,
@@ -26,10 +29,15 @@ from maasserver.enum import (
     NODEGROUPINTERFACE_MANAGEMENT,
     NODEGROUPINTERFACE_MANAGEMENT_CHOICES,
     )
+from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
+from netaddr import (
+    IPAddress,
+    IPNetwork,
+    )
 
 
-class NodeGroupInterface(TimestampedModel):
+class NodeGroupInterface(CleanSave, TimestampedModel):
 
     class Meta(DefaultMeta):
         unique_together = ('nodegroup', 'interface')
@@ -59,5 +67,46 @@ class NodeGroupInterface(TimestampedModel):
     ip_range_high = GenericIPAddressField(
         editable=True, unique=True, blank=True, null=True, default=None)
 
+    @property
+    def network(self):
+        """Return the network defined by the broadcast address and net mask.
+
+        If either the broadcast address or the subnet mask is unset, returns
+        None.
+
+        :return: :class:`IPNetwork`
+        """
+        if self.broadcast_ip is not None and self.subnet_mask is not None:
+            return IPNetwork("%s/%s" % (self.broadcast_ip, self.subnet_mask))
+        return None
+
     def __repr__(self):
         return "<NodeGroupInterface %r,%s>" % (self.nodegroup, self.interface)
+
+    def clean_network(self):
+        """Ensure that the network settings are all congruent.
+
+        Specifically, it ensures that the interface address, router address,
+        and the address range, all fall within the network defined by the
+        broadcast address and subnet mask.
+        """
+        network = self.network
+        if network is None:
+            return
+        network_settings = (
+            ("ip", self.ip),
+            ("router_ip", self.router_ip),
+            ("ip_range_low", self.ip_range_low),
+            ("ip_range_high", self.ip_range_high),
+            )
+        network_errors = defaultdict(list)
+        for field, address in network_settings:
+            if address and IPAddress(address) not in network:
+                network_errors[field].append(
+                    "%s not in the %s network" % (address, network))
+        if len(network_errors) != 0:
+            raise ValidationError(network_errors)
+
+    def clean(self, *args, **kwargs):
+        super(NodeGroupInterface, self).clean(*args, **kwargs)
+        self.clean_network()

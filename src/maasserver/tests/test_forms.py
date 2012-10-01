@@ -65,6 +65,7 @@ from maasserver.node_action import (
 from maasserver.testing import reload_object
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
+from netaddr import IPNetwork
 from provisioningserver.enum import POWER_TYPE_CHOICES
 from testtools.matchers import (
     AllMatch,
@@ -199,8 +200,8 @@ class NodeWithMACAddressesFormTest(TestCase):
 
     def test_sets_nodegroup_on_new_node_if_requested(self):
         nodegroup = factory.make_node_group(
-            ip_range_low='192.168.14.2', ip_range_high='192.168.14.254',
-            ip='192.168.14.1', subnet_mask='255.255.255.0')
+            network=IPNetwork("192.168.14.0/24"), ip_range_low='192.168.14.2',
+            ip_range_high='192.168.14.254', ip='192.168.14.1')
         form = NodeWithMACAddressesForm(
             self.make_params(nodegroup=nodegroup.get_managed_interface().ip))
         self.assertEqual(nodegroup, form.save().nodegroup)
@@ -210,9 +211,7 @@ class NodeWithMACAddressesFormTest(TestCase):
         # nodes.  You can't change it later.
         original_nodegroup = factory.make_node_group()
         node = factory.make_node(nodegroup=original_nodegroup)
-        factory.make_node_group(
-            ip_range_low='10.0.0.1', ip_range_high='10.0.0.2',
-            ip='10.0.0.1', subnet_mask='255.0.0.0')
+        factory.make_node_group(network=IPNetwork("10.0.0.0/8"))
         form = NodeWithMACAddressesForm(
             self.make_params(nodegroup='10.0.0.1'), instance=node)
         form.save()
@@ -630,14 +629,15 @@ class TestMACAddressForm(TestCase):
 
 def make_interface_settings():
     """Create a dict of arbitrary interface configuration parameters."""
+    network = factory.getRandomNetwork()
     return {
-        'ip': factory.getRandomIPAddress(),
+        'ip': factory.getRandomIPInNetwork(network),
         'interface': factory.make_name('interface'),
-        'subnet_mask': factory.getRandomIPAddress(),
-        'broadcast_ip': factory.getRandomIPAddress(),
-        'router_ip': factory.getRandomIPAddress(),
-        'ip_range_low': factory.getRandomIPAddress(),
-        'ip_range_high': factory.getRandomIPAddress(),
+        'subnet_mask': str(network.netmask),
+        'broadcast_ip': str(network.broadcast),
+        'router_ip': factory.getRandomIPInNetwork(network),
+        'ip_range_low': factory.getRandomIPInNetwork(network),
+        'ip_range_high': factory.getRandomIPInNetwork(network),
         'management': factory.getRandomEnum(NODEGROUPINTERFACE_MANAGEMENT),
     }
 

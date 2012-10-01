@@ -12,6 +12,8 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
+from functools import partial
+
 from django.conf import settings
 from maasserver import dhcp
 from maasserver.dhcp import (
@@ -24,6 +26,7 @@ from maasserver.server_address import get_maas_facing_server_address
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
 from maastesting.celery import CeleryFixture
+from netaddr import IPNetwork
 from provisioningserver import tasks
 from testresources import FixtureResource
 
@@ -60,8 +63,7 @@ class TestDHCP(TestCase):
             status=NODEGROUP_STATUS.ACCEPTED,
             dhcp_key=factory.getRandomString(),
             interface=factory.make_name('eth'),
-            ip_range_low='192.168.102.1', ip_range_high='192.168.103.254',
-            subnet_mask='255.255.252.0', broadcast_ip='192.168.103.255')
+            network=IPNetwork("192.168.102.0/22"))
 
         self.patch(settings, "DHCP_CONNECT", True)
         configure_dhcp(nodegroup)
@@ -134,7 +136,11 @@ class TestDHCP(TestCase):
         interface = nodegroup.get_managed_interface()
         self.patch(settings, "DHCP_CONNECT", True)
         self.patch(dhcp, 'write_dhcp_config')
-        new_router_ip = factory.getRandomIPAddress()
+        get_ip_in_network = partial(
+            factory.getRandomIPInNetwork, interface.network)
+        new_router_ip = next(
+            ip for ip in iter(get_ip_in_network, None)
+            if ip != interface.router_ip)
         interface.router_ip = new_router_ip
         interface.save()
         args, kwargs = dhcp.write_dhcp_config.apply_async.call_args

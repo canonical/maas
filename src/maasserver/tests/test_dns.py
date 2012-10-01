@@ -13,8 +13,8 @@ __metaclass__ = type
 __all__ = []
 
 
+from functools import partial
 from itertools import islice
-import random
 import socket
 
 from celery.task import task
@@ -28,7 +28,6 @@ from maasserver.enum import (
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
     )
-from maasserver.models.dhcplease import DHCPLease
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
 from maastesting.bindfixture import BINDServer
@@ -42,12 +41,19 @@ from netaddr import (
 from provisioningserver import tasks
 from provisioningserver.dns.config import (
     conf,
-    DNSZoneConfig,
+    DNSForwardZoneConfig,
+    DNSReverseZoneConfig,
+    DNSZoneConfigBase,
     )
 from provisioningserver.dns.utils import generated_hostname
 from rabbitfixture.server import allocate_ports
 from testresources import FixtureResource
-from testtools.matchers import MatchesStructure
+from testtools.matchers import (
+    IsInstance,
+    MatchesAll,
+    MatchesListwise,
+    MatchesStructure,
+    )
 
 
 class TestDNSUtilities(TestCase):
@@ -91,25 +97,6 @@ class TestDNSUtilities(TestCase):
             FakeMethod(failure=socket.error))
         self.patch_DEFAULT_MAAS_URL_with_random_values()
         self.assertRaises(dns.DNSException, dns.get_dns_server_address)
-
-    def test_get_zone_creates_DNSZoneConfig(self):
-        nodegroup = factory.make_node_group(
-            status=NODEGROUP_STATUS.ACCEPTED,
-            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
-        interface = nodegroup.get_managed_interface()
-        serial = random.randint(1, 100)
-        zone = dns.get_zone(nodegroup, serial)
-        self.assertAttributes(
-            zone,
-            dict(
-                zone_name=nodegroup.name,
-                serial=serial,
-                subnet_mask=interface.subnet_mask,
-                broadcast_ip=interface.broadcast_ip,
-                ip_range_low=interface.ip_range_low,
-                ip_range_high=interface.ip_range_high,
-                mapping=DHCPLease.objects.get_hostname_ip_mapping(nodegroup),
-                ))
 
     def test_is_dns_managed(self):
         nodegroups_with_expected_results = {
@@ -303,6 +290,8 @@ class TestDNSConfigModifications(TestCase):
                 management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
         interface = nodegroup.get_managed_interface()
         # Edit nodegroup's network information to '192.168.44.1/24'
+        interface.ip = '192.168.44.7'
+        interface.router_ip = '192.168.44.14'
         interface.broadcast_ip = '192.168.44.255'
         interface.netmask = '255.255.255.0'
         interface.ip_range_low = '192.168.44.0'
@@ -349,7 +338,81 @@ class TestDNSConfigModifications(TestCase):
         self.patch(settings, "DNS_CONNECT", True)
         nodegroup, node, lease = self.create_nodegroup_with_lease()
         recorder = FakeMethod()
-        self.patch(DNSZoneConfig, 'write_config', recorder)
+        self.patch(DNSZoneConfigBase, 'write_config', recorder)
         node.error = factory.getRandomString()
         node.save()
         self.assertEqual(0, recorder.call_count)
+
+
+def forward_zone(domain, *networks):
+    """
+    Returns a matcher for a :class:`DNSForwardZoneConfig` with the given
+    domain and networks.
+    """
+    networks = {IPNetwork(network) for network in networks}
+    return MatchesAll(
+        IsInstance(DNSForwardZoneConfig),
+        MatchesStructure.byEquality(
+            domain=domain, networks=networks))
+
+
+def reverse_zone(domain, network):
+    """
+    Returns a matcher for a :class:`DNSReverseZoneConfig` with the given
+    domain and network.
+    """
+    network = network if network is None else IPNetwork(network)
+    return MatchesAll(
+        IsInstance(DNSReverseZoneConfig),
+        MatchesStructure.byEquality(
+            domain=domain, network=network))
+
+
+class TestZoneGenerator(TestCase):
+    """Tests for :class:x`dns.ZoneGenerator`."""
+
+    # Factory to return an accepted nodegroup with a managed interface.
+    make_node_group = partial(
+        factory.make_node_group, status=NODEGROUP_STATUS.ACCEPTED,
+        management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
+
+    def test_with_no_nodegroups_yields_nothing(self):
+        self.assertEqual([], dns.ZoneGenerator(()).as_list())
+
+    def test_with_one_nodegroup_yields_forward_and_reverse_zone(self):
+        nodegroup = self.make_node_group(
+            name="henry", network=IPNetwork("10/32"))
+        zones = dns.ZoneGenerator(nodegroup).as_list()
+        self.assertThat(
+            zones, MatchesListwise(
+                (forward_zone("henry", "10/32"),
+                 reverse_zone("henry", "10/32"))))
+
+    def test_with_many_nodegroups_yields_many_zones(self):
+        # This demonstrates ZoneGenerator in all-singing all-dancing mode.
+        nodegroups = [
+            self.make_node_group(name="one", network=IPNetwork("10/32")),
+            self.make_node_group(name="one", network=IPNetwork("11/32")),
+            self.make_node_group(name="two", network=IPNetwork("20/32")),
+            self.make_node_group(name="two", network=IPNetwork("21/32")),
+            ]
+        [  # Other nodegroups.
+            self.make_node_group(name="one", network=IPNetwork("12/32")),
+            self.make_node_group(name="two", network=IPNetwork("22/32")),
+            ]
+        expected_zones = (
+            # For the forward zones, all nodegroups sharing a domain name,
+            # even those not passed into ZoneGenerator, are consolidated into
+            # a single forward zone description.
+            forward_zone("one", "10/32", "11/32", "12/32"),
+            forward_zone("two", "20/32", "21/32", "22/32"),
+            # For the reverse zones, a single reverse zone description is
+            # generated for each nodegroup passed in, in network order.
+            reverse_zone("one", "10/32"),
+            reverse_zone("one", "11/32"),
+            reverse_zone("two", "20/32"),
+            reverse_zone("two", "21/32"),
+            )
+        self.assertThat(
+            dns.ZoneGenerator(nodegroups).as_list(),
+            MatchesListwise(expected_zones))

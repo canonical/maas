@@ -34,22 +34,21 @@ def make_master_constants():
 
 def make_dhcp_settings():
     """Return an arbitrary dict of DHCP settings."""
+    network = factory.getRandomNetwork()
     return {
-        'ip': '10.111.123.10',
+        'ip': factory.getRandomIPInNetwork(network),
         'interface': factory.make_name('interface'),
-        'subnet_mask': '255.255.0.0',
-        'broadcast_ip': '10.111.255.255',
-        'router_ip': factory.getRandomIPAddress(),
-        'ip_range_low': '10.111.123.9',
-        'ip_range_high': '10.111.244.18',
+        'subnet_mask': str(network.netmask),
+        'broadcast_ip': str(network.broadcast),
+        'router_ip': factory.getRandomIPInNetwork(network),
+        'ip_range_low': factory.getRandomIPInNetwork(network),
+        'ip_range_high': factory.getRandomIPInNetwork(network),
     }
 
 
 def make_cleared_dhcp_settings():
     """Return dict of cleared DHCP settings."""
-    return {
-        setting: None
-        for setting in make_dhcp_settings().keys()}
+    return dict.fromkeys(make_dhcp_settings())
 
 
 class TestConfigMasterDHCP(TestCase):
