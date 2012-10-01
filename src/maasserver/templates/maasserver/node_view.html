@@ -56,6 +56,24 @@
           {{ node.display_status }}
       </span>
     </li>
+    <li class="block first size3">
+      <h4>Architecture</h4>
+      <span>
+          {{ node.architecture }}
+      </span>
+    </li>
+    <li class="block size3">
+      <h4>CPU Count</h4>
+      <span>
+          {{ node.cpu_count }}
+      </span>
+    </li>
+    <li class="block size3">
+      <h4>Memory</h4>
+      <span>
+          {{ node.memory }} MB
+      </span>
+    </li>
     {% if error_text %}
     <li class="block first">
       <h4>Error output</h4>
