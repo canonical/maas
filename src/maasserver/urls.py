@@ -51,6 +51,9 @@ from maasserver.views.settings import (
     settings,
     settings_add_archive,
     )
+from maasserver.views.tags import (
+    TagView,
+    )
 
 
 def adminurl(regexp, view, *args, **kwargs):
@@ -142,6 +145,10 @@ urlpatterns += patterns('maasserver.views',
         name='accounts-del'),
 )
 
+# Tag views.
+urlpatterns += patterns('maasserver.views',
+    url(r'^tags/(?P<name>[\w\-]+)/view/$', TagView.as_view(), name='tag-view'),
+)
 
 # API URLs.
 urlpatterns += patterns('',

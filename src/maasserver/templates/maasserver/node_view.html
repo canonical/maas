@@ -51,6 +51,15 @@
       </span>
     </li>
     <li class="block size3">
+      <h4>Tags</h4>
+      <span id="node_tags">
+          {% for tag in node.tags.all %}
+            <a href="{% url 'tag-view' tag.name %}">{{ tag }}</a>
+            {% if not forloop.last %}, {% endif %}
+          {% endfor %}
+      </span>
+    </li>
+    <li class="block size3">
       <h4>Status</h4>
       <span>
           {{ node.display_status }}

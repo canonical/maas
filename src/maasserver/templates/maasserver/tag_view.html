@@ -1,0 +1,63 @@
+{% extends "maasserver/base.html" %}
+
+{% block nav-active-settings %}active{% endblock %}
+{% block title %}Tag: {{ tag.name}}{% endblock %}
+{% block page-title %}Tag: {{ tag.name}}{% endblock %}
+
+{% block content %}
+  <ul class="data-list">
+    <li class="block size2 first">
+      <h4>Name</h4>
+      <span>{{ tag.name }}</span>
+    </li>
+    <li class="block size2">
+      <h4>Comment</h4>
+      <span>{{ tag.comment }}</span>
+    </li>
+    <li class="block size2">
+      <h4>Definition</h4>
+      <span>{{ tag.definition }}</span>
+    </li>
+    <li class="block size2 first">
+    </li>
+    {% if error_text %}
+    <li class="block first">
+      <h4>Error output</h4>
+      <span>{{ error_text }}</span>
+    </li>
+    {% endif %}
+    {% if status_text %}
+    <li class="block first">
+      <h4>Console output</h4>
+      <span>{{ status_text }}</span>
+    </li>
+    {% endif %}
+  </ul>
+  <div id="nodes">
+    <h3>Nodes</h3>
+    {% if node_list|length %}
+      <table class="list">
+        <thead>
+          <tr>
+            <th>MAC</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        {% for node in node_list %}
+          <tr class="node {% cycle 'even' 'odd' %}">
+            <td>
+              <a href="{% url 'node-view' node.system_id %}">
+                {% for macaddress in node.macaddress_set.reverse %}
+                  {{ macaddress }}{% if not forloop.last %},{% endif %}
+                {% endfor %}
+              </a>
+              ({{ node.hostname }})
+            </td>
+            <td>{{ node.display_status }}</td>
+          </tr>
+        {% endfor %}
+      </table>
+    {% endif%}
+  </div>
+{% endblock %}
+
