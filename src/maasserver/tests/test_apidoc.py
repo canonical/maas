@@ -16,7 +16,7 @@ import new
 
 from django.conf import settings
 from maasserver.api import (
-    api_exported,
+    operation,
     OperationsHandler,
     )
 from maasserver.apidoc import (
@@ -150,11 +150,11 @@ class TestDescribingAPI(TestCase):
 
             create = read = delete = None
 
-            @api_exported("POST")
+            @operation(idempotent=False)
             def peace_sells_but_whos_buying(self, request, vic, rattlehead):
                 """Released 1986."""
 
-            @api_exported("GET")
+            @operation(idempotent=True)
             def so_far_so_good_so_what(self, request, vic, rattlehead):
                 """Released 1988."""
 

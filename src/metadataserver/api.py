@@ -28,9 +28,9 @@ from django.http import (
     )
 from django.shortcuts import get_object_or_404
 from maasserver.api import (
-    api_exported,
     extract_oauth_key,
     get_mandatory_param,
+    operation,
     OperationsHandler,
     )
 from maasserver.enum import (
@@ -209,7 +209,7 @@ class VersionIndexHandler(MetadataViewHandler):
             raise MAASAPIBadRequest("Failed to parse json power_parameters")
         node.save()
 
-    @api_exported('POST')
+    @operation(idempotent=False)
     def signal(self, request, version=None, mac=None):
         """Signal commissioning status.
 
@@ -261,7 +261,7 @@ class VersionIndexHandler(MetadataViewHandler):
 
         return rc.ALL_OK
 
-    @api_exported('POST')
+    @operation(idempotent=False)
     def netboot_off(self, request, version=None, mac=None):
         """Turn off netboot on the node.
 
@@ -272,7 +272,7 @@ class VersionIndexHandler(MetadataViewHandler):
         node.set_netboot(False)
         return rc.ALL_OK
 
-    @api_exported('POST')
+    @operation(idempotent=False)
     def netboot_on(self, request, version=None, mac=None):
         """Turn on netboot on the node."""
         node = get_queried_node(request, for_mac=mac)
@@ -404,18 +404,18 @@ class EnlistVersionIndexHandler(OperationsHandler):
 class AnonMetaDataHandler(VersionIndexHandler):
     """Anonymous metadata."""
 
-    @api_exported('GET')
+    @operation(idempotent=True)
     def get_enlist_preseed(self, request, version=None):
         """Render and return a preseed script for enlistment."""
         return HttpResponse(get_enlist_preseed(), mimetype="text/plain")
 
-    @api_exported('GET')
+    @operation(idempotent=True)
     def get_preseed(self, request, version=None, system_id=None):
         """Render and return a preseed script for the given node."""
         node = get_object_or_404(Node, system_id=system_id)
         return HttpResponse(get_preseed(node), mimetype="text/plain")
 
-    @api_exported('POST')
+    @operation(idempotent=False)
     def netboot_off(self, request, version=None, system_id=None):
         """Turn off netboot on the node.
 
