@@ -1128,6 +1128,14 @@ class NodeGroupHandler(OperationsHandler):
                 {ip: leases[ip] for ip in new_leases if ip in leases})
         return HttpResponse("Leases updated.", status=httplib.OK)
 
+    @operation(idempotent=True)
+    def list_nodes(self, request, uuid):
+        """Get the list of node ids that are part of this group."""
+        nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
+        check_nodegroup_access(request, nodegroup)
+        return [node.system_id
+                for node in Node.objects.filter(nodegroup=nodegroup)]
+
 
 DISPLAYED_NODEGROUP_FIELDS = (
     'ip', 'management', 'interface', 'subnet_mask',

@@ -3452,6 +3452,36 @@ class TestNodeGroupAPIAuth(APIv10TestMixin, TestCase):
             httplib.FORBIDDEN, response.status_code,
             explain_unexpected_response(httplib.FORBIDDEN, response))
 
+    def test_nodegroup_list_nodes_requires_authentication(self):
+        nodegroup = factory.make_node_group()
+        response = self.client.get(
+            reverse('nodegroup_handler', args=[nodegroup.uuid]),
+            {'op': 'list_nodes'})
+        self.assertEqual(httplib.UNAUTHORIZED, response.status_code)
+
+    def test_nodegroup_list_nodes_does_not_work_for_normal_user(self):
+        nodegroup = factory.make_node_group()
+        log_in_as_normal_user(self.client)
+        response = self.client.get(
+            reverse('nodegroup_handler', args=[nodegroup.uuid]),
+            {'op': 'list_nodes'})
+        self.assertEqual(
+            httplib.FORBIDDEN, response.status_code,
+            explain_unexpected_response(httplib.FORBIDDEN, response))
+
+    def test_nodegroup_list_works_for_nodegroup_worker(self):
+        nodegroup = factory.make_node_group()
+        node = factory.make_node(nodegroup=nodegroup)
+        client = make_worker_client(nodegroup)
+        response = client.get(
+            reverse('nodegroup_handler', args=[nodegroup.uuid]),
+            {'op': 'list_nodes'})
+        self.assertEqual(
+            httplib.OK, response.status_code,
+            explain_unexpected_response(httplib.OK, response))
+        parsed_result = json.loads(response.content)
+        self.assertItemsEqual([node.system_id], parsed_result)
+
 
 class TestBootImagesAPI(APITestCase):
 
