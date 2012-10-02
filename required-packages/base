@@ -23,6 +23,7 @@ python-formencode
 python-httplib2
 python-lockfile
 python-netaddr
+python-netifaces
 python-oauth
 python-oops
 python-oops-amqp

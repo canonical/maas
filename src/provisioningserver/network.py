@@ -18,17 +18,21 @@ __all__ = [
     'discover_networks',
     ]
 
-import os
-from subprocess import check_output
+
+from netifaces import (
+    AF_INET,
+    ifaddresses,
+    interfaces,
+    )
 
 
 class InterfaceInfo:
     """The details of a network interface we are interested in."""
 
-    def __init__(self, interface):
+    def __init__(self, interface, ip=None, subnet_mask=None):
         self.interface = interface
-        self.ip = None
-        self.subnet_mask = None
+        self.ip = ip
+        self.subnet_mask = subnet_mask
 
     def may_be_subnet(self):
         """Could this be a subnet that MAAS is interested in?"""
@@ -51,57 +55,24 @@ class InterfaceInfo:
         }
 
 
-def run_ifconfig():
-    """Run `ifconfig` to list active interfaces.  Return output."""
-    env = dict(os.environ, LC_ALL='C')
-    output = check_output(['/sbin/ifconfig'], env=env)
-    return output.decode('ascii')
-
-
-def extract_ip_and_subnet_mask(line):
-    """Get IP address and subnet mask from an inet address line."""
-    # This line consists of key:value pairs separated by double spaces.
-    # The "inet addr" key contains a space.  There is typically a
-    # trailing separator.
-    settings = dict(
-        tuple(pair.split(':', 1))
-        for pair in line.split('  '))
-    return settings.get('inet addr'), settings.get('Mask')
-
-
-def parse_stanza(stanza):
-    """Return a :class:`InterfaceInfo` representing this ifconfig stanza.
-
-    May return `None` if it's immediately clear that the interface is not
-    relevant for MAAS.
-    """
-    lines = [line.strip() for line in stanza.splitlines()]
-    header = lines[0]
-    if 'Link encap:Ethernet' not in header:
-        return None
-    info = InterfaceInfo(header.split()[0])
-    for line in lines[1:]:
-        if line.split()[0] == 'inet':
-            info.ip, info.subnet_mask = extract_ip_and_subnet_mask(line)
-    return info
-
-
-def split_stanzas(output):
-    """Split `ifconfig` output into stanzas, one per interface."""
-    stanzas = [stanza.strip() for stanza in output.strip().split('\n\n')]
-    return [stanza for stanza in stanzas if len(stanza) > 0]
-
-
-def parse_ifconfig(output):
-    """List `InterfaceInfo` for each interface found in `ifconfig` output."""
-    infos = [parse_stanza(stanza) for stanza in split_stanzas(output)]
-    return [info for info in infos if info is not None]
+def get_interface_info(interface):
+    """Return a list of `InterfaceInfo` for the named `interface`."""
+    addresses = ifaddresses(interface).get(AF_INET)
+    if addresses is None:
+        return []
+    else:
+        return [
+            InterfaceInfo(
+                interface, ip=address.get('addr'),
+                subnet_mask=address.get('netmask'))
+            for address in addresses]
 
 
 def discover_networks():
     """Find the networks attached to this system."""
-    output = run_ifconfig()
+    infos = sum(
+        [get_interface_info(interface) for interface in interfaces()], [])
     return [
-        interface.as_dict()
-        for interface in parse_ifconfig(output)
-            if interface.may_be_subnet()]
+        info.as_dict()
+        for info in infos
+            if info.may_be_subnet()]
