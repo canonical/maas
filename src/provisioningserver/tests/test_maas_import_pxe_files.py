@@ -160,6 +160,9 @@ class TestImportPXEFiles(TestCase):
             # Suppress running of maas-import-ephemerals.  It gets too
             # intimate with the system to test here.
             'IMPORT_EPHEMERALS': '0',
+            # Suppress running of maas-import-squashfs.  It gets too
+            # intimate with the system to test here.
+            'IMPORT_SQUASHFS': '0',
         }
         env.update(self.config_fixture.environ)
         if arch is not None:

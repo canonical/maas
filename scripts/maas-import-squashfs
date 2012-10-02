@@ -1,0 +1,172 @@
+#!/bin/bash -x
+#
+# maas-import-squashfs - sync and import squashfs images
+#
+# Copyright (C) 2012 Canonical
+#
+# Authors:
+#    Andres Rodriguez <andres.rodriguez@canonical.com>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as
+# published by the Free Software Foundation, version 3 of the License.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+# Exit immediately if a command exits with a non-zero status.
+set -o errexit
+# Treat unset variables as an error when substituting.
+set -o nounset
+
+# Load settings if available.
+settings="/etc/maas/import_squashfs"
+[ -r $settings ] && . $settings
+local_settings="$(pwd)/$settings"
+[ -r $local_settings ] && . $local_settings
+
+# Download locations for Ubuntu releases.
+#http://cdimage.ubuntu.com/ubuntu-server/daily/current/
+SQUASHFS_ARCHIVE=${ARCHIVE:-http://cdimage.ubuntu.com/}
+RELEASES="quantal"
+# Ubuntu releases that are to be downloaded.
+SUPPORTED_RELEASES=""
+for supported in $(distro-info --supported)
+do
+    if [ $(expr "$supported" \>= "quantal") -eq 1 ]; then
+        SUPPORTED_RELEASES="${SUPPORTED_RELEASES:-}${supported} "
+    fi
+done
+
+EFFECTIVE_RELEASES=""
+if [ -z "$RELEASES" ]; then
+    RELEASES=${RELEASES:-$SUPPORTED_RELEASES}
+else
+    for release in $RELEASES
+    do
+        [[ "$SUPPORTED_RELEASES" =~ "${release}" ]] && EFFECTIVE_RELEASES="${EFFECTIVE_RELEASES:-}${release} "
+    done
+    RELEASES="$EFFECTIVE_RELEASES"
+fi
+
+# The current Ubuntu release.
+STABLE_RELEASE=$(distro-info --stable)
+
+# Supported architectures.
+ARCHES=${ARCHES:-amd64/generic i386/generic}
+
+# Command line to download a resource at a given URL into the current
+# directory.  A wget command line will work here, but curl will do as well.
+DOWNLOAD=${DOWNLOAD:-wget --no-verbose}
+
+# Whether to download squashfs images as well: "1" for yes, "0" for no.
+# Default is yes.
+IMPORT_SQUASHFS=${IMPORT_SQUASHFS:-1}
+
+# Put together a full URL for where the installer files for architecture $1
+# and release $2 can be downloaded.
+compose_installer_download_url() {
+    local arch=$1 release=$2
+
+    case $arch in
+        amd64/*|i386/*)
+            local installer_url="$SQUASHFS_ARCHIVE/ubuntu-server/daily/current"
+            echo $installer_url
+            ;;
+        *)
+            echo "Unknown architecture: $arch" >&2
+            exit 1
+            ;;
+    esac
+}
+
+# Return a list of files for architecture $1 and release $2 that need to be
+# downloaded
+compose_installer_download_files() {
+    local arch=$1 release=$2
+
+    case $arch in
+        amd64/*|i386/*)
+            echo "$release-server-${arch%%/*}.squashfs"
+            ;;
+        *)
+            echo "Unknown architecture: $arch" >&2
+            exit 1
+            ;;
+    esac
+}
+
+# Rename downloaded files for architecture $1 and release $2 into the form that
+# MAAS expects them
+rename_installer_download_files() {
+    local arch=$1 release=$2
+
+    case $arch in
+        amd64/*|i386/*)
+            mv $release-server-${arch%%/*}.squashfs filesystem.squashfs
+            ;;
+        *)
+            echo "Unknown architecture: $arch" >&2
+            exit 1
+            ;;
+    esac
+}
+
+# Download kernel/initrd for installing Ubuntu release $2 for
+# architecture $1 and install it into the TFTP directory hierarchy.
+update_install_files() {
+    local arch=$1 release=$2
+    local files=$(compose_installer_download_files $arch $release)
+    local url=$(compose_installer_download_url $arch $release)
+    local file
+
+    mkdir "install"
+    pushd "install" >/dev/null
+    for file in $files
+    do
+        $DOWNLOAD $url/$file
+    done
+    rename_installer_download_files $arch $release
+    popd >/dev/null
+
+    maas-provision install-pxe-image \
+        --arch="${arch%%/*}" --subarch="${arch#*/}" \
+        --release=$release --purpose="filesystem" \
+        --image="install"
+}
+
+
+# Download and install the "install" images.
+import_install_images() {
+    local arch release DOWNLOAD_DIR
+
+    DOWNLOAD_DIR=$(mktemp -d)
+    echo "Downloading to temporary location $DOWNLOAD_DIR."
+    pushd -- $DOWNLOAD_DIR
+
+    for arch in $ARCHES
+    do
+        for release in $RELEASES
+        do
+            update_install_files $arch $release
+        done
+    done
+
+    popd
+    rm -rf -- $DOWNLOAD_DIR
+}
+
+
+main() {
+    # All files we create here are public.  The TFTP user will need to be
+    # able to read them.
+    umask a+r
+    import_install_images
+}
+
+main

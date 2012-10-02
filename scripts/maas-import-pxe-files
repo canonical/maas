@@ -41,6 +41,10 @@ ARCHES=${ARCHES:-amd64/generic i386/generic}
 # directory.  A wget command line will work here, but curl will do as well.
 DOWNLOAD=${DOWNLOAD:-wget --no-verbose}
 
+# Whether to download squashfs images as well: "1" for yes, "0" for no.
+# Default is yes.
+IMPORT_SQUASHFS=${IMPORT_SQUASHFS:-1}
+
 # Whether to download ephemeral images as well: "1" for yes, "0" for no.
 # Default is yes.
 IMPORT_EPHEMERALS=${IMPORT_EPHEMERALS:-1}
@@ -178,6 +182,15 @@ import_install_images() {
 }
 
 
+# Download and install the squashfs root images.
+import_squashfs_images() {
+    if test "$IMPORT_SQUASHFS" != "0"
+    then
+        maas-import-squashfs
+    fi
+}
+
+
 # Download and install the ephemeral images.
 import_ephemeral_images() {
     if test "$IMPORT_EPHEMERALS" != "0"
@@ -194,6 +207,7 @@ main() {
 
     update_pre_boot_loader
     import_install_images
+    import_squashfs_images
     import_ephemeral_images
 }
 

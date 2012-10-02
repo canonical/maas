@@ -58,6 +58,7 @@ setup(
              'etc/maas_cluster.conf',
              'etc/txlongpoll.yaml',
              'contrib/maas_local_celeryconfig.py',
+             'etc/maas/import_squashfs',
              'contrib/maas_local_celeryconfig_cluster.py',
              'etc/maas/import_ephemerals',
              'etc/maas/import_pxe_files',
@@ -78,7 +79,8 @@ setup(
              'contrib/preseeds_v2/enlist_userdata',
              'contrib/preseeds_v2/preseed_master']),
         ('/usr/sbin',
-            ['scripts/maas-import-ephemerals',
+            ['scripts/maas-import-squashfs',
+             'scripts/maas-import-ephemerals',
              'scripts/maas-import-pxe-files']),
     ],
 

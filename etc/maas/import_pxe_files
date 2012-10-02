@@ -17,3 +17,4 @@ RELEASES="precise"
 #ARCHES="amd64/generic i386/generic"
 #LOCALE="en_US"
 #IMPORT_EPHEMERALS=1
+#IMPORT_SQUASHFS=1
