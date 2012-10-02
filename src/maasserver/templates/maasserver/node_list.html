@@ -37,29 +37,7 @@
         <input type="text" name="query" class="search-box" value="Search nodes" />
       </form>
     {% endcomment %}
-    {% if node_list|length %}
-      <table class="list">
-        <thead>
-          <tr>
-            <th>MAC</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        {% for node in node_list %}
-          <tr class="node {% cycle 'even' 'odd' %}">
-            <td>
-              <a href="{% url 'node-view' node.system_id %}">
-                {% for macaddress in node.macaddress_set.reverse %}
-                  {{ macaddress }}{% if not forloop.last %},{% endif %}
-                {% endfor %}
-              </a>
-              ({{ node.hostname }})
-            </td>
-            <td>{{ node.display_status }}</td>
-          </tr>
-        {% endfor %}
-      </table>
-    {% endif%}
+    {% include "maasserver/nodes_listing.html" %}
     <a id="addnode" href="#" class="button right space-top">+ Add node</a>
     <div class="clear"></div>
     <a class="right space-top" href="{% url "enlist-preseed-view" %}">View enlistment preseed</a>

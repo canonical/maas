@@ -1,0 +1,24 @@
+{% if node_list|length %}
+  <table class="list">
+    <thead>
+      <tr>
+        <th>MAC</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    {% for node in node_list %}
+      <tr class="node {% cycle 'even' 'odd' %}">
+        <td>
+          <a href="{% url 'node-view' node.system_id %}">
+            {% for macaddress in node.macaddress_set.reverse %}
+              {{ macaddress }}{% if not forloop.last %},{% endif %}
+            {% endfor %}
+          </a>
+          ({{ node.hostname }})
+        </td>
+        <td>{{ node.display_status }}</td>
+      </tr>
+    {% endfor %}
+  </table>
+{% endif%}
+
