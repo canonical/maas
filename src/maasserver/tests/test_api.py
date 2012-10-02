@@ -3196,6 +3196,19 @@ class TestNodeGroupInterfaceAPI(APITestCase):
             (httplib.OK, new_ip_range_high),
             (response.status_code, reload_object(interface).ip_range_high))
 
+    def test_delete_interface(self):
+        self.become_admin()
+        nodegroup = factory.make_node_group()
+        interface = nodegroup.get_managed_interface()
+        response = self.client.delete(
+            reverse(
+                'nodegroupinterface_handler',
+                args=[nodegroup.uuid, interface.interface]))
+        self.assertEqual(httplib.NO_CONTENT, response.status_code)
+        self.assertFalse(
+            NodeGroupInterface.objects.filter(
+                interface=interface.interface, nodegroup=nodegroup).exists())
+
 
 def explain_unexpected_response(expected_status, response):
     """Return human-readable failure message: unexpected http response."""

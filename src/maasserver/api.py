@@ -1226,6 +1226,14 @@ class NodeGroupInterfaceHandler(OperationsHandler):
         else:
             raise ValidationError(form.errors)
 
+    def delete(self, request, uuid, interface):
+        """Delete a specific NodeGroupInterface."""
+        nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
+        nodegroupinterface = get_object_or_404(
+            NodeGroupInterface, nodegroup=nodegroup, interface=interface)
+        nodegroupinterface.delete()
+        return rc.DELETED
+
     @classmethod
     def resource_uri(cls, nodegroup=None, interface=None):
         if nodegroup is None:
