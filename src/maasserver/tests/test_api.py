@@ -2992,6 +2992,21 @@ class TestAnonNodeGroupsAPI(AnonAPITestCase):
             (NODEGROUP_STATUS.ACCEPTED, DEFAULT_ZONE_NAME),
             (master.status, master.name))
 
+    def test_register_multiple_nodegroups(self):
+        uuids = {
+            factory.getRandomUUID(), factory.getRandomUUID(),
+            factory.getRandomUUID()}
+        for uuid in uuids:
+            self.client.post(
+                reverse('nodegroups_handler'),
+                {
+                    'op': 'register',
+                    'uuid': uuid,
+                })
+        self.assertSetEqual(
+            uuids,
+            set(NodeGroup.objects.values_list('uuid', flat=True)))
+
     def test_register_accepts_only_one_managed_interface(self):
         self.create_configured_master()
         name = factory.make_name('name')

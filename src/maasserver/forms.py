@@ -76,6 +76,7 @@ from maasserver.models import (
     SSHKey,
     Tag,
     )
+from maasserver.models.nodegroup import NODEGROUP_CLUSTER_NAME_TEMPLATE
 from maasserver.node_action import compile_node_actions
 from maasserver.power_parameters import POWER_TYPE_PARAMETERS
 from provisioningserver.enum import (
@@ -703,11 +704,13 @@ class NodeGroupWithInterfacesForm(ModelForm):
     """Create a NodeGroup with unmanaged interfaces."""
 
     interfaces = forms.CharField(required=False)
+    cluster_name = forms.CharField(required=False)
 
     class Meta:
         model = NodeGroup
         fields = (
             'name',
+            'cluster_name',
             'uuid',
             )
 
@@ -721,6 +724,15 @@ class NodeGroupWithInterfacesForm(ModelForm):
             return DEFAULT_ZONE_NAME
         else:
             return data
+
+    def clean(self):
+        cleaned_data = super(NodeGroupWithInterfacesForm, self).clean()
+        cluster_name = cleaned_data.get("cluster_name")
+        uuid = cleaned_data.get("uuid")
+        if uuid and not cluster_name:
+            cleaned_data["cluster_name"] = (
+                NODEGROUP_CLUSTER_NAME_TEMPLATE % {'uuid': uuid})
+        return cleaned_data
 
     def clean_interfaces(self):
         data = self.cleaned_data['interfaces']
