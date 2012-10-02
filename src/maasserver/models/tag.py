@@ -128,9 +128,8 @@ class Tag(CleanSave, TimestampedModel):
         # Now delete the existing tags
         self.node_set.clear()
         # And figure out what matches the new definition
-        parser = etree.XMLParser(recover=True)
         for node in Node.objects.filter(hardware_details__isnull=False):
-            doc = etree.XML(node.hardware_details, parser)
+            doc = etree.XML(node.hardware_details)
             if xpath(doc):
                 node.tags.add(self)
 

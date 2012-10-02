@@ -16,6 +16,7 @@ __all__ = [
     "update_hardware_details",
     ]
 
+import math
 import os
 from string import whitespace
 from uuid import uuid1
@@ -322,8 +323,8 @@ class NodeManager(Manager):
 
 
 _xpath_processor_count = "count(//node[@id='core']/node[@class='processor'])"
-_xpath_memory_bytes = "//node[@id='memory']/size[@units='bytes']/text()"
-_mibibyte = 1024 * 1024
+_xpath_memory_bytes = ("//node[@id='memory']/size[@units='bytes']/text()"
+                       " div 1048576")
 
 
 def update_hardware_details(node, xmlbytes):
@@ -337,20 +338,18 @@ def update_hardware_details(node, xmlbytes):
     * Doing UPDATE then transaction.commit_unless_managed doesn't work?
     * Scalar returns from xpath() work in postgres 9.2 or later only.
     """
+    try:
+        doc = etree.XML(xmlbytes)
+    except etree.XMLSyntaxError as e:
+        raise ValidationError(
+            {'hardware_details': ['Invalid XML: %s' % (e,)]})
     node.hardware_details = xmlbytes
-    parser = etree.XMLParser(recover=True)
-    doc = etree.XML(node.hardware_details, parser)
     # Same document, many queries: use XPathEvaluator.
     evaluator = etree.XPathEvaluator(doc)
     cpu_count = evaluator(_xpath_processor_count)
     memory = evaluator(_xpath_memory_bytes)
-    if not memory or len(memory) != 1:
+    if not memory or math.isnan(memory):
         memory = 0
-    else:
-        try:
-            memory = int(memory[0]) / _mibibyte
-        except ValueError:
-            memory = 0
     node.cpu_count = cpu_count or 0
     node.memory = memory
     for tag in Tag.objects.all():

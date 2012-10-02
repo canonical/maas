@@ -463,6 +463,12 @@ class NodeTest(TestCase):
         node.set_hardware_details(xmlbytes)
         self.assertEqual(xmlbytes, node.hardware_details)
 
+    def test_set_invalid_hardware_details(self):
+        node = factory.make_node(owner=factory.make_user())
+        node.set_hardware_details('<test />')
+        self.assertRaises(ValidationError, node.set_hardware_details, '')
+        self.assertEqual('<test />', node.hardware_details)
+
     def test_hardware_updates_cpu_count(self):
         node = factory.make_node()
         xmlbytes = (
