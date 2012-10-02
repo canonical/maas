@@ -41,7 +41,7 @@ DATA_DIR="/var/lib/maas/ephemeral"
 CONFIG="/etc/maas/import_ephemerals"
 
 RELEASES="precise"
-ARCHES="amd64 i386"
+ARCHES="amd64/generic i386/generic armhf/highbank"
 BUILD_NAME="ephemeral"
 STREAM="released"
 
@@ -338,7 +338,9 @@ fi
 
 updates=0
 for release in $RELEASES; do
-    for arch in $ARCHES; do
+    for arch_tuple in $ARCHES; do
+        arch="${arch_tuple%%/*}"
+        subarch="${arch_tuple#*/}"
 
         query_local "$arch" "$release" "$BUILD_NAME" ||
             fail "failed to query local for $release/$arch"
@@ -382,8 +384,8 @@ for release in $RELEASES; do
 
         # Even if there was no need to update the image, we make sure it
         # gets installed.
-        debug 1 "adding images for $release/$arch/generic to maas"
-        install_tftp_image "$fpfinal_d" "$arch" "generic" "$release" ||
+        debug 1 "adding images for $release/$arch/$subarch to maas"
+        install_tftp_image "$fpfinal_d" "$arch" "$subarch" "$release" ||
             fail "failed to install ftp image [$info]"
 
         target_name="${TARGET_NAME_PREFIX}${name}"
