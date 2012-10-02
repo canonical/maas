@@ -1,34 +1,34 @@
 - fields: {
     created: 2012-01-24, hostname: sun, architecture: i386,
-    owner: null, status: 0, nodegroup: [master],
+    owner: null, status: 0, nodegroup: [master], tags: [30],
     system_id: node-2666dd64-4671-11e1-93b8-00225f89f211,
     updated: !!timestamp '2012-01-24 10:52:38.735954'}
   model: maasserver.node
   pk: 15
 - fields: {
     created: 2012-01-24, hostname: moon, architecture: i386,
-    owner: null, status: 2, nodegroup: [master],
+    owner: null, status: 2, nodegroup: [master], tags: [],
     system_id: node-29d7ad70-4671-11e1-93b8-00225f89f211,
     updated: !!timestamp '2012-01-24 10:52:44.507777'}
   model: maasserver.node
   pk: 16
 - fields: {
     created: 2012-01-24, hostname: mars, architecture: i386,
-    owner: 106, status: 3, nodegroup: [master],
+    owner: 106, status: 3, nodegroup: [master], tags: [31],
     system_id: node-2d424b28-4671-11e1-93b8-00225f89f211,
     updated: !!timestamp '2012-01-24 10:52:50.239704'}
   model: maasserver.node
   pk: 17
 - fields: {
     created: 2012-01-24, hostname: jupiter, architecture: i386,
-    owner: null, status: 0, nodegroup: [master],
+    owner: null, status: 0, nodegroup: [master], tags: [30, 31],
     system_id: node-2fb4fec8-4671-11e1-93b8-00225f89f211,
     updated: !!timestamp '2012-01-24 10:52:54.346832'}
   model: maasserver.node
   pk: 18
 - fields: {
     created: 2012-01-24, hostname: saturn, architecture: i386,
-    owner: 101, status: 3, nodegroup: [master],
+    owner: 101, status: 3, nodegroup: [master], tags: [30, 31, 32],
     system_id: node-33b55e28-4671-11e1-93b8-00225f89f211,
     updated: !!timestamp '2012-01-24 10:53:01.060176'}
   model: maasserver.node
@@ -57,6 +57,30 @@
       11:06:41.632158'}
   model: maasserver.macaddress
   pk: 6
+- fields:
+    name: big
+    definition: "LARGER THAN earth"
+    comment: ''
+    created: 2012-10-02
+    updated: 2012-10-02
+  model: maasserver.tag
+  pk: 30
+- fields:
+    name: planet
+    definition: "ORBITS star AND it's complicated"
+    comment: 'Seriously, "clearing the neighbourhood"...'
+    created: 2012-10-02
+    updated: 2012-10-02
+  model: maasserver.tag
+  pk: 31
+- fields:
+    name: ringed
+    definition: "HAS prominent ring system"
+    comment: 'Excludes the rings of Jupiter.'
+    created: 2012-10-02
+    updated: 2012-10-02
+  model: maasserver.tag
+  pk: 32
 - fields:
     date_joined: 2012-01-23 11:52:14
     email: admin@example.com
