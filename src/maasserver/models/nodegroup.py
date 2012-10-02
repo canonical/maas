@@ -68,8 +68,10 @@ class NodeGroupManager(Manager):
         assert all(dhcp_values) or not any(dhcp_values), (
             "Provide all DHCP settings, or none at all.")
 
+        cluster_name = NODEGROUP_DESCRIPTION_TEMPLATE % uuid
         nodegroup = NodeGroup(
-            name=name, uuid=uuid, dhcp_key=dhcp_key, status=status)
+            name=name, uuid=uuid, cluster_name=cluster_name, dhcp_key=dhcp_key,
+            status=status)
         nodegroup.save()
         nginterface = NodeGroupInterface(
             nodegroup=nodegroup, ip=ip, subnet_mask=subnet_mask,
@@ -107,6 +109,9 @@ class NodeGroupManager(Manager):
         """Send refresh tasks to all node-group workers."""
         for nodegroup in self.all():
             refresh_worker(nodegroup)
+
+
+NODEGROUP_DESCRIPTION_TEMPLATE = "Cluster %s"
 
 
 class NodeGroup(TimestampedModel):
