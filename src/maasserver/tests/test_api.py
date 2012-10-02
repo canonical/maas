@@ -35,7 +35,6 @@ from celery.app import app_or_default
 from django.conf import settings
 from django.contrib.auth.models import AnonymousUser
 from django.core.urlresolvers import reverse
-from django.db.utils import DatabaseError
 from django.http import QueryDict
 from fixtures import Fixture
 from maasserver import api
@@ -2456,18 +2455,10 @@ class TestTagAPI(APITestCase):
             {'definition': 'invalid::tag'})
 
         self.assertEqual(httplib.BAD_REQUEST, response.status_code)
-        # Note: JAM 2012-09-26 we'd like to assert that the state in the DB is
-        #       properly aborted. However, the transactions are being handled
-        #       by TransactionMiddleware and are not hooked up in the test
-        #       suite. And the DB is currently in 'pending rollback' state, so
-        #       we cannot inspect it. So we test that we get a proper error
-        #       back, and test that the DB is in abort state. To test that
-        #       TransactionMiddleware is properly functioning needs a higher
-        #       level test.
-        self.assertRaises(DatabaseError, Tag.objects.all().count)
-        # tag = reload_object(tag)
-        # self.assertItemsEqual([tag.name], node.tag_names())
-        # self.assertEqual('/node/foo', tag.definition)
+        # The tag should not be modified
+        tag = reload_object(tag)
+        self.assertItemsEqual([tag.name], node.tag_names())
+        self.assertEqual('//child', tag.definition)
 
 
 class TestTagsAPI(APITestCase):

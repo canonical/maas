@@ -16,7 +16,6 @@ __all__ = [
     "update_hardware_details",
     ]
 
-import contextlib
 import os
 from string import whitespace
 from uuid import uuid1
@@ -27,7 +26,6 @@ from django.core.exceptions import (
     PermissionDenied,
     ValidationError,
     )
-from django.db import connection
 from django.db.models import (
     BooleanField,
     CharField,
@@ -38,6 +36,7 @@ from django.db.models import (
     Q,
     )
 from django.shortcuts import get_object_or_404
+from lxml import etree
 from maasserver import DefaultMeta
 from maasserver.enum import (
     ARCHITECTURE,
@@ -322,6 +321,11 @@ class NodeManager(Manager):
         return processed_nodes
 
 
+_xpath_processor_count = "count(//node[@id='core']/node[@class='processor'])"
+_xpath_memory_bytes = "//node[@id='memory']/size[@units='bytes']/text()"
+_mibibyte = 1024 * 1024
+
+
 def update_hardware_details(node, xmlbytes):
     """Set node hardware_details from lshw output and update related fields
 
@@ -334,31 +338,27 @@ def update_hardware_details(node, xmlbytes):
     * Scalar returns from xpath() work in postgres 9.2 or later only.
     """
     node.hardware_details = xmlbytes
-    node.save()
-    with contextlib.closing(connection.cursor()) as cursor:
-        cursor.execute("SELECT"
-            " array_length(xpath(%s, hardware_details), 1) AS count,"
-            " (xpath(%s, hardware_details))[1]::text::bigint / 1048576 AS mem"
-            " FROM maasserver_node"
-            " WHERE id = %s",
-            [
-                "//node[@id='core']/node[@class='processor']",
-                "//node[@id='memory']/size[@units='bytes']/text()",
-                node.id,
-            ])
-        cpu_count, memory = cursor.fetchone()
-        node.cpu_count = cpu_count or 0
-        node.memory = memory or 0
-        for tag in Tag.objects.all():
-            cursor.execute(
-                "SELECT xpath_exists(%s, hardware_details)"
-                " FROM maasserver_node WHERE id = %s",
-                [tag.definition,  node.id])
-            has_tag, = cursor.fetchone()
-            if has_tag:
-                node.tags.add(tag)
-            else:
-                node.tags.remove(tag)
+    parser = etree.XMLParser(recover=True)
+    doc = etree.XML(node.hardware_details, parser)
+    # Same document, many queries: use XPathEvaluator.
+    evaluator = etree.XPathEvaluator(doc)
+    cpu_count = evaluator(_xpath_processor_count)
+    memory = evaluator(_xpath_memory_bytes)
+    if not memory or len(memory) != 1:
+        memory = 0
+    else:
+        try:
+            memory = int(memory[0]) / _mibibyte
+        except ValueError:
+            memory = 0
+    node.cpu_count = cpu_count or 0
+    node.memory = memory
+    for tag in Tag.objects.all():
+        has_tag = evaluator(tag.definition)
+        if has_tag:
+            node.tags.add(tag)
+        else:
+            node.tags.remove(tag)
     node.save()
 
 

@@ -16,6 +16,7 @@ __all__ = [
 
 from django.core.exceptions import (
     PermissionDenied,
+    ValidationError,
     )
 from django.core.validators import RegexValidator
 from django.db.models import (
@@ -25,6 +26,7 @@ from django.db.models import (
     Q,
     )
 from django.shortcuts import get_object_or_404
+from lxml import etree
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
@@ -116,16 +118,21 @@ class Tag(CleanSave, TimestampedModel):
         """Find all nodes that match this tag, and update them."""
         # Local import to avoid circular reference
         from maasserver.models import Node
-        # First destroy the existing tags
+        # First make sure we have a valid definition
+        try:
+            # Many documents, one definition: use XPath.
+            xpath = etree.XPath(self.definition)
+        except etree.XPathSyntaxError as e:
+            msg = 'Invalid xpath expression: %s' % (e,)
+            raise ValidationError({'definition': [msg]})
+        # Now delete the existing tags
         self.node_set.clear()
-        # Now figure out what matches the new definition
-        for node in Node.objects.raw(
-                'SELECT id FROM maasserver_node'
-                ' WHERE xpath_exists(%s, hardware_details)',
-                [self.definition]):
-            # Is there an efficiency difference between doing
-            # 'node.tags.add(self)' and 'self.node_set.add(node)' ?
-            node.tags.add(self)
+        # And figure out what matches the new definition
+        parser = etree.XMLParser(recover=True)
+        for node in Node.objects.filter(hardware_details__isnull=False):
+            doc = etree.XML(node.hardware_details, parser)
+            if xpath(doc):
+                node.tags.add(self)
 
     def save(self, *args, **kwargs):
         super(Tag, self).save(*args, **kwargs)

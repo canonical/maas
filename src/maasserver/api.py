@@ -1344,7 +1344,13 @@ class TagsHandler(OperationsHandler):
     def new(self, request):
         """Create a new `Tag`.
         """
-        return create_tag(request)
+        if not request.user.is_superuser:
+            raise PermissionDenied()
+        form = TagForm(request.data)
+        if form.is_valid():
+            return form.save()
+        else:
+            raise ValidationError(form.errors)
 
     @operation(idempotent=True)
     def list(self, request):
@@ -1355,23 +1361,6 @@ class TagsHandler(OperationsHandler):
     @classmethod
     def resource_uri(cls, *args, **kwargs):
         return ('tags_handler', [])
-
-
-def create_tag(request):
-    """Service an http request to create a tag.
-
-    :param request: The http request for this node to be created.
-    :return: A `Tag`.
-    :rtype: :class:`maasserver.models.Tag`.
-    :raises: ValidationError
-    """
-    if not request.user.is_superuser:
-        raise PermissionDenied()
-    form = TagForm(request.data)
-    if form.is_valid():
-        return form.save()
-    else:
-        raise ValidationError(form.errors)
 
 
 class MAASHandler(OperationsHandler):

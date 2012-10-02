@@ -51,6 +51,7 @@ from django.forms import (
     Form,
     ModelForm,
     )
+from lxml import etree
 from maasserver.config_forms import SKIP_CHECK_NAME
 from maasserver.enum import (
     ARCHITECTURE,
@@ -778,3 +779,12 @@ class TagForm(ModelForm):
             'comment',
             'definition',
             )
+
+    def clean_definition(self):
+        definition = self.cleaned_data['definition']
+        try:
+            etree.XPath(definition)
+        except etree.XPathSyntaxError as e:
+            msg = 'Invalid xpath expression: %s' % (e,)
+            raise ValidationError({'definition': [msg]})
+        return definition
