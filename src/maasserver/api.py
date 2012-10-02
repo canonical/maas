@@ -213,12 +213,14 @@ def operation(idempotent, exported_as=None):
         exported method.
     """
     method = "GET" if idempotent else "POST"
+
     def _decorator(func):
         if exported_as is None:
             func.export = method, func.__name__
         else:
             func.export = method, exported_as
         return func
+
     return _decorator
 
 
