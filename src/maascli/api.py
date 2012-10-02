@@ -16,6 +16,7 @@ __all__ = [
 
 from getpass import getpass
 import httplib
+from itertools import chain
 import json
 import sys
 from urlparse import (
@@ -193,7 +194,6 @@ class Action(Command):
 
     uri = property(lambda self: self.handler["uri"])
     method = property(lambda self: self.action["method"])
-    is_restful = property(lambda self: self.action["restful"])
     credentials = property(lambda self: self.profile["credentials"])
     op = property(lambda self: self.action["op"])
 
@@ -210,13 +210,9 @@ class Action(Command):
         # <https://github.com/uri-templates/uritemplate-py> here?
         uri = self.uri.format(**vars(options))
 
-        # Add the operation to the data set.
-        if self.op is not None:
-            options.data.append(("op", self.op))
-
         # Bundle things up ready to throw over the wire.
         uri, body, headers = self.prepare_payload(
-            self.method, self.is_restful, uri, options.data)
+            self.op, self.method, uri, options.data)
 
         # Sign request if credentials have been provided.
         if self.credentials is not None:
@@ -247,31 +243,31 @@ class Action(Command):
                 "%r is not a name=value pair" % string)
 
     @staticmethod
-    def prepare_payload(method, is_restful, uri, data):
+    def prepare_payload(op, method, uri, data):
         """Return the URI (modified perhaps) and body and headers.
 
+        - For GET requests, encode parameters in the query string.
+
+        - Otherwise always encode parameters in the request body.
+
+        - Except op; this can always go in the query string.
+
         :param method: The HTTP method.
-        :param is_restful: Is this a ReSTful operation?
         :param uri: The URI of the action.
         :param data: A dict or iterable of name=value pairs to pack into the
             body or headers, depending on the type of request.
         """
-        if method == "POST" and not is_restful:
-            # Encode the data as multipart for non-ReSTful POST requests; all
-            # others should use query parameters. TODO: encode_multipart_data
-            # insists on a dict for the data, which prevents specifying
-            # multiple values for a field, like mac_addresses.  This needs to
-            # be fixed.
-            body, headers = encode_multipart_data(data, {})
-            # TODO: make encode_multipart_data work with arbitrarily encoded
-            # strings; atm, it blows up when encountering a non-ASCII string.
-        else:
-            # TODO: deal with state information, i.e. where to stuff CRUD
-            # data, content types, etc.
+        if method == "GET":
+            query = data if op is None else chain([("op", op)], data)
             body, headers = None, {}
-            # TODO: smarter merging of data with query.
-            uri = urlparse(uri)._replace(query=urlencode(data)).geturl()
+        else:
+            query = [] if op is None else [("op", op)]
+            if data:
+                body, headers = encode_multipart_data(data)
+            else:
+                body, headers = None, {}
 
+        uri = urlparse(uri)._replace(query=urlencode(query)).geturl()
         return uri, body, headers
 
     @staticmethod

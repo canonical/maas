@@ -27,7 +27,6 @@ from maastesting.testcase import TestCase
 from mock import sentinel
 from testtools.matchers import (
     Equals,
-    Is,
     IsInstance,
     MatchesAll,
     MatchesListwise,
@@ -154,57 +153,137 @@ class TestAction(TestCase):
             api.Action.name_value_pair(" foo = bar "))
 
 
-class TestActionReSTful(TestCase):
-    """Tests for ReSTful operations in `maascli.api.Action`."""
+class TestPayloadPreparation(TestCase):
+    """Tests for `maascli.api.Action.prepare_payload`."""
 
-    scenarios = (
-        ("create", dict(method="POST")),
-        ("read", dict(method="GET")),
-        ("update", dict(method="PUT")),
-        ("delete", dict(method="DELETE")),
+    uri_base = "http://example.com/MAAS/api/1.0/"
+
+    # Scenarios for ReSTful operations; i.e. without an "op" parameter.
+    scenarios_without_op = (
+        # Without data, all requests have an empty request body and no extra
+        # headers.
+        ("create",
+         {"method": "POST", "data": [],
+          "expected_uri": uri_base,
+          "expected_body": None,
+          "expected_headers": {}}),
+        ("read",
+         {"method": "GET", "data": [],
+          "expected_uri": uri_base,
+          "expected_body": None,
+          "expected_headers": {}}),
+        ("update",
+         {"method": "PUT", "data": [],
+          "expected_uri": uri_base,
+          "expected_body": None,
+          "expected_headers": {}}),
+        ("delete",
+         {"method": "DELETE", "data": [],
+          "expected_uri": uri_base,
+          "expected_body": None,
+          "expected_headers": {}}),
+        # With data, PUT, POST, and DELETE requests have their body and extra
+        # headers prepared by encode_multipart_data. For GET requests, the
+        # data is encoded into the query string, and both the request body and
+        # extra headers are empty.
+        ("create-with-data",
+         {"method": "POST", "data": [("foo", "bar"), ("foo", "baz")],
+          "expected_uri": uri_base,
+          "expected_body": sentinel.body,
+          "expected_headers": sentinel.headers}),
+        ("read-with-data",
+         {"method": "GET", "data": [("foo", "bar"), ("foo", "baz")],
+          "expected_uri": uri_base + "?foo=bar&foo=baz",
+          "expected_body": None,
+          "expected_headers": {}}),
+        ("update-with-data",
+         {"method": "PUT", "data": [("foo", "bar"), ("foo", "baz")],
+          "expected_uri": uri_base,
+          "expected_body": sentinel.body,
+          "expected_headers": sentinel.headers}),
+        ("delete-with-data",
+         {"method": "DELETE", "data": [("foo", "bar"), ("foo", "baz")],
+          "expected_uri": uri_base,
+          "expected_body": sentinel.body,
+          "expected_headers": sentinel.headers}),
         )
 
-    def test_prepare_payload_without_data(self):
-        # prepare_payload() is almost a no-op for ReSTful methods that don't
-        # specify any extra data.
-        uri_base = "http://example.com/MAAS/api/1.0/"
-        payload = api.Action.prepare_payload(
-            method=self.method, is_restful=True, uri=uri_base, data=[])
-        expected = (
-            Equals(uri_base),  # uri
-            Is(None),  # body
-            Equals({}),  # headers
-            )
-        self.assertThat(payload, MatchesListwise(expected))
+    # Scenarios for non-ReSTful operations; i.e. with an "op" parameter.
+    scenarios_with_op = (
+        # Without data, all requests have an empty request body and no extra
+        # headers. The operation is encoded into the query string.
+        ("create",
+         {"method": "POST", "data": [],
+          "expected_uri": uri_base + "?op=something",
+          "expected_body": None,
+          "expected_headers": {}}),
+        ("read",
+         {"method": "GET", "data": [],
+          "expected_uri": uri_base + "?op=something",
+          "expected_body": None,
+          "expected_headers": {}}),
+        ("update",
+         {"method": "PUT", "data": [],
+          "expected_uri": uri_base + "?op=something",
+          "expected_body": None,
+          "expected_headers": {}}),
+        ("delete",
+         {"method": "DELETE", "data": [],
+          "expected_uri": uri_base + "?op=something",
+          "expected_body": None,
+          "expected_headers": {}}),
+        # With data, PUT, POST, and DELETE requests have their body and extra
+        # headers prepared by encode_multipart_data. For GET requests, the
+        # data is encoded into the query string, and both the request body and
+        # extra headers are empty. The operation is encoded into the query
+        # string.
+        ("create-with-data",
+         {"method": "POST", "data": [("foo", "bar"), ("foo", "baz")],
+          "expected_uri": uri_base + "?op=something",
+          "expected_body": sentinel.body,
+          "expected_headers": sentinel.headers}),
+        ("read-with-data",
+         {"method": "GET", "data": [("foo", "bar"), ("foo", "baz")],
+          "expected_uri": uri_base + "?op=something&foo=bar&foo=baz",
+          "expected_body": None,
+          "expected_headers": {}}),
+        ("update-with-data",
+         {"method": "PUT", "data": [("foo", "bar"), ("foo", "baz")],
+          "expected_uri": uri_base + "?op=something",
+          "expected_body": sentinel.body,
+          "expected_headers": sentinel.headers}),
+        ("delete-with-data",
+         {"method": "DELETE", "data": [("foo", "bar"), ("foo", "baz")],
+          "expected_uri": uri_base + "?op=something",
+          "expected_body": sentinel.body,
+          "expected_headers": sentinel.headers}),
+        )
 
-    def test_prepare_payload_with_data(self):
-        # Given data is always encoded as query parameters.
-        uri_base = "http://example.com/MAAS/api/1.0/"
-        payload = api.Action.prepare_payload(
-            method=self.method, is_restful=True, uri=uri_base,
-            data=[("foo", "bar"), ("foo", "baz")])
-        expected = (
-            Equals(uri_base + "?foo=bar&foo=baz"),  # uri
-            Is(None),  # body
-            Equals({}),  # headers
-            )
-        self.assertThat(payload, MatchesListwise(expected))
+    scenarios_without_op = tuple(
+        ("%s-without-op" % name, dict(scenario, op=None))
+        for name, scenario in scenarios_without_op)
 
+    scenarios_with_op = tuple(
+        ("%s-with-op" % name, dict(scenario, op="something"))
+        for name, scenario in scenarios_with_op)
 
-class TestActionOperations(TestCase):
-    """Tests for non-ReSTful operations in `maascli.api.Action`."""
+    scenarios = scenarios_without_op + scenarios_with_op
 
-    def test_prepare_payload_POST_non_restful(self):
-        # Non-ReSTful POSTs encode the given data using encode_multipart_data.
+    def test_prepare_payload(self):
+        # Patch encode_multipart_data to match the scenarios.
         encode_multipart_data = self.patch(api, "encode_multipart_data")
         encode_multipart_data.return_value = sentinel.body, sentinel.headers
-        uri_base = "http://example.com/MAAS/api/1.0/"
+        # The payload returned is a 3-tuple of (uri, body, headers).
         payload = api.Action.prepare_payload(
-            method="POST", is_restful=False, uri=uri_base,
-            data=[("foo", "bar"), ("foo", "baz")])
+            op=self.op, method=self.method,
+            uri=self.uri_base, data=self.data)
         expected = (
-            Equals(uri_base),  # uri
-            Is(sentinel.body),  # body
-            Is(sentinel.headers),  # headers
+            Equals(self.expected_uri),
+            Equals(self.expected_body),
+            Equals(self.expected_headers),
             )
         self.assertThat(payload, MatchesListwise(expected))
+        # encode_multipart_data, when called, is passed the data
+        # unadulterated.
+        if self.expected_body is sentinel.body:
+            api.encode_multipart_data.assert_called_once_with(self.data)
