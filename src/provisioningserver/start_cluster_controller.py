@@ -139,8 +139,8 @@ def start_celery(connection_details, user, group):
 
     # Change gid first, just in case changing the uid might deprive
     # us of the privileges required to setgid.
-    os.setgid(gid)
     os.setuid(uid)
+    os.setgid(gid)
 
     os.execvpe(command[0], command, env=env)
 
