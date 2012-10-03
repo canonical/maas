@@ -1,0 +1,28 @@
+<h2 id="accepted-clusters">Cluster controllers</h2>
+<table class="list" id="accepted-clusters-list">
+  <tbody>
+    {% for cluster in accepted_clusters %}
+    {% include "maasserver/settings_cluster_listing_row.html" %}
+    {% endfor %}
+  </tbody>
+</table>
+{% if pending_clusters %}
+<h3 id="pending-clusters">Pending clusters</h3>
+<table class="list" id="pending-clusters-list">
+  <tbody>
+    {% for cluster in pending_clusters %}
+    {% include "maasserver/settings_cluster_listing_row.html" %}
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+{% if rejected_clusters %}
+<h3 id="rejected-clusters">Rejected clusters</h3>
+<table class="list" id="rejected-clusters-list">
+  <tbody>
+    {% for cluster in rejected_clusters %}
+    {% include "maasserver/settings_cluster_listing_row.html" %}
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}

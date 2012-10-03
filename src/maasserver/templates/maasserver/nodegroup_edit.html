@@ -1,0 +1,66 @@
+{% extends "maasserver/base.html" %}
+
+{% block nav-active-settings %}active{% endblock %}
+{% block title %}Edit Cluster Controller{% endblock %}
+{% block page-title %}Edit Cluster Controller{% endblock %}
+
+{% block content %}
+<div class="block size10 first">
+    <form action="." method="post" class="block">
+      {% csrf_token %}
+      <ul>
+      {% for field in form %}
+        {% include "maasserver/form_field.html" %}
+      {% endfor %}
+      </ul>
+      <input type="submit" value="Save cluster controller"
+             class="button right" />
+      <a class="link-button" href="{% url 'settings' %}">Cancel</a>
+      <h2>Interfaces</h2>
+      {% with nb_interfaces=cluster.nodegroupinterface_set.count %}
+      This cluster controller has {{ nb_interfaces }}
+      interface{{ nb_interfaces|pluralize }}.
+      {% endwith %}
+      <table class="list">
+        <thead>
+          <tr>
+            <th>Interface</th>
+            <th>Network</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+      {% for interface in interfaces %}
+        <tr class="interface {% cycle 'even' 'odd' %}"
+            id="{{ interface.interface }}">
+          <td>{{ interface.interface }}</td>
+          <td>{{ interface.network|default_if_none:"Not configured" }}</td>
+          <td>{{ interface.display_management }}</td>
+          <td>
+            <a href="{% url 'cluster-interface-edit' uuid=cluster.uuid interface=interface.interface %}"
+               title="Edit interface {{ interface.interface }}">
+              <img src="{{ STATIC_URL }}img/edit.png"
+                   alt="edit"
+                   class="space-right-small" />
+            </a>
+            <a title="Delete interface {{ interface.interface }}"
+               href="{% url 'cluster-interface-delete' cluster.uuid interface.interface %}">
+               <img src="{{ STATIC_URL }}img/delete.png" alt="delete" />
+            </a>
+            <form method="POST"
+                  action="{% url 'settings' %}">
+              {% csrf_token %}
+              <input type="hidden" name="uuid"
+                     value="{{ interface.interface }}" />
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </form>
+  </div>
+  <div class="clear"></div>
+</div>
+{% endblock %}

@@ -15,6 +15,7 @@ __all__ = []
 from maasserver.enum import (
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
+    NODEGROUPINTERFACE_MANAGEMENT_CHOICES_DICT,
     )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
@@ -53,3 +54,9 @@ class TestNodeGroupInterface(TestCase):
         interface = make_interface()
         interface.subnet_mask = ""
         self.assertIsNone(interface.network)
+
+    def test_display_management_display_management(self):
+        interface = make_interface()
+        self.assertEqual(
+            NODEGROUPINTERFACE_MANAGEMENT_CHOICES_DICT[interface.management],
+            interface.display_management())

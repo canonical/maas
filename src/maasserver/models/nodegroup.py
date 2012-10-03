@@ -130,7 +130,7 @@ class NodeGroup(TimestampedModel):
         max_length=80, unique=False, editable=True, blank=True, null=False)
 
     status = IntegerField(
-        choices=NODEGROUP_STATUS_CHOICES, editable=False,
+        choices=NODEGROUP_STATUS_CHOICES, editable=True,
         default=NODEGROUP_STATUS.DEFAULT_STATUS)
 
     # Credentials for the worker to access the API with.

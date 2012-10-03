@@ -37,6 +37,7 @@ from django.views.generic import (
 from django.views.generic.base import TemplateView
 from django.views.generic.detail import SingleObjectTemplateResponseMixin
 from django.views.generic.edit import ModelFormMixin
+from maasserver.enum import NODEGROUP_STATUS
 from maasserver.exceptions import CannotDeleteUserException
 from maasserver.forms import (
     AddArchiveForm,
@@ -46,7 +47,10 @@ from maasserver.forms import (
     NewUserCreationForm,
     UbuntuForm,
     )
-from maasserver.models import UserProfile
+from maasserver.models import (
+    NodeGroup,
+    UserProfile,
+    )
 from maasserver.views import process_form
 
 
@@ -173,10 +177,21 @@ def settings(request):
     if response is not None:
         return response
 
+    # Cluster settings:
+    accepted_clusters = NodeGroup.objects.filter(
+        status=NODEGROUP_STATUS.ACCEPTED).order_by('cluster_name')
+    pending_clusters = NodeGroup.objects.filter(
+        status=NODEGROUP_STATUS.PENDING).order_by('cluster_name')
+    rejected_clusters = NodeGroup.objects.filter(
+        status=NODEGROUP_STATUS.REJECTED).order_by('cluster_name')
+
     return render_to_response(
         'maasserver/settings.html',
         {
             'user_list': user_list,
+            'accepted_clusters': accepted_clusters,
+            'pending_clusters': pending_clusters,
+            'rejected_clusters': rejected_clusters,
             'maas_and_network_form': maas_and_network_form,
             'commissioning_form': commissioning_form,
             'ubuntu_form': ubuntu_form,

@@ -51,9 +51,13 @@ from maasserver.views.settings import (
     settings,
     settings_add_archive,
     )
-from maasserver.views.tags import (
-    TagView,
+from maasserver.views.settings_clusters import (
+    ClusterDelete,
+    ClusterEdit,
+    ClusterInterfaceDelete,
+    ClusterInterfaceEdit,
     )
+from maasserver.views.tags import TagView
 
 
 def adminurl(regexp, view, *args, **kwargs):
@@ -129,6 +133,20 @@ urlpatterns += patterns('maasserver.views',
 ## URLs for admin users.
 # Settings views.
 urlpatterns += patterns('maasserver.views',
+    adminurl(
+        r'^clusters/(?P<uuid>[\w\-]+)/edit/$', ClusterEdit.as_view(),
+        name='cluster-edit'),
+    adminurl(
+        r'^clusters/(?P<uuid>[\w\-]+)/delete/$', ClusterDelete.as_view(),
+        name='cluster-delete'),
+    adminurl(
+        r'^clusters/(?P<uuid>[\w\-]+)/interfaces/(?P<interface>[\w\-]*)/'
+        'edit/$',
+        ClusterInterfaceEdit.as_view(), name='cluster-interface-edit'),
+    adminurl(
+        r'^clusters/(?P<uuid>[\w\-]+)/interfaces/(?P<interface>[\w\-]*)/'
+        'delete/$',
+        ClusterInterfaceDelete.as_view(), name='cluster-interface-delete'),
     adminurl(r'^settings/$', settings, name='settings'),
     adminurl(
         r'^settings/archives/add/$', settings_add_archive,

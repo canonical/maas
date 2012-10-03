@@ -32,6 +32,7 @@ from maasserver.models import (
     MACAddress,
     Node,
     NodeGroup,
+    NodeGroupInterface,
     SSHKey,
     Tag,
     )
@@ -120,6 +121,38 @@ class Factory(maastesting.factory.Factory):
             Node.objects.filter(id=node.id).update(created=created)
         return reload_object(node)
 
+    def get_interface_fields(self, ip=None, router_ip=None, network=None,
+                             subnet_mask=None, broadcast_ip=None,
+                             ip_range_low=None, ip_range_high=None,
+                             interface=None, management=None, **kwargs):
+        if network is None:
+            network = factory.getRandomNetwork()
+        if subnet_mask is None:
+            subnet_mask = str(network.netmask)
+        if broadcast_ip is None:
+            broadcast_ip = str(network.broadcast)
+        if ip_range_low is None:
+            ip_range_low = str(IPAddress(network.first))
+        if ip_range_high is None:
+            ip_range_high = str(IPAddress(network.last))
+        if router_ip is None:
+            router_ip = factory.getRandomIPInNetwork(network)
+        if ip is None:
+            ip = factory.getRandomIPInNetwork(network)
+        if management is None:
+            management = factory.getRandomEnum(NODEGROUPINTERFACE_MANAGEMENT)
+        if interface is None:
+            interface = self.make_name('interface')
+        return dict(
+            subnet_mask=subnet_mask,
+            broadcast_ip=broadcast_ip,
+            ip_range_low=ip_range_low,
+            ip_range_high=ip_range_high,
+            router_ip=router_ip,
+            ip=ip,
+            management=management,
+            interface=interface)
+
     def make_node_group(self, name=None, uuid=None, ip=None,
                         router_ip=None, network=None, subnet_mask=None,
                         broadcast_ip=None, ip_range_low=None,
@@ -140,31 +173,33 @@ class Factory(maastesting.factory.Factory):
             name = self.make_name('nodegroup')
         if uuid is None:
             uuid = factory.getRandomUUID()
-        if network is None:
-            network = factory.getRandomNetwork()
-        if subnet_mask is None:
-            subnet_mask = str(network.netmask)
-        if broadcast_ip is None:
-            broadcast_ip = str(network.broadcast)
-        if ip_range_low is None:
-            ip_range_low = str(IPAddress(network.first))
-        if ip_range_high is None:
-            ip_range_high = str(IPAddress(network.last))
-        if router_ip is None:
-            router_ip = factory.getRandomIPInNetwork(network)
-        if ip is None:
-            ip = factory.getRandomIPInNetwork(network)
-        if interface is None:
-            interface = self.make_name('interface')
-        ng = NodeGroup.objects.new(
-            name=name, uuid=uuid, ip=ip,
+        interface_settings = self.get_interface_fields(
+            ip=ip, router_ip=router_ip, network=network,
             subnet_mask=subnet_mask, broadcast_ip=broadcast_ip,
-            router_ip=router_ip, ip_range_low=ip_range_low,
-            ip_range_high=ip_range_high, interface=interface,
-            management=management, **kwargs)
+            ip_range_low=ip_range_low, ip_range_high=ip_range_high,
+            interface=interface, management=management)
+        interface_settings.update(kwargs)
+        ng = NodeGroup.objects.new(
+            name=name, uuid=uuid, **interface_settings)
         ng.status = status
         ng.save()
         return ng
+
+    def make_node_group_interface(self, nodegroup, ip=None,
+                                  router_ip=None, network=None,
+                                  subnet_mask=None, broadcast_ip=None,
+                                  ip_range_low=None, ip_range_high=None,
+                                  interface=None, management=None, **kwargs):
+        interface_settings = self.get_interface_fields(
+            ip=ip, router_ip=router_ip, network=network,
+            subnet_mask=subnet_mask, broadcast_ip=broadcast_ip,
+            ip_range_low=ip_range_low, ip_range_high=ip_range_high,
+            interface=interface, management=management)
+        interface_settings.update(**kwargs)
+        interface = NodeGroupInterface(
+            nodegroup=nodegroup, **interface_settings)
+        interface.save()
+        return interface
 
     def make_node_commission_result(self, node=None, name=None, data=None):
         if node is None:

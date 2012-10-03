@@ -69,6 +69,9 @@
       </a>
       <div class="clear"></div>
     </div>
+    <div id="clusters" class="block size7 first">
+      {% include "maasserver/settings_cluster_listing.html" %}
+    </div>
     <div id="commissioning" class="block size7 first">
       <h2>Commissioning</h2>
       <form action="{% url "settings" %}" method="post">

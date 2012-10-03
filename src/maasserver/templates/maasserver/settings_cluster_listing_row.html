@@ -1,0 +1,22 @@
+<tr class="cluster {% cycle 'even' 'odd' %}"
+    id="{{ cluster.cluster_name }}">
+  <td>{{ cluster.cluster_name }}</td>
+  <td>
+    <a href="{% url 'cluster-edit' cluster.uuid %}"
+       title="Edit cluster {{ cluster.cluster_name }}">
+      <img src="{{ STATIC_URL }}img/edit.png"
+           alt="edit"
+           class="space-right-small" />
+    </a>
+    <a title="Delete cluster {{ cluster.cluster_name }}"
+       href="{% url 'cluster-delete' cluster.uuid %}">
+       <img src="{{ STATIC_URL }}img/delete.png" alt="delete" />
+    </a>
+    <form method="POST"
+          action="{% url 'settings' %}">
+      {% csrf_token %}
+      <input type="hidden" name="uuid"
+             value="{{ cluster.uuid }}" />
+    </form>
+  </td>
+</tr>

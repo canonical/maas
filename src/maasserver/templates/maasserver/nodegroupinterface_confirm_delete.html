@@ -1,0 +1,23 @@
+{% extends "maasserver/base.html" %}
+
+{% block nav-active-settings %}active{% endblock %}
+{% block title %}Delete Interface{% endblock %}
+{% block page-title %}Delete Interface{% endblock %}
+
+{% block content %}
+    <div class="block auto-width">
+        <h2>
+          Are you sure you want to delete the interface
+          "{{ interface_to_delete.interface }}"?
+        </h2>
+        <p>This action is permanent and can not be undone.</p>
+        <p>
+          <form action="." method="post">{% csrf_token %}
+            <input type="hidden" name="post" value="yes" />
+            <input type="submit" value="Delete interface" class="right" />
+            <a href="{% url 'cluster-edit' interface_to_delete.nodegroup.uuid %}">Cancel</a>
+          </form>
+        </p>
+    </div>
+{% endblock %}
+

@@ -21,6 +21,7 @@ __all__ = [
     "MAASAndNetworkForm",
     "NodeGroupInterfaceForm",
     "NodeGroupWithInterfacesForm",
+    "NodeGroupEdit",
     "NodeWithMACAddressesForm",
     "SSHKeyForm",
     "UbuntuForm",
@@ -652,14 +653,14 @@ class NodeGroupInterfaceForm(ModelForm):
     class Meta:
         model = NodeGroupInterface
         fields = (
-            'ip',
             'interface',
+            'management',
+            'ip',
             'subnet_mask',
             'broadcast_ip',
             'router_ip',
             'ip_range_low',
             'ip_range_high',
-            'management',
             )
 
     def clean_management(self):
@@ -682,11 +683,11 @@ class NodeGroupInterfaceForm(ModelForm):
                         "nodegroup."]})
         return management
 
-    def save(self, nodegroup=None, *args, **kwargs):
+    def save(self, nodegroup=None, commit=True, *args, **kwargs):
         interface = super(NodeGroupInterfaceForm, self).save(commit=False)
         if nodegroup is not None:
             interface.nodegroup = nodegroup
-        if kwargs.get('commit', True):
+        if commit:
             interface.save(*args, **kwargs)
         return interface
 
@@ -709,8 +710,8 @@ class NodeGroupWithInterfacesForm(ModelForm):
     class Meta:
         model = NodeGroup
         fields = (
-            'name',
             'cluster_name',
+            'name',
             'uuid',
             )
 
@@ -780,6 +781,25 @@ class NodeGroupWithInterfacesForm(ModelForm):
             nodegroup.status = self.status
             nodegroup.save()
         return nodegroup
+
+
+class NodeGroupEdit(ModelForm):
+
+    name = forms.CharField(
+        label="DNS zone name",
+        help_text=(
+            "Name of the related DNS zone.  Note that this will only "
+            "be used if MAAS is managing a DNS zone for one of the interfaces "
+            "of this cluster.  See the 'status' of the interfaces below."),
+        required=False)
+
+    class Meta:
+        model = NodeGroup
+        fields = (
+            'cluster_name',
+            'status',
+            'name',
+            )
 
 
 class TagForm(ModelForm):

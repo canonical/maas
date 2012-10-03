@@ -28,6 +28,7 @@ from maasserver import DefaultMeta
 from maasserver.enum import (
     NODEGROUPINTERFACE_MANAGEMENT,
     NODEGROUPINTERFACE_MANAGEMENT_CHOICES,
+    NODEGROUPINTERFACE_MANAGEMENT_CHOICES_DICT,
     )
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
@@ -43,7 +44,9 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
         unique_together = ('nodegroup', 'interface')
 
     # Static IP of the interface.
-    ip = GenericIPAddressField(null=False, editable=True)
+    ip = GenericIPAddressField(
+        null=False, editable=True,
+        help_text="Static IP Address of the interface")
 
     # The `NodeGroup` this interface belongs to.
     nodegroup = ForeignKey(
@@ -55,7 +58,8 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
 
     # DHCP server settings.
     interface = CharField(
-        blank=True, editable=True, max_length=255, default='')
+        blank=True, editable=True, max_length=255, default='',
+        help_text="Name of this interface (e.g. 'em1').")
     subnet_mask = GenericIPAddressField(
         editable=True, unique=False, blank=True, null=True, default=None)
     broadcast_ip = GenericIPAddressField(
@@ -79,6 +83,10 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
         if self.broadcast_ip and self.subnet_mask:
             return IPNetwork("%s/%s" % (self.broadcast_ip, self.subnet_mask))
         return None
+
+    def display_management(self):
+        """Return management status text as displayed to the user."""
+        return NODEGROUPINTERFACE_MANAGEMENT_CHOICES_DICT[self.management]
 
     def __repr__(self):
         return "<NodeGroupInterface %r,%s>" % (self.nodegroup, self.interface)
