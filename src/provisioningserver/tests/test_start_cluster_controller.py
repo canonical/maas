@@ -87,10 +87,9 @@ class TestStartClusterController(PservTestCase):
         self.patch(start_cluster_controller, 'getpwnam')
         start_cluster_controller.getpwnam.pw_uid = randint(3000, 4000)
         start_cluster_controller.getpwnam.pw_gid = randint(3000, 4000)
-        self.patch(os, 'fork').side_effect = Executing()
-        self.patch(os, 'execvpe').side_effect = Executing()
         self.patch(os, 'setuid')
         self.patch(os, 'setgid')
+        self.patch(os, 'execvpe').side_effect = Executing()
         get_uuid = self.patch(start_cluster_controller, 'get_cluster_uuid')
         get_uuid.return_value = factory.getRandomUUID()
 
@@ -133,36 +132,19 @@ class TestStartClusterController(PservTestCase):
         """Prepare to return "request pending" from API request."""
         self.prepare_response(httplib.ACCEPTED)
 
-    def pretend_to_fork_into_child(self):
-        """Make `fork` act as if it's returning into the child process.
-
-        The start_cluster_controller child process then executes celeryd,
-        so this call also patches up the call that does that so it pretends
-        to be successful.
-        """
-        self.patch(os, 'fork').return_value = 0
-        self.patch(os, 'execvpe')
-
-    def pretend_to_fork_into_parent(self):
-        """Make `fork` act as if it's returning into the parent process."""
-        self.patch(os, 'fork').return_value = randint(2, 65535)
-
     def test_run_command(self):
         # We can't really run the script, but we can verify that (with
         # the right system functions patched out) we can run it
         # directly.
-        self.pretend_to_fork_into_child()
-        self.patch(start_cluster_controller, 'sleep')
+        start_cluster_controller.sleep.side_effect = None
         self.prepare_success_response()
         parser = ArgumentParser()
         start_cluster_controller.add_arguments(parser)
-        start_cluster_controller.run(parser.parse_args((make_url(),)))
-        self.assertEqual(1, os.fork.call_count)
+        self.assertRaises(
+            Executing,
+            start_cluster_controller.run,
+            parser.parse_args((make_url(),)))
         self.assertEqual(1, os.execvpe.call_count)
-        os.setuid.assert_called_once_with(
-            start_cluster_controller.getpwnam.return_value.pw_uid)
-        os.setgid.assert_called_once_with(
-            start_cluster_controller.getpwnam.return_value.pw_gid)
 
     def test_uses_given_url(self):
         url = make_url('region')
@@ -227,13 +209,14 @@ class TestStartClusterController(PservTestCase):
             (server_url, connection_details))
 
     def test_start_up_calls_refresh_secrets(self):
+        start_cluster_controller.sleep.side_effect = None
         url = make_url('region')
         connection_details = self.make_connection_details()
-        self.pretend_to_fork_into_parent()
-        self.patch(start_cluster_controller, 'sleep')
         self.prepare_success_response()
 
-        start_cluster_controller.start_up(
+        self.assertRaises(
+            Executing,
+            start_cluster_controller.start_up,
             url, connection_details,
             factory.make_name('user'), factory.make_name('group'))
 
@@ -246,13 +229,14 @@ class TestStartClusterController(PservTestCase):
         self.assertEqual("refresh_workers", post["op"])
 
     def test_start_up_ignores_failure_on_refresh_secrets(self):
-        self.pretend_to_fork_into_parent()
-        self.patch(start_cluster_controller, 'sleep')
+        start_cluster_controller.sleep.side_effect = None
         self.patch(MAASDispatcher, 'dispatch_query').side_effect = URLError(
             "Simulated HTTP failure.")
 
-        start_cluster_controller.start_up(
+        self.assertRaises(
+            Executing,
+            start_cluster_controller.start_up,
             make_url(), self.make_connection_details(),
             factory.make_name('user'), factory.make_name('group'))
 
-        self.assertEqual(1, os.fork.call_count)
+        self.assertEqual(1, os.execvpe.call_count)

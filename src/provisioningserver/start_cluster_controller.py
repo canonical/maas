@@ -137,12 +137,12 @@ def start_celery(connection_details, user, group):
         '-Q', get_cluster_uuid(),
         ]
 
-    pid = os.fork()
-    if pid == 0:
-        # Child process.  Become the right user, and start celery.
-        os.setuid(uid)
-        os.setgid(gid)
-        os.execvpe(command[0], command, env)
+    # Change gid first, just in case changing the uid might deprive
+    # us of the privileges required to setgid.
+    os.setgid(gid)
+    os.setuid(uid)
+
+    os.execvpe(command[0], command, env=env)
 
 
 def request_refresh(server_url):
@@ -161,9 +161,12 @@ def start_up(server_url, connection_details, user, group):
     This starts up celeryd, listening to the broker that the region
     controller pointed us to, and on the appropriate queue.
     """
-    start_celery(connection_details, user=user, group=group)
-    sleep(10)
+    # Get the region controller to send out credentials.  If it arrives
+    # before celeryd has started up, we should find the message waiting
+    # in our queue.  Even if we're new and the queue did not exist yet,
+    # the arriving task will create the queue.
     request_refresh(server_url)
+    start_celery(connection_details, user=user, group=group)
 
 
 def run(args):

@@ -376,7 +376,7 @@ class ActionScript:
         try:
             self.setup()
             self.execute(argv)
-        except CalledProcessError, error:
+        except CalledProcessError as error:
             # Print error.cmd and error.output too?
             raise SystemExit(error.returncode)
         except KeyboardInterrupt:
