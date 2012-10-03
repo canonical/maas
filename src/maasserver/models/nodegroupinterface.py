@@ -63,9 +63,9 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
     router_ip = GenericIPAddressField(
         editable=True, unique=False, blank=True, null=True, default=None)
     ip_range_low = GenericIPAddressField(
-        editable=True, unique=True, blank=True, null=True, default=None)
+        editable=True, unique=False, blank=True, null=True, default=None)
     ip_range_high = GenericIPAddressField(
-        editable=True, unique=True, blank=True, null=True, default=None)
+        editable=True, unique=False, blank=True, null=True, default=None)
 
     @property
     def network(self):
