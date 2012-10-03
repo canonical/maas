@@ -18,7 +18,6 @@ import httplib
 from io import BytesIO
 import json
 import os
-from random import randint
 from urllib2 import (
     HTTPError,
     URLError,
@@ -28,6 +27,10 @@ from apiclient.maas_client import MAASDispatcher
 from apiclient.testing.django import parse_headers_and_body_with_django
 from fixtures import EnvironmentVariableFixture
 from maastesting.factory import factory
+from mock import (
+    call,
+    sentinel,
+    )
 from provisioningserver import start_cluster_controller
 from provisioningserver.testing.testcase import PservTestCase
 
@@ -85,8 +88,7 @@ class TestStartClusterController(PservTestCase):
         # raise exceptions.
         self.patch(start_cluster_controller, 'sleep').side_effect = Sleeping()
         self.patch(start_cluster_controller, 'getpwnam')
-        start_cluster_controller.getpwnam.pw_uid = randint(3000, 4000)
-        start_cluster_controller.getpwnam.pw_gid = randint(3000, 4000)
+        self.patch(start_cluster_controller, 'getgrnam')
         self.patch(os, 'setuid')
         self.patch(os, 'setgid')
         self.patch(os, 'execvpe').side_effect = Executing()
@@ -240,3 +242,22 @@ class TestStartClusterController(PservTestCase):
             factory.make_name('user'), factory.make_name('group'))
 
         self.assertEqual(1, os.execvpe.call_count)
+
+    def test_start_celery_sets_gid_before_uid(self):
+        # The gid should be changed before the uid; it may not be possible to
+        # change the gid once privileges are dropped.
+        start_cluster_controller.getpwnam.return_value.pw_uid = sentinel.uid
+        start_cluster_controller.getgrnam.return_value.gr_gid = sentinel.gid
+        # Patch setuid and setgid, using the same mock for both, so that we
+        # can observe call ordering.
+        setuidgid = self.patch(os, "setuid")
+        self.patch(os, "setgid", setuidgid)
+        self.assertRaises(
+            Executing, start_cluster_controller.start_celery,
+            self.make_connection_details(), factory.make_name("user"),
+            factory.make_name("group"))
+        # The arguments to the mocked setuid/setgid calls demonstrate that the
+        # gid was selected first.
+        self.assertEqual(
+            [call(sentinel.gid), call(sentinel.uid)],
+            setuidgid.call_args_list)
