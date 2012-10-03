@@ -2715,21 +2715,22 @@ class TestAnonymousCommissioningTimeout(APIv10TestMixin, TestCase):
 
 class TestPXEConfigAPI(AnonAPITestCase):
 
-    def get_params(self):
+    def get_mac_params(self):
         return {'mac': factory.make_mac_address().mac_address}
 
-    def get_optional_params(self):
-        return ['mac']
+    def get_default_params(self):
+        return dict()
 
     def get_pxeconfig(self, params=None):
         """Make a request to `pxeconfig`, and return its response dict."""
         if params is None:
-            params = self.get_params()
+            params = self.get_default_params()
         response = self.client.get(reverse('pxeconfig'), params)
         return json.loads(response.content)
 
     def test_pxeconfig_returns_json(self):
-        response = self.client.get(reverse('pxeconfig'), self.get_params())
+        response = self.client.get(
+            reverse('pxeconfig'), self.get_default_params())
         self.assertThat(
             (
                 response.status_code,
@@ -2751,7 +2752,28 @@ class TestPXEConfigAPI(AnonAPITestCase):
             self.get_pxeconfig(),
             ContainsAll(KernelParameters._fields))
 
-    def test_pxeconfig_defaults_to_i386_when_node_unknown(self):
+    def test_pxeconfig_returns_data_for_known_node(self):
+        params = self.get_mac_params()
+        node = MACAddress.objects.get(mac_address=params['mac']).node
+        response = self.client.get(reverse('pxeconfig'), params)
+        self.assertEqual(httplib.OK, response.status_code)
+
+    def test_pxeconfig_returns_no_content_for_unknown_node(self):
+        params = dict(mac=factory.getRandomMACAddress(delimiter=b'-'))
+        response = self.client.get(reverse('pxeconfig'), params)
+        self.assertEqual(httplib.NO_CONTENT, response.status_code)
+
+    def test_pxeconfig_returns_data_for_detailed_but_unknown_node(self):
+        architecture = factory.getRandomEnum(ARCHITECTURE)
+        arch, subarch = architecture.split('/')
+        params = dict(
+            mac=factory.getRandomMACAddress(delimiter=b'-'),
+            arch=arch,
+            subarch=subarch)
+        response = self.client.get(reverse('pxeconfig'), params)
+        self.assertEqual(httplib.OK, response.status_code)
+
+    def test_pxeconfig_defaults_to_i386_for_default(self):
         # As a lowest-common-denominator, i386 is chosen when the node is not
         # yet known to MAAS.
         expected_arch = tuple(ARCHITECTURE.i386.split('/'))
@@ -2760,16 +2782,12 @@ class TestPXEConfigAPI(AnonAPITestCase):
         self.assertEqual(expected_arch, observed_arch)
 
     def test_pxeconfig_uses_fixed_hostname_for_enlisting_node(self):
-        new_mac = factory.getRandomMACAddress()
-        self.assertEqual(
-            'maas-enlist',
-            self.get_pxeconfig({'mac': new_mac}).get('hostname'))
+        self.assertEqual('maas-enlist', self.get_pxeconfig().get('hostname'))
 
     def test_pxeconfig_uses_enlistment_domain_for_enlisting_node(self):
-        new_mac = factory.getRandomMACAddress()
         self.assertEqual(
             Config.objects.get_config('enlistment_domain'),
-            self.get_pxeconfig({'mac': new_mac}).get('domain'))
+            self.get_pxeconfig().get('domain'))
 
     def test_pxeconfig_splits_domain_from_node_hostname(self):
         host = factory.make_name('host')
@@ -2800,24 +2818,16 @@ class TestPXEConfigAPI(AnonAPITestCase):
             kernel_opts, 'get_ephemeral_name',
             FakeMethod(result=factory.getRandomString()))
 
-    def test_pxeconfig_requires_mac_address(self):
-        # The `mac` parameter is mandatory.
+    def test_pxeconfig_has_enlistment_preseed_url_for_default(self):
         self.silence_get_ephemeral_name()
-        self.assertEqual(
-            httplib.BAD_REQUEST,
-            self.get_without_param("mac").status_code)
-
-    def test_pxeconfig_has_enlistment_preseed_url_for_unknown_node(self):
-        self.silence_get_ephemeral_name()
-        params = self.get_params()
-        params['mac'] = factory.getRandomMACAddress()
+        params = self.get_default_params()
         response = self.client.get(reverse('pxeconfig'), params)
         self.assertEqual(
             compose_enlistment_preseed_url(),
             json.loads(response.content)["preseed_url"])
 
     def test_pxeconfig_has_preseed_url_for_known_node(self):
-        params = self.get_params()
+        params = self.get_mac_params()
         node = MACAddress.objects.get(mac_address=params['mac']).node
         response = self.client.get(reverse('pxeconfig'), params)
         self.assertEqual(
@@ -2852,7 +2862,8 @@ class TestPXEConfigAPI(AnonAPITestCase):
     def test_pxeconfig_uses_boot_purpose(self):
         fake_boot_purpose = factory.make_name("purpose")
         self.patch(api, "get_boot_purpose", lambda node: fake_boot_purpose)
-        response = self.client.get(reverse('pxeconfig'), self.get_params())
+        response = self.client.get(reverse('pxeconfig'),
+                                   self.get_default_params())
         self.assertEqual(
             fake_boot_purpose,
             json.loads(response.content)["purpose"])

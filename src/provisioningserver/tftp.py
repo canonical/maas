@@ -14,6 +14,7 @@ __all__ = [
     "TFTPBackend",
     ]
 
+import httplib
 from io import BytesIO
 from itertools import repeat
 import json
@@ -32,7 +33,9 @@ from tftp.backend import (
     FilesystemSynchronousBackend,
     IReader,
     )
+from tftp.errors import FileNotFound
 from twisted.web.client import getPage
+import twisted.web.error
 from zope.interface import implementer
 
 
@@ -89,9 +92,18 @@ class TFTPBackend(FilesystemSynchronousBackend):
         ^/*
         pxelinux[.]cfg    # PXELINUX expects this.
         /
-        {htype:02x}    # ARP HTYPE.
-        -
-        (?P<mac>{re_mac_address.pattern})    # Capture MAC.
+        (?: # either a MAC
+            {htype:02x}    # ARP HTYPE.
+            -
+            (?P<mac>{re_mac_address.pattern})    # Capture MAC.
+        | # or "default"
+            default
+              (?: # perhaps with specified arch, with a separator of either '-'
+                # or '.', since the spec was changed and both are unambiguous
+                [.-](?P<arch>\w+) # arch
+                (?:-(?P<subarch>\w+))? # optional subarch
+              )?
+        )
         $
         '''.format(
             htype=ARP_HTYPE.ETHERNET,
@@ -162,6 +174,25 @@ class TFTPBackend(FilesystemSynchronousBackend):
         d.addCallback(BytesReader)
         return d
 
+    @staticmethod
+    def get_page_errback(failure, file_name):
+        failure.trap(twisted.web.error.Error)
+        # This twisted.web.error.Error.status object ends up being a
+        # string for some reason, but the constants we can compare against
+        # (both in httplib and twisted.web.http) are ints.
+        try:
+            status_int = int(failure.value.status)
+        except ValueError:
+            # Assume that it's some other error and propagate it
+            return failure
+
+        if status_int == httplib.NO_CONTENT:
+            # Convert HTTP No Content to a TFTP file not found
+            raise FileNotFound(file_name)
+        else:
+            # Otherwise propogate the unknown error
+            return failure
+
     @deferred
     def get_reader(self, file_name):
         """See `IBackend.get_reader()`.
@@ -174,5 +205,12 @@ class TFTPBackend(FilesystemSynchronousBackend):
         if config_file_match is None:
             return super(TFTPBackend, self).get_reader(file_name)
         else:
-            params = config_file_match.groupdict()
-            return self.get_config_reader(params)
+            # Do not include any element that has not matched (ie. is None)
+            params = {
+                key: value
+                for key, value in config_file_match.groupdict().items()
+                if value is not None
+                }
+            d = self.get_config_reader(params)
+            d.addErrback(self.get_page_errback, file_name)
+            return d
