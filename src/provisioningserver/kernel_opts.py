@@ -132,19 +132,16 @@ def compose_purpose_opts(params):
             "iscsi_target_ip=%s" % params.fs_host,
             "iscsi_target_port=3260",
             "iscsi_initiator=%s" % params.hostname,
-            # Read by klibc 'ipconfig' in initramfs.
-            "ip=dhcp",  # TODO(smoser) remove this
-            # "ip=::::%s:BOOTIF" % params.hostname, # TODO(smoser) use this
+            # Read by cloud-initramfs-dyn-netconf and klibc's ipconfig
+            # in the initramfs.
+            "ip=::::%s:BOOTIF" % params.hostname,
             # cloud-images have this filesystem label.
             "ro root=LABEL=cloudimg-rootfs",
             # Read by overlayroot package.
             "overlayroot=tmpfs",
             # Read by cloud-init.
             "cloud-config-url=%s" % params.preseed_url,
-            ## TODO(smoser): remove hostname after an ephemeral image is
-            ## released with cloud-initramfs-dyn-netconf. see LP: #1046405 for
-            ## more info. instead use the updated 'ip=' line above.
-            ] + compose_hostname_opts(params)
+            ]
     else:
         # These are options used by the Debian Installer.
         return [

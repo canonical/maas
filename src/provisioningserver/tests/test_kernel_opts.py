@@ -131,9 +131,7 @@ class TestKernelOpts(TestCase):
                 "root=LABEL=cloudimg-rootfs",
                 "iscsi_initiator=",
                 "overlayroot=tmpfs",
-                "ip=dhcp"]))
-        # TODO(smoser) after newer ephemeral image is released, replace
-        # "ip=dhcp" with: "ip=::::%s:BOOTIF" % params.hostname
+                "ip=::::%s:BOOTIF" % params.hostname]))
 
     def test_compose_kernel_command_line_inc_common_opts(self):
         # Test that some kernel arguments appear on both commissioning
