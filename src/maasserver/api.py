@@ -1136,6 +1136,27 @@ class NodeGroupHandler(OperationsHandler):
         return [node.system_id
                 for node in Node.objects.filter(nodegroup=nodegroup)]
 
+    @operation(idempotent=True)
+    def node_hardware_details(self, request, uuid):
+        """Return specific hardware_details for each node specified.
+
+        For security purposes we do:
+        a) Requests are only fulfilled for the worker assigned to the
+           nodegroup.
+        b) Requests for nodes that are not part of the nodegroup are just
+           ignored.
+
+        This API may be removed in the future when hardware details are moved
+        to be stored in the cluster controllers (nodegroup) instead of the
+        master controller.
+        """
+        system_ids = request.GET.getlist('system_ids')
+        nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
+        check_nodegroup_access(request, nodegroup)
+        nodes = Node.objects.filter(
+            system_id__in=system_ids, nodegroup=nodegroup)
+        return [(node.system_id, node.hardware_details) for node in nodes]
+
 
 DISPLAYED_NODEGROUP_FIELDS = (
     'ip', 'management', 'interface', 'subnet_mask',

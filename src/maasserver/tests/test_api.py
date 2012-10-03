@@ -3604,7 +3604,7 @@ class TestNodeGroupAPIAuth(APIv10TestMixin, TestCase):
             httplib.FORBIDDEN, response.status_code,
             explain_unexpected_response(httplib.FORBIDDEN, response))
 
-    def test_nodegroup_list_works_for_nodegroup_worker(self):
+    def test_nodegroup_list_nodes_works_for_nodegroup_worker(self):
         nodegroup = factory.make_node_group()
         node = factory.make_node(nodegroup=nodegroup)
         client = make_worker_client(nodegroup)
@@ -3616,6 +3616,65 @@ class TestNodeGroupAPIAuth(APIv10TestMixin, TestCase):
             explain_unexpected_response(httplib.OK, response))
         parsed_result = json.loads(response.content)
         self.assertItemsEqual([node.system_id], parsed_result)
+
+    def make_node_hardware_details_request(self, client, nodegroup=None):
+        if nodegroup is None:
+            nodegroup = factory.make_node_group()
+        node = factory.make_node(nodegroup=nodegroup)
+        return client.get(
+            reverse('nodegroup_handler', args=[nodegroup.uuid]),
+            {'op': 'node_hardware_details', 'system_ids': [node.system_id]})
+
+    def test_GET_node_hardware_details_requires_authentication(self):
+        response = self.make_node_hardware_details_request(self.client)
+        self.assertEqual(httplib.UNAUTHORIZED, response.status_code)
+
+    def test_GET_node_hardware_details_refuses_nonworker(self):
+        log_in_as_normal_user(self.client)
+        response = self.make_node_hardware_details_request(self.client)
+        self.assertEqual(
+            httplib.FORBIDDEN, response.status_code,
+            explain_unexpected_response(httplib.FORBIDDEN, response))
+
+    def test_GET_node_hardware_details_returns_hardware_details(self):
+        nodegroup = factory.make_node_group()
+        hardware_details = '<node />'
+        node = factory.make_node(nodegroup=nodegroup)
+        node.set_hardware_details(hardware_details)
+        client = make_worker_client(nodegroup)
+        response = client.get(
+            reverse('nodegroup_handler', args=[nodegroup.uuid]),
+            {'op': 'node_hardware_details', 'system_ids': [node.system_id]})
+        self.assertEqual(httplib.OK, response.status_code)
+        parsed_result = json.loads(response.content)
+        self.assertEqual([[node.system_id, hardware_details]], parsed_result)
+
+    def test_GET_node_hardware_details_does_not_see_other_groups(self):
+        hardware_details = '<node />'
+        nodegroup_mine = factory.make_node_group()
+        nodegroup_theirs = factory.make_node_group()
+        node_mine = factory.make_node(nodegroup=nodegroup_mine)
+        node_mine.set_hardware_details(hardware_details)
+        node_theirs = factory.make_node(nodegroup=nodegroup_theirs)
+        node_theirs.set_hardware_details(hardware_details)
+        client = make_worker_client(nodegroup_mine)
+        response = client.get(
+            reverse('nodegroup_handler', args=[nodegroup_mine.uuid]),
+            {'op': 'node_hardware_details',
+             'system_ids': [node_mine.system_id, node_theirs.system_id]})
+        self.assertEqual(httplib.OK, response.status_code)
+        parsed_result = json.loads(response.content)
+        self.assertEqual([[node_mine.system_id, hardware_details]],
+                         parsed_result)
+
+    def test_GET_node_hardware_details_with_no_details(self):
+        nodegroup = factory.make_node_group()
+        client = make_worker_client(nodegroup)
+        response = self.make_node_hardware_details_request(client, nodegroup)
+        self.assertEqual(httplib.OK, response.status_code)
+        parsed_result = json.loads(response.content)
+        node_system_id = parsed_result[0][0]
+        self.assertEqual([[node_system_id, None]], parsed_result)
 
 
 class TestBootImagesAPI(APITestCase):
