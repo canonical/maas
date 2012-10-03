@@ -49,7 +49,8 @@ IMPORT_SQUASHFS=${IMPORT_SQUASHFS:-1}
 # Default is yes.
 IMPORT_EPHEMERALS=${IMPORT_EPHEMERALS:-1}
 
-# show script usage/summary.
+
+# Show script usage/summary.
 show_usage() {
     echo "Usage: ${0##*/}"
     echo
@@ -63,6 +64,7 @@ show_usage() {
     echo "MAAS homepage:<http://maas.ubuntu.com>"
     echo
 }
+
 
 # Put together a full URL for where the installer files for architecture $1
 # and release $2 can be downloaded.
@@ -92,6 +94,7 @@ compose_installer_download_url() {
     esac
 }
 
+
 # Return a list of files for architecture $1 and release $2 that need to be
 # downloaded
 compose_installer_download_files() {
@@ -110,6 +113,7 @@ compose_installer_download_files() {
             ;;
     esac
 }
+
 
 # Rename downloaded files for architecture $1 and release $2 into the form that
 # MAAS expects them
@@ -130,6 +134,7 @@ rename_installer_download_files() {
     esac
 }
 
+
 # Copy the pre-boot loader pxelinux.0, and modules we need, from the
 # installed syslinux version.  Install it into the TFTP tree for
 # netbooting.
@@ -146,9 +151,10 @@ update_pre_boot_loader() {
 # architecture $1 and install it into the TFTP directory hierarchy.
 update_install_files() {
     local arch=$1 release=$2
-    local files=$(compose_installer_download_files $arch $release)
-    local url=$(compose_installer_download_url $arch $release)
-    local file
+    local files file url
+
+    files=$(compose_installer_download_files $arch $release)
+    url=$(compose_installer_download_url $arch $release)
 
     mkdir "install"
     pushd "install" >/dev/null
