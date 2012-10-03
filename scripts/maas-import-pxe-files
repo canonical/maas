@@ -45,6 +45,10 @@ DOWNLOAD=${DOWNLOAD:-wget --no-verbose}
 # Default is yes.
 IMPORT_SQUASHFS=${IMPORT_SQUASHFS:-1}
 
+# Whether to download squashfs images as well: "1" for yes, "0" for no.
+# Default is yes.
+IMPORT_SQUASHFS=${IMPORT_SQUASHFS:-1}
+
 # Whether to download ephemeral images as well: "1" for yes, "0" for no.
 # Default is yes.
 IMPORT_EPHEMERALS=${IMPORT_EPHEMERALS:-1}
@@ -190,6 +194,15 @@ import_install_images() {
 
     popd
     rm -rf -- $DOWNLOAD_DIR
+}
+
+
+# Download and install the squashfs root images.
+import_squashfs_images() {
+    if test "$IMPORT_SQUASHFS" != "0"
+    then
+        maas-import-squashfs
+    fi
 }
 
 

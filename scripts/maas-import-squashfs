@@ -1,4 +1,4 @@
-#!/bin/bash -x
+#!/bin/bash
 #
 # maas-import-squashfs - sync and import squashfs images
 #
@@ -33,7 +33,7 @@ local_settings="$(pwd)/$settings"
 # Download locations for Ubuntu releases.
 #http://cdimage.ubuntu.com/ubuntu-server/daily/current/
 SQUASHFS_ARCHIVE=${ARCHIVE:-http://cdimage.ubuntu.com/}
-RELEASES="quantal"
+
 # Ubuntu releases that are to be downloaded.
 SUPPORTED_RELEASES=""
 for supported in $(distro-info --supported)

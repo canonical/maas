@@ -3,6 +3,9 @@
 # * Cloud-init for bare-metal
 # * Cloud-init preseed data
 
+# Squashfs Installation
+{{self.squashfs_image}}
+
 # Locale
 d-i     debian-installer/locale string en_US.UTF-8
 
