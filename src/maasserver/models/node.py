@@ -323,20 +323,15 @@ class NodeManager(Manager):
 
 
 _xpath_processor_count = "count(//node[@id='core']/node[@class='processor'])"
-_xpath_memory_bytes = ("//node[@id='memory']/size[@units='bytes']/text()"
-                       " div 1048576")
+_xpath_memory_bytes = "//node[@id='memory']/size[@units='bytes'] div 1048576"
 
 
-def update_hardware_details(node, xmlbytes):
+def update_hardware_details(node, xmlbytes, tag_manager):
     """Set node hardware_details from lshw output and update related fields
 
-    This is designed to be called with individual nodes on commissioning and
-    is not optimised for batch updates.
-
-    There are a bunch of suboptimal things here:
-    * Is a function rather than method in hope south migration can reuse.
-    * Doing UPDATE then transaction.commit_unless_managed doesn't work?
-    * Scalar returns from xpath() work in postgres 9.2 or later only.
+    This is a helper function just so it can be used in the south migration
+    to do the correct updates to mem and cpu_count when hardware_details is
+    first set.
     """
     try:
         doc = etree.XML(xmlbytes)
@@ -352,7 +347,7 @@ def update_hardware_details(node, xmlbytes):
         memory = 0
     node.cpu_count = cpu_count or 0
     node.memory = memory
-    for tag in Tag.objects.all():
+    for tag in tag_manager.all():
         has_tag = evaluator(tag.definition)
         if has_tag:
             node.tags.add(tag)
@@ -690,4 +685,4 @@ class Node(CleanSave, TimestampedModel):
 
     def set_hardware_details(self, xmlbytes):
         """Set the `lshw -xml` output"""
-        update_hardware_details(self, xmlbytes)
+        update_hardware_details(self, xmlbytes, Tag.objects)

@@ -59,7 +59,7 @@
   pk: 6
 - fields:
     name: big
-    definition: "LARGER THAN earth"
+    definition: "\"LARGER THAN earth\""
     comment: ''
     created: 2012-10-02
     updated: 2012-10-02
@@ -67,7 +67,7 @@
   pk: 30
 - fields:
     name: planet
-    definition: "ORBITS star AND it's complicated"
+    definition: "\"ORBITS star AND it's complicated\""
     comment: 'Seriously, "clearing the neighbourhood"...'
     created: 2012-10-02
     updated: 2012-10-02
@@ -75,7 +75,7 @@
   pk: 31
 - fields:
     name: ringed
-    definition: "HAS prominent ring system"
+    definition: "\"HAS prominent ring system\""
     comment: 'Excludes the rings of Jupiter.'
     created: 2012-10-02
     updated: 2012-10-02

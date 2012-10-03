@@ -429,7 +429,7 @@ If you need to perform data migration, very much in the same way, you will need
 to run South's `datamigration`_ command.  For instance, if you want to perform
 changes to the ``maasserver`` application, run::
 
-    $ ./bin/maas datamigration maasserver --auto description_of_the_change
+    $ ./bin/maas datamigration maasserver description_of_the_change
 
 .. _datamigration: http://south.aeracode.org/docs/commands.html#datamigration
 
