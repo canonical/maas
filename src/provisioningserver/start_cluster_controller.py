@@ -72,6 +72,11 @@ def get_maas_celery_log():
     return app_or_default().conf.MAAS_CELERY_LOG
 
 
+def get_maas_celerybeat_db():
+    """Read location for MAAS Celery schedule file from the config."""
+    return app_or_default().conf.MAAS_CLUSTER_CELERY_DB
+
+
 def register(server_url):
     """Request Rabbit connection details from the domain controller.
 
@@ -132,6 +137,7 @@ def start_celery(connection_details, user, group):
     command = [
         'celeryd',
         '--logfile=%s' % get_maas_celery_log(),
+        '--schedule=%s' % get_maas_celerybeat_db(),
         '--loglevel=INFO',
         '--beat',
         '-Q', get_cluster_uuid(),

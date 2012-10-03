@@ -28,4 +28,3 @@ import_settings(democeleryconfig_common)
 
 MAAS_CELERY_LOG = os.path.join(
     DEV_ROOT_DIRECTORY, 'logs/region-worker/current')
-

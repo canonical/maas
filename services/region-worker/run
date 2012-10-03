@@ -19,4 +19,5 @@ cd "$(dirname "$0")/../.."
 script="$(readlink -f bin/celeryd)"
 exec fghack "${script}" \
     --loglevel INFO --beat --queues celery,master \
+    --schedule=run/celerybeat-region-schedule
     --config democeleryconfig
