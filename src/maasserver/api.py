@@ -1339,6 +1339,45 @@ class TagHandler(OperationsHandler):
         """Get the list of nodes that have this tag."""
         return Tag.objects.get_nodes(name, user=request.user)
 
+    def _get_nodes_for(self, request, param, nodegroup):
+        system_ids = get_optional_list(request.POST, param)
+        if system_ids:
+            nodes = Node.objects.filter(system_id__in=system_ids)
+            if nodegroup is not None:
+                nodes = nodes.filter(nodegroup=nodegroup)
+        else:
+            nodes = Node.objects.none()
+        return nodes
+
+    @operation(idempotent=False)
+    def update_nodes(self, request, name):
+        """Add or remove nodes being associated with this tag.
+
+        :param add: system_ids of nodes to add to this tag.
+        :param remove: system_ids of nodes to remove from this tag.
+        :param nodegroup: A uuid of a nodegroup being processed. This value is
+            optional. If not supplied, the requester must be a superuser. If
+            supplied, then the requester must be the worker associated with
+            that nodegroup, and only nodes that are part of that nodegroup can
+            be updated.
+        """
+        tag = Tag.objects.get_tag_or_404(name=name, user=request.user)
+        nodegroup = None
+        if not request.user.is_superuser:
+            uuid = request.POST.get('nodegroup', None)
+            if uuid is None:
+                raise PermissionDenied()
+            nodegroup = get_one(NodeGroup.objects.filter(uuid=uuid))
+            check_nodegroup_access(request, nodegroup)
+        nodes_to_add = self._get_nodes_for(request, 'add', nodegroup)
+        tag.node_set.add(*nodes_to_add)
+        nodes_to_remove = self._get_nodes_for(request, 'remove', nodegroup)
+        tag.node_set.remove(*nodes_to_remove)
+        return {
+            'added': nodes_to_add.count(),
+            'removed': nodes_to_remove.count()
+            }
+
     @classmethod
     def resource_uri(cls, tag=None):
         # See the comment in NodeHandler.resource_uri

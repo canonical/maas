@@ -70,6 +70,7 @@ from maasserver.models import (
     NodeGroupInterface,
     Tag,
     )
+from maasserver.models.node import generate_node_system_id
 from maasserver.models.user import (
     create_auth_token,
     get_auth_tokens,
@@ -2391,7 +2392,6 @@ class TestTagAPI(APITestCase):
         node2 = factory.make_node()
         node2.set_hardware_details('<node><bar /></node>')
         tag = factory.make_tag(definition='/node/foo')
-        tag.populate_nodes()
         self.assertItemsEqual([tag.name], node1.tag_names())
         self.assertItemsEqual([], node2.tag_names())
         self.become_admin()
@@ -2429,7 +2429,6 @@ class TestTagAPI(APITestCase):
         node2 = factory.make_node(status=NODE_STATUS.ALLOCATED, owner=user2)
         node2.set_hardware_details('<node><bar /></node>')
         tag = factory.make_tag(definition='/node')
-        tag.populate_nodes()
         response = self.client.get(self.get_tag_uri(tag), {'op': 'nodes'})
 
         self.assertEqual(httplib.OK, response.status_code)
@@ -2449,7 +2448,6 @@ class TestTagAPI(APITestCase):
         node = factory.make_node()
         node.set_hardware_details('<node ><child /></node>')
         tag = factory.make_tag(definition='//child')
-        tag.populate_nodes()
         self.assertItemsEqual([tag.name], node.tag_names())
         response = self.client.put(self.get_tag_uri(tag),
             {'definition': 'invalid::tag'})
@@ -2459,6 +2457,132 @@ class TestTagAPI(APITestCase):
         tag = reload_object(tag)
         self.assertItemsEqual([tag.name], node.tag_names())
         self.assertEqual('//child', tag.definition)
+
+    def test_POST_update_nodes_unknown_tag(self):
+        self.become_admin()
+        name = factory.make_name()
+        response = self.client.post(
+            self.get_uri('tags/%s/' % (name,)),
+            {'op': 'update_nodes'})
+        self.assertEqual(httplib.NOT_FOUND, response.status_code)
+
+    def test_POST_update_nodes_changes_associations(self):
+        tag = factory.make_tag()
+        self.become_admin()
+        node_first = factory.make_node()
+        node_second = factory.make_node()
+        node_first.tags.add(tag)
+        self.assertItemsEqual([node_first], tag.node_set.all())
+        response = self.client.post(self.get_tag_uri(tag),
+            {'op': 'update_nodes',
+             'add': [node_second.system_id],
+             'remove': [node_first.system_id],
+            })
+        self.assertEqual(httplib.OK, response.status_code)
+        parsed_result = json.loads(response.content)
+        self.assertItemsEqual([node_second], tag.node_set.all())
+        self.assertEqual({'added': 1, 'removed': 1}, parsed_result)
+
+    def test_POST_update_nodes_ignores_unknown_nodes(self):
+        tag = factory.make_tag()
+        self.become_admin()
+        unknown_add_system_id = generate_node_system_id()
+        unknown_remove_system_id = generate_node_system_id()
+        self.assertItemsEqual([], tag.node_set.all())
+        response = self.client.post(self.get_tag_uri(tag),
+            {'op': 'update_nodes',
+             'add': [unknown_add_system_id],
+             'remove': [unknown_remove_system_id],
+            })
+        self.assertEqual(httplib.OK, response.status_code)
+        parsed_result = json.loads(response.content)
+        self.assertItemsEqual([], tag.node_set.all())
+        self.assertEqual({'added': 0, 'removed': 0}, parsed_result)
+
+    def test_POST_update_nodes_doesnt_require_add_or_remove(self):
+        tag = factory.make_tag()
+        node = factory.make_node()
+        self.become_admin()
+        self.assertItemsEqual([], tag.node_set.all())
+        response = self.client.post(self.get_tag_uri(tag),
+            {'op': 'update_nodes',
+             'add': [node.system_id],
+            })
+        self.assertEqual(httplib.OK, response.status_code)
+        parsed_result = json.loads(response.content)
+        self.assertEqual({'added': 1, 'removed': 0}, parsed_result)
+        response = self.client.post(self.get_tag_uri(tag),
+            {'op': 'update_nodes',
+             'remove': [node.system_id],
+            })
+        self.assertEqual(httplib.OK, response.status_code)
+        parsed_result = json.loads(response.content)
+        self.assertEqual({'added': 0, 'removed': 1}, parsed_result)
+
+    def test_POST_update_nodes_rejects_normal_user(self):
+        tag = factory.make_tag()
+        node = factory.make_node()
+        response = self.client.post(self.get_tag_uri(tag),
+            {'op': 'update_nodes',
+             'add': [node.system_id]})
+        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertItemsEqual([], tag.node_set.all())
+
+    def test_POST_update_nodes_allows_nodegroup_worker(self):
+        tag = factory.make_tag()
+        nodegroup = factory.make_node_group()
+        node = factory.make_node(nodegroup=nodegroup)
+        client = make_worker_client(nodegroup)
+        response = client.post(self.get_tag_uri(tag),
+            {'op': 'update_nodes',
+             'add': [node.system_id],
+             'nodegroup': nodegroup.uuid,
+            })
+        self.assertEqual(httplib.OK, response.status_code)
+        parsed_result = json.loads(response.content)
+        self.assertEqual({'added': 1, 'removed': 0}, parsed_result)
+        self.assertItemsEqual([node], tag.node_set.all())
+
+    def test_POST_update_nodes_refuses_unidentified_nodegroup_worker(self):
+        tag = factory.make_tag()
+        nodegroup = factory.make_node_group()
+        node = factory.make_node(nodegroup=nodegroup)
+        client = make_worker_client(nodegroup)
+        # We don't pass nodegroup:uuid so we get refused
+        response = client.post(self.get_tag_uri(tag),
+            {'op': 'update_nodes',
+             'add': [node.system_id],
+            })
+        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertItemsEqual([], tag.node_set.all())
+
+    def test_POST_update_nodes_refuses_non_nodegroup_worker(self):
+        tag = factory.make_tag()
+        nodegroup = factory.make_node_group()
+        node = factory.make_node(nodegroup=nodegroup)
+        response = self.client.post(self.get_tag_uri(tag),
+            {'op': 'update_nodes',
+             'add': [node.system_id],
+             'nodegroup': nodegroup.uuid,
+            })
+        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertItemsEqual([], tag.node_set.all())
+
+    def test_POST_update_nodes_doesnt_modify_other_nodegroup_nodes(self):
+        tag = factory.make_tag()
+        nodegroup_mine = factory.make_node_group()
+        nodegroup_theirs = factory.make_node_group()
+        node_theirs = factory.make_node(nodegroup=nodegroup_theirs)
+        client = make_worker_client(nodegroup_mine)
+        response = client.post(self.get_tag_uri(tag),
+            {'op': 'update_nodes',
+             'add': [node_theirs.system_id],
+             'nodegroup': nodegroup_mine.uuid,
+            })
+        self.assertEqual(httplib.OK, response.status_code)
+        parsed_result = json.loads(response.content)
+        self.assertEqual({'added': 0, 'removed': 0}, parsed_result)
+        self.assertItemsEqual([], tag.node_set.all())
 
 
 class TestTagsAPI(APITestCase):
