@@ -6,19 +6,18 @@
 
 {% block content %}
   <ul class="data-list">
-    <li class="block size2 first">
-      <h4>Name</h4>
-      <span>{{ tag.name }}</span>
-    </li>
-    <li class="block size2">
+    <li class="block size3">
       <h4>Comment</h4>
-      <span>{{ tag.comment }}</span>
+      <span>
+        {{ tag.comment }}
+        {% if not tag.comment %}
+            None
+        {% endif %}
+      </span>
     </li>
-    <li class="block size2">
+    <li class="block size3">
       <h4>Definition</h4>
       <span>{{ tag.definition }}</span>
-    </li>
-    <li class="block size2 first">
     </li>
     {% if error_text %}
     <li class="block first">
@@ -33,8 +32,8 @@
     </li>
     {% endif %}
   </ul>
-  <div id="nodes">
-    <h3>Nodes</h3>
+  <div id="nodes" class="block first pad-top">
+    <h2 class="block first line-top pad-top">Nodes</h2>
     {% include "maasserver/nodes_listing.html" %}
   </div>
 {% endblock %}

@@ -26,6 +26,7 @@ a.icon:hover {
     text-decoration: none;
     }
 /* Spacing */
+.block.space-top-small,
 .space-top-small {
     margin-top: 10px;
     }
@@ -49,6 +50,9 @@ a.icon:hover {
     }
 .space-bottom-small {
     margin-bottom: 5px;
+    }
+.pad-top-small {
+    padding-top: 10px;
     }
 .pad-top {
     padding-top: 20px;

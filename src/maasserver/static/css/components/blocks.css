@@ -10,6 +10,18 @@
     clear: right;
     margin-right: 0;
     }
+.block.line-top {
+    border-top-width: 1px;
+    }
+.block.line-bottom {
+    border-bottom-width: 1px;
+    }
+.block.line-left {
+    border-left-width: 1px;
+    }
+.block.line-right {
+    border-right-width: 1px;
+    }
 .block.full-width {
     width: 100%;
     margin-left: 0;

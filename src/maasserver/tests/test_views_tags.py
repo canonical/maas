@@ -36,7 +36,7 @@ class TagViewsTest(LoggedInTestCase):
         doc = fromstring(response.content)
         content_text = doc.cssselect('#content')[0].text_content()
         self.assertThat(content_text,
-                        ContainsAll([tag.name, tag.comment, tag.definition]))
+                        ContainsAll([tag.comment, tag.definition]))
 
     def test_view_tag_includes_node_links(self):
         tag = factory.make_tag()
