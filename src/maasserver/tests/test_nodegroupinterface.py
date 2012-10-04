@@ -82,26 +82,6 @@ class TestNodeGroupInterface(TestCase):
             self.assertEqual(
                 {field: [message]}, exception.message_dict)
 
-    def test_clean_broadcast_ip(self):
-        nodegroup = factory.make_node_group()
-        interface = nodegroup.get_managed_interface()
-        interface.broadcast_ip = ''
-        message = (
-            "'Broadcast ip' can't be empty if 'Subnet mask' is defined")
-        exception = self.assertRaises(ValidationError, interface.full_clean)
-        self.assertEqual(
-            {'broadcast_ip': [message]}, exception.message_dict)
-
-    def test_clean_subnet_mask(self):
-        nodegroup = factory.make_node_group()
-        interface = nodegroup.get_managed_interface()
-        interface.subnet_mask = ''
-        message = (
-            "'Subnet mask' can't be empty if 'Broadcast ip' is defined")
-        exception = self.assertRaises(ValidationError, interface.full_clean)
-        self.assertEqual(
-            {'subnet_mask': [message]}, exception.message_dict)
-
     def test_clean_network(self):
         nodegroup = factory.make_node_group(
             network=IPNetwork('192.168.0.3/24'))
@@ -121,10 +101,8 @@ class TestNodeGroupInterface(TestCase):
         network = IPNetwork('192.168.0.3/24')
         checked_fields = [
             'interface',
-            # When broadcast_ip or subnet_mask are empty, it gets caught
-            # by clean_network.
-            #'broadcast_ip',
-            #'subnet_mask',
+            'broadcast_ip',
+            'subnet_mask',
             'router_ip',
             'ip_range_low',
             'ip_range_high',

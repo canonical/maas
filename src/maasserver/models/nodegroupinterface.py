@@ -93,26 +93,6 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
         return "<NodeGroupInterface %s,%s>" % (
             self.nodegroup.uuid, self.interface)
 
-    def clean_subnet_mask(self):
-        """subnet_mask cannot be empty if broadcast_ip is defined"""
-        if self.broadcast_ip and not self.subnet_mask:
-            raise ValidationError(
-                {
-                    'subnet_mask': [
-                        "'Subnet mask' can't be empty if 'Broadcast ip' is "
-                        "defined"]
-                })
-
-    def clean_broadcast_ip(self):
-        """broadcast_ip cannot be empty if subnet_mask is defined"""
-        if not self.broadcast_ip and self.subnet_mask:
-            raise ValidationError(
-                {
-                    'broadcast_ip': [
-                        "'Broadcast ip' can't be empty if 'Subnet mask' is "
-                        "defined"]
-                })
-
     def clean_network(self):
         """Validate that the network is valid.
 
@@ -201,8 +181,6 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
 
     def clean_fields(self, *args, **kwargs):
         super(NodeGroupInterface, self).clean_fields(*args, **kwargs)
-        self.clean_broadcast_ip()
-        self.clean_subnet_mask()
         self.clean_network()
         self.clean_ips_in_network()
         self.clean_management()
