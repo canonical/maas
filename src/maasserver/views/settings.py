@@ -177,7 +177,19 @@ def settings(request):
     if response is not None:
         return response
 
-    # Cluster settings:
+    # Process accept clusters en masse.
+    if 'mass_accept_submit' in request.POST:
+        number = NodeGroup.objects.accept_all_pending()
+        messages.info(request, "Accepted %d cluster(s)." % number)
+        return HttpResponseRedirect(reverse('settings'))
+
+    # Process reject clusters en masse.
+    if 'mass_reject_submit' in request.POST:
+        number = NodeGroup.objects.reject_all_pending()
+        messages.info(request, "Rejected %d cluster(s)." % number)
+        return HttpResponseRedirect(reverse('settings'))
+
+    # Cluster listings:
     accepted_clusters = NodeGroup.objects.filter(
         status=NODEGROUP_STATUS.ACCEPTED).order_by('cluster_name')
     pending_clusters = NodeGroup.objects.filter(

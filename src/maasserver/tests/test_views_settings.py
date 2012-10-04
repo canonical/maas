@@ -21,6 +21,7 @@ from lxml.html import fromstring
 from maasserver.enum import (
     DISTRO_SERIES,
     NODE_AFTER_COMMISSIONING_ACTION,
+    NODEGROUP_STATUS,
     )
 from maasserver.models import (
     Config,
@@ -173,6 +174,41 @@ class SettingsTest(AdminLoggedInTestCase):
             choices + [['my.hostname.com', 'my.hostname.com']],
             new_choices)
 
+    def test_settings_contains_form_to_accept_all_nodegroups(self):
+        factory.make_node_group(status=NODEGROUP_STATUS.PENDING),
+        response = self.client.get('/settings/')
+        doc = fromstring(response.content)
+        forms = doc.cssselect('form#accept_all_pending_nodegroups')
+        self.assertEqual(1, len(forms))
+
+    def test_settings_contains_form_to_reject_all_nodegroups(self):
+        factory.make_node_group(status=NODEGROUP_STATUS.PENDING),
+        response = self.client.get('/settings/')
+        doc = fromstring(response.content)
+        forms = doc.cssselect('form#reject_all_pending_nodegroups')
+        self.assertEqual(1, len(forms))
+
+    def test_settings_accepts_all_pending_nodegroups_POST(self):
+        nodegroups = {
+            factory.make_node_group(status=NODEGROUP_STATUS.PENDING),
+            factory.make_node_group(status=NODEGROUP_STATUS.PENDING),
+        }
+        response = self.client.post('/settings/', {'mass_accept_submit': 1})
+        self.assertEqual(httplib.FOUND, response.status_code)
+        self.assertEqual(
+            [reload_object(nodegroup).status for nodegroup in nodegroups],
+            [NODEGROUP_STATUS.ACCEPTED] * 2)
+
+    def test_settings_rejects_all_pending_nodegroups_POST(self):
+        nodegroups = {
+            factory.make_node_group(status=NODEGROUP_STATUS.PENDING),
+            factory.make_node_group(status=NODEGROUP_STATUS.PENDING),
+        }
+        response = self.client.post('/settings/', {'mass_reject_submit': 1})
+        self.assertEqual(httplib.FOUND, response.status_code)
+        self.assertEqual(
+            [reload_object(nodegroup).status for nodegroup in nodegroups],
+            [NODEGROUP_STATUS.REJECTED] * 2)
 
 # Settable attributes on User.
 user_attributes = [
