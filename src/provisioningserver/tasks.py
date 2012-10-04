@@ -30,7 +30,10 @@ from subprocess import (
 
 from celery.app import app_or_default
 from celery.task import task
-from provisioningserver import boot_images
+from provisioningserver import (
+    boot_images,
+    tags,
+    )
 from provisioningserver.auth import (
     record_api_credentials,
     record_maas_url,
@@ -335,3 +338,13 @@ def restart_dhcp_server():
 def report_boot_images():
     """For master worker only: report available netboot images."""
     boot_images.report_to_server()
+
+
+@task
+def update_node_tags(tag_name, tag_definition):
+    """Update the nodes for a new/changed tag definition.
+
+    :param tag_name: Name of the tag to update nodes for
+    :param tag_definition: Tag definition
+    """
+    tags.process_node_tags(tag_name, tag_definition)

@@ -15,14 +15,8 @@ __all__ = []
 import json
 
 from apiclient.maas_client import MAASClient
-from apiclient.testing.credentials import make_api_credentials
-from maastesting.factory import factory
 from mock import Mock
 from provisioningserver import boot_images
-from provisioningserver.auth import (
-    record_api_credentials,
-    record_maas_url,
-    )
 from provisioningserver.pxe import tftppath
 from provisioningserver.testing.boot_images import make_boot_image_params
 from provisioningserver.testing.config import ConfigFixture
@@ -34,13 +28,6 @@ class TestBootImagesTasks(PservTestCase):
     def setUp(self):
         super(TestBootImagesTasks, self).setUp()
         self.useFixture(ConfigFixture({'tftp': {'root': self.make_dir()}}))
-
-    def set_maas_url(self):
-        record_maas_url(
-            'http://127.0.0.1/%s' % factory.make_name('path'))
-
-    def set_api_credentials(self):
-        record_api_credentials(':'.join(make_api_credentials()))
 
     def test_sends_boot_images_to_server(self):
         self.set_maas_url()
