@@ -254,8 +254,15 @@ class TestStartClusterController(PservTestCase):
         self.patch(os, "setgid", setuidgid)
         self.assertRaises(
             Executing, start_cluster_controller.start_celery,
-            self.make_connection_details(), factory.make_name("user"),
-            factory.make_name("group"))
+            self.make_connection_details(), sentinel.user, sentinel.group)
+        # getpwname and getgrnam are used to query the passwd and group
+        # databases respectively.
+        self.assertEqual(
+            [call(sentinel.user)],
+            start_cluster_controller.getpwnam.call_args_list)
+        self.assertEqual(
+            [call(sentinel.group)],
+            start_cluster_controller.getgrnam.call_args_list)
         # The arguments to the mocked setuid/setgid calls demonstrate that the
         # gid was selected first.
         self.assertEqual(
