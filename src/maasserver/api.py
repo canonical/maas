@@ -1371,6 +1371,14 @@ class TagHandler(OperationsHandler):
         return nodes
 
     @operation(idempotent=False)
+    def rebuild(self, request, name):
+        """Trigger rebuilding the tag <=> node mapping."""
+        tag = Tag.objects.get_tag_or_404(name=name, user=request.user,
+                                         to_edit=True)
+        tag.populate_nodes()
+        return {'rebuilding': tag.name}
+
+    @operation(idempotent=False)
     def update_nodes(self, request, name):
         """Add or remove nodes being associated with this tag.
 

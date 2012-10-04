@@ -2388,9 +2388,9 @@ class TestTagAPI(APITestCase):
 
     def test_PUT_updates_node_associations(self):
         node1 = factory.make_node()
-        node1.set_hardware_details('<node><foo /></node>')
+        node1.set_hardware_details('<node><foo/></node>')
         node2 = factory.make_node()
-        node2.set_hardware_details('<node><bar /></node>')
+        node2.set_hardware_details('<node><bar/></node>')
         tag = factory.make_tag(definition='/node/foo')
         self.assertItemsEqual([tag.name], node1.tag_names())
         self.assertItemsEqual([], node2.tag_names())
@@ -2425,9 +2425,9 @@ class TestTagAPI(APITestCase):
     def test_GET_nodes_hides_invisible_nodes(self):
         user2 = factory.make_user()
         node1 = factory.make_node()
-        node1.set_hardware_details('<node><foo /></node>')
+        node1.set_hardware_details('<node><foo/></node>')
         node2 = factory.make_node(status=NODE_STATUS.ALLOCATED, owner=user2)
-        node2.set_hardware_details('<node><bar /></node>')
+        node2.set_hardware_details('<node><bar/></node>')
         tag = factory.make_tag(definition='/node')
         response = self.client.get(self.get_tag_uri(tag), {'op': 'nodes'})
 
@@ -2446,7 +2446,7 @@ class TestTagAPI(APITestCase):
     def test_PUT_invalid_definition(self):
         self.become_admin()
         node = factory.make_node()
-        node.set_hardware_details('<node ><child /></node>')
+        node.set_hardware_details('<node ><child/></node>')
         tag = factory.make_tag(definition='//child')
         self.assertItemsEqual([tag.name], node.tag_names())
         response = self.client.put(self.get_tag_uri(tag),
@@ -2584,6 +2584,36 @@ class TestTagAPI(APITestCase):
         self.assertEqual({'added': 0, 'removed': 0}, parsed_result)
         self.assertItemsEqual([], tag.node_set.all())
 
+    def test_POST_rebuild_rebuilds_node_mapping(self):
+        tag = factory.make_tag(definition='/foo/bar')
+        # Only one node matches the tag definition, rebuilding should notice
+        node_matching = factory.make_node()
+        node_matching.set_hardware_details('<foo><bar/></foo>')
+        node_bogus = factory.make_node()
+        node_bogus.set_hardware_details('<foo/>')
+        node_matching.tags.add(tag)
+        node_bogus.tags.add(tag)
+        self.assertItemsEqual(
+            [node_matching, node_bogus], tag.node_set.all())
+        self.become_admin()
+        response = self.client.post(self.get_tag_uri(tag), {'op': 'rebuild'})
+        self.assertEqual(httplib.OK, response.status_code)
+        parsed_result = json.loads(response.content)
+        self.assertEqual({'rebuilding': tag.name}, parsed_result)
+        self.assertItemsEqual([node_matching], tag.node_set.all())
+
+    def test_POST_rebuild_unknown_404(self):
+        self.become_admin()
+        response = self.client.post(
+            self.get_uri('tags/unknown-tag/'), {'op': 'rebuild'})
+        self.assertEqual(httplib.NOT_FOUND, response.status_code)
+
+    def test_POST_rebuild_requires_admin(self):
+        tag = factory.make_tag(definition='/foo/bar')
+        response = self.client.post(
+            self.get_tag_uri(tag), {'op': 'rebuild'})
+        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+
 
 class TestTagsAPI(APITestCase):
 
@@ -2648,10 +2678,10 @@ class TestTagsAPI(APITestCase):
     def test_POST_new_populates_nodes(self):
         self.become_admin()
         node1 = factory.make_node()
-        node1.set_hardware_details('<node><child /></node>')
+        node1.set_hardware_details('<node><child/></node>')
         # Create another node that doesn't have a 'child'
         node2 = factory.make_node()
-        node2.set_hardware_details('<node />')
+        node2.set_hardware_details('<node/>')
         self.assertItemsEqual([], node1.tag_names())
         self.assertItemsEqual([], node2.tag_names())
         name = factory.getRandomString()
@@ -3636,7 +3666,7 @@ class TestNodeGroupAPIAuth(APIv10TestMixin, TestCase):
 
     def test_GET_node_hardware_details_returns_hardware_details(self):
         nodegroup = factory.make_node_group()
-        hardware_details = '<node />'
+        hardware_details = '<node/>'
         node = factory.make_node(nodegroup=nodegroup)
         node.set_hardware_details(hardware_details)
         client = make_worker_client(nodegroup)
@@ -3648,7 +3678,7 @@ class TestNodeGroupAPIAuth(APIv10TestMixin, TestCase):
         self.assertEqual([[node.system_id, hardware_details]], parsed_result)
 
     def test_GET_node_hardware_details_does_not_see_other_groups(self):
-        hardware_details = '<node />'
+        hardware_details = '<node/>'
         nodegroup_mine = factory.make_node_group()
         nodegroup_theirs = factory.make_node_group()
         node_mine = factory.make_node(nodegroup=nodegroup_mine)
