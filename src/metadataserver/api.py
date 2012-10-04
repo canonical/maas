@@ -22,10 +22,7 @@ import json
 
 from django.conf import settings
 from django.core.exceptions import PermissionDenied
-from django.http import (
-    HttpResponse,
-    HttpResponseNotFound,
-    )
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from maasserver.api import (
     extract_oauth_key,
@@ -337,10 +334,8 @@ class MetaDataHandler(VersionIndexHandler):
 
     def public_keys(self, node, version, item):
         """ Produce public-keys attribute."""
-        keys = SSHKey.objects.get_keys_for_user(user=node.owner)
-        if not keys:
-            raise MAASAPINotFound("No registered public keys")
-        return make_list_response(keys)
+        return make_list_response(
+            SSHKey.objects.get_keys_for_user(user=node.owner))
 
 
 class UserDataHandler(MetadataViewHandler):
@@ -367,6 +362,7 @@ class EnlistMetaDataHandler(OperationsHandler):
     data = {
         'instance-id': 'i-maas-enlistment',
         'local-hostname': "maas-enlisting-node",
+        'public-keys': "",
     }
 
     def read(self, request, version, item=None):
@@ -374,12 +370,13 @@ class EnlistMetaDataHandler(OperationsHandler):
 
         # Requesting the list of attributes, not any particular attribute.
         if item is None or len(item) == 0:
-            return make_list_response(sorted(self.data.keys()))
+            keys = sorted(self.data.keys())
+            # There's nothing in public-keys, so we don't advertise it.
+            # But cloud-init does ask for it and it's not worth logging
+            # a traceback for.
+            keys.remove('public-keys')
+            return make_list_response(keys)
 
-        # Enlistment asks for SSH keys.  We don't give it any, but it's
-        # not an error either.
-        if item == 'public-keys':
-            return HttpResponseNotFound("No SSH keys available for this node.")
         if item not in self.data:
             raise MAASAPINotFound("Unknown metadata attribute: %s" % item)
 

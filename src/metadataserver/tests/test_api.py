@@ -272,11 +272,13 @@ class TestViews(DjangoTestCase):
         self.assertIn(
             'public-keys', response.content.decode('ascii').split('\n'))
 
-    def test_public_keys_for_node_without_public_keys_returns_not_found(self):
+    def test_public_keys_for_node_without_public_keys_returns_empty(self):
         url = reverse('metadata-meta-data', args=['latest', 'public-keys'])
         client = self.make_node_client()
         response = client.get(url)
-        self.assertEqual(httplib.NOT_FOUND, response.status_code)
+        self.assertEqual(
+            (httplib.OK, ''),
+            (response.status_code, response.content))
 
     def test_public_keys_for_node_returns_list_of_keys(self):
         user, _ = factory.make_user_with_keys(n_keys=2, username='my-user')
@@ -675,15 +677,14 @@ class TestEnlistViews(DjangoTestCase):
         # just insist content is non-empty. It doesn't matter what it is.
         self.assertTrue(response.content)
 
-    def test_public_keys_returns_404_but_does_not_raise_exception(self):
-        # An enlisting node has no SSH keys, but it does request them
-        # (bug 1058313).  The request should fail, but without the log
-        # noise of an exception.
+    def test_public_keys_returns_empty(self):
+        # An enlisting node has no SSH keys, but it does request them.
+        # If the node insists, we give it the empty list.
         md_url = reverse(
             'enlist-metadata-meta-data', args=['latest', 'public-keys'])
         response = self.client.get(md_url)
         self.assertEqual(
-            (httplib.NOT_FOUND, "No SSH keys available for this node."),
+            (httplib.OK, ""),
             (response.status_code, response.content))
 
     def test_metadata_bogus_is_404(self):
