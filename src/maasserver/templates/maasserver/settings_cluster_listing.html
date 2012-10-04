@@ -2,7 +2,8 @@
 <table class="list" id="accepted-clusters-list">
   <tbody>
     {% for cluster in accepted_clusters %}
-    {% include "maasserver/settings_cluster_listing_row.html" %}
+      {% cycle 'even' 'odd' as cycle silent %}
+      {% include "maasserver/settings_cluster_listing_row.html" with cycle=cycle %}
     {% endfor %}
   </tbody>
 </table>
@@ -11,7 +12,8 @@
 <table class="list" id="pending-clusters-list">
   <tbody>
     {% for cluster in pending_clusters %}
-    {% include "maasserver/settings_cluster_listing_row.html" %}
+      {% cycle 'even' 'odd' as cycle silent %}
+      {% include "maasserver/settings_cluster_listing_row.html" with cycle=cycle %}
     {% endfor %}
   </tbody>
 </table>
@@ -21,7 +23,8 @@
 <table class="list" id="rejected-clusters-list">
   <tbody>
     {% for cluster in rejected_clusters %}
-    {% include "maasserver/settings_cluster_listing_row.html" %}
+      {% cycle 'even' 'odd' as cycle silent %}
+      {% include "maasserver/settings_cluster_listing_row.html" with cycle=cycle %}
     {% endfor %}
   </tbody>
 </table>

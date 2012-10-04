@@ -69,9 +69,12 @@
       </a>
       <div class="clear"></div>
     </div>
-    <div id="clusters" class="block size7 first">
+    <div class="divider"></div>
+    <div id="clusters" class="block size9 first">
       {% include "maasserver/settings_cluster_listing.html" %}
+      <div class="clear"></div>
     </div>
+    <div class="divider"></div>
     <div id="commissioning" class="block size7 first">
       <h2>Commissioning</h2>
       <form action="{% url "settings" %}" method="post">
@@ -84,7 +87,9 @@
         <input type="hidden" name="commissioning_submit" value="1" />
         <input type="submit" class="button right" value="Save" />
       </form>
+      <div class="clear"></div>
     </div>
+    <div class="divider"></div>
     <div id="ubuntu" class="block size7 first">
       <h2>Ubuntu</h2>
       <form action="{% url "settings" %}" method="post">
@@ -117,7 +122,9 @@
         <input type="hidden" name="ubuntu_submit" value="1" />
         <input type="submit" class="button right" value="Save" />
       </form>
+      <div class="clear"></div>
     </div>
+    <div class="divider"></div>
     <div id="maas_and_network" class="block size7 first">
       <h2>Network Configuration</h2>
       <form action="{% url "settings" %}" method="post">
@@ -130,6 +137,7 @@
         <input type="hidden" name="maas_and_network_submit" value="1" />
         <input type="submit" class="button right" value="Save" />
       </form>
+      <div class="clear"></div>
     </div>
   </div>
 {% endblock %}

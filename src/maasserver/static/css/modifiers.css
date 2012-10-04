@@ -25,6 +25,11 @@ img.icon {
 a.icon:hover {
     text-decoration: none;
     }
+.divider {
+    clear: both;
+    margin: 30px 0;
+    border-top: 1px solid #e5e2e0;
+    }
 /* Spacing */
 .block.space-top-small,
 .space-top-small {
