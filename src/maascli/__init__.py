@@ -31,11 +31,6 @@ from maascli.utils import (
     )
 
 
-modules = {
-    "api": "maascli.api",
-    }
-
-
 class ArgumentParser(argparse.ArgumentParser):
     """Specialisation of argparse's parser with better support for subparsers.
 
@@ -64,19 +59,12 @@ def main(argv=None):
     if argv is None:
         argv = sys.argv[:1] + osutils.get_unicode_argv()
 
-    # Create the base argument parser.
+    module = __import__('maascli.api', fromlist=True)
+    help_title, help_body = parse_docstring(module)
     parser = ArgumentParser(
-        description="Control MAAS from the command-line.",
-        prog=argv[0], epilog="http://maas.ubuntu.com/")
-
-    # Register declared modules.
-    for name, module in sorted(modules.items()):
-        if isinstance(module, basestring):
-            module = __import__(module, fromlist=True)
-        help_title, help_body = parse_docstring(module)
-        module_parser = parser.subparsers.add_parser(
-            name, help=help_title, description=help_body)
-        register(module, module_parser)
+        description=help_body, prog=argv[0],
+        epilog="http://maas.ubuntu.com/")
+    register(module, parser)
 
     # Run, doing polite things with exceptions.
     try:
