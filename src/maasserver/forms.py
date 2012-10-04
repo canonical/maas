@@ -663,26 +663,6 @@ class NodeGroupInterfaceForm(ModelForm):
             'ip_range_high',
             )
 
-    def clean_management(self):
-        # XXX: rvb 2012-09-18 bug=1052339: Only one "managed" interface
-        # is supported per NodeGroup.
-        management = self.cleaned_data['management']
-        if management != NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED:
-            other_interfaces = NodeGroupInterface.objects.all()
-            # Exclude context if it's already in the database.
-            if self.instance and self.instance.id is not None:
-                other_interfaces = (
-                    other_interfaces.exclude(id=self.instance.id))
-            # Narrow down to the those that are managed.
-            other_managed_interfaces = other_interfaces.exclude(
-                management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
-            if other_managed_interfaces.exists():
-                raise ValidationError(
-                    {'management': [
-                        "Another managed interface already exists for this "
-                        "nodegroup."]})
-        return management
-
     def save(self, nodegroup=None, commit=True, *args, **kwargs):
         interface = super(NodeGroupInterfaceForm, self).save(commit=False)
         if nodegroup is not None:
@@ -769,7 +749,7 @@ class NodeGroupWithInterfacesForm(ModelForm):
             if len(managed) > 1:
                 raise ValidationError(
                     "Only one managed interface can be configured for this "
-                    "nodegroup")
+                    "cluster")
         return interfaces
 
     def save(self):

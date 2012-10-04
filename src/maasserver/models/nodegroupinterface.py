@@ -36,6 +36,7 @@ from netaddr import (
     IPAddress,
     IPNetwork,
     )
+from netaddr.core import AddrFormatError
 
 
 class NodeGroupInterface(CleanSave, TimestampedModel):
@@ -89,9 +90,92 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
         return NODEGROUPINTERFACE_MANAGEMENT_CHOICES_DICT[self.management]
 
     def __repr__(self):
-        return "<NodeGroupInterface %r,%s>" % (self.nodegroup, self.interface)
+        return "<NodeGroupInterface %s,%s>" % (
+            self.nodegroup.uuid, self.interface)
+
+    def clean_subnet_mask(self):
+        """subnet_mask cannot be empty if broadcast_ip is defined"""
+        if self.broadcast_ip and not self.subnet_mask:
+            raise ValidationError(
+                {
+                    'subnet_mask': [
+                        "'Subnet mask' can't be empty if 'Broadcast ip' is "
+                        "defined"]
+                })
+
+    def clean_broadcast_ip(self):
+        """broadcast_ip cannot be empty if subnet_mask is defined"""
+        if not self.broadcast_ip and self.subnet_mask:
+            raise ValidationError(
+                {
+                    'broadcast_ip': [
+                        "'Broadcast ip' can't be empty if 'Subnet mask' is "
+                        "defined"]
+                })
 
     def clean_network(self):
+        """Validate that the network is valid.
+
+        This validates that the network defined by broadcast_ip and
+        subnet_mask is valid.
+        """
+        try:
+            self.network
+        except AddrFormatError, e:
+            # Technically, this should be a global error but it's
+            # more user-friendly to precisely point out where the error
+            # comes from.
+            raise ValidationError(
+                {
+                    'broadcast_ip': [e.message],
+                    'subnet_mask': [e.message],
+                })
+
+            raise ValidationError(e.message)
+
+    def clean_management(self):
+        # XXX: rvb 2012-09-18 bug=1052339: Only one "managed" interface
+        # is supported per NodeGroup.
+        check_other_interfaces = (
+            self.management != NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED and
+            self.nodegroup_id is not None)
+        if check_other_interfaces:
+            other_interfaces = self.nodegroup.nodegroupinterface_set.all()
+            # Exclude context if it's already in the database.
+            if self.id is not None:
+                other_interfaces = (
+                    other_interfaces.exclude(id=self.id))
+            # Narrow down to the those that are managed.
+            other_managed_interfaces = other_interfaces.exclude(
+                management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
+            if other_managed_interfaces.exists():
+                raise ValidationError(
+                    {'management': [
+                        "Another managed interface already exists for this "
+                        "cluster."]})
+
+    def clean_network_config_if_managed(self):
+        # If management is not 'UNMANAGED', all the network information
+        # should be provided.
+        if self.management != NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED:
+            mandatory_fields = [
+                'interface',
+                'broadcast_ip',
+                'subnet_mask',
+                'router_ip',
+                'ip_range_low',
+                'ip_range_high',
+            ]
+            errors = {}
+            for field in mandatory_fields:
+                if not getattr(self, field):
+                    errors[field] = [
+                        "That field cannot be empty (unless that interface is "
+                        "'unmanaged')"]
+            if len(errors) != 0:
+                raise ValidationError(errors)
+
+    def clean_ips_in_network(self):
         """Ensure that the network settings are all congruent.
 
         Specifically, it ensures that the interface address, router address,
@@ -115,6 +199,11 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
         if len(network_errors) != 0:
             raise ValidationError(network_errors)
 
-    def clean(self, *args, **kwargs):
-        super(NodeGroupInterface, self).clean(*args, **kwargs)
+    def clean_fields(self, *args, **kwargs):
+        super(NodeGroupInterface, self).clean_fields(*args, **kwargs)
+        self.clean_broadcast_ip()
+        self.clean_subnet_mask()
         self.clean_network()
+        self.clean_ips_in_network()
+        self.clean_management()
+        self.clean_network_config_if_managed()

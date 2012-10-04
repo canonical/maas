@@ -147,7 +147,7 @@ class NodeGroup(TimestampedModel):
         max_length=36, unique=True, null=False, blank=False, editable=True)
 
     def __repr__(self):
-        return "<NodeGroup %r>" % self.name
+        return "<NodeGroup %s>" % self.uuid
 
     def accept(self):
         """Accept this nodegroup's enlistment."""

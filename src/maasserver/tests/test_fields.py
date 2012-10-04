@@ -106,10 +106,10 @@ class TestNodeGroupFormField(TestCase):
         nodegroup = factory.make_node_group(network=IPNetwork("10/8"))
         NodeGroupInterface.objects.create(
             nodegroup=nodegroup, ip='10.0.0.2', subnet_mask='255.0.0.0',
-            interface='eth71')
+            broadcast_ip='10.0.0.1', interface='eth71')
         NodeGroupInterface.objects.create(
             nodegroup=nodegroup, ip='10.0.0.3', subnet_mask='255.0.0.0',
-            interface='eth72')
+            broadcast_ip='10.0.0.2', interface='eth72')
         self.assertEqual(nodegroup, NodeGroupFormField().clean('10.0.0.9'))
 
 

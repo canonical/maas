@@ -665,11 +665,11 @@ class TestNodeGroupInterfaceForm(TestCase):
 
     def test_NodeGroupInterfaceForm_can_save_fields_being_None(self):
         settings = make_interface_settings()
+        settings['management'] = NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED
         for field_name in nullable_fields:
             del settings[field_name]
         form = NodeGroupInterfaceForm(data=settings)
-        nodegroup = factory.make_node_group(
-            management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
+        nodegroup = factory.make_node_group()
         interface = form.save(nodegroup=nodegroup)
         field_values = [
             getattr(interface, field_name) for field_name in nullable_fields]
@@ -782,7 +782,7 @@ class TestNodeGroupWithInterfacesForm(TestCase):
             data={'name': name, 'uuid': uuid, 'interfaces': interfaces})
         self.assertFalse(form.is_valid())
         self.assertIn(
-            "Only one managed interface can be configured for this nodegroup",
+            "Only one managed interface can be configured for this cluster",
             form._errors['interfaces'][0])
 
     def test_NodeGroupWithInterfacesForm_creates_multiple_interfaces(self):
