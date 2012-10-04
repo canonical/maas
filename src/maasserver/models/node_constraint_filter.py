@@ -12,6 +12,8 @@ __all__ = [
     'constrain_nodes',
     ]
 
+import math
+
 from maasserver.exceptions import (
     InvalidConstraint,
     )
@@ -31,7 +33,7 @@ def constrain_int_greater_or_equal(nodes, key, str_value):
         as an invalid constraint.
     """
     try:
-        int_value = int(str_value)
+        int_value = int(math.ceil(float(str_value)))
     except ValueError as e:
         raise InvalidConstraint(key, str_value, e)
     return nodes.filter(**{'%s__gte' % (key,): int_value})

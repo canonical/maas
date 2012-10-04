@@ -55,6 +55,8 @@ class TestConstrainNodes(TestCase):
         self.assertConstrainedNodes([node1, node2], {'cpu_count': '1'})
         self.assertConstrainedNodes([node2], {'cpu_count': '2'})
         self.assertConstrainedNodes([], {'cpu_count': '4'})
+        self.assertConstrainedNodes([node2], {'cpu_count': '2.0'})
+        self.assertConstrainedNodes([node2], {'cpu_count': '1.2'})
         self.assertRaises(InvalidConstraint,
             self.assertConstrainedNodes, [], {'cpu_count': 'notint'})
 
@@ -66,6 +68,7 @@ class TestConstrainNodes(TestCase):
         self.assertConstrainedNodes([node2], {'memory': '2048'})
         self.assertConstrainedNodes([node2], {'memory': '4096'})
         self.assertConstrainedNodes([], {'memory': '8192'})
+        self.assertConstrainedNodes([node2], {'memory': '4096.0'})
         self.assertRaises(InvalidConstraint,
             self.assertConstrainedNodes, [], {'memory': 'notint'})
 

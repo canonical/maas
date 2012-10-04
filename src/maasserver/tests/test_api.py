@@ -1796,6 +1796,17 @@ class TestNodesAPI(APITestCase):
         response_json = json.loads(response.content)
         self.assertEqual(node.system_id, response_json['system_id'])
 
+    def test_POST_acquire_allocates_node_by_float_cpu(self):
+        # Asking for a needlessly precise number of cpus works.
+        node = factory.make_node(status=NODE_STATUS.READY, cpu_count=1)
+        response = self.client.post(self.get_uri('nodes/'), {
+            'op': 'acquire',
+            'cpu_count': '1.0',
+        })
+        self.assertResponseCode(httplib.OK, response)
+        response_json = json.loads(response.content)
+        self.assertEqual(node.system_id, response_json['system_id'])
+
     def test_POST_acquire_fails_with_invalid_cpu(self):
         # Asking for an invalid amount of cpu returns a bad request.
         factory.make_node(status=NODE_STATUS.READY)
