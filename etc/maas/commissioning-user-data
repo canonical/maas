@@ -9,14 +9,19 @@
 #### script setup ######
 TEMP_D=$(mktemp -d "${TMPDIR:-/tmp}/${0##*/}.XXXXXX")
 SCRIPTS_D="${TEMP_D}/scripts"
+IPMI_CONFIG_D="${TEMP_D}/ipmi.d"
 BIN_D="${TEMP_D}/bin"
 OUT_D="${TEMP_D}/out"
 PATH="$BIN_D:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 trap cleanup EXIT
 
-mkdir -p "$BIN_D" "$OUT_D" "$SCRIPTS_D"
+mkdir -p "$BIN_D" "$OUT_D" "$SCRIPTS_D" "$IPMI_CONFIG_D"
 
 ### some utility functions ####
+aptget() {
+   DEBIAN_FRONTEND=noninteractive apt-get --assume-yes -q "$@" </dev/null
+}
+
 writefile() {
    cat > "$1"
    chmod "$2" "$1"
@@ -28,6 +33,10 @@ add_bin() {
 add_script() {
    cat > "${SCRIPTS_D}/$1"
    chmod "${2:-755}" "${SCRIPTS_D}/$1"
+}
+add_ipmi_config() {
+   cat > "${IPMI_CONFIG_D}/$1"
+   chmod "${2:-644}" "${IPMI_CONFIG_D}/$1"
 }
 cleanup() {
    [ -n "${TEMP_D}" ] || rm -Rf "${TEMP_D}"
@@ -80,6 +89,11 @@ shutdown() {
 
 main() {
    trap shutdown EXIT
+   # Install tools and load modules
+   aptget update
+   aptget install freeipmi-tools
+   load_modules
+
    # the main function, actually execute stuff that is written below
    local script total=0 creds=""
 
@@ -98,6 +112,12 @@ main() {
 
    # use global name read by signal() and fail
    CRED_CFG="$creds"
+
+   # power settings
+   power_settings=$(maas-ipmi-autodetect --configdir "$IPMI_CONFIG_D")
+   if [ ! -z "power_settings" ]; then
+      signal "--power-type=ipmi" "--power-parameters=${power_settings}" WORKING "finished [maas-ipmi-autodetect]"
+   fi
 
    # just get a count of how many scripts there are for progress reporting
    for script in "${SCRIPTS_D}/"*; do
@@ -139,11 +159,131 @@ main() {
 
 }
 
+load_modules() {
+   modprobe ipmi_msghandler
+   modprobe ipmi_devintf
+   modprobe ipmi_si type=kcs ports=0xca2
+}
+
 ### begin writing files ###
 add_script "01-lshw" <<"END_LSHW"
 #!/bin/sh
 lshw -xml
 END_LSHW
+
+add_ipmi_config "01-user-privileges.ipmi" <<"END_IPMI_USER_PRIVILEGES"
+Section User3
+	Enable_User				Yes
+	Lan_Enable_IPMI_Msgs			Yes
+	Lan_Privilege_Limit			Administrator
+EndSection
+END_IPMI_USER_PRIVILEGES
+
+add_ipmi_config "02-global-config.ipmi" <<"END_IPMI_CONFIG"
+Section Lan_Channel
+	Volatile_Access_Mode			Always_Available
+	Volatile_Enable_User_Level_Auth		Yes
+	Volatile_Channel_Privilege_Limit	Administrator
+	Non_Volatile_Access_Mode		Always_Available
+	Non_Volatile_Enable_User_Level_Auth	Yes
+	Non_Volatile_Channel_Privilege_Limit	Administrator
+EndSection
+END_IPMI_CONFIG
+
+add_bin "maas-ipmi-autodetect" <<"END_MAAS_IPMI_AUTODETECT"
+#!/usr/bin/python
+import os
+import commands
+import re
+import string
+import random
+import time
+
+def detect_ipmi():
+    # TODO: Detection could be improved.
+    (status, output) = commands.getstatusoutput('ipmi-locate')
+    show_re = re.compile('(IPMI\ Version:) (\d\.\d)')
+    res = show_re.search(output)
+    if res == None:
+        return (False, "")
+    return (True, res.group(2))
+
+def is_ipmi_dhcp():
+    (status, output) = commands.getstatusoutput('bmc-config --checkout --key-pair="Lan_Conf:IP_Address_Source"')
+    show_re = re.compile('IP_Address_Source\s+Use_DHCP')
+    res = show_re.search(output)
+    if res == None:
+        return False
+    return True
+
+def set_ipmi_network_source(source):
+    (status, output) = commands.getstatusoutput('bmc-config --commit --key-pair="Lan_Conf:IP_Address_Source=%s"' % source)
+
+def get_ipmi_ip_address():
+    (status, output) = commands.getstatusoutput('bmc-config --checkout --key-pair="Lan_Conf:IP_Address"')
+    show_re = re.compile('([0-9]{1,3}[.]?){4}')
+    res = show_re.search(output)
+    return res.group()
+
+def commit_ipmi_user_settings(user, password):
+    (status, output) = commands.getstatusoutput('bmc-config --commit --key-pair="User3:Username=%s"' % user)
+    (status, output) = commands.getstatusoutput('bmc-config --commit --key-pair="User3:Password=%s"' % password)
+
+def commit_ipmi_settings(config):
+    (status, output) = commands.getstatusoutput('bmc-config --commit --filename %s' % config)
+
+def get_maas_power_settings(user, password, ipaddress):
+    return "%s,%s,%s" % (user, password, ipaddress)
+
+def generate_random_password(min=8,max=15):
+    length=random.randint(min,max)
+    letters=string.ascii_letters+string.digits
+    return ''.join([random.choice(letters) for _ in range(length)])
+
+def main():
+
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description='send config file to modify IPMI settings with')
+    parser.add_argument("--configdir", metavar="folder",
+        help="specify config file", default=None)
+
+    args = parser.parse_args()
+
+    # Check whether IPMI exists or not.
+    (status, ipmi_version) = detect_ipmi()
+    if status != True:
+        # if False, then failed to detect ipmi
+        exit(1)
+
+    # Check whether IPMI is being set to DHCP
+    # If it is not DHCP, set it to DHCP.
+    if not is_ipmi_dhcp():
+        set_ipmi_network_source("Use_DHCP")
+        # allow IPMI 60 seconds to obtain an IP address
+        time.sleep(60)
+
+    # create user/pass
+    IPMI_MAAS_USER="maas"
+    IPMI_MAAS_PASSWORD=generate_random_password()
+
+    # Configure IPMI user/password
+    commit_ipmi_user_settings(IPMI_MAAS_USER, IPMI_MAAS_PASSWORD)
+
+    # Commit other IPMI settings
+    if args.configdir:
+        for file in os.listdir(args.configdir):
+            commit_ipmi_settings(os.path.join(args.configdir, file))
+
+    # get the IP address
+    IPMI_IP_ADDRESS = get_ipmi_ip_address()
+
+    print get_maas_power_settings(IPMI_MAAS_USER, IPMI_MAAS_PASSWORD, IPMI_IP_ADDRESS)
+
+if __name__ == '__main__':
+    main()
+END_MAAS_IPMI_AUTODETECT
 
 add_bin "maas-signal" <<"END_MAAS_SIGNAL"
 #!/usr/bin/python
@@ -157,9 +297,11 @@ import sys
 import time
 import urllib2
 import yaml
+import json
 
 MD_VERSION = "2012-03-01"
 VALID_STATUS = ("OK", "FAILED", "WORKING")
+POWER_TYPES = ("ipmi", "virsh", "ether_wake")
 
 
 def _encode_field(field_name, data, boundary):
@@ -292,6 +434,12 @@ def main():
         help="the data source to query", default=None)
     parser.add_argument("--file", dest='files',
         help="file to post", action='append', default=[])
+    parser.add_argument("--post", dest='posts',
+        help="name=value pairs to post", action='append', default=[])
+    parser.add_argument("--power-type", dest='power_type',
+        help="power type.", choices=POWER_TYPES, default=None)
+    parser.add_argument("--power-parameters", dest='power_parms',
+        help="power parameters.", default=None)
 
     parser.add_argument("status",
         help="status", choices=VALID_STATUS, action='store')
@@ -316,6 +464,23 @@ def main():
         "op": "signal",
         "status": args.status,
         "error": args.message}
+
+    for ent in args.posts:
+        try:
+           (key, val) = ent.split("=", 2)
+        except ValueError:
+           sys.stderr.write("'%s' had no '='" % ent)
+           sys.exit(1)
+        params[key] = val
+
+    if args.power_parms is not None:
+        params["power_type"] = args.power_type
+        power_parms = dict(
+            power_user=args.power_parms.split(",")[0],
+            power_pass=args.power_parms.split(",")[1],
+            power_address=args.power_parms.split(",")[2]
+            )
+        params["power_parameters"] = json.dumps(power_parms)
 
     files = {}
     for fpath in args.files:
