@@ -1,46 +1,62 @@
-.. MAAS documentation master file, created by
-   sphinx-quickstart on Thu Jan 19 14:48:25 2012.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
+.. MAAS documentation master file
 
-=============================
-MAAS developer documentation!
-=============================
+########################
+Metal As A Service: MAAS
+########################
 
-Welcome to the MAAS developer documentation.
-This documentation is for people who want to hack on MAAS or create a service
-that communicates with a MAAS server using the API.
 
-Overview
-========
+This is the documentation for the MAAS project http://maas.ubuntu.com
+
+************
+Introduction
+************   
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
 
-   readme
-   hacking
+   about
+   orientation
+
+***************
+Getting started
+***************
+
+.. toctree::
+   :maxdepth: 2
+
    install
-   juju-quick-start
-   troubleshooting
-   api
+   configure
+   nodes
+   
 
-MAAS API
-========
-
-Other services interact with a MAAS server using its :doc:`api`.
-
-
-MAAS from the command-line
-==========================
-
-MAAS comes with a few command-line tools, including `maascli`, which
-exposes the entire :doc:`api` to command-line users.
-
-
-Code
-====
+******************
+Deploying services
+******************
 
 .. toctree::
+   :maxdepth: 2
+
+   juju-quick-start
+
+******************************
+Using the maas-cli commandline
+******************************
+
+.. toctree::
+   :maxdepth: 2
+
+   maascli
+
+**********
+Appendices
+**********
+
+.. toctree::
+   :maxdepth: 2
+
+   troubleshooting
+   hacking 
+   api
    models
    enum
 

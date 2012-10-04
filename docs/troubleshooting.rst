@@ -1,6 +1,6 @@
-************************
+********************
 MAAS Troubleshooting
-************************
+********************
 Some parts of MAAS may still be a little confusing, and sometimes you might be trying to do things that are just plain impossible. This section covers some of the most commonly encountered problems and tries its best to make them gone.
 
 .. contents:: Contents
@@ -9,16 +9,16 @@ Some parts of MAAS may still be a little confusing, and sometimes you might be t
 
 
 **Nodes hang on "Commissioning"**
-====================
+=================================
 
 Possible Cause: Timing issues
----------------
+-----------------------------
 Various parts of MAAS rely on OAuth to negotiate a connection to nodes. If the current time reported by the hardware clock on your node differs significantly from that on the MAAS server, the connection will not be made.
 
 **SOLUTION:** Check that the hardware clocks are consistent, and if necessary, adjust them. This can usually be done from within the system BIOS, without needing to install an OS
 
 Possible Cause: Network drivers
----------------
+-------------------------------
 
 Sometimes the hardware can boot from PXE, but fail to load correct drivers when booting the received image. This is sometimes the case when no open source drivers are available for the network hardware.
 
@@ -55,7 +55,7 @@ Sometimes you may wish to login directly to a node on your system. If you have s
 There is also an option in the MAAS web interface to add new ssh keys to the nodes (via Preferences in the drop down menu which appears when clicking your username in the top-right of the page).
 
 **Forgot MAAS superuser password**
-====================
+==================================
 
 As long as you have sudo privileges, this is not a disaster. You can use the ``maas`` command to change the password for the MAAS superuser on the MAAS server:
 
@@ -63,14 +63,14 @@ As long as you have sudo privileges, this is not a disaster. You can use the ``m
 
 
 **Need to reconfigure server IP address**
-====================
+=========================================
 If you made a mistake during setup or you just need to reconfigure your MAAS server, you can simply run the setup again:
 
     ``sudo dpkg-reconfigure maas``
 
 
 **Can't find MAAS webpage**
-====================
+===========================
 
 The default webpage is located at ``http://<hostname>/maas``. If you can't access it, there are a few things to try:
 
