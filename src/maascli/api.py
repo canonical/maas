@@ -14,6 +14,7 @@ __all__ = [
     "register",
     ]
 
+from email.message import Message
 from getpass import getpass
 import httplib
 from itertools import chain
@@ -85,6 +86,51 @@ def fetch_api_description(url):
         raise CommandError(
             "Expected application/json, got: %(content-type)s" % response)
     return json.loads(content)
+
+
+def get_response_content_type(response):
+    """Returns the response's content-type, without parameters.
+
+    If the content-type was not set in the response, returns `None`.
+
+    :type response: :class:`httplib2.Response`
+    """
+    try:
+        content_type = response["content-type"]
+    except KeyError:
+        return None
+    else:
+        # It seems odd to create a Message instance here, but at the time of
+        # writing it's the only place that has the smarts to correctly deal
+        # with a Content-Type that contains a charset (or other parameters).
+        message = Message()
+        message.set_type(content_type)
+        return message.get_content_type()
+
+
+def is_response_textual(response):
+    """Is the response body text?"""
+    content_type = get_response_content_type(response)
+    return (
+        content_type.endswith("/json") or
+        content_type.startswith("text/"))
+
+
+def print_headers(headers, file=sys.stdout):
+    """Show an HTTP response in a human-friendly way.
+
+    :type headers: :class:`httplib2.Response`, or :class:`dict`
+    """
+    # Function to change headers like "transfer-encoding" into
+    # "Transfer-Encoding".
+    cap = lambda header: "-".join(
+        part.capitalize() for part in header.split("-"))
+    # Format string to prettify reporting of response headers.
+    form = "%%%ds: %%s" % (
+        max(len(header) for header in headers) + 2)
+    # Print the response.
+    for header in sorted(headers):
+        print(form % (cap(header), headers[header]), file=file)
 
 
 class cmd_login(Command):
@@ -203,6 +249,9 @@ class Action(Command):
             parser.add_argument(param)
         parser.add_argument(
             "data", type=self.name_value_pair, nargs="*")
+        parser.add_argument(
+            "-d", "--debug", action="store_true", default=False,
+            help="Display more information about API responses.")
 
     def __call__(self, options):
         # TODO: this is el-cheapo URI Template
@@ -226,8 +275,11 @@ class Action(Command):
         response, content = http.request(
             uri, self.method, body=body, headers=headers)
 
-        # TODO: decide on how to display responses to users.
-        self.print_response(response, content)
+        # Output.
+        if options.debug:
+            self.print_debug(response)
+        self.print_response(
+            response, content, options.debug)
 
         # 2xx status codes are all okay.
         if response.status // 100 != 2:
@@ -276,29 +328,24 @@ class Action(Command):
         auth = MAASOAuth(*credentials)
         auth.sign_request(uri, headers)
 
+    @staticmethod
+    def print_debug(response):
+        """Dump the response line and headers to stderr."""
+        print(response.status, response.reason, file=sys.stderr)
+        print(file=sys.stderr)
+        print_headers(response, file=sys.stderr)
+        print(file=sys.stderr)
+
     @classmethod
     def print_response(cls, response, content):
-        """Show an HTTP response in a human-friendly way."""
-        # Print the response.
-        print(response.status, response.reason)
-        print()
-        cls.print_headers(response)
-        print()
-        print(content)
+        """Print the response body if it's textual.
 
-    @staticmethod
-    def print_headers(headers):
-        """Show an HTTP response in a human-friendly way."""
-        # Function to change headers like "transfer-encoding" into
-        # "Transfer-Encoding".
-        cap = lambda header: "-".join(
-            part.capitalize() for part in header.split("-"))
-        # Format string to prettify reporting of response headers.
-        form = "%%%ds: %%s" % (
-            max(len(header) for header in headers) + 2)
-        # Print the response.
-        for header in sorted(headers):
-            print(form % (cap(header), headers[header]))
+        Otherwise write it raw to stdout.
+        """
+        if is_response_textual(response):
+            print(content)  # Trailing newline, might encode.
+        else:
+            sys.stdout.write(content)  # Raw, binary.
 
 
 def register_actions(profile, handler, parser):

@@ -12,7 +12,9 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
+import collections
 import httplib
+import io
 import json
 import sys
 
@@ -126,6 +128,64 @@ class TestFunctions(TestCase):
         self.assertEqual(
             "Expected application/json, got: text/css",
             "%s" % error)
+
+    def test_get_response_content_type_returns_content_type_header(self):
+        response = httplib2.Response(
+            {"content-type": "application/json"})
+        self.assertEqual(
+            "application/json",
+            api.get_response_content_type(response))
+
+    def test_get_response_content_type_omits_parameters(self):
+        response = httplib2.Response(
+            {"content-type": "application/json; charset=utf-8"})
+        self.assertEqual(
+            "application/json",
+            api.get_response_content_type(response))
+
+    def test_get_response_content_type_return_None_when_type_not_found(self):
+        response = httplib2.Response({})
+        self.assertIsNone(api.get_response_content_type(response))
+
+    def test_print_headers(self):
+        # print_headers() prints the given headers, in order, with each
+        # hyphen-delimited part of the header name capitalised, to the given
+        # file, with the names right aligned, and with a 2 space left margin.
+        headers = collections.OrderedDict()
+        headers["two-two"] = factory.make_name("two")
+        headers["one"] = factory.make_name("one")
+        buf = io.StringIO()
+        api.print_headers(headers, buf)
+        self.assertEqual(
+            ("      One: %(one)s\n"
+             "  Two-Two: %(two-two)s\n") % headers,
+            buf.getvalue())
+
+
+class TestIsResponseTextual(TestCase):
+    """Tests for `is_response_textual`."""
+
+    content_types_textual_map = {
+        "text/plain": True,
+        "text/yaml": True,
+        "text/foobar": True,
+        "application/json": True,
+        "image/png": False,
+        "video/webm": False,
+        }
+
+    scenarios = sorted(
+        (ctype, {"content_type": ctype, "is_textual": is_textual})
+        for ctype, is_textual in content_types_textual_map.items()
+        )
+
+    def test_type(self):
+        grct = self.patch(api, "get_response_content_type")
+        grct.return_value = self.content_type
+        self.assertEqual(
+            self.is_textual,
+            api.is_response_textual(sentinel.response))
+        grct.assert_called_once_with(sentinel.response)
 
 
 class TestAction(TestCase):
