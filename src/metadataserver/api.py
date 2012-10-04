@@ -202,6 +202,7 @@ class VersionIndexHandler(MetadataViewHandler):
         type_dict = map_enum(POWER_TYPE)
         if type.upper() not in type_dict:
             raise MAASAPIBadRequest("Bad power_type '%s'" % type)
+        node.power_type = type_dict[type.upper()]
 
         try:
             node.power_parameters = json.loads(params)

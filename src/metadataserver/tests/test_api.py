@@ -47,6 +47,7 @@ from metadataserver.models import (
     NodeUserData,
     )
 from metadataserver.nodeinituser import get_node_init_user
+from provisioningserver.enum import POWER_TYPE
 
 
 class TestHelpers(DjangoTestCase):
@@ -524,6 +525,8 @@ class TestViews(DjangoTestCase):
             client, power_type="IPMI", power_parameters=json.dumps(params))
         self.assertEqual(httplib.OK, response.status_code, response.content)
         node = reload_object(node)
+        self.assertEqual(
+            POWER_TYPE.IPMI, node.power_type)
         self.assertEqual(
             params, node.power_parameters)
 
