@@ -16,6 +16,8 @@ from datetime import (
     datetime,
     timedelta,
     )
+import errno
+import os
 from textwrap import dedent
 
 from apiclient.maas_client import MAASClient
@@ -25,6 +27,7 @@ from maastesting.utils import (
     age_file,
     get_write_time,
     )
+from mock import Mock
 from provisioningserver import cache
 from provisioningserver.auth import (
     MAAS_URL_CACHE_KEY,
@@ -196,6 +199,29 @@ class TestUpdateLeases(PservTestCase):
         update_leases()
         self.assertSequenceEqual([], parser.calls)
 
+    def redirect_parser_to_non_existing_file(self):
+        file_name = self.make_file()
+        os.remove(file_name)
+        self.redirect_parser(file_name)
+
+    def test_parse_leases_file_returns_None_if_file_does_not_exist(self):
+        self.redirect_parser_to_non_existing_file()
+        self.assertIsNone(parse_leases_file())
+
+    def test_get_leases_timestamp_returns_None_if_file_does_not_exist(self):
+        self.redirect_parser_to_non_existing_file()
+        self.assertIsNone(parse_leases_file())
+
+    def test_parse_leases_file_errors_if_unexpected_exception(self):
+        exception = IOError(errno.EBUSY, factory.getRandomString())
+        self.patch(leases_module, 'open', Mock(side_effect=exception))
+        self.assertRaises(IOError, parse_leases_file)
+
+    def test_get_leases_timestamp_errors_if_unexpected_exception(self):
+        exception = OSError(errno.EBUSY, factory.getRandomString())
+        self.patch(leases_module, 'open', Mock(side_effect=exception))
+        self.assertRaises(OSError, parse_leases_file)
+
     def test_check_lease_changes_returns_tuple_if_lease_added(self):
         leases = factory.make_random_leases()
         self.set_lease_state(
@@ -205,6 +231,10 @@ class TestUpdateLeases(PservTestCase):
         self.assertEqual(
             (get_write_time(leases_file), leases),
             check_lease_changes())
+
+    def test_check_lease_returns_None_if_lease_file_does_not_exist(self):
+        self.redirect_parser_to_non_existing_file()
+        self.assertIsNone(check_lease_changes())
 
     def test_check_lease_changes_returns_tuple_if_leases_dropped(self):
         self.set_lease_state(
@@ -226,6 +256,10 @@ class TestUpdateLeases(PservTestCase):
         self.fake_leases_file(leases, age=10)
         self.set_lease_state(datetime.utcnow(), leases.copy())
         self.assertIsNone(check_lease_changes())
+
+    def test_upload_leases_does_not_try_to_process_non_existing_file(self):
+        self.redirect_parser_to_non_existing_file()
+        self.assertIsNone(upload_leases())  # No exception.
 
     def test_update_leases_processes_leases_if_changed(self):
         self.set_lease_state()

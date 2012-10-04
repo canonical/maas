@@ -32,6 +32,7 @@ __all__ = [
     ]
 
 
+import errno
 import json
 from os import (
     fstat,
@@ -67,8 +68,19 @@ def get_leases_file():
 
 
 def get_leases_timestamp():
-    """Return the last modification timestamp of the DHCP leases file."""
-    return stat(get_leases_file()).st_mtime
+    """Return the last modification timestamp of the DHCP leases file.
+
+    None will be returned if the DHCP lease file cannot be found.
+    """
+    try:
+        return stat(get_leases_file()).st_mtime
+    except OSError as exception:
+        # Return None only if the exception is a "No such file or
+        # directory" exception.
+        if exception.errno == errno.ENOENT:
+            return None
+        else:
+            raise
 
 
 def parse_leases_file():
@@ -77,10 +89,19 @@ def parse_leases_file():
     :return: A tuple: (timestamp, leases).  The `timestamp` is the last
         modification time of the leases file, and `leases` is a dict
         mapping leased IP addresses to their associated MAC addresses.
+        None will be returned if the DHCP lease file cannot be found.
     """
-    with open(get_leases_file(), 'rb') as leases_file:
-        contents = leases_file.read().decode('utf-8')
-        return fstat(leases_file.fileno()).st_mtime, parse_leases(contents)
+    try:
+        with open(get_leases_file(), 'rb') as leases_file:
+            contents = leases_file.read().decode('utf-8')
+            return fstat(leases_file.fileno()).st_mtime, parse_leases(contents)
+    except IOError as exception:
+        # Return None only if the exception is a "No such file or
+        # directory" exception.
+        if exception.errno == errno.ENOENT:
+            return None
+        else:
+            raise
 
 
 def check_lease_changes():
@@ -93,11 +114,15 @@ def check_lease_changes():
 
     if get_leases_timestamp() == previous_leases_time:
         return None
-    timestamp, leases = parse_leases_file()
-    if leases == previous_leases:
-        return None
+    parse_result = parse_leases_file()
+    if parse_result is not None:
+        timestamp, leases = parse_result
+        if leases == previous_leases:
+            return None
+        else:
+            return timestamp, leases
     else:
-        return timestamp, leases
+        return None
 
 
 def record_lease_state(last_change, leases):
@@ -155,8 +180,16 @@ def upload_leases():
     server restarts, or zone-file update commands getting lost on their
     way to the DNS server.
     """
-    timestamp, leases = parse_leases_file()
-    process_leases(timestamp, leases)
+    parse_result = parse_leases_file()
+    if parse_result:
+        timestamp, leases = parse_result
+        process_leases(timestamp, leases)
+    else:
+        task_logger.info(
+            "The DHCP leases file does not exist.  This is only a problem if "
+            "this cluster controller is managing its DHCP server.  If that's "
+            "the case then you need to install the 'maas-dhcp' package on "
+            "this cluster controller.")
 
 
 def update_leases():
