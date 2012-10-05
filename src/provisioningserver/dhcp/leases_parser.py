@@ -54,7 +54,7 @@ other_statement = (
         ['starts', 'tstp', 'atsfp', 'tsfp', 'cltt', 'uid', 'binding', 'next',
          'client-hostname', 'abandoned', 'option', 'ddns-text',
          'ddns-fwd-name', 'ddns-client-fqdn', 'ddns-rev-name',
-         'vendor-class-identifier', 'bootp', 'reserved'],
+         'vendor-class-identifier', 'bootp', 'reserved', 'rewind'],
         caseless=True) + args
     )
 lone_statement = (
