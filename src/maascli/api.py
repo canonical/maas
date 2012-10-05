@@ -278,8 +278,7 @@ class Action(Command):
         # Output.
         if options.debug:
             self.print_debug(response)
-        self.print_response(
-            response, content, options.debug)
+        self.print_response(response, content)
 
         # 2xx status codes are all okay.
         if response.status // 100 != 2:
