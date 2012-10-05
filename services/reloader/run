@@ -60,7 +60,7 @@ def handle_webapp_change(event):
 
 
 def handle_pserv_change(event):
-    services = "pserv", "celeryd"
+    services = "pserv", "region-worker", "cluster-worker"
     if is_interesting_python_change(event.name):
         for service in services:
             service_dir = "services/%s" % service

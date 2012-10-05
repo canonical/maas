@@ -16,8 +16,9 @@ cd "$(dirname "$0")/../.."
 
 # XXX JeroenVermeulen 2012-08-23, bug=1040529: Use fghack to kludge around
 # hanging celery shutdown.
+export PYTHONPATH=etc/:src/
 script="$(readlink -f bin/celeryd)"
 exec fghack "${script}" \
     --loglevel INFO --beat --queues celery,master \
-    --schedule=run/celerybeat-region-schedule
-    --config democeleryconfig
+    --schedule=run/celerybeat-region-schedule \
+    --config=democeleryconfig
