@@ -33,6 +33,7 @@ from mock import (
     )
 from provisioningserver import start_cluster_controller
 from provisioningserver.testing.testcase import PservTestCase
+from testtools.matchers import StartsWith
 
 
 class Sleeping(Exception):
@@ -154,7 +155,7 @@ class TestStartClusterController(PservTestCase):
         self.prepare_success_response()
         start_cluster_controller.run(make_args(server_url=url))
         (args, kwargs) = MAASDispatcher.dispatch_query.call_args
-        self.assertEqual(url + 'api/1.0/nodegroups/', args[0])
+        self.assertThat(args[0], StartsWith(url + 'api/1.0/nodegroups/'))
 
     def test_fails_if_declined(self):
         self.patch(start_cluster_controller, 'start_up')
@@ -223,12 +224,12 @@ class TestStartClusterController(PservTestCase):
             factory.make_name('user'), factory.make_name('group'))
 
         (args, kwargs) = MAASDispatcher.dispatch_query.call_args
-        self.assertEqual(url + 'api/1.0/nodegroups/', args[0])
+        self.assertEqual(
+            url + 'api/1.0/nodegroups/?op=refresh_workers', args[0])
         self.assertEqual('POST', kwargs['method'])
 
         headers, body = kwargs["headers"], kwargs["data"]
         post, files = self.parse_headers_and_body(headers, body)
-        self.assertEqual("refresh_workers", post["op"])
 
     def test_start_up_ignores_failure_on_refresh_secrets(self):
         start_cluster_controller.sleep.side_effect = None
