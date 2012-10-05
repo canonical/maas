@@ -12,6 +12,10 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
+from collections import (
+    Iterable,
+    Sequence,
+    )
 import os.path
 import random
 
@@ -49,7 +53,9 @@ from testtools.matchers import (
     EndsWith,
     FileContains,
     FileExists,
+    IsInstance,
     MatchesStructure,
+    Not,
     StartsWith,
     )
 from twisted.python.filepath import FilePath
@@ -246,32 +252,62 @@ class TestDNSForwardZoneConfig(TestCase):
                 dns_zone_config.target_path,
             ))
 
-    def test_get_generated_mapping(self):
+    def test_forward_zone_get_cname_mapping_returns_iterator(self):
         name = factory.getRandomString()
         network = IPNetwork('192.12.0.1/30')
-        dns_zone_config = DNSForwardZoneConfig(name, networks=[network])
-        self.assertEqual(
-            {
-                generated_hostname('192.12.0.0'): '192.12.0.0',
-                generated_hostname('192.12.0.1'): '192.12.0.1',
-                generated_hostname('192.12.0.2'): '192.12.0.2',
-                generated_hostname('192.12.0.3'): '192.12.0.3',
-             },
-            dns_zone_config.get_generated_mapping(),
+        dns_ip = factory.getRandomIPInNetwork(network)
+        dns_zone_config = DNSForwardZoneConfig(
+            name, networks=[network], dns_ip=dns_ip,
+            mapping={
+                factory.make_name('hostname'): factory.getRandomIPAddress()})
+        self.assertThat(
+            dns_zone_config.get_cname_mapping(),
+            MatchesAll(
+                IsInstance(Iterable), Not(IsInstance(Sequence))))
+
+    def test_get_static_mapping(self):
+        name = factory.getRandomString()
+        network = IPNetwork('192.12.0.1/30')
+        dns_ip = factory.getRandomIPInNetwork(network)
+        dns_zone_config = DNSForwardZoneConfig(
+            name, networks=[network], dns_ip=dns_ip)
+        self.assertItemsEqual(
+            [
+                ('%s.' % name, dns_ip),
+                (generated_hostname('192.12.0.0'), '192.12.0.0'),
+                (generated_hostname('192.12.0.1'), '192.12.0.1'),
+                (generated_hostname('192.12.0.2'), '192.12.0.2'),
+                (generated_hostname('192.12.0.3'), '192.12.0.3'),
+             ],
+            dns_zone_config.get_static_mapping(),
             )
 
-    def test_get_generated_mapping_multiple_networks(self):
+    def test_forward_zone_get_static_mapping_returns_iterator(self):
+        name = factory.getRandomString()
+        network = IPNetwork('192.12.0.1/30')
+        dns_ip = factory.getRandomIPInNetwork(network)
+        dns_zone_config = DNSForwardZoneConfig(
+            name, networks=[network], dns_ip=dns_ip)
+        self.assertThat(
+            dns_zone_config.get_static_mapping(),
+            MatchesAll(
+                IsInstance(Iterable), Not(IsInstance(Sequence))))
+
+    def test_get_static_mapping_multiple_networks(self):
         name = factory.getRandomString()
         networks = IPNetwork('11.11.11.11/31'), IPNetwork('22.22.22.22/31')
-        dns_zone_config = DNSForwardZoneConfig(name, networks=networks)
-        self.assertEqual(
-            {
-                generated_hostname('11.11.11.10'): '11.11.11.10',
-                generated_hostname('11.11.11.11'): '11.11.11.11',
-                generated_hostname('22.22.22.22'): '22.22.22.22',
-                generated_hostname('22.22.22.23'): '22.22.22.23',
-             },
-            dns_zone_config.get_generated_mapping(),
+        dns_ip = factory.getRandomIPInNetwork(networks[0])
+        dns_zone_config = DNSForwardZoneConfig(
+            name, networks=networks, dns_ip=dns_ip)
+        self.assertItemsEqual(
+            [
+                ('%s.' % name, dns_ip),
+                (generated_hostname('11.11.11.10'), '11.11.11.10'),
+                (generated_hostname('11.11.11.11'), '11.11.11.11'),
+                (generated_hostname('22.22.22.22'), '22.22.22.22'),
+                (generated_hostname('22.22.22.23'), '22.22.22.23'),
+            ],
+            dns_zone_config.get_static_mapping(),
             )
 
     def test_writes_dns_zone_config(self):
@@ -386,18 +422,26 @@ class TestDNSReverseZoneConfig(TestCase):
             '168.192.in-addr.arpa',
             dns_zone_config.zone_name)
 
-    def test_get_generated_mapping(self):
+    def test_get_static_mapping_returns_iterator(self):
+        dns_zone_config = DNSReverseZoneConfig(
+            factory.getRandomString(), network=IPNetwork('192.12.0.1/30'))
+        self.assertThat(
+            dns_zone_config.get_static_mapping(),
+            MatchesAll(
+                IsInstance(Iterable), Not(IsInstance(Sequence))))
+
+    def test_get_static_mapping(self):
         name = factory.getRandomString()
         network = IPNetwork('192.12.0.1/30')
         dns_zone_config = DNSReverseZoneConfig(name, network=network)
-        self.assertEqual(
-            {
-                '0': '%s.' % generated_hostname('192.12.0.0', name),
-                '1': '%s.' % generated_hostname('192.12.0.1', name),
-                '2': '%s.' % generated_hostname('192.12.0.2', name),
-                '3': '%s.' % generated_hostname('192.12.0.3', name),
-             },
-            dns_zone_config.get_generated_mapping(),
+        self.assertItemsEqual(
+            [
+                ('0', '%s.' % generated_hostname('192.12.0.0', name)),
+                ('1', '%s.' % generated_hostname('192.12.0.1', name)),
+                ('2', '%s.' % generated_hostname('192.12.0.2', name)),
+                ('3', '%s.' % generated_hostname('192.12.0.3', name)),
+            ],
+            dns_zone_config.get_static_mapping(),
             )
 
     def test_writes_dns_zone_config_with_NS_record(self):

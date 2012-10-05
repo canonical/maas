@@ -13,7 +13,7 @@ $TTL    300
 
     IN  NS  {{domain}}.
 {{for type, mapping in mappings.items()}}
-{{for item_from, item_to in mapping.items()}}
+{{for item_from, item_to in mapping}}
 {{item_from}} IN {{type}} {{item_to}}
 {{endfor}}
 {{endfor}}

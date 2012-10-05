@@ -276,37 +276,42 @@ class DNSForwardZoneConfig(DNSZoneConfigBase):
         """Return the name of the forward zone."""
         return self.domain
 
-    def get_mapping(self):
-        """Return the mapping: hostname->generated hostname."""
-        return {
-            hostname: generated_hostname(ip)
-            for hostname, ip in self.mapping.items()
-        }
+    def get_cname_mapping(self):
+        """Return a generator with the mapping: hostname->generated hostname.
 
-    def get_generated_mapping(self):
-        """Return the generated mapping: fqdn->ip.
+        Note that we return a list of tuples instead of a dictionary in order
+        to be able to return a generator.
+        """
+        return (
+            (hostname, generated_hostname(ip))
+            for hostname, ip in self.mapping.items()
+        )
+
+    def get_static_mapping(self):
+        """Return a generator with the mapping fqdn->ip for the generated ips.
 
         The generated mapping is the mapping between the generated hostnames
         and the IP addresses for all the possible IP addresses in zone.
+        Note that we return a list of tuples instead of a dictionary in order
+        to be able to return a generator.
         """
         ips = imap(unicode, chain.from_iterable(self.networks))
-        return {generated_hostname(ip): ip for ip in ips}
+        static_mapping = ((generated_hostname(ip), ip) for ip in ips)
+        # Add A record for the name server's IP.
+        return chain([('%s.' % self.domain, self.dns_ip)], static_mapping)
 
     def get_context(self):
         """Return the dict used to render the DNS zone file.
 
         That context dict is used to render the DNS zone file.
         """
-        mapping = self.get_generated_mapping()
-        # Add A record for the name server's IP.
-        mapping['%s.' % self.domain] = self.dns_ip
         return {
             'domain': self.domain,
             'serial': self.serial,
             'modified': unicode(datetime.today()),
             'mappings': {
-                'CNAME': self.get_mapping(),
-                'A': mapping,
+                'CNAME': self.get_cname_mapping(),
+                'A': self.get_static_mapping(),
                 }
             }
 
@@ -330,18 +335,18 @@ class DNSReverseZoneConfig(DNSZoneConfigBase):
         octets = broadcast.words[:netmask.words.count(255)]
         return '%s.in-addr.arpa' % '.'.join(imap(unicode, reversed(octets)))
 
-    def get_generated_mapping(self):
+    def get_static_mapping(self):
         """Return the reverse generated mapping: (shortened) ip->fqdn.
 
         The reverse generated mapping is the mapping between the IP addresses
         and the generated hostnames for all the possible IP addresses in zone.
         """
         byte_num = 4 - self.network.netmask.words.count(255)
-        return {
-            shortened_reversed_ip(ip, byte_num):
-                '%s.%s.' % (generated_hostname(ip), self.domain)
+        return (
+            (shortened_reversed_ip(ip, byte_num),
+                '%s.%s.' % (generated_hostname(ip), self.domain))
             for ip in self.network
-            }
+            )
 
     def get_context(self):
         """Return the dict used to render the DNS reverse zone file.
@@ -353,6 +358,6 @@ class DNSReverseZoneConfig(DNSZoneConfigBase):
             'serial': self.serial,
             'modified': unicode(datetime.today()),
             'mappings': {
-                'PTR': self.get_generated_mapping(),
+                'PTR': self.get_static_mapping(),
                 }
             }
