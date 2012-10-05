@@ -14,7 +14,10 @@ __all__ = [
     'encode_multipart_data',
     ]
 
-from collections import Mapping
+from collections import (
+    Iterable,
+    Mapping,
+    )
 from email.generator import Generator
 from email.mime.application import MIMEApplication
 from email.mime.multipart import MIMEMultipart
@@ -59,16 +62,20 @@ def make_file_payload(name, content):
     return payload
 
 
-def make_payload(name, content):
+def make_payloads(name, content):
     if isinstance(content, bytes):
-        return make_bytes_payload(name, content)
+        yield make_bytes_payload(name, content)
     elif isinstance(content, unicode):
-        return make_string_payload(name, content)
+        yield make_string_payload(name, content)
     elif isinstance(content, IOBase):
-        return make_file_payload(name, content)
+        yield make_file_payload(name, content)
     elif callable(content):
         with content() as content:
-            return make_payload(name, content)
+            yield make_payload(name, content)
+    elif isinstance(content, Iterable):
+        for part in content:
+            for payload in make_payloads(name, part):
+                yield payload
     else:
         raise AssertionError(
             "%r is unrecognised: %r" % (name, content))
@@ -77,8 +84,8 @@ def make_payload(name, content):
 def build_multipart_message(data):
     message = MIMEMultipart("form-data")
     for name, content in data:
-        payload = make_payload(name, content)
-        message.attach(payload)
+        for payload in make_payloads(name, content):
+            message.attach(payload)
     return message
 
 

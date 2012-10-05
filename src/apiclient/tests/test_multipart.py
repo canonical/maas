@@ -116,3 +116,14 @@ class TestMultiPart(TestCase):
         self.assertEqual(
             files_expected, files_observed,
             ahem_django_ahem)
+
+    def test_encode_multipart_data_list_params(self):
+        params_in = [
+            ("one", ["ABC", "XYZ"]),
+            ("one", "UVW"),
+            ]
+        body, headers = encode_multipart_data(params_in, [])
+        params_out, files_out = (
+            parse_headers_and_body_with_django(headers, body))
+        self.assertEqual({'one': ['ABC', 'XYZ', 'UVW']}, params_out)
+        self.assertSetEqual(set(), set(files_out))
