@@ -9,12 +9,14 @@ power_address={{power_address}}
 power_user={{power_user}}
 power_pass={{power_pass}}
 ipmipower={{ipmipower}}
+ipmi_chassis_config={{ipmi_chassis_config}}
+config={{config_dir}}/{{ipmi_config}}
 
 
 formulate_power_state() {
     case $2 in
-    'on') echo 'on' ;;
-    'off') echo 'off' ;;
+    'on') echo '--cycle --on-if-off' ;;
+    'off') echo '--off' ;;
     *)
         echo "Got unknown power state from ipmipower: '$2'" >&2
         exit 1
@@ -25,7 +27,9 @@ formulate_power_state() {
 issue_ipmi_command() {
     # See https://launchpad.net/bugs/1053391 for details of this workaround
     echo workaround |\
-    ${ipmipower} -h ${power_address} -u ${power_user} -p ${power_pass} --$1
+    ${ipmi_chassis_config} -h ${power_address} -u ${power_user} -p ${power_pass} --commit --filename ${config}
+    echo workaround |\
+    ${ipmipower} -h ${power_address} -u ${power_user} -p ${power_pass} $1
 }
 
 

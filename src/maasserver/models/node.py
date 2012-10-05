@@ -648,6 +648,9 @@ class Node(CleanSave, TimestampedModel):
         power_params.setdefault('system_id', self.system_id)
         power_params.setdefault('virsh', '/usr/bin/virsh')
         power_params.setdefault('ipmipower', '/usr/sbin/ipmipower')
+        power_params.setdefault(
+            'ipmi_chassis_config', '/usr/sbin/ipmi-chassis-config')
+        power_params.setdefault('ipmi_config', 'ipmi.conf')
         power_params.setdefault('power_address', 'qemu://localhost/system')
         power_params.setdefault('username', '')
         power_params.setdefault('power_id', self.system_id)
