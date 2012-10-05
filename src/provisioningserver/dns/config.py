@@ -23,6 +23,7 @@ from abc import (
     abstractproperty,
     )
 from datetime import datetime
+import errno
 from itertools import (
     chain,
     imap,
@@ -46,6 +47,10 @@ import tempita
 MAAS_NAMED_CONF_NAME = 'named.conf.maas'
 MAAS_NAMED_RNDC_CONF_NAME = 'named.conf.rndc.maas'
 MAAS_RNDC_CONF_NAME = 'rndc.conf.maas'
+
+
+class DNSConfigDirectoryMissing(Exception):
+    """The directory where the config was about to be written is missing."""
 
 
 class DNSConfigFail(Exception):
@@ -157,6 +162,26 @@ class DNSConfigBase:
         return {}
 
     def write_config(self, overwrite=True, **kwargs):
+        """Write out this DNS config file.
+
+        This raises DNSConfigDirectoryMissing if any
+        "No such file or directory" error is raised because that would mean
+        that the directory containing the write to be written does not exist.
+        """
+        try:
+            self.inner_write_config(overwrite=overwrite, **kwargs)
+        except OSError as exception:
+            # Only raise a DNSConfigDirectoryMissing exception if this error
+            # is a "No such file or directory" exception.
+            if exception.errno == errno.ENOENT:
+                raise DNSConfigDirectoryMissing(
+                    "The directory where the DNS config files should be "
+                    "written does not exist.  Make sure the 'maas-dns' "
+                    "package is installed on this region controller.")
+            else:
+                raise
+
+    def inner_write_config(self, overwrite=True, **kwargs):
         """Write out this DNS config file."""
         template = self.get_template()
         kwargs.update(self.get_context())
@@ -249,7 +274,7 @@ class DNSZoneConfigBase(DNSConfigBase):
         return os.path.join(
             self.target_dir, 'zone.%s' % self.zone_name)
 
-    def write_config(self, **kwargs):
+    def inner_write_config(self, **kwargs):
         """Write out the DNS config file for this zone."""
         template = self.get_template()
         kwargs.update(self.get_context())
