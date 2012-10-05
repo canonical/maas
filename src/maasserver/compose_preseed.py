@@ -29,12 +29,20 @@ def compose_cloud_init_preseed(token):
         'oauth_token_secret': token.secret,
         })
 
+    local_config_yaml = yaml.safe_dump({
+           "manage_etc_hosts": "localhost",
+           "apt_preserve_sources_list": True,
+        })
+    # this is debconf escaping
+    local_config = local_config_yaml.replace("\\", "\\\\").replace("\n", "\\n")
+
     # Preseed data to send to cloud-init.  We set this as MAAS_PRESEED in
     # ks_meta, and it gets fed straight into debconf.
-    metadata_preseed_items = [
+    preseed_items = [
         ('datasources', 'multiselect', 'MAAS'),
         ('maas-metadata-url', 'string', absolute_reverse('metadata')),
         ('maas-metadata-credentials', 'string', credentials),
+        ('local-cloud-config', 'string', local_config)
         ]
 
     return '\n'.join(
@@ -43,7 +51,7 @@ def compose_cloud_init_preseed(token):
             item_type,
             item_value,
             )
-        for item_name, item_type, item_value in metadata_preseed_items)
+        for item_name, item_type, item_value in preseed_items)
 
 
 def compose_commissioning_preseed(token):

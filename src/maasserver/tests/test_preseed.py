@@ -385,7 +385,7 @@ class TestPreseedMethods(TestCase):
     def test_get_preseed_returns_commissioning_preseed(self):
         node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
         preseed = get_preseed(node)
-        self.assertIn('cloud-init', preseed)
+        self.assertIn('#cloud-config', preseed)
 
 
 class TestPreseedURLs(TestCase):
