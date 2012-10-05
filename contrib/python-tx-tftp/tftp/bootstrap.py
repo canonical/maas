@@ -180,7 +180,7 @@ class TFTPBootstrap(DatagramProtocol):
         @type datagram: L{ERRORDatagram}
 
         """
-        log.msg("Got error: " % datagram)
+        log.msg("Got error: %s" % datagram)
         return self.cancel()
 
     def cancel(self):

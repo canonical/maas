@@ -69,7 +69,7 @@ class WriteSession(DatagramProtocol):
         if datagram.opcode == OP_DATA:
             return self.tftp_DATA(datagram)
         elif datagram.opcode == OP_ERROR:
-            log.msg("Got error: " % datagram)
+            log.msg("Got error: %s" % datagram)
             self.cancel()
 
     def tftp_DATA(self, datagram):
@@ -211,7 +211,7 @@ class ReadSession(DatagramProtocol):
         if datagram.opcode == OP_ACK:
             return self.tftp_ACK(datagram)
         elif datagram.opcode == OP_ERROR:
-            log.msg("Got error: " % datagram)
+            log.msg("Got error: %s" % datagram)
             self.cancel()
 
     def tftp_ACK(self, datagram):
