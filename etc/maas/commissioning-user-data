@@ -6,6 +6,17 @@
 # main does a run-parts of all "scripts" and then calls home to maas with
 # maas-signal, posting output of each of the files added with add_script()
 #
+####  IPMI setup  ######
+# If IPMI network settings have been configured statically, you can
+# make them DHCP. If 'true', the IPMI network source will be changed
+# to DHCP.
+IPMI_CHANGE_STATIC_TO_DHCP="false"
+
+# In certain hardware, the parameters for the ipmi_si kernel module
+# might need be specified. If you wish to send parameters uncomment
+# the following line.
+#IPMI_SI_PARAMS="type=kcs ports=0xca2"
+
 #### script setup ######
 TEMP_D=$(mktemp -d "${TMPDIR:-/tmp}/${0##*/}.XXXXXX")
 SCRIPTS_D="${TEMP_D}/scripts"
@@ -114,7 +125,11 @@ main() {
    CRED_CFG="$creds"
 
    # power settings
-   power_settings=$(maas-ipmi-autodetect --configdir "$IPMI_CONFIG_D")
+   local pargs=""
+   if $IPMI_CHANGE_STATIC_TO_DHCP; then
+      pargs="--dhcp-if-static"
+   fi
+   power_settings=$(maas-ipmi-autodetect --configdir "$IPMI_CONFIG_D" ${pargs})
    if [ ! -z "power_settings" ]; then
       signal "--power-type=ipmi" "--power-parameters=${power_settings}" WORKING "finished [maas-ipmi-autodetect]"
    fi
@@ -162,10 +177,7 @@ main() {
 load_modules() {
    modprobe ipmi_msghandler
    modprobe ipmi_devintf
-   # In certain hardware, like HP MicroServers, the parameters need
-   # be specified. Otherwise, IPMI won't work due to incorrect port.
-   #modprobe ipmi_si type=kcs ports=0xca2
-   modprobe ipmi_si
+   modprobe ipmi_si ${IPMI_SI_PARAMS}
 }
 
 ### begin writing files ###
@@ -251,6 +263,8 @@ def main():
         description='send config file to modify IPMI settings with')
     parser.add_argument("--configdir", metavar="folder",
         help="specify config file", default=None)
+    parser.add_argument("--dhcp-if-static", action="store_true",
+        dest="dhcp", help="specify config file", default=False)
 
     args = parser.parse_args()
 
@@ -260,9 +274,9 @@ def main():
         # if False, then failed to detect ipmi
         exit(1)
 
-    # Check whether IPMI is being set to DHCP
-    # If it is not DHCP, set it to DHCP.
-    if not is_ipmi_dhcp():
+    # Check whether IPMI is being set to DHCP. If it is not, and
+    # '--dhcp-if-static' has been passed,  Set it to IPMI to DHCP.
+    if not is_ipmi_dhcp() and args.dhcp:
         set_ipmi_network_source("Use_DHCP")
         # allow IPMI 60 seconds to obtain an IP address
         time.sleep(60)
