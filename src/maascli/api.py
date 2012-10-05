@@ -11,7 +11,8 @@ from __future__ import (
 
 __metaclass__ = type
 __all__ = [
-    "register",
+    "register_api_commands",
+    "register_cli_commands",
     ]
 
 from email.message import Message
@@ -376,8 +377,25 @@ def register_handlers(profile, parser):
         register_actions(profile, handler, handler_parser)
 
 
-def register(module, parser):
-    """Register profiles."""
+commands = {
+    'login': cmd_login,
+    'logout': cmd_logout,
+    'list': cmd_list,
+    'refresh': cmd_refresh,
+}
+
+
+def register_cli_commands(parser):
+    """Register the CLI's meta-subcommands on `parser`."""
+    for name, command in commands.items():
+        help_title, help_body = parse_docstring(command)
+        command_parser = parser.subparsers.add_parser(
+            safe_name(name), help=help_title, description=help_body)
+        command_parser.set_defaults(execute=command(command_parser))
+
+
+def register_api_commands(parser):
+    """Register all profiles as subcommands on `parser`."""
     with ProfileConfig.open() as config:
         for profile_name in config:
             profile = config[profile_name]

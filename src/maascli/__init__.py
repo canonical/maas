@@ -19,10 +19,11 @@ import locale
 import sys
 
 from bzrlib import osutils
-from maascli.utils import (
-    parse_docstring,
-    safe_name,
+from maascli.api import (
+    register_api_commands,
+    register_cli_commands,
     )
+from maascli.utils import parse_docstring
 
 
 class ArgumentParser(argparse.ArgumentParser):
@@ -58,7 +59,8 @@ def main(argv=None):
     parser = ArgumentParser(
         description=help_body, prog=argv[0],
         epilog="http://maas.ubuntu.com/")
-    register(module, parser)
+    register_cli_commands(parser)
+    register_api_commands(parser)
 
     # Run, doing polite things with exceptions.
     try:
@@ -68,30 +70,3 @@ def main(argv=None):
         raise SystemExit(1)
     except StandardError as error:
         parser.error("%s" % error)
-
-
-def register(module, parser, prefix="cmd_"):
-    """Register commands in `module` with the given argument parser.
-
-    This looks for callable objects named `cmd_*` by default, calls them with
-    a new subparser, and registers them as the default value for `execute` in
-    the namespace.
-
-    If the module also has a `register` function, this is also called, passing
-    in the module being scanned, and the parser given to this function.
-    """
-    # Register commands.
-    trim = slice(len(prefix), None)
-    commands = {
-        name[trim]: command for name, command in vars(module).items()
-        if name.startswith(prefix) and callable(command)
-        }
-    for name, command in commands.items():
-        help_title, help_body = parse_docstring(command)
-        command_parser = parser.subparsers.add_parser(
-            safe_name(name), help=help_title, description=help_body)
-        command_parser.set_defaults(execute=command(command_parser))
-    # Extra subparser registration.
-    register_module = getattr(module, "register", None)
-    if callable(register_module):
-        register_module(module, parser)

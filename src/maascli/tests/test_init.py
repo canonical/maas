@@ -12,14 +12,8 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
-import new
-
-from maascli import (
-    ArgumentParser,
-    register,
-    )
+from maascli import ArgumentParser
 from maastesting.testcase import TestCase
-from mock import sentinel
 
 
 class TestArgumentParser(TestCase):
@@ -42,72 +36,3 @@ class TestArgumentParser(TestCase):
         # The subparsers property, once populated, always returns the same
         # object.
         self.assertIs(subparsers, parser.subparsers)
-
-
-class TestRegister(TestCase):
-    """Tests for `maascli.register`."""
-
-    def test_empty(self):
-        module = new.module(b"%s.test" % __name__)
-        parser = ArgumentParser()
-        register(module, parser)
-        # No subparsers were registered.
-        self.assertIsNone(parser._subparsers)
-
-    def test_command(self):
-        module = new.module(b"%s.test" % __name__)
-        cmd = self.patch(module, "cmd_one")
-        cmd.return_value = sentinel.execute
-        parser = ArgumentParser()
-        register(module, parser)
-        # Subparsers were registered.
-        self.assertIsNotNone(parser._subparsers)
-        # The command was called once with a subparser called "one".
-        subparser_one = parser.subparsers.choices["one"]
-        cmd.assert_called_once_with(subparser_one)
-        # The subparser has an appropriate execute default.
-        self.assertIs(
-            sentinel.execute,
-            subparser_one.get_default("execute"))
-
-    def test_commands(self):
-        module = new.module(b"%s.test" % __name__)
-        cmd_one = self.patch(module, "cmd_one")
-        cmd_one.return_value = sentinel.x_one
-        cmd_two = self.patch(module, "cmd_two")
-        cmd_two.return_value = sentinel.x_two
-        parser = ArgumentParser()
-        register(module, parser)
-        # The commands were called with appropriate subparsers.
-        subparser_one = parser.subparsers.choices["one"]
-        cmd_one.assert_called_once_with(subparser_one)
-        subparser_two = parser.subparsers.choices["two"]
-        cmd_two.assert_called_once_with(subparser_two)
-        # The subparsers have appropriate execute defaults.
-        self.assertIs(sentinel.x_one, subparser_one.get_default("execute"))
-        self.assertIs(sentinel.x_two, subparser_two.get_default("execute"))
-
-    def test_register(self):
-        module = new.module(b"%s.test" % __name__)
-        module_register = self.patch(module, "register")
-        parser = ArgumentParser()
-        register(module, parser)
-        # No subparsers were registered; calling module.register does not
-        # imply that this happens.
-        self.assertIsNone(parser._subparsers)
-        # The command was called once with a subparser called "one".
-        module_register.assert_called_once_with(module, parser)
-
-    def test_command_and_register(self):
-        module = new.module(b"%s.test" % __name__)
-        module_register = self.patch(module, "register")
-        cmd = self.patch(module, "cmd_one")
-        parser = ArgumentParser()
-        register(module, parser)
-        # Subparsers were registered because a command was found.
-        self.assertIsNotNone(parser._subparsers)
-        # The command was called once with a subparser called "one".
-        module_register.assert_called_once_with(module, parser)
-        # The command was called once with a subparser called "one".
-        cmd.assert_called_once_with(
-            parser.subparsers.choices["one"])
