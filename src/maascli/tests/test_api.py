@@ -20,10 +20,8 @@ import sys
 
 from apiclient.creds import convert_tuple_to_string
 import httplib2
-from maascli import (
-    api,
-    CommandError,
-    )
+from maascli import api
+from maascli.command import CommandError
 from maastesting.factory import factory
 from maastesting.testcase import TestCase
 from mock import sentinel

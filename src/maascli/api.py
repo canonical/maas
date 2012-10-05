@@ -33,7 +33,7 @@ from apiclient.maas_client import MAASOAuth
 from apiclient.multipart import encode_multipart_data
 from apiclient.utils import ascii_url
 import httplib2
-from maascli import (
+from maascli.command import (
     Command,
     CommandError,
     )
