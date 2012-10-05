@@ -141,7 +141,8 @@ def process_all(client, tag_name, nodegroup_uuid, system_ids, xpath,
         details = get_hardware_details_for_nodes(
             client, nodegroup_uuid, selected_ids)
         matched, unmatched = process_batch(xpath, details)
-        task_logger.warning('processing batch of %d ids received %d details'
+        task_logger.debug(
+            'processing batch of %d ids received %d details'
             ' (%d matched, %d unmatched)'
             % (len(selected_ids), len(details), len(matched), len(unmatched)))
         all_matched.extend(matched)
