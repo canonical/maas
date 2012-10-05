@@ -31,8 +31,11 @@ from provisioningserver import tags
 class FakeResponse:
 
     def __init__(self, status_code, content):
-        self.status_code = status_code
+        self.code = status_code
         self.content = content
+
+    def read(self):
+        return self.content
 
 
 class TestTagUpdating(PservTestCase):
@@ -74,7 +77,7 @@ class TestTagUpdating(PservTestCase):
         self.patch(client, 'get', mock)
         result = tags.get_nodes_for_node_group(client, uuid)
         self.assertEqual(['system-id1', 'system-id2'], result)
-        url = 'api/1.0/nodegroup/%s/' % (uuid,)
+        url = '/api/1.0/nodegroups/%s/' % (uuid,)
         mock.assert_called_once_with(url, op='list_nodes')
 
     def test_get_hardware_details_calls_correct_api_and_parses_result(self):
@@ -83,28 +86,28 @@ class TestTagUpdating(PservTestCase):
         content = '[["system-id1", "%s"]]' % (xml_data,)
         response = FakeResponse(httplib.OK, content)
         mock = MagicMock(return_value=response)
-        self.patch(client, 'get', mock)
+        self.patch(client, 'post', mock)
         result = tags.get_hardware_details_for_nodes(
             client, uuid, ['system-id1', 'system-id2'])
         self.assertEqual([['system-id1', xml_data]], result)
-        url = 'api/1.0/nodegroup/%s/' % (uuid,)
+        url = '/api/1.0/nodegroups/%s/' % (uuid,)
         mock.assert_called_once_with(
             url, op='node_hardware_details',
             system_ids=["system-id1", "system-id2"])
 
-    def test_update_node_tags_calls_correct_api_and_parses_result(self):
+    def test_post_updated_nodes_calls_correct_api_and_parses_result(self):
         client, uuid = self.fake_cached_knowledge()
         content = '{"added": 1, "removed": 2}'
         response = FakeResponse(httplib.OK, content)
-        mock = MagicMock(return_value=response)
-        self.patch(client, 'post', mock)
+        post_mock = MagicMock(return_value=response)
+        self.patch(client, 'post', post_mock)
         name = factory.make_name('tag')
-        result = tags.update_node_tags(client, name, uuid,
+        result = tags.post_updated_nodes(client, name, uuid,
             ['add-system-id'], ['remove-1', 'remove-2'])
         self.assertEqual({'added': 1, 'removed': 2}, result)
-        url = 'api/1.0/tags/%s/' % (name,)
-        mock.assert_called_once_with(
-            url, op='update_nodes',
+        url = '/api/1.0/tags/%s/' % (name,)
+        post_mock.assert_called_once_with(
+            url, op='update_nodes', nodegroup=uuid,
             add=['add-system-id'], remove=['remove-1', 'remove-2'])
 
     def test_process_batch_evaluates_xpath(self):
@@ -118,6 +121,13 @@ class TestTagUpdating(PservTestCase):
             (['a', 'c'], ['b']),
             tags.process_batch(xpath, node_details))
 
+    def test_process_batch_handles_invalid_hardware(self):
+        xpath = etree.XPath('//node')
+        details = [['a', ''], ['b', 'not-xml'], ['c', None]]
+        self.assertEqual(
+            ([], ['a', 'b', 'c']),
+            tags.process_batch(xpath, details))
+
     def test_process_node_tags_no_secrets(self):
         self.patch(MAASClient, 'get')
         self.patch(MAASClient, 'post')
@@ -130,30 +140,32 @@ class TestTagUpdating(PservTestCase):
         self.set_secrets()
         get_nodes = FakeMethod(
             result=FakeResponse(httplib.OK, '["system-id1", "system-id2"]'))
-        get_hw_details = FakeMethod(
+        post_hw_details = FakeMethod(
             result=FakeResponse(httplib.OK,
                 '[["system-id1", "<node />"], ["system-id2", "<no-node />"]]'))
-        get_fake = MultiFakeMethod([get_nodes, get_hw_details])
-        post_fake = FakeMethod(
+        get_fake = MultiFakeMethod([get_nodes])
+        post_update_fake = FakeMethod(
             result=FakeResponse(httplib.OK, '{"added": 1, "removed": 1}'))
+        post_fake = MultiFakeMethod([post_hw_details, post_update_fake])
         self.patch(MAASClient, 'get', get_fake)
         self.patch(MAASClient, 'post', post_fake)
         tag_name = factory.make_name('tag')
         nodegroup_uuid = get_recorded_nodegroup_uuid()
         tags.process_node_tags(tag_name, '//node')
-        nodegroup_url = 'api/1.0/nodegroup/%s/' % (nodegroup_uuid,)
-        tag_url = 'api/1.0/tags/%s/' % (tag_name,)
+        nodegroup_url = '/api/1.0/nodegroups/%s/' % (nodegroup_uuid,)
+        tag_url = '/api/1.0/tags/%s/' % (tag_name,)
         self.assertEqual([((nodegroup_url,), {'op': 'list_nodes'})],
                          get_nodes.calls)
         self.assertEqual([((nodegroup_url,),
                           {'op': 'node_hardware_details',
                            'system_ids': ['system-id1', 'system-id2']})],
-                         get_hw_details.calls)
+                         post_hw_details.calls)
         self.assertEqual([((tag_url,),
                           {'op': 'update_nodes',
+                           'nodegroup': nodegroup_uuid,
                            'add': ['system-id1'],
                            'remove': ['system-id2'],
-                          })], post_fake.calls)
+                          })], post_update_fake.calls)
 
     def test_process_node_tags_requests_details_in_batches(self):
         client = object()
@@ -170,12 +182,12 @@ class TestTagUpdating(PservTestCase):
             result=[['c', '<parent><node /></parent>']])
         self.patch(tags, 'get_hardware_details_for_nodes',
             MultiFakeMethod([fake_first, fake_second]))
-        self.patch(tags, 'update_node_tags')
+        self.patch(tags, 'post_updated_nodes')
         tag_name = factory.make_name('tag')
         tags.process_node_tags(tag_name, '//node', batch_size=2)
         tags.get_cached_knowledge.assert_called_once_with()
         tags.get_nodes_for_node_group.assert_called_once_with(client, uuid)
         self.assertEqual([((client, uuid, ['a', 'b']), {})], fake_first.calls)
         self.assertEqual([((client, uuid, ['c']), {})], fake_second.calls)
-        tags.update_node_tags.assert_called_once_with(
+        tags.post_updated_nodes.assert_called_once_with(
             client, tag_name, uuid, ['a', 'c'], ['b'])

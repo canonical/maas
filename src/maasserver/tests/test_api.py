@@ -3660,7 +3660,7 @@ class TestNodeGroupAPIAuth(APIv10TestMixin, TestCase):
         if nodegroup is None:
             nodegroup = factory.make_node_group()
         node = factory.make_node(nodegroup=nodegroup)
-        return client.get(
+        return client.post(
             reverse('nodegroup_handler', args=[nodegroup.uuid]),
             {'op': 'node_hardware_details', 'system_ids': [node.system_id]})
 
@@ -3681,7 +3681,7 @@ class TestNodeGroupAPIAuth(APIv10TestMixin, TestCase):
         node = factory.make_node(nodegroup=nodegroup)
         node.set_hardware_details(hardware_details)
         client = make_worker_client(nodegroup)
-        response = client.get(
+        response = client.post(
             reverse('nodegroup_handler', args=[nodegroup.uuid]),
             {'op': 'node_hardware_details', 'system_ids': [node.system_id]})
         self.assertEqual(httplib.OK, response.status_code)
@@ -3697,7 +3697,7 @@ class TestNodeGroupAPIAuth(APIv10TestMixin, TestCase):
         node_theirs = factory.make_node(nodegroup=nodegroup_theirs)
         node_theirs.set_hardware_details(hardware_details)
         client = make_worker_client(nodegroup_mine)
-        response = client.get(
+        response = client.post(
             reverse('nodegroup_handler', args=[nodegroup_mine.uuid]),
             {'op': 'node_hardware_details',
              'system_ids': [node_mine.system_id, node_theirs.system_id]})

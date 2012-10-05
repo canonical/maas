@@ -116,22 +116,16 @@ class Tag(CleanSave, TimestampedModel):
 
     def populate_nodes(self):
         """Find all nodes that match this tag, and update them."""
-        # Local import to avoid circular reference
-        from maasserver.models import Node
-        # First make sure we have a valid definition
+        from maasserver.populate_tags import populate_tags
+        # before we pass off any work, ensure the definition is valid XPATH
         try:
-            # Many documents, one definition: use XPath.
-            xpath = etree.XPath(self.definition)
+            etree.XPath(self.definition)
         except etree.XPathSyntaxError as e:
             msg = 'Invalid xpath expression: %s' % (e,)
             raise ValidationError({'definition': [msg]})
         # Now delete the existing tags
         self.node_set.clear()
-        # And figure out what matches the new definition
-        for node in Node.objects.filter(hardware_details__isnull=False):
-            doc = etree.XML(node.hardware_details)
-            if xpath(doc):
-                node.tags.add(self)
+        populate_tags(self)
 
     def save(self, *args, **kwargs):
         super(Tag, self).save(*args, **kwargs)

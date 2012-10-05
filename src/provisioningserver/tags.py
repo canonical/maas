@@ -5,6 +5,7 @@
 
 """
 
+import httplib
 import json
 from lxml import etree
 
@@ -48,6 +49,20 @@ def get_cached_knowledge():
     return client, nodegroup_uuid
 
 
+def process_response(response):
+    """All responses should be httplib.OK and contain JSON content.
+
+    :param response: The result of MAASClient.get/post/etc.
+    :type response: urllib2.addinfourl (a file-like object that has a .code
+        attribute.)
+    """
+    if response.code != httplib.OK:
+        text_status = httplib.responses.get(response.code, '<unknown>')
+        raise AssertionError('Unexpected HTTP status: %s %s, expected 200 OK'
+            % (response.code, text_status))
+    return json.loads(response.read())
+
+
 def get_nodes_for_node_group(client, nodegroup_uuid):
     """Retrieve the UUIDs of nodes in a particular group.
 
@@ -55,10 +70,8 @@ def get_nodes_for_node_group(client, nodegroup_uuid):
     :param nodegroup_uuid: Node group for which to retrieve nodes
     :return: List of UUIDs for nodes in nodegroup
     """
-    path = 'api/1.0/nodegroup/%s/' % (nodegroup_uuid)
-    response = client.get(path, op='list_nodes')
-    # XXX: Check the response code before we parse the content
-    return json.loads(response.content)
+    path = '/api/1.0/nodegroups/%s/' % (nodegroup_uuid)
+    return process_response(client.get(path, op='list_nodes'))
 
 
 def get_hardware_details_for_nodes(client, nodegroup_uuid, system_ids):
@@ -68,14 +81,12 @@ def get_hardware_details_for_nodes(client, nodegroup_uuid, system_ids):
     :param system_ids: List of UUIDs of systems for which to fetch lshw data
     :return: Dictionary mapping node UUIDs to lshw output
     """
-    path = 'api/1.0/nodegroup/%s/' % (nodegroup_uuid,)
-    response = client.get(
-        path, op='node_hardware_details', system_ids=system_ids)
-    # XXX: Check the response code before we parse the content
-    return json.loads(response.content)
+    path = '/api/1.0/nodegroups/%s/' % (nodegroup_uuid,)
+    return process_response(client.post(
+        path, op='node_hardware_details', system_ids=system_ids))
 
 
-def update_node_tags(client, tag_name, uuid, added, removed):
+def post_updated_nodes(client, tag_name, uuid, added, removed):
     """Update the nodes relevant for a particular tag.
 
     :param client: MAAS client
@@ -86,10 +97,11 @@ def update_node_tags(client, tag_name, uuid, added, removed):
     :param added: Set of nodes to add
     :param removed: Set of nodes to remove
     """
-    path = 'api/1.0/tags/%s/' % (tag_name,)
-    response = client.post(path, op='update_nodes', add=added, remove=removed)
-    # XXX: Check the response code before we parse the content
-    return json.loads(response.content)
+    path = '/api/1.0/tags/%s/' % (tag_name,)
+    task_logger.debug('Updating nodes for %s %s, adding %s removing %s'
+        % (tag_name, uuid, len(added), len(removed)))
+    return process_response(client.post(
+        path, op='update_nodes', nodegroup=uuid, add=added, remove=removed))
 
 
 def process_batch(xpath, hardware_details):
@@ -99,8 +111,17 @@ def process_batch(xpath, hardware_details):
     matched_nodes = []
     unmatched_nodes = []
     for system_id, hw_xml in hardware_details:
-        xml = etree.XML(hw_xml)
-        if xpath(xml):
+        matched = False
+        if hw_xml is not None:
+            try:
+                xml = etree.XML(hw_xml)
+            except etree.XMLSyntaxError as e:
+                task_logger.debug('Invalid hardware_details for %s: %s'
+                    % (system_id, e))
+            else:
+                if xpath(xml):
+                    matched = True
+        if matched:
             matched_nodes.append(system_id)
         else:
             unmatched_nodes.append(system_id)
@@ -113,19 +134,24 @@ def process_all(client, tag_name, nodegroup_uuid, system_ids, xpath,
         batch_size = DEFAULT_BATCH_SIZE
     all_matched = []
     all_unmatched = []
+    task_logger.debug('processing %d system_ids for tag %s nodegroup %s'
+                      % (len(system_ids), tag_name, nodegroup_uuid))
     for i in range(0, len(system_ids), batch_size):
         selected_ids = system_ids[i:i + batch_size]
         details = get_hardware_details_for_nodes(
             client, nodegroup_uuid, selected_ids)
         matched, unmatched = process_batch(xpath, details)
+        task_logger.warning('processing batch of %d ids received %d details'
+            ' (%d matched, %d unmatched)'
+            % (len(selected_ids), len(details), len(matched), len(unmatched)))
         all_matched.extend(matched)
         all_unmatched.extend(unmatched)
     # Upload all updates for one nodegroup at one time. This should be no more
     # than ~41*10,000 = 410kB. That should take <1s even on a 10Mbit network.
     # This also allows us to track if a nodegroup has been processed in the DB,
     # without having to add another API call.
-    update_node_tags(client, tag_name, nodegroup_uuid, all_matched,
-                     all_unmatched)
+    post_updated_nodes(
+        client, tag_name, nodegroup_uuid, all_matched, all_unmatched)
 
 
 def process_node_tags(tag_name, tag_definition, batch_size=None):
