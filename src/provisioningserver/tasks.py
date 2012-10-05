@@ -64,7 +64,7 @@ refresh_functions = {
 celery_config = app_or_default().conf
 
 
-@task
+@task(ignore_result=True)
 def refresh_secrets(**kwargs):
     """Update the worker's knowledge of various secrets it needs.
 
@@ -135,13 +135,13 @@ def issue_power_action(power_type, power_change, **kwargs):
     # TODO: signal to webapp that it worked.
 
 
-@task
+@task(ignore_result=True)
 def power_on(power_type, **kwargs):
     """Turn a node on."""
     issue_power_action(power_type, 'on', **kwargs)
 
 
-@task
+@task(ignore_result=True)
 def power_off(power_type, **kwargs):
     """Turn a node off."""
     issue_power_action(power_type, 'off', **kwargs)
@@ -340,7 +340,7 @@ def report_boot_images():
     boot_images.report_to_server()
 
 
-@task
+@task(ignore_result=True)
 def update_node_tags(tag_name, tag_definition):
     """Update the nodes for a new/changed tag definition.
 
