@@ -10,6 +10,13 @@ buildout := bin/buildout buildout:offline=true
 virtualenv := virtualenv --never-download
 endif
 
+# If offline has been selected, attempt to further block HTTP/HTTPS
+# activity by setting bogus proxies in the environment.
+ifneq ($(offline),)
+export http_proxy := broken
+export https_proxy := broken
+endif
+
 # Python enum modules.
 py_enums := $(wildcard src/*/enum.py)
 # JavaScript enum module (not modules).
