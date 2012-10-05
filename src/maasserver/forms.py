@@ -648,7 +648,13 @@ class NodeGroupInterfaceForm(ModelForm):
 
     management = forms.TypedChoiceField(
         choices=NODEGROUPINTERFACE_MANAGEMENT_CHOICES, required=False,
-        coerce=int, empty_value=NODEGROUPINTERFACE_MANAGEMENT.DEFAULT)
+        coerce=int, empty_value=NODEGROUPINTERFACE_MANAGEMENT.DEFAULT,
+        help_text=(
+            "If you enable DHCP management, you will need to install the "
+            "'maas-dhcp' package on this cluster controller.  Similarly, you "
+            "will need to install the 'maas-dns' package on this region "
+            "controller to be able to enable DNS management."
+            ))
 
     class Meta:
         model = NodeGroupInterface
