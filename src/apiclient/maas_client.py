@@ -149,6 +149,10 @@ class MAASClient:
         :return: A tuple: URL, headers, and body for the request.
         """
         url = self._make_url(path)
+        if 'op' in params:
+            params = dict(params)
+            op = params.pop('op')
+            url += '?' + urlencode({'op': op})
         body, headers = encode_multipart_data(params, {})
         self.auth.sign_request(url, headers)
         return url, headers, body

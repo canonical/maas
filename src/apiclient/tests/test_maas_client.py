@@ -186,9 +186,11 @@ class TestMAASClient(TestCase):
     def test_post_dispatches_to_resource(self):
         path = make_path()
         client = make_client()
-        client.post(path, factory.getRandomString())
+        method = factory.getRandomString()
+        client.post(path, method)
         request = client.dispatcher.last_call
-        self.assertEqual(client._make_url(path), request['request_url'])
+        self.assertEqual(client._make_url(path) + "?op=%s" % (method,),
+                         request['request_url'])
         self.assertIn('Authorization', request['headers'])
         self.assertEqual('POST', request['method'])
 
@@ -200,7 +202,8 @@ class TestMAASClient(TestCase):
         request = client.dispatcher.last_call
         post, _ = parse_headers_and_body_with_django(
             request["headers"], request["data"])
-        self.assertEqual({"parameter": [param], "op": [method]}, post)
+        self.assertTrue(request["request_url"].endswith('?op=%s' % (method,)))
+        self.assertEqual({"parameter": [param]}, post)
 
     def test_put_dispatches_to_resource(self):
         path = make_path()
