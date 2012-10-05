@@ -23,6 +23,7 @@ from maastesting.fakemethod import FakeMethod
 from maastesting.testcase import TestCase
 from mock import Mock
 from provisioningserver import omshell
+import provisioningserver.omshell
 from provisioningserver.omshell import (
     generate_omapi_key,
     Omshell,
@@ -207,3 +208,27 @@ class Test_generate_omapi_key(TestCase):
 
         self.patch(omshell, 'call_dnssec_keygen', returns_junk)
         self.assertRaises(AssertionError, generate_omapi_key)
+
+    def test_run_repeated_keygen(self):
+        # Test that a known bad key is ignored and we generate a new one
+        # to replace it.
+        key_that_fails_in_omshell = (
+            "YXY5pr+No/8NZeodSd27wWbI8N6kIjMF/nrnFIlPwVLuByJKkQcBRtfDrD"
+            "LLG2U9/ND7/bIlJxEGTUnyipffHQ==")
+        # Set up a Mock with a side effect that returns a known bad key
+        # on the first pass, and the real function on the second.
+        def bad_key(*args):
+            return {'Key': key_that_fails_in_omshell}
+        side_effects = [
+            bad_key, provisioningserver.omshell.parse_key_value_file]
+        def side_effect(foo):
+            func = side_effects.pop(0)
+            return func(foo)
+
+        mock = self.patch(provisioningserver.omshell, 'parse_key_value_file')
+        mock.side_effect = side_effect
+
+        new_key = generate_omapi_key()
+        self.assertNotEqual(new_key, key_that_fails_in_omshell)
+
+

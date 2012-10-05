@@ -17,6 +17,7 @@ __all__ = [
     "Omshell",
     ]
 
+import re
 import os
 import shutil
 from subprocess import (
@@ -31,6 +32,9 @@ from textwrap import dedent
 from provisioningserver.utils import parse_key_value_file
 
 
+bad_key_pattern = re.compile(".*[+/]no[+/].*", flags=re.IGNORECASE)
+
+
 def call_dnssec_keygen(tmpdir):
     path = os.environ.get("PATH", "").split(os.pathsep)
     path.append("/usr/sbin")
@@ -41,19 +45,14 @@ def call_dnssec_keygen(tmpdir):
         env=env)
 
 
-def generate_omapi_key():
-    """Generate a HMAC-MD5 key by calling out to the dnssec-keygen tool.
+def run_repeated_keygen(tmpdir):
+    # omshell has a bug where if the chars '/' or '+' appear either
+    # side of the word 'no' (in any case), it throws an error like
+    # "partial base64 value left over".  We check for that here and
+    # repeatedly generate a new key until a good one is generated.
 
-    :return: The shared key suitable for OMAPI access.
-    :type: string
-    """
-    # dnssec-keygen writes out files to a specified directory, so we
-    # need to make a temp directory for that.
-
-    # mkdtemp() says it will return a directory that is readable,
-    # writable, and searchable only by the creating user ID.
-    tmpdir = mkdtemp(prefix="%s." % os.path.basename(__file__))
-    try:
+    key = None
+    while key is None:
         key_id = call_dnssec_keygen(tmpdir)
 
         # Locate the file that was written and strip out the Key: field in
@@ -70,8 +69,31 @@ def generate_omapi_key():
         if parsing_error or 'Key' not in config:
             raise AssertionError(
                 "Key field not found in output from dnssec-keygen")
-        else:
-            return config['Key']
+
+        key = config['Key']
+        if bad_key_pattern.match(key) is not None:
+            # Force a retry.
+            os.remove(key_file_name)  # Stop dnssec_keygen complaints.
+            key = None
+
+    return key
+
+
+def generate_omapi_key():
+    """Generate a HMAC-MD5 key by calling out to the dnssec-keygen tool.
+
+    :return: The shared key suitable for OMAPI access.
+    :type: string
+    """
+    # dnssec-keygen writes out files to a specified directory, so we
+    # need to make a temp directory for that.
+
+    # mkdtemp() says it will return a directory that is readable,
+    # writable, and searchable only by the creating user ID.
+    tmpdir = mkdtemp(prefix="%s." % os.path.basename(__file__))
+    try:
+        key = run_repeated_keygen(tmpdir)
+        return key
     finally:
         shutil.rmtree(tmpdir)
 
