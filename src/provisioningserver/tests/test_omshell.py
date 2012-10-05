@@ -12,6 +12,7 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
+from itertools import product
 import os
 from subprocess import CalledProcessError
 import tempfile
@@ -210,25 +211,39 @@ class Test_generate_omapi_key(TestCase):
         self.assertRaises(AssertionError, generate_omapi_key)
 
     def test_run_repeated_keygen(self):
+        bad_patterns = {
+            "+no", "/no", "no+", "no/",
+            "+NO", "/NO", "NO+", "NO/",
+            }
+        bad_patterns_templates = {
+            "foo%sbar", "one\ntwo\n%s\nthree\n", "%s",
+            }
         # Test that a known bad key is ignored and we generate a new one
         # to replace it.
-        key_that_fails_in_omshell = (
+        bad_keys = {
+            # This key is known to fail with omshell.
             "YXY5pr+No/8NZeodSd27wWbI8N6kIjMF/nrnFIlPwVLuByJKkQcBRtfDrD"
-            "LLG2U9/ND7/bIlJxEGTUnyipffHQ==")
-        # Set up a Mock with a side effect that returns a known bad key
-        # on the first pass, and the real function on the second.
-        def bad_key(*args):
-            return {'Key': key_that_fails_in_omshell}
-        side_effects = [
-            bad_key, provisioningserver.omshell.parse_key_value_file]
-        def side_effect(foo):
-            func = side_effects.pop(0)
-            return func(foo)
+            "LLG2U9/ND7/bIlJxEGTUnyipffHQ==",
+            }
+        # Fabricate a range of keys containing the known-bad pattern.
+        bad_keys.update(
+            template % pattern for template, pattern in product(
+                bad_patterns_templates, bad_patterns))
+        # An iterator that we can exhaust without mutating bad_keys.
+        iter_bad_keys = iter(bad_keys)
+        # Reference to the original parse_key_value_file, before we patch.
+        parse_key_value_file = provisioningserver.omshell.parse_key_value_file
+
+        # Patch parse_key_value_file to return each of the known-bad keys
+        # we've created, followed by reverting to it's usual behaviour.
+        def side_effect(*args, **kwargs):
+            try:
+                return {'Key': next(iter_bad_keys)}
+            except StopIteration:
+                return parse_key_value_file(*args, **kwargs)
 
         mock = self.patch(provisioningserver.omshell, 'parse_key_value_file')
         mock.side_effect = side_effect
 
-        new_key = generate_omapi_key()
-        self.assertNotEqual(new_key, key_that_fails_in_omshell)
-
-
+        # generate_omapi_key() does not return a key known to be bad.
+        self.assertNotIn(generate_omapi_key(), bad_keys)

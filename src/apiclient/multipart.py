@@ -71,7 +71,8 @@ def make_payloads(name, content):
         yield make_file_payload(name, content)
     elif callable(content):
         with content() as content:
-            yield make_payload(name, content)
+            for payload in make_payloads(name, content):
+                yield payload
     elif isinstance(content, Iterable):
         for part in content:
             for payload in make_payloads(name, part):

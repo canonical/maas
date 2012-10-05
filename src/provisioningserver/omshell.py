@@ -17,8 +17,8 @@ __all__ = [
     "Omshell",
     ]
 
-import re
 import os
+import re
 import shutil
 from subprocess import (
     CalledProcessError,
@@ -32,7 +32,7 @@ from textwrap import dedent
 from provisioningserver.utils import parse_key_value_file
 
 
-bad_key_pattern = re.compile(".*[+/]no[+/].*", flags=re.IGNORECASE)
+bad_key_pattern = re.compile("[+/]no|no[+/]", flags=re.IGNORECASE)
 
 
 def call_dnssec_keygen(tmpdir):
@@ -71,7 +71,7 @@ def run_repeated_keygen(tmpdir):
                 "Key field not found in output from dnssec-keygen")
 
         key = config['Key']
-        if bad_key_pattern.match(key) is not None:
+        if bad_key_pattern.search(key) is not None:
             # Force a retry.
             os.remove(key_file_name)  # Stop dnssec_keygen complaints.
             key = None
