@@ -79,7 +79,6 @@ class AccessMiddleware:
             reverse('combo-raphael'),
             # Static resources are publicly visible.
             settings.STATIC_URL,
-            reverse('favicon'),
             reverse('robots'),
             reverse('api-doc'),
             # Metadata service is for use by nodes; no login.

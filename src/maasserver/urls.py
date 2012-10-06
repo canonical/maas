@@ -78,9 +78,6 @@ urlpatterns += patterns('maasserver.views',
         r'^robots\.txt$', direct_to_template,
         {'template': 'maasserver/robots.txt', 'mimetype': 'text/plain'},
         name='robots'),
-    url(
-        r'^favicon\.ico$', redirect_to, {'url': '/static/img/favicon.ico'},
-        name='favicon'),
 )
 
 ## URLs for logged-in users.
