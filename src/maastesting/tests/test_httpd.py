@@ -21,6 +21,7 @@ from socket import (
 from urllib2 import urlopen
 from urlparse import urljoin
 
+from maastesting.fixtures import ProxiesDisabledFixture
 from maastesting.httpd import (
     HTTPServerFixture,
     ThreadingHTTPServer,
@@ -30,6 +31,10 @@ from testtools.matchers import FileExists
 
 
 class TestHTTPServerFixture(TestCase):
+
+    def setUp(self):
+        super(TestHTTPServerFixture, self).setUp()
+        self.useFixture(ProxiesDisabledFixture())
 
     def test_init(self):
         host = gethostname()
