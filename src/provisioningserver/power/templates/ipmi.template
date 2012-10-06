@@ -12,11 +12,20 @@ ipmipower={{ipmipower}}
 ipmi_chassis_config={{ipmi_chassis_config}}
 config={{config_dir}}/{{ipmi_config}}
 
+formulate_power_command() {
+    case $1 in
+    'on') echo '--cycle --on-if-off' ;;
+    'off') echo '--off' ;;
+    *)
+        echo "Got unknown power state from ipmipower: '$2'" >&2
+        exit 1
+    esac
+}
 
 formulate_power_state() {
     case $2 in
-    'on') echo '--cycle --on-if-off' ;;
-    'off') echo '--off' ;;
+    'on') echo 'on' ;;
+    'off') echo 'off' ;;
     *)
         echo "Got unknown power state from ipmipower: '$2'" >&2
         exit 1
@@ -29,7 +38,7 @@ issue_ipmi_command() {
     echo workaround |\
     ${ipmi_chassis_config} -h ${power_address} -u ${power_user} -p ${power_pass} --commit --filename ${config}
     echo workaround |\
-    ${ipmipower} -h ${power_address} -u ${power_user} -p ${power_pass} $1
+    ${ipmipower} -h ${power_address} -u ${power_user} -p ${power_pass} $*
 }
 
 
@@ -42,5 +51,6 @@ get_power_state() {
 
 if [ "$(get_power_state)" != "${power_change}" ]
 then
-    issue_ipmi_command ${power_change}
+    power_command=$(formulate_power_command ${power_change})
+    issue_ipmi_command ${power_command}
 fi
