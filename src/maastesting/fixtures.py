@@ -13,12 +13,16 @@ __metaclass__ = type
 __all__ = [
     "DisplayFixture",
     "LoggerSilencerFixture",
+    "ProxiesDisabledFixture",
     "SSTFixture",
     ]
 
 import logging
 
-from fixtures import Fixture
+from fixtures import (
+    EnvironmentVariableFixture,
+    Fixture,
+    )
 from pyvirtualdisplay import Display
 from sst.actions import (
     start,
@@ -78,3 +82,12 @@ class SSTFixture(Fixture):
         start(self.browser_name)
         self.useFixture(LoggerSilencerFixture(self.logger_names))
         self.addCleanup(stop)
+
+
+class ProxiesDisabledFixture(Fixture):
+    """Disables all HTTP/HTTPS proxies set in the environment."""
+
+    def setUp(self):
+        super(ProxiesDisabledFixture, self).setUp()
+        self.useFixture(EnvironmentVariableFixture("http_proxy"))
+        self.useFixture(EnvironmentVariableFixture("https_proxy"))

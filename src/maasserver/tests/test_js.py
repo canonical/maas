@@ -25,6 +25,7 @@ from urlparse import urljoin
 from maastesting import yui3
 from maastesting.fixtures import (
     DisplayFixture,
+    ProxiesDisabledFixture,
     SSTFixture,
     )
 from maastesting.httpd import HTTPServerFixture
@@ -132,7 +133,8 @@ class YUIUnitTestsBase:
             # This test has been cloned; just call-up to run the test.
             super(YUIUnitTestsBase, self).__call__(result)
         else:
-            self.multiply(result)
+            with ProxiesDisabledFixture():
+                self.multiply(result)
 
     def test_YUI3_unit_tests(self):
         # Load the page and then wait for #suite to contain
