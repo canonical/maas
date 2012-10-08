@@ -18,6 +18,7 @@ from abc import (
     )
 from base64 import b64encode
 from collections import namedtuple
+from cStringIO import StringIO
 from datetime import (
     datetime,
     timedelta,
@@ -29,6 +30,7 @@ import json
 import os
 import random
 import shutil
+import sys
 
 from apiclient.maas_client import MAASClient
 from celery.app import app_or_default
@@ -975,9 +977,11 @@ class NodeAnonAPITest(APIv10TestMixin, TestCase):
 
     def test_anon_api_doc(self):
         # The documentation is accessible to anon users.
+        self.patch(sys, "stderr", StringIO())
         response = self.client.get(self.get_uri('doc/'))
-
         self.assertEqual(httplib.OK, response.status_code)
+        # No error or warning are emitted by docutils.
+        self.assertEqual("", sys.stderr.getvalue())
 
     def test_node_init_user_cannot_access(self):
         token = NodeKey.objects.get_token_for_node(factory.make_node())

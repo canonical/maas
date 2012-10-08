@@ -1187,6 +1187,7 @@ class NodeGroupHandler(OperationsHandler):
         """Return specific hardware_details for each node specified.
 
         For security purposes we do:
+
         a) Requests are only fulfilled for the worker assigned to the
            nodegroup.
         b) Requests for nodes that are not part of the nodegroup are just
