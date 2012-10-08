@@ -212,8 +212,8 @@ class Test_generate_omapi_key(TestCase):
 
     def test_run_repeated_keygen(self):
         bad_patterns = {
-            "+no", "/no", "no+", "no/",
-            "+NO", "/NO", "NO+", "NO/",
+            "+no/", "/no/", "/no+", "+no+",
+            "+NO/", "/NO/", "/NO+", "+NO+",
             }
         bad_patterns_templates = {
             "foo%sbar", "one\ntwo\n%s\nthree\n", "%s",
