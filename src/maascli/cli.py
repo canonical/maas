@@ -52,6 +52,9 @@ class cmd_login(Command):
                 "a long random-looking string composed of three parts, "
                 "separated by colons."
                 ))
+        parser.add_argument(
+            '-k', '--insecure', action='store_true', help=(
+                "Disable SSL certificate check"), default=False)
         parser.set_defaults(credentials=None)
 
     def __call__(self, options):
@@ -61,7 +64,8 @@ class cmd_login(Command):
         # Normalise the remote service's URL.
         url = ensure_trailing_slash(options.url)
         # Get description of remote API.
-        description = fetch_api_description(url)
+        insecure = options.insecure
+        description = fetch_api_description(url, insecure)
         # Save the config.
         profile_name = options.profile_name
         with ProfileConfig.open() as config:

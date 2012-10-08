@@ -41,12 +41,24 @@ from maascli.utils import (
     )
 
 
-def fetch_api_description(url):
+def http_request(url, method, body=None, headers=None,
+                 insecure=False):
+    """Issue an http request."""
+    http = httplib2.Http(
+        disable_ssl_certificate_validation=insecure)
+    try:
+        return http.request(url, method, body=body, headers=headers)
+    except httplib2.SSLHandshakeError:
+        raise CommandError(
+            "Certificate verification failed, use --insecure/-k to "
+            "disable the certificate check.")
+
+
+def fetch_api_description(url, insecure=False):
     """Obtain the description of remote API given its base URL."""
     url_describe = urljoin(url, "describe/")
-    http = httplib2.Http()
-    response, content = http.request(
-        ascii_url(url_describe), "GET")
+    response, content = http_request(
+        ascii_url(url_describe), "GET", insecure=insecure)
     if response.status != httplib.OK:
         raise CommandError(
             "{0.status} {0.reason}:\n{1}".format(response, content))
@@ -129,6 +141,9 @@ class Action(Command):
         parser.add_argument(
             "-d", "--debug", action="store_true", default=False,
             help="Display more information about API responses.")
+        parser.add_argument(
+            '-k', '--insecure', action='store_true', help=(
+                "Disable SSL certificate check"), default=False)
 
     def __call__(self, options):
         # TODO: this is el-cheapo URI Template
@@ -148,9 +163,10 @@ class Action(Command):
         # on urllib2) so that we get full control over HTTP method. TODO:
         # create custom MAASDispatcher to use httplib2 so that MAASClient can
         # be used.
-        http = httplib2.Http()
-        response, content = http.request(
-            uri, self.method, body=body, headers=headers)
+        insecure = options.insecure
+        response, content = http_request(
+             uri, self.method, body=body, headers=headers,
+             insecure=insecure)
 
         # Output.
         if options.debug:
