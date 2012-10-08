@@ -14,10 +14,12 @@ __all__ = [
     "register_api_commands",
     ]
 
+from collections import defaultdict
 from email.message import Message
 import httplib
 from itertools import chain
 import json
+from operator import itemgetter
 import sys
 from urlparse import (
     urljoin,
@@ -258,15 +260,50 @@ def register_actions(profile, handler, parser):
             execute=action_class(action_parser))
 
 
-def register_handlers(profile, parser):
-    """Register a profile's handlers."""
+def register_handler(profile, handler, parser):
+    """Register a resource's handler."""
+    help_title, help_body = parse_docstring(handler["doc"])
+    handler_name = handler_command_name(handler["name"])
+    handler_parser = parser.subparsers.add_parser(
+        handler_name, help=help_title, description=help_body)
+    register_actions(profile, handler, handler_parser)
+
+
+def register_resources(profile, parser):
+    """Register a profile's resources."""
+    anonymous = profile["credentials"] is None
     description = profile["description"]
-    for handler in description["handlers"]:
-        help_title, help_body = parse_docstring(handler["doc"])
-        handler_name = handler_command_name(handler["name"])
-        handler_parser = parser.subparsers.add_parser(
-            handler_name, help=help_title, description=help_body)
-        register_actions(profile, handler, handler_parser)
+    resources = description["resources"]
+    for resource in sorted(resources, key=itemgetter("name")):
+        # Don't consider the authenticated handler if this profile has no
+        # credentials associated with it.
+        if anonymous:
+            handlers = [resource["anon"]]
+        else:
+            handlers = [resource["auth"], resource["anon"]]
+        # Merge actions from the active handlers. This could be slightly
+        # simpler using a dict and going through the handlers in reverse, but
+        # doing it forwards with a defaultdict(list) leaves an easier-to-debug
+        # structure, and ought to be easier to understand.
+        actions = defaultdict(list)
+        for handler in handlers:
+            if handler is not None:
+                for action in handler["actions"]:
+                    action_name = action["name"]
+                    actions[action_name].append(action)
+        # Always represent this resource using the authenticated handler, if
+        # defined, before the fall-back anonymous handler, even if this
+        # profile does not have credentials.
+        represent_as = dict(
+            resource["auth"] or resource["anon"],
+            name=resource["name"], actions=[])
+        # Each value in the actions dict is a list of one or more action
+        # descriptions. Here we register the handler with only the first of
+        # each of those.
+        if len(actions) != 0:
+            represent_as["actions"].extend(
+                value[0] for value in actions.values())
+            register_handler(profile, represent_as, parser)
 
 
 def register_api_commands(parser):
@@ -276,4 +313,4 @@ def register_api_commands(parser):
             profile = config[profile_name]
             profile_parser = parser.subparsers.add_parser(
                 profile["name"], help="Interact with %(url)s" % profile)
-            register_handlers(profile, profile_parser)
+            register_resources(profile, profile_parser)

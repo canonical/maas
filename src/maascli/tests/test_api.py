@@ -24,6 +24,10 @@ from maascli import (
     )
 from maascli.command import CommandError
 from maascli.config import ProfileConfig
+from maascli.utils import (
+    handler_command_name,
+    safe_name,
+    )
 from maastesting.factory import factory
 from maastesting.testcase import TestCase
 from mock import (
@@ -50,37 +54,69 @@ class FakeConfig(dict):
 class TestRegisterAPICommands(TestCase):
     """Tests for `register_api_commands`."""
 
+    def make_handler(self):
+        return {
+            'name': factory.make_name('handler'),
+            'doc': "Short\n\nLong",
+            'params': [],
+            'actions': [
+                {'name': factory.make_name('action'),
+                 'doc': "Doc\n\nstring"},
+                ],
+            }
+
+    def make_resource(self, anon=True, auth=True):
+        auth = self.make_handler() if auth else None
+        anon = self.make_handler() if anon else None
+        name = factory.make_name("resource")
+        return {"auth": auth, "anon": anon, "name": name}
+
     def make_profile(self):
         """Fake a profile."""
-        profile = factory.make_name('profile')
-        url = 'http://%s.example.com/' % profile
-        fake_open = self.patch(ProfileConfig, 'open')
-        fake_open.return_value = FakeConfig({
-            profile: {
-                'name': profile,
-                'url': url,
-                'description': {
-                    'handlers': [{
-                        'name': factory.make_name('handler'),
-                        'doc': "Short\n\nLong",
-                        'params': [],
-                        'actions': [{
-                            'name': factory.make_name('action'),
-                            'doc': "Doc\n\nstring",
-                        }],
-                    }],
+        profile_name = factory.make_name('profile')
+        profile = {
+            'name': profile_name,
+            'url': 'http://%s.example.com/' % profile_name,
+            'credentials': factory.make_name("credentials"),
+            'description': {
+                'resources': [
+                    self.make_resource(),
+                    self.make_resource(),
+                    ],
                 },
-            },
-        })
+            }
+        fake_open = self.patch(ProfileConfig, 'open')
+        fake_open.return_value = FakeConfig({profile_name: profile})
         return profile
 
     def test_registers_subparsers(self):
-        profile = self.make_profile()
+        profile_name = self.make_profile()["name"]
         parser = ArgumentParser()
         self.assertIsNone(parser._subparsers)
         api.register_api_commands(parser)
         self.assertIsNotNone(parser._subparsers)
-        self.assertIsNotNone(parser.subparsers.choices[profile])
+        self.assertIsNotNone(parser.subparsers.choices[profile_name])
+
+    def test_handlers_registered_using_correct_names(self):
+        profile = self.make_profile()
+        parser = ArgumentParser()
+        api.register_api_commands(parser)
+        for resource in profile["description"]["resources"]:
+            for action in resource["auth"]["actions"]:
+                # Profile names are matched as-is.
+                profile_name = profile["name"]
+                # Handler names are processed with handler_command_name before
+                # being added to the argument parser tree.
+                handler_name = handler_command_name(resource["name"])
+                # Action names are processed with safe_name before being added
+                # to the argument parser tree.
+                action_name = safe_name(action["name"])
+                # Parsing these names as command-line arguments yields an
+                # options object. Its execute attribute is an instance of
+                # Action (or a subclass thereof).
+                options = parser.parse_args(
+                    (profile_name, handler_name, action_name))
+                self.assertIsInstance(options.execute, api.Action)
 
 
 class TestFunctions(TestCase):
