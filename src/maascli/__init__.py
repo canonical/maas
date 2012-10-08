@@ -15,6 +15,7 @@ __all__ = [
     ]
 
 import argparse
+from argparse import RawDescriptionHelpFormatter
 import locale
 import sys
 
@@ -31,6 +32,10 @@ class ArgumentParser(argparse.ArgumentParser):
     a lazily evaluated `subparsers` property.
     """
 
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault("formatter_class", RawDescriptionHelpFormatter)
+        super(ArgumentParser, self).__init__(*args, **kwargs)
+
     def add_subparsers(self):
         raise NotImplementedError(
             "add_subparsers has been disabled")
@@ -41,7 +46,8 @@ class ArgumentParser(argparse.ArgumentParser):
             return self.__subparsers
         except AttributeError:
             parent = super(ArgumentParser, self)
-            self.__subparsers = parent.add_subparsers(title="commands")
+            self.__subparsers = parent.add_subparsers(title="drill down")
+            self.__subparsers.metavar = "COMMAND"
             return self.__subparsers
 
 

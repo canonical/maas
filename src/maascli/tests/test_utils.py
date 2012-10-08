@@ -46,39 +46,18 @@ class TestDocstringParsing(TestCase):
             utils.parse_docstring("Title"))
 
     def test_unwrapping(self):
-        # parse_docstring dedents and unwraps the title and body paragraphs.
+        # parse_docstring unwraps the title paragraph, and dedents the body
+        # paragraphs.
         self.assertEqual(
             ("Title over two lines",
-             "Paragraph over two lines\n\n"
-             "Another paragraph over two lines"),
+             "Paragraph over\ntwo lines\n\n"
+             "Another paragraph\nover two lines"),
             utils.parse_docstring("""
                 Title over
                 two lines
 
                 Paragraph over
                 two lines
-
-                Another paragraph
-                over two lines
-                """))
-
-    def test_no_unwrapping_for_indented_paragraphs(self):
-        # parse_docstring dedents body paragraphs, but does not unwrap those
-        # with indentation beyond the rest.
-        self.assertEqual(
-            ("Title over two lines",
-             "Paragraph over two lines\n\n"
-             "  An indented paragraph\n  which will remain wrapped\n\n"
-             "Another paragraph over two lines"),
-            utils.parse_docstring("""
-                Title over
-                two lines
-
-                Paragraph over
-                two lines
-
-                  An indented paragraph
-                  which will remain wrapped
 
                 Another paragraph
                 over two lines

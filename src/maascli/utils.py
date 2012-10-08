@@ -19,9 +19,11 @@ __all__ = [
     ]
 
 from functools import partial
-from inspect import getdoc
+from inspect import (
+    cleandoc,
+    getdoc,
+    )
 import re
-from textwrap import dedent
 from urllib import quote_plus
 
 
@@ -38,26 +40,19 @@ empty = ""
 
 
 def parse_docstring(thing):
-    doc = thing if isinstance(thing, (str, unicode)) else getdoc(thing)
-    doc = empty if doc is None else doc.expandtabs().strip()
+    is_string = isinstance(thing, basestring)
+    doc = cleandoc(thing) if is_string else getdoc(thing)
+    doc = empty if doc is None else doc
     # Break the docstring into two parts: title and body.
     parts = docstring_split(doc)
     if len(parts) == 2:
-        title, body = parts[0], dedent(parts[1])
+        title, body = parts[0], parts[1]
     else:
         title, body = parts[0], empty
     # Remove line breaks from the title line.
     title = remove_line_breaks(title)
-    # Remove line breaks from non-indented paragraphs in the body.
-    paragraphs = []
-    for paragraph in paragraph_split(body):
-        if not paragraph[:1].isspace():
-            paragraph = remove_line_breaks(paragraph)
-        paragraphs.append(paragraph)
-    # Rejoin the paragraphs, normalising on newline.
-    body = (newline + newline).join(
-        paragraph.replace("\r\n", newline).replace("\r", newline)
-        for paragraph in paragraphs)
+    # Normalise line-breaks on newline.
+    body = body.replace("\r\n", newline).replace("\r", newline)
     return title, body
 
 
