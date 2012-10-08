@@ -524,7 +524,7 @@ class TestViews(DjangoTestCase):
             power_user=factory.getRandomString(),
             power_pass=factory.getRandomString())
         response = self.call_signal(
-            client, power_type="IPMI", power_parameters=json.dumps(params))
+            client, power_type="ipmi", power_parameters=json.dumps(params))
         self.assertEqual(httplib.OK, response.status_code, response.content)
         node = reload_object(node)
         self.assertEqual(
@@ -552,7 +552,7 @@ class TestViews(DjangoTestCase):
         response = self.call_signal(
             client, power_type="ipmi", power_parameters="badjson")
         self.assertEqual(
-            (httplib.BAD_REQUEST, "Failed to parse json power_parameters"),
+            (httplib.BAD_REQUEST, "Failed to parse JSON power_parameters"),
             (response.status_code, response.content))
 
     def test_api_retrieves_node_metadata_by_mac(self):
