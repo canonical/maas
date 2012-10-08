@@ -32,7 +32,7 @@ from textwrap import dedent
 from provisioningserver.utils import parse_key_value_file
 
 
-bad_key_pattern = re.compile("[+/]no[+/]", flags=re.IGNORECASE)
+bad_key_pattern = re.compile("[+/]no|no[+/]", flags=re.IGNORECASE)
 
 
 def call_dnssec_keygen(tmpdir):
