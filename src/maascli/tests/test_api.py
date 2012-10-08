@@ -24,6 +24,7 @@ from maascli import (
     )
 from maascli.command import CommandError
 from maascli.config import ProfileConfig
+from maascli.testing.config import make_configs
 from maascli.utils import (
     handler_command_name,
     safe_name,
@@ -42,55 +43,16 @@ from testtools.matchers import (
     )
 
 
-class FakeConfig(dict):
-    """Fake `ProfileConfig`.  A dict that's also a context manager."""
-    def __enter__(self, *args, **kwargs):
-        return self
-
-    def __exit__(self, *args, **kwargs):
-        pass
-
-
 class TestRegisterAPICommands(TestCase):
     """Tests for `register_api_commands`."""
 
-    def make_handler(self):
-        return {
-            'name': factory.make_name('handler'),
-            'doc': "Short\n\nLong",
-            'params': [],
-            'actions': [
-                {'name': factory.make_name('action'),
-                 'doc': "Doc\n\nstring"},
-                ],
-            }
-
-    def make_resource(self, anon=True, auth=True):
-        auth = self.make_handler() if auth else None
-        anon = self.make_handler() if anon else None
-        name = factory.make_name("resource")
-        return {"auth": auth, "anon": anon, "name": name}
-
     def make_profile(self):
         """Fake a profile."""
-        profile_name = factory.make_name('profile')
-        profile = {
-            'name': profile_name,
-            'url': 'http://%s.example.com/' % profile_name,
-            'credentials': factory.make_name("credentials"),
-            'description': {
-                'resources': [
-                    self.make_resource(),
-                    self.make_resource(),
-                    ],
-                },
-            }
-        fake_open = self.patch(ProfileConfig, 'open')
-        fake_open.return_value = FakeConfig({profile_name: profile})
-        return profile
+        self.patch(ProfileConfig, 'open').return_value = make_configs()
+        return ProfileConfig.open.return_value
 
     def test_registers_subparsers(self):
-        profile_name = self.make_profile()["name"]
+        profile_name = self.make_profile().keys()[0]
         parser = ArgumentParser()
         self.assertIsNone(parser._subparsers)
         api.register_api_commands(parser)
@@ -101,10 +63,10 @@ class TestRegisterAPICommands(TestCase):
         profile = self.make_profile()
         parser = ArgumentParser()
         api.register_api_commands(parser)
-        for resource in profile["description"]["resources"]:
+        for resource in profile.values()[0]["description"]["resources"]:
             for action in resource["auth"]["actions"]:
                 # Profile names are matched as-is.
-                profile_name = profile["name"]
+                profile_name = profile.keys()[0]
                 # Handler names are processed with handler_command_name before
                 # being added to the argument parser tree.
                 handler_name = handler_command_name(resource["name"])
