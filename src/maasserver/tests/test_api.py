@@ -225,6 +225,23 @@ class TestModuleHelpers(TestCase):
         self.assertEqual([data_value], results.getlist(key))
 
 
+class TestAuthentication(APIv10TestMixin, TestCase):
+    """Tests for `maasserver.api_auth`."""
+
+    def test_invalid_oauth_request(self):
+        # An OAuth-signed request that does not validate is an error.
+        user = factory.make_user()
+        client = OAuthAuthenticatedClient(user)
+        get_auth_tokens(user).delete()  # Delete the user's API keys.
+        response = client.post(self.get_uri('nodes/'), {'op': 'start'})
+        observed = response.status_code, response.content
+        expected = (
+            Equals(httplib.UNAUTHORIZED),
+            Contains("Invalid access token:"),
+            )
+        self.assertThat(observed, MatchesListwise(expected))
+
+
 class TestStoreNodeParameters(TestCase):
     """Tests for `store_node_power_parameters`."""
 
