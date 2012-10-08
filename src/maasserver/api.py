@@ -134,7 +134,10 @@ from maasserver.exceptions import (
     NodeStateViolation,
     Unauthorized,
     )
-from maasserver.fields import validate_mac
+from maasserver.fields import (
+    mac_re,
+    validate_mac,
+    )
 from maasserver.forms import (
     get_node_create_form,
     get_node_edit_form,
@@ -762,6 +765,12 @@ class NodesHandler(OperationsHandler):
         # Get filters from request.
         match_ids = get_optional_list(request.GET, 'id')
         match_macs = get_optional_list(request.GET, 'mac_address')
+        if match_macs is not None:
+            invalid_macs = [
+                mac for mac in match_macs if mac_re.match(mac) is None]
+            if len(invalid_macs) != 0:
+                raise ValidationError(
+                    "Invalid MAC address(es): %s" % ", ".join(invalid_macs))
         # Fetch nodes and apply filters.
         nodes = Node.objects.get_nodes(
             request.user, NODE_PERMISSION.VIEW, ids=match_ids)
