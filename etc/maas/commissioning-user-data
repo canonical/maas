@@ -1,10 +1,10 @@
 #!/bin/sh
 #
 # This script carries inside it multiple files.  When executed, it creates
-# the files into a temporary directory, and then calls the 'main' function
+# the files into a temporary directory, and then calls the 'main' function.
 #
 # main does a run-parts of all "scripts" and then calls home to maas with
-# maas-signal, posting output of each of the files added with add_script()
+# maas-signal, posting output of each of the files added with add_script().
 #
 ####  IPMI setup  ######
 # If IPMI network settings have been configured statically, you can
@@ -13,7 +13,7 @@
 IPMI_CHANGE_STATIC_TO_DHCP="false"
 
 # In certain hardware, the parameters for the ipmi_si kernel module
-# might need be specified. If you wish to send parameters uncomment
+# might need to be specified. If you wish to send parameters, uncomment
 # the following line.
 #IPMI_SI_PARAMS="type=kcs ports=0xca2"
 
@@ -56,18 +56,18 @@ cleanup() {
 find_creds_cfg() {
    local config="" file="" found=""
 
-   # if the config location is set in environment variable, trust it
+   # If the config location is set in environment variable, trust it.
    [ -n "${COMMISSIONING_CREDENTIALS_URL}" ] &&
       _RET="${COMMISSIONING_CREDENTIALS_URL}" && return
 
-   # go looking for local files written by cloud-init
+   # Go looking for local files written by cloud-init.
    for file in /etc/cloud/cloud.cfg.d/*cmdline*.cfg; do
       [ -f "$file" ] && _RET="$file" && return
    done
 
    local opt="" cmdline=""
    if [ -f /proc/cmdline ] && read cmdline < /proc/cmdline; then
-      # search through /proc/cmdline arguments
+      # Search through /proc/cmdline arguments:
       # cloud-config-url trumps url=
       for opt in $cmdline; do
          case "$opt" in
@@ -100,19 +100,19 @@ shutdown() {
 
 main() {
    trap shutdown EXIT
-   # Install tools and load modules
+   # Install tools and load modules.
    aptget update
    aptget install freeipmi-tools
    load_modules
 
-   # the main function, actually execute stuff that is written below
+   # The main function, actually execute stuff that is written below.
    local script total=0 creds=""
 
    find_creds_cfg ||
       fail "failed to find credential config"
    creds="$_RET"
 
-   # get remote credentials into a local file
+   # Get remote credentials into a local file.
    case "$creds" in
       http://*|https://*)
          wget "$creds" -O "${TEMP_D}/my.creds" ||
@@ -121,10 +121,10 @@ main() {
          ;;
    esac
 
-   # use global name read by signal() and fail
+   # Use global name read by signal() and fail.
    CRED_CFG="$creds"
 
-   # power settings
+   # Power settings.
    local pargs=""
    if $IPMI_CHANGE_STATIC_TO_DHCP; then
       pargs="--dhcp-if-static"
@@ -134,7 +134,7 @@ main() {
       signal "--power-type=ipmi" "--power-parameters=${power_settings}" WORKING "finished [maas-ipmi-autodetect]"
    fi
 
-   # just get a count of how many scripts there are for progress reporting
+   # Just get a count of how many scripts there are for progress reporting.
    for script in "${SCRIPTS_D}/"*; do
       [ -x "$script" -a -f "$script" ] || continue
       total=$(($total+1))
@@ -155,7 +155,7 @@ main() {
       cur=$(($cur+1))
    done
 
-   # get a list of all files created, ignoring empty ones
+   # Get a list of all files created, ignoring empty ones.
    local fargs=""
    for file in "${OUT_D}/"*; do
       [ -f "$file" -a -s "$file" ] || continue
@@ -386,7 +386,7 @@ def oauth_headers(url, consumer_key, token_key, token_secret, consumer_secret):
 
 
 def geturl(url, creds, headers=None, data=None):
-    # takes a dict of creds to be passed through to oauth_headers
+    # Takes a dict of creds to be passed through to oauth_headers,
     #   so it should have consumer_key, token_key, ...
     if headers is None:
         headers = {}
@@ -411,7 +411,7 @@ def read_config(url, creds):
 
     cfg = yaml.safe_load(cfg_str)
 
-    # support reading cloud-init config for MAAS datasource
+    # Support reading cloud-init config for MAAS datasource.
     if 'datasource' in cfg:
         cfg = cfg['datasource']['MAAS']
 
@@ -428,39 +428,39 @@ def main():
     """
     Call with single argument of directory or http or https url.
     If url is given additional arguments are allowed, which will be
-    interpreted as consumer_key, token_key, token_secret, consumer_secret
+    interpreted as consumer_key, token_key, token_secret, consumer_secret.
     """
     import argparse
     import pprint
 
     parser = argparse.ArgumentParser(
-        description='send signal operation and optionally post files to MAAS')
+        description='Send signal operation and optionally post files to MAAS')
     parser.add_argument("--config", metavar="file",
-        help="specify config file", default=None)
+        help="Specify config file", default=None)
     parser.add_argument("--ckey", metavar="key",
-        help="the consumer key to auth with", default=None)
+        help="The consumer key to auth with", default=None)
     parser.add_argument("--tkey", metavar="key",
-        help="the token key to auth with", default=None)
+        help="The token key to auth with", default=None)
     parser.add_argument("--csec", metavar="secret",
-        help="the consumer secret (likely '')", default="")
+        help="The consumer secret (likely '')", default="")
     parser.add_argument("--tsec", metavar="secret",
-        help="the token secret to auth with", default=None)
+        help="The token secret to auth with", default=None)
     parser.add_argument("--apiver", metavar="version",
-        help="the apiver to use ("" can be used)", default=MD_VERSION)
+        help="The apiver to use ("" can be used)", default=MD_VERSION)
     parser.add_argument("--url", metavar="url",
-        help="the data source to query", default=None)
+        help="The data source to query", default=None)
     parser.add_argument("--file", dest='files',
-        help="file to post", action='append', default=[])
+        help="File to post", action='append', default=[])
     parser.add_argument("--post", dest='posts',
         help="name=value pairs to post", action='append', default=[])
     parser.add_argument("--power-type", dest='power_type',
-        help="power type.", choices=POWER_TYPES, default=None)
+        help="Power type.", choices=POWER_TYPES, default=None)
     parser.add_argument("--power-parameters", dest='power_parms',
-        help="power parameters.", default=None)
+        help="Power parameters.", default=None)
 
     parser.add_argument("status",
-        help="status", choices=VALID_STATUS, action='store')
-    parser.add_argument("message", help="optional message",
+        help="Status", choices=VALID_STATUS, action='store')
+    parser.add_argument("message", help="Optional message",
         default="", nargs='?')
 
     args = parser.parse_args()
@@ -474,7 +474,7 @@ def main():
 
     url = creds.get('metadata_url', None)
     if not url:
-        fail("Url must be provided either in --url or in config\n")
+        fail("URL must be provided either in --url or in config\n")
     url = "%s/%s/" % (url, args.apiver)
 
     params = {

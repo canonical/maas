@@ -235,7 +235,7 @@ class Test_generate_omapi_key(TestCase):
         parse_key_value_file = provisioningserver.omshell.parse_key_value_file
 
         # Patch parse_key_value_file to return each of the known-bad keys
-        # we've created, followed by reverting to it's usual behaviour.
+        # we've created, followed by reverting to its usual behaviour.
         def side_effect(*args, **kwargs):
             try:
                 return {'Key': next(iter_bad_keys)}
