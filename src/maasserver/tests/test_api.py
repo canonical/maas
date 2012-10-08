@@ -1914,14 +1914,14 @@ class TestNodesAPI(APITestCase):
         response_json = json.loads(response.content)
         self.assertEqual(node.architecture, response_json['architecture'])
 
-    def test_POST_acquire_treats_unknown_arch_as_resource_conflict(self):
-        # Asking for an unknown arch returns an HTTP conflict
+    def test_POST_acquire_treats_unknown_arch_as_bad_request(self):
+        # Asking for an unknown arch returns an HTTP "400 Bad Request"
         factory.make_node(status=NODE_STATUS.READY)
         response = self.client.post(self.get_uri('nodes/'), {
             'op': 'acquire',
             'arch': 'sparc',
         })
-        self.assertEqual(httplib.CONFLICT, response.status_code)
+        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
 
     def test_POST_acquire_allocates_node_by_cpu(self):
         # Asking for enough cpu acquires a node with at least that.

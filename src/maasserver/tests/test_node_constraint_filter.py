@@ -15,7 +15,10 @@ __all__ = []
 from maasserver.enum import ARCHITECTURE
 from maasserver.exceptions import InvalidConstraint
 from maasserver.models import Node
-from maasserver.models.node_constraint_filter import constrain_nodes
+from maasserver.models.node_constraint_filter import (
+    constrain_nodes,
+    generate_architecture_wildcards,
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
 from maasserver.utils import ignore_unused
@@ -26,6 +29,29 @@ class TestConstrainNodes(TestCase):
     def assertConstrainedNodes(self, expected_nodes, constraints):
         nodes = constrain_nodes(Node.objects.all(), constraints)
         self.assertItemsEqual(expected_nodes, nodes)
+
+    def test_generate_architecture_wildcards(self):
+        # Create a test architecture choice list of one architecture that only
+        # has one available subarch (single_subarch) and two architectures that
+        # have a matching primary architecture (double_subarch_{1,2})
+        single_subarch = factory.make_name('arch'), factory.make_name('arch')
+        double_subarch_1 = factory.make_name('arch'), factory.make_name('arch')
+        double_subarch_2 = double_subarch_1[0], factory.make_name('arch')
+        choices = (
+            ('/'.join(single_subarch), None),
+            ('/'.join(double_subarch_1), None),
+            ('/'.join(double_subarch_2), None),
+        )
+
+        # single_subarch should end up in the dict essentially unchanged, and
+        # the double_subarchs should have been flattened into a single dict
+        # element with a list of them.
+        self.assertEquals({
+            single_subarch[0]: frozenset([choices[0][0]]),
+            double_subarch_1[0]: frozenset([choices[1][0], choices[2][0]]),
+            },
+            generate_architecture_wildcards(choices=choices)
+        )
 
     def test_no_constraints(self):
         node1 = factory.make_node()
@@ -43,10 +69,18 @@ class TestConstrainNodes(TestCase):
     def test_architecture(self):
         node1 = factory.make_node(architecture=ARCHITECTURE.i386)
         node2 = factory.make_node(architecture=ARCHITECTURE.armhf_highbank)
+        self.assertConstrainedNodes([node1], {'architecture': 'i386'})
         self.assertConstrainedNodes([node1], {'architecture': 'i386/generic'})
         self.assertConstrainedNodes(
+            [node2], {'architecture': 'arm'})
+        self.assertConstrainedNodes(
+            [node2], {'architecture': 'armhf'})
+        self.assertConstrainedNodes(
             [node2], {'architecture': 'armhf/highbank'})
-        self.assertConstrainedNodes([], {'architecture': 'sparc'})
+        self.assertRaises(InvalidConstraint,
+            self.assertConstrainedNodes, [], {'architecture': 'armhf/generic'})
+        self.assertRaises(InvalidConstraint,
+            self.assertConstrainedNodes, [], {'architecture': 'sparc'})
 
     def test_cpu_count(self):
         node1 = factory.make_node(cpu_count=1)

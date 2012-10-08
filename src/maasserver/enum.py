@@ -13,6 +13,7 @@ __metaclass__ = type
 __all__ = [
     'ARCHITECTURE',
     'ARCHITECTURE_CHOICES',
+    'ARCHITECTURE_CHOICES_DICT',
     'COMPONENT',
     'NODEGROUP_STATUS',
     'NODEGROUP_STATUS_CHOICES',
@@ -125,6 +126,9 @@ ARCHITECTURE_CHOICES = (
     (ARCHITECTURE.amd64, "amd64"),
     (ARCHITECTURE.armhf_highbank, "armhf/highbank"),
 )
+
+
+ARCHITECTURE_CHOICES_DICT = OrderedDict(ARCHITECTURE_CHOICES)
 
 
 class DISTRO_SERIES:
