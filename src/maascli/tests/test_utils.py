@@ -18,9 +18,11 @@ from django.utils.encoding import smart_unicode
 from maascli import utils
 from maastesting.testcase import TestCase
 from testtools.matchers import (
+    AfterPreprocessing,
     Equals,
     IsInstance,
     MatchesAll,
+    MatchesListwise,
     )
 
 
@@ -194,3 +196,24 @@ class TestFunctions(TestCase):
         name, value = unquote(name), unquote(value)
         name, value = smart_unicode(name), smart_unicode(value)
         self.assertEqual(data, [(name, value)])
+
+    def test_api_url(self):
+        transformations = {
+            "http://example.com/":
+                "http://example.com/api/1.0/",
+            "http://example.com/foo":
+                "http://example.com/foo/api/1.0/",
+            "http://example.com/foo/":
+                "http://example.com/foo/api/1.0/",
+            "http://example.com/api/7.9":
+                "http://example.com/api/7.9/",
+            "http://example.com/api/7.9/":
+                "http://example.com/api/7.9/",
+            }.items()
+        urls = [url for url, url_out in transformations]
+        urls_out = [url_out for url, url_out in transformations]
+        expected = [
+            AfterPreprocessing(utils.api_url, Equals(url_out))
+            for url_out in urls_out
+            ]
+        self.assertThat(urls, MatchesListwise(expected))

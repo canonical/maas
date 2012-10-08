@@ -25,6 +25,7 @@ from inspect import (
     )
 import re
 from urllib import quote_plus
+from urlparse import urlparse
 
 
 re_paragraph_splitter = re.compile(
@@ -83,6 +84,22 @@ def ensure_trailing_slash(string):
     """Ensure that `string` has a trailing forward-slash."""
     slash = b"/" if isinstance(string, bytes) else u"/"
     return (string + slash) if not string.endswith(slash) else string
+
+
+def api_url(string):
+    """Ensure that `string` looks like a URL to the API.
+
+    This ensures that the API version is specified explicitly (i.e. the path
+    ends with /api/{version}). If not, version 1.0 is selected. It also
+    ensures that the path ends with a forward-slash.
+
+    This is suitable for use as an argument type with argparse.
+    """
+    url = urlparse(string)
+    url = url._replace(path=ensure_trailing_slash(url.path))
+    if re.search("/api/[0-9.]+/?$", url.path) is None:
+        url = url._replace(path=url.path + "api/1.0/")
+    return url.geturl()
 
 
 def urlencode(data):

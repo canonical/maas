@@ -20,7 +20,7 @@ from maascli.auth import obtain_credentials
 from maascli.command import Command
 from maascli.config import ProfileConfig
 from maascli.utils import (
-    ensure_trailing_slash,
+    api_url,
     parse_docstring,
     safe_name,
     )
@@ -41,9 +41,10 @@ class cmd_login(Command):
                 "server and credentials within this tool."
                 ))
         parser.add_argument(
-            "url", help=(
-                "The URL of the remote API, e.g. "
-                "http://example.com/MAAS/api/1.0/"))
+            "url", type=api_url, help=(
+                "The URL of the remote API, e.g. http://example.com/MAAS/ "
+                "or http://example.com/MAAS/api/1.0/ if you wish to specify "
+                "the API version."))
         parser.add_argument(
             "credentials", nargs="?", default=None, help=(
                 "The credentials, also known as the API key, for the "
@@ -61,11 +62,8 @@ class cmd_login(Command):
         # Try and obtain credentials interactively if they're not given, or
         # read them from stdin if they're specified as "-".
         credentials = obtain_credentials(options.credentials)
-        # Normalise the remote service's URL.
-        url = ensure_trailing_slash(options.url)
         # Get description of remote API.
-        insecure = options.insecure
-        description = fetch_api_description(url, insecure)
+        description = fetch_api_description(options.url, options.insecure)
         # Save the config.
         profile_name = options.profile_name
         with ProfileConfig.open() as config:
@@ -73,7 +71,7 @@ class cmd_login(Command):
                 "credentials": credentials,
                 "description": description,
                 "name": profile_name,
-                "url": url,
+                "url": options.url,
                 }
 
 
