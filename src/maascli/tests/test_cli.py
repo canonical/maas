@@ -12,10 +12,8 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
-from maascli import (
-    ArgumentParser,
-    cli,
-    )
+from maascli import cli
+from maascli.parser import ArgumentParser
 from maastesting.testcase import TestCase
 
 

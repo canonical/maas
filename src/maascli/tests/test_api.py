@@ -18,12 +18,10 @@ import io
 import json
 
 import httplib2
-from maascli import (
-    api,
-    ArgumentParser,
-    )
+from maascli import api
 from maascli.command import CommandError
 from maascli.config import ProfileConfig
+from maascli.parser import ArgumentParser
 from maascli.testing.config import make_configs
 from maascli.utils import (
     handler_command_name,
