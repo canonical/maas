@@ -60,8 +60,14 @@ def dns_post_delete_NodeGroup(sender, instance, **kwargs):
 @receiver(post_delete, sender=Node)
 def dns_post_delete_Node(sender, instance, **kwargs):
     """When a Node is deleted, update the Node's zone file."""
-    from maasserver.dns import change_dns_zones
-    change_dns_zones(instance.nodegroup)
+    try:
+        from maasserver.dns import change_dns_zones
+        change_dns_zones(instance.nodegroup)
+    except NodeGroup.DoesNotExist:
+        # If this Node is being deleted because the whole NodeGroup
+        # has been deleted, no need to update the zone file because
+        # this Node got removed.
+        pass
 
 
 def dns_post_edit_hostname_Node(instance, old_field):

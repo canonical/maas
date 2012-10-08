@@ -256,6 +256,13 @@ class TestNodeGroup(TestCase):
         ('celery', FixtureResource(CeleryFixture())),
         )
 
+    def test_delete_cluster_with_nodes(self):
+        nodegroup = factory.make_node_group()
+        factory.make_node(nodegroup=nodegroup)
+        nodegroup.delete()
+        self.assertEqual(nodegroup.uuid, nodegroup.work_queue)
+        self.assertFalse(NodeGroup.objects.filter(id=nodegroup.id).exists())
+
     def test_work_queue_returns_uuid(self):
         nodegroup = factory.make_node_group()
         self.assertEqual(nodegroup.uuid, nodegroup.work_queue)

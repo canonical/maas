@@ -48,12 +48,6 @@
                href="{% url 'cluster-interface-delete' cluster.uuid interface.interface %}">
                <img src="{{ STATIC_URL }}img/delete.png" alt="delete" />
             </a>
-            <form method="POST"
-                  action="{% url 'settings' %}">
-              {% csrf_token %}
-              <input type="hidden" name="uuid"
-                     value="{{ interface.interface }}" />
-            </form>
           </td>
         </tr>
         {% endfor %}
