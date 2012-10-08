@@ -1,5 +1,5 @@
 - fields: {
-    created: 2012-01-24, hostname: sun, architecture: i386,
+    created: 2012-01-24, hostname: sun, architecture: 'i386/generic',
     owner: null, status: 0, nodegroup: 1, tags: [30],
     cpu_count: 16, memory: 16384,
     system_id: node-2666dd64-4671-11e1-93b8-00225f89f211,
@@ -7,7 +7,7 @@
   model: maasserver.node
   pk: 15
 - fields: {
-    created: 2012-01-24, hostname: moon, architecture: i386,
+    created: 2012-01-24, hostname: moon, architecture: 'i386/generic',
     owner: null, status: 2, nodegroup: 1, tags: [],
     cpu_count: 1, memory: 512,
     system_id: node-29d7ad70-4671-11e1-93b8-00225f89f211,
@@ -15,7 +15,7 @@
   model: maasserver.node
   pk: 16
 - fields: {
-    created: 2012-01-24, hostname: mars, architecture: i386,
+    created: 2012-01-24, hostname: mars, architecture: 'i386/generic',
     owner: 106, status: 3, nodegroup: 1, tags: [31],
     cpu_count: 2, memory: 2096,
     system_id: node-2d424b28-4671-11e1-93b8-00225f89f211,
@@ -23,7 +23,7 @@
   model: maasserver.node
   pk: 17
 - fields: {
-    created: 2012-01-24, hostname: jupiter, architecture: i386,
+    created: 2012-01-24, hostname: jupiter, architecture: 'i386/generic',
     owner: null, status: 0, nodegroup: 1, tags: [30, 31],
     cpu_count: 4, memory: 8192,
     system_id: node-2fb4fec8-4671-11e1-93b8-00225f89f211,
@@ -31,7 +31,7 @@
   model: maasserver.node
   pk: 18
 - fields: {
-    created: 2012-01-24, hostname: saturn, architecture: i386,
+    created: 2012-01-24, hostname: saturn, architecture: 'i386/generic',
     owner: 101, status: 3, nodegroup: 1, tags: [30, 31, 32],
     cpu_count: 4, memory: 4096,
     system_id: node-33b55e28-4671-11e1-93b8-00225f89f211,
