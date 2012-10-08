@@ -29,11 +29,14 @@ from maasserver.testing import (
     reload_object,
     )
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import (
-    AdminLoggedInTestCase,
-    )
+from maasserver.testing.testcase import AdminLoggedInTestCase
 from maastesting.matchers import ContainsAll
-from testtools.matchers import MatchesStructure
+from testtools.matchers import (
+    AllMatch,
+    Contains,
+    Equals,
+    MatchesStructure,
+    )
 
 
 class ClusterListingTest(AdminLoggedInTestCase):
@@ -142,3 +145,32 @@ class ClusterInterfaceEditTest(AdminLoggedInTestCase):
         self.assertThat(
             reload_object(interface),
             MatchesStructure.byEquality(**data))
+
+
+# XXX: rvb 2012-10-08 bug=1063881: apache transforms '//' into '/' in
+# the urls it passes around and this happens when an interface has an empty
+# name.
+class ClusterInterfaceDoubleSlashBugTest(AdminLoggedInTestCase):
+
+    def test_edit_delete_empty_cluster_interface_when_slash_removed(self):
+        nodegroup = factory.make_node_group()
+        interface = factory.make_node_group_interface(
+            nodegroup=nodegroup, interface='',
+            management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
+        edit_link = reverse(
+            'cluster-interface-edit',
+            args=[nodegroup.uuid, interface.interface])
+        delete_link = reverse(
+            'cluster-interface-delete',
+            args=[nodegroup.uuid, interface.interface])
+        links = [edit_link, delete_link]
+        # Just make sure that the urls contains '//'.  If this is not
+        # true anymore, because we've refactored the urls, this test can
+        # problably be removed.
+        self.assertThat(links, AllMatch(Contains('//')))
+        # Simulate what apache (when used as a frontend) does to the
+        # urls.
+        new_links = [link.replace('//', '/') for link in links]
+        response_statuses = [
+            self.client.get(link).status_code for link in new_links]
+        self.assertThat(response_statuses, AllMatch(Equals(httplib.OK)))

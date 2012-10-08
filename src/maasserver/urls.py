@@ -141,6 +141,17 @@ urlpatterns += patterns('maasserver.views',
         r'^clusters/(?P<uuid>[\w\-]+)/interfaces/(?P<interface>[\w\-]*)/'
         'delete/$',
         ClusterInterfaceDelete.as_view(), name='cluster-interface-delete'),
+    # XXX: rvb 2012-10-08 bug=1063881:
+    # These two urls are only here to cope with the fact that an interface
+    # can have an empty name, thus leading to urls containing the
+    # pattern '//' that is then reduced by apache into '/'.
+    adminurl(
+        r'^clusters/(?P<uuid>[\w\-]+)/interfaces/(?P<interface>)'
+        'edit/$', ClusterInterfaceEdit.as_view()),
+    adminurl(
+        r'^clusters/(?P<uuid>[\w\-]+)/interfaces/(?P<interface>)'
+        'delete/$', ClusterInterfaceDelete.as_view()),
+    # /XXX
     adminurl(r'^settings/$', settings, name='settings'),
     adminurl(
         r'^settings/archives/add/$', settings_add_archive,
