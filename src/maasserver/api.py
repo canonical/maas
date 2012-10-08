@@ -1769,8 +1769,15 @@ def describe(request):
             for resource in find_api_resources(urlconf)
             ],
         }
-    # For backward compatibility, add "handlers" as an alias for "resources".
-    description["handlers"] = description["resources"]
+    # For backward compatibility, add "handlers" as an alias for all not-None
+    # anon and auth handlers in "resources".
+    description["handlers"] = []
+    description["handlers"].extend(
+        resource["anon"] for resource in description["resources"]
+        if resource["anon"] is not None)
+    description["handlers"].extend(
+        resource["auth"] for resource in description["resources"]
+        if resource["auth"] is not None)
     return HttpResponse(
         json.dumps(description),
         content_type="application/json")

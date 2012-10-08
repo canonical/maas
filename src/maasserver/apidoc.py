@@ -27,6 +27,7 @@ from django.core.urlresolvers import (
     RegexURLPattern,
     RegexURLResolver,
     )
+from piston.authentication import NoAuthentication
 from piston.doc import generate_doc
 from piston.handler import BaseHandler
 from piston.resource import Resource
@@ -162,4 +163,18 @@ def describe_resource(resource):
 
     :type resource: :class:`OperationsResource` instance.
     """
-    return describe_handler(resource.handler)
+    authenticate = not any(
+        isinstance(auth, NoAuthentication)
+        for auth in resource.authentication)
+    if authenticate:
+        if resource.anonymous is None:
+            anon = None
+            auth = describe_handler(resource.handler)
+        else:
+            anon = describe_handler(resource.anonymous)
+            auth = describe_handler(resource.handler)
+    else:
+        anon = describe_handler(resource.handler)
+        auth = None
+    name = anon["name"] if auth is None else auth["name"]
+    return {"anon": anon, "auth": auth, "name": name}

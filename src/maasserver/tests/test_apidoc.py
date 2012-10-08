@@ -35,6 +35,7 @@ from maasserver.apidoc import (
     )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
+from mock import sentinel
 from piston.doc import HandlerDocumentation
 from piston.handler import BaseHandler
 from piston.resource import Resource
@@ -163,6 +164,12 @@ class ExampleHandler(OperationsHandler):
         return ("example_view", ["p_foo", "p_bar"])
 
 
+class ExampleFallbackHandler(OperationsHandler):
+    """An example fall-back handler."""
+
+    create = read = delete = update = None
+
+
 class TestDescribingAPI(TestCase):
     """Tests for functions that describe a Piston API."""
 
@@ -230,10 +237,40 @@ class TestDescribingAPI(TestCase):
             "http://example.com/api/1.0/nodes/{system_id}/",
             description["uri"])
 
-    def test_describe_resource(self):
-        # describe_resource() returns a description of a resource. Right now
-        # it is just the description of the resource's handler class.
+    def test_describe_resource_anonymous_resource(self):
+        # When the resource does not require authentication, any configured
+        # fallback is ignored, and only the resource's handler is described.
+        # The resource name comes from this handler.
+        self.patch(ExampleHandler, "anonymous", ExampleFallbackHandler)
         resource = OperationsResource(ExampleHandler)
-        self.assertEqual(
-            describe_handler(ExampleHandler),
-            describe_resource(resource))
+        expected = {
+            "anon": describe_handler(ExampleHandler),
+            "auth": None,
+            "name": "ExampleHandler",
+            }
+        self.assertEqual(expected, describe_resource(resource))
+
+    def test_describe_resource_authenticated_resource(self):
+        # When the resource requires authentication, but has no fallback
+        # anonymous handler, the first is described. The resource name comes
+        # from this handler.
+        resource = OperationsResource(ExampleHandler, sentinel.auth)
+        expected = {
+            "anon": None,
+            "auth": describe_handler(ExampleHandler),
+            "name": "ExampleHandler",
+            }
+        self.assertEqual(expected, describe_resource(resource))
+
+    def test_describe_resource_authenticated_resource_with_fallback(self):
+        # When the resource requires authentication, but has a fallback
+        # anonymous handler, both are described. The resource name is taken
+        # from the authenticated handler.
+        self.patch(ExampleHandler, "anonymous", ExampleFallbackHandler)
+        resource = OperationsResource(ExampleHandler, sentinel.auth)
+        expected = {
+            "anon": describe_handler(ExampleFallbackHandler),
+            "auth": describe_handler(ExampleHandler),
+            "name": "ExampleHandler",
+            }
+        self.assertEqual(expected, describe_resource(resource))
