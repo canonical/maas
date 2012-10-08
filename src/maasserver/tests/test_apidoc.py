@@ -12,26 +12,36 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
+from inspect import getdoc
 import new
 
 from django.conf import settings
+from django.conf.urls import (
+    include,
+    patterns,
+    url,
+    )
+from django.core.exceptions import ImproperlyConfigured
 from maasserver.api import (
     operation,
     OperationsHandler,
+    OperationsResource,
     )
 from maasserver.apidoc import (
     describe_handler,
-    find_api_handlers,
+    describe_resource,
+    find_api_resources,
     generate_api_docs,
     )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
 from piston.doc import HandlerDocumentation
 from piston.handler import BaseHandler
+from piston.resource import Resource
 
 
-class TestFindingHandlers(TestCase):
-    """Tests for API inspection support: finding handlers."""
+class TestFindingResources(TestCase):
+    """Tests for API inspection support: finding resources."""
 
     @staticmethod
     def make_module():
@@ -39,96 +49,118 @@ class TestFindingHandlers(TestCase):
         name = factory.make_name("module").encode("ascii")
         return new.module(name)
 
-    def test_empty_module(self):
-        # No handlers are found in empty modules.
+    def test_urlpatterns_empty(self):
+        # No resources are found in empty modules.
         module = self.make_module()
-        module.__all__ = []
-        self.assertSequenceEqual(
-            [], list(find_api_handlers(module)))
+        module.urlpatterns = patterns("")
+        self.assertSetEqual(set(), find_api_resources(module))
 
-    def test_empty_module_without_all(self):
-        # The absence of __all__ does not matter.
+    def test_urlpatterns_not_present(self):
+        # The absence of urlpatterns is an error.
         module = self.make_module()
-        self.assertSequenceEqual(
-            [], list(find_api_handlers(module)))
+        self.assertRaises(ImproperlyConfigured, find_api_resources, module)
 
-    def test_ignore_non_handlers(self):
-        # Module properties that are not handlers are ignored.
+    def test_urlpatterns_with_resource_for_incomplete_handler(self):
+        # Resources for handlers that don't specify resource_uri are ignored.
         module = self.make_module()
-        module.something = 123
-        self.assertSequenceEqual(
-            [], list(find_api_handlers(module)))
+        module.urlpatterns = patterns("", url("^foo", BaseHandler))
+        self.assertSetEqual(set(), find_api_resources(module))
 
-    def test_module_with_incomplete_handler(self):
-        # Handlers that don't have a resource_uri method are ignored.
+    def test_urlpatterns_with_resource(self):
+        # Resources for handlers with resource_uri attributes are discovered
+        # in a urlconf module and returned. The type of resource_uri is not
+        # checked; it must only be present and not None.
+        handler = type(b"\m/", (BaseHandler,), {"resource_uri": True})
+        resource = Resource(handler)
         module = self.make_module()
-        module.handler = BaseHandler
-        self.assertSequenceEqual(
-            [], list(find_api_handlers(module)))
+        module.urlpatterns = patterns("", url("^metal", resource))
+        self.assertSetEqual({resource}, find_api_resources(module))
 
-    def test_module_with_handler(self):
-        # Handlers with resource_uri attributes are discovered in a module and
-        # returned. The type of resource_uri is not checked; it must only be
-        # present and not None.
+    def test_nested_urlpatterns_with_handler(self):
+        # Resources are found in nested urlconfs.
+        handler = type(b"\m/", (BaseHandler,), {"resource_uri": True})
+        resource = Resource(handler)
         module = self.make_module()
-        module.handler = type(
-            b"MetalHander", (BaseHandler,), {"resource_uri": True})
-        self.assertSequenceEqual(
-            [module.handler], list(find_api_handlers(module)))
+        submodule = self.make_module()
+        submodule.urlpatterns = patterns("", url("^metal", resource))
+        module.urlpatterns = patterns("", ("^genre/", include(submodule)))
+        self.assertSetEqual({resource}, find_api_resources(module))
 
-    def test_module_with_handler_not_in_all(self):
-        # When __all__ is defined, only the names it defines are searched for
-        # handlers.
-        module = self.make_module()
-        module.handler = BaseHandler
-        module.something = "abc"
-        module.__all__ = ["something"]
-        self.assertSequenceEqual(
-            [], list(find_api_handlers(module)))
+    def test_smoke(self):
+        # Resources are found for the MAAS API.
+        from maasserver import urls_api as urlconf
+        self.assertNotEqual(set(), find_api_resources(urlconf))
 
 
 class TestGeneratingDocs(TestCase):
     """Tests for API inspection support: generating docs."""
 
     @staticmethod
-    def make_handler():
+    def make_resource():
         """
-        Return a new `BaseHandler` subclass with a fabricated name and a
-        `resource_uri` class-method.
+        Return a new `OperationsResource` with a `BaseHandler` subclass
+        handler, with a fabricated name and a `resource_uri` class-method.
         """
         name = factory.make_name("handler").encode("ascii")
         resource_uri = lambda cls: factory.make_name("resource-uri")
         namespace = {"resource_uri": classmethod(resource_uri)}
-        return type(name, (BaseHandler,), namespace)
+        handler = type(name, (BaseHandler,), namespace)
+        return OperationsResource(handler)
 
     def test_generates_doc_for_handler(self):
         # generate_api_docs() yields HandlerDocumentation objects for the
         # handlers passed in.
-        handler = self.make_handler()
-        docs = list(generate_api_docs([handler]))
+        resource = self.make_resource()
+        docs = list(generate_api_docs([resource]))
         self.assertEqual(1, len(docs))
         [doc] = docs
         self.assertIsInstance(doc, HandlerDocumentation)
-        self.assertIs(handler, doc.handler)
+        self.assertIs(type(resource.handler), doc.handler)
 
     def test_generates_doc_for_multiple_handlers(self):
         # generate_api_docs() yields HandlerDocumentation objects for the
         # handlers passed in.
-        handlers = [self.make_handler() for _ in range(5)]
-        docs = list(generate_api_docs(handlers))
-        self.assertEqual(len(handlers), len(docs))
-        self.assertEqual(handlers, [doc.handler for doc in docs])
+        resources = [self.make_resource() for _ in range(5)]
+        docs = list(generate_api_docs(resources))
+        self.assertEqual(
+            [type(resource.handler) for resource in resources],
+            [doc.handler for doc in docs])
 
     def test_handler_without_resource_uri(self):
         # generate_api_docs() raises an exception if a handler does not have a
         # resource_uri attribute.
-        handler = self.make_handler()
-        del handler.resource_uri
-        docs = generate_api_docs([handler])
+        resource = OperationsResource(BaseHandler)
+        docs = generate_api_docs([resource])
         error = self.assertRaises(AssertionError, list, docs)
         self.assertEqual(
-            "Missing resource_uri in %s" % handler.__name__,
+            "Missing resource_uri in %s" % type(resource.handler).__name__,
             unicode(error))
+
+
+class ExampleHandler(OperationsHandler):
+    """An example handler."""
+
+    create = read = delete = None
+
+    @operation(idempotent=False)
+    def non_idempotent_operation(self, request, p_foo, p_bar):
+        """A non-idempotent operation.
+
+        Will piggyback on POST requests.
+        """
+
+    @operation(idempotent=True)
+    def idempotent_operation(self, request, p_foo, p_bar):
+        """An idempotent operation.
+
+        Will piggyback on GET requests.
+        """
+
+    @classmethod
+    def resource_uri(cls):
+        # Note that the arguments, after request, to each of the ops
+        # above matches the parameters (index 1) in the tuple below.
+        return ("example_view", ["p_foo", "p_bar"])
 
 
 class TestDescribingAPI(TestCase):
@@ -144,36 +176,16 @@ class TestDescribingAPI(TestCase):
     def test_describe_handler(self):
         # describe_handler() returns a description of a handler that can be
         # readily serialised into JSON, for example.
-
-        class MegadethHandler(OperationsHandler):
-            """The mighty 'deth."""
-
-            create = read = delete = None
-
-            @operation(idempotent=False)
-            def peace_sells_but_whos_buying(self, request, vic, rattlehead):
-                """Released 1986."""
-
-            @operation(idempotent=True)
-            def so_far_so_good_so_what(self, request, vic, rattlehead):
-                """Released 1988."""
-
-            @classmethod
-            def resource_uri(cls):
-                # Note that the arguments, after request, to each of the ops
-                # above matches the parameters (index 1) in the tuple below.
-                return ("megadeth_view", ["vic", "rattlehead"])
-
         expected_actions = [
-            {"doc": "Released 1988.",
+            {"doc": getdoc(ExampleHandler.idempotent_operation),
              "method": "GET",
-             "name": "so_far_so_good_so_what",
-             "op": "so_far_so_good_so_what",
+             "name": "idempotent_operation",
+             "op": "idempotent_operation",
              "restful": False},
-            {"doc": "Released 1986.",
+            {"doc": getdoc(ExampleHandler.non_idempotent_operation),
              "method": "POST",
-             "name": "peace_sells_but_whos_buying",
-             "op": "peace_sells_but_whos_buying",
+             "name": "non_idempotent_operation",
+             "op": "non_idempotent_operation",
              "restful": False},
             {"doc": None,
              "method": "PUT",
@@ -181,15 +193,14 @@ class TestDescribingAPI(TestCase):
              "op": None,
              "restful": True},
             ]
-
-        observed = describe_handler(MegadethHandler)
+        observed = describe_handler(ExampleHandler)
         # The description contains several entries.
         self.assertSetEqual(
             {"actions", "doc", "name", "params", "uri"},
             set(observed))
-        self.assertEqual(MegadethHandler.__doc__, observed["doc"])
-        self.assertEqual(MegadethHandler.__name__, observed["name"])
-        self.assertEqual(["vic", "rattlehead"], observed["params"])
+        self.assertEqual(ExampleHandler.__doc__, observed["doc"])
+        self.assertEqual(ExampleHandler.__name__, observed["name"])
+        self.assertEqual(["p_foo", "p_bar"], observed["params"])
         self.assertItemsEqual(expected_actions, observed["actions"])
 
     def test_describe_handler_with_maas_handler(self):
@@ -218,3 +229,11 @@ class TestDescribingAPI(TestCase):
         self.assertEqual(
             "http://example.com/api/1.0/nodes/{system_id}/",
             description["uri"])
+
+    def test_describe_resource(self):
+        # describe_resource() returns a description of a resource. Right now
+        # it is just the description of the resource's handler class.
+        resource = OperationsResource(ExampleHandler)
+        self.assertEqual(
+            describe_handler(ExampleHandler),
+            describe_resource(resource))

@@ -113,8 +113,8 @@ from docutils import core
 from formencode import validators
 from formencode.validators import Invalid
 from maasserver.apidoc import (
-    describe_handler,
-    find_api_handlers,
+    describe_resource,
+    find_api_resources,
     generate_api_docs,
     )
 from maasserver.components import (
@@ -1541,6 +1541,8 @@ def render_api_docs():
     :return: Documentation, in ReST, for the API.
     :rtype: :class:`unicode`
     """
+    from maasserver import urls_api as urlconf
+
     module = sys.modules[__name__]
     output = StringIO()
     line = partial(print, file=output)
@@ -1552,8 +1554,8 @@ def render_api_docs():
     line('----------')
     line()
 
-    handlers = find_api_handlers(module)
-    for doc in generate_api_docs(handlers):
+    resources = find_api_resources(urlconf)
+    for doc in generate_api_docs(resources):
         uri_template = doc.resource_uri_template
         exports = doc.handler.exports.items()
         for (http_method, operation), function in sorted(exports):
@@ -1759,14 +1761,16 @@ def describe(request):
 
     Returns a JSON object describing the whole MAAS API.
     """
-    module = sys.modules[__name__]
+    from maasserver import urls_api as urlconf
     description = {
         "doc": "MAAS API",
-        "handlers": [
-            describe_handler(handler)
-            for handler in find_api_handlers(module)
+        "resources": [
+            describe_resource(resource)
+            for resource in find_api_resources(urlconf)
             ],
         }
+    # For backward compatibility, add "handlers" as an alias for "resources".
+    description["handlers"] = description["resources"]
     return HttpResponse(
         json.dumps(description),
         content_type="application/json")

@@ -3938,5 +3938,6 @@ class TestDescribe(AnonAPITestCase):
     def test_describe(self):
         response = self.client.get(reverse('describe'))
         description = json.loads(response.content)
-        self.assertSetEqual({"doc", "handlers"}, set(description))
+        self.assertSetEqual(
+            {"doc", "handlers", "resources"}, set(description))
         self.assertIsInstance(description["handlers"], list)

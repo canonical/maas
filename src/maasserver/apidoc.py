@@ -12,7 +12,8 @@ from __future__ import (
 __metaclass__ = type
 __all__ = [
     "describe_handler",
-    "find_api_handlers",
+    "describe_resource",
+    "find_api_resources",
     "generate_api_docs",
     ]
 
@@ -21,36 +22,53 @@ from itertools import izip_longest
 from urlparse import urljoin
 
 from django.conf import settings
+from django.core.urlresolvers import (
+    get_resolver,
+    RegexURLPattern,
+    RegexURLResolver,
+    )
 from piston.doc import generate_doc
-from piston.handler import HandlerMetaClass
+from piston.handler import BaseHandler
+from piston.resource import Resource
 
 
-def find_api_handlers(module):
-    """Find the API handlers defined in `module`.
+def accumulate_api_resources(resolver, accumulator):
+    """Accumulate handlers from the given resolver.
 
     Handlers are of type :class:`HandlerMetaClass`, and must define a
     `resource_uri` method.
 
     :rtype: Generator, yielding handlers.
     """
-    try:
-        names = module.__all__
-    except AttributeError:
-        names = sorted(
-            name for name in dir(module)
-            if not name.startswith("_"))
-    for name in names:
-        candidate = getattr(module, name)
-        if isinstance(candidate, HandlerMetaClass):
-            if getattr(candidate, "resource_uri", None) is not None:
-                yield candidate
+    p_has_resource_uri = lambda resource: (
+        getattr(resource.handler, "resource_uri", None) is not None)
+    for pattern in resolver.url_patterns:
+        if isinstance(pattern, RegexURLResolver):
+            accumulate_api_resources(pattern, accumulator)
+        elif isinstance(pattern, RegexURLPattern):
+            if isinstance(pattern.callback, Resource):
+                resource = pattern.callback
+                if p_has_resource_uri(resource):
+                    accumulator.add(resource)
+        else:
+            raise AssertionError(
+                "Not a recognised pattern or resolver: %r" % (pattern,))
 
 
-def generate_api_docs(handlers):
+def find_api_resources(urlconf=None):
+    """Find the API resources defined in `urlconf`.
+
+    :rtype: :class:`set` of :class:`Resource` instances.
+    """
+    resolver, accumulator = get_resolver(urlconf), set()
+    accumulate_api_resources(resolver, accumulator)
+    return accumulator
+
+
+def generate_api_docs(resources):
     """Generate ReST documentation objects for the ReST API.
 
-    Yields Piston Documentation objects describing the current registered
-    handlers.
+    Yields Piston Documentation objects describing the given resources.
 
     This also ensures that handlers define 'resource_uri' methods. This is
     easily forgotten and essential in order to generate proper documentation.
@@ -58,7 +76,8 @@ def generate_api_docs(handlers):
     :return: Generates :class:`piston.doc.HandlerDocumentation` instances.
     """
     sentinel = object()
-    for handler in handlers:
+    for resource in resources:
+        handler = type(resource.handler)
         if getattr(handler, "resource_uri", sentinel) is sentinel:
             raise AssertionError(
                 "Missing resource_uri in %s" % handler.__name__)
@@ -111,8 +130,12 @@ def describe_handler(handler):
     """Return a serialisable description of a handler.
 
     :type handler: :class:`OperationsHandler` or
-        :class:`AnonymousOperationsHandler` instance.
+        :class:`AnonymousOperationsHandler` instance or subclass.
     """
+    # Want the class, not an instance.
+    if isinstance(handler, BaseHandler):
+        handler = type(handler)
+
     uri_template = generate_doc(handler).resource_uri_template
     if uri_template is None:
         uri_template = settings.DEFAULT_MAAS_URL
@@ -132,3 +155,11 @@ def describe_handler(handler):
         "params": uri_params,
         "uri": uri_template,
         }
+
+
+def describe_resource(resource):
+    """Return a serialisable description of a resource.
+
+    :type resource: :class:`OperationsResource` instance.
+    """
+    return describe_handler(resource.handler)
