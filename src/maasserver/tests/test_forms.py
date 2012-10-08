@@ -211,9 +211,9 @@ class NodeWithMACAddressesFormTest(TestCase):
         # nodes.  You can't change it later.
         original_nodegroup = factory.make_node_group()
         node = factory.make_node(nodegroup=original_nodegroup)
-        factory.make_node_group(network=IPNetwork("10.0.0.0/8"))
+        factory.make_node_group(network=IPNetwork("192.168.1.0/24"))
         form = NodeWithMACAddressesForm(
-            self.make_params(nodegroup='10.0.0.1'), instance=node)
+            self.make_params(nodegroup='192.168.1.0'), instance=node)
         form.save()
         self.assertEqual(original_nodegroup, reload_object(node).nodegroup)
 

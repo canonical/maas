@@ -38,6 +38,13 @@ from netaddr import (
     )
 from netaddr.core import AddrFormatError
 
+# The minimum number of leading bits of the routing prefix for a
+# network.  A smaller number will be rejected as it creates a huge
+# address space that is currently not well supported by the DNS
+# machinery.
+# For instance, if MINIMUM_NETMASK_BITS is 9, a /8 will be rejected.
+MINIMUM_NETMASK_BITS = 16
+
 
 class NodeGroupInterface(CleanSave, TimestampedModel):
 
@@ -93,8 +100,8 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
         return "<NodeGroupInterface %s,%s>" % (
             self.nodegroup.uuid, self.interface)
 
-    def clean_network(self):
-        """Validate that the network is valid.
+    def clean_network_valid(self):
+        """Validate the network.
 
         This validates that the network defined by broadcast_ip and
         subnet_mask is valid.
@@ -111,7 +118,21 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
                     'subnet_mask': [e.message],
                 })
 
-            raise ValidationError(e.message)
+    def clean_network_not_too_big(self):
+        # If management is not 'UNMANAGED', refuse huge networks.
+        if self.management != NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED:
+            network = self.network
+            if network is not None:
+                if network.prefixlen < MINIMUM_NETMASK_BITS:
+                    message = (
+                        "Cannot create an address space bigger than "
+                        "a /%d network.  This network is a /%d network." %
+                            (MINIMUM_NETMASK_BITS, network.prefixlen))
+                    raise ValidationError(
+                    {
+                        'broadcast_ip': [message],
+                        'subnet_mask': [message],
+                    })
 
     def clean_management(self):
         # XXX: rvb 2012-09-18 bug=1052339: Only one "managed" interface
@@ -181,7 +202,8 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
 
     def clean_fields(self, *args, **kwargs):
         super(NodeGroupInterface, self).clean_fields(*args, **kwargs)
-        self.clean_network()
+        self.clean_network_valid()
+        self.clean_network_not_too_big()
         self.clean_ips_in_network()
         self.clean_management()
         self.clean_network_config_if_managed()

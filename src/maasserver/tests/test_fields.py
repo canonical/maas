@@ -21,6 +21,7 @@ from maasserver.fields import (
 from maasserver.models import (
     MACAddress,
     NodeGroup,
+    nodegroupinterface,
     NodeGroupInterface,
     )
 from maasserver.testing.factory import factory
@@ -96,6 +97,7 @@ class TestNodeGroupFormField(TestCase):
             factory.getRandomIPAddress())
 
     def test_find_nodegroup_reports_if_multiple_matches(self):
+        self.patch(nodegroupinterface, "MINIMUM_NETMASK_BITS", 1)
         factory.make_node_group(network=IPNetwork("10/8"))
         factory.make_node_group(network=IPNetwork("10.1.1/24"))
         self.assertRaises(
@@ -103,6 +105,7 @@ class TestNodeGroupFormField(TestCase):
             NodeGroupFormField().clean, '10.1.1.2')
 
     def test_find_nodegroup_handles_multiple_matches_on_same_nodegroup(self):
+        self.patch(nodegroupinterface, "MINIMUM_NETMASK_BITS", 1)
         nodegroup = factory.make_node_group(network=IPNetwork("10/8"))
         NodeGroupInterface.objects.create(
             nodegroup=nodegroup, ip='10.0.0.2', subnet_mask='255.0.0.0',
