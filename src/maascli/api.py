@@ -16,7 +16,6 @@ __all__ = [
     ]
 
 from email.message import Message
-from getpass import getpass
 import httplib
 from itertools import chain
 import json
@@ -26,14 +25,12 @@ from urlparse import (
     urlparse,
     )
 
-from apiclient.creds import (
-    convert_string_to_tuple,
-    convert_tuple_to_string,
-    )
+from apiclient.creds import convert_tuple_to_string
 from apiclient.maas_client import MAASOAuth
 from apiclient.multipart import encode_multipart_data
 from apiclient.utils import ascii_url
 import httplib2
+from maascli.auth import obtain_credentials
 from maascli.command import (
     Command,
     CommandError,
@@ -46,32 +43,6 @@ from maascli.utils import (
     safe_name,
     urlencode,
     )
-
-
-def try_getpass(prompt):
-    """Call `getpass`, ignoring EOF errors."""
-    try:
-        return getpass(prompt)
-    except EOFError:
-        return None
-
-
-def obtain_credentials(credentials):
-    """Prompt for credentials if possible.
-
-    If the credentials are "-" then read from stdin without interactive
-    prompting.
-    """
-    if credentials == "-":
-        credentials = sys.stdin.readline().strip()
-    elif credentials is None:
-        credentials = try_getpass(
-            "API key (leave empty for anonymous access): ")
-    # Ensure that the credentials have a valid form.
-    if credentials and not credentials.isspace():
-        return convert_string_to_tuple(credentials)
-    else:
-        return None
 
 
 def fetch_api_description(url):
