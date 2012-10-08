@@ -80,23 +80,6 @@ class TestRegisterAPICommands(TestCase):
         self.assertIsNotNone(parser.subparsers.choices[profile])
 
 
-class TestRegisterCLICommands(TestCase):
-    """Tests for `register_cli_commands`."""
-
-    def test_registers_subparsers(self):
-        parser = ArgumentParser()
-        self.assertIsNone(parser._subparsers)
-        api.register_cli_commands(parser)
-        self.assertIsNotNone(parser._subparsers)
-
-    def test_subparsers_have_appropriate_execute_defaults(self):
-        parser = ArgumentParser()
-        api.register_cli_commands(parser)
-        self.assertIsInstance(
-            parser.subparsers.choices['login'].get_default('execute'),
-            api.cmd_login)
-
-
 class TestFunctions(TestCase):
     """Test for miscellaneous functions in `maascli.api`."""
 

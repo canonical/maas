@@ -19,10 +19,8 @@ import locale
 import sys
 
 from bzrlib import osutils
-from maascli.api import (
-    register_api_commands,
-    register_cli_commands,
-    )
+from maascli.api import register_api_commands
+from maascli.cli import register_cli_commands
 from maascli.utils import parse_docstring
 
 
