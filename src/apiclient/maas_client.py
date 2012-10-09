@@ -16,10 +16,11 @@ __all__ = [
     'MAASOAuth',
     ]
 
+import urllib2
+
 from apiclient.encode_json import encode_json_data
 from apiclient.multipart import encode_multipart_data
 from apiclient.utils import urlencode
-import httplib2
 import oauth.oauth as oauth
 
 
@@ -68,11 +69,6 @@ class MAASDispatcher:
     provider in Juju for the code this would require.
     """
 
-    def __init__(self, insecure=False):
-        super(MAASDispatcher, self).__init__()
-        self.http = httplib2.Http(
-            disable_ssl_certificate_validation=insecure)
-
     def dispatch_query(self, request_url, headers, method="GET", data=None):
         """Synchronously dispatch an OAuth-signed request to L{request_url}.
 
@@ -86,8 +82,8 @@ class MAASDispatcher:
 
         :return: A open file-like object that contains the response.
         """
-        return self.http.request(
-            request_url, method, body=data, headers=headers)
+        req = urllib2.Request(request_url, data, headers)
+        return urllib2.urlopen(req)
 
 
 class MAASClient:
