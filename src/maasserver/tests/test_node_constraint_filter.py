@@ -66,22 +66,6 @@ class TestConstrainNodes(TestCase):
         self.assertConstrainedNodes([node2], {'hostname': node2.hostname})
         self.assertConstrainedNodes([], {'hostname': 'unknown-name'})
 
-    def test_architecture(self):
-        node1 = factory.make_node(architecture=ARCHITECTURE.i386)
-        node2 = factory.make_node(architecture=ARCHITECTURE.armhf_highbank)
-        self.assertConstrainedNodes([node1], {'architecture': 'i386'})
-        self.assertConstrainedNodes([node1], {'architecture': 'i386/generic'})
-        self.assertConstrainedNodes(
-            [node2], {'architecture': 'arm'})
-        self.assertConstrainedNodes(
-            [node2], {'architecture': 'armhf'})
-        self.assertConstrainedNodes(
-            [node2], {'architecture': 'armhf/highbank'})
-        self.assertRaises(InvalidConstraint,
-            self.assertConstrainedNodes, [], {'architecture': 'armhf/generic'})
-        self.assertRaises(InvalidConstraint,
-            self.assertConstrainedNodes, [], {'architecture': 'sparc'})
-
     def test_cpu_count(self):
         node1 = factory.make_node(cpu_count=1)
         node2 = factory.make_node(cpu_count=2)
@@ -140,3 +124,41 @@ class TestConstrainNodes(TestCase):
                                     {'tags': 'big'})
         self.assertConstrainedNodes(
             [node_big], {'architecture': 'i386/generic', 'tags': 'big'})
+
+class TestConstrainNodesByArchitecture(TestCase):
+
+    def setUp(self):
+        super(TestConstrainNodesByArchitecture, self).setUp()
+        self.node1 = factory.make_node(architecture=ARCHITECTURE.i386)
+        self.node2 = factory.make_node(
+            architecture=ARCHITECTURE.armhf_highbank)
+
+    def assertArchConstrainsNodes(self, expected_nodes, architecture):
+        nodes = constrain_nodes(
+            Node.objects.all(), dict(architecture=architecture))
+        self.assertItemsEqual(expected_nodes, nodes)
+
+    def test_full_arch_name_i386_generic(self):
+        self.assertArchConstrainsNodes([self.node1], 'i386/generic')
+
+    def test_full_arch_name_armhf_highbank(self):
+        self.assertArchConstrainsNodes([self.node2], 'armhf/highbank')
+
+    def test_primary_arch_name_i386(self):
+        self.assertArchConstrainsNodes([self.node1], 'i386')
+
+    def test_primary_arch_name_armhf(self):
+        self.assertArchConstrainsNodes([self.node2], 'armhf')
+
+    def test_arm_alias(self):
+        self.assertArchConstrainsNodes([self.node2], 'arm')
+
+    def test_invalid_full_architecture_raises_exception(self):
+        self.assertRaises(
+            InvalidConstraint, constrain_nodes, Node.objects.all(),
+            dict(architecture='armhf/generic'))
+
+    def test_invalid_primary_architecture_raises_exception(self):
+        self.assertRaises(
+            InvalidConstraint, constrain_nodes, Node.objects.all(),
+            dict(architecture='sparc'))
