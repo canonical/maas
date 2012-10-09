@@ -16,10 +16,9 @@ __all__ = [
     'MAASOAuth',
     ]
 
-from urllib import urlencode
-
 from apiclient.encode_json import encode_json_data
 from apiclient.multipart import encode_multipart_data
+from apiclient.utils import urlencode
 import httplib2
 import oauth.oauth as oauth
 
@@ -139,7 +138,7 @@ class MAASClient:
         """
         url = self._make_url(path)
         if params is not None and len(params) > 0:
-            url += "?" + urlencode(params)
+            url += "?" + urlencode(params.items())
         headers = {}
         self.auth.sign_request(url, headers)
         return url, headers
@@ -161,7 +160,7 @@ class MAASClient:
         if 'op' in params:
             params = dict(params)
             op = params.pop('op')
-            url += '?' + urlencode({'op': op})
+            url += '?' + urlencode([('op', op)])
         if as_json:
             body, headers = encode_json_data(params)
         else:

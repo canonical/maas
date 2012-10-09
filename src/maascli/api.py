@@ -28,7 +28,10 @@ from urlparse import (
 
 from apiclient.maas_client import MAASOAuth
 from apiclient.multipart import encode_multipart_data
-from apiclient.utils import ascii_url
+from apiclient.utils import (
+    ascii_url,
+    urlencode,
+    )
 import httplib2
 from maascli.command import (
     Command,
@@ -39,7 +42,6 @@ from maascli.utils import (
     handler_command_name,
     parse_docstring,
     safe_name,
-    urlencode,
     )
 
 

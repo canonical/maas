@@ -15,7 +15,6 @@ __all__ = [
     "handler_command_name",
     "parse_docstring",
     "safe_name",
-    "urlencode",
     ]
 
 from functools import partial
@@ -24,7 +23,6 @@ from inspect import (
     getdoc,
     )
 import re
-from urllib import quote_plus
 from urlparse import urlparse
 
 
@@ -100,19 +98,3 @@ def api_url(string):
     if re.search("/api/[0-9.]+/?$", url.path) is None:
         url = url._replace(path=url.path + "api/1.0/")
     return url.geturl()
-
-
-def urlencode(data):
-    """A version of `urllib.urlencode` that isn't insane.
-
-    This only cares that `data` is an iterable of iterables. Each sub-iterable
-    must be of overall length 2, i.e. a name/value pair.
-
-    Unicode strings will be encoded to UTF-8. This is what Django expects; see
-    `smart_text` in the Django documentation.
-    """
-    enc = lambda string: quote_plus(
-        string.encode("utf-8") if isinstance(string, unicode) else string)
-    return b"&".join(
-        b"%s=%s" % (enc(name), enc(value))
-        for name, value in data)
