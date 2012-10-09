@@ -35,6 +35,11 @@ from maastesting.fixtures import ProxiesDisabledFixture
 from maastesting.httpd import HTTPServerFixture
 from maastesting.testcase import TestCase
 from mock import sentinel
+from testtools.matchers import (
+    AfterPreprocessing,
+    Equals,
+    MatchesListwise,
+    )
 
 
 class TestMAASOAuth(TestCase):
@@ -185,9 +190,17 @@ class TestMAASClient(TestCase):
         params = {factory.getRandomString(): factory.getRandomString()}
         url, headers, body = make_client()._formulate_change(
             make_path(), params, as_json=True)
-        self.assertEqual('application/json', headers.get('Content-Type'))
-        self.assertEqual(len(body), headers.get('Content-Length'))
-        self.assertEqual(params, json.loads(body))
+        observed = [
+            headers.get('Content-Type'),
+            headers.get('Content-Length'),
+            body,
+            ]
+        expected = [
+            Equals('application/json'),
+            Equals('%d' % (len(body),)),
+            AfterPreprocessing(json.loads, Equals(params)),
+            ]
+        self.assertThat(observed, MatchesListwise(expected))
         data = parse_headers_and_body_with_mimer(headers, body)
         self.assertEqual(params, data)
 

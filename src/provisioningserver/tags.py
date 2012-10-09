@@ -83,7 +83,7 @@ def get_hardware_details_for_nodes(client, nodegroup_uuid, system_ids):
     """
     path = '/api/1.0/nodegroups/%s/' % (nodegroup_uuid,)
     return process_response(client.post(
-        path, op='node_hardware_details', system_ids=system_ids))
+        path, op='node_hardware_details', as_json=True, system_ids=system_ids))
 
 
 def post_updated_nodes(client, tag_name, uuid, added, removed):
@@ -101,7 +101,8 @@ def post_updated_nodes(client, tag_name, uuid, added, removed):
     task_logger.debug('Updating nodes for %s %s, adding %s removing %s'
         % (tag_name, uuid, len(added), len(removed)))
     return process_response(client.post(
-        path, op='update_nodes', nodegroup=uuid, add=added, remove=removed))
+        path, op='update_nodes', as_json=True,
+        nodegroup=uuid, add=added, remove=removed))
 
 
 def process_batch(xpath, hardware_details):

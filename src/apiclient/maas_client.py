@@ -152,8 +152,8 @@ class MAASClient:
         :param path: Path to the object to issue a GET on.
         :param params: A dict of parameter values.
         :param as_json: Encode params as application/json instead of
-            application/x-www-form-urlencoded. Only use this if you know the
-            API already supports JSON requests.
+            multipart/form-data. Only use this if you know the API already
+            supports JSON requests.
         :return: A tuple: URL, headers, and body for the request.
         """
         url = self._make_url(path)
@@ -184,8 +184,8 @@ class MAASClient:
     def post(self, path, op, as_json=False, **kwargs):
         """Dispatch POST method `op` on `path`, with the given parameters.
 
-        :param as_json: Instead of POSTing the content as multipart
-            x-www-form-urlencoded post it as application/json
+        :param as_json: Instead of POSTing the content as multipart/form-data
+            POST it as application/json
         :return: The result of the dispatch_query call on the dispatcher.
         """
         kwargs['op'] = op

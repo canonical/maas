@@ -345,6 +345,22 @@ def get_optional_list(data, key, default=None):
         return value
 
 
+def get_list_from_dict_or_multidict(data, key, default=None):
+    """Get a list from 'data'.
+
+    If data is a MultiDict, then we use 'getlist' if the data is a plain dict,
+    then we just use __getitem__.
+
+    The rationale is that data POSTed as multipart/form-data gets parsed into a
+    MultiDict, but data POSTed as application/json gets parsed into a plain
+    dict(key:list).
+    """
+    getlist = getattr(data, 'getlist', None)
+    if getlist is not None:
+        return getlist(key, default)
+    return data.get(key, default)
+
+
 def extract_oauth_key_from_auth_header(auth_data):
     """Extract the oauth key from auth data in HTTP header.
 
@@ -1187,7 +1203,8 @@ class NodeGroupHandler(OperationsHandler):
         to be stored in the cluster controllers (nodegroup) instead of the
         master controller.
         """
-        system_ids = request.POST.getlist('system_ids')
+        system_ids = get_list_from_dict_or_multidict(
+            request.data, 'system_ids', [])
         nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
         check_nodegroup_access(request, nodegroup)
         nodes = Node.objects.filter(
@@ -1399,7 +1416,7 @@ class TagHandler(OperationsHandler):
         return Tag.objects.get_nodes(name, user=request.user)
 
     def _get_nodes_for(self, request, param, nodegroup):
-        system_ids = get_optional_list(request.POST, param)
+        system_ids = get_list_from_dict_or_multidict(request.data, param)
         if system_ids:
             nodes = Node.objects.filter(system_id__in=system_ids)
             if nodegroup is not None:
@@ -1431,7 +1448,7 @@ class TagHandler(OperationsHandler):
         tag = Tag.objects.get_tag_or_404(name=name, user=request.user)
         nodegroup = None
         if not request.user.is_superuser:
-            uuid = request.POST.get('nodegroup', None)
+            uuid = request.data.get('nodegroup', None)
             if uuid is None:
                 raise PermissionDenied(
                     'Must be a superuser or supply a nodegroup')

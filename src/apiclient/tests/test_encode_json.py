@@ -26,11 +26,11 @@ class TestEncodeJSONData(TestCase):
 
     def test_encode_empty_dict(self):
         self.assertEncodeJSONData(
-            '{}', {'Content-Length': 2, 'Content-Type': 'application/json'},
+            '{}', {'Content-Length': '2', 'Content-Type': 'application/json'},
             {})
 
     def test_encode_dict(self):
         self.assertEncodeJSONData(
             '{"alt": [1, 2, 3, 4], "param": "value"}',
-            {'Content-Length': 39, 'Content-Type': 'application/json'},
+            {'Content-Length': '39', 'Content-Type': 'application/json'},
             {'param': 'value', 'alt': [1, 2, 3, 4]})

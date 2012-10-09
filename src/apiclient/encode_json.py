@@ -26,7 +26,7 @@ def encode_json_data(params):
     """
     body = json.dumps(params)
     headers = {
-        'Content-Length': len(body),
+        'Content-Length': unicode(len(body)),
         'Content-Type': 'application/json',
         }
     return body, headers

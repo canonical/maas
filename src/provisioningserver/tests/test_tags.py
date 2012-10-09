@@ -92,7 +92,7 @@ class TestTagUpdating(PservTestCase):
         self.assertEqual([['system-id1', xml_data]], result)
         url = '/api/1.0/nodegroups/%s/' % (uuid,)
         mock.assert_called_once_with(
-            url, op='node_hardware_details',
+            url, op='node_hardware_details', as_json=True,
             system_ids=["system-id1", "system-id2"])
 
     def test_post_updated_nodes_calls_correct_api_and_parses_result(self):
@@ -107,7 +107,7 @@ class TestTagUpdating(PservTestCase):
         self.assertEqual({'added': 1, 'removed': 2}, result)
         url = '/api/1.0/tags/%s/' % (name,)
         post_mock.assert_called_once_with(
-            url, op='update_nodes', nodegroup=uuid,
+            url, op='update_nodes', as_json=True, nodegroup=uuid,
             add=['add-system-id'], remove=['remove-1', 'remove-2'])
 
     def test_process_batch_evaluates_xpath(self):
@@ -157,11 +157,13 @@ class TestTagUpdating(PservTestCase):
         self.assertEqual([((nodegroup_url,), {'op': 'list_nodes'})],
                          get_nodes.calls)
         self.assertEqual([((nodegroup_url,),
-                          {'op': 'node_hardware_details',
+                          {'as_json': True,
+                           'op': 'node_hardware_details',
                            'system_ids': ['system-id1', 'system-id2']})],
                          post_hw_details.calls)
         self.assertEqual([((tag_url,),
-                          {'op': 'update_nodes',
+                          {'as_json': True,
+                           'op': 'update_nodes',
                            'nodegroup': nodegroup_uuid,
                            'add': ['system-id1'],
                            'remove': ['system-id2'],
