@@ -305,6 +305,7 @@ END_MAAS_IPMI_AUTODETECT
 add_bin "maas-signal" <<"END_MAAS_SIGNAL"
 #!/usr/bin/python
 
+from email.utils import parsedate
 import mimetypes
 import oauth.oauth as oauth
 import os.path
@@ -369,13 +370,17 @@ def encode_multipart_data(data, files):
     return body, headers
 
 
-def oauth_headers(url, consumer_key, token_key, token_secret, consumer_secret):
+def oauth_headers(url, consumer_key, token_key, token_secret, consumer_secret,
+                  clockskew=0):
     consumer = oauth.OAuthConsumer(consumer_key, consumer_secret)
     token = oauth.OAuthToken(token_key, token_secret)
+
+    timestamp = int(time.time()) + clockskew
+
     params = {
         'oauth_version': "1.0",
         'oauth_nonce': oauth.generate_nonce(),
-        'oauth_timestamp': int(time.time()),
+        'oauth_timestamp': timestamp,
         'oauth_token': token.key,
         'oauth_consumer_key': consumer.key,
     }
@@ -393,13 +398,43 @@ def geturl(url, creds, headers=None, data=None):
     else:
         headers = dict(headers)
 
-    if creds.get('consumer_key', None) != None:
-        headers.update(oauth_headers(url,
-            consumer_key=creds['consumer_key'], token_key=creds['token_key'],
-            token_secret=creds['token_secret'],
-            consumer_secret=creds['consumer_secret']))
-    req = urllib2.Request(url=url, data=data, headers=headers)
-    return(urllib2.urlopen(req).read())
+    clockskew = 0
+
+    def warn(msg):
+        sys.stderr.write(msg + "\n")
+
+    exc = Exception("Unexpected Error")
+    for naptime in (1, 1, 2, 4, 8, 16, 32):
+        if creds.get('consumer_key', None) != None:
+            headers.update(oauth_headers(url,
+                consumer_key=creds['consumer_key'],
+                token_key=creds['token_key'],
+                token_secret=creds['token_secret'],
+                consumer_secret=creds['consumer_secret'],
+                clockskew=clockskew))
+        try:
+            req = urllib2.Request(url=url, data=data, headers=headers)
+            return(urllib2.urlopen(req).read())
+        except urllib2.HTTPError as exc:
+            if 'date' not in exc.headers:
+                warn("date field not in %d headers" % exc.code)
+                pass
+            elif (exc.code == 401 or exc.code == 403):
+                date = exc.headers['date']
+                try:
+                    ret_time = time.mktime(parsedate(date))
+                    clockskew = int(ret_time - time.time())
+                    warn("updated clock skew to %d" % clockskew)
+                except:
+                    warn("failed to convert date '%s'" % date)
+        except Exception as exc:
+            pass
+
+        warn("request to %s failed. sleeping %d.: %s" % (url, naptime, exc))
+        time.sleep(naptime)
+
+    raise exc
+
 
 def read_config(url, creds):
     if url.startswith("http://") or url.startswith("https://"):
