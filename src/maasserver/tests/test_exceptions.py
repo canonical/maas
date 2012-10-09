@@ -17,6 +17,7 @@ import httplib
 from maasserver.exceptions import (
     InvalidConstraint,
     MAASAPIBadRequest,
+    NoSuchConstraint,
     Redirect,
     )
 from maasserver.testing import extract_redirect
@@ -57,3 +58,7 @@ class TestExceptions(TestCase):
         err = InvalidConstraint("limbs", "hundreds", context)
         self.assertEqual(str(err),
             "Invalid 'limbs' constraint 'hundreds': " + str(context))
+
+    def test_NoSuchConstraint_str(self):
+        err = NoSuchConstraint("hue")
+        self.assertEqual(str(err), "No such 'hue' constraint")

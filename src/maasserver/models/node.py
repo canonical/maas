@@ -11,6 +11,8 @@ from __future__ import (
 
 __metaclass__ = type
 __all__ = [
+    "CONSTRAINTS_JUJU_MAP",
+    "CONSTRAINTS_MAAS_MAP",
     "NODE_TRANSITIONS",
     "Node",
     "update_hardware_details",
@@ -75,6 +77,26 @@ from provisioningserver.tasks import (
 
 def generate_node_system_id():
     return 'node-%s' % uuid1()
+
+
+# Mapping of constraint names as used by juju to Node field names
+CONSTRAINTS_JUJU_MAP = {
+    'maas-name': 'hostname',
+    'maas-tags': 'tags',
+    'arch': 'architecture',
+    'cpu': 'cpu_count',
+    'mem': 'memory',
+    }
+
+
+# Mapping of constraint names as used by the maas api to Node field names
+CONSTRAINTS_MAAS_MAP = {
+    'name': 'hostname',
+    'tags': 'tags',
+    'arch': 'architecture',
+    'cpu_count': 'cpu_count',
+    'mem': 'memory',
+    }
 
 
 # Information about valid node status transitions.

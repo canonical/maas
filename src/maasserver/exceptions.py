@@ -98,6 +98,16 @@ class InvalidConstraint(MAASAPIBadRequest):
         return s
 
 
+class NoSuchConstraint(InvalidConstraint):
+    """Node allocation constraint given does not exist."""
+
+    def __init__(self, constraint):
+        super(InvalidConstraint, self).__init__(constraint, None)
+
+    def __str__(self):
+        return "No such '%s' constraint" % self.args[:1]
+
+
 class Redirect(MAASAPIException):
     """Redirect.  The exception message is the target URL."""
     api_error = httplib.FOUND

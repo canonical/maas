@@ -157,6 +157,7 @@ from maasserver.models import (
     NodeGroupInterface,
     Tag,
     )
+from maasserver.models.node import CONSTRAINTS_MAAS_MAP
 from maasserver.preseed import (
     compose_enlistment_preseed_url,
     compose_preseed_url,
@@ -681,17 +682,6 @@ class AnonNodesHandler(AnonymousOperationsHandler):
         return ('nodes_handler', [])
 
 
-# Map the constraint as passed in the request to the name of the constraint in
-# the database. Many of them have the same name
-_constraints_map = {
-    'name': 'hostname',
-    'tags': 'tags',
-    'arch': 'architecture',
-    'cpu_count': 'cpu_count',
-    'mem': 'memory',
-    }
-
-
 def extract_constraints(request_params):
     """Extract a dict of node allocation constraints from http parameters.
 
@@ -701,9 +691,9 @@ def extract_constraints(request_params):
     :rtype: :class:`dict`
     """
     constraints = {}
-    for request_name in _constraints_map:
+    for request_name in CONSTRAINTS_MAAS_MAP:
         if request_name in request_params:
-            db_name = _constraints_map[request_name]
+            db_name = CONSTRAINTS_MAAS_MAP[request_name]
             constraints[db_name] = request_params[request_name]
     return constraints
 
