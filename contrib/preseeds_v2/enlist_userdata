@@ -5,13 +5,184 @@
 
 misc_bucket:
  - &maas_enlist |
+   ####  IPMI setup  ######
+   # If IPMI network settings have been configured statically, you can
+   # make them DHCP. If 'true', the IPMI network source will be changed
+   # to DHCP.
+   IPMI_CHANGE_STATIC_TO_DHCP="false"
+
+   # In certain hardware, the parameters for the ipmi_si kernel module
+   # might need to be specified. If you wish to send parameters, uncomment
+   # the following line.
+   #IPMI_SI_PARAMS="type=kcs ports=0xca2"
+
+   TEMP_D=$(mktemp -d "${TMPDIR:-/tmp}/${0##*/}.XXXXXX")
+   IPMI_CONFIG_D="${TEMP_D}/ipmi.d"
+   BIN_D="${TEMP_D}/bin"
+   OUT_D="${TEMP_D}/out"
+   PATH="$BIN_D:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+
+   mkdir -p "$BIN_D" "$OUT_D" "$IPMI_CONFIG_D"
+
+   load_modules() {
+      modprobe ipmi_msghandler
+      modprobe ipmi_devintf
+      modprobe ipmi_si ${IPMI_SI_PARAMS}
+   }
+
+   add_bin() {
+      cat > "${BIN_D}/$1"
+      chmod "${2:-755}" "${BIN_D}/$1"
+   }
+   add_ipmi_config() {
+      cat > "${IPMI_CONFIG_D}/$1"
+      chmod "${2:-644}" "${IPMI_CONFIG_D}/$1"
+   }
+
+   add_ipmi_config "01-user-privileges.ipmi" <<"END_IPMI_USER_PRIVILEGES"
+   Section User3
+        Enable_User                             Yes
+        Lan_Enable_IPMI_Msgs                    Yes
+        Lan_Privilege_Limit                     Administrator
+   EndSection
+   END_IPMI_USER_PRIVILEGES
+
+   add_ipmi_config "02-global-config.ipmi" <<"END_IPMI_CONFIG"
+   Section Lan_Channel
+        Volatile_Access_Mode                    Always_Available
+        Volatile_Enable_User_Level_Auth         Yes
+        Volatile_Channel_Privilege_Limit        Administrator
+        Non_Volatile_Access_Mode                Always_Available
+        Non_Volatile_Enable_User_Level_Auth     Yes
+        Non_Volatile_Channel_Privilege_Limit    Administrator
+   EndSection
+   END_IPMI_CONFIG
+
+   add_bin "maas-ipmi-autodetect" <<"END_MAAS_IPMI_AUTODETECT"
+   #!/usr/bin/python
+   import os
+   import commands
+   import re
+   import string
+   import random
+   import time
+   import json
+
+   def detect_ipmi():
+       # TODO: Detection could be improved.
+       (status, output) = commands.getstatusoutput('ipmi-locate')
+       show_re = re.compile('(IPMI\ Version:) (\d\.\d)')
+       res = show_re.search(output)
+       if res == None:
+           return (False, "")
+       return (True, res.group(2))
+
+   def is_ipmi_dhcp():
+       (status, output) = commands.getstatusoutput('bmc-config --checkout --key-pair="Lan_Conf:IP_Address_Source"')
+       show_re = re.compile('IP_Address_Source\s+Use_DHCP')
+       res = show_re.search(output)
+       if res == None:
+           return False
+       return True
+
+   def set_ipmi_network_source(source):
+       (status, output) = commands.getstatusoutput('bmc-config --commit --key-pair="Lan_Conf:IP_Address_Source=%s"' % source)
+
+   def get_ipmi_ip_address():
+       (status, output) = commands.getstatusoutput('bmc-config --checkout --key-pair="Lan_Conf:IP_Address"')
+       show_re = re.compile('([0-9]{1,3}[.]?){4}')
+       res = show_re.search(output)
+       return res.group()
+
+   def commit_ipmi_user_settings(user, password):
+       (status, output) = commands.getstatusoutput('bmc-config --commit --key-pair="User3:Username=%s"' % user)
+       (status, output) = commands.getstatusoutput('bmc-config --commit --key-pair="User3:Password=%s"' % password)
+
+   def commit_ipmi_settings(config):
+       (status, output) = commands.getstatusoutput('bmc-config --commit --filename %s' % config)
+
+   def get_maas_power_settings(user, password, ipaddress):
+       return "%s,%s,%s" % (user, password, ipaddress)
+
+   def get_maas_power_settings_json(user, password, ipaddress):
+       power_params = {"power_address": ipaddress, "power_pass": password, "power_user": user}
+       return json.dumps(power_params) 
+
+   def generate_random_password(min=8,max=15):
+       length=random.randint(min,max)
+       letters=string.ascii_letters+string.digits
+       return ''.join([random.choice(letters) for _ in range(length)])
+
+   def main():
+
+       import argparse
+
+       parser = argparse.ArgumentParser(
+           description='send config file to modify IPMI settings with')
+       parser.add_argument("--configdir", metavar="folder",
+           help="specify config file directory", default=None)
+       parser.add_argument("--dhcp-if-static", action="store_true",
+           dest="dhcp", help="set network source to DHCP if Static", default=False)
+       parser.add_argument("--commission-creds", action="store_true",
+           dest="commission_creds", help="Create IPMI temporary credentials", default=False)
+
+       args = parser.parse_args()
+
+       # Check whether IPMI exists or not.
+       (status, ipmi_version) = detect_ipmi()
+       if status != True:
+           # if False, then failed to detect ipmi
+           exit(1)
+
+       # Check whether IPMI is being set to DHCP. If it is not, and
+       # '--dhcp-if-static' has been passed,  Set it to IPMI to DHCP.
+       if not is_ipmi_dhcp() and args.dhcp:
+           set_ipmi_network_source("Use_DHCP")
+           # allow IPMI 60 seconds to obtain an IP address
+           time.sleep(60)
+
+       # create user/pass
+       if args.commission_creds:
+           IPMI_MAAS_USER="maas-commissioning"
+       else:
+           IPMI_MAAS_USER="maas"
+       IPMI_MAAS_PASSWORD=generate_random_password()
+
+       # Configure IPMI user/password
+       commit_ipmi_user_settings(IPMI_MAAS_USER, IPMI_MAAS_PASSWORD)
+
+       # Commit other IPMI settings
+       if args.configdir:
+           for file in os.listdir(args.configdir):
+               commit_ipmi_settings(os.path.join(args.configdir, file))
+
+       # get the IP address
+       IPMI_IP_ADDRESS = get_ipmi_ip_address()
+
+       if args.commission_creds:
+           print get_maas_power_settings_json(IPMI_MAAS_USER, IPMI_MAAS_PASSWORD, IPMI_IP_ADDRESS)
+       else:
+           print get_maas_power_settings(IPMI_MAAS_USER, IPMI_MAAS_PASSWORD, IPMI_IP_ADDRESS)
+
+   if __name__ == '__main__':
+       main()   
+   END_MAAS_IPMI_AUTODETECT
+
    # we could obtain the interface that booted from the kernel cmdline
    # thanks to 'IPAPPEND' (http://www.syslinux.org/wiki/index.php/SYSLINUX)
    url="{{server_url}}"
    host=""
    ip=$(ifconfig eth0 | awk '$1 == "inet" { sub("addr:","",$2); print $2; }') &&
      [ -n "${ip}" ] && host=$(dig +short -x $ip)  && host=${host%.}
-   maas-enlist --serverurl "$url" ${host:+--hostname "${host}"} >/tmp/enlist.out
+   # load ipmi modules
+   load_modules
+   pargs=""
+   if $IPMI_CHANGE_STATIC_TO_DHCP; then
+      pargs="--dhcp-if-static"
+   fi
+   power_params=$(maas-ipmi-autodetect --configdir "$IPMI_CONFIG_D" ${pargs} --commission-creds) &&
+     [ -n "${power_params}" ] && power_params=${power_params%.} && power_type=ipmi
+   maas-enlist --serverurl "$url" ${host:+--hostname "${host}"} ${power_params:+--power-params "${power_params}" --power-type "${power_type}"}>/tmp/enlist.out
    if [ $? -eq 0 ]; then
       msg="successfully enlisted to '$url'"
       [ -n "$host" ] && msg="$msg with hostname '$host'" ||
@@ -43,7 +214,7 @@ misc_bucket:
    fi
    poweroff
 
-packages: [ maas-enlist ]
+packages: [ maas-enlist, freeipmi-tools ]
 output: {all: '| tee -a /var/log/cloud-init-output.log'}
 runcmd:
  - [ sh, -c, *maas_enlist ]
