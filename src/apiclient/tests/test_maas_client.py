@@ -13,6 +13,7 @@ __metaclass__ = type
 __all__ = []
 
 import json
+from os.path import relpath
 from random import randint
 from urlparse import (
     parse_qs,
@@ -30,7 +31,10 @@ from apiclient.testing.django import (
     parse_headers_and_body_with_mimer,
     )
 from maastesting.factory import factory
+from maastesting.fixtures import ProxiesDisabledFixture
+from maastesting.httpd import HTTPServerFixture
 from maastesting.testcase import TestCase
+from mock import sentinel
 
 
 class TestMAASOAuth(TestCase):
@@ -44,11 +48,38 @@ class TestMAASOAuth(TestCase):
 
 class TestMAASDispatcher(TestCase):
 
+    def setUp(self):
+        super(TestMAASDispatcher, self).setUp()
+        self.useFixture(ProxiesDisabledFixture())
+
     def test_dispatch_query_makes_direct_call(self):
-        contents = factory.getRandomString()
-        url = "file://%s" % self.make_file(contents=contents)
+        dispatch_query = MAASDispatcher().dispatch_query
+        filename = relpath(__file__)
+        with HTTPServerFixture() as httpd:
+            url = urljoin(httpd.url, filename)
+            response = dispatch_query(url, headers={})
+            headers_from_dispatcher, body_from_dispatcher = response
+        with open(filename, "rb") as file_in:
+            body_from_file = file_in.read()
         self.assertEqual(
-            contents, MAASDispatcher().dispatch_query(url, {}).read())
+            body_from_file, body_from_dispatcher,
+            "The content of %s differs from %s." % (url, filename))
+
+    def test_insecure_argument_passed_to_httplib2(self):
+        dispatcher = MAASDispatcher(sentinel.insecure)
+        self.assertEqual(
+            sentinel.insecure,
+            dispatcher.http.disable_ssl_certificate_validation)
+
+    def test_dispatch_query_passes_args_to_httplib2(self):
+        dispatcher = MAASDispatcher()
+        request = self.patch(dispatcher.http, "request")
+        dispatcher.dispatch_query(
+            request_url=sentinel.request_url, headers=sentinel.headers,
+            method=sentinel.method, data=sentinel.data)
+        request.assert_called_once_with(
+            sentinel.request_url, sentinel.method, headers=sentinel.headers,
+            body=sentinel.data)
 
 
 def make_url():
