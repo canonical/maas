@@ -138,7 +138,7 @@ class TestKernelOpts(TestCase):
         # and install command lines.
         get_ephemeral_name = self.patch(kernel_opts, "get_ephemeral_name")
         get_ephemeral_name.return_value = "RELEASE-ARCH"
-        expected = ["console=tty1", "console=ttyS0", "nomodeset"]
+        expected = ["nomodeset"]
 
         params = make_kernel_parameters(
             purpose="commissioning", arch="i386")
