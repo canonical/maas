@@ -14,6 +14,7 @@ __all__ = []
 
 from maasserver import dns
 from maasserver.models import DHCPLease
+from maasserver.models.dhcplease import strip_domain
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
 from maasserver.utils import ignore_unused
@@ -44,6 +45,20 @@ class TestDHCPLease(TestCase):
         self.assertEqual(nodegroup, lease.nodegroup)
         self.assertEqual(ip, lease.ip)
         self.assertEqual(mac, lease.mac)
+
+
+class TestUtitilies(TestCase):
+
+    def test_strip_domain(self):
+        input_and_results = [
+            ('name.domain',  'name'),
+            ('name', 'name'),
+            ('name.domain.what', 'name'),
+            ('name..domain', 'name'),
+            ]
+        inputs = [input for input, _ in input_and_results]
+        results = [result for _, result in input_and_results]
+        self.assertEqual(results, map(strip_domain, inputs))
 
 
 class TestDHCPLeaseManager(TestCase):
@@ -176,6 +191,19 @@ class TestDHCPLeaseManager(TestCase):
             expected_mapping[node.hostname] = lease.ip
         mapping = DHCPLease.objects.get_hostname_ip_mapping(nodegroup)
         self.assertEqual(expected_mapping, mapping)
+
+    def test_get_hostname_ip_mapping_strips_out_domain(self):
+        nodegroup = factory.make_node_group()
+        hostname = factory.make_name('hostname')
+        domain = factory.make_name('domain')
+        node = factory.make_node(
+            nodegroup=nodegroup,
+            hostname='%s.%s' % (hostname, domain))
+        mac = factory.make_mac_address(node=node)
+        lease = factory.make_dhcp_lease(
+            nodegroup=nodegroup, mac=mac.mac_address)
+        mapping = DHCPLease.objects.get_hostname_ip_mapping(nodegroup)
+        self.assertEqual({hostname: lease.ip}, mapping)
 
     def test_get_hostname_ip_mapping_considers_only_first_mac(self):
         nodegroup = factory.make_node_group()
