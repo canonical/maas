@@ -12,9 +12,16 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
+from cStringIO import StringIO
+import doctest
+import sys
+from textwrap import dedent
+
 from maascli import cli
 from maascli.parser import ArgumentParser
+from maastesting.factory import factory
 from maastesting.testcase import TestCase
+from testtools.matchers import DocTestMatches
 
 
 class TestRegisterCLICommands(TestCase):
@@ -32,3 +39,27 @@ class TestRegisterCLICommands(TestCase):
         self.assertIsInstance(
             parser.subparsers.choices['login'].get_default('execute'),
             cli.cmd_login)
+
+
+class TestLogin(TestCase):
+
+    def test_print_whats_next(self):
+        profile = {
+            "name": factory.make_name("profile"),
+            "url": factory.make_name("url"),
+            }
+        stdout = self.patch(sys, "stdout", StringIO())
+        cli.cmd_login.print_whats_next(profile)
+        expected = dedent("""\
+
+            You are now logged in to the MAAS server at %(url)s
+            with the profile name '%(name)s'.
+
+            For help with the available commands, try:
+
+              maas-cli %(name)s --help
+
+            """) % profile
+        observed = stdout.getvalue()
+        flags = doctest.ELLIPSIS | doctest.NORMALIZE_WHITESPACE
+        self.assertThat(observed, DocTestMatches(expected, flags))

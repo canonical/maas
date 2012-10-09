@@ -14,6 +14,8 @@ __all__ = [
     'register_cli_commands',
     ]
 
+from textwrap import fill
+
 from apiclient.creds import convert_tuple_to_string
 from maascli.api import fetch_api_description
 from maascli.auth import obtain_credentials
@@ -73,6 +75,23 @@ class cmd_login(Command):
                 "name": profile_name,
                 "url": options.url,
                 }
+            profile = config[profile_name]
+        self.print_whats_next(profile)
+
+    @staticmethod
+    def print_whats_next(profile):
+        """Explain what to do next."""
+        what_next = [
+            "You are now logged in to the MAAS server at {url} "
+            "with the profile name '{name}'.",
+            "For help with the available commands, try:",
+            "  maas-cli {name} --help",
+            ]
+        print()
+        for message in what_next:
+            message = message.format(**profile)
+            print(fill(message))
+            print()
 
 
 class cmd_refresh(Command):
