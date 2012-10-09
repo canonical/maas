@@ -1,5 +1,42 @@
-input.search-box {
+form.search {
+    position: relative;
+    width: 228px;
+    height: 26px;
+    }
+#header form.search {
+    position: relative;
+    width: 228px;
+    margin: 18px 15px 0 0;
+    }
+input.search-input {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 450px;
     padding-left: 22px;
     color: #aea79f;
-    background: #fff url(../../img/search_icon.png) no-repeat 5px center;
+    background-color: #fff;
     }
+#header input.search-input {
+    width: 225px;
+    border: none;
+    -moz-border-radius: 4px;
+    -webkit-border-radius: 4px;
+    border-radius: 4px;
+    }
+input.search-submit,
+input.search-submit:hover {
+    position: absolute;
+    top: 1px;
+    left: 1px;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    margin: 0;
+    background: transparent url(../?img/search_icon.png) no-repeat center center;
+    border: none;
+    font-size: 0;
+    }
+input.search-submit:hover {
+    cursor: pointer;
+}

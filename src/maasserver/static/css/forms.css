@@ -35,6 +35,7 @@ input[type="checkbox"] {
     margin-right: 3px;
     }
 textarea,
+input[type="search"],
 input[type="password"],
 input[type="text"] {
     width: 350px;
@@ -47,6 +48,7 @@ input[type="text"] {
     background: #FFF;
     }
 textarea:focus,
+input[type="search"]:focus,
 input[type="password"]:focus,
 input[type="text"]:focus {
     border-color: #000;

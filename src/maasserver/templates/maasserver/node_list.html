@@ -31,12 +31,13 @@
 
 {% block content %}
   <div id="nodes">
-    {% comment %}
-      <!-- To be enabled when we have search functionality -->
-      <form action="" method="get" class="block full-width inline-form">
-        <input type="text" name="query" class="search-box" value="Search nodes" />
-      </form>
-    {% endcomment %}
+    <form action="{% url 'node-list' %}" method="get" class="block full-width search">
+      <input type="search" name="query" placeholder="Search nodes" class="search-input" value="{{input_query|default_if_none:''}}" />
+      <input type="submit" value="Search" class="search-submit" />
+    </form>
+    {% if input_query_error %}
+    <p class="form-errors">{{input_query_error}}</p>
+    {% endif %}
     {% include "maasserver/nodes_listing.html" %}
     <a id="addnode" href="#" class="button right space-top">+ Add node</a>
     <div class="clear"></div>

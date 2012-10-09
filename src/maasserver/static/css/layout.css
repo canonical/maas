@@ -68,26 +68,6 @@
 #right-nav li.active a {
     background-color: transparent;
     }
-#right-nav li.divider {
-    height: 30px;
-    margin-top: 17px;
-    border-left: 1px solid #c53f11;
-    }
-
-
-/******************************************************************************
-    Header search
-*/
-#header-search {
-    margin: 18px 15px 0 0;
-    }
-
-#header-search input[type="text"] {
-    width: 200px;
-    -moz-border-radius: 4px;
-    -webkit-border-radius: 4px;
-    border-radius: 4px;
-    }
 
 
 /******************************************************************************

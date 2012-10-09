@@ -46,21 +46,15 @@
           </div>
           <div id="header" class="center-page-content">
               <ul id="right-nav" class="nav">
-                {% comment %}
-                  <!-- To be enabled when we have search functionality -->
                   <li class="search">
                     {% block header-search %}
-                      <form action="{% url 'node-list' %}" method="get" id="header-search">
-                        <input type="text" name="query" value="Search nodes" class="search-box" />
+                      <form action="{% url 'node-list' %}" method="get" class="search">
+                        <input type="search" name="query" placeholder="Search nodes" class="search-input" />
+                        <input type="submit" value="Search" class="search-submit" />
                       </form>
                     {% endblock %}
                   </li>
-                {% endcomment %}
                 {% if user.is_superuser %}
-                  {% comment %}
-                    <!-- To be enabled when we have search functionality -->
-                    <li class="divider"></li>
-                  {% endcomment %}
                   <li class="icon {% block nav-active-settings %}{% endblock %}">
                     <a href="{% url 'settings' %}">
                       <img src="{{ STATIC_URL }}img/settings.png" alt="Settings" />
