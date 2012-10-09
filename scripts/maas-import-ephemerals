@@ -269,6 +269,27 @@ EOF
 }
 
 
+copy_first_available() {
+    # Copy file $1 or $2 (the first that is available) to destination $3.
+    local preferred_file="$1" alternate_file="$2" destination="$3"
+    local actual=""
+
+    if [ -f "${preferred_file}" ]; then
+        actual="${preferred_file}"
+    elif [ -f "${alternate_file}" ]; then
+        actual="${alternate_file}"
+    else
+        error "Could not copy to ${destination}."
+        error "Neither ${preferred_file} nor ${alternate_file} exists."
+        return 1
+    fi
+
+    cp -- "${actual}" "${destination}" ||
+        { error "Could not copy ${actual} to ${destination}."; return 1; }
+    return 0
+}
+
+
 install_tftp_image() {
     # Make image in directory $1, for architecture $2 and subarchitecture $3,
     # and OS release $4, available over TFTP for netbooting nodes.  Only the
@@ -280,11 +301,10 @@ install_tftp_image() {
     # deletes it.
     tmpdir="$(mktemp -d)"
 
-    for filename in linux initrd.gz
-    do
-        cp -- "$src/$filename" "$tmpdir/" ||
-            { error "cp of $filename from $src failed"; return 1; }
-    done
+    copy_first_available "$src/linux" "$src/kernel" "$tmpdir/linux" ||
+        return 1
+    copy_first_available "$src/initrd.gz" "$src/initrd" "$tmpdir/initrd.gz" ||
+        return 1
 
     local cmd out=""
     cmd=( maas-provision install-pxe-image
