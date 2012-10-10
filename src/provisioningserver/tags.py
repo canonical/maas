@@ -5,6 +5,19 @@
 
 """
 
+from __future__ import (
+    absolute_import,
+    print_function,
+    unicode_literals,
+    )
+
+__metaclass__ = type
+__all__ = [
+    'MissingCredentials',
+    'process_node_tags',
+    ]
+
+
 import httplib
 import simplejson as json
 from lxml import etree
@@ -22,6 +35,10 @@ from provisioningserver.auth import (
     )
 
 from provisioningserver.logging import task_logger
+
+
+class MissingCredentials(Exception):
+    """The MAAS URL or credentials are not yet set."""
 
 
 DEFAULT_BATCH_SIZE = 100
@@ -168,7 +185,7 @@ def process_node_tags(tag_name, tag_definition, batch_size=None):
         task_logger.error('Unable to update tag: %s for definition %r'
             ' please refresh secrets, then rebuild this tag'
             % (tag_name, tag_definition))
-        return
+        raise MissingCredentials()
     # We evaluate this early, so we can fail before sending a bunch of data to
     # the server
     xpath = etree.XPath(tag_definition)

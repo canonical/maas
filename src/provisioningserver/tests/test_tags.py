@@ -132,7 +132,10 @@ class TestTagUpdating(PservTestCase):
         self.patch(MAASClient, 'get')
         self.patch(MAASClient, 'post')
         tag_name = factory.make_name('tag')
-        tags.process_node_tags(tag_name, '//node')
+        try:
+            tags.process_node_tags(tag_name, '//node')
+        except tags.MissingCredentials:
+            pass
         self.assertFalse(MAASClient.get.called)
         self.assertFalse(MAASClient.post.called)
 

@@ -37,6 +37,7 @@ from netaddr import IPNetwork
 from provisioningserver import (
     auth,
     cache,
+    tags,
     tasks,
     utils,
     )
@@ -55,6 +56,7 @@ from provisioningserver.dns.config import (
 from provisioningserver.enum import POWER_TYPE
 from provisioningserver.power.poweraction import PowerActionFail
 from provisioningserver.pxe import tftppath
+from provisioningserver.tags import MissingCredentials
 from provisioningserver.tasks import (
     add_new_dhcp_host_map,
     Omshell,
@@ -67,6 +69,8 @@ from provisioningserver.tasks import (
     rndc_command,
     RNDC_COMMAND_MAX_RETRY,
     setup_rndc_configuration,
+    update_node_tags,
+    UPDATE_NODE_TAGS_MAX_RETRY,
     write_dhcp_config,
     write_dns_config,
     write_dns_zone_config,
@@ -492,3 +496,41 @@ class TestBootImagesTasks(PservTestCase):
         self.assertEqual(
             write_dns_config.queue,
             celery_config.WORKER_QUEUE_BOOT_IMAGES)
+
+
+class TestTagTasks(PservTestCase):
+
+    resources = (
+        ("celery", FixtureResource(CeleryFixture())),
+        )
+
+    def test_update_node_tags_can_be_retried(self):
+        self.set_secrets()
+        # The update_node_tags task can be retried.
+        # Simulate a temporary failure.
+        number_of_failures = UPDATE_NODE_TAGS_MAX_RETRY
+        raised_exception = MissingCredentials(
+            factory.make_name('exception'), random.randint(100, 200))
+        simulate_failures = MultiFakeMethod(
+            [FakeMethod(failure=raised_exception)] * number_of_failures +
+            [FakeMethod()])
+        self.patch(tags, 'process_node_tags', simulate_failures)
+        tag = factory.getRandomString()
+        result = update_node_tags.delay(tag, '//node', retry=True)
+        self.assertTrue(result.successful())
+
+    def test_update_node_tags_is_retried_a_limited_number_of_times(self):
+        self.set_secrets()
+        # If we simulate UPDATE_NODE_TAGS_MAX_RETRY + 1 failures, the
+        # task fails.
+        number_of_failures = UPDATE_NODE_TAGS_MAX_RETRY + 1
+        raised_exception = MissingCredentials(
+            factory.make_name('exception'), random.randint(100, 200))
+        simulate_failures = MultiFakeMethod(
+            [FakeMethod(failure=raised_exception)] * number_of_failures +
+            [FakeMethod()])
+        self.patch(tags, 'process_node_tags', simulate_failures)
+        tag = factory.getRandomString()
+        self.assertRaises(
+            MissingCredentials, update_node_tags.delay, tag,
+            '//node', retry=True)
