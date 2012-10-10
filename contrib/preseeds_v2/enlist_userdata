@@ -143,7 +143,7 @@ misc_bucket:
 
        # create user/pass
        if args.commission_creds:
-           IPMI_MAAS_USER="maas-commissioning"
+           IPMI_MAAS_USER="maas-commission"
        else:
            IPMI_MAAS_USER="maas"
        IPMI_MAAS_PASSWORD=generate_random_password()
