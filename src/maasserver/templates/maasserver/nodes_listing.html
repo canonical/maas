@@ -10,7 +10,7 @@
       <tr class="node {% cycle 'even' 'odd' %}">
         <td>
           <a href="{% url 'node-view' node.system_id %}">
-            {% for macaddress in node.macaddress_set.reverse %}
+            {% for macaddress in node.macaddress_set.all reversed %}
               {{ macaddress }}{% if not forloop.last %},{% endif %}
             {% endfor %}
           </a>

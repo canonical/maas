@@ -99,6 +99,29 @@ class NodeViewsTest(LoggedInTestCase):
             [link for link in get_content_links(response)
                 if link.startswith('/nodes/node')])
 
+    def test_node_list_num_queries_is_independent_of_num_nodes(self):
+        nodegroup = factory.make_node_group()
+        for i in range(10):
+            factory.make_node(nodegroup=nodegroup, mac=True)
+        url = reverse('node-list')
+        num_queries, response = self.getNumQueries(self.client.get, url)
+        # Make sure we counted at least the queries to get the nodes, the
+        # nodegroup and the mac addresses.
+        self.assertTrue(num_queries > 3)
+        self.assertEqual(
+            10,
+            len([link for link in get_content_links(response)
+                if link.startswith('/nodes/node')]))
+        # Add 10 nodes should still have the same number of queries
+        for i in range(10):
+            factory.make_node(nodegroup=nodegroup, mac=True)
+        num_bonus_queries, response = self.getNumQueries(self.client.get, url)
+        self.assertEqual(num_queries, num_bonus_queries)
+        self.assertEqual(
+            20,
+            len([link for link in get_content_links(response)
+                if link.startswith('/nodes/node')]))
+
     def test_view_node_displays_node_info(self):
         # The node page features the basic information about the node.
         node = factory.make_node(owner=self.logged_in_user)

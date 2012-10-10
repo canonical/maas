@@ -20,14 +20,37 @@ __all__ = [
 from django.conf import settings
 from django.core.management import call_command
 from django.core.management.commands import syncdb
+from django.core.signals import request_started
 from django.db import (
     connections,
     DEFAULT_DB_ALIAS,
+    reset_queries,
     )
 from django.db.models import loading
 import django.test
 from maastesting.testcase import TestCase
 import testtools
+
+
+class CountNumQueriesContext:
+
+    def __init__(self):
+        self.connection = connections[DEFAULT_DB_ALIAS]
+        self.num_queries = 0
+
+    def __enter__(self):
+        self.old_debug_cursor = self.connection.use_debug_cursor
+        self.connection.use_debug_cursor = True
+        self.starting_count = len(self.connection.queries)
+        request_started.disconnect(reset_queries)
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.connection.use_debug_cursor = self.old_debug_cursor
+        request_started.connect(reset_queries)
+        if exc_type is not None:
+            return
+        final_count = len(self.connection.queries)
+        self.num_queries = final_count - self.starting_count
 
 
 class DjangoTestCase(TestCase, django.test.TestCase):
@@ -45,6 +68,16 @@ class DjangoTestCase(TestCase, django.test.TestCase):
         """
         matcher = testtools.matchers.MatchesStructure.byEquality(**attributes)
         self.assertThat(tested_object, matcher)
+
+    def getNumQueries(self, func, *args, **kwargs):
+        """Determine the number of db queries executed while running func.
+
+        :return: (num_queries, result_of_func)
+        """
+        counter = CountNumQueriesContext()
+        with counter:
+            res = func(*args, **kwargs)
+        return counter.num_queries, res
 
 
 class TransactionTestCase(TestCase, django.test.TransactionTestCase):

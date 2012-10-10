@@ -53,6 +53,31 @@ class TagViewsTest(LoggedInTestCase):
         self.assertNotIn(node.system_id, content_text)
         self.assertIn(node_link, get_content_links(response))
 
+    def test_view_tag_num_queries_is_independent_of_num_nodes(self):
+        tag = factory.make_tag()
+        tag_link = reverse('tag-view', args=[tag.name])
+        nodegroup = factory.make_node_group()
+        nodes = [factory.make_node(nodegroup=nodegroup, mac=True)
+                 for i in range(20)]
+        for node in nodes[:10]:
+            node.tags.add(tag)
+        num_queries, response = self.getNumQueries(self.client.get, tag_link)
+        self.assertEqual(
+            10,
+            len([link for link in get_content_links(response)
+                if link.startswith('/nodes/node')]))
+        # Need to get the tag, and the nodes, and the macs of the nodes
+        self.assertTrue(num_queries > 3)
+        for node in nodes[10:]:
+            node.tags.add(tag)
+        num_bonus_queries, response = self.getNumQueries(
+            self.client.get, tag_link)
+        self.assertEqual(num_queries, num_bonus_queries)
+        self.assertEqual(
+            20,
+            len([link for link in get_content_links(response)
+                if link.startswith('/nodes/node')]))
+
     def test_view_tag_hides_private_nodes(self):
         tag = factory.make_tag()
         node = factory.make_node(set_hostname=True)

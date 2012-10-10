@@ -602,6 +602,20 @@ class NodeManagerTest(TestCase):
             Node.objects.get_nodes(
                 user, NODE_PERMISSION.VIEW, ids=ids[wanted_slice]))
 
+    def test_get_nodes_with_mac_does_one_query(self):
+        user = factory.make_user()
+        nodes = [factory.make_node(mac=True) for counter in range(5)]
+        # 1 query to get the node list, 1 query to get the mac addresses for
+        # all of them
+        mac_count = 0
+        with self.assertNumQueries(2):
+            nodes = Node.objects.get_nodes(user, NODE_PERMISSION.VIEW,
+                                           prefetch_mac=True)
+            for node in nodes:
+                for mac in node.macaddress_set.all():
+                    mac_count += 1
+        self.assertEqual(5, mac_count)
+
     def test_get_nodes_with_edit_perm_for_user_lists_owned_nodes(self):
         user = factory.make_user()
         visible_node = self.make_node(user)

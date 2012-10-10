@@ -186,7 +186,7 @@ class NodeManager(Manager):
         else:
             return query.filter(system_id__in=ids)
 
-    def get_nodes(self, user, perm, ids=None):
+    def get_nodes(self, user, perm, ids=None, prefetch_mac=False):
         """Fetch Nodes on which the User_ has the given permission.
 
         :param user: The user that should be used in the permission check.
@@ -195,6 +195,9 @@ class NodeManager(Manager):
         :type perm: a permission string from NODE_PERMISSION
         :param ids: If given, limit result to nodes with these system_ids.
         :type ids: Sequence.
+        :param prefetch_mac: If set to True, prefetch the macaddress_set
+            values. This is useful for UI stuff that uses MAC addresses in the
+            http links.
 
         .. _User: https://
            docs.djangoproject.com/en/dev/topics/auth/
@@ -215,6 +218,8 @@ class NodeManager(Manager):
                     "Invalid permission check (invalid permission name: %s)." %
                     perm)
 
+        if prefetch_mac:
+            nodes = nodes.prefetch_related('macaddress_set')
         return self.filter_by_ids(nodes, ids)
 
     def get_allocated_visible_nodes(self, token, ids):

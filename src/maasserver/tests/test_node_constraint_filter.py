@@ -125,6 +125,7 @@ class TestConstrainNodes(TestCase):
         self.assertConstrainedNodes(
             [node_big], {'architecture': 'i386/generic', 'tags': 'big'})
 
+
 class TestConstrainNodesByArchitecture(TestCase):
 
     def setUp(self):
