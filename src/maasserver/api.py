@@ -1381,11 +1381,18 @@ class TagHandler(OperationsHandler):
         )
 
     def read(self, request, name):
-        """Read a specific Node."""
+        """Read a specific Tag"""
         return Tag.objects.get_tag_or_404(name=name, user=request.user)
 
     def update(self, request, name):
-        """Update a specific `Tag`.
+        """Update a specific Tag.
+
+        :param name: The name of the Tag to be created. This should be a short
+            name, and will be used in the URL of the tag.
+        :param comment: A long form description of what the tag is meant for.
+            It is meant as a human readable description of the tag.
+        :param definition: An XPATH query that will be evaluated against the
+            hardware_details stored for all nodes (output of `lshw -xml`).
         """
         tag = Tag.objects.get_tag_or_404(name=name, user=request.user,
             to_edit=True)
@@ -1404,7 +1411,7 @@ class TagHandler(OperationsHandler):
             raise ValidationError(form.errors)
 
     def delete(self, request, name):
-        """Delete a specific Node."""
+        """Delete a specific Tag."""
         tag = Tag.objects.get_tag_or_404(name=name,
             user=request.user, to_edit=True)
         tag.delete()
@@ -1427,7 +1434,12 @@ class TagHandler(OperationsHandler):
 
     @operation(idempotent=False)
     def rebuild(self, request, name):
-        """Trigger rebuilding the tag <=> node mapping."""
+        """Manually trigger a rebuild the tag <=> node mapping.
+
+        This is considered a maintenance operation, which should normally not
+        be necessary. Adding nodes or updating a tag's definition should
+        automatically trigger the appropriate changes.
+        """
         tag = Tag.objects.get_tag_or_404(name=name, user=request.user,
                                          to_edit=True)
         tag.populate_nodes()
@@ -1478,7 +1490,14 @@ class TagsHandler(OperationsHandler):
 
     @operation(idempotent=False)
     def new(self, request):
-        """Create a new `Tag`.
+        """Create a new Tag.
+
+        :param name: The name of the Tag to be created. This should be a short
+            name, and will be used in the URL of the tag.
+        :param comment: A long form description of what the tag is meant for.
+            It is meant as a human readable description of the tag.
+        :param definition: An XPATH query that will be evaluated against the
+            hardware_details stored for all nodes (output of `lshw -xml`).
         """
         if not request.user.is_superuser:
             raise PermissionDenied()
@@ -1491,6 +1510,8 @@ class TagsHandler(OperationsHandler):
     @operation(idempotent=True)
     def list(self, request):
         """List Tags.
+
+        Get a listing of all tags that are currently defined.
         """
         return Tag.objects.all()
 
