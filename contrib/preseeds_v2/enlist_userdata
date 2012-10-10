@@ -212,9 +212,23 @@ misc_bucket:
       sleep 60
       [ -e $bfile ] && exit 0
    fi
-   poweroff
+ - &write_poweroff_job |
+   cat >/etc/init/maas-poweroff.conf <<EOF
+   description "poweroff when maas task is done"
+   start on stopped cloud-final
+   console output
+   task
+   script
+     [ ! -e /tmp/block-poweroff ] || exit 0
+     poweroff
+   end script
+   EOF
+   # reload required due to lack of inotify in overlayfs (LP: #882147)
+   initctl reload-configuration
+
 
 packages: [ maas-enlist, freeipmi-tools ]
 output: {all: '| tee -a /var/log/cloud-init-output.log'}
 runcmd:
  - [ sh, -c, *maas_enlist ]
+ - [ sh, -c, *write_poweroff_job ]
