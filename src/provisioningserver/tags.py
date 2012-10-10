@@ -6,7 +6,7 @@
 """
 
 import httplib
-import json
+import simplejson as json
 from lxml import etree
 
 from apiclient.maas_client import (
