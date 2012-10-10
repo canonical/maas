@@ -197,7 +197,7 @@ misc_bucket:
       pass="ubuntu"
 
       echo "$user:$pass" | chpasswd
-      bfile="/tmp/block-reboot"
+      bfile="/tmp/block-poweroff"
       { echo "#!/bin/sh"; echo "touch $bfile"; } > /etc/profile.d/A01-block.sh
       chmod 755 /etc/profile.d/A01-block.sh
       echo
