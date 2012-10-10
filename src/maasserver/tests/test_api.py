@@ -3794,6 +3794,22 @@ class TestNodeGroupAPIAuth(APIv10TestMixin, TestCase):
         parsed_result = json.loads(response.content)
         self.assertItemsEqual([node.system_id], parsed_result)
 
+    def test_nodegroup_list_nodes_works_for_admin(self):
+        nodegroup = factory.make_node_group()
+        user = factory.make_user()
+        user.is_superuser = True
+        user.save()
+        client = OAuthAuthenticatedClient(user)
+        node = factory.make_node(nodegroup=nodegroup)
+        response = client.get(
+            reverse('nodegroup_handler', args=[nodegroup.uuid]),
+            {'op': 'list_nodes'})
+        self.assertEqual(
+            httplib.OK, response.status_code,
+            explain_unexpected_response(httplib.OK, response))
+        parsed_result = json.loads(response.content)
+        self.assertItemsEqual([node.system_id], parsed_result)
+
     def make_node_hardware_details_request(self, client, nodegroup=None):
         if nodegroup is None:
             nodegroup = factory.make_node_group()
@@ -3819,6 +3835,22 @@ class TestNodeGroupAPIAuth(APIv10TestMixin, TestCase):
         node = factory.make_node(nodegroup=nodegroup)
         node.set_hardware_details(hardware_details)
         client = make_worker_client(nodegroup)
+        response = client.post(
+            reverse('nodegroup_handler', args=[nodegroup.uuid]),
+            {'op': 'node_hardware_details', 'system_ids': [node.system_id]})
+        self.assertEqual(httplib.OK, response.status_code)
+        parsed_result = json.loads(response.content)
+        self.assertEqual([[node.system_id, hardware_details]], parsed_result)
+
+    def test_GET_node_hardware_details_allows_admin(self):
+        nodegroup = factory.make_node_group()
+        hardware_details = '<node/>'
+        node = factory.make_node(nodegroup=nodegroup)
+        node.set_hardware_details(hardware_details)
+        user = factory.make_user()
+        user.is_superuser = True
+        user.save()
+        client = OAuthAuthenticatedClient(user)
         response = client.post(
             reverse('nodegroup_handler', args=[nodegroup.uuid]),
             {'op': 'node_hardware_details', 'system_ids': [node.system_id]})

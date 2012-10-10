@@ -1178,9 +1178,10 @@ class NodeGroupHandler(OperationsHandler):
     def list_nodes(self, request, uuid):
         """Get the list of node ids that are part of this group."""
         nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
-        check_nodegroup_access(request, nodegroup)
-        return [node.system_id
-                for node in Node.objects.filter(nodegroup=nodegroup)]
+        if not request.user.is_superuser:
+            check_nodegroup_access(request, nodegroup)
+        nodes = Node.objects.filter(nodegroup=nodegroup).only('system_id')
+        return [node.system_id for node in nodes]
 
     # node_hardware_details is actually idempotent, however:
     # a) We expect to get a list of system_ids which is quite long (~100 ids,
@@ -1206,7 +1207,8 @@ class NodeGroupHandler(OperationsHandler):
         system_ids = get_list_from_dict_or_multidict(
             request.data, 'system_ids', [])
         nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
-        check_nodegroup_access(request, nodegroup)
+        if not request.user.is_superuser:
+            check_nodegroup_access(request, nodegroup)
         nodes = Node.objects.filter(
             system_id__in=system_ids, nodegroup=nodegroup)
         details = [(node.system_id, node.hardware_details) for node in nodes]
