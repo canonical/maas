@@ -440,7 +440,7 @@ class NodePreseedViewTest(LoggedInTestCase):
         response = self.client.get(node_preseed_link)
         self.assertThat(
             response.content,
-            ContainsAll([get_preseed(node), "This node is comissioning."]))
+            ContainsAll([get_preseed(node), "This node is commissioning."]))
 
     def test_preseedview_node_displays_link_to_view_node(self):
         node = factory.make_node(owner=self.logged_in_user)
