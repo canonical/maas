@@ -28,6 +28,7 @@ misc_bucket:
       modprobe ipmi_msghandler
       modprobe ipmi_devintf
       modprobe ipmi_si ${IPMI_SI_PARAMS}
+      udevadm settle
    }
 
    add_bin() {
@@ -62,6 +63,7 @@ misc_bucket:
    #!/usr/bin/python
    import os
    import commands
+   import glob
    import re
    import string
    import random
@@ -74,6 +76,9 @@ misc_bucket:
        show_re = re.compile('(IPMI\ Version:) (\d\.\d)')
        res = show_re.search(output)
        if res == None:
+           found = glob.glob("/dev/ipmi[0-9]")
+           if len(found):
+               return (True, "UNKNOWN: %s" % " ".join(found))
            return (False, "")
        return (True, res.group(2))
 

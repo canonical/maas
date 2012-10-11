@@ -189,6 +189,7 @@ load_modules() {
    modprobe ipmi_msghandler
    modprobe ipmi_devintf
    modprobe ipmi_si ${IPMI_SI_PARAMS}
+   udevadm settle
 }
 
 ### begin writing files ###
@@ -220,6 +221,7 @@ add_bin "maas-ipmi-autodetect" <<"END_MAAS_IPMI_AUTODETECT"
 #!/usr/bin/python
 import os
 import commands
+import glob
 import re
 import string
 import random
@@ -231,6 +233,9 @@ def detect_ipmi():
     show_re = re.compile('(IPMI\ Version:) (\d\.\d)')
     res = show_re.search(output)
     if res == None:
+        found = glob.glob("/dev/ipmi[0-9]")
+        if len(found):
+            return (True, "UNKNOWN: %s" % " ".join(found))
         return (False, "")
     return (True, res.group(2))
 
