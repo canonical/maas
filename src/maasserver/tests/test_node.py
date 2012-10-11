@@ -49,7 +49,11 @@ from metadataserver.models import (
     )
 from provisioningserver.enum import POWER_TYPE
 from provisioningserver.power.poweraction import PowerAction
-from testtools.matchers import FileContains
+from testtools.matchers import (
+    Equals,
+    FileContains,
+    MatchesListwise,
+    )
 
 
 class NodeTest(TestCase):
@@ -146,6 +150,35 @@ class NodeTest(TestCase):
     def test_cannot_delete_allocated_node(self):
         node = factory.make_node(status=NODE_STATUS.ALLOCATED)
         self.assertRaises(NodeStateViolation, node.delete)
+
+    def test_delete_node_also_deletes_dhcp_host_map(self):
+        lease = factory.make_dhcp_lease()
+        node = factory.make_node(nodegroup=lease.nodegroup)
+        node.add_mac_address(lease.mac)
+        mocked_task = self.patch(node_module, "remove_dhcp_host_map")
+        mocked_apply_async = self.patch(mocked_task, "apply_async")
+        node.delete()
+        args, kwargs = mocked_apply_async.call_args
+        expected = (
+            Equals(kwargs['queue']),
+            Equals({
+                'ip_address': lease.ip,
+                'server_address': "127.0.0.1",
+                'omapi_key': lease.nodegroup.dhcp_key,
+                }))
+        observed = node.work_queue, kwargs['kwargs']
+        self.assertThat(observed, MatchesListwise(expected))
+
+    def test_delete_node_removes_multiple_host_maps(self):
+        lease1 = factory.make_dhcp_lease()
+        lease2 = factory.make_dhcp_lease(nodegroup=lease1.nodegroup)
+        node = factory.make_node(nodegroup=lease1.nodegroup)
+        node.add_mac_address(lease1.mac)
+        node.add_mac_address(lease2.mac)
+        mocked_task = self.patch(node_module, "remove_dhcp_host_map")
+        mocked_apply_async = self.patch(mocked_task, "apply_async")
+        node.delete()
+        self.assertEqual(2, mocked_apply_async.call_count)
 
     def test_set_mac_based_hostname_default_enlistment_domain(self):
         # The enlistment domain defaults to `local`.

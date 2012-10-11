@@ -60,6 +60,7 @@ from maasserver.fields import (
     )
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.config import Config
+from maasserver.models.dhcplease import DHCPLease
 from maasserver.models.tag import Tag
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils import get_db_state
@@ -72,6 +73,7 @@ from provisioningserver.enum import (
 from provisioningserver.tasks import (
     power_off,
     power_on,
+    remove_dhcp_host_map,
     )
 
 
@@ -596,13 +598,27 @@ class Node(CleanSave, TimestampedModel):
             [self.system_id], user, user_data=commissioning_user_data)
 
     def delete(self):
-        # Delete the related mac addresses first.
-        self.macaddress_set.all().delete()
         # Allocated nodes can't be deleted.
         if self.status == NODE_STATUS.ALLOCATED:
             raise NodeStateViolation(
                 "Cannot delete node %s: node is in state %s."
                 % (self.system_id, NODE_STATUS_CHOICES_DICT[self.status]))
+        nodegroup = self.nodegroup
+        if nodegroup.get_managed_interface() is not None:
+            # Delete the host map(s) in the DHCP server.
+            macs = self.macaddress_set.values_list('mac_address', flat=True)
+            leases = DHCPLease.objects.filter(
+                mac__in=macs, nodegroup=nodegroup)
+            for lease in leases:
+                task_kwargs = dict(
+                    ip_address=lease.ip,
+                    server_address="127.0.0.1",
+                    omapi_key=nodegroup.dhcp_key)
+                remove_dhcp_host_map.apply_async(
+                    queue=nodegroup.uuid, kwargs=task_kwargs)
+        # Delete the related mac addresses.
+        self.macaddress_set.all().delete()
+
         super(Node, self).delete()
 
     def set_mac_based_hostname(self, mac_address):

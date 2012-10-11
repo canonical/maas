@@ -28,6 +28,7 @@ from maasserver.enum import (
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
     )
+from maasserver.models import node as node_module
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
 from maastesting.bindfixture import BINDServer
@@ -323,6 +324,8 @@ class TestDNSConfigModifications(TestCase):
     def test_delete_node_updates_zone(self):
         self.patch(settings, "DNS_CONNECT", True)
         nodegroup, node, lease = self.create_nodegroup_with_lease()
+        # Prevent omshell task dispatch.
+        self.patch(node_module, "remove_dhcp_host_map")
         node.delete()
         fqdn = "%s.%s" % (node.hostname, nodegroup.name)
         self.assertEqual([''], self.dig_resolve(fqdn))
