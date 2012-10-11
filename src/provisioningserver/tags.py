@@ -41,7 +41,7 @@ class MissingCredentials(Exception):
     """The MAAS URL or credentials are not yet set."""
 
 
-DEFAULT_BATCH_SIZE = 100
+DEFAULT_BATCH_SIZE = 1000
 
 
 def get_cached_knowledge():

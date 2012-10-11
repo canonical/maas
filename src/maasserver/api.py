@@ -87,7 +87,7 @@ from datetime import (
 from functools import partial
 import httplib
 from inspect import getdoc
-import json
+import simplejson as json
 import sys
 from textwrap import dedent
 
@@ -1209,10 +1209,11 @@ class NodeGroupHandler(OperationsHandler):
         nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
         if not request.user.is_superuser:
             check_nodegroup_access(request, nodegroup)
-        nodes = Node.objects.filter(
-            system_id__in=system_ids, nodegroup=nodegroup)
-        details = [(node.system_id, node.hardware_details) for node in nodes]
-        return details
+        value_list = Node.objects.filter(
+            system_id__in=system_ids, nodegroup=nodegroup
+            ).values_list('system_id', 'hardware_details')
+        return HttpResponse(
+            json.dumps(list(value_list)), content_type='application/json')
 
 
 DISPLAYED_NODEGROUP_FIELDS = (
