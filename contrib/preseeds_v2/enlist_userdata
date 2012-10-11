@@ -182,7 +182,10 @@ misc_bucket:
    fi
    power_params=$(maas-ipmi-autodetect --configdir "$IPMI_CONFIG_D" ${pargs} --commission-creds) &&
      [ -n "${power_params}" ] && power_params=${power_params%.} && power_type=ipmi
-   maas-enlist --serverurl "$url" ${host:+--hostname "${host}"} ${power_params:+--power-params "${power_params}" --power-type "${power_type}"}>/tmp/enlist.out
+   # Try maas-enlist without power parameters on failure for older versions of
+   # maas-enlist without power parameter support
+   maas-enlist --serverurl "$url" ${host:+--hostname "${host}"} ${power_params:+--power-params "${power_params}" --power-type "${power_type}"}>/tmp/enlist.out ||\
+      maas-enlist --serverurl "$url" ${host:+--hostname "${host}"} >/tmp/enlist.out
    if [ $? -eq 0 ]; then
       msg="successfully enlisted to '$url'"
       [ -n "$host" ] && msg="$msg with hostname '$host'" ||
