@@ -731,6 +731,22 @@ class NodesHandler(OperationsHandler):
             node.accept_enlistment(request.user)
         return node
 
+    def _check_system_ids_exist(self, system_ids):
+        """Check that the requested system_ids actually exist in the DB.
+
+        We don't check if the current user has rights to do anything with them
+        yet, just that the strings are valid. If not valid raise a BadRequest
+        error.
+        """
+        if not system_ids:
+            return
+        existing_nodes = Node.objects.filter(system_id__in=system_ids)
+        existing_ids = set(existing_nodes.values_list('system_id', flat=True))
+        unknown_ids = system_ids - existing_ids
+        if len(unknown_ids) > 0:
+            raise MAASAPIBadRequest(
+                "Unknown node(s): %s." % ', '.join(unknown_ids))
+
     @operation(idempotent=False)
     def accept(self, request):
         """Accept declared nodes into the MAAS.
@@ -752,20 +768,16 @@ class NodesHandler(OperationsHandler):
         """
         system_ids = set(request.POST.getlist('nodes'))
         # Check the existence of these nodes first.
-        existing_ids = set(Node.objects.filter().values_list(
-            'system_id', flat=True))
-        if len(existing_ids) < len(system_ids):
-            raise MAASAPIBadRequest(
-                "Unknown node(s): %s." % ', '.join(system_ids - existing_ids))
+        self._check_system_ids_exist(system_ids)
         # Make sure that the user has the required permission.
         nodes = Node.objects.get_nodes(
             request.user, perm=NODE_PERMISSION.ADMIN, ids=system_ids)
-        ids = set(node.system_id for node in nodes)
         if len(nodes) < len(system_ids):
+            permitted_ids = set(node.system_id for node in nodes)
             raise PermissionDenied(
                 "You don't have the required permission to accept the "
                 "following node(s): %s." % (
-                    ', '.join(system_ids - ids)))
+                    ', '.join(system_ids - permitted_ids)))
         return filter(
             None, [node.accept_enlistment(request.user) for node in nodes])
 

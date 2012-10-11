@@ -2079,6 +2079,8 @@ class TestNodesAPI(APITestCase):
 
     def test_POST_accept_fails_if_node_does_not_exist(self):
         self.become_admin()
+        # Make sure there is a node, it just isn't the one being accepted
+        factory.make_node()
         node_id = factory.getRandomString()
         response = self.client.post(
             self.get_uri('nodes/'), {'op': 'accept', 'nodes': [node_id]})
