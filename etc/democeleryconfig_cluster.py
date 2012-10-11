@@ -16,7 +16,7 @@ import os
 
 import celeryconfig_cluster
 import democeleryconfig_common
-from maas import import_settings
+from provisioningserver.utils import import_settings
 
 # Silence lint, this will be defined by democeleryconfig_common.
 DEV_ROOT_DIRECTORY = None

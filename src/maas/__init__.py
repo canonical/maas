@@ -20,6 +20,10 @@ import sys
 
 def find_settings(whence):
     """Return settings from `whence`, which is assumed to be a module."""
+    # XXX 2012-10-11 JeroenVermeulen, bug=1065456: We thought this would be
+    # a good shared location for this helper, but we can't get at it during
+    # cluster installation.  So it's currently duplicated.  Put it in a
+    # properly shared location.
     return {
         name: value
         for name, value in vars(whence).items()
@@ -29,6 +33,10 @@ def find_settings(whence):
 
 def import_settings(whence):
     """Import settings from `whence` into the caller's global scope."""
+    # XXX 2012-10-11 JeroenVermeulen, bug=1065456: We thought this would be
+    # a good shared location for this helper, but we can't get at it during
+    # cluster installation.  So it's currently duplicated.  Put it in a
+    # properly shared location.
     source = find_settings(whence)
     target = sys._getframe(1).f_globals
     target.update(source)

@@ -14,6 +14,7 @@ __all__ = [
     "ActionScript",
     "atomic_write",
     "deferred",
+    "import_settings",
     "incremental_write",
     "MainScript",
     "parse_key_value_file",
@@ -42,6 +43,26 @@ from lockfile import FileLock
 from provisioningserver.config import Config
 import tempita
 from twisted.internet.defer import maybeDeferred
+
+
+def find_settings(whence):
+    """Return settings from `whence`, which is assumed to be a module."""
+    # XXX 2012-10-11 JeroenVermeulen, bug=1065456: Put this in a shared
+    # location.  It's currently duplicated from elsewhere.
+    return {
+        name: value
+        for name, value in vars(whence).items()
+        if not name.startswith("_")
+        }
+
+
+def import_settings(whence):
+    """Import settings from `whence` into the caller's global scope."""
+    # XXX 2012-10-11 JeroenVermeulen, bug=1065456: Put this in a shared
+    # location.  It's currently duplicated from elsewhere.
+    source = find_settings(whence)
+    target = sys._getframe(1).f_globals
+    target.update(source)
 
 
 def deferred(func):

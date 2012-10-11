@@ -18,7 +18,7 @@ __metaclass__ = type
 from datetime import timedelta
 
 import celeryconfig_common
-from maas import import_settings
+from provisioningserver.utils import import_settings
 
 # Cluster UUID.  Will be overridden by the customized setting in the
 # local MAAS Celery config.
