@@ -29,6 +29,7 @@ from maastesting.celery import CeleryFixture
 from netaddr import IPNetwork
 from provisioningserver import tasks
 from testresources import FixtureResource
+from testtools.matchers import EndsWith
 
 
 class TestDHCP(TestCase):
@@ -106,6 +107,15 @@ class TestDHCP(TestCase):
         self.assertEqual(
             mocked_check_call.call_args[0][0],
             ['sudo', '-n', 'service', 'maas-dhcp-server', 'restart'])
+
+    def test_configure_dhcp_is_called_with_valid_dhcp_key(self):
+        self.patch(dhcp, 'write_dhcp_config')
+        self.patch(settings, "DHCP_CONNECT", True)
+        nodegroup = factory.make_node_group(
+            status=NODEGROUP_STATUS.ACCEPTED, dhcp_key='')
+        configure_dhcp(nodegroup)
+        args, kwargs = dhcp.write_dhcp_config.apply_async.call_args
+        self.assertThat(kwargs['kwargs']['omapi_key'], EndsWith('=='))
 
     def test_dhcp_config_gets_written_when_nodegroup_becomes_active(self):
         nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.PENDING)

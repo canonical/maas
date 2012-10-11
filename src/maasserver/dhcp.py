@@ -48,6 +48,10 @@ def configure_dhcp(nodegroup):
     if not is_dhcp_managed(nodegroup):
         return
 
+    # Make sure this nodegroup has a key to communicate with the dhcp
+    # server.
+    nodegroup.ensure_dhcp_key()
+
     # Use the server's address (which is where the central TFTP
     # server is) for the next_server setting.  We'll want to proxy
     # it on the local worker later, and then we can use

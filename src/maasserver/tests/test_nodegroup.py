@@ -38,6 +38,7 @@ from provisioningserver.omshell import (
     )
 from testresources import FixtureResource
 from testtools.matchers import (
+    EndsWith,
     GreaterThan,
     MatchesStructure,
     )
@@ -324,3 +325,26 @@ class TestNodeGroup(TestCase):
             status=factory.getRandomEnum(NODEGROUP_STATUS))
         nodegroup.reject()
         self.assertEqual(nodegroup.status, NODEGROUP_STATUS.REJECTED)
+
+    def test_ensure_dhcp_key_creates_key(self):
+        nodegroup = factory.make_node_group(dhcp_key='')
+        nodegroup.ensure_dhcp_key()
+        # Check that the dhcp_key is not empty and looks
+        # valid.
+        self.assertThat(nodegroup.dhcp_key, EndsWith("=="))
+        # The key is persisted.
+        self.assertThat(
+            reload_object(nodegroup).dhcp_key, EndsWith("=="))
+
+    def test_ensure_dhcp_key_preserves_existing_key(self):
+        key = factory.make_name('dhcp-key')
+        nodegroup = factory.make_node_group(dhcp_key=key)
+        nodegroup.ensure_dhcp_key()
+        self.assertEqual(key, nodegroup.dhcp_key)
+
+    def test_ensure_dhcp_key_creates_different_keys(self):
+        nodegroup1 = factory.make_node_group(dhcp_key='')
+        nodegroup2 = factory.make_node_group(dhcp_key='')
+        nodegroup1.ensure_dhcp_key()
+        nodegroup2.ensure_dhcp_key()
+        self.assertNotEqual(nodegroup1.dhcp_key, nodegroup2.dhcp_key)
