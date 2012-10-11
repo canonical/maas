@@ -18,7 +18,7 @@ from maasserver.models import Node
 from maasserver.models.node_constraint_filter import (
     constrain_nodes,
     generate_architecture_wildcards,
-)
+    )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
 from maasserver.utils import ignore_unused
