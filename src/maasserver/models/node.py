@@ -352,7 +352,15 @@ class NodeManager(Manager):
 
 
 _xpath_processor_count = "count(//node[@id='core']/node[@class='processor'])"
-_xpath_memory_bytes = "//node[@id='memory']/size[@units='bytes'] div 1048576"
+
+# Some machines have a <size> element in their memory <node> with the total
+# amount of memory, and other machines declare the size of the memory in
+# individual memory banks. This expression is mean to cope with both.
+
+_xpath_memory_bytes = (
+    "sum(//node[@id='memory']/size[@units='bytes']"
+       "|//node[starts-with(@id, 'memory:')]/node[starts-with(@id, 'bank:')]/size[@units='bytes'])"
+       "div 1024 div 1024")
 
 
 def update_hardware_details(node, xmlbytes, tag_manager):
