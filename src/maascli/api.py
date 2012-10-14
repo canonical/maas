@@ -21,6 +21,10 @@ from itertools import chain
 import json
 from operator import itemgetter
 import sys
+from textwrap import (
+    dedent,
+    fill,
+    )
 from urlparse import (
     urljoin,
     urlparse,
@@ -310,6 +314,23 @@ def register_resources(profile, parser):
             register_handler(profile, represent_as, parser)
 
 
+profile_help = '\n\n'.join(
+    map(fill, map(dedent, [
+    """\
+        This is a profile.  Any commands you issue on this
+        profile will operate on the MAAS region server.
+        """,
+    """\
+        The command information you see here comes from the
+        region server's API; it may differ for different
+        profiles.  If you believe the API may have changed,
+        use the command's 'refresh' sub-command to fetch the
+        latest version of this help information from the
+        server.
+        """,
+    ])))
+
+
 def register_api_commands(parser):
     """Register all profiles as subcommands on `parser`."""
     with ProfileConfig.open() as config:
@@ -320,13 +341,5 @@ def register_api_commands(parser):
                 description=(
                     "Issue commands to the MAAS region controller at %(url)s."
                     % profile),
-                epilog=(
-                    "This is a profile.  Any commands you issue on this "
-                    "profile will operate on the MAAS region server.\n"
-                    "The command information you see here comes from the "
-                    "region server's API; it may differ for different "
-                    "profiles.  If you believe the API may have changed, "
-                    "use the command's 'refresh' sub-command to fetch the "
-                    "latest version of this help information from the "
-                    "server."))
+                epilog=profile_help)
             register_resources(profile, profile_parser)
