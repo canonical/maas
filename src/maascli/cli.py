@@ -29,7 +29,7 @@ from maascli.utils import (
 
 
 class cmd_login(Command):
-    """Log-in to a remote API, storing its description and credentials.
+    """Log in to a remote API, and remember its description and credentials.
 
     If credentials are not provided on the command-line, they will be prompted
     for interactively.
@@ -95,7 +95,12 @@ class cmd_login(Command):
 
 
 class cmd_refresh(Command):
-    """Refresh the API descriptions of all profiles."""
+    """Refresh the API descriptions of all profiles.
+
+    This retrieves the latest version of the help information for each
+    profile.  Use it to update your maas-cli client's information after an
+    upgrade to the MAAS server.
+    """
 
     def __call__(self, options):
         with ProfileConfig.open() as config:
@@ -107,7 +112,11 @@ class cmd_refresh(Command):
 
 
 class cmd_logout(Command):
-    """Log-out of a remote API, purging any stored credentials."""
+    """Log out of a remote API, purging any stored credentials.
+
+    This will remove the given profile from your maas-cli client.  You can
+    re-create it by logging in again later.
+    """
 
     def __init__(self, parser):
         super(cmd_logout, self).__init__(parser)
@@ -151,5 +160,6 @@ def register_cli_commands(parser):
     for name, command in commands.items():
         help_title, help_body = parse_docstring(command)
         command_parser = parser.subparsers.add_parser(
-            safe_name(name), help=help_title, description=help_body)
+            safe_name(name), help=help_title, description=help_title,
+            epilog=help_body)
         command_parser.set_defaults(execute=command(command_parser))
