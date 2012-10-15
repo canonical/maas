@@ -12,6 +12,7 @@ from __future__ import (
 __metaclass__ = type
 __all__ = [
     "HelpfulDeleteView",
+    "PaginatedListView",
     "process_form",
     "AccountsEdit",
     "AccountsView",
@@ -29,7 +30,10 @@ from django.http import (
     Http404,
     HttpResponseRedirect,
     )
-from django.views.generic import DeleteView
+from django.views.generic import (
+    DeleteView,
+    ListView,
+    )
 
 
 class HelpfulDeleteView(DeleteView):
@@ -108,6 +112,63 @@ class HelpfulDeleteView(DeleteView):
         """Redirect to the post-deletion page, showing the given message."""
         self.show_notice(feedback_message)
         return HttpResponseRedirect(self.get_next_url())
+
+
+class PaginatedListView(ListView):
+    """Paginating extension to :class:`django.views.generic.ListView`
+
+    Adds to the normal list view pagination support by including context
+    variables for relative links to other pages, correctly preserving the
+    existing query string and path.
+    """
+
+    paginate_by = 50
+
+    def _make_page_link(self, page_number):
+        """Gives relative url reference to `page_number` from current page
+
+        The return will be one of:
+        - A query string including the page number and other params
+        - The final path segment if there are no params
+        - '.' if there are no params and there is no final path segment
+
+        See RFCs 1808 and 3986 for relative url resolution rules.
+
+        The page number is not checked for sanity, pass only valid pages.
+        """
+        new_query = self.request.GET.copy()
+        if page_number == 1:
+            if "page" in new_query:
+                del new_query["page"]
+        else:
+            new_query["page"] = str(page_number)
+        if not new_query:
+            return self.request.path.rsplit("/", 1)[-1] or "."
+        return "?" + new_query.urlencode()
+
+    def get_context_data(self, **kwargs):
+        """Gives context data also populated with page links
+
+        If already on the first or last page, the same-document reference will
+        be given for relative links in that direction, which may be safely
+        replaced in the template with a non-anchor element.
+        """
+        context = super(PaginatedListView, self).get_context_data(**kwargs)
+        page_obj = context["page_obj"]
+        if page_obj.has_previous():
+            context["first_page_link"] = self._make_page_link(1)
+            context["previous_page_link"] = self._make_page_link(
+                page_obj.previous_page_number())
+        else:
+            context["first_page_link"] = context["previous_page_link"] = ""
+        if page_obj.has_next():
+            context["next_page_link"] = self._make_page_link(
+                page_obj.next_page_number())
+            context["last_page_link"] = self._make_page_link(
+                page_obj.paginator.num_pages)
+        else:
+            context["next_page_link"] = context["last_page_link"] = ""
+        return context
 
 
 def process_form(request, form_class, redirect_url, prefix,

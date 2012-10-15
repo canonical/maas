@@ -35,7 +35,6 @@ from django.utils.safestring import mark_safe
 from django.views.generic import (
     CreateView,
     DetailView,
-    ListView,
     UpdateView,
     )
 from maasserver.enum import (
@@ -64,7 +63,10 @@ from maasserver.preseed import (
     get_enlist_preseed,
     get_preseed,
     )
-from maasserver.views import HelpfulDeleteView
+from maasserver.views import (
+    HelpfulDeleteView,
+    PaginatedListView,
+    )
 
 
 def get_longpoll_context():
@@ -101,7 +103,7 @@ def _parse_constraints(query_string):
     return constraints
 
 
-class NodeListView(ListView):
+class NodeListView(PaginatedListView):
 
     context_object_name = "node_list"
 
