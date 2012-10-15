@@ -110,6 +110,13 @@ class ClusterEditTest(AdminLoggedInTestCase):
             reload_object(nodegroup),
             MatchesStructure.byEquality(**data))
 
+    def test_contains_link_to_add_interface(self):
+        nodegroup = factory.make_node_group()
+        links = get_content_links(
+            self.client.get(reverse('cluster-edit', args=[nodegroup.uuid])))
+        self.assertIn(
+            reverse('cluster-interface-create', args=[nodegroup.uuid]), links)
+
 
 class ClusterInterfaceDeleteTest(AdminLoggedInTestCase):
 
@@ -141,7 +148,28 @@ class ClusterInterfaceEditTest(AdminLoggedInTestCase):
             args=[nodegroup.uuid, interface.interface])
         data = factory.get_interface_fields()
         response = self.client.post(edit_link, data)
-        self.assertEqual(httplib.FOUND, response.status_code, response.content)
+        self.assertEqual(
+            (httplib.FOUND, reverse('cluster-edit', args=[nodegroup.uuid])),
+            (response.status_code, extract_redirect(response)))
+        self.assertThat(
+            reload_object(interface),
+            MatchesStructure.byEquality(**data))
+
+
+class ClusterInterfaceCreateTest(AdminLoggedInTestCase):
+
+    def test_can_create_cluster_interface(self):
+        nodegroup = factory.make_node_group(
+            management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
+        create_link = reverse(
+            'cluster-interface-create', args=[nodegroup.uuid])
+        data = factory.get_interface_fields()
+        response = self.client.post(create_link, data)
+        self.assertEqual(
+            (httplib.FOUND, reverse('cluster-edit', args=[nodegroup.uuid])),
+            (response.status_code, extract_redirect(response)))
+        interface = NodeGroupInterface.objects.get(
+            nodegroup__uuid=nodegroup.uuid, interface=data['interface'])
         self.assertThat(
             reload_object(interface),
             MatchesStructure.byEquality(**data))

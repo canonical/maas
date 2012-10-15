@@ -51,6 +51,7 @@ from maasserver.views.settings import (
 from maasserver.views.settings_clusters import (
     ClusterDelete,
     ClusterEdit,
+    ClusterInterfaceCreate,
     ClusterInterfaceDelete,
     ClusterInterfaceEdit,
     )
@@ -133,6 +134,9 @@ urlpatterns += patterns('maasserver.views',
     adminurl(
         r'^clusters/(?P<uuid>[\w\-]+)/delete/$', ClusterDelete.as_view(),
         name='cluster-delete'),
+    adminurl(
+        r'^clusters/(?P<uuid>[\w\-]+)/interfaces/add/$',
+        ClusterInterfaceCreate.as_view(), name='cluster-interface-create'),
     adminurl(
         r'^clusters/(?P<uuid>[\w\-]+)/interfaces/(?P<interface>[\w\-]*)/'
         'edit/$',
