@@ -3276,7 +3276,7 @@ class TestAnonNodeGroupsAPI(AnonAPITestCase):
             (parsed_result, NodeGroup.objects.ensure_master().uuid))
 
     def test_register_nodegroup_configures_master_if_unconfigured(self):
-        name = factory.make_name('name')
+        name = factory.make_name('nodegroup')
         uuid = factory.getRandomUUID()
         interface = make_interface_settings()
         self.client.post(
@@ -3289,7 +3289,8 @@ class TestAnonNodeGroupsAPI(AnonAPITestCase):
             })
         master = NodeGroup.objects.ensure_master()
         self.assertThat(
-            master.nodegroupinterface_set.all()[0],
+            master.nodegroupinterface_set.get(
+                interface=interface['interface']),
             MatchesStructure.byEquality(**interface))
         self.assertEqual(NODEGROUP_STATUS.ACCEPTED, master.status)
 
