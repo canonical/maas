@@ -359,7 +359,8 @@ _xpath_processor_count = "count(//node[@id='core']/node[@class='processor'])"
 
 _xpath_memory_bytes = (
     "sum(//node[@id='memory']/size[@units='bytes']"
-       "|//node[starts-with(@id, 'memory:')]/node[starts-with(@id, 'bank:')]/size[@units='bytes'])"
+        "|//node[starts-with(@id, 'memory:')]"
+            "/node[starts-with(@id, 'bank:')]/size[@units='bytes'])"
        "div 1024 div 1024")
 
 

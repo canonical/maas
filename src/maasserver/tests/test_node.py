@@ -545,7 +545,8 @@ class NodeTest(TestCase):
           )
         node.set_hardware_details(xmlbytes)
         node = reload_object(node)
-        expected = (4294967296 + 3221225472 + 536879812) / 2**20
+        mega = 2 ** 20
+        expected = (4294967296 + 3221225472 + 536879812) / mega
         self.assertEqual(expected, node.memory)
 
     def test_hardware_updates_tags_match(self):
