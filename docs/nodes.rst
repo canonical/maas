@@ -19,7 +19,7 @@ When the nodes have been accepted the selected series of Ubuntu will be installe
 
 To save time, you can also accept and commission all nodes from the commandline. This requires that you first login with the API key, which :ref:`you can retrieve from the web interface <api-key>`::
 
-   $ maas-cli api maas nodes accept-all
+   $ maas-cli maas nodes accept-all
 
 
 
