@@ -25,6 +25,7 @@ from maasserver.models import (
 from maasserver.testing import reload_object
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
+from maasserver.utils.orm import get_one
 from maasserver.worker_user import get_worker_user
 from maastesting.celery import CeleryFixture
 from maastesting.fakemethod import FakeMethod
@@ -59,24 +60,15 @@ def make_dhcp_settings():
 
 class TestNodeGroupManager(TestCase):
 
-    def test_new_creates_nodegroup(self):
-        name = factory.make_name('nodegroup')
-        uuid = factory.getRandomUUID()
-        ip = factory.getRandomIPAddress()
-        self.assertThat(
-            NodeGroup.objects.new(name, uuid, ip),
-            MatchesStructure.fromExample(
-                {'name': name, 'uuid': uuid, 'worker_ip': ip}))
-
-    def test_new_does_not_require_dhcp_settings(self):
+    def test_new_creates_nodegroup_with_interface(self):
         name = factory.make_name('nodegroup')
         uuid = factory.getRandomUUID()
         ip = factory.getRandomIPAddress()
         nodegroup = NodeGroup.objects.new(name, uuid, ip)
-        dhcp_network, dhcp_settings = make_dhcp_settings()
-        self.assertThat(
-            nodegroup, MatchesStructure.fromExample(
-                dict.fromkeys(dhcp_settings)))
+        interface = get_one(nodegroup.nodegroupinterface_set.all())
+        self.assertEqual(
+            (name, uuid, ip),
+            (nodegroup.name, nodegroup.uuid, interface.ip))
 
     def test_new_requires_all_dhcp_settings_or_none(self):
         name = factory.make_name('nodegroup')
@@ -93,9 +85,10 @@ class TestNodeGroupManager(TestCase):
         ip = factory.getRandomIPInNetwork(dhcp_network)
         nodegroup = NodeGroup.objects.new(name, uuid, ip, **dhcp_settings)
         nodegroup = reload_object(nodegroup)
+        interface = get_one(nodegroup.nodegroupinterface_set.all())
         self.assertEqual(name, nodegroup.name)
         self.assertThat(
-            nodegroup, MatchesStructure.fromExample(dhcp_settings))
+            interface, MatchesStructure.byEquality(**dhcp_settings))
 
     def test_new_assigns_token_and_key_for_worker_user(self):
         nodegroup = NodeGroup.objects.new(
@@ -120,19 +113,19 @@ class TestNodeGroupManager(TestCase):
             dhcp_key=key)
         self.assertEqual(key, nodegroup.dhcp_key)
 
-    def test_ensure_master_creates_minimal_master_nodegroup(self):
+    def test_ensure_master_creates_minimal_interface(self):
+        master = NodeGroup.objects.ensure_master()
+        interface = get_one(master.nodegroupinterface_set.all())
         self.assertThat(
-            NodeGroup.objects.ensure_master(),
-            MatchesStructure.fromExample({
-                'name': 'master',
-                'worker_id': 'master',
-                'worker_ip': '127.0.0.1',
-                'subnet_mask': None,
-                'broadcast_ip': None,
-                'router_ip': None,
-                'ip_range_low': None,
-                'ip_range_high': None,
-            }))
+            interface,
+            MatchesStructure.byEquality(
+                ip='127.0.0.1',
+                subnet_mask=None,
+                broadcast_ip=None,
+                router_ip=None,
+                ip_range_low=None,
+                ip_range_high=None,
+            ))
 
     def test_ensure_master_writes_master_nodegroup_to_database(self):
         master = NodeGroup.objects.ensure_master()
