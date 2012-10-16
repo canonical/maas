@@ -282,6 +282,22 @@ class TestDNSForwardZoneConfig(TestCase):
             MatchesAll(
                 IsInstance(Iterable), Not(IsInstance(Sequence))))
 
+    def test_forward_zone_get_cname_mapping_skips_identity(self):
+        # We don't write cname records to map host names to themselves.
+        # Without this, a node would get an invalid cname record upon
+        # enlistment.
+        zone = factory.make_name('zone')
+        network = IPNetwork('10.250.99.0/24')
+        ip = factory.getRandomIPInNetwork(network)
+        generated_name = generated_hostname(ip)
+        dns_zone_config = DNSForwardZoneConfig(
+            zone, networks=[network],
+            dns_ip=factory.getRandomIPInNetwork(network),
+            mapping={generated_name: ip})
+        self.assertNotIn(
+            generated_name,
+            dict(dns_zone_config.get_cname_mapping()))
+
     def test_get_static_mapping(self):
         name = factory.getRandomString()
         network = IPNetwork('192.12.0.1/30')
