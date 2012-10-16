@@ -23,8 +23,8 @@ from django.core.management.base import BaseCommand
 from provisioningserver.dns.config import DNSConfig
 
 
-INCLUDE_SNIPPET_COMMENT = """
-# Append the following content to your  local BIND configuration
+INCLUDE_SNIPPET_COMMENT = """\
+# Append the following content to your local BIND configuration
 # file (usually /etc/bind/named.conf.local) in order to allow
 # MAAS to manage its DNS zones.
 """
