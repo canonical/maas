@@ -174,7 +174,8 @@ STATIC_ROOT = ''
 
 # URL prefix for static files.
 # Example: "http://media.lawrence.com/static/"
-STATIC_URL = '/static/'
+STATIC_URL_PATTERN = '/static/'
+STATIC_URL = STATIC_URL_PATTERN
 if FORCE_SCRIPT_NAME is not None:
     STATIC_URL = FORCE_SCRIPT_NAME + STATIC_URL
 
