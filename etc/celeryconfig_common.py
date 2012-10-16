@@ -27,6 +27,9 @@ DNS_CONFIG_DIR = '/etc/bind/maas'
 # server.
 DNS_RNDC_PORT = 954
 
+# Include the default RNDC controls (default RNDC key on port 953).
+DNS_DEFAULT_CONTROLS = True
+
 # DHCP leases file, as maintained by ISC dhcpd.
 DHCP_LEASES_FILE = '/var/lib/maas/dhcp/dhcpd.leases'
 

@@ -57,7 +57,17 @@ class DNSConfigFail(Exception):
     """Raised if there's a problem with a DNS config."""
 
 
-def generate_rndc(port=953, key_name='rndc-maas-key'):
+# Default 'controls' statement included in the configuration so that the
+# default RNDC can be used (by init scripts).
+DEFAULT_CONTROLS = """
+controls {
+    inet 127.0.0.1 port 953 allow { localhost; };
+};
+"""
+
+
+def generate_rndc(port=953, key_name='rndc-maas-key',
+                  include_default_controls=True):
     """Use `rndc-confgen` (from bind9utils) to generate a rndc+named
     configuration.
 
@@ -79,6 +89,8 @@ def generate_rndc(port=953, key_name='rndc-maas-key'):
     named_start = rndc_content.index(start_marker) + len(start_marker)
     named_end = rndc_content.index(end_marker)
     named_conf = rndc_content[named_start:named_end].replace('\n# ', '\n')
+    if include_default_controls:
+        named_conf += DEFAULT_CONTROLS
     # Return a tuple of the two configurations.
     return rndc_content, named_conf
 
@@ -98,7 +110,8 @@ def setup_rndc():
     conf.DNS_CONFIG_DIR.
     """
     rndc_content, named_content = generate_rndc(
-        conf.DNS_RNDC_PORT)
+        port=conf.DNS_RNDC_PORT,
+        include_default_controls=conf.DNS_DEFAULT_CONTROLS)
 
     target_file = get_rndc_conf_path()
     with open(target_file, "wb") as f:
