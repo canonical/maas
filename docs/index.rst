@@ -37,7 +37,8 @@ Deploying services
    :maxdepth: 2
 
    juju-quick-start
-
+   tags
+   
 ******************************
 Using the maas-cli commandline
 ******************************
