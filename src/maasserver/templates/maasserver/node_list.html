@@ -2,7 +2,7 @@
 
 {% block nav-active-node-list %}active{% endblock %}
 {% block title %}Nodes{% endblock %}
-{% block page-title %}{{ node_list|length }} node{{ node_list|length|pluralize }} in {% include "maasserver/site_title.html" %}{% endblock %}
+{% block page-title %}{{ paginator.count }}{% if input_query %} matching{% endif %} node{{ paginator.count|pluralize }} in {% include "maasserver/site_title.html" %}{% endblock %}
 {% block site-switcher %}{% endblock %}
 {% block header-search %}{% endblock %}
 
@@ -39,6 +39,7 @@
     <p class="form-errors">{{input_query_error}}</p>
     {% endif %}
     {% include "maasserver/nodes_listing.html" %}
+    {% include "maasserver/pagination.html" %}
     <a id="addnode" href="#" class="button right space-top">+ Add node</a>
     <div class="clear"></div>
     <a class="right space-top" href="{% url "enlist-preseed-view" %}">View enlistment preseed</a>
