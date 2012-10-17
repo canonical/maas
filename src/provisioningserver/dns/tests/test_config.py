@@ -35,6 +35,7 @@ from netaddr import (
     )
 from provisioningserver.dns import config
 from provisioningserver.dns.config import (
+    DEFAULT_CONTROLS,
     DNSConfig,
     DNSConfigDirectoryMissing,
     DNSConfigFail,
@@ -85,6 +86,16 @@ class TestRNDCUtilities(TestCase):
             with open(os.path.join(dns_conf_dir, filename), "rb") as stream:
                 conf_content = stream.read()
                 self.assertIn(content, conf_content)
+
+    def test_rndc_config_includes_default_controls(self):
+        dns_conf_dir = self.make_dir()
+        self.patch(conf, 'DNS_CONFIG_DIR', dns_conf_dir)
+        self.patch(conf, 'DNS_DEFAULT_CONTROLS', True)
+        setup_rndc()
+        rndc_file = os.path.join(dns_conf_dir, MAAS_NAMED_RNDC_CONF_NAME)
+        with open(rndc_file, "rb") as stream:
+            conf_content = stream.read()
+            self.assertIn(DEFAULT_CONTROLS, conf_content)
 
     def test_execute_rndc_command_executes_command(self):
         recorder = FakeMethod()

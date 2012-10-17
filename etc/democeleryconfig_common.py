@@ -25,6 +25,11 @@ DNS_CONFIG_DIR = os.path.join(
 DNS_RNDC_PORT = 9154
 
 
+# Do not include the default RNDC controls statement to avoid
+# a conflict while trying to listen on port 943.
+DNS_DEFAULT_CONTROLS = False
+
+
 DHCP_CONFIG_FILE = os.path.join(
     DEV_ROOT_DIRECTORY, 'run/dhcpd.conf')
 
