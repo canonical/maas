@@ -523,6 +523,31 @@ class NodeTest(TestCase):
         node = reload_object(node)
         self.assertEqual(4096, node.memory)
 
+    def test_hardware_updates_memory_lenovo(self):
+        node = factory.make_node()
+        xmlbytes = (
+          '<node>'
+            '<node id="memory:0" class="memory">'
+              '<node id="bank:0" class="memory" handle="DMI:002D">'
+                '<size units="bytes">4294967296</size>'
+              '</node>'
+              '<node id="bank:1" class="memory" handle="DMI:002E">'
+                '<size units="bytes">3221225472</size>'
+              '</node>'
+            '</node>'
+            '<node id="memory:1" class="memory">'
+              '<node id="bank:0" class="memory" handle="DMI:002F">'
+                '<size units="bytes">536870912</size>'
+              '</node>'
+            '</node>'
+            '<node id="memory:2" class="memory"></node>'
+          '</node>'
+          )
+        node.set_hardware_details(xmlbytes)
+        node = reload_object(node)
+        expected = (4294967296 + 3221225472 + 536879812) / 2**20
+        self.assertEqual(expected, node.memory)
+
     def test_hardware_updates_tags_match(self):
         tag1 = factory.make_tag(factory.getRandomString(10), "/node")
         tag2 = factory.make_tag(factory.getRandomString(10), "//node")
