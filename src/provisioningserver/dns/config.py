@@ -304,13 +304,16 @@ class DNSForwardZoneConfig(DNSZoneConfigBase):
     def get_cname_mapping(self):
         """Return a generator with the mapping: hostname->generated hostname.
 
-        Note that we return a list of tuples instead of a dictionary in order
-        to be able to return a generator.
+        The mapping only contains hosts for which the two host names differ.
+
+        :return: A generator of tuples: (host name, generated host name).
         """
-        return (
-            (hostname, generated_hostname(ip))
-            for hostname, ip in self.mapping.items()
-        )
+        # We filter out cases where the two host names are identical: it
+        # would be wrong to define a CNAME that maps to itself.
+        for hostname, ip in self.mapping.items():
+            generated_name = generated_hostname(ip)
+            if generated_name != hostname:
+                yield (hostname, generated_name)
 
     def get_static_mapping(self):
         """Return a generator with the mapping fqdn->ip for the generated ips.
