@@ -16,6 +16,8 @@ __all__ = [
     'MAASOAuth',
     ]
 
+import gzip
+from io import BytesIO
 import urllib2
 
 from apiclient.encode_json import encode_json_data
@@ -82,8 +84,28 @@ class MAASDispatcher:
 
         :return: A open file-like object that contains the response.
         """
+        headers = dict(headers)
+        # header keys are case insensitive, so we have to pass over them
+        set_accept_encoding = False
+        for key in headers:
+            if key.lower() == 'accept-encoding':
+                # The user already supplied a requested encoding, so just pass
+                # it along.
+                break
+        else:
+            set_accept_encoding = True
+            headers['Accept-encoding'] = 'gzip'
         req = urllib2.Request(request_url, data, headers)
-        return urllib2.urlopen(req)
+        res = urllib2.urlopen(req)
+        # If we set the Accept-encoding header, then we decode the header for
+        # the caller
+        if set_accept_encoding and res.info().get('Content-Encoding') == 'gzip':
+            # Workaround python's gzip failure, gzip.GzipFile wants to be able
+            # to seek the file object.
+            res_content_io = BytesIO(res.read())
+            ungz = gzip.GzipFile(mode='rb', fileobj=res_content_io)
+            res = urllib2.addinfourl(ungz, res.headers, res.url, res.code)
+        return res
 
 
 class MAASClient:

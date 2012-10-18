@@ -12,8 +12,11 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
+import gzip
+from io import BytesIO
 import json
 from random import randint
+import urllib2
 from urlparse import (
     parse_qs,
     urljoin,
@@ -29,7 +32,9 @@ from apiclient.testing.django import (
     parse_headers_and_body_with_django,
     parse_headers_and_body_with_mimer,
     )
+from maastesting.fixtures import TempWDFixture
 from maastesting.factory import factory
+from maastesting.httpd import HTTPServerFixture
 from maastesting.testcase import TestCase
 from testtools.matchers import (
     AfterPreprocessing,
@@ -54,6 +59,62 @@ class TestMAASDispatcher(TestCase):
         url = "file://%s" % self.make_file(contents=contents)
         self.assertEqual(
             contents, MAASDispatcher().dispatch_query(url, {}).read())
+
+    def test_request_from_http(self):
+        # We can't just call self.make_file because HTTPServerFixture will only
+        # serve content from the current WD. And we don't want to create random
+        # content in the original WD.
+        self.useFixture(TempWDFixture())
+        name = factory.getRandomString()
+        content = factory.getRandomString().encode('ascii')
+        factory.make_file(location='.', name=name, contents=content)
+        with HTTPServerFixture() as httpd:
+            url = urljoin(httpd.url, name)
+            response = MAASDispatcher().dispatch_query(url, {})
+            self.assertEqual(200, response.code)
+            self.assertEqual(content, response.read())
+
+    def test_supports_content_encoding_gzip(self):
+        # The client will set the Accept-Encoding: gzip header, and it will
+        # also decompress the response if it comes back with Content-Encoding:
+        # gzip.
+        self.useFixture(TempWDFixture())
+        name = factory.getRandomString()
+        content = factory.getRandomString(300).encode('ascii')
+        factory.make_file(location='.', name=name, contents=content)
+        called = []
+        orig_urllib = urllib2.urlopen
+
+        def logging_urlopen(*args, **kwargs):
+            called.append((args, kwargs))
+            return orig_urllib(*args, **kwargs)
+        self.patch(urllib2, 'urlopen', logging_urlopen)
+        with HTTPServerFixture() as httpd:
+            url = urljoin(httpd.url, name)
+            res = MAASDispatcher().dispatch_query(url, {})
+            self.assertEqual(200, res.code)
+            self.assertEqual(content, res.read())
+        request = called[0][0][0]
+        self.assertEqual([((request,), {})], called)
+        self.assertEqual('gzip', request.headers.get('Accept-encoding'))
+
+    def test_doesnt_override_accept_encoding_headers(self):
+        # If someone passes their own Accept-Encoding header, then dispatch
+        # just passes it through.
+        self.useFixture(TempWDFixture())
+        name = factory.getRandomString()
+        content = factory.getRandomString(300).encode('ascii')
+        factory.make_file(location='.', name=name, contents=content)
+        with HTTPServerFixture() as httpd:
+            url = urljoin(httpd.url, name)
+            headers = {'Accept-encoding': 'gzip'}
+            res = MAASDispatcher().dispatch_query(url, headers)
+            self.assertEqual(200, res.code)
+            self.assertEqual('gzip', res.info().get('Content-Encoding'))
+            raw_content = res.read()
+        read_content = gzip.GzipFile(
+            mode='rb', fileobj=BytesIO(raw_content)).read()
+        self.assertEqual(content, read_content)
 
 
 def make_url():

@@ -16,7 +16,10 @@ import os
 
 from fixtures import EnvironmentVariableFixture
 from maastesting.factory import factory
-from maastesting.fixtures import ProxiesDisabledFixture
+from maastesting.fixtures import (
+    ProxiesDisabledFixture,
+    TempWDFixture,
+    )
 from maastesting.testcase import TestCase
 
 
@@ -42,3 +45,17 @@ class TestProxiedDisabledFixture(TestCase):
             self.assertNotIn("https_proxy", os.environ)
         # On exit, http_proxy is restored.
         self.assertEqual(https_proxy, os.environ.get("https_proxy"))
+
+
+class TestTempWDFixture(TestCase):
+
+    def test_changes_dir_and_cleans_up(self):
+        orig_cwd = os.getcwd()
+        with TempWDFixture() as temp_wd:
+            new_cwd = os.getcwd()
+            self.assertTrue(os.path.isdir(temp_wd.path))
+            self.assertNotEqual(orig_cwd, new_cwd)
+            self.assertEqual(new_cwd, temp_wd.path)
+        final_cwd = os.getcwd()
+        self.assertEqual(orig_cwd, final_cwd)
+        self.assertFalse(os.path.isdir(new_cwd))

@@ -13,12 +13,17 @@ __metaclass__ = type
 __all__ = []
 
 from contextlib import closing
+import gzip
+from io import BytesIO
 from os.path import relpath
 from socket import (
     gethostbyname,
     gethostname,
     )
-from urllib2 import urlopen
+from urllib2 import (
+    Request,
+    urlopen,
+    )
 from urlparse import urljoin
 
 from maastesting.fixtures import ProxiesDisabledFixture
@@ -55,4 +60,25 @@ class TestHTTPServerFixture(TestCase):
             file_data_in = file_in.read()
         self.assertEqual(
             file_data_in, http_data_in,
+            "The content of %s differs from %s." % (url, filename))
+
+    def ungzip(self, content):
+        gz = gzip.GzipFile(fileobj=BytesIO(content))
+        return gz.read()
+
+    def test_supports_gzip(self):
+        filename = relpath(__file__)
+        with HTTPServerFixture() as httpd:
+            url = urljoin(httpd.url, filename)
+            headers = {'Accept-Encoding': 'gzip, deflate'}
+            request = Request(url, None, headers=headers)
+            with closing(urlopen(request)) as http_in:
+                http_headers = http_in.info()
+                http_data_in = http_in.read()
+        self.assertEqual('gzip', http_headers['Content-Encoding'])
+        with open(filename, "rb") as file_in:
+            file_data_in = file_in.read()
+        http_data_decompressed = self.ungzip(http_data_in)
+        self.assertEqual(
+            file_data_in, http_data_decompressed,
             "The content of %s differs from %s." % (url, filename))

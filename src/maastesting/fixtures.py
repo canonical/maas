@@ -18,10 +18,12 @@ __all__ = [
     ]
 
 import logging
+import os
 
 from fixtures import (
     EnvironmentVariableFixture,
     Fixture,
+    TempDir,
     )
 from pyvirtualdisplay import Display
 from sst.actions import (
@@ -91,3 +93,16 @@ class ProxiesDisabledFixture(Fixture):
         super(ProxiesDisabledFixture, self).setUp()
         self.useFixture(EnvironmentVariableFixture("http_proxy"))
         self.useFixture(EnvironmentVariableFixture("https_proxy"))
+
+
+class TempWDFixture(TempDir):
+    """Change the current working directory into a temp dir.
+
+    This will restore the original WD and delete the temp directory on cleanup.
+    """
+
+    def setUp(self):
+        cwd = os.getcwd()
+        super(TempWDFixture, self).setUp()
+        self.addCleanup(os.chdir, cwd)
+        os.chdir(self.path)
