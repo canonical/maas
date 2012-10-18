@@ -123,7 +123,8 @@ class BINDServerResources(fixtures.Fixture):
         """
         # Generate rndc configuration (rndc config and named snippet).
         rndcconf, namedrndcconf = generate_rndc(
-            self.rndc_port, 'dnsfixture-rndc-key')
+            port=self.rndc_port, key_name='dnsfixture-rndc-key',
+            include_default_controls=False)
         # Write main BIND config file.
         if should_write(self.conf_file, overwrite_config):
             named_conf = (
