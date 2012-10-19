@@ -21,6 +21,7 @@ from django.db.models import ForeignKey
 from maasserver import DefaultMeta
 from maasserver.fields import MACAddressField
 from maasserver.models.cleansave import CleanSave
+from maasserver.models.managers import BulkManager
 from maasserver.models.timestampedmodel import TimestampedModel
 
 
@@ -37,6 +38,8 @@ class MACAddress(CleanSave, TimestampedModel):
     """
     mac_address = MACAddressField(unique=True)
     node = ForeignKey('Node', editable=False)
+
+    objects = BulkManager()
 
     class Meta(DefaultMeta):
         verbose_name = "MAC address"

@@ -17,12 +17,14 @@ __all__ = [
 
 from django.db.models import (
     CharField,
+    ForeignKey,
     Model,
     )
 from maasserver.fields import (
     JSONObjectField,
     XMLField,
     )
+from maasserver.models.managers import BulkManager
 from maasserver.models.timestampedmodel import TimestampedModel
 
 
@@ -53,3 +55,13 @@ class TimestampedModelTestModel(TimestampedModel):
 class FieldChangeTestModel(Model):
     name1 = CharField(max_length=255, unique=False)
     name2 = CharField(max_length=255, unique=False)
+
+
+class BulkManagerParentTestModel(Model):
+    pass
+
+
+class BulkManagerTestModel(Model):
+    parent = ForeignKey('BulkManagerParentTestModel', editable=False)
+
+    objects = BulkManager()
