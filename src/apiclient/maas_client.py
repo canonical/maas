@@ -98,8 +98,11 @@ class MAASDispatcher:
         req = urllib2.Request(request_url, data, headers)
         res = urllib2.urlopen(req)
         # If we set the Accept-encoding header, then we decode the header for
-        # the caller
-        if set_accept_encoding and res.info().get('Content-Encoding') == 'gzip':
+        # the caller.
+        is_gzip = (
+            set_accept_encoding
+            and res.info().get('Content-Encoding') == 'gzip')
+        if is_gzip:
             # Workaround python's gzip failure, gzip.GzipFile wants to be able
             # to seek the file object.
             res_content_io = BytesIO(res.read())

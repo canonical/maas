@@ -39,7 +39,7 @@ class SilentHTTPRequestHandler(SimpleHTTPRequestHandler):
         gz = gzip.GzipFile(mode='wb', fileobj=gz_out)
         gz.write(f.read())
         gz.flush()
-        gz_content = gz_out.getvalue()
+        gz_out.getvalue()
         return gz_out
 
     def is_gzip_accepted(self):

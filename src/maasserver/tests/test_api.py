@@ -2153,7 +2153,7 @@ class TestNodesAPI(APITestCase):
                 })
         # Awkward parsing, but the order may vary and it's not JSON
         s = response.content
-        returned_ids = s[s.find(':')+2:s.rfind('.')].split(', ')
+        returned_ids = s[s.find(':') + 2:s.rfind('.')].split(', ')
         self.assertEqual(httplib.BAD_REQUEST, response.status_code)
         self.assertIn("Unknown node(s): ", response.content)
         self.assertItemsEqual(node_ids, returned_ids)
@@ -2169,7 +2169,6 @@ class TestNodesAPI(APITestCase):
         # And one with no owner
         another_node = factory.make_node(status=NODE_STATUS.RESERVED)
         node_ids.add(another_node.system_id)
-        
         response = self.client.post(
             self.get_uri('nodes/'), {
                 'op': 'release',
@@ -2180,7 +2179,7 @@ class TestNodesAPI(APITestCase):
                 "You don't have the required permission to release the "
                 "following node(s): %s." % another_node.system_id),
             (response.status_code, response.content))
-        
+
     def test_POST_release_rejects_impossible_state_changes(self):
         acceptable_states = {
             NODE_STATUS.ALLOCATED,
@@ -2204,7 +2203,7 @@ class TestNodesAPI(APITestCase):
             for node in nodes
             if node.status not in acceptable_states]
         s = response.content
-        returned = s[s.rfind(':')+2:s.rfind('.')].split(', ') 
+        returned = s[s.rfind(':') + 2:s.rfind('.')].split(', ')
         self.assertEqual(httplib.CONFLICT, response.status_code)
         self.assertIn(
             "Node(s) cannot be released in their current state:",
@@ -2233,7 +2232,7 @@ class TestNodesAPI(APITestCase):
         self.assertItemsEqual(
             [nodes[1].system_id, nodes[2].system_id],
             parsed_result)
-        
+
 
 class MACAddressAPITest(APITestCase):
 
