@@ -23,6 +23,7 @@ __all__ = [
     'write_full_dns_config',
     ]
 
+import os
 from subprocess import (
     CalledProcessError,
     check_call,
@@ -375,5 +376,9 @@ def update_node_tags(tag_name, tag_definition, retry=True):
 # =====================================================================
 
 @task
-def import_pxe_files():
-    check_call(['maas-import-pxe-files'])
+def import_pxe_files(http_proxy=None):
+    env = dict(os.environ)
+    if http_proxy is not None:
+        env['http_proxy'] = http_proxy
+        env['https_proxy'] = http_proxy
+    check_call(['maas-import-pxe-files'], env=env)

@@ -24,8 +24,8 @@ from subprocess import (
 from apiclient.creds import convert_tuple_to_string
 from apiclient.maas_client import MAASClient
 from apiclient.testing.credentials import make_api_credentials
-from celery.task import Task
 from celery.app import app_or_default
+from celery.task import Task
 from maastesting.celery import CeleryFixture
 from maastesting.factory import factory
 from maastesting.fakemethod import (
@@ -33,7 +33,10 @@ from maastesting.fakemethod import (
     MultiFakeMethod,
     )
 from maastesting.matchers import ContainsAll
-from mock import Mock
+from mock import (
+    ANY,
+    Mock,
+    )
 from netaddr import IPNetwork
 from provisioningserver import (
     auth,
@@ -543,5 +546,19 @@ class TestImportPxeFiles(PservTestCase):
     def test_import_pxe_files(self):
         recorder = self.patch(tasks, 'check_call', Mock())
         import_pxe_files()
-        recorder.assert_called_once_with(['maas-import-pxe-files'])
+        recorder.assert_called_once_with(['maas-import-pxe-files'], env=ANY)
         self.assertIsInstance(import_pxe_files, Task)
+
+    def test_import_pxe_files_preserves_environment(self):
+        recorder = self.patch(tasks, 'check_call', Mock())
+        import_pxe_files()
+        recorder.assert_called_once_with(
+            ['maas-import-pxe-files'], env=os.environ)
+
+    def test_import_pxe_files_sets_proxy(self):
+        recorder = self.patch(tasks, 'check_call', Mock())
+        proxy = factory.getRandomString()
+        import_pxe_files(http_proxy=proxy)
+        expected_env = dict(os.environ, http_proxy=proxy, https_proxy=proxy)
+        recorder.assert_called_once_with(
+            ['maas-import-pxe-files'], env=expected_env)
