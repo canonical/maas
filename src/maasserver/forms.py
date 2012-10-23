@@ -569,6 +569,12 @@ class MAASAndNetworkForm(ConfigForm):
         label="Default domain for new nodes", required=False, help_text=(
             "If 'local' is chosen, nodes must be using mDNS. Leave empty to "
             "use hostnames without a domain for newly enlisted nodes."))
+    http_proxy = forms.URLField(
+        label="Proxy for HTTP and HTTPS traffic", required=False,
+        help_text=(
+            "This is used by the cluster and region controllers for "
+            "downloading PXE boot images and other provisioning-related "
+            "resources. It is not passed into provisioned nodes."))
 
 
 class CommissioningForm(ConfigForm):

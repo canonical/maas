@@ -53,6 +53,7 @@ def get_default_config():
         'enlistment_domain': b'local',
         'default_distro_series': DISTRO_SERIES.precise,
         'commissioning_distro_series': DISTRO_SERIES.precise,
+        'http_proxy': None,
         ## /settings
         }
 
