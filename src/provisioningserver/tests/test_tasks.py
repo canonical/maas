@@ -24,6 +24,7 @@ from subprocess import (
 from apiclient.creds import convert_tuple_to_string
 from apiclient.maas_client import MAASClient
 from apiclient.testing.credentials import make_api_credentials
+from celery.task import Task
 from celery.app import app_or_default
 from maastesting.celery import CeleryFixture
 from maastesting.factory import factory
@@ -59,6 +60,7 @@ from provisioningserver.pxe import tftppath
 from provisioningserver.tags import MissingCredentials
 from provisioningserver.tasks import (
     add_new_dhcp_host_map,
+    import_pxe_files,
     Omshell,
     power_off,
     power_on,
@@ -534,3 +536,12 @@ class TestTagTasks(PservTestCase):
         self.assertRaises(
             MissingCredentials, update_node_tags.delay, tag,
             '//node', retry=True)
+
+
+class TestImportPxeFiles(PservTestCase):
+
+    def test_import_pxe_files(self):
+        recorder = self.patch(tasks, 'check_call', Mock())
+        import_pxe_files()
+        recorder.assert_called_once_with(['maas-import-pxe-files'])
+        self.assertIsInstance(import_pxe_files, Task)
