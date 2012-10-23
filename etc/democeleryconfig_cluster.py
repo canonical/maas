@@ -30,8 +30,8 @@ import_settings(democeleryconfig_common)
 # maas_local_celeryconfig.
 CLUSTER_UUID = "adfd3977-f251-4f2c-8d61-745dbd690bfc"
 
-MAAS_CELERY_LOG = os.path.join(
+CELERYD_LOG_FILE = os.path.join(
     DEV_ROOT_DIRECTORY, 'logs/cluster-worker/current')
 
-MAAS_CLUSTER_CELERY_DB = os.path.join(
+CELERYBEAT_SCHEDULE_FILENAME = os.path.join(
     DEV_ROOT_DIRECTORY, 'run/celerybeat-cluster-schedule')

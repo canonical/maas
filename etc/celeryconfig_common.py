@@ -46,11 +46,12 @@ DHCP_INTERFACES_FILE = '/var/lib/maas/dhcpd-interfaces'
 # this setting.
 BROKER_URL = 'amqp://guest:guest@localhost:5672//'
 
-# Location for log file.
-MAAS_CELERY_LOG = '/var/log/maas/celery.log'
+# Logging.
+CELERYD_LOG_FILE = '/var/log/maas/celery.log'
+CELERYD_LOG_LEVEL = 'INFO'
 
 # Location for the cluster worker schedule file.
-MAAS_CLUSTER_CELERY_DB = '/var/lib/maas/celerybeat-cluster-schedule'
+CELERYBEAT_SCHEDULE_FILENAME = '/var/lib/maas/celerybeat-cluster-schedule'
 
 WORKER_QUEUE_DNS = 'celery'
 WORKER_QUEUE_BOOT_IMAGES = 'celery'

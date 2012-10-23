@@ -19,22 +19,23 @@ __all__ = [
 
 
 import httplib
-import simplejson as json
-from lxml import etree
 
 from apiclient.maas_client import (
     MAASClient,
     MAASDispatcher,
     MAASOAuth,
     )
-
+from celery.log import get_task_logger
+from lxml import etree
 from provisioningserver.auth import (
     get_recorded_api_credentials,
     get_recorded_maas_url,
     get_recorded_nodegroup_uuid,
     )
+import simplejson as json
 
-from provisioningserver.logging import task_logger
+
+task_logger = get_task_logger(name=__name__)
 
 
 class MissingCredentials(Exception):
