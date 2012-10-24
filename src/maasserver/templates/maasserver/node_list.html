@@ -38,7 +38,7 @@
     {% if input_query_error %}
     <p class="form-errors">{{input_query_error}}</p>
     {% endif %}
-    {% include "maasserver/nodes_listing.html" %}
+    {% include "maasserver/nodes_listing.html" with sorting="true" %}
     {% include "maasserver/pagination.html" %}
     <a id="addnode" href="#" class="button right space-top">+ Add node</a>
     <div class="clear"></div>

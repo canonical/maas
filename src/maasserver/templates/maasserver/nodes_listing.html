@@ -2,8 +2,15 @@
   <table class="list">
     <thead>
       <tr>
+	{% if sorting == "true" %}
+        <th><a href="{{ sort_links.hostname }}"
+	       class="{{ sort_classes.hostname }}">MAC</a></th>
+        <th><a href="{{ sort_links.status }}"
+	       class="{{ sort_classes.status }}">Status</a></th>
+	{% else %}
         <th>MAC</th>
         <th>Status</th>
+	{% endif %}
       </tr>
     </thead>
     {% for node in node_list %}
