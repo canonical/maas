@@ -49,7 +49,7 @@ all: build doc
 install-dependencies:
 	sudo DEBIAN_FRONTEND=noninteractive apt-get -y \
 		--no-install-recommends install \
-		$(shell sort -u required-packages/*)
+		$(shell sort -u required-packages/base required-packages/dev)
 
 bin/python bin/pip:
 	$(virtualenv) --python=$(python) --system-site-packages $(CURDIR)
