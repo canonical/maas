@@ -110,8 +110,12 @@ from metadataserver.models import (
     NodeUserData,
     )
 from metadataserver.nodeinituser import get_node_init_user
-from mock import Mock
+from mock import (
+    ANY,
+    Mock,
+    )
 from provisioningserver import (
+    boot_images,
     kernel_opts,
     tasks,
     )
@@ -4102,15 +4106,20 @@ class TestBootImagesAPI(APITestCase):
             COMPONENT.IMPORT_PXE_FILES)
 
     def test_worker_calls_report_boot_images(self):
+        # report_boot_images() uses the report_boot_images op on the nodes
+        # handlers to send image information.
         refresh_worker(NodeGroup.objects.ensure_master())
         self.patch(MAASClient, 'post')
         self.patch(tftppath, 'list_boot_images', Mock(return_value=[]))
+        self.patch(boot_images, "get_cluster_uuid")
 
         tasks.report_boot_images.delay()
 
+        # We're not concerned about the payloads (images and nodegroup) here;
+        # those are tested in provisioningserver.tests.test_boot_images.
         MAASClient.post.assert_called_once_with(
             reverse('boot_images_handler').lstrip('/'), 'report_boot_images',
-            images=json.dumps([]))
+            images=ANY, nodegroup=ANY)
 
 
 class TestDescribe(AnonAPITestCase):

@@ -40,6 +40,7 @@ from mock import (
 from netaddr import IPNetwork
 from provisioningserver import (
     auth,
+    boot_images,
     cache,
     tags,
     tasks,
@@ -490,6 +491,7 @@ class TestBootImagesTasks(PservTestCase):
         auth.record_api_credentials(':'.join(make_api_credentials()))
         image = make_boot_image_params()
         self.patch(tftppath, 'list_boot_images', Mock(return_value=[image]))
+        self.patch(boot_images, "get_cluster_uuid")
         self.patch(MAASClient, 'post')
 
         report_boot_images.delay()
