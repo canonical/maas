@@ -3,6 +3,7 @@ build-essential
 curl
 firefox
 ipython
+libjs-yui3-full
 make
 python-lxml
 python-pip

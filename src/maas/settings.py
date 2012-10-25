@@ -92,16 +92,16 @@ TEMPLATE_DEBUG = DEBUG
 # path relative to the 'static' directory.
 # Use an absolute path (like '/usr/share/javascript/raphael/') to serve the
 # files from a custom location.
-RAPHAELJS_LOCATION = os.path.join('jslibs', 'raphael')
+RAPHAELJS_LOCATION = '/usr/share/javascript/raphael/'
 
 YUI_DEBUG = DEBUG
 
 # Set this to where YUI3 files can be found.
 # Use a relative path (i.e. a path not starting with '/') to indicate a
 # path relative to the 'static' directory.
-# Use an absolute path (like '/usr/share/javascript/yui/') to serve the files
+# Use an absolute path (like '/usr/share/javascript/yui3/') to serve the files
 # from a custom location.
-YUI_LOCATION = os.path.join('jslibs', 'yui')
+YUI_LOCATION = '/usr/share/javascript/yui3/'
 
 STATIC_LOCAL_SERVE = DEBUG
 
