@@ -12,8 +12,8 @@ EOF
 fi
 
 
-#RELEASES="oneiric precise"
-RELEASES="precise"
+#RELEASES="precise"
+RELEASES="precise quantal"
 #ARCHES="amd64/generic i386/generic armhf/highbank"
 #LOCALE="en_US"
 #IMPORT_EPHEMERALS=1
