@@ -16,7 +16,10 @@ from maasserver.signals import connect_to_field_change
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestModelTestCase
 from maasserver.tests.models import FieldChangeTestModel
-from maastesting.fakemethod import FakeMethod
+from mock import (
+    call,
+    Mock,
+    )
 
 
 class ConnectToFieldChangeTest(TestModelTestCase):
@@ -25,7 +28,7 @@ class ConnectToFieldChangeTest(TestModelTestCase):
     app = 'maasserver.tests'
 
     def test_connect_to_field_change_calls_callback(self):
-        callback = FakeMethod()
+        callback = Mock()
         connect_to_field_change(callback, FieldChangeTestModel, 'name1')
         old_name1_value = factory.getRandomString()
         obj = FieldChangeTestModel(name1=old_name1_value)
@@ -33,11 +36,11 @@ class ConnectToFieldChangeTest(TestModelTestCase):
         obj.name1 = factory.getRandomString()
         obj.save()
         self.assertEqual(
-            (1, [(obj, old_name1_value)]),
-            (callback.call_count, callback.extract_args()))
+            (1, call(obj, old_name1_value, deleted=False)),
+            (callback.call_count, callback.call_args))
 
     def test_connect_to_field_change_calls_callback_for_each_save(self):
-        callback = FakeMethod()
+        callback = Mock()
         connect_to_field_change(callback, FieldChangeTestModel, 'name1')
         old_name1_value = factory.getRandomString()
         obj = FieldChangeTestModel(name1=old_name1_value)
@@ -49,7 +52,7 @@ class ConnectToFieldChangeTest(TestModelTestCase):
         self.assertEqual(2, callback.call_count)
 
     def test_connect_to_field_change_calls_callback_for_each_real_save(self):
-        callback = FakeMethod()
+        callback = Mock()
         connect_to_field_change(callback, FieldChangeTestModel, 'name1')
         old_name1_value = factory.getRandomString()
         obj = FieldChangeTestModel(name1=old_name1_value)
@@ -60,9 +63,9 @@ class ConnectToFieldChangeTest(TestModelTestCase):
         self.assertEqual(1, callback.call_count)
 
     def test_connect_to_field_change_calls_multiple_callbacks(self):
-        callback1 = FakeMethod()
+        callback1 = Mock()
         connect_to_field_change(callback1, FieldChangeTestModel, 'name1')
-        callback2 = FakeMethod()
+        callback2 = Mock()
         connect_to_field_change(callback2, FieldChangeTestModel, 'name1')
         old_name1_value = factory.getRandomString()
         obj = FieldChangeTestModel(name1=old_name1_value)
@@ -74,15 +77,35 @@ class ConnectToFieldChangeTest(TestModelTestCase):
     def test_connect_to_field_change_ignores_changes_to_other_fields(self):
         obj = FieldChangeTestModel(name2=factory.getRandomString())
         obj.save()
-        callback = FakeMethod()
+        callback = Mock()
         connect_to_field_change(callback, FieldChangeTestModel, 'name1')
         obj.name2 = factory.getRandomString()
         obj.save()
         self.assertEqual(0, callback.call_count)
 
     def test_connect_to_field_change_ignores_object_creation(self):
-        callback = FakeMethod()
+        callback = Mock()
         connect_to_field_change(callback, FieldChangeTestModel, 'name1')
         obj = FieldChangeTestModel(name1=factory.getRandomString())
         obj.save()
         self.assertEqual(0, callback.call_count)
+
+    def test_connect_to_field_change_ignores_deletion_by_default(self):
+        obj = FieldChangeTestModel(name2=factory.getRandomString())
+        obj.save()
+        callback = Mock()
+        connect_to_field_change(callback, FieldChangeTestModel, 'name1')
+        obj.delete()
+        self.assertEqual(0, callback.call_count)
+
+    def test_connect_to_field_change_listens_to_deletion_if_delete_True(self):
+        old_name1_value = factory.getRandomString()
+        obj = FieldChangeTestModel(name1=old_name1_value)
+        obj.save()
+        callback = Mock()
+        connect_to_field_change(
+            callback, FieldChangeTestModel, 'name1', delete=True)
+        obj.delete()
+        self.assertEqual(
+            (1, call(obj, old_name1_value, deleted=True)),
+            (callback.call_count, callback.call_args))
