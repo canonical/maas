@@ -4124,6 +4124,7 @@ class TestBootImagesAPI(APITestCase):
 
     def test_report_boot_images_warns_if_no_images_found(self):
         nodegroup = NodeGroup.objects.ensure_master()
+        factory.make_node_group()  # Second nodegroup with no images.
         recorder = self.patch(api, 'register_persistent_error')
         client = make_worker_client(nodegroup)
         response = self.report_images(nodegroup, [], client=client)
@@ -4134,6 +4135,36 @@ class TestBootImagesAPI(APITestCase):
         self.assertIn(
             COMPONENT.IMPORT_PXE_FILES,
             [args[0][0] for args in recorder.call_args_list])
+        # Check that the persistent error message contains a link to the
+        # clusters listing.
+        self.assertIn(
+            "/settings/#accepted-clusters", recorder.call_args_list[0][0][1])
+
+    def test_report_boot_images_warns_if_any_nodegroup_has_no_images(self):
+        nodegroup = NodeGroup.objects.ensure_master()
+        # Second nodegroup with no images.
+        factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
+        recorder = self.patch(api, 'register_persistent_error')
+        client = make_worker_client(nodegroup)
+        image = make_boot_image_params()
+        response = self.report_images(nodegroup, [image], client=client)
+        self.assertEqual(
+            (httplib.OK, "OK"),
+            (response.status_code, response.content))
+
+        self.assertIn(
+            COMPONENT.IMPORT_PXE_FILES,
+            [args[0][0] for args in recorder.call_args_list])
+
+    def test_report_boot_images_ignores_non_accepted_groups(self):
+        nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
+        factory.make_node_group(status=NODEGROUP_STATUS.PENDING)
+        factory.make_node_group(status=NODEGROUP_STATUS.REJECTED)
+        recorder = self.patch(api, 'register_persistent_error')
+        client = make_worker_client(nodegroup)
+        image = make_boot_image_params()
+        response = self.report_images(nodegroup, [image], client=client)
+        self.assertEqual(0, recorder.call_count)
 
     def test_report_boot_images_removes_warning_if_images_found(self):
         self.patch(api, 'register_persistent_error')

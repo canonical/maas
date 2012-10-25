@@ -162,7 +162,10 @@ from maasserver.preseed import (
     compose_preseed_url,
     )
 from maasserver.server_address import get_maas_facing_server_address
-from maasserver.utils import map_enum
+from maasserver.utils import (
+    absolute_reverse,
+    map_enum,
+    )
 from maasserver.utils.orm import get_one
 from piston.handler import (
     AnonymousBaseHandler,
@@ -1884,14 +1887,21 @@ class BootImagesHandler(OperationsHandler):
                 release=image['release'],
                 purpose=image['purpose'])
 
-        if len(images) == 0:
+        # Work out if any nodegroups are missing images.
+        nodegroup_ids_with_images = BootImage.objects.values_list(
+            "nodegroup_id", flat=True)
+        nodegroups_missing_images = NodeGroup.objects.exclude(
+            id__in=nodegroup_ids_with_images).filter(
+                status=NODEGROUP_STATUS.ACCEPTED)
+        if nodegroups_missing_images.exists():
             warning = dedent("""\
-                No boot images have been imported yet.  Either the
+                Some cluster controllers are missing boot images.  Either the
                 maas-import-pxe-files script has not run yet, or it failed.
 
-                Try running it manually.  If it succeeds, this message will
-                go away within 5 minutes.
-                """)
+                Try running it manually on the affected
+                <a href="%s#accepted-clusters">cluster controllers.</a>
+                If it succeeds, this message will go away within 5 minutes.
+                """ % absolute_reverse("settings"))
             register_persistent_error(COMPONENT.IMPORT_PXE_FILES, warning)
         else:
             discard_persistent_error(COMPONENT.IMPORT_PXE_FILES)
