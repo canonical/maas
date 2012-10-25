@@ -2888,6 +2888,18 @@ class TestTagAPI(APITestCase):
         self.assertEqual({'rebuilding': tag.name}, parsed_result)
         self.assertItemsEqual([node_matching], tag.node_set.all())
 
+    def test_POST_rebuild_leaves_manual_tags(self):
+        tag = factory.make_tag(definition='')
+        node = factory.make_node()
+        node.tags.add(tag)
+        self.assertItemsEqual([node], tag.node_set.all())
+        self.become_admin()
+        response = self.client.post(self.get_tag_uri(tag), {'op': 'rebuild'})
+        self.assertEqual(httplib.OK, response.status_code)
+        parsed_result = json.loads(response.content)
+        self.assertEqual({'rebuilding': tag.name}, parsed_result)
+        self.assertItemsEqual([node], tag.node_set.all())
+
     def test_POST_rebuild_unknown_404(self):
         self.become_admin()
         response = self.client.post(
@@ -2938,6 +2950,24 @@ class TestTagsAPI(APITestCase):
         self.assertEqual(name, parsed_result['name'])
         self.assertEqual(comment, parsed_result['comment'])
         self.assertEqual(definition, parsed_result['definition'])
+        self.assertTrue(Tag.objects.filter(name=name).exists())
+
+    def test_POST_new_without_definition_creates_tag(self):
+        self.become_admin()
+        name = factory.getRandomString()
+        comment = factory.getRandomString()
+        response = self.client.post(
+            self.get_uri('tags/'),
+            {
+                'op': 'new',
+                'name': name,
+                'comment': comment,
+            })
+        self.assertEqual(httplib.OK, response.status_code)
+        parsed_result = json.loads(response.content)
+        self.assertEqual(name, parsed_result['name'])
+        self.assertEqual(comment, parsed_result['comment'])
+        self.assertEqual("", parsed_result['definition'])
         self.assertTrue(Tag.objects.filter(name=name).exists())
 
     def test_POST_new_invalid_tag_name(self):
