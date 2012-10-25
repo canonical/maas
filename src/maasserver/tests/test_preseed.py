@@ -330,10 +330,10 @@ class TestSquashFSAvailable(TestCase):
         )
 
     def test_squashfs_available(self):
-        BootImage.objects.register_image(
-            self.arch, self.subarch, self.series, self.purpose)
         node = factory.make_node(
             architecture="i386/generic", distro_series="quantal")
+        BootImage.objects.register_image(
+            node.nodegroup, self.arch, self.subarch, self.series, self.purpose)
         self.assertEqual(self.present, is_squashfs_image_present(node))
 
 

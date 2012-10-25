@@ -4026,48 +4026,55 @@ class TestBootImagesAPI(APITestCase):
         ('celery', FixtureResource(CeleryFixture())),
         )
 
-    def report_images(self, images, client=None):
+    def report_images(self, nodegroup, images, client=None):
         if client is None:
             client = self.client
         return client.post(
-            reverse('boot_images_handler'),
-            {'op': 'report_boot_images', 'images': json.dumps(images)})
+            reverse('boot_images_handler'), {
+                'images': json.dumps(images),
+                'nodegroup': nodegroup.uuid,
+                'op': 'report_boot_images',
+                })
 
     def test_report_boot_images_does_not_work_for_normal_user(self):
-        NodeGroup.objects.ensure_master()
+        nodegroup = NodeGroup.objects.ensure_master()
         log_in_as_normal_user(self.client)
-        response = self.report_images([])
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        response = self.report_images(nodegroup, [])
+        self.assertEqual(
+            httplib.FORBIDDEN, response.status_code, response.content)
 
     def test_report_boot_images_works_for_master_worker(self):
-        client = make_worker_client(NodeGroup.objects.ensure_master())
-        response = self.report_images([], client=client)
+        nodegroup = NodeGroup.objects.ensure_master()
+        client = make_worker_client(nodegroup)
+        response = self.report_images(nodegroup, [], client=client)
         self.assertEqual(httplib.OK, response.status_code)
 
     def test_report_boot_images_stores_images(self):
+        nodegroup = NodeGroup.objects.ensure_master()
         image = make_boot_image_params()
-        client = make_worker_client(NodeGroup.objects.ensure_master())
-        response = self.report_images([image], client=client)
+        client = make_worker_client(nodegroup)
+        response = self.report_images(nodegroup, [image], client=client)
         self.assertEqual(
             (httplib.OK, "OK"),
             (response.status_code, response.content))
         self.assertTrue(
-            BootImage.objects.have_image(**image))
+            BootImage.objects.have_image(nodegroup=nodegroup, **image))
 
     def test_report_boot_images_ignores_unknown_image_properties(self):
+        nodegroup = NodeGroup.objects.ensure_master()
         image = make_boot_image_params()
         image['nonesuch'] = factory.make_name('nonesuch'),
-        client = make_worker_client(NodeGroup.objects.ensure_master())
-        response = self.report_images([image], client=client)
+        client = make_worker_client(nodegroup)
+        response = self.report_images(nodegroup, [image], client=client)
         self.assertEqual(
             (httplib.OK, "OK"),
             (response.status_code, response.content))
 
     def test_report_boot_images_warns_if_no_images_found(self):
+        nodegroup = NodeGroup.objects.ensure_master()
         recorder = self.patch(api, 'register_persistent_error')
-        client = make_worker_client(NodeGroup.objects.ensure_master())
-
-        response = self.report_images([], client=client)
+        client = make_worker_client(nodegroup)
+        response = self.report_images(nodegroup, [], client=client)
         self.assertEqual(
             (httplib.OK, "OK"),
             (response.status_code, response.content))
@@ -4079,10 +4086,11 @@ class TestBootImagesAPI(APITestCase):
     def test_report_boot_images_removes_warning_if_images_found(self):
         self.patch(api, 'register_persistent_error')
         self.patch(api, 'discard_persistent_error')
-        client = make_worker_client(NodeGroup.objects.ensure_master())
+        nodegroup = factory.make_node_group()
+        image = make_boot_image_params()
+        client = make_worker_client(nodegroup)
 
-        response = self.report_images(
-            [make_boot_image_params()], client=client)
+        response = self.report_images(nodegroup, [image], client=client)
         self.assertEqual(
             (httplib.OK, "OK"),
             (response.status_code, response.content))

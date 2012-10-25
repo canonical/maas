@@ -15,7 +15,10 @@ __all__ = []
 import json
 
 from apiclient.maas_client import MAASClient
-from mock import Mock
+from mock import (
+    Mock,
+    sentinel,
+    )
 from provisioningserver import boot_images
 from provisioningserver.pxe import tftppath
 from provisioningserver.testing.boot_images import make_boot_image_params
@@ -34,11 +37,12 @@ class TestBootImagesTasks(PservTestCase):
         self.set_api_credentials()
         image = make_boot_image_params()
         self.patch(tftppath, 'list_boot_images', Mock(return_value=[image]))
+        get_cluster_uuid = self.patch(boot_images, "get_cluster_uuid")
+        get_cluster_uuid.return_value = sentinel.uuid
         self.patch(MAASClient, 'post')
-
         boot_images.report_to_server()
-
         args, kwargs = MAASClient.post.call_args
+        self.assertIs(sentinel.uuid, kwargs["nodegroup"])
         self.assertItemsEqual([image], json.loads(kwargs['images']))
 
     def test_does_nothing_without_maas_url(self):

@@ -32,6 +32,7 @@ from provisioningserver.auth import (
     )
 from provisioningserver.config import Config
 from provisioningserver.pxe import tftppath
+from provisioningserver.start_cluster_controller import get_cluster_uuid
 
 
 task_logger = get_task_logger(name=__name__)
@@ -56,7 +57,7 @@ def submit(maas_url, api_credentials, images):
     """Submit images to server."""
     MAASClient(MAASOAuth(*api_credentials), MAASDispatcher(), maas_url).post(
         'api/1.0/boot-images/', 'report_boot_images',
-        images=json.dumps(images))
+        nodegroup=get_cluster_uuid(), images=json.dumps(images))
 
 
 def report_to_server():

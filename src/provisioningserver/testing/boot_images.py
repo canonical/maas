@@ -17,7 +17,7 @@ __all__ = [
 from maastesting.factory import factory
 
 
-def make_boot_image_params(**kwargs):
+def make_boot_image_params():
     """Create an arbitrary dict of boot-image parameters.
 
     These are the parameters that together describe a kind of boot that we
@@ -25,10 +25,8 @@ def make_boot_image_params(**kwargs):
     Ubuntu release, and boot purpose.  See the `tftppath` module for how
     these fit together.
     """
-    fields = dict(
+    return dict(
         architecture=factory.make_name('architecture'),
         subarchitecture=factory.make_name('subarchitecture'),
         release=factory.make_name('release'),
         purpose=factory.make_name('purpose'))
-    fields.update(kwargs)
-    return fields
