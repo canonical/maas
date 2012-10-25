@@ -30,16 +30,18 @@ table.list.clickable tr:hover td {
     border-color: #dd4814;
     cursor: pointer;
     }
-.sort-none, .sort-asc, .sort-desc {
+.sort-none,
+.sort-asc,
+.sort-desc {
     background-repeat: no-repeat;
-    background-position: right 0.4em;
-    padding-right: 1.2em;
+    background-position: right center;
+    padding-right: 16px;
     }
 .sort-asc {
-    background-image: url('/static/img/up_arrow_dark.png');
+    background-image: url('../?img/sort_ascending.png');
     }
 .sort-desc {
-    background-image: url('/static/img/down_arrow_dark.png');
+    background-image: url('../?img/sort_descending.png');
     }
 /* ul list */
 ul.list {
