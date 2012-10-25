@@ -1552,6 +1552,10 @@ class TagHandler(OperationsHandler):
 
         :param add: system_ids of nodes to add to this tag.
         :param remove: system_ids of nodes to remove from this tag.
+        :param definition: (optional) If supplied, the definition will be
+            validated against the current definition of the tag. If the value
+            does not match, then the update will be dropped (assuming this was
+            just a case of a worker being out-of-date)
         :param nodegroup: A uuid of a nodegroup being processed. This value is
             optional. If not supplied, the requester must be a superuser. If
             supplied, then the requester must be the worker associated with
@@ -1567,6 +1571,12 @@ class TagHandler(OperationsHandler):
                     'Must be a superuser or supply a nodegroup')
             nodegroup = get_one(NodeGroup.objects.filter(uuid=uuid))
             check_nodegroup_access(request, nodegroup)
+        definition = request.data.get('definition', None)
+        if definition is not None and tag.definition != definition:
+            return HttpResponse(
+                "Definition supplied '%s' doesn't match current definition '%s'"
+                % (definition, tag.definition),
+                status=httplib.CONFLICT)
         nodes_to_add = self._get_nodes_for(request, 'add', nodegroup)
         tag.node_set.add(*nodes_to_add)
         nodes_to_remove = self._get_nodes_for(request, 'remove', nodegroup)

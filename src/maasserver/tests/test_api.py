@@ -2870,6 +2870,24 @@ class TestTagAPI(APITestCase):
         self.assertEqual({'added': 0, 'removed': 0}, parsed_result)
         self.assertItemsEqual([], tag.node_set.all())
 
+    def test_POST_update_nodes_ignores_incorrect_definition(self):
+        tag = factory.make_tag()
+        orig_def = tag.definition
+        nodegroup = factory.make_node_group()
+        node = factory.make_node(nodegroup=nodegroup)
+        client = make_worker_client(nodegroup)
+        tag.definition = '//new/node/definition'
+        tag.save()
+        response = client.post(self.get_tag_uri(tag),
+            {'op': 'update_nodes',
+             'add': [node.system_id],
+             'nodegroup': nodegroup.uuid,
+             'definition': orig_def,
+            })
+        self.assertEqual(httplib.CONFLICT, response.status_code)
+        self.assertItemsEqual([], tag.node_set.all())
+        self.assertItemsEqual([], node.tags.all())
+
     def test_POST_rebuild_rebuilds_node_mapping(self):
         tag = factory.make_tag(definition='/foo/bar')
         # Only one node matches the tag definition, rebuilding should notice
