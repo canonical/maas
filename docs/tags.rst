@@ -78,33 +78,47 @@ needed::
 Manually assigning tags
 -----------------------
 
-Although in the current version of MAAS there is no provision for creating 
-arbitrary tags of your own devising ("nodes which make a lot of noise" perhaps),
-this is on the roadmap for future versions.
-However, it is still possible to override the explicit hardware matching by 
-manually adding or removing a tag from a specific node. Until later releases 
-fully support different methods of tagging, **this is not advised**, though it is 
-possible, and may help as a workaround to some problems.
+MAAS supports the creation of arbitrary tags which don't depend on XPath
+definitions ("nodes which make a lot of noise" perhaps). If a tag is created
+without specifying the definition parameter then it will simply be ignored by
+tag refresh mechanism, but the MAAS administrator will be able to manually add 
+and remove the tag from specific nodes.
 
-In this example we are assuming you are using the 'maas' profile and you have a 
-tag called 'my_tag'::
+In this example we are assuming you are using the 'maas' profile and you want
+to create a tag called 'my_tag'::
 
+  $ maas-cli maas tags new name='my_tag' comment='nodes which go ping'
   $ maas-cli maas tag update-nodes my_tag add="<system_id>"
+
+The first line creates a new tag but omits the definition, so no nodes are 
+automatically added to it. The second line applies that tag to a specific node 
+referenced by its system id property.
  
-Conversely, you can easily remove a tag from a particular node, or indeed add 
+You can easily remove a tag from a particular node, or indeed add
 and remove them at the same time::
 
   $ maas-cli maas tag update-nodes my_tag add=<system_id_1> \
     add=<system_id_2> add=<system_id_3> remove=<system_id_4>
-   
+
+As the rule is that tags without a definition are ignored when rebuilds are
+done, it is also possible to create a normal tag with a definition, and then
+subsequently edit it to remove the definition. From this point the tag behaves
+as if you had manually created it, but it still retains all the existing
+associations it has with nodes. This is particularly useful if you have some
+hardware which is conceptually similar but doesn't easily fit within a single 
+tag definition::
+
+  $ maas-cli maas tag new name='my_tag' comment='nodes I like ' \
+     definition='contains(//node[@id=network]/vendor, "Intel")'
+  $ maas-cli maas tag update my_tag definition=''
+  $ maas-cli mass tag update-nodes my_tag add=<system_id>
+
+ 
 .. tip::
    If you add and remove the same node in one operation, it ends up having
    the tag removed (even if the tag was in place before the operation).
     
-.. warning::
-   If you run the 'rebuild' command to remap the tags to nodes, any manually
-   altered tag associations will be lost.
-  
+ 
     
 
    

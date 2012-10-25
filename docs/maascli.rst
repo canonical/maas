@@ -16,6 +16,7 @@ interface.
 Login to the web interface on your MAAS. Click on the username in the
 top right corner and select 'Preferences' from the menu which appears.
 
+.. only:: html
 .. image:: media/maascli-prefs.*
 
 A new page will load... 
@@ -29,10 +30,21 @@ commandline. The format of the login command is::
 
  $ maas-cli login <profile-name> <hostname> <key>
 
-The profile name created by default when you install MAAS is
-"maas". So an example login might look like this::
+The profile created is an easy way of associating your credentials with any 
+subsequent call to the API. So an example login might look like this::
 
 $ maas-cli login maas http://10.98.0.13/MAAS/api/1.0 AWSCRMzqMNy:jjk...5e1FenoP82Qm5te2
+
+which creates the profile 'maas' and registers it with the given key at the 
+specified API endpoint.
+If you omit the credentials, they will be prompted for in the console. It is 
+also possible to use  a hyphen, '-' in place of the credentials. In this case a 
+single line will be read from stdin, stripped of any whitespace and used as the 
+credentials, which can be useful if you are devolping scripts for specific 
+tasks.
+If an empty string is passed instead of the credentials, the profile will be 
+logged in anonymously (and consequently some of the API calls will not be 
+available)
 
 
 maas-cli commands
@@ -86,7 +98,7 @@ account
 This command is used for creating and destroying the
 MAAS authorisation tokens associated with a profile.
 
-Usage: maas-cli *<profile>* account [-d --degug] [-h --help]
+Usage: maas-cli *<profile>* account [-d --debug] [-h --help]
 create-authorisation-token | delete-authorisation-token [token_key=\
 *<value>*]
 
@@ -127,7 +139,7 @@ create-authorisation-token | delete-authorisation-token [token_key=\
 node
 ^^^^
 
-API calls which operate on individual nodes. With thes commands, the
+API calls which operate on individual nodes. With these commands, the
 node is always identified by its "system_id" property - a unique tag
 allocated at the time of enlistment. To discover the value of the
 system_id, you can use the ``maas-cli <profile> nodes list`` command.
@@ -161,8 +173,8 @@ read | update <system_id>
 
 .. option:: read <system_id>
  
-   Returns all the current known information aboyt the node specified
-   by *<system_id>*
+   Returns all the current known information about the node specified
+   by *<system_id>
 
 .. option:: update <system_id> [parameters...]
  
@@ -178,17 +190,16 @@ read | update <system_id>
            e.g. "i386/generic"
 
       power_type=<value> 
-           Apply the given dotted decimal value as the
-           broadcast IP address for this subnet.
+           Apply the given dotted decimal value as the broadcast IP address 
+           for this subnet.
 
       power_parameters_{param1}... =<value> 
-           Set the given power
-           parameters. Note that the valid options for these depend on
-           the power type chosen
+           Set the given power parameters. Note that the valid options for these 
+           depend on the power type chosen.
 
       power_parameters_skip_check 'true' | 'false' 
-           Whether to sanity check the supplied parameters against this 
-           node's declared power type. The default is 'false'.
+           Whether to sanity check the supplied parameters against this node's 
+           declared power type. The default is 'false'.
 
 
 
@@ -322,34 +333,34 @@ Usage: maas-cli <profile> node-groups [-d --debug] [-h --help] [-k
 
    It sounds a bit like they will get a cup of tea and a
    biscuit. Actually this just sends each node-group worker an update
-   of it's credentials (API key, node-group name). This command is
+   of its credentials (API key, node-group name). This command is
    usually not needed at a user level, but is often used by worker
    nodes.
 
 .. option:: accept <uuid>
    
    Accepts a node-group or number of nodegroups indicated by the
-   supplied uuid
+   supplied UUID
 
 .. option:: reject <uuid>
 
    Rejects a node-group or number of nodegroups indicated by the
-   supplied uuid
+   supplied UUID
 
 
 
 node-group-interface
 ^^^^^^^^^^^^^^^^^^^^
-For managing the applied interfaces. See :ref:<node_group_interfaces>.
+For managing the applied interfaces. See also :ref:<node_group_interfaces>.
 
-Usage: maas-cli *<profile>* node-group-interfaces [-d --degug] [-h
+Usage: maas-cli *<profile>* node-group-interfaces [-d --debug] [-h
 --help] [-k --insecure] read | update | delete [parameters...]
 
 ..program:: maas-cli node-group-interface
 
 .. option:: read <uuid> <interface>
    
-   Returns the current settings for the given uuid and interface
+   Returns the current settings for the given UUID and interface
 
 .. option:: update [parameters]
    
@@ -357,16 +368,19 @@ Usage: maas-cli *<profile>* node-group-interfaces [-d --degug] [-h
    parameters::
 
       management=  0 | 1 | 2
-           The service to be managed on the interface ( 0= none, 1=DHCP, 2=DHCP and DNS).
+           The service to be managed on the interface ( 0= none, 1=DHCP, 2=DHCP 
+           and DNS).
 
       subnet_mask=<value>
            Apply the given dotted decimal value as the subnet mask.
 
       broadcast_ip=<value>
-           Apply the given dotted decimal value as the broadcast IP address for this subnet.
+           Apply the given dotted decimal value as the broadcast IP address for 
+           this subnet.
 
       router_ip=<value>      
-           Apply the given dotted decimal value as the default router address for this subnet.
+           Apply the given dotted decimal value as the default router address 
+           for this subnet.
 
       ip_range_low=<value>  
            The lowest value of IP address to allocate via DHCP
@@ -376,7 +390,32 @@ Usage: maas-cli *<profile>* node-group-interfaces [-d --degug] [-h
 
 .. option:: delete <uuid> <interface>
 
-   Removes the entry for the given uuid and interface.
+   Removes the entry for the given UUID and interface.
+   
+   .. _cli-dhcp:
+
+Example:
+Configuring DHCP and DNS.
+
+To enable MAAS to manage DHCP and DNS, it needs to be supplied with the relevant 
+interface information. To do this we need to first determine the UUID of the
+node group affected::
+
+ $ uuid=$(maas-cli <profile> node-groups list | grep uuid | cut -d\" -f4)
+ 
+Once we have the UUID we can use this to update the node-group-interface for
+that nodegroup, and pass it the relevant interface details::
+
+ $ maas-cli <profile> node-group-interface update $uuid eth0 \
+         ip_range_high=192.168.123.200    \
+         ip_range_low=192.168.123.100     \
+         management=2                     \
+         broadcast_ip=192.168.123.255     \
+         router_ip=192.168.123.1          \
+
+Replacing the example values with those required for this network. The only 
+non-obvious parameter is 'management' which takes the values 0 (no management), 1
+(manage DHCP) and 2 (manage DHCP and DNS).
 
 
 .. _node-group-interfaces
@@ -386,7 +425,7 @@ node-group-interfaces
 The node-group-interfaces commands are used for configuring the
 management of DHCP and DNS services where these are managed by MAAS.
 
-Usage: maas-cli *<profile>* node-group-interfaces [-d --degug] [-h
+Usage: maas-cli *<profile>* node-group-interfaces [-d --debug] [-h
 --help] [-k --insecure] list | new [parameters...]
 
 .. program:: maas-cli node-group-interfaces
@@ -436,20 +475,6 @@ Usage: maas-cli *<profile>* node-group-interfaces [-d --degug] [-h
       ip_range_high=<value>  
            The highest value of IP address to allocate via DHCP
 
-.. _cli-dhcp:
-
-Example:
-Configuring DHCP and DNS under a new label called 'master'::
-
- $ maas-cli maas node-group-interfaces new master \
-     ip=192.168.21.5             \
-     interface=eth1              \
-     management=2                \
-     subnet_mask=255.255.255.0   \
-     broadcast_ip=192.168.21.255 \
-     router_ip=192.168.21.1      \
-     ip_range_low=192.168.21.10  \
-     ip_range_high=192.168.21.50
 
 
 
@@ -496,10 +521,11 @@ Usage: maas-cli <profile> tag read | update-nodes | rebuild | update |
 tags 
 ^^^^ 
 Tags are a really useful way of identifying nodes with particular 
-characteristics. For more information on how to use them effectively, 
-please see :ref:`deploy-tags`
+characteristics. 
 
-Usage: maas-cli <profile> tag [-d --degug] [-h --help] [-k
+.. only:: html For more information on how to use them effectively, please see :ref:`deploy-tags`
+
+Usage: maas-cli <profile> tag [-d --debug] [-h --help] [-k
 --insecure] list | new
 
 .. program:: maas-cli tag
