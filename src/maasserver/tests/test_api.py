@@ -679,7 +679,6 @@ class AnonymousEnlistmentAPITest(APIv10TestMixin, TestCase):
                 'status',
                 'netboot',
                 'power_type',
-                'power_parameters',
                 'tag_names',
             ],
             list(parsed_result))
@@ -755,7 +754,6 @@ class SimpleUserLoggedInEnlistmentAPITest(APIv10TestMixin, LoggedInTestCase):
                 'status',
                 'netboot',
                 'power_type',
-                'power_parameters',
                 'resource_uri',
                 'tag_names',
             ],
@@ -896,7 +894,6 @@ class AdminLoggedInEnlistmentAPITest(APIv10TestMixin, AdminLoggedInTestCase):
                 'status',
                 'netboot',
                 'power_type',
-                'power_parameters',
                 'resource_uri',
                 'tag_names',
             ],
