@@ -3,6 +3,7 @@
   <td>{{ cluster.cluster_name }}</td>
   <td>
     <a href="{% url 'cluster-edit' cluster.uuid %}"
+       class="icon"
        title="Edit cluster {{ cluster.cluster_name }}">
       <img src="{{ STATIC_URL }}img/edit.png"
            alt="edit"
