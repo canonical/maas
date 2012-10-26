@@ -985,7 +985,7 @@ def get_file(handler, request):
         db_file = FileStorage.objects.get(filename=filename)
     except FileStorage.DoesNotExist:
         raise MAASAPINotFound("File not found")
-    return HttpResponse(db_file.data.read(), status=httplib.OK)
+    return HttpResponse(db_file.content, status=httplib.OK)
 
 
 class AnonFilesHandler(AnonymousOperationsHandler):

@@ -65,8 +65,6 @@ setup(
              'etc/maas/commissioning-user-data',
              'contrib/maas-http.conf',
              'contrib/maas_local_settings.py']),
-        ('/etc/cron.d',
-            ['etc/cron.d/maas-gc']),
         ('/usr/share/maas',
             ['contrib/wsgi.py',
              'etc/celeryconfig.py',

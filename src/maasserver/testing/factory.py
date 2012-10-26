@@ -296,13 +296,13 @@ class Factory(maastesting.factory.Factory):
         admin.save()
         return admin
 
-    def make_file_storage(self, filename=None, data=None):
+    def make_file_storage(self, filename=None, content=None):
         if filename is None:
             filename = self.getRandomString(100)
-        if data is None:
-            data = self.getRandomString(1024).encode('ascii')
+        if content is None:
+            content = self.getRandomString(1024).encode('ascii')
 
-        return FileStorage.objects.save_file(filename, BytesIO(data))
+        return FileStorage.objects.save_file(filename, BytesIO(content))
 
     def make_oauth_header(self, **kwargs):
         """Fake an OAuth authorization header.

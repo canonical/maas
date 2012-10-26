@@ -2515,7 +2515,8 @@ class FileStorageAPITestMixin:
 class AnonymousFileStorageAPITest(FileStorageAPITestMixin, AnonAPITestCase):
 
     def test_get_works_anonymously(self):
-        factory.make_file_storage(filename="foofilers", data=b"give me rope")
+        factory.make_file_storage(
+            filename="foofilers", content=b"give me rope")
         response = self.make_API_GET_request("get", "foofilers")
 
         self.assertEqual(httplib.OK, response.status_code)
@@ -2585,7 +2586,8 @@ class FileStorageAPITest(FileStorageAPITestMixin, APITestCase):
         self.assertEqual("file two", response.content)
 
     def test_get_file_succeeds(self):
-        factory.make_file_storage(filename="foofilers", data=b"give me rope")
+        factory.make_file_storage(
+            filename="foofilers", content=b"give me rope")
         response = self.make_API_GET_request("get", "foofilers")
 
         self.assertEqual(httplib.OK, response.status_code)

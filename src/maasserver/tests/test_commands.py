@@ -14,13 +14,10 @@ __all__ = []
 
 from codecs import getwriter
 from io import BytesIO
-import os
 
-from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.cache import cache
 from django.core.management import call_command
-from maasserver.models import FileStorage
 from maasserver.testing.factory import factory
 from maasserver.utils.orm import get_one
 from maastesting.djangotestcase import DjangoTestCase
@@ -32,14 +29,6 @@ class TestCommands(DjangoTestCase):
     Detailed testing does not belong here.  If there's any complexity at all
     in a command's code, it should be extracted and unit-tested separately.
     """
-
-    def test_gc(self):
-        upload_dir = os.path.join(settings.MEDIA_ROOT, FileStorage.upload_dir)
-        os.makedirs(upload_dir)
-        self.addCleanup(os.removedirs, upload_dir)
-        call_command('gc')
-        # The test is that we get here without errors.
-        pass
 
     def test_generate_api_doc(self):
         out = BytesIO()
