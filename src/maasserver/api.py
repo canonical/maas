@@ -1576,7 +1576,8 @@ class TagHandler(OperationsHandler):
         definition = request.data.get('definition', None)
         if definition is not None and tag.definition != definition:
             return HttpResponse(
-                "Definition supplied '%s' doesn't match current definition '%s'"
+                "Definition supplied '%s' "
+                "doesn't match current definition '%s'"
                 % (definition, tag.definition),
                 status=httplib.CONFLICT)
         nodes_to_add = self._get_nodes_for(request, 'add', nodegroup)

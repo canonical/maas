@@ -160,8 +160,8 @@ def process_batch(xpath, hardware_details):
     return matched_nodes, unmatched_nodes
 
 
-def process_all(client, tag_name, tag_definition, nodegroup_uuid, system_ids, xpath,
-                batch_size=None):
+def process_all(client, tag_name, tag_definition, nodegroup_uuid, system_ids,
+                xpath, batch_size=None):
     if batch_size is None:
         batch_size = DEFAULT_BATCH_SIZE
     all_matched = []
@@ -184,7 +184,8 @@ def process_all(client, tag_name, tag_definition, nodegroup_uuid, system_ids, xp
     # This also allows us to track if a nodegroup has been processed in the DB,
     # without having to add another API call.
     post_updated_nodes(
-        client, tag_name, tag_definition, nodegroup_uuid, all_matched, all_unmatched)
+        client, tag_name, tag_definition, nodegroup_uuid, all_matched,
+        all_unmatched)
 
 
 def process_node_tags(tag_name, tag_definition, batch_size=None):
@@ -205,5 +206,6 @@ def process_node_tags(tag_name, tag_definition, batch_size=None):
     xpath = etree.XPath(tag_definition)
     # Get nodes to process
     system_ids = get_nodes_for_node_group(client, nodegroup_uuid)
-    process_all(client, tag_name, tag_definition, nodegroup_uuid, system_ids, xpath,
-                batch_size=batch_size)
+    process_all(
+        client, tag_name, tag_definition, nodegroup_uuid, system_ids, xpath,
+        batch_size=batch_size)

@@ -4163,6 +4163,7 @@ class TestBootImagesAPI(APITestCase):
         client = make_worker_client(nodegroup)
         image = make_boot_image_params()
         response = self.report_images(nodegroup, [image], client=client)
+        self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(0, recorder.call_count)
 
     def test_report_boot_images_removes_warning_if_images_found(self):
