@@ -1654,6 +1654,30 @@ class TestNodesAPI(APITestCase):
             [node1.system_id, node2.system_id],
             extract_system_ids(parsed_result))
 
+    def create_nodes(self, nodegroup, nb):
+        [factory.make_node(nodegroup=nodegroup, mac=True)
+            for i in range(nb)]
+
+    def test_GET_list_nodes_issues_constant_number_of_queries(self):
+        nodegroup = factory.make_node_group()
+        self.create_nodes(nodegroup, 10)
+        num_queries1, response1 = self.getNumQueries(
+            self.client.get, self.get_uri('nodes/'), {'op': 'list'})
+        self.create_nodes(nodegroup, 10)
+        num_queries2, response2 = self.getNumQueries(
+            self.client.get, self.get_uri('nodes/'), {'op': 'list'})
+        # Make sure the responses are ok as it's not useful to compare the
+        # number of queries if they are not.
+        self.assertEqual(
+            [httplib.OK, httplib.OK, 10, 20],
+            [
+                response1.status_code,
+                response2.status_code,
+                len(extract_system_ids(json.loads(response1.content))),
+                len(extract_system_ids(json.loads(response2.content))),
+            ])
+        self.assertEqual(num_queries1, num_queries2)
+
     def test_GET_list_without_nodes_returns_empty_list(self):
         # If there are no nodes to list, the "list" op still works but
         # returns an empty list.
