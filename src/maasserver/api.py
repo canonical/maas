@@ -87,7 +87,6 @@ from datetime import (
 from functools import partial
 import httplib
 from inspect import getdoc
-import simplejson as json
 import sys
 from textwrap import dedent
 
@@ -175,6 +174,7 @@ from piston.resource import Resource
 from piston.utils import rc
 from provisioningserver.enum import POWER_TYPE
 from provisioningserver.kernel_opts import KernelParameters
+import simplejson as json
 
 
 class OperationsResource(Resource):
@@ -925,7 +925,7 @@ def get_file(handler, request):
         db_file = FileStorage.objects.get(filename=filename)
     except FileStorage.DoesNotExist:
         raise MAASAPINotFound("File not found")
-    return HttpResponse(db_file.data.read(), status=httplib.OK)
+    return HttpResponse(db_file.content, status=httplib.OK)
 
 
 class AnonFilesHandler(AnonymousOperationsHandler):
