@@ -678,7 +678,7 @@ class TestNodeGroupInterfaceForm(TestCase):
 
 class TestNodeGroupWithInterfacesForm(TestCase):
 
-    def test_NodeGroupWithInterfacesForm_creates_pending_nodegroup(self):
+    def test_creates_pending_nodegroup(self):
         name = factory.make_name('name')
         uuid = factory.getRandomUUID()
         form = NodeGroupWithInterfacesForm(
@@ -694,7 +694,7 @@ class TestNodeGroupWithInterfacesForm(TestCase):
                 nodegroup.nodegroupinterface_set.count(),
             ))
 
-    def test_NodeGroupWithInterfacesForm_creates_nodegroup_with_status(self):
+    def test_creates_nodegroup_with_status(self):
         name = factory.make_name('name')
         uuid = factory.getRandomUUID()
         form = NodeGroupWithInterfacesForm(
@@ -704,7 +704,7 @@ class TestNodeGroupWithInterfacesForm(TestCase):
         nodegroup = form.save()
         self.assertEqual(NODEGROUP_STATUS.ACCEPTED, nodegroup.status)
 
-    def test_NodeGroupWithInterfacesForm_validates_parameters(self):
+    def test_validates_parameters(self):
         name = factory.make_name('name')
         too_long_uuid = 'test' * 30
         form = NodeGroupWithInterfacesForm(
@@ -715,7 +715,7 @@ class TestNodeGroupWithInterfacesForm(TestCase):
                 ['Ensure this value has at most 36 characters (it has 120).']},
             form._errors)
 
-    def test_NodeGroupWithInterfacesForm_rejects_invalid_json_interfaces(self):
+    def test_rejects_invalid_json_interfaces(self):
         name = factory.make_name('name')
         uuid = factory.getRandomUUID()
         invalid_interfaces = factory.make_name('invalid_json_interfaces')
@@ -727,7 +727,7 @@ class TestNodeGroupWithInterfacesForm(TestCase):
             {'interfaces': ['Invalid json value.']},
             form._errors)
 
-    def test_NodeGroupWithInterfacesForm_rejects_invalid_list_interfaces(self):
+    def test_rejects_invalid_list_interfaces(self):
         name = factory.make_name('name')
         uuid = factory.getRandomUUID()
         invalid_interfaces = json.dumps('invalid interface list')
@@ -739,7 +739,7 @@ class TestNodeGroupWithInterfacesForm(TestCase):
             {'interfaces': [INTERFACES_VALIDATION_ERROR_MESSAGE]},
             form._errors)
 
-    def test_NodeGroupWithInterfacesForm_rejects_invalid_interface(self):
+    def test_rejects_invalid_interface(self):
         name = factory.make_name('name')
         uuid = factory.getRandomUUID()
         interface = make_interface_settings()
@@ -753,7 +753,7 @@ class TestNodeGroupWithInterfacesForm(TestCase):
             "Enter a valid IPv4 or IPv6 address",
             form._errors['interfaces'][0])
 
-    def test_NodeGroupWithInterfacesForm_creates_interface_from_params(self):
+    def test_creates_interface_from_params(self):
         name = factory.make_name('name')
         uuid = factory.getRandomUUID()
         interface = make_interface_settings()
@@ -767,7 +767,7 @@ class TestNodeGroupWithInterfacesForm(TestCase):
             nodegroup.nodegroupinterface_set.all()[0],
             MatchesStructure.byEquality(**interface))
 
-    def test_form_checks_presence_of_other_managed_interfaces(self):
+    def test_checks_presence_of_other_managed_interfaces(self):
         name = factory.make_name('name')
         uuid = factory.getRandomUUID()
         interfaces = []
@@ -785,7 +785,7 @@ class TestNodeGroupWithInterfacesForm(TestCase):
             "Only one managed interface can be configured for this cluster",
             form._errors['interfaces'][0])
 
-    def test_NodeGroupWithInterfacesForm_creates_multiple_interfaces(self):
+    def test_creates_multiple_interfaces(self):
         name = factory.make_name('name')
         uuid = factory.getRandomUUID()
         interface1 = make_interface_settings()
@@ -800,7 +800,7 @@ class TestNodeGroupWithInterfacesForm(TestCase):
         nodegroup = NodeGroup.objects.get(uuid=uuid)
         self.assertEqual(2,  nodegroup.nodegroupinterface_set.count())
 
-    def test_NodeGroupWithInterfacesForm_populates_cluster_name_default(self):
+    def test_populates_cluster_name_default(self):
         name = factory.make_name('name')
         uuid = factory.getRandomUUID()
         form = NodeGroupWithInterfacesForm(
@@ -810,7 +810,7 @@ class TestNodeGroupWithInterfacesForm(TestCase):
         nodegroup = form.save()
         self.assertIn(uuid, nodegroup.cluster_name)
 
-    def test_NodeGroupWithInterfacesForm_populates_cluster_name(self):
+    def test_populates_cluster_name(self):
         cluster_name = factory.make_name('cluster_name')
         uuid = factory.getRandomUUID()
         form = NodeGroupWithInterfacesForm(
@@ -820,7 +820,7 @@ class TestNodeGroupWithInterfacesForm(TestCase):
         nodegroup = form.save()
         self.assertEqual(cluster_name, nodegroup.cluster_name)
 
-    def test_NodeGroupWithInterfacesForm_creates_unmanaged_interfaces(self):
+    def test_creates_unmanaged_interfaces(self):
         name = factory.make_name('name')
         uuid = factory.getRandomUUID()
         interface = make_interface_settings()
