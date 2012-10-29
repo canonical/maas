@@ -18,6 +18,9 @@ __all__ = [
     'VersionIndexHandler',
     ]
 
+import httplib
+from logging import getLogger
+
 from django.conf import settings
 from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse
@@ -55,6 +58,9 @@ from metadataserver.models import (
     NodeUserData,
     )
 from piston.utils import rc
+
+
+logger = getLogger("metadataserver")
 
 
 class UnknownMetadataVersion(MAASAPINotFound):
@@ -327,7 +333,9 @@ class UserDataHandler(MetadataViewHandler):
                 NodeUserData.objects.get_user_data(node),
                 mimetype='application/octet-stream')
         except NodeUserData.DoesNotExist:
-            raise MAASAPINotFound("No user data available for this node.")
+            logger.info(
+                "No user data registered for node named %s" % node.hostname)
+            return HttpResponse(status=httplib.NOT_FOUND)
 
 
 class EnlistMetaDataHandler(OperationsHandler):
