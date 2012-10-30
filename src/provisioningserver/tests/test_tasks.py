@@ -499,11 +499,6 @@ class TestBootImagesTasks(PservTestCase):
         args, kwargs = MAASClient.post.call_args
         self.assertItemsEqual([image], json.loads(kwargs['images']))
 
-    def test_report_boot_images_attached_to_boot_images_worker_queue(self):
-        self.assertEqual(
-            write_dns_config.queue,
-            celery_config.WORKER_QUEUE_BOOT_IMAGES)
-
 
 class TestTagTasks(PservTestCase):
 

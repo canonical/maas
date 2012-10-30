@@ -40,4 +40,9 @@ CELERYBEAT_SCHEDULE = {
         'schedule': timedelta(minutes=1),
         'options': {'queue': CLUSTER_UUID},
     },
+    'report-boot-images': {
+        'task': 'provisioningserver.tasks.report_boot_images',
+        'schedule': timedelta(minutes=5),
+        'options': {'queue': CLUSTER_UUID},
+    },
 }
