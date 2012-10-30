@@ -25,11 +25,7 @@ from django.db.models import (
 from maasserver import DefaultMeta
 from maasserver.fields import MACAddressField
 from maasserver.models.cleansave import CleanSave
-
-
-def strip_domain(hostname):
-    """Return `hostname` with the domain part removed."""
-    return hostname.split('.', 1)[0]
+from maasserver.utils import strip_domain
 
 
 class DHCPLeaseManager(Manager):

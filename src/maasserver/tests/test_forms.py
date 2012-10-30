@@ -112,14 +112,17 @@ class NodeWithMACAddressesFormTest(TestCase):
         return query_dict
 
     def make_params(self, mac_addresses=None, architecture=None,
-                    nodegroup=None):
+                    hostname=None, nodegroup=None):
         if mac_addresses is None:
             mac_addresses = [factory.getRandomMACAddress()]
         if architecture is None:
             architecture = factory.getRandomEnum(ARCHITECTURE)
+        if hostname is None:
+            hostname = factory.make_name('hostname')
         params = {
             'mac_addresses': mac_addresses,
             'architecture': architecture,
+            'hostname': hostname,
         }
         if nodegroup is not None:
             params['nodegroup'] = nodegroup
@@ -217,6 +220,18 @@ class NodeWithMACAddressesFormTest(TestCase):
             self.make_params(nodegroup='192.168.1.0'), instance=node)
         form.save()
         self.assertEqual(original_nodegroup, reload_object(node).nodegroup)
+
+    def test_form_without_hostname_generates_hostname(self):
+        form = NodeWithMACAddressesForm(self.make_params(hostname=''))
+        node = form.save()
+        self.assertTrue(len(node.hostname) > 0)
+
+    def test_form_with_ip_based_hostname_generates_hostname(self):
+        ip_based_hostname = '192-168-12-10.domain'
+        form = NodeWithMACAddressesForm(
+            self.make_params(hostname=ip_based_hostname))
+        node = form.save()
+        self.assertNotEqual(ip_based_hostname, node.hostname)
 
 
 class TestOptionForm(ConfigForm):

@@ -26,6 +26,8 @@ from maasserver.enum import (
     NODE_STATUS,
     NODE_STATUS_CHOICES,
     NODE_STATUS_CHOICES_DICT,
+    NODEGROUP_STATUS,
+    NODEGROUPINTERFACE_MANAGEMENT,
     )
 from maasserver.exceptions import NodeStateViolation
 from maasserver.models import (
@@ -569,6 +571,30 @@ class NodeTest(TestCase):
         node.set_hardware_details(xmlbytes)
         node = reload_object(node)
         self.assertEqual([], list(node.tags.all()))
+
+    def test_fqdn_returns_hostname_if_dns_not_managed(self):
+        nodegroup = factory.make_node_group(
+            name=factory.getRandomString(),
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
+        hostname_with_domain = '%s.%s' % (
+            factory.getRandomString(), factory.getRandomString())
+        node = factory.make_node(
+            nodegroup=nodegroup, hostname=hostname_with_domain)
+        self.assertEqual(hostname_with_domain, node.fqdn)
+
+    def test_fqdn_replaces_hostname_if_dns_is_managed(self):
+        hostname_without_domain = factory.make_name('hostname')
+        hostname_with_domain = '%s.%s' % (
+            hostname_without_domain, factory.getRandomString())
+        domain = factory.make_name('domain')
+        nodegroup = factory.make_node_group(
+            status=NODEGROUP_STATUS.ACCEPTED,
+            name=domain,
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
+        node = factory.make_node(
+            hostname=hostname_with_domain, nodegroup=nodegroup)
+        expected_hostname = '%s.%s' % (hostname_without_domain, domain)
+        self.assertEqual(expected_hostname, node.fqdn)
 
 
 class NodeTransitionsTests(TestCase):

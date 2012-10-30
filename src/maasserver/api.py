@@ -165,6 +165,7 @@ from maasserver.server_address import get_maas_facing_server_address
 from maasserver.utils import (
     absolute_reverse,
     map_enum,
+    strip_domain,
     )
 from maasserver.utils.orm import get_one
 from piston.handler import (
@@ -474,6 +475,12 @@ class NodeHandler(OperationsHandler):
     model = Node
     fields = DISPLAYED_NODE_FIELDS
 
+    # Override the 'hostname' field so that it returns the FQDN instead as
+    # this is used by Juju to reach that node.
+    @classmethod
+    def hostname(handler, node):
+        return node.fqdn
+
     def read(self, request, system_id):
         """Read a specific Node."""
         return Node.objects.get_node_or_404(
@@ -647,7 +654,14 @@ def create_node(request):
 class AnonNodesHandler(AnonymousOperationsHandler):
     """Create Nodes."""
     create = read = update = delete = None
+    model = Node
     fields = DISPLAYED_NODE_FIELDS
+
+    # Override the 'hostname' field so that it returns the FQDN instead as
+    # this is used by Juju to reach that node.
+    @classmethod
+    def hostname(handler, node):
+        return node.fqdn
 
     @operation(idempotent=False)
     def new(self, request):
@@ -827,9 +841,12 @@ class NodesHandler(OperationsHandler):
             request.user, NODE_PERMISSION.VIEW, ids=match_ids)
         if match_macs is not None:
             nodes = nodes.filter(macaddress__mac_address__in=match_macs)
-        # Prefetch related macaddresses and tags.
+        # Prefetch related macaddresses, tags and nodegroups (plus
+        # related interfaces).
         nodes = nodes.prefetch_related('macaddress_set__node')
         nodes = nodes.prefetch_related('tags')
+        nodes = nodes.prefetch_related('nodegroup')
+        nodes = nodes.prefetch_related('nodegroup__nodegroupinterface_set')
         return nodes.order_by('id')
 
     @operation(idempotent=True)
@@ -1708,7 +1725,7 @@ def pxeconfig(request):
         preseed_url = compose_preseed_url(node)
         # The node's hostname may include a domain, but we ignore that
         # and use the one from the nodegroup instead.
-        hostname = node.hostname.split('.', 1)[0]
+        hostname = strip_domain(node.hostname)
         domain = node.nodegroup.name
     else:
         try:

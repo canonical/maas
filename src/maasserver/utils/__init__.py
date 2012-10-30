@@ -15,6 +15,7 @@ __all__ = [
     'get_db_state',
     'ignore_unused',
     'map_enum',
+    'strip_domain',
     ]
 
 from urllib import urlencode
@@ -82,3 +83,8 @@ def absolute_reverse(view_name, query=None, *args, **kwargs):
     if query is not None:
         url += '?%s' % urlencode(query, doseq=True)
     return url
+
+
+def strip_domain(hostname):
+    """Return `hostname` with the domain part removed."""
+    return hostname.split('.', 1)[0]

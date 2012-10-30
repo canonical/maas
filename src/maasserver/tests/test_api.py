@@ -381,6 +381,25 @@ class EnlistmentAPITest(APIv10TestMixin, MultipleUsersScenarios, TestCase):
         [diane] = Node.objects.filter(hostname='diane')
         self.assertEqual(architecture, diane.architecture)
 
+    def test_POST_new_generates_hostname_if_ip_based_hostname(self):
+        hostname = '192-168-5-19.domain'
+        response = self.client.post(
+            self.get_uri('nodes/'),
+            {
+                'op': 'new',
+                'hostname': hostname,
+                'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
+                'after_commissioning_action':
+                    NODE_AFTER_COMMISSIONING_ACTION.DEFAULT,
+                'mac_addresses': [factory.getRandomMACAddress()],
+            })
+        parsed_result = json.loads(response.content)
+
+        self.assertEqual(httplib.OK, response.status_code)
+        system_id = parsed_result.get('system_id')
+        node = Node.objects.get(system_id=system_id)
+        self.assertNotEqual(hostname, node.hostname)
+
     def test_POST_new_creates_node_with_power_parameters(self):
         # We're setting power parameters so we disable start_commissioning to
         # prevent anything from attempting to issue power instructions.
@@ -618,6 +637,93 @@ class EnlistmentAPITest(APIv10TestMixin, MultipleUsersScenarios, TestCase):
         self.assertItemsEqual(['architecture'], parsed_result)
 
 
+class NodeHostnameTest(APIv10TestMixin, MultipleUsersScenarios, TestCase):
+
+    scenarios = [
+        ('user', dict(userfactory=factory.make_user)),
+        ('admin', dict(userfactory=factory.make_admin)),
+        ]
+
+    def test_GET_list_returns_fqdn_with_domain_name_from_cluster(self):
+        # If DNS management is enabled, the domain part of a hostname
+        # is replaced by the domain name defined on the cluster.
+        hostname_without_domain = factory.make_name('hostname')
+        hostname_with_domain = '%s.%s' % (
+            hostname_without_domain, factory.getRandomString())
+        domain = factory.make_name('domain')
+        nodegroup = factory.make_node_group(
+            status=NODEGROUP_STATUS.ACCEPTED,
+            name=domain,
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
+        node = factory.make_node(
+            hostname=hostname_with_domain, nodegroup=nodegroup)
+        expected_hostname = '%s.%s' % (hostname_without_domain, domain)
+        response = self.client.get(self.get_uri('nodes/'), {'op': 'list'})
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        parsed_result = json.loads(response.content)
+        self.assertItemsEqual(
+            [expected_hostname],
+            [node.get('hostname') for node in parsed_result])
+
+
+class NodeHostnameEnlistmentTest(APIv10TestMixin, MultipleUsersScenarios,
+                                 TestCase):
+
+    scenarios = [
+        ('anon', dict(userfactory=lambda: AnonymousUser())),
+        ('user', dict(userfactory=factory.make_user)),
+        ('admin', dict(userfactory=factory.make_admin)),
+        ]
+
+    def test_created_node_has_domain_from_cluster(self):
+        hostname_without_domain = factory.make_name('hostname')
+        hostname_with_domain = '%s.%s' % (
+            hostname_without_domain, factory.getRandomString())
+        domain = factory.make_name('domain')
+        factory.make_node_group(
+            status=NODEGROUP_STATUS.ACCEPTED,
+            name=domain,
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
+        response = self.client.post(
+            self.get_uri('nodes/'),
+            {
+                'op': 'new',
+                'hostname': hostname_with_domain,
+                'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
+                'after_commissioning_action':
+                    NODE_AFTER_COMMISSIONING_ACTION.DEFAULT,
+                'mac_addresses': [factory.getRandomMACAddress()],
+            })
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        parsed_result = json.loads(response.content)
+        expected_hostname = '%s.%s' % (hostname_without_domain, domain)
+        self.assertEqual(
+            expected_hostname, parsed_result.get('hostname'))
+
+    def test_created_node_gets_domain_from_cluster_appended(self):
+        hostname_without_domain = factory.make_name('hostname')
+        domain = factory.make_name('domain')
+        factory.make_node_group(
+            status=NODEGROUP_STATUS.ACCEPTED,
+            name=domain,
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
+        response = self.client.post(
+            self.get_uri('nodes/'),
+            {
+                'op': 'new',
+                'hostname': hostname_without_domain,
+                'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
+                'after_commissioning_action':
+                    NODE_AFTER_COMMISSIONING_ACTION.DEFAULT,
+                'mac_addresses': [factory.getRandomMACAddress()],
+            })
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        parsed_result = json.loads(response.content)
+        expected_hostname = '%s.%s' % (hostname_without_domain, domain)
+        self.assertEqual(
+            expected_hostname, parsed_result.get('hostname'))
+
+
 class NonAdminEnlistmentAPITest(APIv10TestMixin, MultipleUsersScenarios,
                                 TestCase):
     # Enlistment tests for non-admin users.
@@ -684,6 +790,7 @@ class AnonymousEnlistmentAPITest(APIv10TestMixin, TestCase):
                 'netboot',
                 'power_type',
                 'tag_names',
+                'resource_uri',
             ],
             list(parsed_result))
 

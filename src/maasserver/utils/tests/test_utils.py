@@ -23,6 +23,7 @@ from maasserver.utils import (
     absolute_reverse,
     get_db_state,
     map_enum,
+    strip_domain,
     )
 from maastesting.testcase import TestCase
 
@@ -104,3 +105,17 @@ class GetDbStateTest(DjangoTestCase):
             NODE_STATUS_CHOICES, but_not=[status])
         node.status = another_status
         self.assertEqual(status, get_db_state(node, 'status'))
+
+
+class TestStripDomain(TestCase):
+
+    def test_strip_domain(self):
+        input_and_results = [
+            ('name.domain',  'name'),
+            ('name', 'name'),
+            ('name.domain.what', 'name'),
+            ('name..domain', 'name'),
+            ]
+        inputs = [input for input, _ in input_and_results]
+        results = [result for _, result in input_and_results]
+        self.assertEqual(results, map(strip_domain, inputs))
