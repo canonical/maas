@@ -53,7 +53,6 @@ MAAS_CELERY_LOG = '/var/log/maas/celery.log'
 MAAS_CLUSTER_CELERY_DB = '/var/lib/maas/celerybeat-cluster-schedule'
 
 WORKER_QUEUE_DNS = 'celery'
-WORKER_QUEUE_BOOT_IMAGES = 'celery'
 
 # Each cluster should have its own queue created automatically by Celery.
 CELERY_CREATE_MISSING_QUEUES = True

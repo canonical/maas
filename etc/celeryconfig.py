@@ -15,13 +15,8 @@ from __future__ import (
 
 __metaclass__ = type
 
-from datetime import timedelta
-
 import celeryconfig_common
 from maas import import_settings
-
-# Silence lint, this will be defined by celeryconfig_common.
-WORKER_QUEUE_BOOT_IMAGES = None
 
 import_settings(celeryconfig_common)
 
@@ -34,9 +29,4 @@ else:
 
 
 CELERYBEAT_SCHEDULE = {
-    'report-boot-images': {
-        'task': 'provisioningserver.tasks.report_boot_images',
-        'schedule': timedelta(minutes=5),
-        'options': {'queue': WORKER_QUEUE_BOOT_IMAGES},
-    },
 }

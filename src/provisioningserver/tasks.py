@@ -335,7 +335,7 @@ def restart_dhcp_server():
 # =====================================================================
 
 
-@task(queue=celery_config.WORKER_QUEUE_BOOT_IMAGES)
+@task
 def report_boot_images():
     """For master worker only: report available netboot images."""
     boot_images.report_to_server()
