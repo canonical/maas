@@ -82,6 +82,7 @@ class SettingsTest(AdminLoggedInTestCase):
         self.patch(settings, "DNS_CONNECT", False)
         new_name = factory.getRandomString()
         new_domain = factory.getRandomString()
+        new_proxy = "http://%s.example.com:1234/" % factory.getRandomString()
         response = self.client.post(
             reverse('settings'),
             get_prefixed_form_data(
@@ -89,12 +90,16 @@ class SettingsTest(AdminLoggedInTestCase):
                 data={
                     'maas_name': new_name,
                     'enlistment_domain': new_domain,
+                    'http_proxy': new_proxy,
                 }))
-
-        self.assertEqual(httplib.FOUND, response.status_code)
-        self.assertEqual(new_name, Config.objects.get_config('maas_name'))
+        self.assertEqual(httplib.FOUND, response.status_code, response.content)
         self.assertEqual(
-            new_domain, Config.objects.get_config('enlistment_domain'))
+            (new_name,
+             new_domain,
+             new_proxy),
+            (Config.objects.get_config('maas_name'),
+             Config.objects.get_config('enlistment_domain'),
+             Config.objects.get_config('http_proxy')))
 
     def test_settings_commissioning_POST(self):
         new_after_commissioning = factory.getRandomEnum(

@@ -12,6 +12,7 @@ from twisted.internet import reactor
 from twisted.internet.defer import inlineCallbacks, returnValue
 from twisted.internet.protocol import DatagramProtocol
 from twisted.python import log
+from twisted.python.context import call
 
 
 class TFTP(DatagramProtocol):
@@ -48,11 +49,22 @@ class TFTP(DatagramProtocol):
 
     @inlineCallbacks
     def _startSession(self, datagram, addr, mode):
+        # Set up a call context so that we can pass extra arbitrary
+        # information to interested backends without adding extra call
+        # arguments, or switching to using a request object, for example.
+        context = {}
+        if self.transport is not None:
+            # Add the local and remote addresses to the call context.
+            local = self.transport.getHost()
+            context["local"] = local.host, local.port
+            context["remote"] = addr
         try:
             if datagram.opcode == OP_WRQ:
-                fs_interface = yield self.backend.get_writer(datagram.filename)
+                fs_interface = yield call(
+                    context, self.backend.get_writer, datagram.filename)
             elif datagram.opcode == OP_RRQ:
-                fs_interface = yield self.backend.get_reader(datagram.filename)
+                fs_interface = yield call(
+                    context, self.backend.get_reader, datagram.filename)
         except Unsupported, e:
             self.transport.write(ERRORDatagram.from_code(ERR_ILLEGAL_OP,
                                     str(e)).to_wire(), addr)

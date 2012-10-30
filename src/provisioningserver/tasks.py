@@ -23,6 +23,7 @@ __all__ = [
     'write_full_dns_config',
     ]
 
+import os
 from subprocess import (
     CalledProcessError,
     check_call,
@@ -347,6 +348,11 @@ UPDATE_NODE_TAGS_MAX_RETRY = 10
 UPDATE_NODE_TAGS_RETRY_DELAY = 2
 
 
+# =====================================================================
+# Tags-related tasks
+# =====================================================================
+
+
 @task(max_retries=UPDATE_NODE_TAGS_MAX_RETRY)
 def update_node_tags(tag_name, tag_definition, retry=True):
     """Update the nodes for a new/changed tag definition.
@@ -363,3 +369,16 @@ def update_node_tags(tag_name, tag_definition, retry=True):
                 exc=exc, countdown=UPDATE_NODE_TAGS_RETRY_DELAY)
         else:
             raise
+
+
+# =====================================================================
+# Image importing-related tasks
+# =====================================================================
+
+@task
+def import_pxe_files(http_proxy=None):
+    env = dict(os.environ)
+    if http_proxy is not None:
+        env['http_proxy'] = http_proxy
+        env['https_proxy'] = http_proxy
+    check_call(['maas-import-pxe-files'], env=env)

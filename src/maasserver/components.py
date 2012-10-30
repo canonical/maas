@@ -17,6 +17,7 @@ __all__ = [
     "register_persistent_error",
     ]
 
+from django.utils.safestring import mark_safe
 from maasserver.models import ComponentError
 from maasserver.utils.orm import get_one
 
@@ -50,4 +51,5 @@ def get_persistent_error(component):
 
 def get_persistent_errors():
     """Return list of current persistent error messages."""
-    return sorted(err.error for err in ComponentError.objects.all())
+    return sorted(
+        mark_safe(err.error) for err in ComponentError.objects.all())

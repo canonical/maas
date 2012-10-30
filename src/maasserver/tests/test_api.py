@@ -110,8 +110,12 @@ from metadataserver.models import (
     NodeUserData,
     )
 from metadataserver.nodeinituser import get_node_init_user
-from mock import Mock
+from mock import (
+    ANY,
+    Mock,
+    )
 from provisioningserver import (
+    boot_images,
     kernel_opts,
     tasks,
     )
@@ -3043,11 +3047,16 @@ class TestAnonymousCommissioningTimeout(APIv10TestMixin, TestCase):
 
 class TestPXEConfigAPI(AnonAPITestCase):
 
-    def get_mac_params(self):
-        return {'mac': factory.make_mac_address().mac_address}
-
     def get_default_params(self):
-        return dict()
+        return {
+            "local": factory.getRandomIPAddress(),
+            "remote": factory.getRandomIPAddress(),
+            }
+
+    def get_mac_params(self):
+        params = self.get_default_params()
+        params['mac'] = factory.make_mac_address().mac_address
+        return params
 
     def get_pxeconfig(self, params=None):
         """Make a request to `pxeconfig`, and return its response dict."""
@@ -3081,7 +3090,8 @@ class TestPXEConfigAPI(AnonAPITestCase):
             ContainsAll(KernelParameters._fields))
 
     def test_pxeconfig_returns_data_for_known_node(self):
-        response = self.client.get(reverse('pxeconfig'), self.get_mac_params())
+        params = self.get_mac_params()
+        response = self.client.get(reverse('pxeconfig'), params)
         self.assertEqual(httplib.OK, response.status_code)
 
     def test_pxeconfig_returns_no_content_for_unknown_node(self):
@@ -3093,6 +3103,7 @@ class TestPXEConfigAPI(AnonAPITestCase):
         architecture = factory.getRandomEnum(ARCHITECTURE)
         arch, subarch = architecture.split('/')
         params = dict(
+            self.get_default_params(),
             mac=factory.getRandomMACAddress(delimiter=b'-'),
             arch=arch,
             subarch=subarch)
@@ -3121,15 +3132,19 @@ class TestPXEConfigAPI(AnonAPITestCase):
         full_hostname = '.'.join([host, domain])
         node = factory.make_node(hostname=full_hostname)
         mac = factory.make_mac_address(node=node)
-        pxe_config = self.get_pxeconfig(params={'mac': mac.mac_address})
+        params = self.get_default_params()
+        params['mac'] = mac.mac_address
+        pxe_config = self.get_pxeconfig(params)
         self.assertEqual(host, pxe_config.get('hostname'))
         self.assertNotIn(domain, pxe_config.values())
 
     def test_pxeconfig_uses_nodegroup_domain_for_node(self):
         mac = factory.make_mac_address()
+        params = self.get_default_params()
+        params['mac'] = mac
         self.assertEqual(
             mac.node.nodegroup.name,
-            self.get_pxeconfig({'mac': mac.mac_address}).get('domain'))
+            self.get_pxeconfig(params).get('domain'))
 
     def get_without_param(self, param):
         """Request a `pxeconfig()` response, but omit `param` from request."""
@@ -3193,6 +3208,13 @@ class TestPXEConfigAPI(AnonAPITestCase):
         self.assertEqual(
             fake_boot_purpose,
             json.loads(response.content)["purpose"])
+
+    def test_pxeconfig_returns_fs_host_as_cluster_controller(self):
+        # The kernel parameter `fs_host` points to the cluster controller
+        # address, which is passed over within the `local` parameter.
+        params = self.get_default_params()
+        kernel_params = KernelParameters(**self.get_pxeconfig(params))
+        self.assertEqual(params["local"], kernel_params.fs_host)
 
 
 class TestNodeGroupsAPI(APIv10TestMixin, MultipleUsersScenarios, TestCase):
@@ -3917,48 +3939,76 @@ class TestBootImagesAPI(APITestCase):
         ('celery', FixtureResource(CeleryFixture())),
         )
 
-    def report_images(self, images, client=None):
+    def report_images(self, nodegroup, images, client=None):
         if client is None:
             client = self.client
         return client.post(
-            reverse('boot_images_handler'),
-            {'op': 'report_boot_images', 'images': json.dumps(images)})
+            reverse('boot_images_handler'), {
+                'images': json.dumps(images),
+                'nodegroup': nodegroup.uuid,
+                'op': 'report_boot_images',
+                })
 
     def test_report_boot_images_does_not_work_for_normal_user(self):
-        NodeGroup.objects.ensure_master()
+        nodegroup = NodeGroup.objects.ensure_master()
         log_in_as_normal_user(self.client)
-        response = self.report_images([])
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        response = self.report_images(nodegroup, [])
+        self.assertEqual(
+            httplib.FORBIDDEN, response.status_code, response.content)
 
     def test_report_boot_images_works_for_master_worker(self):
-        client = make_worker_client(NodeGroup.objects.ensure_master())
-        response = self.report_images([], client=client)
+        nodegroup = NodeGroup.objects.ensure_master()
+        client = make_worker_client(nodegroup)
+        response = self.report_images(nodegroup, [], client=client)
         self.assertEqual(httplib.OK, response.status_code)
 
     def test_report_boot_images_stores_images(self):
+        nodegroup = NodeGroup.objects.ensure_master()
         image = make_boot_image_params()
-        client = make_worker_client(NodeGroup.objects.ensure_master())
-        response = self.report_images([image], client=client)
+        client = make_worker_client(nodegroup)
+        response = self.report_images(nodegroup, [image], client=client)
         self.assertEqual(
             (httplib.OK, "OK"),
             (response.status_code, response.content))
         self.assertTrue(
-            BootImage.objects.have_image(**image))
+            BootImage.objects.have_image(nodegroup=nodegroup, **image))
 
     def test_report_boot_images_ignores_unknown_image_properties(self):
+        nodegroup = NodeGroup.objects.ensure_master()
         image = make_boot_image_params()
         image['nonesuch'] = factory.make_name('nonesuch'),
-        client = make_worker_client(NodeGroup.objects.ensure_master())
-        response = self.report_images([image], client=client)
+        client = make_worker_client(nodegroup)
+        response = self.report_images(nodegroup, [image], client=client)
         self.assertEqual(
             (httplib.OK, "OK"),
             (response.status_code, response.content))
 
     def test_report_boot_images_warns_if_no_images_found(self):
+        nodegroup = NodeGroup.objects.ensure_master()
+        factory.make_node_group()  # Second nodegroup with no images.
         recorder = self.patch(api, 'register_persistent_error')
-        client = make_worker_client(NodeGroup.objects.ensure_master())
+        client = make_worker_client(nodegroup)
+        response = self.report_images(nodegroup, [], client=client)
+        self.assertEqual(
+            (httplib.OK, "OK"),
+            (response.status_code, response.content))
 
-        response = self.report_images([], client=client)
+        self.assertIn(
+            COMPONENT.IMPORT_PXE_FILES,
+            [args[0][0] for args in recorder.call_args_list])
+        # Check that the persistent error message contains a link to the
+        # clusters listing.
+        self.assertIn(
+            "/settings/#accepted-clusters", recorder.call_args_list[0][0][1])
+
+    def test_report_boot_images_warns_if_any_nodegroup_has_no_images(self):
+        nodegroup = NodeGroup.objects.ensure_master()
+        # Second nodegroup with no images.
+        factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
+        recorder = self.patch(api, 'register_persistent_error')
+        client = make_worker_client(nodegroup)
+        image = make_boot_image_params()
+        response = self.report_images(nodegroup, [image], client=client)
         self.assertEqual(
             (httplib.OK, "OK"),
             (response.status_code, response.content))
@@ -3967,13 +4017,24 @@ class TestBootImagesAPI(APITestCase):
             COMPONENT.IMPORT_PXE_FILES,
             [args[0][0] for args in recorder.call_args_list])
 
+    def test_report_boot_images_ignores_non_accepted_groups(self):
+        nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
+        factory.make_node_group(status=NODEGROUP_STATUS.PENDING)
+        factory.make_node_group(status=NODEGROUP_STATUS.REJECTED)
+        recorder = self.patch(api, 'register_persistent_error')
+        client = make_worker_client(nodegroup)
+        image = make_boot_image_params()
+        response = self.report_images(nodegroup, [image], client=client)
+        self.assertEqual(0, recorder.call_count)
+
     def test_report_boot_images_removes_warning_if_images_found(self):
         self.patch(api, 'register_persistent_error')
         self.patch(api, 'discard_persistent_error')
-        client = make_worker_client(NodeGroup.objects.ensure_master())
+        nodegroup = factory.make_node_group()
+        image = make_boot_image_params()
+        client = make_worker_client(nodegroup)
 
-        response = self.report_images(
-            [make_boot_image_params()], client=client)
+        response = self.report_images(nodegroup, [image], client=client)
         self.assertEqual(
             (httplib.OK, "OK"),
             (response.status_code, response.content))
@@ -3985,15 +4046,20 @@ class TestBootImagesAPI(APITestCase):
             COMPONENT.IMPORT_PXE_FILES)
 
     def test_worker_calls_report_boot_images(self):
+        # report_boot_images() uses the report_boot_images op on the nodes
+        # handlers to send image information.
         refresh_worker(NodeGroup.objects.ensure_master())
         self.patch(MAASClient, 'post')
         self.patch(tftppath, 'list_boot_images', Mock(return_value=[]))
+        self.patch(boot_images, "get_cluster_uuid")
 
         tasks.report_boot_images.delay()
 
+        # We're not concerned about the payloads (images and nodegroup) here;
+        # those are tested in provisioningserver.tests.test_boot_images.
         MAASClient.post.assert_called_once_with(
             reverse('boot_images_handler').lstrip('/'), 'report_boot_images',
-            images=json.dumps([]))
+            images=ANY, nodegroup=ANY)
 
 
 class TestDescribe(AnonAPITestCase):

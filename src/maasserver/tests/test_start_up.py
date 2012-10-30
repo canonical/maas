@@ -32,9 +32,9 @@ from maasserver.models import (
     NodeGroup,
     )
 from maasserver.testing.factory import factory
+from maasserver.testing.testcase import TestCase
 from maastesting.celery import CeleryFixture
 from maastesting.fakemethod import FakeMethod
-from maastesting.testcase import TestCase
 from mock import Mock
 from provisioningserver import tasks
 from testresources import FixtureResource

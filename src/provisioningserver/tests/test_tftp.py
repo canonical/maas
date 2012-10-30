@@ -35,6 +35,7 @@ from twisted.internet.defer import (
     inlineCallbacks,
     succeed,
     )
+from twisted.python import context
 from zope.interface.verify import verifyObject
 
 
@@ -213,6 +214,16 @@ class TestTFTPBackend(TestCase):
         mac = factory.getRandomMACAddress(b"-")
         config_path = compose_config_path(mac)
         backend = TFTPBackend(self.make_dir(), b"http://example.com/")
+        # python-tx-tftp sets up call context so that backends can discover
+        # more about the environment in which they're running.
+        call_context = {
+            "local": (
+                factory.getRandomIPAddress(),
+                factory.getRandomPort()),
+            "remote": (
+                factory.getRandomIPAddress(),
+                factory.getRandomPort()),
+            }
 
         @partial(self.patch, backend, "get_config_reader")
         def get_config_reader(params):
@@ -220,9 +231,16 @@ class TestTFTPBackend(TestCase):
             params_json_reader = BytesReader(params_json)
             return succeed(params_json_reader)
 
-        reader = yield backend.get_reader(config_path)
+        reader = yield context.call(
+            call_context, backend.get_reader, config_path)
         output = reader.read(10000)
-        expected_params = dict(mac=mac)
+        # The addresses provided by python-tx-tftp in the call context are
+        # passed over the wire as address:port strings.
+        expected_params = {
+            "mac": mac,
+            "local": call_context["local"][0],  # address only.
+            "remote": call_context["remote"][0],  # address only.
+            }
         observed_params = json.loads(output)
         self.assertEqual(expected_params, observed_params)
 

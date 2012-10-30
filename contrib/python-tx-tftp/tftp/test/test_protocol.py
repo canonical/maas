@@ -11,9 +11,11 @@ from tftp.errors import (Unsupported, AccessViolation, FileExists, FileNotFound,
 from tftp.netascii import NetasciiReceiverProxy, NetasciiSenderProxy
 from tftp.protocol import TFTP
 from twisted.internet import reactor
-from twisted.internet.defer import Deferred
+from twisted.internet.address import IPv4Address
+from twisted.internet.defer import Deferred, inlineCallbacks
 from twisted.internet.protocol import DatagramProtocol
 from twisted.internet.task import Clock
+from twisted.python import context
 from twisted.python.filepath import FilePath
 from twisted.test.proto_helpers import StringTransport
 from twisted.trial import unittest
@@ -50,7 +52,8 @@ class DispatchErrors(unittest.TestCase):
 
     def setUp(self):
         self.clock = Clock()
-        self.transport = FakeTransport(hostAddress=('127.0.0.1', self.port))
+        self.transport = FakeTransport(
+            hostAddress=IPv4Address('UDP', '127.0.0.1', self.port))
 
     def test_malformed_datagram(self):
         tftp = TFTP(BackendFactory(), _clock=self.clock)
@@ -247,3 +250,71 @@ class SuccessfulAsyncDispatch(unittest.TestCase):
         self.clock.advance(1)
         self.assertTrue(d.called)
         self.assertTrue(IWriter.providedBy(d.result.backend))
+
+
+class CapturedContext(Exception):
+    """A donkey, to carry the call context back up the stack."""
+
+    def __init__(self, args, names):
+        super(CapturedContext, self).__init__(*args)
+        self.context = {name: context.get(name) for name in names}
+
+
+class ContextCapturingBackend(object):
+    """A fake `IBackend` that raises `CapturedContext`.
+
+    Calling `get_reader` or `get_writer` raises a `CapturedContext` exception,
+    which captures the values of the call context for the given `names`.
+    """
+
+    def __init__(self, *names):
+        self.names = names
+
+    def get_reader(self, file_name):
+        raise CapturedContext(("get_reader", file_name), self.names)
+
+    def get_writer(self, file_name):
+        raise CapturedContext(("get_writer", file_name), self.names)
+
+
+class HostTransport(object):
+    """A fake `ITransport` that only responds to `getHost`."""
+
+    def __init__(self, host):
+        self.host = host
+
+    def getHost(self):
+        return IPv4Address("UDP", *self.host)
+
+
+class BackendCallingContext(unittest.TestCase):
+
+    def setUp(self):
+        super(BackendCallingContext, self).setUp()
+        self.backend = ContextCapturingBackend("local", "remote")
+        self.tftp = TFTP(self.backend)
+        self.tftp.transport = HostTransport(("12.34.56.78", 1234))
+
+    @inlineCallbacks
+    def test_context_rrq(self):
+        rrq_datagram = RRQDatagram('nonempty', 'NetASCiI', {})
+        rrq_addr = ('127.0.0.1', 1069)
+        error = yield self.assertFailure(
+            self.tftp._startSession(rrq_datagram, rrq_addr, "octet"),
+            CapturedContext)
+        self.assertEqual(("get_reader", rrq_datagram.filename), error.args)
+        self.assertEqual(
+            {"local": self.tftp.transport.host, "remote": rrq_addr},
+            error.context)
+
+    @inlineCallbacks
+    def test_context_wrq(self):
+        wrq_datagram = WRQDatagram('nonempty', 'NetASCiI', {})
+        wrq_addr = ('127.0.0.1', 1069)
+        error = yield self.assertFailure(
+            self.tftp._startSession(wrq_datagram, wrq_addr, "octet"),
+            CapturedContext)
+        self.assertEqual(("get_writer", wrq_datagram.filename), error.args)
+        self.assertEqual(
+            {"local": self.tftp.transport.host, "remote": wrq_addr},
+            error.context)

@@ -242,7 +242,7 @@ def is_squashfs_image_present(node):
     """Whether or not the SquashFS image can be used during installation."""
     arch, subarch = node.architecture.split("/")
     return BootImage.objects.have_image(
-        arch, subarch, node.get_distro_series(), "filesystem")
+        node.nodegroup, arch, subarch, node.get_distro_series(), "filesystem")
 
 
 def render_preseed(node, prefix, release=''):

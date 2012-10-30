@@ -325,7 +325,7 @@ class Factory(maastesting.factory.Factory):
             '%s="%s"' % (key, value) for key, value in items.items()])
 
     def make_boot_image(self, architecture=None, subarchitecture=None,
-                        release=None, purpose=None):
+                        release=None, purpose=None, nodegroup=None):
         if architecture is None:
             architecture = self.make_name('architecture')
         if subarchitecture is None:
@@ -334,7 +334,10 @@ class Factory(maastesting.factory.Factory):
             release = self.make_name('release')
         if purpose is None:
             purpose = self.make_name('purpose')
+        if nodegroup is None:
+            nodegroup = self.make_node_group()
         return BootImage.objects.create(
+            nodegroup=nodegroup,
             architecture=architecture,
             subarchitecture=subarchitecture,
             release=release,

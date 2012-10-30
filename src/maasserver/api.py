@@ -162,7 +162,10 @@ from maasserver.preseed import (
     compose_preseed_url,
     )
 from maasserver.server_address import get_maas_facing_server_address
-from maasserver.utils import map_enum
+from maasserver.utils import (
+    absolute_reverse,
+    map_enum,
+    )
 from maasserver.utils.orm import get_one
 from piston.handler import (
     AnonymousBaseHandler,
@@ -1695,6 +1698,8 @@ def pxeconfig(request):
     :param arch: Architecture name (in the pxelinux namespace, eg. 'arm' not
         'armhf').
     :param subarch: Subarchitecture name (in the pxelinux namespace).
+    :param local: The IP address of the cluster controller.
+    :param remote: The IP address of the booting node.
     """
     node = get_node_from_mac_string(request.GET.get('mac', None))
 
@@ -1749,11 +1754,12 @@ def pxeconfig(request):
 
     purpose = get_boot_purpose(node)
     server_address = get_maas_facing_server_address()
+    cluster_address = get_mandatory_param(request.GET, "local")
 
     params = KernelParameters(
         arch=arch, subarch=subarch, release=series, purpose=purpose,
         hostname=hostname, domain=domain, preseed_url=preseed_url,
-        log_host=server_address, fs_host=server_address)
+        log_host=server_address, fs_host=cluster_address)
 
     return HttpResponse(
         json.dumps(params._asdict()),
@@ -1777,24 +1783,34 @@ class BootImagesHandler(OperationsHandler):
             `purpose`, all as in the code that determines TFTP paths for
             these images.
         """
-        check_nodegroup_access(request, NodeGroup.objects.ensure_master())
+        nodegroup_uuid = get_mandatory_param(request.data, "nodegroup")
+        nodegroup = get_object_or_404(NodeGroup, uuid=nodegroup_uuid)
+        check_nodegroup_access(request, nodegroup)
         images = json.loads(get_mandatory_param(request.data, 'images'))
 
         for image in images:
             BootImage.objects.register_image(
+                nodegroup=nodegroup,
                 architecture=image['architecture'],
                 subarchitecture=image.get('subarchitecture', 'generic'),
                 release=image['release'],
                 purpose=image['purpose'])
 
-        if len(images) == 0:
+        # Work out if any nodegroups are missing images.
+        nodegroup_ids_with_images = BootImage.objects.values_list(
+            "nodegroup_id", flat=True)
+        nodegroups_missing_images = NodeGroup.objects.exclude(
+            id__in=nodegroup_ids_with_images).filter(
+                status=NODEGROUP_STATUS.ACCEPTED)
+        if nodegroups_missing_images.exists():
             warning = dedent("""\
-                No boot images have been imported yet.  Either the
+                Some cluster controllers are missing boot images.  Either the
                 maas-import-pxe-files script has not run yet, or it failed.
 
-                Try running it manually.  If it succeeds, this message will
-                go away within 5 minutes.
-                """)
+                Try running it manually on the affected
+                <a href="%s#accepted-clusters">cluster controllers.</a>
+                If it succeeds, this message will go away within 5 minutes.
+                """ % absolute_reverse("settings"))
             register_persistent_error(COMPONENT.IMPORT_PXE_FILES, warning)
         else:
             discard_persistent_error(COMPONENT.IMPORT_PXE_FILES)

@@ -16,10 +16,8 @@ from socket import gethostname
 
 from fixtures import TestWithFixtures
 from maasserver.models import Config
-from maasserver.models.config import (
-    DEFAULT_CONFIG,
-    get_default_config,
-    )
+import maasserver.models.config
+from maasserver.models.config import get_default_config
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
 
@@ -30,6 +28,14 @@ class ConfigDefaultTest(TestCase, TestWithFixtures):
     def test_default_config_maas_name(self):
         default_config = get_default_config()
         self.assertEqual(gethostname(), default_config['maas_name'])
+
+    def test_defaults(self):
+        expected = get_default_config()
+        observed = {
+            name: Config.objects.get_config(name)
+            for name in expected
+            }
+        self.assertEqual(expected, observed)
 
 
 class CallRecorder:
@@ -63,13 +69,15 @@ class ConfigTest(TestCase):
     def test_manager_get_config_not_found_in_default_config(self):
         name = factory.getRandomString()
         value = factory.getRandomString()
-        DEFAULT_CONFIG[name] = value
+        self.patch(maasserver.models.config, "DEFAULT_CONFIG", {name: value})
         config = Config.objects.get_config(name, None)
         self.assertEqual(value, config)
 
     def test_default_config_cannot_be_changed(self):
         name = factory.getRandomString()
-        DEFAULT_CONFIG[name] = {'key': 'value'}
+        self.patch(
+            maasserver.models.config, "DEFAULT_CONFIG",
+            {name: {'key': 'value'}})
         config = Config.objects.get_config(name)
         config.update({'key2': 'value2'})
 
