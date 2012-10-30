@@ -14,7 +14,6 @@ __all__ = []
 
 from maasserver import dns
 from maasserver.models import DHCPLease
-from maasserver.models.dhcplease import strip_domain
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
 from maasserver.utils import ignore_unused
@@ -45,20 +44,6 @@ class TestDHCPLease(TestCase):
         self.assertEqual(nodegroup, lease.nodegroup)
         self.assertEqual(ip, lease.ip)
         self.assertEqual(mac, lease.mac)
-
-
-class TestUtitilies(TestCase):
-
-    def test_strip_domain(self):
-        input_and_results = [
-            ('name.domain',  'name'),
-            ('name', 'name'),
-            ('name.domain.what', 'name'),
-            ('name..domain', 'name'),
-            ]
-        inputs = [input for input, _ in input_and_results]
-        results = [result for _, result in input_and_results]
-        self.assertEqual(results, map(strip_domain, inputs))
 
 
 class TestDHCPLeaseManager(TestCase):

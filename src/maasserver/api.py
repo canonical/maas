@@ -165,6 +165,7 @@ from maasserver.server_address import get_maas_facing_server_address
 from maasserver.utils import (
     absolute_reverse,
     map_enum,
+    strip_domain,
     )
 from maasserver.utils.orm import get_one
 from piston.handler import (
@@ -1802,7 +1803,7 @@ def pxeconfig(request):
         preseed_url = compose_preseed_url(node)
         # The node's hostname may include a domain, but we ignore that
         # and use the one from the nodegroup instead.
-        hostname = node.hostname.split('.', 1)[0]
+        hostname = strip_domain(node.hostname)
         domain = node.nodegroup.name
     else:
         try:

@@ -381,6 +381,25 @@ class EnlistmentAPITest(APIv10TestMixin, MultipleUsersScenarios, TestCase):
         [diane] = Node.objects.filter(hostname='diane')
         self.assertEqual(architecture, diane.architecture)
 
+    def test_POST_new_generates_hostname_if_ip_based_hostname(self):
+        hostname = '192-168-5-19.domain'
+        response = self.client.post(
+            self.get_uri('nodes/'),
+            {
+                'op': 'new',
+                'hostname': hostname,
+                'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
+                'after_commissioning_action':
+                    NODE_AFTER_COMMISSIONING_ACTION.DEFAULT,
+                'mac_addresses': [factory.getRandomMACAddress()],
+            })
+        parsed_result = json.loads(response.content)
+
+        self.assertEqual(httplib.OK, response.status_code)
+        system_id = parsed_result.get('system_id')
+        node = Node.objects.get(system_id=system_id)
+        self.assertNotEqual(hostname, node.hostname)
+
     def test_POST_new_creates_node_with_power_parameters(self):
         # We're setting power parameters so we disable start_commissioning to
         # prevent anything from attempting to issue power instructions.
