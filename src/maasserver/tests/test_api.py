@@ -3202,11 +3202,16 @@ class TestAnonymousCommissioningTimeout(APIv10TestMixin, TestCase):
 
 class TestPXEConfigAPI(AnonAPITestCase):
 
-    def get_mac_params(self):
-        return {'mac': factory.make_mac_address().mac_address}
-
     def get_default_params(self):
-        return dict()
+        return {
+            "local": factory.getRandomIPAddress(),
+            "remote": factory.getRandomIPAddress(),
+            }
+
+    def get_mac_params(self):
+        params = self.get_default_params()
+        params['mac'] = factory.make_mac_address().mac_address
+        return params
 
     def get_pxeconfig(self, params=None):
         """Make a request to `pxeconfig`, and return its response dict."""
@@ -3240,7 +3245,8 @@ class TestPXEConfigAPI(AnonAPITestCase):
             ContainsAll(KernelParameters._fields))
 
     def test_pxeconfig_returns_data_for_known_node(self):
-        response = self.client.get(reverse('pxeconfig'), self.get_mac_params())
+        params = self.get_mac_params()
+        response = self.client.get(reverse('pxeconfig'), params)
         self.assertEqual(httplib.OK, response.status_code)
 
     def test_pxeconfig_returns_no_content_for_unknown_node(self):
@@ -3252,6 +3258,7 @@ class TestPXEConfigAPI(AnonAPITestCase):
         architecture = factory.getRandomEnum(ARCHITECTURE)
         arch, subarch = architecture.split('/')
         params = dict(
+            self.get_default_params(),
             mac=factory.getRandomMACAddress(delimiter=b'-'),
             arch=arch,
             subarch=subarch)
@@ -3280,15 +3287,19 @@ class TestPXEConfigAPI(AnonAPITestCase):
         full_hostname = '.'.join([host, domain])
         node = factory.make_node(hostname=full_hostname)
         mac = factory.make_mac_address(node=node)
-        pxe_config = self.get_pxeconfig(params={'mac': mac.mac_address})
+        params = self.get_default_params()
+        params['mac'] = mac.mac_address
+        pxe_config = self.get_pxeconfig(params)
         self.assertEqual(host, pxe_config.get('hostname'))
         self.assertNotIn(domain, pxe_config.values())
 
     def test_pxeconfig_uses_nodegroup_domain_for_node(self):
         mac = factory.make_mac_address()
+        params = self.get_default_params()
+        params['mac'] = mac
         self.assertEqual(
             mac.node.nodegroup.name,
-            self.get_pxeconfig({'mac': mac.mac_address}).get('domain'))
+            self.get_pxeconfig(params).get('domain'))
 
     def get_without_param(self, param):
         """Request a `pxeconfig()` response, but omit `param` from request."""
@@ -3352,6 +3363,13 @@ class TestPXEConfigAPI(AnonAPITestCase):
         self.assertEqual(
             fake_boot_purpose,
             json.loads(response.content)["purpose"])
+
+    def test_pxeconfig_returns_fs_host_as_cluster_controller(self):
+        # The kernel parameter `fs_host` points to the cluster controller
+        # address, which is passed over within the `local` parameter.
+        params = self.get_default_params()
+        kernel_params = KernelParameters(**self.get_pxeconfig(params))
+        self.assertEqual(params["local"], kernel_params.fs_host)
 
 
 class TestNodeGroupsAPI(APIv10TestMixin, MultipleUsersScenarios, TestCase):

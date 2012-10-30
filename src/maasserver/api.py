@@ -1792,6 +1792,8 @@ def pxeconfig(request):
     :param arch: Architecture name (in the pxelinux namespace, eg. 'arm' not
         'armhf').
     :param subarch: Subarchitecture name (in the pxelinux namespace).
+    :param local: The IP address of the cluster controller.
+    :param remote: The IP address of the booting node.
     """
     node = get_node_from_mac_string(request.GET.get('mac', None))
 
@@ -1846,11 +1848,12 @@ def pxeconfig(request):
 
     purpose = get_boot_purpose(node)
     server_address = get_maas_facing_server_address()
+    cluster_address = get_mandatory_param(request.GET, "local")
 
     params = KernelParameters(
         arch=arch, subarch=subarch, release=series, purpose=purpose,
         hostname=hostname, domain=domain, preseed_url=preseed_url,
-        log_host=server_address, fs_host=server_address)
+        log_host=server_address, fs_host=cluster_address)
 
     return HttpResponse(
         json.dumps(params._asdict()),
