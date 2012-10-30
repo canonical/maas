@@ -63,7 +63,10 @@ from maasserver.models.config import Config
 from maasserver.models.dhcplease import DHCPLease
 from maasserver.models.tag import Tag
 from maasserver.models.timestampedmodel import TimestampedModel
-from maasserver.utils import get_db_state
+from maasserver.utils import (
+    get_db_state,
+    strip_domain,
+    )
 from maasserver.utils.orm import get_first
 from piston.models import Token
 from provisioningserver.enum import (
@@ -490,6 +493,26 @@ class Node(CleanSave, TimestampedModel):
             return "%s (%s)" % (self.system_id, self.hostname)
         else:
             return self.system_id
+
+    @property
+    def fqdn(self):
+        """Fully qualified domain name for this node.
+
+        If MAAS manages DNS for this node, the domain part of the
+        hostname (if present), is replaced by the domain configured
+        on the cluster controller.
+        If not, simply return the node's hostname.
+        """
+        # Avoid circular imports.
+        from maasserver.dns import is_dns_managed
+        if is_dns_managed(self.nodegroup):
+            # If the hostname field contains a domain, strip it.
+            hostname = strip_domain(self.hostname)
+            # Build the FQDN by using the hostname and nodegroup.name
+            # as the domain name.
+            return '%s.%s' % (hostname, self.nodegroup.name)
+        else:
+            return self.hostname
 
     def tag_names(self):
         # We don't use self.tags.values_list here because this does not
