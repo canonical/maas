@@ -31,7 +31,6 @@ from maasserver.enum import (
 from maasserver.models.nodegroupinterface import NodeGroupInterface
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.refresh_worker import refresh_worker
-from maasserver.utils.orm import get_one
 from piston.models import (
     KEY_SIZE,
     Token,
@@ -196,10 +195,13 @@ class NodeGroup(TimestampedModel):
         This is a temporary method that should be refactored once we add
         proper support for multiple interfaces on a nodegroup.
         """
-        return get_one(
-            NodeGroupInterface.objects.filter(
-                nodegroup=self).exclude(
-                    management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED))
+        # Iterate over all the interfaces in python instead of doing the
+        # filtering in SQL so that this will use the cached version of
+        # self.nodegroupinterface_set if it is there.
+        for interface in self.nodegroupinterface_set.all():
+            if interface.management != NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED:
+                return interface
+        return None
 
     def ensure_dhcp_key(self):
         """Ensure that this nodegroup has a dhcp key.

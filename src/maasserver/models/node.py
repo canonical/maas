@@ -490,7 +490,7 @@ class Node(CleanSave, TimestampedModel):
 
     def __unicode__(self):
         if self.hostname:
-            return "%s (%s)" % (self.system_id, self.hostname)
+            return "%s (%s)" % (self.system_id, self.fqdn)
         else:
             return self.system_id
 

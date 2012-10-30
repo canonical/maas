@@ -478,6 +478,12 @@ class NodeHandler(OperationsHandler):
     model = Node
     fields = DISPLAYED_NODE_FIELDS
 
+    # Override the 'hostname' field so that it returns the FQDN instead as
+    # this is used by Juju to reach that node.
+    @classmethod
+    def hostname(handler, node):
+        return node.fqdn
+
     def read(self, request, system_id):
         """Read a specific Node."""
         return Node.objects.get_node_or_404(
@@ -651,7 +657,14 @@ def create_node(request):
 class AnonNodesHandler(AnonymousOperationsHandler):
     """Anonymous access to Nodes."""
     create = read = update = delete = None
+    model = Node
     fields = DISPLAYED_NODE_FIELDS
+
+    # Override the 'hostname' field so that it returns the FQDN instead as
+    # this is used by Juju to reach that node.
+    @classmethod
+    def hostname(handler, node):
+        return node.fqdn
 
     @operation(idempotent=False)
     def new(self, request):
@@ -876,9 +889,12 @@ class NodesHandler(OperationsHandler):
             request.user, NODE_PERMISSION.VIEW, ids=match_ids)
         if match_macs is not None:
             nodes = nodes.filter(macaddress__mac_address__in=match_macs)
-        # Prefetch related macaddresses and tags.
+        # Prefetch related macaddresses, tags and nodegroups (plus
+        # related interfaces).
         nodes = nodes.prefetch_related('macaddress_set__node')
         nodes = nodes.prefetch_related('tags')
+        nodes = nodes.prefetch_related('nodegroup')
+        nodes = nodes.prefetch_related('nodegroup__nodegroupinterface_set')
         return nodes.order_by('id')
 
     @operation(idempotent=True)
