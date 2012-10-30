@@ -61,6 +61,7 @@ from maasserver.enum import (
     DISTRO_SERIES_CHOICES,
     NODE_AFTER_COMMISSIONING_ACTION,
     NODE_AFTER_COMMISSIONING_ACTION_CHOICES,
+    NODE_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
     NODEGROUPINTERFACE_MANAGEMENT_CHOICES,
     )
@@ -118,6 +119,19 @@ class NodeForm(ModelForm):
             # Creating a new node.  Offer choice of nodegroup.
             self.fields['nodegroup'] = NodeGroupFormField(
                 required=False, empty_label="Default (master)")
+
+    def clean_hostname(self):
+        # Don't allow the hostname to be changed if the node is
+        # currently allocated.  Juju knows the node by its old name, so
+        # changing the name would confuse things.
+        hostname = self.instance.hostname
+        status = self.instance.status
+        new_hostname = self.cleaned_data.get('hostname', hostname)
+        if new_hostname != hostname and status == NODE_STATUS.ALLOCATED:
+            raise ValidationError(
+                "Can't change hostname to %s: node is in use." % new_hostname)
+
+        return new_hostname
 
     after_commissioning_action = forms.TypedChoiceField(
         label="After commissioning",
@@ -284,7 +298,7 @@ class SSHKeyForm(ModelForm):
         exclude.remove('user')
         try:
             self.instance.validate_unique(exclude=exclude)
-        except ValidationError, e:
+        except ValidationError as e:
             # Publish this error as a 'key' error rather than a 'general'
             # error because only the 'key' errors are displayed on the
             # 'add key' form.
