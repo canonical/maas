@@ -14,6 +14,7 @@ __all__ = []
 
 from django.conf import settings
 from lxml.html import fromstring
+from maasserver.testing import extract_redirect
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
 
@@ -34,3 +35,10 @@ class TestLogin(TestCase):
         response = self.client.get('/accounts/login/')
         self.assertTrue(response.context['no_users'])
         self.assertEqual(path, response.context['create_command'])
+    
+    def test_login_redirects_when_authenticated(self):
+        password = factory.getRandomString()
+        user = factory.make_user(password=password)
+        self.client.login(username=user.username, password=password)
+        response = self.client.get('/accounts/login/')
+        self.assertEqual('/', extract_redirect(response))

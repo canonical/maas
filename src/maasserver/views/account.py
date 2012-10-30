@@ -22,6 +22,7 @@ from django.contrib.auth.views import (
     logout as dj_logout,
     )
 from django.core.urlresolvers import reverse
+from django.http import HttpResponseRedirect
 from maasserver.models import UserProfile
 
 
@@ -30,7 +31,10 @@ def login(request):
         'no_users': UserProfile.objects.all_users().count() == 0,
         'create_command': django_settings.MAAS_CLI,
         }
-    return dj_login(request, extra_context=extra_context)
+    if request.user.is_authenticated():
+        return HttpResponseRedirect(reverse('index'))
+    else:
+        return dj_login(request, extra_context=extra_context)
 
 
 def logout(request):
