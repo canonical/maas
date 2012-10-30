@@ -63,6 +63,7 @@ from maasserver.enum import (
     NODE_AFTER_COMMISSIONING_ACTION,
     NODE_AFTER_COMMISSIONING_ACTION_CHOICES,
     NODE_STATUS,
+    NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
     NODEGROUPINTERFACE_MANAGEMENT_CHOICES,
     )
@@ -819,6 +820,31 @@ class NodeGroupEdit(ModelForm):
             'status',
             'name',
             )
+
+    def clean_name(self):
+        old_name = self.instance.name
+        new_name = self.cleaned_data['name']
+        if new_name == old_name or not new_name:
+            # No change to the name.  Return old name.
+            return old_name
+
+        if self.instance.status != NODEGROUP_STATUS.ACCEPTED:
+            # This nodegroup is not in use.  Change it at will.
+            return new_name
+
+        interface = self.instance.get_managed_interface()
+        if interface.management != NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS:
+            # MAAS is not managing DNS on this network, so the user can
+            # rename the zone at will.
+            return new_name
+
+        nodes_in_use = Node.objects.filter(
+            nodegroup=self.instance, status=NODE_STATUS.ALLOCATED)
+        if nodes_in_use.exists():
+            raise ValidationError(
+                "Can't rename DNS zone to %s; nodes are in use." % new_name)
+
+        return new_name
 
 
 class TagForm(ModelForm):
