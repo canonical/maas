@@ -26,6 +26,7 @@ __all__ = [
 from argparse import ArgumentParser
 import errno
 from functools import wraps
+import netifaces
 import os
 from os import fdopen
 from pipes import quote
@@ -460,3 +461,13 @@ class AtomicWriteScript:
         atomic_write(
             content, args.filename, overwrite=not args.no_overwrite,
             mode=mode)
+
+
+def get_all_interface_addresses():
+    """For each network interface, yield its IPv4 address."""
+    for interface in netifaces.interfaces():
+        addresses = netifaces.ifaddresses(interface)
+        if netifaces.AF_INET in addresses:
+            for inet_address in addresses[netifaces.AF_INET]:
+                if "addr" in inet_address:
+                    yield inet_address["addr"]
