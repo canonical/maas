@@ -35,7 +35,7 @@ class TestLogin(TestCase):
         response = self.client.get('/accounts/login/')
         self.assertTrue(response.context['no_users'])
         self.assertEqual(path, response.context['create_command'])
-    
+
     def test_login_redirects_when_authenticated(self):
         password = factory.getRandomString()
         user = factory.make_user(password=password)
