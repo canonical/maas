@@ -153,7 +153,8 @@ class TestImportPXEFiles(TestCase):
         path = [os.path.join(root, "bin"), os.path.join(root, "scripts")]
         path.extend(os.environ.get("PATH", "").split(os.pathsep))
         env = {
-            'ARCHIVE': 'file://%s' % archive_dir,
+            'MAIN_ARCHIVE': 'file://%s' % archive_dir,
+            'PORTS_ARCHIVE': 'file://%s' % archive_dir,
             # Substitute curl for wget; it accepts file:// URLs.
             'DOWNLOAD': 'curl -O --silent',
             'PATH': os.pathsep.join(path),
