@@ -21,8 +21,8 @@ local_settings="$(pwd)/$settings"
 [ -r $local_settings ] && . $local_settings
 
 # Download locations for Ubuntu releases.
-MAIN_ARCHIVE=${ARCHIVE:-http://archive.ubuntu.com/ubuntu/}
-PORTS_ARCHIVE=${ARCHIVE:-http://ports.ubuntu.com/ubuntu-ports/}
+MAIN_ARCHIVE=${MAIN_ARCHIVE:-http://archive.ubuntu.com/ubuntu/}
+PORTS_ARCHIVE=${PORTS_ARCHIVE:-http://ports.ubuntu.com/ubuntu-ports/}
 
 # Ubuntu releases that are to be downloaded.
 SUPPORTED_RELEASES=$(distro-info --supported)

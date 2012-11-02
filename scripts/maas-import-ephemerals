@@ -20,7 +20,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 VERBOSITY=0
-REMOTE_IMAGES_MIRROR="https://maas.ubuntu.com/images"
+REMOTE_IMAGES_MIRROR=${REMOTE_IMAGES_MIRROR:-https://maas.ubuntu.com/images}
 
 # iSCSI targets configuration file.
 SYS_TGT_CONF="/etc/tgt/targets.conf"
