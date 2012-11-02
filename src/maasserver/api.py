@@ -164,6 +164,7 @@ from maasserver.preseed import (
 from maasserver.server_address import get_maas_facing_server_address
 from maasserver.utils import (
     absolute_reverse,
+    build_absolute_uri,
     map_enum,
     strip_domain,
     )
@@ -1020,6 +1021,10 @@ class AnonFilesHandler(AnonymousOperationsHandler):
     create = read = update = delete = None
 
     get = operation(idempotent=True, exported_as='get')(get_file)
+
+    @classmethod
+    def resource_uri(cls, *args, **kwargs):
+        return ('files_handler', [])
 
 
 class FilesHandler(OperationsHandler):
@@ -1935,12 +1940,23 @@ def describe(request):
     Returns a JSON object describing the whole MAAS API.
     """
     from maasserver import urls_api as urlconf
+    resources = [
+        describe_resource(resource)
+        for resource in find_api_resources(urlconf)
+        ]
+    # Make all URIs absolute. Clients - maas-cli in particular - expect that
+    # all handler URIs are absolute, not just paths. The handler URIs returned
+    # by describe_resource() are relative paths.
+    absolute = partial(build_absolute_uri, request)
+    for resource in resources:
+        for handler_type in "anon", "auth":
+            handler = resource[handler_type]
+            if handler is not None:
+                handler["uri"] = absolute(handler["path"])
+    # Package it all up.
     description = {
         "doc": "MAAS API",
-        "resources": [
-            describe_resource(resource)
-            for resource in find_api_resources(urlconf)
-            ],
+        "resources": resources,
         }
     # For backward compatibility, add "handlers" as an alias for all not-None
     # anon and auth handlers in "resources".

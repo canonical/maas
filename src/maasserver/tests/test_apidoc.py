@@ -203,7 +203,7 @@ class TestDescribingAPI(TestCase):
         observed = describe_handler(ExampleHandler)
         # The description contains several entries.
         self.assertSetEqual(
-            {"actions", "doc", "name", "params", "uri"},
+            {"actions", "doc", "name", "params", "path"},
             set(observed))
         self.assertEqual(ExampleHandler.__doc__, observed["doc"])
         self.assertEqual(ExampleHandler.__name__, observed["name"])
@@ -231,11 +231,11 @@ class TestDescribingAPI(TestCase):
             }
         self.assertSetEqual(expected_actions, observed_actions)
         self.assertSetEqual({"system_id"}, set(description["params"]))
-        # The URI is a URI Template <http://tools.ietf.org/html/rfc6570>, the
+        # The path is a URI Template <http://tools.ietf.org/html/rfc6570>, the
         # components of which correspond to the parameters declared.
         self.assertEqual(
-            "http://example.com/api/1.0/nodes/{system_id}/",
-            description["uri"])
+            "/api/1.0/nodes/{system_id}/",
+            description["path"])
 
     def test_describe_resource_anonymous_resource(self):
         # When the resource does not require authentication, any configured
