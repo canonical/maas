@@ -27,10 +27,12 @@ from functools import partial
 import httplib
 from itertools import izip
 import json
+from operator import itemgetter
 import os
 import random
 import shutil
 import sys
+from urlparse import urlparse
 
 from apiclient.maas_client import MAASClient
 from celery.app import app_or_default
@@ -38,9 +40,11 @@ from django.conf import settings
 from django.contrib.auth.models import AnonymousUser
 from django.core.urlresolvers import reverse
 from django.http import QueryDict
+from django.test.client import RequestFactory
 from fixtures import Fixture
 from maasserver import api
 from maasserver.api import (
+    describe,
     DISPLAYED_NODEGROUP_FIELDS,
     extract_constraints,
     extract_oauth_key,
@@ -130,10 +134,15 @@ from provisioningserver.omshell import Omshell
 from provisioningserver.pxe import tftppath
 from provisioningserver.testing.boot_images import make_boot_image_params
 from testresources import FixtureResource
+from testscenarios import multiply_scenarios
 from testtools.matchers import (
+    AfterPreprocessing,
     AllMatch,
     Contains,
     Equals,
+    Is,
+    MatchesAll,
+    MatchesAny,
     MatchesListwise,
     MatchesStructure,
     StartsWith,
@@ -4192,3 +4201,49 @@ class TestDescribe(AnonAPITestCase):
         self.assertSetEqual(
             {"doc", "handlers", "resources"}, set(description))
         self.assertIsInstance(description["handlers"], list)
+
+
+class TestDescribeAbsoluteURIs(AnonAPITestCase):
+    """Tests for the `describe` view's URI manipulation."""
+
+    scenarios_schemes = (
+        ("http", dict(scheme="http")),
+        ("https", dict(scheme="https")),
+        )
+
+    scenarios_paths = (
+        ("script-at-root", dict(script_name="", path_info="")),
+        ("script-below-root-1", dict(script_name="/foo/bar", path_info="")),
+        ("script-below-root-2", dict(script_name="/foo", path_info="/bar")),
+        )
+
+    scenarios = multiply_scenarios(
+        scenarios_schemes, scenarios_paths)
+
+    def test_handler_uris_are_absolute(self):
+        server = factory.make_name("server").lower()
+        extra = {
+            "PATH_INFO": self.path_info,
+            "SCRIPT_NAME": self.script_name,
+            "SERVER_NAME": server,
+            "wsgi.url_scheme": self.scheme,
+            }
+        request = RequestFactory().get(
+            "/%s/describe" % factory.make_name("path"), **extra)
+        response = describe(request)
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        description = json.loads(response.content)
+        expected_uri = AfterPreprocessing(
+            urlparse, MatchesStructure(
+                scheme=Equals(self.scheme), hostname=Equals(server),
+                # The path is always the script name followed by "api/"
+                # because all API calls are within the "api" tree.
+                path=StartsWith(self.script_name + "/api/")))
+        expected_handler = MatchesAny(
+            Is(None), AfterPreprocessing(itemgetter("uri"), expected_uri))
+        expected_resource = MatchesAll(
+            AfterPreprocessing(itemgetter("anon"), expected_handler),
+            AfterPreprocessing(itemgetter("auth"), expected_handler))
+        resources = description["resources"]
+        self.assertNotEqual([], resources)
+        self.assertThat(resources, AllMatch(expected_resource))

@@ -12,6 +12,7 @@ from __future__ import (
 __metaclass__ = type
 __all__ = [
     'absolute_reverse',
+    'build_absolute_uri',
     'get_db_state',
     'ignore_unused',
     'map_enum',
@@ -83,6 +84,23 @@ def absolute_reverse(view_name, query=None, *args, **kwargs):
     if query is not None:
         url += '?%s' % urlencode(query, doseq=True)
     return url
+
+
+def build_absolute_uri(request, path):
+    """Given a full app-relative path, returns an absolute URI.
+
+    The path ordinarily starts with a forward-slash... imagine that you've
+    magically chroot'ed to your Django application; the path is the absolute
+    path to the view within that environment.
+
+    The URI returned uses the request to figure out how to make an absolute
+    URL. This means that the URI returned will use the same IP address or
+    alias that the request came in on.
+    """
+    script_name = request.META["SCRIPT_NAME"]
+    return "%s://%s%s%s" % (
+        "https" if request.is_secure() else "http",
+        request.get_host(), script_name, path)
 
 
 def strip_domain(hostname):
