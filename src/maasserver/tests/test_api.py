@@ -102,7 +102,10 @@ from maasserver.testing.testcase import (
     TestCase,
     )
 from maasserver.tests.test_forms import make_interface_settings
-from maasserver.utils import map_enum
+from maasserver.utils import (
+    map_enum,
+    strip_domain,
+    )
 from maasserver.utils.orm import get_one
 from maasserver.worker_user import get_worker_user
 from maastesting.celery import CeleryFixture
@@ -551,11 +554,11 @@ class EnlistmentAPITest(APIv10TestMixin, MultipleUsersScenarios, TestCase):
             {
                 'op': 'new',
                 'architecture': architecture,
-                'mac_addresses': ['aa:BB:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
+                'mac_addresses': [factory.getRandomMACAddress()],
             })
         node = Node.objects.get(
             system_id=json.loads(response.content)['system_id'])
-        self.assertEqual('node-aabbccddeeff.local', node.hostname)
+        self.assertEqual(5, len(strip_domain(node.hostname)))
 
     def test_POST_fails_without_operation(self):
         # If there is no operation ('op=operation_name') specified in the

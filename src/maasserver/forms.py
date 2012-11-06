@@ -403,7 +403,7 @@ class WithMACAddressesMixin:
             hostname == "" or
             IP_BASED_HOSTNAME_REGEXP.match(stripped_hostname) != None)
         if generate_hostname:
-            node.set_mac_based_hostname(self.cleaned_data['mac_addresses'][0])
+            node.set_random_hostname()
         return node
 
 
