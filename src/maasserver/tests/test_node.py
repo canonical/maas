@@ -299,7 +299,7 @@ class NodeTest(TestCase):
             node: node.get_effective_power_type()
             for node in nodes}
         started_nodes = Node.objects.start_nodes(
-            list(node_power_types.keys()), user)
+            [node.system_id for node in list(node_power_types.keys())], user)
         successful_types = [node_power_types[node] for node in started_nodes]
         self.assertItemsEqual(configless_power_types, successful_types)
 
@@ -622,8 +622,7 @@ class NodeManagerTest(TestCase):
             status = NODE_STATUS.READY
         else:
             status = NODE_STATUS.ALLOCATED
-        return factory.make_node(
-            set_hostname=True, status=status, owner=user, **kwargs)
+        return factory.make_node(status=status, owner=user, **kwargs)
 
     def make_node_with_mac(self, user=None, **kwargs):
         node = self.make_node(user, **kwargs)

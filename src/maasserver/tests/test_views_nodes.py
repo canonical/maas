@@ -603,7 +603,7 @@ class NodePreseedViewTest(LoggedInTestCase):
     def test_preseedview_node_displays_message_if_commissioning(self):
         node = factory.make_node(
             owner=self.logged_in_user, status=NODE_STATUS.COMMISSIONING,
-            set_hostname=True)
+            )
         node_preseed_link = reverse('node-preseed-view', args=[node.system_id])
         response = self.client.get(node_preseed_link)
         self.assertThat(

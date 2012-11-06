@@ -380,18 +380,6 @@ class NodeEditForms(TestCase):
         form.save()
         self.assertEqual(old_name, reload_object(node).hostname)
 
-    def test_AdminNodeForm_accepts_omitted_hostname_on_allocated_node(self):
-        node = factory.make_node(status=NODE_STATUS.ALLOCATED)
-        old_name = node.hostname
-        form = AdminNodeForm(
-            data={
-                'architecture': node.architecture,
-                },
-            instance=node)
-        self.assertTrue(form.is_valid())
-        form.save()
-        self.assertEqual(old_name, reload_object(node).hostname)
-
     def test_remove_None_values_removes_None_values_in_dict(self):
         random_input = factory.getRandomString()
         self.assertEqual(

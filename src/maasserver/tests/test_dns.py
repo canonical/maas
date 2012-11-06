@@ -175,7 +175,7 @@ class TestDNSConfigModifications(TestCase):
             nodegroup = self.create_managed_nodegroup()
         interface = nodegroup.get_managed_interface()
         node = factory.make_node(
-            nodegroup=nodegroup, set_hostname=True)
+            nodegroup=nodegroup)
         mac = factory.make_mac_address(node=node)
         ips = IPRange(interface.ip_range_low, interface.ip_range_high)
         lease_ip = str(islice(ips, lease_number, lease_number + 1).next())

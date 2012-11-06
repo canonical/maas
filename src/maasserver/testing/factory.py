@@ -96,11 +96,11 @@ class Factory(maastesting.factory.Factory):
         finally:
             NODE_TRANSITIONS[None] = valid_initial_states
 
-    def make_node(self, mac=False, hostname='', set_hostname=False,
-                  status=None, architecture=ARCHITECTURE.i386, updated=None,
+    def make_node(self, mac=False, hostname=None, status=None,
+                  architecture=ARCHITECTURE.i386, updated=None,
                   created=None, nodegroup=None, **kwargs):
         # hostname=None is a valid value, hence the set_hostname trick.
-        if hostname is '' and set_hostname:
+        if hostname is None:
             hostname = self.getRandomString(20)
         if status is None:
             status = NODE_STATUS.DEFAULT_STATUS

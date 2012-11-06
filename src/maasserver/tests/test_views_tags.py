@@ -15,15 +15,11 @@ __all__ = []
 from django.core.urlresolvers import reverse
 from lxml.etree import XPath
 from lxml.html import fromstring
-from maastesting.matchers import ContainsAll
-from maasserver.testing import (
-    get_content_links,
-    )
+from maasserver.testing import get_content_links
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import (
-    LoggedInTestCase,
-    )
+from maasserver.testing.testcase import LoggedInTestCase
 from maasserver.views import tags as tags_views
+from maastesting.matchers import ContainsAll
 
 
 class TagViewsTest(LoggedInTestCase):
@@ -42,7 +38,7 @@ class TagViewsTest(LoggedInTestCase):
 
     def test_view_tag_includes_node_links(self):
         tag = factory.make_tag()
-        node = factory.make_node(set_hostname=True)
+        node = factory.make_node()
         node.tags.add(tag)
         mac = factory.make_mac_address(node=node).mac_address
         tag_link = reverse('tag-view', args=[tag.name])
@@ -82,8 +78,8 @@ class TagViewsTest(LoggedInTestCase):
 
     def test_view_tag_hides_private_nodes(self):
         tag = factory.make_tag()
-        node = factory.make_node(set_hostname=True)
-        node2 = factory.make_node(owner=factory.make_user(), set_hostname=True)
+        node = factory.make_node()
+        node2 = factory.make_node(owner=factory.make_user())
         node.tags.add(tag)
         node2.tags.add(tag)
         tag_link = reverse('tag-view', args=[tag.name])
