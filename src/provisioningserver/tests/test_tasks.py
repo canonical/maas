@@ -543,14 +543,15 @@ class TestImportPxeFiles(PservTestCase):
     def test_import_pxe_files(self):
         recorder = self.patch(tasks, 'check_call', Mock())
         import_pxe_files()
-        recorder.assert_called_once_with(['maas-import-pxe-files'], env=ANY)
+        recorder.assert_called_once_with(
+            ['sudo', '-n', 'maas-import-pxe-files'], env=ANY)
         self.assertIsInstance(import_pxe_files, Task)
 
     def test_import_pxe_files_preserves_environment(self):
         recorder = self.patch(tasks, 'check_call', Mock())
         import_pxe_files()
         recorder.assert_called_once_with(
-            ['maas-import-pxe-files'], env=os.environ)
+            ['sudo', '-n', 'maas-import-pxe-files'], env=os.environ)
 
     def test_import_pxe_files_sets_proxy(self):
         recorder = self.patch(tasks, 'check_call', Mock())
@@ -558,4 +559,4 @@ class TestImportPxeFiles(PservTestCase):
         import_pxe_files(http_proxy=proxy)
         expected_env = dict(os.environ, http_proxy=proxy, https_proxy=proxy)
         recorder.assert_called_once_with(
-            ['maas-import-pxe-files'], env=expected_env)
+            ['sudo', '-n', 'maas-import-pxe-files'], env=expected_env)

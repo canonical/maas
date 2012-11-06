@@ -381,4 +381,4 @@ def import_pxe_files(http_proxy=None):
     if http_proxy is not None:
         env['http_proxy'] = http_proxy
         env['https_proxy'] = http_proxy
-    check_call(['maas-import-pxe-files'], env=env)
+    check_call(['sudo', '-n', 'maas-import-pxe-files'], env=env)
