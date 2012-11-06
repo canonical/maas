@@ -745,6 +745,9 @@ class NodesHandler(OperationsHandler):
 
         When a node has been added to MAAS by an admin MAAS user, it is
         ready for allocation to services running on the MAAS.
+        The minimum data required is:
+        architecture=<arch string> (e.g "i386/generic")
+        mac_address=<value>
         """
         node = create_node(request)
         if request.user.is_superuser:
