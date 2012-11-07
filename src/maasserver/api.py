@@ -1201,6 +1201,19 @@ class NodeGroupsHandler(OperationsHandler):
             raise PermissionDenied("That method is reserved to admin users.")
 
     @operation(idempotent=False)
+    def import_pxe_files(self, request):
+        """Import the pxe files on all the accepted cluster controllers."""
+        if not request.user.is_superuser:
+            raise PermissionDenied("That method is reserved to admin users.")
+        accepted_nodegroups = NodeGroup.objects.filter(
+            status=NODEGROUP_STATUS.ACCEPTED)
+        for nodegroup in accepted_nodegroups:
+            nodegroup.import_pxe_files()
+        return HttpResponse(
+            "Import of PXE files started on all cluster controllers",
+            status=httplib.OK)
+
+    @operation(idempotent=False)
     def reject(self, request):
         """Reject nodegroup enlistment(s).
 
@@ -1284,6 +1297,17 @@ class NodeGroupHandler(OperationsHandler):
             nodegroup.add_dhcp_host_maps(
                 {ip: leases[ip] for ip in new_leases if ip in leases})
         return HttpResponse("Leases updated.", status=httplib.OK)
+
+    @operation(idempotent=False)
+    def import_pxe_files(self, request, uuid):
+        """Import the pxe files on this cluster controller."""
+        if not request.user.is_superuser:
+            raise PermissionDenied("That method is reserved to admin users.")
+        nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
+        nodegroup.import_pxe_files()
+        return HttpResponse(
+            "Import of PXE files started on cluster %r" % nodegroup.uuid,
+            status=httplib.OK)
 
     @operation(idempotent=True)
     def list_nodes(self, request, uuid):
