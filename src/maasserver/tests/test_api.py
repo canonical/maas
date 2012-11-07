@@ -4047,8 +4047,8 @@ class TestNodeGroupAPI(APITestCase):
             })
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
-    def test_import_pxe_files_calls_script_for_all_accepted_clusters(self):
-        recorder = self.patch(nodegroup_module, 'import_pxe_files', Mock())
+    def test_import_boot_images_calls_script_for_all_accepted_clusters(self):
+        recorder = self.patch(nodegroup_module, 'import_boot_images')
         proxy = factory.make_name('proxy')
         Config.objects.set_config('http_proxy', proxy)
         accepted_nodegroups = [
@@ -4060,7 +4060,7 @@ class TestNodeGroupAPI(APITestCase):
         admin = factory.make_admin()
         client = OAuthAuthenticatedClient(admin)
         response = client.post(
-            reverse('nodegroups_handler'), {'op': 'import_pxe_files'})
+            reverse('nodegroups_handler'), {'op': 'import_boot_images'})
         self.assertEqual(
             httplib.OK, response.status_code,
             explain_unexpected_response(httplib.OK, response))
@@ -4070,11 +4070,11 @@ class TestNodeGroupAPI(APITestCase):
             ]
         self.assertItemsEqual(calls, recorder.apply_async.call_args_list)
 
-    def test_import_pxe_files_denied_if_not_admin(self):
+    def test_import_boot_images_denied_if_not_admin(self):
         user = factory.make_user()
         client = OAuthAuthenticatedClient(user)
         response = client.post(
-            reverse('nodegroups_handler'), {'op': 'import_pxe_files'})
+            reverse('nodegroups_handler'), {'op': 'import_boot_images'})
         self.assertEqual(
             httplib.FORBIDDEN, response.status_code,
             explain_unexpected_response(httplib.FORBIDDEN, response))
@@ -4172,8 +4172,8 @@ class TestNodeGroupAPIAuth(APIv10TestMixin, TestCase):
         parsed_result = json.loads(response.content)
         self.assertItemsEqual([node.system_id], parsed_result)
 
-    def test_nodegroup_import_pxe_files_calls_script(self):
-        recorder = self.patch(tasks, 'check_call', Mock())
+    def test_nodegroup_import_boot_images_calls_script(self):
+        recorder = self.patch(tasks, 'check_call')
         proxy = factory.getRandomString()
         Config.objects.set_config('http_proxy', proxy)
         nodegroup = factory.make_node_group()
@@ -4181,7 +4181,7 @@ class TestNodeGroupAPIAuth(APIv10TestMixin, TestCase):
         client = OAuthAuthenticatedClient(admin)
         response = client.post(
             reverse('nodegroup_handler', args=[nodegroup.uuid]),
-            {'op': 'import_pxe_files'})
+            {'op': 'import_boot_images'})
         self.assertEqual(
             httplib.OK, response.status_code,
             explain_unexpected_response(httplib.OK, response))
@@ -4189,13 +4189,13 @@ class TestNodeGroupAPIAuth(APIv10TestMixin, TestCase):
         recorder.assert_called_once_with(
             ['sudo', '-n', 'maas-import-pxe-files'], env=expected_env)
 
-    def test_nodegroup_import_pxe_files_denied_if_not_admin(self):
+    def test_nodegroup_import_boot_images_denied_if_not_admin(self):
         nodegroup = factory.make_node_group()
         user = factory.make_user()
         client = OAuthAuthenticatedClient(user)
         response = client.post(
             reverse('nodegroup_handler', args=[nodegroup.uuid]),
-            {'op': 'import_pxe_files'})
+            {'op': 'import_boot_images'})
         self.assertEqual(
             httplib.FORBIDDEN, response.status_code,
             explain_unexpected_response(httplib.FORBIDDEN, response))

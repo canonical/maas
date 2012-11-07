@@ -38,7 +38,7 @@ from piston.models import (
 from provisioningserver.omshell import generate_omapi_key
 from provisioningserver.tasks import (
     add_new_dhcp_host_map,
-    import_pxe_files,
+    import_boot_images,
     )
 
 
@@ -133,6 +133,13 @@ class NodeGroupManager(Manager):
         return self._mass_change_status(
             NODEGROUP_STATUS.PENDING, NODEGROUP_STATUS.ACCEPTED)
 
+    def import_boot_images_accepted_clusters(self):
+        """Import the boot images on all the accepted cluster controllers."""
+        accepted_nodegroups = NodeGroup.objects.filter(
+            status=NODEGROUP_STATUS.ACCEPTED)
+        for nodegroup in accepted_nodegroups:
+            nodegroup.import_boot_images()
+
 
 NODEGROUP_CLUSTER_NAME_TEMPLATE = "Cluster %(uuid)s"
 
@@ -224,7 +231,7 @@ class NodeGroup(TimestampedModel):
         """The name of the queue for tasks specific to this nodegroup."""
         return self.uuid
 
-    def import_pxe_files(self):
+    def import_boot_images(self):
         """Import the pxe files on this cluster controller.
 
         The files are downloaded through the proxy defined in the config
@@ -233,7 +240,7 @@ class NodeGroup(TimestampedModel):
         # Avoid circular imports.
         from maasserver.models import Config
         task_kwargs = dict(http_proxy=Config.objects.get_config('http_proxy'))
-        import_pxe_files.apply_async(queue=self.uuid, kwargs=task_kwargs)
+        import_boot_images.apply_async(queue=self.uuid, kwargs=task_kwargs)
 
     def add_dhcp_host_maps(self, new_leases):
         if self.get_managed_interface() is not None and len(new_leases) > 0:

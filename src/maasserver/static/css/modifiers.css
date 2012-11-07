@@ -65,3 +65,6 @@ a.icon:hover {
 .pad-top-large {
     padding-top: 40px;
     }
+.warning {
+    color: #9F6000;
+    }

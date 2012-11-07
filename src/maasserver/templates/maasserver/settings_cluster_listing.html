@@ -7,6 +7,15 @@
     {% endfor %}
   </tbody>
 </table>
+<div>
+  <form method="POST"
+        action="{% url 'settings' %}">
+    {% csrf_token %}
+    <input type="hidden" name="import_all_boot_images" value="1" />
+    <input type="submit" class="button right" value="Import boot images" />
+  </form>
+</div>
+<div class="clear"></div>
 {% if pending_clusters %}
 <h3 id="pending-clusters">Pending clusters</h3>
 <table class="list" id="pending-clusters-list">

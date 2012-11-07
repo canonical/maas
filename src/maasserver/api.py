@@ -1201,16 +1201,13 @@ class NodeGroupsHandler(OperationsHandler):
             raise PermissionDenied("That method is reserved to admin users.")
 
     @operation(idempotent=False)
-    def import_pxe_files(self, request):
-        """Import the pxe files on all the accepted cluster controllers."""
+    def import_boot_images(self, request):
+        """Import the boot images on all the accepted cluster controllers."""
         if not request.user.is_superuser:
             raise PermissionDenied("That method is reserved to admin users.")
-        accepted_nodegroups = NodeGroup.objects.filter(
-            status=NODEGROUP_STATUS.ACCEPTED)
-        for nodegroup in accepted_nodegroups:
-            nodegroup.import_pxe_files()
+        NodeGroup.objects.import_boot_images_accepted_clusters()
         return HttpResponse(
-            "Import of PXE files started on all cluster controllers",
+            "Import of boot images started on all cluster controllers",
             status=httplib.OK)
 
     @operation(idempotent=False)
@@ -1299,14 +1296,14 @@ class NodeGroupHandler(OperationsHandler):
         return HttpResponse("Leases updated.", status=httplib.OK)
 
     @operation(idempotent=False)
-    def import_pxe_files(self, request, uuid):
+    def import_boot_images(self, request, uuid):
         """Import the pxe files on this cluster controller."""
         if not request.user.is_superuser:
             raise PermissionDenied("That method is reserved to admin users.")
         nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
-        nodegroup.import_pxe_files()
+        nodegroup.import_boot_images()
         return HttpResponse(
-            "Import of PXE files started on cluster %r" % nodegroup.uuid,
+            "Import of boot images started on cluster %r" % nodegroup.uuid,
             status=httplib.OK)
 
     @operation(idempotent=True)

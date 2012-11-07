@@ -376,7 +376,7 @@ def update_node_tags(tag_name, tag_definition, retry=True):
 # =====================================================================
 
 @task
-def import_pxe_files(http_proxy=None):
+def import_boot_images(http_proxy=None):
     env = dict(os.environ)
     if http_proxy is not None:
         env['http_proxy'] = http_proxy

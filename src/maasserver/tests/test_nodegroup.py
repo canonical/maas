@@ -247,6 +247,23 @@ class TestNodeGroupManager(TestCase):
             (unaffected_status, 0),
             (reload_object(nodegroup).status, changed_count))
 
+    def test_import_boot_images_accepted_clusters_calls_tasks(self):
+        recorder = self.patch(nodegroup_module, 'import_boot_images')
+        proxy = factory.make_name('proxy')
+        Config.objects.set_config('http_proxy', proxy)
+        accepted_nodegroups = [
+            factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED),
+            factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED),
+        ]
+        factory.make_node_group(status=NODEGROUP_STATUS.REJECTED)
+        factory.make_node_group(status=NODEGROUP_STATUS.PENDING)
+        NodeGroup.objects.import_boot_images_accepted_clusters()
+        calls = [
+            call(queue=nodegroup.work_queue, kwargs={'http_proxy': proxy})
+            for nodegroup in accepted_nodegroups
+            ]
+        self.assertItemsEqual(calls, recorder.apply_async.call_args_list)
+
 
 class TestNodeGroup(TestCase):
 
@@ -346,21 +363,21 @@ class TestNodeGroup(TestCase):
         nodegroup2.ensure_dhcp_key()
         self.assertNotEqual(nodegroup1.dhcp_key, nodegroup2.dhcp_key)
 
-    def test_import_pxe_files_calls_script_with_proxy(self):
+    def test_import_boot_images_calls_script_with_proxy(self):
         recorder = self.patch(tasks, 'check_call', Mock())
         proxy = factory.make_name('proxy')
         Config.objects.set_config('http_proxy', proxy)
         nodegroup = factory.make_node_group()
-        nodegroup.import_pxe_files()
+        nodegroup.import_boot_images()
         expected_env = dict(os.environ, http_proxy=proxy, https_proxy=proxy)
         recorder.assert_called_once_with(
             ['sudo', '-n', 'maas-import-pxe-files'], env=expected_env)
 
-    def test_import_pxe_files_sent_to_nodegroup_queue(self):
-        recorder = self.patch(nodegroup_module, 'import_pxe_files', Mock())
+    def test_import_boot_images_sent_to_nodegroup_queue(self):
+        recorder = self.patch(nodegroup_module, 'import_boot_images', Mock())
         nodegroup = factory.make_node_group()
         proxy = factory.make_name('proxy')
         Config.objects.set_config('http_proxy', proxy)
-        nodegroup.import_pxe_files()
+        nodegroup.import_boot_images()
         recorder.apply_async.assert_called_once_with(
             queue=nodegroup.uuid, kwargs={'http_proxy': proxy})

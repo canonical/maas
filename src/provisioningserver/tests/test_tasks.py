@@ -64,7 +64,7 @@ from provisioningserver.pxe import tftppath
 from provisioningserver.tags import MissingCredentials
 from provisioningserver.tasks import (
     add_new_dhcp_host_map,
-    import_pxe_files,
+    import_boot_images,
     Omshell,
     power_off,
     power_on,
@@ -540,23 +540,23 @@ class TestTagTasks(PservTestCase):
 
 class TestImportPxeFiles(PservTestCase):
 
-    def test_import_pxe_files(self):
+    def test_import_boot_images(self):
         recorder = self.patch(tasks, 'check_call', Mock())
-        import_pxe_files()
+        import_boot_images()
         recorder.assert_called_once_with(
             ['sudo', '-n', 'maas-import-pxe-files'], env=ANY)
-        self.assertIsInstance(import_pxe_files, Task)
+        self.assertIsInstance(import_boot_images, Task)
 
-    def test_import_pxe_files_preserves_environment(self):
+    def test_import_boot_images_preserves_environment(self):
         recorder = self.patch(tasks, 'check_call', Mock())
-        import_pxe_files()
+        import_boot_images()
         recorder.assert_called_once_with(
             ['sudo', '-n', 'maas-import-pxe-files'], env=os.environ)
 
-    def test_import_pxe_files_sets_proxy(self):
+    def test_import_boot_images_sets_proxy(self):
         recorder = self.patch(tasks, 'check_call', Mock())
         proxy = factory.getRandomString()
-        import_pxe_files(http_proxy=proxy)
+        import_boot_images(http_proxy=proxy)
         expected_env = dict(os.environ, http_proxy=proxy, https_proxy=proxy)
         recorder.assert_called_once_with(
             ['sudo', '-n', 'maas-import-pxe-files'], env=expected_env)

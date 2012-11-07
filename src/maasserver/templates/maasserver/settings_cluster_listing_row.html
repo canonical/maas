@@ -1,6 +1,11 @@
 <tr class="cluster {{ cycle }}"
-    id="{{ cluster.cluster_name }}">
-  <td>{{ cluster.cluster_name }}</td>
+    id="{{ cluster.uuid }}">
+  <td>
+    {{ cluster.cluster_name }}
+    {% if cluster.bootimage_set.count == 0 %}
+      <span class="warning">(Warning: this cluster has no boot images.)</span>
+    {% endif %}
+  </td>
   <td>
     <a href="{% url 'cluster-edit' cluster.uuid %}"
        class="icon"
