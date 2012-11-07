@@ -101,7 +101,7 @@ class Tag(CleanSave, TimestampedModel):
 
     name = CharField(max_length=256, unique=True, editable=True,
                      validators=[RegexValidator(_tag_name_regex)])
-    definition = TextField()
+    definition = TextField(blank=True)
     comment = TextField(blank=True)
     kernel_opts = TextField(blank=True, null=True)
 
@@ -124,6 +124,8 @@ class Tag(CleanSave, TimestampedModel):
     def populate_nodes(self):
         """Find all nodes that match this tag, and update them."""
         from maasserver.populate_tags import populate_tags
+        if not self.definition:
+            return
         # before we pass off any work, ensure the definition is valid XPATH
         try:
             etree.XPath(self.definition)
