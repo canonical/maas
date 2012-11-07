@@ -36,7 +36,10 @@ from piston.models import (
     Token,
     )
 from provisioningserver.omshell import generate_omapi_key
-from provisioningserver.tasks import add_new_dhcp_host_map
+from provisioningserver.tasks import (
+    add_new_dhcp_host_map,
+    import_pxe_files,
+    )
 
 
 class NodeGroupManager(Manager):
@@ -220,6 +223,17 @@ class NodeGroup(TimestampedModel):
     def work_queue(self):
         """The name of the queue for tasks specific to this nodegroup."""
         return self.uuid
+
+    def import_pxe_files(self):
+        """Import the pxe files on this cluster controller.
+
+        The files are downloaded through the proxy defined in the config
+        setting 'http_proxy' if defined.
+        """
+        # Avoid circular imports.
+        from maasserver.models import Config
+        task_kwargs = dict(http_proxy=Config.objects.get_config('http_proxy'))
+        import_pxe_files.apply_async(queue=self.uuid, kwargs=task_kwargs)
 
     def add_dhcp_host_maps(self, new_leases):
         if self.get_managed_interface() is not None and len(new_leases) > 0:

@@ -12,6 +12,8 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
+import os
+
 from django.db.models.signals import post_save
 import django.dispatch
 from maasserver.enum import (
@@ -19,6 +21,7 @@ from maasserver.enum import (
     NODEGROUPINTERFACE_MANAGEMENT,
     )
 from maasserver.models import (
+    Config,
     NodeGroup,
     nodegroup as nodegroup_module,
     )
@@ -33,6 +36,7 @@ from mock import (
     call,
     Mock,
     )
+from provisioningserver import tasks
 from provisioningserver.omshell import (
     generate_omapi_key,
     Omshell,
@@ -341,3 +345,22 @@ class TestNodeGroup(TestCase):
         nodegroup1.ensure_dhcp_key()
         nodegroup2.ensure_dhcp_key()
         self.assertNotEqual(nodegroup1.dhcp_key, nodegroup2.dhcp_key)
+
+    def test_import_pxe_files_calls_script_with_proxy(self):
+        recorder = self.patch(tasks, 'check_call', Mock())
+        proxy = factory.make_name('proxy')
+        Config.objects.set_config('http_proxy', proxy)
+        nodegroup = factory.make_node_group()
+        nodegroup.import_pxe_files()
+        expected_env = dict(os.environ, http_proxy=proxy, https_proxy=proxy)
+        recorder.assert_called_once_with(
+            ['sudo', '-n', 'maas-import-pxe-files'], env=expected_env)
+
+    def test_import_pxe_files_sent_to_nodegroup_queue(self):
+        recorder = self.patch(nodegroup_module, 'import_pxe_files', Mock())
+        nodegroup = factory.make_node_group()
+        proxy = factory.make_name('proxy')
+        Config.objects.set_config('http_proxy', proxy)
+        nodegroup.import_pxe_files()
+        recorder.apply_async.assert_called_once_with(
+            queue=nodegroup.uuid, kwargs={'http_proxy': proxy})
