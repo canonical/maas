@@ -303,6 +303,17 @@ class NodeTest(TestCase):
         successful_types = [node_power_types[node] for node in started_nodes]
         self.assertItemsEqual(configless_power_types, successful_types)
 
+    def test_get_effective_kernel_options_with_nothing_set(self):
+        node = factory.make_node()
+        self.assertEqual((None, None), node.get_effective_kernel_options())
+
+    def test_get_effective_kernel_options_sees_global_config(self):
+        node = factory.make_node()
+        kernel_opts = factory.getRandomString()
+        Config.objects.set_config('kernel_opts', kernel_opts)
+        self.assertEqual(
+            (None, kernel_opts), node.get_effective_kernel_options())
+
     def test_acquire(self):
         node = factory.make_node(status=NODE_STATUS.READY)
         user = factory.make_user()

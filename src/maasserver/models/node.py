@@ -694,6 +694,18 @@ class Node(CleanSave, TimestampedModel):
         else:
             return None
 
+    def get_effective_kernel_options(self):
+        """Determine any special kernel parameters for this node.
+
+        :return: (tag, kernel_options)
+            tag is a Tag object or None. If None, the kernel_options came from
+            the global setting.
+            kernel_options, a string or None indicating extra kernel_options
+            that should be used when booting this node.
+        """
+        global_value = Config.objects.get_config('kernel_opts')
+        return None, global_value
+
     @property
     def work_queue(self):
         """The name of the queue for tasks specific to this node."""
