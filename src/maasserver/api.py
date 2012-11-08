@@ -1430,6 +1430,7 @@ class TagHandler(OperationsHandler):
         'name',
         'definition',
         'comment',
+        'kernel_opts',
         )
 
     def read(self, request, name):
@@ -1550,6 +1551,11 @@ class TagsHandler(OperationsHandler):
             It is meant as a human readable description of the tag.
         :param definition: An XPATH query that will be evaluated against the
             hardware_details stored for all nodes (output of `lshw -xml`).
+        :param kernel_opts: Can be None. If set, nodes associated with this tag
+            will add this string to their kernel options when booting. The
+            value overrides the global 'kernel_opts' setting. If more than one
+            tag is associated with a node, the one with the lowest alphabetical
+            name will be picked (eg 01-my-tag will be taken over 99-tag-name).
         """
         if not request.user.is_superuser:
             raise PermissionDenied()

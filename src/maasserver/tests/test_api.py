@@ -2999,6 +2999,30 @@ class TestTagsAPI(APITestCase):
             % (invalid,))
         self.assertFalse(Tag.objects.filter(name=invalid).exists())
 
+    def test_POST_new_kernel_opts(self):
+        self.become_admin()
+        name = factory.getRandomString()
+        definition = '//node'
+        comment = factory.getRandomString()
+        kernel_opts = factory.getRandomString()
+        response = self.client.post(
+            self.get_uri('tags/'),
+            {
+                'op': 'new',
+                'name': name,
+                'comment': comment,
+                'definition': definition,
+                'kernel_opts': kernel_opts,
+            })
+        self.assertEqual(httplib.OK, response.status_code)
+        parsed_result = json.loads(response.content)
+        self.assertEqual(name, parsed_result['name'])
+        self.assertEqual(comment, parsed_result['comment'])
+        self.assertEqual(definition, parsed_result['definition'])
+        self.assertEqual(kernel_opts, parsed_result['kernel_opts'])
+        self.assertEqual(
+            kernel_opts, Tag.objects.filter(name=name)[0].kernel_opts)
+
     def test_POST_new_populates_nodes(self):
         self.become_admin()
         node1 = factory.make_node()
