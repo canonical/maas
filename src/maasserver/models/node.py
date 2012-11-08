@@ -67,7 +67,10 @@ from maasserver.utils import (
     get_db_state,
     strip_domain,
     )
-from maasserver.utils.orm import get_first
+from maasserver.utils.orm import (
+    get_first,
+    get_one,
+    )
 from piston.models import Token
 from provisioningserver.enum import (
     POWER_TYPE,
@@ -700,9 +703,17 @@ class Node(CleanSave, TimestampedModel):
         :return: (tag, kernel_options)
             tag is a Tag object or None. If None, the kernel_options came from
             the global setting.
-            kernel_options, a string or None indicating extra kernel_options
-            that should be used when booting this node.
+            kernel_options, a string indicating extra kernel_options that
+            should be used when booting this node. May be None if no tags match
+            and no global setting has been configured.
         """
+        # First, see if there are any tags associated with this node that has a
+        # custom kernel parameter
+        tags = self.tags.filter(kernel_opts__isnull=False)
+        tags = tags.order_by('name')[:1]
+        tag = get_one(tags)
+        if tag is not None:
+            return tag, tag.kernel_opts
         global_value = Config.objects.get_config('kernel_opts')
         return None, global_value
 
