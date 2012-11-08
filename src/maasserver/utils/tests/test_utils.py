@@ -134,12 +134,13 @@ class TestBuildAbsoluteURI(TestCase):
             "http://example.com:1234/fred",
             build_absolute_uri(request, "/fred"))
 
-    def test_script_name_is_prefixed(self):
-        # The script name is always prefixed to the given path.
+    def test_script_name_is_ignored(self):
+        # The given path already includes the script_name, so the
+        # script_name passed in the request is not included again.
         request = self.make_request(script_name="/foo/bar")
         self.assertEqual(
             "http://example.com/foo/bar/fred",
-            build_absolute_uri(request, "/fred"))
+            build_absolute_uri(request, "/foo/bar/fred"))
 
     def test_secure(self):
         request = self.make_request(port=443, is_secure=True)
@@ -153,21 +154,13 @@ class TestBuildAbsoluteURI(TestCase):
             "https://example.com:9443/fred",
             build_absolute_uri(request, "/fred"))
 
-    def test_no_leading_forward_slash(self):
-        # No attempt is made to ensure that the given path is separated from
-        # the to-be-prefixed path.
-        request = self.make_request(script_name="/foo")
-        self.assertEqual(
-            "http://example.com/foobar",
-            build_absolute_uri(request, "bar"))
-
     def test_preserve_two_leading_slashes(self):
         # Whilst this shouldn't ordinarily happen, two leading slashes in the
         # path should be preserved, and not treated specially.
-        request = self.make_request(script_name="//foo")
+        request = self.make_request()
         self.assertEqual(
-            "http://example.com//foo/fred",
-            build_absolute_uri(request, "/fred"))
+            "http://example.com//foo",
+            build_absolute_uri(request, "//foo"))
 
 
 class TestStripDomain(TestCase):
