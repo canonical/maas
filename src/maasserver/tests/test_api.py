@@ -2999,30 +2999,6 @@ class TestTagsAPI(APITestCase):
             % (invalid,))
         self.assertFalse(Tag.objects.filter(name=invalid).exists())
 
-    def test_POST_new_kernel_opts(self):
-        self.become_admin()
-        name = factory.getRandomString()
-        definition = '//node'
-        comment = factory.getRandomString()
-        extra_kernel_opts = factory.getRandomString()
-        response = self.client.post(
-            self.get_uri('tags/'),
-            {
-                'op': 'new',
-                'name': name,
-                'comment': comment,
-                'definition': definition,
-                'kernel_opts': extra_kernel_opts,
-            })
-        self.assertEqual(httplib.OK, response.status_code)
-        parsed_result = json.loads(response.content)
-        self.assertEqual(name, parsed_result['name'])
-        self.assertEqual(comment, parsed_result['comment'])
-        self.assertEqual(definition, parsed_result['definition'])
-        self.assertEqual(extra_kernel_opts, parsed_result['kernel_opts'])
-        self.assertEqual(
-            extra_kernel_opts, Tag.objects.filter(name=name)[0].kernel_opts)
-
     def test_POST_new_populates_nodes(self):
         self.become_admin()
         node1 = factory.make_node()
@@ -3385,23 +3361,6 @@ class TestPXEConfigAPI(AnonAPITestCase):
         params = self.get_default_params()
         kernel_params = KernelParameters(**self.get_pxeconfig(params))
         self.assertEqual(params["local"], kernel_params.fs_host)
-
-    def test_pxeconfig_returns_extra_kernel_options(self):
-        node = factory.make_node()
-        extra_kernel_opts = factory.getRandomString()
-        Config.objects.set_config('kernel_opts', extra_kernel_opts)
-        mac = factory.make_mac_address(node=node)
-        params = self.get_default_params()
-        params['mac'] = mac.mac_address
-        pxe_config = self.get_pxeconfig(params)
-        self.assertEqual(extra_kernel_opts, pxe_config['extra_opts'])
-
-    def test_pxeconfig_returns_None_for_extra_kernel_opts(self):
-        mac = factory.make_mac_address()
-        params = self.get_default_params()
-        params['mac'] = mac.mac_address
-        pxe_config = self.get_pxeconfig(params)
-        self.assertEqual(None, pxe_config['extra_opts'])
 
 
 class TestNodeGroupsAPI(APIv10TestMixin, MultipleUsersScenarios, TestCase):

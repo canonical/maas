@@ -855,7 +855,6 @@ class TagForm(ModelForm):
             'name',
             'comment',
             'definition',
-            'kernel_opts',
             )
 
     def clean_definition(self):

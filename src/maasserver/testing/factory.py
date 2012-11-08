@@ -251,15 +251,14 @@ class Factory(maastesting.factory.Factory):
         key.save()
         return key
 
-    def make_tag(self, name=None, definition=None, comment='',
-                 kernel_opts=None, created=None, updated=None):
+    def make_tag(self, name=None, definition=None, comment='', created=None,
+                 updated=None):
         if name is None:
             name = self.make_name('tag')
         if definition is None:
             # Is there a 'node' in this xml?
             definition = '//node'
-        tag = Tag(name=name, definition=definition, comment=comment,
-            kernel_opts=kernel_opts)
+        tag = Tag(name=name, definition=definition, comment=comment)
         self._save_node_unchecked(tag)
         # Update the 'updated'/'created' fields with a call to 'update'
         # preventing a call to save() from overriding the values.

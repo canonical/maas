@@ -89,8 +89,6 @@ class Tag(CleanSave, TimestampedModel):
         tag.
     :ivar comment: A long-form description for humans about what this tag is
         trying to accomplish.
-    :ivar kernel_opts: Optional kernel command-line parameters string to be
-        used in the PXE config for nodes with this tags.
     :ivar objects: The :class:`TagManager`.
     """
 
@@ -103,7 +101,6 @@ class Tag(CleanSave, TimestampedModel):
                      validators=[RegexValidator(_tag_name_regex)])
     definition = TextField(blank=True)
     comment = TextField(blank=True)
-    kernel_opts = TextField(blank=True, null=True)
 
     objects = TagManager()
 
