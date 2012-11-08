@@ -15,28 +15,29 @@ __all__ = [
     ]
 
 from maasserver.models import Tag
-from django.views.generic import (
-    UpdateView,
-    )
+from maasserver.views import PaginatedListView
 
 
-class TagView(UpdateView):
+class TagView(PaginatedListView):
     """Basic view of a tag.
     """
 
     template_name = 'maasserver/tag_view.html'
-    context_object_name = 'tag'
+    context_object_name = 'node_list'
 
-    def get_object(self):
-        name = self.kwargs.get('name', None)
-        tag = Tag.objects.get_tag_or_404(
-            name=name, user=self.request.user,
+    def get(self, request, *args, **kwargs):
+        self.tag = Tag.objects.get_tag_or_404(
+            name=kwargs.get('name', None),
+            user=self.request.user,
             to_edit=False)
-        return tag
+        return super(TagView, self).get(request, *args, **kwargs)
+
+    def get_queryset(self):
+        return Tag.objects.get_nodes(
+            self.tag, user=self.request.user, prefetch_mac=True,
+            ).order_by('-created')
 
     def get_context_data(self, **kwargs):
         context = super(TagView, self).get_context_data(**kwargs)
-        nodes = Tag.objects.get_nodes(context['tag'], self.request.user,
-            prefetch_mac=True)
-        context['node_list'] = nodes
+        context['tag'] = self.tag
         return context
