@@ -2,26 +2,38 @@
   <table class="list">
     <thead>
       <tr>
-	{% if sorting == "true" %}
-        <th><a href="{{ sort_links.hostname }}"
-	       class="{{ sort_classes.hostname }}">MAC</a></th>
-        <th><a href="{{ sort_links.status }}"
-	       class="{{ sort_classes.status }}">Status</a></th>
-	{% else %}
-        <th>MAC</th>
+      {% if sorting == "true" %}
+      <th><a href="{{ sort_links.hostname }}"
+             class="{{ sort_classes.hostname }}">
+        <acronym title="Fully Qualified Domain Name">FQDN</acronym>
+      </a></th>
+      <th>
+        <acronym
+           title="Media Access Control addresses">MAC</acronym>
+      </th>
+      <th>
+        <a href="{{ sort_links.status }}"
+	       class="{{ sort_classes.status }}">Status</a>
+      </th>
+      {% else %}
+        <th><acronym title="Fully Qualified Domain Name">FQDN</acronym></th>
+        <th><acronym
+          title="Media Access Control addresses">MAC</acronym></th>
         <th>Status</th>
-	{% endif %}
+      {% endif %}
       </tr>
     </thead>
     {% for node in node_list %}
       <tr class="node {% cycle 'even' 'odd' %}">
         <td>
           <a href="{% url 'node-view' node.system_id %}">
-            {% for macaddress in node.macaddress_set.all reversed %}
-              {{ macaddress }}{% if not forloop.last %},{% endif %}
-            {% endfor %}
+          {{ node.fqdn }}
           </a>
-          ({{ node.hostname }})
+        </td>
+        <td>
+          {% for macaddress in node.macaddress_set.all reversed %}
+            {{ macaddress }}{% if not forloop.last %},{% endif %}
+          {% endfor %}
         </td>
         <td>{{ node.display_status }}</td>
       </tr>

@@ -30,6 +30,8 @@ from maasserver.enum import (
     ARCHITECTURE_CHOICES,
     NODE_AFTER_COMMISSIONING_ACTION,
     NODE_STATUS,
+    NODEGROUP_STATUS,
+    NODEGROUPINTERFACE_MANAGEMENT,
     )
 from maasserver.exceptions import (
     InvalidConstraint,
@@ -185,6 +187,21 @@ class NodeViewsTest(LoggedInTestCase):
                     ('query', 'maas-tags=shiny'),
                     ('sort', next(fields)),
                     ('dir', next(field_dirs))]))
+
+    def test_node_list_displays_fqdn_dns_not_managed(self):
+        nodes = [factory.make_node() for i in range(3)]
+        response = self.client.get(reverse('node-list'))
+        node_fqdns = [node.fqdn for node in nodes]
+        self.assertThat(response.content, ContainsAll(node_fqdns))
+
+    def test_node_list_displays_fqdn_dns_managed(self):
+        nodegroup = factory.make_node_group(
+            status=NODEGROUP_STATUS.ACCEPTED,
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
+        nodes = [factory.make_node(nodegroup=nodegroup) for i in range(3)]
+        response = self.client.get(reverse('node-list'))
+        node_fqdns = [node.fqdn for node in nodes]
+        self.assertThat(response.content, ContainsAll(node_fqdns))
 
     def test_node_list_displays_sorted_list_of_nodes(self):
         # Nodes are sorted on the node list page, newest first.

@@ -33,8 +33,8 @@ class TagViewsTest(LoggedInTestCase):
         response = self.client.get(tag_link)
         doc = fromstring(response.content)
         content_text = doc.cssselect('#content')[0].text_content()
-        self.assertThat(content_text,
-                        ContainsAll([tag.comment, tag.definition]))
+        self.assertThat(
+            content_text, ContainsAll([tag.comment, tag.definition]))
 
     def test_view_tag_includes_node_links(self):
         tag = factory.make_tag()
@@ -46,8 +46,8 @@ class TagViewsTest(LoggedInTestCase):
         response = self.client.get(tag_link)
         doc = fromstring(response.content)
         content_text = doc.cssselect('#content')[0].text_content()
-        self.assertThat(content_text,
-                        ContainsAll([mac, '(%s)' % node.hostname]))
+        self.assertThat(
+            content_text, ContainsAll([mac, '%s' % node.hostname]))
         self.assertNotIn(node.system_id, content_text)
         self.assertIn(node_link, get_content_links(response))
 

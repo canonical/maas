@@ -126,7 +126,7 @@ class NodeListView(PaginatedListView):
         else:
             order_by = ('-created', )
 
-        # Return the sorted node list
+        # Return the sorted node list.
         nodes = Node.objects.get_nodes(
             user=self.request.user, prefetch_mac=True,
             perm=NODE_PERMISSION.VIEW,).order_by(*order_by)
@@ -136,6 +136,8 @@ class NodeListView(PaginatedListView):
             except InvalidConstraint as e:
                 self.query_error = e
                 return Node.objects.none()
+        nodes = nodes.prefetch_related('nodegroup')
+        nodes = nodes.prefetch_related('nodegroup__nodegroupinterface_set')
         return nodes
 
     def _prepare_sort_links(self):

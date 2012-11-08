@@ -1,8 +1,8 @@
 {% extends "maasserver/base.html" %}
 
 {% block nav-active-settings %}active{% endblock %}
-{% block title %}Node: {{ node.hostname }}{% endblock %}
-{% block page-title %}Node: {{ node.hostname }}{% endblock %}
+{% block title %}Node: {{ node.fqdn }}{% endblock %}
+{% block page-title %}Node: {{ node.fqdn }}{% endblock %}
 {% block layout-modifiers %}sidebar{% endblock %}
 
 {% block sidebar %}
@@ -39,8 +39,8 @@
 {% block content %}
   <ul class="data-list">
     <li class="block size3 first">
-      <h4>Hostname</h4>
-      <span>{{ node.hostname }}</span>
+      <h4><acronym title="Fully Qualified Domain Name">FQDN</acronym></h4>
+        <span>{{ node.fqdn }}</span>
     </li>
     <li class="block size3">
       <h4>MAC addresses</h4>
