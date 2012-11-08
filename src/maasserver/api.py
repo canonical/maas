@@ -1853,7 +1853,11 @@ class BootImagesHandler(OperationsHandler):
 def describe(request):
     """Return a description of the whole MAAS API.
 
-    Returns a JSON object describing the whole MAAS API.
+    :param request: The http request for this document.  This is used to
+        derive the URL where the client expects to see the MAAS API.
+    :return: A JSON object describing the whole MAAS API.  Links to the API
+        will use the same scheme and hostname that the client used in
+        `request`.
     """
     from maasserver import urls_api as urlconf
     resources = [

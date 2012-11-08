@@ -87,20 +87,17 @@ def absolute_reverse(view_name, query=None, *args, **kwargs):
 
 
 def build_absolute_uri(request, path):
-    """Given a full app-relative path, returns an absolute URI.
+    """Return absolute URI corresponding to given absolute path.
 
-    The path ordinarily starts with a forward-slash... imagine that you've
-    magically chroot'ed to your Django application; the path is the absolute
-    path to the view within that environment.
-
-    The URI returned uses the request to figure out how to make an absolute
-    URL. This means that the URI returned will use the same IP address or
-    alias that the request came in on.
+    :param request: An http request to the API.  This is needed in order to
+        figure out how the client is used to addressing
+        the API on the network.
+    :param path: The absolute http path to a given resource.
+    :return: Full, absolute URI to the resource, taking its networking
+        portion from `request` but the rest from `path`.
     """
-    script_name = request.META["SCRIPT_NAME"]
-    return "%s://%s%s%s" % (
-        "https" if request.is_secure() else "http",
-        request.get_host(), script_name, path)
+    scheme = "https" if request.is_secure() else "http"
+    return "%s://%s%s" % (scheme, request.get_host(), path)
 
 
 def strip_domain(hostname):
