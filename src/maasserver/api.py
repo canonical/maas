@@ -1534,6 +1534,7 @@ class TagHandler(OperationsHandler):
         'name',
         'definition',
         'comment',
+        'kernel_opts',
         )
 
     def read(self, request, name):
@@ -1665,6 +1666,11 @@ class TagsHandler(OperationsHandler):
             It is meant as a human readable description of the tag.
         :param definition: An XPATH query that will be evaluated against the
             hardware_details stored for all nodes (output of `lshw -xml`).
+        :param kernel_opts: Can be None. If set, nodes associated with this tag
+            will add this string to their kernel options when booting. The
+            value overrides the global 'kernel_opts' setting. If more than one
+            tag is associated with a node, the one with the lowest alphabetical
+            name will be picked (eg 01-my-tag will be taken over 99-tag-name).
         """
         if not request.user.is_superuser:
             raise PermissionDenied()
@@ -1899,6 +1905,13 @@ def pxeconfig(request):
     else:
         series = node.get_distro_series()
 
+    if node is not None:
+        # We don't care if the kernel opts is from the global setting or a tag,
+        # just get the options
+        _, extra_kernel_opts = node.get_effective_kernel_options()
+    else:
+        extra_kernel_opts = None
+
     purpose = get_boot_purpose(node)
     server_address = get_maas_facing_server_address()
     cluster_address = get_mandatory_param(request.GET, "local")
@@ -1906,7 +1919,8 @@ def pxeconfig(request):
     params = KernelParameters(
         arch=arch, subarch=subarch, release=series, purpose=purpose,
         hostname=hostname, domain=domain, preseed_url=preseed_url,
-        log_host=server_address, fs_host=cluster_address)
+        log_host=server_address, fs_host=cluster_address,
+        extra_opts=extra_kernel_opts)
 
     return HttpResponse(
         json.dumps(params._asdict()),
