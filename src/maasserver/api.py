@@ -746,7 +746,7 @@ class NodesHandler(OperationsHandler):
         architecture=<arch string> (e.g "i386/generic")
         mac_address=<value>
 
-        :param architecture: A string containing the architecture type of 
+        :param architecture: A string containing the architecture type of
             the node.
         :param mac_address: The MAC address of the node.
         :param hostname: A hostname. If not given, one will be generated.

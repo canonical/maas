@@ -37,8 +37,8 @@ KernelParametersBase = namedtuple(
         "preseed_url",  # URL from which a preseed can be obtained.
         "log_host",  # Host/IP to which syslog can be streamed.
         "fs_host",  # Host/IP on which ephemeral filesystems are hosted.
-        "extra_opts", # String of extra options to supply, will be appended
-                      # verbatim to the kernel command line
+        "extra_opts",  # String of extra options to supply, will be appended
+                       # verbatim to the kernel command line
         ))
 
 

@@ -141,7 +141,7 @@ class TestKernelOpts(TestCase):
         # verbatim.
         self.assertThat(cmdline, Contains(' ' + extra_opts))
 
-    def test_commissioning_compose_kernel_command_line_handles_extra_opts_None(self):
+    def test_commissioning_compose_kernel_handles_extra_opts_None(self):
         params = make_kernel_parameters(extra_opts=None)
         cmdline = compose_kernel_command_line(params)
         self.assertNotIn(cmdline, "None")

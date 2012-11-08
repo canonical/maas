@@ -325,7 +325,7 @@ class NodeTest(TestCase):
 
     def test_get_effective_kernel_options_ignores_unassociated_tag_value(self):
         node = factory.make_node()
-        tag = factory.make_tag(kernel_opts=factory.getRandomString())
+        factory.make_tag(kernel_opts=factory.getRandomString())
         self.assertEqual((None, None), node.get_effective_kernel_options())
 
     def test_get_effective_kernel_options_uses_tag_value(self):
