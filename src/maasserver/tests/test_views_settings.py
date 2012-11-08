@@ -38,7 +38,10 @@ from maasserver.testing.testcase import (
     AdminLoggedInTestCase,
     LoggedInTestCase,
     )
-from mock import call
+from mock import (
+    ANY,
+    call,
+    )
 
 
 class SettingsTest(AdminLoggedInTestCase):
@@ -248,7 +251,7 @@ class SettingsTest(AdminLoggedInTestCase):
             reverse('settings'), {'import_all_boot_images': 1})
         self.assertEqual(httplib.FOUND, response.status_code)
         calls = [
-           call(queue=nodegroup.work_queue, kwargs={'http_proxy': None})
+           call(queue=nodegroup.work_queue, kwargs=ANY)
            for nodegroup in accepted_nodegroups
         ]
         self.assertItemsEqual(calls, recorder.apply_async.call_args_list)

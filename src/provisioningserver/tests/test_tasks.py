@@ -540,6 +540,11 @@ class TestTagTasks(PservTestCase):
 
 class TestImportPxeFiles(PservTestCase):
 
+    def make_archive_url(self, name=None):
+        if name is None:
+            name = factory.make_name('archive')
+        return 'http://%s.example.com/%s' % (name, factory.make_name('path'))
+
     def test_import_boot_images(self):
         recorder = self.patch(tasks, 'check_call', Mock())
         import_boot_images()
@@ -560,3 +565,21 @@ class TestImportPxeFiles(PservTestCase):
         expected_env = dict(os.environ, http_proxy=proxy, https_proxy=proxy)
         recorder.assert_called_once_with(
             ['sudo', '-n', 'maas-import-pxe-files'], env=expected_env)
+
+    def test_import_boot_images_sets_archive_locations(self):
+        self.patch(tasks, 'check_call')
+        archives = {
+            'main_archive': self.make_archive_url('main'),
+            'ports_archive': self.make_archive_url('ports'),
+            'cloud_images_archive': self.make_archive_url('cloud-images'),
+        }
+        expected_settings = {
+            parameter.upper(): value
+            for parameter, value in archives.items()}
+        import_boot_images(**archives)
+        env = tasks.check_call.call_args[1]['env']
+        archive_settings = {
+            variable: value
+            for variable, value in env.iteritems()
+                if variable.endswith('_ARCHIVE')}
+        self.assertEqual(expected_settings, archive_settings)

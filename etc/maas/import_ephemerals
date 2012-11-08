@@ -1,7 +1,14 @@
 ## get default settings from import_pxe_files
 [ ! -f /etc/maas/import_pxe_files ] || . /etc/maas/import_pxe_files
 
-#REMOTE_IMAGES_MIRROR="https://cloud-images.ubuntu.com"
+# CLOUD_IMAGES_ARCHIVE sets the URL where the script can download Ubuntu
+# cloud images.  This used to be called REMOTE_IMAGES_MIRROR, and the old
+# name is still supported for compatibility with older installations.
+if [ -n "$REMOTE_IMAGES_MIRROR" ]; then
+    CLOUD_IMAGES_ARCHIVE="$REMOTE_IMAGES_MIRROR"
+fi
+#CLOUD_IMAGES_ARCHIVE="https://cloud-images.ubuntu.com"
+
 #TARGET_NAME_PREFIX="iqn.2004-05.com.ubuntu:maas:"
 #DATA_DIR="/var/lib/maas/ephemeral"
 #RELEASES="precise"

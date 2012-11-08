@@ -20,7 +20,10 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 VERBOSITY=0
-REMOTE_IMAGES_MIRROR=${REMOTE_IMAGES_MIRROR:-https://maas.ubuntu.com/images}
+
+# Mirror to load cloud images from.  When the cluster controller runs the
+# import scripts, it provides a setting from the server side.
+CLOUD_IMAGES_ARCHIVE=${CLOUD_IMAGES_ARCHIVE:-https://maas.ubuntu.com/images}
 
 # iSCSI targets configuration file.
 SYS_TGT_CONF="/etc/tgt/targets.conf"
@@ -89,10 +92,10 @@ debug() {
 
 
 query_remote() {
-    # query /query data at REMOTE_IMAGES_MIRROR
+    # query /query data at CLOUD_IMAGES_ARCHIVE
     # returns 7 values prefixed with 'r_'
     local iarch=$1 irelease=$2 istream=$3 out=""
-    local burl="${REMOTE_IMAGES_MIRROR}/query"
+    local burl="${CLOUD_IMAGES_ARCHIVE}/query"
     local url="$burl/$irelease/$istream/${STREAM}-dl.current.txt"
     local target="$TEMP_D/query/$release.$stream"
     mkdir -p -- "$TEMP_D/query"
@@ -168,7 +171,7 @@ prep_dir() {
     local wd="$1" exdir="" tarball=""
     shift
     local release=$1 stream=$2 label=$3 serial=$4 arch=$5 url=$6 name=$7
-    local furl="$REMOTE_IMAGES_MIRROR/$url"
+    local furl="$CLOUD_IMAGES_ARCHIVE/$url"
 
     mkdir -p "$wd"
     cat > "$wd/info" <<EOF
@@ -365,7 +368,7 @@ for release in $RELEASES; do
         query_local "$arch" "$release" "$BUILD_NAME" ||
             fail "failed to query local for $release/$arch"
         query_remote "$arch" "$release" "$BUILD_NAME" ||
-            fail "remote query of $REMOTE_IMAGES_MIRROR failed"
+            fail "remote query of $CLOUD_IMAGES_ARCHIVE failed"
 
         info="rel: $r_release, arch: $arch: name: $r_name"
         debug 2 "$info"

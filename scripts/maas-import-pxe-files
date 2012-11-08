@@ -20,7 +20,8 @@ settings="/etc/maas/import_pxe_files"
 local_settings="$(pwd)/$settings"
 [ -r $local_settings ] && . $local_settings
 
-# Download locations for Ubuntu releases.
+# Download locations for Ubuntu releases.  When the cluster controller runs
+# the import scripts, it provides settings from the server side.
 MAIN_ARCHIVE=${MAIN_ARCHIVE:-http://archive.ubuntu.com/ubuntu/}
 PORTS_ARCHIVE=${PORTS_ARCHIVE:-http://ports.ubuntu.com/ubuntu-ports/}
 
