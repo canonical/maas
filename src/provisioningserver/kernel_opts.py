@@ -37,6 +37,8 @@ KernelParametersBase = namedtuple(
         "preseed_url",  # URL from which a preseed can be obtained.
         "log_host",  # Host/IP to which syslog can be streamed.
         "fs_host",  # Host/IP on which ephemeral filesystems are hosted.
+        "extra_opts", # String of extra options to supply, will be appended
+                      # verbatim to the kernel command line
         ))
 
 
@@ -176,4 +178,6 @@ def compose_kernel_command_line(params):
     #       as it would be nice to have.
     options += compose_logging_opts(params.log_host)
     options += compose_arch_opts(params)
+    if params.extra_opts:
+        options.append(params.extra_opts)
     return ' '.join(options)
