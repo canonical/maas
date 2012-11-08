@@ -89,6 +89,17 @@ class TagViewsTest(LoggedInTestCase):
         self.assertIn(node.hostname, content_text)
         self.assertNotIn(node2.hostname, content_text)
 
+    def test_view_tag_shows_kernel_params(self):
+        tag = factory.make_tag(kernel_opts='--test tag params')
+        node = factory.make_node()
+        node.tags = [tag]
+        tag_link = reverse('tag-view', args=[tag.name])
+        response = self.client.get(tag_link)
+        doc = fromstring(response.content)
+        kernel_opts = doc.cssselect('.kernel-opts-tag')[0].text_content()
+        self.assertIn('Kernel Parameters', kernel_opts)
+        self.assertIn(tag.kernel_opts, kernel_opts)
+
     def test_view_tag_paginates_nodes(self):
         """Listing of nodes with tag is split across multiple pages
 

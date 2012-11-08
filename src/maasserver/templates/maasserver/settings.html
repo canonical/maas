@@ -125,6 +125,21 @@
       <div class="clear"></div>
     </div>
     <div class="divider"></div>
+    <div id="global_kernel_opts" class="block size7 first">
+      <h2>Global Kernel Parameters</h2>
+      <form action="{% url "settings" %}" method="post">
+        {% csrf_token %}
+        <ul>
+          {% with field=kernelopts_form.kernel_opts %}
+            {% include "maasserver/form_field.html" with css_class="size12" %}
+          {% endwith %}
+        </ul>
+        <input type="hidden" name="kernelopts_submit" value="1" />
+        <input type="submit" class="button right" value="Save" />
+      </form>
+      <div class="clear"></div>
+    </div>
+    <div class="divider"></div>
     <div id="maas_and_network" class="block size7 first">
       <h2>Network Configuration</h2>
       <form action="{% url "settings" %}" method="post">

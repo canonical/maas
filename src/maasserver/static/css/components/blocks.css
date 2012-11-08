@@ -82,3 +82,6 @@
 .size12 {
     width: 720px;
     }
+.size12 input {
+    width: 100%;
+    }

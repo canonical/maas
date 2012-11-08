@@ -46,6 +46,7 @@ from maasserver.forms import (
     MAASAndNetworkForm,
     NewUserCreationForm,
     UbuntuForm,
+    GlobalKernelOptsForm,
     )
 from maasserver.models import (
     NodeGroup,
@@ -177,6 +178,13 @@ def settings(request):
     if response is not None:
         return response
 
+    # Process the Global Kernel Opts form.
+    kernelopts_form, response = process_form(
+        request, GlobalKernelOptsForm, reverse('settings'), 'kernelopts',
+        "Configuration updated.")
+    if response is not None:
+        return response
+
     # Process accept clusters en masse.
     if 'mass_accept_submit' in request.POST:
         number = NodeGroup.objects.accept_all_pending()
@@ -217,6 +225,7 @@ def settings(request):
             'maas_and_network_form': maas_and_network_form,
             'commissioning_form': commissioning_form,
             'ubuntu_form': ubuntu_form,
+            'kernelopts_form': kernelopts_form,
         },
         context_instance=RequestContext(request))
 

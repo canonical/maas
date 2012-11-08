@@ -56,6 +56,7 @@ from maasserver.messages import messaging
 from maasserver.models import (
     MACAddress,
     Node,
+    Tag,
     )
 from maasserver.models.node import CONSTRAINTS_JUJU_MAP
 from maasserver.models.node_constraint_filter import constrain_nodes
@@ -247,6 +248,13 @@ class NodeView(NodeViewMixin, UpdateView):
             node.error if node.status == NODE_STATUS.FAILED_TESTS else None)
         context['status_text'] = (
             node.error if node.status != NODE_STATUS.FAILED_TESTS else None)
+        kernel_opts = node.get_effective_kernel_options()
+        context['kernel_opts'] = {
+            'is_global': kernel_opts[0] is None,
+            'is_tag': isinstance(kernel_opts[0], Tag),
+            'tag': kernel_opts[0],
+            'value': kernel_opts[1]
+            }
         return context
 
     def dispatch(self, *args, **kwargs):

@@ -185,6 +185,21 @@ class SettingsTest(AdminLoggedInTestCase):
             choices + [['my.hostname.com', 'my.hostname.com']],
             new_choices)
 
+    def test_settings_kernelopts_POST(self):
+        new_kernel_opts = "--new='arg' --flag=1 other"
+        response = self.client.post(
+            reverse('settings'),
+            get_prefixed_form_data(
+                prefix='kernelopts',
+                data={
+                    'kernel_opts': new_kernel_opts,
+                }))
+
+        self.assertEqual(httplib.FOUND, response.status_code)
+        self.assertEqual(
+            new_kernel_opts,
+            Config.objects.get_config('kernel_opts'))
+
     def test_settings_contains_form_to_accept_all_nodegroups(self):
         factory.make_node_group(status=NODEGROUP_STATUS.PENDING),
         response = self.client.get(reverse('settings'))

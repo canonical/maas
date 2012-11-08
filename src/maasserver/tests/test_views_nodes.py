@@ -39,6 +39,7 @@ from maasserver.exceptions import (
     )
 from maasserver.forms import NodeActionForm
 from maasserver.models import (
+    Config,
     MACAddress,
     Node,
     )
@@ -439,6 +440,40 @@ class NodeViewsTest(LoggedInTestCase):
         response = self.client.get(node_edit_link)
         self.assertIn(
             reverse('mac-add', args=[node.system_id]), response.content)
+
+    def test_view_node_shows_global_kernel_params(self):
+        Config.objects.create(name='kernel_opts', value='--test param')
+        node = factory.make_node()
+        self.assertEqual(
+            node.get_effective_kernel_options(),
+            (None, "--test param", )
+        )
+
+        node_link = reverse('node-view', args=[node.system_id])
+        response = self.client.get(node_link)
+        doc = fromstring(response.content)
+        kernel_params = doc.cssselect('#node_kernel_opts')[0]
+        self.assertEqual('--test param', kernel_params.text.strip())
+
+        details_link = doc.cssselect('a.kernelopts-global-link')[0].get('href')
+        self.assertEqual(reverse('settings'), details_link)
+
+    def test_view_node_shows_tag_kernel_params(self):
+        tag = factory.make_tag(name='shiny', kernel_opts="--test params")
+        node = factory.make_node()
+        node.tags = [tag]
+        self.assertEqual(
+            (tag, '--test params',),
+            node.get_effective_kernel_options())
+
+        node_link = reverse('node-view', args=[node.system_id])
+        response = self.client.get(node_link)
+        doc = fromstring(response.content)
+        kernel_params = doc.cssselect('#node_kernel_opts')[0]
+        self.assertEqual('--test params', kernel_params.text.strip())
+
+        details_link = doc.cssselect('a.kernelopts-tag-link')[0].get('href')
+        self.assertEqual(reverse('tag-view', args=[tag.name]), details_link)
 
     def test_view_node_has_button_to_accept_enlistment_for_user(self):
         # A simple user can't see the button to enlist a declared node.
