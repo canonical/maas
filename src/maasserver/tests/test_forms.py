@@ -57,6 +57,7 @@ from maasserver.models import (
     MACAddress,
     Node,
     NodeGroup,
+    NodeGroupInterface,
     )
 from maasserver.models.config import DEFAULT_CONFIG
 from maasserver.node_action import (
@@ -975,6 +976,16 @@ class TestNodeGroupEdit(TestCase):
         interface = nodegroup.get_managed_interface()
         interface.management = NODEGROUPINTERFACE_MANAGEMENT.DHCP
         interface.save()
+        data = self.make_form_data(nodegroup)
+        data['name'] = factory.make_name('new-name')
+        form = NodeGroupEdit(instance=nodegroup, data=data)
+        self.assertTrue(form.is_valid())
+        form.save()
+        self.assertEqual(data['name'], reload_object(nodegroup).name)
+
+    def test_accepts_name_change_if_nodegroup_has_no_interface(self):
+        nodegroup, node = make_unrenamable_nodegroup_with_node()
+        NodeGroupInterface.objects.filter(nodegroup=nodegroup).delete()
         data = self.make_form_data(nodegroup)
         data['name'] = factory.make_name('new-name')
         form = NodeGroupEdit(instance=nodegroup, data=data)

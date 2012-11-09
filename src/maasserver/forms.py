@@ -857,6 +857,11 @@ class NodeGroupEdit(ModelForm):
             return new_name
 
         interface = self.instance.get_managed_interface()
+        if interface is None:
+            # No network interfaces.  It's weird, but there certainly
+            # won't be a problem with the name change.
+            return new_name
+
         if interface.management != NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS:
             # MAAS is not managing DNS on this network, so the user can
             # rename the zone at will.
