@@ -18,6 +18,7 @@ from pipes import quote
 
 from django.conf import settings
 from maasserver.enum import (
+    ARCHITECTURE,
     NODE_STATUS,
     PRESEED_TYPE,
     )
@@ -41,6 +42,7 @@ from maasserver.preseed import (
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
 from maasserver.utils import map_enum
+from maastesting.matchers import ContainsAll
 from testtools.matchers import (
     AllMatch,
     IsInstance,
@@ -365,6 +367,32 @@ class TestRenderPreseed(TestCase):
         # The test really is that the preseed is rendered without an
         # error.
         self.assertIsInstance(preseed, str)
+
+
+class TestRenderPreseedArchives(TestCase):
+    """Test that the default preseed contains the default mirrors."""
+
+    def test_render_preseed_uses_default_archives_intel(self):
+        nodes = [
+            factory.make_node(architecture=ARCHITECTURE.i386),
+            factory.make_node(architecture=ARCHITECTURE.amd64),
+            ]
+        default_snippets = [
+            "d-i     mirror/http/hostname string archive.ubuntu.com",
+            "d-i     mirror/http/directory string /ubuntu",
+            ]
+        for node in nodes:
+            preseed = render_preseed(node, PRESEED_TYPE.DEFAULT, "precise")
+            self.assertThat(preseed, ContainsAll(default_snippets))
+
+    def test_render_preseed_uses_default_archives_arm(self):
+        node = factory.make_node(architecture=ARCHITECTURE.armhf_highbank)
+        default_snippets = [
+            "d-i     mirror/http/hostname string ports.ubuntu.com",
+            "d-i     mirror/http/directory string /ubuntu-ports",
+            ]
+        preseed = render_preseed(node, PRESEED_TYPE.DEFAULT, "precise")
+        self.assertThat(preseed, ContainsAll(default_snippets))
 
 
 class TestPreseedMethods(TestCase):

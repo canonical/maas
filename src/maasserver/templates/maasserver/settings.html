@@ -98,15 +98,20 @@
         {% with field=ubuntu_form.default_distro_series %}
           {% include "maasserver/form_field.html" %}
         {% endwith %}
-        {% with field=ubuntu_form.update_from %}
+        {% with field=ubuntu_form.main_archive %}
+          {% include "maasserver/form_field.html" %}
+        {% endwith %}
+        {% with field=ubuntu_form.ports_archive %}
+          {% include "maasserver/form_field.html" %}
+        {% endwith %}
+        {% with field=ubuntu_form.cloud_images_archive %}
           {% include "maasserver/form_field.html" %}
         {% endwith %}
         <li>
-          <label>Custom archives</label>
           <a href="{% url "settings-add-archive" %}">
             <img src="{{ STATIC_URL }}img/inline_add.png"
                  alt="Add" class="icon" />
-            Add archive for newly provisioned machines
+            Add custom archive
           </a>
         </li>
         </ul>

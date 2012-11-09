@@ -124,7 +124,6 @@ from metadataserver.models import (
 from metadataserver.nodeinituser import get_node_init_user
 from mock import (
     ANY,
-    call,
     Mock,
     )
 from provisioningserver import (
@@ -4109,11 +4108,12 @@ class TestNodeGroupAPI(APITestCase):
         self.assertEqual(
             httplib.OK, response.status_code,
             explain_unexpected_response(httplib.OK, response))
-        calls = [
-            call(queue=nodegroup.work_queue, kwargs={'http_proxy': proxy})
-            for nodegroup in accepted_nodegroups
-            ]
-        self.assertItemsEqual(calls, recorder.apply_async.call_args_list)
+        queues = [
+            kwargs['queue']
+            for args, kwargs in recorder.apply_async.call_args_list]
+        self.assertItemsEqual(
+            [nodegroup.work_queue for nodegroup in accepted_nodegroups],
+            queues)
 
     def test_import_boot_images_denied_if_not_admin(self):
         user = factory.make_user()
@@ -4230,9 +4230,8 @@ class TestNodeGroupAPIAuth(APIv10TestMixin, TestCase):
         self.assertEqual(
             httplib.OK, response.status_code,
             explain_unexpected_response(httplib.OK, response))
-        expected_env = dict(os.environ, http_proxy=proxy, https_proxy=proxy)
         recorder.assert_called_once_with(
-            ['sudo', '-n', 'maas-import-pxe-files'], env=expected_env)
+            ['sudo', '-n', 'maas-import-pxe-files'], env=ANY)
 
     def test_nodegroup_import_boot_images_denied_if_not_admin(self):
         nodegroup = factory.make_node_group()

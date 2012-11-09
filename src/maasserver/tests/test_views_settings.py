@@ -140,40 +140,48 @@ class SettingsTest(AdminLoggedInTestCase):
             ))
 
     def test_settings_ubuntu_POST(self):
-        choices = Config.objects.get_config('update_from_choice')
-        new_update_from = factory.getRandomChoice(choices)
+        choices = Config.objects.get_config('archive_choices')
+        new_main_archive = factory.getRandomChoice(choices)
+        new_ports_archive = factory.getRandomChoice(choices)
+        new_cloud_images_archive = factory.getRandomChoice(choices)
         new_default_distro_series = factory.getRandomEnum(DISTRO_SERIES)
         response = self.client.post(
             reverse('settings'),
             get_prefixed_form_data(
                 prefix='ubuntu',
                 data={
-                    'update_from': new_update_from,
+                    'main_archive': new_main_archive,
+                    'ports_archive': new_ports_archive,
+                    'cloud_images_archive': new_cloud_images_archive,
                     'default_distro_series': new_default_distro_series,
                 }))
 
-        self.assertEqual(httplib.FOUND, response.status_code)
+        self.assertEqual(httplib.FOUND, response.status_code, response.content)
         self.assertEqual(
             (
-                new_update_from,
+                new_main_archive,
+                new_ports_archive,
+                new_cloud_images_archive,
                 new_default_distro_series,
             ),
             (
-                Config.objects.get_config('update_from'),
+                Config.objects.get_config('main_archive'),
+                Config.objects.get_config('ports_archive'),
+                Config.objects.get_config('cloud_images_archive'),
                 Config.objects.get_config('default_distro_series'),
             ))
 
     def test_settings_add_archive_POST(self):
-        choices = Config.objects.get_config('update_from_choice')
+        choices = Config.objects.get_config('archive_choices')
         response = self.client.post(
             '/settings/archives/add/',
-            data={'archive_name': 'my.hostname.com'}
+            data={'archive_name': 'http://my.hostname.com'}
         )
-        new_choices = Config.objects.get_config('update_from_choice')
+        new_choices = Config.objects.get_config('archive_choices')
 
-        self.assertEqual(httplib.FOUND, response.status_code)
+        self.assertEqual(httplib.FOUND, response.status_code, response.content)
         self.assertItemsEqual(
-            choices + [['my.hostname.com', 'my.hostname.com']],
+            choices + [['http://my.hostname.com', 'http://my.hostname.com']],
             new_choices)
 
     def test_settings_kernelopts_POST(self):

@@ -637,11 +637,28 @@ class UbuntuForm(ConfigForm):
 
     def __init__(self, *args, **kwargs):
         super(UbuntuForm, self).__init__(*args, **kwargs)
-        # The field 'update_from' must be added dynamically because its
+        # The archive fields must be added dynamically because their
         # 'choices' must be evaluated each time the form is instantiated.
-        self.fields['update_from'] = forms.ChoiceField(
-            label="Update from",
-            choices=Config.objects.get_config('update_from_choice'))
+        self.fields['main_archive'] = forms.ChoiceField(
+            label="Main archive",
+            choices=Config.objects.get_config('archive_choices'),
+            help_text=(
+                "Archive used by nodes to retrieve packages and by cluster "
+                "controllers to retrieve boot images (Intel architectures)."
+                ))
+        self.fields['ports_archive'] = forms.ChoiceField(
+            label="Ports archive",
+            choices=Config.objects.get_config('archive_choices'),
+            help_text=(
+                "Archive used by cluster controllers to retrieve boot images "
+                "(non-Intel architectures)."
+                ))
+        self.fields['cloud_images_archive'] = forms.ChoiceField(
+            label="Cloud images archive",
+            choices=Config.objects.get_config('archive_choices'),
+            help_text=(
+                "Archive used by the nodes to retrieve ephemeral images."
+                ))
         # The list of fields has changed: load initial values.
         self._load_initials()
 
@@ -653,13 +670,13 @@ class GlobalKernelOptsForm(ConfigForm):
         required=False)
 
 
-hostname_error_msg = "Enter a valid hostname (e.g. host.example.com)."
+hostname_error_msg = "Enter a valid url (e.g. http://host.example.com)."
 
 
-def validate_hostname(value):
+def validate_url(value):
     try:
         validator = URLValidator(verify_exists=False)
-        validator('http://%s' % value)
+        validator(value)
     except ValidationError:
         raise ValidationError(hostname_error_msg)
 
@@ -668,7 +685,7 @@ class HostnameFormField(CharField):
 
     def __init__(self, *args, **kwargs):
         super(HostnameFormField, self).__init__(
-            validators=[validate_hostname], *args, **kwargs)
+            validators=[validate_url], *args, **kwargs)
 
 
 class AddArchiveForm(ConfigForm):
@@ -680,9 +697,9 @@ class AddArchiveForm(ConfigForm):
         This implementation of `save` does not support the `commit` argument.
         """
         archive_name = self.cleaned_data.get('archive_name')
-        archives = Config.objects.get_config('update_from_choice')
+        archives = Config.objects.get_config('archive_choices')
         archives.append([archive_name, archive_name])
-        Config.objects.set_config('update_from_choice', archives)
+        Config.objects.set_config('archive_choices', archives)
 
 
 class NodeGroupInterfaceForm(ModelForm):

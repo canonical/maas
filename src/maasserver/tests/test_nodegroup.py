@@ -12,7 +12,6 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
-import os
 
 from django.db.models.signals import post_save
 import django.dispatch
@@ -258,11 +257,13 @@ class TestNodeGroupManager(TestCase):
         factory.make_node_group(status=NODEGROUP_STATUS.REJECTED)
         factory.make_node_group(status=NODEGROUP_STATUS.PENDING)
         NodeGroup.objects.import_boot_images_accepted_clusters()
-        calls = [
-            call(queue=nodegroup.work_queue, kwargs={'http_proxy': proxy})
-            for nodegroup in accepted_nodegroups
-            ]
-        self.assertItemsEqual(calls, recorder.apply_async.call_args_list)
+        expected_queues = [
+            nodegroup.work_queue
+            for nodegroup in accepted_nodegroups]
+        actual_queues = [
+            kwargs['queue']
+            for args, kwargs in recorder.apply_async.call_args_list]
+        self.assertItemsEqual(expected_queues, actual_queues)
 
 
 def make_archive_url(name):
@@ -377,9 +378,11 @@ class TestNodeGroup(TestCase):
         Config.objects.set_config('http_proxy', proxy)
         nodegroup = factory.make_node_group()
         nodegroup.import_boot_images()
-        expected_env = dict(os.environ, http_proxy=proxy, https_proxy=proxy)
-        recorder.assert_called_once_with(
-            ['sudo', '-n', 'maas-import-pxe-files'], env=expected_env)
+        args, kwargs = recorder.call_args
+        env = kwargs['env']
+        self.assertEqual(
+            (proxy, proxy),
+            (env.get('http_proxy'), env.get('https_proxy')))
 
     def test_import_boot_images_selects_archive_locations_from_config(self):
         recorder = self.patch(nodegroup_module, 'import_boot_images')
@@ -405,5 +408,5 @@ class TestNodeGroup(TestCase):
         proxy = factory.make_name('proxy')
         Config.objects.set_config('http_proxy', proxy)
         nodegroup.import_boot_images()
-        recorder.apply_async.assert_called_once_with(
-            queue=nodegroup.uuid, kwargs={'http_proxy': proxy})
+        args, kwargs = recorder.apply_async.call_args
+        self.assertEqual(nodegroup.uuid, kwargs['queue'])
