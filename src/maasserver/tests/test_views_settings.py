@@ -140,9 +140,6 @@ class SettingsTest(AdminLoggedInTestCase):
             ))
 
     def test_settings_ubuntu_POST(self):
-        new_fallback_master_archive = factory.getRandomBoolean()
-        new_keep_mirror_list_uptodate = factory.getRandomBoolean()
-        new_fetch_new_releases = factory.getRandomBoolean()
         choices = Config.objects.get_config('update_from_choice')
         new_update_from = factory.getRandomChoice(choices)
         new_default_distro_series = factory.getRandomEnum(DISTRO_SERIES)
@@ -151,9 +148,6 @@ class SettingsTest(AdminLoggedInTestCase):
             get_prefixed_form_data(
                 prefix='ubuntu',
                 data={
-                    'fallback_master_archive': new_fallback_master_archive,
-                    'keep_mirror_list_uptodate': new_keep_mirror_list_uptodate,
-                    'fetch_new_releases': new_fetch_new_releases,
                     'update_from': new_update_from,
                     'default_distro_series': new_default_distro_series,
                 }))
@@ -161,16 +155,10 @@ class SettingsTest(AdminLoggedInTestCase):
         self.assertEqual(httplib.FOUND, response.status_code)
         self.assertEqual(
             (
-                new_fallback_master_archive,
-                new_keep_mirror_list_uptodate,
-                new_fetch_new_releases,
                 new_update_from,
                 new_default_distro_series,
             ),
             (
-                Config.objects.get_config('fallback_master_archive'),
-                Config.objects.get_config('keep_mirror_list_uptodate'),
-                Config.objects.get_config('fetch_new_releases'),
                 Config.objects.get_config('update_from'),
                 Config.objects.get_config('default_distro_series'),
             ))

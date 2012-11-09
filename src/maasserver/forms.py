@@ -630,19 +630,10 @@ class CommissioningForm(ConfigForm):
 
 class UbuntuForm(ConfigForm):
     """Settings page, Ubuntu section."""
-    fallback_master_archive = forms.BooleanField(
-        label="Fallback to Ubuntu master archive",
-        required=False)
     default_distro_series = forms.ChoiceField(
         choices=DISTRO_SERIES_CHOICES, required=False,
         label="Default distro series used for deployment",
         error_messages={'invalid_choice': INVALID_DISTRO_SERIES_MESSAGE})
-    keep_mirror_list_uptodate = forms.BooleanField(
-        label="Keep mirror list up to date",
-        required=False)
-    fetch_new_releases = forms.BooleanField(
-        label="Fetch new releases automatically",
-        required=False)
 
     def __init__(self, *args, **kwargs):
         super(UbuntuForm, self).__init__(*args, **kwargs)
