@@ -21,6 +21,7 @@ from collections import namedtuple
 from os.path import join
 from pipes import quote
 from urllib import urlencode
+from urlparse import urlparse
 
 from django.conf import settings
 from maasserver.compose_preseed import compose_preseed
@@ -203,6 +204,12 @@ def load_preseed_template(node, prefix, release=''):
     return get_template(prefix, None, default=True)
 
 
+def get_hostname_and_path(url):
+    """Return a tuple of the hostname and the hierarchical path from a url."""
+    parsed_url = urlparse(url)
+    return parsed_url.hostname, parsed_url.path
+
+
 def get_preseed_context(node, release=''):
     """Return the context dictionary to be used to render preseed templates
     for this node.
@@ -214,7 +221,15 @@ def get_preseed_context(node, release=''):
     :rtype: dict.
     """
     server_host = get_maas_facing_server_host()
+    main_archive_hostname, main_archive_directory = get_hostname_and_path(
+        Config.objects.get_config('main_archive'))
+    ports_archive_hostname, ports_archive_directory = get_hostname_and_path(
+        Config.objects.get_config('ports_archive'))
     context = {
+        'main_archive_hostname': main_archive_hostname,
+        'main_archive_directory': main_archive_directory,
+        'ports_archive_hostname': ports_archive_hostname,
+        'ports_archive_directory': ports_archive_directory,
         'release': release,
         'server_host': server_host,
         'server_url': absolute_reverse('nodes_handler'),
