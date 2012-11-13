@@ -37,7 +37,6 @@ from maasserver.preseed import (
     get_preseed_context,
     get_preseed_filenames,
     get_preseed_template,
-    is_squashfs_image_present,
     load_preseed_template,
     PreseedTemplate,
     render_preseed,
@@ -328,9 +327,8 @@ class TestPreseedContext(TestCase):
             ['node', 'release', 'metadata_enlist_url',
              'server_host', 'server_url', 'preseed_data',
              'node_disable_pxe_url', 'node_disable_pxe_data',
-             'use_squashfs', 'main_archive_hostname',
-             'main_archive_directory', 'ports_archive_hostname',
-             'ports_archive_directory'],
+             'main_archive_hostname', 'main_archive_directory',
+             'ports_archive_hostname', 'ports_archive_directory'],
             context)
 
     def test_get_preseed_context_if_node_None(self):
@@ -369,31 +367,6 @@ class TestPreseedContext(TestCase):
                 context['ports_archive_hostname'],
                 context['ports_archive_directory'],
             ))
-
-
-class TestSquashFSAvailable(TestCase):
-    """Tests for `is_squashfs_image_present`."""
-
-    # Scenario defaults.
-    arch = "i386"
-    subarch = "generic"
-    series = "quantal"
-    purpose = "filesystem"
-
-    scenarios = (
-        ("mismatch-arch", dict(arch="amd64", present=False)),
-        ("mismatch-subarch", dict(subarch="special", present=False)),
-        ("mismatch-series", dict(series="precise", present=False)),
-        ("mismatch-purpose", dict(purpose="moonraking", present=False)),
-        ("match", dict(present=True)),
-        )
-
-    def test_squashfs_available(self):
-        node = factory.make_node(
-            architecture="i386/generic", distro_series="quantal")
-        BootImage.objects.register_image(
-            node.nodegroup, self.arch, self.subarch, self.series, self.purpose)
-        self.assertEqual(self.present, is_squashfs_image_present(node))
 
 
 class TestPreseedTemplate(TestCase):

@@ -17,4 +17,3 @@ RELEASES="precise quantal"
 #ARCHES="amd64/generic i386/generic armhf/highbank"
 #LOCALE="en_US"
 #IMPORT_EPHEMERALS=1
-#IMPORT_SQUASHFS=1

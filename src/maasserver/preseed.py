@@ -29,10 +29,7 @@ from maasserver.enum import (
     NODE_STATUS,
     PRESEED_TYPE,
     )
-from maasserver.models import (
-    BootImage,
-    Config,
-    )
+from maasserver.models import Config
 from maasserver.server_address import get_maas_facing_server_host
 from maasserver.utils import absolute_reverse
 import tempita
@@ -246,18 +243,10 @@ def get_preseed_context(node, release=''):
             'preseed_data': compose_preseed(node),
             'node_disable_pxe_url': node_disable_pxe_url,
             'node_disable_pxe_data': node_disable_pxe_data,
-            'use_squashfs': is_squashfs_image_present(node),
         }
         context.update(node_context)
 
     return context
-
-
-def is_squashfs_image_present(node):
-    """Whether or not the SquashFS image can be used during installation."""
-    arch, subarch = node.architecture.split("/")
-    return BootImage.objects.have_image(
-        node.nodegroup, arch, subarch, node.get_distro_series(), "filesystem")
 
 
 def render_preseed(node, prefix, release=''):
