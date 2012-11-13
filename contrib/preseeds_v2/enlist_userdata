@@ -143,8 +143,8 @@ misc_bucket:
        # '--dhcp-if-static' has been passed,  Set it to IPMI to DHCP.
        if not is_ipmi_dhcp() and args.dhcp:
            set_ipmi_network_source("Use_DHCP")
-           # allow IPMI 60 seconds to obtain an IP address
-           time.sleep(60)
+           # allow IPMI 120 seconds to obtain an IP address
+           time.sleep(120)
 
        # create user/pass
        if args.commission_creds:
@@ -163,6 +163,15 @@ misc_bucket:
 
        # get the IP address
        IPMI_IP_ADDRESS = get_ipmi_ip_address()
+       if IPMI_IP_ADDRESS == "0.0.0.0":
+           # if IPMI_IP_ADDRESS is 0.0.0.0, wait 60 seconds and retry.
+           time.sleep(60)
+           IPMI_IP_ADDRESS = get_ipmi_ip_address()
+
+       if IPMI_IP_ADDRESS is None or IPMI_IP_ADDRESS == "0.0.0.0":
+           # Exit (to not set power params in MAAS) if no IPMI_IP_ADDRESS
+           # has been detected
+           exit(1)
 
        if args.commission_creds:
            print get_maas_power_settings_json(IPMI_MAAS_USER, IPMI_MAAS_PASSWORD, IPMI_IP_ADDRESS)
@@ -170,7 +179,7 @@ misc_bucket:
            print get_maas_power_settings(IPMI_MAAS_USER, IPMI_MAAS_PASSWORD, IPMI_IP_ADDRESS)
 
    if __name__ == '__main__':
-       main()   
+       main()
    END_MAAS_IPMI_AUTODETECT
 
    # we could obtain the interface that booted from the kernel cmdline
