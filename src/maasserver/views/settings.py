@@ -16,7 +16,6 @@ __all__ = [
     "AccountsEdit",
     "AccountsView",
     "settings",
-    "settings_add_archive",
     ]
 
 from django.contrib import messages
@@ -40,13 +39,12 @@ from django.views.generic.edit import ModelFormMixin
 from maasserver.enum import NODEGROUP_STATUS
 from maasserver.exceptions import CannotDeleteUserException
 from maasserver.forms import (
-    AddArchiveForm,
     CommissioningForm,
     EditUserForm,
+    GlobalKernelOptsForm,
     MAASAndNetworkForm,
     NewUserCreationForm,
     UbuntuForm,
-    GlobalKernelOptsForm,
     )
 from maasserver.models import (
     NodeGroup,
@@ -227,20 +225,4 @@ def settings(request):
             'ubuntu_form': ubuntu_form,
             'kernelopts_form': kernelopts_form,
         },
-        context_instance=RequestContext(request))
-
-
-def settings_add_archive(request):
-    if request.method == 'POST':
-        form = AddArchiveForm(request.POST)
-        if form.is_valid():
-            form.save()
-            messages.info(request, "Archive added.")
-            return HttpResponseRedirect(reverse('settings'))
-    else:
-        form = AddArchiveForm()
-
-    return render_to_response(
-        'maasserver/settings_add_archive.html',
-        {'form': form},
         context_instance=RequestContext(request))

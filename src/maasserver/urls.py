@@ -46,7 +46,6 @@ from maasserver.views.settings import (
     AccountsEdit,
     AccountsView,
     settings,
-    settings_add_archive,
     )
 from maasserver.views.settings_clusters import (
     ClusterDelete,
@@ -157,9 +156,6 @@ urlpatterns += patterns('maasserver.views',
         'delete/$', ClusterInterfaceDelete.as_view()),
     # /XXX
     adminurl(r'^settings/$', settings, name='settings'),
-    adminurl(
-        r'^settings/archives/add/$', settings_add_archive,
-        name='settings-add-archive'),
     adminurl(r'^accounts/add/$', AccountsAdd.as_view(), name='accounts-add'),
     adminurl(
         r'^accounts/(?P<username>\w+)/edit/$', AccountsEdit.as_view(),

@@ -16,10 +16,7 @@ import json
 
 from django import forms
 from django.contrib.auth.models import User
-from django.core.exceptions import (
-    PermissionDenied,
-    ValidationError,
-    )
+from django.core.exceptions import PermissionDenied
 from django.http import QueryDict
 from maasserver.enum import (
     ARCHITECTURE,
@@ -37,7 +34,6 @@ from maasserver.forms import (
     get_action_form,
     get_node_create_form,
     get_node_edit_form,
-    HostnameFormField,
     initialize_node_group,
     INTERFACES_VALIDATION_ERROR_MESSAGE,
     MACAddressForm,
@@ -50,7 +46,6 @@ from maasserver.forms import (
     NodeWithMACAddressesForm,
     ProfileForm,
     remove_None_values,
-    validate_url,
     )
 from maasserver.models import (
     Config,
@@ -276,10 +271,6 @@ class ConfigFormTest(TestCase):
 
         self.assertItemsEqual(['field1'], form.initial)
         self.assertEqual(value, form.initial['field1'])
-
-
-class FormWithHostname(forms.Form):
-    hostname = HostnameFormField()
 
 
 class NodeEditForms(TestCase):
@@ -511,37 +502,6 @@ class TestNodeActionForm(TestCase):
             node, {NodeActionForm.input_name: Delete.display})
         with ExpectedException(PermissionDenied, "You cannot delete.*"):
             form.save()
-
-
-class TestHostnameFormField(TestCase):
-
-    def test_validate_url_validates_valid_hostnames(self):
-        self.assertIsNone(validate_url('http://host.example.com'))
-        self.assertIsNone(validate_url('http://host.my-example.com'))
-        self.assertIsNone(validate_url('http://my-example.com'))
-        #  No ValidationError.
-
-    def test_validate_url_does_not_validate_invalid_hostnames(self):
-        self.assertRaises(ValidationError, validate_url, 'invalid-host')
-
-    def test_validate_url_does_not_validate_too_long_hostnames(self):
-        self.assertRaises(ValidationError, validate_url, 'toolong' * 100)
-
-    def test_hostname_field_validation_cleaned_data_if_hostname_valid(self):
-        form = FormWithHostname({'hostname': 'http://host.example.com'})
-
-        self.assertTrue(form.is_valid())
-        self.assertEqual(
-            'http://host.example.com', form.cleaned_data['hostname'])
-
-    def test_hostname_field_validation_error_if_invalid_hostname(self):
-        form = FormWithHostname({'hostname': 'invalid-host'})
-
-        self.assertFalse(form.is_valid())
-        self.assertItemsEqual(['hostname'], list(form.errors))
-        self.assertEqual(
-            ["Enter a valid url (e.g. http://host.example.com)."],
-            form.errors['hostname'])
 
 
 class TestUniqueEmailForms(TestCase):

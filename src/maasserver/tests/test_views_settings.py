@@ -140,10 +140,9 @@ class SettingsTest(AdminLoggedInTestCase):
             ))
 
     def test_settings_ubuntu_POST(self):
-        choices = Config.objects.get_config('archive_choices')
-        new_main_archive = factory.getRandomChoice(choices)
-        new_ports_archive = factory.getRandomChoice(choices)
-        new_cloud_images_archive = factory.getRandomChoice(choices)
+        new_main_archive = 'http://test.example.com/archive'
+        new_ports_archive = 'http://test2.example.com/archive'
+        new_cloud_images_archive = 'http://test3.example.com/archive'
         new_default_distro_series = factory.getRandomEnum(DISTRO_SERIES)
         response = self.client.post(
             reverse('settings'),
@@ -170,19 +169,6 @@ class SettingsTest(AdminLoggedInTestCase):
                 Config.objects.get_config('cloud_images_archive'),
                 Config.objects.get_config('default_distro_series'),
             ))
-
-    def test_settings_add_archive_POST(self):
-        choices = Config.objects.get_config('archive_choices')
-        response = self.client.post(
-            '/settings/archives/add/',
-            data={'archive_name': 'http://my.hostname.com'}
-        )
-        new_choices = Config.objects.get_config('archive_choices')
-
-        self.assertEqual(httplib.FOUND, response.status_code, response.content)
-        self.assertItemsEqual(
-            choices + [['http://my.hostname.com', 'http://my.hostname.com']],
-            new_choices)
 
     def test_settings_kernelopts_POST(self):
         new_kernel_opts = "--new='arg' --flag=1 other"

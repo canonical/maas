@@ -16,7 +16,6 @@ __all__ = [
     "get_action_form",
     "get_node_edit_form",
     "get_node_create_form",
-    "HostnameFormField",
     "MACAddressForm",
     "MAASAndNetworkForm",
     "NodeGroupInterfaceForm",
@@ -47,9 +46,7 @@ from django.core.exceptions import (
     PermissionDenied,
     ValidationError,
     )
-from django.core.validators import URLValidator
 from django.forms import (
-    CharField,
     Form,
     ModelForm,
     )
@@ -628,39 +625,38 @@ class CommissioningForm(ConfigForm):
         error_messages={'invalid_choice': INVALID_DISTRO_SERIES_MESSAGE})
 
 
+url_error_msg = "Enter a valid url (e.g. http://host.example.com)."
+
+
 class UbuntuForm(ConfigForm):
     """Settings page, Ubuntu section."""
     default_distro_series = forms.ChoiceField(
         choices=DISTRO_SERIES_CHOICES, required=False,
         label="Default distro series used for deployment",
         error_messages={'invalid_choice': INVALID_DISTRO_SERIES_MESSAGE})
-
-    def __init__(self, *args, **kwargs):
-        super(UbuntuForm, self).__init__(*args, **kwargs)
-        # The archive fields must be added dynamically because their
-        # 'choices' must be evaluated each time the form is instantiated.
-        self.fields['main_archive'] = forms.ChoiceField(
-            label="Main archive",
-            choices=Config.objects.get_config('archive_choices'),
-            help_text=(
-                "Archive used by nodes to retrieve packages and by cluster "
-                "controllers to retrieve boot images (Intel architectures)."
-                ))
-        self.fields['ports_archive'] = forms.ChoiceField(
-            label="Ports archive",
-            choices=Config.objects.get_config('archive_choices'),
-            help_text=(
-                "Archive used by cluster controllers to retrieve boot images "
-                "(non-Intel architectures)."
-                ))
-        self.fields['cloud_images_archive'] = forms.ChoiceField(
-            label="Cloud images archive",
-            choices=Config.objects.get_config('archive_choices'),
-            help_text=(
-                "Archive used by the nodes to retrieve ephemeral images."
-                ))
-        # The list of fields has changed: load initial values.
-        self._load_initials()
+    main_archive = forms.URLField(
+        label="Main archive",
+        error_messages={'invalid': url_error_msg},
+        help_text=(
+            "Archive used by nodes to retrieve packages and by cluster "
+            "controllers to retrieve boot images (Intel architectures). "
+            "E.g. http://archive.ubuntu.com/ubuntu."
+            ))
+    ports_archive = forms.URLField(
+        label="Ports archive",
+        error_messages={'invalid': url_error_msg},
+        help_text=(
+            "Archive used by cluster controllers to retrieve boot images "
+            "(non-Intel architectures). "
+            "E.g. http://ports.ubuntu.com/ubuntu-ports."
+            ))
+    cloud_images_archive = forms.URLField(
+        label="Cloud images archive",
+        error_messages={'invalid': url_error_msg},
+        help_text=(
+            "Archive used by the nodes to retrieve ephemeral images. "
+            "E.g. https://maas.ubuntu.com/images."
+            ))
 
 
 class GlobalKernelOptsForm(ConfigForm):
@@ -668,38 +664,6 @@ class GlobalKernelOptsForm(ConfigForm):
     kernel_opts = forms.CharField(
         label="Boot parameters to pass to the kernel by default",
         required=False)
-
-
-hostname_error_msg = "Enter a valid url (e.g. http://host.example.com)."
-
-
-def validate_url(value):
-    try:
-        validator = URLValidator(verify_exists=False)
-        validator(value)
-    except ValidationError:
-        raise ValidationError(hostname_error_msg)
-
-
-class HostnameFormField(CharField):
-
-    def __init__(self, *args, **kwargs):
-        super(HostnameFormField, self).__init__(
-            validators=[validate_url], *args, **kwargs)
-
-
-class AddArchiveForm(ConfigForm):
-    archive_name = HostnameFormField(label="Archive name")
-
-    def save(self):
-        """Save the archive name in the Config table.
-
-        This implementation of `save` does not support the `commit` argument.
-        """
-        archive_name = self.cleaned_data.get('archive_name')
-        archives = Config.objects.get_config('archive_choices')
-        archives.append([archive_name, archive_name])
-        Config.objects.set_config('archive_choices', archives)
 
 
 class NodeGroupInterfaceForm(ModelForm):

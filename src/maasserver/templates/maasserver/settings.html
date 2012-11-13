@@ -95,25 +95,9 @@
       <form action="{% url "settings" %}" method="post">
         {% csrf_token %}
         <ul>
-        {% with field=ubuntu_form.default_distro_series %}
+        {% for field in ubuntu_form %}
           {% include "maasserver/form_field.html" %}
-        {% endwith %}
-        {% with field=ubuntu_form.main_archive %}
-          {% include "maasserver/form_field.html" %}
-        {% endwith %}
-        {% with field=ubuntu_form.ports_archive %}
-          {% include "maasserver/form_field.html" %}
-        {% endwith %}
-        {% with field=ubuntu_form.cloud_images_archive %}
-          {% include "maasserver/form_field.html" %}
-        {% endwith %}
-        <li>
-          <a href="{% url "settings-add-archive" %}">
-            <img src="{{ STATIC_URL }}img/inline_add.png"
-                 alt="Add" class="icon" />
-            Add custom archive
-          </a>
-        </li>
+        {% endfor %}
         </ul>
         <input type="hidden" name="ubuntu_submit" value="1" />
         <input type="submit" class="button right" value="Save" />

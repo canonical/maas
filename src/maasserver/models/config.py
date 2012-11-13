@@ -45,22 +45,6 @@ def get_default_config():
         'fallback_master_archive': False,
         'keep_mirror_list_uptodate': False,
         'fetch_new_releases': False,
-        'archive_choices': (
-            [
-                [
-                    'http://archive.ubuntu.com/ubuntu',
-                    'http://archive.ubuntu.com/ubuntu',
-                ],
-                [
-                    'http://ports.ubuntu.com/ubuntu-ports',
-                    'http://ports.ubuntu.com/ubuntu-ports',
-                ],
-                [
-                    'https://maas.ubuntu.com/images',
-                    'https://maas.ubuntu.com/images',
-                ],
-            ]
-        ),
         'main_archive': 'http://archive.ubuntu.com/ubuntu',
         'ports_archive': 'http://ports.ubuntu.com/ubuntu-ports',
         'cloud_images_archive': 'https://maas.ubuntu.com/images',
