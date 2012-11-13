@@ -27,6 +27,7 @@ from maasserver.models import (
 from maasserver.testing import reload_object
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
+from maasserver.utils import map_enum
 from maasserver.utils.orm import get_one
 from maasserver.worker_user import get_worker_user
 from maastesting.celery import CeleryFixture
@@ -272,6 +273,20 @@ def make_archive_url(name):
         factory.make_name(name),
         factory.make_name('path'),
         )
+
+    def test_refresh_workers_refreshes_accepted_cluster_controllers(self):
+        self.patch(nodegroup_module, 'refresh_worker')
+        nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
+        NodeGroup.objects.refresh_workers()
+        nodegroup_module.refresh_worker.assert_called_once_with(nodegroup)
+
+    def test_refresh_workers_skips_unaccepted_cluster_controllers(self):
+        self.patch(nodegroup_module, 'refresh_worker')
+        for status in map_enum(NODEGROUP_STATUS).values():
+            if status != NODEGROUP_STATUS.ACCEPTED:
+                factory.make_node_group(status=status)
+        NodeGroup.objects.refresh_workers()
+        self.assertEqual(0, nodegroup_module.refresh_worker.call_count)
 
 
 class TestNodeGroup(TestCase):
