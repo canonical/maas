@@ -66,27 +66,27 @@ The main maas-cli commands are:
 
 .. program:: maas-cli
 
-.. option:: list
+:samp:`list`
 
   lists the details [name url auth-key] of all the currently logged-in
   profiles.
 
-.. option:: login  <profile>  <url>  <key> 
+:samp:`login <profile> <url> <key>`
 
   Logs in to the MAAS controller API at the given URL, using the key
   provided and associates this connection with the given profile name.
 
-.. option::logout  <profile> 
+:samp:`logout <profile>` 
 
   Logs out from the given profile, flushing the stored credentials.
 
-.. option:: refresh
+:samp:`refresh`
 
   Refreshes the API descriptions of all the current logged in
   profiles. This may become necessary for example when upgrading the
   maas packages to ensure the command-line options match with the API.
 
-.. option:: <profile> [command] [options] ...  
+:samp:`<profile> [command] [options] ...`
 
   Using the given profile name instructs ``maas-cli`` to direct the
   subsequent commands and options to the relevant MAAS, which for the
@@ -104,35 +104,35 @@ create-authorisation-token | delete-authorisation-token [token_key=\
 
 .. program:: maas-cli account
 
-.. option:: -d, --debug
+:samp:`-d, --debug`
 
    Displays debug information listing the API responses.
 	
-.. option:: -h, --help
+:samp:`-h, --help`
 
    Display usage information.
 
-.. option:: -k, --insecure 
+:samp:`-k, --insecure` 
 
    Disables the SSL certificate check.
 
-.. option:: x-create-authorisation-token `
+:samp:`create-authorisation-token`
 
     Creates a new MAAS authorisation token for the current profile
     which can be used to authenticate connections to the API.
 
-.. option:: x-delete-authorisation-token token_key=<value>
+:samp:`delete-authorisation-token token_key=<value>`
 
     Removes the given key from the list of authorisation tokens.
 
 
 
 
-.. boot-images  - not useful in user context
+.. boot-images - not useful in user context
 .. ^^^^^^^^^^^
 
 
-.. files   - not useful in user context
+.. files - not useful in user context
 .. ^^^^^
 
 
@@ -149,34 +149,34 @@ read | update <system_id>
 
 .. program:: maas-cli node
 
-.. option:: -h, --help
+:samp:`-h, --help`
 
    Display usage information.
 
-.. option:: release <system_id>
+:samp:`release <system_id>`
 
-   Releases the node given by  *<system_id>*
+   Releases the node given by *<system_id>*
 
-.. option:: start <system_id>
+:samp:`start <system_id>`
  
    Powers up the node identified by *<system_id>* (where MAAS has
    information for power management for this node).
 
-.. option:: stop <system_id>
+:samp:`stop <system_id>`
  
    Powers off the node identified by *<system_id>* (where MAAS has
    information for power management for this node).
 
-.. option:: delete <system_id>
+:samp:`delete <system_id>`
  
    Removes the given node from the MAAS database.
 
-.. option:: read <system_id>
+:samp:`read <system_id>`
  
    Returns all the current known information about the node specified
-   by *<system_id>
+   by *<system_id>*
 
-.. option:: update <system_id> [parameters...]
+:samp:`update <system_id> [parameters...]`
  
    Used to change or set specific values for the node. The valid
    parameters are listed below::
@@ -224,40 +224,40 @@ acquire | list | accept | accept-all | new | check-commissioning
 
 .. program:: maas-cli nodes
 
-.. option:: -h, --help
+:samp:`-h, --help`
 
    Display usage information.
 
 
-.. option:: accept <system_id>
+:samp:`accept <system_id>`
 
    Accepts the node referenced by <system_id>.
 
-.. option:: x-accept-all
+:samp:`accept-all`
 
    Accepts all currently discovered but not previously accepted nodes.
 
-.. option:: acquire
+:samp:`acquire`
 
    Allocates a node to the profile used to issue the command. Any
    ready node may be allocated.
 
-.. option:: is-registered mac_address='<address>'
+:samp:`is-registered mac_address=<address>`
 
    Checks to see whether the specified MAC address is registered to a
    node.
 
-.. option:: list
+:samp:`list`
 
    Returns a JSON formatted object listing all the currently known
    nodes, their system_id, status and other details.
 
-.. option:: x-list-allocated
+:samp:`list-allocated`
 
    Returns a JSON formatted object listing all the currently allocated
    nodes, their system_id, status and other details.
 
-.. option:: new  architecture=<value> mac_addresses=<value> [parameters]
+:samp:`new architecture=<value> mac_addresses=<value> [parameters]`
 
    Creates a new node entry given the provided key=value information
    for the node. A minimum of the MAC address and architecture must be
@@ -266,14 +266,14 @@ acquire | list | accept | accept-all | new | check-commissioning
      architecture="<value>" - The architecture of the node, must be
      one of the recognised architecture strings (e.g. "i386/generic")
      hostname="<value>" - a name for this node. If not supplied a name
-     will be generated.  
+     will be generated.
      mac_addresses="<value>" - The mac address(es)
-     allocated to this node.  
+     allocated to this node.
      powertype="<value>" - the power type of
      the node (e.g. virsh, ipmi)
 
 
-.. option:: x-check-commissioning
+:samp:`check-commissioning`
 
    Displays current status of nodes in the commissioning phase. Any
    that have not returned before the system timeout value are listed
@@ -303,19 +303,19 @@ Usage: maas-cli <profile> node-groups [-d --debug] [-h --help] [-k
 
 .. program:: maas-cli node-groups
 
-.. option:: -d, --debug
+:samp:`-d, --debug`
 
    Displays debug information listing the API responses.
 	
-.. option:: -h, --help
+:samp:`-h, --help`
 
    Display usage information.
 
-.. option:: -k, --insecure 
+:samp:`-k, --insecure`
 
    Disables the SSL certificate check.
 
-.. option:: register uuid=<value> name=<value> interfaces=<json_string>
+:samp:`register uuid=<value> name=<value> interfaces=<json_string>`
    
    Registers a new node group with the given name and uuid. The
    interfaces parameter must be supplied in the form of a JSON string
@@ -325,11 +325,11 @@ Usage: maas-cli <profile> node-groups [-d --debug] [-h --help] [-k
    "router_ip":"192.168.21.1", "ip_range_low":"192.168.21.10", \
    "ip_range_high":"192.168.21.50"}]'
 
-.. option:: list
+:samp:`list`
 
    Returns a JSON list of all currently defined node groups.   
 
-.. option:: refresh_workers
+:samp:`refresh_workers`
 
    It sounds a bit like they will get a cup of tea and a
    biscuit. Actually this just sends each node-group worker an update
@@ -337,12 +337,12 @@ Usage: maas-cli <profile> node-groups [-d --debug] [-h --help] [-k
    usually not needed at a user level, but is often used by worker
    nodes.
 
-.. option:: accept <uuid>
+:samp:`accept <uuid>`
    
    Accepts a node-group or number of nodegroups indicated by the
    supplied UUID
 
-.. option:: reject <uuid>
+:samp:`reject <uuid>`
 
    Rejects a node-group or number of nodegroups indicated by the
    supplied UUID
@@ -351,18 +351,18 @@ Usage: maas-cli <profile> node-groups [-d --debug] [-h --help] [-k
 
 node-group-interface
 ^^^^^^^^^^^^^^^^^^^^
-For managing the applied interfaces. See also :ref:<node_group_interfaces>.
+For managing the interfaces. See also :ref:`node_group_interfaces`
 
 Usage: maas-cli *<profile>* node-group-interfaces [-d --debug] [-h
 --help] [-k --insecure] read | update | delete [parameters...]
 
 ..program:: maas-cli node-group-interface
 
-.. option:: read <uuid> <interface>
+:samp:`read <uuid> <interface>`
    
    Returns the current settings for the given UUID and interface
 
-.. option:: update [parameters]
+:samp:`update [parameters]`
    
    Changes the settings for the interface according to the given
    parameters::
@@ -378,21 +378,21 @@ Usage: maas-cli *<profile>* node-group-interfaces [-d --debug] [-h
            Apply the given dotted decimal value as the broadcast IP address for 
            this subnet.
 
-      router_ip=<value>      
+      router_ip=<value>
            Apply the given dotted decimal value as the default router address 
            for this subnet.
 
-      ip_range_low=<value>  
+      ip_range_low=<value>
            The lowest value of IP address to allocate via DHCP
 
-      ip_range_high=<value>  
+      ip_range_high=<value>
            The highest value of IP address to allocate via DHCP 
 
-.. option:: delete <uuid> <interface>
+:samp:`delete <uuid> <interface>`
 
    Removes the entry for the given UUID and interface.
    
-   .. _cli-dhcp:
+.. _cli-dhcp:
 
 Example:
 Configuring DHCP and DNS.
@@ -430,25 +430,25 @@ Usage: maas-cli *<profile>* node-group-interfaces [-d --debug] [-h
 
 .. program:: maas-cli node-group-interfaces
 
-.. option:: -d, --debug
+:samp:`-d, --debug`
 
    Displays debug information listing the API responses.
 	
-.. option:: -h, --help
+:samp:`-h, --help`
 
    Display usage information.
 
-.. option:: -k, --insecure 
+:samp:`-k, --insecure`
 
    Disables the SSL certificate check.
 
-.. option:: list <label>
+:samp:`list <label>`
 
    Lists the current stored configurations for the given identifier
    <label> in a key:value format which should be easy to decipher.
 
         
-.. option:: new <label> ip=<value> interface=<if_device> [parameters...]
+:samp:`new <label> ip=<value> interface=<if_device> [parameters...]`
               
    Creates a new interface group. The required parameters are the IP
    address and the network interface this appies to (e.g. eth0). In
@@ -469,10 +469,10 @@ Usage: maas-cli *<profile>* node-group-interfaces [-d --debug] [-h
            Apply the given dotted decimal value as the
            default router address for this subnet.
 
-      ip_range_low=<value>  
+      ip_range_low=<value>
            The lowest value of IP address to allocate via DHCP
 
-      ip_range_high=<value>  
+      ip_range_high=<value>
            The highest value of IP address to allocate via DHCP
 
 
@@ -486,12 +486,11 @@ Usage: maas-cli <profile> tag read | update-nodes | rebuild | update |
 
 .. program:: maas-cli tag
 
-.. option:: read <tag_name>
+:samp:`read <tag_name>`
    
    Returns information on the tag specified by <name>
 
-.. option:: update-nodes <tag_name> [add="<system_id>"]
-            [remove="<system_id>"] [nodegroup="<system_id>"]
+:samp:`update-nodes <tag_name> [add=<system_id>] [remove=<system_id>] [nodegroup=<system_id>]`
 
    Applies or removes the given tag from a list of nodes specified by
    either or both of add="<system_id>" and remove="<system_id>". The
@@ -499,22 +498,21 @@ Usage: maas-cli <profile> tag read | update-nodes | rebuild | update |
    nodegroup, is optional, but only the superuser can execute this
    command without it.
 
-.. option:: rebuild
+:samp:`rebuild`
 
    Triggers a rebuild of the tag to node mapping. 
 
-.. option:: update <tag_name> [name=<value>] | [comment=<value>]
-            |[definition=<value>]
+:samp:`update <tag_name> [name=<value>] | [comment=<value>]|[definition=<value>]`
    
    Updates the tag identified by tag_name. Any or all of name,comment
    and definition may be supplied as parameters. If no parameters are
    supplied, this command returns the current values.
 
-.. option:: nodes <tag_name>
+:samp:`nodes <tag_name>`
 
    Returns a list of nodes which are associated with the given tag.
 
-.. option:: delete <tag_name>
+:samp:`delete <tag_name>`
 
    Deletes the given tag.
 
@@ -530,23 +528,23 @@ Usage: maas-cli <profile> tag [-d --debug] [-h --help] [-k
 
 .. program:: maas-cli tag
 
-.. option:: -d, --debug
+:samp:`-d, --debug`
 
    Displays debug information listing the API responses.
 	
-.. option:: -h, --help
+:samp:`-h, --help`
 
    Display usage information.
 
-.. option:: -k, --insecure 
+:samp:`-k, --insecure` 
 
    Disables the SSL certificate check.
 
-.. option:: list
+:samp:`list`
   
    Returns a JSON object listing all the current tags known by the MAAS server
 
-.. option:: create name=<value> definition=<value> [comment=<value>]
+:samp:`create name=<value> definition=<value> [comment=<value>]`
 
    Creates a new tag with the given name and definition. A comment is
    optional. Names must be unique, obviously - an error will be
