@@ -23,10 +23,7 @@ from maasserver.enum import (
     NODE_STATUS,
     PRESEED_TYPE,
     )
-from maasserver.models import (
-    BootImage,
-    Config,
-    )
+from maasserver.models import Config
 from maasserver.preseed import (
     compose_enlistment_preseed_url,
     compose_preseed_url,
@@ -328,7 +325,9 @@ class TestPreseedContext(TestCase):
              'server_host', 'server_url', 'preseed_data',
              'node_disable_pxe_url', 'node_disable_pxe_data',
              'main_archive_hostname', 'main_archive_directory',
-             'ports_archive_hostname', 'ports_archive_directory'],
+             'ports_archive_hostname', 'ports_archive_directory',
+             'http_proxy',
+             ],
             context)
 
     def test_get_preseed_context_if_node_None(self):
@@ -340,7 +339,9 @@ class TestPreseedContext(TestCase):
         self.assertItemsEqual(
             ['release', 'metadata_enlist_url', 'server_host', 'server_url',
             'main_archive_hostname', 'main_archive_directory',
-            'ports_archive_hostname', 'ports_archive_directory'],
+            'ports_archive_hostname', 'ports_archive_directory',
+            'http_proxy',
+            ],
             context)
 
     def test_get_preseed_context_archive_refs(self):
@@ -423,6 +424,31 @@ class TestRenderPreseedArchives(TestCase):
             ]
         preseed = render_preseed(node, PRESEED_TYPE.DEFAULT, "precise")
         self.assertThat(preseed, ContainsAll(default_snippets))
+
+
+class TestPreseedProxy(TestCase):
+
+    def test_preseed_uses_default_proxy(self):
+        server_host = factory.getRandomString().lower()
+        url = 'http://%s:%d/%s' % (
+            server_host, factory.getRandomPort(), factory.getRandomString())
+        self.patch(settings, 'DEFAULT_MAAS_URL', url)
+        expected_proxy_statement = (
+                "mirror/http/proxy string http://%s:8000" % server_host)
+        preseed = render_preseed(
+            factory.make_node(), PRESEED_TYPE.DEFAULT, "precise")
+        self.assertIn(expected_proxy_statement, preseed)
+
+    def test_preseed_uses_configured_proxy(self):
+        http_proxy = 'http://%s:%d/%s' % (
+            factory.getRandomString(), factory.getRandomPort(),
+            factory.getRandomString())
+        Config.objects.set_config('http_proxy', http_proxy)
+        expected_proxy_statement = (
+            "mirror/http/proxy string %s" % http_proxy)
+        preseed = render_preseed(
+            factory.make_node(), PRESEED_TYPE.DEFAULT, "precise")
+        self.assertIn(expected_proxy_statement, preseed)
 
 
 class TestPreseedMethods(TestCase):

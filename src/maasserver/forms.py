@@ -608,7 +608,9 @@ class MAASAndNetworkForm(ConfigForm):
         help_text=(
             "This is used by the cluster and region controllers for "
             "downloading PXE boot images and other provisioning-related "
-            "resources. It is not passed into provisioned nodes."))
+            "resources. This will also be passed onto provisioned "
+            "nodes instead of the default proxy (the region controller "
+            "proxy)."))
 
 
 class CommissioningForm(ConfigForm):

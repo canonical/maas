@@ -231,6 +231,7 @@ def get_preseed_context(node, release=''):
         'server_host': server_host,
         'server_url': absolute_reverse('nodes_handler'),
         'metadata_enlist_url': absolute_reverse('enlist'),
+        'http_proxy': Config.objects.get_config('http_proxy'),
         }
     if node is not None:
         # Create the url and the url-data (POST parameters) used to turn off
