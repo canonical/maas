@@ -1,14 +1,5 @@
 {{inherit "preseed_master"}}
 
-{{def squashfs_image}}
-{{if node.distro_series in {'quantal'} and node.architecture in {'i386/generic', 'amd64/generic'} and use_squashfs is True }}
-d-i    preseed/early_command string anna-install live-installer
-d-i    live-installer/enable boolean true
-d-i    live-installer/mode select normal
-d-i    live-installer/net-image string http://{{server_host}}/MAAS/static/images/{{node.architecture}}/{{node.distro_series}}/filesystem/filesystem.squashfs
-{{endif}}
-{{enddef}}
-
 {{def proxy}}
 d-i     mirror/country string manual
 {{if node.architecture in {'i386/generic', 'amd64/generic'} }}

@@ -1,6 +1,0 @@
-## get default settings from import_pxe_files
-[ ! -f /etc/maas/import_pxe_files ] || . /etc/maas/import_pxe_files
-
-#SQUASHFS_ARCHIVE="https://cdimage.ubuntu.com"
-#RELEASES="quantal"
-#ARCHES="amd64 i386"
