@@ -310,7 +310,7 @@ class MetaDataHandler(VersionIndexHandler):
 
     def local_hostname(self, node, version, item):
         """Produce local-hostname attribute."""
-        return make_text_response(node.hostname)
+        return make_text_response(node.fqdn)
 
     def instance_id(self, node, version, item):
         """Produce instance-id attribute."""

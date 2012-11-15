@@ -20,7 +20,11 @@ import json
 from django.conf import settings
 from django.core.exceptions import PermissionDenied
 from django.core.urlresolvers import reverse
-from maasserver.enum import NODE_STATUS
+from maasserver.enum import (
+    NODE_STATUS,
+    NODEGROUP_STATUS,
+    NODEGROUPINTERFACE_MANAGEMENT,
+    )
 from maasserver.exceptions import (
     MAASAPINotFound,
     Unauthorized,
@@ -220,13 +224,19 @@ class TestViews(DjangoTestCase):
         producers = map(handler.get_attribute_producer, handler.fields)
         self.assertNotIn(None, producers)
 
-    def test_meta_data_local_hostname_returns_hostname(self):
+    def test_meta_data_local_hostname_returns_fqdn(self):
+        nodegroup = factory.make_node_group(
+            status=NODEGROUP_STATUS.ACCEPTED,
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
         hostname = factory.getRandomString()
-        client = self.make_node_client(factory.make_node(hostname=hostname))
+        domain = factory.getRandomString()
+        node = factory.make_node(
+            hostname='%s.%s' % (hostname, domain), nodegroup=nodegroup)
+        client = self.make_node_client(node)
         url = reverse('metadata-meta-data', args=['latest', 'local-hostname'])
         response = client.get(url)
         self.assertEqual(
-            (httplib.OK, hostname),
+            (httplib.OK, node.fqdn),
             (response.status_code, response.content.decode('ascii')))
         self.assertIn('text/plain', response['Content-Type'])
 
