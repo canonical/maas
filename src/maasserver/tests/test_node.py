@@ -13,6 +13,7 @@ __metaclass__ = type
 __all__ = []
 
 from datetime import timedelta
+import random
 
 from django.conf import settings
 from django.core.exceptions import (
@@ -36,7 +37,10 @@ from maasserver.models import (
     Node,
     node as node_module,
     )
-from maasserver.models.node import NODE_TRANSITIONS
+from maasserver.models.node import (
+    generate_hostname,
+    NODE_TRANSITIONS,
+    )
 from maasserver.models.user import create_auth_token
 from maasserver.testing import reload_object
 from maasserver.testing.factory import factory
@@ -45,6 +49,7 @@ from maasserver.utils import (
     ignore_unused,
     map_enum,
     )
+from maastesting.testcase import TestCase as DjangoLessTestCase
 from metadataserver.models import (
     NodeCommissionResult,
     NodeUserData,
@@ -52,10 +57,32 @@ from metadataserver.models import (
 from provisioningserver.enum import POWER_TYPE
 from provisioningserver.power.poweraction import PowerAction
 from testtools.matchers import (
+    AllMatch,
+    Contains,
     Equals,
     FileContains,
+    MatchesAll,
     MatchesListwise,
+    Not,
     )
+
+
+class UtilitiesTest(DjangoLessTestCase):
+
+    def test_generate_hostname_does_not_contain_ambiguous_chars(self):
+        ambiguous_chars = 'ilousvz1250'
+        hostnames = [generate_hostname(5) for i in range(200)]
+        does_not_contain_chars_matcher = (
+            MatchesAll(*[Not(Contains(char)) for char in ambiguous_chars]))
+        self.assertThat(
+            hostnames, AllMatch(does_not_contain_chars_matcher))
+
+    def test_generate_hostname_uses_size(self):
+        sizes = [
+            random.randint(1, 10), random.randint(1, 10),
+            random.randint(1, 10)]
+        hostnames = [generate_hostname(size) for size in sizes]
+        self.assertEqual(sizes, [len(hostname) for hostname in hostnames])
 
 
 class NodeTest(TestCase):
@@ -182,38 +209,25 @@ class NodeTest(TestCase):
         node.delete()
         self.assertEqual(2, mocked_apply_async.call_count)
 
-    def test_set_mac_based_hostname_default_enlistment_domain(self):
-        # The enlistment domain defaults to `local`.
-        node = factory.make_node()
-        node.set_mac_based_hostname('AA:BB:CC:DD:EE:FF')
-        hostname = 'node-aabbccddeeff.local'
-        self.assertEqual(hostname, node.hostname)
+    def test_set_random_hostname_set_hostname(self):
+        # Blank out enlistment_domain.
+        Config.objects.set_config("enlistment_domain", '')
+        node = factory.make_node('test' * 10)
+        node.set_random_hostname()
+        self.assertEqual(5, len(node.hostname))
 
-    def test_set_mac_based_hostname_alt_enlistment_domain(self):
-        # A non-default enlistment domain can be specified.
-        Config.objects.set_config("enlistment_domain", "example.com")
-        node = factory.make_node()
-        node.set_mac_based_hostname('AA:BB:CC:DD:EE:FF')
-        hostname = 'node-aabbccddeeff.example.com'
-        self.assertEqual(hostname, node.hostname)
+    def test_set_random_hostname_checks_hostname_existence(self):
+        Config.objects.set_config("enlistment_domain", '')
+        existing_node = factory.make_node(hostname='hostname')
 
-    def test_set_mac_based_hostname_cleaning_enlistment_domain(self):
-        # Leading and trailing dots and whitespace are cleaned from the
-        # configured enlistment domain before it's joined to the hostname.
-        Config.objects.set_config("enlistment_domain", " .example.com. ")
-        node = factory.make_node()
-        node.set_mac_based_hostname('AA:BB:CC:DD:EE:FF')
-        hostname = 'node-aabbccddeeff.example.com'
-        self.assertEqual(hostname, node.hostname)
+        hostnames = [existing_node.hostname, "new_hostname"]
+        self.patch(
+            node_module, "generate_hostname",
+            lambda size: hostnames.pop(0))
 
-    def test_set_mac_based_hostname_no_enlistment_domain(self):
-        # The enlistment domain can be set to the empty string and
-        # set_mac_based_hostname sets a hostname with no domain.
-        Config.objects.set_config("enlistment_domain", "")
         node = factory.make_node()
-        node.set_mac_based_hostname('AA:BB:CC:DD:EE:FF')
-        hostname = 'node-aabbccddeeff'
-        self.assertEqual(hostname, node.hostname)
+        node.set_random_hostname()
+        self.assertEqual('new_hostname', node.hostname)
 
     def test_get_effective_power_type_defaults_to_config(self):
         power_types = list(map_enum(POWER_TYPE).values())

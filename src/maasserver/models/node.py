@@ -18,8 +18,14 @@ __all__ = [
     "update_hardware_details",
     ]
 
+from itertools import (
+    imap,
+    islice,
+    repeat,
+    )
 import math
 import os
+import random
 from string import whitespace
 from uuid import uuid1
 
@@ -397,6 +403,16 @@ def update_hardware_details(node, xmlbytes, tag_manager):
     node.save()
 
 
+# Non-ambiguous characters (i.e. without 'ilousvz1250').
+non_ambiguous_characters = imap(
+    random.choice, repeat('abcdefghjkmnpqrtwxy346789'))
+
+
+def generate_hostname(size):
+    """Generate a hostname using only non-ambiguous characters."""
+    return "".join(islice(non_ambiguous_characters, size))
+
+
 class Node(CleanSave, TimestampedModel):
     """A `Node` represents a physical machine used by the MAAS Server.
 
@@ -655,19 +671,30 @@ class Node(CleanSave, TimestampedModel):
 
         super(Node, self).delete()
 
-    def set_mac_based_hostname(self, mac_address):
-        """Set default `hostname` based on `mac_address`
+    def set_random_hostname(self):
+        """Set 5 character `hostname` using non-ambiguous characters.
 
-        The hostname will include the `enlistment_domain` if set.
+        Using 5 letters from the set 'abcdefghjkmnpqrtwxy346789' we get
+        9,765,625 combinations (pow(25, 5)).
+
+        Note that having a hostname starting with a number is perfectly
+        valid, see
+        http://en.wikipedia.org/wiki/Hostname#Restrictions_on_valid_host_names
         """
-        mac_hostname = mac_address.replace(':', '').lower()
         domain = Config.objects.get_config("enlistment_domain")
         domain = domain.strip("." + whitespace)
-        if len(domain) > 0:
-            self.hostname = "node-%s.%s" % (mac_hostname, domain)
-        else:
-            self.hostname = "node-%s" % mac_hostname
-        self.save()
+        while True:
+            new_hostname = generate_hostname(5)
+            if len(domain) > 0:
+                self.hostname = "%s.%s" % (new_hostname, domain)
+            else:
+                self.hostname = "%s" % new_hostname
+            try:
+                self.save()
+            except ValidationError:
+                pass
+            else:
+                break
 
     def get_effective_power_type(self):
         """Get power-type to use for this node.
