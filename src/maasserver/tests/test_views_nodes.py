@@ -25,6 +25,8 @@ from maasserver.enum import (
     ARCHITECTURE_CHOICES,
     NODE_AFTER_COMMISSIONING_ACTION,
     NODE_STATUS,
+    NODEGROUP_STATUS,
+    NODEGROUPINTERFACE_MANAGEMENT,
     )
 from maasserver.exceptions import (
     InvalidConstraint,
@@ -78,6 +80,21 @@ class NodeViewsTest(LoggedInTestCase):
         response = self.client.get(reverse('node-list'))
         enlist_preseed_link = reverse('enlist-preseed-view')
         self.assertIn(enlist_preseed_link, get_content_links(response))
+
+    def test_node_list_displays_fqdn_dns_not_managed(self):
+        nodes = [factory.make_node() for i in range(3)]
+        response = self.client.get(reverse('node-list'))
+        node_fqdns = [node.fqdn for node in nodes]
+        self.assertThat(response.content, ContainsAll(node_fqdns))
+
+    def test_node_list_displays_fqdn_dns_managed(self):
+        nodegroup = factory.make_node_group(
+            status=NODEGROUP_STATUS.ACCEPTED,
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
+        nodes = [factory.make_node(nodegroup=nodegroup) for i in range(3)]
+        response = self.client.get(reverse('node-list'))
+        node_fqdns = [node.fqdn for node in nodes]
+        self.assertThat(response.content, ContainsAll(node_fqdns))
 
     def test_node_list_displays_sorted_list_of_nodes(self):
         # Nodes are sorted on the node list page, newest first.
@@ -493,7 +510,7 @@ class NodePreseedViewTest(LoggedInTestCase):
     def test_preseedview_node_displays_message_if_commissioning(self):
         node = factory.make_node(
             owner=self.logged_in_user, status=NODE_STATUS.COMMISSIONING,
-            set_hostname=True)
+            )
         node_preseed_link = reverse('node-preseed-view', args=[node.system_id])
         response = self.client.get(node_preseed_link)
         self.assertThat(

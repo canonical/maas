@@ -33,9 +33,12 @@ class TagView(PaginatedListView):
         return super(TagView, self).get(request, *args, **kwargs)
 
     def get_queryset(self):
-        return Tag.objects.get_nodes(
+        nodes = Tag.objects.get_nodes(
             self.tag, user=self.request.user, prefetch_mac=True,
             ).order_by('-created')
+        nodes = nodes.prefetch_related('nodegroup')
+        nodes = nodes.prefetch_related('nodegroup__nodegroupinterface_set')
+        return nodes
 
     def get_context_data(self, **kwargs):
         context = super(TagView, self).get_context_data(**kwargs)

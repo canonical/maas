@@ -60,8 +60,8 @@ class TestConstrainNodes(TestCase):
         self.assertConstrainedNodes([node1, node2], {})
 
     def test_hostname(self):
-        node1 = factory.make_node(set_hostname=True)
-        node2 = factory.make_node(set_hostname=True)
+        node1 = factory.make_node()
+        node2 = factory.make_node()
         self.assertConstrainedNodes([node1], {'hostname': node1.hostname})
         self.assertConstrainedNodes([node2], {'hostname': node2.hostname})
         self.assertConstrainedNodes([], {'hostname': 'unknown-name'})

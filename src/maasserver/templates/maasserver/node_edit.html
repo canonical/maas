@@ -30,6 +30,7 @@
 {% endblock %}
 
 {% block content %}
+  <div id="node-edit" class="block size7">
   <form action="." method="post" class="block auto-width">
     {% csrf_token %}
     <ul>
@@ -62,4 +63,5 @@
     <input type="submit" value="Save node" class="right" />
     <a class="link-button" href="{% url 'node-view' node.system_id %}">Cancel</a>
   </form>
+  </div>
 {% endblock %}

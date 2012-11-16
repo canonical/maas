@@ -2,19 +2,22 @@
   <table class="list">
     <thead>
       <tr>
-        <th>MAC</th>
-        <th>Status</th>
+        <th><acronym title="Fully Qualified Domain Name">FQDN</acronym></th>
+        <th><acronym
+          title="Media Access Control addresses">MAC</acronym></th>
       </tr>
     </thead>
     {% for node in node_list %}
       <tr class="node {% cycle 'even' 'odd' %}">
         <td>
           <a href="{% url 'node-view' node.system_id %}">
-            {% for macaddress in node.macaddress_set.all reversed %}
-              {{ macaddress }}{% if not forloop.last %},{% endif %}
-            {% endfor %}
+          {{ node.fqdn }}
           </a>
-          ({{ node.hostname }})
+        </td>
+        <td>
+          {% for macaddress in node.macaddress_set.all reversed %}
+            {{ macaddress }}{% if not forloop.last %},{% endif %}
+          {% endfor %}
         </td>
         <td>{{ node.display_status }}</td>
       </tr>

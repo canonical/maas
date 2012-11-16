@@ -428,6 +428,7 @@ class Node(CleanSave, TimestampedModel):
     :ivar power_type: The :class:`POWER_TYPE` that determines how this
         node will be powered on.  If not given, the default will be used as
         configured in the `node_power_type` setting.
+    :ivar nodegroup: The `NodeGroup` this `Node` belongs to.
     :ivar tags: The list of :class:`Tag`s associated with this `Node`.
     :ivar objects: The :class:`NodeManager`.
 
@@ -440,7 +441,7 @@ class Node(CleanSave, TimestampedModel):
         max_length=41, unique=True, default=generate_node_system_id,
         editable=False)
 
-    hostname = CharField(max_length=255, default='', blank=True)
+    hostname = CharField(max_length=255, default='', blank=True, unique=True)
 
     status = IntegerField(
         max_length=10, choices=NODE_STATUS_CHOICES, editable=False,
