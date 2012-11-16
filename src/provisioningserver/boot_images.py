@@ -19,13 +19,13 @@ __all__ = [
     ]
 
 import json
+from logging import getLogger
 
 from apiclient.maas_client import (
     MAASClient,
     MAASDispatcher,
     MAASOAuth,
     )
-from celery.log import get_task_logger
 from provisioningserver.auth import (
     get_recorded_api_credentials,
     get_recorded_maas_url,
@@ -35,7 +35,7 @@ from provisioningserver.pxe import tftppath
 from provisioningserver.start_cluster_controller import get_cluster_uuid
 
 
-task_logger = get_task_logger(name=__name__)
+logger = getLogger(__name__)
 
 
 def get_cached_knowledge():
@@ -46,10 +46,10 @@ def get_cached_knowledge():
     """
     maas_url = get_recorded_maas_url()
     if maas_url is None:
-        task_logger.debug("Not reporting boot images: don't have API URL yet.")
+        logger.debug("Not reporting boot images: don't have API URL yet.")
     api_credentials = get_recorded_api_credentials()
     if api_credentials is None:
-        task_logger.debug("Not reporting boot images: don't have API key yet.")
+        logger.debug("Not reporting boot images: don't have API key yet.")
     return maas_url, api_credentials
 
 

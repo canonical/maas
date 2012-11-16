@@ -19,6 +19,7 @@ __all__ = [
 
 
 import httplib
+from logging import getLogger
 import urllib2
 
 from apiclient.maas_client import (
@@ -26,7 +27,6 @@ from apiclient.maas_client import (
     MAASDispatcher,
     MAASOAuth,
     )
-from celery.log import get_task_logger
 from lxml import etree
 from provisioningserver.auth import (
     get_recorded_api_credentials,
@@ -36,7 +36,7 @@ from provisioningserver.auth import (
 import simplejson as json
 
 
-task_logger = get_task_logger(name=__name__)
+logger = getLogger(__name__)
 
 
 class MissingCredentials(Exception):
@@ -53,15 +53,15 @@ def get_cached_knowledge():
     """
     maas_url = get_recorded_maas_url()
     if maas_url is None:
-        task_logger.error("Not updating tags: don't have API URL yet.")
+        logger.error("Not updating tags: don't have API URL yet.")
         return None, None
     api_credentials = get_recorded_api_credentials()
     if api_credentials is None:
-        task_logger.error("Not updating tags: don't have API key yet.")
+        logger.error("Not updating tags: don't have API key yet.")
         return None, None
     nodegroup_uuid = get_recorded_nodegroup_uuid()
     if nodegroup_uuid is None:
-        task_logger.error("Not updating tags: don't have UUID yet.")
+        logger.error("Not updating tags: don't have UUID yet.")
         return None, None
     client = MAASClient(MAASOAuth(*api_credentials), MAASDispatcher(),
         maas_url)
@@ -119,7 +119,8 @@ def post_updated_nodes(client, tag_name, tag_definition, uuid, added, removed):
     :param removed: Set of nodes to remove
     """
     path = '/api/1.0/tags/%s/' % (tag_name,)
-    task_logger.debug('Updating nodes for %s %s, adding %s removing %s'
+    logger.debug(
+        "Updating nodes for %s %s, adding %s removing %s"
         % (tag_name, uuid, len(added), len(removed)))
     try:
         return process_response(client.post(
@@ -131,7 +132,7 @@ def post_updated_nodes(client, tag_name, tag_definition, uuid, added, removed):
                 msg = e.fp.read()
             else:
                 msg = e.msg
-            task_logger.info('Got a CONFLICT while updating tag: %s', msg)
+            logger.info("Got a CONFLICT while updating tag: %s", msg)
             return {}
         raise
 
@@ -148,8 +149,8 @@ def process_batch(xpath, hardware_details):
             try:
                 xml = etree.XML(hw_xml)
             except etree.XMLSyntaxError as e:
-                task_logger.debug('Invalid hardware_details for %s: %s'
-                    % (system_id, e))
+                logger.debug(
+                    "Invalid hardware_details for %s: %s" % (system_id, e))
             else:
                 if xpath(xml):
                     matched = True
@@ -166,16 +167,17 @@ def process_all(client, tag_name, tag_definition, nodegroup_uuid, system_ids,
         batch_size = DEFAULT_BATCH_SIZE
     all_matched = []
     all_unmatched = []
-    task_logger.debug('processing %d system_ids for tag %s nodegroup %s'
-                      % (len(system_ids), tag_name, nodegroup_uuid))
+    logger.debug(
+        "processing %d system_ids for tag %s nodegroup %s"
+        % (len(system_ids), tag_name, nodegroup_uuid))
     for i in range(0, len(system_ids), batch_size):
         selected_ids = system_ids[i:i + batch_size]
         details = get_hardware_details_for_nodes(
             client, nodegroup_uuid, selected_ids)
         matched, unmatched = process_batch(xpath, details)
-        task_logger.debug(
-            'processing batch of %d ids received %d details'
-            ' (%d matched, %d unmatched)'
+        logger.debug(
+            "processing batch of %d ids received %d details"
+            " (%d matched, %d unmatched)"
             % (len(selected_ids), len(details), len(matched), len(unmatched)))
         all_matched.extend(matched)
         all_unmatched.extend(unmatched)
@@ -197,8 +199,9 @@ def process_node_tags(tag_name, tag_definition, batch_size=None):
     """
     client, nodegroup_uuid = get_cached_knowledge()
     if not all([client, nodegroup_uuid]):
-        task_logger.error('Unable to update tag: %s for definition %r'
-            ' please refresh secrets, then rebuild this tag'
+        logger.error(
+            "Unable to update tag: %s for definition %r. "
+            "Please refresh secrets, then rebuild this tag."
             % (tag_name, tag_definition))
         raise MissingCredentials()
     # We evaluate this early, so we can fail before sending a bunch of data to
