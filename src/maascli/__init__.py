@@ -28,6 +28,14 @@ def main(argv=None):
     if argv is None:
         argv = sys.argv[:1] + osutils.get_unicode_argv()
 
+    if len(argv) == 1:
+        # No arguments passed.  Be helpful and point out the --help option.
+        sys.stderr.write(
+            "Error: no arguments given.\n"
+            "Run %s --help for usage details.\n"
+            % argv[0])
+        raise SystemExit(2)
+
     parser = prepare_parser(argv)
 
     # Run, doing polite things with exceptions.
