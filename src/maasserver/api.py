@@ -362,7 +362,7 @@ def get_list_from_dict_or_multidict(data, key, default=None):
     """
     getlist = getattr(data, 'getlist', None)
     if getlist is not None:
-        return getlist(key, default)
+        return get_optional_list(data, key, default)
     return data.get(key, default)
 
 

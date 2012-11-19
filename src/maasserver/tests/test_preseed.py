@@ -21,7 +21,6 @@ from maasserver.enum import (
     NODE_STATUS,
     PRESEED_TYPE,
     )
-from maasserver.models import BootImage
 from maasserver.preseed import (
     compose_enlistment_preseed_url,
     compose_preseed_url,
