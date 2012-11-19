@@ -16,7 +16,7 @@ from inspect import getdoc
 import new
 
 from django.conf import settings
-from django.conf.urls import (
+from django.conf.urls.defaults import (
     include,
     patterns,
     url,
