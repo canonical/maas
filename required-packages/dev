@@ -7,7 +7,6 @@ make
 python-lxml
 python-pip
 python-pocket-lint
-python-selenium
 python-sphinx
 python-virtualenv
 xvfb
