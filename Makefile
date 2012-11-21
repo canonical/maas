@@ -49,7 +49,7 @@ all: build doc
 install-dependencies:
 	sudo DEBIAN_FRONTEND=noninteractive apt-get -y \
 		--no-install-recommends install \
-		$(shell sort -u required-packages/*)
+		$(shell sort -u required-packages/base required-packages/dev)
 
 bin/python bin/pip:
 	$(virtualenv) --python=$(python) --system-site-packages $(CURDIR)
@@ -101,7 +101,7 @@ bin/flake8: bin/buildout buildout.cfg versions.cfg setup.py
 	$(buildout) install flake8
 	@touch --no-create $@
 
-bin/sphinx: bin/buildout buildout.cfg versions.cfg setup.py
+bin/sphinx bin/sphinx-build: bin/buildout buildout.cfg versions.cfg setup.py
 	$(buildout) install sphinx
 	@touch --no-create $@
 
@@ -139,6 +139,11 @@ sampledata: bin/maas bin/database syncdb
 doc: bin/sphinx docs/api.rst
 	bin/sphinx
 
+man: $(patsubst docs/man/%.rst,man/%,$(wildcard docs/man/*.rst))
+
+man/%: docs/man/%.rst | bin/sphinx-build
+	bin/sphinx-build -b man docs man $^
+
 enums: $(js_enums)
 
 $(js_enums): bin/py src/maasserver/utils/jsenums.py $(py_enums)
@@ -154,6 +159,7 @@ clean:
 	$(RM) celerybeat-schedule
 	$(RM) docs/api.rst
 	$(RM) -r docs/_autosummary
+	$(RM) -r man/
 
 distclean: clean stop
 	$(RM) -r bin include lib local
@@ -189,6 +195,7 @@ define phony_targets
   lint
   lint-css
   lint-js
+  man
   sampledata
   syncdb
   test
