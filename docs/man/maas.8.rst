@@ -37,5 +37,5 @@ For more documentation of MAAS, please see https://maas.ubuntu.com/docs
 
 See Also
 ^^^^^^^^
-`maas-cli`, `maas-import-pxe-files`
+`maas-cli`
 
