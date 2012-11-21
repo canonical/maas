@@ -10,7 +10,6 @@
 ./acceptance/source
 ./bin
 ./build
-./celerybeat-schedule
 ./db
 ./develop-eggs
 ./dist
@@ -22,6 +21,7 @@
 ./lib
 ./local
 ./logs/*
+./man
 ./media/demo/*
 ./media/development
 ./parts
@@ -31,4 +31,3 @@
 ./TAGS
 ./tags
 dropin.cache
-./man

@@ -1,6 +1,7 @@
 ********************
 MAAS Troubleshooting
 ********************
+
 Some parts of MAAS may still be a little confusing, and sometimes you might be
 trying to do things that are just plain impossible. This section covers some of
 the most commonly encountered problems and tries its best to make them gone.
@@ -13,8 +14,10 @@ the most commonly encountered problems and tries its best to make them gone.
 **Nodes hang on "Commissioning"**
 =================================
 
+
 Possible Cause: Timing issues
 -----------------------------
+
 Various parts of MAAS rely on OAuth to negotiate a connection to nodes. If the
 current time reported by the hardware clock on your node differs significantly
 from that on the MAAS server, the connection will not be made.
@@ -22,6 +25,7 @@ from that on the MAAS server, the connection will not be made.
 **SOLUTION:** Check that the hardware clocks are consistent, and if necessary,
 adjust them. This can usually be done from within the system BIOS, without
 needing to install an OS
+
 
 Possible Cause: Network drivers
 -------------------------------
@@ -34,16 +38,20 @@ drivers are available for the network hardware.
 network adaptor. It *is* theoretically possible to modify the boot image to
 include proprietary drivers, but it is not a straightforward task.
 
+
 **Nodes fail to PXE boot**
 ==========================
 
+
 Possible Cause: Using an incorrectly configured VM
 --------------------------------------------------
+
 Some Virtual Machine setups include emulation of network hardware that does not
 support PXE booting, and in most setups, you will need to explicitly set up the
-VM to boot via PXE. 
+VM to boot via PXE.
 
 **SOLUTION**: Consult the VM docs for details of PXE booting.
+
 
 Possible Cause: DHCP conflict
 -----------------------------
@@ -53,7 +61,6 @@ and most likely won't discover any nodes either.
 
 **SOLUTION**: You will need to either:
 
-
 * Configure your existing DHCP server to point to the MAAS server.
 
   or
@@ -62,30 +69,31 @@ and most likely won't discover any nodes either.
   this, please see https://wiki.ubuntu.com/ServerTeam/MAAS/AvahiBoot
 
 
-
 **Can't log in to node**
 ========================
 
-Sometimes you may wish to login directly to a node on your system. If you have
-set up Juju and MAAS, the attached nodes will automatically receive existing ssh
-keys and sets up ssh on the node to authenticate via key, so you can just login
-with no password from the server.
-There is also an option in the MAAS web interface to add new ssh keys to the
-nodes (via Preferences in the drop down menu which appears when clicking your
-username in the top-right of the page).
+Sometimes you may wish to login directly to a node on your system. If
+you have set up Juju and MAAS, the attached nodes will automatically
+receive existing ssh keys and sets up ssh on the node to authenticate
+via key, so you can just login with no password from the server.
+There is also an option in the MAAS web interface to add new ssh keys
+to the nodes (via Preferences in the drop down menu which appears when
+clicking your username in the top-right of the page).
+
 
 **Forgot MAAS superuser password**
 ==================================
 
-As long as you have sudo privileges, this is not a disaster. You can use the
-``maas`` command to change the password for the MAAS superuser on the MAAS
-server:
+As long as you have sudo privileges, this is not a disaster. You can
+use the ``maas`` command to change the password for the MAAS superuser
+on the MAAS server:
 
     ``sudo maas changepassword root``
 
 
 **Need to reconfigure server IP address**
 =========================================
+
 If you made a mistake during setup or you just need to reconfigure your MAAS
 server, you can simply run the setup again:
 
@@ -109,7 +117,3 @@ access it, there are a few things to try:
   #. If you are still getting "404 - Page not found" errors, check that the MAAS
      web interface has been installed in the right place. There should be a file
      present called /usr/share/maas/maas/urls.py
-
-
-
-

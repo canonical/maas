@@ -153,13 +153,13 @@ clean:
 	$(MAKE) -C acceptance $@
 	find . -type f -name '*.py[co]' -print0 | xargs -r0 $(RM)
 	find . -type f -name '*~' -print0 | xargs -r0 $(RM)
+	find . -type f -name dropin.cache -print0 | xargs -r0 $(RM)
 	$(RM) -r media/demo/* media/development
 	$(RM) $(js_enums)
 	$(RM) *.log
-	$(RM) celerybeat-schedule
 	$(RM) docs/api.rst
-	$(RM) -r docs/_autosummary
-	$(RM) -r man/
+	$(RM) -r docs/_autosummary docs/_build
+	$(RM) -r man
 
 distclean: clean stop
 	$(RM) -r bin include lib local
@@ -167,9 +167,7 @@ distclean: clean stop
 	$(RM) -r build dist logs/* parts
 	$(RM) tags TAGS .installed.cfg
 	$(RM) -r *.egg *.egg-info src/*.egg-info
-	$(RM) -r docs/_build
 	$(RM) -r run/* services/*/supervise
-	$(RM) twisted/plugins/dropin.cache
 
 harness: bin/maas bin/database
 	$(dbrun) bin/maas shell --settings=maas.demo

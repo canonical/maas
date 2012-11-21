@@ -1,14 +1,19 @@
 Additional Configuration
 ========================
 
+
 .. _manual-dhcp:
 
 Manual DHCP configuration
 -------------------------
 
-There are some circumstances under which you may not wish the master MAAS worker to handle DHCP for the network. In these instances, the existing DHCP server for the network will need its configuration altered to allow MAAS to enlist and control nodes automatically.
+There are some circumstances under which you may not wish the master
+MAAS worker to handle DHCP for the network. In these instances, the
+existing DHCP server for the network will need its configuration
+altered to allow MAAS to enlist and control nodes automatically.
 
-At the very least the next-server should point to the MAAS controller host address and the filename should be set to pxelinux.0
+At the very least the next-server should point to the MAAS controller
+host address and the filename should be set to pxelinux.0
 
 The configuration entry may look something like this::
 
@@ -21,7 +26,9 @@ The configuration entry may look something like this::
        range dynamic-bootp 192.168.122.5 192.168.122.135;
    }
 
+
 .. _ssl:
+
 SSL Support
 -----------
 
@@ -43,4 +50,3 @@ At this point you will be able to access the MAAS web server using https but
 the default SSL certificate is insecure.  Please generate your own and then
 edit ``/etc/apache2/conf.d/maas-http.conf`` to set the location of the
 certificate.
-

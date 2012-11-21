@@ -1,23 +1,25 @@
 maas
 ----
 
-USAGE
+
+Usage
 ^^^^^
 
 maas  [-h, --help] createsuperuser | changepassword | shell
 
-DESCRIPTION
+
+Description
 ^^^^^^^^^^^
 
-The `maas` command is part of Canonical's Metal As A Service software. It is 
-derived from and can be used similarly to the `django-admin` command, and must 
-be run with root privileges. 
+The `maas` command is part of Canonical's Metal As A Service software. It is
+derived from and can be used similarly to the `django-admin` command, and must
+be run with root privileges.
 
 For the end user, there are only three subcommands of interest.
 
 **createsuperuser**
   This subcommand is used to create a superuser for the
-  MAAS install. The suggested username is "root". This command usually only 
+  MAAS install. The suggested username is "root". This command usually only
   needs to be run when installing MAAS for the first time.
 
 **changepassword**
@@ -26,16 +28,18 @@ For the end user, there are only three subcommands of interest.
   enter it once again to verify.
 
 **shell**
-  This subcommand may be useful for debugging installed systems. It 
+  This subcommand may be useful for debugging installed systems. It
   will open a new python shell environment with the correct django environment
   for working with the installed MAAS software.
 
-  
+
 Further Documentation
 ^^^^^^^^^^^^^^^^^^^^^
+
 For more documentation of MAAS, please see https://maas.ubuntu.com/docs
+
 
 See Also
 ^^^^^^^^
-`maas-cli`
 
+`maas-cli`

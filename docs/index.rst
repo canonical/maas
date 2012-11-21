@@ -4,18 +4,19 @@
 Metal As A Service: MAAS
 ########################
 
-
 This is the documentation for the MAAS project http://maas.ubuntu.com
+
 
 ************
 Introduction
-************   
+************
 
 .. toctree::
    :maxdepth: 2
 
    about
    orientation
+
 
 ***************
 Getting started
@@ -27,7 +28,7 @@ Getting started
    install
    configure
    nodes
-   
+
 
 ******************
 Deploying services
@@ -38,7 +39,8 @@ Deploying services
 
    juju-quick-start
    tags
-   
+
+
 ******************************
 Using the maas-cli commandline
 ******************************
@@ -48,6 +50,7 @@ Using the maas-cli commandline
 
    maascli
 
+
 **********
 Appendices
 **********
@@ -56,10 +59,11 @@ Appendices
    :maxdepth: 2
 
    troubleshooting
-   hacking 
+   hacking
    api
    models
    enum
+
 
 Indices and tables
 ==================
