@@ -89,6 +89,7 @@ import httplib
 from inspect import getdoc
 import sys
 from textwrap import dedent
+from xml.sax.saxutils import quoteattr
 
 from celery.app import app_or_default
 from django.conf import settings
@@ -1964,14 +1965,14 @@ class BootImagesHandler(OperationsHandler):
             id__in=nodegroup_ids_with_images).filter(
                 status=NODEGROUP_STATUS.ACCEPTED)
         if nodegroups_missing_images.exists():
+            accepted_clusters_url = (
+                "%s#accepted-clusters" % absolute_reverse("settings"))
             warning = dedent("""\
                 Some cluster controllers are missing boot images.  Either the
-                maas-import-pxe-files script has not run yet, or it failed.
-
-                Try running it manually on the affected
-                <a href="%s#accepted-clusters">cluster controllers.</a>
-                If it succeeds, this message will go away within 5 minutes.
-                """ % absolute_reverse("settings"))
+                import task has not been initiated (for each cluster, the task
+                must be <a href=%s>initiated by hand</a> the first time), or
+                the import task failed.
+                """ % quoteattr(accepted_clusters_url))
             register_persistent_error(COMPONENT.IMPORT_PXE_FILES, warning)
         else:
             discard_persistent_error(COMPONENT.IMPORT_PXE_FILES)
