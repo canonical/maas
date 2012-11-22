@@ -178,10 +178,6 @@ Optionally, populate your database with the sample data::
 
     $ make sampledata
 
-Install the provisioning server::
-
-    $ sudo apt-get install maas-provision
-
 By default, the snippet ``maas_proxy`` includes a definition for an http
 proxy running on port 8000 on the same host as the MAAS server.  This
 means you can *either* install ``squid-deb-proxy``::
@@ -194,16 +190,6 @@ definition.
 Set the iSCSI config to include the MAAS configs::
 
     $ sudo tee -a /etc/tgt/targets.conf < contrib/tgt.conf
-
-Now run ``maas-import-pxe-files`` to download current Ubuntu releases for
-installing nodes::
-
-    $ sudo http_proxy=$http_proxy PATH=$PATH:$PWD/bin:$PWD/scripts \
-        MAAS_PROVISIONING_SETTINGS=$PWD/etc/pserv.yaml \
-        ./scripts/maas-import-pxe-files
-
-This may download dozens or hundreds of megabytes, so depending on your
-network connection it may take a while.
 
 The http_proxy variable is only needed if you're downloading through a
 proxy; "sudo" wouldn't pass it on to the script without the assignment.
@@ -220,10 +206,45 @@ If you've populated your instance with the sample data, you can login as a
 simple user using the test account (username: 'test', password: 'test') or the
 admin account (username: 'admin', password: 'test').
 
+At this point you may also want to `download PXE boot resources`_.
+
+.. _`download PXE boot resources`: `Downloading PXE boot resources`_
+
 To shut down the database cluster and clean up all other generated files in
 your branch::
 
     $ make distclean
+
+
+Downloading PXE boot resources
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+To use PXE booting, each cluster controller needs to download several
+files relating to PXE booting. This process is automated, but it does
+not start by default.
+
+First create a superuser and start all MAAS services::
+
+    $ bin/maas createsuperuser
+    $ make run
+
+Get the superuser's API key on the `account preferences`_ page in web
+UI, and use it to log into MAAS at the command-line::
+
+    $ bin/maascli login dev http://localhost:5240
+
+.. _`account preferences`: http://localhost:5240/account/prefs/
+
+Start downloading PXE boot resources::
+
+    $  bin/maascli dev node-groups import-boot-images
+
+This sends jobs to each cluster controller, asking each to download
+the boot resources they require. This may download dozens or hundreds
+of megabytes, so it may take a while. To save bandwidth, set an HTTP
+proxy beforehand::
+
+    $ bin/maascli dev maas set-config name=http_proxy value=http://...
 
 
 Running the built-in TFTP server
@@ -414,8 +435,7 @@ This will generate a migration module named
 ``src/maasserver/migrations/<auto_number>_description_of_the_change.py``.  Don't
 forget to add that file to the project with::
 
-    $ bzr add \
-        src/maasserver/migrations/<auto_number>_description_of_the_change.py
+    $ bzr add src/maasserver/migrations/<auto_number>_description_of_the_change.py
 
 To apply that migration, run::
 
@@ -439,8 +459,7 @@ You will need to edit that file and fill the ``forwards`` and ``backwards``
 methods where data should be actually migrated. Again, don't forget to
 add that file to the project::
 
-    $ bzr add \
-        src/maasserver/migrations/<auto_number>_description_of_the_change.py
+    $ bzr add src/maasserver/migrations/<auto_number>_description_of_the_change.py
 
 Once the methods have been written, apply that migration with::
 
