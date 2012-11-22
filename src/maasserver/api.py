@@ -166,6 +166,7 @@ from maasserver.server_address import get_maas_facing_server_address
 from maasserver.utils import (
     absolute_reverse,
     build_absolute_uri,
+    get_origin_ip,
     map_enum,
     strip_domain,
     )
@@ -644,6 +645,14 @@ def create_node(request):
             # Architecture without a '/' and no subarchitecture:
             # assume 'generic'.
             altered_query_data['architecture'] += '/generic'
+
+    if 'nodegroup' not in altered_query_data:
+        # If 'nodegroup' is not explicitely specified, get the origin of the
+        # request to figure out which nodegroup the new node should be
+        # attached to.
+        origin_ip = get_origin_ip(request)
+        if origin_ip is not None:
+            altered_query_data['nodegroup'] = origin_ip
 
     Form = get_node_create_form(request.user)
     form = Form(altered_query_data)

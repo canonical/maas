@@ -12,11 +12,13 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
+import socket
 from urllib import urlencode
 
 from django.conf import settings
 from django.core.urlresolvers import reverse
 from django.http import HttpRequest
+from django.test.client import RequestFactory
 from maasserver.enum import NODE_STATUS_CHOICES
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase as DjangoTestCase
@@ -24,10 +26,15 @@ from maasserver.utils import (
     absolute_reverse,
     build_absolute_uri,
     get_db_state,
+    get_origin_ip,
     map_enum,
     strip_domain,
     )
 from maastesting.testcase import TestCase
+from mock import (
+    call,
+    Mock,
+    )
 
 
 class TestEnum(TestCase):
@@ -175,3 +182,38 @@ class TestStripDomain(TestCase):
         inputs = [input for input, _ in input_and_results]
         results = [result for _, result in input_and_results]
         self.assertEqual(results, map(strip_domain, inputs))
+
+
+class TestGetOriginIP(TestCase):
+
+    def get_request(self, server_name, server_port='80'):
+        return RequestFactory().post(
+            '/', SERVER_NAME=server_name, SERVER_PORT=server_port)
+
+    def test_get_origin_ip_returns_ip(self):
+        ip = factory.getRandomIPAddress()
+        request = self.get_request(ip)
+        self.assertEqual(ip, get_origin_ip(request))
+
+    def test_get_origin_ip_strips_port(self):
+        ip = factory.getRandomIPAddress()
+        request = self.get_request(ip, '8888')
+        self.assertEqual(ip, get_origin_ip(request))
+
+    def test_get_origin_ip_resolves_hostname(self):
+        ip = factory.getRandomIPAddress()
+        hostname = factory.make_name('hostname')
+        request = self.get_request(hostname)
+        resolver = self.patch(socket, 'gethostbyname', Mock(return_value=ip))
+        self.assertEqual(
+            (ip, call(hostname)),
+            (get_origin_ip(request), resolver.call_args))
+
+    def test_get_origin_ip_returns_None_if_hostname_cannot_get_resolved(self):
+        hostname = factory.make_name('hostname')
+        request = self.get_request(hostname)
+        resolver = self.patch(
+            socket, 'gethostbyname', Mock(side_effect=socket.error))
+        self.assertEqual(
+            (None, call(hostname)),
+            (get_origin_ip(request), resolver.call_args))
