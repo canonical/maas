@@ -19,13 +19,17 @@ __all__ = [
 
 import logging
 import os
+from subprocess import (
+    CalledProcessError,
+    PIPE,
+    Popen,
+    )
 
 from fixtures import (
     EnvironmentVariableFixture,
     Fixture,
     TempDir,
     )
-from pyvirtualdisplay import Display
 from sst.actions import (
     start,
     stop,
@@ -53,22 +57,58 @@ class LoggerSilencerFixture(Fixture):
 
 
 class DisplayFixture(Fixture):
-    """Fixture to create a virtual display with pyvirtualdisplay.Display."""
+    """Fixture to create a virtual display with `xvfb-run`.
 
-    logger_names = ['easyprocess', 'pyvirtualdisplay']
+    This will set the ``DISPLAY`` environment variable once it's up and
+    running (and reset it when it shuts down).
+    """
 
-    def __init__(self, visible=False, size=(1280, 1024)):
+    def __init__(self, size=(1280, 1024), depth=24):
         super(DisplayFixture, self).__init__()
-        self.visible = visible
-        self.size = size
+        self.width, self.height = size
+        self.depth = depth
+
+    @property
+    def command(self):
+        """The command this fixture will start.
+
+        ``xvfb-run`` is the executable used, to which the following arguments
+        are passed:
+
+          ``--server-args=``
+            ``-ac`` disables host-based access control mechanisms. See
+              Xserver(1).
+            ``-screen`` forces a screen configuration. At the time of writing
+               there is some disagreement between xvfb-run(1) and Xvfb(1)
+               about what the default is.
+
+          ``--auto-servernum``
+            Try to get a free server number, starting at 99. See xvfb-run(1).
+
+        ``xvfb-run`` is asked to chain to ``bash``, which echos the
+        ``DISPLAY`` environment variable and execs ``cat``. This lets us shut
+        down the framebuffer simply by closing the process's stdin.
+        """
+        spec = "{self.width}x{self.height}x{self.depth}".format(self=self)
+        args = "-ac -screen 0 %s" % spec
+        return (
+            "xvfb-run", "--server-args", args, "--auto-servernum", "--",
+            "bash", "-c", "echo $DISPLAY && exec cat",
+            )
 
     def setUp(self):
         super(DisplayFixture, self).setUp()
-        self.useFixture(LoggerSilencerFixture(self.logger_names))
-        self.display = Display(
-            visible=self.visible, size=self.size)
-        self.display.start()
-        self.addCleanup(self.display.stop)
+        self.process = Popen(self.command, stdin=PIPE, stdout=PIPE)
+        self.display = self.process.stdout.readline().strip()
+        if not self.display or self.process.poll() is not None:
+            raise CalledProcessError(self.process.returncode, self.command)
+        self.useFixture(EnvironmentVariableFixture("DISPLAY", self.display))
+        self.addCleanup(self.shutdown)
+
+    def shutdown(self):
+        self.process.stdin.close()
+        if self.process.wait() != 0:
+            raise CalledProcessError(self.process.returncode, self.command)
 
 
 class SSTFixture(Fixture):
