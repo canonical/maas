@@ -125,6 +125,7 @@ from mock import (
     ANY,
     Mock,
     )
+from netaddr import IPNetwork
 from provisioningserver import (
     boot_images,
     kernel_opts,
@@ -738,6 +739,45 @@ class NodeHostnameEnlistmentTest(APIv10TestMixin, MultipleUsersScenarios,
         expected_hostname = '%s.%s' % (hostname_without_domain, domain)
         self.assertEqual(
             expected_hostname, parsed_result.get('hostname'))
+
+    def test_created_node_nodegroup_is_inferred_from_origin_network(self):
+        network = IPNetwork('192.168.0.3/24')
+        origin_ip = factory.getRandomIPInNetwork(network)
+        NodeGroup.objects.ensure_master()
+        nodegroup = factory.make_node_group(network=network)
+        response = self.client.post(
+            self.get_uri('nodes/'),
+            data={
+                'op': 'new',
+                'hostname': factory.make_name('hostname'),
+                'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
+                'after_commissioning_action':
+                    NODE_AFTER_COMMISSIONING_ACTION.DEFAULT,
+                'mac_addresses': [factory.getRandomMACAddress()],
+            },
+            HTTP_HOST=origin_ip + ':90')
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        parsed_result = json.loads(response.content)
+        node = Node.objects.get(system_id=parsed_result.get('system_id'))
+        self.assertEqual(nodegroup, node.nodegroup)
+
+    def test_created_node_uses_default_nodegroup_if_origin_not_found(self):
+        unknown_host = factory.make_name('host')
+        response = self.client.post(
+            self.get_uri('nodes/'),
+            data={
+                'op': 'new',
+                'hostname': factory.make_name('hostname'),
+                'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
+                'after_commissioning_action':
+                    NODE_AFTER_COMMISSIONING_ACTION.DEFAULT,
+                'mac_addresses': [factory.getRandomMACAddress()],
+            },
+            HTTP_HOST=unknown_host)
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        parsed_result = json.loads(response.content)
+        node = Node.objects.get(system_id=parsed_result.get('system_id'))
+        self.assertEqual(NodeGroup.objects.ensure_master(), node.nodegroup)
 
 
 class NonAdminEnlistmentAPITest(APIv10TestMixin, MultipleUsersScenarios,

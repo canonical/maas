@@ -14,11 +14,13 @@ __all__ = [
     'absolute_reverse',
     'build_absolute_uri',
     'get_db_state',
+    'get_origin_ip',
     'ignore_unused',
     'map_enum',
     'strip_domain',
     ]
 
+import socket
 from urllib import urlencode
 from urlparse import urljoin
 
@@ -103,3 +105,16 @@ def build_absolute_uri(request, path):
 def strip_domain(hostname):
     """Return `hostname` with the domain part removed."""
     return hostname.split('.', 1)[0]
+
+
+def get_origin_ip(request):
+    """Return the IP address of the originating host of the request.
+
+    Return the IP address obtained by resolving the host given by
+    request.get_host().
+    """
+    host = request.get_host().split(':')[0]
+    try:
+        return socket.gethostbyname(host)
+    except socket.error:
+        return None
