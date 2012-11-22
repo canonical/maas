@@ -1,3 +1,0 @@
-# Runs the MAAS image downloads early every Sunday.
-
-11 4 * * 0 root  /usr/sbin/maas-import-pxe-files &> /dev/null

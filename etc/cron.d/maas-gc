@@ -1,4 +1,0 @@
-# Perform daily background cleanups in MAAS.
-#
-# This currently does nothing: maas-gc is no longer needed.
-#0 0 * * * root  /usr/sbin/maas gc &> /dev/null
