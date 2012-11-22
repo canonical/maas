@@ -28,7 +28,6 @@ class DHCPConfigError(Exception):
 
 template_content = dedent("""\
     subnet {{subnet}} netmask {{subnet_mask}} {
-           next-server {{next_server}};
            filename "{{bootloader}}";
            option subnet-mask {{subnet_mask}};
            option broadcast-address {{broadcast_ip}};
@@ -53,7 +52,6 @@ def get_config(**params):
 
     :param subnet: The base subnet declaration. e.g. 192.168.1.0
     :param subnet_mask: The mask for the above subnet, e.g. 255.255.255.0
-    :param next_server: The address of the TFTP server for PXE booting.
     :param broadcast_address: The broadcast IP address for the subnet,
         e.g. 192.168.1.255
     :param dns_servers: One or more IP addresses of the DNS server for the

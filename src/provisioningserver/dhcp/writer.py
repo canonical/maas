@@ -32,9 +32,6 @@ def add_arguments(parser):
         "--subnet-mask", action="store", required=True, help=(
             "The mask for the subnet, e.g. 255.255.255.0"))
     parser.add_argument(
-        "--next-server", action="store", required=True, help=(
-            "The address of the TFTP server"))
-    parser.add_argument(
         "--broadcast-ip", action="store", required=True, help=(
             "The broadcast IP address for the subnet, e.g. 192.168.1.255"))
     parser.add_argument(

@@ -34,7 +34,6 @@ class TestScript(TestCase):
     test_args = (
         '--subnet', 'subnet',
         '--subnet-mask', 'subnet-mask',
-        '--next-server', 'next-server',
         '--broadcast-ip', 'broadcast-ip',
         '--dns-servers', 'dns-servers',
         '--router-ip', 'router-ip',
@@ -53,7 +52,7 @@ class TestScript(TestCase):
             script, stdout=PIPE, env=dict(PYTHONPATH=":".join(sys.path)))
         output, err = cmd.communicate()
         contains_all_params = ContainsAll(
-            ['subnet', 'subnet-mask', 'next-server', 'broadcast-ip',
+            ['subnet', 'subnet-mask', 'broadcast-ip',
              'omapi-key', 'dns-servers', 'router-ip',
              'ip-range-low', 'ip-range-high'])
         self.assertThat(output, contains_all_params)
@@ -66,7 +65,6 @@ class TestScript(TestCase):
             args, MatchesStructure.byEquality(
                 subnet='subnet',
                 subnet_mask='subnet-mask',
-                next_server='next-server',
                 broadcast_ip='broadcast-ip',
                 dns_servers='dns-servers',
                 router_ip='router-ip',
@@ -84,7 +82,6 @@ class TestScript(TestCase):
         contains_all_params = ContainsAll([
             'subnet',
             'subnet-mask',
-            'next-server',
             'broadcast-ip',
             'omapi-key',
             'dns-servers',
@@ -106,7 +103,6 @@ class TestScript(TestCase):
         contains_all_params = ContainsAll([
             'subnet',
             'subnet-mask',
-            'next-server',
             'broadcast-ip',
             'omapi-key',
             'dns-servers',
