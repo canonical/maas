@@ -15,15 +15,17 @@ from __future__ import (
 
 __metaclass__ = type
 __all__ = [
+    'CommissioningScript',
     'NodeCommissionResult',
     'NodeKey',
     'NodeUserData',
     ]
 
 from maasserver.utils import ignore_unused
+from metadataserver.models.commissioningscript import CommissioningScript
 from metadataserver.models.nodecommissionresult import NodeCommissionResult
 from metadataserver.models.nodekey import NodeKey
 from metadataserver.models.nodeuserdata import NodeUserData
 
 
-ignore_unused(NodeCommissionResult, NodeKey, NodeUserData)
+ignore_unused(CommissioningScript, NodeCommissionResult, NodeKey, NodeUserData)
