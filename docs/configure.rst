@@ -12,13 +12,11 @@ MAAS worker to handle DHCP for the network. In these instances, the
 existing DHCP server for the network will need its configuration
 altered to allow MAAS to enlist and control nodes automatically.
 
-At the very least the next-server should point to the MAAS controller
-host address and the filename should be set to pxelinux.0
+At the very least the filename should be set to pxelinux.0.
 
 The configuration entry may look something like this::
 
    subnet 192.168.122.0 netmask 255.255.255.0 {
-       next-server 192.168.122.136;
        filename "pxelinux.0";
        option subnet-mask 255.255.255.0;
        option broadcast-address 192.168.122.255;
