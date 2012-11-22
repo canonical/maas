@@ -4231,7 +4231,7 @@ class TestNodeGroupAPIAuth(APIv10TestMixin, TestCase):
             httplib.OK, response.status_code,
             explain_unexpected_response(httplib.OK, response))
         recorder.assert_called_once_with(
-            ['sudo', '-n', 'maas-import-pxe-files'], env=ANY)
+            ['sudo', '-n', '-E', 'maas-import-pxe-files'], env=ANY)
 
     def test_nodegroup_import_boot_images_denied_if_not_admin(self):
         nodegroup = factory.make_node_group()

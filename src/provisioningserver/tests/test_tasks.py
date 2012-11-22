@@ -549,14 +549,14 @@ class TestImportPxeFiles(PservTestCase):
         recorder = self.patch(tasks, 'check_call', Mock())
         import_boot_images()
         recorder.assert_called_once_with(
-            ['sudo', '-n', 'maas-import-pxe-files'], env=ANY)
+            ['sudo', '-n', '-E', 'maas-import-pxe-files'], env=ANY)
         self.assertIsInstance(import_boot_images, Task)
 
     def test_import_boot_images_preserves_environment(self):
         recorder = self.patch(tasks, 'check_call', Mock())
         import_boot_images()
         recorder.assert_called_once_with(
-            ['sudo', '-n', 'maas-import-pxe-files'], env=os.environ)
+            ['sudo', '-n', '-E', 'maas-import-pxe-files'], env=os.environ)
 
     def test_import_boot_images_sets_proxy(self):
         recorder = self.patch(tasks, 'check_call', Mock())
@@ -564,7 +564,7 @@ class TestImportPxeFiles(PservTestCase):
         import_boot_images(http_proxy=proxy)
         expected_env = dict(os.environ, http_proxy=proxy, https_proxy=proxy)
         recorder.assert_called_once_with(
-            ['sudo', '-n', 'maas-import-pxe-files'], env=expected_env)
+            ['sudo', '-n', '-E', 'maas-import-pxe-files'], env=expected_env)
 
     def test_import_boot_images_sets_archive_locations(self):
         self.patch(tasks, 'check_call')

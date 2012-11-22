@@ -388,4 +388,4 @@ def import_boot_images(http_proxy=None, main_archive=None, ports_archive=None,
         env['PORTS_ARCHIVE'] = ports_archive
     if cloud_images_archive is not None:
         env['CLOUD_IMAGES_ARCHIVE'] = cloud_images_archive
-    check_call(['sudo', '-n', 'maas-import-pxe-files'], env=env)
+    check_call(['sudo', '-n', '-E', 'maas-import-pxe-files'], env=env)
