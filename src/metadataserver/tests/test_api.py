@@ -14,7 +14,6 @@ __all__ = []
 
 from collections import namedtuple
 import httplib
-from io import BytesIO
 import json
 
 from django.conf import settings
@@ -153,9 +152,10 @@ class TestViews(DjangoTestCase):
             'status': 'OK',
         }
         params.update(kwargs)
-        for name, content in files.items():
-            params[name] = BytesIO(content)
-            params[name].name = name
+        params.update({
+            name: factory.make_file_upload(name, content)
+            for name, content in files.items()
+        })
         url = reverse('metadata-version', args=[version])
         return client.post(url, params)
 
