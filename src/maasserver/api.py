@@ -177,6 +177,8 @@ from maasserver.utils import (
     strip_domain,
     )
 from maasserver.utils.orm import get_one
+from metadataserver.fields import Bin
+from metadataserver.models import CommissioningScript
 from piston.utils import rc
 from provisioningserver.enum import POWER_TYPE
 from provisioningserver.kernel_opts import KernelParameters
@@ -1735,6 +1737,87 @@ class BootImagesHandler(OperationsHandler):
             discard_persistent_error(COMPONENT.IMPORT_PXE_FILES)
 
         return HttpResponse("OK")
+
+
+def get_content_parameter(request):
+    """Get the "content" parameter from a CommissioningScript POST or PUT."""
+    content_file = get_mandatory_param(request.FILES, 'content')
+    return content_file.read()
+
+
+class CommissioningScriptsHandler(OperationsHandler):
+    """Management of custom commissioning scripts.
+
+    This functionality is only available to administrators.
+    """
+
+    update = delete = None
+
+    def read(self, request):
+        """List commissioning scripts."""
+        return [
+            script.name
+            for script in CommissioningScript.objects.all().order_by('name')]
+
+    def create(self, request):
+        """Create a new commissioning script.
+
+        Each commissioning script is identified by a unique name.
+
+        By convention the name should consist of a two-digit number, a dash,
+        and a brief descriptive identifier consisting only of ASCII
+        characters.  You don't need to follow this convention, but not doing
+        so opens you up to risks w.r.t. encoding and ordering.
+
+        A commissioning node will run each of the scripts in lexicographical
+        order.  There are no promises about how non-ASCII characters are
+        sorted, or even how upper-case letters are sorted relative to
+        lower-case letters.  So where ordering matters, use unique numbers.
+
+        Scripts built into MAAS will have names starting with "00-maas" or
+        "99-maas" to ensure that they run first or last, respectively.
+
+        Usually a commissioning script will be just that, a script.  Ideally a
+        script should be ASCII text to avoid any confusion over encoding.  But
+        in some cases a commissioning script might consist of a binary tool
+        provided by a hardware vendor.  Either way, the script gets passed to
+        the commissioning node in the exact form in which it was uploaded.
+
+        :param name: Unique identifying name for the script.  Names should
+            follow the pattern of "25-burn-in-hard-disk" (all ASCII, and with
+            numbers greater than zero).
+        :param content: A script file, to be uploaded in binary form.  Note:
+            this is not a normal parameter, but a file upload.  Its filename
+            is ignored; MAAS will know it by the name you pass to the request.
+        """
+        name = get_mandatory_param(request.data, 'name')
+        content = Bin(get_content_parameter(request))
+        return CommissioningScript.objects.create(name=name, content=content)
+
+
+class CommissioningScriptHandler(OperationsHandler):
+    """A CommissioningScript.
+
+    This functionality is only available to administrators.
+    """
+
+    model = CommissioningScript
+    fields = ('name', 'content')
+
+    # Relies on Piston's built-in DELETE implementation.  There is no POST.
+    create = None
+
+    def read(self, request, name):
+        """Read a commissioning script."""
+        script = get_object_or_404(CommissioningScript, name=name)
+        return HttpResponse(script.content, content_type='application/binary')
+
+    def update(self, request, name):
+        """Update a commissioning script."""
+        content = Bin(get_content_parameter(request))
+        script = get_object_or_404(CommissioningScript, name=name)
+        script.content = content
+        script.save()
 
 
 def describe(request):

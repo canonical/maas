@@ -109,7 +109,9 @@ from maastesting.celery import CeleryFixture
 from maastesting.djangotestcase import TransactionTestCase
 from maastesting.fakemethod import FakeMethod
 from maastesting.matchers import ContainsAll
+from maastesting.utils import sample_binary_data
 from metadataserver.models import (
+    CommissioningScript,
     NodeKey,
     NodeUserData,
     )
@@ -4400,6 +4402,130 @@ class TestBootImagesAPI(APITestCase):
         MAASClient.post.assert_called_once_with(
             reverse('boot_images_handler').lstrip('/'), 'report_boot_images',
             images=ANY, nodegroup=ANY)
+
+
+class AdminCommissioningScriptsAPITest(APIv10TestMixin, AdminLoggedInTestCase):
+    """Tests for `CommissioningScriptsHandler`."""
+
+    def get_url(self):
+        return reverse('commissioning_scripts_handler')
+
+    def test_GET_lists_commissioning_scripts(self):
+        # Use lower-case names.  The database and the test may use
+        # different collation orders with different ideas about case
+        # sensitivity.
+        names = {factory.make_name('script').lower() for counter in range(5)}
+        for name in names:
+            factory.make_commissioning_script(name=name)
+
+        response = self.client.get(self.get_url())
+
+        self.assertEqual(
+            (httplib.OK, sorted(names)),
+            (response.status_code, json.loads(response.content)))
+
+    def test_POST_creates_commissioning_script(self):
+        # This uses Piston's built-in POST code, so there are no tests for
+        # corner cases (like "script already exists") here.
+        name = factory.make_name('script')
+        content = factory.getRandomString().encode('ascii')
+
+        # Every uploaded file also has a name.  But this is completely
+        # unrelated to the name we give to the commissioning script.
+        response = self.client.post(
+            self.get_url(),
+            {
+                'name': name,
+                'content': factory.make_file_upload(content=content),
+            })
+        self.assertEqual(httplib.OK, response.status_code)
+
+        returned_script = json.loads(response.content)
+        self.assertEqual(
+            (name, content),
+            (returned_script['name'], returned_script['content']))
+
+        stored_script = CommissioningScript.objects.get(name=name)
+        self.assertEqual(content, stored_script.content)
+
+
+class CommissioningScriptsAPITest(APITestCase):
+
+    def get_url(self):
+        return reverse('commissioning_scripts_handler')
+
+    def test_GET_is_forbidden(self):
+        response = self.client.get(self.get_url())
+        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+
+    def test_POST_is_forbidden(self):
+        response = self.client.post(
+            self.get_url(),
+            {'name': factory.make_name('script')})
+        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+
+
+class AdminCommissioningScriptAPITest(APIv10TestMixin, AdminLoggedInTestCase):
+    """Tests for `CommissioningScriptHandler`."""
+
+    def get_url(self, script_name):
+        return reverse('commissioning_script_handler', args=[script_name])
+
+    def test_GET_returns_script_contents(self):
+        script = factory.make_commissioning_script()
+        response = self.client.get(self.get_url(script.name))
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(script.content, response.content)
+
+    def test_GET_preserves_binary_data(self):
+        script = factory.make_commissioning_script(content=sample_binary_data)
+        response = self.client.get(self.get_url(script.name))
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(sample_binary_data, response.content)
+
+    def test_PUT_updates_contents(self):
+        old_content = b'old:%s' % factory.getRandomString().encode('ascii')
+        script = factory.make_commissioning_script(content=old_content)
+        new_content = b'new:%s' % factory.getRandomString().encode('ascii')
+
+        response = self.client.put(
+            self.get_url(script.name),
+            {'content': factory.make_file_upload(content=new_content)})
+        self.assertEqual(httplib.OK, response.status_code)
+
+        self.assertEqual(new_content, reload_object(script).content)
+
+    def test_DELETE_deletes_script(self):
+        script = factory.make_commissioning_script()
+        self.client.delete(self.get_url(script.name))
+        self.assertItemsEqual(
+            [],
+            CommissioningScript.objects.filter(name=script.name))
+
+
+class CommissioningScriptAPITest(APITestCase):
+
+    def get_url(self, script_name):
+        return reverse('commissioning_script_handler', args=[script_name])
+
+    def test_GET_is_forbidden(self):
+        # It's not inconceivable that commissioning scripts contain
+        # credentials of some sort.  There is no need for regular users
+        # (consumers of the MAAS) to see these.
+        script = factory.make_commissioning_script()
+        response = self.client.get(self.get_url(script.name))
+        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+
+    def test_PUT_is_forbidden(self):
+        script = factory.make_commissioning_script()
+        response = self.client.put(
+            self.get_url(script.name), {'content': factory.getRandomString()})
+        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+
+    def test_DELETE_is_forbidden(self):
+        script = factory.make_commissioning_script()
+        response = self.client.put(self.get_url(script.name))
+        self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
 
 class TestDescribe(AnonAPITestCase):

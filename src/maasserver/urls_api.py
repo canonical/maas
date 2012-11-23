@@ -20,6 +20,8 @@ from maasserver.api import (
     AccountHandler,
     api_doc,
     BootImagesHandler,
+    CommissioningScriptHandler,
+    CommissioningScriptsHandler,
     describe,
     FilesHandler,
     MAASHandler,
@@ -57,6 +59,10 @@ boot_images_handler = RestrictedResource(
     BootImagesHandler, authentication=api_auth)
 tag_handler = RestrictedResource(TagHandler, authentication=api_auth)
 tags_handler = RestrictedResource(TagsHandler, authentication=api_auth)
+commissioning_script_handler = AdminRestrictedResource(
+    CommissioningScriptHandler, authentication=api_auth)
+commissioning_scripts_handler = AdminRestrictedResource(
+    CommissioningScriptsHandler, authentication=api_auth)
 
 
 # Admin handlers.
@@ -106,4 +112,10 @@ urlpatterns += patterns('',
 # API URLs for admin users.
 urlpatterns += patterns('',
     url(r'maas/$', maas_handler, name='maas_handler'),
+    url(
+        r'commissioning-scripts/$', commissioning_scripts_handler,
+        name='commissioning_scripts_handler'),
+    url(
+        r'commissioning-scripts/(?P<name>[^/]+)$',
+        commissioning_script_handler, name='commissioning_script_handler'),
 )
