@@ -21,7 +21,7 @@
 ./lib
 ./local
 ./logs/*
-./man
+./man/.doctrees
 ./media/demo/*
 ./media/development
 ./parts

@@ -159,7 +159,7 @@ clean:
 	$(RM) *.log
 	$(RM) docs/api.rst
 	$(RM) -r docs/_autosummary docs/_build
-	$(RM) -r man
+	$(RM) -r man/.doctrees
 
 distclean: clean stop
 	$(RM) -r bin include lib local
