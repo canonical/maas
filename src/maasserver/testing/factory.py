@@ -43,7 +43,11 @@ from maasserver.testing import (
     )
 from maasserver.utils import map_enum
 import maastesting.factory
-from metadataserver.models import NodeCommissionResult
+from metadataserver.fields import Bin
+from metadataserver.models import (
+    CommissioningScript,
+    NodeCommissionResult,
+    )
 from netaddr import IPAddress
 
 # We have a limited number of public keys:
@@ -343,6 +347,14 @@ class Factory(maastesting.factory.Factory):
             subarchitecture=subarchitecture,
             release=release,
             purpose=purpose)
+
+    def make_commissioning_script(self, name=None, content=None):
+        if name is None:
+            name = self.make_name('script')
+        if content is None:
+            content = b'content:' + self.getRandomString().encode('ascii')
+        return CommissioningScript.objects.create(
+            name=name, content=Bin(content))
 
 
 # Create factory singleton.
