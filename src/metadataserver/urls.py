@@ -18,8 +18,8 @@ from django.conf.urls.defaults import (
     patterns,
     url,
     )
-from maasserver.api import OperationsResource
 from maasserver.api_auth import api_auth
+from maasserver.api_support import OperationsResource
 from metadataserver.api import (
     AnonMetaDataHandler,
     EnlistMetaDataHandler,

@@ -22,7 +22,7 @@ from django.conf.urls import (
     url,
     )
 from django.core.exceptions import ImproperlyConfigured
-from maasserver.api import (
+from maasserver.api_support import (
     operation,
     OperationsHandler,
     OperationsResource,

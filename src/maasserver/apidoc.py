@@ -25,6 +25,7 @@ from django.core.urlresolvers import (
     RegexURLPattern,
     RegexURLResolver,
     )
+from maasserver.api_support import OperationsResource
 from piston.authentication import NoAuthentication
 from piston.doc import generate_doc
 from piston.handler import BaseHandler
@@ -115,7 +116,6 @@ def describe_actions(handler):
       restful: Indicates if this is a CRUD/ReSTful action.
 
     """
-    from maasserver.api import OperationsResource
     getname = OperationsResource.crudmap.get
     for signature, function in handler.exports.items():
         http_method, operation = signature

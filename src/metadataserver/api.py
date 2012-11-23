@@ -25,12 +25,14 @@ from django.conf import settings
 from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
-from maasserver.api import (
-    extract_oauth_key,
-    get_mandatory_param,
+from maasserver.api import store_node_power_parameters
+from maasserver.api_support import (
     operation,
     OperationsHandler,
-    store_node_power_parameters,
+    )
+from maasserver.api_utils import (
+    extract_oauth_key,
+    get_mandatory_param,
     )
 from maasserver.enum import (
     NODE_STATUS,

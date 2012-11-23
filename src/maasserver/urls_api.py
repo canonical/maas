@@ -18,7 +18,6 @@ from django.conf.urls.defaults import (
     )
 from maasserver.api import (
     AccountHandler,
-    AdminRestrictedResource,
     api_doc,
     BootImagesHandler,
     describe,
@@ -32,12 +31,15 @@ from maasserver.api import (
     NodeMacHandler,
     NodeMacsHandler,
     NodesHandler,
+    pxeconfig,
     TagHandler,
     TagsHandler,
-    pxeconfig,
-    RestrictedResource,
     )
 from maasserver.api_auth import api_auth
+from maasserver.api_support import (
+    AdminRestrictedResource,
+    RestrictedResource,
+    )
 
 
 account_handler = RestrictedResource(AccountHandler, authentication=api_auth)
