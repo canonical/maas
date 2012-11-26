@@ -31,6 +31,7 @@ from textwrap import dedent
 import time
 import types
 
+from maastesting import root
 from maastesting.factory import factory
 from maastesting.fakemethod import FakeMethod
 from maastesting.testcase import TestCase
@@ -734,11 +735,8 @@ class TestAtomicWriteScript(TestCase):
         self.assertFalse(args.no_overwrite)
 
     def test_script_executable(self):
-        dev_root = os.path.join(
-            os.path.dirname(provisioningserver.__file__),
-            os.pardir, os.pardir)
         content = factory.getRandomString()
-        script = ["%s/bin/maas-provision" % dev_root, 'atomic-write']
+        script = ["%s/bin/maas-provision" % root, 'atomic-write']
         target_file = self.make_file()
         script.extend(('--filename', target_file, '--mode', '615'))
         cmd = Popen(

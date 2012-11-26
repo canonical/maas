@@ -22,18 +22,11 @@ from subprocess import (
 import sys
 from textwrap import dedent
 
+from maastesting import root
 from maastesting.factory import factory
 from maastesting.testcase import TestCase
-import provisioningserver
 from provisioningserver import customize_config
 from provisioningserver.utils import maas_custom_config_markers
-
-
-def locate_dev_root():
-    """Return root of development source tree."""
-    return os.path.join(
-        os.path.dirname(provisioningserver.__file__),
-        os.pardir, os.pardir)
 
 
 class TestCustomizeConfig(TestCase):
@@ -49,7 +42,7 @@ class TestCustomizeConfig(TestCase):
     def test_runs_as_script(self):
         original_text = factory.getRandomString()
         original_file = self.make_file(original_text)
-        script = "%s/bin/maas-provision" % locate_dev_root()
+        script = os.path.join(root, "bin", "maas-provision")
         command = Popen(
             [script, "customize-config", original_file],
             stdin=PIPE, stdout=PIPE,

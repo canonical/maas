@@ -21,9 +21,9 @@ from subprocess import (
     )
 import sys
 
+from maastesting import root
 from maastesting.matchers import ContainsAll
 from maastesting.testcase import TestCase
-import provisioningserver
 from provisioningserver.dhcp import writer
 from testtools.matchers import MatchesStructure
 
@@ -43,10 +43,7 @@ class TestScript(TestCase):
         )
 
     def test_script_executable(self):
-        dev_root = os.path.join(
-            os.path.dirname(provisioningserver.__file__),
-            os.pardir, os.pardir)
-        script = ["%s/bin/maas-provision" % dev_root, "generate-dhcp-config"]
+        script = ["%s/bin/maas-provision" % root, "generate-dhcp-config"]
         script.extend(self.test_args)
         cmd = Popen(
             script, stdout=PIPE, env=dict(PYTHONPATH=":".join(sys.path)))

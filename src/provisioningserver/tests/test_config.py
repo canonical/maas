@@ -20,6 +20,7 @@ from textwrap import dedent
 
 from fixtures import EnvironmentVariableFixture
 import formencode
+from maastesting import root
 from maastesting.factory import factory
 from maastesting.testcase import TestCase
 from provisioningserver.config import Config
@@ -179,9 +180,7 @@ class TestConfig(TestCase):
 
     def test_load_example(self):
         # The example configuration is designed for development.
-        filename = os.path.join(
-            os.path.dirname(__file__), os.pardir,
-            os.pardir, os.pardir, "etc", "pserv.yaml")
+        filename = os.path.join(root, "etc", "pserv.yaml")
         self.assertEqual(
             self.default_development_config,
             Config.load(filename))

@@ -19,17 +19,12 @@ from subprocess import (
     STDOUT,
     )
 
+from maastesting import root
 from maastesting.testcase import TestCase
 
 
-def locate_dev_root():
-    """Root of development tree that this test is in."""
-    return os.path.join(
-        os.path.dirname(__file__), os.pardir, os.pardir, os.pardir)
-
-
 def locate_maascli():
-    return os.path.join(locate_dev_root(), 'bin', 'maascli')
+    return os.path.join(root, 'bin', 'maascli')
 
 
 class TestMAASCli(TestCase):

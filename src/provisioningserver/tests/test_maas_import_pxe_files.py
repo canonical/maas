@@ -15,6 +15,7 @@ __all__ = []
 import os
 from subprocess import check_call
 
+from maastesting import root
 from maastesting.factory import factory
 from maastesting.testcase import TestCase
 from maastesting.utils import (
@@ -146,10 +147,7 @@ class TestImportPXEFiles(TestCase):
         """
         # TODO: Use path.py <http://pypi.python.org/pypi/path.py> instead, or
         # something similar; this is tedious stuff.
-        here = os.path.dirname(__file__)
-        root = os.path.join(here, os.pardir, os.pardir, os.pardir)
         script = os.path.join(root, "scripts", "maas-import-pxe-files")
-
         path = [os.path.join(root, "bin"), os.path.join(root, "scripts")]
         path.extend(os.environ.get("PATH", "").split(os.pathsep))
         env = {
