@@ -12,8 +12,11 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
+import os
+
 from apiclient.creds import convert_tuple_to_string
 from apiclient.testing.credentials import make_api_credentials
+from fixtures import EnvironmentVariableFixture
 from maastesting.factory import factory
 from provisioningserver import (
     auth,
@@ -42,3 +45,8 @@ class TestAuth(PservTestCase):
         nodegroup_uuid = factory.make_name('nodegroupuuid')
         auth.record_nodegroup_uuid(nodegroup_uuid)
         self.assertEqual(nodegroup_uuid, auth.get_recorded_nodegroup_uuid())
+
+    def test_get_recorded_maas_url_uses_environment_override(self):
+        required_url = factory.make_name("MAAS_URL")
+        self.useFixture(EnvironmentVariableFixture("MAAS_URL", required_url))
+        self.assertEqual(required_url, auth.get_recorded_maas_url())

@@ -28,6 +28,7 @@ from apiclient.testing.django import parse_headers_and_body_with_django
 from fixtures import EnvironmentVariableFixture
 from maastesting.factory import factory
 from mock import (
+    ANY,
     call,
     sentinel,
     )
@@ -255,7 +256,8 @@ class TestStartClusterController(PservTestCase):
         self.patch(os, "setgid", setuidgid)
         self.assertRaises(
             Executing, start_cluster_controller.start_celery,
-            self.make_connection_details(), sentinel.user, sentinel.group)
+            make_url(), self.make_connection_details(), sentinel.user,
+            sentinel.group)
         # getpwname and getgrnam are used to query the passwd and group
         # databases respectively.
         self.assertEqual(
@@ -269,3 +271,20 @@ class TestStartClusterController(PservTestCase):
         self.assertEqual(
             [call(sentinel.gid), call(sentinel.uid)],
             setuidgid.call_args_list)
+
+    def test_start_celery_passes_environment(self):
+        server_url = make_url()
+        connection_details = self.make_connection_details()
+        self.assertRaises(
+            Executing,
+            start_cluster_controller.start_celery,
+            server_url, connection_details, factory.make_name('user'),
+            factory.make_name('group'))
+
+        env = dict(
+            os.environ,
+            CELERY_BROKER_URL=connection_details['BROKER_URL'],
+            MAAS_URL=server_url,
+            )
+        os.execvpe.assert_called_once_with(ANY, ANY, env=env)
+

@@ -118,11 +118,6 @@ class TestRefreshSecrets(PservTestCase):
     def test_works_as_a_task(self):
         self.assertTrue(refresh_secrets.delay().successful())
 
-    def test_updates_maas_url(self):
-        maas_url = 'http://example.com/%s/' % factory.getRandomString()
-        refresh_secrets(maas_url=maas_url)
-        self.assertEqual(maas_url, auth.get_recorded_maas_url())
-
     def test_updates_api_credentials(self):
         credentials = make_api_credentials()
         refresh_secrets(
@@ -487,7 +482,7 @@ class TestBootImagesTasks(PservTestCase):
 
     def test_sends_boot_images_to_server(self):
         self.useFixture(ConfigFixture({'tftp': {'root': self.make_dir()}}))
-        auth.record_maas_url('http://127.0.0.1/%s' % factory.make_name('path'))
+        self.set_maas_url()
         auth.record_api_credentials(':'.join(make_api_credentials()))
         image = make_boot_image_params()
         self.patch(tftppath, 'list_boot_images', Mock(return_value=[image]))
