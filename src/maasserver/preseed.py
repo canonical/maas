@@ -38,22 +38,24 @@ import tempita
 GENERIC_FILENAME = 'generic'
 
 
-def get_enlist_preseed():
+def get_enlist_preseed(base_url=''):
     """Return the enlistment preseed.
 
     :return: The rendered preseed string.
     :rtype: basestring.
     """
-    return render_preseed(None, PRESEED_TYPE.ENLIST)
+    return render_enlistment_preseed(
+        PRESEED_TYPE.ENLIST, base_url=base_url)
 
 
-def get_enlist_userdata():
+def get_enlist_userdata(base_url=''):
     """Return the enlistment preseed.
 
     :return: The rendered enlistment user-data string.
     :rtype: basestring.
     """
-    return render_preseed(None, PRESEED_TYPE.ENLIST_USERDATA)
+    return render_enlistment_preseed(
+        PRESEED_TYPE.ENLIST_USERDATA, base_url=base_url)
 
 
 def get_preseed(node):
@@ -207,9 +209,9 @@ def get_hostname_and_path(url):
     return parsed_url.hostname, parsed_url.path
 
 
-def get_preseed_context(node, release=''):
-    """Return the context dictionary to be used to render preseed templates
-    for this node.
+def get_preseed_context(release='', base_url=''):
+    """Return the node-independent context dictionary to be used to render
+    preseed templates.
 
     :param node: See `get_preseed_filenames`.
     :param prefix: See `get_preseed_filenames`.
@@ -222,36 +224,58 @@ def get_preseed_context(node, release=''):
         Config.objects.get_config('main_archive'))
     ports_archive_hostname, ports_archive_directory = get_hostname_and_path(
         Config.objects.get_config('ports_archive'))
-    context = {
+    return {
         'main_archive_hostname': main_archive_hostname,
         'main_archive_directory': main_archive_directory,
         'ports_archive_hostname': ports_archive_hostname,
         'ports_archive_directory': ports_archive_directory,
         'release': release,
         'server_host': server_host,
-        'server_url': absolute_reverse('nodes_handler'),
-        'metadata_enlist_url': absolute_reverse('enlist'),
+        'server_url': absolute_reverse('nodes_handler', base_url=base_url),
+        'metadata_enlist_url': absolute_reverse('enlist', base_url=base_url),
         'http_proxy': Config.objects.get_config('http_proxy'),
         }
-    if node is not None:
-        # Create the url and the url-data (POST parameters) used to turn off
-        # PXE booting once the install of the node is finished.
-        node_disable_pxe_url = absolute_reverse(
-            'metadata-node-by-id', args=['latest', node.system_id])
-        node_disable_pxe_data = urlencode({'op': 'netboot_off'})
-        node_context = {
-            'node': node,
-            'preseed_data': compose_preseed(node),
-            'node_disable_pxe_url': node_disable_pxe_url,
-            'node_disable_pxe_data': node_disable_pxe_data,
-        }
-        context.update(node_context)
 
-    return context
+
+def get_node_preseed_context(node, release=''):
+    """Return the node-dependent context dictionary to be used to render
+    preseed templates.
+
+    :param node: See `get_preseed_filenames`.
+    :param prefix: See `get_preseed_filenames`.
+    :param release: See `get_preseed_filenames`.
+    :return: The context dictionary.
+    :rtype: dict.
+    """
+    # Create the url and the url-data (POST parameters) used to turn off
+    # PXE booting once the install of the node is finished.
+    node_disable_pxe_url = absolute_reverse(
+        'metadata-node-by-id', args=['latest', node.system_id],
+        base_url=node.nodegroup.maas_url)
+    node_disable_pxe_data = urlencode({'op': 'netboot_off'})
+    return {
+        'node': node,
+        'preseed_data': compose_preseed(node),
+        'node_disable_pxe_url': node_disable_pxe_url,
+        'node_disable_pxe_data': node_disable_pxe_data,
+    }
+
+
+def render_enlistment_preseed(prefix, release='', base_url=''):
+    """Return the enlistment preseed.
+
+    :param prefix: See `get_preseed_filenames`.
+    :param release: See `get_preseed_filenames`.
+    :return: The rendered preseed string.
+    :rtype: basestring.
+    """
+    template = load_preseed_template(None, prefix, release)
+    context = get_preseed_context(release, base_url=base_url)
+    return template.substitute(**context)
 
 
 def render_preseed(node, prefix, release=''):
-    """Find and load a `PreseedTemplate` for the given node.
+    """Return the preseed for the given node.
 
     :param node: See `get_preseed_filenames`.
     :param prefix: See `get_preseed_filenames`.
@@ -260,23 +284,26 @@ def render_preseed(node, prefix, release=''):
     :rtype: basestring.
     """
     template = load_preseed_template(node, prefix, release)
-    context = get_preseed_context(node, release)
+    base_url = node.nodegroup.maas_url
+    context = get_preseed_context(release, base_url=base_url)
+    context.update(get_node_preseed_context(node, release))
     return template.substitute(**context)
 
 
-def compose_enlistment_preseed_url():
+def compose_enlistment_preseed_url(base_url=''):
     """Compose enlistment preseed URL."""
     # Always uses the latest version of the metadata API.
     version = 'latest'
     return absolute_reverse(
         'metadata-enlist-preseed', args=[version],
-        query={'op': 'get_enlist_preseed'})
+        query={'op': 'get_enlist_preseed'}, base_url=base_url)
 
 
 def compose_preseed_url(node):
     """Compose a metadata URL for `node`'s preseed data."""
     # Always uses the latest version of the metadata API.
     version = 'latest'
+    base_url = node.nodegroup.maas_url
     return absolute_reverse(
         'metadata-node-by-id', args=[version, node.system_id],
-        query={'op': 'get_preseed'})
+        query={'op': 'get_preseed'}, base_url=base_url)

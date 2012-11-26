@@ -50,7 +50,10 @@ from metadataserver.models import (
     NodeUserData,
     )
 from metadataserver.nodeinituser import get_node_init_user
+from mock import Mock
+from netaddr import IPNetwork
 from provisioningserver.enum import POWER_TYPE
+from testtools.matchers import Contains
 
 
 class TestHelpers(DjangoTestCase):
@@ -629,7 +632,7 @@ class TestViews(DjangoTestCase):
             'metadata-enlist-preseed', args=['latest'])
         # Fake the preseed so we're just exercising the view.
         fake_preseed = factory.getRandomString()
-        self.patch(api, "get_enlist_preseed", lambda: fake_preseed)
+        self.patch(api, "get_enlist_preseed", Mock(return_value=fake_preseed))
         response = self.client.get(
             anon_enlist_preseed_url, {'op': 'get_enlist_preseed'})
         self.assertEqual(
@@ -640,6 +643,18 @@ class TestViews(DjangoTestCase):
              response["Content-Type"],
              response.content),
             response)
+
+    def test_anonymous_get_enlist_preseed_detects_request_origin(self):
+        ng_url = 'http://%s' % factory.make_name('host')
+        network = IPNetwork("10.1.1/24")
+        ip = factory.getRandomIPInNetwork(network)
+        factory.make_node_group(maas_url=ng_url, network=network)
+        anon_enlist_preseed_url = reverse(
+            'metadata-enlist-preseed', args=['latest'])
+        response = self.client.get(
+            anon_enlist_preseed_url, {'op': 'get_enlist_preseed'},
+            SERVER_NAME=ip)
+        self.assertThat(response.content, Contains(ng_url))
 
     def test_anonymous_get_preseed(self):
         # The preseed for a node can be obtained anonymously.

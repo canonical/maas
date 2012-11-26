@@ -3435,6 +3435,21 @@ class TestPXEConfigAPI(AnonAPITestCase):
             compose_enlistment_preseed_url(),
             json.loads(response.content)["preseed_url"])
 
+    def test_pxeconfig_enlistment_preseed_url_detects_request_origin(self):
+        self.silence_get_ephemeral_name()
+        ng_url = 'http://%s' % factory.make_name('host')
+        network = IPNetwork("10.1.1/24")
+        ip = factory.getRandomIPInNetwork(network)
+        factory.make_node_group(maas_url=ng_url, network=network)
+        params = self.get_default_params()
+
+        # Simulate that the request targets ip by setting 'SERVER_NAME'.
+        response = self.client.get(
+            reverse('pxeconfig'), params, SERVER_NAME=ip)
+        self.assertThat(
+            json.loads(response.content)["preseed_url"],
+            StartsWith(ng_url))
+
     def test_pxeconfig_has_preseed_url_for_known_node(self):
         params = self.get_mac_params()
         node = MACAddress.objects.get(mac_address=params['mac']).node
@@ -3442,6 +3457,23 @@ class TestPXEConfigAPI(AnonAPITestCase):
         self.assertEqual(
             compose_preseed_url(node),
             json.loads(response.content)["preseed_url"])
+
+    def test_preseed_url_for_known_node_uses_nodegroup_maas_url(self):
+        ng_url = 'http://%s' % factory.make_name('host')
+        network = IPNetwork("10.1.1/24")
+        ip = factory.getRandomIPInNetwork(network)
+        nodegroup = factory.make_node_group(maas_url=ng_url, network=network)
+        params = self.get_mac_params()
+        node = MACAddress.objects.get(mac_address=params['mac']).node
+        node.nodegroup = nodegroup
+        node.save()
+
+        # Simulate that the request targets ip by setting 'SERVER_NAME'.
+        response = self.client.get(
+            reverse('pxeconfig'), params, SERVER_NAME=ip)
+        self.assertThat(
+            json.loads(response.content)["preseed_url"],
+            StartsWith(ng_url))
 
     def test_get_boot_purpose_unknown_node(self):
         # A node that's not yet known to MAAS is assumed to be enlisting,

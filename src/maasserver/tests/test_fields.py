@@ -21,7 +21,6 @@ from maasserver.fields import (
 from maasserver.models import (
     MACAddress,
     NodeGroup,
-    nodegroupinterface,
     NodeGroupInterface,
     )
 from maasserver.testing.factory import factory
@@ -33,7 +32,6 @@ from maasserver.tests.models import (
     JSONFieldModel,
     XMLFieldModel,
     )
-from netaddr import IPNetwork
 
 
 class TestNodeGroupFormField(TestCase):
@@ -69,51 +67,6 @@ class TestNodeGroupFormField(TestCase):
         self.assertEqual(
             nodegroup,
             NodeGroupFormField().clean("%s" % nodegroup.id))
-
-    def test_clean_finds_nodegroup_by_network_address(self):
-        nodegroup = factory.make_node_group(
-            network=IPNetwork("192.168.28.1/24"))
-        self.assertEqual(
-            nodegroup,
-            NodeGroupFormField().clean('192.168.28.0'))
-
-    def test_find_nodegroup_looks_up_nodegroup_by_controller_ip(self):
-        nodegroup = factory.make_node_group()
-        self.assertEqual(
-            nodegroup,
-            NodeGroupFormField().clean(nodegroup.get_managed_interface().ip))
-
-    def test_find_nodegroup_accepts_any_ip_in_nodegroup_subnet(self):
-        nodegroup = factory.make_node_group(
-            network=IPNetwork("192.168.41.0/24"))
-        self.assertEqual(
-            nodegroup,
-            NodeGroupFormField().clean('192.168.41.199'))
-
-    def test_find_nodegroup_reports_if_not_found(self):
-        self.assertRaises(
-            ValidationError,
-            NodeGroupFormField().clean,
-            factory.getRandomIPAddress())
-
-    def test_find_nodegroup_reports_if_multiple_matches(self):
-        self.patch(nodegroupinterface, "MINIMUM_NETMASK_BITS", 1)
-        factory.make_node_group(network=IPNetwork("10/8"))
-        factory.make_node_group(network=IPNetwork("10.1.1/24"))
-        self.assertRaises(
-            NodeGroup.MultipleObjectsReturned,
-            NodeGroupFormField().clean, '10.1.1.2')
-
-    def test_find_nodegroup_handles_multiple_matches_on_same_nodegroup(self):
-        self.patch(nodegroupinterface, "MINIMUM_NETMASK_BITS", 1)
-        nodegroup = factory.make_node_group(network=IPNetwork("10/8"))
-        NodeGroupInterface.objects.create(
-            nodegroup=nodegroup, ip='10.0.0.2', subnet_mask='255.0.0.0',
-            broadcast_ip='10.0.0.1', interface='eth71')
-        NodeGroupInterface.objects.create(
-            nodegroup=nodegroup, ip='10.0.0.3', subnet_mask='255.0.0.0',
-            broadcast_ip='10.0.0.2', interface='eth72')
-        self.assertEqual(nodegroup, NodeGroupFormField().clean('10.0.0.9'))
 
 
 class TestMACAddressField(TestCase):

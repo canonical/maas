@@ -32,7 +32,6 @@ from django.forms import (
     ModelChoiceField,
     RegexField,
     )
-from maasserver.utils.orm import get_one
 import psycopg2.extensions
 from south.modelsinspector import add_introspection_rules
 
@@ -85,25 +84,6 @@ class NodeGroupFormField(ModelChoiceField):
         else:
             return "%s: %s" % (nodegroup.name, interface.ip)
 
-    def find_nodegroup(self, ip_address):
-        """Find the nodegroup whose subnet contains `ip_address`.
-
-        The matching nodegroup may have multiple interfaces on the subnet,
-        but there can be only one matching nodegroup.
-        """
-        # Avoid circular imports.
-        from maasserver.models import NodeGroup
-
-        return get_one(NodeGroup.objects.raw("""
-            SELECT *
-            FROM maasserver_nodegroup
-            WHERE id IN (
-                SELECT nodegroup_id
-                FROM maasserver_nodegroupinterface
-                WHERE (inet '%s' & subnet_mask) = (ip & subnet_mask)
-                )
-            """ % ip_address))
-
     def clean(self, value):
         """Django method: provide expected output for various inputs.
 
@@ -126,11 +106,7 @@ class NodeGroupFormField(ModelChoiceField):
         elif isinstance(value, bytes) and '.' not in value:
             nodegroup_id = int(value)
         else:
-            nodegroup = self.find_nodegroup(value)
-            if nodegroup is None:
-                raise ValidationError(
-                    "No known subnet contains %s." % value)
-            nodegroup_id = nodegroup.id
+            raise ValidationError("Invalid nodegroup: %s." % value)
         return super(NodeGroupFormField, self).clean(nodegroup_id)
 
 

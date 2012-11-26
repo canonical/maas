@@ -172,7 +172,7 @@ from maasserver.server_address import get_maas_facing_server_address
 from maasserver.utils import (
     absolute_reverse,
     build_absolute_uri,
-    get_origin_ip,
+    find_nodegroup,
     map_enum,
     strip_domain,
     )
@@ -400,9 +400,9 @@ def create_node(request):
         # If 'nodegroup' is not explicitely specified, get the origin of the
         # request to figure out which nodegroup the new node should be
         # attached to.
-        origin_ip = get_origin_ip(request)
-        if origin_ip is not None:
-            altered_query_data['nodegroup'] = origin_ip
+        nodegroup = find_nodegroup(request)
+        if nodegroup is not None:
+            altered_query_data['nodegroup'] = nodegroup
 
     Form = get_node_create_form(request.user)
     form = Form(altered_query_data)
@@ -1656,7 +1656,9 @@ def pxeconfig(request):
             # 1-1 mapping.
             subarch = pxelinux_subarch
 
-        preseed_url = compose_enlistment_preseed_url()
+        nodegroup = find_nodegroup(request)
+        base_url = nodegroup.maas_url if nodegroup is not None else None
+        preseed_url = compose_enlistment_preseed_url(base_url=base_url)
         hostname = 'maas-enlist'
         domain = Config.objects.get_config('enlistment_domain')
 

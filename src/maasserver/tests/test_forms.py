@@ -198,14 +198,6 @@ class NodeWithMACAddressesFormTest(TestCase):
             NodeGroup.objects.ensure_master(),
             NodeWithMACAddressesForm(self.make_params()).save().nodegroup)
 
-    def test_sets_nodegroup_on_new_node_if_requested(self):
-        nodegroup = factory.make_node_group(
-            network=IPNetwork("192.168.14.0/24"), ip_range_low='192.168.14.2',
-            ip_range_high='192.168.14.254', ip='192.168.14.1')
-        form = NodeWithMACAddressesForm(
-            self.make_params(nodegroup=nodegroup.get_managed_interface().ip))
-        self.assertEqual(nodegroup, form.save().nodegroup)
-
     def test_leaves_nodegroup_alone_if_unset_on_existing_node(self):
         # Selecting a node group for a node is only supported on new
         # nodes.  You can't change it later.

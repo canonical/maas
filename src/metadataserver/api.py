@@ -53,6 +53,7 @@ from maasserver.preseed import (
     get_enlist_userdata,
     get_preseed,
     )
+from maasserver.utils import find_nodegroup
 from maasserver.utils.orm import get_one
 from metadataserver.models import (
     NodeCommissionResult,
@@ -393,7 +394,10 @@ class AnonMetaDataHandler(VersionIndexHandler):
     @operation(idempotent=True)
     def get_enlist_preseed(self, request, version=None):
         """Render and return a preseed script for enlistment."""
-        return HttpResponse(get_enlist_preseed(), mimetype="text/plain")
+        nodegroup = find_nodegroup(request)
+        base_url = nodegroup.maas_url if nodegroup is not None else None
+        return HttpResponse(
+            get_enlist_preseed(base_url=base_url), mimetype="text/plain")
 
     @operation(idempotent=True)
     def get_preseed(self, request, version=None, system_id=None):

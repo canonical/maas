@@ -20,11 +20,17 @@ from django.core.urlresolvers import reverse
 from django.http import HttpRequest
 from django.test.client import RequestFactory
 from maasserver.enum import NODE_STATUS_CHOICES
+from maasserver.models import (
+    NodeGroup,
+    nodegroupinterface,
+    NodeGroupInterface,
+    )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase as DjangoTestCase
 from maasserver.utils import (
     absolute_reverse,
     build_absolute_uri,
+    find_nodegroup,
     get_db_state,
     get_origin_ip,
     map_enum,
@@ -35,6 +41,7 @@ from mock import (
     call,
     Mock,
     )
+from netaddr import IPNetwork
 
 
 class TestEnum(TestCase):
@@ -74,11 +81,17 @@ class TestEnum(TestCase):
 
 class TestAbsoluteReverse(DjangoTestCase):
 
-    def test_absolute_reverse_uses_DEFAULT_MAAS_URL(self):
+    def test_absolute_reverse_uses_DEFAULT_MAAS_URL_by_default(self):
         maas_url = 'http://%s' % factory.getRandomString()
         self.patch(settings, 'DEFAULT_MAAS_URL', maas_url)
         absolute_url = absolute_reverse('settings')
         expected_url = settings.DEFAULT_MAAS_URL + reverse('settings')
+        self.assertEqual(expected_url, absolute_url)
+
+    def test_absolute_reverse_uses_given_base_url(self):
+        maas_url = 'http://%s' % factory.getRandomString()
+        absolute_url = absolute_reverse('settings', base_url=maas_url)
+        expected_url = maas_url + reverse('settings')
         self.assertEqual(expected_url, absolute_url)
 
     def test_absolute_reverse_uses_query_string(self):
@@ -184,26 +197,27 @@ class TestStripDomain(TestCase):
         self.assertEqual(results, map(strip_domain, inputs))
 
 
-class TestGetOriginIP(TestCase):
+def get_request(server_name, server_port='80'):
+    return RequestFactory().post(
+        '/', SERVER_NAME=server_name, SERVER_PORT=server_port)
 
-    def get_request(self, server_name, server_port='80'):
-        return RequestFactory().post(
-            '/', SERVER_NAME=server_name, SERVER_PORT=server_port)
+
+class TestGetOriginIP(TestCase):
 
     def test_get_origin_ip_returns_ip(self):
         ip = factory.getRandomIPAddress()
-        request = self.get_request(ip)
+        request = get_request(ip)
         self.assertEqual(ip, get_origin_ip(request))
 
     def test_get_origin_ip_strips_port(self):
         ip = factory.getRandomIPAddress()
-        request = self.get_request(ip, '8888')
+        request = get_request(ip, '8888')
         self.assertEqual(ip, get_origin_ip(request))
 
     def test_get_origin_ip_resolves_hostname(self):
         ip = factory.getRandomIPAddress()
         hostname = factory.make_name('hostname')
-        request = self.get_request(hostname)
+        request = get_request(hostname)
         resolver = self.patch(socket, 'gethostbyname', Mock(return_value=ip))
         self.assertEqual(
             (ip, call(hostname)),
@@ -211,9 +225,56 @@ class TestGetOriginIP(TestCase):
 
     def test_get_origin_ip_returns_None_if_hostname_cannot_get_resolved(self):
         hostname = factory.make_name('hostname')
-        request = self.get_request(hostname)
+        request = get_request(hostname)
         resolver = self.patch(
             socket, 'gethostbyname', Mock(side_effect=socket.error))
         self.assertEqual(
             (None, call(hostname)),
             (get_origin_ip(request), resolver.call_args))
+
+
+class TestFindNodegroup(DjangoTestCase):
+
+    def test_finds_nodegroup_by_network_address(self):
+        nodegroup = factory.make_node_group(
+            network=IPNetwork("192.168.28.1/24"))
+        self.assertEqual(
+            nodegroup,
+            find_nodegroup(get_request('192.168.28.0')))
+
+    def test_find_nodegroup_looks_up_nodegroup_by_controller_ip(self):
+        nodegroup = factory.make_node_group()
+        ip = nodegroup.get_managed_interface().ip
+        self.assertEqual(
+            nodegroup,
+            find_nodegroup(get_request(ip)))
+
+    def test_find_nodegroup_accepts_any_ip_in_nodegroup_subnet(self):
+        nodegroup = factory.make_node_group(
+            network=IPNetwork("192.168.41.0/24"))
+        self.assertEqual(
+            nodegroup,
+            find_nodegroup(get_request('192.168.41.199')))
+
+    def test_find_nodegroup_returns_None_if_not_found(self):
+        self.assertIsNone(
+            find_nodegroup(get_request(factory.getRandomIPAddress())))
+
+    def test_find_nodegroup_errors_if_multiple_matches(self):
+        self.patch(nodegroupinterface, "MINIMUM_NETMASK_BITS", 1)
+        factory.make_node_group(network=IPNetwork("10/8"))
+        factory.make_node_group(network=IPNetwork("10.1.1/24"))
+        self.assertRaises(
+            NodeGroup.MultipleObjectsReturned,
+            find_nodegroup, get_request('10.1.1.2'))
+
+    def test_find_nodegroup_handles_multiple_matches_on_same_nodegroup(self):
+        self.patch(nodegroupinterface, "MINIMUM_NETMASK_BITS", 1)
+        nodegroup = factory.make_node_group(network=IPNetwork("10/8"))
+        NodeGroupInterface.objects.create(
+            nodegroup=nodegroup, ip='10.0.0.2', subnet_mask='255.0.0.0',
+            broadcast_ip='10.0.0.1', interface='eth71')
+        NodeGroupInterface.objects.create(
+            nodegroup=nodegroup, ip='10.0.0.3', subnet_mask='255.0.0.0',
+            broadcast_ip='10.0.0.2', interface='eth72')
+        self.assertEqual(nodegroup, find_nodegroup(get_request('10.0.0.9')))
