@@ -12,6 +12,7 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
+import os
 import json
 
 from apiclient.maas_client import MAASClient
@@ -46,6 +47,7 @@ class TestBootImagesTasks(PservTestCase):
         self.assertItemsEqual([image], json.loads(kwargs['images']))
 
     def test_does_nothing_without_maas_url(self):
+        os.environ.pop("MAAS_URL")  # Ensure nothing is set.
         self.set_api_credentials()
         self.patch(
             tftppath, 'list_boot_images',

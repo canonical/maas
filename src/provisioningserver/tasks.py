@@ -37,7 +37,6 @@ from provisioningserver import (
     )
 from provisioningserver.auth import (
     record_api_credentials,
-    record_maas_url,
     record_nodegroup_uuid,
     )
 from provisioningserver.dhcp import config
@@ -57,7 +56,6 @@ from provisioningserver.utils import sudo_write_file
 # For each item passed to refresh_secrets, a refresh function to give it to.
 refresh_functions = {
     'api_credentials': record_api_credentials,
-    'maas_url': record_maas_url,
     'nodegroup_uuid': record_nodegroup_uuid,
 }
 

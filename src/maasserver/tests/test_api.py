@@ -44,7 +44,10 @@ from django.core.urlresolvers import (
     )
 from django.http import QueryDict
 from django.test.client import RequestFactory
-from fixtures import Fixture
+from fixtures import (
+    EnvironmentVariableFixture,
+    Fixture,
+    )
 from maasserver import api
 from maasserver.api import (
     describe,
@@ -3980,6 +3983,8 @@ class TestNodeGroupAPI(APITestCase):
         # In bug 1041158, the worker's upload_leases task tried to call
         # the update_leases API at the wrong URL path.  It has the right
         # path now.
+        self.useFixture(
+            EnvironmentVariableFixture("MAAS_URL", settings.DEFAULT_MAAS_URL))
         nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
         refresh_worker(nodegroup)
         self.patch(MAASClient, 'post', Mock())
@@ -4390,6 +4395,8 @@ class TestBootImagesAPI(APITestCase):
     def test_worker_calls_report_boot_images(self):
         # report_boot_images() uses the report_boot_images op on the nodes
         # handlers to send image information.
+        self.useFixture(
+            EnvironmentVariableFixture("MAAS_URL", settings.DEFAULT_MAAS_URL))
         refresh_worker(NodeGroup.objects.ensure_master())
         self.patch(MAASClient, 'post')
         self.patch(tftppath, 'list_boot_images', Mock(return_value=[]))

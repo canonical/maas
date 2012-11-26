@@ -122,13 +122,15 @@ def register(server_url):
         raise AssertionError("Unexpected return code: %r" % status_code)
 
 
-def start_celery(connection_details, user, group):
+def start_celery(server_url, connection_details, user, group):
     broker_url = connection_details['BROKER_URL']
     uid = getpwnam(user).pw_uid
     gid = getgrnam(group).gr_gid
 
-    # Copy environment, but also tell celeryd what broker to listen to.
-    env = dict(os.environ, CELERY_BROKER_URL=broker_url)
+    # Copy environment, but also tell celeryd what broker to listen to
+    # and the URL for the region controller.
+    env = dict(
+        os.environ, CELERY_BROKER_URL=broker_url, MAAS_URL=server_url)
     command = 'celeryd', '--beat', '--queues', get_cluster_uuid()
 
     # Change gid first, just in case changing the uid might deprive
@@ -160,7 +162,7 @@ def start_up(server_url, connection_details, user, group):
     # in our queue.  Even if we're new and the queue did not exist yet,
     # the arriving task will create the queue.
     request_refresh(server_url)
-    start_celery(connection_details, user=user, group=group)
+    start_celery(server_url, connection_details, user=user, group=group)
 
 
 def set_up_logging():
