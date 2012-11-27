@@ -91,7 +91,7 @@ class TestDNSUtilities(TestCase):
         ip = factory.getRandomIPAddress()
         resolver = FakeMethod(result=ip)
         self.patch(server_address, 'gethostbyname', resolver)
-        hostname = factory.getRandomString().lower()
+        hostname = factory.make_hostname()
         self.patch_DEFAULT_MAAS_URL_with_random_values(hostname=hostname)
         self.assertEqual(
             (ip, [(hostname, )]),
@@ -118,7 +118,7 @@ class TestDNSUtilities(TestCase):
         ip = factory.getRandomIPAddress()
         resolver = FakeMethod(result=ip)
         self.patch(server_address, 'gethostbyname', resolver)
-        hostname = factory.getRandomString().lower()
+        hostname = factory.make_hostname()
         maas_url = 'http://%s' % hostname
         nodegroup = factory.make_node_group(maas_url=maas_url)
         self.assertEqual(

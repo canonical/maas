@@ -395,9 +395,8 @@ class AnonMetaDataHandler(VersionIndexHandler):
     def get_enlist_preseed(self, request, version=None):
         """Render and return a preseed script for enlistment."""
         nodegroup = find_nodegroup(request)
-        base_url = nodegroup.maas_url if nodegroup is not None else None
         return HttpResponse(
-            get_enlist_preseed(base_url=base_url), mimetype="text/plain")
+            get_enlist_preseed(nodegroup=nodegroup), mimetype="text/plain")
 
     @operation(idempotent=True)
     def get_preseed(self, request, version=None, system_id=None):

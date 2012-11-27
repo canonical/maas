@@ -148,6 +148,13 @@ class Factory:
         return sep.join(
             filter(None, [prefix, self.getRandomString(size=size)]))
 
+    def make_hostname(self, prefix='host', *args, **kwargs):
+        """Generate a random hostname.
+
+        The returned hostname is lowercase because python's urlparse
+        implicitely lowercases the hostnames."""
+        return self.make_name(prefix=prefix, *args, **kwargs).lower()
+
     def make_names(self, *prefixes):
         """Generate random names.
 

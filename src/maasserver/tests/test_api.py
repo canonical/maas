@@ -48,7 +48,10 @@ from fixtures import (
     EnvironmentVariableFixture,
     Fixture,
     )
-from maasserver import api
+from maasserver import (
+    api,
+    server_address,
+    )
 from maasserver.api import (
     describe,
     DISPLAYED_NODEGROUP_FIELDS,
@@ -3438,9 +3441,11 @@ class TestPXEConfigAPI(AnonAPITestCase):
 
     def test_pxeconfig_enlistment_preseed_url_detects_request_origin(self):
         self.silence_get_ephemeral_name()
-        ng_url = 'http://%s' % factory.make_name('host')
+        hostname = factory.make_hostname()
+        ng_url = 'http://%s' % hostname
         network = IPNetwork("10.1.1/24")
         ip = factory.getRandomIPInNetwork(network)
+        self.patch(server_address, 'gethostbyname', Mock(return_value=ip))
         factory.make_node_group(maas_url=ng_url, network=network)
         params = self.get_default_params()
 
@@ -3450,6 +3455,24 @@ class TestPXEConfigAPI(AnonAPITestCase):
         self.assertThat(
             json.loads(response.content)["preseed_url"],
             StartsWith(ng_url))
+
+    def test_pxeconfig_enlistment_log_host_url_detects_request_origin(self):
+        self.silence_get_ephemeral_name()
+        hostname = factory.make_hostname()
+        ng_url = 'http://%s' % hostname
+        network = IPNetwork("10.1.1/24")
+        ip = factory.getRandomIPInNetwork(network)
+        mock = self.patch(
+            server_address, 'gethostbyname', Mock(return_value=ip))
+        factory.make_node_group(maas_url=ng_url, network=network)
+        params = self.get_default_params()
+
+        # Simulate that the request targets ip by setting 'SERVER_NAME'.
+        response = self.client.get(
+            reverse('pxeconfig'), params, SERVER_NAME=ip)
+        self.assertEqual(
+            (ip, hostname),
+            (json.loads(response.content)["log_host"], mock.call_args[0][0]))
 
     def test_pxeconfig_has_preseed_url_for_known_node(self):
         params = self.get_mac_params()
@@ -3463,6 +3486,7 @@ class TestPXEConfigAPI(AnonAPITestCase):
         ng_url = 'http://%s' % factory.make_name('host')
         network = IPNetwork("10.1.1/24")
         ip = factory.getRandomIPInNetwork(network)
+        self.patch(server_address, 'gethostbyname', Mock(return_value=ip))
         nodegroup = factory.make_node_group(maas_url=ng_url, network=network)
         params = self.get_mac_params()
         node = MACAddress.objects.get(mac_address=params['mac']).node

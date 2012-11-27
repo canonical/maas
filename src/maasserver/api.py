@@ -1630,7 +1630,8 @@ def pxeconfig(request):
         # The node's hostname may include a domain, but we ignore that
         # and use the one from the nodegroup instead.
         hostname = strip_domain(node.hostname)
-        domain = node.nodegroup.name
+        nodegroup = node.nodegroup
+        domain = nodegroup.name
     else:
         try:
             pxelinux_arch = request.GET['arch']
@@ -1665,8 +1666,7 @@ def pxeconfig(request):
             subarch = pxelinux_subarch
 
         nodegroup = find_nodegroup(request)
-        base_url = nodegroup.maas_url if nodegroup is not None else None
-        preseed_url = compose_enlistment_preseed_url(base_url=base_url)
+        preseed_url = compose_enlistment_preseed_url(nodegroup=nodegroup)
         hostname = 'maas-enlist'
         domain = Config.objects.get_config('enlistment_domain')
 
@@ -1683,7 +1683,7 @@ def pxeconfig(request):
         extra_kernel_opts = None
 
     purpose = get_boot_purpose(node)
-    server_address = get_maas_facing_server_address()
+    server_address = get_maas_facing_server_address(nodegroup=nodegroup)
     cluster_address = get_mandatory_param(request.GET, "local")
 
     params = KernelParameters(

@@ -323,7 +323,8 @@ class TestPreseedContext(TestCase):
 
     def test_get_preseed_context_contains_keys(self):
         release = factory.getRandomString()
-        context = get_preseed_context(None, release)
+        nodegroup = factory.make_node_group(maas_url=factory.getRandomString())
+        context = get_preseed_context(release, nodegroup)
         self.assertItemsEqual(
             ['release', 'metadata_enlist_url', 'server_host', 'server_url',
             'main_archive_hostname', 'main_archive_directory',
@@ -339,8 +340,8 @@ class TestPreseedContext(TestCase):
         ports_archive = make_url('ports_archive')
         Config.objects.set_config('main_archive', main_archive)
         Config.objects.set_config('ports_archive', ports_archive)
-        context = get_preseed_context(
-            factory.make_node(), factory.getRandomString())
+        nodegroup = factory.make_node_group(maas_url=factory.getRandomString())
+        context = get_preseed_context(factory.make_node(), nodegroup)
         parsed_main_archive = urlparse(main_archive)
         parsed_ports_archive = urlparse(ports_archive)
         self.assertEqual(
@@ -402,9 +403,9 @@ class TestRenderPreseed(TestCase):
         self.assertIsInstance(preseed, str)
 
     def test_get_preseed_uses_nodegroup_maas_url(self):
-        ng_url = 'http://%s' % factory.make_name('host')
+        ng_url = 'http://%s' % factory.make_hostname()
         ng = factory.make_node_group(maas_url=ng_url)
-        maas_url = 'http://%s' % factory.make_name('host')
+        maas_url = 'http://%s' % factory.make_hostname()
         node = factory.make_node(
             nodegroup=ng, status=NODE_STATUS.COMMISSIONING)
         self.patch(settings, 'DEFAULT_MAAS_URL', maas_url)
@@ -423,11 +424,12 @@ class TestRenderEnlistmentPreseed(TestCase):
         self.assertIsInstance(preseed, str)
 
     def test_get_preseed_uses_nodegroup_maas_url(self):
-        ng_url = 'http://%s' % factory.make_name('host')
-        maas_url = 'http://%s' % factory.make_name('host')
+        ng_url = 'http://%s' % factory.make_hostname()
+        maas_url = 'http://%s' % factory.make_hostname()
         self.patch(settings, 'DEFAULT_MAAS_URL', maas_url)
+        nodegroup = factory.make_node_group(maas_url=ng_url)
         preseed = render_enlistment_preseed(
-            PRESEED_TYPE.ENLIST, "precise", base_url=ng_url)
+            PRESEED_TYPE.ENLIST, "precise", nodegroup=nodegroup)
         self.assertThat(
             preseed, MatchesAll(*[Contains(ng_url), Not(Contains(maas_url))]))
 
@@ -461,7 +463,7 @@ class TestRenderPreseedArchives(TestCase):
 class TestPreseedProxy(TestCase):
 
     def test_preseed_uses_default_proxy(self):
-        server_host = factory.getRandomString().lower()
+        server_host = factory.make_hostname()
         url = 'http://%s:%d/%s' % (
             server_host, factory.getRandomPort(), factory.getRandomString())
         self.patch(settings, 'DEFAULT_MAAS_URL', url)
