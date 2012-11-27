@@ -16,12 +16,10 @@ interface.
 Login to the web interface on your MAAS. Click on the username in the
 top right corner and select 'Preferences' from the menu which appears.
 
-.. only:: html
 .. image:: media/maascli-prefs.*
 
 A new page will load...
 
-.. only:: html
 .. image:: media/maascli-key.*
 
 The very first item is a list of MAAS keys. One will have already been
@@ -35,7 +33,8 @@ The profile created is an easy way of associating your credentials
 with any subsequent call to the API. So an example login might look
 like this::
 
-$ maas-cli login maas http://10.98.0.13/MAAS/api/1.0 AWSCRMzqMNy:jjk...5e1FenoP82Qm5te2
+$ maas-cli login maas http://10.98.0.13/MAAS/api/1.0
+AWSCRMzqMNy:jjk...5e1FenoP82Qm5te2
 
 which creates the profile 'maas' and registers it with the given key
 at the specified API endpoint.  If you omit the credentials, they will
@@ -482,7 +481,8 @@ Usage: maas-cli <profile> tag read | update-nodes | rebuild | update |
 
    Returns information on the tag specified by <name>
 
-:samp:`update-nodes <tag_name> [add=<system_id>] [remove=<system_id>] [nodegroup=<system_id>]`
+:samp:`update-nodes <tag_name> [add=<system_id>] [remove=<system_id>]
+[nodegroup=<system_id>]`
 
    Applies or removes the given tag from a list of nodes specified by
    either or both of add="<system_id>" and remove="<system_id>". The
@@ -494,7 +494,8 @@ Usage: maas-cli <profile> tag read | update-nodes | rebuild | update |
 
    Triggers a rebuild of the tag to node mapping.
 
-:samp:`update <tag_name> [name=<value>] | [comment=<value>]|[definition=<value>]`
+:samp:`update <tag_name> [name=<value>] | [comment=<value>]|
+[definition=<value>]`
 
    Updates the tag identified by tag_name. Any or all of name,comment
    and definition may be supplied as parameters. If no parameters are

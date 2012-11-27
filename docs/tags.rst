@@ -23,8 +23,10 @@ detailed information in XML format. The definitions used in creating a tag are
 then constructed using XPath expressions.
 If you are unfamiliar with XPath expressions, it is well worth checking out the
 `w3schools documentation <http://www.w3schools.com/xpath/xpath_syntax.asp>`_.
-For the lshw XML, we will just check all the available nodes for some properties.
-In our example case, we might want to find GPUs with a clock speed of over 1GHz.
+For the lshw XML, we will just check all the available nodes for some
+properties.
+In our example case, we might want to find GPUs with a clock speed of over
+1GHz.
 In this case, the relevant XML node from the output will be labelled "display"
 and does have a property called clock, so it will look like this::
 

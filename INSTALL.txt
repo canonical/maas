@@ -235,9 +235,12 @@ see that there are currently 0 nodes attached to this controller.
 Configure DHCP
 --------------
 
-If you are using MAAS to control DHCP, you need to set this via the
-web interface.  However, if you are manually configuring a DHCP
-server, you should take a look at :ref:`manual-dhcp`
+If you are using MAAS to control DHCP, you need to configure this using
+the maas-cli command, by first :ref:`logging in to the API <api-key>` and then
+:ref:`following this procedure <cli-dhcp>` 
+
+If you are manually configuring a DHCP server, you should take a look at
+:ref:`manual-dhcp`
 
 Once everything is set up and running, you are ready to :doc:`start
 enlisting nodes <nodes>`
