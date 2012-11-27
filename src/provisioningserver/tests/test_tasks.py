@@ -176,7 +176,6 @@ class TestDHCPTasks(PservTestCase):
             'omapi_key',
             'subnet',
             'subnet_mask',
-            'next_server',
             'broadcast_ip',
             'dns_servers',
             'router_ip',

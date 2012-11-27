@@ -114,6 +114,17 @@ class TestDNSUtilities(TestCase):
             call(dns.WARNING_MESSAGE % '127.0.0.1'),
             logger.return_value.warn.call_args)
 
+    def test_get_dns_server_address_uses_nodegroup_maas_url(self):
+        ip = factory.getRandomIPAddress()
+        resolver = FakeMethod(result=ip)
+        self.patch(server_address, 'gethostbyname', resolver)
+        hostname = factory.getRandomString().lower()
+        maas_url = 'http://%s' % hostname
+        nodegroup = factory.make_node_group(maas_url=maas_url)
+        self.assertEqual(
+            (ip, [(hostname, )]),
+            (dns.get_dns_server_address(nodegroup), resolver.extract_args()))
+
     def test_is_dns_managed(self):
         nodegroups_with_expected_results = {
             factory.make_node_group(

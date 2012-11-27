@@ -12,8 +12,6 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
-import os
-
 from apiclient.creds import convert_tuple_to_string
 from apiclient.testing.credentials import make_api_credentials
 from fixtures import EnvironmentVariableFixture

@@ -295,4 +295,3 @@ class TestStartClusterController(PservTestCase):
             MAAS_URL=server_url,
             )
         os.execvpe.assert_called_once_with(ANY, ANY, env=env)
-

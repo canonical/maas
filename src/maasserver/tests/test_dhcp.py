@@ -22,7 +22,6 @@ from maasserver.dhcp import (
     )
 from maasserver.dns import get_dns_server_address
 from maasserver.enum import NODEGROUP_STATUS
-from maasserver.server_address import get_maas_facing_server_address
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
 from maastesting.celery import CeleryFixture
@@ -81,10 +80,6 @@ class TestDHCP(TestCase):
             param: getattr(interface, param)
             for param in dhcp_params}
 
-        # Currently all nodes use the central TFTP server.  This will be
-        # decentralized to use NodeGroup.worker_ip later.
-        expected_params["next_server"] = get_maas_facing_server_address()
-
         expected_params["omapi_key"] = nodegroup.dhcp_key
         expected_params["dns_servers"] = get_dns_server_address()
         expected_params["subnet"] = '192.168.100.0'
@@ -97,6 +92,22 @@ class TestDHCP(TestCase):
         del result_params['callback']
 
         self.assertEqual(expected_params, result_params)
+
+    def test_dhcp_config_uses_dns_server_from_cluster_controller(self):
+        mocked_task = self.patch(dhcp, 'write_dhcp_config')
+        ip = factory.getRandomIPAddress()
+        maas_url = 'http://%s/' % ip
+        nodegroup = factory.make_node_group(
+            maas_url=maas_url,
+            status=NODEGROUP_STATUS.ACCEPTED,
+            dhcp_key=factory.getRandomString(),
+            interface=factory.make_name('eth'),
+            network=IPNetwork("192.168.102.0/22"))
+        self.patch(settings, "DHCP_CONNECT", True)
+        configure_dhcp(nodegroup)
+        kwargs = mocked_task.apply_async.call_args[1]['kwargs']
+
+        self.assertEqual(ip, kwargs['dns_servers'])
 
     def test_configure_dhcp_restart_dhcp_server(self):
         self.patch(tasks, "sudo_write_file")
