@@ -53,7 +53,11 @@ from metadataserver.nodeinituser import get_node_init_user
 from mock import Mock
 from netaddr import IPNetwork
 from provisioningserver.enum import POWER_TYPE
-from testtools.matchers import Contains
+from testtools.matchers import (
+    Contains,
+    MatchesAll,
+    Not,
+    )
 
 
 class TestHelpers(DjangoTestCase):
@@ -722,12 +726,26 @@ class TestEnlistViews(DjangoTestCase):
         # instance-id must be available
         ud_url = reverse('enlist-metadata-user-data', args=['latest'])
         fake_preseed = factory.getRandomString()
-        self.patch(api, "get_enlist_userdata", lambda: fake_preseed)
+        self.patch(
+            api, "get_enlist_userdata", Mock(return_value= fake_preseed))
         response = self.client.get(ud_url)
         self.assertEqual(
             (httplib.OK, "text/plain", fake_preseed),
             (response.status_code, response["Content-Type"], response.content),
             response)
+
+    def test_get_userdata_detects_request_origin(self):
+        nodegroup_url = 'http://%s' % factory.make_name('host')
+        maas_url = 'http://%s' % factory.make_hostname()
+        self.patch(settings, 'DEFAULT_MAAS_URL', maas_url)
+        network = IPNetwork("10.1.1/24")
+        ip = factory.getRandomIPInNetwork(network)
+        factory.make_node_group(maas_url=nodegroup_url, network=network)
+        url = reverse('enlist-metadata-user-data', args=['latest'])
+        response = self.client.get(url, SERVER_NAME=ip)
+        self.assertThat(
+            response.content,
+            MatchesAll(Contains(nodegroup_url), Not(Contains(maas_url))))
 
     def test_metadata_list(self):
         # /enlist/latest/metadata request should list available keys

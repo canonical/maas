@@ -377,7 +377,9 @@ class EnlistUserDataHandler(OperationsHandler):
 
     def read(self, request, version):
         check_version(version)
-        return HttpResponse(get_enlist_userdata(), mimetype="text/plain")
+        nodegroup = find_nodegroup(request)
+        return HttpResponse(
+            get_enlist_userdata(nodegroup=nodegroup), mimetype="text/plain")
 
 
 class EnlistVersionIndexHandler(OperationsHandler):
