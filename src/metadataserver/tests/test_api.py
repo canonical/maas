@@ -657,7 +657,7 @@ class TestViews(DjangoTestCase):
             'metadata-enlist-preseed', args=['latest'])
         response = self.client.get(
             anon_enlist_preseed_url, {'op': 'get_enlist_preseed'},
-            SERVER_NAME=ip)
+            REMOTE_ADDR=ip)
         self.assertThat(response.content, Contains(ng_url))
 
     def test_anonymous_get_preseed(self):
@@ -742,7 +742,7 @@ class TestEnlistViews(DjangoTestCase):
         ip = factory.getRandomIPInNetwork(network)
         factory.make_node_group(maas_url=nodegroup_url, network=network)
         url = reverse('enlist-metadata-user-data', args=['latest'])
-        response = self.client.get(url, SERVER_NAME=ip)
+        response = self.client.get(url, REMOTE_ADDR=ip)
         self.assertThat(
             response.content,
             MatchesAll(Contains(nodegroup_url), Not(Contains(maas_url))))

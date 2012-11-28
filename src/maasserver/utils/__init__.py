@@ -15,13 +15,11 @@ __all__ = [
     'build_absolute_uri',
     'find_nodegroup',
     'get_db_state',
-    'get_origin_ip',
     'ignore_unused',
     'map_enum',
     'strip_domain',
     ]
 
-import socket
 from urllib import urlencode
 from urlparse import urljoin
 
@@ -111,19 +109,6 @@ def strip_domain(hostname):
     return hostname.split('.', 1)[0]
 
 
-def get_origin_ip(request):
-    """Return the IP address of the originating host of the request.
-
-    Return the IP address obtained by resolving the host given by
-    request.get_host().
-    """
-    host = request.get_host().split(':')[0]
-    try:
-        return socket.gethostbyname(host)
-    except socket.error:
-        return None
-
-
 def find_nodegroup(request):
     """Find the nodegroup whose subnet contains the IP Address of the
     originating host of the request..
@@ -133,9 +118,9 @@ def find_nodegroup(request):
     """
     # Circular imports.
     from maasserver.models import NodeGroup
-    ip_address = get_origin_ip(request)
+    ip_address = request.META['REMOTE_ADDR']
     if ip_address is not None:
-        return get_one(NodeGroup.objects.raw("""
+        query = NodeGroup.objects.raw("""
             SELECT *
             FROM maasserver_nodegroup
             WHERE id IN (
@@ -143,5 +128,6 @@ def find_nodegroup(request):
                 FROM maasserver_nodegroupinterface
                 WHERE (inet %s & subnet_mask) = (ip & subnet_mask)
             )
-            """, [ip_address]))
+            """, [ip_address])
+        return get_one(query)
     return None

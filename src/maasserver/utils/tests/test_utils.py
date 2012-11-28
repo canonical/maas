@@ -12,7 +12,6 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
-import socket
 from urllib import urlencode
 
 from django.conf import settings
@@ -32,15 +31,10 @@ from maasserver.utils import (
     build_absolute_uri,
     find_nodegroup,
     get_db_state,
-    get_origin_ip,
     map_enum,
     strip_domain,
     )
 from maastesting.testcase import TestCase
-from mock import (
-    call,
-    Mock,
-    )
 from netaddr import IPNetwork
 
 
@@ -197,40 +191,8 @@ class TestStripDomain(TestCase):
         self.assertEqual(results, map(strip_domain, inputs))
 
 
-def get_request(server_name, server_port='80'):
-    return RequestFactory().post(
-        '/', SERVER_NAME=server_name, SERVER_PORT=server_port)
-
-
-class TestGetOriginIP(TestCase):
-
-    def test_get_origin_ip_returns_ip(self):
-        ip = factory.getRandomIPAddress()
-        request = get_request(ip)
-        self.assertEqual(ip, get_origin_ip(request))
-
-    def test_get_origin_ip_strips_port(self):
-        ip = factory.getRandomIPAddress()
-        request = get_request(ip, '8888')
-        self.assertEqual(ip, get_origin_ip(request))
-
-    def test_get_origin_ip_resolves_hostname(self):
-        ip = factory.getRandomIPAddress()
-        hostname = factory.make_name('hostname')
-        request = get_request(hostname)
-        resolver = self.patch(socket, 'gethostbyname', Mock(return_value=ip))
-        self.assertEqual(
-            (ip, call(hostname)),
-            (get_origin_ip(request), resolver.call_args))
-
-    def test_get_origin_ip_returns_None_if_hostname_cannot_get_resolved(self):
-        hostname = factory.make_name('hostname')
-        request = get_request(hostname)
-        resolver = self.patch(
-            socket, 'gethostbyname', Mock(side_effect=socket.error))
-        self.assertEqual(
-            (None, call(hostname)),
-            (get_origin_ip(request), resolver.call_args))
+def get_request(origin_ip):
+    return RequestFactory().post('/', REMOTE_ADDR=origin_ip)
 
 
 class TestFindNodegroup(DjangoTestCase):

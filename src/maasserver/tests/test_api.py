@@ -694,7 +694,7 @@ class NodeHostnameEnlistmentTest(APIv10TestMixin, MultipleUsersScenarios,
                     NODE_AFTER_COMMISSIONING_ACTION.DEFAULT,
                 'mac_addresses': [factory.getRandomMACAddress()],
             },
-            HTTP_HOST=origin_ip + ':90')
+            REMOTE_ADDR=origin_ip)
         self.assertEqual(httplib.OK, response.status_code, response.content)
         parsed_result = json.loads(response.content)
         node = Node.objects.get(system_id=parsed_result.get('system_id'))
@@ -3449,9 +3449,10 @@ class TestPXEConfigAPI(AnonAPITestCase):
         factory.make_node_group(maas_url=ng_url, network=network)
         params = self.get_default_params()
 
-        # Simulate that the request targets ip by setting 'SERVER_NAME'.
+        # Simulate that the request originates from ip by setting
+        # 'REMOTE_ADDR'.
         response = self.client.get(
-            reverse('pxeconfig'), params, SERVER_NAME=ip)
+            reverse('pxeconfig'), params, REMOTE_ADDR=ip)
         self.assertThat(
             json.loads(response.content)["preseed_url"],
             StartsWith(ng_url))
@@ -3467,9 +3468,10 @@ class TestPXEConfigAPI(AnonAPITestCase):
         factory.make_node_group(maas_url=ng_url, network=network)
         params = self.get_default_params()
 
-        # Simulate that the request targets ip by setting 'SERVER_NAME'.
+        # Simulate that the request originates from ip by setting
+        # 'REMOTE_ADDR'.
         response = self.client.get(
-            reverse('pxeconfig'), params, SERVER_NAME=ip)
+            reverse('pxeconfig'), params, REMOTE_ADDR=ip)
         self.assertEqual(
             (ip, hostname),
             (json.loads(response.content)["log_host"], mock.call_args[0][0]))
@@ -3493,9 +3495,10 @@ class TestPXEConfigAPI(AnonAPITestCase):
         node.nodegroup = nodegroup
         node.save()
 
-        # Simulate that the request targets ip by setting 'SERVER_NAME'.
+        # Simulate that the request originates from ip by setting
+        # 'REMOTE_ADDR'.
         response = self.client.get(
-            reverse('pxeconfig'), params, SERVER_NAME=ip)
+            reverse('pxeconfig'), params, REMOTE_ADDR=ip)
         self.assertThat(
             json.loads(response.content)["preseed_url"],
             StartsWith(ng_url))
