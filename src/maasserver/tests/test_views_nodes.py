@@ -96,6 +96,16 @@ class NodeViewsTest(LoggedInTestCase):
         self.assertIn(sort_hostname, get_content_links(response))
         self.assertIn(sort_status, get_content_links(response))
 
+    def test_node_list_lists_nodes_from_different_nodegroups(self):
+        # Bug 1084443.
+        nodegroup1 = factory.make_node_group()
+        nodegroup2 = factory.make_node_group()
+        factory.make_node(nodegroup=nodegroup1)
+        factory.make_node(nodegroup=nodegroup2)
+        factory.make_node(nodegroup=nodegroup2)
+        response = self.client.get(reverse('node-list'))
+        self.assertEqual(httplib.OK, response.status_code)
+
     def test_node_list_sorts_by_hostname(self):
         names = ['zero', 'one', 'five']
         nodes = [factory.make_node(hostname=n) for n in names]

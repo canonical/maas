@@ -137,7 +137,7 @@ class NodeListView(PaginatedListView):
             except InvalidConstraint as e:
                 self.query_error = e
                 return Node.objects.none()
-        nodes = nodes.prefetch_related('nodegroup')
+        nodes = nodes.select_related('nodegroup')
         nodes = nodes.prefetch_related('nodegroup__nodegroupinterface_set')
         return nodes
 

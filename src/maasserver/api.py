@@ -664,7 +664,7 @@ class NodesHandler(OperationsHandler):
         # related interfaces).
         nodes = nodes.prefetch_related('macaddress_set__node')
         nodes = nodes.prefetch_related('tags')
-        nodes = nodes.prefetch_related('nodegroup')
+        nodes = nodes.select_related('nodegroup')
         nodes = nodes.prefetch_related('nodegroup__nodegroupinterface_set')
         return nodes.order_by('id')
 
