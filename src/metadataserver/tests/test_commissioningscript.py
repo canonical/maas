@@ -69,6 +69,11 @@ class TestCommissioningScriptManager(TestCase):
             script.content,
             archive.extractfile(archived_script).read())
 
+    def test_get_archive_returns_empty_tarball_if_no_scripts(self):
+        CommissioningScript.objects.all().delete()
+        archive = open_tarfile(CommissioningScript.objects.get_archive())
+        self.assertItemsEqual([], archive.getnames())
+
 
 class TestCommissioningScript(TestCase):
 

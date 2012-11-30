@@ -14,7 +14,10 @@ __all__ = []
 
 from collections import namedtuple
 import httplib
+from io import BytesIO
 import json
+import os.path
+import tarfile
 
 from django.conf import settings
 from django.core.exceptions import PermissionDenied
@@ -33,6 +36,7 @@ from maasserver.testing import reload_object
 from maasserver.testing.factory import factory
 from maasserver.testing.oauthclient import OAuthAuthenticatedClient
 from maastesting.djangotestcase import DjangoTestCase
+from maastesting.matchers import ContainsAll
 from metadataserver import api
 from metadataserver.api import (
     check_version,
@@ -49,6 +53,7 @@ from metadataserver.models import (
     NodeKey,
     NodeUserData,
     )
+from metadataserver.models.commissioningscript import ARCHIVE_PREFIX
 from metadataserver.nodeinituser import get_node_init_user
 from mock import Mock
 from netaddr import IPNetwork
@@ -182,11 +187,14 @@ class TestViews(DjangoTestCase):
         # The test is that we get here without exception.
         pass
 
-    def test_version_index_shows_meta_data(self):
+    def test_version_index_shows_unconditional_entries(self):
         client = self.make_node_client()
         url = reverse('metadata-version', args=['latest'])
         items = client.get(url).content.splitlines()
-        self.assertIn('meta-data', items)
+        self.assertThat(items, ContainsAll([
+            'meta-data',
+            'maas-commissioning-scripts',
+            ]))
 
     def test_version_index_does_not_show_user_data_if_not_available(self):
         client = self.make_node_client()
@@ -325,6 +333,27 @@ class TestViews(DjangoTestCase):
         self.assertItemsEqual(
             '\n'.join(keys),
             response.content.decode('ascii'))
+
+    def test_commissioning_scripts(self):
+        script = factory.make_commissioning_script()
+        response = self.make_node_client().get(
+            reverse('commissioning-scripts', args=['latest']))
+        self.assertEqual(
+            httplib.OK, response.status_code,
+            "Unexpected response %d: %s"
+            % (response.status_code, response.content))
+        self.assertIn(
+            response['Content-Type'],
+            {
+                'application/tar',
+                'application/x-gtar',
+                'application/x-tar',
+                'application/x-tgz',
+            })
+        archive = tarfile.open(fileobj=BytesIO(response.content))
+        self.assertItemsEqual(
+            [os.path.join(ARCHIVE_PREFIX, script.name)],
+            archive.getnames())
 
     def test_other_user_than_node_cannot_signal_commissioning_result(self):
         node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
