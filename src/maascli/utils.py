@@ -39,6 +39,11 @@ empty = ""
 
 
 def parse_docstring(thing):
+    """Parse python docstring for `thing`.
+
+    Returns a tuple: (title, body).  As per docstring convention, title is
+    the docstring's first paragraph and body is the rest.
+    """
     is_string = isinstance(thing, basestring)
     doc = cleandoc(thing) if is_string else getdoc(thing)
     doc = empty if doc is None else doc

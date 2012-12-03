@@ -21,6 +21,10 @@ from itertools import chain
 import json
 from operator import itemgetter
 import sys
+from textwrap import (
+    dedent,
+    fill,
+    )
 from urlparse import (
     urljoin,
     urlparse,
@@ -257,7 +261,8 @@ def register_actions(profile, handler, parser):
             }
         action_class = type(action_name, action_bases, action_ns)
         action_parser = parser.subparsers.add_parser(
-            action_name, help=help_title, description=help_body)
+            action_name, help=help_title, description=help_title,
+            epilog=help_body)
         action_parser.set_defaults(
             execute=action_class(action_parser))
 
@@ -267,7 +272,8 @@ def register_handler(profile, handler, parser):
     help_title, help_body = parse_docstring(handler["doc"])
     handler_name = handler_command_name(handler["name"])
     handler_parser = parser.subparsers.add_parser(
-        handler_name, help=help_title, description=help_body)
+        handler_name, help=help_title, description=help_title,
+        epilog=help_body)
     register_actions(profile, handler, handler_parser)
 
 
@@ -308,11 +314,32 @@ def register_resources(profile, parser):
             register_handler(profile, represent_as, parser)
 
 
+profile_help = '\n\n'.join(
+    map(fill, map(dedent, [
+    """\
+        This is a profile.  Any commands you issue on this
+        profile will operate on the MAAS region server.
+        """,
+    """\
+        The command information you see here comes from the
+        region server's API; it may differ for different
+        profiles.  If you believe the API may have changed,
+        use the command's 'refresh' sub-command to fetch the
+        latest version of this help information from the
+        server.
+        """,
+    ])))
+
+
 def register_api_commands(parser):
     """Register all profiles as subcommands on `parser`."""
     with ProfileConfig.open() as config:
         for profile_name in config:
             profile = config[profile_name]
             profile_parser = parser.subparsers.add_parser(
-                profile["name"], help="Interact with %(url)s" % profile)
+                profile["name"], help="Interact with %(url)s" % profile,
+                description=(
+                    "Issue commands to the MAAS region controller at %(url)s."
+                    % profile),
+                epilog=profile_help)
             register_resources(profile, profile_parser)

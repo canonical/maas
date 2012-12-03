@@ -472,7 +472,10 @@ def store_node_power_parameters(node, request):
 
 
 class NodeHandler(OperationsHandler):
-    """Manage individual Nodes."""
+    """Manage an individual Node.
+
+    The Node is identified by its system_id.
+    """
     create = None  # Disable create.
     model = Node
     fields = DISPLAYED_NODE_FIELDS
@@ -662,7 +665,7 @@ def create_node(request):
 
 
 class AnonNodesHandler(AnonymousOperationsHandler):
-    """Create Nodes."""
+    """Anonymous access to Nodes."""
     create = read = update = delete = None
     model = Node
     fields = DISPLAYED_NODE_FIELDS
@@ -741,7 +744,7 @@ def extract_constraints(request_params):
 
 
 class NodesHandler(OperationsHandler):
-    """Manage collection of Nodes."""
+    """Manage the collection of all Nodes in the MAAS."""
     create = read = update = delete = None
     anonymous = AnonNodesHandler
 
@@ -893,10 +896,12 @@ class NodesHandler(OperationsHandler):
 
 
 class NodeMacsHandler(OperationsHandler):
-    """
-    Manage all the MAC addresses linked to a Node / Create a new MAC address
-    for a Node.
+    """Manage MAC addresses for a given Node.
 
+    This is where you manage the MAC addresses linked to a Node, including
+    associating a new MAC address with the Node.
+
+    The Node is identified by its system_id.
     """
     update = delete = None
 
@@ -920,7 +925,11 @@ class NodeMacsHandler(OperationsHandler):
 
 
 class NodeMacHandler(OperationsHandler):
-    """Manage a MAC address linked to a Node."""
+    """Manage a MAC address.
+
+    The MAC address object is identified by the system_id for the Node it
+    is attached to, plus the MAC address itself.
+    """
     create = update = None
     fields = ('mac_address',)
     model = MACAddress
@@ -1041,7 +1050,7 @@ DISPLAYED_NODEGROUP_FIELDS = ('uuid', 'status', 'name')
 
 
 class AnonNodeGroupsHandler(AnonymousOperationsHandler):
-    """Anon Node-groups API."""
+    """Anonymous access to NodeGroups."""
     create = read = update = delete = None
     fields = DISPLAYED_NODEGROUP_FIELDS
 
@@ -1134,7 +1143,7 @@ class AnonNodeGroupsHandler(AnonymousOperationsHandler):
 
 
 class NodeGroupsHandler(OperationsHandler):
-    """Node-groups API."""
+    """Manage NodeGroups."""
     anonymous = AnonNodeGroupsHandler
     create = read = update = delete = None
     fields = DISPLAYED_NODEGROUP_FIELDS
@@ -1203,7 +1212,17 @@ def check_nodegroup_access(request, nodegroup):
 
 
 class NodeGroupHandler(OperationsHandler):
-    """Node-group API."""
+    """Manage a NodeGroup.
+
+    NodeGroup is the internal name for a cluster.
+
+    The NodeGroup is identified by its UUID, a random identifier that looks
+    something like:
+
+        5977f6ab-9160-4352-b4db-d71a99066c4f
+
+    Each NodeGroup has its own uuid.
+    """
 
     create = update = delete = None
     fields = DISPLAYED_NODEGROUP_FIELDS
@@ -1222,6 +1241,11 @@ class NodeGroupHandler(OperationsHandler):
 
     @operation(idempotent=False)
     def update_leases(self, request, uuid):
+        """Submit latest state of DHCP leases within the cluster.
+
+        The cluster controller calls this periodically to tell the region
+        controller about the IP addresses it manages.
+        """
         leases = get_mandatory_param(request.data, 'leases')
         nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
         check_nodegroup_access(request, nodegroup)
@@ -1280,7 +1304,11 @@ DISPLAYED_NODEGROUP_FIELDS = (
 
 
 class NodeGroupInterfacesHandler(OperationsHandler):
-    """NodeGroupInterfaces API."""
+    """Manage NodeGroupInterfaces.
+
+    A NodeGroupInterface is a network interface attached to a cluster
+    controller, with its network properties.
+    """
     create = read = update = delete = None
     fields = DISPLAYED_NODEGROUP_FIELDS
 
@@ -1329,7 +1357,11 @@ class NodeGroupInterfacesHandler(OperationsHandler):
 
 
 class NodeGroupInterfaceHandler(OperationsHandler):
-    """NodeGroupInterface API."""
+    """Manage a NodeGroupInterface.
+
+    A NodeGroupInterface is identified by the uuid for its NodeGroup, and
+    the name of the network interface it represents: "eth0" for example.
+    """
     create = delete = None
     fields = DISPLAYED_NODEGROUP_FIELDS
 
@@ -1432,7 +1464,13 @@ class AccountHandler(OperationsHandler):
 
 
 class TagHandler(OperationsHandler):
-    """Manage individual Tags."""
+    """Manage individual Tags.
+
+    Tags are properties that can be associated with a Node and serve as
+    criteria for selecting and allocating nodes.
+
+    A Tag is identified by its name.
+    """
     create = None
     model = Tag
     fields = (
