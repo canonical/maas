@@ -32,7 +32,7 @@ if settings.STATIC_LOCAL_SERVE:
             {'document_root': settings.MEDIA_ROOT}),
     )
 
-    urlpatterns += staticfiles_urlpatterns()
+    urlpatterns += staticfiles_urlpatterns(settings.STATIC_URL_PATTERN)
 
 if settings.DEBUG:
     from django.contrib import admin
