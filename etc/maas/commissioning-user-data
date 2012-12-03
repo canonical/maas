@@ -313,6 +313,9 @@ def main():
     IPMI_IP_ADDRESS = get_ipmi_ip_address()
     if IPMI_IP_ADDRESS == "0.0.0.0":
         # if IPMI_IP_ADDRESS is 0.0.0.0, wait 60 seconds and retry.
+        set_ipmi_network_source("Static")
+        time.sleep(2)
+        set_ipmi_network_source("Use_DHCP")
         time.sleep(60)
         IPMI_IP_ADDRESS = get_ipmi_ip_address()
 
