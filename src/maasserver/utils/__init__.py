@@ -25,6 +25,7 @@ from urlparse import urljoin
 
 from django.conf import settings
 from django.core.urlresolvers import reverse
+from maasserver.enum import NODEGROUPINTERFACE_MANAGEMENT
 from maasserver.utils.orm import get_one
 
 
@@ -120,6 +121,10 @@ def find_nodegroup(request):
     from maasserver.models import NodeGroup
     ip_address = request.META['REMOTE_ADDR']
     if ip_address is not None:
+        management_statuses = (
+            NODEGROUPINTERFACE_MANAGEMENT.DHCP,
+            NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
+        )
         query = NodeGroup.objects.raw("""
             SELECT *
             FROM maasserver_nodegroup
@@ -127,7 +132,12 @@ def find_nodegroup(request):
                 SELECT nodegroup_id
                 FROM maasserver_nodegroupinterface
                 WHERE (inet %s & subnet_mask) = (ip & subnet_mask)
+                AND management IN %s
             )
-            """, [ip_address])
+            """, [
+                ip_address,
+                management_statuses,
+                ]
+            )
         return get_one(query)
     return None
