@@ -13,6 +13,7 @@ __metaclass__ = type
 __all__ = [
     "ClusterDelete",
     "ClusterEdit",
+    "ClusterInterfaceCreate",
     "ClusterInterfaceDelete",
     "ClusterInterfaceEdit",
     ]
@@ -22,6 +23,7 @@ from django.core.urlresolvers import reverse
 from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404
 from django.views.generic import (
+    CreateView,
     DeleteView,
     UpdateView,
     )
@@ -117,3 +119,28 @@ class ClusterInterfaceEdit(UpdateView):
         interface = self.kwargs.get('interface', None)
         return get_object_or_404(
             NodeGroupInterface, nodegroup__uuid=uuid, interface=interface)
+
+
+class ClusterInterfaceCreate(CreateView):
+    template_name = 'maasserver/nodegroupinterface_new.html'
+    form_class = NodeGroupInterfaceForm
+    context_object_name = 'interface'
+
+    def get_success_url(self):
+        uuid = self.kwargs.get('uuid', None)
+        return reverse('cluster-edit', args=[uuid])
+
+    def form_valid(self, form):
+        self.object = form.save(nodegroup=self.get_nodegroup())
+        messages.info(self.request, "Interface created.")
+        return super(ClusterInterfaceCreate, self).form_valid(form)
+
+    def get_nodegroup(self):
+        nodegroup_uuid = self.kwargs.get('uuid', None)
+        return get_object_or_404(NodeGroup, uuid=nodegroup_uuid)
+
+    def get_context_data(self, **kwargs):
+        context = super(
+            ClusterInterfaceCreate, self).get_context_data(**kwargs)
+        context['nodegroup'] = self.get_nodegroup()
+        return context
