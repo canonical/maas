@@ -234,7 +234,8 @@ class DNSConfig(DNSConfigBase):
         }
 
     def get_include_snippet(self):
-        return '\ninclude "%s";\n' % self.target_path
+        assert '"' not in self.target_path, self.target_path
+        return 'include "%s";\n' % self.target_path
 
 
 def shortened_reversed_ip(ip, byte_num):

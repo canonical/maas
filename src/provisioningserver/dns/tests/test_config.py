@@ -221,7 +221,7 @@ class TestDNSConfig(TestCase):
         self.assertThat(
             snippet,
             MatchesAll(
-                StartsWith('\n'),
+                Not(StartsWith('\n')),
                 EndsWith('\n'),
                 Contains(target_dir),
                 Contains('include "%s"' % dnsconfig.target_path)))
