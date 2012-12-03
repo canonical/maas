@@ -32,8 +32,14 @@ from apiclient.maas_client import (
     NoAuth,
     )
 from celery.app import app_or_default
-from provisioningserver.logging import task_logger
+from celery.log import (
+    get_task_logger,
+    setup_logging_subsystem,
+    )
 from provisioningserver.network import discover_networks
+
+
+task_logger = get_task_logger(name=__name__)
 
 
 class ClusterControllerRejected(Exception):
@@ -66,16 +72,6 @@ def make_anonymous_api_client(server_url):
 def get_cluster_uuid():
     """Read this cluster's UUID from the config."""
     return app_or_default().conf.CLUSTER_UUID
-
-
-def get_maas_celery_log():
-    """Read location for MAAS Celery log file from the config."""
-    return app_or_default().conf.MAAS_CELERY_LOG
-
-
-def get_maas_celerybeat_db():
-    """Read location for MAAS Celery schedule file from the config."""
-    return app_or_default().conf.MAAS_CLUSTER_CELERY_DB
 
 
 def register(server_url):
@@ -136,15 +132,7 @@ def start_celery(server_url, connection_details, user, group):
     # and the URL for the region controller.
     env = dict(
         os.environ, CELERY_BROKER_URL=broker_url, MAAS_URL=server_url)
-
-    command = [
-        'celeryd',
-        '--logfile=%s' % get_maas_celery_log(),
-        '--schedule=%s' % get_maas_celerybeat_db(),
-        '--loglevel=INFO',
-        '--beat',
-        '-Q', get_cluster_uuid(),
-        ]
+    command = 'celeryd', '--beat', '--queues', get_cluster_uuid()
 
     # Change gid first, just in case changing the uid might deprive
     # us of the privileges required to setgid.
@@ -184,6 +172,7 @@ def run(args):
     If this system is still awaiting approval as a cluster controller, this
     command will keep looping until it gets a definite answer.
     """
+    setup_logging_subsystem()
     connection_details = register(args.server_url)
     while connection_details is None:
         sleep(60)

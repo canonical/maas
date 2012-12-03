@@ -25,14 +25,17 @@ from apiclient.maas_client import (
     MAASDispatcher,
     MAASOAuth,
     )
+from celery.log import get_task_logger
 from provisioningserver.auth import (
     get_recorded_api_credentials,
     get_recorded_maas_url,
     )
 from provisioningserver.config import Config
-from provisioningserver.logging import task_logger
 from provisioningserver.pxe import tftppath
 from provisioningserver.start_cluster_controller import get_cluster_uuid
+
+
+task_logger = get_task_logger(name=__name__)
 
 
 def get_cached_knowledge():

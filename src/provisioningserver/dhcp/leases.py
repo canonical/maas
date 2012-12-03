@@ -45,6 +45,7 @@ from apiclient.maas_client import (
     MAASOAuth,
     )
 from celery.app import app_or_default
+from celery.log import get_task_logger
 from provisioningserver import cache
 from provisioningserver.auth import (
     get_recorded_api_credentials,
@@ -52,7 +53,10 @@ from provisioningserver.auth import (
     get_recorded_nodegroup_uuid,
     )
 from provisioningserver.dhcp.leases_parser import parse_leases
-from provisioningserver.logging import task_logger
+
+
+task_logger = get_task_logger(name=__name__)
+
 
 # Cache key for the modification time on last-processed leases file.
 LEASES_TIME_CACHE_KEY = 'leases_time'

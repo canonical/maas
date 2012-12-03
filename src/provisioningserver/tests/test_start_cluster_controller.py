@@ -94,6 +94,7 @@ class TestStartClusterController(PservTestCase):
         self.patch(os, 'setuid')
         self.patch(os, 'setgid')
         self.patch(os, 'execvpe').side_effect = Executing()
+        self.patch(start_cluster_controller, 'setup_logging_subsystem')
         get_uuid = self.patch(start_cluster_controller, 'get_cluster_uuid')
         get_uuid.return_value = factory.getRandomUUID()
 
