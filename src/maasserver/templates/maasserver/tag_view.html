@@ -34,7 +34,7 @@
   </ul>
   <div id="nodes" class="block first pad-top">
     <h2 class="block first line-top pad-top">{{ paginator.count }} Node{{ paginator.count|pluralize }}</h2>
-    {% include "maasserver/nodes_listing.html" %}
+    {% include "maasserver/nodes_listing.html" with sorting="false" %}
     {% include "maasserver/pagination.html" %}
   </div>
 {% endblock %}
