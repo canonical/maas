@@ -19,6 +19,7 @@ from django.db.models.signals import (
     post_save,
     )
 from django.dispatch import receiver
+from maasserver.enum import NODEGROUPINTERFACE_MANAGEMENT
 from maasserver.models import (
     Node,
     NodeGroup,
@@ -50,11 +51,19 @@ def dns_post_save_NodeGroupInterface(sender, instance, created, **kwargs):
         write_full_dns_config()
 
 
-@receiver(post_delete, sender=NodeGroup)
-def dns_post_delete_NodeGroup(sender, instance, **kwargs):
-    """Delete DNS zones related to the nodegroup."""
+def dns_post_edit_management_NodeGroupInterface(instance, old_field, deleted):
+    """Delete DNS zones related to the interface."""
     from maasserver.dns import write_full_dns_config
-    write_full_dns_config()
+    if old_field == NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS:
+        # Force the dns config to be written as this might have been
+        # triggered by the last DNS-enabled interface being deleted
+        # or switched off (i.e. management set to DHCP or UNMANAGED).
+        write_full_dns_config(force=True)
+
+
+connect_to_field_change(
+    dns_post_edit_management_NodeGroupInterface,
+    NodeGroupInterface, 'management', delete=True)
 
 
 @receiver(post_delete, sender=Node)
@@ -70,7 +79,7 @@ def dns_post_delete_Node(sender, instance, **kwargs):
         pass
 
 
-def dns_post_edit_hostname_Node(instance, old_field):
+def dns_post_edit_hostname_Node(instance, old_field, **kwargs):
     """When a Node has been flagged, update the related zone."""
     from maasserver.dns import change_dns_zones
     change_dns_zones(instance.nodegroup)

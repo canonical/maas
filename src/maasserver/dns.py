@@ -37,6 +37,7 @@ from maasserver.exceptions import MAASException
 from maasserver.models import (
     DHCPLease,
     NodeGroup,
+    NodeGroupInterface,
     )
 from maasserver.sequence import (
     INT_MAX,
@@ -64,6 +65,14 @@ def next_zone_serial():
     return '%0.10d' % zone_serial.nextval()
 
 
+def is_dns_in_use():
+    """Is there at least one interface configured to manage DNS?"""
+    interfaces_with_dns = (
+        NodeGroupInterface.objects.filter(
+             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS))
+    return interfaces_with_dns.exists()
+
+
 def is_dns_enabled():
     """Is MAAS configured to manage DNS?"""
     return settings.DNS_CONNECT
@@ -82,17 +91,18 @@ def is_dns_managed(nodegroup):
         interface.management == NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
 
 
+WARNING_MESSAGE = (
+    "The DNS server will use the address '%s',  which is inside the "
+    "loopback network.  This may not be a problem if you're not using "
+    "MAAS's DNS features or if you don't rely on this information.  "
+    "Be sure to configure the DEFAULT_MAAS_URL setting in MAAS's "
+    "/etc/maas/maas_local_settings.py.")
+
+
 def warn_loopback(ip):
     """Warn if the given IP address is in the loopback network."""
     if IPAddress(ip) in IPNetwork('127.0.0.1/8'):
-        logging.getLogger('maas').warn(
-            "The DNS server will use the address '%s',  which is inside the "
-            "loopback network.  This may not be a problem if you're not using "
-            "MAAS's DNS features or if you don't rely on this information.  "
-            "Be sure to configure the DEFAULT_MAAS_URL setting in MAAS's "
-            "settings.py (or demo.py/development.py if you are running a "
-            "development system)."
-            % ip)
+        logging.getLogger('maas').warn(WARNING_MESSAGE % ip)
 
 
 def get_dns_server_address():
@@ -251,7 +261,7 @@ def change_dns_zones(nodegroups):
         zone should be updated.
     :type nodegroups: list (or :class:`NodeGroup`)
     """
-    if not is_dns_enabled():
+    if not (is_dns_enabled() and is_dns_in_use()):
         return
     serial = next_zone_serial()
     for zone in ZoneGenerator(nodegroups, serial):
@@ -271,7 +281,7 @@ def add_zone(nodegroup):
     :param nodegroup: The nodegroup for which the zone should be added.
     :type nodegroup: :class:`NodeGroup`
     """
-    if not is_dns_enabled():
+    if not (is_dns_enabled() and is_dns_in_use()):
         return
     zones_to_write = ZoneGenerator(nodegroup).as_list()
     if len(zones_to_write) == 0:
@@ -286,23 +296,21 @@ def add_zone(nodegroup):
         zones=zones_to_write, callback=write_dns_config_subtask)
 
 
-def write_full_dns_config(active=True, reload_retry=False):
+def write_full_dns_config(reload_retry=False, force=False):
     """Write the DNS configuration.
 
-    :param active: If True, write the DNS config for all the nodegroups.
-        Otherwise write an empty DNS config (with no zones).  Defaults
-        to `True`.
-    :type active: bool
     :param reload_retry: Should the reload rndc command be retried in case
         of failure?  Defaults to `False`.
     :type reload_retry: bool
+    :param force: Write the configuration even if no interface is
+        configured to manage DNS.
+    :type force: bool
     """
-    if not is_dns_enabled():
+    write_conf = (
+        is_dns_enabled() and (force or is_dns_in_use()))
+    if not write_conf:
         return
-    if active:
-        zones = ZoneGenerator(NodeGroup.objects.all()).as_list()
-    else:
-        zones = []
+    zones = ZoneGenerator(NodeGroup.objects.all()).as_list()
     tasks.write_full_dns_config.delay(
         zones=zones,
         callback=tasks.rndc_command.subtask(
