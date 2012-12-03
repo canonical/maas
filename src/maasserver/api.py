@@ -839,6 +839,52 @@ class NodesHandler(OperationsHandler):
         nodes = [node.accept_enlistment(request.user) for node in nodes]
         return filter(None, nodes)
 
+    @operation(idempotent=False)
+    def release(self, request):
+        """Release multiple nodes.
+
+        This places the nodes back into the pool, ready to be reallocated.
+
+        :param nodes: system_ids of the nodes which are to be released.
+           (An empty list is acceptable).
+        :return: The system_ids of any nodes that have their status
+            changed by this call. Thus, nodes that were already released
+            are excluded from the result.
+        """
+        system_ids = set(request.POST.getlist('nodes'))
+         # Check the existence of these nodes first.
+        self._check_system_ids_exist(system_ids)
+        # Make sure that the user has the required permission.
+        nodes = Node.objects.get_nodes(
+            request.user, perm=NODE_PERMISSION.EDIT, ids=system_ids)
+        if len(nodes) < len(system_ids):
+            permitted_ids = set(node.system_id for node in nodes)
+            raise PermissionDenied(
+                "You don't have the required permission to release the "
+                "following node(s): %s." % (
+                    ', '.join(system_ids - permitted_ids)))
+
+        released_ids = []
+        failed = []
+        for node in nodes:
+            if node.status == NODE_STATUS.READY:
+                # Nothing to do.
+                pass
+            elif node.status in [NODE_STATUS.ALLOCATED, NODE_STATUS.RESERVED]:
+                node.release()
+                released_ids.append(node.system_id)
+            else:
+                failed.append(
+                    "%s ('%s')"
+                    % (node.system_id, node.display_status()))
+
+        if any(failed):
+            raise NodeStateViolation(
+                "Node(s) cannot be released in their current state: %s."
+                % ', '.join(failed))
+        
+        return released_ids
+        
     @operation(idempotent=True)
     def list(self, request):
         """List Nodes visible to the user, optionally filtered by criteria.

@@ -2325,6 +2325,114 @@ class TestNodesAPI(APITestCase):
             [node.system_id for node in acceptable_nodes], accepted_ids)
         self.assertNotIn(accepted_node.system_id, accepted_ids)
 
+    def test_POST_quietly_releases_empty_set(self):
+        response = self.client.post(self.get_uri('nodes/'), {'op': 'release'})
+        self.assertEqual(
+            (httplib.OK, "[]"), (response.status_code, response.content))
+
+    def test_POST_release_rejects_request_from_unauthorized_user(self):
+        node = factory.make_node(
+            status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
+        response = self.client.post(
+            self.get_uri('nodes/'), {
+                'op': 'release',
+                'nodes': [node.system_id],
+                })
+        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(NODE_STATUS.ALLOCATED, reload_object(node).status)
+
+    def test_POST_release_fails_if_nodes_do_not_exist(self):
+         # Make sure there is a node, it just isn't among the ones to release
+        factory.make_node()
+        node_ids = {factory.getRandomString() for i in xrange(5)}
+        response = self.client.post(
+            self.get_uri('nodes/'), {
+                'op': 'release',
+                'nodes': node_ids
+                })
+        # Awkward parsing, but the order may vary and it's not JSON
+        s = response.content
+        returned_ids = s[s.find(':')+2:s.rfind('.')].split(', ')
+        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+        self.assertIn("Unknown node(s): ", response.content)
+        self.assertItemsEqual(node_ids, returned_ids)
+
+    def test_POST_release_forbidden_if_user_cannot_edit_node(self):
+        # Create a bunch of nodes, owned by the logged in user
+        node_ids = {
+            factory.make_node(
+                status=NODE_STATUS.ALLOCATED,
+                owner=self.logged_in_user).system_id
+            for i in xrange(3)
+            }
+        # And one with no owner
+        another_node = factory.make_node(status=NODE_STATUS.RESERVED)
+        node_ids.add(another_node.system_id)
+        
+        response = self.client.post(
+            self.get_uri('nodes/'), {
+                'op': 'release',
+                'nodes': node_ids
+                })
+        self.assertEqual(
+            (httplib.FORBIDDEN,
+                "You don't have the required permission to release the "
+                "following node(s): %s." % another_node.system_id),
+            (response.status_code, response.content))
+        
+    def test_POST_release_rejects_impossible_state_changes(self):
+        acceptable_states = {
+            NODE_STATUS.ALLOCATED,
+            NODE_STATUS.RESERVED,
+            NODE_STATUS.READY,
+            }
+        unacceptable_states = (
+            set(map_enum(NODE_STATUS).values()) - acceptable_states)
+        owner = self.logged_in_user
+        nodes = [
+            factory.make_node(status=status, owner=owner)
+            for status in unacceptable_states]
+        response = self.client.post(
+            self.get_uri('nodes/'), {
+                'op': 'release',
+                'nodes': [node.system_id for node in nodes],
+                })
+        # Awkward parsing again, because a string is returned, not JSON
+        expected = [
+            "%s ('%s')" % (node.system_id, node.display_status())
+            for node in nodes
+            if node.status not in acceptable_states]
+        s = response.content
+        returned = s[s.rfind(':')+2:s.rfind('.')].split(', ') 
+        self.assertEqual(httplib.CONFLICT, response.status_code)
+        self.assertIn(
+            "Node(s) cannot be released in their current state:",
+            response.content)
+        self.assertItemsEqual(expected, returned)
+
+    def test_POST_release_returns_modified_nodes(self):
+        owner = self.logged_in_user
+        acceptable_states = {
+            NODE_STATUS.READY,
+            NODE_STATUS.ALLOCATED,
+            NODE_STATUS.RESERVED,
+            }
+        nodes = [
+            factory.make_node(status=status, owner=owner)
+            for status in acceptable_states
+            ]
+        response = self.client.post(
+            self.get_uri('nodes/'), {
+                'op': 'release',
+                'nodes': [node.system_id for node in nodes],
+                })
+        parsed_result = json.loads(response.content)
+        self.assertEqual(httplib.OK, response.status_code)
+        # The first node is READY, so shouldn't be touched
+        self.assertItemsEqual(
+            [nodes[1].system_id, nodes[2].system_id],
+            parsed_result)
+        
 
 class MACAddressAPITest(APITestCase):
 
