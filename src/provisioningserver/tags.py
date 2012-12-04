@@ -19,6 +19,7 @@ __all__ = [
 
 
 import httplib
+import urllib2
 
 from apiclient.maas_client import (
     MAASClient,
@@ -104,11 +105,13 @@ def get_hardware_details_for_nodes(client, nodegroup_uuid, system_ids):
         path, op='node_hardware_details', as_json=True, system_ids=system_ids))
 
 
-def post_updated_nodes(client, tag_name, uuid, added, removed):
+def post_updated_nodes(client, tag_name, tag_definition, uuid, added, removed):
     """Update the nodes relevant for a particular tag.
 
     :param client: MAAS client
     :param tag_name: Name of tag
+    :param tag_definition: Definition of the tag, used to assure that the work
+        being done matches the current value.
     :param uuid: NodeGroup uuid of this worker. Needed for security
         permissions. (The nodegroup worker is only allowed to touch nodes in
         its nodegroup, otherwise you need to be a superuser.)
@@ -118,9 +121,19 @@ def post_updated_nodes(client, tag_name, uuid, added, removed):
     path = '/api/1.0/tags/%s/' % (tag_name,)
     task_logger.debug('Updating nodes for %s %s, adding %s removing %s'
         % (tag_name, uuid, len(added), len(removed)))
-    return process_response(client.post(
-        path, op='update_nodes', as_json=True,
-        nodegroup=uuid, add=added, remove=removed))
+    try:
+        return process_response(client.post(
+            path, op='update_nodes', as_json=True, nodegroup=uuid,
+            definition=tag_definition, add=added, remove=removed))
+    except urllib2.HTTPError as e:
+        if e.code == httplib.CONFLICT:
+            if e.fp is not None:
+                msg = e.fp.read()
+            else:
+                msg = e.msg
+            task_logger.info('Got a CONFLICT while updating tag: %s', msg)
+            return {}
+        raise
 
 
 def process_batch(xpath, hardware_details):
@@ -147,7 +160,7 @@ def process_batch(xpath, hardware_details):
     return matched_nodes, unmatched_nodes
 
 
-def process_all(client, tag_name, nodegroup_uuid, system_ids, xpath,
+def process_all(client, tag_name, tag_definition, nodegroup_uuid, system_ids, xpath,
                 batch_size=None):
     if batch_size is None:
         batch_size = DEFAULT_BATCH_SIZE
@@ -171,7 +184,7 @@ def process_all(client, tag_name, nodegroup_uuid, system_ids, xpath,
     # This also allows us to track if a nodegroup has been processed in the DB,
     # without having to add another API call.
     post_updated_nodes(
-        client, tag_name, nodegroup_uuid, all_matched, all_unmatched)
+        client, tag_name, tag_definition, nodegroup_uuid, all_matched, all_unmatched)
 
 
 def process_node_tags(tag_name, tag_definition, batch_size=None):
@@ -192,5 +205,5 @@ def process_node_tags(tag_name, tag_definition, batch_size=None):
     xpath = etree.XPath(tag_definition)
     # Get nodes to process
     system_ids = get_nodes_for_node_group(client, nodegroup_uuid)
-    process_all(client, tag_name, nodegroup_uuid, system_ids, xpath,
+    process_all(client, tag_name, tag_definition, nodegroup_uuid, system_ids, xpath,
                 batch_size=batch_size)

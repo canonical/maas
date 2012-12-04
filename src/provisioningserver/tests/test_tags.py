@@ -20,6 +20,7 @@ from maastesting.fakemethod import (
     FakeMethod,
     MultiFakeMethod,
     )
+import urllib2
 from mock import MagicMock
 from provisioningserver.auth import (
     get_recorded_nodegroup_uuid,
@@ -102,12 +103,38 @@ class TestTagUpdating(PservTestCase):
         post_mock = MagicMock(return_value=response)
         self.patch(client, 'post', post_mock)
         name = factory.make_name('tag')
-        result = tags.post_updated_nodes(client, name, uuid,
+        tag_definition = factory.make_name('//')
+        result = tags.post_updated_nodes(client, name, tag_definition, uuid,
             ['add-system-id'], ['remove-1', 'remove-2'])
         self.assertEqual({'added': 1, 'removed': 2}, result)
         url = '/api/1.0/tags/%s/' % (name,)
         post_mock.assert_called_once_with(
             url, op='update_nodes', as_json=True, nodegroup=uuid,
+            definition=tag_definition,
+            add=['add-system-id'], remove=['remove-1', 'remove-2'])
+
+    def test_post_updated_nodes_handles_conflict(self):
+        # If a worker started processing a node late, it might try to post
+        # an updated list with an out-of-date definition. It gets a CONFLICT in
+        # that case, which should be handled.
+        client, uuid = self.fake_cached_knowledge()
+        name = factory.make_name('tag')
+        right_tag_defintion = factory.make_name('//')
+        wrong_tag_definition = factory.make_name('//')
+        content = ("Definition supplied '%s' doesn't match"
+                   " current definition '%s'"
+                   % (wrong_tag_definition, right_tag_defintion))
+        err = urllib2.HTTPError('url', httplib.CONFLICT, content, {}, None)
+        post_mock = MagicMock(side_effect=err)
+        self.patch(client, 'post', post_mock)
+        result = tags.post_updated_nodes(client, name, wrong_tag_definition,
+            uuid, ['add-system-id'], ['remove-1', 'remove-2'])
+        # self.assertEqual({'added': 1, 'removed': 2}, result)
+        url = '/api/1.0/tags/%s/' % (name,)
+        self.assertEqual({}, result)
+        post_mock.assert_called_once_with(
+            url, op='update_nodes', as_json=True, nodegroup=uuid,
+            definition=wrong_tag_definition,
             add=['add-system-id'], remove=['remove-1', 'remove-2'])
 
     def test_process_batch_evaluates_xpath(self):
@@ -152,7 +179,8 @@ class TestTagUpdating(PservTestCase):
         self.patch(MAASClient, 'post', post_fake)
         tag_name = factory.make_name('tag')
         nodegroup_uuid = get_recorded_nodegroup_uuid()
-        tags.process_node_tags(tag_name, '//node')
+        tag_definition = '//node'
+        tags.process_node_tags(tag_name, tag_definition)
         nodegroup_url = '/api/1.0/nodegroups/%s/' % (nodegroup_uuid,)
         tag_url = '/api/1.0/tags/%s/' % (tag_name,)
         self.assertEqual([((nodegroup_url,), {'op': 'list_nodes'})],
@@ -166,6 +194,7 @@ class TestTagUpdating(PservTestCase):
                           {'as_json': True,
                            'op': 'update_nodes',
                            'nodegroup': nodegroup_uuid,
+                           'definition': tag_definition,
                            'add': ['system-id1'],
                            'remove': ['system-id2'],
                           })], post_update_fake.calls)
@@ -187,10 +216,11 @@ class TestTagUpdating(PservTestCase):
             MultiFakeMethod([fake_first, fake_second]))
         self.patch(tags, 'post_updated_nodes')
         tag_name = factory.make_name('tag')
-        tags.process_node_tags(tag_name, '//node', batch_size=2)
+        tag_definition = '//node'
+        tags.process_node_tags(tag_name, tag_definition, batch_size=2)
         tags.get_cached_knowledge.assert_called_once_with()
         tags.get_nodes_for_node_group.assert_called_once_with(client, uuid)
         self.assertEqual([((client, uuid, ['a', 'b']), {})], fake_first.calls)
         self.assertEqual([((client, uuid, ['c']), {})], fake_second.calls)
         tags.post_updated_nodes.assert_called_once_with(
-            client, tag_name, uuid, ['a', 'c'], ['b'])
+            client, tag_name, tag_definition, uuid, ['a', 'c'], ['b'])
