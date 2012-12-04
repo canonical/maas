@@ -707,21 +707,6 @@ class AnonNodesHandler(AnonymousOperationsHandler):
         """Accept a node's enlistment: not allowed to anonymous users."""
         raise Unauthorized("You must be logged in to accept nodes.")
 
-    @operation(idempotent=False)
-    def check_commissioning(self, request):
-        """Check all commissioning nodes to see if they are taking too long.
-
-        Anything that has been commissioning for longer than
-        settings.COMMISSIONING_TIMEOUT is moved into the FAILED_TESTS status.
-        """
-        interval = timedelta(minutes=settings.COMMISSIONING_TIMEOUT)
-        cutoff = datetime.now() - interval
-        query = Node.objects.filter(
-            status=NODE_STATUS.COMMISSIONING, updated__lte=cutoff)
-        query.update(status=NODE_STATUS.FAILED_TESTS)
-        # Note that Django doesn't call save() on updated nodes here,
-        # but I don't think anything requires its effects anyway.
-
     @classmethod
     def resource_uri(cls, *args, **kwargs):
         return ('nodes_handler', [])
@@ -838,6 +823,23 @@ class NodesHandler(OperationsHandler):
         nodes = nodes.filter(status=NODE_STATUS.DECLARED)
         nodes = [node.accept_enlistment(request.user) for node in nodes]
         return filter(None, nodes)
+
+    @operation(idempotent=False)
+    def check_commissioning(self, request):
+        """Check all commissioning nodes to see if they are taking too long.
+
+        Anything that has been commissioning for longer than
+        settings.COMMISSIONING_TIMEOUT is moved into the FAILED_TESTS status.
+        """
+        interval = timedelta(minutes=settings.COMMISSIONING_TIMEOUT)
+        cutoff = datetime.now() - interval
+        query = Node.objects.filter(
+            status=NODE_STATUS.COMMISSIONING, updated__lte=cutoff)
+        results = list(query)
+        query.update(status=NODE_STATUS.FAILED_TESTS)
+        # Note that Django doesn't call save() on updated nodes here,
+        # but I don't think anything requires its effects anyway.
+        return results
 
     @operation(idempotent=False)
     def release(self, request):
