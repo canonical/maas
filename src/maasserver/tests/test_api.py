@@ -3285,24 +3285,28 @@ class APIErrorsTest(APIv10TestMixin, TransactionTestCase):
             (response.status_code, response.content))
 
 
-class TestAnonymousCommissioningTimeout(APIv10TestMixin, TestCase):
+class TestCommissioningTimeout(APIv10TestMixin, LoggedInTestCase):
     """Testing of commissioning timeout API."""
 
     def test_check_with_no_action(self):
         node = factory.make_node(status=NODE_STATUS.READY)
-        self.client.post(
+        response = self.client.post(
             self.get_uri('nodes/'), {'op': 'check_commissioning'})
         # Anything that's not commissioning should be ignored.
         node = reload_object(node)
-        self.assertEqual(NODE_STATUS.READY, node.status)
+        self.assertEqual(
+            (httplib.OK, NODE_STATUS.READY),
+            (response.status_code, node.status))
 
     def test_check_with_commissioning_but_not_expired_node(self):
         node = factory.make_node(
             status=NODE_STATUS.COMMISSIONING)
-        self.client.post(
+        response = self.client.post(
             self.get_uri('nodes/'), {'op': 'check_commissioning'})
         node = reload_object(node)
-        self.assertEqual(NODE_STATUS.COMMISSIONING, node.status)
+        self.assertEqual(
+            (httplib.OK, NODE_STATUS.COMMISSIONING),
+            (response.status_code, node.status))
 
     def test_check_with_commissioning_and_expired_node(self):
         # Have an interval 1 second longer than the timeout.
@@ -3312,10 +3316,19 @@ class TestAnonymousCommissioningTimeout(APIv10TestMixin, TestCase):
             status=NODE_STATUS.COMMISSIONING, created=datetime.now(),
             updated=updated_at)
 
-        self.client.post(
+        response = self.client.post(
             self.get_uri('nodes/'), {'op': 'check_commissioning'})
-        node = reload_object(node)
-        self.assertEqual(NODE_STATUS.FAILED_TESTS, node.status)
+        self.assertEqual(
+            (
+                httplib.OK,
+                NODE_STATUS.FAILED_TESTS,
+                [node.system_id]
+            ),
+            (
+                response.status_code,
+                reload_object(node).status,
+                [node['system_id'] for node in json.loads(response.content)],
+            ))
 
 
 class TestPXEConfigAPI(AnonAPITestCase):
