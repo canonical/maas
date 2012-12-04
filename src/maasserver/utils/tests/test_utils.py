@@ -18,7 +18,10 @@ from django.conf import settings
 from django.core.urlresolvers import reverse
 from django.http import HttpRequest
 from django.test.client import RequestFactory
-from maasserver.enum import NODE_STATUS_CHOICES
+from maasserver.enum import (
+    NODE_STATUS_CHOICES,
+    NODEGROUPINTERFACE_MANAGEMENT,
+    )
 from maasserver.models import (
     NodeGroup,
     nodegroupinterface,
@@ -210,6 +213,14 @@ class TestFindNodegroup(DjangoTestCase):
         self.assertEqual(
             nodegroup,
             find_nodegroup(get_request(ip)))
+
+    def test_find_nodegroup_looks_up_only_configured_interfaces(self):
+        network = IPNetwork("192.168.41.0/24")
+        factory.make_node_group(
+            network=network,
+            management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
+        ip = factory.getRandomIPInNetwork(network)
+        self.assertIsNone(find_nodegroup(get_request(ip)))
 
     def test_find_nodegroup_accepts_any_ip_in_nodegroup_subnet(self):
         nodegroup = factory.make_node_group(
