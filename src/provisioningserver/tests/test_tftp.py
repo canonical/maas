@@ -23,6 +23,7 @@ from urlparse import (
 
 from maastesting.factory import factory
 from maastesting.testcase import TestCase
+from provisioningserver import tftp as tftp_module
 from provisioningserver.pxe.tftppath import compose_config_path
 from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
 from provisioningserver.tftp import (
@@ -211,6 +212,9 @@ class TestTFTPBackend(TestCase):
     def test_get_reader_config_file(self):
         # For paths matching re_config_file, TFTPBackend.get_reader() returns
         # a Deferred that will yield a BytesReader.
+        cluster_uuid = factory.getRandomUUID()
+        self.patch(tftp_module, 'get_cluster_uuid').return_value = (
+            cluster_uuid)
         mac = factory.getRandomMACAddress(b"-")
         config_path = compose_config_path(mac)
         backend = TFTPBackend(self.make_dir(), b"http://example.com/")
@@ -240,6 +244,7 @@ class TestTFTPBackend(TestCase):
             "mac": mac,
             "local": call_context["local"][0],  # address only.
             "remote": call_context["remote"][0],  # address only.
+            "cluster_uuid": cluster_uuid,
             }
         observed_params = json.loads(output)
         self.assertEqual(expected_params, observed_params)

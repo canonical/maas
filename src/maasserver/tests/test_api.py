@@ -56,6 +56,7 @@ from maasserver.api import (
     describe,
     DISPLAYED_NODEGROUP_FIELDS,
     extract_constraints,
+    find_nodegroup_for_pxeconfig_request,
     store_node_power_parameters,
     )
 from maasserver.enum import (
@@ -3361,7 +3362,7 @@ class TestPXEConfigAPI(AnonAPITestCase):
             self.get_pxeconfig(),
             ContainsAll(KernelParameters._fields))
 
-    def test_pxeconfig_returns_data_for_known_node(self):
+    def test_pxeconfig_returns_success_for_known_node(self):
         params = self.get_mac_params()
         response = self.client.get(reverse('pxeconfig'), params)
         self.assertEqual(httplib.OK, response.status_code)
@@ -3371,7 +3372,7 @@ class TestPXEConfigAPI(AnonAPITestCase):
         response = self.client.get(reverse('pxeconfig'), params)
         self.assertEqual(httplib.NO_CONTENT, response.status_code)
 
-    def test_pxeconfig_returns_data_for_detailed_but_unknown_node(self):
+    def test_pxeconfig_returns_success_for_detailed_but_unknown_node(self):
         architecture = factory.getRandomEnum(ARCHITECTURE)
         arch, subarch = architecture.split('/')
         params = dict(
@@ -3483,6 +3484,19 @@ class TestPXEConfigAPI(AnonAPITestCase):
         self.assertEqual(
             compose_preseed_url(node),
             json.loads(response.content)["preseed_url"])
+
+    def find_nodegroup_for_pxeconfig_request_uses_cluster_uuid(self):
+        # find_nodegroup_for_pxeconfig_request returns the nodegroup
+        # identified by the cluster_uuid parameter, if given.  It
+        # completely ignores the other node or request details, as shown
+        # here by passing a uuid for a different cluster.
+        params = self.get_mac_params()
+        nodegroup = factory.make_node_group()
+        params['cluster_uuid'] = nodegroup.uuid
+        request = RequestFactory.get(reverse('pxeconfig'), **params)
+        self.assertEqual(
+            nodegroup,
+            find_nodegroup_for_pxeconfig_request(request))
 
     def test_preseed_url_for_known_node_uses_nodegroup_maas_url(self):
         ng_url = 'http://%s' % factory.make_name('host')
