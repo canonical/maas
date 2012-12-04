@@ -21,7 +21,7 @@ from maasserver.utils import absolute_reverse
 import yaml
 
 
-def compose_cloud_init_preseed(token):
+def compose_cloud_init_preseed(token, base_url=''):
     """Compose the preseed value for a node in any state but Commissioning."""
     credentials = urlencode({
         'oauth_consumer_key': token.consumer.key,
@@ -40,7 +40,8 @@ def compose_cloud_init_preseed(token):
     # ks_meta, and it gets fed straight into debconf.
     preseed_items = [
         ('datasources', 'multiselect', 'MAAS'),
-        ('maas-metadata-url', 'string', absolute_reverse('metadata')),
+        ('maas-metadata-url', 'string', absolute_reverse(
+            'metadata', base_url=base_url)),
         ('maas-metadata-credentials', 'string', credentials),
         ('local-cloud-config', 'string', local_config)
         ]
@@ -54,12 +55,13 @@ def compose_cloud_init_preseed(token):
         for item_name, item_type, item_value in preseed_items)
 
 
-def compose_commissioning_preseed(token):
+def compose_commissioning_preseed(token, base_url=''):
     """Compose the preseed value for a Commissioning node."""
     return "#cloud-config\n%s" % yaml.safe_dump({
         'datasource': {
             'MAAS': {
-                'metadata_url': absolute_reverse('metadata'),
+                'metadata_url': absolute_reverse(
+                    'metadata', base_url=base_url),
                 'consumer_key': token.consumer.key,
                 'token_key': token.key,
                 'token_secret': token.secret,
@@ -86,7 +88,8 @@ def compose_preseed(node):
     # Circular import.
     from metadataserver.models import NodeKey
     token = NodeKey.objects.get_token_for_node(node)
+    base_url = node.nodegroup.maas_url
     if node.status == NODE_STATUS.COMMISSIONING:
-        return compose_commissioning_preseed(token)
+        return compose_commissioning_preseed(token, base_url)
     else:
-        return compose_cloud_init_preseed(token)
+        return compose_cloud_init_preseed(token, base_url)

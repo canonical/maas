@@ -178,10 +178,18 @@ class NodeListView(PaginatedListView):
 
 def enlist_preseed_view(request):
     """View method to display the enlistment preseed."""
+    warning_message = (
+        "The URL mentioned in the following enlistment preseed will "
+        "be different depending on which cluster controller is "
+        "responsible for the enlisting node.  The URL shown here is for "
+        "nodes handled by the cluster controller located in the region "
+        "controller's network."
+        )
+    context = RequestContext(request, {'warning_message': warning_message})
     return render_to_response(
         'maasserver/enlist_preseed.html',
         {'preseed': mark_safe(get_enlist_preseed())},
-        context_instance=RequestContext(request))
+        context_instance=context)
 
 
 class NodeViewMixin:

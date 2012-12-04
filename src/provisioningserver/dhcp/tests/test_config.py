@@ -27,7 +27,6 @@ sample_template = dedent("""\
     {{omapi_key}}
     {{subnet}}
     {{subnet_mask}}
-    {{next_server}}
     {{broadcast_ip}}
     {{dns_servers}}
     {{router_ip}}
@@ -45,7 +44,6 @@ def make_sample_params():
         omapi_key="random",
         subnet="10.0.0.0",
         subnet_mask="255.0.0.0",
-        next_server="10.0.0.1",
         broadcast_ip="10.255.255.255",
         dns_servers="10.1.0.1 10.1.0.2",
         router_ip="10.0.0.2",

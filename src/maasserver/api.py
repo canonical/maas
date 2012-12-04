@@ -165,7 +165,7 @@ from maasserver.server_address import get_maas_facing_server_address
 from maasserver.utils import (
     absolute_reverse,
     build_absolute_uri,
-    get_origin_ip,
+    find_nodegroup,
     map_enum,
     strip_domain,
     )
@@ -649,9 +649,9 @@ def create_node(request):
         # If 'nodegroup' is not explicitely specified, get the origin of the
         # request to figure out which nodegroup the new node should be
         # attached to.
-        origin_ip = get_origin_ip(request)
-        if origin_ip is not None:
-            altered_query_data['nodegroup'] = origin_ip
+        nodegroup = find_nodegroup(request)
+        if nodegroup is not None:
+            altered_query_data['nodegroup'] = nodegroup
 
     Form = get_node_create_form(request.user)
     form = Form(altered_query_data)
@@ -1179,6 +1179,7 @@ class AnonNodeGroupsHandler(AnonymousOperationsHandler):
                     raise ValidationError(form.errors)
         else:
             if existing_nodegroup.status == NODEGROUP_STATUS.ACCEPTED:
+                update_nodegroup_maas_url(existing_nodegroup, request)
                 # The nodegroup exists and is validated, return the RabbitMQ
                 return get_celery_credentials()
             elif existing_nodegroup.status == NODEGROUP_STATUS.REJECTED:
@@ -1186,6 +1187,13 @@ class AnonNodeGroupsHandler(AnonymousOperationsHandler):
             elif existing_nodegroup.status == NODEGROUP_STATUS.PENDING:
                 return HttpResponse(
                     "Awaiting admin approval.", status=httplib.ACCEPTED)
+
+
+def update_nodegroup_maas_url(nodegroup, request):
+    """Update `nodegroup.maas_url` from the given `request`."""
+    path = request.META["SCRIPT_NAME"]
+    nodegroup.maas_url = build_absolute_uri(request, path)
+    nodegroup.save()
 
 
 class NodeGroupsHandler(OperationsHandler):
@@ -1844,7 +1852,8 @@ def pxeconfig(request):
         # The node's hostname may include a domain, but we ignore that
         # and use the one from the nodegroup instead.
         hostname = strip_domain(node.hostname)
-        domain = node.nodegroup.name
+        nodegroup = node.nodegroup
+        domain = nodegroup.name
     else:
         try:
             pxelinux_arch = request.GET['arch']
@@ -1878,7 +1887,8 @@ def pxeconfig(request):
             # 1-1 mapping.
             subarch = pxelinux_subarch
 
-        preseed_url = compose_enlistment_preseed_url()
+        nodegroup = find_nodegroup(request)
+        preseed_url = compose_enlistment_preseed_url(nodegroup=nodegroup)
         hostname = 'maas-enlist'
         domain = Config.objects.get_config('enlistment_domain')
 
@@ -1888,7 +1898,7 @@ def pxeconfig(request):
         series = node.get_distro_series()
 
     purpose = get_boot_purpose(node)
-    server_address = get_maas_facing_server_address()
+    server_address = get_maas_facing_server_address(nodegroup=nodegroup)
     cluster_address = get_mandatory_param(request.GET, "local")
 
     params = KernelParameters(

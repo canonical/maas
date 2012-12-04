@@ -619,6 +619,22 @@ class NodeViewsTest(LoggedInTestCase):
                 for a in document.xpath("//div[@class='pagination']//a")])
 
 
+class NodeEnlistmentPreseedViewTest(LoggedInTestCase):
+
+    def test_enlistpreseedview_displays_preseed_data(self):
+        response = self.client.get(reverse('enlist-preseed-view'))
+        # Simply test that the preseed looks ok.
+        self.assertIn('metadata_url', response.content)
+
+    def test_enlistpreseedview_display_warning_about_url(self):
+        response = self.client.get(reverse('enlist-preseed-view'))
+        message_chunk = (
+            "The URL mentioned in the following enlistment preseed will "
+            "be different depending on"
+            )
+        self.assertIn(message_chunk, response.content)
+
+
 class NodePreseedViewTest(LoggedInTestCase):
 
     def test_preseedview_node_displays_preseed_data(self):

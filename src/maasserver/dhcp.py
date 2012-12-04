@@ -20,7 +20,6 @@ from maasserver.enum import (
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
     )
-from maasserver.server_address import get_maas_facing_server_address
 from netaddr import IPAddress
 from provisioningserver.tasks import (
     restart_dhcp_server,
@@ -52,12 +51,6 @@ def configure_dhcp(nodegroup):
     # server.
     nodegroup.ensure_dhcp_key()
 
-    # Use the server's address (which is where the central TFTP
-    # server is) for the next_server setting.  We'll want to proxy
-    # it on the local worker later, and then we can use
-    # next_server=self.worker_ip.
-    next_server = get_maas_facing_server_address()
-
     interface = nodegroup.get_managed_interface()
     subnet = str(
         IPAddress(interface.ip_range_low) &
@@ -66,13 +59,12 @@ def configure_dhcp(nodegroup):
         options={'queue': nodegroup.work_queue})
     task_kwargs = dict(
         subnet=subnet,
-        next_server=next_server,
         omapi_key=nodegroup.dhcp_key,
         subnet_mask=interface.subnet_mask,
         dhcp_interfaces=interface.interface,
         broadcast_ip=interface.broadcast_ip,
         router_ip=interface.router_ip,
-        dns_servers=get_dns_server_address(),
+        dns_servers=get_dns_server_address(nodegroup),
         ip_range_low=interface.ip_range_low,
         ip_range_high=interface.ip_range_high,
         callback=reload_dhcp_server_subtask,

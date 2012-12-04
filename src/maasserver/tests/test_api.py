@@ -49,7 +49,10 @@ from fixtures import (
     EnvironmentVariableFixture,
     Fixture,
     )
-from maasserver import api
+from maasserver import (
+    api,
+    server_address,
+    )
 from maasserver.api import (
     describe,
     DISPLAYED_NODEGROUP_FIELDS,
@@ -149,6 +152,7 @@ from testscenarios import multiply_scenarios
 from testtools.matchers import (
     AfterPreprocessing,
     AllMatch,
+    Annotate,
     Contains,
     Equals,
     Is,
@@ -758,7 +762,7 @@ class NodeHostnameEnlistmentTest(APIv10TestMixin, MultipleUsersScenarios,
                     NODE_AFTER_COMMISSIONING_ACTION.DEFAULT,
                 'mac_addresses': [factory.getRandomMACAddress()],
             },
-            HTTP_HOST=origin_ip + ':90')
+            REMOTE_ADDR=origin_ip)
         self.assertEqual(httplib.OK, response.status_code, response.content)
         parsed_result = json.loads(response.content)
         node = Node.objects.get(system_id=parsed_result.get('system_id'))
@@ -3497,6 +3501,43 @@ class TestPXEConfigAPI(AnonAPITestCase):
             compose_enlistment_preseed_url(),
             json.loads(response.content)["preseed_url"])
 
+    def test_pxeconfig_enlistment_preseed_url_detects_request_origin(self):
+        self.silence_get_ephemeral_name()
+        hostname = factory.make_hostname()
+        ng_url = 'http://%s' % hostname
+        network = IPNetwork("10.1.1/24")
+        ip = factory.getRandomIPInNetwork(network)
+        self.patch(server_address, 'gethostbyname', Mock(return_value=ip))
+        factory.make_node_group(maas_url=ng_url, network=network)
+        params = self.get_default_params()
+
+        # Simulate that the request originates from ip by setting
+        # 'REMOTE_ADDR'.
+        response = self.client.get(
+            reverse('pxeconfig'), params, REMOTE_ADDR=ip)
+        self.assertThat(
+            json.loads(response.content)["preseed_url"],
+            StartsWith(ng_url))
+
+    def test_pxeconfig_enlistment_log_host_url_detects_request_origin(self):
+        self.silence_get_ephemeral_name()
+        hostname = factory.make_hostname()
+        ng_url = 'http://%s' % hostname
+        network = IPNetwork("10.1.1/24")
+        ip = factory.getRandomIPInNetwork(network)
+        mock = self.patch(
+            server_address, 'gethostbyname', Mock(return_value=ip))
+        factory.make_node_group(maas_url=ng_url, network=network)
+        params = self.get_default_params()
+
+        # Simulate that the request originates from ip by setting
+        # 'REMOTE_ADDR'.
+        response = self.client.get(
+            reverse('pxeconfig'), params, REMOTE_ADDR=ip)
+        self.assertEqual(
+            (ip, hostname),
+            (json.loads(response.content)["log_host"], mock.call_args[0][0]))
+
     def test_pxeconfig_has_preseed_url_for_known_node(self):
         params = self.get_mac_params()
         node = MACAddress.objects.get(mac_address=params['mac']).node
@@ -3504,6 +3545,25 @@ class TestPXEConfigAPI(AnonAPITestCase):
         self.assertEqual(
             compose_preseed_url(node),
             json.loads(response.content)["preseed_url"])
+
+    def test_preseed_url_for_known_node_uses_nodegroup_maas_url(self):
+        ng_url = 'http://%s' % factory.make_name('host')
+        network = IPNetwork("10.1.1/24")
+        ip = factory.getRandomIPInNetwork(network)
+        self.patch(server_address, 'gethostbyname', Mock(return_value=ip))
+        nodegroup = factory.make_node_group(maas_url=ng_url, network=network)
+        params = self.get_mac_params()
+        node = MACAddress.objects.get(mac_address=params['mac']).node
+        node.nodegroup = nodegroup
+        node.save()
+
+        # Simulate that the request originates from ip by setting
+        # 'REMOTE_ADDR'.
+        response = self.client.get(
+            reverse('pxeconfig'), params, REMOTE_ADDR=ip)
+        self.assertThat(
+            json.loads(response.content)["preseed_url"],
+            StartsWith(ng_url))
 
     def test_get_boot_purpose_unknown_node(self):
         # A node that's not yet known to MAAS is assumed to be enlisting,
@@ -3794,6 +3854,87 @@ class TestAnonNodeGroupsAPI(AnonAPITestCase):
         parsed_result = json.loads(response.content)
         self.assertIn('application/json', response['Content-Type'])
         self.assertEqual({'BROKER_URL': fake_broker_url}, parsed_result)
+
+    def assertSuccess(self, response):
+        """Assert that `response` was successful (i.e. HTTP 2xx)."""
+        self.assertThat(
+            {code for code in httplib.responses if code // 100 == 2},
+            Annotate(response, Contains(response.status_code)))
+
+    def test_register_new_nodegroup_does_not_record_maas_url(self):
+        # When registering a cluster, the URL with which the call was made
+        # (i.e. from the perspective of the cluster) is *not* recorded.
+        self.create_configured_master()
+        name = factory.make_name('name')
+        uuid = factory.getRandomUUID()
+        update_maas_url = self.patch(api, "update_nodegroup_maas_url")
+        response = self.client.post(
+            reverse('nodegroups_handler'),
+            {'op': 'register', 'name': name, 'uuid': uuid})
+        self.assertSuccess(response)
+        self.assertEqual([], update_maas_url.call_args_list)
+
+    def test_register_accepted_nodegroup_updates_maas_url(self):
+        # When registering an existing, accepted, cluster, the URL with which
+        # the call was made is updated.
+        self.create_configured_master()
+        nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
+        update_maas_url = self.patch(api, "update_nodegroup_maas_url")
+        response = self.client.post(
+            reverse('nodegroups_handler'),
+            {'op': 'register', 'uuid': nodegroup.uuid})
+        self.assertSuccess(response)
+        update_maas_url.assert_called_once_with(nodegroup, ANY)
+
+    def test_register_pending_nodegroup_does_not_update_maas_url(self):
+        # When registering an existing, pending, cluster, the URL with which
+        # the call was made is *not* updated.
+        self.create_configured_master()
+        nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.PENDING)
+        update_maas_url = self.patch(api, "update_nodegroup_maas_url")
+        response = self.client.post(
+            reverse('nodegroups_handler'),
+            {'op': 'register', 'uuid': nodegroup.uuid})
+        self.assertSuccess(response)
+        self.assertEqual([], update_maas_url.call_args_list)
+
+    def test_register_rejected_nodegroup_does_not_update_maas_url(self):
+        # When registering an existing, pending, cluster, the URL with which
+        # the call was made is *not* updated.
+        self.create_configured_master()
+        nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.REJECTED)
+        update_maas_url = self.patch(api, "update_nodegroup_maas_url")
+        response = self.client.post(
+            reverse('nodegroups_handler'),
+            {'op': 'register', 'uuid': nodegroup.uuid})
+        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual([], update_maas_url.call_args_list)
+
+    def test_register_master_nodegroup_does_not_update_maas_url(self):
+        # When registering the master cluster, the URL with which the call was
+        # made is *not* updated.
+        name = factory.make_name('name')
+        update_maas_url = self.patch(api, "update_nodegroup_maas_url")
+        response = self.client.post(
+            reverse('nodegroups_handler'),
+            {'op': 'register', 'name': name, 'uuid': 'master'})
+        self.assertSuccess(response)
+        self.assertEqual([], update_maas_url.call_args_list)
+        # The new node group's maas_url field remains empty.
+        nodegroup = NodeGroup.objects.get(uuid='master')
+        self.assertEqual("", nodegroup.maas_url)
+
+
+class TestUpdateNodeGroupMAASURL(TestCase):
+    """Tests for `update_nodegroup_maas_url`."""
+
+    def test_update_from_request(self):
+        request_factory = RequestFactory(SCRIPT_NAME="/script")
+        request = request_factory.get(
+            "/script/path", SERVER_NAME="example.com")
+        nodegroup = factory.make_node_group()
+        api.update_nodegroup_maas_url(nodegroup, request)
+        self.assertEqual("http://example.com/script", nodegroup.maas_url)
 
 
 def dict_subset(obj, fields):

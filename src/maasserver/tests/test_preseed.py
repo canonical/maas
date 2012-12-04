@@ -26,12 +26,14 @@ from maasserver.preseed import (
     compose_preseed_url,
     GENERIC_FILENAME,
     get_enlist_preseed,
+    get_node_preseed_context,
     get_preseed,
     get_preseed_context,
     get_preseed_filenames,
     get_preseed_template,
     load_preseed_template,
     PreseedTemplate,
+    render_enlistment_preseed,
     render_preseed,
     split_subarch,
     TemplateNotFoundError,
@@ -41,7 +43,10 @@ from maasserver.testing.testcase import TestCase
 from maasserver.utils import map_enum
 from testtools.matchers import (
     AllMatch,
+    Contains,
     IsInstance,
+    MatchesAll,
+    Not,
     StartsWith,
     )
 
@@ -289,23 +294,25 @@ class TestPreseedContext(TestCase):
     """Tests for `get_preseed_context`."""
 
     def test_get_preseed_context_contains_keys(self):
-        node = factory.make_node()
         release = factory.getRandomString()
-        context = get_preseed_context(node, release)
-        self.assertItemsEqual(
-            ['node', 'release', 'metadata_enlist_url',
-             'server_host', 'server_url', 'preseed_data',
-             'node_disable_pxe_url', 'node_disable_pxe_data'],
-            context)
-
-    def test_get_preseed_context_if_node_None(self):
-        # If the provided Node is None (when're in the context of an
-        # enlistment preseed) the returned context does not include the
-        # node context.
-        release = factory.getRandomString()
-        context = get_preseed_context(None, release)
+        nodegroup = factory.make_node_group(maas_url=factory.getRandomString())
+        context = get_preseed_context(release, nodegroup)
         self.assertItemsEqual(
             ['release', 'metadata_enlist_url', 'server_host', 'server_url'],
+            context)
+
+
+class TestNodePreseedContext(TestCase):
+    """Tests for `get_node_preseed_context`."""
+
+    def test_get_node_preseed_context_contains_keys(self):
+        node = factory.make_node()
+        release = factory.getRandomString()
+        context = get_node_preseed_context(node, release)
+        self.assertItemsEqual(
+            ['node', 'preseed_data', 'node_disable_pxe_url',
+             'node_disable_pxe_data',
+             ],
             context)
 
 
@@ -337,6 +344,37 @@ class TestRenderPreseed(TestCase):
         # The test really is that the preseed is rendered without an
         # error.
         self.assertIsInstance(preseed, str)
+
+    def test_get_preseed_uses_nodegroup_maas_url(self):
+        ng_url = 'http://%s' % factory.make_hostname()
+        ng = factory.make_node_group(maas_url=ng_url)
+        maas_url = 'http://%s' % factory.make_hostname()
+        node = factory.make_node(
+            nodegroup=ng, status=NODE_STATUS.COMMISSIONING)
+        self.patch(settings, 'DEFAULT_MAAS_URL', maas_url)
+        preseed = render_preseed(node, self.preseed, "precise")
+        self.assertThat(
+            preseed, MatchesAll(*[Contains(ng_url), Not(Contains(maas_url))]))
+
+
+class TestRenderEnlistmentPreseed(TestCase):
+    """Tests for `render_enlistment_preseed`."""
+
+    def test_render_enlistment_preseed(self):
+        preseed = render_enlistment_preseed(PRESEED_TYPE.ENLIST, "precise")
+        # The test really is that the preseed is rendered without an
+        # error.
+        self.assertIsInstance(preseed, str)
+
+    def test_get_preseed_uses_nodegroup_maas_url(self):
+        ng_url = 'http://%s' % factory.make_hostname()
+        maas_url = 'http://%s' % factory.make_hostname()
+        self.patch(settings, 'DEFAULT_MAAS_URL', maas_url)
+        nodegroup = factory.make_node_group(maas_url=ng_url)
+        preseed = render_enlistment_preseed(
+            PRESEED_TYPE.ENLIST, "precise", nodegroup=nodegroup)
+        self.assertThat(
+            preseed, MatchesAll(*[Contains(ng_url), Not(Contains(maas_url))]))
 
 
 class TestPreseedMethods(TestCase):

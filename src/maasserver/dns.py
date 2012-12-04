@@ -105,14 +105,13 @@ def warn_loopback(ip):
         logging.getLogger('maas').warn(WARNING_MESSAGE % ip)
 
 
-def get_dns_server_address():
+def get_dns_server_address(nodegroup=None):
     """Return the DNS server's IP address.
 
-    That address is derived from DEFAULT_MAAS_URL in order to get a sensible
-    default and at the same time give a possibility to the user to change this.
+    That address is derived from DEFAULT_MAAS_URL or nodegroup.maas_url.
     """
     try:
-        ip = get_maas_facing_server_address()
+        ip = get_maas_facing_server_address(nodegroup)
     except socket.error as e:
         raise DNSException(
             "Unable to find MAAS server IP address: %s.  "

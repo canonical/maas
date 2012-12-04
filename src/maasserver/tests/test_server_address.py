@@ -15,16 +15,16 @@ __all__ = []
 from django.conf import settings
 from maasserver import server_address
 from maasserver.server_address import get_maas_facing_server_address
-from maastesting.factory import factory
+from maasserver.testing.factory import factory
+from maasserver.testing.testcase import TestCase
 from maastesting.fakemethod import FakeMethod
-from maastesting.testcase import TestCase
 from netaddr import IPNetwork
 
 
 class TestServerAddress(TestCase):
 
     def make_hostname(self):
-        return '%s.example.com' % factory.make_name('host').lower()
+        return '%s.example.com' % factory.make_hostname()
 
     def set_DEFAULT_MAAS_URL(self, hostname=None, with_port=False):
         """Patch DEFAULT_MAAS_URL to be a (partly) random URL."""
@@ -48,6 +48,13 @@ class TestServerAddress(TestCase):
         self.set_DEFAULT_MAAS_URL(ip)
         self.assertEqual(ip, server_address.get_maas_facing_server_host())
 
+    def test_get_maas_facing_server_host_returns_nodegroup_maas_url(self):
+        hostname = factory.make_hostname()
+        maas_url = 'http://%s' % hostname
+        nodegroup = factory.make_node_group(maas_url=maas_url)
+        self.assertEqual(
+            hostname, server_address.get_maas_facing_server_host(nodegroup))
+
     def test_get_maas_facing_server_host_strips_out_port(self):
         hostname = self.make_hostname()
         self.set_DEFAULT_MAAS_URL(hostname, with_port=True)
@@ -63,6 +70,13 @@ class TestServerAddress(TestCase):
         ip = factory.getRandomIPInNetwork(IPNetwork('127.0.0.0/8'))
         self.set_DEFAULT_MAAS_URL(hostname=ip)
         self.assertEqual(ip, get_maas_facing_server_address())
+
+    def test_get_maas_facing_server_address_returns_nodegroup_maas_url(self):
+        ip = factory.getRandomIPInNetwork(IPNetwork('127.0.0.0/8'))
+        maas_url = 'http://%s' % ip
+        nodegroup = factory.make_node_group(maas_url=maas_url)
+        self.assertEqual(
+            ip, server_address.get_maas_facing_server_host(nodegroup))
 
     def test_get_maas_facing_server_address_resolves_hostname(self):
         ip = factory.getRandomIPAddress()

@@ -157,7 +157,7 @@ class Factory(maastesting.factory.Factory):
                         router_ip=None, network=None, subnet_mask=None,
                         broadcast_ip=None, ip_range_low=None,
                         ip_range_high=None, interface=None, management=None,
-                        status=None, **kwargs):
+                        status=None, maas_url='', **kwargs):
         """Create a :class:`NodeGroup`.
 
         If network (an instance of IPNetwork) is provided, use it to populate
@@ -182,6 +182,7 @@ class Factory(maastesting.factory.Factory):
         ng = NodeGroup.objects.new(
             name=name, uuid=uuid, **interface_settings)
         ng.status = status
+        ng.maas_url = maas_url
         ng.save()
         return ng
 

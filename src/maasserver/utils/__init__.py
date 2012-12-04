@@ -13,14 +13,13 @@ __metaclass__ = type
 __all__ = [
     'absolute_reverse',
     'build_absolute_uri',
+    'find_nodegroup',
     'get_db_state',
-    'get_origin_ip',
     'ignore_unused',
     'map_enum',
     'strip_domain',
     ]
 
-import socket
 from urllib import urlencode
 from urlparse import urljoin
 
@@ -67,7 +66,7 @@ def map_enum(enum_class):
     }
 
 
-def absolute_reverse(view_name, query=None, *args, **kwargs):
+def absolute_reverse(view_name, query=None, base_url=None, *args, **kwargs):
     """Return the absolute URL (i.e. including the URL scheme specifier and
     the network location of the MAAS server).  Internally this method simply
     calls Django's 'reverse' method and prefixes the result of that call with
@@ -78,11 +77,14 @@ def absolute_reverse(view_name, query=None, *args, **kwargs):
     :param query: Optional query argument which will be passed down to
         urllib.urlencode.  The result of that call will be appended to the
         resulting url.
+    :param base_url: Optional url used as base.  If None is provided, then
+        settings.DEFAULT_MAAS_URL will be used.
     :param args: Positional arguments for Django's 'reverse' method.
     :param kwargs: Named arguments for Django's 'reverse' method.
     """
-    url = urljoin(
-        settings.DEFAULT_MAAS_URL, reverse(view_name, *args, **kwargs))
+    if not base_url:
+        base_url = settings.DEFAULT_MAAS_URL
+    url = urljoin(base_url, reverse(view_name, *args, **kwargs))
     if query is not None:
         url += '?%s' % urlencode(query, doseq=True)
     return url
@@ -107,14 +109,25 @@ def strip_domain(hostname):
     return hostname.split('.', 1)[0]
 
 
-def get_origin_ip(request):
-    """Return the IP address of the originating host of the request.
+def find_nodegroup(request):
+    """Find the nodegroup whose subnet contains the IP Address of the
+    originating host of the request..
 
-    Return the IP address obtained by resolving the host given by
-    request.get_host().
+    The matching nodegroup may have multiple interfaces on the subnet,
+    but there can be only one matching nodegroup.
     """
-    host = request.get_host().split(':')[0]
-    try:
-        return socket.gethostbyname(host)
-    except socket.error:
-        return None
+    # Circular imports.
+    from maasserver.models import NodeGroup
+    ip_address = request.META['REMOTE_ADDR']
+    if ip_address is not None:
+        query = NodeGroup.objects.raw("""
+            SELECT *
+            FROM maasserver_nodegroup
+            WHERE id IN (
+                SELECT nodegroup_id
+                FROM maasserver_nodegroupinterface
+                WHERE (inet %s & subnet_mask) = (ip & subnet_mask)
+            )
+            """, [ip_address])
+        return get_one(query)
+    return None
