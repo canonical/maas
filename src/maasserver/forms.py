@@ -13,6 +13,7 @@ __metaclass__ = type
 __all__ = [
     "AdminNodeWithMACAddressesForm",
     "CommissioningForm",
+    "CommissioningScriptForm",
     "get_action_form",
     "get_node_edit_form",
     "get_node_create_form",
@@ -81,6 +82,8 @@ from maasserver.models.nodegroup import NODEGROUP_CLUSTER_NAME_TEMPLATE
 from maasserver.node_action import compile_node_actions
 from maasserver.power_parameters import POWER_TYPE_PARAMETERS
 from maasserver.utils import strip_domain
+from metadataserver.fields import Bin
+from metadataserver.models import CommissioningScript
 from provisioningserver.enum import (
     POWER_TYPE,
     POWER_TYPE_CHOICES,
@@ -614,7 +617,7 @@ class MAASAndNetworkForm(ConfigForm):
 
 
 class CommissioningForm(ConfigForm):
-    """Settings page, CommissioningF section."""
+    """Settings page, Commissioning section."""
     check_compatibility = forms.BooleanField(
         label="Check component compatibility and certification",
         required=False)
@@ -863,3 +866,26 @@ class TagForm(ModelForm):
             msg = 'Invalid xpath expression: %s' % (e,)
             raise ValidationError({'definition': [msg]})
         return definition
+
+
+class CommissioningScriptForm(forms.Form):
+
+    content = forms.FileField(
+        label="Commissioning script", allow_empty_file=False)
+
+    def __init__(self, instance=None, *args, **kwargs):
+        super(CommissioningScriptForm, self).__init__(*args, **kwargs)
+
+    def clean_content(self):
+        content = self.cleaned_data['content']
+        name = content.name
+        if CommissioningScript.objects.filter(name=name).exists():
+            raise forms.ValidationError(
+                "A script with that name already exists.")
+        return content
+
+    def save(self, *args, **kwargs):
+        content = self.cleaned_data['content']
+        CommissioningScript.objects.create(
+            name=content.name,
+            content=Bin(content.read()))

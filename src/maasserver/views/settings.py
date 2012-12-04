@@ -51,6 +51,7 @@ from maasserver.models import (
     UserProfile,
     )
 from maasserver.views import process_form
+from metadataserver.models import CommissioningScript
 
 
 class AccountsView(DetailView):
@@ -205,7 +206,7 @@ def settings(request):
         messages.info(request, message)
         return HttpResponseRedirect(reverse('settings'))
 
-    # Cluster listings:
+    # Cluster listings.
     accepted_clusters = NodeGroup.objects.filter(
         status=NODEGROUP_STATUS.ACCEPTED).order_by('cluster_name')
     pending_clusters = NodeGroup.objects.filter(
@@ -213,10 +214,14 @@ def settings(request):
     rejected_clusters = NodeGroup.objects.filter(
         status=NODEGROUP_STATUS.REJECTED).order_by('cluster_name')
 
+    # Commissioning scripts.
+    commissioning_scripts = CommissioningScript.objects.all()
+
     return render_to_response(
         'maasserver/settings.html',
         {
             'user_list': user_list,
+            'commissioning_scripts': commissioning_scripts,
             'accepted_clusters': accepted_clusters,
             'pending_clusters': pending_clusters,
             'rejected_clusters': rejected_clusters,

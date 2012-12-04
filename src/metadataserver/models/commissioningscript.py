@@ -64,5 +64,5 @@ class CommissioningScript(Model):
 
     objects = CommissioningScriptManager()
 
-    name = CharField(max_length=255, null=False, editable=False, unique=True)
+    name = CharField(max_length=255, null=False, editable=True, unique=True)
     content = BinaryField(null=False)

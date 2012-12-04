@@ -54,6 +54,10 @@ from maasserver.views.settings_clusters import (
     ClusterInterfaceDelete,
     ClusterInterfaceEdit,
     )
+from maasserver.views.settings_commissioning_scripts import (
+    CommissioningScriptCreate,
+    CommissioningScriptDelete,
+    )
 from maasserver.views.tags import TagView
 
 
@@ -166,6 +170,14 @@ urlpatterns += patterns('maasserver.views',
     adminurl(
         r'^accounts/(?P<username>\w+)/del/$', AccountsDelete.as_view(),
         name='accounts-del'),
+    adminurl(
+        r'^commissioning-scripts/(?P<id>[\w\-]+)/delete/$',
+        CommissioningScriptDelete.as_view(),
+        name='commissioning-script-delete'),
+    adminurl(
+        r'^commissioning-scripts/add/$',
+        CommissioningScriptCreate.as_view(),
+        name='commissioning-script-add'),
 )
 
 # Tag views.

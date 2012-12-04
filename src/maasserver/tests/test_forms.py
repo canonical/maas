@@ -17,6 +17,7 @@ import json
 from django import forms
 from django.contrib.auth.models import User
 from django.core.exceptions import PermissionDenied
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.http import QueryDict
 from maasserver.enum import (
     ARCHITECTURE,
@@ -29,6 +30,7 @@ from maasserver.enum import (
 from maasserver.forms import (
     AdminNodeForm,
     AdminNodeWithMACAddressesForm,
+    CommissioningScriptForm,
     ConfigForm,
     EditUserForm,
     get_action_form,
@@ -62,6 +64,7 @@ from maasserver.node_action import (
 from maasserver.testing import reload_object
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
+from metadataserver.models import CommissioningScript
 from netaddr import IPNetwork
 from provisioningserver.enum import POWER_TYPE_CHOICES
 from testtools.matchers import (
@@ -944,3 +947,29 @@ class TestNodeGroupEdit(TestCase):
         self.assertTrue(form.is_valid())
         form.save()
         self.assertEqual(data['name'], reload_object(nodegroup).name)
+
+
+class TestCommissioningScriptForm(TestCase):
+
+    def test_creates_commissioning_script(self):
+        content = factory.getRandomString()
+        name = factory.make_name('filename')
+        uploaded_file = SimpleUploadedFile(content=content, name=name)
+        form = CommissioningScriptForm(files={'content': uploaded_file})
+        self.assertTrue(form.is_valid(), form._errors)
+        form.save()
+        new_script = CommissioningScript.objects.get(name=name)
+        self.assertThat(
+            new_script,
+            MatchesStructure.byEquality(name=name, content=content))
+
+    def test_raises_if_duplicated_name(self):
+        content = factory.getRandomString()
+        name = factory.make_name('filename')
+        factory.make_commissioning_script(name=name)
+        uploaded_file = SimpleUploadedFile(content=content, name=name)
+        form = CommissioningScriptForm(files={'content': uploaded_file})
+        self.assertEqual(
+            (False, {'content':
+                [u'A script with that name already exists.']}),
+            (form.is_valid(), form._errors))

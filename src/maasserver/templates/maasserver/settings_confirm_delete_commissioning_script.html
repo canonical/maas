@@ -1,0 +1,23 @@
+{% extends "maasserver/base.html" %}
+
+{% block title %}Delete commissioning script{% endblock %}
+{% block page-title %}Delete commissioning script{% endblock %}
+
+{% block content %}
+  <div class="block auto-width">
+    <h2>
+      Are you sure you want to delete the commissioning script
+      '{{ script_to_delete.name }}'?
+      <br />
+    </h2>
+      <p>This action is permanent and can not be undone.</p>
+      <p>
+        <form action="." method="post">{% csrf_token %}
+          <input type="hidden" name="post" value="yes" />
+          <input type="submit" value="Delete commissioning script"
+                 class="right" />
+          <a href="{% url 'settings' %}#commissioning_scripts">Cancel</a>
+        </form>
+      </p>
+  </div>
+{% endblock %}

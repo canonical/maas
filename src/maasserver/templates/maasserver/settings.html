@@ -75,6 +75,11 @@
       <div class="clear"></div>
     </div>
     <div class="divider"></div>
+    <div id="commissioning_scripts" class="block size11 first">
+      {% include "maasserver/settings_commissioning_scripts.html" %}
+      <div class="clear"></div>
+    </div>
+    <div class="divider"></div>
     <div id="commissioning" class="block size7 first">
       <h2>Commissioning</h2>
       <form action="{% url "settings" %}" method="post">
