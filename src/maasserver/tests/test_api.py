@@ -3571,7 +3571,7 @@ class TestAnonNodeGroupsAPI(AnonAPITestCase):
         master.save()
 
     def test_refresh_calls_refresh_worker(self):
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
         response = self.client.post(
             reverse('nodegroups_handler'), {'op': 'refresh_workers'})
         self.assertEqual(httplib.OK, response.status_code)
@@ -4012,7 +4012,7 @@ class TestNodeGroupAPI(APITestCase):
         # path now.
         self.useFixture(
             EnvironmentVariableFixture("MAAS_URL", settings.DEFAULT_MAAS_URL))
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
         refresh_worker(nodegroup)
         self.patch(MAASClient, 'post', Mock())
         leases = factory.make_random_leases()

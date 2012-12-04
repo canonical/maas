@@ -107,7 +107,7 @@ class NodeGroupManager(Manager):
 
     def refresh_workers(self):
         """Send refresh tasks to all node-group workers."""
-        for nodegroup in self.all():
+        for nodegroup in self.filter(status=NODEGROUP_STATUS.ACCEPTED):
             refresh_worker(nodegroup)
 
     def _mass_change_status(self, old_status, new_status):
