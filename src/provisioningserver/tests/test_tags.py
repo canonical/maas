@@ -12,21 +12,21 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
-from apiclient.maas_client import MAASClient
 import httplib
+import urllib2
+
+from apiclient.maas_client import MAASClient
+from fixtures import FakeLogger
 from lxml import etree
 from maastesting.factory import factory
 from maastesting.fakemethod import (
     FakeMethod,
     MultiFakeMethod,
     )
-import urllib2
 from mock import MagicMock
-from provisioningserver.auth import (
-    get_recorded_nodegroup_uuid,
-    )
-from provisioningserver.testing.testcase import PservTestCase
 from provisioningserver import tags
+from provisioningserver.auth import get_recorded_nodegroup_uuid
+from provisioningserver.testing.testcase import PservTestCase
 
 
 class FakeResponse:
@@ -40,6 +40,10 @@ class FakeResponse:
 
 
 class TestTagUpdating(PservTestCase):
+
+    def setUp(self):
+        super(TestTagUpdating, self).setUp()
+        self.useFixture(FakeLogger())
 
     def test_get_cached_knowledge_knows_nothing(self):
         # If we haven't given it any secrets, we should get back nothing

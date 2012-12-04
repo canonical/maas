@@ -34,6 +34,7 @@ __all__ = [
 
 import errno
 import json
+from logging import getLogger
 from os import (
     fstat,
     stat,
@@ -45,7 +46,6 @@ from apiclient.maas_client import (
     MAASOAuth,
     )
 from celery.app import app_or_default
-from celery.log import get_task_logger
 from provisioningserver import cache
 from provisioningserver.auth import (
     get_recorded_api_credentials,
@@ -55,7 +55,7 @@ from provisioningserver.auth import (
 from provisioningserver.dhcp.leases_parser import parse_leases
 
 
-task_logger = get_task_logger(name=__name__)
+logger = getLogger(__name__)
 
 
 # Cache key for the modification time on last-processed leases file.
@@ -157,7 +157,7 @@ def send_leases(leases):
     if None in knowledge.values():
         # The MAAS server hasn't sent us enough information for us to do
         # this yet.  Leave it for another time.
-        task_logger.info(
+        logger.info(
             "Not sending DHCP leases to server: not all required knowledge "
             "received from server yet.  "
             "Missing: %s"
@@ -189,7 +189,7 @@ def upload_leases():
         timestamp, leases = parse_result
         process_leases(timestamp, leases)
     else:
-        task_logger.info(
+        logger.info(
             "The DHCP leases file does not exist.  This is only a problem if "
             "this cluster controller is managing its DHCP server.  If that's "
             "the case then you need to install the 'maas-dhcp' package on "
