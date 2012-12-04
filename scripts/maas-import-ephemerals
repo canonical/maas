@@ -91,6 +91,32 @@ debug() {
 }
 
 
+uniq_major_arches() {
+    # print on stdout a uniq set of arches out of the list of arch/subarch
+    # pairs supplied in $@
+    # Eg. armhf/highbank armhf/armadaxp i386/generic amd64/generic ->
+    #           "armhf\ni386\namd64\n"
+    local arch
+    for arch in "$@"; do echo "${arch%%/*}"; done|uniq
+}
+
+
+subarches() {
+    # print on stdout a list of subarches available for a given major arch $1
+    # given a list of arch/subarch pairs in $2-
+    # Eg. armhf armhf/highbank armhf/armadaxp i386/generic ->
+    #           "highbank\narmadaxp\n"
+    local major_arch="$1" candidate
+    shift
+    for candidate in "$@"; do
+        case "$candidate" in
+            "$major_arch"/*) echo "${candidate#*/}" ;;
+            *) ;;
+        esac
+    done
+}
+
+
 query_remote() {
     # query /query data at CLOUD_IMAGES_ARCHIVE
     # returns 7 values prefixed with 'r_'
@@ -238,6 +264,9 @@ EOF
     [ -z "$initrd" ] || mv "$initrd" "$wd/initrd.gz" ||
         { error "failed to move extracted initrd to $wd/initrd.gz"; return 1; }
 
+    [ ! -d "$exdir/subarch" ] || mv "$exdir/subarch" "$wd/" ||
+        { error "failed to move extracted subarch to $wd/subarch"; return 1; }
+
     rm -Rf "$exdir" || { error "failed to cleanup extraction dir"; return 1; }
     { [ -z "$rmtar" ] || rm "$rmtar"; } ||
         { error "failed to remove temporary tarball $rmtar"; return 1; }
@@ -304,10 +333,16 @@ install_tftp_image() {
     # deletes it.
     tmpdir="$(mktemp -d)"
 
-    copy_first_available "$src/linux" "$src/kernel" "$tmpdir/linux" ||
-        return 1
-    copy_first_available "$src/initrd.gz" "$src/initrd" "$tmpdir/initrd.gz" ||
-        return 1
+    if [ -f "$src/subarch/$subarch/linux" -a \
+            -f "$src/subarch/$subarch/initrd.gz" ]; then
+        cp "$src/subarch/$subarch/linux" "$tmpdir/linux" || return 1
+        cp "$src/subarch/$subarch/initrd.gz" "$tmpdir/initrd.gz" || return 1
+    else
+        copy_first_available "$src/linux" "$src/kernel" "$tmpdir/linux" ||
+            return 1
+        copy_first_available "$src/initrd.gz" "$src/initrd" "$tmpdir/initrd.gz" ||
+            return 1
+    fi
 
     local cmd out=""
     cmd=( maas-provision install-pxe-image
@@ -361,10 +396,7 @@ fi
 
 updates=0
 for release in $RELEASES; do
-    for arch_tuple in $ARCHES; do
-        arch="${arch_tuple%%/*}"
-        subarch="${arch_tuple#*/}"
-
+    for arch in $(uniq_major_arches $ARCHES); do
         query_local "$arch" "$release" "$BUILD_NAME" ||
             fail "failed to query local for $release/$arch"
         query_remote "$arch" "$release" "$BUILD_NAME" ||
@@ -405,11 +437,13 @@ for release in $RELEASES; do
             name="${l_name}"
         fi
 
-        # Even if there was no need to update the image, we make sure it
-        # gets installed.
-        debug 1 "adding images for $release/$arch/$subarch to maas"
-        install_tftp_image "$fpfinal_d" "$arch" "$subarch" "$release" ||
-            fail "failed to install ftp image [$info]"
+        for subarch in $(subarches "$arch" $ARCHES); do
+                # Even if there was no need to update the image, we make sure
+                # it gets installed.
+                debug 1 "adding images for $release/$arch/$subarch to maas"
+                install_tftp_image "$fpfinal_d" "$arch" "$subarch" "$release" ||
+                    fail "failed to install tftp image [$info]"
+        done
 
         target_name="${TARGET_NAME_PREFIX}${name}"
         rel_tgt="../${final_d}/tgt.conf"
