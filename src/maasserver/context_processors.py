@@ -48,6 +48,7 @@ def static_resources(context):
             'css/components/yui_node_add.css',
             'css/components/data_list.css',
             'css/components/search_box.css',
+            'css/components/slider.css',
             'css/ubuntu-webfonts.css',
         ],
         'JS_LIST': [
@@ -62,6 +63,7 @@ def static_resources(context):
             'js/enums.js',
             'js/power_parameters.js',
             'js/nodes_chart.js',
+            'js/reveal.js',
         ],
     }
 

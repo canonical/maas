@@ -6,7 +6,7 @@
       <span class="warning">(Warning: this cluster has no boot images.)</span>
     {% endif %}
   </td>
-  <td>
+  <td class="icon-controls">
     <a href="{% url 'cluster-edit' cluster.uuid %}"
        class="icon"
        title="Edit cluster {{ cluster.cluster_name }}">

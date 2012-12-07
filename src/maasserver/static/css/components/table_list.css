@@ -30,6 +30,10 @@ table.list.clickable tr:hover td {
     border-color: #dd4814;
     cursor: pointer;
     }
+table.list .icon-controls {
+    vertical-align: top;
+    text-align: right;
+    }
 .sort-none,
 .sort-asc,
 .sort-desc {

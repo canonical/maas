@@ -1,24 +1,36 @@
+  <script type="text/javascript">
+  <!--
+  YUI().use('maas.reveal', function (Y) {
+    Y.on('load', function() {
+      Y.all('a.script-name').on('click', function(e) {
+        e.preventDefault();
+        var reveal = new Y.maas.reveal.Reveal({
+          targetNode: Y.one(e.target).ancestor().one('.script-content'),
+          linkNode: e.target
+          }).reveal();
+      });
+    });
+  });
+  // -->
+  </script>
+
 <h2>Commissioning scripts</h2>
   <table class="list">
     <tbody>
     {% for script in commissioning_scripts %}
-      <tr class="script" id="{{ script.name }}">
+      <tr class="script {% cycle 'even' 'odd' %}" id="{{ script.name }}">
         <td>
-          <a>{{ script.name}}</a></br>
-        </td>
-        <td width="30px">
-        <a title="Delete commissioning script {{ script.name }}"
-           href="{% url 'commissioning-script-delete' script.id %}">
-           <img src="{{ STATIC_URL }}img/delete.png" alt="delete" />
-        </a>
-        </td>
-      </tr>
-      <tr>
-        <td colspan="2" border-width="0"
-            style="padding: 0 0;">
-          <div class="size11">
-          <pre align="left">{{ script.content }}</pre>
+          <a href="#" class="script-name">
+            {{ script.name}}</a>
+          <div class="script-content slider">
+            <pre class="content">{{ script.content }}</pre>
           </div>
+        </td>
+        <td class="icon-controls">
+          <a title="Delete commissioning script {{ script.name }}"
+             href="{% url 'commissioning-script-delete' script.id %}">
+             <img src="{{ STATIC_URL }}img/delete.png" alt="delete" />
+          </a>
         </td>
       </tr>
     </tbody>
