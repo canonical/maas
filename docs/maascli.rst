@@ -471,9 +471,15 @@ Usage: maas-cli *<profile>* node-group-interfaces [-d --debug] [-h
 
 tag
 ^^^
+The tag command is used  to manually alter tags, tagged nodes or 
+rebuild the automatic tags. 
 
-Usage: maas-cli <profile> tag read | update-nodes | rebuild | update |
-  nodes | delete
+  For more information on how to use them effectively, please see
+  :ref:`deploy-tags`
+
+Usage: maas-cli <profile> tag read | update-nodes | rebuild 
+| update | nodes | delete
+
 
 .. program:: maas-cli tag
 
@@ -522,7 +528,7 @@ characteristics.
   :ref:`deploy-tags`
 
 Usage: maas-cli <profile> tag [-d --debug] [-h --help] [-k
---insecure] list | new
+--insecure] list | create
 
 .. program:: maas-cli tag
 
@@ -555,7 +561,7 @@ Adding a tag to all nodes which have an Intel GPU::
 
    $ maas-cli maas tags new name='intel-gpu' \
        comment='Machines which have an Intel display driver' \
-       definition='contains(//node[@id="display"]/vendor, "Intel")
+       definition='contains(//node[@id="display"]/vendor, "Intel")'
 
 
 unused commands
