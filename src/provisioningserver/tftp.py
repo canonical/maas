@@ -28,6 +28,7 @@ from urlparse import (
 from provisioningserver.enum import ARP_HTYPE
 from provisioningserver.kernel_opts import KernelParameters
 from provisioningserver.pxe.config import render_pxe_config
+from provisioningserver.start_cluster_controller import get_cluster_uuid
 from provisioningserver.utils import deferred
 from tftp.backend import (
     FilesystemSynchronousBackend,
@@ -217,6 +218,10 @@ class TFTPBackend(FilesystemSynchronousBackend):
             params["local"] = local_host
             remote_host, remote_port = get("remote", (None, None))
             params["remote"] = remote_host
+            # XXX 2012-12-04 JeroenVermeulen bug=1086239: move
+            # get_cluster_uuid to a properly reusable location, and
+            # implement it without the celery import (and side effects).
+            params["cluster_uuid"] = get_cluster_uuid()
             d = self.get_config_reader(params)
             d.addErrback(self.get_page_errback, file_name)
             return d
