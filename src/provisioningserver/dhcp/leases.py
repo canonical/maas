@@ -49,9 +49,9 @@ from celery.app import app_or_default
 from provisioningserver import cache
 from provisioningserver.auth import (
     get_recorded_api_credentials,
-    get_recorded_maas_url,
     get_recorded_nodegroup_uuid,
     )
+from provisioningserver.cluster_config import get_maas_url
 from provisioningserver.dhcp.leases_parser import parse_leases
 
 
@@ -150,7 +150,7 @@ def send_leases(leases):
     """Send lease updates to the server API."""
     # Items that the server must have sent us before we can do this.
     knowledge = {
-        'maas_url': get_recorded_maas_url(),
+        'maas_url': get_maas_url(),
         'api_credentials': get_recorded_api_credentials(),
         'nodegroup_uuid': get_recorded_nodegroup_uuid(),
     }

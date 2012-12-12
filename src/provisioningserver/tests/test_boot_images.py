@@ -12,7 +12,6 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
-import os
 import json
 
 from apiclient.maas_client import MAASClient
@@ -45,15 +44,6 @@ class TestBootImagesTasks(PservTestCase):
         args, kwargs = MAASClient.post.call_args
         self.assertIs(sentinel.uuid, kwargs["nodegroup"])
         self.assertItemsEqual([image], json.loads(kwargs['images']))
-
-    def test_does_nothing_without_maas_url(self):
-        os.environ.pop("MAAS_URL")  # Ensure nothing is set.
-        self.set_api_credentials()
-        self.patch(
-            tftppath, 'list_boot_images',
-            Mock(return_value=make_boot_image_params()))
-        boot_images.report_to_server()
-        self.assertItemsEqual([], tftppath.list_boot_images.call_args_list)
 
     def test_does_nothing_without_credentials(self):
         self.set_maas_url()

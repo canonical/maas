@@ -26,13 +26,13 @@ from apiclient.maas_client import (
     MAASDispatcher,
     MAASOAuth,
     )
-from provisioningserver.auth import (
-    get_recorded_api_credentials,
-    get_recorded_maas_url,
+from provisioningserver.auth import get_recorded_api_credentials
+from provisioningserver.cluster_config import (
+    get_cluster_uuid,
+    get_maas_url,
     )
 from provisioningserver.config import Config
 from provisioningserver.pxe import tftppath
-from provisioningserver.start_cluster_controller import get_cluster_uuid
 
 
 logger = getLogger(__name__)
@@ -44,7 +44,7 @@ def get_cached_knowledge():
     :return: Tuple of cached items: (maas_url, api_credentials).  Either may
         be None if the information has not been received from the server yet.
     """
-    maas_url = get_recorded_maas_url()
+    maas_url = get_maas_url()
     if maas_url is None:
         logger.debug("Not reporting boot images: don't have API URL yet.")
     api_credentials = get_recorded_api_credentials()

@@ -32,6 +32,7 @@ from apiclient.maas_client import (
     MAASDispatcher,
     NoAuth,
     )
+from provisioningserver.cluster_config import get_cluster_uuid
 from provisioningserver.network import discover_networks
 
 
@@ -63,14 +64,6 @@ def log_error(exception):
 def make_anonymous_api_client(server_url):
     """Create an unauthenticated API client."""
     return MAASClient(NoAuth(), MAASDispatcher(), server_url)
-
-
-def get_cluster_uuid():
-    """Read this cluster's UUID from the config."""
-    # Import this lazily.  It reads config as a side effect, which can
-    # produce warnings.
-    from celery.app import app_or_default
-    return app_or_default().conf.CLUSTER_UUID
 
 
 def register(server_url):

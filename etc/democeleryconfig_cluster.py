@@ -26,10 +26,6 @@ import_settings(celeryconfig_cluster)
 
 import_settings(democeleryconfig_common)
 
-# Set a fixed CLUSTER_UUID.  In production, this is taken from
-# maas_local_celeryconfig.
-CLUSTER_UUID = "adfd3977-f251-4f2c-8d61-745dbd690bfc"
-
 CELERYD_LOG_FILE = os.path.join(
     DEV_ROOT_DIRECTORY, 'logs/cluster-worker/current')
 

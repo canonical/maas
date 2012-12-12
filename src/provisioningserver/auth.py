@@ -13,12 +13,9 @@ __metaclass__ = type
 __all__ = [
     'get_recorded_api_credentials',
     'get_recorded_nodegroup_uuid',
-    'get_recorded_maas_url',
     'record_api_credentials',
     'record_nodegroup_uuid',
     ]
-
-import os
 
 from apiclient.creds import convert_string_to_tuple
 from provisioningserver import cache
@@ -28,11 +25,6 @@ API_CREDENTIALS_CACHE_KEY = 'api_credentials'
 
 # Cache key for the uuid of the nodegroup that this worker manages.
 NODEGROUP_UUID_CACHE_KEY = 'nodegroup_uuid'
-
-
-def get_recorded_maas_url():
-    """Return the base URL for the MAAS server."""
-    return os.environ.get("MAAS_URL")
 
 
 def record_api_credentials(api_credentials):
