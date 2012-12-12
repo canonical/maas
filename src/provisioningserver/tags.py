@@ -30,9 +30,9 @@ from apiclient.maas_client import (
 from lxml import etree
 from provisioningserver.auth import (
     get_recorded_api_credentials,
-    get_recorded_maas_url,
     get_recorded_nodegroup_uuid,
     )
+from provisioningserver.cluster_config import get_maas_url
 import simplejson as json
 
 
@@ -51,10 +51,6 @@ def get_cached_knowledge():
 
     :return: (client, nodegroup_uuid)
     """
-    maas_url = get_recorded_maas_url()
-    if maas_url is None:
-        logger.error("Not updating tags: don't have API URL yet.")
-        return None, None
     api_credentials = get_recorded_api_credentials()
     if api_credentials is None:
         logger.error("Not updating tags: don't have API key yet.")
@@ -64,7 +60,7 @@ def get_cached_knowledge():
         logger.error("Not updating tags: don't have UUID yet.")
         return None, None
     client = MAASClient(MAASOAuth(*api_credentials), MAASDispatcher(),
-        maas_url)
+        get_maas_url())
     return client, nodegroup_uuid
 
 

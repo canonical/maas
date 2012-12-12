@@ -328,15 +328,6 @@ class TestUpdateLeases(PservTestCase):
             (get_write_time(leases_file), {params['ip']: params['mac']}),
             parse_leases_file())
 
-    def test_send_leases_does_nothing_without_maas_url(self):
-        self.patch(MAASClient, 'post', FakeMethod())
-        self.set_lease_state()
-        self.set_items_needed_for_lease_update()
-        self.clear_maas_url()
-        leases = factory.make_random_leases()
-        send_leases(leases)
-        self.assertEqual([], MAASClient.post.calls)
-
     def test_send_leases_does_nothing_without_credentials(self):
         self.patch(MAASClient, 'post', FakeMethod())
         self.set_items_needed_for_lease_update()
