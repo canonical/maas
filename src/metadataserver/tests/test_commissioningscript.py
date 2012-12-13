@@ -19,9 +19,13 @@ import tarfile
 
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
+from maastesting.matchers import ContainsAll
 from maastesting.utils import sample_binary_data
 from metadataserver.fields import Bin
-from metadataserver.models import CommissioningScript
+from metadataserver.models import (
+    CommissioningScript,
+    commissioningscript as cs_module,
+    )
 from metadataserver.models.commissioningscript import ARCHIVE_PREFIX
 
 
@@ -44,35 +48,35 @@ class TestCommissioningScriptManager(TestCase):
 
     def test_get_archive_wraps_scripts_in_tar(self):
         script = factory.make_commissioning_script()
+        path = os.path.join(ARCHIVE_PREFIX, script.name)
         archive = open_tarfile(CommissioningScript.objects.get_archive())
-        archived_script = archive.next()
-        self.assertTrue(archived_script.isfile())
-        self.assertEqual(
-            os.path.join(ARCHIVE_PREFIX, script.name),
-            archived_script.name)
-        self.assertEqual(
-            script.content,
-            archive.extractfile(archived_script).read())
+        self.assertTrue(archive.getmember(path).isfile())
+        self.assertEqual(script.content, archive.extractfile(path).read())
 
     def test_get_archive_wraps_all_scripts(self):
         scripts = {factory.make_commissioning_script() for counter in range(3)}
         archive = open_tarfile(CommissioningScript.objects.get_archive())
-        self.assertItemsEqual(
-            {os.path.join(ARCHIVE_PREFIX, script.name) for script in scripts},
-            archive.getnames())
+        self.assertThat(
+            archive.getnames(),
+            ContainsAll({
+                os.path.join(ARCHIVE_PREFIX, script.name)
+                for script in scripts
+                }))
 
     def test_get_archive_supports_binary_scripts(self):
         script = factory.make_commissioning_script(content=sample_binary_data)
+        path = os.path.join(ARCHIVE_PREFIX, script.name)
         archive = open_tarfile(CommissioningScript.objects.get_archive())
-        archived_script = archive.next()
-        self.assertEqual(
-            script.content,
-            archive.extractfile(archived_script).read())
+        self.assertEqual(script.content, archive.extractfile(path).read())
 
-    def test_get_archive_returns_empty_tarball_if_no_scripts(self):
-        CommissioningScript.objects.all().delete()
+    def test_get_archive_includes_builtin_scripts(self):
+        name = factory.make_name('00-maas')
+        path = os.path.join(ARCHIVE_PREFIX, name)
+        content = factory.getRandomString().encode('ascii')
+        self.patch(cs_module, 'BUILTIN_COMMISSIONING_SCRIPTS', {name: content})
         archive = open_tarfile(CommissioningScript.objects.get_archive())
-        self.assertItemsEqual([], archive.getnames())
+        self.assertIn(path, archive.getnames())
+        self.assertEqual(content, archive.extractfile(path).read())
 
 
 class TestCommissioningScript(TestCase):

@@ -193,7 +193,7 @@ load_modules() {
 }
 
 ### begin writing files ###
-add_script "01-lshw" <<"END_LSHW"
+add_script "00-maas-01-lshw" <<"END_LSHW"
 #!/bin/sh
 lshw -xml
 END_LSHW

@@ -352,8 +352,8 @@ class TestViews(DjangoTestCase):
                 'application/x-tgz',
             })
         archive = tarfile.open(fileobj=BytesIO(response.content))
-        self.assertItemsEqual(
-            [os.path.join(ARCHIVE_PREFIX, script.name)],
+        self.assertIn(
+            os.path.join(ARCHIVE_PREFIX, script.name),
             archive.getnames())
 
     def test_other_user_than_node_cannot_signal_commissioning_result(self):
@@ -561,7 +561,8 @@ class TestViews(DjangoTestCase):
         node = factory.make_node(status=NODE_STATUS.COMMISSIONING, memory=512)
         client = self.make_node_client(node=node)
         xmlbytes = "<t\xe9st/>".encode("utf-8")
-        response = self.call_signal(client, files={'01-lshw.out': xmlbytes})
+        response = self.call_signal(
+            client, files={'00-maas-01-lshw.out': xmlbytes})
         self.assertEqual(httplib.OK, response.status_code)
         node = reload_object(node)
         self.assertEqual(xmlbytes, node.hardware_details)

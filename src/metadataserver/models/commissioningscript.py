@@ -18,6 +18,7 @@ __all__ = [
 from io import BytesIO
 import os.path
 import tarfile
+from textwrap import dedent
 
 from django.db.models import (
     CharField,
@@ -31,6 +32,28 @@ from metadataserver.fields import BinaryField
 # extracted into this directory.
 ARCHIVE_PREFIX = "commissioning.d"
 
+# Built-in script to run lshw.
+LSHW_SCRIPT = dedent("""\
+    #!/bin/sh
+    lshw -xml
+    """)
+
+# Built-in commissioning scripts.  These go into the commissioning
+# tarball together with user-provided commissioning scripts.
+# To keep namespaces separated, names of the built-in scripts must be
+# prefixed with "00-maas-" or "99-maas-".
+BUILTIN_COMMISSIONING_SCRIPTS = {
+    '00-maas-01-lshw': LSHW_SCRIPT.encode('ascii'),
+}
+
+
+def add_script_to_archive(tarball, name, content):
+    """Add a commissioning script to an archive of commissioning scripts."""
+    assert isinstance(content, bytes), "Script content must be binary."
+    tarinfo = tarfile.TarInfo(name=os.path.join(ARCHIVE_PREFIX, name))
+    tarinfo.size = len(content)
+    tarball.addfile(tarinfo, BytesIO(content))
+
 
 class CommissioningScriptManager(Manager):
     """Utility for the collection of `CommissioningScript`s."""
@@ -42,11 +65,11 @@ class CommissioningScriptManager(Manager):
         """
         binary = BytesIO()
         tarball = tarfile.open(mode='w', fileobj=binary)
-        for script in self.all().order_by('name'):
-            path = os.path.join(ARCHIVE_PREFIX, script.name)
-            tarinfo = tarfile.TarInfo(name=path)
-            tarinfo.size = len(script.content)
-            tarball.addfile(tarinfo, BytesIO(script.content))
+        scripts = sorted(
+            BUILTIN_COMMISSIONING_SCRIPTS.items() +
+            [(script.name, script.content) for script in self.all()])
+        for name, content in scripts:
+            add_script_to_archive(tarball, name, content)
         tarball.close()
         binary.seek(0)
         return binary.read()
