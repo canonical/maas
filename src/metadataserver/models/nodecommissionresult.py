@@ -19,11 +19,15 @@ from django.db.models import (
     CharField,
     ForeignKey,
     Manager,
-    Model,
     )
 from django.shortcuts import get_object_or_404
 from maasserver.models.cleansave import CleanSave
+from maasserver.models.timestampedmodel import TimestampedModel
 from metadataserver import DefaultMeta
+from metadataserver.enum import (
+    COMMISSIONING_STATUS,
+    COMMISSIONING_STATUS_CHOICES,
+    )
 
 
 class NodeCommissionResultManager(Manager):
@@ -33,10 +37,11 @@ class NodeCommissionResultManager(Manager):
         """Remove all existing results for a node."""
         self.filter(node=node).delete()
 
-    def store_data(self, node, name, data):
+    def store_data(self, node, name, status, data):
         """Store data about a node."""
         existing, created = self.get_or_create(
-            node=node, name=name, defaults=dict(data=data))
+            node=node, name=name,
+            defaults=dict(status=status, data=data))
         if not created:
             existing.data = data
             existing.save()
@@ -47,7 +52,7 @@ class NodeCommissionResultManager(Manager):
         return ncr.data
 
 
-class NodeCommissionResult(CleanSave, Model):
+class NodeCommissionResult(CleanSave, TimestampedModel):
     """Storage for data returned from node commissioning.
 
     Commissioning a node results in various bits of data that need to be
@@ -55,6 +60,9 @@ class NodeCommissionResult(CleanSave, Model):
     as unicode text, with an arbitrary name, for later retrieval.
 
     :ivar node: The context :class:`Node`.
+    :ivar status: If this data results from the execution of a script, this
+        is the status of this execution.  This can be "OK", "FAILED" or
+        "WORKING" for progress reports.
     :ivar name: A unique name to use for the data being stored.
     :ivar data: The file's actual data, unicode only.
     """
@@ -66,5 +74,9 @@ class NodeCommissionResult(CleanSave, Model):
 
     node = ForeignKey(
         'maasserver.Node', null=False, editable=False, unique=False)
-    name = CharField(max_length=100, unique=False, editable=False)
+    status = CharField(
+        max_length=100, unique=False, editable=False,
+        choices=COMMISSIONING_STATUS_CHOICES,
+        default=COMMISSIONING_STATUS.DEFAULT_STATUS)
+    name = CharField(max_length=255, unique=False, editable=False)
     data = CharField(max_length=1024 * 1024, editable=True)

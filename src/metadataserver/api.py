@@ -56,6 +56,7 @@ from maasserver.preseed import (
     )
 from maasserver.utils import find_nodegroup
 from maasserver.utils.orm import get_one
+from metadataserver.enum import COMMISSIONING_STATUS
 from metadataserver.models import (
     CommissioningScript,
     NodeCommissionResult,
@@ -171,9 +172,9 @@ class VersionIndexHandler(MetadataViewHandler):
     # Statuses that a commissioning node may signal, and the respective
     # state transitions that they trigger on the node.
     signaling_statuses = {
-        'OK': NODE_STATUS.READY,
-        'FAILED': NODE_STATUS.FAILED_TESTS,
-        'WORKING': None,
+        COMMISSIONING_STATUS.OK: NODE_STATUS.READY,
+        COMMISSIONING_STATUS.FAILED: NODE_STATUS.FAILED_TESTS,
+        COMMISSIONING_STATUS.WORKING: None,
     }
 
     def read(self, request, version, mac=None):
@@ -189,12 +190,14 @@ class VersionIndexHandler(MetadataViewHandler):
 
     def _store_commissioning_results(self, node, request):
         """Store commissioning result files for `node`."""
+        status = get_mandatory_param(request.POST, 'status')
         for name, uploaded_file in request.FILES.items():
             raw_content = uploaded_file.read()
             if name == "01-lshw.out":
                 node.set_hardware_details(raw_content)
             contents = raw_content.decode('utf-8')
-            NodeCommissionResult.objects.store_data(node, name, contents)
+            NodeCommissionResult.objects.store_data(
+                node, name, status, contents)
 
     @operation(idempotent=False)
     def signal(self, request, version=None, mac=None):

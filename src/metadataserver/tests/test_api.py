@@ -48,6 +48,7 @@ from metadataserver.api import (
     MetaDataHandler,
     UnknownMetadataVersion,
     )
+from metadataserver.enum import COMMISSIONING_STATUS
 from metadataserver.models import (
     NodeCommissionResult,
     NodeKey,
@@ -401,6 +402,18 @@ class TestViews(DjangoTestCase):
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(
             NODE_STATUS.COMMISSIONING, reload_object(node).status)
+
+    def test_signaling_stores_status(self):
+        node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
+        client = self.make_node_client(node=node)
+        new_status = factory.getRandomEnum(COMMISSIONING_STATUS)
+        filename = factory.getRandomString()
+        response = self.call_signal(
+            client, status=new_status,
+            files={filename: factory.getRandomString().encode('ascii')})
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        result = NodeCommissionResult.objects.get(node=node)
+        self.assertEqual(new_status, result.status)
 
     def test_signaling_WORKING_keeps_owner(self):
         user = factory.make_user()

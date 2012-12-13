@@ -17,6 +17,7 @@ from django.http import Http404
 from maasserver.testing.factory import factory
 from maasserver.utils.orm import get_one
 from maastesting.djangotestcase import DjangoTestCase
+from metadataserver.enum import COMMISSIONING_STATUS
 from metadataserver.models import NodeCommissionResult
 
 
@@ -78,10 +79,11 @@ class TestNodeCommissionResultManager(DjangoTestCase):
 
     def test_store_data(self):
         node = factory.make_node()
-        name = factory.getRandomString(100)
+        name = factory.getRandomString(255)
         data = factory.getRandomString(1024 * 1024)
+        status = factory.getRandomEnum(COMMISSIONING_STATUS)
         NodeCommissionResult.objects.store_data(
-            node, name=name, data=data)
+            node, name=name, status=status, data=data)
 
         self.assertAttributes(
             get_one(NodeCommissionResult.objects.filter(node=node)),
@@ -89,11 +91,12 @@ class TestNodeCommissionResultManager(DjangoTestCase):
 
     def test_store_data_updates_existing(self):
         node = factory.make_node()
-        name = factory.getRandomString(100)
+        name = factory.getRandomString(255)
+        status = factory.getRandomEnum(COMMISSIONING_STATUS)
         factory.make_node_commission_result(node=node, name=name)
         data = factory.getRandomString(1024 * 1024)
         NodeCommissionResult.objects.store_data(
-            node, name=name, data=data)
+            node, name=name, status=status, data=data)
 
         self.assertAttributes(
             get_one(NodeCommissionResult.objects.filter(node=node)),

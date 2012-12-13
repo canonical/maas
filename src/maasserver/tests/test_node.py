@@ -50,6 +50,7 @@ from maasserver.utils import (
     map_enum,
     )
 from maastesting.testcase import TestCase as DjangoLessTestCase
+from metadataserver.enum import COMMISSIONING_STATUS
 from metadataserver.models import (
     NodeCommissionResult,
     NodeUserData,
@@ -501,7 +502,9 @@ class NodeTest(TestCase):
     def test_start_commissioning_clears_node_commissioning_results(self):
         node = factory.make_node(status=NODE_STATUS.DECLARED)
         NodeCommissionResult.objects.store_data(
-            node, factory.getRandomString(), factory.getRandomString())
+            node, factory.getRandomString(),
+            factory.getRandomEnum(COMMISSIONING_STATUS),
+            factory.getRandomString())
         node.start_commissioning(factory.make_admin())
         self.assertItemsEqual([], node.nodecommissionresult_set.all())
 
@@ -509,7 +512,8 @@ class NodeTest(TestCase):
         node = factory.make_node()
         filename = factory.getRandomString()
         text = factory.getRandomString()
-        NodeCommissionResult.objects.store_data(node, filename, text)
+        status = factory.getRandomEnum(COMMISSIONING_STATUS)
+        NodeCommissionResult.objects.store_data(node, filename, status, text)
         other_node = factory.make_node(status=NODE_STATUS.DECLARED)
         other_node.start_commissioning(factory.make_admin())
         self.assertEqual(
