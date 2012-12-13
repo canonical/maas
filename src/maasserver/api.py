@@ -1829,7 +1829,11 @@ def find_nodegroup_for_pxeconfig_request(request):
     none, figures it out based on the requesting IP as a compatibility
     measure.  In that case, the result may be incorrect.
     """
-    return find_nodegroup(request)
+    uuid = request.GET.get('cluster_uuid', None)
+    if uuid is None:
+        return find_nodegroup(request)
+    else:
+        return NodeGroup.objects.get(uuid=uuid)
 
 
 def pxeconfig(request):
