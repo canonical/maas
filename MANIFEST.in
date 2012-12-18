@@ -3,6 +3,7 @@ graft src/*/templates
 graft src/*/fixtures
 graft src/*/specs
 graft src/provisioningserver/*
+graft src/metadataserver/commissioning/*
 graft vdenv
 prune src/*/testing
 prune src/*/tests
