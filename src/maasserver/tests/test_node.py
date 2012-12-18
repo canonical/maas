@@ -15,7 +15,6 @@ __all__ = []
 from datetime import timedelta
 import random
 
-from django.conf import settings
 from django.core.exceptions import (
     PermissionDenied,
     ValidationError,
@@ -50,6 +49,7 @@ from maasserver.utils import (
     map_enum,
     )
 from maastesting.testcase import TestCase as DjangoLessTestCase
+from metadataserver import commissioning
 from metadataserver.enum import COMMISSIONING_STATUS
 from metadataserver.models import (
     NodeCommissionResult,
@@ -61,7 +61,6 @@ from testtools.matchers import (
     AllMatch,
     Contains,
     Equals,
-    FileContains,
     MatchesAll,
     MatchesListwise,
     Not,
@@ -485,19 +484,12 @@ class NodeTest(TestCase):
 
     def test_start_commissioning_sets_user_data(self):
         node = factory.make_node(status=NODE_STATUS.DECLARED)
-        node.start_commissioning(factory.make_admin())
-        path = settings.COMMISSIONING_SCRIPT
-        self.assertThat(
-            path, FileContains(NodeUserData.objects.get_user_data(node)))
-
-    def test_missing_commissioning_script(self):
+        user_data = factory.getRandomString().encode('ascii')
         self.patch(
-            settings, 'COMMISSIONING_SCRIPT',
-            '/etc/' + factory.getRandomString(10))
-        node = factory.make_node(status=NODE_STATUS.DECLARED)
-        self.assertRaises(
-            ValidationError,
-            node.start_commissioning, factory.make_admin())
+            commissioning.user_data, 'generate_user_data'
+            ).return_value = user_data
+        node.start_commissioning(factory.make_admin())
+        self.assertEqual(user_data, NodeUserData.objects.get_user_data(node))
 
     def test_start_commissioning_clears_node_commissioning_results(self):
         node = factory.make_node(status=NODE_STATUS.DECLARED)

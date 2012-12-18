@@ -100,10 +100,6 @@ PRESEED_TEMPLATE_LOCATIONS = (
 DEV_ROOT_DIRECTORY = os.path.join(
     os.path.dirname(__file__), os.pardir, os.pardir)
 
-
-COMMISSIONING_SCRIPT = os.path.join(
-    DEV_ROOT_DIRECTORY, 'etc/maas/commissioning-user-data')
-
 # Override the default provisioning config filename.
 provisioningserver.config.Config.DEFAULT_FILENAME = abspath("etc/pserv.yaml")
 

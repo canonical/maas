@@ -24,12 +24,10 @@ from itertools import (
     repeat,
     )
 import math
-import os
 import random
 from string import whitespace
 from uuid import uuid1
 
-from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.exceptions import (
     PermissionDenied,
@@ -634,15 +632,10 @@ class Node(CleanSave, TimestampedModel):
     def start_commissioning(self, user):
         """Install OS and self-test a new node."""
         # Avoid circular imports.
+        from metadataserver.commissioning.user_data import generate_user_data
         from metadataserver.models import NodeCommissionResult
 
-        path = settings.COMMISSIONING_SCRIPT
-        if not os.path.exists(path):
-            raise ValidationError(
-                "Commissioning script is missing: %s" % path)
-        with open(path, 'r') as f:
-            commissioning_user_data = f.read()
-
+        commissioning_user_data = generate_user_data()
         NodeCommissionResult.objects.clear_results(self)
         self.status = NODE_STATUS.COMMISSIONING
         self.owner = user
