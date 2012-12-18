@@ -78,6 +78,12 @@ class TestCommissioningScriptManager(TestCase):
         self.assertIn(path, archive.getnames())
         self.assertEqual(content, archive.extractfile(path).read())
 
+    def test_get_archive_sets_sensible_mode(self):
+        for counter in range(3):
+            factory.make_commissioning_script()
+        archive = open_tarfile(CommissioningScript.objects.get_archive())
+        self.assertEqual({0755}, {info.mode for info in archive.getmembers()})
+
 
 class TestCommissioningScript(TestCase):
 

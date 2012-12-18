@@ -52,6 +52,7 @@ def add_script_to_archive(tarball, name, content):
     assert isinstance(content, bytes), "Script content must be binary."
     tarinfo = tarfile.TarInfo(name=os.path.join(ARCHIVE_PREFIX, name))
     tarinfo.size = len(content)
+    tarinfo.mode = 0755  # u=rwx,go=rx
     tarball.addfile(tarinfo, BytesIO(content))
 
 
