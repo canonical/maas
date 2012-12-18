@@ -179,3 +179,49 @@ For more information on preseed options, you should refer to
   Future versions of MAAS are likely to replace this type of automatic 
   installation with a different installer.
 
+
+Installing additional clusters
+------------------------------
+
+In an environment comprising large numbers of nodes, it is likely that you will
+want to organise the nodes on a more distributed basis. The standard install of
+the MAAS region controller includes a cluster controller, but it is 
+possible to add additional cluster controllers to the configuration, as 
+shown in the diagram below:
+
+.. image:: media/orientation_architecture-diagram.*
+
+Each cluster controller will need to run on a separate Ubuntu server. 
+Installing and configuring the software is straightforward though:: 
+
+  $ sudo apt-get install maas-cluster-controller
+
+This meta-package will install all the basic requirements of the system. 
+However, you may also wish or need to run DHCP and/or DNS services, in
+which case you should also specify these::
+
+  $ sudo apt-get install maas-cluster-controller maas-dhcp maas-dns
+
+Configuring the cluster controller
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Once the packages are installed, the cluster controller needs to know
+where to look for the region controller. This is achieved using `dpkg` to 
+configure the software::
+
+  $ dpkg-reconfigure maas-cluster-controller
+
+.. image:: media/cluster-config.*
+
+The configuration script should then bring up a screen where you can 
+enter the IP address of the region controller. Additionally, you will need
+to run the ``maas-import-pxe-files`` script to install the distro image files
+locally for commissioning::
+
+  $ maas-cli maas node-groups import-boot-images
+
+...and optionally set up the DHCP and DNS for 
+the cluster by first :ref:`logging in to the API <api-key>` and then
+:ref:`following this procedure <cli-dhcp>` 
+
+
