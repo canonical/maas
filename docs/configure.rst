@@ -54,16 +54,17 @@ Choosing a series to install
 ----------------------------
 
 You may have some specific reason to choose a particular version of Ubuntu
-to install on your nodes, perhaps based around package avaiability,
-hardware support or some other reason. 
+to install on your nodes, perhaps based around package availability,
+hardware support or some other reason.
+ 
 It is possible to choose a specific series from those available in a 
 number of ways.
 
 From the user interface
 ^^^^^^^^^^^^^^^^^^^^^^^
 
-For individual nodes it is a straightforward task to select the Ubuntu
-series to install from the user interface. When either adding a node 
+The web-based user interface makes it easy to select which Ubuntu series you
+wish to install on an individual node. When either adding a node 
 manually, or on the node page when the node has been automatically
 discovered but before it is accepted, there is a drop down menu to select 
 the version of Ubuntu you wish to install.
@@ -71,7 +72,7 @@ the version of Ubuntu you wish to install.
 .. image:: media/series.*
 
 The menu will always list all the currently available series according
-to which images are available.
+to which boot images are available.
 
 Using the maas-cli command
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -81,8 +82,8 @@ can be done on a per node basis with::
 
  $ maas-cli <profile> node update <system_id> distro_series="<value>"
 
-Where the string contains one of the valid, available distro series, or
-is empty for the default value.
+Where the string contains one of the valid, available distro series (e.g.
+"precise") or is empty for the default value.
 
 
 .. _preseed:
@@ -128,8 +129,8 @@ you may wish to change the clock settings::
 Having consistent clocks is very important to the working of your MAAS
 system overall. If your nodes however cannot freely access the Internet,
 the supplied NTP server is not going to be very useful, and you may
-find it better to run an ntp service on the MAAS controller and substitute
-`ntp.ubuntu.com` in the last line for something else.
+find it better to run an ntp service on the MAAS controller and change
+the `ntp.ubuntu.com` in the last line for a more appropriate server.
 
 One thing you may wish to alter in the preseed file is the disk
 partitioning. This is a simple recipe that creates a swap partition and 

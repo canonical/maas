@@ -187,6 +187,9 @@ read | update <system_id>
            is a string containing a valid architecture type,
            e.g. "i386/generic"
 
+      distro_series=<value>
+           Sets the distro series of Ubuntu to use (e.g. "precise").
+
       power_type=<value>
            Apply the given dotted decimal value as the broadcast IP address
            for this subnet.
