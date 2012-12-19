@@ -415,6 +415,16 @@ class TestViews(DjangoTestCase):
         result = NodeCommissionResult.objects.get(node=node)
         self.assertEqual(script_result, result.script_result)
 
+    def test_signaling_stores_empty_script_result(self):
+        node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
+        client = self.make_node_client(node=node)
+        response = self.call_signal(
+            client, script_result=random.randint(0, 10),
+            files={factory.getRandomString(): ''.encode('ascii')})
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        result = NodeCommissionResult.objects.get(node=node)
+        self.assertEqual('', result.data)
+
     def test_signaling_WORKING_keeps_owner(self):
         user = factory.make_user()
         node = factory.make_node(status=NODE_STATUS.COMMISSIONING)

@@ -73,4 +73,5 @@ class NodeCommissionResult(CleanSave, TimestampedModel):
         'maasserver.Node', null=False, editable=False, unique=False)
     script_result = IntegerField(editable=False)
     name = CharField(max_length=255, unique=False, editable=False)
-    data = CharField(max_length=1024 * 1024, editable=True)
+    data = CharField(
+        max_length=1024 * 1024, editable=True, blank=True, default='')
