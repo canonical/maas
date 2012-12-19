@@ -156,5 +156,3 @@ now familiar example::
 Note that each charm runs on its own host, so each deployment will
 actually take as long as it took to bootstrap. Have a beer, drown your
 sorrows in liquor, or, my preference, have another cup of tea.
-
-----
