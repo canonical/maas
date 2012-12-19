@@ -190,14 +190,14 @@ class VersionIndexHandler(MetadataViewHandler):
 
     def _store_commissioning_results(self, node, request):
         """Store commissioning result files for `node`."""
-        status = get_mandatory_param(request.POST, 'status')
+        script_result = request.POST.get('script_result', None)
         for name, uploaded_file in request.FILES.items():
             raw_content = uploaded_file.read()
             if name == "00-maas-01-lshw.out":
                 node.set_hardware_details(raw_content)
             contents = raw_content.decode('utf-8')
             NodeCommissionResult.objects.store_data(
-                node, name, status, contents)
+                node, name, script_result, contents)
 
     @operation(idempotent=False)
     def signal(self, request, version=None, mac=None):
@@ -213,13 +213,14 @@ class VersionIndexHandler(MetadataViewHandler):
         :param status: A commissioning status code.  This can be "OK" (to
             signal that commissioning has completed successfully), or "FAILED"
             (to signal failure), or "WORKING" (for progress reports).
+        :param script_result: If this call uploads files, this parameter must
+            be provided and will be stored as the return value for the script
+            which produced these files.
         :param error: An optional error string.  If given, this will be stored
             (overwriting any previous error string), and displayed in the MAAS
             UI.  If not given, any previous error string will be cleared.
         """
         node = get_queried_node(request, for_mac=mac)
-        status = request.POST.get('status', None)
-
         status = get_mandatory_param(request.POST, 'status')
         if node.status not in self.signalable_states:
             raise NodeStateViolation(

@@ -17,6 +17,7 @@ import httplib
 from io import BytesIO
 import json
 import os.path
+import random
 import tarfile
 
 from django.conf import settings
@@ -48,7 +49,6 @@ from metadataserver.api import (
     MetaDataHandler,
     UnknownMetadataVersion,
     )
-from metadataserver.enum import COMMISSIONING_STATUS
 from metadataserver.models import (
     NodeCommissionResult,
     NodeKey,
@@ -403,17 +403,17 @@ class TestViews(DjangoTestCase):
         self.assertEqual(
             NODE_STATUS.COMMISSIONING, reload_object(node).status)
 
-    def test_signaling_stores_status(self):
+    def test_signaling_stores_script_result(self):
         node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
         client = self.make_node_client(node=node)
-        new_status = factory.getRandomEnum(COMMISSIONING_STATUS)
+        script_result = random.randint(0, 10)
         filename = factory.getRandomString()
         response = self.call_signal(
-            client, status=new_status,
+            client, script_result=script_result,
             files={filename: factory.getRandomString().encode('ascii')})
         self.assertEqual(httplib.OK, response.status_code, response.content)
         result = NodeCommissionResult.objects.get(node=node)
-        self.assertEqual(new_status, result.status)
+        self.assertEqual(script_result, result.script_result)
 
     def test_signaling_WORKING_keeps_owner(self):
         user = factory.make_user()
@@ -497,8 +497,10 @@ class TestViews(DjangoTestCase):
             for status in statuses}
         for status, node in nodes.items():
             client = self.make_node_client(node=node)
+            script_result = random.randint(0, 10)
             self.call_signal(
                 client, status=status,
+                script_result=script_result,
                 files={filename: factory.getRandomString().encode('ascii')})
         self.assertEqual(
             {status: filename for status in statuses},
@@ -510,7 +512,9 @@ class TestViews(DjangoTestCase):
         node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
         client = self.make_node_client(node=node)
         text = factory.getRandomString().encode('ascii')
-        response = self.call_signal(client, files={'file.txt': text})
+        script_result = random.randint(0, 10)
+        response = self.call_signal(
+            client, script_result=script_result, files={'file.txt': text})
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(
             text, NodeCommissionResult.objects.get_data(node, 'file.txt'))
@@ -519,8 +523,10 @@ class TestViews(DjangoTestCase):
         unicode_text = '<\u2621>'
         node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
         client = self.make_node_client(node=node)
+        script_result = random.randint(0, 10)
         response = self.call_signal(
-            client, files={'file.txt': unicode_text.encode('utf-8')})
+            client, script_result=script_result,
+            files={'file.txt': unicode_text.encode('utf-8')})
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(
             unicode_text,
@@ -533,7 +539,9 @@ class TestViews(DjangoTestCase):
             for counter in range(3)}
         node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
         client = self.make_node_client(node=node)
-        response = self.call_signal(client, files=contents)
+        script_result = random.randint(0, 10)
+        response = self.call_signal(
+            client, script_result=script_result, files=contents)
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(
             contents,
@@ -550,8 +558,10 @@ class TestViews(DjangoTestCase):
         contents = factory.getRandomString(size_limit, spaces=True)
         node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
         client = self.make_node_client(node=node)
+        script_result = random.randint(0, 10)
         response = self.call_signal(
-            client, files={'output.txt': contents.encode('utf-8')})
+            client, script_result=script_result,
+            files={'output.txt': contents.encode('utf-8')})
         self.assertEqual(httplib.OK, response.status_code)
         stored_data = NodeCommissionResult.objects.get_data(
             node, 'output.txt')
@@ -561,8 +571,10 @@ class TestViews(DjangoTestCase):
         node = factory.make_node(status=NODE_STATUS.COMMISSIONING, memory=512)
         client = self.make_node_client(node=node)
         xmlbytes = "<t\xe9st/>".encode("utf-8")
+        script_result = random.randint(0, 10)
         response = self.call_signal(
-            client, files={'00-maas-01-lshw.out': xmlbytes})
+            client, script_result=script_result,
+            files={'00-maas-01-lshw.out': xmlbytes})
         self.assertEqual(httplib.OK, response.status_code)
         node = reload_object(node)
         self.assertEqual(xmlbytes, node.hardware_details)

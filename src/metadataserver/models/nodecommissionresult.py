@@ -18,16 +18,13 @@ __all__ = [
 from django.db.models import (
     CharField,
     ForeignKey,
+    IntegerField,
     Manager,
     )
 from django.shortcuts import get_object_or_404
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 from metadataserver import DefaultMeta
-from metadataserver.enum import (
-    COMMISSIONING_STATUS,
-    COMMISSIONING_STATUS_CHOICES,
-    )
 
 
 class NodeCommissionResultManager(Manager):
@@ -37,11 +34,11 @@ class NodeCommissionResultManager(Manager):
         """Remove all existing results for a node."""
         self.filter(node=node).delete()
 
-    def store_data(self, node, name, status, data):
+    def store_data(self, node, name, script_result, data):
         """Store data about a node."""
         existing, created = self.get_or_create(
             node=node, name=name,
-            defaults=dict(status=status, data=data))
+            defaults=dict(script_result=script_result, data=data))
         if not created:
             existing.data = data
             existing.save()
@@ -74,9 +71,6 @@ class NodeCommissionResult(CleanSave, TimestampedModel):
 
     node = ForeignKey(
         'maasserver.Node', null=False, editable=False, unique=False)
-    status = CharField(
-        max_length=100, unique=False, editable=False,
-        choices=COMMISSIONING_STATUS_CHOICES,
-        default=COMMISSIONING_STATUS.DEFAULT_STATUS)
+    script_result = IntegerField(editable=False)
     name = CharField(max_length=255, unique=False, editable=False)
     data = CharField(max_length=1024 * 1024, editable=True)

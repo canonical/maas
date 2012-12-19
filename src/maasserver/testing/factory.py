@@ -230,14 +230,18 @@ class Factory(maastesting.factory.Factory):
         interface.save()
         return interface
 
-    def make_node_commission_result(self, node=None, name=None, data=None):
+    def make_node_commission_result(self, node=None, name=None,
+                                    script_result=None, data=None):
         if node is None:
             node = self.make_node()
         if name is None:
             name = "ncrname-" + self.getRandomString(92)
         if data is None:
             data = "ncrdata-" + self.getRandomString(1000)
-        ncr = NodeCommissionResult(node=node, name=name, data=data)
+        if script_result is None:
+            script_result = random.randint(0, 10)
+        ncr = NodeCommissionResult(
+            node=node, name=name, script_result=script_result, data=data)
         ncr.save()
         return ncr
 
