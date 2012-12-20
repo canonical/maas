@@ -105,6 +105,9 @@ def main():
         help="Power type.", choices=POWER_TYPES, default=None)
     parser.add_argument("--power-parameters", dest='power_parms',
         help="Power parameters.", default=None)
+    parser.add_argument(
+        "--script-result", metavar="retval", type=int, dest='script_result',
+        help="Return code of a commissioning script.")
 
     parser.add_argument("status",
         help="Status", choices=VALID_STATUS, action='store')
@@ -132,7 +135,11 @@ def main():
     params = {
         "op": "signal",
         "status": args.status,
-        "error": args.message}
+        "error": args.message,
+        }
+
+    if args.script_result is not None:
+        params['script_result'] = args.script_result
 
     for ent in args.posts:
         try:

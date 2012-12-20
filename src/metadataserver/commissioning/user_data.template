@@ -77,8 +77,27 @@ find_creds_cfg() {
    return 1
 }
 
+# Invoke the "signal()" API call to report progress.
+# Usage: signal <status> <message>
 signal() {
    maas-signal "--config=${CRED_CFG}" "$@"
+}
+
+# Report result of a commissioning script: output file, error output
+# file if there was any error output, and return code.
+# Usage: signal <return-value> <message> <stdout-file> <stderr-file>
+signal_result() {
+   local result=$1 message="$2" stdout="$3" stderr="$4"
+   local files="--file=$stdout"
+   if [ -f "$stderr" -a -s "$stderr" ]
+   then
+      files="$files --file=$stderr"
+   fi
+   maas-signal \
+      "--config=${CRED_CFG}" \
+      "--script-result=$result" \
+      $files \
+      WORKING "$message"
 }
 
 fail() {
@@ -153,10 +172,13 @@ main() {
    for script in "${SCRIPTS_D}/"*; do
       [ -f "$script" -a -f "$script" ] || continue
       name=${script##*/}
-      signal WORKING "starting ${script##*/} [$cur/$total]"
+      signal WORKING "starting ${name} [$cur/$total]"
       "$script" > "${OUT_D}/${name}.out" 2> "${OUT_D}/${name}.err"
       ret=$?
-      signal WORKING "finished $name [$cur/$total]: $ret"
+      signal_result \
+         "$ret" "finished $name [$cur/$total]: $ret" \
+         "${OUT_D}/${name}.out" \
+         "${OUT_D}/${name}.err"
       if [ $ret -eq 0 ]; then
           numpass=$(($numpass+1))
           failed="${failed} ${name}"
@@ -164,20 +186,13 @@ main() {
       cur=$(($cur+1))
    done
 
-   # Get a list of all files created, ignoring empty ones.
-   local fargs=""
-   for file in "${OUT_D}/"*; do
-      [ -f "$file" -a -s "$file" ] || continue
-      fargs="$fargs --file=${file##*/}"
-   done
-
    if [ $numpass -eq $total ]; then
       ( cd "${OUT_D}" &&
-         signal $fargs OK "finished [$numpass/$total]" )
+         signal OK "finished [$numpass/$total]" )
       return 0
    else
       ( cd "${OUT_D}" &&
-         signal $fargs OK "failed [$numpass/$total] ($failed)" )
+         signal FAILED "failed [$numpass/$total] ($failed)" )
       return $(($count-$numpass))
    fi
 
