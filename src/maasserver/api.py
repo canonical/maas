@@ -63,6 +63,7 @@ __all__ = [
     "BootImagesHandler",
     "FilesHandler",
     "get_oauth_token",
+    "MaasHandler",
     "NodeGroupsHandler",
     "NodeGroupInterfaceHandler",
     "NodeGroupInterfacesHandler",
@@ -1685,8 +1686,8 @@ class TagsHandler(OperationsHandler):
         return ('tags_handler', [])
 
 
-class MAASHandler(OperationsHandler):
-    """Manage the MAAS' itself."""
+class MaasHandler(OperationsHandler):
+    """Manage the MAAS server."""
     create = read = update = delete = None
 
     @operation(idempotent=False)
@@ -1714,6 +1715,10 @@ class MAASHandler(OperationsHandler):
         name = get_mandatory_param(request.GET, 'name')
         value = Config.objects.get_config(name)
         return HttpResponse(json.dumps(value), content_type='application/json')
+
+    @classmethod
+    def resource_uri(cls, *args, **kwargs):
+        return ('maas_handler', [])
 
 
 # Title section for the API documentation.  Matches in style, format,
