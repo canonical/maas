@@ -31,6 +31,7 @@ __all__ = [
 
 import collections
 import json
+import pipes
 import re
 
 from django import forms
@@ -879,6 +880,9 @@ class CommissioningScriptForm(forms.Form):
     def clean_content(self):
         content = self.cleaned_data['content']
         name = content.name
+        if pipes.quote(name) != name:
+            raise forms.ValidationError(
+                "Name contains disallowed characters (e.g. space or quotes).")
         if CommissioningScript.objects.filter(name=name).exists():
             raise forms.ValidationError(
                 "A script with that name already exists.")

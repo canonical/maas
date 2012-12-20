@@ -1797,7 +1797,8 @@ class CommissioningScriptsHandler(OperationsHandler):
         By convention the name should consist of a two-digit number, a dash,
         and a brief descriptive identifier consisting only of ASCII
         characters.  You don't need to follow this convention, but not doing
-        so opens you up to risks w.r.t. encoding and ordering.
+        so opens you up to risks w.r.t. encoding and ordering.  The name must
+        not contain any whitespace, quotes, or apostrophes.
 
         A commissioning node will run each of the scripts in lexicographical
         order.  There are no promises about how non-ASCII characters are
@@ -1815,7 +1816,7 @@ class CommissioningScriptsHandler(OperationsHandler):
 
         :param name: Unique identifying name for the script.  Names should
             follow the pattern of "25-burn-in-hard-disk" (all ASCII, and with
-            numbers greater than zero).
+            numbers greater than zero, and generally no "weird" characters).
         :param content: A script file, to be uploaded in binary form.  Note:
             this is not a normal parameter, but a file upload.  Its filename
             is ignored; MAAS will know it by the name you pass to the request.

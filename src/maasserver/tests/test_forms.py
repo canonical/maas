@@ -970,6 +970,25 @@ class TestCommissioningScriptForm(TestCase):
         uploaded_file = SimpleUploadedFile(content=content, name=name)
         form = CommissioningScriptForm(files={'content': uploaded_file})
         self.assertEqual(
-            (False, {'content':
-                [u'A script with that name already exists.']}),
+            (False, {'content': ["A script with that name already exists."]}),
             (form.is_valid(), form._errors))
+
+    def test_rejects_whitespace_in_name(self):
+        name = factory.make_name('with space')
+        uploaded_file = SimpleUploadedFile(
+            content=factory.getRandomString(), name=name)
+        form = CommissioningScriptForm(files={'content': uploaded_file})
+        self.assertFalse(form.is_valid())
+        self.assertEqual(
+            ["Name contains disallowed characters (e.g. space or quotes)."],
+            form._errors['content'])
+
+    def test_rejects_quotes_in_name(self):
+        name = factory.make_name("l'horreur")
+        uploaded_file = SimpleUploadedFile(
+            content=factory.getRandomString(), name=name)
+        form = CommissioningScriptForm(files={'content': uploaded_file})
+        self.assertFalse(form.is_valid())
+        self.assertEqual(
+            ["Name contains disallowed characters (e.g. space or quotes)."],
+            form._errors['content'])
