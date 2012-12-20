@@ -13,9 +13,14 @@ __metaclass__ = type
 __all__ = []
 
 from io import BytesIO
+from math import (
+    ceil,
+    floor,
+    )
 import os.path
 from random import randint
 import tarfile
+import time
 
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
@@ -83,6 +88,16 @@ class TestCommissioningScriptManager(TestCase):
             factory.make_commissioning_script()
         archive = open_tarfile(CommissioningScript.objects.get_archive())
         self.assertEqual({0755}, {info.mode for info in archive.getmembers()})
+
+    def test_get_archive_initializes_file_timestamps(self):
+        start_time = floor(time.time())
+        script = factory.make_commissioning_script()
+        path = os.path.join(ARCHIVE_PREFIX, script.name)
+        archive = open_tarfile(CommissioningScript.objects.get_archive())
+        timestamp = archive.getmember(path).mtime
+        end_time = ceil(time.time())
+        self.assertGreaterEqual(timestamp, start_time)
+        self.assertLessEqual(timestamp, end_time)
 
 
 class TestCommissioningScript(TestCase):

@@ -19,6 +19,7 @@ from io import BytesIO
 import os.path
 import tarfile
 from textwrap import dedent
+import time
 
 from django.db.models import (
     CharField,
@@ -47,12 +48,13 @@ BUILTIN_COMMISSIONING_SCRIPTS = {
 }
 
 
-def add_script_to_archive(tarball, name, content):
+def add_script_to_archive(tarball, name, content, mtime):
     """Add a commissioning script to an archive of commissioning scripts."""
     assert isinstance(content, bytes), "Script content must be binary."
     tarinfo = tarfile.TarInfo(name=os.path.join(ARCHIVE_PREFIX, name))
     tarinfo.size = len(content)
     tarinfo.mode = 0755  # u=rwx,go=rx
+    tarinfo.mtime = mtime
     tarball.addfile(tarinfo, BytesIO(content))
 
 
@@ -64,13 +66,15 @@ class CommissioningScriptManager(Manager):
 
         Each of the scripts will be in the `ARCHIVE_PREFIX` directory.
         """
+        mtime = time.time()
         binary = BytesIO()
         tarball = tarfile.open(mode='w', fileobj=binary)
         scripts = sorted(
             BUILTIN_COMMISSIONING_SCRIPTS.items() +
             [(script.name, script.content) for script in self.all()])
         for name, content in scripts:
-            add_script_to_archive(tarball, name, content)
+            add_script_to_archive(
+                tarball=tarball, name=name, content=content, mtime=mtime)
         tarball.close()
         binary.seek(0)
         return binary.read()
