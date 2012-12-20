@@ -24,6 +24,12 @@ suite.add(new Y.maas.testing.TestCase({
     },
 
     test_slides_out: function() {
+        var original_height = (
+            parseInt(Y.one('.panel .content').getStyle('height')) +
+            parseInt(Y.one('.panel .content').getStyle('marginTop')) +
+            parseInt(Y.one('.panel .content').getStyle('marginBottom')) +
+            parseInt(Y.one('.panel .content').getStyle('paddingTop')) +
+            parseInt(Y.one('.panel .content').getStyle('paddingBottom')));
         Y.one('.panel').setStyle('height', '0');
         Y.one('.link').set('text', 'View log');
         Y.Assert.areEqual('View log', Y.one('.link').get('text'));
@@ -35,6 +41,11 @@ suite.add(new Y.maas.testing.TestCase({
                 Y.assert(
                     parseInt(Y.one('.panel').getStyle('height')) > 0, 
                     'The panel should be revealed'
+                    );
+                Y.Assert.areEqual(
+                    original_height,
+                    parseInt(Y.one('.panel').getStyle('height')), 
+                    'The panel has not been resized properly'
                     );
                 Y.Assert.areEqual('Hide log', Y.one('.link').get('text'));
             });

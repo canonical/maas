@@ -85,10 +85,18 @@ module._create_slide_in = function(node, publisher) {
  * @method _create_slide_out
  */
 module._create_slide_out = function(node, publisher) {
+    var content_node = node.one('.content');
+    var height = parseInt(content_node.getStyle('height'));
+    var padding_top = parseInt(content_node.getStyle('paddingTop'));
+    var padding_bottom = parseInt(content_node.getStyle('paddingBottom'));
+    var margin_top = parseInt(content_node.getStyle('marginTop'));
+    var margin_bottom = parseInt(content_node.getStyle('marginBottom'));
+    var new_height = (
+	height + padding_top + padding_bottom + margin_top + margin_bottom);
     var anim = new Y.Anim({
         node: node,
         duration: 0.2,
-        to: {height: parseInt(node.one('.content').getStyle('height'))}
+        to: {height: new_height}
     });
     anim.on('end', function () {
         publisher.fire('revealed');
