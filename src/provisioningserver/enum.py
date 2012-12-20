@@ -33,6 +33,9 @@ class POWER_TYPE:
     # Network wake-up.
     WAKE_ON_LAN = 'ether_wake'
 
+    # Sentry Switch CDU's.
+    CDU = 'fence_cdu'
+
     # IPMI (Intelligent Platform Management Interface).
     IPMI = 'ipmi'
 
@@ -40,6 +43,7 @@ class POWER_TYPE:
 POWER_TYPE_CHOICES = (
     (POWER_TYPE.VIRSH, "virsh (virtual systems)"),
     (POWER_TYPE.WAKE_ON_LAN, "Wake-on-LAN"),
+    (POWER_TYPE.CDU, "Sentry Switch CDU"),
     (POWER_TYPE.IPMI, "IPMI"),
     )
 

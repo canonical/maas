@@ -1,0 +1,54 @@
+# -*- mode: shell-script -*-
+#
+# Control virtual system's "power" through virsh.
+#
+
+# Parameters.
+# Choose command for virsh to make the requested power change happen.
+power_change={{power_change}}
+power_address={{power_address}}
+power_user={{power_user}}
+power_pass={{power_pass}}
+power_id={{power_id}}
+fence_cdu={{fence_cdu}}
+
+
+formulate_power_command() {
+  if [ ${power_change} = 'on' ]
+  then
+      echo 'on'
+  else
+      echo 'off'
+  fi
+}
+
+
+# Express system's current state as expressed by virsh as "on" or "off".
+formulate_power_state() {
+    case $2 in
+    'on'|'ON') echo 'on' ;;
+    'off'|'OFF') echo 'off' ;;
+    *)
+        echo "Got unknown power state from fence_cdu: '$1'" >&2
+        exit 1
+    esac
+}
+
+
+# Issue command to virsh, for the given system.
+issue_fence_cdu_command() {
+    ${fence_cdu} -a ${power_address} -n ${power_id} -l ${power_user} -p ${power_pass} -o "$@"
+}
+
+
+# Get the given system's power state: 'on' or 'off'.
+get_power_state() {
+    fence_cdu_state=$(issue_fence_cdu_command status)
+    formulate_power_state ${fence_cdu_state}
+}
+
+
+if [ "$(get_power_state)" != "${power_change}" ]
+then
+    issue_fence_cdu_command $(formulate_power_command)
+fi

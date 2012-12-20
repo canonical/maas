@@ -752,6 +752,7 @@ class Node(CleanSave, TimestampedModel):
 
         power_params.setdefault('system_id', self.system_id)
         power_params.setdefault('virsh', '/usr/bin/virsh')
+        power_params.setdefault('fence_cdu', '/usr/sbin/fence_cdu')
         power_params.setdefault('ipmipower', '/usr/sbin/ipmipower')
         power_params.setdefault(
             'ipmi_chassis_config', '/usr/sbin/ipmi-chassis-config')
