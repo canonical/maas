@@ -60,6 +60,7 @@ __all__ = [
     "api_doc",
     "api_doc_title",
     "BootImagesHandler",
+    "CommissioningResultsHandler",
     "FilesHandler",
     "get_oauth_token",
     "NodeGroupsHandler",
@@ -178,7 +179,10 @@ from maasserver.utils import (
     )
 from maasserver.utils.orm import get_one
 from metadataserver.fields import Bin
-from metadataserver.models import CommissioningScript
+from metadataserver.models import (
+    CommissioningScript,
+    NodeCommissionResult,
+    )
 from piston.utils import rc
 from provisioningserver.enum import POWER_TYPE
 from provisioningserver.kernel_opts import KernelParameters
@@ -1849,6 +1853,36 @@ class CommissioningScriptHandler(OperationsHandler):
         script = get_object_or_404(CommissioningScript, name=name)
         script.content = content
         script.save()
+
+
+class CommissioningResultsHandler(OperationsHandler):
+    """Read the collection of NodeCommissionResult in the MAAS."""
+    create = read = update = delete = None
+
+    model = NodeCommissionResult
+    fields = ('name', 'script_result', 'updated', 'created', 'node', 'data')
+
+    @operation(idempotent=True)
+    def list(self, request):
+        """List NodeCommissionResult visible to the user, optionally filtered.
+
+        :param system_id: An optional list of system ids.  Only the
+            commissioning results related to the nodes with these system ids
+            will be returned.
+        :type system_id: iterable
+        :param name: An optional list of names.  Only the commissioning
+            results with the specified names will be returned.
+        :type name: iterable
+        """
+        # Get filters from request.
+        system_ids = get_optional_list(request.GET, 'system_id')
+        names = get_optional_list(request.GET, 'name')
+        nodes = Node.objects.get_nodes(
+            request.user, NODE_PERMISSION.VIEW, ids=system_ids)
+        results = NodeCommissionResult.objects.filter(node_id__in=nodes)
+        if names is not None:
+            results = results.filter(name__in=names)
+        return results
 
 
 def describe(request):

@@ -20,6 +20,7 @@ from maasserver.api import (
     AccountHandler,
     api_doc,
     BootImagesHandler,
+    CommissioningResultsHandler,
     CommissioningScriptHandler,
     CommissioningScriptsHandler,
     describe,
@@ -59,10 +60,8 @@ boot_images_handler = RestrictedResource(
     BootImagesHandler, authentication=api_auth)
 tag_handler = RestrictedResource(TagHandler, authentication=api_auth)
 tags_handler = RestrictedResource(TagsHandler, authentication=api_auth)
-commissioning_script_handler = AdminRestrictedResource(
-    CommissioningScriptHandler, authentication=api_auth)
-commissioning_scripts_handler = AdminRestrictedResource(
-    CommissioningScriptsHandler, authentication=api_auth)
+commissioning_results_handler = RestrictedResource(
+    CommissioningResultsHandler, authentication=api_auth)
 
 
 # Admin handlers.
@@ -71,6 +70,10 @@ nodegroupinterface_handler = AdminRestrictedResource(
     NodeGroupInterfaceHandler, authentication=api_auth)
 nodegroupinterfaces_handler = AdminRestrictedResource(
     NodeGroupInterfacesHandler, authentication=api_auth)
+commissioning_script_handler = AdminRestrictedResource(
+    CommissioningScriptHandler, authentication=api_auth)
+commissioning_scripts_handler = AdminRestrictedResource(
+    CommissioningScriptsHandler, authentication=api_auth)
 
 # API URLs accessible to anonymous users.
 urlpatterns = patterns('',
@@ -106,6 +109,9 @@ urlpatterns += patterns('',
     url(r'boot-images/$', boot_images_handler, name='boot_images_handler'),
     url(r'tags/(?P<name>[\w\-]+)/$', tag_handler, name='tag_handler'),
     url(r'tags/$', tags_handler, name='tags_handler'),
+    url(
+        r'commissioning-results/$',
+        commissioning_results_handler, name='commissioning_results_handler'),
 )
 
 

@@ -4703,6 +4703,84 @@ class CommissioningScriptAPITest(APITestCase):
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
 
+class NodeCommissionResultHandlerAPITest(APITestCase):
+
+    def test_list_returns_commissioning_results(self):
+        commissioning_results = [
+            factory.make_node_commission_result()
+            for counter in range(3)]
+        url = reverse('commissioning_results_handler')
+        response = self.client.get(url, {'op': 'list'})
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        parsed_results = json.loads(response.content)
+        self.assertItemsEqual(
+            [(
+                commissioning_result.name,
+                commissioning_result.script_result,
+                commissioning_result.data,
+                commissioning_result.node.system_id,
+            )
+            for commissioning_result in commissioning_results
+            ],
+            [(
+                result.get('name'),
+                result.get('script_result'),
+                result.get('data'),
+                result.get('node').get('system_id')
+            )
+            for result in parsed_results
+            ])
+
+    def test_list_can_be_filtered_by_node(self):
+        commissioning_results = [
+            factory.make_node_commission_result()
+            for counter in range(3)]
+        url = reverse('commissioning_results_handler')
+        response = self.client.get(
+            url,
+            {
+                'op': 'list',
+                'system_id':
+                    [
+                        commissioning_results[0].node.system_id,
+                        commissioning_results[1].node.system_id,
+                    ]
+            }
+        )
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        parsed_results = json.loads(response.content)
+        self.assertItemsEqual(
+            [commissioning_results[0].data, commissioning_results[1].data],
+            [result.get('data') for result in parsed_results])
+
+    def test_list_can_be_filtered_by_name(self):
+        commissioning_results = [
+            factory.make_node_commission_result()
+            for counter in range(3)]
+        url = reverse('commissioning_results_handler')
+        response = self.client.get(
+            url,
+            {
+                'op': 'list',
+                'name': commissioning_results[0].name
+            }
+        )
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        parsed_results = json.loads(response.content)
+        self.assertItemsEqual(
+            [commissioning_results[0].data],
+            [result.get('data') for result in parsed_results])
+
+    def test_list_displays_only_visible_nodes(self):
+        node = factory.make_node(owner=factory.make_user())
+        factory.make_node_commission_result(node)
+        url = reverse('commissioning_results_handler')
+        response = self.client.get(url, {'op': 'list'})
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        parsed_results = json.loads(response.content)
+        self.assertEqual([], parsed_results)
+
+
 class TestDescribe(AnonAPITestCase):
     """Tests for the `describe` view."""
 
