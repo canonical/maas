@@ -42,9 +42,9 @@ formulate_power_state() {
 issue_ipmi_command() {
     # See https://launchpad.net/bugs/1053391 for details of this workaround
     echo workaround |\
-    ${ipmi_chassis_config} --driver-type=LAN_2_0 -h ${power_address} -u ${power_user} -p ${power_pass} --commit --filename ${config}
+    ${ipmi_chassis_config} -h ${power_address} -u ${power_user} -p ${power_pass} --commit --filename ${config}
     echo workaround |\
-    ${ipmipower} --driver-type=LAN_2_0 -h ${power_address} -u ${power_user} -p ${power_pass} "$@"
+    ${ipmipower} -h ${power_address} -u ${power_user} -p ${power_pass} "$@"
 }
 
 
