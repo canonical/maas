@@ -90,6 +90,9 @@ class TestCommissioningScriptManager(TestCase):
         self.assertEqual({0755}, {info.mode for info in archive.getmembers()})
 
     def test_get_archive_initializes_file_timestamps(self):
+        # The mtime on a file inside the tarball is reasonable.
+        # It would otherwise default to the Epoch, and GNU tar warns
+        # annoyingly about improbably old files.
         start_time = floor(time.time())
         script = factory.make_commissioning_script()
         path = os.path.join(ARCHIVE_PREFIX, script.name)

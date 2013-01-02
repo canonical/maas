@@ -53,7 +53,10 @@ def add_script_to_archive(tarball, name, content, mtime):
     assert isinstance(content, bytes), "Script content must be binary."
     tarinfo = tarfile.TarInfo(name=os.path.join(ARCHIVE_PREFIX, name))
     tarinfo.size = len(content)
-    tarinfo.mode = 0755  # u=rwx,go=rx
+    # Mode 0755 means: u=rwx,go=rx
+    tarinfo.mode = 0755
+    # Modification time defaults to Epoch, which elicits annoying
+    # warnings when decompressing.
     tarinfo.mtime = mtime
     tarball.addfile(tarinfo, BytesIO(content))
 
