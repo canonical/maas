@@ -1,22 +1,23 @@
 Additional Configuration
 ========================
 
-
 .. _manual-dhcp:
 
 Manual DHCP configuration
 -------------------------
 
-There are some circumstances under which you may not wish the master
-MAAS worker to handle DHCP for the network. In these instances, the
-existing DHCP server for the network will need its configuration
-altered to allow MAAS to enlist and control nodes automatically.
+There are some circumstances under which you may not wish the master MAAS 
+worker to handle DHCP for the network. In these instances, the existing DHCP
+server for the network will need its configuration altered to allow MAAS to
+enlist and control nodes automatically.
 
-At the very least the filename should be set to pxelinux.0.
+At the very least the next-server should point to the MAAS controller host
+address and the filename should be set to pxelinux.0
 
 The configuration entry may look something like this::
 
    subnet 192.168.122.0 netmask 255.255.255.0 {
+       next-server 192.168.122.136;
        filename "pxelinux.0";
        option subnet-mask 255.255.255.0;
        option broadcast-address 192.168.122.255;
@@ -24,12 +25,10 @@ The configuration entry may look something like this::
        range dynamic-bootp 192.168.122.5 192.168.122.135;
    }
 
-
 .. _ssl:
 
 SSL Support
 -----------
-
 If you want secure access to your MAAS web UI/API, you need to do a few
 things. First, turn on SSL support in Apache::
 
@@ -55,16 +54,16 @@ Choosing a series to install
 
 You may have some specific reason to choose a particular version of Ubuntu
 to install on your nodes, perhaps based around package availability,
-hardware support or some other reason.
- 
+hardware support or some other reason. 
+
 It is possible to choose a specific series from those available in a 
 number of ways.
 
 From the user interface
 ^^^^^^^^^^^^^^^^^^^^^^^
 
-The web-based user interface makes it easy to select which Ubuntu series you
-wish to install on an individual node. When either adding a node 
+For individual nodes it is a straightforward task to select the Ubuntu
+series to install from the user interface. When either adding a node 
 manually, or on the node page when the node has been automatically
 discovered but before it is accepted, there is a drop down menu to select 
 the version of Ubuntu you wish to install.
@@ -72,7 +71,7 @@ the version of Ubuntu you wish to install.
 .. image:: media/series.*
 
 The menu will always list all the currently available series according
-to which boot images are available.
+to which images are available.
 
 Using the maas-cli command
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -82,8 +81,8 @@ can be done on a per node basis with::
 
  $ maas-cli <profile> node update <system_id> distro_series="<value>"
 
-Where the string contains one of the valid, available distro series (e.g.
-"precise") or is empty for the default value.
+Where the string contains one of the valid, available distro series, or
+is empty for the default value.
 
 
 .. _preseed:
@@ -127,10 +126,10 @@ you may wish to change the clock settings::
     d-i     clock-setup/ntp-server  string ntp.ubuntu.com
 
 Having consistent clocks is very important to the working of your MAAS
-system overall. If your nodes however cannot freely access the Internet,
-the supplied NTP server is not going to be very useful, and you may
-find it better to run an ntp service on the MAAS controller and change
-the `ntp.ubuntu.com` in the last line for a more appropriate server.
+system overall. If your nodes however cannot freely access the internet,
+the supplied ntp server is not going to be very useful, and you may
+find it better to run an ntp service on the MAAS controller and substitute
+`ntp.ubuntu.com` in the last line for something else.
 
 One thing you may wish to alter in the preseed file is the disk
 partitioning. This is a simple recipe that creates a swap partition and 
@@ -153,7 +152,7 @@ uses the rest of the disk for one large root filesystem::
 
 
 Here the root partition must be at least 500 mb, and has effectively no
-maximum size. The swap partition ranges from 64 MB to 3 times the system's
+maximum size. The swap partition ranges from 64 mb to 3 times the system's
 ram.
 Adding `$bootable{ }` to make the partition bootable, and $primary{ }
 marks it as the primary partition. The other specifiers used are:
@@ -172,57 +171,10 @@ marks it as the primary partition. The other specifiers used are:
 *mountpoint{ / }*
 	Where to mount the partition.
 
-For more information on preseed options, you should refer to 
-`the official Ubuntu documentation 
-<https://help.ubuntu.com/12.04/installation-guide/i386/preseed-contents.html>`_
+For more information on preseed option, you should refer to 
+`the official Ubuntu documentation <https://help.ubuntu.com/12.04/installation-guide/i386/preseed-contents.html>`_
 
 .. note::
   Future versions of MAAS are likely to replace this type of automatic 
   installation with a different installer.
-
-
-Installing additional clusters
-------------------------------
-
-In an environment comprising large numbers of nodes, it is likely that you will
-want to organise the nodes on a more distributed basis. The standard install of
-the MAAS region controller includes a cluster controller, but it is 
-possible to add additional cluster controllers to the configuration, as 
-shown in the diagram below:
-
-.. image:: media/orientation_architecture-diagram.*
-
-Each cluster controller will need to run on a separate Ubuntu server. 
-Installing and configuring the software is straightforward though:: 
-
-  $ sudo apt-get install maas-cluster-controller
-
-This meta-package will install all the basic requirements of the system. 
-However, you may also wish or need to run DHCP and/or DNS services, in
-which case you should also specify these::
-
-  $ sudo apt-get install maas-cluster-controller maas-dhcp maas-dns
-
-Configuring the cluster controller
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Once the packages are installed, the cluster controller needs to know
-where to look for the region controller. This is achieved using `dpkg` to 
-configure the software::
-
-  $ dpkg-reconfigure maas-cluster-controller
-
-.. image:: media/cluster-config.*
-
-The configuration script should then bring up a screen where you can 
-enter the IP address of the region controller. Additionally, you will need
-to run the ``maas-import-pxe-files`` script to install the distro image files
-locally for commissioning::
-
-  $ maas-cli maas node-groups import-boot-images
-
-...and optionally set up the DHCP and DNS for 
-the cluster by first :ref:`logging in to the API <api-key>` and then
-:ref:`following this procedure <cli-dhcp>` 
-
 

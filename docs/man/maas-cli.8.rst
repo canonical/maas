@@ -1,18 +1,19 @@
+
 maas-cli
 --------
-
 
 Usage
 ^^^^^
 
  $ maas-cli <profile> <command> [parameters]
-
+ 
 The available commands are dependent on the API you are connecting to and the
-profile you use. The currently available options are explained below.
+profile you use. The currently available options are explained below. 
 
 
 Description
 ^^^^^^^^^^^
+
 As well as the web interface, many tasks can be performed by accessing
 the MAAS API directly through the maas-cli command. This section
 details how to login with this tool and perform some common
@@ -29,8 +30,6 @@ interface.
 Login to the web interface on your MAAS. Click on the username in the
 top right corner and select 'Preferences' from the menu which appears.
 
-A new page will load...
-
 The very first item is a list of MAAS keys. One will have already been
 generated when the system was installed. It's easiest to just select
 and copy the key (it's quite long!) and then paste it into the
@@ -38,22 +37,21 @@ commandline. The format of the login command is::
 
  $ maas-cli login <profile-name> <hostname> <key>
 
-The profile created is an easy way of associating your credentials
-with any subsequent call to the API. So an example login might look
-like this::
+The profile created is an easy way of associating your credentials with any 
+subsequent call to the API. So an example login might look like this::
 
-$ maas-cli login maas http://10.98.0.13/MAAS/api/1.0
-AWSCRMzqMNy:jjk...5e1FenoP82Qm5te2
+$ maas-cli login maas http://10.98.0.13/MAAS/api/1.0 AWSCRMzqMNy:jjk...5e1FenoP82Qm5te2
 
-which creates the profile 'maas' and registers it with the given key
-at the specified API endpoint.  If you omit the credentials, they will
-be prompted for in the console. It is also possible to use a hyphen,
-'-' in place of the credentials. In this case a single line will be
-read from stdin, stripped of any whitespace and used as the
-credentials, which can be useful if you are devolping scripts for
-specific tasks.  If an empty string is passed instead of the
-credentials, the profile will be logged in anonymously (and
-consequently some of the API calls will not be available)
+which creates the profile 'maas' and registers it with the given key at the 
+specified API endpoint.
+If you omit the credentials, they will be prompted for in the console. It is 
+also possible to use  a hyphen, '-' in place of the credentials. In this case a 
+single line will be read from stdin, stripped of any whitespace and used as the 
+credentials, which can be useful if you are devolping scripts for specific 
+tasks.
+If an empty string is passed instead of the credentials, the profile will be 
+logged in anonymously (and consequently some of the API calls will not be 
+available)
 
 
 maas-cli commands
@@ -61,15 +59,7 @@ maas-cli commands
 
 The ``maas-cli`` command exposes the whole API, so you can do anything
 you actually *can* do with MAAS using this command. Unsurprisingly,
-this leaves us with a vast number of options, but before we delve into
-detail on the specifics, here is a sort of 'cheat-sheet' for common
-tasks you might want to do using ``maas-cli``.
-
-  *  :ref:`Configure DHCP and DNS services <cli-dhcp>`
-
-  *  :ref:`Commission all enlisted nodes <cli-commission>`
-
-  *  :ref:`Setting IPMI power parameters for a node <cli-power>`
+this leaves us with a vast number of options.
 
 The main maas-cli commands are:
 
@@ -85,7 +75,7 @@ The main maas-cli commands are:
   Logs in to the MAAS controller API at the given URL, using the key
   provided and associates this connection with the given profile name.
 
-:samp:`logout <profile>`
+:samp:`logout <profile>` 
 
   Logs out from the given profile, flushing the stored credentials.
 
@@ -116,12 +106,12 @@ create-authorisation-token | delete-authorisation-token [token_key=\
 :samp:`-d, --debug`
 
    Displays debug information listing the API responses.
-
+	
 :samp:`-h, --help`
 
    Display usage information.
 
-:samp:`-k, --insecure`
+:samp:`-k, --insecure` 
 
    Disables the SSL certificate check.
 
@@ -133,14 +123,6 @@ create-authorisation-token | delete-authorisation-token [token_key=\
 :samp:`delete-authorisation-token token_key=<value>`
 
     Removes the given key from the list of authorisation tokens.
-
-
-.. boot-images - not useful in user context
-.. ^^^^^^^^^^^
-
-
-.. files - not useful in user context
-.. ^^^^^
 
 
 node
@@ -165,48 +147,52 @@ read | update <system_id>
    Releases the node given by *<system_id>*
 
 :samp:`start <system_id>`
-
+ 
    Powers up the node identified by *<system_id>* (where MAAS has
    information for power management for this node).
 
 :samp:`stop <system_id>`
-
+ 
    Powers off the node identified by *<system_id>* (where MAAS has
    information for power management for this node).
 
 :samp:`delete <system_id>`
-
+ 
    Removes the given node from the MAAS database.
 
 :samp:`read <system_id>`
-
+ 
    Returns all the current known information about the node specified
    by *<system_id>*
 
 :samp:`update <system_id> [parameters...]`
-
+ 
    Used to change or set specific values for the node. The valid
    parameters are listed below::
 
       hostname=<value>
            The new hostname for this node.
 
-      architecture=<value>
+      architecture=<value> 
            Sets the architecture type, where <value>
            is a string containing a valid architecture type,
            e.g. "i386/generic"
 
-      power_type=<value>
-           Apply the given dotted decimal value as the broadcast IP address
-           for this subnet.
+      distro_series=<value>
+           Sets the series of Ubuntu to use.
 
-      power_parameters_{param1}... =<value>
-           Set the given power parameters. Note that the valid options for these
+      power_type=<value> 
+           Sets the type of power management used on the node, e.g. "ipmi" or
+           "virsh".
+
+      power_parameters_{param1}... =<value> 
+           Set the given power parameters. Note that the valid options for these 
            depend on the power type chosen.
 
-      power_parameters_skip_check 'true' | 'false'
-           Whether to sanity check the supplied parameters against this node's
+      power_parameters_skip_check 'true' | 'false' 
+           Whether to sanity check the supplied parameters against this node's 
            declared power type. The default is 'false'.
+
 
 
 .. _cli-power:
@@ -218,6 +204,8 @@ Example: Setting the power parameters for an ipmi enabled node::
     power_parameters_power_address=192.168.22.33 \
     power_parameters_power_user=root \
     power_parameters_power_pass=ubuntu;
+
+
 
 
 nodes
@@ -283,7 +271,6 @@ acquire | list | accept | accept-all | new | check-commissioning
    that have not returned before the system timeout value are listed
    as "failed".
 
-
 Examples:
 Accept and commission all discovered nodes::
 
@@ -298,6 +285,7 @@ Filter the list using specific key/value pairs::
  $ maas-cli maas nodes list architecture="i386/generic"
 
 
+
 node-groups
 ^^^^^^^^^^^
 Usage: maas-cli <profile> node-groups [-d --debug] [-h --help] [-k
@@ -308,7 +296,7 @@ Usage: maas-cli <profile> node-groups [-d --debug] [-h --help] [-k
 :samp:`-d, --debug`
 
    Displays debug information listing the API responses.
-
+	
 :samp:`-h, --help`
 
    Display usage information.
@@ -318,7 +306,7 @@ Usage: maas-cli <profile> node-groups [-d --debug] [-h --help] [-k
    Disables the SSL certificate check.
 
 :samp:`register uuid=<value> name=<value> interfaces=<json_string>`
-
+   
    Registers a new node group with the given name and uuid. The
    interfaces parameter must be supplied in the form of a JSON string
    comprising the key/value data for the interface to be used, for
@@ -329,7 +317,7 @@ Usage: maas-cli <profile> node-groups [-d --debug] [-h --help] [-k
 
 :samp:`list`
 
-   Returns a JSON list of all currently defined node groups.
+   Returns a JSON list of all currently defined node groups.   
 
 :samp:`refresh_workers`
 
@@ -340,7 +328,7 @@ Usage: maas-cli <profile> node-groups [-d --debug] [-h --help] [-k
    nodes.
 
 :samp:`accept <uuid>`
-
+   
    Accepts a node-group or number of nodegroups indicated by the
    supplied UUID
 
@@ -350,58 +338,61 @@ Usage: maas-cli <profile> node-groups [-d --debug] [-h --help] [-k
    supplied UUID
 
 
+
 node-group-interface
 ^^^^^^^^^^^^^^^^^^^^
-For managing the interfaces. See also :ref:`node-group-interfaces`
+For managing the interfaces. See also 
+"node_group_interfaces"
 
-Usage: maas-cli *<profile>* node-group-interfaces [-d --debug] [-h
+Usage: maas-cli *<profile>* node-group-interface [-d --debug] [-h
 --help] [-k --insecure] read | update | delete [parameters...]
 
 ..program:: maas-cli node-group-interface
 
 :samp:`read <uuid> <interface>`
-
+   
    Returns the current settings for the given UUID and interface
 
 :samp:`update [parameters]`
-
+   
    Changes the settings for the interface according to the given
    parameters::
 
       management=  0 | 1 | 2
-           The service to be managed on the interface ( 0= none, 1=DHCP, 2=DHCP
+           The service to be managed on the interface ( 0= none, 1=DHCP, 2=DHCP 
            and DNS).
 
       subnet_mask=<value>
            Apply the given dotted decimal value as the subnet mask.
 
       broadcast_ip=<value>
-           Apply the given dotted decimal value as the broadcast IP address for
+           Apply the given dotted decimal value as the broadcast IP address for 
            this subnet.
 
       router_ip=<value>
-           Apply the given dotted decimal value as the default router address
+           Apply the given dotted decimal value as the default router address 
            for this subnet.
 
       ip_range_low=<value>
            The lowest value of IP address to allocate via DHCP
 
       ip_range_high=<value>
-           The highest value of IP address to allocate via DHCP
+           The highest value of IP address to allocate via DHCP 
 
 :samp:`delete <uuid> <interface>`
 
    Removes the entry for the given UUID and interface.
+   
 
 Example:
 Configuring DHCP and DNS.
 
-To enable MAAS to manage DHCP and DNS, it needs to be supplied with the relevant
+To enable MAAS to manage DHCP and DNS, it needs to be supplied with the relevant 
 interface information. To do this we need to first determine the UUID of the
 node group affected::
 
  $ uuid=$(maas-cli <profile> node-groups list | grep uuid | cut -d\" -f4)
-
+ 
 Once we have the UUID we can use this to update the node-group-interface for
 that nodegroup, and pass it the relevant interface details::
 
@@ -412,9 +403,9 @@ that nodegroup, and pass it the relevant interface details::
          broadcast_ip=192.168.123.255     \
          router_ip=192.168.123.1          \
 
-Replacing the example values with those required for this network. The
-only non-obvious parameter is 'management' which takes the values 0
-(no management), 1 (manage DHCP) and 2 (manage DHCP and DNS).
+Replacing the example values with those required for this network. The only 
+non-obvious parameter is 'management' which takes the values 0 (no management), 1
+(manage DHCP) and 2 (manage DHCP and DNS).
 
 
 node-group-interfaces
@@ -431,7 +422,7 @@ Usage: maas-cli *<profile>* node-group-interfaces [-d --debug] [-h
 :samp:`-d, --debug`
 
    Displays debug information listing the API responses.
-
+	
 :samp:`-h, --help`
 
    Display usage information.
@@ -445,24 +436,25 @@ Usage: maas-cli *<profile>* node-group-interfaces [-d --debug] [-h
    Lists the current stored configurations for the given identifier
    <label> in a key:value format which should be easy to decipher.
 
+        
 :samp:`new <label> ip=<value> interface=<if_device> [parameters...]`
-
+              
    Creates a new interface group. The required parameters are the IP
    address and the network interface this appies to (e.g. eth0). In
    order to do anything useful, further parameters are required::
 
-      management= 0 | 1 | 2
+      management= 0 | 1 | 2 
            The service to be managed on the interface
            ( 0= none, 1=DHCP, 2=DHCP and DNS).
 
       subnet_mask=<value>
            Apply the given dotted decimal value as the subnet mask.
 
-      broadcast_ip=<value>
+      broadcast_ip=<value> 
            Apply the given dotted decimal value as the
            broadcast IP address for this subnet.
 
-      router_ip=<value>
+      router_ip=<value> 
            Apply the given dotted decimal value as the
            default router address for this subnet.
 
@@ -473,20 +465,21 @@ Usage: maas-cli *<profile>* node-group-interfaces [-d --debug] [-h
            The highest value of IP address to allocate via DHCP
 
 
-tag
+
+
+tag 
 ^^^
 
 Usage: maas-cli <profile> tag read | update-nodes | rebuild | update |
-  nodes | delete
+  nodes | delete 
 
 .. program:: maas-cli tag
 
 :samp:`read <tag_name>`
-
+   
    Returns information on the tag specified by <name>
 
-:samp:`update-nodes <tag_name> [add=<system_id>] [remove=<system_id>]
-[nodegroup=<system_id>]`
+:samp:`update-nodes <tag_name> [add=<system_id>] [remove=<system_id>] [nodegroup=<system_id>]`
 
    Applies or removes the given tag from a list of nodes specified by
    either or both of add="<system_id>" and remove="<system_id>". The
@@ -496,11 +489,10 @@ Usage: maas-cli <profile> tag read | update-nodes | rebuild | update |
 
 :samp:`rebuild`
 
-   Triggers a rebuild of the tag to node mapping.
+   Triggers a rebuild of the tag to node mapping. 
 
-:samp:`update <tag_name> [name=<value>] | [comment=<value>]|
-[definition=<value>]`
-
+:samp:`update <tag_name> [name=<value>] | [comment=<value>]|[definition=<value>]`
+   
    Updates the tag identified by tag_name. Any or all of name,comment
    and definition may be supplied as parameters. If no parameters are
    supplied, this command returns the current values.
@@ -513,17 +505,10 @@ Usage: maas-cli <profile> tag read | update-nodes | rebuild | update |
 
    Deletes the given tag.
 
-
-tags
-^^^^
-
-Tags are a really useful way of identifying nodes with particular
-characteristics.
-
-.. only:: html
-
-  For more information on how to use them effectively, please see
-  :ref:`deploy-tags`
+tags 
+^^^^ 
+Tags are a really useful way of identifying nodes with particular 
+characteristics. 
 
 Usage: maas-cli <profile> tag [-d --debug] [-h --help] [-k
 --insecure] list | new
@@ -533,49 +518,47 @@ Usage: maas-cli <profile> tag [-d --debug] [-h --help] [-k
 :samp:`-d, --debug`
 
    Displays debug information listing the API responses.
-
+	
 :samp:`-h, --help`
 
    Display usage information.
 
-:samp:`-k, --insecure`
+:samp:`-k, --insecure` 
 
    Disables the SSL certificate check.
 
 :samp:`list`
-
+  
    Returns a JSON object listing all the current tags known by the MAAS server
 
 :samp:`create name=<value> definition=<value> [comment=<value>]`
 
    Creates a new tag with the given name and definition. A comment is
    optional. Names must be unique, obviously - an error will be
-   returned if the given name already exists. The definition is in the
-   form of an XPath expression which parses the XML returned by
-   running ``lshw`` on the node.
-
+   returned if the given name already exists. The definition is in the form of 
+   an XPath expression which parses the XML returned by running ``lshw`` on the 
+   node.
+   
 Example:
 Adding a tag to all nodes which have an Intel GPU::
 
    $ maas-cli maas tags new name='intel-gpu' \
        comment='Machines which have an Intel display driver' \
        definition='contains(//node[@id="display"]/vendor, "Intel")
+ 
 
-
-unused commands
-^^^^^^^^^^^^^^^
-
+unused commands 
+^^^^^^^^^^^^^^^ 
 Because the ``maas-cli`` command exposes all of the API, it also lists
 some command options which are not really intended for end users, such
 as the "file" and "boot-images" options.
 
 Further Documentation
 ^^^^^^^^^^^^^^^^^^^^^
-
 For more documentation of MAAS, please see https://maas.ubuntu.com/docs
-
 
 See Also
 ^^^^^^^^
-
 `maas`
+
+
