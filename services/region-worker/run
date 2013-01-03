@@ -14,11 +14,12 @@ cd "$(dirname "$0")/../.."
 # because there are race issues when restarting.
 [ -z "${logdir:-}" ] || exec &>> "${logdir}/current"
 
-# XXX JeroenVermeulen 2012-08-23, bug=1040529: Use fghack to kludge around
-# hanging celery shutdown.
 export PYTHONPATH=etc/:src/
 script="$(readlink -f bin/celeryd)"
-exec fghack "${script}" \
+# XXX GavinPanella 2013-01-02, bug=1040529: celeryd does not shutdown
+# correctly when signalled: processes are often left behind. However,
+# pgrphack works around this, ensuring a complete shutdown.
+exec pgrphack "${script}" \
     --loglevel INFO --beat --queues celery,master \
     --schedule=run/celerybeat-region-schedule \
     --config=democeleryconfig

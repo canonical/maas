@@ -22,5 +22,5 @@ export CELERY_CONFIG_MODULE=democeleryconfig_cluster
 export CLUSTER_UUID="adfd3977-f251-4f2c-8d61-745dbd690bfc"
 
 script="$(readlink -f bin/maas-provision)"
-exec fghack "${script}" start-cluster-controller \
+exec pgrphack "${script}" start-cluster-controller \
     http://0.0.0.0:5240/ -u "$(id -un)" -g "$(id -gn)"
