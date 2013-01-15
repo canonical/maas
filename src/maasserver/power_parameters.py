@@ -33,7 +33,11 @@ __all__ = [
 from django import forms
 from maasserver.config_forms import DictCharField
 from maasserver.fields import MACAddressFormField
-from provisioningserver.enum import POWER_TYPE
+from provisioningserver.enum import (
+    POWER_TYPE,
+    IPMI_DRIVER_CHOICES,
+    IPMI_DRIVER
+    )
 
 
 POWER_TYPE_PARAMETERS = {
@@ -86,6 +90,13 @@ POWER_TYPE_PARAMETERS = {
     POWER_TYPE.IPMI:
         DictCharField(
             [
+                (
+                    'power_driver',
+                    forms.ChoiceField(
+                        label="Driver", required=False,
+                        choices=IPMI_DRIVER_CHOICES,
+                        initial=IPMI_DRIVER.DEFAULT)
+                ),
                 (
                     'power_address',
                     forms.CharField(label="IP Address or Hostname",
