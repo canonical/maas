@@ -12,6 +12,8 @@ from __future__ import (
 __metaclass__ = type
 __all__ = [
     'ARP_HTYPE',
+    'IPMI_DRIVER',
+    'IPMI_DRIVER_CHOICES',
     'POWER_TYPE',
     'POWER_TYPE_CHOICES',
     ]
@@ -45,6 +47,19 @@ POWER_TYPE_CHOICES = (
     (POWER_TYPE.WAKE_ON_LAN, "Wake-on-LAN"),
     (POWER_TYPE.CDU, "Sentry Switch CDU"),
     (POWER_TYPE.IPMI, "IPMI"),
+    )
+
+
+class IPMI_DRIVER:
+    DEFAULT = ''
+    LAN = 'LAN'
+    LAN_2_0 = 'LAN_2_0'
+
+
+IPMI_DRIVER_CHOICES = (
+    (IPMI_DRIVER.DEFAULT, "Auto-detect"),
+    (IPMI_DRIVER.LAN, "LAN (IPMI 1.5)"),
+    (IPMI_DRIVER.LAN_2_0, "LAN_2_0 (IPMI 2.0)"),
     )
 
 

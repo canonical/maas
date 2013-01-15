@@ -179,7 +179,7 @@ class TestPowerAction(TestCase):
             action.get_template(), power_change='on',
             power_address='mystystem', power_user='me', power_pass='me',
             ipmipower='echo', ipmi_chassis_config='echo', config_dir='dir',
-            ipmi_config='file.conf')
+            ipmi_config='file.conf', power_driver='LAN')
         stdout, stderr = action.run_shell(script)
         self.assertIn("Got unknown power state from ipmipower", stderr)
 
@@ -204,5 +204,5 @@ class TestPowerAction(TestCase):
             action.get_template(), power_change='on',
             power_address='mystystem', power_user='me', power_pass='me',
             ipmipower='echo', ipmi_chassis_config='echo', config_dir='dir',
-            ipmi_config='file.conf')
+            ipmi_config='file.conf', power_driver='LAN')
         self.assertIn(conf_dir, script)
