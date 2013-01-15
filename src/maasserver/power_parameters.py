@@ -34,9 +34,9 @@ from django import forms
 from maasserver.config_forms import DictCharField
 from maasserver.fields import MACAddressFormField
 from provisioningserver.enum import (
-    POWER_TYPE,
+    IPMI_DRIVER,
     IPMI_DRIVER_CHOICES,
-    IPMI_DRIVER
+    POWER_TYPE,
     )
 
 
