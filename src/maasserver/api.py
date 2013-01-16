@@ -91,6 +91,7 @@ import httplib
 from inspect import getdoc
 import sys
 from textwrap import dedent
+from urlparse import urlparse
 from xml.sax.saxutils import quoteattr
 
 from celery.app import app_or_default
@@ -949,10 +950,17 @@ class AnonNodeGroupsHandler(AnonymousOperationsHandler):
 
 
 def update_nodegroup_maas_url(nodegroup, request):
-    """Update `nodegroup.maas_url` from the given `request`."""
+    """Update `nodegroup.maas_url` from the given `request`.
+
+    Only update `nodegroup.maas_url` if the hostname part is not 'localhost'
+    (i.e. the default value used when the master nodegroup connects).
+    """
     path = request.META["SCRIPT_NAME"]
-    nodegroup.maas_url = build_absolute_uri(request, path)
-    nodegroup.save()
+    maas_url = build_absolute_uri(request, path)
+    server_host = urlparse(maas_url).hostname
+    if server_host != 'localhost':
+        nodegroup.maas_url = maas_url
+        nodegroup.save()
 
 
 class NodeGroupsHandler(OperationsHandler):
