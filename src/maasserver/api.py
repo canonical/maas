@@ -178,6 +178,7 @@ from maasserver.utils import (
     absolute_reverse,
     build_absolute_uri,
     find_nodegroup,
+    is_local_cluster_UUID,
     map_enum,
     strip_domain,
     )
@@ -912,17 +913,30 @@ class AnonNodeGroupsHandler(AnonymousOperationsHandler):
             "eth0"}]'
         """
         uuid = get_mandatory_param(request.data, 'uuid')
+        is_local_cluster = is_local_cluster_UUID(uuid)
         existing_nodegroup = get_one(NodeGroup.objects.filter(uuid=uuid))
         if existing_nodegroup is None:
             master = NodeGroup.objects.ensure_master()
             # Does master.uuid look like it's a proper uuid?
             if master.uuid in ('master', ''):
                 # Master nodegroup not yet configured, configure it.
+                if is_local_cluster:
+                    # Connecting from localhost, accept the cluster
+                    # controller.
+                    status = NODEGROUP_STATUS.ACCEPTED
+                else:
+                    # Connecting remotely, mark the cluster as pending.
+                    status = NODEGROUP_STATUS.PENDING
                 form = NodeGroupWithInterfacesForm(
-                    data=request.data, instance=master)
+                    data=request.data, status=status, instance=master)
                 if form.is_valid():
                     form.save()
-                    return get_celery_credentials()
+                    if status == NODEGROUP_STATUS.ACCEPTED:
+                        return get_celery_credentials()
+                    else:
+                        return HttpResponse(
+                            "Cluster registered.  Awaiting admin approval.",
+                            status=httplib.ACCEPTED)
                 else:
                     raise ValidationError(form.errors)
             else:

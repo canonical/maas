@@ -16,10 +16,13 @@ __all__ = [
     'find_nodegroup',
     'get_db_state',
     'ignore_unused',
+    'is_local_cluster_UUID',
     'map_enum',
     'strip_domain',
     ]
 
+import errno
+import re
 from urllib import urlencode
 from urlparse import urljoin
 
@@ -108,6 +111,26 @@ def build_absolute_uri(request, path):
 def strip_domain(hostname):
     """Return `hostname` with the domain part removed."""
     return hostname.split('.', 1)[0]
+
+
+def is_local_cluster_UUID(uuid):
+    """Return whether the given UUID is the UUID of the local cluster."""
+    try:
+        cluster_config = open(settings.LOCAL_CLUSTER_CONFIG).read()
+        match = re.search(
+            "CLUSTER_UUID=(?P<quote>[\"']?)([^\"']+)(?P=quote)",
+            cluster_config)
+        if match is not None:
+            return uuid == match.groups()[1]
+        else:
+            return False
+    except IOError as error:
+        if error.errno == errno.ENOENT:
+            # Cluster config file is not present.
+            return False
+        else:
+            # Anything else is an error.
+            raise
 
 
 def find_nodegroup(request):

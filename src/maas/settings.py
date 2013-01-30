@@ -85,6 +85,11 @@ METADATA_URL_REGEXP = '^/metadata/'
 # maasserver.middleware.APIErrorsMiddleware)
 PISTON_DISPLAY_ERRORS = False
 
+# Location of the local cluster config file (installed by
+# the package maas-cluster-controller).  Use to distinguish the local cluster
+# from the others.
+LOCAL_CLUSTER_CONFIG = "/etc/maas/maas_cluster.conf"
+
 TEMPLATE_DEBUG = DEBUG
 
 # Set this to where RaphaelJS files can be found.
