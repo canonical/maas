@@ -139,11 +139,14 @@ class DISTRO_SERIES:
     precise = 'precise'
     #:
     quantal = 'quantal'
+    #:
+    raring = 'raring'
 
 DISTRO_SERIES_CHOICES = (
     (DISTRO_SERIES.default, 'Default Ubuntu Release'),
     (DISTRO_SERIES.precise, 'Ubuntu 12.04 LTS "Precise Pangolin"'),
     (DISTRO_SERIES.quantal, 'Ubuntu 12.10 "Quantal Quetzal"'),
+    (DISTRO_SERIES.raring, 'Ubuntu 13.04 "Raring Ringtail"'),
 )
 
 
