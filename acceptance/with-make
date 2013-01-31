@@ -8,6 +8,12 @@ set -o errexit
 set -o nounset
 
 # Ensure that GNU make is installed.
-sudo -AE apt-get install --assume-yes make
+if ! sudo -AE apt-get install --assume-yes make
+then
+    # The installation of `make` may have failed because the package
+    # lists are out of date, so update them and try again.
+    sudo -AE apt-get update
+    sudo -AE apt-get install --assume-yes make
+fi
 
 exec "$@"
