@@ -124,19 +124,20 @@ def compose_purpose_opts(params):
     """Return the list of the purpose-specific kernel options."""
     if params.purpose == "commissioning":
         # These are kernel parameters read by the ephemeral environment.
+        tname = "%s:%s" % (ISCSI_TARGET_NAME_PREFIX,
+                           get_ephemeral_name(params.release, params.arch))
         return [
             # Read by the open-iscsi initramfs code.
-            "iscsi_target_name=%s:%s" % (
-                ISCSI_TARGET_NAME_PREFIX,
-                get_ephemeral_name(params.release, params.arch)),
+            "iscsi_target_name=%s" % tname,
             "iscsi_target_ip=%s" % params.fs_host,
             "iscsi_target_port=3260",
             "iscsi_initiator=%s" % params.hostname,
             # Read by cloud-initramfs-dyn-netconf and klibc's ipconfig
             # in the initramfs.
             "ip=::::%s:BOOTIF" % params.hostname,
-            # cloud-images have this filesystem label.
-            "ro root=LABEL=cloudimg-rootfs",
+            # kernel / udev name iscsi devices with this path
+            "ro root=/dev/disk/by-path/ip-%s:%s-iscsi-%s-lun-1" % (
+                params.fs_host, "3260", tname),
             # Read by overlayroot package.
             "overlayroot=tmpfs",
             # Read by cloud-init.
