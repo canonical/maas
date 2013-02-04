@@ -128,7 +128,7 @@ class TestKernelOpts(TestCase):
         self.assertThat(
             cmdline,
             ContainsAll([
-                "root=LABEL=cloudimg-rootfs",
+                "root=/dev/disk/by-path/ip-",
                 "iscsi_initiator=",
                 "overlayroot=tmpfs",
                 "ip=::::%s:BOOTIF" % params.hostname]))
