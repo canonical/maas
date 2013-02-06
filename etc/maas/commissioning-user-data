@@ -141,7 +141,7 @@ main() {
       pargs="--dhcp-if-static"
    fi
    power_settings=$(maas-ipmi-autodetect --configdir "$IPMI_CONFIG_D" ${pargs})
-   if [ ! -z "power_settings" ]; then
+   if [ ! -z "$power_settings" ]; then
       signal "--power-type=ipmi" "--power-parameters=${power_settings}" WORKING "finished [maas-ipmi-autodetect]"
    fi
 
