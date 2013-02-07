@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Node IP/MAC mappings as leased from the workers' DHCP servers."""
@@ -111,32 +111,32 @@ class DHCPLeaseManager(Manager):
         """Return a mapping {hostnames -> ips} for the currently leased
         IP addresses for the nodes in `nodegroup`.
 
-        This will consider only the first interface (i.e. the first
-        MAC Address) associated with each node withing the given
-        `nodegroup`.
-        If the hostnames contain a domain, it gets removed.
+        For each node, this will consider only the oldest `MACAddress` that
+        has a `DHCPLease`.
+
+        Any domain will be stripped from the hostnames.
         """
         cursor = connection.cursor()
-        # The subquery fetches the IDs of the first MAC Address for
-        # all the nodes in this nodegroup.
-        # Then the main query returns the hostname -> ip mapping for
-        # these MAC Addresses.
+
+        # The "DISTINCT ON" gives us the first matching row for any
+        # given hostname, in the query's ordering.
+        # The ordering must start with the hostname so that the database
+        # can do this efficiently.  The next ordering criterion is the
+        # MACAddress id, so that if there are multiple rows with the
+        # same hostname, we get the one with the oldest MACAddress.
+        #
+        # If this turns out to be inefficient, be sure to try selecting
+        # on node.nodegroup_id instead of lease.nodegroup_id.  It has
+        # the same effect but may perform differently.
         cursor.execute("""
-        SELECT node.hostname, lease.ip
-        FROM maasserver_macaddress as mac,
-             maasserver_node as node,
-             maasserver_dhcplease as lease
-        WHERE mac.id IN (
-            SELECT DISTINCT ON (node_id) mac.id
-            FROM maasserver_macaddress as mac,
-                 maasserver_node as node
-            WHERE node.nodegroup_id = %s AND mac.node_id = node.id
-            ORDER BY node_id, mac.id
-        )
-        AND mac.node_id = node.id
-        AND mac.mac_address = lease.mac
-        AND lease.nodegroup_id = %s
-        """, (nodegroup.id, nodegroup.id))
+            SELECT DISTINCT ON (node.hostname)
+                node.hostname, lease.ip
+            FROM maasserver_macaddress AS mac
+            JOIN maasserver_node AS node ON node.id = mac.node_id
+            JOIN maasserver_dhcplease AS lease ON lease.mac = mac.mac_address
+            WHERE lease.nodegroup_id = %s
+            ORDER BY node.hostname, mac.id
+            """, (nodegroup.id, ))
         return dict(
             (strip_domain(hostname), ip)
             for hostname, ip in cursor.fetchall()
