@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the :class:`DHCPLease` model."""
@@ -190,17 +190,28 @@ class TestDHCPLeaseManager(TestCase):
         mapping = DHCPLease.objects.get_hostname_ip_mapping(nodegroup)
         self.assertEqual({hostname: lease.ip}, mapping)
 
-    def test_get_hostname_ip_mapping_considers_only_first_mac(self):
-        nodegroup = factory.make_node_group()
-        node = factory.make_node(
-            nodegroup=nodegroup)
+    def test_get_hostname_ip_mapping_picks_mac_with_lease(self):
+        node = factory.make_node(hostname=factory.make_name('host'))
         factory.make_mac_address(node=node)
         second_mac = factory.make_mac_address(node=node)
         # Create a lease for the second MAC Address.
+        lease = factory.make_dhcp_lease(
+            nodegroup=node.nodegroup, mac=second_mac.mac_address)
+        mapping = DHCPLease.objects.get_hostname_ip_mapping(node.nodegroup)
+        self.assertEqual({node.hostname: lease.ip}, mapping)
+
+    def test_get_hostname_ip_mapping_picks_oldest_mac_with_lease(self):
+        node = factory.make_node(hostname=factory.make_name('host'))
+        older_mac = factory.make_mac_address(node=node)
+        newer_mac = factory.make_mac_address(node=node)
+
         factory.make_dhcp_lease(
-            nodegroup=nodegroup, mac=second_mac.mac_address)
-        mapping = DHCPLease.objects.get_hostname_ip_mapping(nodegroup)
-        self.assertEqual({}, mapping)
+            nodegroup=node.nodegroup, mac=newer_mac.mac_address)
+        lease_for_older_mac = factory.make_dhcp_lease(
+            nodegroup=node.nodegroup, mac=older_mac.mac_address)
+
+        mapping = DHCPLease.objects.get_hostname_ip_mapping(node.nodegroup)
+        self.assertEqual({node.hostname: lease_for_older_mac.ip}, mapping)
 
     def test_get_hostname_ip_mapping_considers_given_nodegroup(self):
         nodegroup = factory.make_node_group()
