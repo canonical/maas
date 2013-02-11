@@ -135,6 +135,18 @@ class ClusterInterfaceDeleteTest(AdminLoggedInTestCase):
         self.assertFalse(
             NodeGroupInterface.objects.filter(id=interface.id).exists())
 
+    def test_interface_delete_supports_interface_alias(self):
+        nodegroup = factory.make_node_group(
+            management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
+        interface = factory.make_node_group_interface(
+                nodegroup=nodegroup, interface="eth0:0")
+        delete_link = reverse(
+            'cluster-interface-delete',
+            args=[nodegroup.uuid, interface.interface])
+        # The real test is that reverse() does not blow up when the
+        # interface's name contains an alias.
+        self.assertIsInstance(delete_link, basestring)
+
 
 class ClusterInterfaceEditTest(AdminLoggedInTestCase):
 
@@ -154,6 +166,18 @@ class ClusterInterfaceEditTest(AdminLoggedInTestCase):
         self.assertThat(
             reload_object(interface),
             MatchesStructure.byEquality(**data))
+
+    def test_interface_edit_supports_interface_alias(self):
+        nodegroup = factory.make_node_group(
+            management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
+        interface = factory.make_node_group_interface(
+                nodegroup=nodegroup, interface="eth0:0")
+        edit_link = reverse(
+            'cluster-interface-edit',
+            args=[nodegroup.uuid, interface.interface])
+        # The real test is that reverse() does not blow up when the
+        # interface's name contains an alias.
+        self.assertIsInstance(edit_link, basestring)
 
 
 class ClusterInterfaceCreateTest(AdminLoggedInTestCase):

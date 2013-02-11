@@ -141,11 +141,11 @@ urlpatterns += patterns('maasserver.views',
         r'^clusters/(?P<uuid>[\w\-]+)/interfaces/add/$',
         ClusterInterfaceCreate.as_view(), name='cluster-interface-create'),
     adminurl(
-        r'^clusters/(?P<uuid>[\w\-]+)/interfaces/(?P<interface>[\w\-]*)/'
+        r'^clusters/(?P<uuid>[\w\-]+)/interfaces/(?P<interface>[^/]*)/'
         'edit/$',
         ClusterInterfaceEdit.as_view(), name='cluster-interface-edit'),
     adminurl(
-        r'^clusters/(?P<uuid>[\w\-]+)/interfaces/(?P<interface>[\w\-]*)/'
+        r'^clusters/(?P<uuid>[\w\-]+)/interfaces/(?P<interface>[^/]*)/'
         'delete/$',
         ClusterInterfaceDelete.as_view(), name='cluster-interface-delete'),
     # XXX: rvb 2012-10-08 bug=1063881:
