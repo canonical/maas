@@ -32,6 +32,7 @@ d-i     partman-iscsi/mainmenu string finish
 d-i     partman-auto/method string regular
 d-i     partman-lvm/device_remove_lvm boolean true
 d-i     partman-lvm/confirm boolean true
+d-i     partman-md/device_remove_md boolean true
 d-i     partman/confirm_write_new_label boolean true
 d-i     partman/choose_partition        select Finish partitioning and write changes to disk
 d-i     partman/confirm boolean true
