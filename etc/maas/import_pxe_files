@@ -13,7 +13,8 @@ fi
 
 
 #RELEASES="oneiric precise"
-RELEASES="precise quantal raring"
+# XXX: rvb 2013-02-13 bug=1115178: raring images are not there yet.
+RELEASES="precise quantal"
 #ARCHES="amd64/generic i386/generic armhf/highbank"
 #LOCALE="en_US"
 #IMPORT_EPHEMERALS=1
