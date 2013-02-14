@@ -830,7 +830,7 @@ class FileHandler(OperationsHandler):
     """
     model = FileStorage
     fields = DISPLAYED_FILES_FIELDS
-    create = update = delete = None
+    create = update = None
 
     def read(self, request, filename):
         """GET a FileStorage object as a json object.
@@ -854,6 +854,13 @@ class FileHandler(OperationsHandler):
         return HttpResponse(
             stream, mimetype='application/json; charset=utf-8',
             status=httplib.OK)
+
+    @operation(idempotent=False)
+    def delete(self, request, filename):
+        """Delete a FileStorage object."""
+        stored_file = get_object_or_404(FileStorage, filename=filename)
+        stored_file.delete()
+        return rc.DELETED
 
     @classmethod
     def resource_uri(cls, stored_file=None):

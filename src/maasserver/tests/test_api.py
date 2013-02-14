@@ -82,6 +82,7 @@ from maasserver.models import (
     BootImage,
     Config,
     DHCPLease,
+    FileStorage,
     MACAddress,
     Node,
     NodeGroup,
@@ -2645,6 +2646,14 @@ class AnonymousFileStorageAPITest(FileStorageAPITestMixin, AnonAPITestCase):
             reverse('file_handler', args=[filename]))
         self.assertEqual(httplib.UNAUTHORIZED, response.status_code)
 
+    def test_anon_cannot_delete_file(self):
+        filename = factory.make_name('file')
+        factory.make_file_storage(
+            filename=filename, content=b"test content")
+        response = self.client.delete(
+            reverse('file_handler', args=[filename]))
+        self.assertEqual(httplib.UNAUTHORIZED, response.status_code)
+
 
 class FileStorageAPITest(FileStorageAPITestMixin, APITestCase):
 
@@ -2776,6 +2785,16 @@ class FileStorageAPITest(FileStorageAPITestMixin, APITestCase):
                 parsed_result['filename'],
                 b64decode(parsed_result['content'])
             ))
+
+    def test_delete_file_deletes_file(self):
+        filename = factory.make_name('file')
+        factory.make_file_storage(
+            filename=filename, content=b"test content")
+        response = self.client.delete(
+            reverse('file_handler', args=[filename]))
+        self.assertEqual(httplib.NO_CONTENT, response.status_code)
+        files = FileStorage.objects.filter(filename=filename)
+        self.assertEqual([], list(files))
 
 
 class TestTagAPI(APITestCase):
