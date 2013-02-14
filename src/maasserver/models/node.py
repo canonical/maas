@@ -812,3 +812,57 @@ class Node(CleanSave, TimestampedModel):
     def set_hardware_details(self, xmlbytes):
         """Set the `lshw -xml` output"""
         update_hardware_details(self, xmlbytes, Tag.objects)
+
+    def should_use_traditional_installer(self):
+        """Should this node be installed with the traditional installer?
+
+        By default, nodes should be installed with the default installer, so
+        this returns `False`.
+        """
+        return self.tags.filter(name="use-traditional-installer").exists()
+
+    def should_use_default_installer(self):
+        """Should this node be installed with the default installer?
+
+        By default, nodes should be installed with the default installer, the
+        Fast Path installer, so this returns `True`.
+        """
+        return not self.should_use_traditional_installer()
+
+    def use_traditional_installer(self):
+        """Set this node to be installed with the traditional installer.
+
+        By default, nodes should be installed with the Fast Path installer.
+
+        :raises: :class:`RuntimeError` when the `use-traditional-installer`
+            tag is defined *with* an expression. The reason is that the tag
+            evaluation machinery will eventually ignore whatever changes you
+            make with this method.
+        """
+        uti_tag, _ = Tag.objects.get_or_create(
+            name="use-traditional-installer")
+        if uti_tag.definition != "":
+            raise RuntimeError(
+                "The use-traditional-installer tag is defined with an "
+                "expression. This expression much be updated to make this "
+                "node boot with the traditional installer.")
+        self.tags.add(uti_tag)
+
+    def use_default_installer(self):
+        """Set this node to be installed with the default installer.
+
+        By default, nodes should be installed with the Fast Path installer.
+
+        :raises: :class:`RuntimeError` when the `use-traditional-installer`
+            tag is defined *with* an expression. The reason is that the tag
+            evaluation machinery will eventually ignore whatever changes you
+            make with this method.
+        """
+        uti_tag, _ = Tag.objects.get_or_create(
+            name="use-traditional-installer")
+        if uti_tag.definition != "":
+            raise RuntimeError(
+                "The use-traditional-installer tag is defined with an "
+                "expression. This expression much be updated to prevent "
+                "this node from booting with the traditional installer.")
+        self.tags.remove(uti_tag)
