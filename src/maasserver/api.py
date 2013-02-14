@@ -103,7 +103,10 @@ from django.core.exceptions import (
     )
 from django.db.utils import DatabaseError
 from django.forms.models import model_to_dict
-from django.http import HttpResponse
+from django.http import (
+    Http404,
+    HttpResponse,
+    )
 from django.shortcuts import (
     get_object_or_404,
     render_to_response,
@@ -190,6 +193,8 @@ from metadataserver.models import (
     CommissioningScript,
     NodeCommissionResult,
     )
+from piston.emitters import JSONEmitter
+from piston.handler import typemapper
 from piston.utils import rc
 from provisioningserver.enum import POWER_TYPE
 from provisioningserver.kernel_opts import KernelParameters
@@ -810,7 +815,12 @@ class AnonFilesHandler(AnonymousOperationsHandler):
         return ('files_handler', [])
 
 
+# DISPLAYED_FILES_FIELDS_OBJECT is the list of fields used when dumping
+# lists of FileStorage objects.
 DISPLAYED_FILES_FIELDS = ('filename', )
+# DISPLAYED_FILES_FIELDS_OBJECT is the list of fields used when dumping
+# individual FileStorage objects.
+DISPLAYED_FILES_FIELDS_OBJECT = DISPLAYED_FILES_FIELDS + ('content', )
 
 
 class FileHandler(OperationsHandler):
@@ -820,7 +830,30 @@ class FileHandler(OperationsHandler):
     """
     model = FileStorage
     fields = DISPLAYED_FILES_FIELDS
-    create = read = update = delete = None
+    create = update = delete = None
+
+    def read(self, request, filename):
+        """GET a FileStorage object as a json object.
+
+        The 'content' of the file is base64-encoded."""
+        # 'content' is a BinaryField, its 'value' is a base64-encoded version
+        # of its value.
+        stored_files = FileStorage.objects.filter(filename=filename).values()
+        # filename is a 'unique' field, we can have either 0 or 1 objects in
+        # 'stored_files'.
+        if len(stored_files) == 0:
+            raise Http404
+        stored_file = stored_files[0]
+        # Emit the json for this object manually because, no matter what the
+        # piston documentation says, once an type is associated with a list
+        # of fields by piston's typemapper mechanism, there is no way to
+        # override that in a specific handler with 'fields' or 'exclude'.
+        emitter = JSONEmitter(
+            stored_file, typemapper, None, DISPLAYED_FILES_FIELDS_OBJECT)
+        stream = emitter.render(request)
+        return HttpResponse(
+            stream, mimetype='application/json; charset=utf-8',
+            status=httplib.OK)
 
     @classmethod
     def resource_uri(cls, stored_file=None):

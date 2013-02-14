@@ -16,7 +16,10 @@ from abc import (
     ABCMeta,
     abstractproperty,
     )
-from base64 import b64encode
+from base64 import (
+    b64decode,
+    b64encode,
+    )
 from cStringIO import StringIO
 from datetime import (
     datetime,
@@ -2634,6 +2637,14 @@ class AnonymousFileStorageAPITest(FileStorageAPITestMixin, AnonAPITestCase):
         # The 'list' operation is not available to anon users.
         self.assertEqual(httplib.BAD_REQUEST, response.status_code)
 
+    def test_anon_cannot_get_file(self):
+        filename = factory.make_name("file")
+        factory.make_file_storage(
+            filename=filename, content=b"test file content")
+        response = self.client.get(
+            reverse('file_handler', args=[filename]))
+        self.assertEqual(httplib.UNAUTHORIZED, response.status_code)
+
 
 class FileStorageAPITest(FileStorageAPITestMixin, APITestCase):
 
@@ -2751,6 +2762,20 @@ class FileStorageAPITest(FileStorageAPITestMixin, APITestCase):
         resource_uri_elements = resource_uri.split('/')
         # The url-escaped name of the file is part of the resource uri.
         self.assertIn(urlquote_plus(filename), resource_uri_elements)
+
+    def test_get_file_returns_file_object_with_content_base64_encoded(self):
+        filename = factory.make_name("file")
+        content = sample_binary_data
+        factory.make_file_storage(filename=filename, content=content)
+        response = self.client.get(
+            reverse('file_handler', args=[filename]))
+        parsed_result = json.loads(response.content)
+        self.assertEqual(
+            (filename, content),
+            (
+                parsed_result['filename'],
+                b64decode(parsed_result['content'])
+            ))
 
 
 class TestTagAPI(APITestCase):
