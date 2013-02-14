@@ -17,8 +17,10 @@ __all__ = [
     "get_write_time",
     "preexec_fn",
     "retries",
+    "sample_binary_data",
     ]
 
+import codecs
 import os
 import re
 import signal
@@ -90,3 +92,16 @@ def retries(timeout=30, delay=1):
             sleep(min(delay, end - now))
         else:
             break
+
+
+# Some horrible binary data that could never, ever, under any encoding
+# known to man(1) survive mis-interpretation as text.
+#
+# The data contains a nul byte to trip up accidental string termination.
+# Switch the bytes of the byte-order mark around and by design you get
+# an invalid codepoint; put a byte with the high bit set between bytes
+# that have it cleared, and you have a guaranteed non-UTF-8 sequence.
+#
+# (1) Provided, of course, that man know only about ASCII and
+# UTF.
+sample_binary_data = codecs.BOM64_LE + codecs.BOM64_BE + b'\x00\xff\x00'

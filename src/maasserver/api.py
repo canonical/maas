@@ -61,6 +61,7 @@ __all__ = [
     "api_doc",
     "api_doc_title",
     "BootImagesHandler",
+    "FileHandler",
     "FilesHandler",
     "get_oauth_token",
     "MaasHandler",
@@ -101,6 +102,7 @@ from django.core.exceptions import (
 from django.db.utils import DatabaseError
 from django.forms.models import model_to_dict
 from django.http import (
+    Http404,
     HttpResponse,
     HttpResponseBadRequest,
     QueryDict,
@@ -110,6 +112,7 @@ from django.shortcuts import (
     render_to_response,
     )
 from django.template import RequestContext
+from django.utils.http import urlquote_plus
 from docutils import core
 from formencode import validators
 from formencode.validators import Invalid
@@ -173,10 +176,12 @@ from maasserver.utils import (
     strip_domain,
     )
 from maasserver.utils.orm import get_one
+from piston.emitters import JSONEmitter
 from piston.handler import (
     AnonymousBaseHandler,
     BaseHandler,
     HandlerMetaClass,
+    typemapper,
     )
 from piston.models import Token
 from piston.resource import Resource
@@ -1052,6 +1057,61 @@ class AnonFilesHandler(AnonymousOperationsHandler):
         return ('files_handler', [])
 
 
+# DISPLAYED_FILES_FIELDS_OBJECT is the list of fields used when dumping
+# lists of FileStorage objects.
+DISPLAYED_FILES_FIELDS = ('filename', )
+# DISPLAYED_FILES_FIELDS_OBJECT is the list of fields used when dumping
+# individual FileStorage objects.
+DISPLAYED_FILES_FIELDS_OBJECT = DISPLAYED_FILES_FIELDS + ('content', )
+
+
+class FileHandler(OperationsHandler):
+    """Manage a FileStorage object.
+
+    The file is identified by its filename.
+    """
+    model = FileStorage
+    fields = DISPLAYED_FILES_FIELDS
+    create = update = None
+
+    def read(self, request, filename):
+        """GET a FileStorage object as a json object.
+
+        The 'content' of the file is base64-encoded."""
+        # 'content' is a BinaryField, its 'value' is a base64-encoded version
+        # of its value.
+        stored_files = FileStorage.objects.filter(filename=filename).values()
+        # filename is a 'unique' field, we can have either 0 or 1 objects in
+        # 'stored_files'.
+        if len(stored_files) == 0:
+            raise Http404
+        stored_file = stored_files[0]
+        # Emit the json for this object manually because, no matter what the
+        # piston documentation says, once an type is associated with a list
+        # of fields by piston's typemapper mechanism, there is no way to
+        # override that in a specific handler with 'fields' or 'exclude'.
+        emitter = JSONEmitter(
+            stored_file, typemapper, None, DISPLAYED_FILES_FIELDS_OBJECT)
+        stream = emitter.render(request)
+        return HttpResponse(
+            stream, mimetype='application/json; charset=utf-8',
+            status=httplib.OK)
+
+    @operation(idempotent=False)
+    def delete(self, request, filename):
+        """Delete a FileStorage object."""
+        stored_file = get_object_or_404(FileStorage, filename=filename)
+        stored_file.delete()
+        return rc.DELETED
+
+    @classmethod
+    def resource_uri(cls, stored_file=None):
+        filename = "filename"
+        if stored_file is not None:
+            filename = urlquote_plus(stored_file.filename)
+        return ('file_handler', (filename, ))
+
+
 class FilesHandler(OperationsHandler):
     """File management operations."""
     create = read = update = delete = None
@@ -1083,6 +1143,23 @@ class FilesHandler(OperationsHandler):
         # files are not expected.
         FileStorage.objects.save_file(filename, uploaded_file)
         return HttpResponse('', status=httplib.CREATED)
+
+    @operation(idempotent=True)
+    def list(self, request):
+        """List the files from the file storage.
+
+        The returned files are ordered by file name and the content is
+        excluded.
+
+        :param prefix: Optional prefix used to filter out the returned files.
+        :type prefix: string
+        """
+        prefix = request.GET.get("prefix", None)
+        files = FileStorage.objects.all()
+        if prefix is not None:
+            files = files.filter(filename__startswith=prefix)
+        files = files.order_by('filename')
+        return files
 
     @classmethod
     def resource_uri(cls, *args, **kwargs):
