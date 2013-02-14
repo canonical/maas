@@ -15,8 +15,8 @@ __all__ = [
     'build_absolute_uri',
     'find_nodegroup',
     'get_db_state',
+    'get_local_cluster_UUID',
     'ignore_unused',
-    'is_local_cluster_UUID',
     'map_enum',
     'strip_domain',
     ]
@@ -113,21 +113,21 @@ def strip_domain(hostname):
     return hostname.split('.', 1)[0]
 
 
-def is_local_cluster_UUID(uuid):
-    """Return whether the given UUID is the UUID of the local cluster."""
+def get_local_cluster_UUID():
+    """Return the UUID of the local cluster (or None if it cannot be found)."""
     try:
         cluster_config = open(settings.LOCAL_CLUSTER_CONFIG).read()
         match = re.search(
             "CLUSTER_UUID=(?P<quote>[\"']?)([^\"']+)(?P=quote)",
             cluster_config)
         if match is not None:
-            return uuid == match.groups()[1]
+            return match.groups()[1]
         else:
-            return False
+            return None
     except IOError as error:
         if error.errno == errno.ENOENT:
             # Cluster config file is not present.
-            return False
+            return None
         else:
             # Anything else is an error.
             raise

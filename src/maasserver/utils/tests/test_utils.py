@@ -34,7 +34,7 @@ from maasserver.utils import (
     build_absolute_uri,
     find_nodegroup,
     get_db_state,
-    is_local_cluster_UUID,
+    get_local_cluster_UUID,
     map_enum,
     strip_domain,
     )
@@ -195,30 +195,23 @@ class TestStripDomain(TestCase):
         self.assertEqual(results, map(strip_domain, inputs))
 
 
-class TestIsLocalClusterUUID(TestCase):
+class TestGetLocalClusterUUID(TestCase):
 
-    def test_is_local_cluster_UUID_returns_false_if_no_config_file(self):
+    def test_get_local_cluster_UUID_returns_None_if_no_config_file(self):
         bogus_file_name = '/tmp/bogus/%s' % factory.make_name('name')
         self.patch(settings, 'LOCAL_CLUSTER_CONFIG', bogus_file_name)
-        self.assertFalse(is_local_cluster_UUID(factory.getRandomUUID()))
+        self.assertIsNone(get_local_cluster_UUID())
 
-    def test_is_local_cluster_UUID_returns_false_if_parsing_fails(self):
+    def test_get_local_cluster_UUID_returns_None_if_parsing_fails(self):
         file_name = self.make_file(contents="wrong content")
         self.patch(settings, 'LOCAL_CLUSTER_CONFIG', file_name)
-        self.assertFalse(is_local_cluster_UUID(factory.getRandomUUID()))
+        self.assertIsNone(get_local_cluster_UUID())
 
-    def test_is_local_cluster_UUID_returns_false_if_wrong_UUID(self):
-        uuid = factory.getRandomUUID()
-        other_uuid = factory.getRandomUUID()
-        file_name = self.make_file(contents='CLUSTER_UUID="%s"' % other_uuid)
-        self.patch(settings, 'LOCAL_CLUSTER_CONFIG', file_name)
-        self.assertFalse(is_local_cluster_UUID(uuid))
-
-    def test_is_local_cluster_UUID_returns_true_if_local_UUID(self):
+    def test_get_local_cluster_UUID_returns_cluster_UUID(self):
         uuid = factory.getRandomUUID()
         file_name = self.make_file(contents='CLUSTER_UUID="%s"' % uuid)
         self.patch(settings, 'LOCAL_CLUSTER_CONFIG', file_name)
-        self.assertTrue(is_local_cluster_UUID(uuid))
+        self.assertEqual(uuid, get_local_cluster_UUID())
 
 
 def get_request(origin_ip):
