@@ -24,6 +24,7 @@ from maasserver.api import (
     CommissioningScriptHandler,
     CommissioningScriptsHandler,
     describe,
+    FileHandler,
     FilesHandler,
     MaasHandler,
     NodeGroupHandler,
@@ -47,6 +48,7 @@ from maasserver.api_support import (
 
 account_handler = RestrictedResource(AccountHandler, authentication=api_auth)
 files_handler = RestrictedResource(FilesHandler, authentication=api_auth)
+file_handler = RestrictedResource(FileHandler, authentication=api_auth)
 node_handler = RestrictedResource(NodeHandler, authentication=api_auth)
 nodes_handler = RestrictedResource(NodesHandler, authentication=api_auth)
 node_mac_handler = RestrictedResource(NodeMacHandler, authentication=api_auth)
@@ -105,6 +107,7 @@ urlpatterns += patterns('',
     url(r'nodegroups/(?P<uuid>[^/]+)/interfaces/(?P<interface>[^/]+)/$',
         nodegroupinterface_handler, name='nodegroupinterface_handler'),
     url(r'files/$', files_handler, name='files_handler'),
+    url(r'files/(?P<filename>[^/]+)/$', file_handler, name='file_handler'),
     url(r'account/$', account_handler, name='account_handler'),
     url(r'boot-images/$', boot_images_handler, name='boot_images_handler'),
     url(r'tags/(?P<name>[\w\-]+)/$', tag_handler, name='tag_handler'),

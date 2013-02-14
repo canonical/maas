@@ -45,6 +45,7 @@ from django.core.urlresolvers import (
     )
 from django.http import QueryDict
 from django.test.client import RequestFactory
+from django.utils.http import urlquote_plus
 from fixtures import (
     EnvironmentVariableFixture,
     Fixture,
@@ -2626,6 +2627,13 @@ class AnonymousFileStorageAPITest(FileStorageAPITestMixin, AnonAPITestCase):
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(b"give me rope", response.content)
 
+    def test_anon_cannot_list_files(self):
+        factory.make_file_storage(
+             filename="filename", content=b"test content")
+        response = self.make_API_GET_request("list")
+        # The 'list' operation is not available to anon users.
+        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+
 
 class FileStorageAPITest(FileStorageAPITestMixin, APITestCase):
 
@@ -2701,6 +2709,48 @@ class FileStorageAPITest(FileStorageAPITestMixin, APITestCase):
         self.assertEqual(httplib.NOT_FOUND, response.status_code)
         self.assertIn('text/plain', response['Content-Type'])
         self.assertEqual("File not found", response.content)
+
+    def test_list_files_returns_ordered_list(self):
+        filenames = ["myfiles/a", "myfiles/z", "myfiles/b"]
+        for filename in filenames:
+            factory.make_file_storage(
+                filename=filename, content=b"test content")
+        response = self.make_API_GET_request("list")
+        self.assertEqual(httplib.OK, response.status_code)
+        parsed_results = json.loads(response.content)
+        filenames = [result['filename'] for result in parsed_results]
+        self.assertEqual(sorted(filenames), filenames)
+
+    def test_list_files_lists_files_with_prefix(self):
+        filenames_with_prefix = ["prefix-file1", "prefix-file2"]
+        filenames = filenames_with_prefix + ["otherfile", "otherfile2"]
+        for filename in filenames:
+            factory.make_file_storage(
+                filename=filename, content=b"test content")
+        response = self.client.get(
+            self.get_uri('files/'), {"op": "list", "prefix": "prefix-"})
+        self.assertEqual(httplib.OK, response.status_code)
+        parsed_results = json.loads(response.content)
+        filenames = [result['filename'] for result in parsed_results]
+        self.assertItemsEqual(filenames_with_prefix, filenames)
+
+    def test_list_files_does_not_include_file_content(self):
+        factory.make_file_storage(
+             filename="filename", content=b"test content")
+        response = self.make_API_GET_request("list")
+        parsed_results = json.loads(response.content)
+        self.assertNotIn('content', parsed_results[0].keys())
+
+    def test_files_resource_uri_are_url_escaped(self):
+        filename = "&*!c/%//filename/"
+        factory.make_file_storage(
+             filename=filename, content=b"test content")
+        response = self.make_API_GET_request("list")
+        parsed_results = json.loads(response.content)
+        resource_uri = parsed_results[0]['resource_uri']
+        resource_uri_elements = resource_uri.split('/')
+        # The url-escaped name of the file is part of the resource uri.
+        self.assertIn(urlquote_plus(filename), resource_uri_elements)
 
 
 class TestTagAPI(APITestCase):

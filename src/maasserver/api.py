@@ -63,6 +63,7 @@ __all__ = [
     "CommissioningScriptHandler",
     "CommissioningScriptsHandler",
     "CommissioningResultsHandler",
+    "FileHandler",
     "FilesHandler",
     "get_oauth_token",
     "MaasHandler",
@@ -108,6 +109,7 @@ from django.shortcuts import (
     render_to_response,
     )
 from django.template import RequestContext
+from django.utils.http import urlquote_plus
 from docutils import core
 from formencode import validators
 from maasserver.api_support import (
@@ -808,6 +810,26 @@ class AnonFilesHandler(AnonymousOperationsHandler):
         return ('files_handler', [])
 
 
+DISPLAYED_FILES_FIELDS = ('filename', )
+
+
+class FileHandler(OperationsHandler):
+    """Manage a FileStorage object.
+
+    The file is identified by its filename.
+    """
+    model = FileStorage
+    fields = DISPLAYED_FILES_FIELDS
+    create = read = update = delete = None
+
+    @classmethod
+    def resource_uri(cls, stored_file=None):
+        filename = "filename"
+        if stored_file is not None:
+            filename = urlquote_plus(stored_file.filename)
+        return ('file_handler', (filename, ))
+
+
 class FilesHandler(OperationsHandler):
     """File management operations."""
     create = read = update = delete = None
@@ -839,6 +861,23 @@ class FilesHandler(OperationsHandler):
         # files are not expected.
         FileStorage.objects.save_file(filename, uploaded_file)
         return HttpResponse('', status=httplib.CREATED)
+
+    @operation(idempotent=True)
+    def list(self, request):
+        """List the files from the file storage.
+
+        The returned files are ordered by file name and the content is
+        excluded.
+
+        :param prefix: Optional prefix used to filter out the returned files.
+        :type prefix: string
+        """
+        prefix = request.GET.get("prefix", None)
+        files = FileStorage.objects.all()
+        if prefix is not None:
+            files = files.filter(filename__startswith=prefix)
+        files = files.order_by('filename')
+        return files
 
     @classmethod
     def resource_uri(cls, *args, **kwargs):
