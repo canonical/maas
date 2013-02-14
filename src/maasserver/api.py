@@ -178,7 +178,7 @@ from maasserver.utils import (
     absolute_reverse,
     build_absolute_uri,
     find_nodegroup,
-    is_local_cluster_UUID,
+    get_local_cluster_UUID,
     map_enum,
     strip_domain,
     )
@@ -913,13 +913,16 @@ class AnonNodeGroupsHandler(AnonymousOperationsHandler):
             "eth0"}]'
         """
         uuid = get_mandatory_param(request.data, 'uuid')
-        is_local_cluster = is_local_cluster_UUID(uuid)
         existing_nodegroup = get_one(NodeGroup.objects.filter(uuid=uuid))
         if existing_nodegroup is None:
             master = NodeGroup.objects.ensure_master()
             # Does master.uuid look like it's a proper uuid?
             if master.uuid in ('master', ''):
                 # Master nodegroup not yet configured, configure it.
+                local_cluster_UUID = get_local_cluster_UUID()
+                is_local_cluster = (
+                    local_cluster_UUID is not None and
+                    local_cluster_UUID == uuid)
                 if is_local_cluster:
                     # Connecting from localhost, accept the cluster
                     # controller.
