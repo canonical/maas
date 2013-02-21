@@ -26,6 +26,18 @@ __all__ = [
     'UserProfile',
     ]
 
+# If we're running Django 1.3, monkey patch Django to create the
+# GenericIPAddressField that was introduced in Django 1.4.
+from django import VERSION
+
+
+if VERSION[0:2] == (1, 3):
+    import django.db.models.fields as django_fields
+    import django.db.models as django_models
+    from maasserver.dj14.genericipaddressfield import GenericIPAddressField
+    django_fields.GenericIPAddressField = GenericIPAddressField
+    django_models.GenericIPAddressField = GenericIPAddressField
+
 from logging import getLogger
 
 from django.contrib import admin
