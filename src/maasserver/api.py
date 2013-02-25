@@ -890,8 +890,17 @@ class FileHandler(OperationsHandler):
         """GET a FileStorage object as a json object.
 
         The 'content' of the file is base64-encoded."""
-        stored_file = get_owned_file_or_404(
-            filename=filename, user=request.user)
+        try:
+            stored_file = get_owned_file_or_404(
+                filename=filename, user=request.user)
+        except Http404:
+            # In order to fix bug 1123986 we need to distinguish between
+            # a 404 returned when the file is not present and a 404 returned
+            # when the API endpoint is not present.  We do this by setting
+            # a header: "Workaround: bug1123986".
+            response = HttpResponse("Not Found", status=404)
+            response["Workaround"] = "bug1123986"
+            return response
         stream = json_file_storage(stored_file, request)
         return HttpResponse(
             stream, mimetype='application/json; charset=utf-8',

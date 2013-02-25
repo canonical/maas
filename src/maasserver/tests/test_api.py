@@ -2887,6 +2887,25 @@ class FileStorageAPITest(FileStorageAPITestMixin, APITestCase):
                 b64decode(parsed_result['content'])
             ))
 
+    def test_get_file_returning_404_file_includes_header(self):
+        # In order to fix bug 1123986 we need to distinguish between
+        # a 404 returned when the file is not present and a 404 returned
+        # when the API endpoint is not present.  We do this by setting
+        # a header: "Workaround: bug1123986".
+        response = self.client.get(
+            reverse('file_handler', args=[factory.make_name("file")]))
+        self.assertThat(
+            (
+                response.status_code,
+                response.items(),
+            ),
+            MatchesListwise(
+                (
+                    Equals(httplib.NOT_FOUND),
+                    Contains(('Workaround', 'bug1123986')),
+                )),
+            response)
+
     def test_delete_filters_by_owner(self):
         storage = factory.make_file_storage(owner=factory.make_user())
         response = self.client.delete(
