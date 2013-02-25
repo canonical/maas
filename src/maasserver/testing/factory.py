@@ -330,9 +330,9 @@ class Factory(maastesting.factory.Factory):
         admin.save()
         return admin
 
-    def make_file_storage(self, filename=None, content=None):
+    def make_file_storage(self, filename=None, content=None, owner=None):
         fake_file = self.make_file_upload(filename, content)
-        return FileStorage.objects.save_file(fake_file.name, fake_file)
+        return FileStorage.objects.save_file(fake_file.name, fake_file, owner)
 
     def make_oauth_header(self, **kwargs):
         """Fake an OAuth authorization header.

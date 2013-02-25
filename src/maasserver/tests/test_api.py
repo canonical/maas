@@ -46,7 +46,10 @@ from django.core.urlresolvers import (
     reverse,
     get_script_prefix,
     )
-from django.http import QueryDict
+from django.http import (
+    Http404,
+    QueryDict,
+    )
 from django.test.client import RequestFactory
 from django.utils.http import urlquote_plus
 from fixtures import (
@@ -62,6 +65,7 @@ from maasserver.api import (
     DISPLAYED_NODEGROUP_FIELDS,
     extract_constraints,
     find_nodegroup_for_pxeconfig_request,
+    get_owned_file_or_404,
     store_node_power_parameters,
     )
 from maasserver.enum import (
@@ -2621,37 +2625,82 @@ class FileStorageAPITestMixin:
         return self.client.get(self.get_uri('files/'), params)
 
 
+class CompatibilityUtilitiesTest(TestCase):
+
+    def test_get_owned_file_or_404_returns_owned_file(self):
+        user = factory.make_user()
+        filename = factory.make_name('filename')
+        factory.make_file_storage(filename=filename, owner=None)
+        filestorage = factory.make_file_storage(filename=filename, owner=user)
+
+        self.assertEqual(filestorage, get_owned_file_or_404(filename, user))
+
+    def test_get_owned_file_or_404_fallsback_to_nonowned_file(self):
+        user = factory.make_user()
+        filename = factory.make_name('filename')
+        factory.make_file_storage(
+            filename=factory.make_name('filename'), owner=user)
+        filestorage = factory.make_file_storage(filename=filename, owner=None)
+
+        self.assertEqual(filestorage, get_owned_file_or_404(filename, user))
+
+    def test_get_owned_file_or_404_raises_404_if_no_file(self):
+        user = factory.make_user()
+        filename = factory.make_name('filename')
+        factory.make_file_storage(
+            filename=factory.make_name('filename'), owner=user)
+        factory.make_file_storage(
+            filename=filename, owner=factory.make_user())
+
+        self.assertRaises(Http404, get_owned_file_or_404, filename, user)
+
+    def test_get_owned_file_or_404_returns_values(self):
+        user = factory.make_user()
+        filename = factory.make_name('filename')
+        factory.make_file_storage(filename=filename, owner=None)
+        factory.make_file_storage(filename=filename, owner=user)
+
+        values = FileStorage.objects.filter(
+            filename=filename, owner=user).values()[0]
+        self.assertEqual(
+            values, get_owned_file_or_404(filename, user, values=True))
+
+
 class AnonymousFileStorageAPITest(FileStorageAPITestMixin, AnonAPITestCase):
 
     def test_get_works_anonymously(self):
-        factory.make_file_storage(
-            filename="foofilers", content=b"give me rope")
-        response = self.make_API_GET_request("get", "foofilers")
+        storage = factory.make_file_storage()
+        response = self.make_API_GET_request("get", storage.filename)
 
         self.assertEqual(httplib.OK, response.status_code)
-        self.assertEqual(b"give me rope", response.content)
+        self.assertEqual(storage.content, response.content)
+
+    def test_get_fetches_the_most_recent_file(self):
+        filename = factory.make_name('file')
+        factory.make_file_storage(filename=filename, owner=factory.make_user())
+        storage = factory.make_file_storage(
+            filename=filename, owner=factory.make_user())
+        response = self.make_API_GET_request("get", filename)
+
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(storage.content, response.content)
 
     def test_anon_cannot_list_files(self):
-        factory.make_file_storage(
-             filename="filename", content=b"test content")
+        factory.make_file_storage()
         response = self.make_API_GET_request("list")
         # The 'list' operation is not available to anon users.
         self.assertEqual(httplib.BAD_REQUEST, response.status_code)
 
     def test_anon_cannot_get_file(self):
-        filename = factory.make_name("file")
-        factory.make_file_storage(
-            filename=filename, content=b"test file content")
+        storage = factory.make_file_storage()
         response = self.client.get(
-            reverse('file_handler', args=[filename]))
+            reverse('file_handler', args=[storage.filename]))
         self.assertEqual(httplib.UNAUTHORIZED, response.status_code)
 
     def test_anon_cannot_delete_file(self):
-        filename = factory.make_name('file')
-        factory.make_file_storage(
-            filename=filename, content=b"test content")
+        storage = factory.make_file_storage()
         response = self.client.delete(
-            reverse('file_handler', args=[filename]))
+            reverse('file_handler', args=[storage.filename]))
         self.assertEqual(httplib.UNAUTHORIZED, response.status_code)
 
 
@@ -2721,7 +2770,7 @@ class FileStorageAPITest(FileStorageAPITestMixin, APITestCase):
 
         self.assertEqual(httplib.BAD_REQUEST, response.status_code)
         self.assertIn('text/plain', response['Content-Type'])
-        self.assertEqual("Filename not supplied", response.content)
+        self.assertEqual("No provided filename!", response.content)
 
     def test_get_file_fails_with_missing_file(self):
         response = self.make_API_GET_request("get", filename="missingfilename")
@@ -2734,19 +2783,28 @@ class FileStorageAPITest(FileStorageAPITestMixin, APITestCase):
         filenames = ["myfiles/a", "myfiles/z", "myfiles/b"]
         for filename in filenames:
             factory.make_file_storage(
-                filename=filename, content=b"test content")
+                filename=filename, content=b"test content",
+                owner=self.logged_in_user)
         response = self.make_API_GET_request("list")
         self.assertEqual(httplib.OK, response.status_code)
         parsed_results = json.loads(response.content)
         filenames = [result['filename'] for result in parsed_results]
         self.assertEqual(sorted(filenames), filenames)
 
+    def test_list_files_filters_by_owner(self):
+        factory.make_file_storage(owner=factory.make_user())
+        response = self.make_API_GET_request("list")
+        self.assertEqual(httplib.OK, response.status_code)
+        parsed_results = json.loads(response.content)
+        self.assertEqual([], parsed_results)
+
     def test_list_files_lists_files_with_prefix(self):
         filenames_with_prefix = ["prefix-file1", "prefix-file2"]
         filenames = filenames_with_prefix + ["otherfile", "otherfile2"]
         for filename in filenames:
             factory.make_file_storage(
-                filename=filename, content=b"test content")
+                filename=filename, content=b"test content",
+                owner=self.logged_in_user)
         response = self.client.get(
             self.get_uri('files/'), {"op": "list", "prefix": "prefix-"})
         self.assertEqual(httplib.OK, response.status_code)
@@ -2756,7 +2814,8 @@ class FileStorageAPITest(FileStorageAPITestMixin, APITestCase):
 
     def test_list_files_does_not_include_file_content(self):
         factory.make_file_storage(
-             filename="filename", content=b"test content")
+             filename="filename", content=b"test content",
+             owner=self.logged_in_user)
         response = self.make_API_GET_request("list")
         parsed_results = json.loads(response.content)
         self.assertNotIn('content', parsed_results[0].keys())
@@ -2764,7 +2823,8 @@ class FileStorageAPITest(FileStorageAPITestMixin, APITestCase):
     def test_files_resource_uri_are_url_escaped(self):
         filename = "&*!c/%//filename/"
         factory.make_file_storage(
-             filename=filename, content=b"test content")
+             filename=filename, content=b"test content",
+             owner=self.logged_in_user)
         response = self.make_API_GET_request("list")
         parsed_results = json.loads(response.content)
         resource_uri = parsed_results[0]['resource_uri']
@@ -2775,7 +2835,8 @@ class FileStorageAPITest(FileStorageAPITestMixin, APITestCase):
     def test_get_file_returns_file_object_with_content_base64_encoded(self):
         filename = factory.make_name("file")
         content = sample_binary_data
-        factory.make_file_storage(filename=filename, content=content)
+        factory.make_file_storage(
+            filename=filename, content=content, owner=self.logged_in_user)
         response = self.client.get(
             reverse('file_handler', args=[filename]))
         parsed_result = json.loads(response.content)
@@ -2786,10 +2847,68 @@ class FileStorageAPITest(FileStorageAPITestMixin, APITestCase):
                 b64decode(parsed_result['content'])
             ))
 
+    def test_get_file_returns_owned_file(self):
+        # If both an owned file and a non-owned file are present (with the
+        # same name), the owned file is returned.
+        filename = factory.make_name("file")
+        factory.make_file_storage(filename=filename, owner=None)
+        content = sample_binary_data
+        factory.make_file_storage(
+            filename=filename, content=content, owner=self.logged_in_user)
+        response = self.client.get(
+            reverse('file_handler', args=[filename]))
+        parsed_result = json.loads(response.content)
+        self.assertEqual(
+            (filename, content),
+            (
+                parsed_result['filename'],
+                b64decode(parsed_result['content'])
+            ))
+
+    def test_get_file_returns_file_object_with_anon_owner(self):
+        # To be compatible with the MAAS provider present in Juju as of
+        # revision 616 (lp:juju), reading a file returns the non-owned files
+        # if no owned file can be found.
+        filename = factory.make_name("file")
+        content = sample_binary_data
+        factory.make_file_storage(
+            filename=filename, content=content, owner=None)
+        response = self.client.get(
+            reverse('file_handler', args=[filename]))
+        parsed_result = json.loads(response.content)
+        self.assertEqual(
+            (filename, content),
+            (
+                parsed_result['filename'],
+                b64decode(parsed_result['content'])
+            ))
+
+    def test_delete_filters_by_owner(self):
+        storage = factory.make_file_storage(owner=factory.make_user())
+        response = self.client.delete(
+            reverse('file_handler', args=[storage.filename]))
+        self.assertEqual(httplib.NOT_FOUND, response.status_code)
+        files = FileStorage.objects.filter(filename=storage.filename)
+        self.assertEqual([storage], list(files))
+
     def test_delete_file_deletes_file(self):
         filename = factory.make_name('file')
         factory.make_file_storage(
-            filename=filename, content=b"test content")
+            filename=filename, content=b"test content",
+            owner=self.logged_in_user)
+        response = self.client.delete(
+            reverse('file_handler', args=[filename]))
+        self.assertEqual(httplib.NO_CONTENT, response.status_code)
+        files = FileStorage.objects.filter(filename=filename)
+        self.assertEqual([], list(files))
+
+    def test_delete_file_deletes_file_with_anon_owner(self):
+        # To be compatible with the MAAS provider present in Juju as of
+        # revision 616 (lp:juju), deleting a file deletes the non-owned file
+        # if no owned file can be found.
+        filename = factory.make_name('file')
+        factory.make_file_storage(
+            filename=filename, content=b"test content", owner=None)
         response = self.client.delete(
             reverse('file_handler', args=[filename]))
         self.assertEqual(httplib.NO_CONTENT, response.status_code)

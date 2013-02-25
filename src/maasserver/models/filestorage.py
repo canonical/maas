@@ -47,17 +47,17 @@ class FileStorageManager(Manager):
     old file will continue without iterruption.
     """
 
-    def save_file(self, filename, file_object):
+    def save_file(self, filename, file_object, owner):
         """Save the file to the database.
 
-        If a file of that name already existed, it will be replaced by the
-        new contents.
+        If a file of that name/owner already existed, it will be replaced by
+        the new contents.
         """
         # This probably ought to read in chunks but large files are
         # not expected.
         content = Bin(file_object.read())
         storage, created = self.get_or_create(
-            filename=filename, defaults={'content': content})
+            filename=filename, owner=owner, defaults={'content': content})
         if not created:
             storage.content = content
             storage.save()

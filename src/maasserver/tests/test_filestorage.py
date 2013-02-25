@@ -40,10 +40,12 @@ class FileStorageTest(TestCase):
     def test_save_file_creates_storage(self):
         filename = factory.getRandomString()
         content = self.make_data()
-        storage = FileStorage.objects.save_file(filename, BytesIO(content))
+        user = factory.make_user()
+        storage = FileStorage.objects.save_file(
+            filename, BytesIO(content), user)
         self.assertEqual(
-            (filename, content),
-            (storage.filename, storage.content))
+            (filename, content, user),
+            (storage.filename, storage.content, storage.owner))
 
     def test_storage_can_be_retrieved(self):
         filename = factory.getRandomString()
