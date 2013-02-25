@@ -15,6 +15,8 @@ __all__ = [
     ]
 
 
+from uuid import uuid1
+
 from django.contrib.auth.models import User
 from django.db.models import (
     CharField,
@@ -62,6 +64,10 @@ class FileStorageManager(Manager):
         return storage
 
 
+def generate_filestorage_key():
+    return '%s' % uuid1()
+
+
 class FileStorage(CleanSave, Model):
     """A simple file storage keyed on file name.
 
@@ -80,6 +86,9 @@ class FileStorage(CleanSave, Model):
     # installations where the files were not linked to users yet.
     owner = ForeignKey(
         User, default=None, blank=True, null=True, editable=False)
+    key = CharField(
+        max_length=36, unique=True, default=generate_filestorage_key,
+        editable=False)
 
     objects = FileStorageManager()
 

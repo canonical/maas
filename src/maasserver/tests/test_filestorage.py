@@ -71,3 +71,13 @@ class FileStorageTest(TestCase):
         self.assertEqual(old_storage.filename, new_storage.filename)
         self.assertEqual(
             new_data, FileStorage.objects.get(filename=filename).content)
+
+    def test_key_gets_generated(self):
+        # The generated system_id looks good.
+        storage = factory.make_file_storage()
+        self.assertEqual(len(storage.key), 36)
+
+    def test_key_includes_random_part(self):
+        storage1 = factory.make_file_storage()
+        storage2 = factory.make_file_storage()
+        self.assertNotEqual(storage1.key, storage2.key)
