@@ -81,7 +81,10 @@ __all__ = [
     "store_node_power_parameters",
     ]
 
-from base64 import b64decode
+from base64 import (
+    b64decode,
+    b64encode,
+    )
 from cStringIO import StringIO
 from datetime import (
     datetime,
@@ -792,6 +795,18 @@ def get_file_by_name(handler, request):
     return HttpResponse(db_file.content, status=httplib.OK)
 
 
+def get_file_by_key(handler, request):
+    """Get a file from the file storage using its key.
+
+    :param key: The exact key of the file you want to get.
+    :type key: string
+    :return: The file is returned in the response content.
+    """
+    key = get_mandatory_param(request.GET, 'key')
+    db_file = get_object_or_404(FileStorage, key=key)
+    return HttpResponse(db_file.content, status=httplib.OK)
+
+
 class AnonFilesHandler(AnonymousOperationsHandler):
     """Anonymous file operations.
 
@@ -806,7 +821,10 @@ class AnonFilesHandler(AnonymousOperationsHandler):
     """
     create = read = update = delete = None
 
-    get = operation(idempotent=True, exported_as='get')(get_file_by_name)
+    get_by_name = operation(
+        idempotent=True, exported_as='get')(get_file_by_name)
+    get_by_key = operation(
+        idempotent=True, exported_as='get_by_key')(get_file_by_key)
 
     @classmethod
     def resource_uri(cls, *args, **kwargs):
@@ -815,13 +833,29 @@ class AnonFilesHandler(AnonymousOperationsHandler):
 
 # DISPLAYED_FILES_FIELDS_OBJECT is the list of fields used when dumping
 # lists of FileStorage objects.
-DISPLAYED_FILES_FIELDS = ('filename', )
-# DISPLAYED_FILES_FIELDS_OBJECT is the list of fields used when dumping
-# individual FileStorage objects.
-DISPLAYED_FILES_FIELDS_OBJECT = DISPLAYED_FILES_FIELDS + ('content', )
+DISPLAYED_FILES_FIELDS = ('filename', 'anon_resource_uri')
 
 
-def get_owned_file_or_404(filename, user, values=False):
+def json_file_storage(stored_file, request):
+    # Convert stored_file into a json object: use the same fields used
+    # when serialising lists of object, plus the base64-encoded content.
+    dict_representation = {
+        fieldname: getattr(stored_file, fieldname)
+        for fieldname in DISPLAYED_FILES_FIELDS
+        }
+    # Encode the content as base64.
+    dict_representation['content'] = b64encode(
+        getattr(stored_file, 'content'))
+    # Emit the json for this object manually because, no matter what the
+    # piston documentation says, once a type is associated with a list
+    # of fields by piston's typemapper mechanism, there is no way to
+    # override that in a specific handler with 'fields' or 'exclude'.
+    emitter = JSONEmitter(dict_representation, typemapper, None)
+    stream = emitter.render(request)
+    return stream
+
+
+def get_owned_file_or_404(filename, user):
     """Return the file named 'filename' owned by 'user'.
 
     If there is no such file, try getting the corresponding unowned file
@@ -840,10 +874,7 @@ def get_owned_file_or_404(filename, user, values=False):
             filename=filename, owner=None)
         if len(stored_files) == 0:
             raise Http404
-    if values:
-        return stored_files.values()[0]
-    else:
-        return stored_files[0]
+    return stored_files[0]
 
 
 class FileHandler(OperationsHandler):
@@ -860,14 +891,8 @@ class FileHandler(OperationsHandler):
 
         The 'content' of the file is base64-encoded."""
         stored_file = get_owned_file_or_404(
-            filename=filename, user=request.user, values=True)
-        # Emit the json for this object manually because, no matter what the
-        # piston documentation says, once an type is associated with a list
-        # of fields by piston's typemapper mechanism, there is no way to
-        # override that in a specific handler with 'fields' or 'exclude'.
-        emitter = JSONEmitter(
-            stored_file, typemapper, None, DISPLAYED_FILES_FIELDS_OBJECT)
-        stream = emitter.render(request)
+            filename=filename, user=request.user)
+        stream = json_file_storage(stored_file, request)
         return HttpResponse(
             stream, mimetype='application/json; charset=utf-8',
             status=httplib.OK)
@@ -893,7 +918,10 @@ class FilesHandler(OperationsHandler):
     create = read = update = delete = None
     anonymous = AnonFilesHandler
 
-    get = operation(idempotent=True, exported_as='get')(get_file_by_name)
+    get_by_name = operation(
+        idempotent=True, exported_as='get')(get_file_by_name)
+    get_by_key = operation(
+        idempotent=True, exported_as='get_by_key')(get_file_by_key)
 
     @operation(idempotent=False)
     def add(self, request):

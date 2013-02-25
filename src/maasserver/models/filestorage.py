@@ -18,12 +18,14 @@ __all__ = [
 from uuid import uuid1
 
 from django.contrib.auth.models import User
+from django.core.urlresolvers import reverse
 from django.db.models import (
     CharField,
     ForeignKey,
     Manager,
     Model,
     )
+from django.utils.http import urlencode
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 from metadataserver.fields import (
@@ -94,3 +96,10 @@ class FileStorage(CleanSave, Model):
 
     def __unicode__(self):
         return self.filename
+
+    @property
+    def anon_resource_uri(self):
+        """URI where the content of the file can be retrieved anonymously."""
+        params = {'op': 'get_by_key', 'key': self.key}
+        url = '%s?%s' % (reverse('files_handler'), urlencode(params))
+        return url

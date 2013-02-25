@@ -2654,17 +2654,6 @@ class CompatibilityUtilitiesTest(TestCase):
 
         self.assertRaises(Http404, get_owned_file_or_404, filename, user)
 
-    def test_get_owned_file_or_404_returns_values(self):
-        user = factory.make_user()
-        filename = factory.make_name('filename')
-        factory.make_file_storage(filename=filename, owner=None)
-        factory.make_file_storage(filename=filename, owner=user)
-
-        values = FileStorage.objects.filter(
-            filename=filename, owner=user).values()[0]
-        self.assertEqual(
-            values, get_owned_file_or_404(filename, user, values=True))
-
 
 class AnonymousFileStorageAPITest(FileStorageAPITestMixin, AnonAPITestCase):
 
@@ -2672,8 +2661,8 @@ class AnonymousFileStorageAPITest(FileStorageAPITestMixin, AnonAPITestCase):
         storage = factory.make_file_storage()
         response = self.make_API_GET_request("get", storage.filename)
 
-        self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(storage.content, response.content)
+        self.assertEqual(httplib.OK, response.status_code)
 
     def test_get_fetches_the_most_recent_file(self):
         filename = factory.make_name('file')
@@ -2682,6 +2671,20 @@ class AnonymousFileStorageAPITest(FileStorageAPITestMixin, AnonAPITestCase):
             filename=filename, owner=factory.make_user())
         response = self.make_API_GET_request("get", filename)
 
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(storage.content, response.content)
+
+    def test_get_by_key_works_anonymously(self):
+        storage = factory.make_file_storage()
+        response = self.client.get(
+            self.get_uri('files/'), {'key': storage.key, 'op': 'get_by_key'})
+
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(storage.content, response.content)
+
+    def test_anon_resource_uri_allows_anonymous_access(self):
+        storage = factory.make_file_storage()
+        response = self.client.get(storage.anon_resource_uri)
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(storage.content, response.content)
 
@@ -2853,15 +2856,16 @@ class FileStorageAPITest(FileStorageAPITestMixin, APITestCase):
         filename = factory.make_name("file")
         factory.make_file_storage(filename=filename, owner=None)
         content = sample_binary_data
-        factory.make_file_storage(
+        storage = factory.make_file_storage(
             filename=filename, content=content, owner=self.logged_in_user)
         response = self.client.get(
             reverse('file_handler', args=[filename]))
         parsed_result = json.loads(response.content)
         self.assertEqual(
-            (filename, content),
+            (filename, storage.anon_resource_uri, content),
             (
                 parsed_result['filename'],
+                parsed_result['anon_resource_uri'],
                 b64decode(parsed_result['content'])
             ))
 
