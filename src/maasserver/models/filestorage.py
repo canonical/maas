@@ -15,8 +15,10 @@ __all__ = [
     ]
 
 
+from django.contrib.auth.models import User
 from django.db.models import (
     CharField,
+    ForeignKey,
     Manager,
     Model,
     )
@@ -63,15 +65,21 @@ class FileStorageManager(Manager):
 class FileStorage(CleanSave, Model):
     """A simple file storage keyed on file name.
 
-    :ivar filename: A unique file name to use for the data being stored.
+    :ivar filename: A file name to use for the data being stored.
+    :ivar owner: This file's owner..
     :ivar content: The file's actual data.
     """
 
     class Meta(DefaultMeta):
         """Needed for South to recognize this model."""
+        unique_together = ('filename', 'owner')
 
-    filename = CharField(max_length=255, unique=True, editable=False)
+    filename = CharField(max_length=255, unique=False, editable=False)
     content = BinaryField(null=False)
+    # owner can be None: this is to support upgrading existing
+    # installations where the files were not linked to users yet.
+    owner = ForeignKey(
+        User, default=None, blank=True, null=True, editable=False)
 
     objects = FileStorageManager()
 
