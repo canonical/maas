@@ -40,10 +40,12 @@ class FileStorageTest(TestCase):
     def test_save_file_creates_storage(self):
         filename = factory.getRandomString()
         content = self.make_data()
-        storage = FileStorage.objects.save_file(filename, BytesIO(content))
+        user = factory.make_user()
+        storage = FileStorage.objects.save_file(
+            filename, BytesIO(content), user)
         self.assertEqual(
-            (filename, content),
-            (storage.filename, storage.content))
+            (filename, content, user),
+            (storage.filename, storage.content, storage.owner))
 
     def test_storage_can_be_retrieved(self):
         filename = factory.getRandomString()
@@ -84,3 +86,13 @@ class FileStorageTest(TestCase):
         self.assertEqual(old_storage.filename, new_storage.filename)
         self.assertEqual(
             new_data, FileStorage.objects.get(filename=filename).content)
+
+    def test_key_gets_generated(self):
+        # The generated system_id looks good.
+        storage = factory.make_file_storage()
+        self.assertEqual(len(storage.key), 36)
+
+    def test_key_includes_random_part(self):
+        storage1 = factory.make_file_storage()
+        storage2 = factory.make_file_storage()
+        self.assertNotEqual(storage1.key, storage2.key)

@@ -56,6 +56,30 @@ ALL_NODE_STATES = map_enum(NODE_STATUS).values()
 
 class Factory(maastesting.factory.Factory):
 
+    def make_file_upload(self, name=None, content=None):
+        """Create a file-like object for upload in http POST or PUT.
+
+        To upload a file using the Django test client, just include a
+        parameter that maps not to a string, but to a file upload as
+        produced by this method.
+
+        :param name: Name of the file to be uploaded.  If omitted, one will
+            be made up.
+        :type name: `unicode`
+        :param content: Contents for the uploaded file.  If omitted, some
+            contents will be made up.
+        :type content: `bytes`
+        :return: A file-like object, with the requested `content` and `name`.
+        """
+        if content is None:
+            content = self.getRandomString().encode('ascii')
+        if name is None:
+            name = self.make_name('file')
+        assert isinstance(content, bytes)
+        upload = BytesIO(content)
+        upload.name = name
+        return upload
+
     def getRandomEnum(self, enum, but_not=None):
         """Pick a random item from an enumeration class.
 
@@ -297,13 +321,9 @@ class Factory(maastesting.factory.Factory):
         admin.save()
         return admin
 
-    def make_file_storage(self, filename=None, content=None):
-        if filename is None:
-            filename = self.getRandomString(100)
-        if content is None:
-            content = self.getRandomString(1024).encode('ascii')
-
-        return FileStorage.objects.save_file(filename, BytesIO(content))
+    def make_file_storage(self, filename=None, content=None, owner=None):
+        fake_file = self.make_file_upload(filename, content)
+        return FileStorage.objects.save_file(fake_file.name, fake_file, owner)
 
     def make_oauth_header(self, **kwargs):
         """Fake an OAuth authorization header.

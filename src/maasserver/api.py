@@ -80,7 +80,10 @@ __all__ = [
     "store_node_power_parameters",
     ]
 
-from base64 import b64decode
+from base64 import (
+    b64decode,
+    b64encode,
+    )
 from cStringIO import StringIO
 from datetime import (
     datetime,
@@ -1019,20 +1022,30 @@ class NodeMacHandler(OperationsHandler):
         return ('node_mac_handler', [node_system_id, mac_address])
 
 
-def get_file(handler, request):
+def get_file_by_name(handler, request):
     """Get a named file from the file storage.
 
     :param filename: The exact name of the file you want to get.
     :type filename: string
     :return: The file is returned in the response content.
     """
-    filename = request.GET.get("filename", None)
-    if not filename:
-        raise MAASAPIBadRequest("Filename not supplied")
+    filename = get_mandatory_param(request.GET, 'filename')
     try:
-        db_file = FileStorage.objects.get(filename=filename)
+        db_file = FileStorage.objects.filter(filename=filename).latest('id')
     except FileStorage.DoesNotExist:
         raise MAASAPINotFound("File not found")
+    return HttpResponse(db_file.content, status=httplib.OK)
+
+
+def get_file_by_key(handler, request):
+    """Get a file from the file storage using its key.
+
+    :param key: The exact key of the file you want to get.
+    :type key: string
+    :return: The file is returned in the response content.
+    """
+    key = get_mandatory_param(request.GET, 'key')
+    db_file = get_object_or_404(FileStorage, key=key)
     return HttpResponse(db_file.content, status=httplib.OK)
 
 
@@ -1050,7 +1063,10 @@ class AnonFilesHandler(AnonymousOperationsHandler):
     """
     create = read = update = delete = None
 
-    get = operation(idempotent=True, exported_as='get')(get_file)
+    get_by_name = operation(
+        idempotent=True, exported_as='get')(get_file_by_name)
+    get_by_key = operation(
+        idempotent=True, exported_as='get_by_key')(get_file_by_key)
 
     @classmethod
     def resource_uri(cls, *args, **kwargs):
@@ -1059,16 +1075,54 @@ class AnonFilesHandler(AnonymousOperationsHandler):
 
 # DISPLAYED_FILES_FIELDS_OBJECT is the list of fields used when dumping
 # lists of FileStorage objects.
-DISPLAYED_FILES_FIELDS = ('filename', )
-# DISPLAYED_FILES_FIELDS_OBJECT is the list of fields used when dumping
-# individual FileStorage objects.
-DISPLAYED_FILES_FIELDS_OBJECT = DISPLAYED_FILES_FIELDS + ('content', )
+DISPLAYED_FILES_FIELDS = ('filename', 'anon_resource_uri')
+
+
+def json_file_storage(stored_file, request):
+    # Convert stored_file into a json object: use the same fields used
+    # when serialising lists of object, plus the base64-encoded content.
+    dict_representation = {
+        fieldname: getattr(stored_file, fieldname)
+        for fieldname in DISPLAYED_FILES_FIELDS
+        }
+    # Encode the content as base64.
+    dict_representation['content'] = b64encode(
+        getattr(stored_file, 'content'))
+    # Emit the json for this object manually because, no matter what the
+    # piston documentation says, once a type is associated with a list
+    # of fields by piston's typemapper mechanism, there is no way to
+    # override that in a specific handler with 'fields' or 'exclude'.
+    emitter = JSONEmitter(dict_representation, typemapper, None)
+    stream = emitter.render(request)
+    return stream
+
+
+def get_owned_file_or_404(filename, user):
+    """Return the file named 'filename' owned by 'user'.
+
+    If there is no such file, try getting the corresponding unowned file
+    to be compatible with old versions of MAAS where all the files where
+    unowned.
+    """
+    stored_files = FileStorage.objects.filter(
+        filename=filename, owner=user)
+    # filename and owner are 'unique together', we can have either 0 or 1
+    # objects in 'stored_files'.
+    if len(stored_files) == 0:
+        # In order to support upgrading from installations where the notion
+        # of a file owner was not yet implemented, return non-owned files
+        # with this filename at a last resort option.
+        stored_files = FileStorage.objects.filter(
+            filename=filename, owner=None)
+        if len(stored_files) == 0:
+            raise Http404
+    return stored_files[0]
 
 
 class FileHandler(OperationsHandler):
     """Manage a FileStorage object.
 
-    The file is identified by its filename.
+    The file is identified by its filename and owner.
     """
     model = FileStorage
     fields = DISPLAYED_FILES_FIELDS
@@ -1078,21 +1132,18 @@ class FileHandler(OperationsHandler):
         """GET a FileStorage object as a json object.
 
         The 'content' of the file is base64-encoded."""
-        # 'content' is a BinaryField, its 'value' is a base64-encoded version
-        # of its value.
-        stored_files = FileStorage.objects.filter(filename=filename).values()
-        # filename is a 'unique' field, we can have either 0 or 1 objects in
-        # 'stored_files'.
-        if len(stored_files) == 0:
-            raise Http404
-        stored_file = stored_files[0]
-        # Emit the json for this object manually because, no matter what the
-        # piston documentation says, once an type is associated with a list
-        # of fields by piston's typemapper mechanism, there is no way to
-        # override that in a specific handler with 'fields' or 'exclude'.
-        emitter = JSONEmitter(
-            stored_file, typemapper, None, DISPLAYED_FILES_FIELDS_OBJECT)
-        stream = emitter.render(request)
+        try:
+            stored_file = get_owned_file_or_404(
+                filename=filename, user=request.user)
+        except Http404:
+            # In order to fix bug 1123986 we need to distinguish between
+            # a 404 returned when the file is not present and a 404 returned
+            # when the API endpoint is not present.  We do this by setting
+            # a header: "Workaround: bug1123986".
+            response = HttpResponse("Not Found", status=404)
+            response["Workaround"] = "bug1123986"
+            return response
+        stream = json_file_storage(stored_file, request)
         return HttpResponse(
             stream, mimetype='application/json; charset=utf-8',
             status=httplib.OK)
@@ -1100,7 +1151,8 @@ class FileHandler(OperationsHandler):
     @operation(idempotent=False)
     def delete(self, request, filename):
         """Delete a FileStorage object."""
-        stored_file = get_object_or_404(FileStorage, filename=filename)
+        stored_file = get_owned_file_or_404(
+            filename=filename, user=request.user)
         stored_file.delete()
         return rc.DELETED
 
@@ -1117,7 +1169,10 @@ class FilesHandler(OperationsHandler):
     create = read = update = delete = None
     anonymous = AnonFilesHandler
 
-    get = operation(idempotent=True, exported_as='get')(get_file)
+    get_by_name = operation(
+        idempotent=True, exported_as='get')(get_file_by_name)
+    get_by_key = operation(
+        idempotent=True, exported_as='get_by_key')(get_file_by_key)
 
     @operation(idempotent=False)
     def add(self, request):
@@ -1141,7 +1196,7 @@ class FilesHandler(OperationsHandler):
         # As per the comment in FileStorage, this ought to deal in
         # chunks instead of reading the file into memory, but large
         # files are not expected.
-        FileStorage.objects.save_file(filename, uploaded_file)
+        FileStorage.objects.save_file(filename, uploaded_file, request.user)
         return HttpResponse('', status=httplib.CREATED)
 
     @operation(idempotent=True)
@@ -1155,7 +1210,7 @@ class FilesHandler(OperationsHandler):
         :type prefix: string
         """
         prefix = request.GET.get("prefix", None)
-        files = FileStorage.objects.all()
+        files = FileStorage.objects.filter(owner=request.user)
         if prefix is not None:
             files = files.filter(filename__startswith=prefix)
         files = files.order_by('filename')
