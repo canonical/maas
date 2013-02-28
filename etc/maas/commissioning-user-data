@@ -198,14 +198,6 @@ add_script "01-lshw" <<"END_LSHW"
 lshw -xml
 END_LSHW
 
-add_ipmi_config "01-user-privileges.ipmi" <<"END_IPMI_USER_PRIVILEGES"
-Section User3
-	Enable_User				Yes
-	Lan_Enable_IPMI_Msgs			Yes
-	Lan_Privilege_Limit			Administrator
-EndSection
-END_IPMI_USER_PRIVILEGES
-
 add_ipmi_config "02-global-config.ipmi" <<"END_IPMI_CONFIG"
 Section Lan_Channel
 	Volatile_Access_Mode			Always_Available
@@ -256,9 +248,23 @@ def get_ipmi_ip_address():
     res = show_re.search(output)
     return res.group()
 
+def get_ipmi_user_number(user):
+    for i in range(1, 17):
+        ipmi_user_number = "User%s" % i
+        (status, output) = commands.getstatusoutput('bmc-config --checkout --key-pair="%s:Username"' % ipmi_user_number)
+        if user in output:
+            return ipmi_user_number
+    return None
+
 def commit_ipmi_user_settings(user, password):
-    (status, output) = commands.getstatusoutput('bmc-config --commit --key-pair="User3:Username=%s"' % user)
-    (status, output) = commands.getstatusoutput('bmc-config --commit --key-pair="User3:Password=%s"' % password)
+    ipmi_user_number = get_ipmi_user_number(user)
+    if ipmi_user_number is None:
+        (status, output) = commands.getstatusoutput('bmc-config --commit --key-pair="User10:Username=%s"' % user)
+        ipmi_user_number = get_ipmi_user_number(user)
+    (status, output) = commands.getstatusoutput('bmc-config --commit --key-pair="%s:Password=%s"' % (ipmi_user_number, password))
+    (status, output) = commands.getstatusoutput('bmc-config --commit --key-pair="%s:Enable_User=Yes"' % ipmi_user_number)
+    (status, output) = commands.getstatusoutput('bmc-config --commit --key-pair="%s:Lan_Enable_IPMI_Msgs=Yes"' % ipmi_user_number)
+    (status, output) = commands.getstatusoutput('bmc-config --commit --key-pair="%s:Lan_Privilege_Limit=Administrator"' % ipmi_user_number)
 
 def commit_ipmi_settings(config):
     (status, output) = commands.getstatusoutput('bmc-config --commit --filename %s' % config)
