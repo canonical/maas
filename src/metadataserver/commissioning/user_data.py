@@ -21,9 +21,12 @@ __all__ = [
     'generate_user_data',
     ]
 
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 from os import listdir
 import os.path
 
+from maasserver.preseed import get_preseed_context
 import tempita
 
 
@@ -58,24 +61,55 @@ def strip_name(snippet_name):
     return snippet_name.replace('.', '_')
 
 
-def generate_user_data():
+def generate_user_data(nodegroup=None):
     """Produce the main commissioning script.
 
-    The script was templated so that code snippets become easier to
-    maintain, check for lint, and ideally, unit-test.  However its
-    contents are static: there are no variables.  It's perfectly
-    cacheable.
+    The main template file contains references to so-called ``snippets''
+    which are read in here, and substituted.  In addition, the regular
+    preseed context variables are available (such as 'http_proxy').
+
+    The final result is a MIME multipart message that consists of a
+    'cloud-config' part and an 'x-shellscript' part.  This allows maximum
+    flexibility with cloud-init as we read in a template
+    'user_data_config.template' to set cloud-init configs before the script
+    is run.
 
     :rtype: `bytes`
     """
-    encoding = 'utf-8'
+    ENCODING = 'utf-8'
     commissioning_dir = os.path.dirname(__file__)
-    template_file = os.path.join(commissioning_dir, 'user_data.template')
+    userdata_template_file = os.path.join(
+        commissioning_dir, 'user_data.template')
+    config_template_file = os.path.join(
+        commissioning_dir, 'user_data_config.template')
     snippets_dir = os.path.join(commissioning_dir, 'snippets')
-    template = tempita.Template.from_filename(template_file, encoding=encoding)
+    userdata_template = tempita.Template.from_filename(
+        userdata_template_file, encoding=ENCODING)
+    config_template = tempita.Template.from_filename(
+        config_template_file, encoding=ENCODING)
+    # The preseed context is a dict containing various configs that the
+    # templates can use.
+    preseed_context = get_preseed_context(nodegroup=nodegroup)
 
+    # Render the snippets in the main template.
     snippets = {
-        strip_name(name): read_snippet(snippets_dir, name, encoding=encoding)
+        strip_name(name): read_snippet(snippets_dir, name, encoding=ENCODING)
         for name in list_snippets(snippets_dir)
     }
-    return template.substitute(snippets).encode('utf-8')
+    snippets.update(preseed_context)
+    userdata = userdata_template.substitute(snippets).encode(ENCODING)
+
+    # Render the config.
+    config = config_template.substitute(preseed_context)
+
+    # Create a MIME multipart message from the config and the userdata.
+    config_part = MIMEText(config, 'cloud-config', ENCODING)
+    config_part.add_header(
+        'Content-Disposition', 'attachment; filename="config"')
+    data_part = MIMEText(userdata, 'x-shellscript', ENCODING)
+    data_part.add_header(
+        'Content-Disposition', 'attachment; filename="user_data.sh"')
+    combined = MIMEMultipart()
+    combined.attach(config_part)
+    combined.attach(data_part)
+    return combined.as_string()

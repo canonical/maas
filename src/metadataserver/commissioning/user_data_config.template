@@ -1,0 +1,7 @@
+#cloud-config
+{{if http_proxy}}
+apt_proxy: {{http_proxy}}
+{{elif server_host}}
+apt_proxy: http://{{server_host}}:8000/
+{{endif}}
+

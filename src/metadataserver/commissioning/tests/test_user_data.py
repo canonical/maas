@@ -17,12 +17,17 @@ import os.path
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
 from maastesting.matchers import ContainsAll
+from metadataserver.commissioning import user_data
 from metadataserver.commissioning.user_data import (
     generate_user_data,
     is_snippet,
     list_snippets,
     read_snippet,
     strip_name,
+    )
+from mock import (
+    Mock,
+    sentinel,
     )
 
 
@@ -71,4 +76,25 @@ class TestUserData(TestCase):
                 'maas-signal',
                 'def authenticate_headers',
                 'def encode_multipart_data',
+            }))
+
+    def test_nodegroup_passed_to_get_preseed_context(self):
+        # I don't care about what effect it has, I just want to know
+        # that it was passed as it can affect the contents of
+        # `server_host` in the context.
+        fake_context = dict(http_proxy=factory.getRandomString())
+        user_data.get_preseed_context = Mock(return_value=fake_context)
+        nodegroup = sentinel.nodegroup
+        generate_user_data(nodegroup)
+        user_data.get_preseed_context.assert_called_with(nodegroup=nodegroup)
+
+    def test_generate_user_data_generates_mime_multipart(self):
+        # The generate_user_data func should create a MIME multipart
+        # message consisting of cloud-config and x-shellscript
+        # attachments.
+        self.assertThat(
+            generate_user_data(), ContainsAll({
+                'multipart',
+                'Content-Type: text/cloud-config',
+                'Content-Type: text/x-shellscript',
             }))

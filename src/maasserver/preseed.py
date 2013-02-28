@@ -15,6 +15,7 @@ __all__ = [
     'compose_preseed_url',
     'get_enlist_preseed',
     'get_preseed',
+    'get_preseed_context',
     ]
 
 from collections import namedtuple

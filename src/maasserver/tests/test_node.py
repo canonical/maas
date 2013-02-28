@@ -490,6 +490,8 @@ class NodeTest(TestCase):
             ).return_value = user_data
         node.start_commissioning(factory.make_admin())
         self.assertEqual(user_data, NodeUserData.objects.get_user_data(node))
+        commissioning.user_data.generate_user_data.assert_called_with(
+            nodegroup=node.nodegroup)
 
     def test_start_commissioning_clears_node_commissioning_results(self):
         node = factory.make_node(status=NODE_STATUS.DECLARED)

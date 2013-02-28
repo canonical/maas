@@ -1,7 +1,10 @@
 #cloud-config
 
-# could/should set local mirror here or proxy here
-# apt_proxy: http://{{server_host}}:8000/
+{{if http_proxy}}
+apt_proxy: {{http_proxy}}
+{{elif server_host}}
+apt_proxy: http://{{server_host}}:8000/
+{{endif}}
 
 misc_bucket:
  - &maas_enlist |

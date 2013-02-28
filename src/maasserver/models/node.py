@@ -635,7 +635,7 @@ class Node(CleanSave, TimestampedModel):
         from metadataserver.commissioning.user_data import generate_user_data
         from metadataserver.models import NodeCommissionResult
 
-        commissioning_user_data = generate_user_data()
+        commissioning_user_data = generate_user_data(nodegroup=self.nodegroup)
         NodeCommissionResult.objects.clear_results(self)
         self.status = NODE_STATUS.COMMISSIONING
         self.owner = user
