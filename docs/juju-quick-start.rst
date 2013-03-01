@@ -12,15 +12,6 @@ A few assumptions are made:
 - You're running MAAS on your local machine. If not you'll need to
   adjust some of the URLs mentioned accordingly.
 
-- You're running Juju from the PPA (``ppa:juju/pkgs``) or from a
-  branch of ``lp:juju``. At the time of writing MAAS support had not
-  made it into the main Ubuntu archives. However, following the
-  release of Ubuntu Precise, all the necessary package revisions will
-  be in main.
-
-  If you're using a branch, note that you'll need to set
-  ``PYTHONPATH`` carefully to ensure you use the code in the branch.
-
 
 Your API key, SSH key, and environments.yaml
 --------------------------------------------
@@ -46,8 +37,8 @@ To get the API key:
 #. Optionally add a new MAAS key. Do this if you're setting up another
    environment within the same MAAS cluster.
 
-.. _MAAS preferences page: http://localhost:5240/account/prefs/
-.. _MAAS home page: http://localhost:5240/
+.. _MAAS preferences page: http://localhost/MAAS/account/prefs/
+.. _MAAS home page: http://localhost/MAAS
 
 
 Adding an SSH key
@@ -68,14 +59,12 @@ Create or modify ``~/.juju/environments.yaml`` with the following content::
   environments:
     maas:
       type: maas
-      maas-server: 'http://localhost:5240'
+      maas-server: 'http://localhost/MAAS'
       maas-oauth: '${maas-api-key}'
       admin-secret: 'nothing'
 
 Substitute the API key from earlier into the ``${maas-api-key}``
-slot. You may need to modify the ``maas-server`` setting too; if
-you're running from the maas package it should be something like
-``http://hostname.example.com/MAAS``.
+slot.
 
 
 Now Juju
