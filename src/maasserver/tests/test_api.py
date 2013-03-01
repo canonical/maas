@@ -2448,7 +2448,30 @@ class TestNodesAPI(APITestCase):
         self.assertItemsEqual(
             [nodes[1].system_id, nodes[2].system_id],
             parsed_result)
-        
+
+    def test_handle_when_URL_is_repeated(self):
+        # bin/maas-enlist (in the maas-enlist package) has a bug where the
+        # path it uses is doubled up. This was not discovered previously
+        # because the API URL patterns were not anchored (see bug 1131323).
+        # For compatibility, MAAS will handle requests to obviously incorrect
+        # paths. It does *not* redirect because (a) it's not clear that curl
+        # (used by maas-enlist) supports HTTP 307 redirects, which are needed
+        # to support redirecting POSTs, and (b) curl does not follow redirects
+        # by default anyway.
+        architecture = factory.getRandomChoice(ARCHITECTURE_CHOICES)
+        response = self.client.post(
+            self.get_uri('nodes/MAAS/api/1.0/nodes/'),
+            {
+                'op': 'new',
+                'hostname': factory.getRandomString(),
+                'architecture': architecture,
+                'mac_addresses': ['aa:bb:cc:dd:ee:ff'],
+            })
+        self.assertEqual(httplib.OK, response.status_code)
+        system_id = json.loads(response.content)['system_id']
+        nodes = Node.objects.filter(system_id=system_id)
+        self.assertIsNotNone(get_one(nodes))
+
 
 class MACAddressAPITest(APITestCase):
 

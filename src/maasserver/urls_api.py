@@ -77,34 +77,37 @@ urlpatterns = patterns('',
 # API URLs for logged-in users.
 urlpatterns += patterns('',
     url(
-        r'nodes/(?P<system_id>[\w\-]+)/macs/(?P<mac_address>.+)/$',
+        r'^nodes/(?P<system_id>[\w\-]+)/macs/(?P<mac_address>.+)/$',
         node_mac_handler, name='node_mac_handler'),
     url(
-        r'nodes/(?P<system_id>[\w\-]+)/macs/$', node_macs_handler,
+        r'^nodes/(?P<system_id>[\w\-]+)/macs/$', node_macs_handler,
         name='node_macs_handler'),
 
     url(
-        r'nodes/(?P<system_id>[\w\-]+)/$', node_handler,
+        r'^nodes/(?P<system_id>[\w\-]+)/$', node_handler,
         name='node_handler'),
-    url(r'nodes/$', nodes_handler, name='nodes_handler'),
+    url(r'^nodes/$', nodes_handler, name='nodes_handler'),
+    # For backward compatibility, handle obviously repeated paths as if they
+    # were not repeated. See https://bugs.launchpad.net/maas/+bug/1131323.
+    url(r'^nodes/.*/nodes/$', nodes_handler),
     url(
-        r'nodegroups/(?P<uuid>[^/]+)/$',
+        r'^nodegroups/(?P<uuid>[^/]+)/$',
         nodegroup_handler, name='nodegroup_handler'),
-    url(r'nodegroups/$', nodegroups_handler, name='nodegroups_handler'),
-    url(r'nodegroups/(?P<uuid>[^/]+)/interfaces/$',
+    url(r'^nodegroups/$', nodegroups_handler, name='nodegroups_handler'),
+    url(r'^nodegroups/(?P<uuid>[^/]+)/interfaces/$',
         nodegroupinterfaces_handler, name='nodegroupinterfaces_handler'),
-    url(r'nodegroups/(?P<uuid>[^/]+)/interfaces/(?P<interface>[^/]+)/$',
+    url(r'^nodegroups/(?P<uuid>[^/]+)/interfaces/(?P<interface>[^/]+)/$',
         nodegroupinterface_handler, name='nodegroupinterface_handler'),
-    url(r'files/$', files_handler, name='files_handler'),
-    url(r'files/(?P<filename>[^/]+)/$', file_handler, name='file_handler'),
-    url(r'account/$', account_handler, name='account_handler'),
-    url(r'boot-images/$', boot_images_handler, name='boot_images_handler'),
-    url(r'tags/(?P<name>[\w\-]+)/$', tag_handler, name='tag_handler'),
-    url(r'tags/$', tags_handler, name='tags_handler'),
+    url(r'^files/$', files_handler, name='files_handler'),
+    url(r'^files/(?P<filename>[^/]+)/$', file_handler, name='file_handler'),
+    url(r'^account/$', account_handler, name='account_handler'),
+    url(r'^boot-images/$', boot_images_handler, name='boot_images_handler'),
+    url(r'^tags/(?P<name>[\w\-]+)/$', tag_handler, name='tag_handler'),
+    url(r'^tags/$', tags_handler, name='tags_handler'),
 )
 
 
 # API URLs for admin users.
 urlpatterns += patterns('',
-    url(r'maas/$', maas_handler, name='maas_handler'),
+    url(r'^maas/$', maas_handler, name='maas_handler'),
 )
