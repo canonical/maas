@@ -15,6 +15,7 @@ __all__ = [
     'create_user',
     'get_auth_tokens',
     'get_creds_tuple',
+    'SYSTEM_USERS',
     ]
 
 from maasserver import worker_user

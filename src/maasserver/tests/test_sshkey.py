@@ -226,7 +226,7 @@ class SSHKeyTest(TestCase):
         key = SSHKey(key=key_string, user=user)
         display = key.display_html()
         self.assertEqual(
-            'ssh-rsa AAAAB3NzaC1yc2E&hellip; ubuntu@server-7476', display)
+            'ssh-rsa AAAAB3NzaC1yc&hellip; ubuntu@test_rsa0.pub', display)
 
     def test_sshkey_display_is_marked_as_HTML_safe(self):
         key_string = get_data('data/test_rsa0.pub')
