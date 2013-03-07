@@ -374,3 +374,10 @@ class UserManagementTest(AdminLoggedInTestCase):
         content_text = doc.cssselect('#content')[0].text_content()
         self.assertIn(user.username, content_text)
         self.assertIn(user.email, content_text)
+
+    def test_account_views_are_routable_for_full_range_of_usernames(self):
+        # Usernames can include characters in the regex [\w.@+-].
+        user = factory.make_user(username="abc-123@example.com")
+        for view in "edit", "view", "del":
+            path = reverse("accounts-%s" % view, args=[user.username])
+            self.assertIsInstance(path, (str, unicode))

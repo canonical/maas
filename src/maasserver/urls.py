@@ -162,13 +162,13 @@ urlpatterns += patterns('maasserver.views',
     adminurl(r'^settings/$', settings, name='settings'),
     adminurl(r'^accounts/add/$', AccountsAdd.as_view(), name='accounts-add'),
     adminurl(
-        r'^accounts/(?P<username>\w+)/edit/$', AccountsEdit.as_view(),
+        r'^accounts/(?P<username>[^/]+)/edit/$', AccountsEdit.as_view(),
         name='accounts-edit'),
     adminurl(
-        r'^accounts/(?P<username>\w+)/view/$', AccountsView.as_view(),
+        r'^accounts/(?P<username>[^/]+)/view/$', AccountsView.as_view(),
         name='accounts-view'),
     adminurl(
-        r'^accounts/(?P<username>\w+)/del/$', AccountsDelete.as_view(),
+        r'^accounts/(?P<username>[^/]+)/del/$', AccountsDelete.as_view(),
         name='accounts-del'),
     adminurl(
         r'^commissioning-scripts/(?P<id>[\w\-]+)/delete/$',
