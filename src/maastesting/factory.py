@@ -42,6 +42,10 @@ class Factory:
     random_letters_with_spaces = imap(
         random.choice, repeat(string.letters + string.digits + ' '))
 
+    # See django.contrib.auth.forms.UserCreationForm.username.
+    random_letters_for_usernames = imap(
+        random.choice, repeat(string.letters + '.@+-'))
+
     random_http_responses = imap(
         random.choice, repeat(tuple(httplib.responses)))
 
@@ -54,6 +58,9 @@ class Factory:
             return "".join(islice(self.random_letters_with_spaces, size))
         else:
             return "".join(islice(self.random_letters, size))
+
+    def getRandomUsername(self, size=10):
+        return "".join(islice(self.random_letters_for_usernames, size))
 
     def getRandomEmail(self, login_size=10):
         return "%s@example.com" % self.getRandomString(size=login_size)

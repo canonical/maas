@@ -261,7 +261,7 @@ class Factory(maastesting.factory.Factory):
 
     def make_user(self, username=None, password=None, email=None):
         if username is None:
-            username = self.getRandomString(10)
+            username = self.getRandomUsername()
         if email is None:
             email = '%s@example.com' % self.getRandomString(10)
         if password is None:

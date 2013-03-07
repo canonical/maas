@@ -50,7 +50,7 @@ class SettingsTest(AdminLoggedInTestCase):
         # "Add a user" link.
         self.assertIn(reverse('accounts-add'), all_links)
         for user in users:
-            rows = tab.cssselect('tr#%s' % user.username)
+            rows = tab.cssselect('tr#"%s"' % user.username)
             # Only one row for the user.
             self.assertEqual(1, len(rows))
             row = rows[0]
