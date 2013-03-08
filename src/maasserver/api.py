@@ -115,7 +115,6 @@ from django.shortcuts import (
     render_to_response,
     )
 from django.template import RequestContext
-from django.utils.http import urlquote_plus
 from docutils import core
 from formencode import validators
 from maasserver.api_support import (
@@ -918,7 +917,7 @@ class FileHandler(OperationsHandler):
     def resource_uri(cls, stored_file=None):
         filename = "filename"
         if stored_file is not None:
-            filename = urlquote_plus(stored_file.filename)
+            filename = stored_file.filename
         return ('file_handler', (filename, ))
 
 
