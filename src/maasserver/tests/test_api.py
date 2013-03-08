@@ -47,10 +47,7 @@ from django.core.urlresolvers import (
     reverse,
     get_script_prefix,
     )
-from django.http import (
-    Http404,
-    QueryDict,
-    )
+from django.http import QueryDict
 from django.test.client import RequestFactory
 from fixtures import (
     EnvironmentVariableFixture,
@@ -69,7 +66,6 @@ from maasserver.api import (
     find_nodegroup_for_pxeconfig_request,
     get_oauth_token,
     get_overrided_query_dict,
-    get_owned_file_or_404,
     store_node_power_parameters,
     )
 from maasserver.enum import (
@@ -2725,36 +2721,6 @@ class FileStorageAPITestMixin:
         return self.client.get(self.get_uri('files/'), params)
 
 
-class CompatibilityUtilitiesTest(TestCase):
-
-    def test_get_owned_file_or_404_returns_owned_file(self):
-        user = factory.make_user()
-        filename = factory.make_name('filename')
-        factory.make_file_storage(filename=filename, owner=None)
-        filestorage = factory.make_file_storage(filename=filename, owner=user)
-
-        self.assertEqual(filestorage, get_owned_file_or_404(filename, user))
-
-    def test_get_owned_file_or_404_fallsback_to_nonowned_file(self):
-        user = factory.make_user()
-        filename = factory.make_name('filename')
-        factory.make_file_storage(
-            filename=factory.make_name('filename'), owner=user)
-        filestorage = factory.make_file_storage(filename=filename, owner=None)
-
-        self.assertEqual(filestorage, get_owned_file_or_404(filename, user))
-
-    def test_get_owned_file_or_404_raises_404_if_no_file(self):
-        user = factory.make_user()
-        filename = factory.make_name('filename')
-        factory.make_file_storage(
-            filename=factory.make_name('filename'), owner=user)
-        factory.make_file_storage(
-            filename=filename, owner=factory.make_user())
-
-        self.assertRaises(Http404, get_owned_file_or_404, filename, user)
-
-
 class AnonymousFileStorageAPITest(FileStorageAPITestMixin, AnonAPITestCase):
 
     def test_get_works_anonymously(self):
@@ -3001,24 +2967,6 @@ class FileStorageAPITest(FileStorageAPITestMixin, APITestCase):
                 b64decode(parsed_result['content'])
             ))
 
-    def test_get_file_returns_file_object_with_anon_owner(self):
-        # To be compatible with the MAAS provider present in Juju as of
-        # revision 616 (lp:juju), reading a file returns the non-owned files
-        # if no owned file can be found.
-        filename = factory.make_name("file")
-        content = sample_binary_data
-        factory.make_file_storage(
-            filename=filename, content=content, owner=None)
-        response = self.client.get(
-            reverse('file_handler', args=[filename]))
-        parsed_result = json.loads(response.content)
-        self.assertEqual(
-            (filename, content),
-            (
-                parsed_result['filename'],
-                b64decode(parsed_result['content'])
-            ))
-
     def test_get_file_returning_404_file_includes_header(self):
         # In order to fix bug 1123986 we need to distinguish between
         # a 404 returned when the file is not present and a 404 returned
@@ -3051,19 +2999,6 @@ class FileStorageAPITest(FileStorageAPITestMixin, APITestCase):
         factory.make_file_storage(
             filename=filename, content=b"test content",
             owner=self.logged_in_user)
-        response = self.client.delete(
-            reverse('file_handler', args=[filename]))
-        self.assertEqual(httplib.NO_CONTENT, response.status_code)
-        files = FileStorage.objects.filter(filename=filename)
-        self.assertEqual([], list(files))
-
-    def test_delete_file_deletes_file_with_anon_owner(self):
-        # To be compatible with the MAAS provider present in Juju as of
-        # revision 616 (lp:juju), deleting a file deletes the non-owned file
-        # if no owned file can be found.
-        filename = factory.make_name('file')
-        factory.make_file_storage(
-            filename=filename, content=b"test content", owner=None)
         response = self.client.delete(
             reverse('file_handler', args=[filename]))
         self.assertEqual(httplib.NO_CONTENT, response.status_code)

@@ -1096,28 +1096,6 @@ def json_file_storage(stored_file, request):
     return stream
 
 
-def get_owned_file_or_404(filename, user):
-    """Return the file named 'filename' owned by 'user'.
-
-    If there is no such file, try getting the corresponding unowned file
-    to be compatible with old versions of MAAS where all the files where
-    unowned.
-    """
-    stored_files = FileStorage.objects.filter(
-        filename=filename, owner=user)
-    # filename and owner are 'unique together', we can have either 0 or 1
-    # objects in 'stored_files'.
-    if len(stored_files) == 0:
-        # In order to support upgrading from installations where the notion
-        # of a file owner was not yet implemented, return non-owned files
-        # with this filename at a last resort option.
-        stored_files = FileStorage.objects.filter(
-            filename=filename, owner=None)
-        if len(stored_files) == 0:
-            raise Http404
-    return stored_files[0]
-
-
 class FileHandler(OperationsHandler):
     """Manage a FileStorage object.
 
@@ -1132,8 +1110,8 @@ class FileHandler(OperationsHandler):
 
         The 'content' of the file is base64-encoded."""
         try:
-            stored_file = get_owned_file_or_404(
-                filename=filename, user=request.user)
+            stored_file = get_object_or_404(FileStorage,
+                filename=filename, owner=request.user)
         except Http404:
             # In order to fix bug 1123986 we need to distinguish between
             # a 404 returned when the file is not present and a 404 returned
@@ -1150,8 +1128,8 @@ class FileHandler(OperationsHandler):
     @operation(idempotent=False)
     def delete(self, request, filename):
         """Delete a FileStorage object."""
-        stored_file = get_owned_file_or_404(
-            filename=filename, user=request.user)
+        stored_file = get_object_or_404(FileStorage,
+            filename=filename, owner=request.user)
         stored_file.delete()
         return rc.DELETED
 
