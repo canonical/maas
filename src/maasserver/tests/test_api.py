@@ -52,7 +52,6 @@ from django.http import (
     QueryDict,
     )
 from django.test.client import RequestFactory
-from django.utils.http import urlquote_plus
 from fixtures import (
     EnvironmentVariableFixture,
     Fixture,
@@ -2818,6 +2817,16 @@ class FileStorageAPITest(FileStorageAPITestMixin, APITestCase):
 
         self.assertEqual(httplib.CREATED, response.status_code)
 
+    def test_add_file_with_slashes_in_name_succeeds(self):
+        filename = "filename/with/slashes/in/it"
+        response = self.make_API_POST_request(
+            "add", filename, factory.make_file_upload())
+        self.assertEqual(httplib.CREATED, response.status_code)
+        self.assertItemsEqual(
+            [filename],
+            FileStorage.objects.filter(
+                filename=filename).values_list('filename', flat=True))
+
     def test_add_file_fails_with_no_filename(self):
         filepath = self.make_upload_file()
 
@@ -2933,17 +2942,30 @@ class FileStorageAPITest(FileStorageAPITestMixin, APITestCase):
         parsed_results = json.loads(response.content)
         self.assertNotIn('content', parsed_results[0].keys())
 
-    def test_files_resource_uri_are_url_escaped(self):
-        filename = "&*!c/%//filename/"
+    def test_files_resource_uri_supports_slashes_in_filenames(self):
+        filename = "a/filename/with/slashes/in/it/"
         factory.make_file_storage(
              filename=filename, content=b"test content",
              owner=self.logged_in_user)
         response = self.make_API_GET_request("list")
         parsed_results = json.loads(response.content)
         resource_uri = parsed_results[0]['resource_uri']
-        resource_uri_elements = resource_uri.split('/')
-        # The url-escaped name of the file is part of the resource uri.
-        self.assertIn(urlquote_plus(filename), resource_uri_elements)
+        expected_uri = reverse('file_handler', args=[filename])
+        self.assertEqual(expected_uri, resource_uri)
+
+    def test_api_supports_slashes_in_filenames_roundtrip_test(self):
+        # Do a roundtrip (upload a file then get it) for a file with a
+        # name that contains slashes.
+        filename = "filename/with/slashes/in/it"
+        self.make_API_POST_request(
+            "add", filename, factory.make_file_upload())
+        file_url = reverse('file_handler', args=[filename])
+        # The file url contains the filename without any kind of
+        # escaping.
+        self.assertIn(filename, file_url)
+        response = self.client.get(file_url)
+        parsed_result = json.loads(response.content)
+        self.assertEqual(filename, parsed_result['filename'])
 
     def test_get_file_returns_file_object_with_content_base64_encoded(self):
         filename = factory.make_name("file")
