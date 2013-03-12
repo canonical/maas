@@ -2948,6 +2948,18 @@ class FileStorageAPITest(FileStorageAPITestMixin, APITestCase):
                 b64decode(parsed_result['content'])
             ))
 
+    def test_get_file_returns_file_object_with_resource_uri(self):
+        filename = factory.make_name("file")
+        content = sample_binary_data
+        factory.make_file_storage(
+            filename=filename, content=content, owner=self.logged_in_user)
+        response = self.client.get(
+            reverse('file_handler', args=[filename]))
+        parsed_result = json.loads(response.content)
+        self.assertEqual(
+            reverse('file_handler', args=[filename]),
+            parsed_result['resource_uri'])
+
     def test_get_file_returns_owned_file(self):
         # If both an owned file and a non-owned file are present (with the
         # same name), the owned file is returned.

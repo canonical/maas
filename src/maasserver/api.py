@@ -102,6 +102,7 @@ from django.core.exceptions import (
     PermissionDenied,
     ValidationError,
     )
+from django.core.urlresolvers import reverse
 from django.db.utils import DatabaseError
 from django.forms.models import model_to_dict
 from django.http import (
@@ -1087,6 +1088,8 @@ def json_file_storage(stored_file, request):
     # Encode the content as base64.
     dict_representation['content'] = b64encode(
         getattr(stored_file, 'content'))
+    dict_representation['resource_uri'] = reverse(
+        'file_handler', args=[stored_file.filename])
     # Emit the json for this object manually because, no matter what the
     # piston documentation says, once a type is associated with a list
     # of fields by piston's typemapper mechanism, there is no way to
