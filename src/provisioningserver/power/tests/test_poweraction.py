@@ -29,7 +29,8 @@ from provisioningserver.power.poweraction import (
 from provisioningserver.utils import ShellTemplate
 from testtools.matchers import (
     FileContains,
-    MatchesRegex,
+    MatchesException,
+    Raises,
     )
 
 
@@ -107,12 +108,11 @@ class TestPowerAction(TestCase):
         pa = PowerAction(POWER_TYPE.WAKE_ON_LAN)
         template_name = factory.getRandomString()
         template = ShellTemplate("template: {{mac}}", name=template_name)
-        exception = self.assertRaises(
-            PowerActionFail, pa.render_template, template)
         self.assertThat(
-            exception.message, MatchesRegex(
-                "name 'mac' is not defined at line \d+ column \d+ "
-                "in file %s" % re.escape(template_name)))
+            lambda: pa.render_template(template),
+            Raises(MatchesException(PowerActionFail,
+                ".*name 'mac' is not defined at line \d+ column \d+ "
+                "in file %s" % re.escape(template_name))))
 
     def _create_template_file(self, template):
         """Create a temporary template file with the given contents."""
@@ -135,9 +135,16 @@ class TestPowerAction(TestCase):
 
     def test_execute_raises_PowerActionFail_when_script_fails(self):
         path = self._create_template_file("this_is_not_valid_shell")
-        exception = self.assertRaises(PowerActionFail, self.run_action, path)
-        self.assertEqual(
-            "ether_wake failed with return code 127", exception.message)
+        self.assertThat(
+            lambda: self.run_action(path),
+            Raises(MatchesException(PowerActionFail,
+                "ether_wake failed.* return.* 127")))
+
+    def test_execute_raises_PowerActionFail_with_output(self):
+        path = self._create_template_file("echo reason for failure; exit 1")
+        self.assertThat(
+            lambda: self.run_action(path),
+            Raises(MatchesException(PowerActionFail, ".*:\nreason for failure")))
 
     def test_wake_on_lan_cannot_shut_down_node(self):
         pa = PowerAction(POWER_TYPE.WAKE_ON_LAN)
@@ -156,8 +163,8 @@ class TestPowerAction(TestCase):
             action.get_template(), power_change='on',
             power_address='qemu://example.com/', system_id='mysystem',
             power_id='mysystem', username='me', virsh='echo')
-        stdout, stderr = action.run_shell(script)
-        self.assertIn("Got unknown power state from virsh", stderr)
+        output = action.run_shell(script)
+        self.assertIn("Got unknown power state from virsh", output)
 
     def test_fence_cdu_checks_state(self):
         # We can't test the fence_cdu template in detail (and it may be
@@ -170,8 +177,8 @@ class TestPowerAction(TestCase):
             action.get_template(), power_change='on',
             power_address='mysystem', power_id='system',
             power_user='me', power_pass='me', fence_cdu='echo')
-        stdout, stderr = action.run_shell(script)
-        self.assertIn("Got unknown power state from fence_cdu", stderr)
+        output = action.run_shell(script)
+        self.assertIn("Got unknown power state from fence_cdu", output)
 
     def test_ipmi_checks_state(self):
         action = PowerAction(POWER_TYPE.IPMI)
@@ -180,8 +187,8 @@ class TestPowerAction(TestCase):
             power_address='mystystem', power_user='me', power_pass='me',
             ipmipower='echo', ipmi_chassis_config='echo', config_dir='dir',
             ipmi_config='file.conf', power_driver='LAN')
-        stdout, stderr = action.run_shell(script)
-        self.assertIn("Got unknown power state from ipmipower", stderr)
+        output = action.run_shell(script)
+        self.assertIn("Got unknown power state from ipmipower", output)
 
     def configure_power_config_dir(self, path=None):
         """Configure POWER_CONFIG_DIR to `path`."""

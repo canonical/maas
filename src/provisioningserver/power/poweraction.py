@@ -31,6 +31,16 @@ class UnknownPowerType(Exception):
 class PowerActionFail(Exception):
     """Raised when there's a problem executing a power script."""
 
+    def __init__(self, power_action, err):
+        self.power_action = power_action
+        self.err = err
+
+    def __str__(self):
+        message = "%s failed: %s" % (self.power_action.power_type, self.err)
+        if isinstance(self.err, subprocess.CalledProcessError) and self.err.output:
+            message += ":\n" + self.err.output.strip()
+        return message
+
 
 def get_power_templates_dir():
     """Get the power-templates directory from the config."""
@@ -99,32 +109,23 @@ class PowerAction:
             kwargs.update(self.get_extra_context())
             return template.substitute(kwargs)
         except NameError as error:
-            raise PowerActionFail(*error.args)
+            raise PowerActionFail(self, error)
 
     def run_shell(self, commands):
         """Execute raw shell script (as rendered from a template).
 
         :param commands: String containing shell script.
-        :param **kwargs: Keyword arguments are passed on to the template as
-            substitution values.
-        :return: Tuple of strings: stdout, stderr.
+        :raises: :class:`PowerActionFail`
         """
         # This might need retrying but it could be better to leave that
         # to the individual scripts.
         try:
-            proc = subprocess.Popen(
-                commands, shell=True, stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE, close_fds=True)
-        except OSError as e:
-            raise PowerActionFail(e)
-
-        stdout, stderr = proc.communicate()
-        # TODO: log output on errors
-        code = proc.returncode
-        if code != 0:
-            raise PowerActionFail("%s failed with return code %s" % (
-                self.power_type, code))
-        return stdout, stderr
+            output = subprocess.check_output(
+                commands, shell=True, stderr=subprocess.STDOUT, close_fds=True)
+        except subprocess.CalledProcessError as e:
+            raise PowerActionFail(self, e)
+        # This output is only examined in tests, execute just ignores it
+        return output
 
     def execute(self, **kwargs):
         """Execute the template.
