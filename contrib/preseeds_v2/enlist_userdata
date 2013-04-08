@@ -43,14 +43,6 @@ misc_bucket:
       chmod "${2:-644}" "${IPMI_CONFIG_D}/$1"
    }
 
-   add_ipmi_config "01-user-privileges.ipmi" <<"END_IPMI_USER_PRIVILEGES"
-   Section User3
-        Enable_User                             Yes
-        Lan_Enable_IPMI_Msgs                    Yes
-        Lan_Privilege_Limit                     Administrator
-   EndSection
-   END_IPMI_USER_PRIVILEGES
-
    add_ipmi_config "02-global-config.ipmi" <<"END_IPMI_CONFIG"
    Section Lan_Channel
         Volatile_Access_Mode                    Always_Available
@@ -102,9 +94,23 @@ misc_bucket:
        res = show_re.search(output)
        return res.group()
 
+   def get_ipmi_user_number(user):
+       for i in range(1, 17):
+           ipmi_user_number = "User%s" % i
+           (status, output) = commands.getstatusoutput('bmc-config --checkout --key-pair="%s:Username"' % ipmi_user_number)
+           if user in output:
+               return ipmi_user_number
+       return None
+
    def commit_ipmi_user_settings(user, password):
-       (status, output) = commands.getstatusoutput('bmc-config --commit --key-pair="User3:Username=%s"' % user)
-       (status, output) = commands.getstatusoutput('bmc-config --commit --key-pair="User3:Password=%s"' % password)
+       ipmi_user_number = get_ipmi_user_number(user)
+       if ipmi_user_number is None:
+           (status, output) = commands.getstatusoutput('bmc-config --commit --key-pair="User10:Username=%s"' % user)
+           ipmi_user_number = get_ipmi_user_number(user)
+       (status, output) = commands.getstatusoutput('bmc-config --commit --key-pair="%s:Password=%s"' % (ipmi_user_number, password))
+       (status, output) = commands.getstatusoutput('bmc-config --commit --key-pair="%s:Enable_User=Yes"' % ipmi_user_number)
+       (status, output) = commands.getstatusoutput('bmc-config --commit --key-pair="%s:Lan_Enable_IPMI_Msgs=Yes"' % ipmi_user_number)
+       (status, output) = commands.getstatusoutput('bmc-config --commit --key-pair="%s:Lan_Privilege_Limit=Administrator"' % ipmi_user_number)
 
    def commit_ipmi_settings(config):
        (status, output) = commands.getstatusoutput('bmc-config --commit --filename %s' % config)
@@ -150,10 +156,7 @@ misc_bucket:
            time.sleep(120)
 
        # create user/pass
-       if args.commission_creds:
-           IPMI_MAAS_USER="maas-commission"
-       else:
-           IPMI_MAAS_USER="maas"
+       IPMI_MAAS_USER="maas"
        IPMI_MAAS_PASSWORD=generate_random_password()
 
        # Configure IPMI user/password
