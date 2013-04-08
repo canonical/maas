@@ -226,7 +226,13 @@ def get_preseed_context(release='', nodegroup=None):
         Config.objects.get_config('main_archive'))
     ports_archive_hostname, ports_archive_directory = get_hostname_and_path(
         Config.objects.get_config('ports_archive'))
-    base_url = nodegroup.maas_url if nodegroup is not None else None
+    if nodegroup is None:
+        base_url = None
+        cluster_host = None
+    else:
+        base_url = nodegroup.maas_url
+        cluster_if = nodegroup.get_managed_interface()
+        cluster_host = None if cluster_if is None else cluster_if.ip
     return {
         'main_archive_hostname': main_archive_hostname,
         'main_archive_directory': main_archive_directory,
@@ -237,6 +243,7 @@ def get_preseed_context(release='', nodegroup=None):
         'server_url': absolute_reverse('nodes_handler', base_url=base_url),
         'metadata_enlist_url': absolute_reverse('enlist', base_url=base_url),
         'http_proxy': Config.objects.get_config('http_proxy'),
+        'cluster_host': cluster_host,
         }
 
 

@@ -21,6 +21,7 @@ from django.conf import settings
 from maasserver.enum import (
     ARCHITECTURE,
     NODE_STATUS,
+    NODEGROUPINTERFACE_MANAGEMENT,
     PRESEED_TYPE,
     )
 from maasserver.models import Config
@@ -327,10 +328,9 @@ class TestPreseedContext(TestCase):
         context = get_preseed_context(release, nodegroup)
         self.assertItemsEqual(
             ['release', 'metadata_enlist_url', 'server_host', 'server_url',
-            'main_archive_hostname', 'main_archive_directory',
-            'ports_archive_hostname', 'ports_archive_directory',
-            'http_proxy',
-            ],
+             'cluster_host', 'main_archive_hostname', 'main_archive_directory',
+             'ports_archive_hostname', 'ports_archive_directory',
+             'http_proxy'],
             context)
 
     def test_get_preseed_context_archive_refs(self):
@@ -357,6 +357,35 @@ class TestPreseedContext(TestCase):
                 context['ports_archive_hostname'],
                 context['ports_archive_directory'],
             ))
+
+    def test_preseed_context_cluster_host(self):
+        # The cluster_host context variable is derived from the nodegroup.
+        release = factory.getRandomString()
+        nodegroup = factory.make_node_group(maas_url=factory.getRandomString())
+        context = get_preseed_context(release, nodegroup)
+        self.assertIsNotNone(context["cluster_host"])
+        self.assertEqual(
+            nodegroup.get_managed_interface().ip,
+            context["cluster_host"])
+
+    def test_preseed_context_null_cluster_host_if_unmanaged(self):
+        # If the nodegroup has no managed interface recorded, which is
+        # possible in the data model but would be a bit weird, the
+        # cluster_host context variable is present, but None.
+        release = factory.getRandomString()
+        nodegroup = factory.make_node_group(maas_url=factory.getRandomString())
+        for interface in nodegroup.nodegroupinterface_set.all():
+            interface.management = NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED
+            interface.save()
+        context = get_preseed_context(release, nodegroup)
+        self.assertIsNone(context["cluster_host"])
+
+    def test_preseed_context_null_cluster_host_if_does_not_exist(self):
+        # If there's no nodegroup, the cluster_host context variable is
+        # present, but None.
+        release = factory.getRandomString()
+        context = get_preseed_context(release)
+        self.assertIsNone(context["cluster_host"])
 
 
 class TestNodePreseedContext(TestCase):
