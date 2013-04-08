@@ -117,3 +117,86 @@ access it, there are a few things to try:
   #. If you are still getting "404 - Page not found" errors, check that the MAAS
      web interface has been installed in the right place. There should be a file
      present called /usr/share/maas/maas/urls.py
+
+**Debugging ephemeral image**
+=============================
+
+Backdoor (add a login) to ephemeral images
+------------------------------------------
+
+If you cannot login to an instance, you might have to "backdoor it" in order
+to see what is going wrong. Scott Moser wrote a simple utility that injects a
+user and password into an image. Here's how to add a 'backdoor' user with a
+password to your images.
+
+
+``bzr branch lp:~maas-maintainers/maas/backdoor-image``
+
+``imgs=$(echo var/lib/maas/ephemeral/*/*/*/*/*.img)
+for img in $imgs; do
+    [ -f "$img.dist" ] || cp -a --sparse=always $img $img.dist
+done
+
+for img in $imgs; do
+    sudo ./backdoor-image -v --user=backdoor --password-auth --password=ubuntu
+done``
+
+Inside the ephemeral image
+--------------------------
+
+Important files for debugging (Someone is likely to ask you for these
+things to help debug):
+
+``/var/log/cloud-init.log``
+``/var/log/boot.log``
+``/var/log/cloud-init-output.log``
+
+After enlistment or commissioning, the user-data from maas instructs the system
+to power off. To stop that from happening, you can just create a file in /tmp.
+
+
+``touch /tmp/block-poweroff``
+
+MAAS credentials
+----------------
+
+MAAS credentials can be found in 2 places:
+
+    #. from the cmdline you'll see a 'url=' or 'cloud-config-url=' parameter
+    You can get the cloud-config from that url, which will have credentials.
+
+    ``sed -n 's,.*url=\([^ ]*\).*,\1,p' /proc/cmdline
+    http://10.55.60.194/MAAS/metadata/latest/enlist-preseed/?op=get_enlist_preseed``
+
+    #. from /etc/cloud/cloud.cfg.d/91_kernel_cmdline_url. The file was pulled 
+    from url= parameter by cloud-init
+
+    ``sudo cat /etc/cloud/cloud.cfg.d/91_kernel_cmdline``
+
+MAAS datasource
+---------------
+
+The cloud-init datasource for MAAS can be invoked as a 'main' for debugging
+purposes. To do so, you need to know the url for the MAAS datasource and a
+config file that contains credentials.
+
+
+    ``cfg=$(echo /etc/cloud/cloud.cfg.d/*_cmdline_url.cfg)``
+    ``echo $cfg /etc/cloud/cloud.cfg.d/91_kernel_cmdline_url.cfg``
+
+Now get the metadata_url from there.
+
+    ``url=$(sudo awk '$1 == "metadata_url:" { print $2 }' $cfg)``
+    ``echo $url http://10.55.60.194/MAAS/metadata/enlist``
+
+Invoke the client /usr/share/pyshared/cloudinit/sources/DataSourceMAAS.py
+The client has --help Usage also, but here is an example of how to use it:
+
+    ``maasds="/usr/share/pyshared/cloudinit/sources/DataSourceMAAS.py"``
+    ``sudo python $maasds --config=$cfg get $url``
+       == http://10.55.60.194/MAAS/metadata/enlist ==
+       2012-03-01
+       latest
+
+    ``sudo python $maasds --config=$cfg get $url/latest/meta-data/local-hostname``
+       maas-enlisting-node
