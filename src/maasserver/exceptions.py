@@ -17,6 +17,7 @@ __all__ = [
     "MAASAPIException",
     "MAASAPINotFound",
     "NodeStateViolation",
+    "NodeGroupMisconfiguration",
     ]
 
 
@@ -114,3 +115,12 @@ class Redirect(MAASAPIException):
 
     def make_http_response(self):
         return HttpResponseRedirect(unicode(self))
+
+
+class NodeGroupMisconfiguration(MAASAPIException):
+    """Node Groups (aka Cluster Controllers) are misconfigured.
+
+    This might mean that more than one controller is marked as managing the
+    same network
+    """
+    api_error = httplib.CONFLICT

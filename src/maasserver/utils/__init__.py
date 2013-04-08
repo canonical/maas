@@ -29,6 +29,7 @@ from urlparse import urljoin
 from django.conf import settings
 from django.core.urlresolvers import reverse
 from maasserver.enum import NODEGROUPINTERFACE_MANAGEMENT
+from maasserver.exceptions import NodeGroupMisconfiguration
 from maasserver.utils.orm import get_one
 
 
@@ -134,33 +135,57 @@ def get_local_cluster_UUID():
 
 
 def find_nodegroup(request):
-    """Find the nodegroup whose subnet contains the IP Address of the
-    originating host of the request..
+    """Find the nodegroup whose subnet contains the requester's address.
 
-    The matching nodegroup may have multiple interfaces on the subnet,
-    but there can be only one matching nodegroup.
+    There may be multiple matching nodegroups, but this endeavours to choose
+    the most appropriate.
+
+    :raises `maasserver.exceptions.NodeGroupMisconfiguration`: When more than
+        one nodegroup claims to manage the requester's network.
     """
     # Circular imports.
     from maasserver.models import NodeGroup
     ip_address = request.META['REMOTE_ADDR']
-    if ip_address is not None:
-        management_statuses = (
-            NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
-        )
+    if ip_address is None:
+        return None
+    else:
+        # Fetch nodegroups with interfaces in the requester's network,
+        # preferring those with managed networks first. The `NodeGroup`
+        # objects returned are annotated with the `management` field of the
+        # matching `NodeGroupInterface`. See https://docs.djangoproject.com
+        # /en/dev/topics/db/sql/#adding-annotations for this curious feature
+        # of Django's ORM.
         query = NodeGroup.objects.raw("""
-            SELECT *
-            FROM maasserver_nodegroup
-            WHERE id IN (
-                SELECT nodegroup_id
-                FROM maasserver_nodegroupinterface
-                WHERE (inet %s & subnet_mask) = (ip & subnet_mask)
-                AND management IN %s
-            )
-            """, [
-                ip_address,
-                management_statuses,
-                ]
-            )
-        return get_one(query)
-    return None
+            SELECT
+              ng.*,
+              ngi.management
+            FROM
+              maasserver_nodegroup AS ng,
+              maasserver_nodegroupinterface AS ngi
+            WHERE
+              ng.id = ngi.nodegroup_id
+             AND
+              (inet %s & ngi.subnet_mask) = (ngi.ip & ngi.subnet_mask)
+            ORDER BY
+              ngi.management DESC,
+              ng.id ASC
+            """, [ip_address])
+        nodegroups = list(query)
+        if len(nodegroups) == 0:
+            return None
+        elif len(nodegroups) == 1:
+            return nodegroups[0]
+        else:
+            # There are multiple matching nodegroups. Only zero or one may
+            # have a managed interface, otherwise it is a misconfiguration.
+            unmanaged = NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED
+            nodegroups_with_managed_interfaces = {
+                nodegroup.id for nodegroup in nodegroups
+                if nodegroup.management != unmanaged
+                }
+            if len(nodegroups_with_managed_interfaces) > 1:
+                raise NodeGroupMisconfiguration(
+                    "Multiple clusters on the same network; only "
+                    "one cluster may manage the network of which "
+                    "%s is a member." % ip_address)
+            return nodegroups[0]

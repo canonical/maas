@@ -12,6 +12,7 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
+import httplib
 from urllib import urlencode
 
 from django.conf import settings
@@ -22,11 +23,7 @@ from maasserver.enum import (
     NODE_STATUS_CHOICES,
     NODEGROUPINTERFACE_MANAGEMENT,
     )
-from maasserver.models import (
-    NodeGroup,
-    nodegroupinterface,
-    NodeGroupInterface,
-    )
+from maasserver.exceptions import NodeGroupMisconfiguration
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase as DjangoTestCase
 from maasserver.utils import (
@@ -220,13 +217,6 @@ def get_request(origin_ip):
 
 class TestFindNodegroup(DjangoTestCase):
 
-    def test_finds_nodegroup_by_network_address(self):
-        nodegroup = factory.make_node_group(
-            network=IPNetwork("192.168.28.1/24"))
-        self.assertEqual(
-            nodegroup,
-            find_nodegroup(get_request('192.168.28.0')))
-
     def test_find_nodegroup_looks_up_nodegroup_by_controller_ip(self):
         nodegroup = factory.make_node_group()
         ip = nodegroup.get_managed_interface().ip
@@ -234,40 +224,69 @@ class TestFindNodegroup(DjangoTestCase):
             nodegroup,
             find_nodegroup(get_request(ip)))
 
-    def test_find_nodegroup_looks_up_only_configured_interfaces(self):
-        network = IPNetwork("192.168.41.0/24")
-        factory.make_node_group(
-            network=network,
-            management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
-        ip = factory.getRandomIPInNetwork(network)
-        self.assertIsNone(find_nodegroup(get_request(ip)))
-
-    def test_find_nodegroup_accepts_any_ip_in_nodegroup_subnet(self):
-        nodegroup = factory.make_node_group(
-            network=IPNetwork("192.168.41.0/24"))
-        self.assertEqual(
-            nodegroup,
-            find_nodegroup(get_request('192.168.41.199')))
-
     def test_find_nodegroup_returns_None_if_not_found(self):
         self.assertIsNone(
             find_nodegroup(get_request(factory.getRandomIPAddress())))
 
-    def test_find_nodegroup_errors_if_multiple_matches(self):
-        self.patch(nodegroupinterface, "MINIMUM_NETMASK_BITS", 1)
-        factory.make_node_group(network=IPNetwork("10/8"))
-        factory.make_node_group(network=IPNetwork("10.1.1/24"))
-        self.assertRaises(
-            NodeGroup.MultipleObjectsReturned,
-            find_nodegroup, get_request('10.1.1.2'))
+    #
+    # Finding a node's nodegroup (aka cluster controller) in a nutshell:
+    #
+    #   when 1 managed interface on the network = choose this one
+    #   when >1 managed interfaces on the network = misconfiguration
+    #   when 1 unmanaged interface on a network = choose this one
+    #   when >1 unmanaged interfaces on a network = choose any
+    #
 
-    def test_find_nodegroup_handles_multiple_matches_on_same_nodegroup(self):
-        self.patch(nodegroupinterface, "MINIMUM_NETMASK_BITS", 1)
-        nodegroup = factory.make_node_group(network=IPNetwork("10/8"))
-        NodeGroupInterface.objects.create(
-            nodegroup=nodegroup, ip='10.0.0.2', subnet_mask='255.0.0.0',
-            broadcast_ip='10.0.0.1', interface='eth71')
-        NodeGroupInterface.objects.create(
-            nodegroup=nodegroup, ip='10.0.0.3', subnet_mask='255.0.0.0',
-            broadcast_ip='10.0.0.2', interface='eth72')
-        self.assertEqual(nodegroup, find_nodegroup(get_request('10.0.0.9')))
+    def test_1_managed_interface(self):
+        nodegroup = factory.make_node_group(
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
+            network=IPNetwork("192.168.41.0/24"))
+        self.assertEqual(
+            nodegroup, find_nodegroup(get_request('192.168.41.199')))
+
+    def test_1_managed_interface_and_1_unmanaged(self):
+        # The managed nodegroup is chosen in preference to the unmanaged
+        # nodegroup.
+        nodegroup = factory.make_node_group(
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
+            network=IPNetwork("192.168.41.0/24"))
+        factory.make_node_group(
+            management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED,
+            network=IPNetwork("192.168.41.0/16"))
+        self.assertEqual(
+            nodegroup, find_nodegroup(get_request('192.168.41.199')))
+
+    def test_more_than_1_managed_interface(self):
+        factory.make_node_group(
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
+            network=IPNetwork("192.168.41.0/16"))
+        factory.make_node_group(
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
+            network=IPNetwork("192.168.41.0/24"))
+        exception = self.assertRaises(
+            NodeGroupMisconfiguration,
+            find_nodegroup, get_request('192.168.41.199'))
+        self.assertEqual(
+            (httplib.CONFLICT,
+             "Multiple clusters on the same network; only "
+             "one cluster may manage the network of which "
+             "192.168.41.199 is a member."),
+            (exception.api_error,
+             "%s" % exception))
+
+    def test_1_unmanaged_interface(self):
+        nodegroup = factory.make_node_group(
+            management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED,
+            network=IPNetwork("192.168.41.0/24"))
+        self.assertEqual(
+            nodegroup, find_nodegroup(get_request('192.168.41.199')))
+
+    def test_more_than_1_unmanaged_interface(self):
+        nodegroup1 = factory.make_node_group(
+            management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED,
+            network=IPNetwork("192.168.41.0/16"))
+        factory.make_node_group(
+            management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED,
+            network=IPNetwork("192.168.41.0/24"))
+        self.assertEqual(
+            nodegroup1, find_nodegroup(get_request('192.168.41.199')))
