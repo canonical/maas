@@ -59,7 +59,11 @@ class SettingsTest(AdminLoggedInTestCase):
         # "Add a user" link.
         self.assertIn(reverse('accounts-add'), all_links)
         for user in users:
-            rows = tab.cssselect('tr#"%s"' % user.username)
+            # Use the longhand way of matching an ID here - instead of tr#id -
+            # because the ID may contain non [a-zA-Z-]+ characters. These are
+            # not allowed in symbols, which is how cssselect treats text
+            # following "#" in a selector.
+            rows = tab.cssselect('tr[id="%s"]' % user.username)
             # Only one row for the user.
             self.assertEqual(1, len(rows))
             row = rows[0]
