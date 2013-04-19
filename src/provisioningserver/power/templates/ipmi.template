@@ -57,7 +57,7 @@ issue_ipmi_command() {
 
 # Get the given system's power state: 'on' or 'off'.
 get_power_state() {
-    ipmi_state=$(issue_ipmi_command stat)
+    ipmi_state=$(issue_ipmi_command --stat)
     formulate_power_state ${ipmi_state}
 }
 
