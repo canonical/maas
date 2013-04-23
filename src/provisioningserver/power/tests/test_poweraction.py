@@ -173,16 +173,6 @@ class TestPowerAction(TestCase):
         stdout, stderr = action.run_shell(script)
         self.assertIn("Got unknown power state from fence_cdu", stderr)
 
-    def test_ipmi_checks_state(self):
-        action = PowerAction(POWER_TYPE.IPMI)
-        script = action.render_template(
-            action.get_template(), power_change='on',
-            power_address='mystystem', power_user='me', power_pass='me',
-            ipmipower='echo', ipmi_chassis_config='echo', config_dir='dir',
-            ipmi_config='file.conf', power_driver='LAN')
-        stdout, stderr = action.run_shell(script)
-        self.assertIn("Got unknown power state from ipmipower", stderr)
-
     def configure_power_config_dir(self, path=None):
         """Configure POWER_CONFIG_DIR to `path`."""
         self.patch(

@@ -45,7 +45,7 @@ issue_ipmi_command() {
     driver_option=""
     if [ -n "$power_driver" ]
         then
-          driver_option="--driver-type=$power_driver"
+          driver_option="--driver-type=${power_driver}"
     fi
 
     echo workaround |\
@@ -54,16 +54,8 @@ issue_ipmi_command() {
     ${ipmipower} ${driver_option} -h ${power_address} -u ${power_user} -p ${power_pass} "$@"
 }
 
-
-# Get the given system's power state: 'on' or 'off'.
-get_power_state() {
-    ipmi_state=$(issue_ipmi_command stat)
-    formulate_power_state ${ipmi_state}
-}
-
-
-if [ "$(get_power_state)" != "${power_change}" ]
-then
-    power_command=$(formulate_power_command ${power_change})
-    issue_ipmi_command ${power_command}
-fi
+# This script deliberately does not check the current power state
+# before issuing the requested power command. See bug 1171418 for an
+# explanation.
+power_command=$(formulate_power_command ${power_change})
+issue_ipmi_command ${power_command}
