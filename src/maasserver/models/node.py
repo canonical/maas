@@ -396,6 +396,8 @@ def update_hardware_details(node, xmlbytes, tag_manager):
     node.cpu_count = cpu_count or 0
     node.memory = memory
     for tag in tag_manager.all():
+        if not tag.definition:
+            continue
         has_tag = evaluator(tag.definition)
         if has_tag:
             node.tags.add(tag)
