@@ -214,6 +214,25 @@ class Factory(maastesting.factory.Factory):
         ng.save()
         return ng
 
+    def make_unrenamable_nodegroup_with_node(self):
+        """Create a `NodeGroup` that can't be renamed, and `Node`.
+
+        Node groups can't be renamed while they are in an accepted state, have
+        DHCP and DNS management enabled, and have a node that is in allocated
+        state.
+
+        :return: tuple: (`NodeGroup`, `Node`).
+        """
+        name = self.make_name('original-name')
+        nodegroup = self.make_node_group(
+            name=name, status=NODEGROUP_STATUS.ACCEPTED)
+        interface = nodegroup.get_managed_interface()
+        interface.management = NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS
+        interface.save()
+        node = self.make_node(
+            nodegroup=nodegroup, status=NODE_STATUS.ALLOCATED)
+        return nodegroup, node
+
     def make_node_group_interface(self, nodegroup, ip=None,
                                   router_ip=None, network=None,
                                   subnet_mask=None, broadcast_ip=None,
