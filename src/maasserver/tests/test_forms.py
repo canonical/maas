@@ -878,25 +878,6 @@ class TestNodeGroupWithInterfacesForm(TestCase):
             ])
 
 
-def make_unrenamable_nodegroup_with_node():
-    """Create a `NodeGroup` that can't be renamed, and `Node`.
-
-    Node groups can't be renamed while they are in an accepted state, have
-    DHCP and DNS management enabled, and have a node that is in allocated
-    state.
-
-    :return: tuple: (`NodeGroup`, `Node`).
-    """
-    name = factory.make_name('original-name')
-    nodegroup = factory.make_node_group(
-        name=name, status=NODEGROUP_STATUS.ACCEPTED)
-    interface = nodegroup.get_managed_interface()
-    interface.management = NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS
-    interface.save()
-    node = factory.make_node(nodegroup=nodegroup, status=NODE_STATUS.ALLOCATED)
-    return nodegroup, node
-
-
 class TestNodeGroupEdit(TestCase):
 
     def make_form_data(self, nodegroup):
@@ -918,14 +899,14 @@ class TestNodeGroupEdit(TestCase):
         self.assertEqual(new_name, reload_object(nodegroup).name)
 
     def test_refuses_name_change_if_dns_managed_and_nodes_in_use(self):
-        nodegroup, node = make_unrenamable_nodegroup_with_node()
+        nodegroup, node = factory.make_unrenamable_nodegroup_with_node()
         data = self.make_form_data(nodegroup)
         data['name'] = factory.make_name('new-name')
         form = NodeGroupEdit(instance=nodegroup, data=data)
         self.assertFalse(form.is_valid())
 
     def test_accepts_unchanged_name(self):
-        nodegroup, node = make_unrenamable_nodegroup_with_node()
+        nodegroup, node = factory.make_unrenamable_nodegroup_with_node()
         original_name = nodegroup.name
         form = NodeGroupEdit(
             instance=nodegroup, data=self.make_form_data(nodegroup))
@@ -934,7 +915,7 @@ class TestNodeGroupEdit(TestCase):
         self.assertEqual(original_name, reload_object(nodegroup).name)
 
     def test_accepts_omitted_name(self):
-        nodegroup, node = make_unrenamable_nodegroup_with_node()
+        nodegroup, node = factory.make_unrenamable_nodegroup_with_node()
         original_name = nodegroup.name
         data = self.make_form_data(nodegroup)
         del data['name']
@@ -944,7 +925,7 @@ class TestNodeGroupEdit(TestCase):
         self.assertEqual(original_name, reload_object(nodegroup).name)
 
     def test_accepts_name_change_if_nodegroup_not_accepted(self):
-        nodegroup, node = make_unrenamable_nodegroup_with_node()
+        nodegroup, node = factory.make_unrenamable_nodegroup_with_node()
         nodegroup.status = NODEGROUP_STATUS.PENDING
         data = self.make_form_data(nodegroup)
         data['name'] = factory.make_name('new-name')
@@ -952,7 +933,7 @@ class TestNodeGroupEdit(TestCase):
         self.assertTrue(form.is_valid())
 
     def test_accepts_name_change_if_dns_managed_but_no_nodes_in_use(self):
-        nodegroup, node = make_unrenamable_nodegroup_with_node()
+        nodegroup, node = factory.make_unrenamable_nodegroup_with_node()
         node.status = NODE_STATUS.READY
         node.save()
         data = self.make_form_data(nodegroup)
@@ -963,7 +944,7 @@ class TestNodeGroupEdit(TestCase):
         self.assertEqual(data['name'], reload_object(nodegroup).name)
 
     def test_accepts_name_change_if_nodes_in_use_but_dns_not_managed(self):
-        nodegroup, node = make_unrenamable_nodegroup_with_node()
+        nodegroup, node = factory.make_unrenamable_nodegroup_with_node()
         interface = nodegroup.get_managed_interface()
         interface.management = NODEGROUPINTERFACE_MANAGEMENT.DHCP
         interface.save()
@@ -975,7 +956,7 @@ class TestNodeGroupEdit(TestCase):
         self.assertEqual(data['name'], reload_object(nodegroup).name)
 
     def test_accepts_name_change_if_nodegroup_has_no_interface(self):
-        nodegroup, node = make_unrenamable_nodegroup_with_node()
+        nodegroup, node = factory.make_unrenamable_nodegroup_with_node()
         NodeGroupInterface.objects.filter(nodegroup=nodegroup).delete()
         data = self.make_form_data(nodegroup)
         data['name'] = factory.make_name('new-name')

@@ -65,6 +65,7 @@ __all__ = [
     "FilesHandler",
     "get_oauth_token",
     "MaasHandler",
+    "NodeGroupHandler",
     "NodeGroupsHandler",
     "NodeGroupInterfaceHandler",
     "NodeGroupInterfacesHandler",
@@ -149,6 +150,7 @@ from maasserver.fields import (
 from maasserver.forms import (
     get_node_create_form,
     get_node_edit_form,
+    NodeGroupEdit,
     NodeGroupInterfaceForm,
     NodeGroupWithInterfacesForm,
     TagForm,
@@ -455,6 +457,9 @@ DISPLAYED_NODE_FIELDS = (
     'power_type',
     'tag_names',
     )
+
+
+METHOD_RESERVED_ADMIN = "That method is reserved for admin users."
 
 
 def store_node_power_parameters(node, request):
@@ -1363,7 +1368,7 @@ class NodeGroupsHandler(OperationsHandler):
                 nodegroup.accept()
             return HttpResponse("Nodegroup(s) accepted.", status=httplib.OK)
         else:
-            raise PermissionDenied("That method is reserved to admin users.")
+            raise PermissionDenied(METHOD_RESERVED_ADMIN)
 
     @operation(idempotent=False)
     def reject(self, request):
@@ -1381,7 +1386,7 @@ class NodeGroupsHandler(OperationsHandler):
                 nodegroup.reject()
             return HttpResponse("Nodegroup(s) rejected.", status=httplib.OK)
         else:
-            raise PermissionDenied("That method is reserved to admin users.")
+            raise PermissionDenied(METHOD_RESERVED_ADMIN)
 
     @classmethod
     def resource_uri(cls):
@@ -1418,7 +1423,7 @@ class NodeGroupHandler(OperationsHandler):
     Each NodeGroup has its own uuid.
     """
 
-    create = update = delete = None
+    create = delete = None
     fields = DISPLAYED_NODEGROUP_FIELDS
 
     def read(self, request, uuid):
@@ -1432,6 +1437,27 @@ class NodeGroupHandler(OperationsHandler):
         else:
             uuid = nodegroup.uuid
         return ('nodegroup_handler', [uuid])
+
+    def update(self, request, uuid):
+        """Update a specific cluster.
+
+        :param name: The new DNS name for this cluster.
+        :type name: basestring
+        :param cluster_name: The new name for this cluster.
+        :type cluster_name: basestring
+        :param status: The new status for this cluster (see
+            vocabulary `NODEGROUP_STATUS`).
+        :type status: int
+        """
+        if not request.user.is_superuser:
+            raise PermissionDenied(METHOD_RESERVED_ADMIN)
+        nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
+        data = get_overrided_query_dict(model_to_dict(nodegroup), request.data)
+        form = NodeGroupEdit(instance=nodegroup, data=data)
+        if form.is_valid():
+            return form.save()
+        else:
+            raise ValidationError(form.errors)
 
     @operation(idempotent=False)
     def update_leases(self, request, uuid):

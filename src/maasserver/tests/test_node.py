@@ -586,6 +586,19 @@ class NodeTest(TestCase):
         node = reload_object(node)
         self.assertEqual([], list(node.tags.all()))
 
+    def test_hardware_updates_ignores_empty_tags(self):
+        # Tags with empty definitions are ignored when
+        # node.set_hardware_details gets called.
+        factory.make_tag(definition='')
+        node = factory.make_node()
+        node.save()
+        xmlbytes = '<node/>'
+        node.set_hardware_details(xmlbytes)
+        node = reload_object(node)
+        # The real test is that node.set_hardware_details does not blow
+        # up, see bug 1131418.
+        self.assertEqual([], list(node.tags.all()))
+
     def test_fqdn_returns_hostname_if_dns_not_managed(self):
         nodegroup = factory.make_node_group(
             name=factory.getRandomString(),

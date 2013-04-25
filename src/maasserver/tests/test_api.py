@@ -77,6 +77,7 @@ from maasserver.enum import (
     NODE_STATUS,
     NODE_STATUS_CHOICES_DICT,
     NODEGROUP_STATUS,
+    NODEGROUP_STATUS_CHOICES,
     NODEGROUPINTERFACE_MANAGEMENT,
     )
 from maasserver.exceptions import (
@@ -4393,6 +4394,51 @@ class TestNodeGroupAPI(APITestCase):
         response = self.client.get(
             self.get_uri('nodegroups/%s/' % factory.make_name('nodegroup')))
         self.assertEqual(httplib.NOT_FOUND, response.status_code)
+
+    def test_PUT_reserved_to_admin_users(self):
+        nodegroup = factory.make_node_group()
+        response = self.client.put(
+            reverse('nodegroup_handler', args=[nodegroup.uuid]),
+            {'name': factory.make_name("new-name")})
+
+        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+
+    def test_PUT_updates_nodegroup(self):
+        # The api allows the updating of a NodeGroup.
+        nodegroup = factory.make_node_group()
+        self.become_admin()
+        new_name = factory.make_name("new-name")
+        new_cluster_name = factory.make_name("new-cluster-name")
+        new_status = factory.getRandomChoice(
+            NODEGROUP_STATUS_CHOICES, but_not=[nodegroup.status])
+        response = self.client.put(
+            reverse('nodegroup_handler', args=[nodegroup.uuid]),
+            {
+                'name': new_name,
+                'cluster_name': new_cluster_name,
+                'status': new_status,
+            })
+
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        nodegroup = reload_object(nodegroup)
+        self.assertEqual(
+            (new_name, new_cluster_name, new_status),
+            (nodegroup.name, nodegroup.cluster_name, nodegroup.status))
+
+    def test_PUT_updates_nodegroup_validates_data(self):
+        nodegroup, _ = factory.make_unrenamable_nodegroup_with_node()
+        self.become_admin()
+        new_name = factory.make_name("new-name")
+        response = self.client.put(
+            reverse('nodegroup_handler', args=[nodegroup.uuid]),
+            {'name': new_name})
+
+        parsed_result = json.loads(response.content)
+
+        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+        self.assertIn(
+            "Can't rename DNS zone",
+            parsed_result['name'][0])
 
     def test_update_leases_processes_empty_leases_dict(self):
         nodegroup = factory.make_node_group()
