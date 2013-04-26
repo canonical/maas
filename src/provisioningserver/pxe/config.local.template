@@ -1,5 +1,4 @@
 DEFAULT local
 
 LABEL local
-  SAY Booting local disk ...
   LOCALBOOT 0
