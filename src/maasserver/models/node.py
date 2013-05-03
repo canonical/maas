@@ -818,23 +818,25 @@ class Node(CleanSave, TimestampedModel):
     def should_use_traditional_installer(self):
         """Should this node be installed with the traditional installer?
 
-        By default, nodes should be installed with the default installer, so
-        this returns `False`.
+        By default, nodes should be installed with the traditional installer,
+        so this returns `True` when no `use-fastpath-installer` tag has been
+        defined.
         """
-        return self.tags.filter(name="use-traditional-installer").exists()
+        return not self.should_use_fastpath_installer()
 
-    def should_use_default_installer(self):
-        """Should this node be installed with the default installer?
+    def should_use_fastpath_installer(self):
+        """Should this node be installed with the Fast Path installer?
 
-        By default, nodes should be installed with the default installer, the
-        Fast Path installer, so this returns `True`.
+        By default, nodes should be installed with the traditional installer,
+        so this returns `True` when the `use-fastpath-installer` has been
+        defined and `False` when it hasn't.
         """
-        return not self.should_use_traditional_installer()
+        return self.tags.filter(name="use-fastpath-installer").exists()
 
     def use_traditional_installer(self):
         """Set this node to be installed with the traditional installer.
 
-        By default, nodes should be installed with the Fast Path installer.
+        By default, nodes should be installed with the Traditional installer.
 
         :raises: :class:`RuntimeError` when the `use-traditional-installer`
             tag is defined *with* an expression. The reason is that the tag
@@ -842,29 +844,29 @@ class Node(CleanSave, TimestampedModel):
             make with this method.
         """
         uti_tag, _ = Tag.objects.get_or_create(
-            name="use-traditional-installer")
+            name="use-fastpath-installer")
         if uti_tag.definition != "":
             raise RuntimeError(
-                "The use-traditional-installer tag is defined with an "
-                "expression. This expression much be updated to make this "
-                "node boot with the traditional installer.")
-        self.tags.add(uti_tag)
-
-    def use_default_installer(self):
-        """Set this node to be installed with the default installer.
-
-        By default, nodes should be installed with the Fast Path installer.
-
-        :raises: :class:`RuntimeError` when the `use-traditional-installer`
-            tag is defined *with* an expression. The reason is that the tag
-            evaluation machinery will eventually ignore whatever changes you
-            make with this method.
-        """
-        uti_tag, _ = Tag.objects.get_or_create(
-            name="use-traditional-installer")
-        if uti_tag.definition != "":
-            raise RuntimeError(
-                "The use-traditional-installer tag is defined with an "
-                "expression. This expression much be updated to prevent "
-                "this node from booting with the traditional installer.")
+                "The use-fastpath-installer tag is defined with an "
+                "expression. This expression must be updated to prevent "
+                "this node from booting with the Fast Path installer.")
         self.tags.remove(uti_tag)
+
+    def use_fastpath_installer(self):
+        """Set this node to be installed with the Fast Path Installer.
+
+        By default, nodes should be installed with the Traditional Installer.
+
+        :raises: :class:`RuntimeError` when the `use-fastpath-installer`
+            tag is defined *with* an expression. The reason is that the tag
+            evaluation machinery will eventually ignore whatever changes you
+            make with this method.
+        """
+        uti_tag, _ = Tag.objects.get_or_create(
+            name="use-fastpath-installer")
+        if uti_tag.definition != "":
+            raise RuntimeError(
+                "The use-fastpath-installer tag is defined with an "
+                "expression. This expression must be updated to make this "
+                "node boot with the Fast Path Installer.")
+        self.tags.add(uti_tag)

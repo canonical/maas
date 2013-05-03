@@ -678,87 +678,87 @@ class NodeTest(TestCase):
         expected_hostname = '%s.%s' % (hostname_without_domain, domain)
         self.assertEqual(expected_hostname, node.fqdn)
 
-    def test_should_use_default_installer_by_default(self):
+    def test_should_use_traditional_installer_by_default(self):
         node = factory.make_node()
-        self.assertTrue(node.should_use_default_installer())
-
-    def test_should_use_traditional_installer_not_by_default(self):
-        node = factory.make_node()
-        self.assertFalse(node.should_use_traditional_installer())
-
-    def test_should_use_default_installer_not_when_tag_applies(self):
-        node = factory.make_node()
-        tag = factory.make_tag(name="use-traditional-installer")
-        tag.save()
-        node.tags.add(tag)
-        self.assertFalse(node.should_use_default_installer())
-
-    def test_should_use_traditional_installer_when_tag_applies(self):
-        node = factory.make_node()
-        tag = factory.make_tag(name="use-traditional-installer")
-        tag.save()
-        node.tags.add(tag)
         self.assertTrue(node.should_use_traditional_installer())
 
+    def test_should_not_use_fastpath_installer_by_default(self):
+        node = factory.make_node()
+        self.assertFalse(node.should_use_fastpath_installer())
+
+    def test_should_use_traditional_installer_not_when_tag_applies(self):
+        node = factory.make_node()
+        tag = factory.make_tag(name="use-fastpath-installer")
+        tag.save()
+        node.tags.add(tag)
+        self.assertFalse(node.should_use_traditional_installer())
+
+    def test_should_use_fastpath_installer_when_tag_applies(self):
+        node = factory.make_node()
+        tag = factory.make_tag(name="use-fastpath-installer")
+        tag.save()
+        node.tags.add(tag)
+        self.assertTrue(node.should_use_fastpath_installer())
+
     def test_use_xxx_installer(self):
-        # use_default_installer() and use_traditional_installer() can be used
+        # use_fastpath_installer() and use_traditional_installer() can be used
         # to affect what the should_use_xxx_installer() methods return.
         node = factory.make_node()
         node.use_traditional_installer()
-        self.assertFalse(node.should_use_default_installer())
+        self.assertFalse(node.should_use_fastpath_installer())
         self.assertTrue(node.should_use_traditional_installer())
-        node.use_default_installer()
-        self.assertTrue(node.should_use_default_installer())
+        node.use_fastpath_installer()
+        self.assertTrue(node.should_use_fastpath_installer())
         self.assertFalse(node.should_use_traditional_installer())
 
-    def test_use_default_installer_dissociates_tag_from_node(self):
-        # use_default_installer removes any association with the
-        # use-traditional-installer tag. The tag is created even if it did not
+    def test_use_traditional_installer_dissociates_tag_from_node(self):
+        # use_traditional_installer removes any association with the
+        # use-fastpath-installer tag. The tag is created even if it did not
         # previously exist. If it does already exist, it is not deleted.
         find_tag = lambda: list(
-            Tag.objects.filter(name="use-traditional-installer"))
+            Tag.objects.filter(name="use-fastpath-installer"))
         node = factory.make_node()
-        node.use_default_installer()
-        self.assertNotEqual([], find_tag())
         node.use_traditional_installer()
-        node.use_default_installer()
+        self.assertNotEqual([], find_tag())
+        node.use_fastpath_installer()
+        node.use_traditional_installer()
         self.assertNotEqual([], find_tag())
 
-    def test_use_traditional_installer_associates_tag_with_node(self):
+    def test_use_fastpath_installer_associates_tag_with_node(self):
         # use_traditional_installer() creates the use-traditional-installer
         # tag when it is first needed, and associates it with the node.
         find_tag = lambda: list(
-            Tag.objects.filter(name="use-traditional-installer"))
+            Tag.objects.filter(name="use-fastpath-installer"))
         self.assertEqual([], find_tag())
         node = factory.make_node()
-        node.use_traditional_installer()
+        node.use_fastpath_installer()
         self.assertNotEqual([], find_tag())
 
-    def test_use_default_installer_complains_when_tag_has_expression(self):
-        # use_default_installer() complains when the use-traditional-installer
+    def test_use_traditional_installer_complains_when_tag_has_expression(self):
+        # use_traditional_installer() complains when the use-fastpath-installer
         # tag exists and is defined with an expression.
         node = factory.make_node()
         factory.make_tag(
-            name="use-traditional-installer",
-            definition="//something")
-        error = self.assertRaises(
-            RuntimeError, node.use_default_installer)
-        self.assertIn(
-            "The use-traditional-installer tag is defined with an expression",
-            unicode(error))
-
-    def test_use_traditional_installer_complains_when_tag_has_expression(self):
-        # use_traditional_installer() complains when the
-        # use-traditional-installer tag exists and is defined with an
-        # expression.
-        node = factory.make_node()
-        factory.make_tag(
-            name="use-traditional-installer",
+            name="use-fastpath-installer",
             definition="//something")
         error = self.assertRaises(
             RuntimeError, node.use_traditional_installer)
         self.assertIn(
-            "The use-traditional-installer tag is defined with an expression",
+            "The use-fastpath-installer tag is defined with an expression",
+            unicode(error))
+
+    def test_use_fastpath_installer_complains_when_tag_has_expression(self):
+        # use_fastpath_installer() complains when the
+        # use-fastpath-installer tag exists and is defined with an
+        # expression.
+        node = factory.make_node()
+        factory.make_tag(
+            name="use-fastpath-installer",
+            definition="//something")
+        error = self.assertRaises(
+            RuntimeError, node.use_fastpath_installer)
+        self.assertIn(
+            "The use-fastpath-installer tag is defined with an expression",
             unicode(error))
 
 
