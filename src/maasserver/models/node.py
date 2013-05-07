@@ -361,7 +361,9 @@ class NodeManager(Manager):
         return processed_nodes
 
 
-_xpath_processor_count = "count(//node[@id='core']/node[@class='processor'])"
+_xpath_processor_count = (
+    "count(//node[@id='core']/"
+        "node[@class='processor'][not(@disabled)])")
 
 # Some machines have a <size> element in their memory <node> with the total
 # amount of memory, and other machines declare the size of the memory in

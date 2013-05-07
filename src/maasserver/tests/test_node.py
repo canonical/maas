@@ -584,6 +584,18 @@ class NodeTest(TestCase):
         node = reload_object(node)
         self.assertEqual(2, node.cpu_count)
 
+    def test_cpu_count_skips_disabled_cpus(self):
+        node = factory.make_node()
+        xmlbytes = (
+            '<node id="core">'
+                '<node id="cpu:0" class="processor"/>'
+                '<node id="cpu:1" disabled="true" class="processor"/>'
+                '<node id="cpu:2" disabled="true" class="processor"/>'
+            '</node>')
+        node.set_hardware_details(xmlbytes)
+        node = reload_object(node)
+        self.assertEqual(1, node.cpu_count)
+
     def test_hardware_updates_memory(self):
         node = factory.make_node()
         xmlbytes = (
