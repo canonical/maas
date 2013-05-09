@@ -58,7 +58,7 @@ from maasserver import (
     )
 from maasserver.api import (
     describe,
-    DISPLAYED_NODEGROUP_FIELDS,
+    DISPLAYED_NODEGROUPINTERFACE_FIELDS,
     extract_constraints,
     find_nodegroup_for_pxeconfig_request,
     store_node_power_parameters,
@@ -3845,6 +3845,7 @@ class TestNodeGroupsAPI(APIv10TestMixin, MultipleUsersScenarios, TestCase):
                 'uuid': nodegroup.uuid,
                 'status': nodegroup.status,
                 'name': nodegroup.name,
+                'cluster_name': nodegroup.cluster_name,
             }],
             json.loads(response.content))
 
@@ -4211,7 +4212,8 @@ class TestNodeGroupInterfacesAPI(APITestCase):
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(
             [
-                dict_subset(interface, DISPLAYED_NODEGROUP_FIELDS)
+                dict_subset(
+                    interface, DISPLAYED_NODEGROUPINTERFACE_FIELDS)
                 for interface in nodegroup.nodegroupinterface_set.all()
             ],
             json.loads(response.content))
@@ -4274,7 +4276,8 @@ class TestNodeGroupInterfaceAPI(APITestCase):
                 args=[nodegroup.uuid, interface.interface]))
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(
-            dict_subset(interface, DISPLAYED_NODEGROUP_FIELDS),
+            dict_subset(
+                interface, DISPLAYED_NODEGROUPINTERFACE_FIELDS),
             json.loads(response.content))
 
     def test_update_interface(self):

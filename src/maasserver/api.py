@@ -972,7 +972,7 @@ def get_celery_credentials():
     }
 
 
-DISPLAYED_NODEGROUP_FIELDS = ('uuid', 'status', 'name')
+DISPLAYED_NODEGROUP_FIELDS = ('uuid', 'status', 'name', 'cluster_name')
 
 
 class AnonNodeGroupsHandler(AnonymousOperationsHandler):
@@ -1297,7 +1297,7 @@ class NodeGroupHandler(OperationsHandler):
             json.dumps(list(value_list)), content_type='application/json')
 
 
-DISPLAYED_NODEGROUP_FIELDS = (
+DISPLAYED_NODEGROUPINTERFACE_FIELDS = (
     'ip', 'management', 'interface', 'subnet_mask',
     'broadcast_ip', 'ip_range_low', 'ip_range_high')
 
@@ -1309,7 +1309,7 @@ class NodeGroupInterfacesHandler(OperationsHandler):
     controller, with its network properties.
     """
     create = read = update = delete = None
-    fields = DISPLAYED_NODEGROUP_FIELDS
+    fields = DISPLAYED_NODEGROUPINTERFACE_FIELDS
 
     @operation(idempotent=True)
     def list(self, request, uuid):
@@ -1362,7 +1362,7 @@ class NodeGroupInterfaceHandler(OperationsHandler):
     the name of the network interface it represents: "eth0" for example.
     """
     create = delete = None
-    fields = DISPLAYED_NODEGROUP_FIELDS
+    fields = DISPLAYED_NODEGROUPINTERFACE_FIELDS
 
     def read(self, request, uuid, interface):
         """List of NodeGroupInterfaces of a NodeGroup."""
