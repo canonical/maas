@@ -5,6 +5,7 @@ firefox
 ipython
 libjs-yui3-full
 make
+python-cssselect
 python-lxml
 python-pip
 python-pocket-lint
