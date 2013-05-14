@@ -29,7 +29,6 @@ class DHCPConfigError(Exception):
 template_content = dedent("""\
     subnet {{subnet}} netmask {{subnet_mask}} {
            filename "{{bootloader}}";
-           ignore-client-uids true;
            option subnet-mask {{subnet_mask}};
            option broadcast-address {{broadcast_ip}};
            option domain-name-servers {{dns_servers}};

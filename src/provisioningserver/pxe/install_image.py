@@ -70,7 +70,7 @@ def are_identical_dirs(old, new):
         return False
 
 
-def install_dir(new, old):
+def install_dir(new, old, symlink=None):
     """Install directory `new`, replacing directory `old` if it exists.
 
     This works as atomically as possible, but isn't entirely.  Moreover,
@@ -121,6 +121,13 @@ def install_dir(new, old):
     # Now delete the old image directory at leisure.
     rmtree('%s.old' % old, ignore_errors=True)
 
+    # Symlink the new image directory to 'symlink'.
+    if symlink is not None:
+        sdest = "%s/%s" % (os.path.dirname(old), symlink)
+        if os.path.exists(sdest) or os.path.islink(sdest):
+            os.unlink(sdest)
+        os.symlink(old, sdest)
+
 
 def add_arguments(parser):
     parser.add_argument(
@@ -138,6 +145,9 @@ def add_arguments(parser):
     parser.add_argument(
         '--image', dest='image', default=None,
         help="Netboot image directory, containing kernel & initrd.")
+    parser.add_argument(
+        '--symlink', dest='symlink', default=None,
+        help="Destination directory to symlink the installed images to.")
 
 
 def run(args):
@@ -154,5 +164,5 @@ def run(args):
         tftproot, args.arch, args.subarch, args.release, args.purpose)
     if not are_identical_dirs(destination, args.image):
         # Image has changed.  Move the new version into place.
-        install_dir(args.image, destination)
+        install_dir(args.image, destination, args.symlink)
     rmtree(args.image, ignore_errors=True)

@@ -124,11 +124,11 @@ def compose_hostname_opts(params):
 
 def compose_purpose_opts(params):
     """Return the list of the purpose-specific kernel options."""
-    if params.purpose == "commissioning":
+    if params.purpose == "commissioning" or params.purpose == "xinstall":
         # These are kernel parameters read by the ephemeral environment.
         tname = "%s:%s" % (ISCSI_TARGET_NAME_PREFIX,
                            get_ephemeral_name(params.release, params.arch))
-        return [
+        kernel_params = [
             # Read by the open-iscsi initramfs code.
             "iscsi_target_name=%s" % tname,
             "iscsi_target_ip=%s" % params.fs_host,
@@ -145,6 +145,9 @@ def compose_purpose_opts(params):
             # Read by cloud-init.
             "cloud-config-url=%s" % params.preseed_url,
             ]
+        if params.purpose == "xinstall":
+            kernel_params.append("ds=nocloud-net")
+        return kernel_params
     else:
         # These are options used by the Debian Installer.
         return [

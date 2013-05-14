@@ -368,17 +368,19 @@ class TestPreseedContext(TestCase):
             nodegroup.get_managed_interface().ip,
             context["cluster_host"])
 
-    def test_preseed_context_null_cluster_host_if_unmanaged(self):
-        # If the nodegroup has no managed interface recorded, which is
-        # possible in the data model but would be a bit weird, the
-        # cluster_host context variable is present, but None.
+    def test_preseed_context_cluster_host_if_unmanaged(self):
+        # If the nodegroup has no managed interface recorded, the cluster_host
+        # context variable is still present and derived from the nodegroup.
         release = factory.getRandomString()
         nodegroup = factory.make_node_group(maas_url=factory.getRandomString())
         for interface in nodegroup.nodegroupinterface_set.all():
             interface.management = NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED
             interface.save()
         context = get_preseed_context(release, nodegroup)
-        self.assertIsNone(context["cluster_host"])
+        self.assertIsNotNone(context["cluster_host"])
+        self.assertEqual(
+            nodegroup.get_any_interface().ip,
+            context["cluster_host"])
 
     def test_preseed_context_null_cluster_host_if_does_not_exist(self):
         # If there's no nodegroup, the cluster_host context variable is
@@ -524,6 +526,12 @@ class TestPreseedMethods(TestCase):
         node = factory.make_node()
         preseed = get_preseed(node)
         self.assertIn('preseed/late_command', preseed)
+
+    def test_get_preseed_returns_xinstall_preseed(self):
+        node = factory.make_node()
+        node.use_fastpath_installer()
+        preseed = get_preseed(node)
+        self.assertIn('# Disabled by default', preseed)
 
     def test_get_enlist_preseed_returns_enlist_preseed(self):
         preseed = get_enlist_preseed()

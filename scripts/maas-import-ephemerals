@@ -239,6 +239,9 @@ EOF
         tar -Sxzf - -C  "$exdir" < "$tarball" ||
         { error "failed to extract tarball from $furl"; return 1; }
 
+    # Create root disk
+    uec2roottar "$tarball" || { error "failed to create root image"; return 1; }
+
     # Look for our files in the extracted tarball.
     local x="" img="" kernel="" initrd=""
     for x in "$exdir/"*.img; do
@@ -342,12 +345,14 @@ install_tftp_image() {
             return 1
         copy_first_available "$src/initrd.gz" "$src/initrd" "$tmpdir/initrd.gz" ||
             return 1
+        copy_first_available "$src/dist-root.tar.gz" "" "$tmpdir/root.tar.gz" ||
+            return 1
     fi
 
     local cmd out=""
     cmd=( maas-provision install-pxe-image
           "--arch=$arch" "--subarch=$subarch" "--release=$release"
-          --purpose="commissioning" --image="$tmpdir" )
+          --purpose="commissioning" --image="$tmpdir" --symlink="xinstall")
     debug 2 "${cmd[@]}"
     out=$("${cmd[@]}" 2>&1) ||
         { error "cmd failed:" "${cmd[@]}"; error "$out"; return 1; }

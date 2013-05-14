@@ -204,6 +204,11 @@ class NodeGroup(TimestampedModel):
             self.api_key = api_token.key
         return super(NodeGroup, self).save(*args, **kwargs)
 
+    def get_any_interface(self):
+        for interface in self.nodegroupinterface_set.all():
+            return interface
+        return None
+
     def get_managed_interface(self):
         """Return the interface for which MAAS managed the DHCP service.
 

@@ -1,4 +1,8 @@
+{{if node.should_use_traditional_installer() }}
 {{inherit "preseed_master"}}
+{{else}}
+{{inherit "preseed_xinstall"}}
+{{endif}}
 
 {{def proxy}}
 d-i     mirror/country string manual

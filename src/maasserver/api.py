@@ -1753,7 +1753,10 @@ def get_boot_purpose(node):
     elif node.status == NODE_STATUS.ALLOCATED:
         # Install the node if netboot is enabled, otherwise boot locally.
         if node.netboot:
-            return "install"
+            if node.should_use_traditional_installer():
+                return "install"
+            else:
+                return "xinstall"
         else:
             return "local"  # TODO: Investigate.
     else:

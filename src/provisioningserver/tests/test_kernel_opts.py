@@ -118,6 +118,22 @@ class TestKernelOpts(TestCase):
             "netcfg/choose_interface=auto",
             compose_kernel_command_line(params))
 
+    def test_xinstall_compose_kernel_command_line_inc_purpose_opts(self):
+        # The result of compose_kernel_command_line includes the purpose
+        # options for a non "xinstall" node.
+        get_ephemeral_name = self.patch(kernel_opts, "get_ephemeral_name")
+        get_ephemeral_name.return_value = "RELEASE-ARCH"
+        params = make_kernel_parameters(purpose="xinstall")
+        cmdline = compose_kernel_command_line(params)
+        self.assertThat(
+            cmdline,
+            ContainsAll([
+                "ds=nocloud-net",
+                "root=/dev/disk/by-path/ip-",
+                "iscsi_initiator=",
+                "overlayroot=tmpfs",
+                "ip=::::%s:BOOTIF" % params.hostname]))
+
     def test_commissioning_compose_kernel_command_line_inc_purpose_opts(self):
         # The result of compose_kernel_command_line includes the purpose
         # options for a non "commissioning" node.
@@ -147,14 +163,19 @@ class TestKernelOpts(TestCase):
         self.assertNotIn(cmdline, "None")
 
     def test_compose_kernel_command_line_inc_common_opts(self):
-        # Test that some kernel arguments appear on both commissioning
-        # and install command lines.
+        # Test that some kernel arguments appear on commissioning, install
+        # and xinstall command lines.
         get_ephemeral_name = self.patch(kernel_opts, "get_ephemeral_name")
         get_ephemeral_name.return_value = "RELEASE-ARCH"
         expected = ["nomodeset"]
 
         params = make_kernel_parameters(
             purpose="commissioning", arch="i386")
+        cmdline = compose_kernel_command_line(params)
+        self.assertThat(cmdline, ContainsAll(expected))
+
+        params = make_kernel_parameters(
+            purpose="xinstall", arch="i386")
         cmdline = compose_kernel_command_line(params)
         self.assertThat(cmdline, ContainsAll(expected))
 
@@ -181,6 +202,23 @@ class TestKernelOpts(TestCase):
         os.makedirs(ephemeral_dir)
         factory.make_file(
             ephemeral_dir, name='info', contents=ephemeral_info)
+
+    def test_compose_kernel_command_line_inc_purpose_opts_xinstall_node(self):
+        # The result of compose_kernel_command_line includes the purpose
+        # options for a "xinstall" node.
+        ephemeral_name = factory.make_name("ephemeral")
+        params = make_kernel_parameters(purpose="xinstall")
+        self.create_ephemeral_info(
+            ephemeral_name, params.arch, params.release)
+        self.assertThat(
+            compose_kernel_command_line(params),
+            ContainsAll([
+                "ds=nocloud-net",
+                "iscsi_target_name=%s:%s" % (
+                    ISCSI_TARGET_NAME_PREFIX, ephemeral_name),
+                "iscsi_target_port=3260",
+                "iscsi_target_ip=%s" % params.fs_host,
+                ]))
 
     def test_compose_kernel_command_line_inc_purpose_opts_comm_node(self):
         # The result of compose_kernel_command_line includes the purpose

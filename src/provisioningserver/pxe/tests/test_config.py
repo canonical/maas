@@ -223,14 +223,22 @@ class TestRenderPXEConfig(TestCase):
         self.assertIn("chain.c32", output)
         self.assertNotIn("LOCALBOOT", output)
 
-    def test_render_pxe_config_for_commissioning(self):
+class TestRenderPXEConfigScenarios(TestCase):
+    """Tests for `provisioningserver.pxe.config.render_pxe_config`."""
+
+    scenarios = [
+        ("commissioning", dict(purpose="commissioning")),
+        ("xinstall", dict(purpose="xinstall")),
+        ]
+
+    def test_render_pxe_config_scenarios(self):
         # The commissioning config uses an extra PXELINUX module to auto
         # select between i386 and amd64.
         get_ephemeral_name = self.patch(kernel_opts, "get_ephemeral_name")
         get_ephemeral_name.return_value = factory.make_name("ephemeral")
         options = {
             "kernel_params":
-                make_kernel_parameters(purpose="commissioning"),
+                make_kernel_parameters(purpose=self.purpose),
             }
         output = render_pxe_config(**options)
         config = parse_pxe_config(output)

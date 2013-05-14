@@ -1,0 +1,56 @@
+#!/bin/sh
+
+TEMP_D=""
+MP=""
+
+Usage() {
+cat <<EOF
+   ${0##*/} converts an ubuntu ephemeral image into a root
+   disk image tarball.
+
+   Usage: ${0##*/} uec-tarball [output]
+EOF
+}
+error() { echo "$(date -R):" "$@" 1>&2; }
+fail() { [ $# -eq 0 ] || error "$@"; exit 1; }
+cleanup() { 
+  [ -z "$MP" ] || umount "$MP"
+  [ -z "$TEMP_D" -o ! -d "$TEMP_D" ] || rm -Rf "${TEMP_D}";
+}
+
+[ "$1" = "-h" -o "$1" = "--help" ] && { Usage; exit 0; }
+[ $# -eq 1 -o $# -eq 2 ] || { Usage 1>&2; exit 1; }
+[ -f "$1" ] || { Usage 1>&2; error "$1: not a file"; exit 1; }
+
+[ "$(id -u)" = "0" ] || fail "must be root"
+
+TEMP_D=$(mktemp -d "${TMPDIR:-/tmp}/${0##*/}.XXXXXX") || fail "failed mktemp"
+trap cleanup EXIT
+
+uec="$1"
+output=${2}
+
+[ -n "$output" ] || output="${uec%.tar.gz}-root.tar.gz"; 
+error "converting ${uec} to ${output}"
+
+error "extracting *.img from ${uec}"
+tar -C ${TEMP_D} --wildcards "*.img" -Sxvzf "$uec" ||
+   fail "failed extract $uec"
+
+img=""
+for cand in "${TEMP_D}/"*.img; do
+   [ -z "$img" ] || fail "multiple .img files in $uec"
+   [ -f "$cand" ] && img="$cand"
+done
+
+[ -n "$img" ] || fail "failed to find image in $uec"
+
+mkdir "${TEMP_D}/mp" && mount -o ro "$img" "${TEMP_D}/mp" &&
+  MP="$TEMP_D/mp" || fail "failed to mount $img"
+
+error "copying contents of ${img#${TEMP_D}/} in ${uec} to ${output}"
+tar -C "$MP" -cpSzf "${output}" --numeric-owner . ||
+  fail "failed to create ${output}"
+
+error "finished. wrote to ${output}"
+

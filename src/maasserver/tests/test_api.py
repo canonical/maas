@@ -3776,11 +3776,14 @@ class TestPXEConfigAPI(AnonAPITestCase):
             ("poweroff", {"status": NODE_STATUS.READY}),
             ("poweroff", {"status": NODE_STATUS.RESERVED}),
             ("install", {"status": NODE_STATUS.ALLOCATED, "netboot": True}),
+            ("xinstall", {"status": NODE_STATUS.ALLOCATED, "netboot": True}),
             ("local", {"status": NODE_STATUS.ALLOCATED, "netboot": False}),
             ("poweroff", {"status": NODE_STATUS.RETIRED}),
             ]
         node = factory.make_node()
         for purpose, parameters in options:
+            if purpose == "xinstall":
+                node.use_fastpath_installer()
             for name, value in parameters.items():
                 setattr(node, name, value)
             self.assertEqual(purpose, api.get_boot_purpose(node))

@@ -209,3 +209,38 @@ class TestInstallPXEImage(TestCase):
         self.assertEqual(
             "rw-r--r--",
             target_dir.child("image").getPermissions().shorthand())
+
+    def test_install_dir_moves_dir_into_place_with_symlink(self):
+        download_image = os.path.join(self.make_dir(), 'download-image')
+        published_image = os.path.join(self.make_dir(), 'published-image')
+        base_path = os.path.dirname(published_image)
+        symlink_dest = 'xinstall'
+        contents = factory.getRandomString()
+        os.makedirs(download_image)
+        sample_file = factory.make_file(download_image, contents=contents)
+        install_dir(download_image, published_image, symlink_dest)
+        self.assertThat(
+            os.path.join(published_image, os.path.basename(sample_file)),
+            FileContains(contents))
+        self.assertThat(
+            os.path.join(base_path, symlink_dest, os.path.basename(sample_file)),
+            FileContains(contents))
+
+    def test_install_dir_replaces_existing_dir_with_symlink(self):
+        download_image = os.path.join(self.make_dir(), 'download-image')
+        published_image = os.path.join(self.make_dir(), 'published-image')
+        base_path = os.path.dirname(published_image)
+        symlink_dest = 'xinstall'
+        os.makedirs(download_image)
+        sample_file = factory.make_file(download_image)
+        os.makedirs(published_image)
+        os.symlink(published_image, os.path.join(base_path, symlink_dest))
+        obsolete_file = factory.make_file(published_image)
+        install_dir(download_image, published_image, symlink_dest)
+        self.assertThat(
+            os.path.join(published_image, os.path.basename(sample_file)),
+            FileExists())
+        self.assertThat(obsolete_file, Not(FileExists()))
+        self.assertThat(
+            os.path.join(base_path, symlink_dest, os.path.basename(sample_file)),
+            FileExists())

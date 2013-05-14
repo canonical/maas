@@ -232,7 +232,13 @@ def get_preseed_context(release='', nodegroup=None):
     else:
         base_url = nodegroup.maas_url
         cluster_if = nodegroup.get_managed_interface()
-        cluster_host = None if cluster_if is None else cluster_if.ip
+        any_cluster_if = nodegroup.get_any_interface()
+        cluster_host = None
+        if cluster_if is None:
+            if any_cluster_if is not None:
+                cluster_host = any_cluster_if.ip
+        else:
+            cluster_host = cluster_if.ip
     return {
         'main_archive_hostname': main_archive_hostname,
         'main_archive_directory': main_archive_directory,

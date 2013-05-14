@@ -62,6 +62,7 @@ setup(
              'etc/maas/import_ephemerals',
              'etc/maas/import_pxe_files',
              'contrib/maas-http.conf',
+             'contrib/maas-cluster-http.conf',
              'contrib/maas_local_settings.py']),
         ('/usr/share/maas',
             ['contrib/wsgi.py',
@@ -73,10 +74,13 @@ setup(
              'contrib/preseeds_v2/enlist',
              'contrib/preseeds_v2/generic',
              'contrib/preseeds_v2/enlist_userdata',
+             'contrib/preseeds_v2/preseed_xinstall',
              'contrib/preseeds_v2/preseed_master']),
         ('/usr/sbin',
             ['scripts/maas-import-ephemerals',
              'scripts/maas-import-pxe-files']),
+        ('/usr/bin',
+            ['scripts/uec2roottar']),
     ],
 
     install_requires=[
