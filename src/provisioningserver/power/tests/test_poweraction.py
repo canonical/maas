@@ -144,7 +144,8 @@ class TestPowerAction(TestCase):
         path = self._create_template_file("echo reason for failure; exit 1")
         self.assertThat(
             lambda: self.run_action(path),
-            Raises(MatchesException(PowerActionFail, ".*:\nreason for failure")))
+            Raises(
+                MatchesException(PowerActionFail, ".*:\nreason for failure")))
 
     def test_wake_on_lan_cannot_shut_down_node(self):
         pa = PowerAction(POWER_TYPE.WAKE_ON_LAN)

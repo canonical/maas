@@ -37,7 +37,9 @@ class PowerActionFail(Exception):
 
     def __str__(self):
         message = "%s failed: %s" % (self.power_action.power_type, self.err)
-        if isinstance(self.err, subprocess.CalledProcessError) and self.err.output:
+        if (isinstance(self.err, subprocess.CalledProcessError)
+            and self.err.output):
+            # Add error output to the message.
             message += ":\n" + self.err.output.strip()
         return message
 
