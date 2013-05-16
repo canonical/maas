@@ -37,7 +37,6 @@ class Command(BaseCommand):
             default=False, help="Generate a new api key."),
         make_option('--delete', dest='delete', default=None,
             help="Delete the supplied api key."),
-        # Add options to add/delete.
       )
     help = ("Used to manage a user's API keys. Shows existing keys unless "
            "--generate or --delete is passed.")
@@ -45,6 +44,7 @@ class Command(BaseCommand):
     def _print_token(self, token):
         """Write `token` to stdout in the standard format."""
         self.stdout.write(convert_tuple_to_string(get_creds_tuple(token)))
+        self.stdout.write('\n')
 
     def _generate_token(self, user):
         _, token = user.get_profile().create_authorisation_token()

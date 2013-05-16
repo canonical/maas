@@ -135,7 +135,7 @@ class TestApikeyCommand(DjangoTestCase):
         expected_token = get_one(
             user.get_profile().get_authorisation_tokens())
         expected_string = convert_tuple_to_string(
-            get_creds_tuple(expected_token))
+            get_creds_tuple(expected_token)) + '\n'
         self.assertEqual(expected_string, stdout.getvalue())
 
     def test_apikey_generates_key(self):
@@ -153,7 +153,7 @@ class TestApikeyCommand(DjangoTestCase):
         self.assertEqual(expected_num_keys, len(keys_after))
         expected_token = user.get_profile().get_authorisation_tokens()[1]
         expected_string = convert_tuple_to_string(
-            get_creds_tuple(expected_token))
+            get_creds_tuple(expected_token)) + '\n'
         self.assertEqual(expected_string, stdout.getvalue())
 
     def test_apikey_deletes_key(self):
