@@ -12,13 +12,14 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
+from os import path
+import tempita
 from textwrap import dedent
 
 from maastesting.matchers import Contains
 from provisioningserver.dhcp import config
 from provisioningserver.pxe.tftppath import compose_bootloader_path
 from provisioningserver.testing.testcase import PservTestCase
-import tempita
 from testtools.matchers import MatchesRegex
 
 # Simple test version of the DHCP template.  Contains parameter
@@ -55,11 +56,16 @@ def make_sample_params():
 class TestDHCPConfig(PservTestCase):
 
     def patch_template(self, template_content=sample_template):
-        """Patch the DHCP config template with the given contents."""
-        name = "%s.template" % self.__class__.__name__
-        template = tempita.Template(content=template_content, name=name)
-        self.patch(config, "template", template)
-        return template
+        """Patch the DHCP config template with the given contents.
+
+        Returns a `tempita.Template` of the given template, so that a test
+        can make its own substitutions and compare to those made by the
+        code being tested.
+        """
+        template = self.make_file(
+            'dhcpd.conf.template', contents=template_content)
+        self.patch(config, "template_dir", path.dirname(template))
+        return tempita.Template(template_content, name=template)
 
     def test_param_substitution(self):
         template = self.patch_template()

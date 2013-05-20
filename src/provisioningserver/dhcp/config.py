@@ -16,35 +16,17 @@ __all__ = [
 ]
 
 
-from textwrap import dedent
+from os import path
 
 from provisioningserver.pxe.tftppath import compose_bootloader_path
 import tempita
 
+# TODO: make this configurable.
+template_dir = path.join(path.dirname(__file__), 'templates')
+
 
 class DHCPConfigError(Exception):
     """Exception raised for errors processing the DHCP config."""
-
-
-template_content = dedent("""\
-    subnet {{subnet}} netmask {{subnet_mask}} {
-           filename "{{bootloader}}";
-           option subnet-mask {{subnet_mask}};
-           option broadcast-address {{broadcast_ip}};
-           option domain-name-servers {{dns_servers}};
-           option routers {{router_ip}};
-           range dynamic-bootp {{ip_range_low}} {{ip_range_high}};
-    }
-    omapi-port 7911;
-    key omapi_key {
-        algorithm HMAC-MD5;
-        secret "{{omapi_key}}";
-    };
-    omapi-key omapi_key;
-""")
-
-template = tempita.Template(
-    template_content, name="%s.template" % __name__)
 
 
 def get_config(**params):
@@ -62,10 +44,11 @@ def get_config(**params):
     :param high_range: The last IP address in the range of IP addresses to
         allocate
     """
+    template_file = path.join(template_dir, 'dhcpd.conf.template')
     params['bootloader'] = compose_bootloader_path()
-    # This is a really simple substitution for now but it's encapsulated
-    # here so that its implementation can be changed later if required.
     try:
+        template = tempita.Template.from_filename(
+            template_file, encoding="UTF-8")
         return template.substitute(params)
     except NameError, error:
         raise DHCPConfigError(*error.args)
