@@ -88,6 +88,7 @@ from maasserver.models import (
     NodeGroup,
     nodegroup as nodegroup_module,
     NodeGroupInterface,
+    SSHKey,
     Tag,
     )
 from maasserver.models.node import generate_node_system_id
@@ -101,6 +102,7 @@ from maasserver.preseed import (
     )
 from maasserver.refresh_worker import refresh_worker
 from maasserver.testing import (
+    get_data,
     reload_object,
     reload_objects,
     )
@@ -2598,6 +2600,90 @@ class AccountAPITest(APITestCase):
             self.get_uri('account/'), {'op': 'delete_authorisation_token'})
 
         self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+
+
+class TestSSHKeyHandlers(APITestCase):
+
+    def test_list_works(self):
+        _, keys = factory.make_user_with_keys(user=self.logged_in_user)
+        params = dict(op="list")
+        response = self.client.get(
+            self.get_uri('account/prefs/sshkeys/'), params)
+        self.assertEqual(httplib.OK, response.status_code, response)
+        parsed_result = json.loads(response.content)
+        expected_result = [
+            dict(
+                id=keys[0].id,
+                key=keys[0].key,
+                resource_uri=reverse('sshkey_handler', args=[keys[0].id]),
+                ),
+            dict(
+                id=keys[1].id,
+                key=keys[1].key,
+                resource_uri=reverse('sshkey_handler', args=[keys[1].id]),
+                ),
+            ]
+        self.assertEqual(expected_result, parsed_result)
+
+    def test_get_by_id_works(self):
+        _, keys = factory.make_user_with_keys(
+            n_keys=1, user=self.logged_in_user)
+        key = keys[0]
+        response = self.client.get(
+            self.get_uri('account/prefs/sshkeys/%s/' % key.id))
+        self.assertEqual(httplib.OK, response.status_code, response)
+        parsed_result = json.loads(response.content)
+        expected = dict(
+            id=key.id,
+            key=key.key,
+            resource_uri=reverse('sshkey_handler', args=[key.id]),
+            )
+        self.assertEqual(expected, parsed_result)
+
+    def test_delete_by_id_works(self):
+        _, keys = factory.make_user_with_keys(
+            n_keys=2, user=self.logged_in_user)
+        response = self.client.delete(
+            self.get_uri('account/prefs/sshkeys/%s/' % keys[0].id))
+        self.assertEqual(httplib.NO_CONTENT, response.status_code, response)
+        keys_after = SSHKey.objects.filter(user=self.logged_in_user)
+        self.assertEqual(1, len(keys_after))
+        self.assertEqual(keys[1].id, keys_after[0].id)
+
+    def test_delete_fails_if_not_your_key(self):
+        user, keys = factory.make_user_with_keys(n_keys=1)
+        response = self.client.delete(
+            self.get_uri('account/prefs/sshkeys/%s/' % keys[0].id))
+        self.assertEqual(httplib.FORBIDDEN, response.status_code, response)
+        self.assertEqual(1, len(SSHKey.objects.filter(user=user)))
+
+    def test_adding_works(self):
+        key_string = get_data('data/test_rsa0.pub')
+        response = self.client.post(
+            self.get_uri('account/prefs/sshkeys/'),
+            data=dict(op="new", key=key_string))
+        self.assertEqual(httplib.CREATED, response.status_code)
+        parsed_response = json.loads(response.content)
+        self.assertEqual(key_string, parsed_response["key"])
+        added_key = get_one(SSHKey.objects.filter(user=self.logged_in_user))
+        self.assertEqual(key_string, added_key.key)
+
+    def test_adding_catches_key_validation_errors(self):
+        key_string = factory.getRandomString()
+        response = self.client.post(
+            self.get_uri('account/prefs/sshkeys/'),
+            data=dict(op='new', key=key_string))
+        self.assertEqual(httplib.BAD_REQUEST, response.status_code, response)
+        self.assertIn("Invalid", response.content)
+
+    def test_adding_returns_badrequest_when_key_not_in_form(self):
+        response = self.client.post(
+            self.get_uri('account/prefs/sshkeys/'),
+            data=dict(op='new'))
+        self.assertEqual(httplib.BAD_REQUEST, response.status_code, response)
+        self.assertEqual(
+            dict(key=["This field is required."]),
+            json.loads(response.content))
 
 
 class MediaRootFixture(Fixture):

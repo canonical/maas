@@ -36,6 +36,8 @@ from maasserver.api import (
     NodeMacsHandler,
     NodesHandler,
     pxeconfig,
+    SSHKeyHandler,
+    SSHKeysHandler,
     TagHandler,
     TagsHandler,
     )
@@ -64,6 +66,8 @@ tag_handler = RestrictedResource(TagHandler, authentication=api_auth)
 tags_handler = RestrictedResource(TagsHandler, authentication=api_auth)
 commissioning_results_handler = RestrictedResource(
     CommissioningResultsHandler, authentication=api_auth)
+sshkey_handler = RestrictedResource(SSHKeyHandler, authentication=api_auth)
+sshkeys_handler = RestrictedResource(SSHKeysHandler, authentication=api_auth)
 
 
 # Admin handlers.
@@ -112,6 +116,8 @@ urlpatterns += patterns('',
     url(r'^files/$', files_handler, name='files_handler'),
     url(r'^files/(?P<filename>.+)/$', file_handler, name='file_handler'),
     url(r'^account/$', account_handler, name='account_handler'),
+    url(r'^account/prefs/sshkeys/(?P<keyid>[^/]+)/$', sshkey_handler, name='sshkey_handler'),
+    url(r'^account/prefs/sshkeys/$', sshkeys_handler, name='sshkeys_handler'),
     url(r'^boot-images/$', boot_images_handler, name='boot_images_handler'),
     url(r'^tags/(?P<name>[\w\-]+)/$', tag_handler, name='tag_handler'),
     url(r'^tags/$', tags_handler, name='tags_handler'),
