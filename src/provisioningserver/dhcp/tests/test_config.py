@@ -16,7 +16,6 @@ from os import path
 from textwrap import dedent
 
 from maastesting.matchers import Contains
-from maastesting.testcase import TestCase
 from mock import Mock
 from provisioningserver.dhcp import config
 from provisioningserver.pxe.tftppath import compose_bootloader_path
