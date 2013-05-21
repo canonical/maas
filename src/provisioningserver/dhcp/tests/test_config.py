@@ -13,13 +13,13 @@ __metaclass__ = type
 __all__ = []
 
 from os import path
-import tempita
 from textwrap import dedent
 
 from maastesting.matchers import Contains
 from provisioningserver.dhcp import config
 from provisioningserver.pxe.tftppath import compose_bootloader_path
 from provisioningserver.testing.testcase import PservTestCase
+import tempita
 from testtools.matchers import MatchesRegex
 
 # Simple test version of the DHCP template.  Contains parameter

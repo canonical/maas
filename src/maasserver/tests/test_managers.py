@@ -14,7 +14,9 @@ __all__ = []
 
 from maasserver.testing.testcase import TestModelTestCase
 from maasserver.tests.models import (
-    BulkManagerParentTestModel, BulkManagerTestModel)
+    BulkManagerParentTestModel,
+    BulkManagerTestModel,
+    )
 
 
 class BulkManagerTest(TestModelTestCase):

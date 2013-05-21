@@ -223,6 +223,7 @@ class TestRenderPXEConfig(TestCase):
         self.assertIn("chain.c32", output)
         self.assertNotIn("LOCALBOOT", output)
 
+
 class TestRenderPXEConfigScenarios(TestCase):
     """Tests for `provisioningserver.pxe.config.render_pxe_config`."""
 

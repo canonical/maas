@@ -14,8 +14,8 @@ __all__ = []
 
 from io import BytesIO
 
-from django.core.handlers.wsgi import WSGIRequest
 from django.core.files.uploadhandler import MemoryFileUploadHandler
+from django.core.handlers.wsgi import WSGIRequest
 from django.http.multipartparser import MultiPartParser
 from maasserver.utils import ignore_unused
 

@@ -26,7 +26,6 @@ __all__ = [
 from argparse import ArgumentParser
 import errno
 from functools import wraps
-import netifaces
 import os
 from os import fdopen
 from pipes import quote
@@ -41,6 +40,7 @@ import tempfile
 from time import time
 
 from lockfile import FileLock
+import netifaces
 from provisioningserver.config import Config
 import tempita
 from twisted.internet.defer import maybeDeferred

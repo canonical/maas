@@ -16,21 +16,17 @@ __all__ = []
 import os
 
 from celery.conf import conf
-from django.core.management import call_command
-from maasserver.testing.testcase import TestCase
-from maasserver.testing.factory import factory
 from django.conf import settings
-from netaddr import (
-    IPNetwork,
-    )
+from django.core.management import call_command
 from maasserver.enum import (
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
     )
+from maasserver.testing.factory import factory
+from maasserver.testing.testcase import TestCase
+from netaddr import IPNetwork
 from provisioningserver import tasks
-from testtools.matchers import (
-    FileExists,
-    )
+from testtools.matchers import FileExists
 
 
 class TestWriteDNSConfigCommand(TestCase):

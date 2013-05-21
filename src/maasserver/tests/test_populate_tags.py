@@ -12,11 +12,11 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
-import mock
 from maasserver import populate_tags as populate_tags_module
 from maasserver.populate_tags import populate_tags
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
+import mock
 
 
 class TestPopulateTags(TestCase):

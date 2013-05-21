@@ -22,8 +22,8 @@ from django.core.validators import RegexValidator
 from django.db.models import (
     CharField,
     Manager,
-    TextField,
     Q,
+    TextField,
     )
 from django.shortcuts import get_object_or_404
 from lxml import etree
@@ -32,10 +32,9 @@ from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 
 
-# Permission model for tags. Everyone can see all tags, but only superusers can
-# edit tags.
 class TagManager(Manager):
     """A utility to manage the collection of Tags."""
+    # Everyone can see all tags, but only superusers can edit tags.
 
     def get_tag_or_404(self, name, user, to_edit=False):
         """Fetch a `Tag` by name.  Raise exceptions if no `Tag` with

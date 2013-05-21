@@ -32,8 +32,8 @@ from apiclient.testing.django import (
     parse_headers_and_body_with_django,
     parse_headers_and_body_with_mimer,
     )
-from maastesting.fixtures import TempWDFixture
 from maastesting.factory import factory
+from maastesting.fixtures import TempWDFixture
 from maastesting.httpd import HTTPServerFixture
 from maastesting.testcase import TestCase
 from testtools.matchers import (

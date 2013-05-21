@@ -223,7 +223,8 @@ class TestInstallPXEImage(TestCase):
             os.path.join(published_image, os.path.basename(sample_file)),
             FileContains(contents))
         self.assertThat(
-            os.path.join(base_path, symlink_dest, os.path.basename(sample_file)),
+            os.path.join(
+                base_path, symlink_dest, os.path.basename(sample_file)),
             FileContains(contents))
 
     def test_install_dir_replaces_existing_dir_with_symlink(self):
@@ -242,5 +243,6 @@ class TestInstallPXEImage(TestCase):
             FileExists())
         self.assertThat(obsolete_file, Not(FileExists()))
         self.assertThat(
-            os.path.join(base_path, symlink_dest, os.path.basename(sample_file)),
+            os.path.join(
+                base_path, symlink_dest, os.path.basename(sample_file)),
             FileExists())

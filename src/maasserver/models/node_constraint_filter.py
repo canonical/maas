@@ -19,9 +19,7 @@ from maasserver.enum import (
     ARCHITECTURE_CHOICES,
     ARCHITECTURE_CHOICES_DICT,
     )
-from maasserver.exceptions import (
-    InvalidConstraint,
-    )
+from maasserver.exceptions import InvalidConstraint
 from maasserver.models import Tag
 from maasserver.utils.orm import get_one
 

@@ -21,6 +21,5 @@ from os.path import (
     pardir,
     )
 
-
 # The root of the source tree.
 root = abspath(join(dirname(__file__), pardir, pardir))
