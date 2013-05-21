@@ -55,29 +55,7 @@ class TagManager(Manager):
         """
         if to_edit and not user.is_superuser:
             raise PermissionDenied()
-        tag = get_object_or_404(Tag, name=name)
-        return tag
-
-    def get_nodes(self, tag, user, prefetch_mac=False):
-        """Get the list of nodes that have this tag.
-
-        This list is restricted to only nodes that the user has VIEW permission
-        for.
-        """
-        if isinstance(tag, basestring):
-            tag = self.get_tag_or_404(name=tag, user=user)
-        # The privacy logic is taken from Node. Note that we could filter in
-        # python by iterating over all nodes and checking
-        #   user.has_perm(VIEW, node)
-        # It seems better to do this in the DB, though.
-        if user.is_superuser:
-            nodes = tag.node_set.all()
-        else:
-            nodes = tag.node_set.filter(
-                Q(owner__isnull=True) | Q(owner=user))
-        if prefetch_mac:
-            nodes = nodes.prefetch_related('macaddress_set')
-        return nodes
+        return get_object_or_404(Tag, name=name)
 
 
 class Tag(CleanSave, TimestampedModel):

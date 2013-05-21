@@ -198,7 +198,34 @@ class NodeManager(Manager):
         else:
             return query.filter(system_id__in=ids)
 
-    def get_nodes(self, user, perm, ids=None, prefetch_mac=False):
+    def _filter_visible_nodes(self, nodes, user, perm):
+        """Filter a `Node` query depending on user permissions.
+
+        :param nodes: A `Node` query set.
+        :param user: The user making the request; the filtering is based on
+            their privileges.
+        :param perm: Type of access requested.  For example, a user may be
+            allowed to view some nodes that they are not allowed to edit.
+        :type perm: `NODE_PERMISSION`
+        :return: A version of `node` that is filtered to include only those
+            nodes that `user` is allowed to access.
+        """
+        if user.is_superuser:
+            # Admin is allowed to see all nodes.
+            return nodes
+        elif perm == NODE_PERMISSION.VIEW:
+            return nodes.filter(Q(owner__isnull=True) | Q(owner=user))
+        elif perm == NODE_PERMISSION.EDIT:
+            return nodes.filter(owner=user)
+        elif perm == NODE_PERMISSION.ADMIN:
+            return nodes.none()
+        else:
+            raise NotImplementedError(
+                "Invalid permission check (invalid permission name: %s)." %
+                perm)
+
+    def get_nodes(self, user, perm, ids=None, prefetch_mac=False,
+                  from_nodes=None):
         """Fetch Nodes on which the User_ has the given permission.
 
         :param user: The user that should be used in the permission check.
@@ -210,29 +237,21 @@ class NodeManager(Manager):
         :param prefetch_mac: If set to True, prefetch the macaddress_set
             values. This is useful for UI stuff that uses MAC addresses in the
             http links.
+        :param from_nodes: Optionally, restrict the answer to these nodes.
+        :type from_nodes: Query set of `Node`.
 
         .. _User: https://
            docs.djangoproject.com/en/dev/topics/auth/
            #django.contrib.auth.models.User
 
         """
-        if user.is_superuser:
-            nodes = self.all()
-        else:
-            if perm == NODE_PERMISSION.VIEW:
-                nodes = self.filter(Q(owner__isnull=True) | Q(owner=user))
-            elif perm == NODE_PERMISSION.EDIT:
-                nodes = self.filter(owner=user)
-            elif perm == NODE_PERMISSION.ADMIN:
-                nodes = self.none()
-            else:
-                raise NotImplementedError(
-                    "Invalid permission check (invalid permission name: %s)." %
-                    perm)
-
+        if from_nodes is None:
+            from_nodes = self.all()
+        nodes = self._filter_visible_nodes(from_nodes, user, perm)
+        nodes = self.filter_by_ids(nodes, ids)
         if prefetch_mac:
             nodes = nodes.prefetch_related('macaddress_set')
-        return self.filter_by_ids(nodes, ids)
+        return nodes
 
     def get_allocated_visible_nodes(self, token, ids):
         """Fetch Nodes that were allocated to the User_/oauth token.

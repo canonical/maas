@@ -13,7 +13,6 @@ __metaclass__ = type
 __all__ = []
 
 from django.core.exceptions import ValidationError
-from maasserver.models import Tag
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
 
@@ -99,57 +98,6 @@ class TagTest(TestCase):
         tag2 = factory.make_tag(definition='/node/bar')
         self.assertItemsEqual([tag1.name], node1.tag_names())
         self.assertItemsEqual([tag2.name], node2.tag_names())
-
-    def test_get_nodes_returns_unowned_nodes(self):
-        user1 = factory.make_user()
-        node1 = factory.make_node()
-        tag = factory.make_tag()
-        node1.tags.add(tag)
-        self.assertItemsEqual([node1], Tag.objects.get_nodes(tag.name, user1))
-
-    def test_get_nodes_returns_self_owned_nodes(self):
-        user1 = factory.make_user()
-        node1 = factory.make_node(owner=user1)
-        tag = factory.make_tag()
-        node1.tags.add(tag)
-        self.assertItemsEqual([node1], Tag.objects.get_nodes(tag.name, user1))
-
-    def test_get_nodes_doesnt_return_other_owned_nodes(self):
-        user1 = factory.make_user()
-        user2 = factory.make_user()
-        node1 = factory.make_node(owner=user1)
-        tag = factory.make_tag()
-        node1.tags.add(tag)
-        self.assertItemsEqual([], Tag.objects.get_nodes(tag.name, user2))
-
-    def test_get_nodes_returns_everything_for_superuser(self):
-        user1 = factory.make_user()
-        user2 = factory.make_user()
-        user2.is_superuser = True
-        node1 = factory.make_node(owner=user1)
-        node2 = factory.make_node()
-        tag = factory.make_tag()
-        node1.tags.add(tag)
-        node2.tags.add(tag)
-        self.assertItemsEqual([node1, node2],
-                              Tag.objects.get_nodes(tag.name, user2))
-
-    def test_get_nodes_with_mac_does_one_query(self):
-        user = factory.make_user()
-        tag = factory.make_tag()
-        nodes = [factory.make_node(mac=True) for counter in range(5)]
-        for node in nodes:
-            node.tags.add(tag)
-        # 1 query to lookup the tag, 1 to find the associated nodes, and 1 to
-        # grab the mac addresses.
-        mac_count = 0
-        with self.assertNumQueries(3):
-            nodes = Tag.objects.get_nodes(tag.name, user, prefetch_mac=True)
-            for node in nodes:
-                for mac in node.macaddress_set.all():
-                    mac_count += 1
-        # Make sure that we didn't succeed by just returning 1 node
-        self.assertEqual(5, mac_count)
 
     def test_rollsback_invalid_xpath(self):
         node = factory.make_node()

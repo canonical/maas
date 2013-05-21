@@ -1582,15 +1582,17 @@ class TagHandler(OperationsHandler):
 
     def delete(self, request, name):
         """Delete a specific Tag."""
-        tag = Tag.objects.get_tag_or_404(name=name,
-            user=request.user, to_edit=True)
+        tag = Tag.objects.get_tag_or_404(
+            name=name, user=request.user, to_edit=True)
         tag.delete()
         return rc.DELETED
 
     @operation(idempotent=True)
     def nodes(self, request, name):
         """Get the list of nodes that have this tag."""
-        return Tag.objects.get_nodes(name, user=request.user)
+        tag = Tag.objects.get_tag_or_404(name=name, user=request.user)
+        return Node.objects.get_nodes(
+            request.user, NODE_PERMISSION.VIEW, from_nodes=tag.node_set.all())
 
     def _get_nodes_for(self, request, param, nodegroup):
         system_ids = get_list_from_dict_or_multidict(request.data, param)

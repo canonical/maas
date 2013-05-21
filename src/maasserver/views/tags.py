@@ -14,7 +14,11 @@ __all__ = [
     'TagView',
     ]
 
-from maasserver.models import Tag
+from maasserver.enum import NODE_PERMISSION
+from maasserver.models import (
+    Node,
+    Tag,
+    )
 from maasserver.views import PaginatedListView
 
 
@@ -33,9 +37,10 @@ class TagView(PaginatedListView):
         return super(TagView, self).get(request, *args, **kwargs)
 
     def get_queryset(self):
-        nodes = Tag.objects.get_nodes(
-            self.tag, user=self.request.user, prefetch_mac=True,
-            ).order_by('-created')
+        nodes = Node.objects.get_nodes(
+            user=self.request.user, perm=NODE_PERMISSION.VIEW,
+            from_nodes=self.tag.node_set.all(), prefetch_mac=True)
+        nodes = nodes.order_by('-created')
         nodes = nodes.select_related('nodegroup')
         nodes = nodes.prefetch_related('nodegroup__nodegroupinterface_set')
         return nodes

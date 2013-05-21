@@ -863,6 +863,37 @@ class NodeManagerTest(TestCase):
             Node.objects.get_nodes(
                 user, NODE_PERMISSION.VIEW, ids=ids[wanted_slice]))
 
+    def test_get_nodes_filters_from_nodes(self):
+        admin = factory.make_admin()
+        # Node that we want to see in the result:
+        wanted_node = factory.make_node()
+        # Node that we'll exclude from from_nodes:
+        factory.make_node()
+
+        self.assertItemsEqual(
+            [wanted_node],
+            Node.objects.get_nodes(
+                admin, NODE_PERMISSION.VIEW,
+                from_nodes=Node.objects.filter(id=wanted_node.id)))
+
+    def test_get_nodes_combines_from_nodes_with_other_filter(self):
+        user = factory.make_user()
+        # Node that we want to see in the result:
+        matching_node = factory.make_node(owner=user)
+        # Node that we'll exclude from from_nodes:
+        factory.make_node(owner=user)
+        # Node that will be ignored on account of belonging to someone else:
+        invisible_node = factory.make_node(owner=factory.make_user())
+
+        self.assertItemsEqual(
+            [matching_node],
+            Node.objects.get_nodes(
+                user, NODE_PERMISSION.VIEW,
+                from_nodes=Node.objects.filter(id__in=(
+                    matching_node.id,
+                    invisible_node.id,
+                    ))))
+
     def test_get_nodes_with_mac_does_one_query(self):
         user = factory.make_user()
         nodes = [factory.make_node(mac=True) for counter in range(5)]
