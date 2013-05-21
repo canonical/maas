@@ -11,13 +11,14 @@ from __future__ import (
 
 __metaclass__ = type
 __all__ = [
+    "AccountsEdit",
+    "AccountsView",
     "HelpfulDeleteView",
     "PaginatedListView",
     "process_form",
-    "AccountsEdit",
-    "AccountsView",
     "settings",
     "settings_add_archive",
+    "TextTemplateView",
     ]
 
 from abc import (
@@ -33,7 +34,17 @@ from django.http import (
 from django.views.generic import (
     DeleteView,
     ListView,
+    TemplateView,
     )
+
+
+class TextTemplateView(TemplateView):
+    """A text-based :class:`django.views.generic.TemplateView`."""
+
+    def render_to_response(self, context, **response_kwargs):
+        response_kwargs['content_type'] = 'text/plain'
+        return super(
+            TemplateView, self).render_to_response(context, **response_kwargs)
 
 
 class HelpfulDeleteView(DeleteView):

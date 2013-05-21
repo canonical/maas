@@ -306,5 +306,10 @@ PRESEED_TEMPLATE_LOCATIONS = (
     "/usr/share/maas/preseeds",
     )
 
+# A list of strings representing the host/domain names that this Django
+# site can serve.
+# See https://docs.djangoproject.com/en/1.5/ref/settings/#allowed-hosts
+ALLOWED_HOSTS = ['*']
+
 # Allow the user to override settings in maas_local_settings.
 import_local_settings()

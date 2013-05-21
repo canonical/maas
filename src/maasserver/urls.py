@@ -19,8 +19,8 @@ from django.conf.urls.defaults import (
     url,
     )
 from django.contrib.auth.decorators import user_passes_test
-from django.views.generic.simple import direct_to_template
 from maasserver.models import Node
+from maasserver.views import TextTemplateView
 from maasserver.views.account import (
     login,
     logout,
@@ -76,8 +76,8 @@ urlpatterns = patterns('',
 urlpatterns += patterns('maasserver.views',
     url(r'^accounts/login/$', login, name='login'),
     url(
-        r'^robots\.txt$', direct_to_template,
-        {'template': 'maasserver/robots.txt', 'mimetype': 'text/plain'},
+        r'^robots\.txt$', TextTemplateView.as_view(
+            template_name='maasserver/robots.txt'),
         name='robots'),
 )
 
