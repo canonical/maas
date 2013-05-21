@@ -16,6 +16,8 @@ from os import path
 from textwrap import dedent
 
 from maastesting.matchers import Contains
+from maastesting.testcase import TestCase
+from mock import Mock
 from provisioningserver.dhcp import config
 from provisioningserver.pxe.tftppath import compose_bootloader_path
 from provisioningserver.testing.testcase import PservTestCase
@@ -91,3 +93,22 @@ class TestDHCPConfig(PservTestCase):
         params = make_sample_params()
         output = config.get_config(**params)
         self.assertThat(output, Contains(compose_bootloader_path()))
+
+    def test_config_does_contains_config_item_depending_on_release(self):
+        # The dhcp config item 'ignore-client-uids' is only supported
+        # since raring.
+        test_params = [
+            (('Ubuntu', '12.04', 'precise'), False),
+            (('Ubuntu', '13.04', 'raring'), True),
+            (('Ubuntu', '13.10', 'saucy'), True),
+            ]
+        for linux_distribution, in_config in test_params:
+            self.patch(
+                config, 'linux_distribution',
+                Mock(return_value=linux_distribution))
+            params = make_sample_params()
+            config_file = config.get_config(**params)
+            if in_config:
+                self.assertIn('ignore-client-uids', config_file)
+            else:
+                self.assertNotIn('ignore-client-uids', config_file)

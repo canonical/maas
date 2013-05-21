@@ -17,6 +17,7 @@ __all__ = [
 
 
 from os import path
+from platform import linux_distribution
 
 from provisioningserver.pxe.tftppath import compose_bootloader_path
 import tempita
@@ -46,6 +47,7 @@ def get_config(**params):
     """
     template_file = path.join(template_dir, 'dhcpd.conf.template')
     params['bootloader'] = compose_bootloader_path()
+    params['platform_codename'] = linux_distribution()[2]
     try:
         template = tempita.Template.from_filename(
             template_file, encoding="UTF-8")
