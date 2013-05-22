@@ -230,16 +230,29 @@ class TestOptionForm(ConfigForm):
     field2 = forms.BooleanField(label="Field 2", required=False)
 
 
+class TestValidOptionForm(ConfigForm):
+    maas_name = forms.CharField(label="Field 1", max_length=10)
+
+
 class ConfigFormTest(TestCase):
 
     def test_form_valid_saves_into_db(self):
         value = factory.getRandomString(10)
-        form = TestOptionForm({'field1': value, 'field2': False})
+        form = TestValidOptionForm({'maas_name': value})
         result = form.save()
 
         self.assertTrue(result)
-        self.assertEqual(value, Config.objects.get_config('field1'))
-        self.assertFalse(Config.objects.get_config('field2'))
+        self.assertEqual(value, Config.objects.get_config('maas_name'))
+
+    def test_form_rejects_unknown_settings(self):
+        value = factory.getRandomString(10)
+        value2 = factory.getRandomString(10)
+        form = TestOptionForm({'field1': value, 'field2': value2})
+        valid = form.is_valid()
+
+        self.assertFalse(valid)
+        self.assertIn('field1', form._errors)
+        self.assertIn('field2', form._errors)
 
     def test_form_invalid_does_not_save_into_db(self):
         value_too_long = factory.getRandomString(20)

@@ -169,6 +169,11 @@ from maasserver.forms import (
     SSHKeyForm,
     TagForm,
     )
+from maasserver.forms_settings import (
+    get_config_doc,
+    get_config_form,
+    validate_config_name,
+    )
 from maasserver.models import (
     BootImage,
     Config,
@@ -1718,14 +1723,23 @@ class MaasHandler(OperationsHandler):
 
         :param name: The name of the config item to be set.
         :type name: basestring
-        :param name: The value of the config item to be set.
+        :param value: The value of the config item to be set.
         :type value: json object
+
+        %s
         """
         name = get_mandatory_param(
             request.data, 'name', validators.String(min=1))
         value = get_mandatory_param(request.data, 'value')
-        Config.objects.set_config(name, value)
+        form = get_config_form(name, {name: value})
+        if not form.is_valid():
+            raise ValidationError(form.errors)
+        form.save()
         return rc.ALL_OK
+
+    # Populate the docstring with the dynamically-generated documentation
+    # about the available configuration items.
+    set_config.__doc__ %= get_config_doc(indentation=8)
 
     @operation(idempotent=True)
     def get_config(self, request):
@@ -1733,10 +1747,17 @@ class MaasHandler(OperationsHandler):
 
         :param name: The name of the config item to be retrieved.
         :type name: basestring
+
+        %s
         """
         name = get_mandatory_param(request.GET, 'name')
+        validate_config_name(name)
         value = Config.objects.get_config(name)
         return HttpResponse(json.dumps(value), content_type='application/json')
+
+    # Populate the docstring with the dynamically-generated documentation
+    # about the available configuration items.
+    get_config.__doc__ %= get_config_doc(indentation=8)
 
     @classmethod
     def resource_uri(cls, *args, **kwargs):

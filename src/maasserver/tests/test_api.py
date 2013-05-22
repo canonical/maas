@@ -78,6 +78,7 @@ from maasserver.enum import (
 from maasserver.exceptions import MAASAPIBadRequest
 from maasserver.fields import mac_error_msg
 from maasserver.forms import DEFAULT_ZONE_NAME
+from maasserver.forms_settings import INVALID_SETTING_MSG_TEMPLATE
 from maasserver.models import (
     BootImage,
     Config,
@@ -3514,7 +3515,7 @@ class MAASAPITest(APITestCase):
 
     def test_get_config_returns_config(self):
         self.become_admin()
-        name = factory.getRandomString()
+        name = 'maas_name'
         value = factory.getRandomString()
         Config.objects.set_config(name, value)
         response = self.client.get(
@@ -3528,6 +3529,25 @@ class MAASAPITest(APITestCase):
         parsed_result = json.loads(response.content)
         self.assertIn('application/json', response['Content-Type'])
         self.assertEqual(value, parsed_result)
+
+    def test_get_config_rejects_unknown_config_item(self):
+        self.become_admin()
+        name = factory.getRandomString()
+        value = factory.getRandomString()
+        Config.objects.set_config(name, value)
+        response = self.client.get(
+            self.get_uri('maas/'),
+            {
+                'op': 'get_config',
+                'name': name,
+            })
+
+        self.assertEqual(
+            (
+                httplib.BAD_REQUEST,
+                {name: [INVALID_SETTING_MSG_TEMPLATE % name]},
+            ),
+            (response.status_code, json.loads(response.content)))
 
     def test_set_config_requires_name_param(self):
         self.become_admin()
@@ -3570,6 +3590,23 @@ class MAASAPITest(APITestCase):
 
     def test_admin_set_config(self):
         self.become_admin()
+        name = 'maas_name'
+        value = factory.getRandomString()
+        response = self.client.post(
+            self.get_uri('maas/'),
+            {
+                'op': 'set_config',
+                'name': name,
+                'value': value,
+            })
+
+        self.assertEqual(
+            httplib.OK, response.status_code, response.content)
+        stored_value = Config.objects.get_config(name)
+        self.assertEqual(stored_value, value)
+
+    def test_admin_set_config_rejects_unknown_config_item(self):
+        self.become_admin()
         name = factory.getRandomString()
         value = factory.getRandomString()
         response = self.client.post(
@@ -3580,9 +3617,12 @@ class MAASAPITest(APITestCase):
                 'value': value,
             })
 
-        self.assertEqual(httplib.OK, response.status_code)
-        stored_value = Config.objects.get_config(name)
-        self.assertEqual(stored_value, value)
+        self.assertEqual(
+            (
+                httplib.BAD_REQUEST,
+                {name: [INVALID_SETTING_MSG_TEMPLATE % name]},
+            ),
+            (response.status_code, json.loads(response.content)))
 
 
 class APIErrorsTest(APIv10TestMixin, TransactionTestCase):

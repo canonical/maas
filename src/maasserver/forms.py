@@ -70,6 +70,13 @@ from maasserver.fields import (
     MACAddressFormField,
     NodeGroupFormField,
     )
+from maasserver.forms_settings import (
+    compose_invalid_choice_text,
+    CONFIG_ITEMS_KEYS,
+    get_config_field,
+    INVALID_DISTRO_SERIES_MESSAGE,
+    INVALID_SETTING_MSG_TEMPLATE,
+    )
 from maasserver.models import (
     Config,
     MACAddress,
@@ -91,28 +98,8 @@ from provisioningserver.enum import (
     )
 
 
-def compose_invalid_choice_text(choice_of_what, valid_choices):
-    """Compose an "invalid choice" string for form error messages.
-
-    :param choice_of_what: The name for what the selected item is supposed
-        to be, to be inserted into the error string.
-    :type choice_of_what: basestring
-    :param valid_choices: Valid choices, in Django choices format:
-        (name, value).
-    :type valid_choices: sequence
-    """
-    return "%s is not a valid %s.  It should be one of: %s." % (
-        "%(value)s",
-        choice_of_what,
-        ", ".join(name for name, value in valid_choices),
-        )
-
-
 INVALID_ARCHITECTURE_MESSAGE = compose_invalid_choice_text(
     'architecture', ARCHITECTURE_CHOICES)
-
-INVALID_DISTRO_SERIES_MESSAGE = compose_invalid_choice_text(
-    'distro_series', DISTRO_SERIES_CHOICES)
 
 
 class NodeForm(ModelForm):
@@ -411,7 +398,7 @@ class WithMACAddressesMixin:
         # reverse query to the MAAS DNS) or an empty string.
         generate_hostname = (
             hostname == "" or
-            IP_BASED_HOSTNAME_REGEXP.match(stripped_hostname) != None)
+            IP_BASED_HOSTNAME_REGEXP.match(stripped_hostname) is not None)
         if generate_hostname:
             node.set_random_hostname()
         return node
@@ -582,6 +569,14 @@ class ConfigForm(Form):
             if conf is not None:
                 self.initial[name] = conf
 
+    def clean(self):
+        cleaned_data = super(Form, self).clean()
+        for config_name in cleaned_data.keys():
+            if config_name not in CONFIG_ITEMS_KEYS:
+                self._errors[config_name] = self.error_class([
+                    INVALID_SETTING_MSG_TEMPLATE % config_name])
+        return cleaned_data
+
     def save(self):
         """Save the content of the fields into the database.
 
@@ -602,74 +597,32 @@ class ConfigForm(Form):
 
 class MAASAndNetworkForm(ConfigForm):
     """Settings page, MAAS and Network section."""
-    maas_name = forms.CharField(label="MAAS name")
-    enlistment_domain = forms.CharField(
-        label="Default domain for new nodes", required=False, help_text=(
-            "If 'local' is chosen, nodes must be using mDNS. Leave empty to "
-            "use hostnames without a domain for newly enlisted nodes."))
-    http_proxy = forms.URLField(
-        label="Proxy for HTTP and HTTPS traffic", required=False,
-        help_text=(
-            "This is used by the cluster and region controllers for "
-            "downloading PXE boot images and other provisioning-related "
-            "resources. This will also be passed onto provisioned "
-            "nodes instead of the default proxy (the region controller "
-            "proxy)."))
+    maas_name = get_config_field('maas_name')
+    enlistment_domain = get_config_field('enlistment_domain')
+    http_proxy = get_config_field('http_proxy')
 
 
 class CommissioningForm(ConfigForm):
     """Settings page, Commissioning section."""
-    check_compatibility = forms.BooleanField(
-        label="Check component compatibility and certification",
-        required=False)
-    after_commissioning = forms.ChoiceField(
-        choices=NODE_AFTER_COMMISSIONING_ACTION_CHOICES,
-        label="After commissioning")
+    check_compatibility = get_config_field('check_compatibility')
+    after_commissioning = get_config_field('after_commissioning')
     commissioning_distro_series = forms.ChoiceField(
         choices=DISTRO_SERIES_CHOICES, required=False,
         label="Default distro series used for commissioning",
         error_messages={'invalid_choice': INVALID_DISTRO_SERIES_MESSAGE})
 
 
-url_error_msg = "Enter a valid url (e.g. http://host.example.com)."
-
-
 class UbuntuForm(ConfigForm):
     """Settings page, Ubuntu section."""
-    default_distro_series = forms.ChoiceField(
-        choices=DISTRO_SERIES_CHOICES, required=False,
-        label="Default distro series used for deployment",
-        error_messages={'invalid_choice': INVALID_DISTRO_SERIES_MESSAGE})
-    main_archive = forms.URLField(
-        label="Main archive",
-        error_messages={'invalid': url_error_msg},
-        help_text=(
-            "Archive used by nodes to retrieve packages and by cluster "
-            "controllers to retrieve boot images (Intel architectures). "
-            "E.g. http://archive.ubuntu.com/ubuntu."
-            ))
-    ports_archive = forms.URLField(
-        label="Ports archive",
-        error_messages={'invalid': url_error_msg},
-        help_text=(
-            "Archive used by cluster controllers to retrieve boot images "
-            "(non-Intel architectures). "
-            "E.g. http://ports.ubuntu.com/ubuntu-ports."
-            ))
-    cloud_images_archive = forms.URLField(
-        label="Cloud images archive",
-        error_messages={'invalid': url_error_msg},
-        help_text=(
-            "Archive used by the nodes to retrieve ephemeral images. "
-            "E.g. https://maas.ubuntu.com/images."
-            ))
+    default_distro_series = get_config_field('default_distro_series')
+    main_archive = get_config_field('main_archive')
+    ports_archive = get_config_field('ports_archive')
+    cloud_images_archive = get_config_field('cloud_images_archive')
 
 
 class GlobalKernelOptsForm(ConfigForm):
     """Settings page, Global Kernel Parameters section."""
-    kernel_opts = forms.CharField(
-        label="Boot parameters to pass to the kernel by default",
-        required=False)
+    kernel_opts = get_config_field('kernel_opts')
 
 
 class NodeGroupInterfaceForm(ModelForm):
