@@ -196,11 +196,26 @@ class StartNode(NodeAction):
             """)
 
 
+class StopNode(NodeAction):
+    """Stop and release a node."""
+    display = "Stop node"
+    actionable_statuses = (NODE_STATUS.ALLOCATED, )
+    permission = NODE_PERMISSION.EDIT
+
+    def execute(self):
+        self.node.release()
+        return dedent("""\
+            This node is no longer allocated to you.
+            It has been asked to shut down.
+            """)
+
+
 ACTION_CLASSES = (
     Delete,
     AcceptAndCommission,
     RetryCommissioning,
     StartNode,
+    StopNode,
     )
 
 

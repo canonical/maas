@@ -28,10 +28,12 @@ from maasserver.node_action import (
     NodeAction,
     RetryCommissioning,
     StartNode,
+    StopNode,
     )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
 from provisioningserver.enum import POWER_TYPE
+from provisioningserver.power.poweraction import PowerAction
 
 
 ALL_STATUSES = NODE_STATUS_CHOICES_DICT.keys()
@@ -162,6 +164,9 @@ class TestNodeAction(TestCase):
         action.fake_inhibition = factory.getRandomString()
         self.assertIsNone(action.inhibition)
 
+
+class TestDeleteNodeAction(TestCase):
+
     def test_Delete_inhibit_when_node_is_allocated(self):
         node = factory.make_node(status=NODE_STATUS.ALLOCATED)
         action = Delete(node, factory.make_admin())
@@ -186,6 +191,9 @@ class TestNodeAction(TestCase):
             reverse('node-delete', args=[node.system_id]),
             urlparse(unicode(e)).path)
 
+
+class TestAcceptAndCommissionNodeAction(TestCase):
+
     def test_AcceptAndCommission_starts_commissioning(self):
         node = factory.make_node(
             mac=True, status=NODE_STATUS.DECLARED,
@@ -197,6 +205,9 @@ class TestNodeAction(TestCase):
             'provisioningserver.tasks.power_on',
             self.celery.tasks[0]['task'].name)
 
+
+class TestRetryCommissioningNodeAction(TestCase):
+
     def test_RetryCommissioning_starts_commissioning(self):
         node = factory.make_node(
             mac=True, status=NODE_STATUS.FAILED_TESTS,
@@ -207,6 +218,9 @@ class TestNodeAction(TestCase):
         self.assertEqual(
             'provisioningserver.tasks.power_on',
             self.celery.tasks[0]['task'].name)
+
+
+class TestStartNodeNodeAction(TestCase):
 
     def test_StartNode_inhibit_allows_user_with_SSH_key(self):
         user_with_key = factory.make_user()
@@ -231,4 +245,26 @@ class TestNodeAction(TestCase):
         self.assertEqual(user, node.owner)
         self.assertEqual(
             'provisioningserver.tasks.power_on',
+            self.celery.tasks[0]['task'].name)
+
+
+class TestStopNodeNodeAction(TestCase):
+
+    def test_StopNode_stops_and_releases_node(self):
+        self.patch(PowerAction, 'run_shell', lambda *args, **kwargs: ('', ''))
+        user = factory.make_user()
+        params = dict(
+            power_address=factory.getRandomString(),
+            power_user=factory.getRandomString(),
+            power_pass=factory.getRandomString())
+        node = factory.make_node(
+            mac=True, status=NODE_STATUS.ALLOCATED,
+            power_type=POWER_TYPE.IPMI,
+            owner=user, power_parameters=params)
+        StopNode(node, user).execute()
+
+        self.assertEqual(NODE_STATUS.READY, node.status)
+        self.assertIsNone(node.owner)
+        self.assertEqual(
+            'provisioningserver.tasks.power_off',
             self.celery.tasks[0]['task'].name)
