@@ -22,7 +22,6 @@ from django.core.validators import RegexValidator
 from django.db.models import (
     CharField,
     Manager,
-    Q,
     TextField,
     )
 from django.shortcuts import get_object_or_404
