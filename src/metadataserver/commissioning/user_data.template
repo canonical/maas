@@ -276,6 +276,7 @@ def commit_ipmi_user_settings(user, password):
     if ipmi_user_number is None:
         (status, output) = commands.getstatusoutput('bmc-config --commit --key-pair="User10:Username=%s"' % user)
         ipmi_user_number = get_ipmi_user_number(user)
+    (status, output) = commands.getstatusoutput('bmc-config --commit --key-pair="%s:Username=%s"' % (ipmi_user_number, user))
     (status, output) = commands.getstatusoutput('bmc-config --commit --key-pair="%s:Password=%s"' % (ipmi_user_number, password))
     (status, output) = commands.getstatusoutput('bmc-config --commit --key-pair="%s:Enable_User=Yes"' % ipmi_user_number)
     (status, output) = commands.getstatusoutput('bmc-config --commit --key-pair="%s:Lan_Enable_IPMI_Msgs=Yes"' % ipmi_user_number)
