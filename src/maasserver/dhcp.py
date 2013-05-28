@@ -65,6 +65,7 @@ def configure_dhcp(nodegroup):
         broadcast_ip=interface.broadcast_ip,
         router_ip=interface.router_ip,
         dns_servers=get_dns_server_address(nodegroup),
+        domain_name=nodegroup.name,
         ip_range_low=interface.ip_range_low,
         ip_range_high=interface.ip_range_high,
         callback=reload_dhcp_server_subtask,

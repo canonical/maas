@@ -178,6 +178,7 @@ class TestDHCPTasks(PservTestCase):
             'subnet_mask',
             'broadcast_ip',
             'dns_servers',
+            'domain_name',
             'router_ip',
             'ip_range_low',
             'ip_range_high',

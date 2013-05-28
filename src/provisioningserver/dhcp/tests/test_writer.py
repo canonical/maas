@@ -36,6 +36,7 @@ class TestScript(TestCase):
         '--subnet-mask', 'subnet-mask',
         '--broadcast-ip', 'broadcast-ip',
         '--dns-servers', 'dns-servers',
+        '--domain-name', 'domain-name',
         '--router-ip', 'router-ip',
         '--ip-range-low', 'ip-range-low',
         '--ip-range-high', 'ip-range-high',
@@ -50,7 +51,7 @@ class TestScript(TestCase):
         output, err = cmd.communicate()
         contains_all_params = ContainsAll(
             ['subnet', 'subnet-mask', 'broadcast-ip',
-             'omapi-key', 'dns-servers', 'router-ip',
+             'omapi-key', 'dns-servers', 'domain-name', 'router-ip',
              'ip-range-low', 'ip-range-high'])
         self.assertThat(output, contains_all_params)
 
@@ -64,6 +65,7 @@ class TestScript(TestCase):
                 subnet_mask='subnet-mask',
                 broadcast_ip='broadcast-ip',
                 dns_servers='dns-servers',
+                domain_name='domain-name',
                 router_ip='router-ip',
                 omapi_key='omapi-key',
                 ip_range_low='ip-range-low',
@@ -82,6 +84,7 @@ class TestScript(TestCase):
             'broadcast-ip',
             'omapi-key',
             'dns-servers',
+            'domain-name',
             'router-ip',
             'ip-range-low',
             'ip-range-high',
@@ -103,6 +106,7 @@ class TestScript(TestCase):
             'broadcast-ip',
             'omapi-key',
             'dns-servers',
+            'domain-name',
             'router-ip',
             'ip-range-low',
             'ip-range-high',

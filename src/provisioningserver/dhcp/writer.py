@@ -39,6 +39,10 @@ def add_arguments(parser):
             "One or more IP addresses of the DNS server for the subnet "
             "separated by spaces."))
     parser.add_argument(
+        "--domain-name", action="store", required=True, help=(
+            "The domain name that will be appended to the client's hostname "
+            "to form a fully-qualified domain-name (FQDN)."))
+    parser.add_argument(
         "--router-ip", action="store", required=True, help=(
             "The router/gateway IP address for the subnet"))
     parser.add_argument(

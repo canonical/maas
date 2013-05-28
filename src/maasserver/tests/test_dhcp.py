@@ -82,6 +82,7 @@ class TestDHCP(TestCase):
 
         expected_params["omapi_key"] = nodegroup.dhcp_key
         expected_params["dns_servers"] = get_dns_server_address()
+        expected_params["domain_name"] = nodegroup.name
         expected_params["subnet"] = '192.168.100.0'
         expected_params["dhcp_interfaces"] = interface.interface
 

@@ -39,6 +39,8 @@ def get_config(**params):
         e.g. 192.168.1.255
     :param dns_servers: One or more IP addresses of the DNS server for the
         subnet
+    :param domain_name: name that will be appended to the client's hostname to
+        form a fully-qualified domain-name
     :param gateway: The router/gateway IP address for the subnet.
     :param low_range: The first IP address in the range of IP addresses to
         allocate

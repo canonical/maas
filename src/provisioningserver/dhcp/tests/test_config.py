@@ -31,6 +31,7 @@ sample_template = dedent("""\
     {{subnet_mask}}
     {{broadcast_ip}}
     {{dns_servers}}
+    {{domain_name}}
     {{router_ip}}
     {{ip_range_low}}
     {{ip_range_high}}
@@ -48,6 +49,7 @@ def make_sample_params():
         subnet_mask="255.0.0.0",
         broadcast_ip="10.255.255.255",
         dns_servers="10.1.0.1 10.1.0.2",
+        domain_name="example.com",
         router_ip="10.0.0.2",
         ip_range_low="10.0.0.3",
         ip_range_high="10.0.0.254",
