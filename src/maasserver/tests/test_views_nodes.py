@@ -236,27 +236,38 @@ class NodeViewsTest(LoggedInTestCase):
                 if link.startswith('/nodes/node')])
 
     def test_node_list_num_queries_is_independent_of_num_nodes(self):
+        # Listing nodes takes a constant number of database queries,
+        # regardless of how many nodes are in the listing.
+
+        def is_node_link(link):
+            """Is `link` (from the view's content links) a link to a node?"""
+            return link.startswith('/nodes/node')
+
+        def count_node_links(response):
+            """Return the number of node links in a response from the view."""
+            return len(filter(is_node_link, get_content_links(response)))
+
+        def make_nodes(nodegroup, number):
+            """Create `number` new nodes."""
+            for counter in range(number):
+                factory.make_node(nodegroup=nodegroup, mac=True)
+
         nodegroup = factory.make_node_group()
-        for i in range(10):
-            factory.make_node(nodegroup=nodegroup, mac=True)
+        make_nodes(nodegroup, 10)
+
         url = reverse('node-list')
         num_queries, response = self.getNumQueries(self.client.get, url)
         # Make sure we counted at least the queries to get the nodes, the
-        # nodegroup and the mac addresses.
+        # nodegroup, and the mac addresses.
         self.assertTrue(num_queries > 3)
-        self.assertEqual(
-            10,
-            len([link for link in get_content_links(response)
-                if link.startswith('/nodes/node')]))
-        # Add 10 nodes should still have the same number of queries
-        for i in range(10):
-            factory.make_node(nodegroup=nodegroup, mac=True)
+        self.assertEqual(10, count_node_links(response))
+
+        # Add 10 more nodes.  Should still have the same number of queries.
+        make_nodes(nodegroup, 10)
         num_bonus_queries, response = self.getNumQueries(self.client.get, url)
+        # We see more nodes, yet the number of queries is unchanged.
+        self.assertEqual(20, count_node_links(response))
         self.assertEqual(num_queries, num_bonus_queries)
-        self.assertEqual(
-            20,
-            len([link for link in get_content_links(response)
-                if link.startswith('/nodes/node')]))
 
     def test_view_node_displays_node_info(self):
         # The node page features the basic information about the node.

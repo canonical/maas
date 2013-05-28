@@ -224,9 +224,12 @@ class NodeManager(Manager):
                 "Invalid permission check (invalid permission name: %s)." %
                 perm)
 
-    def get_nodes(self, user, perm, ids=None, prefetch_mac=False,
-                  from_nodes=None):
+    def get_nodes(self, user, perm, ids=None, from_nodes=None):
         """Fetch Nodes on which the User_ has the given permission.
+
+        Warning: there could be a lot of nodes!  Keep scale in mind when
+        calling this, and watch performance in general.  Prefetch related
+        data where appropriate.
 
         :param user: The user that should be used in the permission check.
         :type user: User_
@@ -234,9 +237,6 @@ class NodeManager(Manager):
         :type perm: a permission string from NODE_PERMISSION
         :param ids: If given, limit result to nodes with these system_ids.
         :type ids: Sequence.
-        :param prefetch_mac: If set to True, prefetch the macaddress_set
-            values. This is useful for UI stuff that uses MAC addresses in the
-            http links.
         :param from_nodes: Optionally, restrict the answer to these nodes.
         :type from_nodes: Query set of `Node`.
 
@@ -248,10 +248,7 @@ class NodeManager(Manager):
         if from_nodes is None:
             from_nodes = self.all()
         nodes = self._filter_visible_nodes(from_nodes, user, perm)
-        nodes = self.filter_by_ids(nodes, ids)
-        if prefetch_mac:
-            nodes = nodes.prefetch_related('macaddress_set')
-        return nodes
+        return self.filter_by_ids(nodes, ids)
 
     def get_allocated_visible_nodes(self, token, ids):
         """Fetch Nodes that were allocated to the User_/oauth token.

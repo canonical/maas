@@ -20,11 +20,11 @@ from maasserver.models import (
     Tag,
     )
 from maasserver.views import PaginatedListView
+from maasserver.views.nodes import prefetch_nodes_listing
 
 
 class TagView(PaginatedListView):
-    """Basic view of a tag.
-    """
+    """Basic view of a tag.  Lists matching nodes."""
 
     template_name = 'maasserver/tag_view.html'
     context_object_name = 'node_list'
@@ -39,11 +39,9 @@ class TagView(PaginatedListView):
     def get_queryset(self):
         nodes = Node.objects.get_nodes(
             user=self.request.user, perm=NODE_PERMISSION.VIEW,
-            from_nodes=self.tag.node_set.all(), prefetch_mac=True)
+            from_nodes=self.tag.node_set.all())
         nodes = nodes.order_by('-created')
-        nodes = nodes.select_related('nodegroup')
-        nodes = nodes.prefetch_related('nodegroup__nodegroupinterface_set')
-        return nodes
+        return prefetch_nodes_listing(nodes)
 
     def get_context_data(self, **kwargs):
         context = super(TagView, self).get_context_data(**kwargs)

@@ -18,6 +18,7 @@ __all__ = [
     'NodePreseedView',
     'NodeView',
     'NodeEdit',
+    'prefetch_nodes_listing',
     ]
 
 from logging import getLogger
@@ -104,6 +105,20 @@ def _parse_constraints(query_string):
     return constraints
 
 
+def prefetch_nodes_listing(nodes_query):
+    """Prefetch any data needed to display a given query of nodes.
+
+    :param nodes_query: A query set of nodes.
+    :return: A version of `nodes_query` that prefetches any data needed for
+        displaying these nodes as a listing.
+    """
+    return (
+        nodes_query
+            .prefetch_related('macaddress_set')
+            .select_related('nodegroup')
+            .prefetch_related('nodegroup__nodegroupinterface_set'))
+
+
 class NodeListView(PaginatedListView):
 
     context_object_name = "node_list"
@@ -116,30 +131,45 @@ class NodeListView(PaginatedListView):
 
         return super(NodeListView, self).get(request, *args, **kwargs)
 
-    def get_queryset(self):
-        # Default sort - newest first, unless sorting params are
-        # present. In addition, to ensure order consistency, when
-        # sorting by non-unique fields (like status), we always
-        # sort by the unique creation date as well
-        if self.sort_by is not None:
-            prefix = '-' if self.sort_dir == 'desc' else ''
-            order_by = (prefix + self.sort_by, '-created')
-        else:
-            order_by = ('-created', )
+    def _compose_sort_order(self):
+        """Put together a tuple describing the sort order.
 
-        # Return the sorted node list.
+        The result can be passed to a node query's `order_by` method.
+        Wherever two nodes are equal under the sorter order, creation date
+        is used as a tie-breaker: newest node first.
+        """
+        if self.sort_by is None:
+            order_by = ()
+        else:
+            custom_order = self.sort_by
+            if self.sort_dir == 'desc':
+                custom_order = '-%s' % custom_order
+            order_by = (custom_order, )
+
+        return order_by + ('-created', )
+
+    def _constrain_nodes(self, nodes_query):
+        """Filter the given nodes query by user-specified constraints.
+
+        If the specified constraints are invalid, this will set an error and
+        return an empty query set.
+
+        :param nodes_query: A query set of nodes.
+        :return: A query set of nodes that returns a subset of `nodes_query`.
+        """
+        try:
+            return constrain_nodes(nodes_query, _parse_constraints(self.query))
+        except InvalidConstraint as e:
+            self.query_error = e
+            return Node.objects.none()
+
+    def get_queryset(self):
         nodes = Node.objects.get_nodes(
-            user=self.request.user, prefetch_mac=True,
-            perm=NODE_PERMISSION.VIEW,).order_by(*order_by)
+            user=self.request.user, perm=NODE_PERMISSION.VIEW)
+        nodes = nodes.order_by(*self._compose_sort_order())
         if self.query:
-            try:
-                return constrain_nodes(nodes, _parse_constraints(self.query))
-            except InvalidConstraint as e:
-                self.query_error = e
-                return Node.objects.none()
-        nodes = nodes.select_related('nodegroup')
-        nodes = nodes.prefetch_related('nodegroup__nodegroupinterface_set')
-        return nodes
+            nodes = self._constrain_nodes(nodes)
+        return prefetch_nodes_listing(nodes)
 
     def _prepare_sort_links(self):
         """Returns 2 dicts, with sort fields as keys and
