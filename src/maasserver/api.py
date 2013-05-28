@@ -1973,7 +1973,9 @@ def pxeconfig(request):
         # just get the options
         _, extra_kernel_opts = node.get_effective_kernel_options()
     else:
-        extra_kernel_opts = None
+        # If there's no node defined then we must be enlisting here, but
+        # we still need to return the global kernel options.
+        extra_kernel_opts = Config.objects.get_config("kernel_opts")
 
     purpose = get_boot_purpose(node)
     server_address = get_maas_facing_server_address(nodegroup=nodegroup)

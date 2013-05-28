@@ -3752,6 +3752,23 @@ class TestPXEConfigAPI(AnonAPITestCase):
         response = self.client.get(reverse('pxeconfig'), params)
         self.assertEqual(httplib.OK, response.status_code)
 
+    def test_pxeconfig_returns_global_kernel_params_for_enlisting_node(self):
+        # An 'enlisting' node means it looks like a node with details but we
+        # don't know about it yet.  It should still receive the global
+        # kernel options.
+        value = factory.getRandomString()
+        Config.objects.set_config("kernel_opts", value)
+        architecture = factory.getRandomEnum(ARCHITECTURE)
+        arch, subarch = architecture.split('/')
+        params = dict(
+            self.get_default_params(),
+            mac=factory.getRandomMACAddress(delimiter=b'-'),
+            arch=arch,
+            subarch=subarch)
+        response = self.client.get(reverse('pxeconfig'), params)
+        response_dict = json.loads(response.content)
+        self.assertEqual(value, response_dict['extra_opts'])
+
     def test_pxeconfig_defaults_to_i386_for_default(self):
         # As a lowest-common-denominator, i386 is chosen when the node is not
         # yet known to MAAS.
