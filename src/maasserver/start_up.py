@@ -59,6 +59,7 @@ def start_up():
         inner_start_up()
     finally:
         lock.release()
+    post_start_up()
 
 
 def update_import_script_error():
@@ -77,17 +78,22 @@ def update_import_script_error():
 
 
 def inner_start_up():
+    """Startup jobs that must run serialized w.r.t. other starting servers."""
     # Publish the MAAS server existence over Avahi.
     setup_maas_avahi_service()
 
     # Make sure that the master nodegroup is created.
+    # This must be serialized or we may initialize the master more than once.
     NodeGroup.objects.ensure_master()
 
-    # Regenerate MAAS's DNS configuration.
+    # Regenerate MAAS's DNS configuration.  This should be reentrant, really.
     write_full_dns_config(reload_retry=True)
+
+
+def post_start_up():
+    """Startup jobs that can run after the critical section."""
+    # Check whether we have boot images yet.
+    update_import_script_error()
 
     # Send secrets etc. to workers.
     NodeGroup.objects.refresh_workers()
-
-    # Check whether we have boot images yet.
-    update_import_script_error()

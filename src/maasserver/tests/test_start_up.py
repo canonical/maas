@@ -12,11 +12,6 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
-from multiprocessing import (
-    Process,
-    Value,
-    )
-
 from lockfile import (
     FileLock,
     LockTimeout,
@@ -38,6 +33,19 @@ from maastesting.fakemethod import FakeMethod
 from mock import Mock
 from provisioningserver import tasks
 from testresources import FixtureResource
+
+
+class LockChecker:
+    """Callable.  Records calls, and whether the startup lock was held."""
+
+    def __init__(self, lock_file=None):
+        self.call_count = 0
+        self.lock_was_held = None
+
+    def __call__(self):
+        self.call_count += 1
+        lock = FileLock(start_up.LOCK_FILE_NAME)
+        self.lock_was_held = lock.is_locked()
 
 
 class TestStartUp(TestCase):
@@ -79,22 +87,18 @@ class TestStartUp(TestCase):
         patched_handlers['nodegroup_uuid'].assert_called_once_with(
             NodeGroup.objects.ensure_master().uuid)
 
-    def test_start_up_runs_in_exclusion(self):
-        called = Value('b', False)
-
-        def check_lock():
-            called.value = True
-            lock = FileLock(start_up.LOCK_FILE_NAME)
-            self.assertRaises(LockTimeout, lock.acquire, timeout=0.1)
-
-        def check_lock_in_subprocess():
-            proc = Process(target=check_lock)
-            proc.start()
-            proc.join()
-
-        self.patch(start_up, 'inner_start_up', check_lock_in_subprocess)
+    def test_start_up_refreshes_workers_outside_lock(self):
+        lock_checker = LockChecker()
+        self.patch(NodeGroup.objects, 'refresh_workers', lock_checker)
         start_up.start_up()
-        self.assertTrue(called.value)
+        self.assertEquals(False, lock_checker.lock_was_held)
+
+    def test_start_up_runs_in_exclusion(self):
+        lock_checker = LockChecker()
+        self.patch(start_up, 'inner_start_up', lock_checker)
+        start_up.start_up()
+        self.assertEqual(1, lock_checker.call_count)
+        self.assertEqual(True, lock_checker.lock_was_held)
 
     def test_start_up_respects_timeout_to_acquire_lock(self):
         recorder = FakeMethod()
