@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Utilities for the provisioning server."""
@@ -16,6 +16,7 @@ __all__ = [
     "deferred",
     "import_settings",
     "incremental_write",
+    "locate_config",
     "MainScript",
     "parse_key_value_file",
     "ShellTemplate",
@@ -44,6 +45,29 @@ import netifaces
 from provisioningserver.config import Config
 import tempita
 from twisted.internet.defer import maybeDeferred
+
+
+def locate_config(*path):
+    """Return the location of a given config file or directory.
+
+    Defaults to `/etc/maas` (followed by any further path elements you
+    specify), but can be overridden using the `MAAS_CONFIG_DIR` environment
+    variable.  (When running from a branch, this variable will point to the
+    `etc/maas` inside the branch.)
+
+    The result is absolute and normalized.
+    """
+    # Check for MAAS_CONFIG_DIR.  Count empty string as "not set."
+    env_setting = os.getenv('MAAS_CONFIG_DIR', '')
+    if env_setting == '':
+        # Running from installed package.  Config is in /etc/maas.
+        config_dir = '/etc/maas'
+    else:
+        # Running from branch or other customized setup.  Config is at
+        # $MAAS_CONFIG_DIR/etc/maas.
+        config_dir = env_setting
+
+    return os.path.abspath(os.path.join(config_dir, *path))
 
 
 def find_settings(whence):

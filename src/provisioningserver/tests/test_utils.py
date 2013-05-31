@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test `provisioningserver.utils`."""
@@ -31,6 +31,7 @@ from textwrap import dedent
 import time
 import types
 
+from fixtures import EnvironmentVariableFixture
 from maastesting import root
 from maastesting.factory import factory
 from maastesting.fakemethod import FakeMethod
@@ -50,6 +51,7 @@ from provisioningserver.utils import (
     get_all_interface_addresses,
     get_mtime,
     incremental_write,
+    locate_config,
     maas_custom_config_markers,
     MainScript,
     parse_key_value_file,
@@ -60,11 +62,54 @@ from provisioningserver.utils import (
     write_custom_config_section,
     )
 from testtools.matchers import (
+    DirExists,
     EndsWith,
     FileContains,
     MatchesStructure,
     )
 from testtools.testcase import ExpectedException
+
+
+def get_branch_dir(*path):
+    """Locate a file or directory relative to this branch."""
+    return os.path.abspath(os.path.join(root, *path))
+
+
+class TestLocateConfig(TestCase):
+    """Tests for `locate_config`."""
+
+    def test_returns_branch_etc_maas(self):
+        self.assertEqual(get_branch_dir('etc/maas'), locate_config())
+        self.assertThat(locate_config(), DirExists())
+
+    def test_defaults_to_global_etc_maas_if_variable_is_unset(self):
+        self.useFixture(EnvironmentVariableFixture('MAAS_CONFIG_DIR', None))
+        self.assertEqual('/etc/maas', locate_config())
+
+    def test_defaults_to_global_etc_maas_if_variable_is_empty(self):
+        self.useFixture(EnvironmentVariableFixture('MAAS_CONFIG_DIR', ''))
+        self.assertEqual('/etc/maas', locate_config())
+
+    def test_returns_absolute_path(self):
+        self.useFixture(EnvironmentVariableFixture('MAAS_CONFIG_DIR', '.'))
+        self.assertTrue(os.path.isabs(locate_config()))
+
+    def test_locates_config_file(self):
+        filename = factory.getRandomString()
+        self.assertEqual(
+            get_branch_dir('etc/maas/', filename),
+            locate_config(filename))
+
+    def test_locates_full_path(self):
+        path = [factory.getRandomString() for counter in range(3)]
+        self.assertEqual(
+            get_branch_dir('etc/maas/', *path),
+            locate_config(*path))
+
+    def test_normalizes_path(self):
+        self.assertEquals(
+            get_branch_dir('etc/maas/bar/szot'),
+            locate_config('foo/.././bar///szot'))
 
 
 class TestInterfaceFunctions(TestCase):
