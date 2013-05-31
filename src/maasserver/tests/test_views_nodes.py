@@ -43,7 +43,10 @@ from maasserver.models import (
     MACAddress,
     Node,
     )
-from maasserver.node_action import StartNode
+from maasserver.node_action import (
+    Commission,
+    StartNode,
+    )
 from maasserver.preseed import (
     get_enlist_preseed,
     get_preseed,
@@ -547,6 +550,15 @@ class NodeViewsTest(LoggedInTestCase):
             node_link, data={NodeActionForm.input_name: StartNode.display})
         self.assertEqual(httplib.FOUND, response.status_code)
         self.assertEqual(NODE_STATUS.ALLOCATED, reload_object(node).status)
+
+    def test_view_node_POST_commission(self):
+        self.become_admin()
+        node = factory.make_node(status=NODE_STATUS.READY)
+        node_link = reverse('node-view', args=[node.system_id])
+        response = self.client.post(
+            node_link, data={NodeActionForm.input_name: Commission.display})
+        self.assertEqual(httplib.FOUND, response.status_code)
+        self.assertEqual(NODE_STATUS.COMMISSIONING, reload_object(node).status)
 
     def perform_action_and_get_node_page(self, node, action_name):
         """POST to perform a node action, then load the resulting page."""

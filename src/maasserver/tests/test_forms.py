@@ -58,7 +58,7 @@ from maasserver.models import (
     )
 from maasserver.models.config import DEFAULT_CONFIG
 from maasserver.node_action import (
-    AcceptAndCommission,
+    Commission,
     Delete,
     )
 from maasserver.testing import reload_object
@@ -468,7 +468,7 @@ class TestNodeActionForm(TestCase):
         form = get_action_form(admin)(node)
 
         self.assertItemsEqual(
-            [AcceptAndCommission.display, Delete.display],
+            [Commission.display, Delete.display],
             form.actions)
 
     def test_get_action_form_for_user(self):
@@ -484,7 +484,7 @@ class TestNodeActionForm(TestCase):
         admin = factory.make_admin()
         node = factory.make_node(status=NODE_STATUS.DECLARED)
         form = get_action_form(admin)(
-            node, {NodeActionForm.input_name: AcceptAndCommission.display})
+            node, {NodeActionForm.input_name: Commission.display})
         form.save()
         self.assertEqual(NODE_STATUS.COMMISSIONING, node.status)
 
@@ -492,7 +492,7 @@ class TestNodeActionForm(TestCase):
         user = factory.make_user()
         node = factory.make_node(status=NODE_STATUS.DECLARED)
         form = get_action_form(user)(
-            node, {NodeActionForm.input_name: AcceptAndCommission.display})
+            node, {NodeActionForm.input_name: Commission.display})
         self.assertRaises(PermissionDenied, form.save)
 
     def test_save_refuses_unknown_action(self):

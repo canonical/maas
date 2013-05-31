@@ -22,11 +22,10 @@ from maasserver.enum import (
     )
 from maasserver.exceptions import Redirect
 from maasserver.node_action import (
-    AcceptAndCommission,
+    Commission,
     compile_node_actions,
     Delete,
     NodeAction,
-    RetryCommissioning,
     StartNode,
     StopNode,
     )
@@ -192,32 +191,22 @@ class TestDeleteNodeAction(TestCase):
             urlparse(unicode(e)).path)
 
 
-class TestAcceptAndCommissionNodeAction(TestCase):
+class TestCommissionNodeAction(TestCase):
 
-    def test_AcceptAndCommission_starts_commissioning(self):
-        node = factory.make_node(
-            mac=True, status=NODE_STATUS.DECLARED,
-            power_type=POWER_TYPE.WAKE_ON_LAN)
-        action = AcceptAndCommission(node, factory.make_admin())
-        action.execute()
-        self.assertEqual(NODE_STATUS.COMMISSIONING, node.status)
-        self.assertEqual(
-            'provisioningserver.tasks.power_on',
-            self.celery.tasks[0]['task'].name)
-
-
-class TestRetryCommissioningNodeAction(TestCase):
-
-    def test_RetryCommissioning_starts_commissioning(self):
-        node = factory.make_node(
-            mac=True, status=NODE_STATUS.FAILED_TESTS,
-            power_type=POWER_TYPE.WAKE_ON_LAN)
-        action = RetryCommissioning(node, factory.make_admin())
-        action.execute()
-        self.assertEqual(NODE_STATUS.COMMISSIONING, node.status)
-        self.assertEqual(
-            'provisioningserver.tasks.power_on',
-            self.celery.tasks[0]['task'].name)
+    def test_Commission_starts_commissioning(self):
+        statuses = (
+            NODE_STATUS.DECLARED, NODE_STATUS.FAILED_TESTS,
+            NODE_STATUS.READY)
+        for status in statuses:
+            node = factory.make_node(
+                mac=True, status=status,
+                power_type=POWER_TYPE.WAKE_ON_LAN)
+            action = Commission(node, factory.make_admin())
+            action.execute()
+            self.assertEqual(NODE_STATUS.COMMISSIONING, node.status)
+            self.assertEqual(
+                'provisioningserver.tasks.power_on',
+                self.celery.tasks[0]['task'].name)
 
 
 class TestStartNodeNodeAction(TestCase):

@@ -143,26 +143,16 @@ class Delete(NodeAction):
         raise Redirect(reverse('node-delete', args=[self.node.system_id]))
 
 
-class AcceptAndCommission(NodeAction):
+class Commission(NodeAction):
     """Accept a node into the MAAS, and start the commissioning process."""
-    display = "Accept & commission"
-    actionable_statuses = (NODE_STATUS.DECLARED, )
+    display = "Commission node"
+    actionable_statuses = (
+        NODE_STATUS.DECLARED, NODE_STATUS.FAILED_TESTS, NODE_STATUS.READY)
     permission = NODE_PERMISSION.ADMIN
 
     def execute(self):
         self.node.start_commissioning(self.user)
         return "Node commissioning started."
-
-
-class RetryCommissioning(NodeAction):
-    """Retry commissioning of a node that failed previously."""
-    display = "Retry commissioning"
-    actionable_statuses = (NODE_STATUS.FAILED_TESTS, )
-    permission = NODE_PERMISSION.ADMIN
-
-    def execute(self):
-        self.node.start_commissioning(self.user)
-        return "Started a new attempt to commission this node."
 
 
 class StartNode(NodeAction):
@@ -212,8 +202,7 @@ class StopNode(NodeAction):
 
 ACTION_CLASSES = (
     Delete,
-    AcceptAndCommission,
-    RetryCommissioning,
+    Commission,
     StartNode,
     StopNode,
     )
