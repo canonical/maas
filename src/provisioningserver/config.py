@@ -84,17 +84,14 @@ class ConfigMeta(DeclarativeMeta):
     """Metaclass for the root configuration schema."""
 
     def _get_default_filename(cls):
+        # Avoid circular imports.
+        from provisioningserver.utils import locate_config
+
         # Get the configuration filename from the environment. Failing that,
         # look for the configuration in its default locations.
-        configured_location = environ.get("MAAS_PROVISIONING_SETTINGS")
-        if configured_location is not None:
-            return configured_location
-        for filename in ['etc/pserv.yaml', '/etc/maas/pserv.yaml']:
-            if os.path.isfile(filename):
-                return filename
-        # Oh well.  Just return the last filename we tried, and let the
-        # caller report that that file was not found.
-        return filename
+        return environ.get(
+            "MAAS_PROVISIONING_SETTINGS",
+            locate_config('pserv.yaml'))
 
     def _set_default_filename(cls, filename):
         # Set the configuration filename in the environment.

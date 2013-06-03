@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Django DEVELOPMENT settings for maas project."""
@@ -101,7 +101,8 @@ DEV_ROOT_DIRECTORY = os.path.join(
     os.path.dirname(__file__), os.pardir, os.pardir)
 
 # Override the default provisioning config filename.
-provisioningserver.config.Config.DEFAULT_FILENAME = abspath("etc/pserv.yaml")
+provisioningserver.config.Config.DEFAULT_FILENAME = abspath(
+    "etc/maas/pserv.yaml")
 
 # Set up celery to use the demo settings.
 os.environ['CELERY_CONFIG_MODULE'] = 'democeleryconfig'

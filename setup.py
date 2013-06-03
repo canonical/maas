@@ -1,5 +1,5 @@
 #!/usr/bin/env python2.7
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Distribute/Setuptools installer for MAAS."""
@@ -54,7 +54,7 @@ setup(
 
     data_files=[
         ('/etc/maas',
-            ['etc/pserv.yaml',
+            ['etc/maas/pserv.yaml',
              'etc/maas_cluster.conf',
              'etc/txlongpoll.yaml',
              'contrib/maas_local_celeryconfig.py',

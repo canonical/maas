@@ -1,4 +1,4 @@
-# Copyright 2005-2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2005-2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for provisioning configuration."""
@@ -69,44 +69,40 @@ class TestConfigFixture(TestCase):
 class TestConfig_DEFAULT_FILENAME(TestCase):
     """Tests for `provisioningserver.config.Config.DEFAULT_FILENAME`."""
 
-    def setUp(self):
-        super(TestConfig_DEFAULT_FILENAME, self).setUp()
-        # Start with a clean environment every time.
-        fixture = EnvironmentVariableFixture("MAAS_PROVISIONING_SETTINGS")
-        self.useFixture(fixture)
-
-    def make_current_dir(self):
-        """Create a directory and pretend it's the current one."""
-        local_dir = self.make_dir()
-        self.addCleanup(os.chdir, os.getcwd())
-        os.chdir(local_dir)
-        return local_dir
-
-    def make_local_config(self):
-        """Set up a local configuration file."""
-        file_location = os.path.join(self.make_current_dir(), 'etc')
-        os.makedirs(file_location)
-        return factory.make_file(file_location, name='pserv.yaml')
-
-    def test_gets_filename_from_environment(self):
-        dummy_filename = factory.make_name("config")
+    def set_MAAS_PROVISIONING_SETTINGS(self, filepath=None):
+        """Continue this test with a given `MAAS_PROVISIONING_SETTINGS`."""
         self.useFixture(EnvironmentVariableFixture(
-            "MAAS_PROVISIONING_SETTINGS", dummy_filename))
+            "MAAS_PROVISIONING_SETTINGS", filepath))
+
+    def set_MAAS_CONFIG_DIR(self, dirpath=None):
+        """Continue this test with a given `MAAS_CONFIG_DIR`."""
+        self.useFixture(EnvironmentVariableFixture("MAAS_CONFIG_DIR", dirpath))
+
+    def make_config(self, name='pserv.yaml'):
+        """Create a `pserv.yaml` in a directory of its own."""
+        return self.make_file(name=name)
+
+    def test_gets_filename_from_MAAS_PROVISIONING_SETTNGS(self):
+        dummy_filename = factory.make_name("config")
+        self.set_MAAS_CONFIG_DIR(None)
+        self.set_MAAS_PROVISIONING_SETTINGS(dummy_filename)
         self.assertEqual(dummy_filename, Config.DEFAULT_FILENAME)
 
-    def test_gets_local_config_file(self):
-        self.make_local_config()
-        self.assertEqual('etc/pserv.yaml', Config.DEFAULT_FILENAME)
+    def test_falls_back_to_MAAS_CONFIG_DIR(self):
+        config_file = self.make_config()
+        self.set_MAAS_CONFIG_DIR(os.path.dirname(config_file))
+        self.set_MAAS_PROVISIONING_SETTINGS(None)
+        self.assertEqual(config_file, Config.DEFAULT_FILENAME)
 
-    def test_environment_overrides_filesystem(self):
-        dummy_filename = factory.make_name("config")
-        self.useFixture(EnvironmentVariableFixture(
-            "MAAS_PROVISIONING_SETTINGS", dummy_filename))
-        self.make_local_config()
-        self.assertEqual(dummy_filename, Config.DEFAULT_FILENAME)
+    def test_MAAS_PROVISIONING_SETTINGS_trumps_MAAS_CONFIG_DIR(self):
+        provisioning_settings = factory.make_name("config")
+        self.set_MAAS_CONFIG_DIR(os.path.dirname(self.make_config()))
+        self.set_MAAS_PROVISIONING_SETTINGS(provisioning_settings)
+        self.assertEqual(provisioning_settings, Config.DEFAULT_FILENAME)
 
     def test_defaults_to_global_config(self):
-        self.make_current_dir()
+        self.set_MAAS_CONFIG_DIR(None)
+        self.set_MAAS_PROVISIONING_SETTINGS(None)
         self.assertEqual('/etc/maas/pserv.yaml', Config.DEFAULT_FILENAME)
 
     def test_set(self):
@@ -115,7 +111,8 @@ class TestConfig_DEFAULT_FILENAME(TestCase):
         self.assertEqual(dummy_filename, Config.DEFAULT_FILENAME)
 
     def test_delete(self):
-        self.make_current_dir()
+        self.set_MAAS_CONFIG_DIR(None)
+        self.set_MAAS_PROVISIONING_SETTINGS(None)
         Config.DEFAULT_FILENAME = factory.make_name("config")
         del Config.DEFAULT_FILENAME
         # The filename reverts; see test_get_with_environment_empty.
@@ -180,7 +177,7 @@ class TestConfig(TestCase):
 
     def test_load_example(self):
         # The example configuration is designed for development.
-        filename = os.path.join(root, "etc", "pserv.yaml")
+        filename = os.path.join(root, "etc", "maas", "pserv.yaml")
         self.assertEqual(
             self.default_development_config,
             Config.load(filename))

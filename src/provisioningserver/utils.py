@@ -435,9 +435,10 @@ class MainScript(ActionScript):
     """An `ActionScript` that always accepts a `--config-file` option.
 
     The `--config-file` option defaults to the value of
-    `MAAS_PROVISIONING_SETTINGS` in the process's environment, otherwise
-    `etc/maas/pserv.yaml` relative to the current directory or if that does
-    not exist, `/etc/maas/pserv.yaml`.
+    `MAAS_PROVISIONING_SETTINGS` in the process's environment, or absent
+    that, `$MAAS_CONFIG_DIR/pserv.yaml` (normally /etc/maas/pserv.yaml for
+    packaged installations, or when running from branch, the equivalent
+    inside that branch).
     """
 
     def __init__(self, description):

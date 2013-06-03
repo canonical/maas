@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 # Exit immediately if a command exits with a non-zero status.
@@ -16,7 +16,7 @@ cd "$(dirname "$0")/../.."
 
 # Exec the Provisioning Server.
 script="$(readlink -f bin/twistd.pserv)"
-config="$(readlink -f etc/pserv.yaml)"
+config="$(readlink -f etc/maas/pserv.yaml)"
 
 # Set a fixed cluster UUID.  This is identical for all cluster services
 # running in the demo setup: they're all the same cluster.
