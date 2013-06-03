@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Actions for power-related operations."""
@@ -21,7 +21,10 @@ import os
 import subprocess
 
 from celery.app import app_or_default
-from provisioningserver.utils import ShellTemplate
+from provisioningserver.utils import (
+    locate_config,
+    ShellTemplate,
+    )
 
 
 class UnknownPowerType(Exception):
@@ -75,26 +78,14 @@ class PowerAction:
     @property
     def template_basedir(self):
         """Directory where power templates are stored."""
-        power_templates_dir = get_power_templates_dir()
-        if power_templates_dir is None:
-            # The power templates are installed into the same location
-            # as this file, and also live in the same directory as this
-            # file in the source tree.
-            return os.path.join(os.path.dirname(__file__), 'templates')
-        else:
-            return power_templates_dir
+        return get_power_templates_dir() or locate_config('templates/power')
 
     @property
     def config_basedir(self):
         """Directory where power config are stored."""
-        power_config_dir = get_power_config_dir()
-        if power_config_dir is None:
-            # The power config files are installed into the same location
-            # as this file, and also live in the same directory as this
-            # file in the source tree.
-            return os.path.join(os.path.dirname(__file__), 'config')
-        else:
-            return power_config_dir
+        # By default, power config lives in the same directory as power
+        # templates.  This makes it easy to customize them together.
+        return get_power_config_dir() or locate_config('templates/power')
 
     def get_template(self):
         with open(self.path, "rb") as f:

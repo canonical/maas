@@ -65,6 +65,9 @@ setup(
              'contrib/maas-http.conf',
              'contrib/maas-cluster-http.conf',
              'contrib/maas_local_settings.py']),
+        ('/etc/maas/templates/power',
+            glob('etc/maas/templates/power/*.template') +
+            glob('etc/maas/templates/power/*.conf')),
         ('/etc/maas/templates/pxe', glob('etc/maas/templates/pxe/*.template')),
         ('/usr/share/maas',
             ['contrib/wsgi.py',

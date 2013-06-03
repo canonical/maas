@@ -26,7 +26,10 @@ from provisioningserver.power.poweraction import (
     PowerActionFail,
     UnknownPowerType,
     )
-from provisioningserver.utils import ShellTemplate
+from provisioningserver.utils import (
+    locate_config,
+    ShellTemplate,
+    )
 from testtools.matchers import (
     FileContains,
     MatchesException,
@@ -60,12 +63,12 @@ class TestPowerAction(TestCase):
         path = os.path.join(pa.template_basedir, power_type + ".template")
         self.assertEqual(path, pa.path)
 
-    def test_template_basedir_defaults_to_local_dir(self):
+    def test_template_basedir_defaults_to_config_dir(self):
         self.configure_templates_dir()
+        power_type = POWER_TYPE.WAKE_ON_LAN
         self.assertEqual(
-            os.path.join(
-                os.path.dirname(os.path.dirname(__file__)), 'templates'),
-            PowerAction(POWER_TYPE.WAKE_ON_LAN).template_basedir)
+            locate_config('templates/power'),
+            PowerAction(power_type).template_basedir)
 
     def test_template_basedir_prefers_configured_value(self):
         power_type = POWER_TYPE.WAKE_ON_LAN
@@ -189,13 +192,13 @@ class TestPowerAction(TestCase):
 
     def test_config_basedir_defaults_to_local_dir(self):
         self.configure_power_config_dir()
+        power_type = POWER_TYPE.WAKE_ON_LAN
         self.assertEqual(
-            os.path.join(
-                os.path.dirname(os.path.dirname(__file__)), 'config'),
-            PowerAction(POWER_TYPE.WAKE_ON_LAN).config_basedir)
+            locate_config('templates/power'),
+             PowerAction(power_type).config_basedir)
 
     def test_ipmi_script_includes_config_dir(self):
-        conf_dir = factory.make_name('power_confi_dir')
+        conf_dir = factory.make_name('power_config_dir')
         self.configure_power_config_dir(conf_dir)
         action = PowerAction(POWER_TYPE.IPMI)
         script = action.render_template(
