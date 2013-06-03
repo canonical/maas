@@ -10,6 +10,7 @@ from __future__ import (
     unicode_literals,
     )
 
+from glob import glob
 from os.path import (
     dirname,
     join,
@@ -64,6 +65,7 @@ setup(
              'contrib/maas-http.conf',
              'contrib/maas-cluster-http.conf',
              'contrib/maas_local_settings.py']),
+        ('/etc/maas/templates/pxe', glob('etc/maas/templates/pxe/*.template')),
         ('/usr/share/maas',
             ['contrib/wsgi.py',
              'etc/celeryconfig.py',

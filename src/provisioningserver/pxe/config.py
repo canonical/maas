@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Generating PXE configuration files.
@@ -25,10 +25,11 @@ from os import path
 
 from provisioningserver.kernel_opts import compose_kernel_command_line
 from provisioningserver.pxe.tftppath import compose_image_path
+from provisioningserver.utils import locate_config
 import tempita
 
-# TODO: make this configurable.
-template_dir = path.dirname(__file__)
+# Location of PXE templates, relative to the configuration directory.
+template_dir = 'templates/pxe'
 
 
 def gen_pxe_template_filenames(purpose, arch, subarch):
@@ -56,18 +57,20 @@ def gen_pxe_template_filenames(purpose, arch, subarch):
 
 
 def get_pxe_template(purpose, arch, subarch):
+    pxe_templates_dir = locate_config(template_dir)
     # Templates are loaded each time here so that they can be changed on
     # the fly without restarting the provisioning server.
     for filename in gen_pxe_template_filenames(purpose, arch, subarch):
+        template_name = path.join(pxe_templates_dir, filename)
         try:
             return tempita.Template.from_filename(
-                path.join(template_dir, filename), encoding="UTF-8")
+                template_name, encoding="UTF-8")
         except IOError as error:
             if error.errno != ENOENT:
                 raise
     else:
         raise AssertionError(
-            "No PXE template found in %r!" % template_dir)
+            "No PXE template found in %r!" % pxe_templates_dir)
 
 
 def render_pxe_config(kernel_params, **extra):

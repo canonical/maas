@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `provisioningserver.pxe.config`."""
@@ -14,10 +14,10 @@ __all__ = []
 
 from collections import OrderedDict
 import errno
-from os import path
+import os
 import re
-import unittest
 
+from fixtures import EnvironmentVariableFixture
 from maastesting.factory import factory
 from maastesting.matchers import ContainsAll
 from maastesting.testcase import TestCase
@@ -27,6 +27,7 @@ from provisioningserver.pxe import config
 from provisioningserver.pxe.config import render_pxe_config
 from provisioningserver.pxe.tftppath import compose_image_path
 from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
+from provisioningserver.utils import locate_config
 import tempita
 from testtools.matchers import (
     Contains,
@@ -69,26 +70,33 @@ class TestFunctions(TestCase):
         # Tempita.from_filename is called with an absolute path derived from
         # the filename returned from gen_pxe_template_filenames.
         from_filename.assert_called_once_with(
-            path.join(config.template_dir, filename), encoding="UTF-8")
+            locate_config(config.template_dir, filename), encoding="UTF-8")
 
-    config_template_path = path.join(config.template_dir, "config.template")
+    def make_fake_templates_dir(self):
+        """Set up a fake PXE templates dir, and return its path."""
+        fake_etc_maas = self.make_dir()
+        self.useFixture(EnvironmentVariableFixture(
+            'MAAS_CONFIG_DIR', fake_etc_maas))
+        fake_templates = os.path.join(fake_etc_maas, config.template_dir)
+        os.makedirs(fake_templates)
+        return fake_templates
 
-    @unittest.skipUnless(path.exists(config_template_path),
-                         "no default template in use")
-    def test_get_pxe_template_gets_default(self):
-        # There will not be a template matching the following purpose, arch,
-        # and subarch, so get_pxe_template() returns the default template.
+    def test_get_pxe_template_gets_default_if_available(self):
+        # If there is no template matching the purpose, arch, and subarch,
+        # but there is a completely generic template, then get_pxe_template()
+        # falls back to that as the default.
+        templates_dir = self.make_fake_templates_dir()
+        generic_template = factory.make_file(templates_dir, 'config.template')
         purpose = factory.make_name("purpose")
         arch, subarch = factory.make_names("arch", "subarch")
-        template = config.get_pxe_template(purpose, arch, subarch)
         self.assertEqual(
-            path.join(config.template_dir, "config.template"),
-            template.name)
+            generic_template,
+            config.get_pxe_template(purpose, arch, subarch).name)
 
     def test_get_pxe_template_not_found(self):
         # It is a critical and unrecoverable error if the default PXE template
         # is not found.
-        self.patch(config, "gen_pxe_template_filenames").return_value = []
+        self.make_fake_templates_dir()
         self.assertRaises(
             AssertionError, config.get_pxe_template,
             *factory.make_names("purpose", "arch", "subarch"))
