@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Write config output for ISC DHCPD."""
@@ -16,14 +16,14 @@ __all__ = [
 ]
 
 
-from os import path
 from platform import linux_distribution
 
 from provisioningserver.pxe.tftppath import compose_bootloader_path
+from provisioningserver.utils import locate_config
 import tempita
 
-# TODO: make this configurable.
-template_dir = path.join(path.dirname(__file__), 'templates')
+# Location of DHCP templates, relative to the configuration directory.
+template_dir = "templates/dhcp"
 
 
 class DHCPConfigError(Exception):
@@ -47,12 +47,12 @@ def get_config(**params):
     :param high_range: The last IP address in the range of IP addresses to
         allocate
     """
-    template_file = path.join(template_dir, 'dhcpd.conf.template')
+    template_file = locate_config(template_dir, 'dhcpd.conf.template')
     params['bootloader'] = compose_bootloader_path()
     params['platform_codename'] = linux_distribution()[2]
     try:
         template = tempita.Template.from_filename(
             template_file, encoding="UTF-8")
         return template.substitute(params)
-    except NameError, error:
+    except NameError as error:
         raise DHCPConfigError(*error.args)

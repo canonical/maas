@@ -12,9 +12,14 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
-from os import path
+from os import (
+    makedirs,
+    path,
+    )
 from textwrap import dedent
 
+from fixtures import EnvironmentVariableFixture
+from maastesting.factory import factory
 from maastesting.matchers import Contains
 from mock import Mock
 from provisioningserver.dhcp import config
@@ -65,10 +70,19 @@ class TestDHCPConfig(PservTestCase):
         can make its own substitutions and compare to those made by the
         code being tested.
         """
-        template = self.make_file(
-            'dhcpd.conf.template', contents=template_content)
-        self.patch(config, "template_dir", path.dirname(template))
+        fake_etc_maas = self.make_dir()
+        self.useFixture(EnvironmentVariableFixture(
+            'MAAS_CONFIG_DIR', fake_etc_maas))
+        template_dir = path.join(fake_etc_maas, 'templates', 'dhcp')
+        makedirs(template_dir)
+        template = factory.make_file(
+            template_dir, 'dhcpd.conf.template', contents=template_content)
         return tempita.Template(template_content, name=template)
+
+    def test_uses_branch_template_by_default(self):
+        # Since the branch comes with a dhcp template in etc/maas, we can
+        # instantiate that template without any hackery.
+        self.assertIsNotNone(config.get_config(**make_sample_params()))
 
     def test_param_substitution(self):
         template = self.patch_template()
