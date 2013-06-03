@@ -76,7 +76,7 @@ setup(
              'etc/celeryconfig.py',
              'etc/celeryconfig_cluster.py',
              'etc/celeryconfig_common.py']),
-        ('/usr/share/maas/preseeds',
+        ('/etc/maas/preseeds',
             ['contrib/preseeds_v2/commissioning',
              'contrib/preseeds_v2/enlist',
              'contrib/preseeds_v2/generic',
