@@ -44,8 +44,8 @@ from maasserver.models import (
     Node,
     )
 from maasserver.node_action import (
-    Delete,
     Commission,
+    Delete,
     StartNode,
     )
 from maasserver.preseed import (
@@ -551,7 +551,7 @@ class NodeViewsTest(LoggedInTestCase):
         node = factory.make_node(status=NODE_STATUS.READY)
         node_link = reverse('node-view', args=[node.system_id])
         response = self.client.post(
-            node_link, data={NodeActionForm.input_name: StartNode.display})
+            node_link, data={NodeActionForm.input_name: StartNode.name})
         self.assertEqual(httplib.FOUND, response.status_code)
         self.assertEqual(NODE_STATUS.ALLOCATED, reload_object(node).status)
 
@@ -560,7 +560,7 @@ class NodeViewsTest(LoggedInTestCase):
         node = factory.make_node(status=NODE_STATUS.READY)
         node_link = reverse('node-view', args=[node.system_id])
         response = self.client.post(
-            node_link, data={NodeActionForm.input_name: Commission.display})
+            node_link, data={NodeActionForm.input_name: Commission.name})
         self.assertEqual(httplib.FOUND, response.status_code)
         self.assertEqual(NODE_STATUS.COMMISSIONING, reload_object(node).status)
 
@@ -579,7 +579,7 @@ class NodeViewsTest(LoggedInTestCase):
         self.set_up_oauth_token()
         node = factory.make_node(status=NODE_STATUS.READY)
         response = self.perform_action_and_get_node_page(
-            node, StartNode.display)
+            node, StartNode.name)
         self.assertIn(
             "This node is now allocated to you.",
             '\n'.join(msg.message for msg in response.context['messages']))

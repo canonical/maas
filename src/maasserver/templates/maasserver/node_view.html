@@ -19,18 +19,19 @@
     <h4>Actions</h4>
     <form id="node_actions" method="post" action=".">{% csrf_token %}
       {% for action in form.action_buttons %}
-        <input
+        <button
           class="secondary
                  {% if action.inhibition %}disabled{% endif %}
                  {% if not forloop.first %}space-top{% endif %}"
           type="submit"
           name="{{ form.input_name }}"
-          value="{{ action.display }}"
+          value="{{ action.name }}"
           {% if action.inhibition %}}
             title="{{ action.inhibition }}"
             disabled="disabled"
-          {% endif %}
-          />
+          {% endif %} >
+          {{ action.display }}
+        </button>
       {% endfor %}
     </form>
   {% endif %}

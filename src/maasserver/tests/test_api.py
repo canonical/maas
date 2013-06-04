@@ -1401,6 +1401,15 @@ class TestNodeAPI(APITestCase):
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(NODE_STATUS.READY, reload_object(node).status)
 
+    def test_POST_commission_commissions_node(self):
+        node = factory.make_node(
+            status=NODE_STATUS.READY, owner=factory.make_user())
+        self.become_admin()
+        response = self.client.post(
+            self.get_node_uri(node), {'op': 'commission'})
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(NODE_STATUS.COMMISSIONING, reload_object(node).status)
+
     def test_PUT_updates_node(self):
         # The api allows the updating of a Node.
         node = factory.make_node(hostname='diane', owner=self.logged_in_user)

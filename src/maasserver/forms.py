@@ -45,10 +45,7 @@ from django.contrib.auth.models import (
     AnonymousUser,
     User,
     )
-from django.core.exceptions import (
-    PermissionDenied,
-    ValidationError,
-    )
+from django.core.exceptions import ValidationError
 from django.forms import (
     Form,
     ModelForm,
@@ -438,8 +435,14 @@ class NodeActionForm(forms.Form):
     user = AnonymousUser()
     request = None
 
+    action = forms.ChoiceField(
+        required=True,
+        choices=[
+            (action.name, action.display_bulk)
+            for action in ACTION_CLASSES])
+
     # The name of the input button used with this form.
-    input_name = 'node_action'
+    input_name = 'action'
 
     def __init__(self, instance, *args, **kwargs):
         super(NodeActionForm, self).__init__(*args, **kwargs)
@@ -452,19 +455,32 @@ class NodeActionForm(forms.Form):
         if self.request is not None:
             messages.add_message(self.request, messages.INFO, message)
 
-    def save(self):
+    def clean_action(self):
+        action_name = self.cleaned_data['action']
+        # The field 'action' is required so 'action_name' will be None
+        # here only if the field itself did not validate the data.
+        if action_name is not None:
+            action = self.actions.get(action_name)
+            if action is None or not action.is_permitted():
+                error_message = 'Not a permitted action: %s.' % action_name
+                raise ValidationError(
+                    {'action': [error_message]})
+            if action is not None and action.inhibition is not None:
+                raise ValidationError(
+                    {'action': [action.inhibition]})
+        return action_name
+
+    def save(self, allow_redirect=True):
         """An action was requested.  Perform it.
 
         This implementation of `save` does not support the `commit` argument.
         """
-        action_name = self.data.get(self.input_name)
+        action_name = self.data.get('action')
         action = self.actions.get(action_name)
-        if action is None or not action.is_permitted():
-            raise PermissionDenied("Not a permitted action: %s" % action_name)
-        if action.inhibition is not None:
-            raise PermissionDenied(action.inhibition)
-        message = action.execute()
+        message = action.execute(allow_redirect=allow_redirect)
         self.display_message(message)
+        # Return updated node.
+        return Node.objects.get(system_id=self.node.system_id)
 
 
 def get_action_form(user, request=None):

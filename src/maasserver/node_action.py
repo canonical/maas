@@ -256,6 +256,6 @@ def compile_node_actions(node, user, request=None, classes=ACTION_CLASSES):
         for action_class in classes
             if node.status in action_class.actionable_statuses)
     return OrderedDict(
-        (action.display, action)
+        (action.name, action)
         for action in applicable_actions
             if action.is_permitted())

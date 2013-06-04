@@ -161,8 +161,10 @@ from maasserver.fields import (
     validate_mac,
     )
 from maasserver.forms import (
+    get_action_form,
     get_node_create_form,
     get_node_edit_form,
+    NodeActionForm,
     NodeGroupEdit,
     NodeGroupInterfaceForm,
     NodeGroupWithInterfacesForm,
@@ -187,6 +189,7 @@ from maasserver.models import (
     Tag,
     )
 from maasserver.models.node import CONSTRAINTS_MAAS_MAP
+from maasserver.node_action import Commission
 from maasserver.preseed import (
     compose_enlistment_preseed_url,
     compose_preseed_url,
@@ -390,6 +393,27 @@ class NodeHandler(OperationsHandler):
                 "Node cannot be released in its current state ('%s')."
                 % node.display_status())
         return node
+
+    @operation(idempotent=False)
+    def commission(self, request, system_id):
+        """Begin commissioning process for a node.
+
+        A node in the 'ready', 'declared' or 'failed test' state may
+        initiate a commissioning cycle where it is checked out and tested
+        in preparation for transitioning to the 'ready' state. If it is
+        already in the 'ready' state this is considered a re-commissioning
+        process which is useful if commissioning tests were changed after
+        it previously commissioned.
+        """
+        node = get_object_or_404(Node, system_id=system_id)
+        form_class = get_action_form(user=request.user)
+        form = form_class(
+            node, data={NodeActionForm.input_name: Commission.name})
+        if form.is_valid():
+            node = form.save(allow_redirect=False)
+            return node
+        else:
+            raise ValidationError(form.errors)
 
 
 def create_node(request):

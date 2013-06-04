@@ -60,11 +60,11 @@ class TestNodeAction(TestCase):
     def test_compile_node_actions_returns_available_actions(self):
 
         class MyAction(FakeNodeAction):
-            display = factory.getRandomString()
+            name = factory.getRandomString()
 
         actions = compile_node_actions(
             factory.make_node(), factory.make_admin(), classes=[MyAction])
-        self.assertEqual([MyAction.display], actions.keys())
+        self.assertEqual([MyAction.name], actions.keys())
 
     def test_compile_node_actions_checks_node_status(self):
 
@@ -93,32 +93,32 @@ class TestNodeAction(TestCase):
 
         actions = compile_node_actions(
             factory.make_node(), factory.make_admin(), classes=[MyAction])
-        self.assertEqual([MyAction.display], actions.keys())
+        self.assertEqual([MyAction.name], actions.keys())
 
-    def test_compile_node_actions_maps_display_names(self):
+    def test_compile_node_actions_maps_names(self):
 
         class Action1(FakeNodeAction):
-            display = factory.getRandomString()
+            name = factory.getRandomString()
 
         class Action2(FakeNodeAction):
-            display = factory.getRandomString()
+            name = factory.getRandomString()
 
         actions = compile_node_actions(
             factory.make_node(), factory.make_admin(),
             classes=[Action1, Action2])
-        for label, action in actions.items():
-            self.assertEqual(label, action.display)
+        for name, action in actions.items():
+            self.assertEqual(name, action.name)
 
     def test_compile_node_actions_maintains_order(self):
-        labels = [factory.getRandomString() for counter in range(4)]
+        names = [factory.getRandomString() for counter in range(4)]
         classes = [
-            type(b"Action%d" % counter, (FakeNodeAction,), {'display': label})
-            for counter, label in enumerate(labels)]
+            type(b"Action%d" % counter, (FakeNodeAction,), {'name': name})
+            for counter, name in enumerate(names)]
         actions = compile_node_actions(
             factory.make_node(), factory.make_admin(), classes=classes)
-        self.assertSequenceEqual(labels, actions.keys())
+        self.assertSequenceEqual(names, actions.keys())
         self.assertSequenceEqual(
-            labels, [action.display for action in actions.values()])
+            names, [action.name for action in actions.values()])
 
     def test_is_permitted_allows_if_user_has_permission(self):
 

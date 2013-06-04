@@ -16,7 +16,6 @@ import json
 
 from django import forms
 from django.contrib.auth.models import User
-from django.core.exceptions import PermissionDenied
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.http import QueryDict
 from maasserver.enum import (
@@ -76,7 +75,6 @@ from testtools.matchers import (
     Equals,
     MatchesStructure,
     )
-from testtools.testcase import ExpectedException
 
 
 class TestHelpers(TestCase):
@@ -472,7 +470,7 @@ class TestNodeActionForm(TestCase):
         form = get_action_form(admin)(node)
 
         self.assertItemsEqual(
-            [Commission.display, Delete.display],
+            [Commission.name, Delete.name],
             form.actions)
 
     def test_get_action_form_for_user(self):
@@ -488,32 +486,30 @@ class TestNodeActionForm(TestCase):
         admin = factory.make_admin()
         node = factory.make_node(status=NODE_STATUS.DECLARED)
         form = get_action_form(admin)(
-            node, {NodeActionForm.input_name: Commission.display})
+            node, {NodeActionForm.input_name: Commission.name})
+        self.assertTrue(form.is_valid())
         form.save()
         self.assertEqual(NODE_STATUS.COMMISSIONING, node.status)
 
-    def test_save_refuses_disallowed_action(self):
+    def test_rejects_disallowed_action(self):
         user = factory.make_user()
         node = factory.make_node(status=NODE_STATUS.DECLARED)
         form = get_action_form(user)(
-            node, {NodeActionForm.input_name: Commission.display})
-        self.assertRaises(PermissionDenied, form.save)
+            node, {NodeActionForm.input_name: Commission.name})
+        self.assertFalse(form.is_valid())
+        self.assertEquals(
+            {'action': ['Not a permitted action: %s.' % Commission.name]},
+            form._errors)
 
-    def test_save_refuses_unknown_action(self):
+    def test_rejects_unknown_action(self):
         user = factory.make_user()
         node = factory.make_node(status=NODE_STATUS.DECLARED)
+        action = factory.getRandomString()
         form = get_action_form(user)(
-            node, {NodeActionForm.input_name: factory.getRandomString()})
-        self.assertRaises(PermissionDenied, form.save)
-
-    def test_save_double_checks_for_inhibitions(self):
-        admin = factory.make_admin()
-        node = factory.make_node(
-            status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
-        form = get_action_form(admin)(
-            node, {NodeActionForm.input_name: Delete.display})
-        with ExpectedException(PermissionDenied, "You cannot delete.*"):
-            form.save()
+            node, {NodeActionForm.input_name: action})
+        self.assertFalse(form.is_valid())
+        self.assertIn(
+            "is not one of the available choices.", form._errors['action'][0])
 
 
 class TestUniqueEmailForms(TestCase):

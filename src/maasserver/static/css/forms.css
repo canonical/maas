@@ -75,6 +75,9 @@ input[type="text"]:focus {
 a.button:hover {
     text-decoration: none;
     }
+button:hover {
+    cursor:pointer;
+    }
 .yui3-button,
 .button,
 button,

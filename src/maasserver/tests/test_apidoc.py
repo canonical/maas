@@ -223,6 +223,7 @@ class TestDescribingAPI(TestCase):
             "POST start op=start restful=False",
             "POST stop op=stop restful=False",
             "POST release op=release restful=False",
+            "POST commission op=commission restful=False",
             "PUT update op=None restful=True",
             }
         observed_actions = {
