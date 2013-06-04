@@ -1,10 +1,10 @@
 {% if node_list|length %}
-  <table class="list">
+  <table class="list" id="node_list">
     <thead>
       <tr>
       {% if sorting == "true" %}
         {% if actions == "true" %}
-        <th></th>
+        <th><input type="checkbox" id="all_system_id_control" /></th>
         {% endif %}
       <th><a href="{{ sort_links.hostname }}"
              class="{{ sort_classes.hostname }}">
