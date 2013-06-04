@@ -29,7 +29,7 @@ from provisioningserver.utils import locate_config
 import tempita
 
 # Location of PXE templates, relative to the configuration directory.
-template_dir = 'templates/pxe'
+TEMPLATES_DIR = 'templates/pxe'
 
 
 def gen_pxe_template_filenames(purpose, arch, subarch):
@@ -57,7 +57,7 @@ def gen_pxe_template_filenames(purpose, arch, subarch):
 
 
 def get_pxe_template(purpose, arch, subarch):
-    pxe_templates_dir = locate_config(template_dir)
+    pxe_templates_dir = locate_config(TEMPLATES_DIR)
     # Templates are loaded each time here so that they can be changed on
     # the fly without restarting the provisioning server.
     for filename in gen_pxe_template_filenames(purpose, arch, subarch):

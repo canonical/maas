@@ -70,14 +70,14 @@ class TestFunctions(TestCase):
         # Tempita.from_filename is called with an absolute path derived from
         # the filename returned from gen_pxe_template_filenames.
         from_filename.assert_called_once_with(
-            locate_config(config.template_dir, filename), encoding="UTF-8")
+            locate_config(config.TEMPLATES_DIR, filename), encoding="UTF-8")
 
     def make_fake_templates_dir(self):
         """Set up a fake PXE templates dir, and return its path."""
         fake_etc_maas = self.make_dir()
         self.useFixture(EnvironmentVariableFixture(
             'MAAS_CONFIG_DIR', fake_etc_maas))
-        fake_templates = os.path.join(fake_etc_maas, config.template_dir)
+        fake_templates = os.path.join(fake_etc_maas, config.TEMPLATES_DIR)
         os.makedirs(fake_templates)
         return fake_templates
 

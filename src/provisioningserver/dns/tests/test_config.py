@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test cases for dns.config"""
@@ -48,9 +48,10 @@ from provisioningserver.dns.config import (
     MAAS_RNDC_CONF_NAME,
     setup_rndc,
     shortened_reversed_ip,
-    TEMPLATES_PATH,
+    TEMPLATES_DIR,
     )
 from provisioningserver.dns.utils import generated_hostname
+from provisioningserver.utils import locate_config
 import tempita
 from testtools.matchers import (
     Contains,
@@ -116,7 +117,7 @@ class TestDNSConfig(TestCase):
         dnsconfig = DNSConfig()
         self.assertEqual(
             (
-                os.path.join(TEMPLATES_PATH, 'named.conf.template'),
+                locate_config(TEMPLATES_DIR, 'named.conf.template'),
                 os.path.join(conf.DNS_CONFIG_DIR, MAAS_NAMED_CONF_NAME)
             ),
             (dnsconfig.template_path, dnsconfig.target_path))
@@ -272,7 +273,7 @@ class TestDNSForwardZoneConfig(TestCase):
         dns_zone_config = DNSForwardZoneConfig(domain)
         self.assertEqual(
             (
-                os.path.join(TEMPLATES_PATH, 'zone.template'),
+                locate_config(TEMPLATES_DIR, 'zone.template'),
                 os.path.join(conf.DNS_CONFIG_DIR, 'zone.%s' % domain),
             ),
             (
@@ -432,7 +433,7 @@ class TestDNSReverseZoneConfig(TestCase):
             domain, network=IPNetwork("192.168.0.0/22"))
         self.assertEqual(
             (
-                os.path.join(TEMPLATES_PATH, 'zone.template'),
+                locate_config(TEMPLATES_DIR, 'zone.template'),
                 os.path.join(conf.DNS_CONFIG_DIR, reverse_file_name)
             ),
             (

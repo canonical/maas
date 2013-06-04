@@ -23,7 +23,7 @@ from provisioningserver.utils import locate_config
 import tempita
 
 # Location of DHCP templates, relative to the configuration directory.
-template_dir = "templates/dhcp"
+TEMPLATES_DIR = "templates/dhcp"
 
 
 class DHCPConfigError(Exception):
@@ -47,7 +47,7 @@ def get_config(**params):
     :param high_range: The last IP address in the range of IP addresses to
         allocate
     """
-    template_file = locate_config(template_dir, 'dhcpd.conf.template')
+    template_file = locate_config(TEMPLATES_DIR, 'dhcpd.conf.template')
     params['bootloader'] = compose_bootloader_path()
     params['platform_codename'] = linux_distribution()[2]
     try:

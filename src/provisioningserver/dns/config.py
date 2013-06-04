@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """DNS configuration."""
@@ -40,6 +40,7 @@ from provisioningserver.dns.utils import generated_hostname
 from provisioningserver.utils import (
     atomic_write,
     incremental_write,
+    locate_config,
     )
 import tempita
 
@@ -131,8 +132,8 @@ def execute_rndc_command(arguments):
             stdout=devnull)
 
 
-# Directory where the DNS configuration template files can be found.
-TEMPLATES_PATH = os.path.join(os.path.dirname(__file__), 'templates')
+# Location of DNS templates, relative to the configuration directory.
+TEMPLATES_DIR = 'templates/dns'
 
 
 class DNSConfigBase:
@@ -148,7 +149,7 @@ class DNSConfigBase:
 
     @property
     def template_dir(self):
-        return TEMPLATES_PATH
+        return locate_config(TEMPLATES_DIR)
 
     @property
     def access_permissions(self):

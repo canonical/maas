@@ -67,6 +67,8 @@ setup(
              'contrib/maas_local_settings.py']),
         ('/etc/maas/templates/dhcp',
             glob('etc/maas/templates/dhcp/*.template')),
+        ('/etc/maas/templates/dns',
+            glob('etc/maas/templates/dns/*.template')),
         ('/etc/maas/templates/power',
             glob('etc/maas/templates/power/*.template') +
             glob('etc/maas/templates/power/*.conf')),
