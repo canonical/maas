@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Generate commissioning user-data from template and code snippets.
@@ -23,42 +23,16 @@ __all__ = [
 
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from os import listdir
 import os.path
 
 from maasserver.preseed import get_preseed_context
+from metadataserver.commissioning.snippets import (
+    list_snippets,
+    read_snippet,
+    strip_name,
+    )
+from provisioningserver.utils import locate_config
 import tempita
-
-
-def read_snippet(snippets_dir, name, encoding='utf-8'):
-    """Read a snippet file.
-
-    :rtype: `unicode`
-    """
-    path = os.path.join(snippets_dir, name)
-    with open(path, 'rb') as snippet_file:
-        return snippet_file.read().decode(encoding)
-
-
-def is_snippet(filename):
-    """Does `filename` represent a valid snippet name?"""
-    return all([
-        not filename.startswith('.'),
-        filename != '__init__.py',
-        not filename.endswith('.pyc'),
-        not filename.endswith('~'),
-        ])
-
-
-def list_snippets(snippets_dir):
-    """List names of available snippets."""
-    return filter(is_snippet, listdir(snippets_dir))
-
-
-def strip_name(snippet_name):
-    """Canonicalize a snippet name."""
-    # Dot suffixes do not work well in tempita variable names.
-    return snippet_name.replace('.', '_')
 
 
 def generate_user_data(nodegroup=None):
@@ -77,7 +51,7 @@ def generate_user_data(nodegroup=None):
     :rtype: `bytes`
     """
     ENCODING = 'utf-8'
-    commissioning_dir = os.path.dirname(__file__)
+    commissioning_dir = locate_config('templates/commissioning-user-data')
     userdata_template_file = os.path.join(
         commissioning_dir, 'user_data.template')
     config_template_file = os.path.join(

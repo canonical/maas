@@ -15,16 +15,37 @@ from os.path import (
     dirname,
     join,
     )
+import sys
 
 from setuptools import (
     find_packages,
     setup,
     )
 
+# The source tree's location in the filesystem.
+SOURCE_DIR = dirname(__file__)
+
+# Allow the setup code to import from the source tree.
+sys.path.append(join(SOURCE_DIR, 'src'))
+
+
+def list_commissioning_snippets():
+    """List the commissioning snippet files."""
+    # Lazy import.  Won't work until MAAS has been added to the import path.
+    from metadataserver.commissioning.snippets import list_snippets
+
+    snippets_dir = 'etc/maas/templates/commissioning-user-data/snippets'
+    # The list_snippets helper knows which files look like snippets and which
+    # files should be ignored.
+    return [
+        join(snippets_dir, snippet)
+        for snippet in list_snippets(join(SOURCE_DIR, snippets_dir))
+        ]
+
 
 def read(filename):
     """Return the whitespace-stripped content of `filename`."""
-    path = join(dirname(__file__), filename)
+    path = join(SOURCE_DIR, filename)
     with open(path, "rb") as fin:
         return fin.read().strip()
 
@@ -73,6 +94,10 @@ setup(
             glob('etc/maas/templates/power/*.template') +
             glob('etc/maas/templates/power/*.conf')),
         ('/etc/maas/templates/pxe', glob('etc/maas/templates/pxe/*.template')),
+        ('/etc/maas/templates/commissioning-user-data',
+            glob('etc/maas/templates/commissioning-user-data/*.template')),
+        ('/etc/maas/templates/commissioning-user-data/snippets',
+            list_commissioning_snippets()),
         ('/usr/share/maas',
             ['contrib/wsgi.py',
              'etc/celeryconfig.py',
