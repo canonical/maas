@@ -52,10 +52,23 @@ class NodeAction:
 
     __metaclass__ = ABCMeta
 
+    name = abstractproperty("""
+        Action name.
+
+        Will be used as the name for the action in all the forms.
+        """)
+
     display = abstractproperty("""
         Action name.
 
         Will be used as the label for the action's button.
+        """)
+
+    display_bulk = abstractproperty("""
+        Action name (bulk action).
+
+        Will be used as the label for the action's name in bulk action
+        dropdowns.
         """)
 
     actionable_statuses = abstractproperty("""
@@ -95,13 +108,15 @@ class NodeAction:
         return None
 
     @abstractmethod
-    def execute(self):
+    def execute(self, allow_redirect=True):
         """Perform this action.
 
         Even though this is not the API, the action may raise
         :class:`MAASAPIException` exceptions.  When this happens, the view
         will return to the client an http response reflecting the exception.
 
+        :param allow_redirect: Whether a redirect (typically to a confirmation
+            page) is possible.
         :return: A human-readable message confirming that the action has been
             performed.  It will be shown as an informational notice on the
             Node page.
@@ -124,7 +139,9 @@ class NodeAction:
 
 class Delete(NodeAction):
     """Delete a node."""
+    name = "delete"
     display = "Delete node"
+    display_bulk = "Delete selected nodes"
     actionable_statuses = ALL_STATUSES
     permission = NODE_PERMISSION.ADMIN
 
@@ -133,31 +150,39 @@ class Delete(NodeAction):
             return "You cannot delete this node because it's in use."
         return None
 
-    def execute(self):
+    def execute(self, allow_redirect=True):
         """Redirect to the delete view's confirmation page.
 
         The rest of deletion is handled by a specialized deletion view.
         All that the action really does is get you to its are-you-sure
         page.
         """
-        raise Redirect(reverse('node-delete', args=[self.node.system_id]))
+        if allow_redirect:
+            raise Redirect(reverse('node-delete', args=[self.node.system_id]))
+        else:
+            self.node.delete()
 
 
 class Commission(NodeAction):
     """Accept a node into the MAAS, and start the commissioning process."""
+    name = "commission"
     display = "Commission node"
+    display_bulk = "Commission selected nodes"
     actionable_statuses = (
         NODE_STATUS.DECLARED, NODE_STATUS.FAILED_TESTS, NODE_STATUS.READY)
     permission = NODE_PERMISSION.ADMIN
 
-    def execute(self):
+    def execute(self, allow_redirect=True):
+        """See `NodeAction.execute`."""
         self.node.start_commissioning(self.user)
         return "Node commissioning started."
 
 
 class StartNode(NodeAction):
     """Acquire and start a node."""
+    name = "start"
     display = "Start node"
+    display_bulk = "Start selected nodes"
     actionable_statuses = (NODE_STATUS.READY, )
     permission = NODE_PERMISSION.VIEW
 
@@ -172,7 +197,8 @@ class StartNode(NodeAction):
                 """)
         return None
 
-    def execute(self):
+    def execute(self, allow_redirect=True):
+        """See `NodeAction.execute`."""
         # The UI does not use OAuth, so there is no token to pass to the
         # acquire() call.
         self.node.acquire(self.user, token=None)
@@ -188,11 +214,14 @@ class StartNode(NodeAction):
 
 class StopNode(NodeAction):
     """Stop and release a node."""
+    name = "stop"
     display = "Stop node"
+    display_bulk = "Stop selected nodes"
     actionable_statuses = (NODE_STATUS.ALLOCATED, )
     permission = NODE_PERMISSION.EDIT
 
-    def execute(self):
+    def execute(self, allow_redirect=True):
+        """See `NodeAction.execute`."""
         self.node.release()
         return dedent("""\
             This node is no longer allocated to you.
@@ -206,6 +235,9 @@ ACTION_CLASSES = (
     StartNode,
     StopNode,
     )
+
+
+ACTIONS_DICT = {action.name: action for action in ACTION_CLASSES}
 
 
 def compile_node_actions(node, user, request=None, classes=ACTION_CLASSES):

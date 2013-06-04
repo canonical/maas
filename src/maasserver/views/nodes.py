@@ -22,6 +22,7 @@ __all__ = [
     ]
 
 from logging import getLogger
+from urllib import urlencode
 
 from django.conf import settings as django_settings
 from django.contrib import messages
@@ -38,6 +39,10 @@ from django.views.generic import (
     DetailView,
     UpdateView,
     )
+from django.views.generic.edit import (
+    FormMixin,
+    ProcessFormView,
+    )
 from maasserver.enum import (
     NODE_PERMISSION,
     NODE_STATUS,
@@ -49,6 +54,7 @@ from maasserver.exceptions import (
     NoSuchConstraint,
     )
 from maasserver.forms import (
+    BulkNodeActionForm,
     get_action_form,
     get_node_edit_form,
     MACAddressForm,
@@ -61,6 +67,7 @@ from maasserver.models import (
     )
 from maasserver.models.node import CONSTRAINTS_JUJU_MAP
 from maasserver.models.node_constraint_filter import constrain_nodes
+from maasserver.node_action import ACTIONS_DICT
 from maasserver.preseed import (
     get_enlist_preseed,
     get_preseed,
@@ -105,6 +112,42 @@ def _parse_constraints(query_string):
     return constraints
 
 
+def message_from_form_stats(action, done, not_actionable, not_permitted):
+    """Return a message suitable for user display from the given stats."""
+    action_name = 'The action "%s"' % action.display_bulk
+    # singular/plural messages.
+    done_templates = [
+        '%s was successfully performed on %d node.',
+        '%s was successfully performed on %d nodes.'
+    ]
+    not_actionable_templates = [
+        ('%s could not be performed on %d node because its '
+         'state does not allow that action.'),
+        ('%s could not be performed on %d nodes because their '
+         'state does not allow that action.'),
+    ]
+    not_permitted_templates = [
+        ('%s could not be performed on %d node because you '
+         "don't have the required permissions."),
+        ('%s could not be performed on %d nodes because you '
+         "don't have the required permissions."),
+    ]
+    number_message = [
+        (done, done_templates),
+        (not_actionable, not_actionable_templates),
+        (not_permitted, not_permitted_templates)]
+    message = []
+    for number, message_templates in number_message:
+        singular, plural = message_templates
+        if number != 0:
+            message_template = singular if number == 1 else plural
+            message.append(message_template % (action_name, number))
+            # Override the action name so that only the first sentence will
+            # contain the full name of the action.
+            action_name = 'It'
+    return ' '.join(message)
+
+
 def prefetch_nodes_listing(nodes_query):
     """Prefetch any data needed to display a given query of nodes.
 
@@ -119,17 +162,69 @@ def prefetch_nodes_listing(nodes_query):
             .prefetch_related('nodegroup__nodegroupinterface_set'))
 
 
-class NodeListView(PaginatedListView):
+class NodeListView(PaginatedListView, FormMixin, ProcessFormView):
 
     context_object_name = "node_list"
+    form_class = BulkNodeActionForm
 
-    def get(self, request, *args, **kwargs):
+    def populate_modifiers(self, request):
         self.query = request.GET.get("query")
         self.query_error = None
         self.sort_by = request.GET.get("sort")
         self.sort_dir = request.GET.get("dir")
 
+    def get(self, request, *args, **kwargs):
+        """Handle a GET request."""
+        self.populate_modifiers(request)
         return super(NodeListView, self).get(request, *args, **kwargs)
+
+    def get_preserved_params(self):
+        """List of GET parameters that need to be preserved by POST
+        requests.
+
+        These are sorting and search option we want a POST request to
+        preserve so that the display after a POST request is similar
+        to the display before the request."""
+        return ["dir", "query", "page", "sort"]
+
+    def get_preserved_query(self):
+        params = {
+            param: self.request.GET.get(param)
+            for param in self.get_preserved_params()
+            if self.request.GET.get(param) is not None}
+        return urlencode(params)
+
+    def get_next_url(self):
+        return reverse('node-list') + "?" + self.get_preserved_query()
+
+    def get_success_url(self):
+        return self.get_next_url()
+
+    def get_form_kwargs(self):
+        kwargs = super(NodeListView, self).get_form_kwargs()
+        kwargs['user'] = self.request.user
+        return kwargs
+
+    def post(self, request, *args, **kwargs):
+        """Handle a POST request."""
+        self.populate_modifiers(request)
+        return super(NodeListView, self).post(request, *args, **kwargs)
+
+    def form_invalid(self, form):
+        """Handle the view response when the form is invalid."""
+        self.object_list = self.get_queryset()
+        context = self.get_context_data(
+            object_list=self.object_list,
+            form=form)
+        return self.render_to_response(context)
+
+    def form_valid(self, form):
+        """Handle the view response when the form is valid."""
+        stats = form.save()
+        action_class = ACTIONS_DICT[form.cleaned_data['action']]
+        message = message_from_form_stats(action_class, *stats)
+        messages.info(self.request, message)
+        return super(NodeListView, self).form_valid(form)
 
     def _compose_sort_order(self):
         """Put together a tuple describing the sort order.
@@ -199,6 +294,10 @@ class NodeListView(PaginatedListView):
     def get_context_data(self, **kwargs):
         context = super(NodeListView, self).get_context_data(**kwargs)
         context.update(get_longpoll_context())
+        form_class = self.get_form_class()
+        form = self.get_form(form_class)
+        context["preserved_query"] = self.get_preserved_query()
+        context["form"] = form
         context["input_query"] = self.query
         context["input_query_error"] = self.query_error
         links, classes = self._prepare_sort_links()

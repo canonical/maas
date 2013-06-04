@@ -1,6 +1,8 @@
 form.search {
-    position: relative;
-    width: 228px;
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 450px;
     height: 26px;
     }
 #header form.search {

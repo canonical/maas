@@ -44,6 +44,7 @@ from maasserver.models import (
     Node,
     )
 from maasserver.node_action import (
+    Delete,
     Commission,
     StartNode,
     )
@@ -66,7 +67,10 @@ from maasserver.testing.testcase import (
     )
 from maasserver.utils import map_enum
 from maasserver.views import nodes as nodes_views
-from maasserver.views.nodes import get_longpoll_context
+from maasserver.views.nodes import (
+    get_longpoll_context,
+    message_from_form_stats,
+    )
 from maastesting.matchers import ContainsAll
 from provisioningserver.enum import POWER_TYPE_CHOICES
 
@@ -599,7 +603,7 @@ class NodeViewsTest(LoggedInTestCase):
             {"query": "color=red"})
         error_string = fromstring(response.content).xpath(
             "string(//div[@id='nodes']//p[@class='form-errors'])")
-        self.assertEqual(error_string, "No such 'color' constraint")
+        self.assertEqual("No such 'color' constraint", error_string.strip())
 
     def test_node_list_query_selects_subset(self):
         tag = factory.make_tag("shiny")
@@ -614,7 +618,7 @@ class NodeViewsTest(LoggedInTestCase):
         node2_link = reverse('node-view', args=[node2.system_id])
         document = fromstring(response.content)
         node_links = document.xpath(
-            "//div[@id='nodes']/table//td/a/@href")
+            "//div[@id='nodes']/form/table/tr/td[2]/a/@href")
         self.assertEqual([node2_link], node_links)
 
     def test_node_list_paginates(self):
@@ -627,7 +631,8 @@ class NodeViewsTest(LoggedInTestCase):
         # Order node links with newest first as the view is expected to
         node_links = [reverse('node-view', args=[node.system_id])
             for node in reversed(nodes)]
-        expr_node_links = XPath("//div[@id='nodes']/table//td/a/@href")
+        expr_node_links = XPath(
+            "//div[@id='nodes']/form/table/tr/td[2]/a/@href")
         expr_page_anchors = XPath("//div[@class='pagination']//a")
         # Fetch first page, should link newest two nodes and page 2
         response = self.client.get(reverse('node-list'))
@@ -658,23 +663,111 @@ class NodeViewsTest(LoggedInTestCase):
         """Node list query subset is split across multiple pages with links"""
         # Set a very small page size to save creating lots of nodes
         self.patch(nodes_views.NodeListView, 'paginate_by', 2)
-        nodes = [factory.make_node(created="2012-10-12 12:00:%02d" % i)
+        nodes = [
+            factory.make_node(created="2012-10-12 12:00:%02d" % i)
             for i in range(10)]
         tag = factory.make_tag("odd")
         for node in nodes[::2]:
             node.tags = [tag]
         last_node_link = reverse('node-view', args=[nodes[0].system_id])
-        response = self.client.get(reverse('node-list'),
+        response = self.client.get(
+            reverse('node-list'),
             {"query": "maas-tags=odd", "page": 3})
         document = fromstring(response.content)
         self.assertIn("5 matching nodes", document.xpath("string(//h1)"))
         self.assertEqual(
             [last_node_link],
-            document.xpath("//div[@id='nodes']/table//td/a/@href"))
-        self.assertEqual([("first", "?query=maas-tags%3Dodd"),
-                ("previous", "?query=maas-tags%3Dodd&page=2")],
-            [(a.text.lower(), a.get("href"))
-                for a in document.xpath("//div[@class='pagination']//a")])
+            document.xpath("//div[@id='nodes']/form/table/tr/td[2]/a/@href"))
+        self.assertEqual(
+            [
+                ("first", "?query=maas-tags%3Dodd"),
+                ("previous", "?query=maas-tags%3Dodd&page=2")
+            ],
+            [
+                (a.text.lower(), a.get("href"))
+                for a in document.xpath("//div[@class='pagination']//a")
+            ])
+
+    def test_node_list_performs_bulk_action(self):
+        self.become_admin()
+        node1 = factory.make_node()
+        node2 = factory.make_node()
+        node3 = factory.make_node()
+        system_id_to_delete = [node1.system_id, node2.system_id]
+        response = self.client.post(
+            reverse('node-list'),
+            {"action": Delete.name, "system_id": system_id_to_delete})
+        redirect = extract_redirect(response)
+        response = self.client.get(redirect)
+        document = fromstring(response.content)
+        self.assertIn("1 node in", document.xpath("string(//h1)"))
+        message = (
+            'The action "%s" was successfully performed on 2 nodes'
+            % Delete.display_bulk)
+        self.assertIn(
+            message,
+            document.xpath(
+                "string(//div[@id='body']/ul/li[@class='info'])").strip())
+        existing_nodes = list(Node.objects.filter(
+            system_id__in=system_id_to_delete))
+        node3_system_id = node3.system_id
+        self.assertEqual(
+            [[], node3.system_id], [existing_nodes, node3_system_id])
+
+    def test_node_list_post_form_preserves_get_params(self):
+        factory.make_node()
+        params = {
+            "dir": "desc",
+            "query": factory.make_name("query"),
+            "page": "1",
+            "sort": factory.make_name(""),
+        }
+        response = self.client.get(reverse('node-list'), params)
+        document = fromstring(response.content)
+        [form_action] = document.xpath(
+            "//form[@id='node_listing_form']/@action")
+        query_string_params = parse_qsl(urlparse(form_action).query)
+        self.assertEqual(params.items(), query_string_params)
+
+
+class MessageFromFormStatsTest(TestCase):
+
+    def test_message_from_form_stats(self):
+        params_and_snippets = [
+            (
+                (Delete, 0, 1, 1),
+                (
+                    'could not be performed on 1 node because its state',
+                    "could not be performed on 1 node because you don't",
+                )
+            ),
+             (
+                (Delete, 2, 0, 0),
+                ('The action "%s" was successfully performed on 2 nodes'
+                 % Delete.display_bulk,),
+            ),
+            (
+                (Delete, 1, 4, 2),
+                (
+                    'The action "%s" was successfully performed on 1 node'
+                     % Delete.display_bulk,
+                    'It could not be performed on 4 nodes because their '
+                    'state does not allow that action.',
+                    "It could not be performed on 2 nodes because you "
+                    "don't have the required permissions.",
+                ),
+            ),
+            (
+                (Delete, 0, 0, 3),
+                ('The action "%s" could not be performed on 3 nodes '
+                 "because you don't have the required permissions."
+                 % Delete.display_bulk,),
+            ),
+        ]
+        for params, snippets in params_and_snippets:
+            message = message_from_form_stats(*params)
+            for snippet in snippets:
+                self.assertIn(snippet, message)
 
 
 class NodeEnlistmentPreseedViewTest(LoggedInTestCase):

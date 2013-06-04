@@ -30,6 +30,7 @@ from maasserver.enum import (
 from maasserver.forms import (
     AdminNodeForm,
     AdminNodeWithMACAddressesForm,
+    BulkNodeActionForm,
     CommissioningScriptForm,
     ConfigForm,
     EditUserForm,
@@ -48,6 +49,7 @@ from maasserver.forms import (
     NodeWithMACAddressesForm,
     ProfileForm,
     remove_None_values,
+    UnconstrainedMultipleChoiceField,
     )
 from maasserver.models import (
     Config,
@@ -60,6 +62,8 @@ from maasserver.models.config import DEFAULT_CONFIG
 from maasserver.node_action import (
     Commission,
     Delete,
+    StartNode,
+    StopNode,
     )
 from maasserver.testing import reload_object
 from maasserver.testing.factory import factory
@@ -986,3 +990,103 @@ class TestCommissioningScriptForm(TestCase):
         self.assertEqual(
             ["Name contains disallowed characters (e.g. space or quotes)."],
             form._errors['content'])
+
+
+class TestUnconstrainedMultipleChoiceField(TestCase):
+
+    def test_accepts_list(self):
+        value = ['a', 'b']
+        instance = UnconstrainedMultipleChoiceField()
+        self.assertEqual(value, instance.clean(value))
+
+
+class TestBulkNodeActionForm(TestCase):
+
+    def test_performs_action(self):
+        node1 = factory.make_node()
+        node2 = factory.make_node()
+        node3 = factory.make_node()
+        system_id_to_delete = [node1.system_id, node2.system_id]
+        form = BulkNodeActionForm(
+            user=factory.make_admin(),
+            data=dict(
+                action=Delete.name,
+                system_id=system_id_to_delete))
+        self.assertTrue(form.is_valid(), form._errors)
+        done, not_actionable, not_permitted = form.save()
+        existing_nodes = list(Node.objects.filter(
+            system_id__in=system_id_to_delete))
+        node3_system_id = reload_object(node3).system_id
+        self.assertEqual(
+            [2, 0, 0],
+            [done, not_actionable, not_permitted])
+        self.assertEqual(
+            [[], node3.system_id],
+            [existing_nodes, node3_system_id])
+
+    def test_gives_stat_when_not_applicable(self):
+        node1 = factory.make_node(status=NODE_STATUS.DECLARED)
+        node2 = factory.make_node(status=NODE_STATUS.FAILED_TESTS)
+        system_id_for_action = [node1.system_id, node2.system_id]
+        form = BulkNodeActionForm(
+            user=factory.make_admin(),
+            data=dict(
+                action=StartNode.name,
+                system_id=system_id_for_action))
+        self.assertTrue(form.is_valid(), form._errors)
+        done, not_actionable, not_permitted = form.save()
+        self.assertEqual(
+            [0, 2, 0],
+            [done, not_actionable, not_permitted])
+
+    def test_gives_stat_when_no_permission(self):
+        user = factory.make_user()
+        node = factory.make_node(
+            status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
+        system_id_for_action = [node.system_id]
+        form = BulkNodeActionForm(
+            user=user,
+            data=dict(
+                action=StopNode.name,
+                system_id=system_id_for_action))
+        self.assertTrue(form.is_valid(), form._errors)
+        done, not_actionable, not_permitted = form.save()
+        self.assertEqual(
+            [0, 0, 1],
+            [done, not_actionable, not_permitted])
+
+    def test_rejects_empty_system_ids(self):
+        form = BulkNodeActionForm(
+            user=factory.make_admin(),
+            data=dict(action=Delete.name, system_id=[]))
+        self.assertFalse(form.is_valid(), form._errors)
+        self.assertEqual(
+            ["No node selected."],
+            form._errors['system_id'])
+
+    def test_rejects_invalid_system_ids(self):
+        node = factory.make_node()
+        system_id_to_delete = [node.system_id, "wrong-system_id"]
+        form = BulkNodeActionForm(
+            user=factory.make_admin(),
+            data=dict(
+                action=Delete.name,
+                system_id=system_id_to_delete))
+        self.assertFalse(form.is_valid(), form._errors)
+        self.assertEqual(
+            ["Some of the given system ids are invalid system ids."],
+            form._errors['system_id'])
+
+    def test_rejects_if_no_action(self):
+        form = BulkNodeActionForm(
+            user=factory.make_admin(),
+            data=dict(system_id=[factory.make_node().system_id]))
+        self.assertFalse(form.is_valid(), form._errors)
+
+    def test_rejects_if_invalid_action(self):
+        form = BulkNodeActionForm(
+            user=factory.make_admin(),
+            data=dict(
+                action="invalid-action",
+                system_id=[factory.make_node().system_id]))
+        self.assertFalse(form.is_valid(), form._errors)

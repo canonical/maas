@@ -3,6 +3,9 @@
     <thead>
       <tr>
       {% if sorting == "true" %}
+        {% if actions == "true" %}
+        <th></th>
+        {% endif %}
       <th><a href="{{ sort_links.hostname }}"
              class="{{ sort_classes.hostname }}">
         <acronym title="Fully Qualified Domain Name">FQDN</acronym>
@@ -25,6 +28,10 @@
     </thead>
     {% for node in node_list %}
       <tr class="node {% cycle 'even' 'odd' %}">
+        {% if actions == "true" %}
+          <td><input type="checkbox" name="system_id"
+                     value="{{ node.system_id }}" /></td>
+        {% endif %}
         <td>
           <a href="{% url 'node-view' node.system_id %}">
           {{ node.fqdn }}

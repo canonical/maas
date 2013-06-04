@@ -19,6 +19,7 @@ __all__ = [
     "get_node_create_form",
     "MACAddressForm",
     "MAASAndNetworkForm",
+    "BulkNodeActionForm",
     "NodeGroupInterfaceForm",
     "NodeGroupWithInterfacesForm",
     "NodeGroupEdit",
@@ -51,6 +52,7 @@ from django.core.exceptions import (
 from django.forms import (
     Form,
     ModelForm,
+    MultipleChoiceField,
     )
 from lxml import etree
 from maasserver.config_forms import SKIP_CHECK_NAME
@@ -87,7 +89,11 @@ from maasserver.models import (
     Tag,
     )
 from maasserver.models.nodegroup import NODEGROUP_CLUSTER_NAME_TEMPLATE
-from maasserver.node_action import compile_node_actions
+from maasserver.node_action import (
+    ACTION_CLASSES,
+    ACTIONS_DICT,
+    compile_node_actions,
+    )
 from maasserver.power_parameters import POWER_TYPE_PARAMETERS
 from maasserver.utils import strip_domain
 from metadataserver.fields import Bin
@@ -846,3 +852,70 @@ class CommissioningScriptForm(forms.Form):
         CommissioningScript.objects.create(
             name=content.name,
             content=Bin(content.read()))
+
+
+class UnconstrainedMultipleChoiceField(MultipleChoiceField):
+    """A MultipleChoiceField which does not constrain the given choices."""
+
+    def validate(self, value):
+        return value
+
+
+class BulkNodeActionForm(forms.Form):
+    # system_id is a multiple-choice field so it can actually contain
+    # a list of system ids.
+    system_id = UnconstrainedMultipleChoiceField()
+    action = forms.ChoiceField(
+        required=True,
+        choices=[
+            (action.name, action.display_bulk)
+            for action in ACTION_CLASSES])
+
+    def __init__(self, user, *args, **kwargs):
+        super(BulkNodeActionForm, self).__init__(*args, **kwargs)
+        self.user = user
+
+    def clean_system_id(self):
+        system_ids = self.cleaned_data['system_id']
+        # Remove duplicates.
+        system_ids = set(system_ids)
+        if len(system_ids) == 0:
+            raise forms.ValidationError("No node selected.")
+        # Validate all the system ids.
+        real_node_count = Node.objects.filter(
+            system_id__in=system_ids).count()
+        if real_node_count != len(system_ids):
+            raise forms.ValidationError(
+                "Some of the given system ids are invalid system ids.")
+        return system_ids
+
+    def save(self, *args, **kwargs):
+        """Perform the action on the selected nodes.
+
+        This method returns a tuple containing 3 elements: the number of
+        nodes for which the action was successfully performed, the number of
+        nodes for which the action could not be performed because that
+        transition was not allowed and the number of nodes for which the
+        action could not be performed because the user does not have the
+        required permission.
+        """
+        action_name = self.cleaned_data['action']
+        system_ids = self.cleaned_data['system_id']
+        action_class = ACTIONS_DICT.get(action_name)
+        not_actionable = 0
+        not_permitted = 0
+        done = 0
+        for system_id in system_ids:
+            node = Node.objects.get(system_id=system_id)
+            if node.status in action_class.actionable_statuses:
+                action_instance = action_class(node=node, user=self.user)
+                if action_instance.is_permitted():
+                    # Do not let execute() raise a redirect exception
+                    # because this action is part of a bulk operation.
+                    action_instance.execute(allow_redirect=False)
+                    done += 1
+                else:
+                    not_permitted += 1
+            else:
+                not_actionable += 1
+        return done, not_actionable, not_permitted

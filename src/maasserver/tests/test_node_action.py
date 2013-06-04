@@ -39,7 +39,9 @@ ALL_STATUSES = NODE_STATUS_CHOICES_DICT.keys()
 
 
 class FakeNodeAction(NodeAction):
+    name = "fake"
     display = "Action label"
+    display_bulk = "Action label bulk"
     actionable_statuses = ALL_STATUSES
     permission = NODE_PERMISSION.VIEW
 
