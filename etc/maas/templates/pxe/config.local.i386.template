@@ -1,1 +1,6 @@
-config.local.x86.template
+DEFAULT local
+
+LABEL local
+  SAY Booting local disk ...
+  KERNEL chain.c32
+  APPEND hd0
