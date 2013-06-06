@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Server fixture for BIND."""
@@ -117,11 +117,13 @@ class BINDServerResources(fixtures.Fixture):
     def set_up_named(self, overwrite_config=True):
         """Setup an environment to run 'named'.
 
-        - Create the default configuration for 'named' and set up rndc.
+        - Creates the default configuration for 'named' and sets up rndc.
         - Copies the 'named' executable inside homedir.  AppArmor won't
           let us run the installed version the way we want.
         """
         # Generate rndc configuration (rndc config and named snippet).
+        # Disable remote administration for init scripts by suppressing the
+        # "controls" statement.
         rndcconf, namedrndcconf = generate_rndc(
             port=self.rndc_port, key_name='dnsfixture-rndc-key',
             include_default_controls=False)

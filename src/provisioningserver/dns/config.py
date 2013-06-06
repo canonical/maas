@@ -30,6 +30,7 @@ from itertools import (
     islice,
     )
 import os.path
+import re
 from subprocess import (
     check_call,
     check_output,
@@ -58,8 +59,11 @@ class DNSConfigFail(Exception):
     """Raised if there's a problem with a DNS config."""
 
 
-# Default 'controls' statement included in the configuration so that the
-# default RNDC can be used (by init scripts).
+# Default 'controls' stanza to be included in the Bind configuration, to
+# enable "remote" administration (well, only locally) for the init scripts,
+# so that they can control the DNS daemon over port 953.
+# This is in addition to a similar 'controls' stanza that allows MAAS itself
+# to control the daemon.  That stanza is always present.
 DEFAULT_CONTROLS = """
 controls {
     inet 127.0.0.1 port 953 allow { localhost; };
@@ -67,13 +71,29 @@ controls {
 """
 
 
+def extract_suggested_named_conf(rndc_content):
+    """Extract 'named' configuration from the generated rndc configuration."""
+    start_marker = (
+        "# Use with the following in named.conf, adjusting the "
+        "allow list as needed:\n")
+    end_marker = '# End of named.conf'
+    named_start = rndc_content.index(start_marker) + len(start_marker)
+    named_end = rndc_content.index(end_marker)
+    return rndc_content[named_start:named_end]
+
+
+def uncomment_named_conf(named_comment):
+    """Return an uncommented version of the commented-out 'named' config."""
+    return re.sub('^# ', '', named_comment, flags=re.MULTILINE)
+
+
 def generate_rndc(port=953, key_name='rndc-maas-key',
                   include_default_controls=True):
     """Use `rndc-confgen` (from bind9utils) to generate a rndc+named
     configuration.
 
-    `rndc-confgen` generates the rndc configuration which also contains (that
-    part is commented out) the named configuration.
+    `rndc-confgen` generates the rndc configuration which also contains, in
+    the form of a comment, the 'named' configuration we need.
     """
     # Generate the configuration:
     # - 256 bits is the recommended size for the key nowadays.
@@ -81,17 +101,15 @@ def generate_rndc(port=953, key_name='rndc-maas-key',
     rndc_content = check_output(
         ['rndc-confgen', '-b', '256', '-r', '/dev/urandom',
          '-k', key_name, '-p', str(port)])
-    # Extract from the result the part which corresponds to the named
-    # configuration.
-    start_marker = (
-        "# Use with the following in named.conf, adjusting the "
-        "allow list as needed:")
-    end_marker = '# End of named.conf'
-    named_start = rndc_content.index(start_marker) + len(start_marker)
-    named_end = rndc_content.index(end_marker)
-    named_conf = rndc_content[named_start:named_end].replace('\n# ', '\n')
+    named_comment = extract_suggested_named_conf(rndc_content)
+    named_conf = uncomment_named_conf(named_comment)
+
+    # The 'named' configuration contains a 'control' statement to enable
+    # remote management by MAAS.  If appropriate, add one to enable remote
+    # management by the init scripts as well.
     if include_default_controls:
         named_conf += DEFAULT_CONTROLS
+
     # Return a tuple of the two configurations.
     return rndc_content, named_conf
 

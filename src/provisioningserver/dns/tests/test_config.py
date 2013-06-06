@@ -19,6 +19,7 @@ from collections import (
 import errno
 import os.path
 import random
+from textwrap import dedent
 
 from celery.conf import conf
 from maastesting.factory import factory
@@ -42,6 +43,7 @@ from provisioningserver.dns.config import (
     DNSForwardZoneConfig,
     DNSReverseZoneConfig,
     execute_rndc_command,
+    extract_suggested_named_conf,
     generate_rndc,
     MAAS_NAMED_CONF_NAME,
     MAAS_NAMED_RNDC_CONF_NAME,
@@ -49,6 +51,7 @@ from provisioningserver.dns.config import (
     setup_rndc,
     shortened_reversed_ip,
     TEMPLATES_DIR,
+    uncomment_named_conf,
     )
 from provisioningserver.dns.utils import generated_hostname
 from provisioningserver.utils import locate_config
@@ -108,6 +111,69 @@ class TestRNDCUtilities(TestCase):
         rndc_conf_path = os.path.join(fake_dir, MAAS_RNDC_CONF_NAME)
         expected_command = ['rndc', '-c', rndc_conf_path, command]
         self.assertEqual((expected_command,), recorder.calls[0][0])
+
+    def test_extract_suggested_named_conf_extracts_section(self):
+        named_part = factory.getRandomString()
+        # Actual rndc-confgen output, mildly mangled for testing purposes.
+        # Note the awkward line break.  The code works by matching that exact
+        # line, so there's no leeway with the spacing.
+        rndc_config = dedent("""\
+            # Start of rndc.conf
+            %(rndc_part)s
+            # End of rndc.conf
+
+            # Use with the following in named.conf, adjusting the allow """
+            """list as needed:
+            %(named_part)s
+            # End of named.conf
+        """) % {
+            'rndc_part': factory.getRandomString(),
+            'named_part': named_part,
+            }
+        # What you get is just the suggested named.conf that's embedded in
+        # the rndc-confgen output, not including its header and footer.
+        self.assertEqual(
+            named_part + '\n',
+            extract_suggested_named_conf(rndc_config))
+
+    def test_extract_suggested_named_conf_notices_missing_boundary(self):
+        # extract_suggested_named_conf raises an exception if it does not
+        # find the expected boundary between the rndc and named parts of the
+        # generated configuration.
+        rndc_config = dedent("""\
+            # Start of rndc.conf
+            %s
+
+            %s
+            # End of named.conf
+        """) % (factory.getRandomString(), factory.getRandomString())
+        self.assertRaises(
+            ValueError,
+            extract_suggested_named_conf, rndc_config)
+
+    def test_uncomment_named_conf_uncomments(self):
+        rndc_conf = 'key "rndc_key" {}'
+        self.assertEqual(rndc_conf, uncomment_named_conf("# %s" % rndc_conf))
+
+    def test_uncomment_named_conf_uncomments_multiple_lines(self):
+        # named.conf section, extracted from actual rndc-confgen output.
+        # Note the weird line break: the config has a line ending in a space.
+        named_comment = dedent("""\
+            # key "rndc-key" {
+            # \talgorithm hmac-md5;
+            # \tsecret "FuvtYZbYYLLJQKtn3zembg==";
+            # };
+            # """
+            """
+            # controls {
+            # \tinet 127.0.0.1 port 953
+            # \t\tallow { 127.0.0.1; } keys { "rndc-key"; };
+            # };
+            """)
+
+        self.assertThat(uncomment_named_conf(named_comment), Contains(
+            'key "rndc-key" {\n'
+            '\talgorithm hmac-md5;\n'))
 
 
 class TestDNSConfig(TestCase):
@@ -228,7 +294,7 @@ class TestDNSConfig(TestCase):
                 Contains('include "%s"' % dnsconfig.target_path)))
 
 
-class TestUtilities(TestCase):
+class TestIPUtilities(TestCase):
 
     def test_shortened_reversed_ip_2(self):
         self.assertEqual(

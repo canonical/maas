@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Celery demo settings for the maas project: common settings."""
@@ -25,8 +25,11 @@ DNS_CONFIG_DIR = os.path.join(
 DNS_RNDC_PORT = 9154
 
 
-# Do not include the default RNDC controls statement to avoid
-# a conflict while trying to listen on port 943.
+# In configuring RNDC, do not include the default "controls" statement that,
+# on a production system, would allow the init scripts to control the DNS
+# daemon.  It would try to listen on port 953, which causes conflicts.  (The
+# similar "controls" statement for the benefit of MAAS itself, on port 954,
+# will still be there).
 DNS_DEFAULT_CONTROLS = False
 
 
