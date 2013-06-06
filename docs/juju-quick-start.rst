@@ -101,23 +101,6 @@ following the install on the node directly.
 .. _bug 413415:
   https://bugs.launchpad.net/ubuntu/+source/console-setup/+bug/413415
 
-If you're using ``vdenv`` (included in ``lp:maas``) then ``virsh``
-makes it easy to follow on progress::
-
-  $ virsh list
-   Id Name                 State
-  ----------------------------------
-    1 zimmer               running
-    2 odev-node02          running
-
-  $ gnome-terminal -e 'virsh console odev-node02' &
-
-..
-
-  ``zimmer`` is the machine on which the MAAS server is running. Here
-  ``odev-node02`` is the machine being bootstrapped as the Juju master
-  node.
-
 Once the master node has been installed a status command should come
 up with something a bit more interesting::
 
