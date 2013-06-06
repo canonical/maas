@@ -1051,6 +1051,20 @@ class TestBulkNodeActionForm(TestCase):
             [0, 0, 1],
             [done, not_actionable, not_permitted])
 
+    def test_gives_stat_when_action_is_inhibited(self):
+        node = factory.make_node(
+            status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
+        form = BulkNodeActionForm(
+            user=factory.make_admin(),
+            data=dict(
+                action=Delete.name,
+                system_id=[node.system_id]))
+        self.assertTrue(form.is_valid(), form._errors)
+        done, not_actionable, not_permitted = form.save()
+        self.assertEqual(
+            [0, 1, 0],
+            [done, not_actionable, not_permitted])
+
     def test_rejects_empty_system_ids(self):
         form = BulkNodeActionForm(
             user=factory.make_admin(),

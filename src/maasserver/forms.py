@@ -925,13 +925,16 @@ class BulkNodeActionForm(forms.Form):
             node = Node.objects.get(system_id=system_id)
             if node.status in action_class.actionable_statuses:
                 action_instance = action_class(node=node, user=self.user)
-                if action_instance.is_permitted():
-                    # Do not let execute() raise a redirect exception
-                    # because this action is part of a bulk operation.
-                    action_instance.execute(allow_redirect=False)
-                    done += 1
+                if action_instance.inhibit() is not None:
+                    not_actionable += 1
                 else:
-                    not_permitted += 1
+                    if action_instance.is_permitted():
+                        # Do not let execute() raise a redirect exception
+                        # because this action is part of a bulk operation.
+                        action_instance.execute(allow_redirect=False)
+                        done += 1
+                    else:
+                        not_permitted += 1
             else:
                 not_actionable += 1
         return done, not_actionable, not_permitted
