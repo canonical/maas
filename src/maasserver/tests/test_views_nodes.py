@@ -63,6 +63,7 @@ from maasserver.testing.rabbit import uses_rabbit_fixture
 from maasserver.testing.testcase import (
     AdminLoggedInTestCase,
     LoggedInTestCase,
+    SeleniumLoggedInTestCase,
     TestCase,
     )
 from maasserver.utils import map_enum
@@ -728,6 +729,39 @@ class NodeViewsTest(LoggedInTestCase):
             "//form[@id='node_listing_form']/@action")
         query_string_params = parse_qsl(urlparse(form_action).query)
         self.assertEqual(params.items(), query_string_params)
+
+
+class NodeListingSelectionJSControls(SeleniumLoggedInTestCase):
+
+    def test_node_list_js_control_select_all(self):
+        self.selenium.get(
+            '%s%s' % (self.live_server_url, reverse('node-list')))
+        master_selector = self.selenium.find_element_by_id(
+            'all_system_id_control')
+        nodes_selector = self.selenium.find_elements_by_name('system_id')
+
+        # All the checkboxes are initially unselected.
+        self.assertFalse(master_selector.is_selected())
+        self.assertFalse(nodes_selector[0].is_selected())
+        self.assertFalse(nodes_selector[1].is_selected())
+        # Select all.
+        master_selector.click()
+        self.assertTrue(nodes_selector[0].is_selected())
+        self.assertTrue(nodes_selector[1].is_selected())
+        # Unselect all.
+        master_selector.click()
+        self.assertFalse(nodes_selector[0].is_selected())
+        self.assertFalse(nodes_selector[1].is_selected())
+        # Re-select all.
+        master_selector.click()
+        # Unselect one of the nodes.
+        nodes_selector[1].click()
+        # The master selector gets unselected.
+        self.assertFalse(master_selector.is_selected())
+        # Re-select the previously un-selected node.
+        nodes_selector[1].click()
+        # The master selector gets selected.
+        self.assertTrue(master_selector.is_selected())
 
 
 class MessageFromFormStatsTest(TestCase):

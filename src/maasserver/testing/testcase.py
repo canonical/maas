@@ -17,10 +17,20 @@ __all__ = [
     'TestModelTestCase',
     ]
 
+import SocketServer
+from unittest import SkipTest
+import wsgiref
+
+import django
 from django.core.cache import cache as django_cache
+from django.core.urlresolvers import reverse
+from fixtures import Fixture
 from maasserver.testing.factory import factory
 from maastesting.celery import CeleryFixture
 import maastesting.djangotestcase
+from maastesting.fixtures import DisplayFixture
+from maastesting.testcase import TestCase as BaseTestCase
+from mock import Mock
 from provisioningserver.testing.tags import TagCachedKnowledgeFixture
 from provisioningserver.testing.worker_cache import WorkerCacheFixture
 
@@ -50,9 +60,12 @@ class LoggedInTestCase(TestCase):
 
     def setUp(self):
         super(LoggedInTestCase, self).setUp()
-        self.logged_in_user = factory.make_user(password='test')
+        self.logged_in_user_password = 'test'
+        self.logged_in_user = factory.make_user(
+            password=self.logged_in_user_password)
         self.client.login(
-            username=self.logged_in_user.username, password='test')
+            username=self.logged_in_user.username,
+            password=self.logged_in_user_password)
 
     def become_admin(self):
         """Promote the logged-in user to admin."""
@@ -66,3 +79,84 @@ class AdminLoggedInTestCase(LoggedInTestCase):
     def setUp(self):
         super(AdminLoggedInTestCase, self).setUp()
         self.become_admin()
+
+
+# Django supports Selenium tests only since version 1.4.
+django_supports_selenium = (django.VERSION >= (1, 4))
+
+if django_supports_selenium:
+    from django.test import LiveServerTestCase
+    from selenium.webdriver.firefox.webdriver import WebDriver
+else:
+    LiveServerTestCase = object  # noqa
+
+
+class LogSilencerFixture(Fixture):
+
+    old_handle_error = wsgiref.handlers.BaseHandler.handle_error
+    old_log_exception = wsgiref.handlers.BaseHandler.log_exception
+
+    def setUp(self):
+        super(LogSilencerFixture, self).setUp()
+        self.silence_loggers()
+        self.addCleanup(self.unsilence_loggers)
+
+    def silence_loggers(self):
+        # Silence logging of errors to avoid the
+        # "IOError: [Errno 32] Broken pipe" error.
+        SocketServer.BaseServer.handle_error = Mock()
+        wsgiref.handlers.BaseHandler.log_exception = Mock()
+
+    def unsilence_loggers(self):
+        """Restore original handle_error/log_exception methods."""
+        SocketServer.BaseServer.handle_error = self.old_handle_error
+        wsgiref.handlers.BaseHandler.log_exception = self.old_log_exception
+
+
+class SeleniumLoggedInTestCase(BaseTestCase, LiveServerTestCase):
+
+    # Load the selenium test fixture.
+    # admin user: username=admin/pw=test
+    # normal user: username=user/pw=test
+    fixtures = ['selenium_tests_fixture.yaml']
+
+    @classmethod
+    def setUpClass(cls):
+        if not django_supports_selenium:
+            return
+        cls.display = DisplayFixture()
+        cls.display.__enter__()
+
+        cls.silencer = LogSilencerFixture()
+        cls.silencer.__enter__()
+
+        cls.selenium = WebDriver()
+        super(SeleniumLoggedInTestCase, cls).setUpClass()
+
+    def login(self):
+        self.selenium.get('%s%s' % (self.live_server_url, reverse('login')))
+        username_input = self.selenium.find_element_by_id("id_username")
+        username_input.send_keys('user')
+        password_input = self.selenium.find_element_by_id("id_password")
+        password_input.send_keys('test')
+        self.selenium.find_element_by_xpath('//input[@value="Login"]').click()
+
+    def setUp(self):
+        if not django_supports_selenium:
+            raise SkipTest(
+                "Live tests only enabled if Django.version >=1.4.")
+        super(SeleniumLoggedInTestCase, self).setUp()
+        self.login()
+
+    def tearDown(self):
+        super(SeleniumLoggedInTestCase, self).tearDown()
+        maastesting.djangotestcase.cleanup_db(self)
+
+    @classmethod
+    def tearDownClass(cls):
+        if not django_supports_selenium:
+            return
+        cls.selenium.quit()
+        cls.display.__exit__(None, None, None)
+        cls.silencer.__exit__(None, None, None)
+        super(SeleniumLoggedInTestCase, cls).tearDownClass()
