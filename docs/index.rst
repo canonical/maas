@@ -59,6 +59,7 @@ Developing MAAS
    :maxdepth: 2
 
    development/security
+   development/building-packages
 
 
 **********
