@@ -55,6 +55,7 @@ VM to boot via PXE.
 
 Possible Cause: DHCP conflict
 -----------------------------
+
 If you are using MAAS in a setup with an existing DHCP, *DO NOT SET UP THE MAAS
 DHCP SERVER* as this will cause no end of confusion to the rest of your network
 and most likely won't discover any nodes either.
@@ -65,8 +66,8 @@ and most likely won't discover any nodes either.
 
   or
 
-* Enlist nodes using avahi, which is the preferred option. For a quick guide to
-  this, please see https://wiki.ubuntu.com/ServerTeam/MAAS/AvahiBoot
+* Enlist nodes using Avahi, which is the preferred option. For a quick guide to
+  this, please see :ref:`enlist-via-boot-media`.
 
 
 **Can't log in to node**

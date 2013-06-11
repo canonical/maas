@@ -358,9 +358,9 @@ class NodePreseedView(NodeViewMixin, DetailView):
 # or READY nodes.
 NODE_BOOT_INFO = mark_safe("""
 You can boot this node using Avahi-enabled boot media or an adequately
-configured dhcp server.  See
-<a href="https://wiki.ubuntu.com/ServerTeam/MAAS/AvahiBoot">
-https://wiki.ubuntu.com/ServerTeam/MAAS/AvahiBoot</a> for instructions.
+configured DHCP server.  See
+<a href="https://maas.ubuntu.com/docs/nodes.html"
+>https://maas.ubuntu.com/docs/nodes.html</a> for instructions.
 """)
 
 

@@ -29,6 +29,8 @@ which :ref:`you can retrieve from the web interface <api-key>`::
    $ maas-cli maas nodes accept-all
 
 
+.. _enlist-via-boot-media:
+
 Enlist nodes via boot media
 ---------------------------
 

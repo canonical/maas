@@ -350,7 +350,7 @@ class NodeViewsTest(LoggedInTestCase):
     def test_view_node_shows_message_for_commissioning_node(self):
         statuses_with_message = (
             NODE_STATUS.READY, NODE_STATUS.COMMISSIONING)
-        help_link = "https://wiki.ubuntu.com/ServerTeam/MAAS/AvahiBoot"
+        help_link = "https://maas.ubuntu.com/docs/nodes.html"
         for status in map_enum(NODE_STATUS).values():
             node = factory.make_node(status=status)
             node_link = reverse('node-view', args=[node.system_id])
