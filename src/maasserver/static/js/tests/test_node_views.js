@@ -224,8 +224,8 @@ suite.add(new Y.maas.testing.TestCase({
         // The number of nodes for each status should have been set
         Y.Assert.areEqual(
             1,
-            view.deployed_nodes,
-            "The number of deployed nodes should have been set.");
+            view.allocated_nodes,
+            "The number of allocated nodes should have been set.");
         Y.Assert.areEqual(
             2,
             view.queued_nodes,
@@ -322,7 +322,7 @@ suite.add(new Y.maas.testing.TestCase({
         node.status = Y.maas.enums.NODE_STATUS.ALLOCATED;
         Y.Assert.areEqual(
             1,
-            view.deployed_nodes,
+            view.allocated_nodes,
             "Check the initial number of nodes for the new status.");
 
         view.updateNode('updated', node);
@@ -332,11 +332,11 @@ suite.add(new Y.maas.testing.TestCase({
             "The node should have been updated.");
         Y.Assert.areEqual(
             2,
-            view.deployed_nodes,
+            view.allocated_nodes,
             "The new status should have one extra node.");
         Y.Assert.areEqual(
             2,
-            view.chart.get('deployed_nodes'),
+            view.chart.get('allocated_nodes'),
             "The new chart status number should also be updated.");
         Y.Assert.areEqual(
             1,
@@ -366,11 +366,11 @@ suite.add(new Y.maas.testing.TestCase({
                     "The node should have been deleted.");
                 Y.Assert.areEqual(
                     1,
-                    view.deployed_nodes,
+                    view.allocated_nodes,
                     "The status should have one less node.");
                 Y.Assert.areEqual(
                     1,
-                    view.chart.get('deployed_nodes'),
+                    view.chart.get('allocated_nodes'),
                     "The chart status number should also be updated.");
                 Y.Assert.areEqual(
                     '12',

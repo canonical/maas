@@ -133,7 +133,7 @@ module.NodeListLoader = Y.Base.create('nodeListLoader', Y.View, [], {
 module.NodesDashboard = Y.Base.create(
     'nodesDashboard', module.NodeListLoader, [], {
     all_template: ('node{plural} in this MAAS'),
-    deployed_template: ('node{plural} deployed'),
+    allocated_template: ('node{plural} allocated'),
     commissioned_template: ('node{plural} commissioned'),
     queued_template: ('node{plural} queued'),
     offline_template: ('node{plural} offline'),
@@ -155,7 +155,7 @@ module.NodesDashboard = Y.Base.create(
         // XXX: GavinPanella 2012-04-17 bug=984116:
         // Hidden until we support retired nodes.
         this.retiredNode.hide();
-        this.deployed_nodes = 0;
+        this.allocated_nodes = 0;
         this.commissioned_nodes = 0;
         this.queued_nodes = 0;
         this.reserved_nodes = 0;
@@ -190,8 +190,8 @@ module.NodesDashboard = Y.Base.create(
             {event: 'hover.offline.out'},
             {event: 'hover.added.over', template: this.added_template},
             {event: 'hover.added.out'},
-            {event: 'hover.deployed.over', template: this.deployed_template},
-            {event: 'hover.deployed.out'},
+            {event: 'hover.allocated.over', template: this.allocated_template},
+            {event: 'hover.allocated.out'},
             {
                 event: 'hover.commissioned.over',
                 template: this.commissioned_template
@@ -349,9 +349,9 @@ module.NodesDashboard = Y.Base.create(
                 );
             break;
         case NODE_STATUS.ALLOCATED:
-            // Deployed nodes
-            this.deployed_nodes += node_counter;
-            this.chart.set('deployed_nodes', this.deployed_nodes);
+            // Allocated nodes
+            this.allocated_nodes += node_counter;
+            this.chart.set('allocated_nodes', this.allocated_nodes);
             update_chart = true;
             break;
         case NODE_STATUS.RETIRED:

@@ -13,7 +13,7 @@ var suite = new Y.Test.Suite("maas.nodes_chart Tests");
 var cfg = {
     node_id: 'chart',
     width: 300,
-    deployed_nodes: 5,
+    allocated_nodes: 5,
     commissioned_nodes: 6,
     queued_nodes: 2,
     offline_nodes: 3,
@@ -54,13 +54,13 @@ suite.add(new Y.maas.testing.TestCase({
     testWidgetHover: function() {
         var events = [
             {
-                event: 'hover.deployed.over',
+                event: 'hover.allocated.over',
                 action: 'mouseover',
                 fired: false,
                 node: this.chart._outer_paths[0].node
                 },
             {
-                event: 'hover.deployed.out',
+                event: 'hover.allocated.out',
                 action: 'mouseout',
                 fired: false,
                 node: this.chart._outer_paths[0].node

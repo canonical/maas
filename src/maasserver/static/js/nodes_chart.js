@@ -49,12 +49,12 @@ NodesChartWidget.ATTRS = {
         value: 0
     },
    /**
-    * The number of deployed nodes.
+    * The number of allocated nodes.
     *
-    * @attribute deployed_nodes
+    * @attribute allocated_nodes
     * @type integer
     */
-    deployed_nodes: {
+    allocated_nodes: {
         value: 0
     },
    /**
@@ -146,19 +146,19 @@ Y.extend(NodesChartWidget, Y.Widget, {
      * @method updateChart
      */
     updateChart: function() {
-        var deployed_nodes = this.get('deployed_nodes');
+        var allocated_nodes = this.get('allocated_nodes');
         var commissioned_nodes = this.get('commissioned_nodes');
         var queued_nodes = this.get('queued_nodes');
         var offline_nodes = this.get('offline_nodes');
         var added_nodes = this.get('added_nodes');
         var outer_nodes = [
             {
-                nodes: deployed_nodes,
-                name: 'deployed_nodes',
+                nodes: allocated_nodes,
+                name: 'allocated_nodes',
                 colour: OUTER_COLOURS[0],
                 events: {
-                    over: 'hover.deployed.over',
-                    out: 'hover.deployed.out'
+                    over: 'hover.allocated.over',
+                    out: 'hover.allocated.out'
                     }
                 },
             {

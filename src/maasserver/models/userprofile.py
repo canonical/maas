@@ -72,8 +72,9 @@ class UserProfile(CleanSave, Model):
         if self.user.node_set.exists():
             nb_nodes = self.user.node_set.count()
             msg = (
-                "User %s cannot be deleted: it still has %d node(s) "
-                "deployed." % (self.user.username, nb_nodes))
+                "User %s cannot be deleted: %d node(s) are still "
+                "allocated to this user." %
+                (self.user.username, nb_nodes))
             raise CannotDeleteUserException(msg)
         self.user.consumers.all().delete()
         self.user.delete()
