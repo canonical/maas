@@ -387,6 +387,26 @@ class NodeTest(TestCase):
         node.release()
         self.assertEqual((NODE_STATUS.READY, None), (node.status, node.owner))
 
+    def test_ip_addresses(self):
+        node = factory.make_node()
+        macs = [factory.make_mac_address(node=node) for i in range(2)]
+        leases = [
+            factory.make_dhcp_lease(
+                nodegroup=node.nodegroup, mac=mac.mac_address)
+            for mac in macs]
+        self.assertItemsEqual(
+            [lease.ip for lease in leases], node.ip_addresses())
+
+    def test_ip_addresses_filters_by_mac_addresses(self):
+        node = factory.make_node()
+        other_node = factory.make_node()
+        macs = [factory.make_mac_address(node=node) for i in range(2)]
+        [
+            factory.make_dhcp_lease(
+                nodegroup=node.nodegroup, mac=mac.mac_address)
+            for mac in macs]
+        self.assertItemsEqual([], other_node.ip_addresses())
+
     def test_release_turns_on_netboot(self):
         node = factory.make_node(
             status=NODE_STATUS.ALLOCATED, owner=factory.make_user())

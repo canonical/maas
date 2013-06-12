@@ -553,6 +553,20 @@ class Node(CleanSave, TimestampedModel):
         else:
             return self.hostname
 
+    def ip_addresses(self):
+        """IP addresses allocated to this node."""
+        macs = [mac.mac_address for mac in self.macaddress_set.all()]
+        dhcpleases_qs = self.nodegroup.dhcplease_set.all()
+        if dhcpleases_qs._result_cache is not None:
+            # If the dhcp lease set has been pre-fetched: use it to
+            # extract the IP addresses associated with the nodes' MAC
+            # addresses.
+            return [lease.ip for lease in dhcpleases_qs if lease.mac in macs]
+        else:
+            ips = dhcpleases_qs.filter(
+                mac__in=macs).values_list('ip', flat=True)
+            return ips
+
     def tag_names(self):
         # We don't use self.tags.values_list here because this does not
         # take advantage of the cache.

@@ -226,6 +226,7 @@ DISPLAYED_NODE_FIELDS = (
     'netboot',
     'power_type',
     'tag_names',
+    'ip_addresses',
     )
 
 
@@ -723,6 +724,7 @@ class NodesHandler(OperationsHandler):
         nodes = nodes.prefetch_related('macaddress_set__node')
         nodes = nodes.prefetch_related('tags')
         nodes = nodes.select_related('nodegroup')
+        nodes = nodes.prefetch_related('nodegroup__dhcplease_set')
         nodes = nodes.prefetch_related('nodegroup__nodegroupinterface_set')
         return nodes.order_by('id')
 
