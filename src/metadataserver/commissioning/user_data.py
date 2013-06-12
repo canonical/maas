@@ -30,9 +30,12 @@ from metadataserver.commissioning.snippets import (
     list_snippets,
     read_snippet,
     strip_name,
+    get_userdata_template_dir,
+    get_snippet_context,
     )
-from provisioningserver.utils import locate_config
 import tempita
+
+ENCODING = 'utf-8'
 
 
 def generate_user_data(nodegroup=None):
@@ -50,13 +53,11 @@ def generate_user_data(nodegroup=None):
 
     :rtype: `bytes`
     """
-    ENCODING = 'utf-8'
-    commissioning_dir = locate_config('templates/commissioning-user-data')
+    commissioning_dir = get_userdata_template_dir()
     userdata_template_file = os.path.join(
         commissioning_dir, 'user_data.template')
     config_template_file = os.path.join(
         commissioning_dir, 'user_data_config.template')
-    snippets_dir = os.path.join(commissioning_dir, 'snippets')
     userdata_template = tempita.Template.from_filename(
         userdata_template_file, encoding=ENCODING)
     config_template = tempita.Template.from_filename(
@@ -66,10 +67,7 @@ def generate_user_data(nodegroup=None):
     preseed_context = get_preseed_context(nodegroup=nodegroup)
 
     # Render the snippets in the main template.
-    snippets = {
-        strip_name(name): read_snippet(snippets_dir, name, encoding=ENCODING)
-        for name in list_snippets(snippets_dir)
-    }
+    snippets = get_snippet_context(encoding=ENCODING)
     snippets.update(preseed_context)
     userdata = userdata_template.substitute(snippets).encode(ENCODING)
 

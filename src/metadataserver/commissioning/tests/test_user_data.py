@@ -32,6 +32,7 @@ class TestUserData(TestCase):
             generate_user_data(), ContainsAll({
                 'maas-get',
                 'maas-signal',
+                'maas-ipmi-autodetect',
                 'def authenticate_headers',
                 'def encode_multipart_data',
             }))

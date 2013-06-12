@@ -35,6 +35,8 @@ from maasserver.server_address import get_maas_facing_server_host
 from maasserver.utils import absolute_reverse
 import tempita
 
+from metadataserver.commissioning.snippets import get_snippet_context
+
 
 GENERIC_FILENAME = 'generic'
 
@@ -287,7 +289,10 @@ def render_enlistment_preseed(prefix, release='', nodegroup=None):
     """
     template = load_preseed_template(None, prefix, release)
     context = get_preseed_context(release, nodegroup=nodegroup)
-    return template.substitute(**context)
+    # Render the snippets in the main template.
+    snippets = get_snippet_context()
+    snippets.update(context)
+    return template.substitute(**snippets)
 
 
 def render_preseed(node, prefix, release=''):

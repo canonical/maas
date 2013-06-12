@@ -18,9 +18,31 @@ __all__ = [
     'list_snippets',
     'read_snippet',
     'strip_name',
+    'get_snippet_context',
+    'get_userdata_template_dir',
     ]
 
 import os
+from provisioningserver.utils import locate_config
+
+USERDATA_BASE_DIR = 'templates/commissioning-user-data'
+
+
+def get_userdata_template_dir():
+    """Return the absolute location of the userdata
+    template directory."""
+    return locate_config(USERDATA_BASE_DIR)
+
+
+def get_snippet_context(snippets_dir=None, encoding='utf-8'):
+    """Return the context of all of the snippets."""
+    if snippets_dir is None:
+        snippets_dir = os.path.join(get_userdata_template_dir(), 'snippets')
+    snippets = {
+        strip_name(name): read_snippet(snippets_dir, name, encoding=encoding)
+        for name in list_snippets(snippets_dir)
+        }
+    return snippets
 
 
 def read_snippet(snippets_dir, name, encoding='utf-8'):

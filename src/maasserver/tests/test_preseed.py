@@ -421,10 +421,12 @@ class TestRenderPreseed(TestCase):
     missing).
     """
 
-    # Create a scenario for each possible value of PRESEED_TYPE.
+    # Create a scenario for each possible value of PRESEED_TYPE except
+    # enlistment. Those have their own test case.
     scenarios = [
         (name, {'preseed': value})
-        for name, value in map_enum(PRESEED_TYPE).items()]
+        for name, value in map_enum(PRESEED_TYPE).items()
+            if not value.startswith('enlist')]
 
     def test_render_preseed(self):
         node = factory.make_node()
@@ -448,8 +450,15 @@ class TestRenderPreseed(TestCase):
 class TestRenderEnlistmentPreseed(TestCase):
     """Tests for `render_enlistment_preseed`."""
 
+    # Create a scenario for each possible value of PRESEED_TYPE for
+    # enlistment. The rest have their own test case.
+    scenarios = [
+        (name, {'preseed': value})
+        for name, value in map_enum(PRESEED_TYPE).items()
+            if value.startswith('enlist')]
+
     def test_render_enlistment_preseed(self):
-        preseed = render_enlistment_preseed(PRESEED_TYPE.ENLIST, "precise")
+        preseed = render_enlistment_preseed(self.preseed, "precise")
         # The test really is that the preseed is rendered without an
         # error.
         self.assertIsInstance(preseed, str)
@@ -460,7 +469,7 @@ class TestRenderEnlistmentPreseed(TestCase):
         self.patch(settings, 'DEFAULT_MAAS_URL', maas_url)
         nodegroup = factory.make_node_group(maas_url=ng_url)
         preseed = render_enlistment_preseed(
-            PRESEED_TYPE.ENLIST, "precise", nodegroup=nodegroup)
+            self.preseed, "precise", nodegroup=nodegroup)
         self.assertThat(
             preseed, MatchesAll(*[Contains(ng_url), Not(Contains(maas_url))]))
 
