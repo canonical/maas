@@ -950,7 +950,7 @@ class TestNodeGroupEdit(TestCase):
 class TestCommissioningScriptForm(TestCase):
 
     def test_creates_commissioning_script(self):
-        content = factory.getRandomString()
+        content = factory.getRandomString().encode('ascii')
         name = factory.make_name('filename')
         uploaded_file = SimpleUploadedFile(content=content, name=name)
         form = CommissioningScriptForm(files={'content': uploaded_file})
@@ -962,7 +962,7 @@ class TestCommissioningScriptForm(TestCase):
             MatchesStructure.byEquality(name=name, content=content))
 
     def test_raises_if_duplicated_name(self):
-        content = factory.getRandomString()
+        content = factory.getRandomString().encode('ascii')
         name = factory.make_name('filename')
         factory.make_commissioning_script(name=name)
         uploaded_file = SimpleUploadedFile(content=content, name=name)
@@ -973,8 +973,8 @@ class TestCommissioningScriptForm(TestCase):
 
     def test_rejects_whitespace_in_name(self):
         name = factory.make_name('with space')
-        uploaded_file = SimpleUploadedFile(
-            content=factory.getRandomString(), name=name)
+        content = factory.getRandomString().encode('ascii')
+        uploaded_file = SimpleUploadedFile(content=content, name=name)
         form = CommissioningScriptForm(files={'content': uploaded_file})
         self.assertFalse(form.is_valid())
         self.assertEqual(
@@ -983,8 +983,8 @@ class TestCommissioningScriptForm(TestCase):
 
     def test_rejects_quotes_in_name(self):
         name = factory.make_name("l'horreur")
-        uploaded_file = SimpleUploadedFile(
-            content=factory.getRandomString(), name=name)
+        content = factory.getRandomString().encode('ascii')
+        uploaded_file = SimpleUploadedFile(content=content, name=name)
         form = CommissioningScriptForm(files={'content': uploaded_file})
         self.assertFalse(form.is_valid())
         self.assertEqual(
