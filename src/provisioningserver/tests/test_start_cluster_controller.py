@@ -39,6 +39,13 @@ from provisioningserver import start_cluster_controller
 from provisioningserver.testing.testcase import PservTestCase
 from testtools.matchers import StartsWith
 
+# Some tests in this file have to import methods from Django.  This causes
+# Django to parse its settings file and, in Django 1.5+, assert that it
+# contains a value for the setting 'SECRET_KEY'.
+# The trick we use here is to use this very module as Django's settings
+# module and define a value for 'SECRET_KEY'.
+SECRET_KEY = 'bogus secret key'
+
 
 class Sleeping(Exception):
     """Exception: `sleep` has been called."""
