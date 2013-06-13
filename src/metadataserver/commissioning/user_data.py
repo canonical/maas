@@ -27,13 +27,11 @@ import os.path
 
 from maasserver.preseed import get_preseed_context
 from metadataserver.commissioning.snippets import (
-    list_snippets,
-    read_snippet,
-    strip_name,
-    get_userdata_template_dir,
     get_snippet_context,
+    get_userdata_template_dir,
     )
 import tempita
+
 
 ENCODING = 'utf-8'
 

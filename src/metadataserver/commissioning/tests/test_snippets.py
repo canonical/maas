@@ -17,11 +17,11 @@ import os.path
 from maastesting.factory import factory
 from maastesting.testcase import TestCase
 from metadataserver.commissioning.snippets import (
+    get_snippet_context,
     is_snippet,
     list_snippets,
     read_snippet,
     strip_name,
-    get_snippet_context,
     )
 
 
@@ -65,9 +65,12 @@ class TestSnippets(TestCase):
         contents = factory.getRandomString()
         snippets_dir = self.make_dir()
         factory.make_file(snippets_dir, 'snippet.py', contents=contents)
-        self.assertItemsEqual({'snippet_py': contents}, get_snippet_context(snippets_dir=snippets_dir))
+        self.assertItemsEqual(
+            {'snippet_py': contents},
+            get_snippet_context(snippets_dir=snippets_dir))
 
     def test_get_snippet_context_empty_if_no_snippets(self):
         snippets_dir = self.make_dir()
         context = {}
-        self.assertEqual(context, get_snippet_context(snippets_dir=snippets_dir))
+        self.assertEqual(
+            context, get_snippet_context(snippets_dir=snippets_dir))
