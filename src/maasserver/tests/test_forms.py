@@ -73,6 +73,7 @@ from provisioningserver.enum import POWER_TYPE_CHOICES
 from testtools.matchers import (
     AllMatch,
     Equals,
+    MatchesRegex,
     MatchesStructure,
     )
 
@@ -517,9 +518,12 @@ class TestUniqueEmailForms(TestCase):
     def assertFormFailsValidationBecauseEmailNotUnique(self, form):
         self.assertFalse(form.is_valid())
         self.assertIn('email', form._errors)
-        self.assertEqual(
-            ["User with this E-mail address already exists."],
-            form._errors['email'])
+        self.assertEquals(1, len(form._errors['email']))
+        # Cope with 'Email' and 'E-mail' in error message.
+        self.assertThat(
+            form._errors['email'][0],
+            MatchesRegex(
+                r'User with this E-{0,1}mail address already exists.'))
 
     def test_ProfileForm_fails_validation_if_email_taken(self):
         another_email = '%s@example.com' % factory.getRandomString()
