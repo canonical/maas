@@ -29,20 +29,6 @@ SOURCE_DIR = dirname(__file__)
 sys.path.append(join(SOURCE_DIR, 'src'))
 
 
-def list_commissioning_snippets():
-    """List the commissioning snippet files."""
-    # Lazy import.  Won't work until MAAS has been added to the import path.
-    from metadataserver.commissioning.snippets import list_snippets
-
-    snippets_dir = 'etc/maas/templates/commissioning-user-data/snippets'
-    # The list_snippets helper knows which files look like snippets and which
-    # files should be ignored.
-    return [
-        join(snippets_dir, snippet)
-        for snippet in list_snippets(join(SOURCE_DIR, snippets_dir))
-        ]
-
-
 def read(filename):
     """Return the whitespace-stripped content of `filename`."""
     path = join(SOURCE_DIR, filename)
@@ -97,7 +83,7 @@ setup(
         ('/etc/maas/templates/commissioning-user-data',
             glob('etc/maas/templates/commissioning-user-data/*.template')),
         ('/etc/maas/templates/commissioning-user-data/snippets',
-            list_commissioning_snippets()),
+            glob('etc/maas/templates/commissioning-user-data/snippets/*.py')),
         ('/usr/share/maas',
             ['contrib/wsgi.py',
              'etc/celeryconfig.py',
