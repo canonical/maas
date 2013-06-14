@@ -16,13 +16,39 @@ from codecs import getwriter
 from io import BytesIO
 
 from apiclient.creds import convert_tuple_to_string
+import django
 from django.contrib.auth.models import User
 from django.core.cache import cache
 from django.core.management import call_command
+from django.core.management.base import CommandError
 from maasserver.models.user import get_creds_tuple
 from maasserver.testing.factory import factory
 from maasserver.utils.orm import get_one
 from maastesting.djangotestcase import DjangoTestCase
+
+
+def assertCommandErrors(runner, command, *args, **kwargs):
+    """Assert that the given django command fails.
+
+    This method returns the error text.
+    """
+    # This helper helps dealing with the difference in how
+    # call_command() reports failure between Django 1.4 and Django
+    # 1.5. See the 4th bullet point ("Management commands do not raise...")
+    # in
+    # https://docs.djangoproject.com/en/dev/releases/1.5/#minor-features
+    if django.VERSION >= (1, 5):
+        # Django >= 1.5 puts error text in exception.
+        exception = runner.assertRaises(
+            CommandError, call_command, command, *args, **kwargs)
+        return str(exception)
+    else:
+        # Django < 1.5 prints error text on stderr.
+        stderr = BytesIO()
+        kwargs['stderr'] = stderr
+        runner.assertRaises(
+            SystemExit, call_command, command, *args, **kwargs)
+        return stderr.getvalue().strip()
 
 
 class TestCommands(DjangoTestCase):
@@ -44,39 +70,28 @@ class TestCommands(DjangoTestCase):
         self.assertEqual('=', result[0])
 
     def test_createadmin_requires_username(self):
-        stderr = BytesIO()
-        self.assertRaises(
-            SystemExit, call_command, 'createadmin', stderr=stderr)
-        command_output = stderr.getvalue().strip()
-
+        error_text = assertCommandErrors(self, 'createadmin')
         self.assertIn(
-            "Error: You must provide a username with --username.",
-             command_output)
+            "You must provide a username with --username.",
+            error_text)
 
     def test_createadmin_requires_password(self):
         username = factory.getRandomString()
-        stderr = BytesIO()
-        self.assertRaises(
-            SystemExit, call_command, 'createadmin', username=username,
-            stderr=stderr)
-        command_output = stderr.getvalue().strip()
-
+        error_text = assertCommandErrors(
+            self, 'createadmin', username=username)
         self.assertIn(
-            "Error: You must provide a password with --password.",
-             command_output)
+            "You must provide a password with --password.",
+            error_text)
 
     def test_createadmin_requires_email(self):
         username = factory.getRandomString()
         password = factory.getRandomString()
-        stderr = BytesIO()
-        self.assertRaises(
-            SystemExit, call_command, 'createadmin', username=username,
-            password=password, stderr=stderr)
-        command_output = stderr.getvalue().strip()
-
+        error_text = assertCommandErrors(
+            self, 'createadmin',
+            username=username, password=password)
         self.assertIn(
-            "Error: You must provide an email with --email.",
-             command_output)
+            "You must provide an email with --email.",
+            error_text)
 
     def test_createadmin_creates_admin(self):
         stderr = BytesIO()
@@ -114,14 +129,10 @@ class TestCommands(DjangoTestCase):
 class TestApikeyCommand(DjangoTestCase):
 
     def test_apikey_requires_username(self):
-        stderr = BytesIO()
-        self.assertRaises(
-            SystemExit, call_command, 'apikey', stderr=stderr)
-        command_output = stderr.getvalue().strip()
-
+        error_text = assertCommandErrors(self, 'apikey')
         self.assertIn(
-            "Error: You must provide a username with --username.",
-             command_output)
+            "You must provide a username with --username.",
+            error_text)
 
     def test_apikey_gets_keys(self):
         stderr = BytesIO()
@@ -173,25 +184,22 @@ class TestApikeyCommand(DjangoTestCase):
         self.assertEqual(0, len(keys_after))
 
     def test_apikey_rejects_mutually_exclusive_options(self):
-        stderr = BytesIO()
         user = factory.make_user()
-        self.assertRaises(
-            SystemExit,
-            call_command, 'apikey', username=user.username, generate=True,
-            delete="foo", stderr=stderr)
+        error_text = assertCommandErrors(
+            self, 'apikey',
+            username=user.username, generate=True, delete="foo")
         self.assertIn(
             "Specify one of --generate or --delete",
-            stderr.getvalue())
+            error_text)
 
     def test_apikey_rejects_deletion_of_bad_key(self):
-        stderr = BytesIO()
         user = factory.make_user()
-        self.assertRaises(
-            SystemExit,
-            call_command, 'apikey', username=user.username, delete="foo",
-            stderr=stderr)
+        error_text = assertCommandErrors(
+            self, 'apikey',
+            username=user.username, delete="foo")
         self.assertIn(
-            "Malformed credentials string", stderr.getvalue())
+            "Malformed credentials string",
+            error_text)
 
     def test_api_key_rejects_deletion_of_nonexistent_key(self):
         stderr = BytesIO()
@@ -206,8 +214,7 @@ class TestApikeyCommand(DjangoTestCase):
         self.assertEqual('', stderr.getvalue().strip())
 
         # Delete it again. Check that there's a sensible rejection.
-        self.assertRaises(
-            SystemExit,
-            call_command, 'apikey', username=user.username,
-            delete=token_string, stderr=stderr)
-        self.assertIn("No matching api key found", stderr.getvalue())
+        error_text = assertCommandErrors(
+            self, 'apikey', username=user.username, delete=token_string)
+        self.assertIn(
+            "No matching api key found", error_text)
