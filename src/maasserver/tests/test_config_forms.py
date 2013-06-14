@@ -15,6 +15,8 @@ __all__ = []
 from django import forms
 from django.forms import widgets
 from django.http import QueryDict
+from lxml.etree import XPath
+from lxml.html import fromstring
 from maasserver.config_forms import (
     DictCharField,
     DictCharWidget,
@@ -203,18 +205,16 @@ class TestDictCharWidget(TestCase):
             [widgets.TextInput, widgets.TextInput, widgets.CheckboxInput],
             names, labels, skip_check=True)
         name = factory.getRandomString()
+        html_widget = fromstring(
+            '<root>' + widget.render(name, values) + '</root>')
+        widget_names = XPath('fieldset/input/@name')(html_widget)
+        widget_labels = XPath('fieldset/label/text()')(html_widget)
+        widget_values = XPath('fieldset/input/@value')(html_widget)
+        expected_names = [
+            "%s_%s" % (name, widget_name) for widget_name in names]
         self.assertEqual(
-            '<fieldset>'
-            '<label>%s</label>'
-            '<input type="text" name="%s" value="%s" />'
-            '<label>%s</label>'
-            '<input type="text" name="%s" value="%s" />'
-            '</fieldset>' %
-                (
-                    labels[0], '%s_%s' % (name, names[0]), values[0],
-                    labels[1], '%s_%s' % (name, names[1]), values[1],
-                ),
-            widget.render(name, values))
+            [expected_names, labels, values],
+            [widget_names, widget_labels, widget_values])
 
     def test_empty_DictCharWidget_renders_as_empty_string(self):
         widget = DictCharWidget(
@@ -250,15 +250,12 @@ class TestDictCharWidget(TestCase):
             [widgets.TextInput, widgets.TextInput, widgets.CheckboxInput],
             names, labels, skip_check=True)
         name = factory.getRandomString()
+        html_widget = fromstring(
+            '<root>' + widget.render(name, '') + '</root>')
+        widget_names = XPath('fieldset/input/@name')(html_widget)
+        widget_labels = XPath('fieldset/label/text()')(html_widget)
+        expected_names = [
+            "%s_%s" % (name, widget_name) for widget_name in names]
         self.assertEqual(
-            '<fieldset>'
-            '<label>%s</label>'
-            '<input type="text" name="%s" />'
-            '<label>%s</label>'
-            '<input type="text" name="%s" />'
-            '</fieldset>' %
-                (
-                    labels[0], '%s_%s' % (name, names[0]),
-                    labels[1], '%s_%s' % (name, names[1]),
-                ),
-            widget.render(name, ''))
+            [expected_names, labels],
+            [widget_names, widget_labels])
