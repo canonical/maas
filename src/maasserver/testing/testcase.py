@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Custom test-case classes."""
@@ -24,6 +24,7 @@ import wsgiref
 import django
 from django.core.cache import cache as django_cache
 from django.core.urlresolvers import reverse
+from django.test.client import encode_multipart
 from fixtures import Fixture
 from maasserver.testing.factory import factory
 from maastesting.celery import CeleryFixture
@@ -35,6 +36,10 @@ from provisioningserver.testing.tags import TagCachedKnowledgeFixture
 from provisioningserver.testing.worker_cache import WorkerCacheFixture
 
 
+MIME_BOUNDARY = 'BoUnDaRyStRiNg'
+MULTIPART_CONTENT = 'multipart/form-data; boundary=%s' % MIME_BOUNDARY
+
+
 class TestCase(maastesting.djangotestcase.DjangoTestCase):
     """:class:`TestCase` variant with the basics for maasserver testing."""
 
@@ -44,6 +49,24 @@ class TestCase(maastesting.djangotestcase.DjangoTestCase):
         self.useFixture(TagCachedKnowledgeFixture())
         self.addCleanup(django_cache.clear)
         self.celery = self.useFixture(CeleryFixture())
+
+    def client_put(self, path, data=None):
+        """Perform an HTTP PUT on the Django test client.
+
+        This wraps `self.client.put` in a way that's both convenient and
+        compatible across Django versions.  It accepts a dict of data to
+        be sent as part of the request body, in MIME multipart encoding.
+        """
+        # Since Django 1.5, client.put() requires data in the form of a
+        # string.  The application (that's us) should take care of MIME
+        # encoding.
+        # The details of that MIME encoding were ripped off from the Django
+        # test client code.
+        if data is None:
+            return self.client.put(path)
+        else:
+            return self.client.put(
+                path, encode_multipart(MIME_BOUNDARY, data), MULTIPART_CONTENT)
 
 
 class TestModelTestCase(TestCase,

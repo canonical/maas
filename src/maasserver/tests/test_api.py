@@ -1428,7 +1428,7 @@ class TestNodeAPI(APITestCase):
     def test_PUT_updates_node(self):
         # The api allows the updating of a Node.
         node = factory.make_node(hostname='diane', owner=self.logged_in_user)
-        response = self.client.put(
+        response = self.client_put(
             self.get_node_uri(node), {'hostname': 'francis'})
         parsed_result = json.loads(response.content)
 
@@ -1440,7 +1440,7 @@ class TestNodeAPI(APITestCase):
     def test_PUT_omitted_hostname(self):
         hostname = factory.make_name('hostname')
         node = factory.make_node(hostname=hostname, owner=self.logged_in_user)
-        response = self.client.put(
+        response = self.client_put(
             self.get_node_uri(node),
             {'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES)})
         self.assertEqual(httplib.OK, response.status_code, response.content)
@@ -1452,7 +1452,7 @@ class TestNodeAPI(APITestCase):
             after_commissioning_action=(
                 NODE_AFTER_COMMISSIONING_ACTION.DEFAULT))
         field = factory.getRandomString()
-        response = self.client.put(
+        response = self.client_put(
             self.get_node_uri(node),
             {field: factory.getRandomString()}
             )
@@ -1470,7 +1470,7 @@ class TestNodeAPI(APITestCase):
             power_type=original_power_type,
             after_commissioning_action=(
                 NODE_AFTER_COMMISSIONING_ACTION.DEFAULT))
-        self.client.put(
+        self.client_put(
             self.get_node_uri(node),
             {'power_type': new_power_type}
             )
@@ -1488,7 +1488,7 @@ class TestNodeAPI(APITestCase):
             power_type=original_power_type,
             after_commissioning_action=(
                 NODE_AFTER_COMMISSIONING_ACTION.DEFAULT))
-        self.client.put(
+        self.client_put(
             self.get_node_uri(node),
             {'power_type': new_power_type}
             )
@@ -1500,7 +1500,7 @@ class TestNodeAPI(APITestCase):
         # When a Node is returned by the API, the field 'resource_uri'
         # provides the URI for this Node.
         node = factory.make_node(hostname='diane', owner=self.logged_in_user)
-        response = self.client.put(
+        response = self.client_put(
             self.get_node_uri(node), {'hostname': 'francis'})
         parsed_result = json.loads(response.content)
 
@@ -1512,7 +1512,7 @@ class TestNodeAPI(APITestCase):
         # If the data provided to update a node is invalid, a 'Bad request'
         # response is returned.
         node = factory.make_node(hostname='diane', owner=self.logged_in_user)
-        response = self.client.put(
+        response = self.client_put(
             self.get_node_uri(node), {'hostname': 'too long' * 100})
         parsed_result = json.loads(response.content)
 
@@ -1529,14 +1529,14 @@ class TestNodeAPI(APITestCase):
         other_node = factory.make_node(
             status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
 
-        response = self.client.put(self.get_node_uri(other_node))
+        response = self.client_put(self.get_node_uri(other_node))
 
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
     def test_PUT_refuses_to_update_nonexistent_node(self):
         # When updating a Node, the api returns a 'Not Found' (404) error
         # if no node is found.
-        response = self.client.put(self.get_uri('nodes/no-node-here/'))
+        response = self.client_put(self.get_uri('nodes/no-node-here/'))
 
         self.assertEqual(httplib.NOT_FOUND, response.status_code)
 
@@ -1548,7 +1548,7 @@ class TestNodeAPI(APITestCase):
             power_type=POWER_TYPE.WAKE_ON_LAN)
         # Create a power_parameter valid for the selected power_type.
         new_power_address = factory.getRandomMACAddress()
-        response = self.client.put(
+        response = self.client_put(
             self.get_node_uri(node),
             {'power_parameters_mac_address': new_power_address})
 
@@ -1565,7 +1565,7 @@ class TestNodeAPI(APITestCase):
         # Create an invalid power_parameter for WoL (not a valid
         # MAC address).
         new_power_address = factory.getRandomString()
-        response = self.client.put(
+        response = self.client_put(
             self.get_node_uri(node),
             {'power_parameters_mac_address': new_power_address})
 
@@ -1583,7 +1583,7 @@ class TestNodeAPI(APITestCase):
             owner=self.logged_in_user,
             power_type=POWER_TYPE.WAKE_ON_LAN,
             power_parameters=power_parameters)
-        response = self.client.put(
+        response = self.client_put(
             self.get_node_uri(node),
             {'power_parameters_unknown_param': factory.getRandomString()})
 
@@ -1605,7 +1605,7 @@ class TestNodeAPI(APITestCase):
             owner=self.logged_in_user,
             power_type=POWER_TYPE.WAKE_ON_LAN,
             power_parameters=power_parameters)
-        response = self.client.put(
+        response = self.client_put(
             self.get_node_uri(node),
             {'power_type': POWER_TYPE.DEFAULT})
 
@@ -1623,7 +1623,7 @@ class TestNodeAPI(APITestCase):
             power_type=POWER_TYPE.WAKE_ON_LAN,
             power_parameters=power_parameters)
         new_param = factory.getRandomString()
-        response = self.client.put(
+        response = self.client_put(
             self.get_node_uri(node),
             {
                 'power_type': POWER_TYPE.DEFAULT,
@@ -1650,7 +1650,7 @@ class TestNodeAPI(APITestCase):
             power_type=POWER_TYPE.WAKE_ON_LAN,
             power_parameters=power_parameters)
         new_param = factory.getRandomString()
-        response = self.client.put(
+        response = self.client_put(
             self.get_node_uri(node),
             {
                 'power_type': POWER_TYPE.DEFAULT,
@@ -1670,7 +1670,7 @@ class TestNodeAPI(APITestCase):
         node = factory.make_node(owner=self.logged_in_user)
         new_param = factory.getRandomString()
         new_value = factory.getRandomString()
-        response = self.client.put(
+        response = self.client_put(
             self.get_node_uri(node),
            {
                 'power_parameters_%s' % new_param: new_value,
@@ -1687,7 +1687,7 @@ class TestNodeAPI(APITestCase):
             owner=self.logged_in_user,
             power_type=POWER_TYPE.WAKE_ON_LAN,
             power_parameters=factory.getRandomString())
-        response = self.client.put(
+        response = self.client_put(
             self.get_node_uri(node),
             {'power_parameters_mac_address': ''})
 
@@ -3087,15 +3087,16 @@ class TestTagAPI(APITestCase):
 
     def test_PUT_refuses_non_superuser(self):
         tag = factory.make_tag()
-        response = self.client.put(self.get_tag_uri(tag),
-                                   {'comment': 'A special comment'})
+        response = self.client_put(
+            self.get_tag_uri(tag), {'comment': 'A special comment'})
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
     def test_PUT_updates_tag(self):
         self.become_admin()
         tag = factory.make_tag()
         # Note that 'definition' is not being sent
-        response = self.client.put(self.get_tag_uri(tag),
+        response = self.client_put(
+            self.get_tag_uri(tag),
             {'name': 'new-tag-name', 'comment': 'A random comment'})
 
         self.assertEqual(httplib.OK, response.status_code)
@@ -3115,7 +3116,8 @@ class TestTagAPI(APITestCase):
         self.assertItemsEqual([tag.name], node1.tag_names())
         self.assertItemsEqual([], node2.tag_names())
         self.become_admin()
-        response = self.client.put(self.get_tag_uri(tag),
+        response = self.client_put(
+            self.get_tag_uri(tag),
             {'definition': '/node/bar'})
         self.assertEqual(httplib.OK, response.status_code)
         self.assertItemsEqual([], node1.tag_names())
@@ -3169,8 +3171,8 @@ class TestTagAPI(APITestCase):
         node.set_hardware_details('<node ><child/></node>')
         tag = factory.make_tag(definition='//child')
         self.assertItemsEqual([tag.name], node.tag_names())
-        response = self.client.put(self.get_tag_uri(tag),
-            {'definition': 'invalid::tag'})
+        response = self.client_put(
+            self.get_tag_uri(tag), {'definition': 'invalid::tag'})
 
         self.assertEqual(httplib.BAD_REQUEST, response.status_code)
         # The tag should not be modified
@@ -4459,7 +4461,7 @@ class TestNodeGroupInterfaceAPI(APITestCase):
         new_ip_range_high = next(
             ip for ip in iter(get_ip_in_network, None)
             if ip != interface.ip_range_high)
-        response = self.client.put(
+        response = self.client_put(
             reverse(
                 'nodegroupinterface_handler',
                 args=[nodegroup.uuid, interface.interface]),
@@ -4524,7 +4526,7 @@ class TestNodeGroupAPI(APITestCase):
 
     def test_PUT_reserved_to_admin_users(self):
         nodegroup = factory.make_node_group()
-        response = self.client.put(
+        response = self.client_put(
             reverse('nodegroup_handler', args=[nodegroup.uuid]),
             {'name': factory.make_name("new-name")})
 
@@ -4538,7 +4540,7 @@ class TestNodeGroupAPI(APITestCase):
         new_cluster_name = factory.make_name("new-cluster-name")
         new_status = factory.getRandomChoice(
             NODEGROUP_STATUS_CHOICES, but_not=[nodegroup.status])
-        response = self.client.put(
+        response = self.client_put(
             reverse('nodegroup_handler', args=[nodegroup.uuid]),
             {
                 'name': new_name,
@@ -4556,7 +4558,7 @@ class TestNodeGroupAPI(APITestCase):
         nodegroup, _ = factory.make_unrenamable_nodegroup_with_node()
         self.become_admin()
         new_name = factory.make_name("new-name")
-        response = self.client.put(
+        response = self.client_put(
             reverse('nodegroup_handler', args=[nodegroup.uuid]),
             {'name': new_name})
 
@@ -5152,7 +5154,7 @@ class AdminCommissioningScriptAPITest(APIv10TestMixin, AdminLoggedInTestCase):
         script = factory.make_commissioning_script(content=old_content)
         new_content = b'new:%s' % factory.getRandomString().encode('ascii')
 
-        response = self.client.put(
+        response = self.client_put(
             self.get_url(script.name),
             {'content': factory.make_file_upload(content=new_content)})
         self.assertEqual(httplib.OK, response.status_code)
@@ -5182,13 +5184,13 @@ class CommissioningScriptAPITest(APITestCase):
 
     def test_PUT_is_forbidden(self):
         script = factory.make_commissioning_script()
-        response = self.client.put(
+        response = self.client_put(
             self.get_url(script.name), {'content': factory.getRandomString()})
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
     def test_DELETE_is_forbidden(self):
         script = factory.make_commissioning_script()
-        response = self.client.put(self.get_url(script.name))
+        response = self.client_put(self.get_url(script.name))
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
 
