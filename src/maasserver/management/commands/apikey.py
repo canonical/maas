@@ -19,6 +19,7 @@ from apiclient.creds import (
     convert_string_to_tuple,
     convert_tuple_to_string,
     )
+import django
 from django.contrib.auth.models import User
 from django.core.management.base import (
     BaseCommand,
@@ -44,7 +45,10 @@ class Command(BaseCommand):
     def _print_token(self, token):
         """Write `token` to stdout in the standard format."""
         self.stdout.write(convert_tuple_to_string(get_creds_tuple(token)))
-        self.stdout.write('\n')
+        # In Django 1.5+, self.stdout.write() adds a newline character at
+        # the end of the message.
+        if django.VERSION < (1, 5):
+            self.stdout.write('\n')
 
     def _generate_token(self, user):
         _, token = user.get_profile().create_authorisation_token()
