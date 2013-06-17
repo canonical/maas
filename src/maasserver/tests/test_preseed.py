@@ -14,6 +14,7 @@ __all__ = []
 
 import httplib
 import os
+import yaml
 from pipes import quote
 from urlparse import urlparse
 
@@ -462,6 +463,10 @@ class TestRenderEnlistmentPreseed(TestCase):
         # The test really is that the preseed is rendered without an
         # error.
         self.assertIsInstance(preseed, str)
+
+    def test_render_enlistment_preseed_valid_yaml(self):
+        preseed = render_enlistment_preseed(self.preseed, "precise")
+        self.assertTrue(yaml.safe_load(preseed))
 
     def test_get_preseed_uses_nodegroup_maas_url(self):
         ng_url = 'http://%s' % factory.make_hostname()

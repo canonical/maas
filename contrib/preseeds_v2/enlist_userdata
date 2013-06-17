@@ -55,7 +55,9 @@ misc_bucket:
    END_IPMI_CONFIG
 
    add_bin "maas-ipmi-autodetect" <<"END_MAAS_IPMI_AUTODETECT"
-   {{maas_ipmi_autodetect_py}}
+   {{for line in maas_ipmi_autodetect_py.splitlines()}}
+   {{line}}
+   {{endfor}}
    END_MAAS_IPMI_AUTODETECT
 
    # we could obtain the interface that booted from the kernel cmdline
