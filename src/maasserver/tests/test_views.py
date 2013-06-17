@@ -256,9 +256,10 @@ class SimpleListView(PaginatedListView):
     """Simple paginated view for testing"""
 
     paginate_by = 2
+    query_results = None
 
     def __init__(self, query_results):
-        self._query_results = list(query_results)
+        self.query_results = list(query_results)
 
     def get_queryset(self):
         """Return precanned list of objects
@@ -266,16 +267,16 @@ class SimpleListView(PaginatedListView):
         Really this should return a QuerySet object, but for basic usage a
         list is close enough.
         """
-        return self._query_results
+        return self.query_results
 
 
 class PaginatedListViewTests(TestCase):
     """Check PaginatedListView page links inserted into context are correct"""
 
     def test_single_page(self):
-        view = SimpleListView([SimpleFakeModel(1)])
+        view = SimpleListView.as_view(query_results=[SimpleFakeModel(1)])
         request = RequestFactory().get('/index')
-        response = view.dispatch(request)
+        response = view(request)
         context = response.context_data
         self.assertEqual("", context["first_page_link"])
         self.assertEqual("", context["previous_page_link"])
@@ -283,9 +284,10 @@ class PaginatedListViewTests(TestCase):
         self.assertEqual("", context["last_page_link"])
 
     def test_on_first_page(self):
-        view = SimpleListView([SimpleFakeModel(i) for i in range(5)])
+        view = SimpleListView.as_view(
+            query_results=[SimpleFakeModel(i) for i in range(5)])
         request = RequestFactory().get('/index')
-        response = view.dispatch(request)
+        response = view(request)
         context = response.context_data
         self.assertEqual("", context["first_page_link"])
         self.assertEqual("", context["previous_page_link"])
@@ -293,9 +295,10 @@ class PaginatedListViewTests(TestCase):
         self.assertEqual("?page=3", context["last_page_link"])
 
     def test_on_second_page(self):
-        view = SimpleListView([SimpleFakeModel(i) for i in range(7)])
+        view = SimpleListView.as_view(
+            query_results=[SimpleFakeModel(i) for i in range(7)])
         request = RequestFactory().get('/index?page=2')
-        response = view.dispatch(request)
+        response = view(request)
         context = response.context_data
         self.assertEqual("index", context["first_page_link"])
         self.assertEqual("index", context["previous_page_link"])
@@ -303,9 +306,10 @@ class PaginatedListViewTests(TestCase):
         self.assertEqual("?page=4", context["last_page_link"])
 
     def test_on_final_page(self):
-        view = SimpleListView([SimpleFakeModel(i) for i in range(5)])
+        view = SimpleListView.as_view(
+            query_results=[SimpleFakeModel(i) for i in range(5)])
         request = RequestFactory().get('/index?page=3')
-        response = view.dispatch(request)
+        response = view(request)
         context = response.context_data
         self.assertEqual("index", context["first_page_link"])
         self.assertEqual("?page=2", context["previous_page_link"])
@@ -313,9 +317,10 @@ class PaginatedListViewTests(TestCase):
         self.assertEqual("", context["last_page_link"])
 
     def test_relative_to_directory(self):
-        view = SimpleListView([SimpleFakeModel(i) for i in range(6)])
+        view = SimpleListView.as_view(
+            query_results=[SimpleFakeModel(i) for i in range(6)])
         request = RequestFactory().get('/index/?page=2')
-        response = view.dispatch(request)
+        response = view(request)
         context = response.context_data
         self.assertEqual(".", context["first_page_link"])
         self.assertEqual(".", context["previous_page_link"])
@@ -323,9 +328,10 @@ class PaginatedListViewTests(TestCase):
         self.assertEqual("?page=3", context["last_page_link"])
 
     def test_preserves_query_string(self):
-        view = SimpleListView([SimpleFakeModel(i) for i in range(6)])
+        view = SimpleListView.as_view(
+            query_results=[SimpleFakeModel(i) for i in range(6)])
         request = RequestFactory().get('/index?lookup=value')
-        response = view.dispatch(request)
+        response = view(request)
         context = response.context_data
         self.assertEqual("", context["first_page_link"])
         self.assertEqual("", context["previous_page_link"])
@@ -334,9 +340,10 @@ class PaginatedListViewTests(TestCase):
         self.assertEqual("?lookup=value&page=3", context["last_page_link"])
 
     def test_preserves_query_string_with_page(self):
-        view = SimpleListView([SimpleFakeModel(i) for i in range(8)])
+        view = SimpleListView.as_view(
+            query_results=[SimpleFakeModel(i) for i in range(8)])
         request = RequestFactory().get('/index?page=3&lookup=value')
-        response = view.dispatch(request)
+        response = view(request)
         context = response.context_data
         self.assertEqual("?lookup=value", context["first_page_link"])
         # Does this depend on dict hash values for order or does django sort?
