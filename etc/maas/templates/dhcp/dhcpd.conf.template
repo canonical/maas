@@ -1,3 +1,10 @@
+# WARNING: Do not edit /etc/maas/dhcpd.conf yourself.  MAAS will overwrite any
+# changes made there.
+#
+# Instead, edit /etc/maas/templates/dhcp/dhcpd.conf.template and your changes
+# will be present whenever MAAS rewrites the DHCP configuration.  Edit and save
+# the nodegroup's configuration in MAAS to trigger an update.
+
 subnet {{subnet}} netmask {{subnet_mask}} {
        filename "{{bootloader}}";
        {{if platform_codename >= 'raring'}}
