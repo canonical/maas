@@ -477,12 +477,8 @@ class Node(CleanSave, TimestampedModel):
         default=NODE_AFTER_COMMISSIONING_ACTION.DEFAULT)
 
     distro_series = CharField(
-        max_length=10, choices=DISTRO_SERIES_CHOICES, null=True,
+        max_length=20, choices=DISTRO_SERIES_CHOICES, null=True,
         blank=True, default='')
-
-    distro_series = CharField(
-        max_length=10, choices=DISTRO_SERIES_CHOICES, null=True,
-        blank=True, default=None)
 
     architecture = CharField(
         max_length=31, choices=ARCHITECTURE_CHOICES, blank=False,
