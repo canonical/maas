@@ -58,6 +58,7 @@ Developing MAAS
 .. toctree::
    :maxdepth: 2
 
+   development/philosophy
    development/security
    development/building-packages
 
