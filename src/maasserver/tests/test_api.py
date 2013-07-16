@@ -797,6 +797,9 @@ class AnonymousEnlistmentAPITest(APIv10TestMixin, TestCase):
                 'tag_names',
                 'ip_addresses',
                 'resource_uri',
+                'cpu_count',
+                'storage',
+                'memory',
             ],
             list(parsed_result))
 
@@ -874,6 +877,9 @@ class SimpleUserLoggedInEnlistmentAPITest(APIv10TestMixin, LoggedInTestCase):
                 'resource_uri',
                 'tag_names',
                 'ip_addresses',
+                'cpu_count',
+                'storage',
+                'memory',
             ],
             list(parsed_result))
 
@@ -1015,6 +1021,9 @@ class AdminLoggedInEnlistmentAPITest(APIv10TestMixin, AdminLoggedInTestCase):
                 'resource_uri',
                 'tag_names',
                 'ip_addresses',
+                'cpu_count',
+                'storage',
+                'memory',
             ],
             list(parsed_result))
 

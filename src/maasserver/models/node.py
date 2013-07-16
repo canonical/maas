@@ -392,6 +392,10 @@ _xpath_memory_bytes = (
             "/node[starts-with(@id, 'bank:')]/size[@units='bytes'])"
        "div 1024 div 1024")
 
+_xpath_storage_bytes = (
+    "sum(//node[starts-with(@id, 'volume:')]/size[@units='bytes'])"
+       "div 1024 div 1024")
+
 
 def update_hardware_details(node, xmlbytes, tag_manager):
     """Set node hardware_details from lshw output and update related fields
@@ -412,8 +416,12 @@ def update_hardware_details(node, xmlbytes, tag_manager):
     memory = evaluator(_xpath_memory_bytes)
     if not memory or math.isnan(memory):
         memory = 0
+    storage = evaluator(_xpath_storage_bytes)
+    if not storage or math.isnan(storage):
+        storage = 0
     node.cpu_count = cpu_count or 0
     node.memory = memory
+    node.storage = storage
     for tag in tag_manager.all():
         if not tag.definition:
             continue
@@ -488,6 +496,7 @@ class Node(CleanSave, TimestampedModel):
     # as a basic optimisation over querying the hardware_details field.
     cpu_count = IntegerField(default=0)
     memory = IntegerField(default=0)
+    storage = IntegerField(default=0)
 
     hardware_details = XMLField(default=None, blank=True, null=True)
 
