@@ -83,7 +83,7 @@ class FileStorage(CleanSave, Model):
         unique_together = ('filename', 'owner')
 
     filename = CharField(max_length=255, unique=False, editable=False)
-    content = BinaryField(null=False)
+    content = BinaryField(null=False, blank=True)
     # owner can be None: this is to support upgrading existing
     # installations where the files were not linked to users yet.
     owner = ForeignKey(
