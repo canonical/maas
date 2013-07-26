@@ -2719,6 +2719,17 @@ class FileStorageAPITest(FileStorageAPITestMixin, APITestCase):
         self.assertIn('text/plain', response['Content-Type'])
         self.assertEqual("Filename not supplied", response.content)
 
+    def test_add_empty_file(self):
+        filename = "filename"
+        response = self.make_API_POST_request(
+            "add", filename=filename,
+            fileObj=factory.make_file_upload(content=b''))
+        self.assertEqual(httplib.CREATED, response.status_code)
+        self.assertItemsEqual(
+            [filename],
+            FileStorage.objects.filter(
+                filename=filename).values_list('filename', flat=True))
+
     def test_add_file_fails_with_no_file_attached(self):
         response = self.make_API_POST_request("add", "foo")
 
