@@ -34,6 +34,11 @@ template_content = dedent("""\
            option domain-name-servers {{dns_servers}};
            option routers {{router_ip}};
            range dynamic-bootp {{ip_range_low}} {{ip_range_high}};
+           class "PXE" {
+              match if substring (option vendor-class-identifier, 0, 3) = "PXE";
+              default-lease-time 30;
+              max-lease-time 30;
+           }
     }
     omapi-port 7911;
     key omapi_key {
