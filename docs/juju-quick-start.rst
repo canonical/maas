@@ -21,8 +21,11 @@ it. Each user account in MAAS can have as many API keys as desired.
 One hard and fast rule is that you'll need to use a different API key
 for each Juju *environment* you set up within a single MAAS cluster.
 
-You'll also need to add an SSH key to MAAS so that you, and Juju, can
-SSH into freshly provisioned machines.
+There is no need to explicitly add an SSH key to MAAS when using Juju;
+it will automatically put your public key on any hosts that it starts up.
+
+**Note**: You do not need to use the MAAS web UI or API to allocate
+a node to yourself, Juju will do this for you.
 
 
 Getting a key
@@ -59,12 +62,17 @@ Create or modify ``~/.juju/environments.yaml`` with the following content::
   environments:
     maas:
       type: maas
-      maas-server: 'http://localhost/MAAS'
+      maas-server: 'http://${my-maas-server}:80/MAAS'
       maas-oauth: '${maas-api-key}'
-      admin-secret: 'nothing'
+      admin-secret: ${your-admin-secret}
+      default-series: precise
 
 Substitute the API key from earlier into the ``${maas-api-key}``
+slot, and the hostname of your MAAS server into the ``${my-maas-server}``
 slot.
+
+The ``${your-admin-secret}`` slot should be replaced with a random pass-phrase,
+there is no default.
 
 
 Now Juju

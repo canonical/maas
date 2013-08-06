@@ -98,7 +98,7 @@ on the MAAS server:
 If you made a mistake during setup or you just need to reconfigure your MAAS
 server, you can simply run the setup again:
 
-    ``sudo dpkg-reconfigure maas``
+    ``sudo dpkg-reconfigure maas-region-controller``
 
 
 **Can't find MAAS webpage**

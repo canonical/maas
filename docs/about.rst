@@ -31,5 +31,17 @@ Contributing
 
 If you have some extra information to add, or think you have spotted
 an error or something out of date, we really want to hear about
-it. File a bug report or contact us via the MAAS homepage at
-http://maas.ubuntu.com
+it.  Please `File a bug report`_ or `contact us directly`_.  In addition
+you can talk to us on the Freenode IRC channel #maas.
+
+.. _File a bug report:
+  https://bugs.launchpad.net/maas/+filebug
+
+.. _contact us directly:
+  https://launchpad.net/~maas-maintainers/+contactuser
+
+If you see something wrong with this documentation, you can help us fix it.
+Download the source to MAAS by following the instructions in
+:doc:`the hacking guide <hacking>`, make your changes, and propose a merge
+against lp:maas on Launchpad.  The documentation source lives in the top-level
+``doc/`` directory.
