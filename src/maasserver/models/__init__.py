@@ -153,7 +153,8 @@ class MAASAuthorizationBackend(ModelBackend):
                 'Invalid permission check (invalid object type).')
 
         if perm == NODE_PERMISSION.VIEW:
-            return obj.owner in (None, user)
+            # Any registered user can view a node regardless of its state.
+            return True
         elif perm == NODE_PERMISSION.EDIT:
             return obj.owner == user
         elif perm == NODE_PERMISSION.ADMIN:

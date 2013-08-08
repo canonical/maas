@@ -97,15 +97,15 @@ class TestMAASAuthorizationBackend(TestCase):
             get_node_init_user(), NODE_PERMISSION.VIEW,
             make_unallocated_node()))
 
-    def test_user_can_access_unowned_node(self):
+    def test_user_can_view_unowned_node(self):
         backend = MAASAuthorizationBackend()
         self.assertTrue(backend.has_perm(
             factory.make_user(), NODE_PERMISSION.VIEW,
             make_unallocated_node()))
 
-    def test_user_cannot_access_nodes_owned_by_others(self):
+    def test_user_can_view_nodes_owned_by_others(self):
         backend = MAASAuthorizationBackend()
-        self.assertFalse(backend.has_perm(
+        self.assertTrue(backend.has_perm(
             factory.make_user(), NODE_PERMISSION.VIEW, make_allocated_node()))
 
     def test_owned_status(self):

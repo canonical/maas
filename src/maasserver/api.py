@@ -220,6 +220,7 @@ import simplejson as json
 DISPLAYED_NODE_FIELDS = (
     'system_id',
     'hostname',
+    'owner',
     ('macaddress_set', ('mac_address',)),
     'architecture',
     'cpu_count',
@@ -275,6 +276,14 @@ class NodeHandler(OperationsHandler):
     @classmethod
     def hostname(handler, node):
         return node.fqdn
+
+    # Override 'owner' so it emits the owner's name rather than a
+    # full nested user object.
+    @classmethod
+    def owner(handler, node):
+        if node.owner is None:
+            return None
+        return node.owner.username
 
     def read(self, request, system_id):
         """Read a specific Node."""

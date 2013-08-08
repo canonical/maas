@@ -16,7 +16,6 @@ from datetime import timedelta
 import random
 
 from django.core.exceptions import (
-    PermissionDenied,
     ValidationError,
     )
 from maasserver.enum import (
@@ -958,15 +957,6 @@ class NodeManagerTest(TestCase):
             node,
             Node.objects.get_node_or_404(
                 node.system_id, user, NODE_PERMISSION.VIEW))
-
-    def test_get_visible_node_or_404_raises_PermissionDenied(self):
-        """get_node_or_404 raises PermissionDenied if the provided
-        user has not the right permission on the returned node."""
-        user_node = self.make_node(factory.make_user())
-        self.assertRaises(
-            PermissionDenied,
-            Node.objects.get_node_or_404,
-            user_node.system_id, factory.make_user(), NODE_PERMISSION.VIEW)
 
     def test_get_available_node_for_acquisition_finds_available_node(self):
         user = factory.make_user()

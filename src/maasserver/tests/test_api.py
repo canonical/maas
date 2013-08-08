@@ -788,6 +788,7 @@ class AnonymousEnlistmentAPITest(APIv10TestMixin, TestCase):
         self.assertItemsEqual(
             [
                 'hostname',
+                'owner',
                 'system_id',
                 'macaddress_set',
                 'architecture',
@@ -868,6 +869,7 @@ class SimpleUserLoggedInEnlistmentAPITest(APIv10TestMixin, LoggedInTestCase):
         self.assertItemsEqual(
             [
                 'hostname',
+                'owner',
                 'system_id',
                 'macaddress_set',
                 'architecture',
@@ -1012,6 +1014,7 @@ class AdminLoggedInEnlistmentAPITest(APIv10TestMixin, AdminLoggedInTestCase):
         self.assertItemsEqual(
             [
                 'hostname',
+                'owner',
                 'system_id',
                 'macaddress_set',
                 'architecture',
@@ -1201,22 +1204,35 @@ class TestNodeAPI(APITestCase):
         parsed_result = json.loads(response.content)
         self.assertEqual([lease.ip], parsed_result['ip_addresses'])
 
-    def test_GET_refuses_to_access_invisible_node(self):
-        # The request to fetch a single node is denied if the node isn't
-        # visible by the user.
-        other_node = factory.make_node(
-            status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
-
-        response = self.client.get(self.get_node_uri(other_node))
-
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
-
     def test_GET_refuses_to_access_nonexistent_node(self):
         # When fetching a Node, the api returns a 'Not Found' (404) error
         # if no node is found.
         response = self.client.get(self.get_uri('nodes/invalid-uuid/'))
 
         self.assertEqual(httplib.NOT_FOUND, response.status_code)
+
+    def test_GET_returns_owner_name_when_allocated_to_self(self):
+        node = factory.make_node(
+            status=NODE_STATUS.ALLOCATED, owner=self.logged_in_user)
+        response = self.client.get(self.get_node_uri(node))
+        self.assertEqual(httplib.OK, response.status_code)
+        parsed_result = json.loads(response.content)
+        self.assertEqual(node.owner.username, parsed_result["owner"])
+
+    def test_GET_returns_owner_name_when_allocated_to_other_user(self):
+        node = factory.make_node(
+            status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
+        response = self.client.get(self.get_node_uri(node))
+        self.assertEqual(httplib.OK, response.status_code)
+        parsed_result = json.loads(response.content)
+        self.assertEqual(node.owner.username, parsed_result["owner"])
+
+    def test_GET_returns_empty_owner_when_not_allocated(self):
+        node = factory.make_node(status=NODE_STATUS.READY)
+        response = self.client.get(self.get_node_uri(node))
+        self.assertEqual(httplib.OK, response.status_code)
+        parsed_result = json.loads(response.content)
+        self.assertEqual(None, parsed_result["owner"])
 
     def test_POST_stop_checks_permission(self):
         node = factory.make_node()
@@ -2457,16 +2473,6 @@ class MACAddressAPITest(APITestCase):
         self.assertEqual(
             mac2.mac_address, parsed_result[1]['mac_address'])
 
-    def test_macs_GET_forbidden(self):
-        # When fetching MAC addresses, the api returns a 'Forbidden' (403)
-        # error if the node is not visible to the logged-in user.
-        other_node = factory.make_node(
-            status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
-        response = self.client.get(
-            self.get_uri('nodes/%s/macs/') % other_node.system_id)
-
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
-
     def test_macs_GET_not_found(self):
         # When fetching MAC addresses, the api returns a 'Not Found' (404)
         # error if no node is found.
@@ -2483,17 +2489,6 @@ class MACAddressAPITest(APITestCase):
                 'nodes/%s/macs/00-aa-22-cc-44-dd/') % node.system_id)
 
         self.assertEqual(httplib.NOT_FOUND, response.status_code)
-
-    def test_macs_GET_node_forbidden(self):
-        # When fetching a MAC address, the api returns a 'Forbidden' (403)
-        # error if the node is not visible to the logged-in user.
-        other_node = factory.make_node(
-            status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
-        response = self.client.get(
-            self.get_uri(
-                'nodes/%s/macs/0-aa-22-cc-44-dd/') % other_node.system_id)
-
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
     def test_macs_GET_node_bad_request(self):
         # When fetching a MAC address, the api returns a 'Bad Request' (400)
