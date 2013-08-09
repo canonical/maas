@@ -12,6 +12,7 @@ from __future__ import (
 
 __metaclass__ = type
 __all__ = [
+    'BUILTIN_COMMISSIONING_SCRIPTS',
     'CommissioningScript',
     ]
 
@@ -39,12 +40,35 @@ LSHW_SCRIPT = dedent("""\
     lshw -xml
     """)
 
+
+def set_hardware_details(node, raw_content):
+    """Process the results of LSHW_SCRIPT."""
+    node.set_hardware_details(raw_content)
+
+
 # Built-in commissioning scripts.  These go into the commissioning
 # tarball together with user-provided commissioning scripts.
 # To keep namespaces separated, names of the built-in scripts must be
 # prefixed with "00-maas-" or "99-maas-".
+#
+# The dictionary is keyed on the output filename that the script
+# produces. This is so it can be looked up later in the post-processing
+# hook.
+#
+# The contents of each dictionary entry are another dictionary with
+# keys:
+#   "name" -> the script's name
+#   "content" -> the actual script
+#   "hook" -> a post-processing hook.
+#
+# The post-processing hook is a function that will be passed the node
+# and the raw content of the script's output, e.g. "hook(node, raw_content)"
 BUILTIN_COMMISSIONING_SCRIPTS = {
-    '00-maas-01-lshw': LSHW_SCRIPT.encode('ascii'),
+    '00-maas-01-lshw.out': {
+        'name': '00-maas-01-lshw',
+        'content': LSHW_SCRIPT.encode('ascii'),
+        'hook': set_hardware_details,
+    }
 }
 
 
@@ -73,7 +97,8 @@ class CommissioningScriptManager(Manager):
         binary = BytesIO()
         tarball = tarfile.open(mode='w', fileobj=binary)
         scripts = sorted(
-            BUILTIN_COMMISSIONING_SCRIPTS.items() +
+            [(script['name'], script['content']) for script
+                in BUILTIN_COMMISSIONING_SCRIPTS.itervalues()] +
             [(script.name, script.content) for script in self.all()])
         for name, content in scripts:
             add_script_to_archive(

@@ -63,6 +63,9 @@ from metadataserver.models import (
     NodeKey,
     NodeUserData,
     )
+from metadataserver.models.commissioningscript import (
+    BUILTIN_COMMISSIONING_SCRIPTS,
+    )
 from piston.utils import rc
 
 
@@ -193,8 +196,9 @@ class VersionIndexHandler(MetadataViewHandler):
         script_result = request.POST.get('script_result', None)
         for name, uploaded_file in request.FILES.items():
             raw_content = uploaded_file.read()
-            if name == "00-maas-01-lshw.out":
-                node.set_hardware_details(raw_content)
+            if name in BUILTIN_COMMISSIONING_SCRIPTS:
+                postprocess_hook = BUILTIN_COMMISSIONING_SCRIPTS[name]['hook']
+                postprocess_hook(node, raw_content)
             contents = raw_content.decode('utf-8')
             NodeCommissionResult.objects.store_data(
                 node, name, script_result, contents)
