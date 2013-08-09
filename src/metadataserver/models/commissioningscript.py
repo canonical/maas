@@ -27,6 +27,7 @@ from django.db.models import (
     Manager,
     Model,
     )
+from maasserver.models.tag import Tag
 from metadataserver import DefaultMeta
 from metadataserver.fields import BinaryField
 
@@ -45,6 +46,27 @@ def set_hardware_details(node, raw_content):
     """Process the results of LSHW_SCRIPT."""
     node.set_hardware_details(raw_content)
 
+
+# Built-in script to detect virtual instances. It will only detect QEMU
+# for now and may need expanding/generalising at some point.
+VIRTUALITY_SCRIPT = dedent("""\
+    #!/bin/sh
+    grep '^model name.*QEMU.*' /proc/cpuinfo >/dev/null 2>&1
+    if [ $? -eq 0 ]; then
+        echo "virtual"
+    else
+        echo "notvirtual"
+    fi
+    """)
+
+
+def set_virtual_tag(node, raw_content):
+    """Process the results of VIRTUALITY_SCRIPT."""
+    tag, _ = Tag.objects.get_or_create(name='virtual')
+    if 'notvirtual' in raw_content:
+        node.tags.remove(tag)
+    else:
+        node.tags.add(tag)
 
 # Built-in commissioning scripts.  These go into the commissioning
 # tarball together with user-provided commissioning scripts.
@@ -68,7 +90,12 @@ BUILTIN_COMMISSIONING_SCRIPTS = {
         'name': '00-maas-01-lshw',
         'content': LSHW_SCRIPT.encode('ascii'),
         'hook': set_hardware_details,
-    }
+    },
+    '00-maas-02-virtuality.out': {
+        'name': '00-maas-02-virtuality',
+        'content': VIRTUALITY_SCRIPT.encode('ascii'),
+        'hook': set_virtual_tag,
+    },
 }
 
 

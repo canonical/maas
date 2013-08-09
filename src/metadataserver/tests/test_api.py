@@ -32,7 +32,7 @@ from maasserver.exceptions import (
     MAASAPINotFound,
     Unauthorized,
     )
-from maasserver.models import SSHKey
+from maasserver.models import SSHKey, Tag
 from maasserver.testing import reload_object
 from maasserver.testing.factory import factory
 from maasserver.testing.oauthclient import OAuthAuthenticatedClient
@@ -589,6 +589,42 @@ class TestViews(DjangoTestCase):
         node = reload_object(node)
         self.assertEqual(xmlbytes, node.hardware_details)
         self.assertEqual(0, node.memory)
+
+    def test_signal_stores_virtual_tag_on_node_if_virtual(self):
+        node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
+        client = self.make_node_client(node=node)
+        content = 'virtual'.encode('utf-8')
+        response = self.call_signal(
+            client, script_result=0,
+            files={'00-maas-02-virtuality.out': content})
+        self.assertEqual(httplib.OK, response.status_code)
+        node = reload_object(node)
+        self.assertEqual(
+            ["virtual"], [each_tag.name for each_tag in node.tags.all()])
+
+    def test_signal_removes_virtual_tag_on_node_if_not_virtual(self):
+        node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
+        tag, _ = Tag.objects.get_or_create(name='virtual')
+        node.tags.add(tag)
+        client = self.make_node_client(node=node)
+        content = 'notvirtual'.encode('utf-8')
+        response = self.call_signal(
+            client, script_result=0,
+            files={'00-maas-02-virtuality.out': content})
+        self.assertEqual(httplib.OK, response.status_code)
+        node = reload_object(node)
+        self.assertEqual(0, len(node.tags.all()))
+
+    def test_signal_leaves_untagged_physical_node_unaltered(self):
+        node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
+        client = self.make_node_client(node=node)
+        content = 'notvirtual'.encode('utf-8')
+        response = self.call_signal(
+            client, script_result=0,
+            files={'00-maas-02-virtuality.out': content})
+        self.assertEqual(httplib.OK, response.status_code)
+        node = reload_object(node)
+        self.assertEqual(0, len(node.tags.all()))
 
     def test_signal_refuses_bad_power_type(self):
         node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
