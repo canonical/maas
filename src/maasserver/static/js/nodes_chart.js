@@ -23,8 +23,8 @@ NodesChartWidget.NAME = 'nodes-chart-widget';
 var TRANSITION_TIME = 1000,
     TRANSITION_EASING = 'easeInOut',
     OUTER_COLOURS = ['#19b6ee', '#38b44a', '#0d80aa'],
-    OFFLINE_COLOUR = '#dddddd',
-    ADDED_COLOUR = '#ffffff',
+    OFFLINE_COLOUR = '#cccccc',
+    ADDED_COLOUR = '#dddddd',
     STROKE_WIDTH = 2,
     STROKE_COLOUR = '#ffffff',
     r;
