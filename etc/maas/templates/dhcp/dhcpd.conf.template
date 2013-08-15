@@ -13,7 +13,7 @@ subnet {{subnet}} netmask {{subnet_mask}} {
        option subnet-mask {{subnet_mask}};
        option broadcast-address {{broadcast_ip}};
        option domain-name-servers {{dns_servers}};
-       option domain-name {{domain_name}};
+       option domain-name "{{domain_name}}";
        option routers {{router_ip}};
        range dynamic-bootp {{ip_range_low}} {{ip_range_high}};
        class "PXE" {
