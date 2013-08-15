@@ -21,9 +21,16 @@ then
         -c "CustomLog ${logfile} common"
 fi
 
+# Look for a release-specific config first.
+config="etc/apache.$(lsb_release --codename --short).conf"
+if [ ! -f "${config}" ]
+then
+    config="etc/apache.conf"
+fi
+config="$(readlink -f "${config}")"
+
 # Exec the Provisioning Server.
 apache="$(type -p apache2)"
-config="$(readlink -f etc/apache.conf)"
 
 reload() { "${apache}" -k graceful -f "${config}" -d "$(pwd)"; }
 stop() { "${apache}" -k graceful-stop -f "${config}" -d "$(pwd)"; }
