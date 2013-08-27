@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test maasserver models."""
@@ -15,9 +15,7 @@ __all__ = []
 from datetime import timedelta
 import random
 
-from django.core.exceptions import (
-    ValidationError,
-    )
+from django.core.exceptions import ValidationError
 from maasserver.enum import (
     ARCHITECTURE,
     DISTRO_SERIES,
@@ -386,7 +384,7 @@ class NodeTest(TestCase):
         node.release()
         self.assertEqual((NODE_STATUS.READY, None), (node.status, node.owner))
 
-    def test_ip_addresses(self):
+    def test_ip_addresses_queries_leases(self):
         node = factory.make_node()
         macs = [factory.make_mac_address(node=node) for i in range(2)]
         leases = [
@@ -395,6 +393,40 @@ class NodeTest(TestCase):
             for mac in macs]
         self.assertItemsEqual(
             [lease.ip for lease in leases], node.ip_addresses())
+
+    def test_ip_addresses_uses_result_cache(self):
+        # ip_addresses has a specialized code path for the case where the
+        # node group's set of DHCP leases is already cached in Django's ORM.
+        # This test exercises that code path.
+        node = factory.make_node()
+        macs = [factory.make_mac_address(node=node) for i in range(2)]
+        leases = [
+            factory.make_dhcp_lease(
+                nodegroup=node.nodegroup, mac=mac.mac_address)
+            for mac in macs]
+        # Other nodes in the nodegroup have leases, but those are not
+        # relevant here.
+        factory.make_dhcp_lease(nodegroup=node.nodegroup)
+
+        # Don't address the node directly; address it through a query with
+        # prefetched DHCP leases, to ensure that the query cache for those
+        # leases on the nodegroup will be populated.
+        query = Node.objects.filter(id=node.id)
+        query = query.prefetch_related('nodegroup__dhcplease_set')
+        # The cache is populated.  This is the condition that triggers the
+        # separate code path in Node.ip_addresses().
+        self.assertIsNotNone(
+            query[0].nodegroup.dhcplease_set.all()._result_cache)
+
+        # ip_addresses() still returns the node's leased addresses.
+        num_queries, addresses = self.getNumQueries(query[0].ip_addresses)
+        # It only takes one query: to get the node's MAC addresses.
+        self.assertEqual(1, num_queries)
+        # The result is not a query set, so this isn't hiding a further query.
+        no_queries, _ = self.getNumQueries(list, addresses)
+        self.assertEqual(0, no_queries)
+        # We still get exactly the right IP addresses.
+        self.assertItemsEqual([lease.ip for lease in leases], addresses)
 
     def test_ip_addresses_filters_by_mac_addresses(self):
         node = factory.make_node()
