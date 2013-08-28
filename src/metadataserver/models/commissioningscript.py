@@ -16,11 +16,12 @@ __all__ = [
     'CommissioningScript',
     ]
 
+from inspect import getsource
 from io import BytesIO
+import json
 import os.path
 import tarfile
 from textwrap import dedent
-import time
 
 from django.db.models import (
     CharField,
@@ -34,6 +35,51 @@ from metadataserver.fields import BinaryField
 # Path prefix for commissioning scripts.  Commissioning scripts will be
 # extracted into this directory.
 ARCHIVE_PREFIX = "commissioning.d"
+
+
+def make_function_call_script(function, *args, **kwargs):
+    """Compose a Python script that calls the given function.
+
+    The function's source will be obtained by inspection. Ensure that
+    the function is fully self-contained; don't rely on variables or
+    imports from the module in which it is defined.
+
+    The given arguments will be used when calling the function in the
+    composed script. They are serialised into JSON with the
+    limitations on types that that implies.
+
+    :return: `bytes`
+    """
+    template = dedent("""\
+    #!/usr/bin/python
+    # -*- coding: utf-8 -*-
+
+    from __future__ import (
+        absolute_import,
+        print_function,
+        unicode_literals,
+        )
+
+    import json
+
+    __metaclass__ = type
+    __all__ = [{function_name!r}]
+
+    {function_source}
+
+    if __name__ == '__main__':
+        args = json.loads({function_args!r})
+        kwargs = json.loads({function_kwargs!r})
+        {function_name}(*args, **kwargs)
+    """)
+    script = template.format(
+        function_name=function.__name__.decode('ascii'),
+        function_source=dedent(getsource(function).decode('utf-8')).strip(),
+        function_args=json.dumps(args).decode('utf-8'),
+        function_kwargs=json.dumps(kwargs).decode('utf-8'),
+    )
+    return script.encode("utf-8")
+
 
 # Built-in script to run lshw.
 LSHW_SCRIPT = dedent("""\
@@ -68,6 +114,93 @@ def set_virtual_tag(node, raw_content):
     else:
         node.tags.add(tag)
 
+
+# This function must be entirely self-contained. It must not use
+# variables or imports from the surrounding scope.
+def lldpd_install(config_file):
+    """Installs and configures `lldpd` for passive capture.
+
+    `config_file` refers to a shell script that is sourced by
+    `lldpd`'s init script, i.e. it's Upstart config on Ubuntu.
+
+    It selects the following options for the `lldpd` daemon:
+
+    -c  Enable the support of CDP protocol to deal with Cisco routers
+        that do not speak LLDP. If repeated, CDPv1 packets will be
+        sent even when there is no CDP peer detected.
+
+    -f  Enable the support of FDP protocol to deal with Foundry routers
+        that do not speak LLDP. If repeated, FDP packets will be sent
+        even when there is no FDP peer detected.
+
+    -s  Enable the support of SONMP protocol to deal with Nortel
+        routers and switches that do not speak LLDP. If repeated,
+        SONMP packets will be sent even when there is no SONMP peer
+        detected.
+
+    -e  Enable the support of EDP protocol to deal with Extreme
+        routers and switches that do not speak LLDP. If repeated, EDP
+        packets will be sent even when there is no EDP peer detected.
+
+    -r  Receive-only mode. With this switch, lldpd will not send any
+        frame. It will only listen to neighbors.
+
+    These flags are chosen so that we're able to capture information
+    from a broad spectrum of equipment, but without advertising the
+    node's temporary presence.
+
+    """
+    from subprocess import check_call
+    check_call(("apt-get", "install", "--yes", "lldpd"))
+    from codecs import open
+    with open(config_file, "a", "ascii") as fd:
+        fd.write('\n')  # Ensure there's a newline.
+        fd.write('# Configured by MAAS:\n')
+        fd.write('DAEMON_ARGS="-c -f -s -e -r"\n')
+    check_call(("service", "lldpd", "restart"))
+
+
+# This function must be entirely self-contained. It must not use
+# variables or imports from the surrounding scope.
+def lldpd_wait(reference_file, time_delay):
+    """Wait until `lldpd` has been running for `time_delay` seconds.
+
+    On an Ubuntu system, `reference_file` is typically `lldpd`'s UNIX
+    socket in `/var/run`.
+
+    """
+    from os.path import getmtime
+    time_ref = getmtime(reference_file)
+    from time import sleep, time
+    time_remaining = time_ref + time_delay - time()
+    if time_remaining > 0:
+        sleep(time_remaining)
+
+
+# This function must be entirely self-contained. It must not use
+# variables or imports from the surrounding scope.
+def lldpd_capture():
+    """Capture LLDP information from `lldpd` in XML form."""
+    from subprocess import check_call
+    check_call(("lldpctl", "-f", "xml"))
+
+
+def set_node_routers(node, raw_content):
+    """Process recently captured raw LLDP information.
+
+    TODO: This is a placeholder while work is carried out on the
+    schema for network placement.
+    """
+
+
+def null_hook(node, raw_content):
+    """Intentionally do nothing.
+
+    Use this to explicitly ignore the response from a built-in
+    commissioning script.
+    """
+
+
 # Built-in commissioning scripts.  These go into the commissioning
 # tarball together with user-provided commissioning scripts.
 # To keep namespaces separated, names of the built-in scripts must be
@@ -96,6 +229,23 @@ BUILTIN_COMMISSIONING_SCRIPTS = {
         'content': VIRTUALITY_SCRIPT.encode('ascii'),
         'hook': set_virtual_tag,
     },
+    '00-maas-03-install-lldpd.out': {
+        'name': '00-maas-02-install-lldpd',
+        'content': make_function_call_script(
+            lldpd_install, config_file="/etc/default/lldpd"),
+        'hook': null_hook,
+    },
+    '99-maas-01-wait-for-lldpd.out': {
+        'name': '99-maas-01-wait-for-lldpd',
+        'content': make_function_call_script(
+            lldpd_wait, "/var/run/lldpd.socket", time_delay=60),
+        'hook': null_hook,
+    },
+    '99-maas-02-capture-lldp.out': {
+        'name': '99-maas-02-capture-lldp',
+        'content': make_function_call_script(lldpd_capture),
+        'hook': set_node_routers,
+    },
 }
 
 
@@ -120,6 +270,7 @@ class CommissioningScriptManager(Manager):
 
         Each of the scripts will be in the `ARCHIVE_PREFIX` directory.
         """
+        import time
         mtime = time.time()
         binary = BytesIO()
         tarball = tarfile.open(mode='w', fileobj=binary)
