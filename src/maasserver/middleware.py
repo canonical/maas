@@ -23,7 +23,6 @@ from abc import (
     )
 import httplib
 import json
-import logging
 import re
 
 from django.conf import settings
@@ -44,6 +43,8 @@ from maasserver.exceptions import (
     ExternalComponentException,
     MAASAPIException,
     )
+from maasserver import logger
+from maasserver.models import Config
 
 
 def get_relative_path(path):
@@ -210,6 +211,21 @@ class ExceptionLoggerMiddleware:
         import traceback
         import sys
         exc_info = sys.exc_info()
-        logger = logging.getLogger('maas.maasserver')
         logger.error(" Exception: %s ".center(79, "#") % unicode(exception))
         logger.error(''.join(traceback.format_exception(*exc_info)))
+
+
+class DebuggingLoggerMiddleware:
+
+    def process_request(self, request):
+        if Config.objects.get_config("request_log_debug"):
+            header = " Request dump ".center(79, "#")
+            logger.info("%s\n%r\n%s", header, request, request.content)
+        return None  # Allow request processing to continue unabated.
+
+    def process_response(self, request, response):
+        if Config.objects.get_config("response_log_debug"):
+            header = " Response dump ".center(79, "#")
+            content = getattr(response, "content", "{no content}")
+            logger.info("%s\n%r\n%s", header, response, content)
+        return response  # Return response unaltered.

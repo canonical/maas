@@ -12,7 +12,13 @@ from __future__ import (
 __metaclass__ = type
 __all__ = [
     'DefaultMeta',
+    'logger',
     ]
+
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 
 class DefaultMeta:

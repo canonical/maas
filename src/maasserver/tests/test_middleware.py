@@ -21,6 +21,7 @@ from django.core.exceptions import (
     PermissionDenied,
     ValidationError,
     )
+from django.http import HttpResponse
 from django.test.client import RequestFactory
 from maasserver.exceptions import (
     ExternalComponentException,
@@ -30,10 +31,13 @@ from maasserver.exceptions import (
     )
 from maasserver.middleware import (
     APIErrorsMiddleware,
+    DebuggingLoggerMiddleware,
     ErrorsMiddleware,
     ExceptionLoggerMiddleware,
     ExceptionMiddleware,
     )
+import maasserver
+from maasserver.models import Config
 from maasserver.testing import extract_redirect
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
@@ -43,6 +47,7 @@ from maasserver.testing.testcase import (
 from testtools.matchers import (
     Contains,
     FileContains,
+    Not,
     )
 
 
@@ -176,13 +181,16 @@ class APIErrorsMiddlewareTest(TestCase):
             middleware.process_exception(non_api_request, exception))
 
 
-class ExceptionLoggerMiddlewareTest(TestCase):
+class LoggingTest(TestCase):
 
     def set_up_logger(self, filename):
-        logger = logging.getLogger('maas')
+        logger = maasserver.logger
         handler = logging.handlers.RotatingFileHandler(filename)
         logger.addHandler(handler)
         self.addCleanup(logger.removeHandler, handler)
+
+
+class ExceptionLoggerMiddlewareTest(LoggingTest):
 
     def test_exception_logger_logs_error(self):
         error_text = factory.getRandomString()
@@ -192,6 +200,59 @@ class ExceptionLoggerMiddlewareTest(TestCase):
             fake_request('/middleware/api/hello'),
             ValueError(error_text))
         self.assertThat(logfile, FileContains(matcher=Contains(error_text)))
+
+
+class DebuggingLoggerMiddlewareTest(LoggingTest):
+
+    def setUp(self):
+        super(LoggingTest, self).setUp()
+        self.logfile = self.make_file(contents="")
+        self.set_up_logger(self.logfile)
+
+    def test_that_default_request_log_config_is_false(self):
+        self.assertFalse(Config.objects.get_config("request_log_debug"))
+
+    def test_that_default_response_log_config_is_false(self):
+        self.assertFalse(Config.objects.get_config("response_log_debug"))
+
+    def test_debugging_logger_does_not_log_request_if_config_is_false(self):
+        request = fake_request("/api/1.0/nodes/")
+        DebuggingLoggerMiddleware().process_request(request)
+        self.assertThat(
+            self.logfile, Not(FileContains(matcher=Contains(repr(request)))))
+
+    def test_debugging_logger_does_not_log_response_if_config_is_false(self):
+        request = fake_request("/api/1.0/nodes/")
+        response = HttpResponse(
+            content="test content",
+            status=httplib.OK,
+            mimetype=b"text/plain; charset=utf-8")
+        DebuggingLoggerMiddleware().process_response(request, response)
+        self.assertThat(
+            self.logfile, Not(FileContains(matcher=Contains(repr(request)))))
+
+    def test_debugging_logger_logs_request(self):
+        Config.objects.set_config("request_log_debug", True)
+        request = fake_request("/api/1.0/nodes/")
+        request.content = "test content"
+        DebuggingLoggerMiddleware().process_request(request)
+        self.assertThat(
+            self.logfile, FileContains(matcher=Contains(repr(request))))
+        self.assertThat(
+            self.logfile, FileContains(matcher=Contains(request.content)))
+
+    def test_debugging_logger_logs_response(self):
+        Config.objects.set_config("response_log_debug", True)
+        request = fake_request("foo")
+        response = HttpResponse(
+            content="test content",
+            status=httplib.OK,
+            mimetype=b"text/plain; charset=utf-8")
+        DebuggingLoggerMiddleware().process_response(request, response)
+        self.assertThat(
+            self.logfile, FileContains(matcher=Contains(repr(response))))
+        self.assertThat(
+            self.logfile, FileContains(matcher=Contains(response.content)))
 
 
 class ErrorsMiddlewareTest(LoggedInTestCase):

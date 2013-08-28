@@ -54,6 +54,9 @@ def get_default_config():
         'default_distro_series': DISTRO_SERIES.precise,
         'commissioning_distro_series': DISTRO_SERIES.precise,
         'http_proxy': None,
+        # Miscellaneous configuration.
+        'request_log_debug': False,
+        'response_log_debug': False,
         ## /settings
         }
 
