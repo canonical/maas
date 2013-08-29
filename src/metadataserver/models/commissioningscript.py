@@ -16,12 +16,15 @@ __all__ = [
     'CommissioningScript',
     ]
 
+from functools import partial
 from inspect import getsource
 from io import BytesIO
+from itertools import chain
 import json
 import os.path
 import tarfile
 from textwrap import dedent
+from time import time as now
 
 from django.db.models import (
     CharField,
@@ -265,25 +268,31 @@ def add_script_to_archive(tarball, name, content, mtime):
 class CommissioningScriptManager(Manager):
     """Utility for the collection of `CommissioningScript`s."""
 
+    def _iter_builtin_scripts(self):
+        for script in BUILTIN_COMMISSIONING_SCRIPTS.itervalues():
+            yield script['name'], script['content']
+
+    def _iter_user_scripts(self):
+        for script in self.all():
+            yield script.name, script.content
+
+    def _iter_scripts(self):
+        return chain(
+            self._iter_builtin_scripts(),
+            self._iter_user_scripts())
+
     def get_archive(self):
         """Produce a tar archive of all commissioning scripts.
 
         Each of the scripts will be in the `ARCHIVE_PREFIX` directory.
         """
-        import time
-        mtime = time.time()
         binary = BytesIO()
-        tarball = tarfile.open(mode='w', fileobj=binary)
-        scripts = sorted(
-            [(script['name'], script['content']) for script
-                in BUILTIN_COMMISSIONING_SCRIPTS.itervalues()] +
-            [(script.name, script.content) for script in self.all()])
-        for name, content in scripts:
-            add_script_to_archive(
-                tarball=tarball, name=name, content=content, mtime=mtime)
-        tarball.close()
-        binary.seek(0)
-        return binary.read()
+        scripts = sorted(self._iter_scripts())
+        with tarfile.open(mode='w', fileobj=binary) as tarball:
+            add_script = partial(add_script_to_archive, tarball, mtime=now())
+            for name, content in scripts:
+                add_script(name, content)
+        return binary.getvalue()
 
 
 class CommissioningScript(Model):
