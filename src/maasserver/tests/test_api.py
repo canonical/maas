@@ -12,55 +12,34 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
-from abc import (
-    ABCMeta,
-    abstractproperty,
-    )
 from base64 import (
     b64decode,
     b64encode,
     )
 from cStringIO import StringIO
-from datetime import (
-    datetime,
-    timedelta,
-    )
 from functools import partial
 import httplib
 from itertools import izip
 import json
-from operator import itemgetter
 import os
 import random
 import shutil
 import sys
-from textwrap import dedent
-from urlparse import urlparse
 
 from apiclient.maas_client import MAASClient
-from celery.app import app_or_default
 from django.conf import settings
 from django.contrib.auth.models import AnonymousUser
-import django.core.urlresolvers
-from django.core.urlresolvers import (
-    reverse,
-    get_script_prefix,
-    )
+from django.core.urlresolvers import reverse
 from django.http import QueryDict
 from django.test.client import RequestFactory
 from fixtures import (
     EnvironmentVariableFixture,
     Fixture,
     )
-from maasserver import (
-    api,
-    server_address,
-    )
+from maasserver import api
 from maasserver.api import (
-    describe,
     DISPLAYED_NODEGROUPINTERFACE_FIELDS,
     extract_constraints,
-    find_nodegroup_for_pxeconfig_request,
     store_node_power_parameters,
     )
 from maasserver.enum import (
@@ -77,7 +56,6 @@ from maasserver.enum import (
     )
 from maasserver.exceptions import MAASAPIBadRequest
 from maasserver.fields import mac_error_msg
-from maasserver.forms import DEFAULT_ZONE_NAME
 from maasserver.forms_settings import INVALID_SETTING_MSG_TEMPLATE
 from maasserver.models import (
     BootImage,
@@ -97,15 +75,17 @@ from maasserver.models.user import (
     create_auth_token,
     get_auth_tokens,
     )
-from maasserver.preseed import (
-    compose_enlistment_preseed_url,
-    compose_preseed_url,
-    )
 from maasserver.refresh_worker import refresh_worker
 from maasserver.testing import (
     get_data,
     reload_object,
     reload_objects,
+    )
+from maasserver.testing.api import (
+    AnonAPITestCase,
+    APITestCase,
+    APIv10TestMixin,
+    MultipleUsersScenarios,
     )
 from maasserver.testing.factory import factory
 from maasserver.testing.oauthclient import OAuthAuthenticatedClient
@@ -124,10 +104,8 @@ from maasserver.worker_user import get_worker_user
 from maastesting.celery import CeleryFixture
 from maastesting.djangotestcase import TransactionTestCase
 from maastesting.fakemethod import FakeMethod
-from maastesting.matchers import ContainsAll
 from maastesting.utils import sample_binary_data
 from metadataserver.models import (
-    CommissioningScript,
     NodeKey,
     NodeUserData,
     )
@@ -139,7 +117,6 @@ from mock import (
 from netaddr import IPNetwork
 from provisioningserver import (
     boot_images,
-    kernel_opts,
     tasks,
     )
 from provisioningserver.auth import get_recorded_nodegroup_uuid
@@ -148,36 +125,17 @@ from provisioningserver.enum import (
     POWER_TYPE,
     POWER_TYPE_CHOICES,
     )
-from provisioningserver.kernel_opts import KernelParameters
 from provisioningserver.omshell import Omshell
 from provisioningserver.pxe import tftppath
 from provisioningserver.testing.boot_images import make_boot_image_params
 from testresources import FixtureResource
-from testscenarios import multiply_scenarios
 from testtools.matchers import (
-    AfterPreprocessing,
     AllMatch,
-    Annotate,
     Contains,
     Equals,
-    Is,
-    MatchesAll,
-    MatchesAny,
     MatchesListwise,
     MatchesStructure,
-    StartsWith,
     )
-
-
-class APIv10TestMixin:
-
-    def get_uri(self, path):
-        """GET an API V1 uri.
-
-        :return: The API uri.
-        """
-        api_root = '/api/1.0/'
-        return api_root + path
 
 
 class TestModuleHelpers(TestCase):
@@ -277,45 +235,6 @@ class TestStoreNodeParameters(TestCase):
             MAASAPIBadRequest, store_node_power_parameters,
             self.node, self.request)
         self.save.assert_has_calls([])
-
-
-class MultipleUsersScenarios:
-    """A mixin that uses testscenarios to repeat a testcase as different
-    users.
-
-    The scenarios should inject a `userfactory` variable that will
-    be called to produce the user used in the tests e.g.:
-
-    class ExampleTest(MultipleUsersScenarios, TestCase):
-        scenarios = [
-            ('anon', dict(userfactory=lambda: AnonymousUser())),
-            ('user', dict(userfactory=factory.make_user)),
-            ('admin', dict(userfactory=factory.make_admin)),
-            ]
-
-        def test_something(self):
-            pass
-
-    The test `test_something` with be run 3 times: one with a anonymous user
-    logged in, once with a simple (non-admin) user logged in and once with
-    an admin user logged in.
-    """
-
-    __metaclass__ = ABCMeta
-
-    scenarios = abstractproperty(
-        "The scenarios as defined by testscenarios.")
-
-    def setUp(self):
-        super(MultipleUsersScenarios, self).setUp()
-        user = self.userfactory()
-        if not user.is_anonymous():
-            password = factory.getRandomString()
-            user.set_password(password)
-            user.save()
-            self.logged_in_user = user
-            self.client.login(
-                username=self.logged_in_user.username, password=password)
 
 
 class EnlistmentAPITest(APIv10TestMixin, MultipleUsersScenarios, TestCase):
@@ -1116,36 +1035,6 @@ class NodeAnonAPITest(APIv10TestMixin, TestCase):
         client = OAuthAuthenticatedClient(get_node_init_user(), token)
         response = client.get(self.get_uri('nodes/'), {'op': 'list'})
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
-
-
-class AnonAPITestCase(APIv10TestMixin, TestCase):
-    """Base class for anonymous API tests."""
-
-
-class APITestCase(APIv10TestMixin, TestCase):
-    """Base class for logged-in API tests.
-
-    :ivar logged_in_user: A user who is currently logged in and can access
-        the API.
-    :ivar client: Authenticated API client (unsurprisingly, logged in as
-        `logged_in_user`).
-    """
-
-    def setUp(self):
-        super(APITestCase, self).setUp()
-        self.logged_in_user = factory.make_user(
-            username='test', password='test')
-        self.client = OAuthAuthenticatedClient(self.logged_in_user)
-
-    def become_admin(self):
-        """Promote the logged-in user to admin."""
-        self.logged_in_user.is_superuser = True
-        self.logged_in_user.save()
-
-    def assertResponseCode(self, expected_code, response):
-        if response.status_code != expected_code:
-            self.fail("Expected %s response, got %s:\n%s" % (
-                expected_code, response.status_code, response.content))
 
 
 def extract_system_ids(parsed_result):
@@ -3682,330 +3571,6 @@ class APIErrorsTest(APIv10TestMixin, TransactionTestCase):
             (response.status_code, response.content))
 
 
-class TestCommissioningTimeout(APIv10TestMixin, LoggedInTestCase):
-    """Testing of commissioning timeout API."""
-
-    def test_check_with_no_action(self):
-        node = factory.make_node(status=NODE_STATUS.READY)
-        response = self.client.post(
-            self.get_uri('nodes/'), {'op': 'check_commissioning'})
-        # Anything that's not commissioning should be ignored.
-        node = reload_object(node)
-        self.assertEqual(
-            (httplib.OK, NODE_STATUS.READY),
-            (response.status_code, node.status))
-
-    def test_check_with_commissioning_but_not_expired_node(self):
-        node = factory.make_node(
-            status=NODE_STATUS.COMMISSIONING)
-        response = self.client.post(
-            self.get_uri('nodes/'), {'op': 'check_commissioning'})
-        node = reload_object(node)
-        self.assertEqual(
-            (httplib.OK, NODE_STATUS.COMMISSIONING),
-            (response.status_code, node.status))
-
-    def test_check_with_commissioning_and_expired_node(self):
-        # Have an interval 1 second longer than the timeout.
-        interval = timedelta(seconds=1, minutes=settings.COMMISSIONING_TIMEOUT)
-        updated_at = datetime.now() - interval
-        node = factory.make_node(
-            status=NODE_STATUS.COMMISSIONING, created=datetime.now(),
-            updated=updated_at)
-
-        response = self.client.post(
-            self.get_uri('nodes/'), {'op': 'check_commissioning'})
-        self.assertEqual(
-            (
-                httplib.OK,
-                NODE_STATUS.FAILED_TESTS,
-                [node.system_id]
-            ),
-            (
-                response.status_code,
-                reload_object(node).status,
-                [node['system_id'] for node in json.loads(response.content)],
-            ))
-
-
-class TestPXEConfigAPI(AnonAPITestCase):
-
-    def get_default_params(self):
-        return {
-            "local": factory.getRandomIPAddress(),
-            "remote": factory.getRandomIPAddress(),
-            }
-
-    def get_mac_params(self):
-        params = self.get_default_params()
-        params['mac'] = factory.make_mac_address().mac_address
-        return params
-
-    def get_pxeconfig(self, params=None):
-        """Make a request to `pxeconfig`, and return its response dict."""
-        if params is None:
-            params = self.get_default_params()
-        response = self.client.get(reverse('pxeconfig'), params)
-        return json.loads(response.content)
-
-    def test_pxeconfig_returns_json(self):
-        response = self.client.get(
-            reverse('pxeconfig'), self.get_default_params())
-        self.assertThat(
-            (
-                response.status_code,
-                response['Content-Type'],
-                response.content,
-                response.content,
-            ),
-            MatchesListwise(
-                (
-                    Equals(httplib.OK),
-                    Equals("application/json"),
-                    StartsWith(b'{'),
-                    Contains('arch'),
-                )),
-            response)
-
-    def test_pxeconfig_returns_all_kernel_parameters(self):
-        self.assertThat(
-            self.get_pxeconfig(),
-            ContainsAll(KernelParameters._fields))
-
-    def test_pxeconfig_returns_success_for_known_node(self):
-        params = self.get_mac_params()
-        response = self.client.get(reverse('pxeconfig'), params)
-        self.assertEqual(httplib.OK, response.status_code)
-
-    def test_pxeconfig_returns_no_content_for_unknown_node(self):
-        params = dict(mac=factory.getRandomMACAddress(delimiter=b'-'))
-        response = self.client.get(reverse('pxeconfig'), params)
-        self.assertEqual(httplib.NO_CONTENT, response.status_code)
-
-    def test_pxeconfig_returns_success_for_detailed_but_unknown_node(self):
-        architecture = factory.getRandomEnum(ARCHITECTURE)
-        arch, subarch = architecture.split('/')
-        params = dict(
-            self.get_default_params(),
-            mac=factory.getRandomMACAddress(delimiter=b'-'),
-            arch=arch,
-            subarch=subarch)
-        response = self.client.get(reverse('pxeconfig'), params)
-        self.assertEqual(httplib.OK, response.status_code)
-
-    def test_pxeconfig_returns_global_kernel_params_for_enlisting_node(self):
-        # An 'enlisting' node means it looks like a node with details but we
-        # don't know about it yet.  It should still receive the global
-        # kernel options.
-        value = factory.getRandomString()
-        Config.objects.set_config("kernel_opts", value)
-        architecture = factory.getRandomEnum(ARCHITECTURE)
-        arch, subarch = architecture.split('/')
-        params = dict(
-            self.get_default_params(),
-            mac=factory.getRandomMACAddress(delimiter=b'-'),
-            arch=arch,
-            subarch=subarch)
-        response = self.client.get(reverse('pxeconfig'), params)
-        response_dict = json.loads(response.content)
-        self.assertEqual(value, response_dict['extra_opts'])
-
-    def test_pxeconfig_defaults_to_i386_for_default(self):
-        # As a lowest-common-denominator, i386 is chosen when the node is not
-        # yet known to MAAS.
-        expected_arch = tuple(ARCHITECTURE.i386.split('/'))
-        params_out = self.get_pxeconfig()
-        observed_arch = params_out["arch"], params_out["subarch"]
-        self.assertEqual(expected_arch, observed_arch)
-
-    def test_pxeconfig_uses_fixed_hostname_for_enlisting_node(self):
-        self.assertEqual('maas-enlist', self.get_pxeconfig().get('hostname'))
-
-    def test_pxeconfig_uses_enlistment_domain_for_enlisting_node(self):
-        self.assertEqual(
-            Config.objects.get_config('enlistment_domain'),
-            self.get_pxeconfig().get('domain'))
-
-    def test_pxeconfig_splits_domain_from_node_hostname(self):
-        host = factory.make_name('host')
-        domain = factory.make_name('domain')
-        full_hostname = '.'.join([host, domain])
-        node = factory.make_node(hostname=full_hostname)
-        mac = factory.make_mac_address(node=node)
-        params = self.get_default_params()
-        params['mac'] = mac.mac_address
-        pxe_config = self.get_pxeconfig(params)
-        self.assertEqual(host, pxe_config.get('hostname'))
-        self.assertNotIn(domain, pxe_config.values())
-
-    def test_pxeconfig_uses_nodegroup_domain_for_node(self):
-        mac = factory.make_mac_address()
-        params = self.get_default_params()
-        params['mac'] = mac
-        self.assertEqual(
-            mac.node.nodegroup.name,
-            self.get_pxeconfig(params).get('domain'))
-
-    def get_without_param(self, param):
-        """Request a `pxeconfig()` response, but omit `param` from request."""
-        params = self.get_params()
-        del params[param]
-        return self.client.get(reverse('pxeconfig'), params)
-
-    def silence_get_ephemeral_name(self):
-        # Silence `get_ephemeral_name` to avoid having to fetch the
-        # ephemeral name from the filesystem.
-        self.patch(
-            kernel_opts, 'get_ephemeral_name',
-            FakeMethod(result=factory.getRandomString()))
-
-    def test_pxeconfig_has_enlistment_preseed_url_for_default(self):
-        self.silence_get_ephemeral_name()
-        params = self.get_default_params()
-        response = self.client.get(reverse('pxeconfig'), params)
-        self.assertEqual(
-            compose_enlistment_preseed_url(),
-            json.loads(response.content)["preseed_url"])
-
-    def test_pxeconfig_enlistment_preseed_url_detects_request_origin(self):
-        self.silence_get_ephemeral_name()
-        hostname = factory.make_hostname()
-        ng_url = 'http://%s' % hostname
-        network = IPNetwork("10.1.1/24")
-        ip = factory.getRandomIPInNetwork(network)
-        self.patch(server_address, 'gethostbyname', Mock(return_value=ip))
-        factory.make_node_group(maas_url=ng_url, network=network)
-        params = self.get_default_params()
-
-        # Simulate that the request originates from ip by setting
-        # 'REMOTE_ADDR'.
-        response = self.client.get(
-            reverse('pxeconfig'), params, REMOTE_ADDR=ip)
-        self.assertThat(
-            json.loads(response.content)["preseed_url"],
-            StartsWith(ng_url))
-
-    def test_pxeconfig_enlistment_log_host_url_detects_request_origin(self):
-        self.silence_get_ephemeral_name()
-        hostname = factory.make_hostname()
-        ng_url = 'http://%s' % hostname
-        network = IPNetwork("10.1.1/24")
-        ip = factory.getRandomIPInNetwork(network)
-        mock = self.patch(
-            server_address, 'gethostbyname', Mock(return_value=ip))
-        factory.make_node_group(maas_url=ng_url, network=network)
-        params = self.get_default_params()
-
-        # Simulate that the request originates from ip by setting
-        # 'REMOTE_ADDR'.
-        response = self.client.get(
-            reverse('pxeconfig'), params, REMOTE_ADDR=ip)
-        self.assertEqual(
-            (ip, hostname),
-            (json.loads(response.content)["log_host"], mock.call_args[0][0]))
-
-    def test_pxeconfig_has_preseed_url_for_known_node(self):
-        params = self.get_mac_params()
-        node = MACAddress.objects.get(mac_address=params['mac']).node
-        response = self.client.get(reverse('pxeconfig'), params)
-        self.assertEqual(
-            compose_preseed_url(node),
-            json.loads(response.content)["preseed_url"])
-
-    def test_find_nodegroup_for_pxeconfig_request_uses_cluster_uuid(self):
-        # find_nodegroup_for_pxeconfig_request returns the nodegroup
-        # identified by the cluster_uuid parameter, if given.  It
-        # completely ignores the other node or request details, as shown
-        # here by passing a uuid for a different cluster.
-        params = self.get_mac_params()
-        nodegroup = factory.make_node_group()
-        params['cluster_uuid'] = nodegroup.uuid
-        request = RequestFactory().get(reverse('pxeconfig'), params)
-        self.assertEqual(
-            nodegroup,
-            find_nodegroup_for_pxeconfig_request(request))
-
-    def test_preseed_url_for_known_node_uses_nodegroup_maas_url(self):
-        ng_url = 'http://%s' % factory.make_name('host')
-        network = IPNetwork("10.1.1/24")
-        ip = factory.getRandomIPInNetwork(network)
-        self.patch(server_address, 'gethostbyname', Mock(return_value=ip))
-        nodegroup = factory.make_node_group(maas_url=ng_url, network=network)
-        params = self.get_mac_params()
-        node = MACAddress.objects.get(mac_address=params['mac']).node
-        node.nodegroup = nodegroup
-        node.save()
-
-        # Simulate that the request originates from ip by setting
-        # 'REMOTE_ADDR'.
-        response = self.client.get(
-            reverse('pxeconfig'), params, REMOTE_ADDR=ip)
-        self.assertThat(
-            json.loads(response.content)["preseed_url"],
-            StartsWith(ng_url))
-
-    def test_get_boot_purpose_unknown_node(self):
-        # A node that's not yet known to MAAS is assumed to be enlisting,
-        # which uses a "commissioning" image.
-        self.assertEqual("commissioning", api.get_boot_purpose(None))
-
-    def test_get_boot_purpose_known_node(self):
-        # The following table shows the expected boot "purpose" for each set
-        # of node parameters.
-        options = [
-            ("poweroff", {"status": NODE_STATUS.DECLARED}),
-            ("commissioning", {"status": NODE_STATUS.COMMISSIONING}),
-            ("poweroff", {"status": NODE_STATUS.FAILED_TESTS}),
-            ("poweroff", {"status": NODE_STATUS.MISSING}),
-            ("poweroff", {"status": NODE_STATUS.READY}),
-            ("poweroff", {"status": NODE_STATUS.RESERVED}),
-            ("install", {"status": NODE_STATUS.ALLOCATED, "netboot": True}),
-            ("xinstall", {"status": NODE_STATUS.ALLOCATED, "netboot": True}),
-            ("local", {"status": NODE_STATUS.ALLOCATED, "netboot": False}),
-            ("poweroff", {"status": NODE_STATUS.RETIRED}),
-            ]
-        node = factory.make_node()
-        for purpose, parameters in options:
-            if purpose == "xinstall":
-                node.use_fastpath_installer()
-            for name, value in parameters.items():
-                setattr(node, name, value)
-            self.assertEqual(purpose, api.get_boot_purpose(node))
-
-    def test_pxeconfig_uses_boot_purpose(self):
-        fake_boot_purpose = factory.make_name("purpose")
-        self.patch(api, "get_boot_purpose", lambda node: fake_boot_purpose)
-        response = self.client.get(reverse('pxeconfig'),
-                                   self.get_default_params())
-        self.assertEqual(
-            fake_boot_purpose,
-            json.loads(response.content)["purpose"])
-
-    def test_pxeconfig_returns_fs_host_as_cluster_controller(self):
-        # The kernel parameter `fs_host` points to the cluster controller
-        # address, which is passed over within the `local` parameter.
-        params = self.get_default_params()
-        kernel_params = KernelParameters(**self.get_pxeconfig(params))
-        self.assertEqual(params["local"], kernel_params.fs_host)
-
-    def test_pxeconfig_returns_extra_kernel_options(self):
-        node = factory.make_node()
-        extra_kernel_opts = factory.getRandomString()
-        Config.objects.set_config('kernel_opts', extra_kernel_opts)
-        mac = factory.make_mac_address(node=node)
-        params = self.get_default_params()
-        params['mac'] = mac.mac_address
-        pxe_config = self.get_pxeconfig(params)
-        self.assertEqual(extra_kernel_opts, pxe_config['extra_opts'])
-
-    def test_pxeconfig_returns_None_for_extra_kernel_opts(self):
-        mac = factory.make_mac_address()
-        params = self.get_default_params()
-        params['mac'] = mac.mac_address
-        pxe_config = self.get_pxeconfig(params)
-        self.assertEqual(None, pxe_config['extra_opts'])
-
-
 class TestNodeGroupsAPI(APIv10TestMixin, MultipleUsersScenarios, TestCase):
     scenarios = [
         ('anon', dict(userfactory=lambda: AnonymousUser())),
@@ -4059,321 +3624,6 @@ class TestAnonNodeGroupsAPI(AnonAPITestCase):
         self.assertEqual(
             (httplib.OK, "Sending worker refresh."),
             (response.status_code, response.content))
-
-
-class TestRegisterAPI(AnonAPITestCase):
-    """Tests for the `register` method on the API.
-
-    This method can be called anonymously.
-    """
-
-    def create_configured_master(self):
-        master = NodeGroup.objects.ensure_master()
-        master.uuid = factory.getRandomUUID()
-        master.save()
-
-    def create_local_cluster_config(self, uuid):
-        """Set up a local cluster config with the given UUID.
-
-        This patches settings.LOCAL_CLUSTER_CONFIG to point to a valid
-        cluster config file.
-        """
-        contents = dedent("""
-            MAAS_URL=http://localhost/MAAS
-            CLUSTER_UUID="%s"
-            """ % uuid)
-        file_name = self.make_file(contents=contents)
-        self.patch(settings, 'LOCAL_CLUSTER_CONFIG', file_name)
-
-    def patch_broker_url(self):
-        """Patch `BROKER_URL` with a fake.  Returns the fake value."""
-        fake = factory.make_name('fake_broker_url')
-        celery_conf = app_or_default().conf
-        self.patch(celery_conf, 'BROKER_URL', fake)
-        return fake
-
-    def test_register_creates_nodegroup_and_interfaces(self):
-        self.create_configured_master()
-        name = factory.make_name('name')
-        uuid = factory.getRandomUUID()
-        interface = make_interface_settings()
-        response = self.client.post(
-            reverse('nodegroups_handler'),
-            {
-                'op': 'register',
-                'name': name,
-                'uuid': uuid,
-                'interfaces': json.dumps([interface]),
-            })
-        nodegroup = NodeGroup.objects.get(uuid=uuid)
-        # The nodegroup was created with its interface.  Its status is
-        # 'PENDING'.
-        self.assertEqual(
-            (name, NODEGROUP_STATUS.PENDING),
-            (nodegroup.name, nodegroup.status))
-        self.assertThat(
-            nodegroup.nodegroupinterface_set.all()[0],
-            MatchesStructure.byEquality(**interface))
-        # The response code is 'ACCEPTED': the nodegroup now needs to be
-        # validated by an admin.
-        self.assertEqual(httplib.ACCEPTED, response.status_code)
-
-    def test_register_configures_master_on_first_local_call(self):
-        name = factory.make_name('nodegroup')
-        uuid = factory.getRandomUUID()
-        self.create_local_cluster_config(uuid)
-        fake_broker_url = self.patch_broker_url()
-
-        response = self.client.post(
-            reverse('nodegroups_handler'),
-            {
-                'op': 'register',
-                'name': name,
-                'uuid': uuid,
-            })
-        self.assertEqual(httplib.OK, response.status_code, response)
-
-        parsed_result = json.loads(response.content)
-        self.assertEqual(
-            ({'BROKER_URL': fake_broker_url}, uuid),
-            (parsed_result, NodeGroup.objects.ensure_master().uuid))
-
-    def test_register_does_not_configure_master_on_nonlocal_call(self):
-        name = factory.make_name('name')
-        uuid = factory.getRandomUUID()
-        self.patch_broker_url()
-
-        response = self.client.post(
-            reverse('nodegroups_handler'),
-            {
-                'op': 'register',
-                'name': name,
-                'uuid': uuid,
-            })
-        self.assertEqual(httplib.ACCEPTED, response.status_code, response)
-
-        self.assertEqual(
-            response.content, "Cluster registered.  Awaiting admin approval.")
-
-    def test_register_configures_master_if_unconfigured(self):
-        name = factory.make_name('nodegroup')
-        uuid = factory.getRandomUUID()
-        self.create_local_cluster_config(uuid)
-        interface = make_interface_settings()
-
-        response = self.client.post(
-            reverse('nodegroups_handler'),
-            {
-                'op': 'register',
-                'name': name,
-                'uuid': uuid,
-                'interfaces': json.dumps([interface]),
-            })
-        self.assertEqual(httplib.OK, response.status_code, response)
-
-        master = NodeGroup.objects.ensure_master()
-        self.assertEqual(NODEGROUP_STATUS.ACCEPTED, master.status)
-        self.assertThat(
-            master.nodegroupinterface_set.get(
-                interface=interface['interface']),
-            MatchesStructure.byEquality(**interface))
-
-    def test_register_nodegroup_uses_default_zone_name(self):
-        uuid = factory.getRandomUUID()
-        self.create_local_cluster_config(uuid)
-
-        response = self.client.post(
-            reverse('nodegroups_handler'),
-            {
-                'op': 'register',
-                'uuid': uuid,
-            })
-        self.assertEqual(httplib.OK, response.status_code, response)
-
-        master = NodeGroup.objects.ensure_master()
-        self.assertEqual(
-            (NODEGROUP_STATUS.ACCEPTED, DEFAULT_ZONE_NAME),
-            (master.status, master.name))
-
-    def test_register_multiple_nodegroups(self):
-        uuids = {factory.getRandomUUID() for counter in range(3)}
-        for uuid in uuids:
-            response = self.client.post(
-                reverse('nodegroups_handler'),
-                {
-                    'op': 'register',
-                    'uuid': uuid,
-                })
-            self.assertEqual(httplib.ACCEPTED, response.status_code, response)
-
-        self.assertSetEqual(
-            uuids,
-            set(NodeGroup.objects.values_list('uuid', flat=True)))
-
-    def test_register_accepts_only_one_managed_interface(self):
-        self.create_configured_master()
-        name = factory.make_name('name')
-        uuid = factory.getRandomUUID()
-        # This will try to create 2 "managed" interfaces.
-        interface1 = make_interface_settings()
-        interface1['management'] = NODEGROUPINTERFACE_MANAGEMENT.DHCP
-        interface2 = interface1.copy()
-        response = self.client.post(
-            reverse('nodegroups_handler'),
-            {
-                'op': 'register',
-                'name': name,
-                'uuid': uuid,
-                'interfaces': json.dumps([interface1, interface2]),
-            })
-        self.assertEqual(
-            (
-                httplib.BAD_REQUEST,
-                {'interfaces':
-                    [
-                        "Only one managed interface can be configured for "
-                        "this cluster"
-                    ]},
-            ),
-            (response.status_code, json.loads(response.content)))
-
-    def test_register_nodegroup_validates_data(self):
-        self.create_configured_master()
-        response = self.client.post(
-            reverse('nodegroups_handler'),
-            {
-                'op': 'register',
-                'name': factory.make_name('name'),
-                'uuid': factory.getRandomUUID(),
-                'interfaces': 'invalid data',
-            })
-        self.assertEqual(
-            (
-                httplib.BAD_REQUEST,
-                {'interfaces': ['Invalid json value.']},
-            ),
-            (response.status_code, json.loads(response.content)))
-
-    def test_register_nodegroup_twice_does_not_update_nodegroup(self):
-        nodegroup = factory.make_node_group()
-        nodegroup.status = NODEGROUP_STATUS.PENDING
-        nodegroup.save()
-        name = factory.make_name('name')
-        uuid = nodegroup.uuid
-        response = self.client.post(
-            reverse('nodegroups_handler'),
-            {
-                'op': 'register',
-                'name': name,
-                'uuid': uuid,
-            })
-        new_nodegroup = NodeGroup.objects.get(uuid=uuid)
-        self.assertEqual(
-            (nodegroup.name, NODEGROUP_STATUS.PENDING),
-            (new_nodegroup.name, new_nodegroup.status))
-        # The response code is 'ACCEPTED': the nodegroup still needs to be
-        # validated by an admin.
-        self.assertEqual(httplib.ACCEPTED, response.status_code)
-
-    def test_register_rejected_nodegroup_fails(self):
-        nodegroup = factory.make_node_group()
-        nodegroup.status = NODEGROUP_STATUS.REJECTED
-        nodegroup.save()
-        response = self.client.post(
-            reverse('nodegroups_handler'),
-            {
-                'op': 'register',
-                'name': factory.make_name('name'),
-                'uuid': nodegroup.uuid,
-                'interfaces': json.dumps([]),
-            })
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
-
-    def test_register_accepted_cluster_returns_credentials(self):
-        fake_broker_url = self.patch_broker_url()
-        nodegroup = factory.make_node_group()
-        nodegroup.status = NODEGROUP_STATUS.ACCEPTED
-        nodegroup.save()
-        response = self.client.post(
-            reverse('nodegroups_handler'),
-            {
-                'op': 'register',
-                'name': factory.make_name('name'),
-                'uuid': nodegroup.uuid,
-            })
-        self.assertEqual(httplib.OK, response.status_code)
-        parsed_result = json.loads(response.content)
-        self.assertIn('application/json', response['Content-Type'])
-        self.assertEqual({'BROKER_URL': fake_broker_url}, parsed_result)
-
-    def assertSuccess(self, response):
-        """Assert that `response` was successful (i.e. HTTP 2xx)."""
-        self.assertThat(
-            {code for code in httplib.responses if code // 100 == 2},
-            Annotate(response, Contains(response.status_code)))
-
-    def test_register_new_nodegroup_does_not_record_maas_url(self):
-        # When registering a cluster, the URL with which the call was made
-        # (i.e. from the perspective of the cluster) is *not* recorded.
-        self.create_configured_master()
-        name = factory.make_name('name')
-        uuid = factory.getRandomUUID()
-        update_maas_url = self.patch(api, "update_nodegroup_maas_url")
-        response = self.client.post(
-            reverse('nodegroups_handler'),
-            {'op': 'register', 'name': name, 'uuid': uuid})
-        self.assertSuccess(response)
-        self.assertEqual([], update_maas_url.call_args_list)
-
-    def test_register_accepted_nodegroup_updates_maas_url(self):
-        # When registering an existing, accepted, cluster, the URL with which
-        # the call was made is updated.
-        self.create_configured_master()
-        nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
-        update_maas_url = self.patch(api, "update_nodegroup_maas_url")
-        response = self.client.post(
-            reverse('nodegroups_handler'),
-            {'op': 'register', 'uuid': nodegroup.uuid})
-        self.assertSuccess(response)
-        update_maas_url.assert_called_once_with(nodegroup, ANY)
-
-    def test_register_pending_nodegroup_does_not_update_maas_url(self):
-        # When registering an existing, pending, cluster, the URL with which
-        # the call was made is *not* updated.
-        self.create_configured_master()
-        nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.PENDING)
-        update_maas_url = self.patch(api, "update_nodegroup_maas_url")
-        response = self.client.post(
-            reverse('nodegroups_handler'),
-            {'op': 'register', 'uuid': nodegroup.uuid})
-        self.assertSuccess(response)
-        self.assertEqual([], update_maas_url.call_args_list)
-
-    def test_register_rejected_nodegroup_does_not_update_maas_url(self):
-        # When registering an existing, pending, cluster, the URL with which
-        # the call was made is *not* updated.
-        self.create_configured_master()
-        nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.REJECTED)
-        update_maas_url = self.patch(api, "update_nodegroup_maas_url")
-        response = self.client.post(
-            reverse('nodegroups_handler'),
-            {'op': 'register', 'uuid': nodegroup.uuid})
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
-        self.assertEqual([], update_maas_url.call_args_list)
-
-    def test_register_master_nodegroup_does_not_update_maas_url(self):
-        # When registering the master cluster, the URL with which the call was
-        # made is *not* updated.
-        name = factory.make_name('name')
-        update_maas_url = self.patch(api, "update_nodegroup_maas_url")
-        response = self.client.post(
-            reverse('nodegroups_handler'),
-            {'op': 'register', 'name': name, 'uuid': 'master'})
-        self.assertSuccess(response)
-        self.assertEqual([], update_maas_url.call_args_list)
-        # The new node group's maas_url field remains empty.
-        nodegroup = NodeGroup.objects.get(uuid='master')
-        self.assertEqual("", nodegroup.maas_url)
 
 
 class TestUpdateNodeGroupMAASURL(TestCase):
@@ -5104,310 +4354,3 @@ class TestBootImagesAPI(APITestCase):
         MAASClient.post.assert_called_once_with(
             reverse('boot_images_handler').lstrip('/'), 'report_boot_images',
             images=ANY, nodegroup=ANY)
-
-
-class AdminCommissioningScriptsAPITest(APIv10TestMixin, AdminLoggedInTestCase):
-    """Tests for `CommissioningScriptsHandler`."""
-
-    def get_url(self):
-        return reverse('commissioning_scripts_handler')
-
-    def test_GET_lists_commissioning_scripts(self):
-        # Use lower-case names.  The database and the test may use
-        # different collation orders with different ideas about case
-        # sensitivity.
-        names = {factory.make_name('script').lower() for counter in range(5)}
-        for name in names:
-            factory.make_commissioning_script(name=name)
-
-        response = self.client.get(self.get_url())
-
-        self.assertEqual(
-            (httplib.OK, sorted(names)),
-            (response.status_code, json.loads(response.content)))
-
-    def test_POST_creates_commissioning_script(self):
-        # This uses Piston's built-in POST code, so there are no tests for
-        # corner cases (like "script already exists") here.
-        name = factory.make_name('script')
-        content = factory.getRandomString().encode('ascii')
-
-        # Every uploaded file also has a name.  But this is completely
-        # unrelated to the name we give to the commissioning script.
-        response = self.client.post(
-            self.get_url(),
-            {
-                'name': name,
-                'content': factory.make_file_upload(content=content),
-            })
-        self.assertEqual(httplib.OK, response.status_code)
-
-        returned_script = json.loads(response.content)
-        self.assertEqual(
-            (name, content),
-            (returned_script['name'], returned_script['content']))
-
-        stored_script = CommissioningScript.objects.get(name=name)
-        self.assertEqual(content, stored_script.content)
-
-
-class CommissioningScriptsAPITest(APITestCase):
-
-    def get_url(self):
-        return reverse('commissioning_scripts_handler')
-
-    def test_GET_is_forbidden(self):
-        response = self.client.get(self.get_url())
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
-
-    def test_POST_is_forbidden(self):
-        response = self.client.post(
-            self.get_url(),
-            {'name': factory.make_name('script')})
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
-
-
-class AdminCommissioningScriptAPITest(APIv10TestMixin, AdminLoggedInTestCase):
-    """Tests for `CommissioningScriptHandler`."""
-
-    def get_url(self, script_name):
-        return reverse('commissioning_script_handler', args=[script_name])
-
-    def test_GET_returns_script_contents(self):
-        script = factory.make_commissioning_script()
-        response = self.client.get(self.get_url(script.name))
-        self.assertEqual(httplib.OK, response.status_code)
-        self.assertEqual(script.content, response.content)
-
-    def test_GET_preserves_binary_data(self):
-        script = factory.make_commissioning_script(content=sample_binary_data)
-        response = self.client.get(self.get_url(script.name))
-        self.assertEqual(httplib.OK, response.status_code)
-        self.assertEqual(sample_binary_data, response.content)
-
-    def test_PUT_updates_contents(self):
-        old_content = b'old:%s' % factory.getRandomString().encode('ascii')
-        script = factory.make_commissioning_script(content=old_content)
-        new_content = b'new:%s' % factory.getRandomString().encode('ascii')
-
-        response = self.client_put(
-            self.get_url(script.name),
-            {'content': factory.make_file_upload(content=new_content)})
-        self.assertEqual(httplib.OK, response.status_code)
-
-        self.assertEqual(new_content, reload_object(script).content)
-
-    def test_DELETE_deletes_script(self):
-        script = factory.make_commissioning_script()
-        self.client.delete(self.get_url(script.name))
-        self.assertItemsEqual(
-            [],
-            CommissioningScript.objects.filter(name=script.name))
-
-
-class CommissioningScriptAPITest(APITestCase):
-
-    def get_url(self, script_name):
-        return reverse('commissioning_script_handler', args=[script_name])
-
-    def test_GET_is_forbidden(self):
-        # It's not inconceivable that commissioning scripts contain
-        # credentials of some sort.  There is no need for regular users
-        # (consumers of the MAAS) to see these.
-        script = factory.make_commissioning_script()
-        response = self.client.get(self.get_url(script.name))
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
-
-    def test_PUT_is_forbidden(self):
-        script = factory.make_commissioning_script()
-        response = self.client_put(
-            self.get_url(script.name), {'content': factory.getRandomString()})
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
-
-    def test_DELETE_is_forbidden(self):
-        script = factory.make_commissioning_script()
-        response = self.client_put(self.get_url(script.name))
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
-
-
-class NodeCommissionResultHandlerAPITest(APITestCase):
-
-    def test_list_returns_commissioning_results(self):
-        commissioning_results = [
-            factory.make_node_commission_result()
-            for counter in range(3)]
-        url = reverse('commissioning_results_handler')
-        response = self.client.get(url, {'op': 'list'})
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_results = json.loads(response.content)
-        self.assertItemsEqual(
-            [(
-                commissioning_result.name,
-                commissioning_result.script_result,
-                commissioning_result.data,
-                commissioning_result.node.system_id,
-            )
-            for commissioning_result in commissioning_results
-            ],
-            [(
-                result.get('name'),
-                result.get('script_result'),
-                result.get('data'),
-                result.get('node').get('system_id')
-            )
-            for result in parsed_results
-            ])
-
-    def test_list_can_be_filtered_by_node(self):
-        commissioning_results = [
-            factory.make_node_commission_result()
-            for counter in range(3)]
-        url = reverse('commissioning_results_handler')
-        response = self.client.get(
-            url,
-            {
-                'op': 'list',
-                'system_id':
-                    [
-                        commissioning_results[0].node.system_id,
-                        commissioning_results[1].node.system_id,
-                    ]
-            }
-        )
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_results = json.loads(response.content)
-        self.assertItemsEqual(
-            [commissioning_results[0].data, commissioning_results[1].data],
-            [result.get('data') for result in parsed_results])
-
-    def test_list_can_be_filtered_by_name(self):
-        commissioning_results = [
-            factory.make_node_commission_result()
-            for counter in range(3)]
-        url = reverse('commissioning_results_handler')
-        response = self.client.get(
-            url,
-            {
-                'op': 'list',
-                'name': commissioning_results[0].name
-            }
-        )
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_results = json.loads(response.content)
-        self.assertItemsEqual(
-            [commissioning_results[0].data],
-            [result.get('data') for result in parsed_results])
-
-    def test_list_displays_only_visible_nodes(self):
-        node = factory.make_node(owner=factory.make_user())
-        factory.make_node_commission_result(node)
-        url = reverse('commissioning_results_handler')
-        response = self.client.get(url, {'op': 'list'})
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_results = json.loads(response.content)
-        self.assertEqual([], parsed_results)
-
-
-class TestDescribe(AnonAPITestCase):
-    """Tests for the `describe` view."""
-
-    def test_describe_returns_json(self):
-        response = self.client.get(reverse('describe'))
-        self.assertThat(
-            (response.status_code,
-             response['Content-Type'],
-             response.content,
-             response.content),
-            MatchesListwise(
-                (Equals(httplib.OK),
-                 Equals("application/json"),
-                 StartsWith(b'{'),
-                 Contains('name'))),
-            response)
-
-    def test_describe(self):
-        response = self.client.get(reverse('describe'))
-        description = json.loads(response.content)
-        self.assertSetEqual(
-            {"doc", "handlers", "resources"}, set(description))
-        self.assertIsInstance(description["handlers"], list)
-
-
-class TestDescribeAbsoluteURIs(AnonAPITestCase):
-    """Tests for the `describe` view's URI manipulation."""
-
-    scenarios_schemes = (
-        ("http", dict(scheme="http")),
-        ("https", dict(scheme="https")),
-        )
-
-    scenarios_paths = (
-        ("script-at-root", dict(script_name="", path_info="")),
-        ("script-below-root-1", dict(script_name="/foo/bar", path_info="")),
-        ("script-below-root-2", dict(script_name="/foo", path_info="/bar")),
-        )
-
-    scenarios = multiply_scenarios(
-        scenarios_schemes, scenarios_paths)
-
-    def make_params(self):
-        """Create parameters for http request, based on current scenario."""
-        return {
-            "PATH_INFO": self.path_info,
-            "SCRIPT_NAME": self.script_name,
-            "SERVER_NAME": factory.make_name('server').lower(),
-            "wsgi.url_scheme": self.scheme,
-        }
-
-    def get_description(self, params):
-        """GET the API description (at a random API path), as JSON."""
-        path = '/%s/describe' % factory.make_name('path')
-        request = RequestFactory().get(path, **params)
-        response = describe(request)
-        self.assertEqual(
-            httplib.OK, response.status_code,
-            "API description failed with code %s:\n%s"
-            % (response.status_code, response.content))
-        return json.loads(response.content)
-
-    def patch_script_prefix(self, script_name):
-        """Patch up Django's and Piston's notion of the script_name prefix.
-
-        This manipulates how Piston gets Django's version of script_name
-        which it needs so that it can prefix script_name to URL paths.
-        """
-        # Patching up get_script_prefix doesn't seem to do the trick,
-        # and patching it in the right module requires unwarranted
-        # intimacy with Piston.  So just go through the proper call and
-        # set the prefix.  But clean this up after the test or it will
-        # break other tests!
-        original_prefix = get_script_prefix()
-        self.addCleanup(
-            django.core.urlresolvers.set_script_prefix, original_prefix)
-        django.core.urlresolvers.set_script_prefix(script_name)
-
-    def test_handler_uris_are_absolute(self):
-        params = self.make_params()
-        server = params['SERVER_NAME']
-
-        # Without this, the test wouldn't be able to detect accidental
-        # duplication of the script_name portion of the URL path:
-        # /MAAS/MAAS/api/...
-        self.patch_script_prefix(self.script_name)
-
-        description = self.get_description(params)
-
-        expected_uri = AfterPreprocessing(
-            urlparse, MatchesStructure(
-                scheme=Equals(self.scheme), hostname=Equals(server),
-                # The path is always the script name followed by "api/"
-                # because all API calls are within the "api" tree.
-                path=StartsWith(self.script_name + "/api/")))
-        expected_handler = MatchesAny(
-            Is(None), AfterPreprocessing(itemgetter("uri"), expected_uri))
-        expected_resource = MatchesAll(
-            AfterPreprocessing(itemgetter("anon"), expected_handler),
-            AfterPreprocessing(itemgetter("auth"), expected_handler))
-        resources = description["resources"]
-        self.assertNotEqual([], resources)
-        self.assertThat(resources, AllMatch(expected_resource))
