@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test maasserver API."""
@@ -4043,11 +4043,6 @@ class TestAnonNodeGroupsAPI(AnonAPITestCase):
         ('celery', FixtureResource(CeleryFixture())),
         )
 
-    def create_configured_master(self):
-        master = NodeGroup.objects.ensure_master()
-        master.uuid = factory.getRandomUUID()
-        master.save()
-
     def test_refresh_calls_refresh_worker(self):
         nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
         response = self.client.post(
@@ -4065,7 +4060,39 @@ class TestAnonNodeGroupsAPI(AnonAPITestCase):
             (httplib.OK, "Sending worker refresh."),
             (response.status_code, response.content))
 
-    def test_register_nodegroup_creates_nodegroup_and_interfaces(self):
+
+class TestRegisterAPI(AnonAPITestCase):
+    """Tests for the `register` method on the API.
+
+    This method can be called anonymously.
+    """
+
+    def create_configured_master(self):
+        master = NodeGroup.objects.ensure_master()
+        master.uuid = factory.getRandomUUID()
+        master.save()
+
+    def create_local_cluster_config(self, uuid):
+        """Set up a local cluster config with the given UUID.
+
+        This patches settings.LOCAL_CLUSTER_CONFIG to point to a valid
+        cluster config file.
+        """
+        contents = dedent("""
+            MAAS_URL=http://localhost/MAAS
+            CLUSTER_UUID="%s"
+            """ % uuid)
+        file_name = self.make_file(contents=contents)
+        self.patch(settings, 'LOCAL_CLUSTER_CONFIG', file_name)
+
+    def patch_broker_url(self):
+        """Patch `BROKER_URL` with a fake.  Returns the fake value."""
+        fake = factory.make_name('fake_broker_url')
+        celery_conf = app_or_default().conf
+        self.patch(celery_conf, 'BROKER_URL', fake)
+        return fake
+
+    def test_register_creates_nodegroup_and_interfaces(self):
         self.create_configured_master()
         name = factory.make_name('name')
         uuid = factory.getRandomUUID()
@@ -4091,23 +4118,12 @@ class TestAnonNodeGroupsAPI(AnonAPITestCase):
         # validated by an admin.
         self.assertEqual(httplib.ACCEPTED, response.status_code)
 
-    def setup_local_cluster_config(self, uuid):
-        # Helper to get settings.LOCAL_CLUSTER_CONFIG to point to a valid
-        # cluster config file with CLUSTER_UUID set to the given uuid.
-        contents = dedent("""
-            MAAS_URL=http://localhost/MAAS
-            CLUSTER_UUID="%s"
-            """ % uuid)
-        file_name = self.make_file(contents=contents)
-        self.patch(settings, 'LOCAL_CLUSTER_CONFIG', file_name)
-
-    def test_register_nodegroup_returns_credentials_if_local_cluster(self):
-        name = factory.make_name('name')
+    def test_register_configures_master_on_first_local_call(self):
+        name = factory.make_name('nodegroup')
         uuid = factory.getRandomUUID()
-        self.setup_local_cluster_config(uuid)
-        fake_broker_url = factory.make_name('fake-broker_url')
-        celery_conf = app_or_default().conf
-        self.patch(celery_conf, 'BROKER_URL', fake_broker_url)
+        self.create_local_cluster_config(uuid)
+        fake_broker_url = self.patch_broker_url()
+
         response = self.client.post(
             reverse('nodegroups_handler'),
             {
@@ -4116,17 +4132,17 @@ class TestAnonNodeGroupsAPI(AnonAPITestCase):
                 'uuid': uuid,
             })
         self.assertEqual(httplib.OK, response.status_code, response)
+
         parsed_result = json.loads(response.content)
         self.assertEqual(
             ({'BROKER_URL': fake_broker_url}, uuid),
             (parsed_result, NodeGroup.objects.ensure_master().uuid))
 
-    def test_register_nodegroup_gets_accepted_if_not_local_cluster(self):
+    def test_register_does_not_configure_master_on_nonlocal_call(self):
         name = factory.make_name('name')
         uuid = factory.getRandomUUID()
-        fake_broker_url = factory.make_name('fake-broker_url')
-        celery_conf = app_or_default().conf
-        self.patch(celery_conf, 'BROKER_URL', fake_broker_url)
+        self.patch_broker_url()
+
         response = self.client.post(
             reverse('nodegroups_handler'),
             {
@@ -4135,15 +4151,17 @@ class TestAnonNodeGroupsAPI(AnonAPITestCase):
                 'uuid': uuid,
             })
         self.assertEqual(httplib.ACCEPTED, response.status_code, response)
+
         self.assertEqual(
             response.content, "Cluster registered.  Awaiting admin approval.")
 
-    def test_register_nodegroup_configures_master_if_unconfigured(self):
+    def test_register_configures_master_if_unconfigured(self):
         name = factory.make_name('nodegroup')
         uuid = factory.getRandomUUID()
-        self.setup_local_cluster_config(uuid)
+        self.create_local_cluster_config(uuid)
         interface = make_interface_settings()
-        self.client.post(
+
+        response = self.client.post(
             reverse('nodegroups_handler'),
             {
                 'op': 'register',
@@ -4151,38 +4169,43 @@ class TestAnonNodeGroupsAPI(AnonAPITestCase):
                 'uuid': uuid,
                 'interfaces': json.dumps([interface]),
             })
+        self.assertEqual(httplib.OK, response.status_code, response)
+
         master = NodeGroup.objects.ensure_master()
+        self.assertEqual(NODEGROUP_STATUS.ACCEPTED, master.status)
         self.assertThat(
             master.nodegroupinterface_set.get(
                 interface=interface['interface']),
             MatchesStructure.byEquality(**interface))
-        self.assertEqual(NODEGROUP_STATUS.ACCEPTED, master.status)
 
     def test_register_nodegroup_uses_default_zone_name(self):
         uuid = factory.getRandomUUID()
-        self.setup_local_cluster_config(uuid)
-        self.client.post(
+        self.create_local_cluster_config(uuid)
+
+        response = self.client.post(
             reverse('nodegroups_handler'),
             {
                 'op': 'register',
                 'uuid': uuid,
             })
+        self.assertEqual(httplib.OK, response.status_code, response)
+
         master = NodeGroup.objects.ensure_master()
         self.assertEqual(
             (NODEGROUP_STATUS.ACCEPTED, DEFAULT_ZONE_NAME),
             (master.status, master.name))
 
     def test_register_multiple_nodegroups(self):
-        uuids = {
-            factory.getRandomUUID(), factory.getRandomUUID(),
-            factory.getRandomUUID()}
+        uuids = {factory.getRandomUUID() for counter in range(3)}
         for uuid in uuids:
-            self.client.post(
+            response = self.client.post(
                 reverse('nodegroups_handler'),
                 {
                     'op': 'register',
                     'uuid': uuid,
                 })
+            self.assertEqual(httplib.ACCEPTED, response.status_code, response)
+
         self.assertSetEqual(
             uuids,
             set(NodeGroup.objects.values_list('uuid', flat=True)))
@@ -4266,10 +4289,8 @@ class TestAnonNodeGroupsAPI(AnonAPITestCase):
             })
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
-    def test_register_accepted_cluster_gets_credentials(self):
-        fake_broker_url = factory.make_name('fake-broker_url')
-        celery_conf = app_or_default().conf
-        self.patch(celery_conf, 'BROKER_URL', fake_broker_url)
+    def test_register_accepted_cluster_returns_credentials(self):
+        fake_broker_url = self.patch_broker_url()
         nodegroup = factory.make_node_group()
         nodegroup.status = NODEGROUP_STATUS.ACCEPTED
         nodegroup.save()

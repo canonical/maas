@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Restful MAAS API.
@@ -1119,25 +1119,24 @@ class AnonNodeGroupsHandler(AnonymousOperationsHandler):
 
     @operation(idempotent=False)
     def register(self, request):
-        """Register a new `NodeGroup`.
+        """Register a new cluster controller.
 
         This method will use HTTP return codes to indicate the success of the
         call:
 
-        - 200 (OK): the nodegroup has been accepted, the response will
-          contain the RabbitMQ credentials in JSON format: e.g.:
+        - 200 (OK): the cluster controller has been accepted.  The response
+          will contain the RabbitMQ credentials in JSON format, e.g.:
           '{"BROKER_URL" = "amqp://guest:guest@localhost:5672//"}'
-        - 202 (Accepted): the registration of the nodegroup has been accepted,
-          it now needs to be validated by an administrator.  Please issue
-          the same request later.
-        - 403 (Forbidden): this nodegroup has been rejected.
+        - 202 (Accepted): the cluster controller has been registered.  It is
+          now pending acceptance by an administrator.  Please try again later.
+        - 403 (Forbidden): this cluster controller has been rejected.
 
-        :param uuid: The UUID of the nodegroup.
+        :param uuid: The cluster's UUID.
         :type name: basestring
-        :param name: The name of the nodegroup.
+        :param name: The cluster's name.
         :type name: basestring
-        :param interfaces: The list of the interfaces' data.
-        :type interface: json string containing a list of dictionaries with
+        :param interfaces: The cluster controller's network interfaces.
+        :type interfaces: JSON string containing a list of dictionaries with
             the data to initialize the interfaces.
             e.g.: '[{"ip_range_high": "192.168.168.254",
             "ip_range_low": "192.168.168.1", "broadcast_ip":
@@ -1149,54 +1148,57 @@ class AnonNodeGroupsHandler(AnonymousOperationsHandler):
         existing_nodegroup = get_one(NodeGroup.objects.filter(uuid=uuid))
         if existing_nodegroup is None:
             master = NodeGroup.objects.ensure_master()
-            # Does master.uuid look like it's a proper uuid?
+            # Has the master been configured yet?
             if master.uuid in ('master', ''):
-                # Master nodegroup not yet configured, configure it.
-                local_cluster_UUID = get_local_cluster_UUID()
+                # No.  So this new cluster controller could be the master
+                # reporting for duty.
+                local_uuid = get_local_cluster_UUID()
                 is_local_cluster = (
-                    local_cluster_UUID is not None and
-                    local_cluster_UUID == uuid)
+                    local_uuid is not None and
+                    uuid == local_uuid)
                 if is_local_cluster:
-                    # Connecting from localhost, accept the cluster
-                    # controller.
+                    # It's the cluster controller that's running locally.
+                    # Accept it as the master.
+                    update_instance = master
                     status = NODEGROUP_STATUS.ACCEPTED
                 else:
-                    # Connecting remotely, mark the cluster as pending.
+                    # It's some other cluster controller.  Keep it pending.
+                    # TODO: Updating the master here, like the original code
+                    # does.  Doesn't look right, since this isn't the master.
+                    update_instance = master
                     status = NODEGROUP_STATUS.PENDING
-                form = NodeGroupWithInterfacesForm(
-                    data=request.data, status=status, instance=master)
-                if form.is_valid():
-                    form.save()
-                    if status == NODEGROUP_STATUS.ACCEPTED:
-                        return get_celery_credentials()
-                    else:
-                        return HttpResponse(
-                            "Cluster registered.  Awaiting admin approval.",
-                            status=httplib.ACCEPTED)
-                else:
-                    raise ValidationError(form.errors)
             else:
-                # This nodegroup (identified by its uuid), does not exist yet,
-                # create it if the data validates.
-                form = NodeGroupWithInterfacesForm(
-                    data=request.data, status=NODEGROUP_STATUS.PENDING)
-                if form.is_valid():
-                    form.save()
-                    return HttpResponse(
-                        "Cluster registered.  Awaiting admin approval.",
-                        status=httplib.ACCEPTED)
-                else:
-                    raise ValidationError(form.errors)
+                # It's a new cluster.  Create it, and keep it pending.
+                update_instance = None
+                status = NODEGROUP_STATUS.PENDING
+
+            form = NodeGroupWithInterfacesForm(
+                data=request.data, status=status, instance=update_instance)
+            if not form.is_valid():
+                raise ValidationError(form.errors)
+            nodegroup = form.save()
+
         else:
+            nodegroup = existing_nodegroup
             if existing_nodegroup.status == NODEGROUP_STATUS.ACCEPTED:
-                update_nodegroup_maas_url(existing_nodegroup, request)
-                # The nodegroup exists and is validated, return the RabbitMQ
-                return get_celery_credentials()
-            elif existing_nodegroup.status == NODEGROUP_STATUS.REJECTED:
-                raise PermissionDenied('Rejected cluster.')
-            elif existing_nodegroup.status == NODEGROUP_STATUS.PENDING:
-                return HttpResponse(
-                    "Awaiting admin approval.", status=httplib.ACCEPTED)
+                # This cluster controller has been accepted.  Update the
+                # MAAS URL we will send it from now on.
+                update_nodegroup_maas_url(nodegroup, request)
+
+        # Compose the appropriate response.
+        if nodegroup.status == NODEGROUP_STATUS.ACCEPTED:
+            return get_celery_credentials()
+        elif nodegroup.status == NODEGROUP_STATUS.REJECTED:
+            raise PermissionDenied('Rejected cluster.')
+        elif nodegroup.status == NODEGROUP_STATUS.PENDING:
+            if existing_nodegroup is None:
+                message = "Cluster registered.  Awaiting admin approval."
+            else:
+                message = "Awaiting admin approval."
+            return HttpResponse(message, status=httplib.ACCEPTED)
+        else:
+            raise AssertionError(
+                "Unknown nodegroup status: %s", nodegroup.status)
 
 
 def update_nodegroup_maas_url(nodegroup, request):
