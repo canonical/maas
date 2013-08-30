@@ -1089,6 +1089,71 @@ def get_celery_credentials():
 DISPLAYED_NODEGROUP_FIELDS = ('uuid', 'status', 'name', 'cluster_name')
 
 
+def register_nodegroup(request, uuid):
+    """Register a new nodegroup.
+
+    If the master has not been configured yet, this nodegroup becomes the
+    master.  In that situation, if the uuid is also the one configured locally
+    (meaning that the cluster controller is running on the same host as this
+    region controller), the new master is also automatically accepted.
+    """
+    master = NodeGroup.objects.ensure_master()
+
+    # Has the master been configured yet?
+    if master.uuid in ('master', ''):
+        # No, the master is not yet configured.  No actual cluster
+        # controllers have registered yet.  All we have is the
+        # default placeholder.  We let the cluster controller that's
+        # making this request take the master's place.
+        update_instance = master
+        local_uuid = get_local_cluster_UUID()
+        is_local_cluster = (
+            local_uuid is not None and
+            uuid == local_uuid)
+        if is_local_cluster:
+            # It's the cluster controller that's running locally.
+            # Auto-accept it.
+            status = NODEGROUP_STATUS.ACCEPTED
+        else:
+            # It's a non-local cluster controller.  Keep it pending.
+            status = NODEGROUP_STATUS.PENDING
+    else:
+        # It's a new regular cluster.  Create it, and keep it pending.
+        update_instance = None
+        status = NODEGROUP_STATUS.PENDING
+
+    form = NodeGroupWithInterfacesForm(
+        data=request.data, status=status, instance=update_instance)
+
+    if not form.is_valid():
+        raise ValidationError(form.errors)
+
+    return form.save()
+
+
+def compose_nodegroup_register_response(nodegroup, already_existed):
+    """Return the right HTTP response to a `register` request.
+
+    The response is based on the status of the `nodegroup` after registration,
+    and whether it had already been registered before the call.
+
+    If the nodegroup was accepted, this returns the cluster worker's Celery
+    credentials.
+    """
+    if nodegroup.status == NODEGROUP_STATUS.ACCEPTED:
+        return get_celery_credentials()
+    elif nodegroup.status == NODEGROUP_STATUS.REJECTED:
+        raise PermissionDenied('Rejected cluster.')
+    elif nodegroup.status == NODEGROUP_STATUS.PENDING:
+        if already_existed:
+            message = "Awaiting admin approval."
+        else:
+            message = "Cluster registered.  Awaiting admin approval."
+        return HttpResponse(message, status=httplib.ACCEPTED)
+    else:
+        raise AssertionError("Unknown nodegroup status: %s", nodegroup.status)
+
+
 class AnonNodeGroupsHandler(AnonymousOperationsHandler):
     """Anonymous access to NodeGroups."""
     create = read = update = delete = None
@@ -1145,61 +1210,18 @@ class AnonNodeGroupsHandler(AnonymousOperationsHandler):
             "eth0"}]'
         """
         uuid = get_mandatory_param(request.data, 'uuid')
-        existing_nodegroup = get_one(NodeGroup.objects.filter(uuid=uuid))
-        if existing_nodegroup is None:
-            master = NodeGroup.objects.ensure_master()
-            # Has the master been configured yet?
-            if master.uuid in ('master', ''):
-                # No, the master is not yet configured.  No actual cluster
-                # controllers have registered yet.  All we have is the
-                # default placeholder.  We let the cluster controller that's
-                # making this request take the master's place.
-                update_instance = master
-                local_uuid = get_local_cluster_UUID()
-                is_local_cluster = (
-                    local_uuid is not None and
-                    uuid == local_uuid)
-                if is_local_cluster:
-                    # It's the cluster controller that's running locally.
-                    # Auto-accept it.
-                    status = NODEGROUP_STATUS.ACCEPTED
-                else:
-                    # It's a non-local cluster controller.  Keep it pending.
-                    status = NODEGROUP_STATUS.PENDING
-            else:
-                # It's a new regular cluster.  Create it, and keep it pending.
-                update_instance = None
-                status = NODEGROUP_STATUS.PENDING
-
-            form = NodeGroupWithInterfacesForm(
-                data=request.data, status=status, instance=update_instance)
-            if not form.is_valid():
-                raise ValidationError(form.errors)
-            nodegroup = form.save()
-
-        else:
-            # It's a cluster controller we already knew.
-            nodegroup = existing_nodegroup
-            if existing_nodegroup.status == NODEGROUP_STATUS.ACCEPTED:
+        nodegroup = get_one(NodeGroup.objects.filter(uuid=uuid))
+        already_existed = (nodegroup is not None)
+        if already_existed:
+            if nodegroup.status == NODEGROUP_STATUS.ACCEPTED:
                 # This cluster controller has been accepted.  Use the
-                # information in the request to pdate the MAAS URL we will
+                # information in the request to update the MAAS URL we will
                 # send it from now on.
                 update_nodegroup_maas_url(nodegroup, request)
-
-        # Compose the appropriate response.
-        if nodegroup.status == NODEGROUP_STATUS.ACCEPTED:
-            return get_celery_credentials()
-        elif nodegroup.status == NODEGROUP_STATUS.REJECTED:
-            raise PermissionDenied('Rejected cluster.')
-        elif nodegroup.status == NODEGROUP_STATUS.PENDING:
-            if existing_nodegroup is None:
-                message = "Cluster registered.  Awaiting admin approval."
-            else:
-                message = "Awaiting admin approval."
-            return HttpResponse(message, status=httplib.ACCEPTED)
         else:
-            raise AssertionError(
-                "Unknown nodegroup status: %s", nodegroup.status)
+            nodegroup = register_nodegroup(request, uuid)
+
+        return compose_nodegroup_register_response(nodegroup, already_existed)
 
 
 def update_nodegroup_maas_url(nodegroup, request):

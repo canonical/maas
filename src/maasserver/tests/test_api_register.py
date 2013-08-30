@@ -19,6 +19,10 @@ from textwrap import dedent
 
 from celery.app import app_or_default
 from django.conf import settings
+from django.core.exceptions import (
+    PermissionDenied,
+    ValidationError,
+    )
 from django.core.urlresolvers import reverse
 from django.test.client import RequestFactory
 from maasserver import api
@@ -32,8 +36,12 @@ from maasserver.testing.api import AnonAPITestCase
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
 from maasserver.tests.test_forms import make_interface_settings
-from mock import ANY
+from mock import (
+    ANY,
+    Mock,
+    )
 from testtools.matchers import MatchesStructure
+from testtools.testcase import ExpectedException
 
 
 class TestUpdateNodeGroupMAASURL(TestCase):
@@ -64,47 +72,161 @@ class TestUpdateNodeGroupMAASURL(TestCase):
         self.assertEqual(maas_url, nodegroup.maas_url)
 
 
+def create_configured_master():
+    """Set up a master, already configured."""
+    master = NodeGroup.objects.ensure_master()
+    master.uuid = factory.getRandomUUID()
+    master.save()
+
+
+def reset_master():
+    """Reset to a situation where no master has been accepted."""
+    master = NodeGroup.objects.ensure_master()
+    master.status = NODEGROUP_STATUS.PENDING
+    master.save()
+
+
+def create_local_cluster_config(test_case, uuid):
+    """Set up a local cluster config with the given UUID.
+
+    This patches settings.LOCAL_CLUSTER_CONFIG to point to a valid
+    cluster config file.
+    """
+    contents = dedent("""
+        MAAS_URL=http://localhost/MAAS
+        CLUSTER_UUID="%s"
+        """ % uuid)
+    file_name = test_case.make_file(contents=contents)
+    test_case.patch(settings, 'LOCAL_CLUSTER_CONFIG', file_name)
+
+
+def patch_broker_url(test_case):
+    """Patch `BROKER_URL` with a fake.  Returns the fake value."""
+    fake = factory.make_name('fake_broker_url')
+    celery_conf = app_or_default().conf
+    test_case.patch(celery_conf, 'BROKER_URL', fake)
+    return fake
+
+
+def make_register_request(uuid):
+    """Create a fake register() request."""
+    request = RequestFactory().post(
+        reverse('nodegroups_handler'),
+        {'op': 'register', 'uuid': uuid})
+    # Piston sets request.data like this.  Our API code needs it.
+    request.data = request.POST
+    return request
+
+
+class TestRegisterNodegroup(TestCase):
+    """Tests for `register_nodegroup`."""
+
+    def test_creates_pending_nodegroup_by_default(self):
+        create_configured_master()
+        uuid = factory.getRandomUUID()
+        request = make_register_request(uuid)
+
+        nodegroup = api.register_nodegroup(request, uuid)
+
+        self.assertEqual(uuid, nodegroup.uuid)
+        self.assertEqual(NODEGROUP_STATUS.PENDING, nodegroup.status)
+        self.assertNotEqual(NodeGroup.objects.ensure_master().id, nodegroup.id)
+
+    def test_registers_as_master_if_master_not_configured(self):
+        reset_master()
+        uuid = factory.getRandomUUID()
+        request = make_register_request(uuid)
+
+        nodegroup = api.register_nodegroup(request, uuid)
+
+        self.assertEqual(uuid, nodegroup.uuid)
+        self.assertEqual(NODEGROUP_STATUS.PENDING, nodegroup.status)
+        self.assertEqual(NodeGroup.objects.ensure_master().id, nodegroup.id)
+
+    def test_updates_and_accepts_local_master_if_master_not_configured(self):
+        reset_master()
+        uuid = factory.getRandomUUID()
+        create_local_cluster_config(self, uuid)
+        request = make_register_request(uuid)
+
+        nodegroup = api.register_nodegroup(request, uuid)
+
+        self.assertEqual(uuid, nodegroup.uuid)
+        self.assertEqual(NODEGROUP_STATUS.ACCEPTED, nodegroup.status)
+        self.assertEqual(NodeGroup.objects.ensure_master().id, nodegroup.id)
+
+    def test_keeps_local_cluster_controller_pending_if_master_configured(self):
+        create_configured_master()
+        uuid = factory.getRandomUUID()
+        create_local_cluster_config(self, uuid)
+        request = make_register_request(uuid)
+
+        nodegroup = api.register_nodegroup(request, uuid)
+
+        self.assertEqual(uuid, nodegroup.uuid)
+        self.assertEqual(NODEGROUP_STATUS.PENDING, nodegroup.status)
+        self.assertNotEqual(NodeGroup.objects.ensure_master().id, nodegroup.id)
+
+    def test_rejects_duplicate_uuid(self):
+        nodegroup = factory.make_node_group()
+        request = make_register_request(nodegroup.uuid)
+
+        self.assertRaises(
+            ValidationError, api.register_nodegroup, request, nodegroup.uuid)
+
+
+class TestComposeNodegroupRegisterResponse(TestCase):
+    """Tests for `compose_nodegroup_register_response`."""
+
+    def test_returns_credentials_if_accepted(self):
+        nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
+        existed = factory.getRandomBoolean()
+        self.assertEqual(
+            api.get_celery_credentials(),
+            api.compose_nodegroup_register_response(nodegroup, existed))
+
+    def test_credentials_contain_broker_url(self):
+        nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
+        broker_url = patch_broker_url(self)
+        existed = factory.getRandomBoolean()
+
+        response = api.compose_nodegroup_register_response(nodegroup, existed)
+
+        self.assertEqual({'BROKER_URL': broker_url}, response)
+
+    def test_returns_forbidden_if_rejected(self):
+        nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.REJECTED)
+        already_existed = factory.getRandomBoolean()
+
+        with ExpectedException(PermissionDenied, "Rejected cluster."):
+            api.compose_nodegroup_register_response(nodegroup, already_existed)
+
+    def test_returns_accepted_for_new_pending_nodegroup(self):
+        nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.PENDING)
+        response = api.compose_nodegroup_register_response(
+            nodegroup, already_existed=False)
+        self.assertEqual(
+           (httplib.ACCEPTED, "Cluster registered.  Awaiting admin approval."),
+           (response.status_code, response.content))
+
+    def test_returns_accepted_for_existing_pending_nodegroup(self):
+        nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.PENDING)
+        response = api.compose_nodegroup_register_response(
+            nodegroup, already_existed=True)
+        self.assertEqual(
+           (httplib.ACCEPTED, "Awaiting admin approval."),
+           (response.status_code, response.content))
+
+
 class TestRegisterAPI(AnonAPITestCase):
     """Tests for the `register` method on the API.
 
     This method can be called anonymously.
     """
 
-    def create_configured_master(self):
-        """Set up a master, already configured."""
-        master = NodeGroup.objects.ensure_master()
-        master.uuid = factory.getRandomUUID()
-        master.save()
-
-    def reset_master(self):
-        """Reset to a situation where no master has been accepted."""
-        master = NodeGroup.objects.ensure_master()
-        master.status = NODEGROUP_STATUS.PENDING
-        master.save()
-
-    def create_local_cluster_config(self, uuid):
-        """Set up a local cluster config with the given UUID.
-
-        This patches settings.LOCAL_CLUSTER_CONFIG to point to a valid
-        cluster config file.
-        """
-        contents = dedent("""
-            MAAS_URL=http://localhost/MAAS
-            CLUSTER_UUID="%s"
-            """ % uuid)
-        file_name = self.make_file(contents=contents)
-        self.patch(settings, 'LOCAL_CLUSTER_CONFIG', file_name)
-
-    def patch_broker_url(self):
-        """Patch `BROKER_URL` with a fake.  Returns the fake value."""
-        fake = factory.make_name('fake_broker_url')
-        celery_conf = app_or_default().conf
-        self.patch(celery_conf, 'BROKER_URL', fake)
-        return fake
-
     def test_register_creates_nodegroup_and_interfaces(self):
-        self.create_configured_master()
-        name = factory.make_name('name')
+        create_configured_master()
+        name = factory.make_name('cluster')
         uuid = factory.getRandomUUID()
         interface = make_interface_settings()
         response = self.client.post(
@@ -129,11 +251,11 @@ class TestRegisterAPI(AnonAPITestCase):
         self.assertEqual(httplib.ACCEPTED, response.status_code)
 
     def test_register_auto_accepts_local_master(self):
-        self.reset_master()
-        name = factory.make_name('nodegroup')
+        reset_master()
+        name = factory.make_name('cluster')
         uuid = factory.getRandomUUID()
-        self.create_local_cluster_config(uuid)
-        fake_broker_url = self.patch_broker_url()
+        create_local_cluster_config(self, uuid)
+        patch_broker_url(self)
 
         response = self.client.post(
             reverse('nodegroups_handler'),
@@ -144,49 +266,18 @@ class TestRegisterAPI(AnonAPITestCase):
             })
         self.assertEqual(httplib.OK, response.status_code, response)
 
-        parsed_result = json.loads(response.content)
-        self.assertEqual(
-            ({'BROKER_URL': fake_broker_url}, uuid),
-            (parsed_result, NodeGroup.objects.ensure_master().uuid))
-
         master = NodeGroup.objects.ensure_master()
         # The cluster controller that made the request is registered as the
         # master, since there was none.
         self.assertEqual((uuid, name), (master.uuid, master.name))
-
-    def test_register_makes_first_cluster_controller_master(self):
-        self.reset_master()
-        name = factory.make_name('nodegroup')
-        uuid = factory.getRandomUUID()
-        self.create_local_cluster_config(factory.getRandomUUID())
-        self.patch_broker_url()
-
-        response = self.client.post(
-            reverse('nodegroups_handler'),
-            {
-                'op': 'register',
-                'name': name,
-                'uuid': uuid,
-            })
-        self.assertEqual(httplib.ACCEPTED, response.status_code, response)
-
-        self.assertEqual(
-            response.content, "Cluster registered.  Awaiting admin approval.")
-
-        master = NodeGroup.objects.ensure_master()
-        # The cluster controller that made the request is registered as the
-        # master, since there was none.
-        self.assertEqual((uuid, name), (master.uuid, master.name))
-        # However, since this cluster controller wasn't running locally, we
-        # can't be sure it's not an impostor.  It's still pending approval by
-        # an administrator.
-        self.assertEqual(NODEGROUP_STATUS.PENDING, master.status)
+        # It is also auto-accepted.
+        self.assertEqual(NODEGROUP_STATUS.ACCEPTED, master.status)
 
     def test_register_configures_master_if_unconfigured(self):
-        self.reset_master()
-        name = factory.make_name('nodegroup')
+        reset_master()
+        name = factory.make_name('cluster')
         uuid = factory.getRandomUUID()
-        self.create_local_cluster_config(uuid)
+        create_local_cluster_config(self, uuid)
         interface = make_interface_settings()
 
         response = self.client.post(
@@ -208,7 +299,7 @@ class TestRegisterAPI(AnonAPITestCase):
 
     def test_register_nodegroup_uses_default_zone_name(self):
         uuid = factory.getRandomUUID()
-        self.create_local_cluster_config(uuid)
+        create_local_cluster_config(self, uuid)
 
         response = self.client.post(
             reverse('nodegroups_handler'),
@@ -224,8 +315,8 @@ class TestRegisterAPI(AnonAPITestCase):
             (master.status, master.name))
 
     def test_register_accepts_only_one_managed_interface(self):
-        self.create_configured_master()
-        name = factory.make_name('name')
+        create_configured_master()
+        name = factory.make_name('cluster')
         uuid = factory.getRandomUUID()
         # This will try to create 2 "managed" interfaces.
         interface1 = make_interface_settings()
@@ -251,12 +342,12 @@ class TestRegisterAPI(AnonAPITestCase):
             (response.status_code, json.loads(response.content)))
 
     def test_register_nodegroup_validates_data(self):
-        self.create_configured_master()
+        create_configured_master()
         response = self.client.post(
             reverse('nodegroups_handler'),
             {
                 'op': 'register',
-                'name': factory.make_name('name'),
+                'name': factory.make_name('cluster'),
                 'uuid': factory.getRandomUUID(),
                 'interfaces': 'invalid data',
             })
@@ -268,11 +359,11 @@ class TestRegisterAPI(AnonAPITestCase):
             (response.status_code, json.loads(response.content)))
 
     def test_register_nodegroup_twice_does_not_update_nodegroup(self):
-        self.create_configured_master()
+        create_configured_master()
         nodegroup = factory.make_node_group()
         nodegroup.status = NODEGROUP_STATUS.PENDING
         nodegroup.save()
-        name = factory.make_name('name')
+        name = factory.make_name('cluster')
         uuid = nodegroup.uuid
         response = self.client.post(
             reverse('nodegroups_handler'),
@@ -289,44 +380,30 @@ class TestRegisterAPI(AnonAPITestCase):
         # validated by an admin.
         self.assertEqual(httplib.ACCEPTED, response.status_code)
 
-    def test_register_rejected_nodegroup_fails(self):
-        self.create_configured_master()
-        nodegroup = factory.make_node_group()
-        nodegroup.status = NODEGROUP_STATUS.REJECTED
-        nodegroup.save()
-        response = self.client.post(
-            reverse('nodegroups_handler'),
-            {
-                'op': 'register',
-                'name': factory.make_name('name'),
-                'uuid': nodegroup.uuid,
-                'interfaces': json.dumps([]),
-            })
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+    def test_register_returns_compose_nodegroup_register_response(self):
+        # register() returns whatever compose_nodegroup_register_response()
+        # tells it to return.
+        expected_response = factory.getRandomString()
+        self.patch(
+            api, 'compose_nodegroup_register_response',
+            Mock(return_value=expected_response))
 
-    def test_register_accepted_cluster_returns_credentials(self):
-        self.create_configured_master()
-        fake_broker_url = self.patch_broker_url()
-        nodegroup = factory.make_node_group()
-        nodegroup.status = NODEGROUP_STATUS.ACCEPTED
-        nodegroup.save()
         response = self.client.post(
             reverse('nodegroups_handler'),
             {
                 'op': 'register',
-                'name': factory.make_name('name'),
-                'uuid': nodegroup.uuid,
+                'name': factory.make_name('cluster'),
+                'uuid': factory.getRandomUUID(),
             })
-        self.assertEqual(httplib.OK, response.status_code)
-        parsed_result = json.loads(response.content)
+
         self.assertIn('application/json', response['Content-Type'])
-        self.assertEqual({'BROKER_URL': fake_broker_url}, parsed_result)
+        self.assertEqual(expected_response, json.loads(response.content))
 
     def test_register_new_nodegroup_does_not_record_maas_url(self):
         # When registering a cluster, the URL with which the call was made
         # (i.e. from the perspective of the cluster) is *not* recorded.
-        self.create_configured_master()
-        name = factory.make_name('name')
+        create_configured_master()
+        name = factory.make_name('cluster')
         uuid = factory.getRandomUUID()
         update_maas_url = self.patch(api, "update_nodegroup_maas_url")
         response = self.client.post(
@@ -338,7 +415,7 @@ class TestRegisterAPI(AnonAPITestCase):
     def test_register_accepted_nodegroup_updates_maas_url(self):
         # When registering an existing, accepted, cluster, the MAAS URL we give
         # it in the future is updated to the one on which the call was made.
-        self.create_configured_master()
+        create_configured_master()
         nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
         update_maas_url = self.patch(api, "update_nodegroup_maas_url")
         response = self.client.post(
@@ -351,7 +428,7 @@ class TestRegisterAPI(AnonAPITestCase):
         # When registering an existing, pending cluster, the MAAS URL we give
         # it in the future is *not* updated to the one on which the call was
         # made.
-        self.create_configured_master()
+        create_configured_master()
         nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.PENDING)
         update_maas_url = self.patch(api, "update_nodegroup_maas_url")
         response = self.client.post(
@@ -364,7 +441,7 @@ class TestRegisterAPI(AnonAPITestCase):
         # When registering an existing, rejected cluster, the MAAS URL we give
         # it in the future is *not* updated to the one on which the call was
         # made.
-        self.create_configured_master()
+        create_configured_master()
         nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.REJECTED)
         update_maas_url = self.patch(api, "update_nodegroup_maas_url")
         response = self.client.post(
@@ -376,10 +453,10 @@ class TestRegisterAPI(AnonAPITestCase):
     def test_register_master_nodegroup_does_not_update_maas_url(self):
         # When registering the master cluster, the MAAS URL we give it in
         # the future is *not* updated to the one on which the call was made.
-        self.reset_master()
-        name = factory.make_name('name')
+        reset_master()
+        name = factory.make_name('cluster')
         uuid = factory.getRandomUUID()
-        self.create_local_cluster_config(uuid)
+        create_local_cluster_config(self, uuid)
         update_maas_url = self.patch(api, "update_nodegroup_maas_url")
         response = self.client.post(
             reverse('nodegroups_handler'),
