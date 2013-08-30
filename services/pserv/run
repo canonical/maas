@@ -18,9 +18,9 @@ cd "$(dirname "$0")/../.."
 script="$(readlink -f bin/twistd.pserv)"
 config="$(readlink -f etc/maas/pserv.yaml)"
 
-# Set a fixed cluster UUID.  This is identical for all cluster services
-# running in the demo setup: they're all the same cluster.
-export CLUSTER_UUID="adfd3977-f251-4f2c-8d61-745dbd690bfc"
+# Obtain the development setting for CLUSTER_UUID.
+. etc/demo_maas_cluster.conf
+export CLUSTER_UUID
 
 exec $(command -v authbind && echo --deep) \
     "${script}" --nodaemon --pidfile="" maas-pserv --config-file "${config}"

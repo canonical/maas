@@ -31,7 +31,6 @@ from django.conf import settings
 from django.contrib.auth.models import AnonymousUser
 from django.core.urlresolvers import reverse
 from django.http import QueryDict
-from django.test.client import RequestFactory
 from fixtures import (
     EnvironmentVariableFixture,
     Fixture,
@@ -3624,29 +3623,6 @@ class TestAnonNodeGroupsAPI(AnonAPITestCase):
         self.assertEqual(
             (httplib.OK, "Sending worker refresh."),
             (response.status_code, response.content))
-
-
-class TestUpdateNodeGroupMAASURL(TestCase):
-    """Tests for `update_nodegroup_maas_url`."""
-
-    def test_update_from_request(self):
-        request_factory = RequestFactory(SCRIPT_NAME="/script")
-        request = request_factory.get(
-            "/script/path", SERVER_NAME="example.com")
-        nodegroup = factory.make_node_group()
-        api.update_nodegroup_maas_url(nodegroup, request)
-        self.assertEqual("http://example.com/script", nodegroup.maas_url)
-
-    def test_update_from_request_discarded_if_localhost(self):
-        request_factory = RequestFactory(SCRIPT_NAME="/script")
-        request = request_factory.get(
-            "/script/path", SERVER_NAME="localhost")
-        maas_url = factory.make_name('maas_url')
-        nodegroup = factory.make_node_group(maas_url=maas_url)
-        api.update_nodegroup_maas_url(nodegroup, request)
-        # nodegroup.maas_url has not been changed by
-        # api.update_nodegroup_maas_url.
-        self.assertEqual(maas_url, nodegroup.maas_url)
 
 
 def dict_subset(obj, fields):

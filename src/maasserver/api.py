@@ -1150,25 +1150,24 @@ class AnonNodeGroupsHandler(AnonymousOperationsHandler):
             master = NodeGroup.objects.ensure_master()
             # Has the master been configured yet?
             if master.uuid in ('master', ''):
-                # No.  So this new cluster controller could be the master
-                # reporting for duty.
+                # No, the master is not yet configured.  No actual cluster
+                # controllers have registered yet.  All we have is the
+                # default placeholder.  We let the cluster controller that's
+                # making this request take the master's place.
+                update_instance = master
                 local_uuid = get_local_cluster_UUID()
                 is_local_cluster = (
                     local_uuid is not None and
                     uuid == local_uuid)
                 if is_local_cluster:
                     # It's the cluster controller that's running locally.
-                    # Accept it as the master.
-                    update_instance = master
+                    # Auto-accept it.
                     status = NODEGROUP_STATUS.ACCEPTED
                 else:
-                    # It's some other cluster controller.  Keep it pending.
-                    # TODO: Updating the master here, like the original code
-                    # does.  Doesn't look right, since this isn't the master.
-                    update_instance = master
+                    # It's a non-local cluster controller.  Keep it pending.
                     status = NODEGROUP_STATUS.PENDING
             else:
-                # It's a new cluster.  Create it, and keep it pending.
+                # It's a new regular cluster.  Create it, and keep it pending.
                 update_instance = None
                 status = NODEGROUP_STATUS.PENDING
 
@@ -1179,10 +1178,12 @@ class AnonNodeGroupsHandler(AnonymousOperationsHandler):
             nodegroup = form.save()
 
         else:
+            # It's a cluster controller we already knew.
             nodegroup = existing_nodegroup
             if existing_nodegroup.status == NODEGROUP_STATUS.ACCEPTED:
-                # This cluster controller has been accepted.  Update the
-                # MAAS URL we will send it from now on.
+                # This cluster controller has been accepted.  Use the
+                # information in the request to pdate the MAAS URL we will
+                # send it from now on.
                 update_nodegroup_maas_url(nodegroup, request)
 
         # Compose the appropriate response.

@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Django DEMO settings for maas project."""
@@ -75,6 +75,9 @@ LOGGING = {
         },
      }
 }
+
+# Use the in-branch development version of maas_cluster.conf.
+LOCAL_CLUSTER_CONFIG = abspath("etc/demo_maas_cluster.conf")
 
 
 # For demo purposes, give nodes unauthenticated access to their metadata

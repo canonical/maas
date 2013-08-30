@@ -17,10 +17,10 @@ cd "$(dirname "$0")/../.."
 export PYTHONPATH=etc/:src/
 export CELERY_CONFIG_MODULE=democeleryconfig_cluster
 
-# Set a fixed cluster UUID.  This is identical for all cluster services
-# running in the demo setup: they're all the same cluster.
-export CLUSTER_UUID="adfd3977-f251-4f2c-8d61-745dbd690bfc"
+# Obtain the development settings for MAAS_URL and CLUSTER_UUID.
+. etc/demo_maas_cluster.conf
+export CLUSTER_UUID
 
 script="$(readlink -f bin/maas-provision)"
 exec pgrphack "${script}" start-cluster-controller \
-    http://0.0.0.0:5240/ -u "$(id -un)" -g "$(id -gn)"
+    "${MAAS_URL}" -u "$(id -un)" -g "$(id -gn)"
