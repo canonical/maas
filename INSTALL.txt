@@ -242,5 +242,23 @@ the maas-cli command, by first :ref:`logging in to the API <api-key>` and then
 If you are manually configuring a DHCP server, you should take a look at
 :ref:`manual-dhcp`
 
+
+Configure switches on the network
+---------------------------------
+
+Some switches use Spanning-Tree Protocol (STP) to negotiate a loop-free path
+through a root bridge.  While scanning, it can make each port wait up to 50
+seconds before data is allowed to be sent on the port.  This delay in turn can
+cause problems with some applications/protocols such as PXE, DHCP and DNS, of
+which MAAS makes extensive use.
+
+To alleviate this problem, you should enable `Portfast`_ for Cisco switches
+or its equivalent on other vendor equipment, which enables the ports to come
+up almost immediately.
+
+.. _Portfast:
+  https://www.symantec.com/business/support/index?page=content&id=HOWTO6019
+
+
 Once everything is set up and running, you are ready to :doc:`start
 enlisting nodes <nodes>`
