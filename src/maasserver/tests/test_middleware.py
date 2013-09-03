@@ -279,7 +279,7 @@ class ErrorsMiddlewareTest(LoggedInTestCase):
         middleware = ErrorsMiddleware()
         response = middleware.process_exception(request, exception)
         # The response is a redirect.
-        self.assertEqual(url, extract_redirect(response))
+        self.assertEqual(request.path, extract_redirect(response))
         # An error message has been published.
         self.assertEqual(
             [(constants.ERROR, error_message, '')], request._messages.messages)
