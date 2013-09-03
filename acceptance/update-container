@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
+# Exit immediately if a command exits with a non-zero status.
+set -o errexit
+# Treat unset variables as an error when substituting.
+set -o nounset
+
+container="$1"
+
+start() {
+    echo -n Starting...
+    sudo lxc-start -n "${container}" --daemon
+    echo " done."
+}
+
+attach() {
+    sudo LC_ALL=C lxc-attach -n "${container}" -- "$@"
+}
+
+stop() {
+    echo -n Stopping...
+    sudo lxc-stop -n "${container}"
+    echo " done."
+}
+
+start && trap stop EXIT && {
+    sleep 5  # Allow container to get going.
+    attach sudo -AE apt-get --assume-yes update
+    attach sudo -AE apt-get --assume-yes dist-upgrade
+}

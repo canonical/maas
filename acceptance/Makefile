@@ -39,7 +39,7 @@ containerdir := /var/lib/lxc/$(container)
 
 define ephexec
 sudo LC_ALL=C SSH_ASKPASS=$(abspath ubuntupass) setsid \
-    lxc-start-ephemeral -b $(abspath .) -o $(container) -u ubuntu -- \
+    lxc-start-ephemeral -b $(upstream) -o $(container) -u ubuntu -- \
     DEBIAN_FRONTEND=noninteractive SUDO_ASKPASS=$(abspath ubuntupass)
 endef
 
@@ -48,7 +48,7 @@ $(ephexec) $(abspath with-make) make -C $(abspath .)
 endef
 
 define check-service
-test $(2) = $(wordlist 2,2,$(shell service $(1) status))  # $(1)
+test $(2) = $(wordlist 2,2,$(shell initctl --system status $(1)))  # $(1)
 endef
 
 ## Top-level targets.
@@ -67,12 +67,16 @@ build: source source/debian | services sudo container
 
 container: $(containerdir)
 
+container-update: $(containerdir) | services sudo
+	$(abspath update-container) $(container)
+
 services:
 	$(call check-service,lxc,start/running)
 	$(call check-service,lxc-net,start/running)
 
 define phony-outer-targets
   container
+  container-update
   services
   test
 endef
@@ -97,7 +101,7 @@ define build-packages
   dh-apport
 endef
 
-build-inner: upgrade-inner
+build-inner: | upgrade-inner
 	sudo -AE apt-get --assume-yes install $(strip $(missing-packages))
 	sudo -AE apt-get --assume-yes install $(strip $(build-packages))
 	cd source && debuild -i -us -uc -b
@@ -120,9 +124,10 @@ source:
 source/debian: | source
 	bzr export $@ $(packaging)/debian
 
-$(containerdir): | sudo
+$(containerdir): | services sudo
 	sudo lxc-create -n $(container) \
-	    -t ubuntu -- --release $(series)
+	    -f /etc/lxc/default.conf -t ubuntu -- --release $(series)
+	$(abspath update-container) $(container)
 
 ## Miscellaneous.
 
