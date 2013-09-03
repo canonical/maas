@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Nodes views."""
@@ -392,6 +392,7 @@ class NodeView(NodeViewMixin, UpdateView):
             'tag': kernel_opts[0],
             'value': kernel_opts[1]
             }
+        context['lldp_output'] = node.get_lldp_output()
         return context
 
     def dispatch(self, *args, **kwargs):

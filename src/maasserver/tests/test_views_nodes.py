@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test maasserver nodes views."""
@@ -73,6 +73,7 @@ from maasserver.views.nodes import (
     message_from_form_stats,
     )
 from maastesting.matchers import ContainsAll
+from metadataserver.models.commissioningscript import LLDP_OUTPUT_NAME
 from provisioningserver.enum import POWER_TYPE_CHOICES
 
 
@@ -574,6 +575,30 @@ class NodeViewsTest(LoggedInTestCase):
             node_link, data={NodeActionForm.input_name: StartNode.name})
         self.assertEqual(httplib.FOUND, response.status_code)
         self.assertEqual(NODE_STATUS.ALLOCATED, reload_object(node).status)
+
+    def test_view_node_skips_lldp_output_if_none_set(self):
+        node = factory.make_node(owner=self.logged_in_user)
+        node_link = reverse('node-view', args=[node.system_id])
+
+        response = self.client.get(node_link)
+        self.assertEqual(httplib.OK, response.status_code)
+        doc = fromstring(response.content)
+
+        self.assertItemsEqual([], doc.cssselect('#lldp-output'))
+
+    def test_view_node_shows_lldp_output_if_set(self):
+        node = factory.make_node(owner=self.logged_in_user)
+        lldp_data = factory.getRandomString()
+        factory.make_node_commission_result(
+            node=node, name=LLDP_OUTPUT_NAME, script_result=0, data=lldp_data)
+        node_link = reverse('node-view', args=[node.system_id])
+
+        response = self.client.get(node_link)
+        self.assertEqual(httplib.OK, response.status_code)
+
+        doc = fromstring(response.content)
+        content = doc.cssselect('#lldp-output')[0].text_content()
+        self.assertIn(lldp_data, content)
 
     def test_view_node_POST_commission(self):
         self.become_admin()
