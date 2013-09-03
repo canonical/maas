@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Custom commissioning scripts, and their database backing."""
@@ -14,6 +14,7 @@ __metaclass__ = type
 __all__ = [
     'BUILTIN_COMMISSIONING_SCRIPTS',
     'CommissioningScript',
+    'LLDP_OUTPUT_NAME',
     ]
 
 from functools import partial
@@ -38,6 +39,9 @@ from metadataserver.fields import BinaryField
 # Path prefix for commissioning scripts.  Commissioning scripts will be
 # extracted into this directory.
 ARCHIVE_PREFIX = "commissioning.d"
+
+# Name of the file where the commissioning scripts store LLDP output.
+LLDP_OUTPUT_NAME = '99-maas-02-capture-lldp.out'
 
 
 def make_function_call_script(function, *args, **kwargs):
@@ -244,7 +248,7 @@ BUILTIN_COMMISSIONING_SCRIPTS = {
             lldpd_wait, "/var/run/lldpd.socket", time_delay=60),
         'hook': null_hook,
     },
-    '99-maas-02-capture-lldp.out': {
+    LLDP_OUTPUT_NAME: {
         'name': '99-maas-02-capture-lldp',
         'content': make_function_call_script(lldpd_capture),
         'hook': set_node_routers,

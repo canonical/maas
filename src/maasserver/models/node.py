@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Node objects."""
@@ -42,6 +42,7 @@ from django.db.models import (
     ManyToManyField,
     Q,
     )
+from django.http import Http404
 from django.shortcuts import get_object_or_404
 from lxml import etree
 from maasserver import DefaultMeta
@@ -908,3 +909,13 @@ class Node(CleanSave, TimestampedModel):
                 "expression. This expression must be updated to make this "
                 "node boot with the Fast Path Installer.")
         self.tags.add(uti_tag)
+
+    def get_lldp_output(self):
+        """Return LLDP output gathered during commissioning, or None."""
+        from metadataserver.models import NodeCommissionResult
+        from metadataserver.models.commissioningscript import LLDP_OUTPUT_NAME
+        try:
+            return NodeCommissionResult.objects.get_data(
+                self, LLDP_OUTPUT_NAME)
+        except Http404:
+            return None

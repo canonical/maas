@@ -52,6 +52,7 @@ from metadataserver.models import (
     NodeCommissionResult,
     NodeUserData,
     )
+from metadataserver.models.commissioningscript import LLDP_OUTPUT_NAME
 from provisioningserver.enum import POWER_TYPE
 from provisioningserver.power.poweraction import PowerAction
 from testtools.matchers import (
@@ -823,6 +824,28 @@ class NodeTest(TestCase):
         self.assertIn(
             "The use-fastpath-installer tag is defined with an expression",
             unicode(error))
+
+    def test_get_lldp_output_returns_None_if_none_set(self):
+        self.assertIsNone(factory.make_node().get_lldp_output())
+
+    def test_get_lldp_output_returns_stored_lldp_output(self):
+        lldp_output = factory.getRandomString()
+        node = factory.make_node()
+        factory.make_node_commission_result(
+            node=node, name=LLDP_OUTPUT_NAME, script_result=0,
+            data=lldp_output)
+        self.assertEqual(lldp_output, node.get_lldp_output())
+
+    def test_get_lldp_output_returns_output_even_if_empty(self):
+        node = factory.make_node()
+        factory.make_node_commission_result(
+            node=node, name=LLDP_OUTPUT_NAME, script_result=0, data='')
+        self.assertEqual('', node.get_lldp_output())
+
+    def test_get_lldp_output_ignores_other_nodes(self):
+        factory.make_node_commission_result(
+            name=LLDP_OUTPUT_NAME, script_result=0)
+        self.assertIsNone(factory.make_node().get_lldp_output())
 
 
 class NodeTransitionsTests(TestCase):
