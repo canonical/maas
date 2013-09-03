@@ -130,11 +130,12 @@
       <span>{{ node.owner }}</span>
     </li>
     {% endif %}
+    {% if lldp_output %}
+      <li class="block first"></li>
+      <li class="block separate">
+        <h3>Discovered network data</h3>
+        <pre id="lldp-output">{{ lldp_output }}</pre>
+      </li>
+    {% endif %}
   </ul>
-  {%if lldp_output %}
-    <div class="clear"></div>
-    <hr />
-    <h3>Discovered network data</h3>
-    <pre id="lldp-output">{{ lldp_output }}</pre>
-  {% endif %}
 {% endblock %}
