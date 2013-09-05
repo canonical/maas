@@ -1,7 +1,18 @@
-/* Copyright 2012 Canonical Ltd.  This software is licensed under the
+/* Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
- * Widget to slide in a div.
+ * Widget to expand (make visible) or fold (make invisible) a content div,
+ * in response to clicks on a button link.
+ *
+ * Write your initial HTML for the visible state.  If the client does not
+ * execute the script, the content div will be visible.  Upon initializatoin,
+ * the widget immediately goes into its "hidden" state.
+ *
+ * Once the widget is set up, its reveal() method will toggle it between its
+ * visible and invisible states.  The transition is animated with a sliding
+ * effect.
+ *
+ * Synonyms: expander, collabsible, foldable.
  *
  * @module Y.maas.reveal
  */
@@ -32,7 +43,7 @@ Reveal.ATTRS = {
     },
 
     /**
-     * The DOM node that triggers the reveal.
+     * DOM node for the button link that triggers the reveal.
      *
      * @attribute linkNode
      * @type node
@@ -42,7 +53,8 @@ Reveal.ATTRS = {
     },
 
     /**
-     * The text the link should have when the div is visible.
+     * The text the button link should contain when the content div is
+     * visible.
      *
      * @attribute hideText
      * @type string
@@ -52,7 +64,7 @@ Reveal.ATTRS = {
     },
 
     /**
-     * The text the link should have when the div is hidden.
+     * The text the button link should contain when the content div is hidden.
      *
      * @attribute showText
      * @type string
@@ -106,23 +118,33 @@ module._create_slide_out = function(node, publisher) {
 
 Y.extend(Reveal, Y.Widget, {
     /**
-     * Toggle the content.
+     * Is this widget currently in its visible state?
+     *
+     * @method is_visible
+     */
+    is_visible: function() {
+        var height = parseInt(this.get('targetNode').getStyle('height'));
+        return height > 0;
+    },
+
+    /**
+     * Toggle between the hidden and revealed states.
      *
      * @method reveal
      */
     reveal: function() {
         var target = this.get('targetNode');
         var link = this.get('linkNode');
-        if (parseInt(target.getStyle('height')) == 0) {
-            module._create_slide_out(target, this).run();
-            if (this.get('hideText') !== null) {
-                link.set('text', this.get('hideText'));
-            }
-        }
-        else {
+        if (this.is_visible()) {
             module._create_slide_in(target, this).run();
             if (this.get('showText') !== null) {
                 link.set('text', this.get('showText'));
+            }
+        }
+        else {
+            module._create_slide_out(target, this).run();
+            if (this.get('hideText') !== null) {
+                link.set('text', this.get('hideText'));
             }
         }
     }
