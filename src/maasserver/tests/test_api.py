@@ -54,7 +54,10 @@ from maasserver.enum import (
     NODEGROUPINTERFACE_MANAGEMENT,
     )
 from maasserver.exceptions import MAASAPIBadRequest
-from maasserver.fields import mac_error_msg
+from maasserver.fields import (
+    MAC,
+    mac_error_msg,
+    )
 from maasserver.forms_settings import INVALID_SETTING_MSG_TEMPLATE
 from maasserver.models import (
     BootImage,
@@ -719,6 +722,7 @@ class AnonymousEnlistmentAPITest(APIv10TestMixin, TestCase):
                 'cpu_count',
                 'storage',
                 'memory',
+                'routers',
             ],
             list(parsed_result))
 
@@ -800,6 +804,7 @@ class SimpleUserLoggedInEnlistmentAPITest(APIv10TestMixin, LoggedInTestCase):
                 'cpu_count',
                 'storage',
                 'memory',
+                'routers',
             ],
             list(parsed_result))
 
@@ -945,6 +950,7 @@ class AdminLoggedInEnlistmentAPITest(APIv10TestMixin, AdminLoggedInTestCase):
                 'cpu_count',
                 'storage',
                 'memory',
+                'routers',
             ],
             list(parsed_result))
 
@@ -1091,6 +1097,17 @@ class TestNodeAPI(APITestCase):
             httplib.OK, response.status_code, response.content)
         parsed_result = json.loads(response.content)
         self.assertEqual([lease.ip], parsed_result['ip_addresses'])
+
+    def test_GET_returns_associated_routers(self):
+        macs = [MAC('aa:bb:cc:dd:ee:ff'), MAC('00:11:22:33:44:55')]
+        node = factory.make_node(routers=macs)
+        response = self.client.get(self.get_node_uri(node))
+
+        self.assertEqual(
+            httplib.OK, response.status_code, response.content)
+        parsed_result = json.loads(response.content)
+        self.assertItemsEqual(
+            [mac.get_raw() for mac in macs], parsed_result['routers'])
 
     def test_GET_refuses_to_access_nonexistent_node(self):
         # When fetching a Node, the api returns a 'Not Found' (404) error

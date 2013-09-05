@@ -231,6 +231,7 @@ DISPLAYED_NODE_FIELDS = (
     'power_type',
     'tag_names',
     'ip_addresses',
+    'routers',
     )
 
 
