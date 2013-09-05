@@ -11,6 +11,7 @@ from __future__ import (
 
 __metaclass__ = type
 __all__ = [
+    "MAC",
     "MACAddressField",
     "MACAddressFormField",
     ]
@@ -24,6 +25,7 @@ import re
 
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
+from django.db import connection
 from django.db.models import (
     Field,
     SubfieldBase,
@@ -41,8 +43,14 @@ mac_re = re.compile(r'^\s*([0-9a-fA-F]{2}[:-]){5}[0-9a-fA-F]{2}\s*$')
 
 mac_error_msg = "Enter a valid MAC address (e.g. AA:BB:CC:DD:EE:FF)."
 
+mac_validator = RegexValidator(regex=mac_re, message=mac_error_msg)
 
-validate_mac = RegexValidator(regex=mac_re, message=mac_error_msg)
+
+def validate_mac(value):
+    """Django validator for a MAC."""
+    if isinstance(value, MAC):
+        value = value.get_raw()
+    mac_validator(value)
 
 
 # The MACAddressField, JSONObjectField and XMLField don't introduce any new
@@ -111,6 +119,7 @@ class NodeGroupFormField(ModelChoiceField):
 
 
 class MACAddressFormField(RegexField):
+    """Form field type: MAC address."""
 
     def __init__(self, *args, **kwargs):
         super(MACAddressFormField, self).__init__(
@@ -120,6 +129,8 @@ class MACAddressFormField(RegexField):
 class MACAddressField(Field):
     """Model field type: MAC address."""
 
+    __metaclass__ = SubfieldBase
+
     description = "MAC address"
 
     default_validators = [validate_mac]
@@ -128,24 +139,103 @@ class MACAddressField(Field):
         return "macaddr"
 
 
-class MACAddressAdapter:
-    """Adapt a `MACAddressField` for database storage using psycopg2.
+class MAC:
+    """A MAC address represented as a database value.
 
-    PostgreSQL supports MAC addresses as a native type.
+    PostgreSQL supports MAC addresses as a native type.  They show up
+    client-side as this class.  It is essentially a wrapper for either a
+    string, or None.
     """
 
     def __init__(self, value):
+        """Wrap a MAC address, or None, into a `MAC`.
+
+        :param value: A MAC address, in the form of a string or a `MAC`;
+            or None.
+        """
+        if isinstance(value, MAC):
+            # Avoid double-wrapping.  It's the value that matters, not the
+            # MAC object that wraps it.
+            value = value.get_raw()
+        # TODO bug=1215447: Remove this assertion.
+        assert value is None or isinstance(value, basestring)
+        # The wrapped attribute is stored as self._wrapped, following
+        # ISQLQuote's example.
         self._wrapped = value
 
+    def __conform__(self, protocol):
+        """Tell psycopg2 that this type implements the adapter protocol."""
+        # The psychopg2 docs say to check that the protocol is ISQLQuote,
+        # but not what to do if it isn't.
+        assert protocol == psycopg2.extensions.ISQLQuote, (
+            "Unsupported psycopg2 adapter protocol: %s" % protocol)
+        return self
+
     def getquoted(self):
-        """Render this object in SQL."""
-        if self._wrapped is None:
+        """Render this object in SQL.
+
+        This is part of psycopg2's adapter protocol.
+        """
+        value = self.get_raw()
+        if value is None:
             return 'NULL'
         else:
-            return "'%s'::macaddr" % self._wrapped
+            return "'%s'::macaddr" % value
+
+    def get_raw(self):
+        """Return the wrapped value."""
+        return self._wrapped
+
+    @staticmethod
+    def parse(value, cur):
+        """Turn a value as received from the database into a MAC."""
+        return MAC(value)
+
+    def __repr__(self):
+        """Represent the MAC as a string.
+        """
+        return self.get_raw()
+
+    def __eq__(self, other):
+        # Two MACs are equal if they wrap the same value.
+        #
+        # Also, a MAC is equal to the value it wraps.  This is non-commutative,
+        # but it supports Django code that compares input values to various
+        # kinds of "null" or "empty."
+        if isinstance(other, MAC):
+            other = other.get_raw()
+        return self.get_raw() == other
+
+    def __ne__(self, other):
+        return not (self == other)
+
+    def __hash__(self):
+        return self.get_raw().__hash__()
 
 
-psycopg2.extensions.register_adapter(MACAddressField, MACAddressAdapter)
+def register_mac_type(cursor):
+    """Register our `MAC` type with psycopg2."""
+    # This is standard, but not built-in, magic to register a type in
+    # psycopg2: execute a query that returns a field of the corresponding
+    # database type, then get its oid out of the cursor, use that to create
+    # a "typecaster" in psycopg (by calling new_type(), confusingly!), then
+    # register that type in psycopg.
+    cursor.execute("SELECT NULL::macaddr")
+    oid = cursor.description[0][1]
+    mac_caster = psycopg2.extensions.new_type((oid, ), b"macaddr", MAC.parse)
+    psycopg2.extensions.register_type(mac_caster)
+
+    # Now do the same for the type array-of-MACs.  The "typecaster" created
+    # for MAC is passed in; it gets used for parsing an individual element
+    # of an array's text representatoin as received from the database.
+    cursor.execute("SELECT '{}'::macaddr[]")
+    oid = cursor.description[0][1]
+    psycopg2.extensions.register_type(psycopg2.extensions.new_array_type(
+        (oid, ), b"macaddr", mac_caster))
+
+
+# TODO bug=1215446: Don't do this at the module level!
+register_mac_type(connection.cursor())
 
 
 class JSONObjectField(Field):

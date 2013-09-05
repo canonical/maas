@@ -27,6 +27,7 @@ from maasserver.enum import (
     NODEGROUPINTERFACE_MANAGEMENT,
     )
 from maasserver.exceptions import NodeStateViolation
+from maasserver.fields import MAC
 from maasserver.models import (
     Config,
     MACAddress,
@@ -431,12 +432,16 @@ class NodeTest(TestCase):
 
     def test_ip_addresses_filters_by_mac_addresses(self):
         node = factory.make_node()
-        other_node = factory.make_node()
+        # Another node in the same nodegroup has some IP leases.  The one thing
+        # that tells ip_addresses what nodes these leases belong to are their
+        # MAC addresses.
+        other_node = factory.make_node(nodegroup=node.nodegroup)
         macs = [factory.make_mac_address(node=node) for i in range(2)]
-        [
+        for mac in macs:
             factory.make_dhcp_lease(
                 nodegroup=node.nodegroup, mac=mac.mac_address)
-            for mac in macs]
+        # The other node's leases do not get mistaken for ones that belong to
+        # our original node.
         self.assertItemsEqual([], other_node.ip_addresses())
 
     def test_release_turns_on_netboot(self):
@@ -846,6 +851,34 @@ class NodeTest(TestCase):
         factory.make_node_commission_result(
             name=LLDP_OUTPUT_NAME, script_result=0)
         self.assertIsNone(factory.make_node().get_lldp_output())
+
+
+class NodeRoutersTest(TestCase):
+
+    def test_routers_stores_mac_address(self):
+        node = factory.make_node()
+        macs = [MAC('aa:bb:cc:dd:ee:ff')]
+        node.routers = macs
+        node.save()
+        self.assertEqual(macs, reload_object(node).routers)
+
+    def test_routers_stores_multiple_mac_addresses(self):
+        node = factory.make_node()
+        macs = [MAC('aa:bb:cc:dd:ee:ff'), MAC('00:11:22:33:44:55')]
+        node.routers = macs
+        node.save()
+        self.assertEqual(macs, reload_object(node).routers)
+
+    def test_routers_can_append(self):
+        node = factory.make_node()
+        mac1 = MAC('aa:bb:cc:dd:ee:ff')
+        mac2 = MAC('00:11:22:33:44:55')
+        node.routers = [mac1]
+        node.save()
+        node = reload_object(node)
+        node.routers.append(mac2)
+        node.save()
+        self.assertEqual([mac1, mac2], reload_object(node).routers)
 
 
 class NodeTransitionsTests(TestCase):

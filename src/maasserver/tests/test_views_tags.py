@@ -47,7 +47,7 @@ class TagViewsTest(LoggedInTestCase):
         doc = fromstring(response.content)
         content_text = doc.cssselect('#content')[0].text_content()
         self.assertThat(
-            content_text, ContainsAll([mac, '%s' % node.hostname]))
+            content_text, ContainsAll([unicode(mac), '%s' % node.hostname]))
         self.assertNotIn(node.system_id, content_text)
         self.assertIn(node_link, get_content_links(response))
 

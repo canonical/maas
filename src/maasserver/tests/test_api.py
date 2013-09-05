@@ -2356,10 +2356,8 @@ class MACAddressAPITest(APITestCase):
 
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(2, len(parsed_result))
-        self.assertEqual(
-            mac1.mac_address, parsed_result[0]['mac_address'])
-        self.assertEqual(
-            mac2.mac_address, parsed_result[1]['mac_address'])
+        self.assertEqual(mac1.mac_address, parsed_result[0]['mac_address'])
+        self.assertEqual(mac2.mac_address, parsed_result[1]['mac_address'])
 
     def test_macs_GET_not_found(self):
         # When fetching MAC addresses, the api returns a 'Not Found' (404)

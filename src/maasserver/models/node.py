@@ -44,6 +44,7 @@ from django.db.models import (
     )
 from django.http import Http404
 from django.shortcuts import get_object_or_404
+from djorm_pgarray.fields import ArrayField
 from lxml import etree
 from maasserver import DefaultMeta
 from maasserver.enum import (
@@ -493,6 +494,8 @@ class Node(CleanSave, TimestampedModel):
         max_length=31, choices=ARCHITECTURE_CHOICES, blank=False,
         default=ARCHITECTURE.i386)
 
+    routers = ArrayField(dbtype="macaddr")
+
     # Juju expects the following standard constraints, which are stored here
     # as a basic optimisation over querying the hardware_details field.
     cpu_count = IntegerField(default=0)
@@ -569,9 +572,8 @@ class Node(CleanSave, TimestampedModel):
             # addresses.
             return [lease.ip for lease in dhcpleases_qs if lease.mac in macs]
         else:
-            ips = dhcpleases_qs.filter(
-                mac__in=macs).values_list('ip', flat=True)
-            return ips
+            query = dhcpleases_qs.filter(mac__in=macs)
+            return query.values_list('ip', flat=True)
 
     def tag_names(self):
         # We don't use self.tags.values_list here because this does not

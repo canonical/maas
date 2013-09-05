@@ -15,6 +15,7 @@ __all__ = []
 from django.core.exceptions import ValidationError
 from django.db import DatabaseError
 from maasserver.fields import (
+    MAC,
     NodeGroupFormField,
     validate_mac,
     )
@@ -32,6 +33,7 @@ from maasserver.tests.models import (
     JSONFieldModel,
     XMLFieldModel,
     )
+from psycopg2.extensions import ISQLQuote
 
 
 class TestNodeGroupFormField(TestCase):
@@ -67,6 +69,96 @@ class TestNodeGroupFormField(TestCase):
         self.assertEqual(
             nodegroup,
             NodeGroupFormField().clean("%s" % nodegroup.id))
+
+
+class TestMAC(TestCase):
+
+    def test_conform_accepts_ISQLQuote(self):
+        mac = MAC(None)
+        self.assertEqual(mac, mac.__conform__(ISQLQuote))
+
+    def test_get_raw_returns_wrapped_None(self):
+        self.assertIsNone(MAC(None).get_raw())
+
+    def test_get_raw_returns_wrapped_address(self):
+        addr = factory.getRandomMACAddress()
+        self.assertEqual(addr, MAC(addr).get_raw())
+
+    def test_get_raw_punches_through_double_wrapping(self):
+        addr = factory.getRandomMACAddress()
+        self.assertEqual(addr, MAC(MAC(addr)).get_raw())
+
+    def test_getquoted_returns_NULL_for_None(self):
+        self.assertEqual("NULL", MAC(None).getquoted())
+
+    def test_getquoted_returns_SQL_for_MAC(self):
+        addr = factory.getRandomMACAddress()
+        self.assertEqual("'%s'::macaddr" % addr, MAC(addr).getquoted())
+
+    def test_getquoted_punches_through_double_wrapping(self):
+        addr = factory.getRandomMACAddress()
+        self.assertEqual("'%s'::macaddr" % addr, MAC(MAC(addr)).getquoted())
+
+    def test_mac_equals_self(self):
+        mac = factory.make_MAC()
+        self.assertTrue(mac == mac)
+
+    def test_mac_equals_identical_mac(self):
+        addr = factory.getRandomMACAddress()
+        self.assertTrue(MAC(addr) == MAC(addr))
+
+    def test_eq_punches_through_double_wrapping_on_self(self):
+        mac = factory.make_MAC()
+        self.assertTrue(MAC(mac) == mac)
+
+    def test_eq_punches_through_double_wrapping_on_other(self):
+        mac = factory.make_MAC()
+        self.assertTrue(mac == MAC(mac))
+
+    def test_eq_punches_through_double_double_wrappings(self):
+        mac = factory.make_MAC()
+        self.assertTrue(MAC(mac) == MAC(mac))
+
+    def test_mac_does_not_equal_other(self):
+        self.assertFalse(factory.make_MAC() == factory.make_MAC())
+
+    def test_mac_differs_from_other(self):
+        self.assertTrue(factory.make_MAC() != factory.make_MAC())
+
+    def test_mac_does_not_differ_from_self(self):
+        mac = factory.make_MAC()
+        self.assertFalse(mac != mac)
+
+    def test_none_mac_equals_none(self):
+        # This is a special case that Django seems to need: it does
+        # "value in validators.EMPTY_VALUES".
+        self.assertTrue(MAC(None) == None)
+
+    def test_mac_address_does_not_equal_none(self):
+        self.assertFalse(factory.make_MAC() == None)
+
+    def test_ne_punches_through_double_wrapping_on_self(self):
+        mac = factory.make_MAC()
+        self.assertFalse(MAC(mac) != mac)
+
+    def test_ne_punches_through_double_wrapping_on_other(self):
+        mac = factory.make_MAC()
+        self.assertFalse(mac != MAC(mac))
+
+    def test_ne_punches_through_double_double_wrapping(self):
+        mac = factory.make_MAC()
+        self.assertFalse(MAC(mac) != MAC(mac))
+
+    def test_different_macs_hash_differently(self):
+        mac1 = factory.make_MAC()
+        mac2 = factory.make_MAC()
+        self.assertItemsEqual(set([mac1, mac2]), [mac1, mac2])
+
+    def test_identical_macs_hash_identically(self):
+        addr = factory.getRandomMACAddress()
+        self.assertItemsEqual(
+            set([MAC(addr), MAC(addr), MAC(MAC(addr)), addr]),
+            [addr])
 
 
 class TestMACAddressField(TestCase):

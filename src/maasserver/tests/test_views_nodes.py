@@ -462,7 +462,7 @@ class NodeViewsTest(LoggedInTestCase):
     def test_edit_nodes_contains_list_of_macaddresses(self):
         node = factory.make_node(owner=self.logged_in_user)
         macs = [
-            factory.make_mac_address(node=node).mac_address
+            unicode(factory.make_mac_address(node=node).mac_address)
             for i in range(3)
         ]
         node_edit_link = reverse('node-edit', args=[node.system_id])

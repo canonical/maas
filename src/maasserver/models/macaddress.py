@@ -46,7 +46,11 @@ class MACAddress(CleanSave, TimestampedModel):
         verbose_name_plural = "MAC addresses"
 
     def __unicode__(self):
-        return self.mac_address
+        text = self.mac_address.get_raw()
+        if isinstance(text, bytes):
+            return text.decode('utf-8')
+        else:
+            return text
 
     def unique_error_message(self, model_class, unique_check):
         if unique_check == ('mac_address',):

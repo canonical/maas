@@ -25,6 +25,7 @@ from maasserver.enum import (
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
     )
+from maasserver.fields import MAC
 from maasserver.models import (
     BootImage,
     DHCPLease,
@@ -264,13 +265,17 @@ class Factory(maastesting.factory.Factory):
         ncr.save()
         return ncr
 
+    def make_MAC(self):
+        """Generate a random MAC address, in the form of a MAC object."""
+        return MAC(self.getRandomMACAddress())
+
     def make_mac_address(self, address=None, node=None):
-        """Create a MAC address."""
+        """Create a MACAddress model object."""
         if node is None:
             node = self.make_node()
         if address is None:
             address = self.getRandomMACAddress()
-        mac = MACAddress(mac_address=address, node=node)
+        mac = MACAddress(mac_address=MAC(address), node=node)
         mac.save()
         return mac
 
@@ -282,7 +287,7 @@ class Factory(maastesting.factory.Factory):
             ip = self.getRandomIPAddress()
         if mac is None:
             mac = self.getRandomMACAddress()
-        lease = DHCPLease(nodegroup=nodegroup, ip=ip, mac=mac)
+        lease = DHCPLease(nodegroup=nodegroup, ip=ip, mac=MAC(mac))
         lease.save()
         return lease
 
