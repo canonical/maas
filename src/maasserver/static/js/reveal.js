@@ -98,6 +98,30 @@ Y.extend(Reveal, Y.Widget, {
     },
 
     /**
+     * Set link to its "hidden" state.
+     *
+     * @method set_hidden_link
+     */
+    set_hidden_link: function(link) {
+        var new_text = this.get('showText');
+        if (new_text !== null && new_text !== undefined) {
+            link.set('text', new_text)
+        }
+    },
+
+    /**
+     * Set link to its "visible" state.
+     *
+     * @method set_visible_link
+     */
+    set_visible_link: function(link) {
+        var new_text = this.get('hideText');
+        if (new_text !== null && new_text !== undefined) {
+            link.set('text', new_text)
+        }
+    },
+
+    /**
      * Get the desired duration for an animation.
      *
      * Returns the suggested duration, unless the "quick" attribute is set
@@ -166,15 +190,11 @@ Y.extend(Reveal, Y.Widget, {
         var link = this.get('linkNode');
         if (this.is_visible()) {
             this.create_slide_in(target, this).run();
-            if (this.get('showText') !== null) {
-                link.set('text', this.get('showText'));
-            }
+            this.set_hidden_link(link);
         }
         else {
             this.create_slide_out(target, this).run();
-            if (this.get('hideText') !== null) {
-                link.set('text', this.get('hideText'));
-            }
+            this.set_visible_link(link);
         }
     }
 });

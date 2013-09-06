@@ -105,6 +105,64 @@ suite.add(new Y.maas.testing.TestCase({
         Y.assert(duration < 0.1, "'Quick' duration is still fairly long.");
     },
 
+    test_set_hidden_link_sets_show_text: function() {
+        var link = this.make_link("Original link");
+        var revealer = new module.Reveal({
+            linkNode: link,
+            targetNode: this.make_div(),
+            showText: "Show content",
+            hideText: "Hide content",
+            quick: true
+        });
+
+        revealer.set_hidden_link(link);
+
+        Y.Assert.areEqual("Show content", link.get('text'));
+    },
+
+    test_set_hidden_link_does_nothing_if_show_text_not_set: function() {
+        var link = this.make_link("Original link");
+        var revealer = new module.Reveal({
+            linkNode: link,
+            targetNode: this.make_div(),
+            hideText: "Hide content",
+            quick: true
+        });
+
+        revealer.set_hidden_link(link);
+
+        Y.Assert.areEqual("Original link", link.get('text'));
+    },
+
+    test_set_visible_link_sets_hide_text: function() {
+        var link = this.make_link("Original link");
+        var revealer = new module.Reveal({
+            linkNode: link,
+            targetNode: this.make_div(),
+            showText: "Show content",
+            hideText: "Hide content",
+            quick: true
+        });
+
+        revealer.set_visible_link(link);
+
+        Y.Assert.areEqual("Hide content", link.get('text'));
+    },
+
+    test_set_visible_link_does_nothing_if_hide_text_not_set: function() {
+        var link = this.make_link("Original link");
+        var revealer = new module.Reveal({
+            linkNode: link,
+            targetNode: this.make_div(),
+            showText: "Show content",
+            quick: true
+        });
+
+        revealer.set_visible_link(link);
+
+        Y.Assert.areEqual("Original link", link.get('text'));
+    },
+
     test_slides_out: function() {
         var original_height = (
             parseInt(Y.one('.panel .content').getStyle('height')) +
