@@ -5,14 +5,14 @@
  * in response to clicks on a button link.
  *
  * Write your initial HTML for the visible state.  If the client does not
- * execute the script, the content div will be visible.  Upon initializatoin,
+ * execute the script, the content div will be visible.  Upon initialization,
  * the widget immediately goes into its "hidden" state.
  *
  * Once the widget is set up, its reveal() method will toggle it between its
  * visible and invisible states.  The transition is animated with a sliding
  * effect.
  *
- * Synonyms: expander, collabsible, foldable.
+ * Synonyms: expander, collapsible, foldable.
  *
  * @module Y.maas.reveal
  */
@@ -105,7 +105,7 @@ Y.extend(Reveal, Y.Widget, {
     set_hidden_link: function(link) {
         var new_text = this.get('showText');
         if (new_text !== null && new_text !== undefined) {
-            link.set('text', new_text)
+            link.set('text', new_text);
         }
     },
 
@@ -117,7 +117,7 @@ Y.extend(Reveal, Y.Widget, {
     set_visible_link: function(link) {
         var new_text = this.get('hideText');
         if (new_text !== null && new_text !== undefined) {
-            link.set('text', new_text)
+            link.set('text', new_text);
         }
     },
 
@@ -139,9 +139,9 @@ Y.extend(Reveal, Y.Widget, {
     },
 
     /**
-     * Create the animation for sliding in the div.
+     * Create the animation for sliding in the content div.
      *
-     * @method _create_slide_in
+     * @method create_slide_in
      */
     create_slide_in: function(node, publisher) {
         var anim = new Y.Anim({
@@ -149,16 +149,16 @@ Y.extend(Reveal, Y.Widget, {
             duration: this.get_animation_duration(0.3),
             to: {height: 0}
         });
-        anim.on('end', function () {
+        anim.on('end', function() {
             publisher.fire('hidden');
         });
         return anim;
     },
 
     /**
-     * Create the animation for sliding out the div.
+     * Create the animation for sliding out the content div.
      *
-     * @method _create_slide_out
+     * @method create_slide_out
      */
     create_slide_out: function(node, publisher) {
         var content_node = node.one('.content');
@@ -174,7 +174,7 @@ Y.extend(Reveal, Y.Widget, {
             duration: this.get_animation_duration(0.2),
             to: {height: new_height}
         });
-        anim.on('end', function () {
+        anim.on('end', function() {
             publisher.fire('revealed');
         });
         return anim;

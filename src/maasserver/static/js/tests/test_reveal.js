@@ -82,7 +82,7 @@ suite.add(new Y.maas.testing.TestCase({
             "is_visible() thinks that div is visible when it isn't.");
     },
 
-    test_get_animation_duration_defaults_to_sugested_duration: function() {
+    test_get_animation_duration_defaults_to_suggested_duration: function() {
         var revealer = new module.Reveal({
             linkNode: this.make_link(),
             targetNode: this.make_div()
@@ -214,7 +214,6 @@ suite.add(new Y.maas.testing.TestCase({
         revealer.reveal();
         this.wait();
     }
-
 }));
 
 namespace.suite = suite;
