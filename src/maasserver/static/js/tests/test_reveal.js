@@ -1,4 +1,4 @@
-/* Copyright 2012 Canonical Ltd.  This software is licensed under the
+/* Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  */
 
@@ -47,7 +47,8 @@ suite.add(new Y.maas.testing.TestCase({
             linkNode: Y.one('.link'),
             targetNode: Y.one('.panel'),
             showText: 'View log',
-            hideText: 'Hide log'
+            hideText: 'Hide log',
+            quick: true
         };
         return new module.Reveal(cfg);
     },
@@ -55,7 +56,8 @@ suite.add(new Y.maas.testing.TestCase({
     test_is_visible_returns_true_for_nonzero_height: function() {
         var revealer = new module.Reveal({
             linkNode: this.make_link(),
-            targetNode: this.make_div()
+            targetNode: this.make_div(),
+            quick: true
         });
         revealer.render();
 
@@ -68,7 +70,8 @@ suite.add(new Y.maas.testing.TestCase({
         var div = this.make_div();
         var revealer = new module.Reveal({
             linkNode: this.make_link(),
-            targetNode: div
+            targetNode: div,
+            quick: true
         });
         revealer.render();
 
@@ -77,6 +80,29 @@ suite.add(new Y.maas.testing.TestCase({
         Y.assert(
             !revealer.is_visible(),
             "is_visible() thinks that div is visible when it isn't.");
+    },
+
+    test_get_animation_duration_defaults_to_sugested_duration: function() {
+        var revealer = new module.Reveal({
+            linkNode: this.make_link(),
+            targetNode: this.make_div()
+        });
+
+        Y.Assert.areEqual(5, revealer.get_animation_duration(5));
+    },
+
+    test_get_animation_duration_returns_mere_wink_if_quick_is_set: function() {
+        var revealer = new module.Reveal({
+            linkNode: this.make_link(),
+            targetNode: this.make_div(),
+            quick: true
+        });
+        var suggested_duration = 5;
+        var duration = revealer.get_animation_duration(suggested_duration);
+
+        Y.Assert.areNotEqual(suggested_duration, duration);
+        Y.assert(duration < suggested_duration, "'Quick' duration is longer.");
+        Y.assert(duration < 0.1, "'Quick' duration is still fairly long.");
     },
 
     test_slides_out: function() {

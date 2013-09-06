@@ -71,49 +71,19 @@ Reveal.ATTRS = {
      */
     showText: {
         value: null
+    },
+
+    /**
+     * Skip animations?
+     *
+     * Use this when testing, to avoid wasting time on delays.
+     *
+     * @attribute quick
+     * @type bool
+     */
+    quick: {
+        value: false
     }
-};
-
-/**
- * Create the animation for sliding in the div.
- *
- * @method _create_slide_in
- */
-module._create_slide_in = function(node, publisher) {
-    var anim = new Y.Anim({
-        node: node,
-        duration: 0.3,
-        to: {height: 0}
-    });
-    anim.on('end', function () {
-        publisher.fire('hidden');
-    });
-    return anim;
-};
-
-/**
- * Create the animation for sliding out the div.
- *
- * @method _create_slide_out
- */
-module._create_slide_out = function(node, publisher) {
-    var content_node = node.one('.content');
-    var height = parseInt(content_node.getStyle('height'));
-    var padding_top = parseInt(content_node.getStyle('paddingTop'));
-    var padding_bottom = parseInt(content_node.getStyle('paddingBottom'));
-    var margin_top = parseInt(content_node.getStyle('marginTop'));
-    var margin_bottom = parseInt(content_node.getStyle('marginBottom'));
-    var new_height = (
-	height + padding_top + padding_bottom + margin_top + margin_bottom);
-    var anim = new Y.Anim({
-        node: node,
-        duration: 0.2,
-        to: {height: new_height}
-    });
-    anim.on('end', function () {
-        publisher.fire('revealed');
-    });
-    return anim;
 };
 
 Y.extend(Reveal, Y.Widget, {
@@ -128,6 +98,65 @@ Y.extend(Reveal, Y.Widget, {
     },
 
     /**
+     * Get the desired duration for an animation.
+     *
+     * Returns the suggested duration, unless the "quick" attribute is set
+     * in which case it returns a very brief duration.
+     *
+     * @method get_animation_duration
+     */
+    get_animation_duration: function(suggested_duration) {
+        if (this.get('quick')) {
+            return 0.01;
+        }
+        else {
+            return suggested_duration;
+        }
+    },
+
+    /**
+     * Create the animation for sliding in the div.
+     *
+     * @method _create_slide_in
+     */
+    create_slide_in: function(node, publisher) {
+        var anim = new Y.Anim({
+            node: node,
+            duration: this.get_animation_duration(0.3),
+            to: {height: 0}
+        });
+        anim.on('end', function () {
+            publisher.fire('hidden');
+        });
+        return anim;
+    },
+
+    /**
+     * Create the animation for sliding out the div.
+     *
+     * @method _create_slide_out
+     */
+    create_slide_out: function(node, publisher) {
+        var content_node = node.one('.content');
+        var height = parseInt(content_node.getStyle('height'));
+        var padding_top = parseInt(content_node.getStyle('paddingTop'));
+        var padding_bottom = parseInt(content_node.getStyle('paddingBottom'));
+        var margin_top = parseInt(content_node.getStyle('marginTop'));
+        var margin_bottom = parseInt(content_node.getStyle('marginBottom'));
+        var new_height = (
+	    height + padding_top + padding_bottom + margin_top + margin_bottom);
+        var anim = new Y.Anim({
+            node: node,
+            duration: this.get_animation_duration(0.2),
+            to: {height: new_height}
+        });
+        anim.on('end', function () {
+            publisher.fire('revealed');
+        });
+        return anim;
+    },
+
+    /**
      * Toggle between the hidden and revealed states.
      *
      * @method reveal
@@ -136,13 +165,13 @@ Y.extend(Reveal, Y.Widget, {
         var target = this.get('targetNode');
         var link = this.get('linkNode');
         if (this.is_visible()) {
-            module._create_slide_in(target, this).run();
+            this.create_slide_in(target, this).run();
             if (this.get('showText') !== null) {
                 link.set('text', this.get('showText'));
             }
         }
         else {
-            module._create_slide_out(target, this).run();
+            this.create_slide_out(target, this).run();
             if (this.get('hideText') !== null) {
                 link.set('text', this.get('hideText'));
             }
