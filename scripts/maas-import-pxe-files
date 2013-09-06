@@ -17,8 +17,6 @@ set -o nounset
 # Load settings if available.
 settings="/etc/maas/import_pxe_files"
 [ -r $settings ] && . $settings
-local_settings="$(pwd)/$settings"
-[ -r $local_settings ] && . $local_settings
 
 # Download locations for Ubuntu releases.  When the cluster controller runs
 # the import scripts, it provides settings from the server side.
