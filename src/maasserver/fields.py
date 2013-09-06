@@ -14,6 +14,7 @@ __all__ = [
     "MAC",
     "MACAddressField",
     "MACAddressFormField",
+    "register_mac_type",
     ]
 
 from copy import deepcopy
@@ -25,7 +26,6 @@ import re
 
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
-from django.db import connection
 from django.db.models import (
     Field,
     SubfieldBase,
@@ -232,10 +232,6 @@ def register_mac_type(cursor):
     oid = cursor.description[0][1]
     psycopg2.extensions.register_type(psycopg2.extensions.new_array_type(
         (oid, ), b"macaddr", mac_caster))
-
-
-# TODO bug=1215446: Don't do this at the module level!
-register_mac_type(connection.cursor())
 
 
 class JSONObjectField(Field):

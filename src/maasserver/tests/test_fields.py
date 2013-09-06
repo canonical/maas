@@ -13,10 +13,14 @@ __metaclass__ = type
 __all__ = []
 
 from django.core.exceptions import ValidationError
-from django.db import DatabaseError
+from django.db import (
+    connection,
+    DatabaseError,
+    )
 from maasserver.fields import (
     MAC,
     NodeGroupFormField,
+    register_mac_type,
     validate_mac,
     )
 from maasserver.models import (
@@ -159,6 +163,12 @@ class TestMAC(TestCase):
         self.assertItemsEqual(
             set([MAC(addr), MAC(addr), MAC(MAC(addr)), addr]),
             [addr])
+
+    def test_register_mac_type_is_idempotent(self):
+        register_mac_type(connection.cursor())
+        register_mac_type(connection.cursor())
+        # The test is that we get here without crashing.
+        pass
 
 
 class TestMACAddressField(TestCase):

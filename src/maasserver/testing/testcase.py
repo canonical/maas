@@ -24,8 +24,10 @@ import wsgiref
 import django
 from django.core.cache import cache as django_cache
 from django.core.urlresolvers import reverse
+from django.db import connection
 from django.test.client import encode_multipart
 from fixtures import Fixture
+from maasserver.fields import register_mac_type
 from maasserver.testing.factory import factory
 from maastesting.celery import CeleryFixture
 import maastesting.djangotestcase
@@ -42,6 +44,10 @@ MULTIPART_CONTENT = 'multipart/form-data; boundary=%s' % MIME_BOUNDARY
 
 class TestCase(maastesting.djangotestcase.DjangoTestCase):
     """:class:`TestCase` variant with the basics for maasserver testing."""
+
+    @classmethod
+    def setUpClass(cls):
+        register_mac_type(connection.cursor())
 
     def setUp(self):
         super(TestCase, self).setUp()

@@ -17,6 +17,7 @@ __all__ = [
 
 from textwrap import dedent
 
+from django.db import connection
 from lockfile import FileLock
 from maasserver.components import (
     get_persistent_error,
@@ -24,6 +25,7 @@ from maasserver.components import (
     )
 from maasserver.dns import write_full_dns_config
 from maasserver.enum import COMPONENT
+from maasserver.fields import register_mac_type
 from maasserver.maasavahi import setup_maas_avahi_service
 from maasserver.models import (
     BootImage,
@@ -79,6 +81,9 @@ def update_import_script_error():
 
 def inner_start_up():
     """Startup jobs that must run serialized w.r.t. other starting servers."""
+    # Register our MAC data type with psycopg.
+    register_mac_type(connection.cursor())
+
     # Publish the MAAS server existence over Avahi.
     setup_maas_avahi_service()
 
