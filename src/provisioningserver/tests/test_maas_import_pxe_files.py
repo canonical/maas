@@ -45,17 +45,24 @@ def compose_download_dir(archive, arch, release):
         setting, except here it's a filesystem path not a URL).
     :param arch: Architecture.
     :param release: Ubuntu release name.
-    :return: Full absolute path to the directory holding the requisite files
-        for this archive, arch, and release.
+    :return: A 2-tuple of:
+        * Base path of the images/ dir.
+        * Full absolute path to the directory holding the requisite files
+          for this archive, arch, and release.
     """
     if arch[0] in {'amd64', 'i386'}:
-        return os.path.join(
+        basepath = os.path.join(
             archive, 'dists', release, 'main', 'installer-%s' % arch[0],
-            'current', 'images', 'netboot', 'ubuntu-installer', arch[0])
+            'current', 'images')
+        fullpath = os.path.join(
+            basepath, 'netboot', 'ubuntu-installer', arch[0])
+        return basepath, fullpath
     elif arch[0] == 'armhf':
-        return os.path.join(
+        basepath = os.path.join(
             archive, 'dists', '%s-updates' % release, 'main',
-            'installer-%s' % arch[0], 'current', 'images', arch[1], 'netboot')
+            'installer-%s' % arch[0], 'current', 'images')
+        fullpath = os.path.join(basepath, arch[1], 'netboot')
+        return basepath, fullpath
     else:
         raise NotImplementedError('Unknown architecture: %r' % arch)
 
@@ -87,6 +94,16 @@ def compose_download_filenames(arch, release):
         ['linux', 'initrd.gz'] as appropriate.
     """
     return [compose_download_kernel_name(arch, release), 'initrd.gz']
+
+
+def generate_md5sums(basepath):
+    """Write MD5SUMS file at basepath."""
+    script = [
+        "bash", "-c",
+        "cd %s;find . -type f | xargs md5sum > MD5SUMS" % basepath]
+    
+    with open(os.devnull, 'wb') as dev_null:
+        check_call(script, stdout=dev_null)
 
 
 def compose_tftp_bootloader_path(tftproot):
@@ -132,10 +149,11 @@ class TestImportPXEFiles(TestCase):
         if release is None:
             release = factory.make_name('release')
         archive = self.make_dir()
-        download = compose_download_dir(archive, arch, release)
+        basepath, download = compose_download_dir(archive, arch, release)
         os.makedirs(download)
         for filename in compose_download_filenames(arch, release):
             factory.make_file(download, filename)
+        generate_md5sums(basepath)
         return archive
 
     def call_script(self, archive_dir, tftproot, arch=None, release=None):
@@ -159,6 +177,9 @@ class TestImportPXEFiles(TestCase):
             # Suppress running of maas-import-ephemerals.  It gets too
             # intimate with the system to test here.
             'IMPORT_EPHEMERALS': '0',
+            # Suppress GPG checks as we can't sign the file from
+            # here.
+            'IGNORE_GPG': '1',
         }
         env.update(self.config_fixture.environ)
         if arch is not None:
@@ -196,7 +217,7 @@ class TestImportPXEFiles(TestCase):
             archive, self.tftproot, arch=self.arch, release=release)
         tftp_path = compose_tftp_path(
             self.tftproot, self.arch, release, 'install', 'linux')
-        download_path = compose_download_dir(archive, self.arch, release)
+        _, download_path = compose_download_dir(archive, self.arch, release)
         expected_contents = read_file(download_path,
             compose_download_kernel_name(self.arch, release))
         self.assertThat(tftp_path, FileContains(expected_contents))
@@ -211,7 +232,7 @@ class TestImportPXEFiles(TestCase):
         archive = self.make_downloads(arch=self.arch, release=release)
         self.call_script(
             archive, self.tftproot, arch=self.arch, release=release)
-        download_path = compose_download_dir(archive, self.arch, release)
+        _, download_path = compose_download_dir(archive, self.arch, release)
         expected_contents = read_file(download_path,
             compose_download_kernel_name(self.arch, release))
         self.assertThat(tftp_path, FileContains(expected_contents))
