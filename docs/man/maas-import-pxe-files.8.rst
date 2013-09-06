@@ -28,10 +28,6 @@ Ubuntu releases to download
 **ARCHES:** 
 Architectures for which images should be downloaded
 
-To support development setups that run directly from a code branch, 
-it will also look for /etc/maas/import_pxe_files relative to the 
-current directory.
-
 The script uses `wget` to download the kernel and initrd image for
 each architecture in ARCHES and each release in RELEASES.  In addition 
 it copies the Intel-architecture pre-boot loader `pxelinux.0` (plus 
