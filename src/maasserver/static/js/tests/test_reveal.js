@@ -13,6 +13,35 @@ var suite = new Y.Test.Suite("maas.reveal Tests");
 suite.add(new Y.maas.testing.TestCase({
     name: 'test-revealing',
 
+    setUp: function() {
+        Y.one('#placeholder').setHTML('');
+    },
+
+    // Create a content div (in its visible state).
+    make_div: function(html_content) {
+        if (html_content === undefined) {
+            html_content = "<pre>Arbitrary content</pre>";
+        }
+        // Hook this new DOM node into the document, so that it has proper
+        // display attributes.  Otherwise we can't simulate and verify its
+        // appearing or disappearing.
+        return Y.one('#placeholder').appendChild(
+            '<div>' + html_content + '</div>');
+    },
+
+    // Create a button link.
+    make_link: function(link_content) {
+        if (link_content === undefined) {
+            link_content = "Arbitrary link text";
+        }
+        return Y.Node.create('<a href="#">' + link_content + '</a>');
+    },
+
+    // Make a content div look to the widget as if it's been hidden.
+    hide_div: function(node) {
+        node.setStyle('height', '0');
+    },
+
     get_reveal: function() {
         var cfg = {
             linkNode: Y.one('.link'),
@@ -21,6 +50,33 @@ suite.add(new Y.maas.testing.TestCase({
             hideText: 'Hide log'
         };
         return new module.Reveal(cfg);
+    },
+
+    test_is_visible_returns_true_for_nonzero_height: function() {
+        var revealer = new module.Reveal({
+            linkNode: this.make_link(),
+            targetNode: this.make_div()
+        });
+        revealer.render();
+
+        Y.assert(
+            revealer.is_visible(),
+            "is_visible() fails to recognize div as visible.");
+    },
+
+    test_is_visible_returns_false_for_zero_height: function() {
+        var div = this.make_div();
+        var revealer = new module.Reveal({
+            linkNode: this.make_link(),
+            targetNode: div
+        });
+        revealer.render();
+
+        div.setStyle('height', '0');
+
+        Y.assert(
+            !revealer.is_visible(),
+            "is_visible() thinks that div is visible when it isn't.");
     },
 
     test_slides_out: function() {
