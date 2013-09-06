@@ -130,12 +130,23 @@
       <span>{{ node.owner }}</span>
     </li>
     {% endif %}
-    {% if lldp_output %}
-      <li class="block first"></li>
-      <li class="block separate">
-        <h3>Discovered network data</h3>
-        <pre id="lldp-output">{{ lldp_output }}</pre>
-      </li>
-    {% endif %}
+  {% if node.routers or lldp_output %}
+    <li class="block first separate">
+        <h2>Network discovery</h2>
+    </li>
+  {% endif %}
+  {% if node.routers %}
+    <li id="routers" class="block first">
+      <h4>Switch MAC addresses</h4>
+      <span>
+        {{ node.routers|join:", " }}
+      </span>
+    </li>
+  {% endif %}
+  {% if lldp_output %}
+    <li class="block separate first">
+      <pre id="lldp-output">{{ lldp_output }}</pre>
+    </li>
+  {% endif %}
   </ul>
 {% endblock %}

@@ -19,9 +19,8 @@ __all__ = [
     'Deserializer',
     ]
 
-import simplejson
-
 import django.core.serializers.json
+import simplejson
 
 
 class Serializer(django.core.serializers.json.Serializer):

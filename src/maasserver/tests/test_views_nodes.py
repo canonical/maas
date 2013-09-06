@@ -346,6 +346,43 @@ class NodeViewsTest(LoggedInTestCase):
         node_preseed_link = reverse('node-preseed-view', args=[node.system_id])
         self.assertIn(node_preseed_link, get_content_links(response))
 
+    def test_view_node_displays_no_routers_if_no_routers_discovered(self):
+        node = factory.make_node(owner=self.logged_in_user, routers=[])
+        node_link = reverse('node-view', args=[node.system_id])
+
+        response = self.client.get(node_link)
+        self.assertEqual(httplib.OK, response.status_code)
+
+        doc = fromstring(response.content)
+        routers = doc.cssselect('#routers')
+        self.assertItemsEqual([], routers)
+
+    def test_view_node_displays_routers_if_any(self):
+        router = factory.make_MAC()
+        node = factory.make_node(owner=self.logged_in_user, routers=[router])
+        node_link = reverse('node-view', args=[node.system_id])
+
+        response = self.client.get(node_link)
+        self.assertEqual(httplib.OK, response.status_code)
+
+        doc = fromstring(response.content)
+        routers_display = doc.cssselect('#routers')[0].text_content()
+        self.assertIn(router.get_raw(), routers_display)
+
+    def test_view_node_separates_routers_by_comma(self):
+        routers = [factory.make_MAC(), factory.make_MAC()]
+        node = factory.make_node(owner=self.logged_in_user, routers=routers)
+        node_link = reverse('node-view', args=[node.system_id])
+
+        response = self.client.get(node_link)
+        self.assertEqual(httplib.OK, response.status_code)
+
+        doc = fromstring(response.content)
+        routers_display = doc.cssselect('#routers')[0].text_content()
+        self.assertIn(
+            ', '.join(mac.get_raw() for mac in routers),
+            routers_display)
+
     def test_view_node_displays_link_to_edit_if_user_owns_node(self):
         node = factory.make_node(owner=self.logged_in_user)
         node_link = reverse('node-view', args=[node.system_id])
