@@ -18,6 +18,9 @@ set -o nounset
 settings="/etc/maas/import_pxe_files"
 [ -r $settings ] && . $settings
 
+# Location of the GPG keyring for the Ubuntu archive.
+GPG_KEYRING="${GPG_KEYRING:-/usr/share/keyrings/ubuntu-archive-keyring.gpg}"
+
 # Download locations for Ubuntu releases.
 MAIN_ARCHIVE=${MAIN_ARCHIVE:-http://archive.ubuntu.com/ubuntu/}
 PORTS_ARCHIVE=${PORTS_ARCHIVE:-http://ports.ubuntu.com/ubuntu-ports/}
@@ -43,6 +46,12 @@ DOWNLOAD=${DOWNLOAD:-wget --no-verbose}
 # Default is yes.
 IMPORT_EPHEMERALS=${IMPORT_EPHEMERALS:-1}
 
+fail() {
+    local msg=$1
+
+    echo $msg >&2
+    exit 1
+}
 
 # Show script usage/summary.
 show_usage() {
@@ -59,16 +68,15 @@ show_usage() {
     echo
 }
 
-
-# Put together a full URL for where the installer files for architecture $1
-# and release $2 can be downloaded.
-compose_installer_download_url() {
+# Return a URL that points to the images directory for the relevant
+# release/arch.
+compose_installer_base_url() {
     local arch=$1 release=$2
 
     case $arch in
         amd64/*|i386/*)
             local installer_url="$MAIN_ARCHIVE/dists/$release/main/installer-${arch%%/*}"
-            echo "$installer_url/current/images/netboot/ubuntu-installer/${arch%%/*}/"
+            echo "$installer_url/current/images/"
             ;;
         armhf/*)
             # No ARM server installers were available in precise, so always go for -updates for now
@@ -79,7 +87,7 @@ compose_installer_download_url() {
                 updates=
             fi
             local installer_url="$PORTS_ARCHIVE/dists/${release}${updates}/main/installer-${arch%%/*}"
-            echo "$installer_url/current/images/${arch#*/}/netboot/"
+            echo "$installer_url/current/images/"
             ;;
         *)
             echo "Unknown architecture: $arch" >&2
@@ -88,6 +96,76 @@ compose_installer_download_url() {
     esac
 }
 
+# Return the URL part that is appended to the base url that gives the location
+# of the images.
+compose_installer_download_url_postfix() {
+    local arch=$1
+
+    case $arch in
+        amd64/*|i386/*)
+            echo "netboot/ubuntu-installer/${arch%%/*}/"
+            ;;
+        armhf/*)
+            echo "${arch#*/}/netboot/"
+            ;;
+        *)
+            echo "Unknown architecture: $arch" >&2
+            exit 1
+            ;;
+    esac
+}
+
+# Put together a full URL for where the installer files for architecture $1
+# and release $2 can be downloaded.
+compose_installer_download_url() {
+    local arch=$1 release=$2
+
+    base_url=$(compose_installer_base_url $arch $release)
+    postfix=$(compose_installer_download_url_postfix $arch)
+
+    echo "$base_url/$postfix"
+}
+
+fetch_server_md5sums() {
+    local base_url=$1
+    local ignore
+
+    # Make $IGNORE_GPG non-empty for test programs, as they can't possibly
+    # GPG sign with the right key.
+    if [ "x$IGNORE_GPG" == "x" ]; then
+        $DOWNLOAD "$base_url/MD5SUMS" &&
+            $DOWNLOAD "$base_url/MD5SUMS.gpg" ||
+                fail "unable to download $base_url/MD5SUMS[.gpg]"
+
+        ignore=$(gpg --keyring=$GPG_KEYRING --verify MD5SUMS.gpg MD5SUMS 2>&1) ||
+            fail "failed to verify MD5SUMS via $GPG_KEYRING ($base_url/MD5SUMS)"
+    else
+        $DOWNLOAD "$base_url/MD5SUMS" ||
+            fail "unable to download $base_url/MD5SUMS"
+    fi
+}
+
+get_md5sum_for_file() {
+    local filename=$1
+
+    # The filename supplied in $1 must be the full path as seen in the
+    # MD5SUMS file.  The files are rooted from a single place so the grepped
+    # string will only match once.
+    server_md5sum=$(grep $filename MD5SUMS|awk '{print $1}') ||
+        fail "failed to find checksum for $filename"
+    echo $server_md5sum
+}
+
+check_checksum() {
+    local server_md5sum=$1 file_on_disk=$2
+    local md5sum
+
+    md5sum=$(md5sum $file_on_disk|awk '{print $1}')
+
+    if [ "$md5sum" != "$server_md5sum" ]; then
+        fail "md5 checksum mismatch for $file_on_disk: expected $server_md5sum, got $md5sum"
+    fi
+}
 
 # Return a list of files for architecture $1 and release $2 that need to be
 # downloaded
@@ -145,16 +223,23 @@ update_pre_boot_loader() {
 # architecture $1 and install it into the TFTP directory hierarchy.
 update_install_files() {
     local arch=$1 release=$2
-    local files file url
+    local files file url file_prefix filename_in_md5sums_file md5sum
 
     files=$(compose_installer_download_files $arch $release)
     url=$(compose_installer_download_url $arch $release)
 
     mkdir "install"
     pushd "install" >/dev/null
+    fetch_server_md5sums $(compose_installer_base_url $arch $release)
+    echo "MD5SUMS GPG signature OK for $arch $release"
     for file in $files
     do
         $DOWNLOAD $url/$file
+        file_prefix=$(compose_installer_download_url_postfix $arch)
+        filename_in_md5sums_file=$file_prefix$file
+        md5sum=$(get_md5sum_for_file $filename_in_md5sums_file)
+        check_checksum $md5sum $file
+        echo "'$file' md5sum OK"
     done
     rename_installer_download_files $arch $release
     popd >/dev/null
@@ -212,6 +297,10 @@ if [ $# -gt 0 ]
    case $1 in
     "-h"|"--help") show_usage ; exit ;;
     esac
+fi
+
+if [ ! -f "$GPG_KEYRING" ]; then
+    fail "gpg keyring $GPG_KEYRING is not a file"
 fi
 
 main
