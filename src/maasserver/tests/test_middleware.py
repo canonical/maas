@@ -23,6 +23,7 @@ from django.core.exceptions import (
     )
 from django.http import HttpResponse
 from django.test.client import RequestFactory
+import maasserver
 from maasserver.exceptions import (
     ExternalComponentException,
     MAASAPIException,
@@ -36,7 +37,6 @@ from maasserver.middleware import (
     ExceptionLoggerMiddleware,
     ExceptionMiddleware,
     )
-import maasserver
 from maasserver.models import Config
 from maasserver.testing import extract_redirect
 from maasserver.testing.factory import factory

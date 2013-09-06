@@ -25,6 +25,7 @@ from json import (
 import re
 
 from django.core.exceptions import ValidationError
+import django.core.serializers.json
 from django.core.validators import RegexValidator
 from django.db.models import (
     Field,
@@ -213,8 +214,19 @@ class MAC:
         return self.get_raw().__hash__()
 
 
+class MACJSONEncoder(django.core.serializers.json.DjangoJSONEncoder):
+    """Teach simplejson how to represent a `MAC` in JSON: as a string."""
+
+    def default(self, value):
+        if isinstance(value, MAC):
+            return value.get_raw()
+        else:
+            return super(MACJSONEncoder, self).default(value)
+
+
 def register_mac_type(cursor):
-    """Register our `MAC` type with psycopg2."""
+    """Register our `MAC` type with psycopg2 and Django."""
+
     # This is standard, but not built-in, magic to register a type in
     # psycopg2: execute a query that returns a field of the corresponding
     # database type, then get its oid out of the cursor, use that to create

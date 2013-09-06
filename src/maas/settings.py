@@ -312,5 +312,11 @@ PRESEED_TEMPLATE_LOCATIONS = (
 # See https://docs.djangoproject.com/en/1.5/ref/settings/#allowed-hosts
 ALLOWED_HOSTS = ['*']
 
+# Extend Django's JSON serialization.  Without this, JSON serialization of
+# MAC addresses in model fields will break.
+SERIALIZATION_MODULES = {
+    'maasjson': 'maasserver.json',
+}
+
 # Allow the user to override settings in maas_local_settings.
 import_local_settings()

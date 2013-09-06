@@ -101,7 +101,7 @@ def generate_md5sums(basepath):
     script = [
         "bash", "-c",
         "cd %s;find . -type f | xargs md5sum > MD5SUMS" % basepath]
-    
+
     with open(os.devnull, 'wb') as dev_null:
         check_call(script, stdout=dev_null)
 

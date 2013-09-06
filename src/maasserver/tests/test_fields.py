@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test custom model fields."""
@@ -12,6 +12,9 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
+import json
+
+from django.core import serializers
 from django.core.exceptions import ValidationError
 from django.db import (
     connection,
@@ -163,6 +166,13 @@ class TestMAC(TestCase):
         self.assertItemsEqual(
             set([MAC(addr), MAC(addr), MAC(MAC(addr)), addr]),
             [addr])
+
+    def test_django_serializes_MAC_to_JSON(self):
+        mac = factory.make_mac_address()
+        query = MACAddress.objects.filter(id=mac.id)
+        output = serializers.serialize('json', query)
+        self.assertIn(json.dumps(mac.mac_address.get_raw()), output)
+        self.assertIn('"%s"' % mac.mac_address.get_raw(), output)
 
     def test_register_mac_type_is_idempotent(self):
         register_mac_type(connection.cursor())

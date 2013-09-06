@@ -39,11 +39,11 @@ from django.http import (
     HttpResponseRedirect,
     )
 from django.utils.http import urlquote_plus
+from maasserver import logger
 from maasserver.exceptions import (
     ExternalComponentException,
     MAASAPIException,
     )
-from maasserver import logger
 from maasserver.models import Config
 
 
