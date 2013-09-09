@@ -5,6 +5,24 @@
 {% block page-title %}Node: {{ node.fqdn }}{% endblock %}
 {% block layout-modifiers %}sidebar{% endblock %}
 
+{% block head %}
+  <script type="text/javascript">
+    <!--
+      YUI().use('maas.reveal', function (Y) {
+        Y.on('domready', function() {
+          var lldp_expander = new Y.maas.reveal.Reveal({
+            targetNode: Y.one('#lldp-output'),
+            linkNode: Y.one('#lldp-trigger'),
+            showText: "Show discovered network data",
+            hideText: "Hide discovered network data"
+          });
+          lldp_expander.render();
+        });
+      });
+    // -->
+  </script>
+{% endblock %}
+
 {% block sidebar %}
   <h4>Node details</h4>
     {% if can_edit %}
@@ -130,23 +148,27 @@
       <span>{{ node.owner }}</span>
     </li>
     {% endif %}
-  {% if node.routers or lldp_output %}
-    <li class="block first separate">
+
+    {% if node.routers or lldp_output %}
+      <li class="block first separate">
         <h2>Network discovery</h2>
-    </li>
-  {% endif %}
-  {% if node.routers %}
-    <li id="routers" class="block first">
-      <h4>Switch MAC addresses</h4>
-      <span>
-        {{ node.routers|join:", " }}
-      </span>
-    </li>
-  {% endif %}
-  {% if lldp_output %}
-    <li class="block separate first">
-      <pre id="lldp-output">{{ lldp_output }}</pre>
-    </li>
-  {% endif %}
+      </li>
+    {% endif %}
+    {% if node.routers %}
+      <li id="routers" class="block first">
+        <h4>Switch MAC addresses</h4>
+        <span>
+          {{ node.routers|join:", " }}
+        </span>
+      </li>
+    {% endif %}
+    {% if lldp_output %}
+      <li class="block separate first">
+        <a href="#" id="lldp-trigger">Show discovered network data</a>
+        <div id="lldp-output">
+          <pre>{{ lldp_output }}</pre>
+        </div>
+      </li>
+    {% endif %}
   </ul>
 {% endblock %}

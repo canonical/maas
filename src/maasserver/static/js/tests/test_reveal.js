@@ -42,17 +42,6 @@ suite.add(new Y.maas.testing.TestCase({
         node.setStyle('height', '0');
     },
 
-    get_reveal: function() {
-        var cfg = {
-            linkNode: Y.one('.link'),
-            targetNode: Y.one('.panel'),
-            showText: 'View log',
-            hideText: 'Hide log',
-            quick: true
-        };
-        return new module.Reveal(cfg);
-    },
-
     test_is_visible_returns_true_for_nonzero_height: function() {
         var revealer = new module.Reveal({
             linkNode: this.make_link(),
@@ -163,54 +152,103 @@ suite.add(new Y.maas.testing.TestCase({
         Y.Assert.areEqual("Original link", link.get('text'));
     },
 
-    test_slides_out: function() {
-        var original_height = (
-            parseInt(Y.one('.panel .content').getStyle('height')) +
-            parseInt(Y.one('.panel .content').getStyle('marginTop')) +
-            parseInt(Y.one('.panel .content').getStyle('marginBottom')) +
-            parseInt(Y.one('.panel .content').getStyle('paddingTop')) +
-            parseInt(Y.one('.panel .content').getStyle('paddingBottom')));
-        Y.one('.panel').setStyle('height', '0');
-        Y.one('.link').set('text', 'View log');
-        Y.Assert.areEqual('View log', Y.one('.link').get('text'));
-        Y.Assert.areEqual(0, parseInt(Y.one('.panel').getStyle('height')));
-        var revealer = this.get_reveal(true);
+    test_div_slides_out_when_revealing: function() {
         var self = this;
-        revealer.on('revealed', function () {
+        var div = this.make_div('<pre>Content here</pre>');
+        var content = div.one('pre');
+        var original_height = (
+            parseInt(content.getStyle('height')) +
+            parseInt(content.getStyle('marginTop')) +
+            parseInt(content.getStyle('marginBottom')) +
+            parseInt(content.getStyle('paddingTop')) +
+            parseInt(content.getStyle('paddingBottom')));
+        this.hide_div(div);
+
+        var revealer = new module.Reveal({
+            linkNode: this.make_link(),
+            targetNode: div,
+            quick: true
+        });
+        revealer.render();
+
+        revealer.on('revealed', function() {
             self.resume(function() {
                 Y.assert(
-                    parseInt(Y.one('.panel').getStyle('height')) > 0, 
-                    'The panel should be revealed'
-                    );
+                    revealer.is_visible(),
+                    "The content div was not revealed.");
                 Y.Assert.areEqual(
                     original_height,
-                    parseInt(Y.one('.panel').getStyle('height')), 
-                    'The panel has not been resized properly'
-                    );
-                Y.Assert.areEqual('Hide log', Y.one('.link').get('text'));
+                    parseInt(div.getStyle('height')), 
+                    "The content div was not resized to its original height.");
             });
         });
+
         revealer.reveal();
         this.wait();
     },
 
-    test_slides_in: function() {
-        Y.one('.panel').setStyle('height', '20');
-        Y.one('.link').set('text', 'Hide log');
-        Y.Assert.areEqual('Hide log', Y.one('.link').get('text'));
-        Y.Assert.areEqual(20, parseInt(Y.one('.panel').getStyle('height')));
-        var revealer = this.get_reveal(true);
+    test_replaces_link_text_when_revealing: function() {
         var self = this;
-        revealer.on('hidden', function () {
+        var link = this.make_link("Original link");
+        var div = this.make_div();
+        this.hide_div(div);
+        var revealer = new module.Reveal({
+            linkNode: link,
+            targetNode: div,
+            hideText: "Hide content",
+            quick: true
+        });
+        revealer.render();
+
+        revealer.on('revealed', function() {
             self.resume(function() {
-                Y.Assert.areEqual(
-                    0,
-                    parseInt(Y.one('.panel').getStyle('height')), 
-                    'The panel should be hidden'
-                    );
-                Y.Assert.areEqual('View log', Y.one('.link').get('text'));
+                Y.Assert.areEqual("Hide content", link.get('text'));
             });
         });
+
+        revealer.reveal();
+        this.wait();
+    },
+
+    test_div_slides_in_when_hiding: function() {
+        var self = this;
+
+        var revealer = new module.Reveal({
+            linkNode: this.make_link(),
+            targetNode: this.make_div(),
+            quick: true
+        });
+        revealer.render();
+
+        revealer.on('hidden', function() {
+            self.resume(function() {
+                Y.assert(
+                    !revealer.is_visible(),
+                    "The content div was not hidden.");
+            });
+        });
+
+        revealer.reveal();
+        this.wait();
+    },
+
+    test_replaces_link_text_when_hiding: function() {
+        var self = this;
+        var link = this.make_link("Original link");
+        var revealer = new module.Reveal({
+            linkNode: link,
+            targetNode: this.make_div(),
+            showText: "Show content",
+            quick: true
+        });
+        revealer.render();
+
+        revealer.on('hidden', function() {
+            self.resume(function() {
+                Y.Assert.areEqual("Show content", link.get('text'));
+            });
+        });
+
         revealer.reveal();
         this.wait();
     }

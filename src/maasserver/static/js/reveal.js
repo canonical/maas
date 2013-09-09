@@ -33,7 +33,11 @@ Reveal.NAME = 'reveal';
 
 Reveal.ATTRS = {
     /**
-     * The DOM node to be revealed from.
+     * DOM node for the content div.  This is the div that will be hidden
+     * or revealed.  It must contain exactly one tag.
+     *
+     * The widget will add the "slider" class to this node, and the "content"
+     * class to its child node.
      *
      * @attribute targetNode
      * @type node
@@ -87,6 +91,30 @@ Reveal.ATTRS = {
 };
 
 Y.extend(Reveal, Y.Widget, {
+    /**
+     * Standard YUI hook: prepare the DOM for the widget.
+     *
+     * @method renderUI
+     */
+    renderUI: function() {
+        var target = this.get('targetNode');
+        target.addClass('slider');
+        target.get('children').addClass('content');
+    },
+
+    /**
+     * Standard YUI hook: install event listeners for the widget.
+     *
+     * @method bindUI
+     */
+    bindUI: function() {
+        var self = this;
+        this.get('linkNode').on('click', function(e) {
+            e.preventDefault();
+            self.reveal();
+        });
+    },
+
     /**
      * Is this widget currently in its visible state?
      *

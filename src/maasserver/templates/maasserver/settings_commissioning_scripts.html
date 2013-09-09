@@ -1,13 +1,13 @@
   <script type="text/javascript">
   <!--
   YUI().use('maas.reveal', function (Y) {
-    Y.on('load', function() {
-      Y.all('a.script-name').on('click', function(e) {
-        e.preventDefault();
-        var reveal = new Y.maas.reveal.Reveal({
-          targetNode: Y.one(e.target).ancestor().one('.script-content'),
-          linkNode: e.target
-          }).reveal();
+    Y.on('domready', function() {
+      Y.all('.script-expander').each(function (script_entry) {
+        var script_expander = new Y.maas.reveal.Reveal({
+          targetNode: script_entry.one('.script-content'),
+          linkNode: script_entry.one('.script-trigger')
+          });
+        script_expander.render();
       });
     });
   });
@@ -19,11 +19,10 @@
     <tbody>
     {% for script in commissioning_scripts %}
       <tr class="script {% cycle 'even' 'odd' %}" id="{{ script.name }}">
-        <td>
-          <a href="#" class="script-name">
-            {{ script.name}}</a>
-          <div class="script-content slider">
-            <pre class="content">{{ script.content }}</pre>
+        <td class="script-expander">
+          <a href="#" class="script-trigger">{{ script.name }}</a>
+          <div class="script-content">
+            <pre>{{ script.content }}</pre>
           </div>
         </td>
         <td class="icon-controls">
