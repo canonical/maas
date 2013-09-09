@@ -75,6 +75,7 @@ from maasserver.views.nodes import (
 from maastesting.matchers import ContainsAll
 from metadataserver.models.commissioningscript import LLDP_OUTPUT_NAME
 from provisioningserver.enum import POWER_TYPE_CHOICES
+from testtools.matchers import EndsWith
 
 
 class NodeViewsTest(LoggedInTestCase):
@@ -843,6 +844,58 @@ class NodeListingSelectionJSControls(SeleniumLoggedInTestCase):
         nodes_selector[1].click()
         # The master selector gets selected.
         self.assertTrue(master_selector.is_selected())
+
+
+class NodeLLDPExpanderTest(SeleniumLoggedInTestCase):
+
+    def make_node_with_lldp_output(self):
+        node = factory.make_node()
+        factory.make_node_commission_result(
+            node=node, name=LLDP_OUTPUT_NAME, script_result=0)
+        return node
+
+    def load_node_page(self, node):
+        """Load the given node's page in Selenium."""
+        self.selenium.get(
+            self.live_server_url + reverse('node-view', args=[node.system_id]))
+
+    def find_expander_icon(self):
+        """Find the LLDP expander icon in the page Selenium has rendered."""
+        icon_span = self.selenium.find_element_by_id('lldp-expander-icon')
+        return icon_span.find_element_by_css_selector('img')
+
+    def find_content_div(self):
+        """Find the LLDP content div in the page Selenium has rendered."""
+        return self.selenium.find_element_by_id('lldp-output')
+
+    def find_button_link(self):
+        """Find the LLDP button link in the page Selenium has rendered."""
+        return self.selenium.find_element_by_id('lldp-trigger')
+
+    def test_lldp_output_expands(self):
+        # Loading just once.  Creating a second node in a separate test causes
+        # an integrity error in the database; clearly that's not working too
+        # well in a Selenium test case.
+        self.load_node_page(self.make_node_with_lldp_output())
+
+        # The LLDP output is in its hidden state.
+        self.assertThat(
+            self.find_expander_icon().get_attribute('src'),
+            EndsWith("treeCollapsed.png"))
+        self.assertEqual(
+            "Show discovered network data", self.find_button_link().text)
+        self.assertEqual(0, self.find_content_div().size['height'])
+
+        # When we click the link, the LLDP output expands.
+        self.find_button_link().click()
+
+        # The LLDP output is now in its visible state.
+        self.assertThat(
+            self.find_expander_icon().get_attribute('src'),
+            EndsWith("treeExpanded.png"))
+        self.assertEqual(
+            "Hide discovered network data", self.find_button_link().text)
+        self.assertNotEqual(0, self.find_content_div().size['height'])
 
 
 class MessageFromFormStatsTest(TestCase):

@@ -9,14 +9,26 @@
   <script type="text/javascript">
     <!--
       YUI().use('maas.reveal', function (Y) {
+        var lldp_expander_icon = Y.one('#lldp-expander-icon');
         Y.on('domready', function() {
           var lldp_expander = new Y.maas.reveal.Reveal({
             targetNode: Y.one('#lldp-output'),
             linkNode: Y.one('#lldp-trigger'),
             showText: "Show discovered network data",
-            hideText: "Hide discovered network data"
+            hideText: "Hide discovered network data",
           });
+          var set_hidden_icon = function() {
+            lldp_expander_icon.setHTML(
+              '<img src="{{ STATIC_URL }}img/treeCollapsed.png" alt="" />');
+          };
+          var set_shown_icon = function() {
+            lldp_expander_icon.setHTML(
+              '<img src="{{ STATIC_URL }}img/treeExpanded.png" alt="" />');
+          };
+          lldp_expander.on('revealing', set_shown_icon);
+          lldp_expander.on('hiding', set_hidden_icon);
           lldp_expander.render();
+          set_hidden_icon();
         });
       });
     // -->
@@ -164,6 +176,7 @@
     {% endif %}
     {% if lldp_output %}
       <li class="block separate first">
+        <span id="lldp-expander-icon"></span>
         <a href="#" id="lldp-trigger">Show discovered network data</a>
         <div id="lldp-output">
           <pre>{{ lldp_output }}</pre>

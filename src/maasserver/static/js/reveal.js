@@ -12,6 +12,9 @@
  * visible and invisible states.  The transition is animated with a sliding
  * effect.
  *
+ * The widget fires a "hiding" event before hiding, and "hidden" after.
+ * Similarly, it fires "revealing" before revealing and "revealed" after.
+ *
  * Synonyms: expander, collapsible, foldable.
  *
  * @module Y.maas.reveal
@@ -217,10 +220,12 @@ Y.extend(Reveal, Y.Widget, {
         var target = this.get('targetNode');
         var link = this.get('linkNode');
         if (this.is_visible()) {
+            this.fire('hiding');
             this.create_slide_in(target, this).run();
             this.set_hidden_link(link);
         }
         else {
+            this.fire('revealing');
             this.create_slide_out(target, this).run();
             this.set_visible_link(link);
         }
