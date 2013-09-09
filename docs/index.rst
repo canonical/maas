@@ -61,6 +61,7 @@ Developing MAAS
    development/philosophy
    development/security
    development/building-packages
+   development/cluster-registration
 
 
 **********

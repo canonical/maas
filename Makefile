@@ -48,8 +48,8 @@ all: build doc
 # the system. This may prompt for a password.
 install-dependencies:
 	sudo DEBIAN_FRONTEND=noninteractive apt-get -y \
-		--no-install-recommends install \
-		$(shell sort -u required-packages/base required-packages/dev)
+	    --no-install-recommends install $(shell sort -u \
+	        $(addprefix required-packages/,base dev doc))
 
 bin/python bin/pip:
 	$(virtualenv) --python=$(python) --system-site-packages $(CURDIR)

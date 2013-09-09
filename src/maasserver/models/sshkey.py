@@ -105,12 +105,14 @@ MAX_KEY_DISPLAY = 50
 
 
 class SSHKey(CleanSave, TimestampedModel):
-    """A `SSHKey` represents a user public SSH key.
+    """An `SSHKey` represents a user public SSH key.
 
-    Users will be able to access `Node`s using any of their registered keys.
+    Users will be able to access allocated nodes using any of their
+    registered keys.
 
     :ivar user: The user which owns the key.
-    :ivar key: The ssh public key.
+    :ivar key: The SSH public key.
+
     """
 
     objects = SSHKeyManager()

@@ -21,6 +21,7 @@ python-dev
 python-django
 python-django-piston
 python-django-south
+python-docutils
 python-formencode
 python-httplib2
 python-lockfile

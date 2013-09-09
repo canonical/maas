@@ -33,8 +33,8 @@ The profile created is an easy way of associating your credentials
 with any subsequent call to the API. So an example login might look
 like this::
 
-$ maas-cli login maas http://10.98.0.13/MAAS/api/1.0
-AWSCRMzqMNy:jjk...5e1FenoP82Qm5te2
+ $ maas-cli login maas http://10.98.0.13/MAAS/api/1.0
+ AWSCRMzqMNy:jjk...5e1FenoP82Qm5te2
 
 which creates the profile 'maas' and registers it with the given key
 at the specified API endpoint.  If you omit the credentials, they will

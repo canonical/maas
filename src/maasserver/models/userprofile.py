@@ -114,7 +114,7 @@ class UserProfile(CleanSave, Model):
 
         :param token_key: The key of the token to be deleted.
         :type token_key: str
-        :raises: django.http.Http404_
+        :raises: `django.http.Http404`
 
         """
         token = get_object_or_404(
