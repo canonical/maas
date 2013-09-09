@@ -6,29 +6,46 @@
 {% block layout-modifiers %}sidebar{% endblock %}
 
 {% block head %}
+  {# Add expander icon to LLDP expander's button URL. #}
+  {# Done as CSS classes, not by DOM manipulation, because: #}
+  {# 1. The icon must be part of the clickable link. #}
+  {# 2. Browsers pre-load CSS backgrounds, avoiding a glitch on first use. #}
+  {# 3. It's easy. #}
+  <style type="text/css">
+    #lldp-trigger.expander-shown {
+      background: url({{ STATIC_URL }}img/treeExpanded.png) left no-repeat;
+      padding-left: 15px;
+    }
+    #lldp-trigger.expander-hidden {
+      background: url({{ STATIC_URL }}img/treeCollapsed.png) left no-repeat;
+      padding-left: 15px;
+    }
+  </style>
   <script type="text/javascript">
     <!--
+      var show_text = "Show discovered network data",
+          hide_text = "Hide discovered network data",
+          shown_class = "expander-shown",
+          hidden_class = "expander-hidden";
       YUI().use('maas.reveal', function (Y) {
-        var lldp_expander_icon = Y.one('#lldp-expander-icon');
         Y.on('domready', function() {
+          {# Set up a Reveal widget for the LLDP output. #}
+          var lldp_trigger = Y.one('#lldp-trigger');
           var lldp_expander = new Y.maas.reveal.Reveal({
             targetNode: Y.one('#lldp-output'),
-            linkNode: Y.one('#lldp-trigger'),
-            showText: "Show discovered network data",
-            hideText: "Hide discovered network data",
+            linkNode: lldp_trigger,
+            showText: show_text,
+            hideText: hide_text
           });
-          var set_hidden_icon = function() {
-            lldp_expander_icon.setHTML(
-              '<img src="{{ STATIC_URL }}img/treeCollapsed.png" alt="" />');
-          };
-          var set_shown_icon = function() {
-            lldp_expander_icon.setHTML(
-              '<img src="{{ STATIC_URL }}img/treeExpanded.png" alt="" />');
-          };
-          lldp_expander.on('revealing', set_shown_icon);
-          lldp_expander.on('hiding', set_hidden_icon);
+          {# Update the widget's expander icon. #}
+          lldp_expander.on('revealing', function() {
+            lldp_trigger.replaceClass(hidden_class, shown_class);
+          });
+          lldp_expander.on('hiding', function() {
+            lldp_trigger.replaceClass(shown_class, hidden_class);
+          });
+          {# The widget renders in its hidden state. #}
           lldp_expander.render();
-          set_hidden_icon();
         });
       });
     // -->
@@ -176,9 +193,11 @@
     {% endif %}
     {% if lldp_output %}
       <li class="block separate first">
-        <span id="lldp-expander-icon"></span>
-        <a href="#" id="lldp-trigger">Show discovered network data</a>
+        {# Button link for the Reveal widget that shows/hides LLDP output. #}
+        <a href="#" id="lldp-trigger"></a>
+        {# Content div for the LLDP output. #}
         <div id="lldp-output">
+          {# The Reveal widget needs a content tag inside the content div. #}
           <pre>{{ lldp_output }}</pre>
         </div>
       </li>

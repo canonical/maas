@@ -37,18 +37,21 @@ suite.add(new Y.maas.testing.TestCase({
         return Y.Node.create('<a href="#">' + link_content + '</a>');
     },
 
-    // Make a content div look to the widget as if it's been hidden.
-    hide_div: function(node) {
-        node.setStyle('height', '0');
+    // Make a content div look to the widget as if it's been revealed.
+    show_div: function(node) {
+        node.setStyle('height', '20px');
     },
 
     test_is_visible_returns_true_for_nonzero_height: function() {
+        var div = this.make_div();
         var revealer = new module.Reveal({
             linkNode: this.make_link(),
-            targetNode: this.make_div(),
+            targetNode: div,
             quick: true
         });
         revealer.render();
+
+        div.setStyle('height', '20px');
 
         Y.assert(
             revealer.is_visible(),
@@ -162,7 +165,6 @@ suite.add(new Y.maas.testing.TestCase({
             parseInt(content.getStyle('marginBottom')) +
             parseInt(content.getStyle('paddingTop')) +
             parseInt(content.getStyle('paddingBottom')));
-        this.hide_div(div);
 
         var revealer = new module.Reveal({
             linkNode: this.make_link(),
@@ -191,7 +193,6 @@ suite.add(new Y.maas.testing.TestCase({
         var self = this;
         var link = this.make_link("Original link");
         var div = this.make_div();
-        this.hide_div(div);
         var revealer = new module.Reveal({
             linkNode: link,
             targetNode: div,
@@ -212,13 +213,14 @@ suite.add(new Y.maas.testing.TestCase({
 
     test_div_slides_in_when_hiding: function() {
         var self = this;
-
+        var div = this.make_div();
         var revealer = new module.Reveal({
             linkNode: this.make_link(),
-            targetNode: this.make_div(),
+            targetNode: div,
             quick: true
         });
         revealer.render();
+        this.show_div(div);
 
         revealer.on('hidden', function() {
             self.resume(function() {
@@ -235,13 +237,15 @@ suite.add(new Y.maas.testing.TestCase({
     test_replaces_link_text_when_hiding: function() {
         var self = this;
         var link = this.make_link("Original link");
+        var div = this.make_div();
         var revealer = new module.Reveal({
             linkNode: link,
-            targetNode: this.make_div(),
+            targetNode: div,
             showText: "Show content",
             quick: true
         });
         revealer.render();
+        this.show_div(div);
 
         revealer.on('hidden', function() {
             self.resume(function() {
@@ -251,6 +255,48 @@ suite.add(new Y.maas.testing.TestCase({
 
         revealer.reveal();
         this.wait();
+    },
+
+    test_renders_in_hidden_state: function() {
+        var link = this.make_link();
+        var div = this.make_div();
+        var revealer = new module.Reveal({
+            linkNode: link,
+            targetNode: div,
+            showText: "Show content",
+            hideText: "Hide content",
+            quick: true
+        });
+        revealer.render();
+
+        Y.Assert.areEqual(div.getStyle('height'), '0px');
+        Y.assert(
+            !revealer.is_visible(),
+            "Widget thinks it's visible after rendering.");
+        Y.Assert.areEqual("Show content", link.get('text'));
+    },
+
+    test_fires_hiding_events_immediately_when_rendering: function() {
+        var revealer = new module.Reveal({
+            linkNode: this.make_link(),
+            targetNode: this.make_div(),
+            quick: true
+        });
+
+        var hiding_fired = false,
+            hidden_fired = false;
+        revealer.on('hiding', function() {
+            hiding_fired = true;
+        });
+        revealer.on('hidden', function() {
+            hidden_fired = true;
+        });
+
+        // This fires the events immediately and synchronously.
+        revealer.render();
+
+        Y.assert(hiding_fired, "The 'hiding' signal was not fired.");
+        Y.assert(hidden_fired, "The 'hidden' signal was not fired.");
     }
 }));
 

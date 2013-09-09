@@ -75,7 +75,6 @@ from maasserver.views.nodes import (
 from maastesting.matchers import ContainsAll
 from metadataserver.models.commissioningscript import LLDP_OUTPUT_NAME
 from provisioningserver.enum import POWER_TYPE_CHOICES
-from testtools.matchers import EndsWith
 
 
 class NodeViewsTest(LoggedInTestCase):
@@ -859,11 +858,6 @@ class NodeLLDPExpanderTest(SeleniumLoggedInTestCase):
         self.selenium.get(
             self.live_server_url + reverse('node-view', args=[node.system_id]))
 
-    def find_expander_icon(self):
-        """Find the LLDP expander icon in the page Selenium has rendered."""
-        icon_span = self.selenium.find_element_by_id('lldp-expander-icon')
-        return icon_span.find_element_by_css_selector('img')
-
     def find_content_div(self):
         """Find the LLDP content div in the page Selenium has rendered."""
         return self.selenium.find_element_by_id('lldp-output')
@@ -872,6 +866,10 @@ class NodeLLDPExpanderTest(SeleniumLoggedInTestCase):
         """Find the LLDP button link in the page Selenium has rendered."""
         return self.selenium.find_element_by_id('lldp-trigger')
 
+    def find_tag_by_class(self, class_name):
+        """Find DOM node by its CSS class."""
+        return self.selenium.find_element_by_class_name(class_name)
+
     def test_lldp_output_expands(self):
         # Loading just once.  Creating a second node in a separate test causes
         # an integrity error in the database; clearly that's not working too
@@ -879,23 +877,28 @@ class NodeLLDPExpanderTest(SeleniumLoggedInTestCase):
         self.load_node_page(self.make_node_with_lldp_output())
 
         # The LLDP output is in its hidden state.
-        self.assertThat(
-            self.find_expander_icon().get_attribute('src'),
-            EndsWith("treeCollapsed.png"))
         self.assertEqual(
             "Show discovered network data", self.find_button_link().text)
         self.assertEqual(0, self.find_content_div().size['height'])
+        # The button link has the expander-hidden class, meaning that it
+        # sports a "collapsed-items" icon.  (There seems to be no way to
+        # query the tag's classes directly).
+        self.assertEquals(
+            self.find_button_link(),
+            self.find_tag_by_class('expander-hidden'))
 
         # When we click the link, the LLDP output expands.
         self.find_button_link().click()
 
         # The LLDP output is now in its visible state.
-        self.assertThat(
-            self.find_expander_icon().get_attribute('src'),
-            EndsWith("treeExpanded.png"))
         self.assertEqual(
             "Hide discovered network data", self.find_button_link().text)
         self.assertNotEqual(0, self.find_content_div().size['height'])
+        # The button link has the expander-shown class, meaning that it
+        # now sports an "expanded-items" icon.
+        self.assertEqual(
+            self.find_button_link(),
+            self.find_tag_by_class('expander-shown'))
 
 
 class MessageFromFormStatsTest(TestCase):

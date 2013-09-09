@@ -42,6 +42,9 @@ Reveal.ATTRS = {
      * The widget will add the "slider" class to this node, and the "content"
      * class to its child node.
      *
+     * Hiding the content is done by setting the target node's height to zero;
+     * it's child node keeps its original size but becomes invisible.
+     *
      * @attribute targetNode
      * @type node
      */
@@ -93,6 +96,14 @@ Reveal.ATTRS = {
     }
 };
 
+
+// Return a style attribute for a node, as an int.
+// Any suffix to the number, such as the typical "px," is ignored.
+function get_style_int(node, attribute) {
+    return parseInt(node.getStyle(attribute));
+}
+
+
 Y.extend(Reveal, Y.Widget, {
     /**
      * Standard YUI hook: prepare the DOM for the widget.
@@ -119,13 +130,28 @@ Y.extend(Reveal, Y.Widget, {
     },
 
     /**
+     * Standard YUI hook: update UI to match the widget's state at the time
+     * it is rendered.
+     *
+     * The HTML is written in an expanded state, but during rendering, the
+     * widget immediately (and without animation) goes into its hidden state.
+     *
+     * @method syncUI
+     */
+    syncUI: function() {
+        this.fire("hiding");
+        this.get('targetNode').setStyle('height', 0);
+        this.set_hidden_link(this.get('linkNode'));
+        this.fire("hidden");
+    },
+
+    /**
      * Is this widget currently in its visible state?
      *
      * @method is_visible
      */
     is_visible: function() {
-        var height = parseInt(this.get('targetNode').getStyle('height'));
-        return height > 0;
+        return get_style_int(this.get('targetNode'), 'height') > 0;
     },
 
     /**
@@ -192,14 +218,17 @@ Y.extend(Reveal, Y.Widget, {
      * @method create_slide_out
      */
     create_slide_out: function(node, publisher) {
+        // The target node contains exactly one node of content.  Its height
+        // is constant.  We calculate the appropriate expanded height for the
+        // target node from the height of the content node, plus marings and
+        // padding.
         var content_node = node.one('.content');
-        var height = parseInt(content_node.getStyle('height'));
-        var padding_top = parseInt(content_node.getStyle('paddingTop'));
-        var padding_bottom = parseInt(content_node.getStyle('paddingBottom'));
-        var margin_top = parseInt(content_node.getStyle('marginTop'));
-        var margin_bottom = parseInt(content_node.getStyle('marginBottom'));
         var new_height = (
-	    height + padding_top + padding_bottom + margin_top + margin_bottom);
+            get_style_int(content_node, 'height') +
+            get_style_int(content_node, 'paddingTop') +
+            get_style_int(content_node, 'paddingBottom') +
+            get_style_int(content_node, 'marginTop') +
+            get_style_int(content_node, 'marginBottom'));
         var anim = new Y.Anim({
             node: node,
             duration: this.get_animation_duration(0.2),
