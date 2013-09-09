@@ -30,6 +30,8 @@ import tarfile
 from textwrap import dedent
 import time
 
+from maasserver.fields import MAC
+from maasserver.testing import reload_object
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
 from maastesting.matchers import ContainsAll
@@ -41,7 +43,9 @@ from metadataserver.models import (
     )
 from metadataserver.models.commissioningscript import (
     ARCHIVE_PREFIX,
+    extract_router_mac_addresses,
     make_function_call_script,
+    set_node_routers,
     )
 from mock import call
 from testtools.content import text_content
@@ -244,3 +248,61 @@ class TestLLDPScripts(TestCase):
         self.assertEqual(
             check_call.call_args_list,
             [call(("lldpctl", "-f", "xml"))])
+
+
+lldp_output_template = """
+<?xml version="1.0" encoding="UTF-8"?>
+<lldp label="LLDP neighbors">
+%s
+</lldp>
+"""
+
+lldp_output_interface_template = """
+<interface label="Interface" name="eth1" via="LLDP">
+  <chassis label="Chassis">
+    <id label="ChassisID" type="mac">%s</id>
+    <name label="SysName">switch-name</name>
+    <descr label="SysDescr">HDFD5BG7J</descr>
+    <mgmt-ip label="MgmtIP">192.168.9.9</mgmt-ip>
+    <capability label="Capability" type="Bridge" enabled="on"/>
+    <capability label="Capability" type="Router" enabled="off"/>
+  </chassis>
+</interface>
+"""
+
+
+def make_lldp_output(macs):
+    """Return an example raw lldp output containing the given MACs."""
+    interfaces = '\n'.join(
+        lldp_output_interface_template % mac
+        for mac in macs
+        )
+    script = (lldp_output_template % interfaces).encode('utf8')
+    return bytes(script)
+
+
+class TestExtractRouters(TestCase):
+
+    def test_extract_router_mac_addresses_returns_None_when_empty_input(self):
+        self.assertIsNone(extract_router_mac_addresses(''))
+
+    def test_extract_router_mac_addresses_returns_None_when_no_routers(self):
+        lldp_output = make_lldp_output([])
+        self.assertIsNone(extract_router_mac_addresses(lldp_output))
+
+    def test_extract_router_mac_addresses_returns_routers_list(self):
+        macs = ["11:22:33:44:55:66", "aa:bb:cc:dd:ee:ff"]
+        lldp_output = make_lldp_output(macs)
+        routers = extract_router_mac_addresses(lldp_output)
+        self.assertItemsEqual(macs, routers)
+
+
+class TestSetNodeRouters(TestCase):
+
+    def test_set_node_routers_updates_node(self):
+        node = factory.make_node(routers=None)
+        macs = ["11:22:33:44:55:66", "aa:bb:cc:dd:ee:ff"]
+        lldp_output = make_lldp_output(macs)
+        set_node_routers(node, lldp_output)
+        self.assertItemsEqual(
+            [MAC(mac) for mac in macs], reload_object(node).routers)

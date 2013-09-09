@@ -32,6 +32,8 @@ from django.db.models import (
     Manager,
     Model,
     )
+from lxml import etree
+from maasserver.fields import MAC
 from maasserver.models.tag import Tag
 from metadataserver import DefaultMeta
 from metadataserver.fields import BinaryField
@@ -192,12 +194,31 @@ def lldpd_capture():
     check_call(("lldpctl", "-f", "xml"))
 
 
+_xpath_routers = "/lldp//id[@type='mac']/text()"
+
+
+def extract_router_mac_addresses(raw_content):
+    """Extract the routers' MAC Addresses from raw LLDP information."""
+    if not raw_content:
+        return None
+    assert isinstance(raw_content, bytes)
+    parser = etree.XMLParser()
+    doc = etree.XML(raw_content.strip(), parser)
+    routers = doc.xpath(_xpath_routers)
+    if len(routers) == 0:
+        return None
+    return routers
+
+
 def set_node_routers(node, raw_content):
     """Process recently captured raw LLDP information.
 
-    TODO: This is a placeholder while work is carried out on the
-    schema for network placement.
+    The list of the routers' MAC Addresses is extracted from the raw LLDP
+    information and stored on the given node.
     """
+    routers = extract_router_mac_addresses(raw_content)
+    node.routers = [MAC(router) for router in routers]
+    node.save()
 
 
 def null_hook(node, raw_content):
