@@ -2108,6 +2108,65 @@ class TestNodesAPI(APITestCase):
         })
         self.assertResponseCode(httplib.BAD_REQUEST, response)
 
+    def test_POST_acquire_allocates_node_connected_to_routers(self):
+        macs = [
+            MAC('aa:bb:cc:dd:ee:ff'), MAC('00:11:22:33:44:55'),
+            MAC('aa:aa:aa:aa:aa:aa')]
+        node = factory.make_node(routers=macs, status=NODE_STATUS.READY)
+        factory.make_node(routers=[])
+
+        response = self.client.post(self.get_uri('nodes/'), {
+            'op': 'acquire',
+            'connected_to': 'aa:aa:aa:aa:aa:aa,aa:bb:cc:dd:ee:ff',
+        })
+
+        self.assertResponseCode(httplib.OK, response)
+        response_json = json.loads(response.content)
+        self.assertEqual(node.system_id, response_json['system_id'])
+
+    def test_POST_acquire_allocates_node_connected_to_routers_fails(self):
+        macs = [MAC('aa:bb:cc:dd:ee:ff'), MAC('00:11:22:33:44:55')]
+        factory.make_node(routers=macs, status=NODE_STATUS.READY)
+        factory.make_node(routers=[])
+
+        response = self.client.post(self.get_uri('nodes/'), {
+            'op': 'acquire',
+            'connected_to': 'dd:dd:dd:33:44:55',
+        })
+
+        self.assertEqual(
+            (httplib.CONFLICT, "No matching node is available."),
+            (response.status_code, response.content))
+
+    def test_POST_acquire_allocates_node_not_connected_to_routers(self):
+        macs = [MAC('aa:bb:cc:dd:ee:ff'), MAC('00:11:22:33:44:55')]
+        factory.make_node(routers=macs, status=NODE_STATUS.READY)
+        factory.make_node(
+            routers=[MAC('11:11:11:11:11:11')], status=NODE_STATUS.READY)
+        node = factory.make_node(status=NODE_STATUS.READY)
+
+        response = self.client.post(self.get_uri('nodes/'), {
+            'op': 'acquire',
+            'not_connected_to': 'aa:bb:cc:dd:ee:ff,11:11:11:11:11:11',
+        })
+
+        self.assertResponseCode(httplib.OK, response)
+        response_json = json.loads(response.content)
+        self.assertEqual(node.system_id, response_json['system_id'])
+
+    def test_POST_acquire_allocates_node_not_connected_to_routers_fails(self):
+        factory.make_node(
+            routers=[MAC('11:11:11:11:11:11')], status=NODE_STATUS.READY)
+
+        response = self.client.post(self.get_uri('nodes/'), {
+            'op': 'acquire',
+            'not_connected_to': '11:11:11:11:11:11',
+        })
+
+        self.assertEqual(
+            (httplib.CONFLICT, "No matching node is available."),
+            (response.status_code, response.content))
+
     def test_POST_acquire_sets_a_token(self):
         # "acquire" should set the Token being used in the request on
         # the Node that is allocated.

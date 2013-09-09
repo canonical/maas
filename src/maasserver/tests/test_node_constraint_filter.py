@@ -14,10 +14,12 @@ __all__ = []
 
 from maasserver.enum import ARCHITECTURE
 from maasserver.exceptions import InvalidConstraint
+from maasserver.fields import MAC
 from maasserver.models import Node
 from maasserver.models.node_constraint_filter import (
     constrain_nodes,
     generate_architecture_wildcards,
+    parse_macs,
     )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import TestCase
@@ -90,6 +92,38 @@ class TestConstrainNodes(TestCase):
         self.assertRaises(InvalidConstraint,
             self.assertConstrainedNodes, [], {'memory': 'notint'})
 
+    def test_connected_to(self):
+        mac1 = MAC('aa:bb:cc:dd:ee:ff')
+        mac2 = MAC('00:11:22:33:44:55')
+        node1 = factory.make_node(routers=[mac1, mac2])
+        node2 = factory.make_node(routers=[mac1])
+        factory.make_node()
+        self.assertConstrainedNodes(
+            [node1], {'connected_to': "%s,%s" % (
+                mac1.get_raw(), mac2.get_raw())})
+        self.assertConstrainedNodes(
+            [node1, node2], {'connected_to': mac1.get_raw()})
+        self.assertRaises(
+            InvalidConstraint,
+            self.assertConstrainedNodes, [], {'connected_to': 'wrong'})
+
+    def test_not_connected_to(self):
+        mac1 = MAC('aa:bb:cc:dd:ee:ff')
+        mac2 = MAC('00:11:22:33:44:55')
+        node1 = factory.make_node(routers=[mac1, mac2])
+        node2 = factory.make_node(routers=[mac1])
+        node3 = factory.make_node()
+        self.assertConstrainedNodes(
+            [node3], {'not_connected_to': "%s,%s" % (
+                mac1.get_raw(), mac2.get_raw())})
+        self.assertConstrainedNodes(
+            [node2, node3], {'not_connected_to': mac2.get_raw()})
+        self.assertConstrainedNodes(
+            [node1, node2, node3], {'not_connected_to': "b1:b1:b1:b1:b1:b1"})
+        self.assertRaises(
+            InvalidConstraint,
+            self.assertConstrainedNodes, [], {'connected_to': 'wrong'})
+
     def test_tags(self):
         tag_big = factory.make_tag(name='big')
         tag_burly = factory.make_tag(name='burly')
@@ -124,6 +158,25 @@ class TestConstrainNodes(TestCase):
                                     {'tags': 'big'})
         self.assertConstrainedNodes(
             [node_big], {'architecture': 'i386/generic', 'tags': 'big'})
+
+
+class TestParseMacs(TestCase):
+
+    def test_parse_macs_parses_commaseparated_list_of_macs(self):
+        mac1 = 'aa:bb:cc:dd:ee:ff'
+        mac2 = '11:22:33:44:55:66'
+        macs = parse_macs("unused", "%s, %s" % (mac1, mac2))
+        self.assertItemsEqual([mac1, mac2], macs)
+
+    def test_parse_macs_parses_empty_list(self):
+        macs = parse_macs("unused", " ")
+        self.assertItemsEqual([], macs)
+
+    def test_parse_macs_parses_validates_macs(self):
+        error = self.assertRaises(
+            InvalidConstraint, parse_macs,
+            "key", "aa:bb:cc:dd:ee:ff, wrong")
+        self.assertIn("Invalid MAC address(es): wrong", "%s" % error)
 
 
 class TestConstrainNodesByArchitecture(TestCase):

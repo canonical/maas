@@ -751,7 +751,16 @@ class NodesHandler(OperationsHandler):
 
     @operation(idempotent=False)
     def acquire(self, request):
-        """Acquire an available node for deployment."""
+        """Acquire an available node for deployment.
+
+        :param connected_to: An optional comma-separated list of routers' MAC
+            Addresses the returned node must be connected to.
+        :type connected_to: basestring
+        :param not_connected_to: An optional comma-separated list of
+            routers' MAC Addresses the returned node must not be connected
+            to.
+        :type not_connected_to: basestring
+        """
         node = Node.objects.get_available_node_for_acquisition(
             request.user, constraints=extract_constraints(request.data))
         if node is None:

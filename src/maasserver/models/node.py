@@ -110,6 +110,8 @@ CONSTRAINTS_MAAS_MAP = {
     'arch': 'architecture',
     'cpu_count': 'cpu_count',
     'mem': 'memory',
+    'connected_to': 'connected_to',
+    'not_connected_to': 'not_connected_to',
     }
 
 

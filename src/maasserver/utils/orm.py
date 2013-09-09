@@ -11,6 +11,9 @@ from __future__ import (
 
 __metaclass__ = type
 __all__ = [
+    'macs_contain',
+    'macs_do_not_contain',
+    'get_exception_class',
     'get_first',
     'get_one',
     ]
@@ -62,3 +65,38 @@ def get_first(items):
         return None
     else:
         return first_item[0]
+
+
+def macs_contain(key, macs):
+    """Get the "Django ORM predicate: 'key' contains all the given macs.
+
+    This method returns a tuple of the where clause (as a string) and the
+    parameters (as a list of strings) used to format the where clause.
+    This is typically used with Django's QuerySet's where() method:
+
+    >>> where, params = get_contains_macs_clause('routers', macs)
+    >>> all_nodes = Node.objects.all()
+    >>> filtered_nodes = all_nodes.extra(where=[where], params=params)
+    """
+    where_clause = (
+        "%s @> ARRAY[" % key +
+        ', '.join(["%s"] * len(macs)) +
+        "]::macaddr[]")
+    return where_clause, macs
+
+
+def macs_do_not_contain(key, macs):
+    """Get the Django ORM predicate: 'key' doesn't contain any macs.
+
+    This method returns a tuple of the where clause (as a string) and the
+    parameters (as a list of strings) used to format the where clause.
+    This is typically used with Django's QuerySet's where() method:
+
+    >>> where, params = get_does_not_contain_macs_clause('routers', macs)
+    >>> all_nodes = Node.objects.all()
+    >>> filtered_nodes = all_nodes.extra(where=[where], params=params)
+    """
+    contains_any = " OR ".join([
+        "%s " % key + "@> ARRAY[%s]::macaddr[]"] * len(macs))
+    where_clause = "((%s IS NULL) OR NOT (%s))" % (key, contains_any)
+    return where_clause, macs

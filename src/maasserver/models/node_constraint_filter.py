@@ -20,8 +20,13 @@ from maasserver.enum import (
     ARCHITECTURE_CHOICES_DICT,
     )
 from maasserver.exceptions import InvalidConstraint
+from maasserver.fields import mac_re
 from maasserver.models import Tag
-from maasserver.utils.orm import get_one
+from maasserver.utils.orm import (
+    get_one,
+    macs_contain,
+    macs_do_not_contain,
+    )
 
 
 def constrain_identical(nodes, key, value):
@@ -101,16 +106,49 @@ def constrain_architecture(nodes, key, value):
             'architecture', value, "Architecture not recognised.")
 
 
-# this is the mapping of constraint names to how to apply the constraint
+def parse_macs(key, macs_string):
+    """Parses the given string of comma-separated MAC Addresses into a list.
+
+    Raises an InvalidConstraint exception if one of the MAC Addresses is
+    invalid.
+    """
+    macs = macs_string.replace(",", " ").strip().split()
+    invalid_macs = [
+        mac for mac in macs if mac_re.match(mac) is None]
+    if len(invalid_macs) != 0:
+        raise InvalidConstraint(
+            key, macs_string,
+            "Invalid MAC address(es): %s" % ", ".join(invalid_macs))
+    return macs
+
+
+def constrain_in_list(nodes, key, value):
+    macs = parse_macs(key, value)
+    where, params = macs_contain(key, macs)
+    return nodes.extra(where=[where], params=params)
+
+
+def constrain_not_in_list(nodes, key, value):
+    macs = parse_macs(key, value)
+    where, params = macs_do_not_contain(key, macs)
+    return nodes.extra(where=[where], params=params)
+
+
+# This is the mapping of constraint names to how to apply the
+# constraint.
+# The format is:
+# 'constraint name' -> (constraint method, 'database field')
 constraint_filters = {
     # Currently architecture only supports exact matching. Eventually, we will
     # probably want more logic to note that eg, amd64 can be used for an i386
     # request
-    'architecture': constrain_architecture,
-    'hostname': constrain_identical,
-    'cpu_count': constrain_int_greater_or_equal,
-    'memory': constrain_int_greater_or_equal,
-    'tags': constrain_tags,
+    'architecture': (constrain_architecture, 'architecture'),
+    'hostname': (constrain_identical, 'hostname'),
+    'cpu_count': (constrain_int_greater_or_equal, 'cpu_count'),
+    'memory': (constrain_int_greater_or_equal, 'memory'),
+    'tags': (constrain_tags, 'tags'),
+    'connected_to': (constrain_in_list, 'routers'),
+    'not_connected_to': (constrain_not_in_list, 'routers'),
 }
 
 
@@ -122,8 +160,9 @@ def constrain_nodes(nodes, constraints):
     """
     if not constraints:
         return nodes
-    for constraint_name, value in constraints.items():
-        filter = constraint_filters.get(constraint_name)
-        if filter is not None:
-            nodes = filter(nodes, constraint_name, value)
+    for constraint_name, constraint_field in constraints.items():
+        value = constraint_filters.get(constraint_name)
+        if value is not None:
+            filter, key_name = value
+            nodes = filter(nodes, key_name, constraint_field)
     return nodes

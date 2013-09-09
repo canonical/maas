@@ -15,9 +15,12 @@ __all__ = []
 from itertools import repeat
 
 from django.core.exceptions import MultipleObjectsReturned
+from maasserver.fields import MAC
 from maasserver.utils.orm import (
     get_first,
     get_one,
+    macs_contain,
+    macs_do_not_contain,
     )
 from maastesting.factory import factory
 from maastesting.testcase import TestCase
@@ -124,3 +127,34 @@ class TestGetFirst(TestCase):
             raise SecondItemRetrieved()
 
         self.assertEqual("Item 1", get_first(multiple_items()))
+
+
+class TestGetPredicateUtilities(TestCase):
+
+    def test_macs_contain_returns_predicate(self):
+        macs = ['11:22:33:44:55:66', 'aa:bb:cc:dd:ee:ff']
+        where, params = macs_contain('key', macs)
+        self.assertEqual(
+            (where, params),
+            ('key @> ARRAY[%s, %s]::macaddr[]', macs))
+
+    def test_macs_contain_returns_predicate_using_MACs(self):
+        macs = [MAC('11:22:33:44:55:66')]
+        where, params = macs_contain('key', macs)
+        self.assertEqual(
+            (where, params),
+            ('key @> ARRAY[%s]::macaddr[]', macs))
+
+    def test_macs_do_not_contain_returns_predicate(self):
+        macs = ['11:22:33:44:55:66', 'aa:bb:cc:dd:ee:ff']
+        where, params = macs_do_not_contain('key', macs)
+        self.assertEqual(
+            (where, params),
+            (
+                (
+                    '((key IS NULL) OR NOT '
+                    '(key @> ARRAY[%s]::macaddr[] OR '
+                    'key @> ARRAY[%s]::macaddr[]))'
+                ),
+                macs,
+            ))
