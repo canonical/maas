@@ -44,7 +44,7 @@ from django.db.models import (
     )
 from django.http import Http404
 from django.shortcuts import get_object_or_404
-from djorm_pgarray.fields import ArrayField
+import djorm_pgarray.fields
 from lxml import etree
 from maasserver import DefaultMeta
 from maasserver.enum import (
@@ -62,6 +62,7 @@ from maasserver.enum import (
 from maasserver.exceptions import NodeStateViolation
 from maasserver.fields import (
     JSONObjectField,
+    MAC,
     XMLField,
     )
 from maasserver.models.cleansave import CleanSave
@@ -447,6 +448,32 @@ def generate_hostname(size):
     return "".join(islice(non_ambiguous_characters, size))
 
 
+def patch_pgarray_types():
+    """Monkey-patch incompatibility with recent versions of `djorm_pgarray`.
+
+    An upstream commit in `djorm_pgarray` on 2013-07-21 effectively limits
+    arrays to a fixed set of types.  An attempt to create an `ArrayField` of
+    any other type results in the error "TypeError: invalid postgreSQL type."
+    We have been getting that error with python-djorm-ext-pgarray 0.8, the
+    first Ubuntu-packaged version, but not with 0.6.
+
+    This function monkey-patches the set of supported types, adding macaddr.
+
+    Upstream bug: https://github.com/niwibe/djorm-ext-pgarray/issues/19
+    """
+    # TYPES maps PostgreSQL type names to their Django casters.  The error
+    # happens when using a postgres type name that is not in this dict.
+    #
+    # Older versions did not have TYPES, and worked out of the box.
+    types_dict = getattr(djorm_pgarray.fields, 'TYPES', None)
+    if types_dict is not None and 'macaddr' not in types_dict:
+        djorm_pgarray.fields.TYPES['macaddr'] = MAC
+
+
+# Monkey-patch djorm_pgarray's types list to support MAC.
+patch_pgarray_types()
+
+
 class Node(CleanSave, TimestampedModel):
     """A `Node` represents a physical machine used by the MAAS Server.
 
@@ -496,7 +523,7 @@ class Node(CleanSave, TimestampedModel):
         max_length=31, choices=ARCHITECTURE_CHOICES, blank=False,
         default=ARCHITECTURE.i386)
 
-    routers = ArrayField(dbtype="macaddr")
+    routers = djorm_pgarray.fields.ArrayField(dbtype="macaddr")
 
     # Juju expects the following standard constraints, which are stored here
     # as a basic optimisation over querying the hardware_details field.
