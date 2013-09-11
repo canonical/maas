@@ -21,6 +21,9 @@ settings="/etc/maas/import_pxe_files"
 # Location of the GPG keyring for the Ubuntu archive.
 GPG_KEYRING="${GPG_KEYRING:-/usr/share/keyrings/ubuntu-archive-keyring.gpg}"
 
+# Whether to check GPG keys (necessary for testing of this script).
+IGNORE_GPG="${IGNORE_GPG:-}"
+
 # Download locations for Ubuntu releases.
 MAIN_ARCHIVE=${MAIN_ARCHIVE:-http://archive.ubuntu.com/ubuntu/}
 PORTS_ARCHIVE=${PORTS_ARCHIVE:-http://ports.ubuntu.com/ubuntu-ports/}
