@@ -7,8 +7,8 @@ distro-info
 dnsutils
 freeipmi-tools
 isc-dhcp-common
-libjs-yui3-min
 libjs-raphael
+libjs-yui3-min
 libpq-dev
 postgresql-9.1
 python-amqplib
@@ -21,6 +21,7 @@ python-dev
 python-django
 python-django-piston
 python-django-south
+python-djorm-ext-pgarray
 python-docutils
 python-formencode
 python-httplib2
