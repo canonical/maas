@@ -62,6 +62,7 @@ Developing MAAS
    development/security
    development/building-packages
    development/cluster-registration
+   development/tagging
 
 
 **********
