@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test maasserver API documentation functionality."""
@@ -34,14 +34,14 @@ from maasserver.apidoc import (
     generate_api_docs,
     )
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import TestCase
+from maasserver.testing.testcase import MAASServerTestCase
 from mock import sentinel
 from piston.doc import HandlerDocumentation
 from piston.handler import BaseHandler
 from piston.resource import Resource
 
 
-class TestFindingResources(TestCase):
+class TestFindingResources(MAASServerTestCase):
     """Tests for API inspection support: finding resources."""
 
     @staticmethod
@@ -93,7 +93,7 @@ class TestFindingResources(TestCase):
         self.assertNotEqual(set(), find_api_resources(urlconf))
 
 
-class TestGeneratingDocs(TestCase):
+class TestGeneratingDocs(MAASServerTestCase):
     """Tests for API inspection support: generating docs."""
 
     @staticmethod
@@ -170,7 +170,7 @@ class ExampleFallbackHandler(OperationsHandler):
     create = read = delete = update = None
 
 
-class TestDescribingAPI(TestCase):
+class TestDescribingAPI(MAASServerTestCase):
     """Tests for functions that describe a Piston API."""
 
     maxDiff = 10000

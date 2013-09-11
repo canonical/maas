@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the code that refreshes a node-group worker's information."""
@@ -15,11 +15,11 @@ __all__ = []
 from maasserver import populate_tags as populate_tags_module
 from maasserver.populate_tags import populate_tags
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import TestCase
+from maasserver.testing.testcase import MAASServerTestCase
 import mock
 
 
-class TestPopulateTags(TestCase):
+class TestPopulateTags(MAASServerTestCase):
 
     def test_populate_tags_task_routed_to_nodegroup_worker(self):
         nodegroup = factory.make_node_group()

@@ -94,7 +94,7 @@ from maasserver.testing.oauthclient import OAuthAuthenticatedClient
 from maasserver.testing.testcase import (
     AdminLoggedInTestCase,
     LoggedInTestCase,
-    TestCase,
+    MAASServerTestCase,
     )
 from maasserver.tests.test_forms import make_interface_settings
 from maasserver.utils import (
@@ -140,7 +140,7 @@ from testtools.matchers import (
     )
 
 
-class TestModuleHelpers(TestCase):
+class TestModuleHelpers(MAASServerTestCase):
 
     def test_extract_constraints_ignores_unknown_parameters(self):
         unknown_parameter = "%s=%s" % (
@@ -157,7 +157,7 @@ class TestModuleHelpers(TestCase):
             extract_constraints(QueryDict('name=%s' % name)))
 
 
-class TestAuthentication(APIv10TestMixin, TestCase):
+class TestAuthentication(APIv10TestMixin, MAASServerTestCase):
     """Tests for `maasserver.api_auth`."""
 
     def test_invalid_oauth_request(self):
@@ -174,7 +174,7 @@ class TestAuthentication(APIv10TestMixin, TestCase):
         self.assertThat(observed, MatchesListwise(expected))
 
 
-class TestStoreNodeParameters(TestCase):
+class TestStoreNodeParameters(MAASServerTestCase):
     """Tests for `store_node_power_parameters`."""
 
     def setUp(self):
@@ -239,7 +239,8 @@ class TestStoreNodeParameters(TestCase):
         self.save.assert_has_calls([])
 
 
-class EnlistmentAPITest(APIv10TestMixin, MultipleUsersScenarios, TestCase):
+class EnlistmentAPITest(APIv10TestMixin, MultipleUsersScenarios,
+                        MAASServerTestCase):
     """Enlistment tests."""
     scenarios = [
         ('anon', dict(userfactory=lambda: AnonymousUser())),
@@ -524,7 +525,8 @@ class EnlistmentAPITest(APIv10TestMixin, MultipleUsersScenarios, TestCase):
         self.assertItemsEqual(['architecture'], parsed_result)
 
 
-class NodeHostnameTest(APIv10TestMixin, MultipleUsersScenarios, TestCase):
+class NodeHostnameTest(APIv10TestMixin, MultipleUsersScenarios,
+                       MAASServerTestCase):
 
     scenarios = [
         ('user', dict(userfactory=factory.make_user)),
@@ -554,7 +556,7 @@ class NodeHostnameTest(APIv10TestMixin, MultipleUsersScenarios, TestCase):
 
 
 class NodeHostnameEnlistmentTest(APIv10TestMixin, MultipleUsersScenarios,
-                                 TestCase):
+                                 MAASServerTestCase):
 
     scenarios = [
         ('anon', dict(userfactory=lambda: AnonymousUser())),
@@ -651,7 +653,7 @@ class NodeHostnameEnlistmentTest(APIv10TestMixin, MultipleUsersScenarios,
 
 
 class NonAdminEnlistmentAPITest(APIv10TestMixin, MultipleUsersScenarios,
-                                TestCase):
+                                MAASServerTestCase):
     # Enlistment tests for non-admin users.
 
     scenarios = [
@@ -680,7 +682,7 @@ class NonAdminEnlistmentAPITest(APIv10TestMixin, MultipleUsersScenarios,
             Node.objects.get(system_id=system_id).status)
 
 
-class AnonymousEnlistmentAPITest(APIv10TestMixin, TestCase):
+class AnonymousEnlistmentAPITest(APIv10TestMixin, MAASServerTestCase):
     # Enlistment tests specific to anonymous users.
 
     def test_POST_accept_not_allowed(self):
@@ -969,7 +971,7 @@ class AdminLoggedInEnlistmentAPITest(APIv10TestMixin, AdminLoggedInTestCase):
             {node["system_id"] for node in nodes_returned})
 
 
-class AnonymousIsRegisteredAPITest(APIv10TestMixin, TestCase):
+class AnonymousIsRegisteredAPITest(APIv10TestMixin, MAASServerTestCase):
 
     def test_is_registered_returns_True_if_node_registered(self):
         mac_address = factory.getRandomMACAddress()
@@ -1018,7 +1020,7 @@ class AnonymousIsRegisteredAPITest(APIv10TestMixin, TestCase):
             (response.status_code, response.content))
 
 
-class NodeAnonAPITest(APIv10TestMixin, TestCase):
+class NodeAnonAPITest(APIv10TestMixin, MAASServerTestCase):
 
     def test_anon_nodes_GET(self):
         # Anonymous requests to the API without a specified operation
@@ -3471,7 +3473,7 @@ class TestTagsAPI(APITestCase):
         self.assertItemsEqual([], node2.tag_names())
 
 
-class MAASAPIAnonTest(APIv10TestMixin, TestCase):
+class MAASAPIAnonTest(APIv10TestMixin, MAASServerTestCase):
     # The MAAS' handler is not accessible to anon users.
 
     def test_anon_get_config_forbidden(self):
@@ -3644,7 +3646,8 @@ class APIErrorsTest(APIv10TestMixin, TransactionTestCase):
             (response.status_code, response.content))
 
 
-class TestNodeGroupsAPI(APIv10TestMixin, MultipleUsersScenarios, TestCase):
+class TestNodeGroupsAPI(APIv10TestMixin, MultipleUsersScenarios,
+                        MAASServerTestCase):
     scenarios = [
         ('anon', dict(userfactory=lambda: AnonymousUser())),
         ('user', dict(userfactory=factory.make_user)),
@@ -4087,7 +4090,7 @@ def log_in_as_normal_user(client):
     return user
 
 
-class TestNodeGroupAPIAuth(APIv10TestMixin, TestCase):
+class TestNodeGroupAPIAuth(APIv10TestMixin, MAASServerTestCase):
     """Authorization tests for nodegroup API."""
 
     def test_nodegroup_requires_authentication(self):

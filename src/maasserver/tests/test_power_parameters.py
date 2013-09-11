@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for power parameters."""
@@ -14,7 +14,7 @@ __all__ = []
 
 from maasserver.config_forms import DictCharField
 from maasserver.power_parameters import POWER_TYPE_PARAMETERS
-from maasserver.testing.testcase import TestCase
+from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import map_enum
 from maastesting.matchers import ContainsAll
 from provisioningserver.enum import POWER_TYPE
@@ -26,7 +26,7 @@ from testtools.matchers import (
     )
 
 
-class TestPowerParameterDeclaration(TestCase):
+class TestPowerParameterDeclaration(MAASServerTestCase):
 
     def test_POWER_TYPE_PARAMETERS_is_dict_with_power_type_keys(self):
         power_types = set(map_enum(POWER_TYPE).values())

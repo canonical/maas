@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test `maasserver.preseed` and related bits and bobs."""
@@ -14,7 +14,6 @@ __all__ = []
 
 import httplib
 import os
-import yaml
 from pipes import quote
 from urlparse import urlparse
 
@@ -45,7 +44,7 @@ from maasserver.preseed import (
     TemplateNotFoundError,
     )
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import TestCase
+from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import map_enum
 from maastesting.matchers import ContainsAll
 from testtools.matchers import (
@@ -56,9 +55,10 @@ from testtools.matchers import (
     Not,
     StartsWith,
     )
+import yaml
 
 
-class TestSplitSubArch(TestCase):
+class TestSplitSubArch(MAASServerTestCase):
     """Tests for `split_subarch`."""
 
     def test_split_subarch_returns_list(self):
@@ -68,7 +68,7 @@ class TestSplitSubArch(TestCase):
         self.assertEqual(['amd64', 'test'], split_subarch('amd64/test'))
 
 
-class TestGetHostnameAndPath(TestCase):
+class TestGetHostnameAndPath(MAASServerTestCase):
     """Tests for `get_hostname_and_path`."""
 
     def test_get_hostname_and_path(self):
@@ -83,7 +83,7 @@ class TestGetHostnameAndPath(TestCase):
         self.assertEqual(results, map(get_hostname_and_path, inputs))
 
 
-class TestGetPreseedFilenames(TestCase):
+class TestGetPreseedFilenames(MAASServerTestCase):
     """Tests for `get_preseed_filenames`."""
 
     def test_get_preseed_filenames_returns_filenames(self):
@@ -154,7 +154,7 @@ class TestGetPreseedFilenames(TestCase):
                 node, prefix, release, default=False))[-1])
 
 
-class TestConfiguration(TestCase):
+class TestConfiguration(MAASServerTestCase):
     """Test for correct configuration of the preseed component."""
 
     def test_setting_defined(self):
@@ -163,7 +163,7 @@ class TestConfiguration(TestCase):
             AllMatch(IsInstance(basestring)))
 
 
-class TestGetPreseedTemplate(TestCase):
+class TestGetPreseedTemplate(MAASServerTestCase):
     """Tests for `get_preseed_template`."""
 
     def test_get_preseed_template_returns_None_if_no_template_locations(self):
@@ -207,7 +207,7 @@ class TestGetPreseedTemplate(TestCase):
             get_preseed_template([template_filename]))
 
 
-class TestLoadPreseedTemplate(TestCase):
+class TestLoadPreseedTemplate(MAASServerTestCase):
     """Tests for `load_preseed_template`."""
 
     def setUp(self):
@@ -320,7 +320,7 @@ def make_url(name):
         )
 
 
-class TestPreseedContext(TestCase):
+class TestPreseedContext(MAASServerTestCase):
     """Tests for `get_preseed_context`."""
 
     def test_get_preseed_context_contains_keys(self):
@@ -391,7 +391,7 @@ class TestPreseedContext(TestCase):
         self.assertIsNone(context["cluster_host"])
 
 
-class TestNodePreseedContext(TestCase):
+class TestNodePreseedContext(MAASServerTestCase):
     """Tests for `get_node_preseed_context`."""
 
     def test_get_node_preseed_context_contains_keys(self):
@@ -405,7 +405,7 @@ class TestNodePreseedContext(TestCase):
             context)
 
 
-class TestPreseedTemplate(TestCase):
+class TestPreseedTemplate(MAASServerTestCase):
     """Tests for class:`PreseedTemplate`."""
 
     def test_escape_shell(self):
@@ -415,7 +415,7 @@ class TestPreseedTemplate(TestCase):
         self.assertEqual(quote(var), observed)
 
 
-class TestRenderPreseed(TestCase):
+class TestRenderPreseed(MAASServerTestCase):
     """Tests for `render_preseed`.
 
     These tests check that the templates render (i.e. that no variable is
@@ -448,7 +448,7 @@ class TestRenderPreseed(TestCase):
             preseed, MatchesAll(*[Contains(ng_url), Not(Contains(maas_url))]))
 
 
-class TestRenderEnlistmentPreseed(TestCase):
+class TestRenderEnlistmentPreseed(MAASServerTestCase):
     """Tests for `render_enlistment_preseed`."""
 
     # Create a scenario for each possible value of PRESEED_TYPE for
@@ -479,7 +479,7 @@ class TestRenderEnlistmentPreseed(TestCase):
             preseed, MatchesAll(*[Contains(ng_url), Not(Contains(maas_url))]))
 
 
-class TestRenderPreseedArchives(TestCase):
+class TestRenderPreseedArchives(MAASServerTestCase):
     """Test that the default preseed contains the default mirrors."""
 
     def test_render_preseed_uses_default_archives_intel(self):
@@ -505,7 +505,7 @@ class TestRenderPreseedArchives(TestCase):
         self.assertThat(preseed, ContainsAll(default_snippets))
 
 
-class TestPreseedProxy(TestCase):
+class TestPreseedProxy(MAASServerTestCase):
 
     def test_preseed_uses_default_proxy(self):
         server_host = factory.make_hostname()
@@ -530,7 +530,7 @@ class TestPreseedProxy(TestCase):
         self.assertIn(expected_proxy_statement, preseed)
 
 
-class TestPreseedMethods(TestCase):
+class TestPreseedMethods(MAASServerTestCase):
     """Tests for `get_enlist_preseed` and `get_preseed`.
 
     These tests check that the preseed templates render and 'look right'.
@@ -557,7 +557,7 @@ class TestPreseedMethods(TestCase):
         self.assertIn('#cloud-config', preseed)
 
 
-class TestPreseedURLs(TestCase):
+class TestPreseedURLs(MAASServerTestCase):
     """Tests for functions that return preseed URLs."""
 
     def test_compose_enlistment_preseed_url_links_to_enlistment_preseed(self):

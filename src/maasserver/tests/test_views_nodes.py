@@ -63,8 +63,8 @@ from maasserver.testing.rabbit import uses_rabbit_fixture
 from maasserver.testing.testcase import (
     AdminLoggedInTestCase,
     LoggedInTestCase,
+    MAASServerTestCase,
     SeleniumLoggedInTestCase,
-    TestCase,
     )
 from maasserver.utils import map_enum
 from maasserver.views import nodes as nodes_views
@@ -901,7 +901,7 @@ class NodeLLDPExpanderTest(SeleniumLoggedInTestCase):
             self.find_tag_by_class('expander-shown'))
 
 
-class MessageFromFormStatsTest(TestCase):
+class MessageFromFormStatsTest(MAASServerTestCase):
 
     def test_message_from_form_stats(self):
         params_and_snippets = [
@@ -1100,7 +1100,7 @@ class AdminNodeViewsTest(AdminLoggedInTestCase):
         self.assertAttributes(node, params)
 
 
-class TestGetLongpollContext(TestCase):
+class TestGetLongpollContext(MAASServerTestCase):
 
     def test_get_longpoll_context_empty_if_rabbitmq_publish_is_none(self):
         self.patch(settings, 'RABBITMQ_PUBLISH', None)
@@ -1138,7 +1138,7 @@ class TestGetLongpollContext(TestCase):
         self.assertEqual(longpoll, context['LONGPOLL_PATH'])
 
 
-class ParseConstraintsTests(TestCase):
+class ParseConstraintsTests(MAASServerTestCase):
     """Tests for helper that parses user search text into constraints
 
     Constraints are checked when evaulated, so the function just needs to

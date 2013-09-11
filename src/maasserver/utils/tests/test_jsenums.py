@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.utils.jsenums`."""
@@ -22,7 +22,7 @@ from maasserver.utils.jsenums import (
     header,
     serialize_enum,
     )
-from maastesting.testcase import TestCase
+from maastesting.testcase import MAASTestCase
 
 
 class ENUM:
@@ -30,7 +30,7 @@ class ENUM:
     BOB = 2
 
 
-class TestFunctions(TestCase):
+class TestFunctions(MAASTestCase):
 
     def test_serialize_enum(self):
         # The name is used correctly, the keys are sorted, and everything is

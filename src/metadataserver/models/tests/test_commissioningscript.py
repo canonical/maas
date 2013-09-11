@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test custom commissioning scripts."""
@@ -33,7 +33,7 @@ import time
 from maasserver.fields import MAC
 from maasserver.testing import reload_object
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import TestCase
+from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.matchers import ContainsAll
 from maastesting.utils import sample_binary_data
 from metadataserver.fields import Bin
@@ -66,7 +66,7 @@ def make_script_name(base_name=None, number=None):
         '%0.2d-%s' % (number, factory.make_name(base_name)))
 
 
-class TestCommissioningScriptManager(TestCase):
+class TestCommissioningScriptManager(MAASServerTestCase):
 
     def test_get_archive_wraps_scripts_in_tar(self):
         script = factory.make_commissioning_script()
@@ -121,7 +121,7 @@ class TestCommissioningScriptManager(TestCase):
         self.assertLessEqual(timestamp, end_time)
 
 
-class TestCommissioningScript(TestCase):
+class TestCommissioningScript(MAASServerTestCase):
 
     def test_scripts_may_be_binary(self):
         name = make_script_name()
@@ -131,7 +131,7 @@ class TestCommissioningScript(TestCase):
         self.assertEqual(sample_binary_data, stored_script.content)
 
 
-class TestMakeFunctionCallScript(TestCase):
+class TestMakeFunctionCallScript(MAASServerTestCase):
 
     def run_script(self, script):
         script_filename = self.make_file("test.py", script)
@@ -199,7 +199,7 @@ def isolate_function(function):
     return namespace[function.__name__]
 
 
-class TestLLDPScripts(TestCase):
+class TestLLDPScripts(MAASServerTestCase):
 
     def test_install_script_installs_configures_and_restarts(self):
         config_file = self.make_file("config", "# ...")
@@ -281,7 +281,7 @@ def make_lldp_output(macs):
     return bytes(script)
 
 
-class TestExtractRouters(TestCase):
+class TestExtractRouters(MAASServerTestCase):
 
     def test_extract_router_mac_addresses_returns_None_when_empty_input(self):
         self.assertIsNone(extract_router_mac_addresses(''))
@@ -297,7 +297,7 @@ class TestExtractRouters(TestCase):
         self.assertItemsEqual(macs, routers)
 
 
-class TestSetNodeRouters(TestCase):
+class TestSetNodeRouters(MAASServerTestCase):
 
     def test_set_node_routers_updates_node(self):
         node = factory.make_node(routers=None)

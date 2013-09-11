@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test config forms utilities."""
@@ -23,10 +23,10 @@ from maasserver.config_forms import (
     get_all_prefixed_values,
     )
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import TestCase
+from maasserver.testing.testcase import MAASServerTestCase
 
 
-class TestDictCharField(TestCase):
+class TestDictCharField(MAASServerTestCase):
 
     def test_DictCharField_init(self):
         testField = DictCharField(
@@ -50,7 +50,7 @@ class TestDictCharField(TestCase):
             [('skip_check', forms.CharField(label='Skip Check'))])
 
 
-class TestFormWithDictCharField(TestCase):
+class TestFormWithDictCharField(MAASServerTestCase):
 
     def test_DictCharField_processes_QueryDict_into_a_dict(self):
         class FakeForm(forms.Form):
@@ -167,7 +167,7 @@ class TestFormWithDictCharField(TestCase):
             form.cleaned_data)
 
 
-class TestUtilities(TestCase):
+class TestUtilities(MAASServerTestCase):
 
     def test_get_all_prefixed_values_returns_sub_dict(self):
         inputs = [
@@ -186,7 +186,7 @@ class TestUtilities(TestCase):
             map(lambda data: get_all_prefixed_values(data, prefix), inputs))
 
 
-class TestDictCharWidget(TestCase):
+class TestDictCharWidget(MAASServerTestCase):
 
     def test_DictCharWidget_id_for_label_uses_first_fields_name(self):
         names = [factory.getRandomString()]

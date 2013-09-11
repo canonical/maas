@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for :class:`BootImage`."""
@@ -17,11 +17,11 @@ from maasserver.models import (
     NodeGroup,
     )
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import TestCase
+from maasserver.testing.testcase import MAASServerTestCase
 from provisioningserver.testing.boot_images import make_boot_image_params
 
 
-class TestBootImageManager(TestCase):
+class TestBootImageManager(MAASServerTestCase):
 
     def setUp(self):
         super(TestBootImageManager, self).setUp()

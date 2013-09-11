@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maascli`."""
@@ -17,10 +17,10 @@ from maascli.parser import (
     get_profile_option,
     )
 from maastesting.factory import factory
-from maastesting.testcase import TestCase
+from maastesting.testcase import MAASTestCase
 
 
-class TestArgumentParser(TestCase):
+class TestArgumentParser(MAASTestCase):
     """Tests for `ArgumentParser`."""
 
     def test_add_subparsers_disabled(self):
@@ -43,7 +43,7 @@ class TestArgumentParser(TestCase):
         self.assertIs(subparsers, parser.subparsers)
 
 
-class TestGetProfileOption(TestCase):
+class TestGetProfileOption(MAASTestCase):
     """Tests for `get_profile_option`."""
 
     def test_parses_profile_option(self):

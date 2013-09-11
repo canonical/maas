@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test `maasserver.support.pertenant.migration."""
@@ -42,7 +42,7 @@ from maasserver.testing import (
     reload_object,
     )
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import TestCase
+from maasserver.testing.testcase import MAASServerTestCase
 from mock import (
     call,
     sentinel,
@@ -54,7 +54,7 @@ def get_ssh_key_string(num=0):
     return get_data('data/test_rsa%d.pub' % num)
 
 
-class TestFunctions(TestCase):
+class TestFunctions(MAASServerTestCase):
 
     def find_legacy_user(self):
         return User.objects.filter(username=legacy_user_name)
@@ -166,7 +166,7 @@ class TestFunctions(TestCase):
         self.assertEqual(get_legacy_user(), get_destination_user())
 
 
-class TestCopySSHKeys(TestCase):
+class TestCopySSHKeys(MAASServerTestCase):
     """Tests for copy_ssh_keys()."""
 
     def test_noop_when_there_are_no_keys(self):
@@ -211,7 +211,7 @@ class TestCopySSHKeys(TestCase):
             {ssh_key.key for ssh_key in user2s_ssh_keys})
 
 
-class TestGiveFileToUser(TestCase):
+class TestGiveFileToUser(MAASServerTestCase):
 
     def test_give_unowned_file(self):
         user = factory.make_user()
@@ -234,7 +234,7 @@ class TestGiveFileToUser(TestCase):
         save.assert_called_once()
 
 
-class TestGiveCredentialsToUser(TestCase):
+class TestGiveCredentialsToUser(MAASServerTestCase):
 
     def test_give(self):
         user1 = factory.make_user()
@@ -246,7 +246,7 @@ class TestGiveCredentialsToUser(TestCase):
         self.assertEqual(user2, reload_object(token).user)
 
 
-class TestGiveNodeToUser(TestCase):
+class TestGiveNodeToUser(MAASServerTestCase):
 
     def test_give(self):
         user1 = factory.make_user()
@@ -256,7 +256,7 @@ class TestGiveNodeToUser(TestCase):
         self.assertEqual(user2, reload_object(node).owner)
 
 
-class TestMigrateToUser(TestCase):
+class TestMigrateToUser(MAASServerTestCase):
 
     def test_migrate(self):
         # This is a mechanical test, to demonstrate that migrate_to_user() is
@@ -314,7 +314,7 @@ class TestMigrateToUser(TestCase):
             give_node_to_user.call_args_list)
 
 
-class TestMigrate(TestCase):
+class TestMigrate(MAASServerTestCase):
 
     def test_migrate_runs_when_no_files_exist(self):
         migrate()

@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test custom field types."""
@@ -13,14 +13,14 @@ __metaclass__ = type
 __all__ = []
 
 from maasserver.testing.testcase import (
-    TestCase,
+    MAASServerTestCase,
     TestModelTestCase,
     )
 from metadataserver.fields import Bin
 from metadataserver.tests.models import BinaryFieldModel
 
 
-class TestBin(TestCase):
+class TestBin(MAASServerTestCase):
     """Test Bin helper class."""
 
     def test_is_basically_str(self):

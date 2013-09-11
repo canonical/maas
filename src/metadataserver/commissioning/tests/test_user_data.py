@@ -13,7 +13,7 @@ __metaclass__ = type
 __all__ = []
 
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import TestCase
+from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.matchers import ContainsAll
 from metadataserver.commissioning import user_data
 from metadataserver.commissioning.user_data import generate_user_data
@@ -23,7 +23,7 @@ from mock import (
     )
 
 
-class TestUserData(TestCase):
+class TestUserData(MAASServerTestCase):
 
     def test_generate_user_data_produces_commissioning_script(self):
         # generate_user_data produces a commissioning script which contains

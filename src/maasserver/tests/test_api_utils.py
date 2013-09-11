@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for API helpers."""
@@ -23,10 +23,10 @@ from maasserver.api_utils import (
     )
 from maasserver.exceptions import Unauthorized
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import TestCase
+from maasserver.testing.testcase import MAASServerTestCase
 
 
-class TestGetOverridedQueryDict(TestCase):
+class TestGetOverridedQueryDict(MAASServerTestCase):
 
     def test_returns_QueryDict(self):
         defaults = {factory.getRandomString(): factory.getRandomString()}
@@ -44,7 +44,7 @@ class TestGetOverridedQueryDict(TestCase):
         self.assertEqual([data_value], results.getlist(key))
 
 
-class TestOAuthHelpers(TestCase):
+class TestOAuthHelpers(MAASServerTestCase):
 
     def make_fake_request(self, auth_header):
         """Create a very simple fake request, with just an auth header."""

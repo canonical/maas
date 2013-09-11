@@ -11,7 +11,7 @@ from __future__ import (
 
 __metaclass__ = type
 __all__ = [
-    'TestCase',
+    'MAASTestCase',
     ]
 
 from contextlib import contextmanager
@@ -50,7 +50,7 @@ def active_test(result, test):
         yield
 
 
-class TestCase(WithScenarios, testtools.TestCase):
+class MAASTestCase(WithScenarios, testtools.TestCase):
     """Base `TestCase` for MAAS.
 
     Supports `test resources`_, `test scenarios`_, and `fixtures`_.
@@ -78,7 +78,7 @@ class TestCase(WithScenarios, testtools.TestCase):
         )
 
     def setUp(self):
-        super(TestCase, self).setUp()
+        super(MAASTestCase, self).setUp()
         self.useFixture(WorkerCacheFixture())
         self.setUpResources()
 
@@ -88,7 +88,7 @@ class TestCase(WithScenarios, testtools.TestCase):
 
     def tearDown(self):
         self.tearDownResources()
-        super(TestCase, self).tearDown()
+        super(MAASTestCase, self).tearDown()
 
     def tearDownResources(self):
         testresources.tearDownResources(
@@ -117,11 +117,11 @@ class TestCase(WithScenarios, testtools.TestCase):
 
     def run(self, result=None):
         with active_test(result, self):
-            super(TestCase, self).run(result)
+            super(MAASTestCase, self).run(result)
 
     def __call__(self, result=None):
         with active_test(result, self):
-            super(TestCase, self).__call__(result)
+            super(MAASTestCase, self).__call__(result)
 
     def patch(self, obj, attribute, value=mock.sentinel.unset):
         """Patch `obj.attribute` with `value`.
@@ -136,5 +136,5 @@ class TestCase(WithScenarios, testtools.TestCase):
         """
         if value is mock.sentinel.unset:
             value = mock.MagicMock()
-        super(TestCase, self).patch(obj, attribute, value)
+        super(MAASTestCase, self).patch(obj, attribute, value)
         return value

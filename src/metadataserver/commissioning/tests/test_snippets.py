@@ -15,7 +15,7 @@ __all__ = []
 import os.path
 
 from maastesting.factory import factory
-from maastesting.testcase import TestCase
+from maastesting.testcase import MAASTestCase
 from metadataserver.commissioning.snippets import (
     get_snippet_context,
     is_snippet,
@@ -25,7 +25,7 @@ from metadataserver.commissioning.snippets import (
     )
 
 
-class TestSnippets(TestCase):
+class TestSnippets(MAASTestCase):
 
     def test_read_snippet_reads_snippet_file(self):
         contents = factory.getRandomString()

@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maascli.profile`."""
@@ -20,10 +20,10 @@ from maascli.profile import (
     )
 from maascli.testing.config import make_configs
 from maastesting.factory import factory
-from maastesting.testcase import TestCase
+from maastesting.testcase import MAASTestCase
 
 
-class TestProfile(TestCase):
+class TestProfile(MAASTestCase):
 
     def test_get_profile_finds_profile(self):
         profiles = make_configs()

@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the BIND fixture."""
@@ -20,7 +20,7 @@ from maastesting.bindfixture import (
     BINDServer,
     BINDServerResources,
     )
-from maastesting.testcase import TestCase
+from maastesting.testcase import MAASTestCase
 from testtools.matchers import (
     Contains,
     FileContains,
@@ -57,7 +57,7 @@ def dig_call(port=53, server='127.0.0.1', commands=None):
     return check_output(cmd).strip()
 
 
-class TestBINDFixture(TestCase):
+class TestBINDFixture(MAASTestCase):
 
     def test_start_check_shutdown(self):
         # The fixture correctly starts and stops BIND.
@@ -80,7 +80,7 @@ class TestBINDFixture(TestCase):
         self.assertIs(config, fixture.config)
 
 
-class TestBINDServerResources(TestCase):
+class TestBINDServerResources(MAASTestCase):
 
     def test_defaults(self):
         with BINDServerResources() as resources:

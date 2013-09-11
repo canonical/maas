@@ -33,7 +33,7 @@ from maasserver.models import (
     )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
-    TestCase,
+    MAASServerTestCase,
     TestModelTestCase,
     )
 from maasserver.tests.models import (
@@ -43,7 +43,7 @@ from maasserver.tests.models import (
 from psycopg2.extensions import ISQLQuote
 
 
-class TestNodeGroupFormField(TestCase):
+class TestNodeGroupFormField(MAASServerTestCase):
 
     def test_label_from_instance_tolerates_missing_interface(self):
         nodegroup = factory.make_node_group()
@@ -78,7 +78,7 @@ class TestNodeGroupFormField(TestCase):
             NodeGroupFormField().clean("%s" % nodegroup.id))
 
 
-class TestMAC(TestCase):
+class TestMAC(MAASServerTestCase):
 
     def test_conform_accepts_ISQLQuote(self):
         mac = MAC(None)
@@ -181,7 +181,7 @@ class TestMAC(TestCase):
         pass
 
 
-class TestMACAddressField(TestCase):
+class TestMACAddressField(MAASServerTestCase):
 
     def test_mac_address_is_stored_normalized_and_loaded(self):
         stored_mac = factory.make_mac_address(' AA-bb-CC-dd-EE-Ff ')

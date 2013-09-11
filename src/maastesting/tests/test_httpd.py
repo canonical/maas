@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maastesting.httpd`."""
@@ -31,11 +31,11 @@ from maastesting.httpd import (
     HTTPServerFixture,
     ThreadingHTTPServer,
     )
-from maastesting.testcase import TestCase
+from maastesting.testcase import MAASTestCase
 from testtools.matchers import FileExists
 
 
-class TestHTTPServerFixture(TestCase):
+class TestHTTPServerFixture(MAASTestCase):
 
     def setUp(self):
         super(TestHTTPServerFixture, self).setUp()

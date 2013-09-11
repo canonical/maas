@@ -15,7 +15,7 @@ __all__ = []
 from maasserver import dns
 from maasserver.models import DHCPLease
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import TestCase
+from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import ignore_unused
 
 
@@ -29,7 +29,7 @@ def map_leases(nodegroup):
     return {lease.ip: lease.mac for lease in get_leases(nodegroup)}
 
 
-class TestDHCPLease(TestCase):
+class TestDHCPLease(MAASServerTestCase):
     """Tests for :class:`DHCPLease`."""
 
     def test_init(self):
@@ -46,7 +46,7 @@ class TestDHCPLease(TestCase):
         self.assertEqual(mac, lease.mac)
 
 
-class TestDHCPLeaseManager(TestCase):
+class TestDHCPLeaseManager(MAASServerTestCase):
     """Tests for :class:`DHCPLeaseManager`."""
 
     def test_update_leases_accepts_empty_leases(self):

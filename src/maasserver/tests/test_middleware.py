@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test maasserver middleware classes."""
@@ -42,7 +42,7 @@ from maasserver.testing import extract_redirect
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
     LoggedInTestCase,
-    TestCase,
+    MAASServerTestCase,
     )
 from testtools.matchers import (
     Contains,
@@ -76,7 +76,7 @@ def fake_request(path, method='GET'):
     return request
 
 
-class ExceptionMiddlewareTest(TestCase):
+class ExceptionMiddlewareTest(MAASServerTestCase):
 
     def make_base_path(self):
         """Return a path to handle exceptions for."""
@@ -161,7 +161,7 @@ class ExceptionMiddlewareTest(TestCase):
             (response.status_code, response.content))
 
 
-class APIErrorsMiddlewareTest(TestCase):
+class APIErrorsMiddlewareTest(MAASServerTestCase):
 
     def test_handles_error_on_API(self):
         middleware = APIErrorsMiddleware()
@@ -181,7 +181,7 @@ class APIErrorsMiddlewareTest(TestCase):
             middleware.process_exception(non_api_request, exception))
 
 
-class LoggingTest(TestCase):
+class LoggingTest(MAASServerTestCase):
 
     def set_up_logger(self, filename):
         logger = maasserver.logger

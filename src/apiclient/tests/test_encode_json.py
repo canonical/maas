@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test encoding requests as JSON."""
@@ -14,10 +14,10 @@ __all__ = []
 
 
 from apiclient.encode_json import encode_json_data
-from maastesting.testcase import TestCase
+from maastesting.testcase import MAASTestCase
 
 
-class TestEncodeJSONData(TestCase):
+class TestEncodeJSONData(MAASTestCase):
 
     def assertEncodeJSONData(self, expected_body, expected_headers, params):
         self.assertEqual(

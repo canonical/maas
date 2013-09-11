@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test combo view."""
@@ -21,14 +21,14 @@ from django.core.urlresolvers import reverse
 from django.test.client import RequestFactory
 from maasserver.testing import extract_redirect
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import TestCase
+from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.views.combo import (
     get_absolute_location,
     get_combo_view,
     )
 
 
-class TestUtilities(TestCase):
+class TestUtilities(MAASServerTestCase):
 
     def test_get_abs_location_returns_absolute_location_if_not_None(self):
         abs_location = '%s%s' % (os.path.sep, factory.getRandomString())
@@ -101,7 +101,7 @@ class TestUtilities(TestCase):
 CONVOY_MISSING_FILE = "/* [missing] */"
 
 
-class TestComboLoaderView(TestCase):
+class TestComboLoaderView(MAASServerTestCase):
     """Test combo loader views."""
 
     def test_yui_load_js(self):

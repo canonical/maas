@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Run YUI3 unit tests with SST (http://testutils.org/sst/)."""
@@ -29,7 +29,7 @@ from maastesting.fixtures import (
     SSTFixture,
     )
 from maastesting.httpd import HTTPServerFixture
-from maastesting.testcase import TestCase
+from maastesting.testcase import MAASTestCase
 from maastesting.utils import extract_word_list
 from nose.tools import nottest
 from saucelabsfixture import (
@@ -148,7 +148,7 @@ class YUIUnitTestsBase:
             self.fail(message)
 
 
-class YUIUnitTestsLocal(YUIUnitTestsBase, TestCase):
+class YUIUnitTestsLocal(YUIUnitTestsBase, MAASTestCase):
 
     scenarios = tuple(
         (path, {"test_url": "file://%s" % abspath(path)})
@@ -166,7 +166,7 @@ class YUIUnitTestsLocal(YUIUnitTestsBase, TestCase):
                     browser_test(result)
 
 
-class YUIUnitTestsRemote(YUIUnitTestsBase, TestCase):
+class YUIUnitTestsRemote(YUIUnitTestsBase, MAASTestCase):
 
     def multiply(self, result):
         # Now run this test remotely for each requested Sauce OnDemand

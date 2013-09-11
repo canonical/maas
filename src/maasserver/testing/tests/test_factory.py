@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test the factory where appropriate.  Don't overdo this."""
@@ -16,10 +16,10 @@ from random import randint
 
 from maasserver.models import NodeGroup
 from maasserver.testing.factory import factory
-from maastesting.testcase import TestCase
+from maastesting.testcase import MAASTestCase
 
 
-class TestFactory(TestCase):
+class TestFactory(MAASTestCase):
 
     def test_getRandomEnum_returns_enum_value(self):
         random_value = randint(0, 99999)

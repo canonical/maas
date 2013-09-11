@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the server_address module."""
@@ -16,12 +16,12 @@ from django.conf import settings
 from maasserver import server_address
 from maasserver.server_address import get_maas_facing_server_address
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import TestCase
+from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.fakemethod import FakeMethod
 from netaddr import IPNetwork
 
 
-class TestServerAddress(TestCase):
+class TestServerAddress(MAASServerTestCase):
 
     def make_hostname(self):
         return '%s.example.com' % factory.make_hostname()

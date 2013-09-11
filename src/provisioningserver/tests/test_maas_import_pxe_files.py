@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the maas-import-pxe-files script."""
@@ -17,7 +17,7 @@ from subprocess import check_call
 
 from maastesting import root
 from maastesting.factory import factory
-from maastesting.testcase import TestCase
+from maastesting.testcase import MAASTestCase
 from maastesting.utils import (
     age_file,
     get_write_time,
@@ -126,7 +126,7 @@ def compose_tftp_path(tftproot, arch, release, purpose, *path):
         *path)
 
 
-class TestImportPXEFiles(TestCase):
+class TestImportPXEFiles(MAASTestCase):
 
     scenarios = (
         ("i386/generic", dict(arch=("i386", "generic"))),

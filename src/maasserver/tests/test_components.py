@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test maasserver components module."""
@@ -23,7 +23,7 @@ from maasserver.components import (
     )
 from maasserver.enum import COMPONENT
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import TestCase
+from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import map_enum
 
 
@@ -35,7 +35,7 @@ def get_random_component():
     return random.choice(map_enum(COMPONENT).values())
 
 
-class PersistentErrorsUtilitiesTest(TestCase):
+class PersistentErrorsUtilitiesTest(MAASServerTestCase):
 
     def setUp(self):
         super(PersistentErrorsUtilitiesTest, self).setUp()

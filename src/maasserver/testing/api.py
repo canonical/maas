@@ -24,7 +24,7 @@ from abc import (
 
 from maasserver.testing.factory import factory
 from maasserver.testing.oauthclient import OAuthAuthenticatedClient
-from maasserver.testing.testcase import TestCase
+from maasserver.testing.testcase import MAASServerTestCase
 
 
 class APIv10TestMixin:
@@ -38,7 +38,7 @@ class APIv10TestMixin:
         return api_root + path
 
 
-class AnonAPITestCase(APIv10TestMixin, TestCase):
+class AnonAPITestCase(APIv10TestMixin, MAASServerTestCase):
     """Base class for anonymous API tests."""
 
 
@@ -49,7 +49,7 @@ class MultipleUsersScenarios:
     The scenarios should inject a `userfactory` variable that will
     be called to produce the user used in the tests e.g.:
 
-    class ExampleTest(MultipleUsersScenarios, TestCase):
+    class ExampleTest(MultipleUsersScenarios, MAASServerTestCase):
         scenarios = [
             ('anon', dict(userfactory=lambda: AnonymousUser())),
             ('user', dict(userfactory=factory.make_user)),
@@ -81,7 +81,7 @@ class MultipleUsersScenarios:
                 username=self.logged_in_user.username, password=password)
 
 
-class APITestCase(APIv10TestMixin, TestCase):
+class APITestCase(APIv10TestMixin, MAASServerTestCase):
     """Base class for logged-in API tests.
 
     :ivar logged_in_user: A user who is currently logged in and can access

@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maastesting.fixtures`."""
@@ -20,10 +20,10 @@ from maastesting.fixtures import (
     ProxiesDisabledFixture,
     TempWDFixture,
     )
-from maastesting.testcase import TestCase
+from maastesting.testcase import MAASTestCase
 
 
-class TestProxiedDisabledFixture(TestCase):
+class TestProxiedDisabledFixture(MAASTestCase):
     """Tests for :class:`ProxiesDisabledFixture`."""
 
     def test_removes_http_proxy_from_environment(self):
@@ -47,7 +47,7 @@ class TestProxiedDisabledFixture(TestCase):
         self.assertEqual(https_proxy, os.environ.get("https_proxy"))
 
 
-class TestTempWDFixture(TestCase):
+class TestTempWDFixture(MAASTestCase):
 
     def test_changes_dir_and_cleans_up(self):
         orig_cwd = os.getcwd()

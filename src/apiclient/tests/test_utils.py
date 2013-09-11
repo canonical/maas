@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test general utilities."""
@@ -19,7 +19,7 @@ from apiclient.utils import (
     urlencode,
     )
 from django.utils.encoding import smart_unicode
-from maastesting.testcase import TestCase
+from maastesting.testcase import MAASTestCase
 from testtools.matchers import (
     Equals,
     IsInstance,
@@ -27,7 +27,7 @@ from testtools.matchers import (
     )
 
 
-class TestHelpers(TestCase):
+class TestHelpers(MAASTestCase):
 
     def test_ascii_url_leaves_ascii_bytes_unchanged(self):
         self.assertEqual(

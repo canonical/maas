@@ -1,7 +1,7 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for `TestCase`."""
+"""Tests for `MAASTestCase`."""
 
 from __future__ import (
     absolute_import,
@@ -17,7 +17,7 @@ from shutil import rmtree
 from tempfile import mkdtemp
 
 from maastesting.factory import factory
-from maastesting.testcase import TestCase
+from maastesting.testcase import MAASTestCase
 from mock import MagicMock
 from testtools.matchers import (
     DirExists,
@@ -25,8 +25,8 @@ from testtools.matchers import (
     )
 
 
-class TestTestCase(TestCase):
-    """Tests the base `TestCase` facilities."""
+class TestTestCase(MAASTestCase):
+    """Tests the base `MAASTestCase` facilities."""
 
     def test_make_dir_creates_directory(self):
         self.assertThat(self.make_dir(), DirExists())

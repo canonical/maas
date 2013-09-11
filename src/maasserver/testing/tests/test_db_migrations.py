@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for helpers used to sanity-check South migrations."""
@@ -16,7 +16,7 @@ from random import randint
 
 from maasserver.testing import db_migrations
 from maastesting.factory import factory
-from maastesting.testcase import TestCase
+from maastesting.testcase import MAASTestCase
 
 
 def make_migration_name(number=None, name=None):
@@ -28,7 +28,7 @@ def make_migration_name(number=None, name=None):
     return '{0:=04}_{1}'.format(number, name)
 
 
-class TestDBMigrations(TestCase):
+class TestDBMigrations(MAASTestCase):
 
     def test_extract_number_returns_sequence_number(self):
         number = randint(0, 999999)

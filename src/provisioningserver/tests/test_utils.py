@@ -35,7 +35,7 @@ from fixtures import EnvironmentVariableFixture
 from maastesting import root
 from maastesting.factory import factory
 from maastesting.fakemethod import FakeMethod
-from maastesting.testcase import TestCase
+from maastesting.testcase import MAASTestCase
 from mock import Mock
 import netifaces
 from netifaces import (
@@ -75,7 +75,7 @@ def get_branch_dir(*path):
     return os.path.abspath(os.path.join(root, *path))
 
 
-class TestLocateConfig(TestCase):
+class TestLocateConfig(MAASTestCase):
     """Tests for `locate_config`."""
 
     def test_returns_branch_etc_maas(self):
@@ -112,7 +112,7 @@ class TestLocateConfig(TestCase):
             locate_config('foo/.././bar///szot'))
 
 
-class TestInterfaceFunctions(TestCase):
+class TestInterfaceFunctions(MAASTestCase):
     """Tests for functions relating to network interfaces."""
 
     example_interfaces = {
@@ -164,7 +164,7 @@ class TestInterfaceFunctions(TestCase):
             list(get_all_interface_addresses()))
 
 
-class TestSafe(TestCase):
+class TestSafe(MAASTestCase):
     """Test `Safe`."""
 
     def test_value(self):
@@ -178,7 +178,7 @@ class TestSafe(TestCase):
         self.assertEqual("<Safe %r>" % string, repr(safe))
 
 
-class TestWriteAtomic(TestCase):
+class TestWriteAtomic(MAASTestCase):
     """Test `atomic_write`."""
 
     def test_atomic_write_overwrites_dest_file(self):
@@ -272,7 +272,7 @@ class TestWriteAtomic(TestCase):
             error.filename)
 
 
-class TestIncrementalWrite(TestCase):
+class TestIncrementalWrite(MAASTestCase):
     """Test `incremental_write`."""
 
     def test_incremental_write_increments_modification_time(self):
@@ -293,7 +293,7 @@ class TestIncrementalWrite(TestCase):
         self.assertEqual(mode, stat.S_IMODE(os.stat(atomic_file).st_mode))
 
 
-class TestGetMTime(TestCase):
+class TestGetMTime(MAASTestCase):
     """Test `get_mtime`."""
 
     def test_get_mtime_returns_None_for_nonexistent_file(self):
@@ -317,7 +317,7 @@ class TestGetMTime(TestCase):
         self.assertRaises(OSError, get_mtime, forbidden_file)
 
 
-class TestPickNewMTime(TestCase):
+class TestPickNewMTime(MAASTestCase):
     """Test `pick_new_mtime`."""
 
     def test_pick_new_mtime_applies_starting_age_to_new_file(self):
@@ -341,7 +341,7 @@ class TestPickNewMTime(TestCase):
         self.assertEqual(now, pick_new_mtime(now))
 
 
-class WriteCustomConfigSectionTest(TestCase):
+class WriteCustomConfigSectionTest(MAASTestCase):
     """Test `write_custom_config_section`."""
 
     def test_appends_custom_section_initially(self):
@@ -494,7 +494,7 @@ class WriteCustomConfigSectionTest(TestCase):
             write_custom_config_section(original, new_custom_section))
 
 
-class SudoWriteFileTest(TestCase):
+class SudoWriteFileTest(MAASTestCase):
     """Testing for `sudo_write_file`."""
 
     def patch_popen(self, return_value=0):
@@ -532,7 +532,7 @@ class SudoWriteFileTest(TestCase):
             sudo_write_file, self.make_file(), factory.getRandomString())
 
 
-class ParseConfigTest(TestCase):
+class ParseConfigTest(MAASTestCase):
     """Testing for `parse_key_value_file`."""
 
     def test_parse_key_value_file_parses_config_file(self):
@@ -573,7 +573,7 @@ class ParseConfigTest(TestCase):
             {'key1': 'value1:value11'}, parse_key_value_file(file_name))
 
 
-class TestShellTemplate(TestCase):
+class TestShellTemplate(MAASTestCase):
     """Test `ShellTemplate`."""
 
     def test_substitute_escapes(self):
@@ -598,7 +598,7 @@ class TestShellTemplate(TestCase):
         self.assertEqual(expected, observed)
 
 
-class TestActionScript(TestCase):
+class TestActionScript(MAASTestCase):
     """Test `ActionScript`."""
 
     factory = ActionScript
@@ -734,7 +734,7 @@ class TestMainScript(TestActionScript):
             vars(namespace))
 
 
-class TestAtomicWriteScript(TestCase):
+class TestAtomicWriteScript(MAASTestCase):
 
     def setUp(self):
         super(TestAtomicWriteScript, self).setUp()

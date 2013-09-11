@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the SSHKey model."""
@@ -25,11 +25,11 @@ from maasserver.models.sshkey import (
     )
 from maasserver.testing import get_data
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import TestCase
+from maasserver.testing.testcase import MAASServerTestCase
 from testtools.matchers import EndsWith
 
 
-class SSHKeyValidatorTest(TestCase):
+class SSHKeyValidatorTest(MAASServerTestCase):
 
     def test_validates_rsa_public_key(self):
         key_string = get_data('data/test_rsa0.pub')
@@ -64,7 +64,7 @@ class SSHKeyValidatorTest(TestCase):
             ValidationError, validate_ssh_public_key, key_string)
 
 
-class GetHTMLDisplayForKeyTest(TestCase):
+class GetHTMLDisplayForKeyTest(MAASServerTestCase):
     """Testing for the method `get_html_display_for_key`."""
 
     def make_comment(self, length):
@@ -202,7 +202,7 @@ class GetHTMLDisplayForKeyTest(TestCase):
             display)
 
 
-class SSHKeyTest(TestCase):
+class SSHKeyTest(MAASServerTestCase):
     """Testing for the :class:`SSHKey`."""
 
     def test_sshkey_validation_with_valid_key(self):
@@ -273,7 +273,7 @@ class SSHKeyTest(TestCase):
         # No ValidationError.
 
 
-class SSHKeyManagerTest(TestCase):
+class SSHKeyManagerTest(MAASServerTestCase):
     """Testing for the :class:`SSHKeyManager` model manager."""
 
     def test_get_keys_for_user_no_keys(self):

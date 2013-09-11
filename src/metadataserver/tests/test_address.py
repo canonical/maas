@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test server-address-guessing logic."""
@@ -14,7 +14,7 @@ __all__ = []
 
 from socket import gethostname
 
-from maastesting.testcase import TestCase
+from maastesting.testcase import MAASTestCase
 from metadataserver import address
 from testtools.matchers import MatchesRegex
 
@@ -26,7 +26,7 @@ def parse_locale_lines(output):
         for key, value in [line.split('=') for line in output]}
 
 
-class TestAddress(TestCase):
+class TestAddress(MAASTestCase):
 
     def test_get_command_output_executes_command(self):
         self.assertEqual(

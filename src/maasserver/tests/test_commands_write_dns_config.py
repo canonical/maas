@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the write_dns_config command."""
@@ -23,13 +23,13 @@ from maasserver.enum import (
     NODEGROUPINTERFACE_MANAGEMENT,
     )
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import TestCase
+from maasserver.testing.testcase import MAASServerTestCase
 from netaddr import IPNetwork
 from provisioningserver import tasks
 from testtools.matchers import FileExists
 
 
-class TestWriteDNSConfigCommand(TestCase):
+class TestWriteDNSConfigCommand(MAASServerTestCase):
 
     def test_write_dns_config_writes_zone_file(self):
         dns_conf_dir = self.make_dir()

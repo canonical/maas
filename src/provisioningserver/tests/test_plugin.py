@@ -1,4 +1,4 @@
-# Copyright 2005-2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2005-2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the psmaas TAP."""
@@ -16,7 +16,7 @@ from functools import partial
 import os
 
 from maastesting.factory import factory
-from maastesting.testcase import TestCase
+from maastesting.testcase import MAASTestCase
 from provisioningserver import plugin
 from provisioningserver.plugin import (
     Options,
@@ -49,7 +49,7 @@ from twisted.web.resource import IResource
 import yaml
 
 
-class TestOptions(TestCase):
+class TestOptions(MAASTestCase):
     """Tests for `provisioningserver.plugin.Options`."""
 
     def test_defaults(self):
@@ -70,7 +70,7 @@ class TestOptions(TestCase):
         options.parseOptions(arguments)  # No error.
 
 
-class TestProvisioningServiceMaker(TestCase):
+class TestProvisioningServiceMaker(MAASTestCase):
     """Tests for `provisioningserver.plugin.ProvisioningServiceMaker`."""
 
     run_tests_with = AsynchronousDeferredRunTest.make_factory(timeout=5)
@@ -183,7 +183,7 @@ class TestProvisioningServiceMaker(TestCase):
             [{"interface": interface} for interface in interfaces])
 
 
-class TestSingleUsernamePasswordChecker(TestCase):
+class TestSingleUsernamePasswordChecker(MAASTestCase):
     """Tests for `SingleUsernamePasswordChecker`."""
 
     run_tests_with = AsynchronousDeferredRunTest.make_factory(timeout=5)
@@ -202,7 +202,7 @@ class TestSingleUsernamePasswordChecker(TestCase):
         return assert_fails_with(d, UnauthorizedLogin)
 
 
-class TestProvisioningRealm(TestCase):
+class TestProvisioningRealm(MAASTestCase):
     """Tests for `ProvisioningRealm`."""
 
     def test_requestAvatar_okay(self):

@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test DNS module."""
@@ -31,7 +31,7 @@ from maasserver.enum import (
     )
 from maasserver.models import node as node_module
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import TestCase
+from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.bindfixture import BINDServer
 from maastesting.celery import CeleryFixture
 from maastesting.fakemethod import FakeMethod
@@ -62,7 +62,7 @@ from testtools.matchers import (
     )
 
 
-class TestDNSUtilities(TestCase):
+class TestDNSUtilities(MAASServerTestCase):
 
     def test_zone_serial_parameters(self):
         self.assertThat(
@@ -150,7 +150,7 @@ class TestDNSUtilities(TestCase):
         self.assertEqual(nodegroups_with_expected_results, results)
 
 
-class TestDNSConfigModifications(TestCase):
+class TestDNSConfigModifications(MAASServerTestCase):
 
     resources = (
         ("celery", FixtureResource(CeleryFixture())),
@@ -416,7 +416,7 @@ def reverse_zone(domain, network):
             domain=domain, network=network))
 
 
-class TestZoneGenerator(TestCase):
+class TestZoneGenerator(MAASServerTestCase):
     """Tests for :class:x`dns.ZoneGenerator`."""
 
     # Factory to return an accepted nodegroup with a managed interface.

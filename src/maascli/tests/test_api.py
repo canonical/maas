@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maascli.api`."""
@@ -28,7 +28,7 @@ from maascli.utils import (
     safe_name,
     )
 from maastesting.factory import factory
-from maastesting.testcase import TestCase
+from maastesting.testcase import MAASTestCase
 from mock import (
     Mock,
     sentinel,
@@ -41,7 +41,7 @@ from testtools.matchers import (
     )
 
 
-class TestRegisterAPICommands(TestCase):
+class TestRegisterAPICommands(MAASTestCase):
     """Tests for `register_api_commands`."""
 
     def make_profile(self):
@@ -79,7 +79,7 @@ class TestRegisterAPICommands(TestCase):
                 self.assertIsInstance(options.execute, api.Action)
 
 
-class TestFunctions(TestCase):
+class TestFunctions(MAASTestCase):
     """Test for miscellaneous functions in `maascli.api`."""
 
     def test_fetch_api_description(self):
@@ -172,7 +172,7 @@ class TestFunctions(TestCase):
         self.assertEqual(error_expected, "%s" % error)
 
 
-class TestIsResponseTextual(TestCase):
+class TestIsResponseTextual(MAASTestCase):
     """Tests for `is_response_textual`."""
 
     content_types_textual_map = {
@@ -198,7 +198,7 @@ class TestIsResponseTextual(TestCase):
         grct.assert_called_once_with(sentinel.response)
 
 
-class TestAction(TestCase):
+class TestAction(MAASTestCase):
     """Tests for :class:`maascli.api.Action`."""
 
     def test_name_value_pair_returns_2_tuple(self):
@@ -223,7 +223,7 @@ class TestAction(TestCase):
             api.Action.name_value_pair(" foo = bar "))
 
 
-class TestPayloadPreparation(TestCase):
+class TestPayloadPreparation(MAASTestCase):
     """Tests for `maascli.api.Action.prepare_payload`."""
 
     uri_base = "http://example.com/MAAS/api/1.0/"

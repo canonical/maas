@@ -29,7 +29,7 @@ from django.db import (
     )
 from django.db.models import loading
 import django.test
-from maastesting.testcase import TestCase
+from maastesting.testcase import MAASTestCase
 import testtools
 
 
@@ -54,7 +54,7 @@ class CountNumQueriesContext:
         self.num_queries = final_count - self.starting_count
 
 
-class DjangoTestCase(TestCase, django.test.TestCase):
+class DjangoTestCase(MAASTestCase, django.test.TestCase):
     """`TestCase` for Metal as a Service.
 
     Supports test resources and fixtures.
@@ -97,10 +97,10 @@ def cleanup_db(testcase):
         call_command('flush', verbosity=0, interactive=False, database=db)
 
 
-class TransactionTestCase(TestCase, django.test.TransactionTestCase):
+class TransactionTestCase(MAASTestCase, django.test.TransactionTestCase):
     """`TransactionTestCase` for Metal as a Service.
 
-    A version of TestCase that supports transactions.
+    A version of MAASTestCase that supports transactions.
 
     The basic Django TestCase class uses transactions to speed up tests
     so this class should be used when tests involve transactions.
@@ -132,7 +132,7 @@ class TestModelMixin:
         loading.cache.loaded = False
 
 
-class TestModelTestCase(TestModelMixin, TestCase):
+class TestModelTestCase(TestModelMixin, MAASTestCase):
     """A custom test case that adds support for test-only models.
 
     For instance, if you want to have a model object used solely for testing

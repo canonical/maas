@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Provisioningserver-specific test-case classes."""
@@ -25,7 +25,7 @@ from provisioningserver.auth import (
 from provisioningserver.testing.worker_cache import WorkerCacheFixture
 
 
-class PservTestCase(testcase.TestCase):
+class PservTestCase(testcase.MAASTestCase):
 
     def setUp(self):
         super(PservTestCase, self).setUp()

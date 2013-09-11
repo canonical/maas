@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test for the system user that represents node-group workers."""
@@ -15,14 +15,14 @@ __all__ = []
 from django.contrib.auth.models import User
 from maasserver.models import UserProfile
 from maasserver.models.user import SYSTEM_USERS
-from maasserver.testing.testcase import TestCase
+from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.worker_user import (
     get_worker_user,
     user_name,
     )
 
 
-class TestNodeGroupUser(TestCase):
+class TestNodeGroupUser(MAASServerTestCase):
     """Test the special "user" that celery workers use to access the API."""
 
     def test_get_worker_user_always_returns_same_user(self):

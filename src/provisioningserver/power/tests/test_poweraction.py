@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `provisioningserver.power`.
@@ -17,7 +17,7 @@ import os
 import re
 
 from maastesting.factory import factory
-from maastesting.testcase import TestCase
+from maastesting.testcase import MAASTestCase
 from mock import Mock
 from provisioningserver.enum import POWER_TYPE
 import provisioningserver.power.poweraction
@@ -37,7 +37,7 @@ from testtools.matchers import (
     )
 
 
-class TestPowerAction(TestCase):
+class TestPowerAction(MAASTestCase):
     """Tests for PowerAction."""
 
     def configure_templates_dir(self, path=None):

@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for node actions."""
@@ -30,7 +30,7 @@ from maasserver.node_action import (
     StopNode,
     )
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import TestCase
+from maasserver.testing.testcase import MAASServerTestCase
 from provisioningserver.enum import POWER_TYPE
 from provisioningserver.power.poweraction import PowerAction
 
@@ -55,7 +55,7 @@ class FakeNodeAction(NodeAction):
         pass
 
 
-class TestNodeAction(TestCase):
+class TestNodeAction(MAASServerTestCase):
 
     def test_compile_node_actions_returns_available_actions(self):
 
@@ -166,7 +166,7 @@ class TestNodeAction(TestCase):
         self.assertIsNone(action.inhibition)
 
 
-class TestDeleteNodeAction(TestCase):
+class TestDeleteNodeAction(MAASServerTestCase):
 
     def test_Delete_inhibit_when_node_is_allocated(self):
         node = factory.make_node(status=NODE_STATUS.ALLOCATED)
@@ -193,7 +193,7 @@ class TestDeleteNodeAction(TestCase):
             urlparse(unicode(e)).path)
 
 
-class TestCommissionNodeAction(TestCase):
+class TestCommissionNodeAction(MAASServerTestCase):
 
     def test_Commission_starts_commissioning(self):
         statuses = (
@@ -211,7 +211,7 @@ class TestCommissionNodeAction(TestCase):
                 self.celery.tasks[0]['task'].name)
 
 
-class TestStartNodeNodeAction(TestCase):
+class TestStartNodeNodeAction(MAASServerTestCase):
 
     def test_StartNode_inhibit_allows_user_with_SSH_key(self):
         user_with_key = factory.make_user()
@@ -239,7 +239,7 @@ class TestStartNodeNodeAction(TestCase):
             self.celery.tasks[0]['task'].name)
 
 
-class TestStopNodeNodeAction(TestCase):
+class TestStopNodeNodeAction(MAASServerTestCase):
 
     def test_StopNode_stops_and_releases_node(self):
         self.patch(PowerAction, 'run_shell', lambda *args, **kwargs: ('', ''))

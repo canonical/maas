@@ -28,7 +28,7 @@ from maastesting.matchers import (
     ContainsAll,
     MatchesAll,
     )
-from maastesting.testcase import TestCase
+from maastesting.testcase import MAASTestCase
 from mock import Mock
 from netaddr import (
     IPAddress,
@@ -69,7 +69,7 @@ from testtools.matchers import (
 from twisted.python.filepath import FilePath
 
 
-class TestRNDCUtilities(TestCase):
+class TestRNDCUtilities(MAASTestCase):
 
     def test_generate_rndc_returns_configurations(self):
         rndc_content, named_content = generate_rndc()
@@ -176,7 +176,7 @@ class TestRNDCUtilities(TestCase):
             '\talgorithm hmac-md5;\n'))
 
 
-class TestDNSConfig(TestCase):
+class TestDNSConfig(MAASTestCase):
     """Tests for DNSConfig."""
 
     def test_DNSConfig_defaults(self):
@@ -294,7 +294,7 @@ class TestDNSConfig(TestCase):
                 Contains('include "%s"' % dnsconfig.target_path)))
 
 
-class TestIPUtilities(TestCase):
+class TestIPUtilities(MAASTestCase):
 
     def test_shortened_reversed_ip_2(self):
         self.assertEqual(
@@ -312,7 +312,7 @@ class TestIPUtilities(TestCase):
             shortened_reversed_ip(IPAddress('192.156.0.3'), 4))
 
 
-class TestDNSForwardZoneConfig(TestCase):
+class TestDNSForwardZoneConfig(MAASTestCase):
     """Tests for DNSForwardZoneConfig."""
 
     def test_fields(self):
@@ -470,7 +470,7 @@ class TestDNSForwardZoneConfig(TestCase):
         self.assertTrue(filepath.getPermissions().other.read)
 
 
-class TestDNSReverseZoneConfig(TestCase):
+class TestDNSReverseZoneConfig(MAASTestCase):
     """Tests for DNSReverseZoneConfig."""
 
     def test_fields(self):

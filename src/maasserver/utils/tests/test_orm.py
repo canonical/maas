@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test ORM utilities."""
@@ -23,7 +23,7 @@ from maasserver.utils.orm import (
     macs_do_not_contain,
     )
 from maastesting.factory import factory
-from maastesting.testcase import TestCase
+from maastesting.testcase import MAASTestCase
 from mock import Mock
 
 
@@ -53,7 +53,7 @@ class FakeQueryResult:
         return "<FakeQueryResult: %r>" % self.items
 
 
-class TestGetOne(TestCase):
+class TestGetOne(MAASTestCase):
 
     def test_get_one_returns_None_for_empty_list(self):
         self.assertIsNone(get_one([]))
@@ -105,7 +105,7 @@ class TestGetOne(TestCase):
         self.assertRaises(MultipleObjectsReturned, get_one, range(2))
 
 
-class TestGetFirst(TestCase):
+class TestGetFirst(MAASTestCase):
     def test_get_first_returns_None_for_empty_list(self):
         self.assertIsNone(get_first([]))
 
@@ -129,7 +129,7 @@ class TestGetFirst(TestCase):
         self.assertEqual("Item 1", get_first(multiple_items()))
 
 
-class TestGetPredicateUtilities(TestCase):
+class TestGetPredicateUtilities(MAASTestCase):
 
     def test_macs_contain_returns_predicate(self):
         macs = ['11:22:33:44:55:66', 'aa:bb:cc:dd:ee:ff']

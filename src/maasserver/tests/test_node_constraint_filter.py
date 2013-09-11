@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test node filtering on specific constraints."""
@@ -22,11 +22,11 @@ from maasserver.models.node_constraint_filter import (
     parse_macs,
     )
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import TestCase
+from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import ignore_unused
 
 
-class TestConstrainNodes(TestCase):
+class TestConstrainNodes(MAASServerTestCase):
 
     def assertConstrainedNodes(self, expected_nodes, constraints):
         nodes = constrain_nodes(Node.objects.all(), constraints)
@@ -160,7 +160,7 @@ class TestConstrainNodes(TestCase):
             [node_big], {'architecture': 'i386/generic', 'tags': 'big'})
 
 
-class TestParseMacs(TestCase):
+class TestParseMacs(MAASServerTestCase):
 
     def test_parse_macs_parses_commaseparated_list_of_macs(self):
         mac1 = 'aa:bb:cc:dd:ee:ff'
@@ -179,7 +179,7 @@ class TestParseMacs(TestCase):
         self.assertIn("Invalid MAC address(es): wrong", "%s" % error)
 
 
-class TestConstrainNodesByArchitecture(TestCase):
+class TestConstrainNodesByArchitecture(MAASServerTestCase):
 
     def setUp(self):
         super(TestConstrainNodesByArchitecture, self).setUp()

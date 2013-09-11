@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test the factory where appropriate.  Don't overdo this."""
@@ -18,7 +18,7 @@ import os.path
 from random import randint
 
 from maastesting.factory import factory
-from maastesting.testcase import TestCase
+from maastesting.testcase import MAASTestCase
 from netaddr import (
     IPAddress,
     IPNetwork,
@@ -33,7 +33,7 @@ from testtools.matchers import (
     )
 
 
-class TestFactory(TestCase):
+class TestFactory(MAASTestCase):
 
     def test_getRandomString_respects_size(self):
         sizes = [1, 10, 100]

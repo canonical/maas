@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test matchers."""
@@ -18,7 +18,7 @@ from celery import current_app
 from celery.decorators import task
 from celery.result import EagerResult
 from maastesting.celery import CeleryFixture
-from maastesting.testcase import TestCase
+from maastesting.testcase import MAASTestCase
 
 
 @task()
@@ -31,7 +31,7 @@ def task_exception(x, y):
     raise RuntimeError()
 
 
-class TestCeleryFixture(TestCase):
+class TestCeleryFixture(MAASTestCase):
     """Tests `CeleryFixture`."""
 
     def setUp(self):

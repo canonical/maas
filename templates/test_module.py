@@ -13,10 +13,10 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
-from maastesting.testcase import TestCase
+from maastesting.testcase import MAASTestCase
 
 
-class TestSomething(TestCase):
+class TestSomething(MAASTestCase):
 # TODO: Change test class name to match what you're testing.
 
     #resources = [...]

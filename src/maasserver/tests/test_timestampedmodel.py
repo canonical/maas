@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """:class:`TimestampedModel` tests."""
@@ -18,7 +18,7 @@ from django.db import transaction
 from maasserver.models.timestampedmodel import now
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
-    TestCase,
+    MAASServerTestCase,
     TestModelTestCase,
     )
 from maasserver.tests.models import TimestampedModelTestModel
@@ -78,7 +78,7 @@ class TimestampedModelTransactionalTest(TestModelTransactionalTestCase):
         self.assertLessEqual(old_updated, obj.updated)
 
 
-class UtilitiesTest(TestCase):
+class UtilitiesTest(MAASServerTestCase):
 
     def test_now_returns_datetime(self):
         self.assertIsInstance(now(), datetime)

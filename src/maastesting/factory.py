@@ -117,7 +117,7 @@ class Factory:
         """Create a file, and write data to it.
 
         Prefer the eponymous convenience wrapper in
-        :class:`maastesting.testcase.TestCase`.  It creates a temporary
+        :class:`maastesting.testcase.MAASTestCase`.  It creates a temporary
         directory and arranges for its eventual cleanup.
 
         :param location: Directory.  Use a temporary directory for this, and

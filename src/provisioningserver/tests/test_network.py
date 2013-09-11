@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the `network` module."""
@@ -13,7 +13,7 @@ __metaclass__ = type
 __all__ = []
 
 from maastesting.factory import factory
-from maastesting.testcase import TestCase
+from maastesting.testcase import MAASTestCase
 from netaddr import IPNetwork
 from netifaces import AF_INET
 from provisioningserver import network
@@ -42,7 +42,7 @@ def make_interface(inet_address=None):
     return {AF_INET: [inet_address]}
 
 
-class TestNetworks(TestCase):
+class TestNetworks(MAASTestCase):
 
     def patch_netifaces(self, interfaces):
         """Patch up netifaces to pretend we have given `interfaces`.

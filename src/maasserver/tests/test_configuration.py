@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests configuration."""
@@ -14,10 +14,10 @@ __all__ = []
 
 
 from django.conf import settings
-from maasserver.testing.testcase import TestCase
+from maasserver.testing.testcase import MAASServerTestCase
 
 
-class TestConfiguration(TestCase):
+class TestConfiguration(MAASServerTestCase):
 
     def test_transactionmiddleware(self):
         # The 'TransactionMiddleware' is enabled.

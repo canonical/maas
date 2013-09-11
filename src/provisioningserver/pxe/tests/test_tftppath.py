@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the tftppath module."""
@@ -15,7 +15,7 @@ __all__ = []
 import os.path
 
 from maastesting.factory import factory
-from maastesting.testcase import TestCase
+from maastesting.testcase import MAASTestCase
 from provisioningserver.enum import ARP_HTYPE
 from provisioningserver.pxe.tftppath import (
     compose_bootloader_path,
@@ -36,7 +36,7 @@ from testtools.matchers import (
     )
 
 
-class TestTFTPPath(TestCase):
+class TestTFTPPath(MAASTestCase):
 
     def setUp(self):
         super(TestTFTPPath, self).setUp()

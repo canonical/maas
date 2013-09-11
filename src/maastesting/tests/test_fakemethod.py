@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for :class:`FakeMethod`."""
@@ -16,10 +16,10 @@ from maastesting.fakemethod import (
     FakeMethod,
     MultiFakeMethod,
     )
-from maastesting.testcase import TestCase
+from maastesting.testcase import MAASTestCase
 
 
-class TestFakeMethod(TestCase):
+class TestFakeMethod(MAASTestCase):
 
     def test_fakemethod_returns_None_by_default(self):
         self.assertEqual(None, FakeMethod()())
@@ -72,7 +72,7 @@ class TestFakeMethod(TestCase):
         self.assertItemsEqual([{'x': 12}], stub.extract_kwargs())
 
 
-class TestMultiFakeMethod(TestCase):
+class TestMultiFakeMethod(MAASTestCase):
 
     def test_call_calls_all_given_methods(self):
         methods = FakeMethod(), FakeMethod()

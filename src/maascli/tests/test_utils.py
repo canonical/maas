@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maascli.utils`."""
@@ -13,7 +13,7 @@ __metaclass__ = type
 __all__ = []
 
 from maascli import utils
-from maastesting.testcase import TestCase
+from maastesting.testcase import MAASTestCase
 from testtools.matchers import (
     AfterPreprocessing,
     Equals,
@@ -21,7 +21,7 @@ from testtools.matchers import (
     )
 
 
-class TestDocstringParsing(TestCase):
+class TestDocstringParsing(MAASTestCase):
     """Tests for docstring parsing in `maascli.utils`."""
 
     def test_basic(self):
@@ -83,10 +83,10 @@ class TestDocstringParsing(TestCase):
             utils.parse_docstring("title\n\nbody1\r\rbody2"))
 
 
-class TestFunctions(TestCase):
+class TestFunctions(MAASTestCase):
     """Tests for miscellaneous functions in `maascli.utils`."""
 
-    maxDiff = TestCase.maxDiff * 2
+    maxDiff = MAASTestCase.maxDiff * 2
 
     def test_safe_name(self):
         # safe_name attempts to discriminate parts of a vaguely camel-cased

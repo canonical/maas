@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Testing of the API infrastructure, as opposed to code that uses it to
@@ -16,10 +16,10 @@ __all__ = []
 
 from maasserver.api import operation
 from maasserver.testing.factory import factory
-from maastesting.testcase import TestCase
+from maastesting.testcase import MAASTestCase
 
 
-class TestOperationDecorator(TestCase):
+class TestOperationDecorator(MAASTestCase):
     """Testing for the `operation` decorator."""
 
     def test_valid_decoration(self):

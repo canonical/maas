@@ -1,4 +1,4 @@
-# Copyright 2005-2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2005-2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the maastftp Twisted plugin."""
@@ -22,7 +22,7 @@ from urlparse import (
     )
 
 from maastesting.factory import factory
-from maastesting.testcase import TestCase
+from maastesting.testcase import MAASTestCase
 from provisioningserver import tftp as tftp_module
 from provisioningserver.pxe.tftppath import compose_config_path
 from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
@@ -40,7 +40,7 @@ from twisted.python import context
 from zope.interface.verify import verifyObject
 
 
-class TestBytesReader(TestCase):
+class TestBytesReader(MAASTestCase):
     """Tests for `provisioningserver.tftp.BytesReader`."""
 
     def test_interfaces(self):
@@ -62,7 +62,7 @@ class TestBytesReader(TestCase):
         self.assertRaises(ValueError, reader.read, 1)
 
 
-class TestTFTPBackendRegex(TestCase):
+class TestTFTPBackendRegex(MAASTestCase):
     """Tests for `provisioningserver.tftp.TFTPBackend.re_config_file`."""
 
     @staticmethod
@@ -162,7 +162,7 @@ class TestTFTPBackendRegex(TestCase):
             match.groupdict())
 
 
-class TestTFTPBackend(TestCase):
+class TestTFTPBackend(MAASTestCase):
     """Tests for `provisioningserver.tftp.TFTPBackend`."""
 
     run_tests_with = AsynchronousDeferredRunTest.make_factory(timeout=5)

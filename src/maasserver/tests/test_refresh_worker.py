@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the code that refreshes a node-group worker's information."""
@@ -17,12 +17,12 @@ from maasserver import refresh_worker as refresh_worker_module
 from maasserver.models.user import get_creds_tuple
 from maasserver.refresh_worker import refresh_worker
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import TestCase
+from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.fakemethod import FakeMethod
 from provisioningserver import tasks
 
 
-class TestRefreshWorker(TestCase):
+class TestRefreshWorker(MAASServerTestCase):
 
     def patch_refresh_functions(self):
         """Replace the worker refresh functions with a test double.

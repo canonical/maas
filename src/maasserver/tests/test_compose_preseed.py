@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.compose_preseed`."""
@@ -15,7 +15,7 @@ __all__ = []
 from maasserver.compose_preseed import compose_preseed
 from maasserver.enum import NODE_STATUS
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import TestCase
+from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import absolute_reverse
 from metadataserver.models import NodeKey
 from testtools.matchers import (
@@ -25,7 +25,7 @@ from testtools.matchers import (
 import yaml
 
 
-class TestComposePreseed(TestCase):
+class TestComposePreseed(MAASServerTestCase):
 
     def test_compose_preseed_for_commissioning_node_produces_yaml(self):
         node = factory.make_node(status=NODE_STATUS.COMMISSIONING)

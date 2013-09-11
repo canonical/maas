@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maastesting.rabbit`."""
@@ -15,11 +15,11 @@ __all__ = []
 from django.conf import settings
 from maasserver.testing.rabbit import RabbitServerSettings
 from maastesting.factory import factory
-from maastesting.testcase import TestCase
+from maastesting.testcase import MAASTestCase
 from rabbitfixture.server import RabbitServerResources
 
 
-class TestRabbitServerSettings(TestCase):
+class TestRabbitServerSettings(MAASTestCase):
 
     def test_patch(self):
         config = RabbitServerResources(

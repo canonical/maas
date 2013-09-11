@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Sanity checks for database migrations.
@@ -17,7 +17,7 @@ __metaclass__ = type
 __all__ = []
 
 from maasserver.testing.db_migrations import detect_sequence_clashes
-from maastesting.testcase import TestCase
+from maastesting.testcase import MAASTestCase
 
 
 EXISTING_DUPES = [
@@ -28,7 +28,7 @@ EXISTING_DUPES = [
     ]
 
 
-class TestMigrations(TestCase):
+class TestMigrations(MAASTestCase):
 
     def test_migrations_mostly_have_unique_numbers(self):
         # Apart from some duplicates that predate this test and had to

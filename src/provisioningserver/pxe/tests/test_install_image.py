@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the install_pxe_image command."""
@@ -15,7 +15,7 @@ __all__ = []
 import os
 
 from maastesting.factory import factory
-from maastesting.testcase import TestCase
+from maastesting.testcase import MAASTestCase
 import provisioningserver.pxe.install_image
 from provisioningserver.pxe.install_image import (
     are_identical_dirs,
@@ -47,7 +47,7 @@ def make_arch_subarch_release_purpose():
         for item in ('arch', 'subarch', 'release', 'purpose'))
 
 
-class TestInstallPXEImage(TestCase):
+class TestInstallPXEImage(MAASTestCase):
 
     def test_integration(self):
         tftproot = self.make_dir()

@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test maasserver API."""
@@ -29,7 +29,7 @@ from maasserver.testing import extract_redirect
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
     LoggedInTestCase,
-    TestCase,
+    MAASServerTestCase,
     )
 from maasserver.views import (
     HelpfulDeleteView,
@@ -186,7 +186,7 @@ class FakeDeleteView(HelpfulDeleteView):
         self.notices.append(notice)
 
 
-class HelpfulDeleteViewTest(TestCase):
+class HelpfulDeleteViewTest(MAASServerTestCase):
 
     def test_delete_deletes_object(self):
         obj = FakeDeletableModel()
@@ -270,7 +270,7 @@ class SimpleListView(PaginatedListView):
         return self.query_results
 
 
-class PaginatedListViewTests(TestCase):
+class PaginatedListViewTests(MAASServerTestCase):
     """Check PaginatedListView page links inserted into context are correct"""
 
     def test_single_page(self):

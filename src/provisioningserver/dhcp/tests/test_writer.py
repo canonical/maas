@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `provisioningserver.dhcp.writer`."""
@@ -23,12 +23,12 @@ import sys
 
 from maastesting import root
 from maastesting.matchers import ContainsAll
-from maastesting.testcase import TestCase
+from maastesting.testcase import MAASTestCase
 from provisioningserver.dhcp import writer
 from testtools.matchers import MatchesStructure
 
 
-class TestScript(TestCase):
+class TestScript(MAASTestCase):
     """Test the DHCP configuration writer."""
 
     test_args = (

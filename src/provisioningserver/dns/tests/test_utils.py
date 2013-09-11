@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for miscellaneous helpers."""
@@ -14,12 +14,12 @@ __all__ = []
 
 
 from maastesting.factory import factory
-from maastesting.testcase import TestCase
+from maastesting.testcase import MAASTestCase
 from netaddr import IPAddress
 from provisioningserver.dns.utils import generated_hostname
 
 
-class TestUtilities(TestCase):
+class TestUtilities(MAASTestCase):
 
     def test_generated_hostname_returns_hostname(self):
         self.assertEqual(

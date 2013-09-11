@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test forms."""
@@ -66,7 +66,7 @@ from maasserver.node_action import (
     )
 from maasserver.testing import reload_object
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import TestCase
+from maasserver.testing.testcase import MAASServerTestCase
 from metadataserver.models import CommissioningScript
 from netaddr import IPNetwork
 from provisioningserver.enum import POWER_TYPE_CHOICES
@@ -78,7 +78,7 @@ from testtools.matchers import (
     )
 
 
-class TestHelpers(TestCase):
+class TestHelpers(MAASServerTestCase):
 
     def test_initialize_node_group_leaves_nodegroup_reference_intact(self):
         preselected_nodegroup = factory.make_node_group()
@@ -102,7 +102,7 @@ class TestHelpers(TestCase):
         self.assertEqual(NodeGroup.objects.ensure_master(), node.nodegroup)
 
 
-class NodeWithMACAddressesFormTest(TestCase):
+class NodeWithMACAddressesFormTest(MAASServerTestCase):
 
     def get_QueryDict(self, params):
         query_dict = QueryDict('', mutable=True)
@@ -237,7 +237,7 @@ class TestValidOptionForm(ConfigForm):
     maas_name = forms.CharField(label="Field 1", max_length=10)
 
 
-class ConfigFormTest(TestCase):
+class ConfigFormTest(MAASServerTestCase):
 
     def test_form_valid_saves_into_db(self):
         value = factory.getRandomString(10)
@@ -284,7 +284,7 @@ class ConfigFormTest(TestCase):
         self.assertEqual(value, form.initial['field1'])
 
 
-class NodeEditForms(TestCase):
+class NodeEditForms(MAASServerTestCase):
 
     def test_NodeForm_contains_limited_set_of_fields(self):
         form = NodeForm()
@@ -449,7 +449,7 @@ class NodeEditForms(TestCase):
             AdminNodeWithMACAddressesForm, get_node_create_form(admin))
 
 
-class TestNodeActionForm(TestCase):
+class TestNodeActionForm(MAASServerTestCase):
 
     def test_get_action_form_creates_form_class_with_attributes(self):
         user = factory.make_admin()
@@ -513,7 +513,7 @@ class TestNodeActionForm(TestCase):
             "is not one of the available choices.", form._errors['action'][0])
 
 
-class TestUniqueEmailForms(TestCase):
+class TestUniqueEmailForms(MAASServerTestCase):
 
     def assertFormFailsValidationBecauseEmailNotUnique(self, form):
         self.assertFalse(form.is_valid())
@@ -573,7 +573,7 @@ class TestUniqueEmailForms(TestCase):
         self.assertTrue(form.is_valid())
 
 
-class TestNewUserCreationForm(TestCase):
+class TestNewUserCreationForm(MAASServerTestCase):
 
     def test_saves_to_db_by_default(self):
         password = factory.make_name('password')
@@ -609,7 +609,7 @@ class TestNewUserCreationForm(TestCase):
             list(form.fields))
 
 
-class TestMACAddressForm(TestCase):
+class TestMACAddressForm(MAASServerTestCase):
 
     def test_MACAddressForm_creates_mac_address(self):
         node = factory.make_node()
@@ -667,7 +667,7 @@ nullable_fields = [
     'ip_range_high']
 
 
-class TestNodeGroupInterfaceForm(TestCase):
+class TestNodeGroupInterfaceForm(MAASServerTestCase):
 
     def test_NodeGroupInterfaceForm_save_sets_nodegroup(self):
         nodegroup = factory.make_node_group(
@@ -696,7 +696,7 @@ class TestNodeGroupInterfaceForm(TestCase):
         self.assertThat(field_values, AllMatch(Equals('')))
 
 
-class TestNodeGroupWithInterfacesForm(TestCase):
+class TestNodeGroupWithInterfacesForm(MAASServerTestCase):
 
     def test_creates_pending_nodegroup(self):
         name = factory.make_name('name')
@@ -859,7 +859,7 @@ class TestNodeGroupWithInterfacesForm(TestCase):
             ])
 
 
-class TestNodeGroupEdit(TestCase):
+class TestNodeGroupEdit(MAASServerTestCase):
 
     def make_form_data(self, nodegroup):
         """Create `NodeGroupEdit` form data based on `nodegroup`."""
@@ -947,7 +947,7 @@ class TestNodeGroupEdit(TestCase):
         self.assertEqual(data['name'], reload_object(nodegroup).name)
 
 
-class TestCommissioningScriptForm(TestCase):
+class TestCommissioningScriptForm(MAASServerTestCase):
 
     def test_creates_commissioning_script(self):
         content = factory.getRandomString().encode('ascii')
@@ -992,7 +992,7 @@ class TestCommissioningScriptForm(TestCase):
             form._errors['content'])
 
 
-class TestUnconstrainedMultipleChoiceField(TestCase):
+class TestUnconstrainedMultipleChoiceField(MAASServerTestCase):
 
     def test_accepts_list(self):
         value = ['a', 'b']
@@ -1000,7 +1000,7 @@ class TestUnconstrainedMultipleChoiceField(TestCase):
         self.assertEqual(value, instance.clean(value))
 
 
-class TestBulkNodeActionForm(TestCase):
+class TestBulkNodeActionForm(MAASServerTestCase):
 
     def test_performs_action(self):
         node1 = factory.make_node()

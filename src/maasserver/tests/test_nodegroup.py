@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the NodeGroup model."""
@@ -26,7 +26,7 @@ from maasserver.models import (
     )
 from maasserver.testing import reload_object
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import TestCase
+from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import map_enum
 from maasserver.utils.orm import get_one
 from maasserver.worker_user import get_worker_user
@@ -62,7 +62,7 @@ def make_dhcp_settings():
         }
 
 
-class TestNodeGroupManager(TestCase):
+class TestNodeGroupManager(MAASServerTestCase):
 
     def test_new_creates_nodegroup_with_interface(self):
         name = factory.make_name('nodegroup')
@@ -289,7 +289,7 @@ def make_archive_url(name):
         self.assertEqual(0, nodegroup_module.refresh_worker.call_count)
 
 
-class TestNodeGroup(TestCase):
+class TestNodeGroup(MAASServerTestCase):
 
     resources = (
         ('celery', FixtureResource(CeleryFixture())),

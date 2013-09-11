@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.testing.yui3`."""
@@ -12,7 +12,7 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
-from maastesting.testcase import TestCase
+from maastesting.testcase import MAASTestCase
 from maastesting.yui3 import (
     extract_tests,
     gen_failed_test_messages,
@@ -103,7 +103,7 @@ example_results = {
     }
 
 
-class TestFunctions(TestCase):
+class TestFunctions(MAASTestCase):
 
     def test_extract_tests_names(self):
         expected_names = {

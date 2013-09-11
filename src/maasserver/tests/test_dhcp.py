@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for DHCP management."""
@@ -23,7 +23,7 @@ from maasserver.dhcp import (
 from maasserver.dns import get_dns_server_address
 from maasserver.enum import NODEGROUP_STATUS
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import TestCase
+from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.celery import CeleryFixture
 from netaddr import IPNetwork
 from provisioningserver import tasks
@@ -31,7 +31,7 @@ from testresources import FixtureResource
 from testtools.matchers import EndsWith
 
 
-class TestDHCP(TestCase):
+class TestDHCP(MAASServerTestCase):
 
     resources = (
         ('celery', FixtureResource(CeleryFixture())),

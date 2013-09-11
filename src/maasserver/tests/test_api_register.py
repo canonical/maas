@@ -34,7 +34,7 @@ from maasserver.forms import DEFAULT_ZONE_NAME
 from maasserver.models import NodeGroup
 from maasserver.testing.api import AnonAPITestCase
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import TestCase
+from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.tests.test_forms import make_interface_settings
 from mock import (
     ANY,
@@ -44,7 +44,7 @@ from testtools.matchers import MatchesStructure
 from testtools.testcase import ExpectedException
 
 
-class TestUpdateNodeGroupMAASURL(TestCase):
+class TestUpdateNodeGroupMAASURL(MAASServerTestCase):
     """Tests for `update_nodegroup_maas_url`."""
 
     def make_request(self, host, script="/script", path="/script/path"):
@@ -118,7 +118,7 @@ def make_register_request(uuid):
     return request
 
 
-class TestRegisterNodegroup(TestCase):
+class TestRegisterNodegroup(MAASServerTestCase):
     """Tests for `register_nodegroup`."""
 
     def test_creates_pending_nodegroup_by_default(self):
@@ -175,7 +175,7 @@ class TestRegisterNodegroup(TestCase):
             ValidationError, api.register_nodegroup, request, nodegroup.uuid)
 
 
-class TestComposeNodegroupRegisterResponse(TestCase):
+class TestComposeNodegroupRegisterResponse(MAASServerTestCase):
     """Tests for `compose_nodegroup_register_response`."""
 
     def test_returns_credentials_if_accepted(self):

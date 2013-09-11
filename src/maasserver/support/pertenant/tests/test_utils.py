@@ -19,7 +19,7 @@ from maasserver.support.pertenant.utils import (
     PROVIDER_STATE_FILENAME,
     )
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import TestCase
+from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.utils import sample_binary_data
 
 
@@ -36,7 +36,7 @@ def make_provider_state_file(node=None):
         filename=PROVIDER_STATE_FILENAME, content=content_data, owner=None)
 
 
-class TestExtractBootstrapNodeSystemId(TestCase):
+class TestExtractBootstrapNodeSystemId(MAASServerTestCase):
 
     def test_parses_valid_provider_state_file(self):
         node = factory.make_node()
@@ -57,7 +57,7 @@ class TestExtractBootstrapNodeSystemId(TestCase):
                 extract_bootstrap_node_system_id(invalid_content))
 
 
-class TestGetBootstrapNodeOwner(TestCase):
+class TestGetBootstrapNodeOwner(MAASServerTestCase):
 
     def test_returns_None_if_no_provider_state_file(self):
         self.assertIsNone(get_bootstrap_node_owner())

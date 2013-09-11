@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test forms settings."""
@@ -21,10 +21,10 @@ from maasserver.forms_settings import (
     )
 from maasserver.models import Config
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import TestCase
+from maasserver.testing.testcase import MAASServerTestCase
 
 
-class TestGetConfigField(TestCase):
+class TestGetConfigField(MAASServerTestCase):
 
     def test_get_config_field_validates_config_name(self):
         config_name = factory.getRandomString()
@@ -37,7 +37,7 @@ class TestGetConfigField(TestCase):
         self.assertEqual(label, field.label)
 
 
-class TestGetConfigForm(TestCase):
+class TestGetConfigForm(MAASServerTestCase):
 
     def test_get_config_form_returns_initialized_form(self):
         maas_name = factory.getRandomString()
@@ -51,7 +51,7 @@ class TestGetConfigForm(TestCase):
             {'maas_name': maas_name}, form.initial)
 
 
-class TestGetConfigDoc(TestCase):
+class TestGetConfigDoc(MAASServerTestCase):
 
     def test_get_config_doc(self):
         doc = get_config_doc()

@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test composition of kernel command lines."""
@@ -18,7 +18,7 @@ import os
 
 from maastesting.factory import factory
 from maastesting.matchers import ContainsAll
-from maastesting.testcase import TestCase
+from maastesting.testcase import MAASTestCase
 from provisioningserver import kernel_opts
 from provisioningserver.kernel_opts import (
     compose_kernel_command_line,
@@ -44,7 +44,7 @@ def make_kernel_parameters(**parms):
     return KernelParameters(**parms)
 
 
-class TestUtilitiesKernelOpts(TestCase):
+class TestUtilitiesKernelOpts(MAASTestCase):
 
     def test_get_last_directory(self):
         root = self.make_dir()
@@ -63,7 +63,7 @@ class TestUtilitiesKernelOpts(TestCase):
         self.assertIs(params._replace.im_func, params.__call__.im_func)
 
 
-class TestKernelOpts(TestCase):
+class TestKernelOpts(MAASTestCase):
 
     def test_compose_kernel_command_line_includes_preseed_url(self):
         params = make_kernel_parameters()

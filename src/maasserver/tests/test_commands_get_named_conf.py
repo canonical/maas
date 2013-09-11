@@ -16,14 +16,14 @@ from codecs import getwriter
 from io import BytesIO
 
 from django.core.management import call_command
-from maasserver.testing.testcase import TestCase
+from maasserver.testing.testcase import MAASServerTestCase
 from testtools.matchers import (
     Contains,
     FileContains,
     )
 
 
-class TestGetNamedConfCommand(TestCase):
+class TestGetNamedConfCommand(MAASServerTestCase):
 
     def test_get_named_conf_returns_snippet(self):
         out = BytesIO()

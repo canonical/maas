@@ -22,7 +22,7 @@ from fixtures import EnvironmentVariableFixture
 import formencode
 from maastesting import root
 from maastesting.factory import factory
-from maastesting.testcase import TestCase
+from maastesting.testcase import MAASTestCase
 from provisioningserver.config import Config
 from provisioningserver.testing.config import ConfigFixture
 from testtools.matchers import (
@@ -34,7 +34,7 @@ from testtools.matchers import (
 import yaml
 
 
-class TestConfigFixture(TestCase):
+class TestConfigFixture(MAASTestCase):
     """Tests for `provisioningserver.testing.config.ConfigFixture`."""
 
     def exercise_fixture(self, fixture):
@@ -66,7 +66,7 @@ class TestConfigFixture(TestCase):
         self.exercise_fixture(fixture)
 
 
-class TestConfig_DEFAULT_FILENAME(TestCase):
+class TestConfig_DEFAULT_FILENAME(MAASTestCase):
     """Tests for `provisioningserver.config.Config.DEFAULT_FILENAME`."""
 
     def set_MAAS_PROVISIONING_SETTINGS(self, filepath=None):
@@ -121,7 +121,7 @@ class TestConfig_DEFAULT_FILENAME(TestCase):
         del Config.DEFAULT_FILENAME
 
 
-class TestConfig(TestCase):
+class TestConfig(MAASTestCase):
     """Tests for `provisioningserver.config.Config`."""
 
     default_production_config = {

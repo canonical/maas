@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the DHCP leases parser."""
@@ -17,7 +17,7 @@ from datetime import datetime
 from textwrap import dedent
 
 from maastesting.factory import factory
-from maastesting.testcase import TestCase
+from maastesting.testcase import MAASTestCase
 from provisioningserver.dhcp.leases_parser import (
     combine_entries,
     gather_hosts,
@@ -32,7 +32,7 @@ from provisioningserver.dhcp.leases_parser import (
     )
 
 
-class TestLeasesParser(TestCase):
+class TestLeasesParser(MAASTestCase):
 
     def fake_parsed_lease(self, ip=None, mac=None, ends=None,
                           entry_type='lease'):

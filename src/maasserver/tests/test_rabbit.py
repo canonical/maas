@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Rabbit messaging tests."""
@@ -31,7 +31,7 @@ from maasserver.testing.rabbit import (
     get_rabbit,
     uses_rabbit_fixture,
     )
-from maastesting.testcase import TestCase
+from maastesting.testcase import MAASTestCase
 from testtools.testcase import ExpectedException
 
 
@@ -43,7 +43,7 @@ def run_rabbit_command(command):
     return rabbit_env.rabbitctl(command)[0]
 
 
-class TestRabbitSession(TestCase):
+class TestRabbitSession(MAASTestCase):
 
     @uses_rabbit_fixture
     def test_connection_gets_connection(self):
@@ -79,7 +79,7 @@ class TestRabbitSession(TestCase):
         self.assertIsNone(session._connection)
 
 
-class TestRabbitMessaging(TestCase):
+class TestRabbitMessaging(MAASTestCase):
 
     @uses_rabbit_fixture
     def test_messaging_getExchange(self):
@@ -100,7 +100,7 @@ class TestRabbitMessaging(TestCase):
         self.assertEqual(exchange_name, queue.exchange_name)
 
 
-class TestRabbitBase(TestCase):
+class TestRabbitBase(MAASTestCase):
 
     def test_rabbitbase_contains_session(self):
         exchange_name = factory.getRandomString()
@@ -131,7 +131,7 @@ class TestRabbitBase(TestCase):
         self.assertIn(exchange_name, run_rabbit_command('list_exchanges'))
 
 
-class TestRabbitExchange(TestCase):
+class TestRabbitExchange(MAASTestCase):
 
     def basic_get(self, channel, queue_name, timeout):
         endtime = time.time() + timeout
@@ -158,7 +158,7 @@ class TestRabbitExchange(TestCase):
         self.assertEqual(message_content, message.body)
 
 
-class TestRabbitQueue(TestCase):
+class TestRabbitQueue(MAASTestCase):
 
     @uses_rabbit_fixture
     def test_rabbit_queue_binds_queue(self):

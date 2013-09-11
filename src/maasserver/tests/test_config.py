@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the `Config` class and friends."""
@@ -19,10 +19,10 @@ from maasserver.models import Config
 import maasserver.models.config
 from maasserver.models.config import get_default_config
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import TestCase
+from maasserver.testing.testcase import MAASServerTestCase
 
 
-class ConfigDefaultTest(TestCase, TestWithFixtures):
+class ConfigDefaultTest(MAASServerTestCase, TestWithFixtures):
     """Test config default values."""
 
     def test_default_config_maas_name(self):
@@ -50,7 +50,7 @@ class CallRecorder:
         self.calls.append([args, kwargs])
 
 
-class ConfigTest(TestCase):
+class ConfigTest(MAASServerTestCase):
     """Testing of the :class:`Config` model and its related manager class."""
 
     def test_manager_get_config_found(self):

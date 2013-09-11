@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `provisioningserver.services`."""
@@ -17,7 +17,7 @@ import signal
 import sys
 
 from maastesting.factory import factory
-from maastesting.testcase import TestCase
+from maastesting.testcase import MAASTestCase
 from oops_twisted import OOPSObserver
 from provisioningserver.services import (
     LogService,
@@ -61,7 +61,7 @@ class TestServicesBase:
         self.assertEqual(self.observers, theLogPublisher.observers)
 
 
-class TestLogService(TestServicesBase, TestCase):
+class TestLogService(TestServicesBase, MAASTestCase):
     """Tests for `provisioningserver.services.LogService`."""
 
     def test_log_to_stdout(self):
@@ -89,7 +89,7 @@ class TestLogService(TestServicesBase, TestCase):
             log_service._signal_handler)
 
 
-class TestOOPSService(TestServicesBase, TestCase):
+class TestOOPSService(TestServicesBase, MAASTestCase):
     """Tests for `provisioningserver.services.OOPSService`."""
 
     def setUp(self):

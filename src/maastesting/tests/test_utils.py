@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for testing helpers."""
@@ -12,11 +12,11 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
-from maastesting.testcase import TestCase
+from maastesting.testcase import MAASTestCase
 from maastesting.utils import extract_word_list
 
 
-class TestFunctions(TestCase):
+class TestFunctions(MAASTestCase):
 
     def test_extract_word_list(self):
         expected = {

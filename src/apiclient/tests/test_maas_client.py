@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test MAAS HTTP API client."""
@@ -35,7 +35,7 @@ from apiclient.testing.django import (
 from maastesting.factory import factory
 from maastesting.fixtures import TempWDFixture
 from maastesting.httpd import HTTPServerFixture
-from maastesting.testcase import TestCase
+from maastesting.testcase import MAASTestCase
 from testtools.matchers import (
     AfterPreprocessing,
     Equals,
@@ -43,7 +43,7 @@ from testtools.matchers import (
     )
 
 
-class TestMAASOAuth(TestCase):
+class TestMAASOAuth(MAASTestCase):
 
     def test_sign_request_adds_header(self):
         headers = {}
@@ -52,7 +52,7 @@ class TestMAASOAuth(TestCase):
         self.assertIn('Authorization', headers)
 
 
-class TestMAASDispatcher(TestCase):
+class TestMAASDispatcher(MAASTestCase):
 
     def test_dispatch_query_makes_direct_call(self):
         contents = factory.getRandomString()
@@ -158,7 +158,7 @@ def make_client(root=None, result=None):
     return MAASClient(auth, FakeDispatcher(result=result), root)
 
 
-class TestMAASClient(TestCase):
+class TestMAASClient(MAASTestCase):
 
     def test_make_url_joins_root_and_path(self):
         path = make_path()

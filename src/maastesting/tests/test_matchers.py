@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test matchers."""
@@ -14,11 +14,11 @@ __all__ = []
 
 from maastesting.factory import factory
 from maastesting.matchers import ContainsAll
-from maastesting.testcase import TestCase
+from maastesting.testcase import MAASTestCase
 from testtools.matchers import MismatchError
 
 
-class TestContainsAll(TestCase):
+class TestContainsAll(MAASTestCase):
 
     def test_ContainsAll_passes_if_all_elements_are_present(self):
         items = [factory.getRandomString() for i in range(3)]

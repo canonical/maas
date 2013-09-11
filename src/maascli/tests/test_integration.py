@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Integration-test the `maascli` command."""
@@ -20,14 +20,14 @@ from subprocess import (
     )
 
 from maastesting import root
-from maastesting.testcase import TestCase
+from maastesting.testcase import MAASTestCase
 
 
 def locate_maascli():
     return os.path.join(root, 'bin', 'maascli')
 
 
-class TestMAASCli(TestCase):
+class TestMAASCli(MAASTestCase):
 
     def run_command(self, *args):
         check_output([locate_maascli()] + list(args), stderr=STDOUT)

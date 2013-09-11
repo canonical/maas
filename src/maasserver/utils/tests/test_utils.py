@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for miscellaneous helpers."""
@@ -25,7 +25,7 @@ from maasserver.enum import (
     )
 from maasserver.exceptions import NodeGroupMisconfiguration
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import TestCase as DjangoTestCase
+from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import (
     absolute_reverse,
     build_absolute_uri,
@@ -35,11 +35,11 @@ from maasserver.utils import (
     map_enum,
     strip_domain,
     )
-from maastesting.testcase import TestCase
+from maastesting.testcase import MAASTestCase
 from netaddr import IPNetwork
 
 
-class TestEnum(TestCase):
+class TestEnum(MAASTestCase):
 
     def test_map_enum_includes_all_enum_values(self):
 
@@ -74,7 +74,7 @@ class TestEnum(TestCase):
         self.assertEqual({'ONE': 1, 'THREE': 3}, map_enum(Enum))
 
 
-class TestAbsoluteReverse(DjangoTestCase):
+class TestAbsoluteReverse(MAASServerTestCase):
 
     def test_absolute_reverse_uses_DEFAULT_MAAS_URL_by_default(self):
         maas_url = 'http://%s' % factory.getRandomString()
@@ -112,7 +112,7 @@ class TestAbsoluteReverse(DjangoTestCase):
         self.assertEqual(expected_url, absolute_url)
 
 
-class GetDbStateTest(DjangoTestCase):
+class GetDbStateTest(MAASServerTestCase):
     """Testing for the method `get_db_state`."""
 
     def test_get_db_state_returns_db_state(self):
@@ -124,7 +124,7 @@ class GetDbStateTest(DjangoTestCase):
         self.assertEqual(status, get_db_state(node, 'status'))
 
 
-class TestBuildAbsoluteURI(TestCase):
+class TestBuildAbsoluteURI(MAASTestCase):
     """Tests for `build_absolute_uri`."""
 
     def make_request(self, host="example.com", port=80, script_name="",
@@ -178,7 +178,7 @@ class TestBuildAbsoluteURI(TestCase):
             build_absolute_uri(request, "//foo"))
 
 
-class TestStripDomain(TestCase):
+class TestStripDomain(MAASTestCase):
 
     def test_strip_domain(self):
         input_and_results = [
@@ -192,7 +192,7 @@ class TestStripDomain(TestCase):
         self.assertEqual(results, map(strip_domain, inputs))
 
 
-class TestGetLocalClusterUUID(TestCase):
+class TestGetLocalClusterUUID(MAASTestCase):
 
     def test_get_local_cluster_UUID_returns_None_if_no_config_file(self):
         bogus_file_name = '/tmp/bogus/%s' % factory.make_name('name')
@@ -215,7 +215,7 @@ def get_request(origin_ip):
     return RequestFactory().post('/', REMOTE_ADDR=origin_ip)
 
 
-class TestFindNodegroup(DjangoTestCase):
+class TestFindNodegroup(MAASServerTestCase):
 
     def test_find_nodegroup_looks_up_nodegroup_by_controller_ip(self):
         nodegroup = factory.make_node_group()

@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test multipart MIME helpers."""
@@ -22,7 +22,7 @@ from apiclient.multipart import (
 from apiclient.testing.django import parse_headers_and_body_with_django
 from django.utils.datastructures import MultiValueDict
 from maastesting.factory import factory
-from maastesting.testcase import TestCase
+from maastesting.testcase import MAASTestCase
 from testtools.matchers import (
     EndsWith,
     StartsWith,
@@ -35,7 +35,7 @@ ahem_django_ahem = (
     "of Django.")
 
 
-class TestMultiPart(TestCase):
+class TestMultiPart(MAASTestCase):
 
     def test_get_content_type_guesses_type(self):
         guess = get_content_type('text.txt')

@@ -20,7 +20,7 @@ import re
 from fixtures import EnvironmentVariableFixture
 from maastesting.factory import factory
 from maastesting.matchers import ContainsAll
-from maastesting.testcase import TestCase
+from maastesting.testcase import MAASTestCase
 import mock
 from provisioningserver import kernel_opts
 from provisioningserver.pxe import config
@@ -38,7 +38,7 @@ from testtools.matchers import (
     )
 
 
-class TestFunctions(TestCase):
+class TestFunctions(MAASTestCase):
     """Test for functions in `provisioningserver.pxe.config`."""
 
     def test_gen_pxe_template_filenames(self):
@@ -142,7 +142,7 @@ def parse_pxe_config(text):
     return result
 
 
-class TestParsePXEConfig(TestCase):
+class TestParsePXEConfig(MAASTestCase):
     """Tests for `parse_pxe_config`."""
 
     def test_parse_with_no_header(self):
@@ -156,7 +156,7 @@ class TestParsePXEConfig(TestCase):
         self.assertEqual({}, config)
 
 
-class TestRenderPXEConfig(TestCase):
+class TestRenderPXEConfig(MAASTestCase):
     """Tests for `provisioningserver.pxe.config.render_pxe_config`."""
 
     def test_render(self):
@@ -232,7 +232,7 @@ class TestRenderPXEConfig(TestCase):
         self.assertNotIn("LOCALBOOT", output)
 
 
-class TestRenderPXEConfigScenarios(TestCase):
+class TestRenderPXEConfigScenarios(MAASTestCase):
     """Tests for `provisioningserver.pxe.config.render_pxe_config`."""
 
     scenarios = [

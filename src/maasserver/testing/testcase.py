@@ -13,7 +13,7 @@ __metaclass__ = type
 __all__ = [
     'AdminLoggedInTestCase',
     'LoggedInTestCase',
-    'TestCase',
+    'MAASTestCase',
     'TestModelTestCase',
     ]
 
@@ -32,7 +32,7 @@ from maasserver.testing.factory import factory
 from maastesting.celery import CeleryFixture
 import maastesting.djangotestcase
 from maastesting.fixtures import DisplayFixture
-from maastesting.testcase import TestCase as BaseTestCase
+from maastesting.testcase import MAASTestCase
 from mock import Mock
 from provisioningserver.testing.tags import TagCachedKnowledgeFixture
 from provisioningserver.testing.worker_cache import WorkerCacheFixture
@@ -42,7 +42,7 @@ MIME_BOUNDARY = 'BoUnDaRyStRiNg'
 MULTIPART_CONTENT = 'multipart/form-data; boundary=%s' % MIME_BOUNDARY
 
 
-class TestCase(maastesting.djangotestcase.DjangoTestCase):
+class MAASServerTestCase(maastesting.djangotestcase.DjangoTestCase):
     """:class:`TestCase` variant with the basics for maasserver testing."""
 
     @classmethod
@@ -50,7 +50,7 @@ class TestCase(maastesting.djangotestcase.DjangoTestCase):
         register_mac_type(connection.cursor())
 
     def setUp(self):
-        super(TestCase, self).setUp()
+        super(MAASServerTestCase, self).setUp()
         self.useFixture(WorkerCacheFixture())
         self.useFixture(TagCachedKnowledgeFixture())
         self.addCleanup(django_cache.clear)
@@ -75,13 +75,17 @@ class TestCase(maastesting.djangotestcase.DjangoTestCase):
                 path, encode_multipart(MIME_BOUNDARY, data), MULTIPART_CONTENT)
 
 
-class TestModelTestCase(TestCase,
+class TestModelTestCase(MAASServerTestCase,
                         maastesting.djangotestcase.TestModelTestCase):
-    """:class:`TestCase` variant that lets you create testing models."""
+    """:class:`MAASServerTestCase` variant that lets you create testing models.
+
+    In this type of test case, you can create a model class on the fly and
+    use it as if it were a real model class in the application.
+    """
 
 
-class LoggedInTestCase(TestCase):
-    """:class:`TestCase` variant with a logged-in web client.
+class LoggedInTestCase(MAASServerTestCase):
+    """:class:`MAASServerTestCase` variant with a logged-in web client.
 
     :ivar client: Django http test client, logged in for MAAS access.
     :ivar logged_in_user: User identity that `client` is authenticated for.
@@ -142,7 +146,7 @@ class LogSilencerFixture(Fixture):
         wsgiref.handlers.BaseHandler.log_exception = self.old_log_exception
 
 
-class SeleniumLoggedInTestCase(BaseTestCase, LiveServerTestCase):
+class SeleniumLoggedInTestCase(MAASTestCase, LiveServerTestCase):
 
     # Load the selenium test fixture.
     # admin user: username=admin/pw=test

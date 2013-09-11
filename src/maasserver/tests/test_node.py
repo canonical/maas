@@ -42,12 +42,12 @@ from maasserver.models.node import (
 from maasserver.models.user import create_auth_token
 from maasserver.testing import reload_object
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import TestCase
+from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import (
     ignore_unused,
     map_enum,
     )
-from maastesting.testcase import TestCase as DjangoLessTestCase
+from maastesting.testcase import MAASTestCase
 from metadataserver import commissioning
 from metadataserver.models import (
     NodeCommissionResult,
@@ -66,7 +66,7 @@ from testtools.matchers import (
     )
 
 
-class UtilitiesTest(DjangoLessTestCase):
+class UtilitiesTest(MAASTestCase):
 
     def test_generate_hostname_does_not_contain_ambiguous_chars(self):
         ambiguous_chars = 'ilousvz1250'
@@ -84,7 +84,7 @@ class UtilitiesTest(DjangoLessTestCase):
         self.assertEqual(sizes, [len(hostname) for hostname in hostnames])
 
 
-class NodeTest(TestCase):
+class NodeTest(MAASServerTestCase):
 
     def test_system_id(self):
         """
@@ -853,7 +853,7 @@ class NodeTest(TestCase):
         self.assertIsNone(factory.make_node().get_lldp_output())
 
 
-class NodeRoutersTest(TestCase):
+class NodeRoutersTest(MAASServerTestCase):
 
     def test_routers_stores_mac_address(self):
         node = factory.make_node()
@@ -881,7 +881,7 @@ class NodeRoutersTest(TestCase):
         self.assertEqual([mac1, mac2], reload_object(node).routers)
 
 
-class NodeTransitionsTests(TestCase):
+class NodeTransitionsTests(MAASServerTestCase):
     """Test the structure of NODE_TRANSITIONS."""
 
     def test_NODE_TRANSITIONS_initial_states(self):
@@ -898,7 +898,7 @@ class NodeTransitionsTests(TestCase):
         self.assertTrue(set(all_destination_states) <= allowed_states)
 
 
-class NodeManagerTest(TestCase):
+class NodeManagerTest(MAASServerTestCase):
 
     def make_node(self, user=None, **kwargs):
         """Create a node, allocated to `user` if given."""

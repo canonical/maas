@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Model tests for metadata server."""
@@ -14,14 +14,14 @@ __all__ = []
 
 from django.contrib.auth.models import User
 from maasserver.models import UserProfile
-from maastesting.testcase import TestCase
+from maastesting.testcase import MAASTestCase
 from metadataserver.nodeinituser import (
     get_node_init_user,
     user_name,
     )
 
 
-class TestNodeInitUser(TestCase):
+class TestNodeInitUser(MAASTestCase):
     """Test the special "user" that makes metadata requests from nodes."""
 
     def test_always_returns_same_user(self):

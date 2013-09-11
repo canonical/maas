@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from __future__ import (
@@ -24,11 +24,11 @@ from maasserver.models import (
     Node,
     )
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import TestCase
+from maasserver.testing.testcase import MAASServerTestCase
 from metadataserver.nodeinituser import get_node_init_user
 
 
-class LoginLogoutTest(TestCase):
+class LoginLogoutTest(MAASServerTestCase):
 
     def make_user(self, name='test', password='test'):
         """Create a user with a password."""
@@ -76,7 +76,7 @@ def make_allocated_node(owner=None):
     return factory.make_node(owner=owner, status=NODE_STATUS.ALLOCATED)
 
 
-class TestMAASAuthorizationBackend(TestCase):
+class TestMAASAuthorizationBackend(MAASServerTestCase):
 
     def test_invalid_check_object(self):
         backend = MAASAuthorizationBackend()
@@ -143,7 +143,7 @@ class TestMAASAuthorizationBackend(TestCase):
                 user, NODE_PERMISSION.ADMIN, factory.make_node()))
 
 
-class TestNodeVisibility(TestCase):
+class TestNodeVisibility(MAASServerTestCase):
 
     def test_admin_sees_all_nodes(self):
         nodes = [

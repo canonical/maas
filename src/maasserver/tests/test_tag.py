@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test maasserver models."""
@@ -14,10 +14,10 @@ __all__ = []
 
 from django.core.exceptions import ValidationError
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import TestCase
+from maasserver.testing.testcase import MAASServerTestCase
 
 
-class TagTest(TestCase):
+class TagTest(MAASServerTestCase):
 
     def test_factory_make_tag(self):
         """
