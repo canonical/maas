@@ -877,6 +877,19 @@ class UnconstrainedMultipleChoiceField(MultipleChoiceField):
         return value
 
 
+class ValidatorMultipleChoiceField(MultipleChoiceField):
+    """A MultipleChoiceField validating each given choice with a validator."""
+
+    def __init__(self, validator, **kwargs):
+        super(ValidatorMultipleChoiceField, self).__init__(**kwargs)
+        self.validator = validator
+
+    def validate(self, values):
+        for value in values:
+            self.validator(value)
+        return values
+
+
 class BulkNodeActionForm(forms.Form):
     # system_id is a multiple-choice field so it can actually contain
     # a list of system ids.

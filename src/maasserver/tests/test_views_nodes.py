@@ -33,10 +33,7 @@ from maasserver.enum import (
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
     )
-from maasserver.exceptions import (
-    InvalidConstraint,
-    NoRabbit,
-    )
+from maasserver.exceptions import NoRabbit
 from maasserver.forms import NodeActionForm
 from maasserver.models import (
     Config,
@@ -104,6 +101,13 @@ class NodeViewsTest(LoggedInTestCase):
         sort_status = '?sort=status&dir=asc'
         self.assertIn(sort_hostname, get_content_links(response))
         self.assertIn(sort_status, get_content_links(response))
+
+    def test_node_list_ignores_unknown_sort_param(self):
+        factory.make_node()
+        response = self.client.get(
+            reverse('node-list'), {'sort': 'unknown', 'dir': 'asc'})
+        # No error: the unknown sorting parameter was ignored.
+        self.assertEqual(httplib.OK, response.status_code)
 
     def test_node_list_lists_nodes_from_different_nodegroups(self):
         # Bug 1084443.
@@ -674,18 +678,18 @@ class NodeViewsTest(LoggedInTestCase):
         self.assertIn(qs, query_value)
 
     def test_node_list_query_error_on_missing_tag(self):
-        response = self.client.get(reverse('node-list'),
-            {"query": "maas-tags=missing"})
+        response = self.client.get(
+            reverse('node-list'), {"query": "maas-tags=missing"})
         error_string = fromstring(response.content).xpath(
             "string(//div[@id='nodes']//p[@class='form-errors'])")
-        self.assertRegexpMatches(error_string, "Invalid .* No such tag")
+        self.assertIn("No such tag(s): 'missing'", error_string)
 
     def test_node_list_query_error_on_unknown_constraint(self):
-        response = self.client.get(reverse('node-list'),
-            {"query": "color=red"})
+        response = self.client.get(
+            reverse('node-list'), {"query": "color=red"})
         error_string = fromstring(response.content).xpath(
             "string(//div[@id='nodes']//p[@class='form-errors'])")
-        self.assertEqual("No such 'color' constraint", error_string.strip())
+        self.assertEqual("color: No such constraint.", error_string.strip())
 
     def test_node_list_query_selects_subset(self):
         tag = factory.make_tag("shiny")
@@ -695,8 +699,8 @@ class NodeViewsTest(LoggedInTestCase):
         node1.tags = [tag]
         node2.tags = [tag]
         node3.tags = []
-        response = self.client.get(reverse('node-list'),
-            {"query": "maas-tags=shiny cpu=2"})
+        response = self.client.get(
+            reverse('node-list'), {"query": "maas-tags=shiny cpu=2"})
         node2_link = reverse('node-view', args=[node2.system_id])
         document = fromstring(response.content)
         node_links = document.xpath(
@@ -1148,72 +1152,33 @@ class ParseConstraintsTests(MAASServerTestCase):
 
     def test_empty(self):
         constraints = nodes_views._parse_constraints("")
-        self.assertEqual({}, constraints)
+        self.assertEqual({}, constraints.dict())
 
     def test_whitespace_only(self):
         constraints = nodes_views._parse_constraints("  ")
-        self.assertEqual({}, constraints)
+        self.assertEqual({}, constraints.dict())
 
-    def test_tag_leading_whitespace(self):
+    def test_leading_whitespace(self):
         constraints = nodes_views._parse_constraints("\tmaas-tags=tag")
-        self.assertEqual({"tags": "tag"}, constraints)
+        self.assertEqual({"maas-tags": "tag"}, constraints.dict())
 
-    def test_tag_trailing_whitespace(self):
+    def test_trailing_whitespace(self):
         constraints = nodes_views._parse_constraints("maas-tags=tag\r\n")
-        self.assertEqual({"tags": "tag"}, constraints)
+        self.assertEqual({"maas-tags": "tag"}, constraints.dict())
 
-    def test_tag_unicode(self):
+    def test_unicode(self):
         constraints = nodes_views._parse_constraints("maas-tags=\xa7")
-        self.assertEqual({"tags": "\xa7"}, constraints)
+        self.assertEqual({"maas-tags": "\xa7"}, constraints.dict())
 
-    def test_tag_no_value(self):
-        self.assertRaises(InvalidConstraint,
-            nodes_views._parse_constraints, "maas-tags")
-
-    def test_cpu(self):
-        constraints = nodes_views._parse_constraints("cpu=1.0")
-        self.assertEqual({"cpu_count": "1.0"}, constraints)
-
-    def test_cpu_count(self):
-        self.assertRaises(InvalidConstraint,
-            nodes_views._parse_constraints, "cpu_count=1.0")
-
-    def test_mem(self):
-        constraints = nodes_views._parse_constraints("mem=4096.0")
-        self.assertEqual({"memory": "4096.0"}, constraints)
-
-    def test_memory(self):
-        self.assertRaises(InvalidConstraint,
-            nodes_views._parse_constraints, "memory=4096.0")
-
-    def test_arch(self):
-        constraints = nodes_views._parse_constraints("arch=armhf/highbank")
-        self.assertEqual({"architecture": "armhf/highbank"}, constraints)
-
-    def test_arch_empty(self):
-        constraints = nodes_views._parse_constraints("arch=")
-        self.assertEqual({}, constraints)
-
-    def test_name(self):
-        constraints = nodes_views._parse_constraints("maas-name=node")
-        self.assertEqual({"hostname": "node"}, constraints)
-
-    def test_name_any(self):
+    def test_discards_constraints_with__any__value(self):
         constraints = nodes_views._parse_constraints("maas-name=any")
-        self.assertEqual({}, constraints)
+        self.assertEqual({}, constraints.dict())
 
-    def test_name_unicode(self):
-        constraints = nodes_views._parse_constraints("maas-name=\xa7")
-        self.assertEqual({"hostname": "\xa7"}, constraints)
+    def test_empty_param(self):
+        constraints = nodes_views._parse_constraints("arch=")
+        self.assertEqual({'arch': ''}, constraints.dict())
 
-    def test_unknown_constraint(self):
-        self.assertRaises(InvalidConstraint,
-            nodes_views._parse_constraints, "custom=fancy")
-
-    def test_unknown_unicode_constraint(self):
-        self.assertRaises(InvalidConstraint,
-            nodes_views._parse_constraints, "custom=\xa7")
-
-    def test_multiple_tags_and_cpu(self):
+    def test_multiple_params(self):
         constraints = nodes_views._parse_constraints("maas-tags=a,b cpu=2")
-        self.assertEqual({"cpu_count": "2", "tags": "a,b"}, constraints)
+        self.assertEqual(
+            {"cpu": "2", "maas-tags": "a,b"}, constraints.dict())

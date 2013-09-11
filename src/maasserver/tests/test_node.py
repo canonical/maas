@@ -17,7 +17,6 @@ import random
 
 from django.core.exceptions import ValidationError
 from maasserver.enum import (
-    ARCHITECTURE,
     DISTRO_SERIES,
     NODE_PERMISSION,
     NODE_STATUS,
@@ -1046,18 +1045,20 @@ class NodeManagerTest(MAASServerTestCase):
             Node.objects.get_node_or_404(
                 node.system_id, user, NODE_PERMISSION.VIEW))
 
-    def test_get_available_node_for_acquisition_finds_available_node(self):
+    def test_get_available_nodes_finds_available_nodes(self):
         user = factory.make_user()
-        node = self.make_node(None)
-        self.assertEqual(
-            node, Node.objects.get_available_node_for_acquisition(user))
+        node1 = self.make_node(None)
+        node2 = self.make_node(None)
+        self.assertItemsEqual(
+            [node1, node2],
+            Node.objects.get_available_nodes_for_acquisition(user))
 
-    def test_get_available_node_for_acquisition_returns_none_if_empty(self):
+    def test_get_available_node_returns_empty_list_if_empty(self):
         user = factory.make_user()
         self.assertEqual(
-            None, Node.objects.get_available_node_for_acquisition(user))
+            [], list(Node.objects.get_available_nodes_for_acquisition(user)))
 
-    def test_get_available_node_for_acquisition_ignores_taken_nodes(self):
+    def test_get_available_nodes_ignores_taken_nodes(self):
         user = factory.make_user()
         available_status = NODE_STATUS.READY
         unavailable_statuses = (
@@ -1065,52 +1066,15 @@ class NodeManagerTest(MAASServerTestCase):
         for status in unavailable_statuses:
             factory.make_node(status=status)
         self.assertEqual(
-            None, Node.objects.get_available_node_for_acquisition(user))
+            [], list(Node.objects.get_available_nodes_for_acquisition(user)))
 
-    def test_get_available_node_for_acquisition_ignores_invisible_nodes(self):
+    def test_get_available_node_ignores_invisible_nodes(self):
         user = factory.make_user()
         node = self.make_node()
         node.owner = factory.make_user()
         node.save()
         self.assertEqual(
-            None, Node.objects.get_available_node_for_acquisition(user))
-
-    def test_get_available_node_combines_constraint_with_availability(self):
-        user = factory.make_user()
-        node = self.make_node(factory.make_user())
-        self.assertEqual(
-            None,
-            Node.objects.get_available_node_for_acquisition(
-                user, {'hostname': node.system_id}))
-
-    def test_get_available_node_with_name(self):
-        """A single available node can be selected using its hostname"""
-        user = factory.make_user()
-        nodes = [self.make_node() for counter in range(3)]
-        self.assertEqual(
-            nodes[1],
-            Node.objects.get_available_node_for_acquisition(
-                user, {'hostname': nodes[1].hostname}))
-
-    def test_get_available_node_with_arch(self):
-        """An available node can be selected off a given architecture"""
-        user = factory.make_user()
-        nodes = [self.make_node(architecture=s)
-            for s in (ARCHITECTURE.amd64, ARCHITECTURE.i386)]
-        available_node = Node.objects.get_available_node_for_acquisition(
-                user, {'architecture': "i386/generic"})
-        self.assertEqual(ARCHITECTURE.i386, available_node.architecture)
-        self.assertEqual(nodes[1], available_node)
-
-    def test_get_available_node_with_tag(self):
-        """An available node can be selected off a given tag"""
-        nodes = [self.make_node() for i in range(2)]
-        tag = factory.make_tag('strong')
-        user = factory.make_user()
-        nodes[1].tags.add(tag)
-        available_node = Node.objects.get_available_node_for_acquisition(
-                user, {'tags': "strong"})
-        self.assertEqual(nodes[1], available_node)
+            [], list(Node.objects.get_available_nodes_for_acquisition(user)))
 
     def test_stop_nodes_stops_nodes(self):
         # We don't actually want to fire off power events, but we'll go

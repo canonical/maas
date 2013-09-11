@@ -28,6 +28,7 @@ from django.conf import settings as django_settings
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.core.urlresolvers import reverse
+from django.http import QueryDict
 from django.shortcuts import (
     get_object_or_404,
     render_to_response,
@@ -48,10 +49,8 @@ from maasserver.enum import (
     NODE_STATUS,
     )
 from maasserver.exceptions import (
-    InvalidConstraint,
     MAASAPIException,
     NoRabbit,
-    NoSuchConstraint,
     )
 from maasserver.forms import (
     BulkNodeActionForm,
@@ -65,9 +64,11 @@ from maasserver.models import (
     Node,
     Tag,
     )
-from maasserver.models.node import CONSTRAINTS_JUJU_MAP
-from maasserver.models.node_constraint_filter import constrain_nodes
 from maasserver.node_action import ACTIONS_DICT
+from maasserver.node_constraint_filter_forms import (
+    AcquireNodeForm,
+    JUJU_ACQUIRE_FORM_FIELDS_MAPPING,
+    )
 from maasserver.preseed import (
     get_enlist_preseed,
     get_preseed,
@@ -94,22 +95,23 @@ def get_longpoll_context():
 
 
 def _parse_constraints(query_string):
-    """Turn query string from user into constraints dict
+    """Turn query string from user into a QueryDict.
 
-    This is basically the same as the juju constraints, but will differ
-    somewhat in error handling. For instance, juju might reject a negative
-    cpu constraint whereas this lets it through to return zero results.
+    This method parse the given query string and returns a QueryDict suitable
+    to be passed to AcquireNodeForm().
+    This is basically to mimic the way the juju behaves: any parameters with
+    a value of 'any' will be ignored.
     """
-    constraints = {}
+    constraints = []
     for word in query_string.strip().split():
         parts = word.split("=", 1)
-        if parts[0] not in CONSTRAINTS_JUJU_MAP:
-            raise NoSuchConstraint(parts[0])
         if len(parts) != 2:
-            raise InvalidConstraint(parts[0], "", "No constraint value given")
-        if parts[1] and parts[1] != "any":
-            constraints[CONSTRAINTS_JUJU_MAP[parts[0]]] = parts[1]
-    return constraints
+            # Empty constraint.
+            constraints.append("%s=" % parts[0])
+        elif parts[1] != "any":
+            # 'any' constraint: discard it.
+            constraints.append("%s=%s" % tuple(parts))
+    return QueryDict('&'.join(constraints))
 
 
 def message_from_form_stats(action, done, not_actionable, not_permitted):
@@ -166,6 +168,7 @@ class NodeListView(PaginatedListView, FormMixin, ProcessFormView):
 
     context_object_name = "node_list"
     form_class = BulkNodeActionForm
+    sort_fields = ('hostname', 'status')
 
     def populate_modifiers(self, request):
         self.query = request.GET.get("query")
@@ -233,7 +236,7 @@ class NodeListView(PaginatedListView, FormMixin, ProcessFormView):
         Wherever two nodes are equal under the sorter order, creation date
         is used as a tie-breaker: newest node first.
         """
-        if self.sort_by is None:
+        if self.sort_by not in self.sort_fields:
             order_by = ()
         else:
             custom_order = self.sort_by
@@ -252,10 +255,17 @@ class NodeListView(PaginatedListView, FormMixin, ProcessFormView):
         :param nodes_query: A query set of nodes.
         :return: A query set of nodes that returns a subset of `nodes_query`.
         """
-        try:
-            return constrain_nodes(nodes_query, _parse_constraints(self.query))
-        except InvalidConstraint as e:
-            self.query_error = e
+        data = _parse_constraints(self.query)
+        form = AcquireNodeForm.Strict(data=data)
+        # Change the field names of the AcquireNodeForm object to
+        # conform to Juju's naming.
+        form.rename_fields(JUJU_ACQUIRE_FORM_FIELDS_MAPPING)
+        if form.is_valid():
+            return form.filter_nodes(nodes_query)
+        else:
+            self.query_error = ', '.join(
+                ["%s: %s" % (field, ', '.join(errors))
+                 for field, errors in form.errors.items()])
             return Node.objects.none()
 
     def get_queryset(self):
@@ -271,15 +281,14 @@ class NodeListView(PaginatedListView, FormMixin, ProcessFormView):
         links and CSS classes for the that field.
         """
 
-        fields = ('hostname', 'status')
         # Build relative URLs for the links, just with the params
-        links = {field: '?' for field in fields}
-        classes = {field: 'sort-none' for field in fields}
+        links = {field: '?' for field in self.sort_fields}
+        classes = {field: 'sort-none' for field in self.sort_fields}
 
         params = self.request.GET.copy()
         reverse_dir = 'asc' if self.sort_dir == 'desc' else 'desc'
 
-        for field in fields:
+        for field in self.sort_fields:
             params['sort'] = field
             if field == self.sort_by:
                 params['dir'] = reverse_dir

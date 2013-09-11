@@ -16,7 +16,9 @@ import json
 
 from django import forms
 from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.core.validators import validate_email
 from django.http import QueryDict
 from maasserver.enum import (
     ARCHITECTURE,
@@ -49,6 +51,7 @@ from maasserver.forms import (
     ProfileForm,
     remove_None_values,
     UnconstrainedMultipleChoiceField,
+    ValidatorMultipleChoiceField,
     )
 from maasserver.models import (
     Config,
@@ -998,6 +1001,20 @@ class TestUnconstrainedMultipleChoiceField(MAASServerTestCase):
         value = ['a', 'b']
         instance = UnconstrainedMultipleChoiceField()
         self.assertEqual(value, instance.clean(value))
+
+
+class TestValidatorMultipleChoiceField(MAASServerTestCase):
+
+    def test_field_validates_valid_data(self):
+        value = ['test@example.com', 'me@example.com']
+        field = ValidatorMultipleChoiceField(validator=validate_email)
+        self.assertEqual(value, field.clean(value))
+
+    def test_field_uses_validator(self):
+        value = ['test@example.com', 'invalid-email']
+        field = ValidatorMultipleChoiceField(validator=validate_email)
+        error = self.assertRaises(ValidationError, field.clean, value)
+        self.assertEquals(['Enter a valid email address.'], error.messages)
 
 
 class TestBulkNodeActionForm(MAASServerTestCase):

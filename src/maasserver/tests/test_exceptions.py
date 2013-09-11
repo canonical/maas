@@ -15,9 +15,7 @@ __all__ = []
 import httplib
 
 from maasserver.exceptions import (
-    InvalidConstraint,
     MAASAPIBadRequest,
-    NoSuchConstraint,
     Redirect,
     )
 from maasserver.testing import extract_redirect
@@ -40,25 +38,3 @@ class TestExceptions(MAASTestCase):
         exception = Redirect(target)
         response = exception.make_http_response()
         self.assertEqual(target, extract_redirect(response))
-
-    def test_InvalidConstraint_is_bad_request(self):
-        err = InvalidConstraint("height", "-1", ValueError("Not positive"))
-        response = err.make_http_response()
-        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
-
-    def test_InvalidConstraint_str_without_context(self):
-        err = InvalidConstraint("hue", "shiny")
-        self.assertEqual(str(err), "Invalid 'hue' constraint 'shiny'")
-
-    def test_InvalidConstraint_str_with_context(self):
-        try:
-            int("hundreds")
-        except ValueError as e:
-            context = e
-        err = InvalidConstraint("limbs", "hundreds", context)
-        self.assertEqual(str(err),
-            "Invalid 'limbs' constraint 'hundreds': " + str(context))
-
-    def test_NoSuchConstraint_str(self):
-        err = NoSuchConstraint("hue")
-        self.assertEqual(str(err), "No such 'hue' constraint")

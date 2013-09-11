@@ -30,7 +30,6 @@ from apiclient.maas_client import MAASClient
 from django.conf import settings
 from django.contrib.auth.models import AnonymousUser
 from django.core.urlresolvers import reverse
-from django.http import QueryDict
 from fixtures import (
     EnvironmentVariableFixture,
     Fixture,
@@ -38,7 +37,6 @@ from fixtures import (
 from maasserver import api
 from maasserver.api import (
     DISPLAYED_NODEGROUPINTERFACE_FIELDS,
-    extract_constraints,
     store_node_power_parameters,
     )
 from maasserver.enum import (
@@ -138,23 +136,6 @@ from testtools.matchers import (
     MatchesListwise,
     MatchesStructure,
     )
-
-
-class TestModuleHelpers(MAASServerTestCase):
-
-    def test_extract_constraints_ignores_unknown_parameters(self):
-        unknown_parameter = "%s=%s" % (
-            factory.getRandomString(),
-            factory.getRandomString(),
-            )
-        self.assertEqual(
-            {}, extract_constraints(QueryDict(unknown_parameter)))
-
-    def test_extract_constraints_extracts_name(self):
-        name = factory.getRandomString()
-        self.assertEqual(
-            {'hostname': name},
-            extract_constraints(QueryDict('name=%s' % name)))
 
 
 class TestAuthentication(APIv10TestMixin, MAASServerTestCase):
@@ -2067,7 +2048,7 @@ class TestNodesAPI(APITestCase):
         self.assertEqual(node.system_id, response_json['system_id'])
 
     def test_POST_acquire_fails_with_invalid_mem(self):
-        # Asking for an invalid amount of cpu returns a bad request.
+        # Asking for an invalid amount of memory returns a bad request.
         factory.make_node(status=NODE_STATUS.READY)
         response = self.client.post(self.get_uri('nodes/'), {
             'op': 'acquire',
@@ -2076,13 +2057,65 @@ class TestNodesAPI(APITestCase):
         self.assertResponseCode(httplib.BAD_REQUEST, response)
 
     def test_POST_acquire_allocates_node_by_tags(self):
-        # Asking for particular tags acquires a node with those tags.
         node = factory.make_node(status=NODE_STATUS.READY)
         node_tag_names = ["fast", "stable", "cute"]
         node.tags = [factory.make_tag(t) for t in node_tag_names]
+        # Legacy call using comma-separated tags.
+        response = self.client.post(self.get_uri('nodes/'), {
+            'op': 'acquire',
+            'tags': ['fast', 'stable'],
+        })
+        self.assertResponseCode(httplib.OK, response)
+        response_json = json.loads(response.content)
+        self.assertEqual(node_tag_names, response_json['tag_names'])
+
+    def test_POST_acquire_allocates_node_by_tags_comma_separated(self):
+        node = factory.make_node(status=NODE_STATUS.READY)
+        node_tag_names = ["fast", "stable", "cute"]
+        node.tags = [factory.make_tag(t) for t in node_tag_names]
+        # Legacy call using comma-separated tags.
         response = self.client.post(self.get_uri('nodes/'), {
             'op': 'acquire',
             'tags': 'fast, stable',
+        })
+        self.assertResponseCode(httplib.OK, response)
+        response_json = json.loads(response.content)
+        self.assertEqual(node_tag_names, response_json['tag_names'])
+
+    def test_POST_acquire_allocates_node_by_tags_space_separated(self):
+        node = factory.make_node(status=NODE_STATUS.READY)
+        node_tag_names = ["fast", "stable", "cute"]
+        node.tags = [factory.make_tag(t) for t in node_tag_names]
+        # Legacy call using space-separated tags.
+        response = self.client.post(self.get_uri('nodes/'), {
+            'op': 'acquire',
+            'tags': 'fast stable',
+        })
+        self.assertResponseCode(httplib.OK, response)
+        response_json = json.loads(response.content)
+        self.assertEqual(node_tag_names, response_json['tag_names'])
+
+    def test_POST_acquire_allocates_node_by_tags_comma_space_separated(self):
+        node = factory.make_node(status=NODE_STATUS.READY)
+        node_tag_names = ["fast", "stable", "cute"]
+        node.tags = [factory.make_tag(t) for t in node_tag_names]
+        # Legacy call using comma-and-space-separated tags.
+        response = self.client.post(self.get_uri('nodes/'), {
+            'op': 'acquire',
+            'tags': 'fast, stable cute',
+        })
+        self.assertResponseCode(httplib.OK, response)
+        response_json = json.loads(response.content)
+        self.assertEqual(node_tag_names, response_json['tag_names'])
+
+    def test_POST_acquire_allocates_node_by_tags_mixed_input(self):
+        node = factory.make_node(status=NODE_STATUS.READY)
+        node_tag_names = ["fast", "stable", "cute"]
+        node.tags = [factory.make_tag(t) for t in node_tag_names]
+        # Mixed call using comma-separated tags in a list.
+        response = self.client.post(self.get_uri('nodes/'), {
+            'op': 'acquire',
+            'tags': ['fast, stable', 'cute'],
         })
         self.assertResponseCode(httplib.OK, response)
         response_json = json.loads(response.content)
@@ -2106,39 +2139,26 @@ class TestNodesAPI(APITestCase):
         node.tags = [factory.make_tag("fast")]
         response = self.client.post(self.get_uri('nodes/'), {
             'op': 'acquire',
-            'tags': 'fast, hairy',
+            'tags': 'fast, hairy, boo',
         })
-        self.assertResponseCode(httplib.BAD_REQUEST, response)
+        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+        self.assertEqual(
+            dict(tags=["No such tag(s): 'hairy', 'boo'."]),
+            json.loads(response.content))
 
     def test_POST_acquire_allocates_node_connected_to_routers(self):
-        macs = [
-            MAC('aa:bb:cc:dd:ee:ff'), MAC('00:11:22:33:44:55'),
-            MAC('aa:aa:aa:aa:aa:aa')]
+        macs = [factory.make_MAC() for counter in range(3)]
         node = factory.make_node(routers=macs, status=NODE_STATUS.READY)
         factory.make_node(routers=[])
 
         response = self.client.post(self.get_uri('nodes/'), {
             'op': 'acquire',
-            'connected_to': 'aa:aa:aa:aa:aa:aa,aa:bb:cc:dd:ee:ff',
+            'connected_to': [macs[2].get_raw(), macs[0].get_raw()],
         })
 
         self.assertResponseCode(httplib.OK, response)
         response_json = json.loads(response.content)
         self.assertEqual(node.system_id, response_json['system_id'])
-
-    def test_POST_acquire_allocates_node_connected_to_routers_fails(self):
-        macs = [MAC('aa:bb:cc:dd:ee:ff'), MAC('00:11:22:33:44:55')]
-        factory.make_node(routers=macs, status=NODE_STATUS.READY)
-        factory.make_node(routers=[])
-
-        response = self.client.post(self.get_uri('nodes/'), {
-            'op': 'acquire',
-            'connected_to': 'dd:dd:dd:33:44:55',
-        })
-
-        self.assertEqual(
-            (httplib.CONFLICT, "No matching node is available."),
-            (response.status_code, response.content))
 
     def test_POST_acquire_allocates_node_not_connected_to_routers(self):
         macs = [MAC('aa:bb:cc:dd:ee:ff'), MAC('00:11:22:33:44:55')]
@@ -2149,25 +2169,12 @@ class TestNodesAPI(APITestCase):
 
         response = self.client.post(self.get_uri('nodes/'), {
             'op': 'acquire',
-            'not_connected_to': 'aa:bb:cc:dd:ee:ff,11:11:11:11:11:11',
+            'not_connected_to': ['aa:bb:cc:dd:ee:ff', '11:11:11:11:11:11'],
         })
 
         self.assertResponseCode(httplib.OK, response)
         response_json = json.loads(response.content)
         self.assertEqual(node.system_id, response_json['system_id'])
-
-    def test_POST_acquire_allocates_node_not_connected_to_routers_fails(self):
-        factory.make_node(
-            routers=[MAC('11:11:11:11:11:11')], status=NODE_STATUS.READY)
-
-        response = self.client.post(self.get_uri('nodes/'), {
-            'op': 'acquire',
-            'not_connected_to': '11:11:11:11:11:11',
-        })
-
-        self.assertEqual(
-            (httplib.CONFLICT, "No matching node is available."),
-            (response.status_code, response.content))
 
     def test_POST_acquire_sets_a_token(self):
         # "acquire" should set the Token being used in the request on

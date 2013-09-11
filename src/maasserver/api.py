@@ -188,8 +188,8 @@ from maasserver.models import (
     SSHKey,
     Tag,
     )
-from maasserver.models.node import CONSTRAINTS_MAAS_MAP
 from maasserver.node_action import Commission
+from maasserver.node_constraint_filter_forms import AcquireNodeForm
 from maasserver.preseed import (
     compose_enlistment_preseed_url,
     compose_preseed_url,
@@ -203,7 +203,10 @@ from maasserver.utils import (
     map_enum,
     strip_domain,
     )
-from maasserver.utils.orm import get_one
+from maasserver.utils.orm import (
+    get_first,
+    get_one,
+    )
 from metadataserver.fields import Bin
 from metadataserver.models import (
     CommissioningScript,
@@ -533,22 +536,6 @@ class AnonNodesHandler(AnonymousOperationsHandler):
         return ('nodes_handler', [])
 
 
-def extract_constraints(request_params):
-    """Extract a dict of node allocation constraints from http parameters.
-
-    :param request_params: Parameters submitted with the allocation request.
-    :type request_params: :class:`django.http.QueryDict`
-    :return: A mapping of applicable constraint names to their values.
-    :rtype: :class:`dict`
-    """
-    constraints = {}
-    for request_name in CONSTRAINTS_MAAS_MAP:
-        if request_name in request_params:
-            db_name = CONSTRAINTS_MAAS_MAP[request_name]
-            constraints[db_name] = request_params[request_name]
-    return constraints
-
-
 class NodesHandler(OperationsHandler):
     """Manage the collection of all Nodes in the MAAS."""
     create = read = update = delete = None
@@ -761,12 +748,17 @@ class NodesHandler(OperationsHandler):
             to.
         :type not_connected_to: basestring
         """
-        node = Node.objects.get_available_node_for_acquisition(
-            request.user, constraints=extract_constraints(request.data))
-        if node is None:
-            raise NodesNotAvailable("No matching node is available.")
-        node.acquire(request.user, get_oauth_token(request))
-        return node
+        form = AcquireNodeForm(data=request.data)
+        if form.is_valid():
+            nodes = Node.objects.get_available_nodes_for_acquisition(
+                request.user)
+            nodes = form.filter_nodes(nodes)
+            node = get_first(nodes)
+            if node is None:
+                raise NodesNotAvailable("No matching node is available.")
+            node.acquire(request.user, get_oauth_token(request))
+            return node
+        raise ValidationError(form.errors)
 
     @classmethod
     def resource_uri(cls, *args, **kwargs):

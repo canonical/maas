@@ -11,8 +11,6 @@ from __future__ import (
 
 __metaclass__ = type
 __all__ = [
-    "CONSTRAINTS_JUJU_MAP",
-    "CONSTRAINTS_MAAS_MAP",
     "NODE_TRANSITIONS",
     "Node",
     "update_hardware_details",
@@ -74,10 +72,7 @@ from maasserver.utils import (
     get_db_state,
     strip_domain,
     )
-from maasserver.utils.orm import (
-    get_first,
-    get_one,
-    )
+from maasserver.utils.orm import get_one
 from piston.models import Token
 from provisioningserver.enum import (
     POWER_TYPE,
@@ -92,28 +87,6 @@ from provisioningserver.tasks import (
 
 def generate_node_system_id():
     return 'node-%s' % uuid1()
-
-
-# Mapping of constraint names as used by juju to Node field names
-CONSTRAINTS_JUJU_MAP = {
-    'maas-name': 'hostname',
-    'maas-tags': 'tags',
-    'arch': 'architecture',
-    'cpu': 'cpu_count',
-    'mem': 'memory',
-    }
-
-
-# Mapping of constraint names as used by the maas api to Node field names
-CONSTRAINTS_MAAS_MAP = {
-    'name': 'hostname',
-    'tags': 'tags',
-    'arch': 'architecture',
-    'cpu_count': 'cpu_count',
-    'mem': 'memory',
-    'connected_to': 'connected_to',
-    'not_connected_to': 'not_connected_to',
-    }
 
 
 # Information about valid node status transitions.
@@ -301,21 +274,16 @@ class NodeManager(Manager):
         else:
             raise PermissionDenied()
 
-    def get_available_node_for_acquisition(self, for_user, constraints=None):
-        """Find a `Node` to be acquired by the given user.
+    def get_available_nodes_for_acquisition(self, for_user):
+        """Find the nodes that can be acquired by the given user.
 
         :param for_user: The user who is to acquire the node.
         :type for_user: :class:`django.contrib.auth.models.User`
-        :param constraints: Optional selection constraints.  If given, only
-            nodes matching these constraints are considered.
-        :type constraints: :class:`dict`
-        :return: A matching `Node`, or None if none are available.
+        :return: Those nodes which can be acquired by the user.
+        :rtype: `django.db.models.query.QuerySet`
         """
-        from maasserver.models.node_constraint_filter import constrain_nodes
         available_nodes = self.get_nodes(for_user, NODE_PERMISSION.VIEW)
-        available_nodes = available_nodes.filter(status=NODE_STATUS.READY)
-        available_nodes = constrain_nodes(available_nodes, constraints)
-        return get_first(available_nodes)
+        return available_nodes.filter(status=NODE_STATUS.READY)
 
     def stop_nodes(self, ids, by_user):
         """Request on given user's behalf that the given nodes be shut down.
