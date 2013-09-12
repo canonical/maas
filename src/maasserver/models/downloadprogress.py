@@ -34,6 +34,15 @@ class DownloadProgressManager(Manager):
     the model class it manages.
     """
 
+    def get_latest_download(self, nodegroup, filename):
+        """Return the latest `DownloadProgress` for a download, or None."""
+        reports = self.filter(nodegroup=nodegroup, filename=filename)
+        latest = reports.order_by('-id')[:1]
+        if len(latest) > 0:
+            return latest[0]
+        else:
+            return None
+
 
 class DownloadProgress(CleanSave, TimestampedModel):
     """Progress report from a cluster for one of its boot-image downloads.

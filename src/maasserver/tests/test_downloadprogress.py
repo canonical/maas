@@ -20,6 +20,46 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 
 
+class TestDownloadProgressManager(MAASServerTestCase):
+
+    def test_get_latest_download_returns_None_if_nothing_found(self):
+        self.assertIsNone(
+            DownloadProgress.objects.get_latest_download(
+                factory.make_node_group(), factory.getRandomString()))
+
+    def test_get_latest_download_finds_download_progress(self):
+        progress = factory.make_download_progress()
+        self.assertEqual(
+            progress,
+            DownloadProgress.objects.get_latest_download(
+                progress.nodegroup, progress.filename))
+
+    def test_get_latest_download_returns_latest_matching_download(self):
+        nodegroup = factory.make_node_group()
+        filename = factory.getRandomString()
+        progress = [
+            factory.make_download_progress(
+                nodegroup=nodegroup, filename=filename)
+            for counter in range(10)
+            ]
+
+        self.assertEqual(
+            progress[-1],
+            DownloadProgress.objects.get_latest_download(nodegroup, filename))
+
+    def test_get_latest_download_ignores_other_clusters(self):
+        progress = factory.make_download_progress()
+        self.assertIsNone(
+            DownloadProgress.objects.get_latest_download(
+                factory.make_node_group(), progress.filename))
+
+    def test_get_latest_download_ignores_other_files(self):
+        progress = factory.make_download_progress()
+        self.assertIsNone(
+            DownloadProgress.objects.get_latest_download(
+                progress.nodegroup, factory.getRandomString()))
+
+
 class TestDownloadProgress(MAASServerTestCase):
 
     def test_save_download_progress(self):
