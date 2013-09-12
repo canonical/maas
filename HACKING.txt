@@ -427,7 +427,7 @@ in ``src/<application>/models/__init__.py``
 
 .. _schemamigration: http://south.aeracode.org/docs/commands.html#schemamigration
 
-Once you've changed the code, will need to run::
+Once you've changed the code, run::
 
     $ ./bin/maas schemamigration maasserver --auto description_of_the_change
 

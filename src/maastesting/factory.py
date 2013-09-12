@@ -12,6 +12,7 @@ from __future__ import (
 __metaclass__ = type
 __all__ = [
     "factory",
+    "NO_VALUE",
     ]
 
 import datetime
@@ -32,6 +33,11 @@ from netaddr import (
     IPAddress,
     IPNetwork,
     )
+
+# Occasionally a parameter needs separate values for None and "no value
+# given, make one up."  In that case, use NO_VALUE as the default and
+# accept None as a normal value.
+NO_VALUE = object()
 
 
 class Factory:

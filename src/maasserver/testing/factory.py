@@ -29,6 +29,7 @@ from maasserver.fields import MAC
 from maasserver.models import (
     BootImage,
     DHCPLease,
+    DownloadProgress,
     FileStorage,
     MACAddress,
     Node,
@@ -44,6 +45,7 @@ from maasserver.testing import (
     )
 from maasserver.utils import map_enum
 import maastesting.factory
+from maastesting.factory import NO_VALUE
 from metadataserver.fields import Bin
 from metadataserver.models import (
     CommissioningScript,
@@ -406,6 +408,80 @@ class Factory(maastesting.factory.Factory):
             content = b'content:' + self.getRandomString().encode('ascii')
         return CommissioningScript.objects.create(
             name=name, content=Bin(content))
+
+    def make_download_progress(self, nodegroup=None, filename=None,
+                               size=NO_VALUE, bytes_downloaded=None,
+                               error=None):
+        """Create a `DownloadProgress` in some poorly-defined state.
+
+        If you have specific wishes about the object's state, you'll want to
+        use one of the specialized `make_download_progress_*` methods instead.
+
+        Pass a `size` of `None` to indicate that total file size is not yet
+        known.  The default picks either a random number, or None.
+        """
+        if nodegroup is None:
+            nodegroup = self.make_node_group()
+        if filename is None:
+            filename = self.make_name('download')
+        if size is NO_VALUE:
+            if self.getRandomBoolean():
+                size = random.randint(0, 1000000000)
+            else:
+                size = None
+        if bytes_downloaded is None:
+            if size is None:
+                max_size = 1000000000
+            else:
+                max_size = size
+            bytes_downloaded = random.randint(0, max_size)
+        if error is None:
+            if self.getRandomBoolean():
+                error = self.getRandomString()
+            else:
+                error = ''
+        return DownloadProgress.objects.create(
+            nodegroup=nodegroup, filename=filename, size=size,
+            bytes_downloaded=bytes_downloaded)
+
+    def make_download_progress_success(self, nodegroup=None, filename=None,
+                                       size=None):
+        """Create a `DownloadProgress` indicating success."""
+        if size is None:
+            size = random.randint(0, 1000000000)
+        return self.make_download_progress(
+            nodegroup=nodegroup, filename=filename, size=size,
+            bytes_downloaded=size, error='')
+
+    def make_download_progress_incomplete(self, nodegroup=None, filename=None,
+                                          size=NO_VALUE,
+                                          bytes_downloaded=None):
+        """Create a `DownloadProgress` that's not done yet."""
+        if size is NO_VALUE:
+            if self.getRandomBoolean():
+                # File can't be empty, or the download can't be incomplete.
+                size = random.randint(1, 1000000000)
+            else:
+                size = None
+        if bytes_downloaded is None:
+            if size is None:
+                max_size = 1000000000
+            else:
+                max_size = size
+            bytes_downloaded = random.randint(0, max_size - 1)
+        return self.make_download_progress(
+            nodegroup=nodegroup, filename=filename, size=size,
+            bytes_downloaded=bytes_downloaded, error='')
+
+    def make_download_progress_failure(self, nodegroup=None, filename=None,
+                                       size=NO_VALUE, bytes_downloaded=None,
+                                       error=None):
+        """Create a `DownloadProgress` indicating failure."""
+        if error is None:
+            error = self.getRandomString()
+        return self.make_download_progress_incomplete(
+            nodegroup=nodegroup, filename=filename, size=size,
+            bytes_downloaded=bytes_downloaded, error=error)
 
 
 # Create factory singleton.

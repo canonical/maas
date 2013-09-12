@@ -15,6 +15,7 @@ __all__ = [
     'ComponentError',
     'Config',
     'DHCPLease',
+    'DownloadProgress',
     'FileStorage',
     'logger',
     'MACAddress',
@@ -42,6 +43,7 @@ from maasserver.models.bootimage import BootImage
 from maasserver.models.component_error import ComponentError
 from maasserver.models.config import Config
 from maasserver.models.dhcplease import DHCPLease
+from maasserver.models.downloadprogress import DownloadProgress
 from maasserver.models.filestorage import FileStorage
 from maasserver.models.macaddress import MACAddress
 from maasserver.models.node import Node
@@ -126,6 +128,7 @@ HandlerDocumentation.resource_uri_template = (
 admin.site.register(BootImage)
 admin.site.register(Config)
 admin.site.register(Consumer)
+admin.site.register(DownloadProgress)
 admin.site.register(FileStorage)
 admin.site.register(MACAddress)
 admin.site.register(Node)
