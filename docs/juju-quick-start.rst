@@ -4,13 +4,8 @@ Juju Quick Start
 These instructions will help you deploy your first charm with Juju to
 a MAAS cluster.
 
-A few assumptions are made:
-
-- You have a MAAS cluster set-up, and you have at least 2 nodes
-  enlisted with it.
-
-- You're running MAAS on your local machine. If not you'll need to
-  adjust some of the URLs mentioned accordingly.
+In the following, we assume that you have a MAAS cluster set-up with at least
+2 nodes enlisted with it.
 
 
 Your API key, SSH key, and environments.yaml
@@ -33,21 +28,22 @@ Getting a key
 
 To get the API key:
 
-#. Go to your `MAAS preferences page`_, or go to your `MAAS home
-   page`_ and choose *Preferences* from the drop-down menu that
-   appears when clicking your username at the top-right of the page.
+#. Go to your MAAS preferences page (go to your MAAS home page
+   ``http://${my-maas-server}:80/MAAS/`` and choose *Preferences* from the
+   drop-down menu that appears when clicking your username at the top-right
+   of the page).
 
 #. Optionally add a new MAAS key. Do this if you're setting up another
    environment within the same MAAS cluster.
 
-.. _MAAS preferences page: http://localhost/MAAS/account/prefs/
-.. _MAAS home page: http://localhost/MAAS
+The ``${my-maas-server}`` slot should be replaced with the hostname of your
+MAAS server.
 
 
 Adding an SSH key
 ^^^^^^^^^^^^^^^^^
 
-While you're still on the `MAAS preferences page`_, add your SSH key
+While you're still on the MAAS preferences page, add your SSH key
 by clicking *Add SSH key*. Use the public half of your SSH key, the
 content of ``~/.ssh/id_rsa.pub`` for example; don't paste the private
 half.
@@ -58,7 +54,6 @@ Creating environments.yaml
 
 Create or modify ``~/.juju/environments.yaml`` with the following content::
 
-  juju: environments
   environments:
     maas:
       type: maas
@@ -78,9 +73,18 @@ there is no default.
 Now Juju
 --------
 
-::
+If juju-core is not yet installed on the client machine, run::
+
+  $ sudo apt-get install juju-core
+
+Now, use juju to display the status of the default environment::
 
   $ juju status
+
+As you've not bootstrapped you ought to see::
+
+  error: Unable to connect to environment "".
+  Please check your credentials or use 'juju bootstrap' to create a new environment.
 
 **Note**: if Juju complains that there are multiple environments and
 no explicit default, add ``-e ${environment-name}`` after each
@@ -88,16 +92,12 @@ command, e.g.::
 
   $ juju status -e maas
 
-As you've not bootstrapped you ought to see::
-
-  juju environment not found: is the environment bootstrapped?
-
 Bootstrap::
 
-  $ juju bootstrap
+  $ juju bootstrap --upload-tools
 
 This will return quickly, but the master node may take a *long* time
-to come up. It has to completely install Ubuntu and Zookeeper and
+to come up. It has to completely install Ubuntu and Juju on it and
 reboot before it'll be available for use. It's probably worth either
 trying a ``juju status`` once in a while to check on progress, or
 following the install on the node directly.
@@ -109,26 +109,28 @@ following the install on the node directly.
 .. _bug 413415:
   https://bugs.launchpad.net/ubuntu/+source/console-setup/+bug/413415
 
-Once the master node has been installed a status command should come
-up with something a bit more interesting::
+Once the boostrap node has been installed a status command should
+come up with something a bit more interesting::
 
+  environment: maas
   machines:
-    0:
-      agent-state: running
-      dns-name: odev-node02
-      instance-id: /api/1.0/nodes/odev-node02/
-      instance-state: unknown
+    "0":
+      agent-state: started
+      agent-version: 1.13.3.1
+      dns-name: kmhwd.master
+      instance-id: /MAAS/api/1.0/nodes/node-5c5b713a-1afc-11e3-9904-525400123456/
+      series: precise
   services: {}
 
 Now it's possible to deploy a charm::
 
-  $ juju deploy --repository /usr/share/doc/juju/examples local:oneiric/mysql
+  $ juju deploy mysql
   $ juju status
 
 If you have another node free you can finish off the canonical and by
 now familiar example::
 
-  $ juju deploy --repository /usr/share/doc/juju/examples local:oneiric/wordpress
+  $ juju deploy wordpress
   $ juju add-relation wordpress mysql
   $ juju expose wordpress
   $ juju status
