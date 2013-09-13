@@ -19,7 +19,7 @@ __all__ = [
 from functools import wraps
 
 from fixtures import Fixture
-from maastesting.rabbit import get_rabbit
+from rabbitfixture.server import RabbitServer
 from testtools.monkey import MonkeyPatcher
 
 
@@ -53,9 +53,10 @@ def use_rabbit_fixture(test):
     updated to point to it, and that Django's settings are returned to their
     original values at the end.
     """
-    config = get_rabbit().config
-    fixture = RabbitServerSettings(config)
-    test.useFixture(fixture)
+    test.rabbit = RabbitServer()
+    test.useFixture(test.rabbit)
+    settings = RabbitServerSettings(test.rabbit.config)
+    test.useFixture(settings)
 
 
 def uses_rabbit_fixture(func):

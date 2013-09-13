@@ -15,6 +15,7 @@ __all__ = []
 from unittest import skip
 
 from provisioningserver.amqpclient import AMQFactory
+from rabbitfixture.server import RabbitServer
 from testtools import TestCase
 from testtools.deferredruntest import (
     AsynchronousDeferredRunTestForBrokenTwisted,
@@ -53,24 +54,6 @@ class AMQTest(TestCase):
     USER = "guest"
     PASSWORD = "guest"
 
-    @property
-    def rabbit(self):
-        """A set-up `rabbitfixture.server.RabbitServer` instance.
-
-        This is a compatibility shim in case we ever revert to using
-        `testresources`_ here. At the moment the `RabbitServer` is being
-        managed by `package-level fixture hooks`_ that nose recognizes.
-
-        .. testresources_:
-          https://launchpad.net/testresources
-
-        .. package-level fixture hooks_:
-          http://readthedocs.org/docs/nose/en/latest/writing_tests.html
-
-        """
-        from maastesting import rabbit
-        return rabbit.get_rabbit()
-
     @skip(
         "RabbitMQ is not yet a required component "
         "of a running MAAS pserv instance.")
@@ -80,6 +63,10 @@ class AMQTest(TestCase):
         in a clean environment.
         """
         super(AMQTest, self).setUp()
+
+        self.rabbit = RabbitServer()
+        self.useFixture(self.rabbit)
+
         self.queues = set()
         self.exchanges = set()
         self.connected_deferred = Deferred()

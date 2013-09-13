@@ -27,19 +27,16 @@ from maasserver.rabbit import (
     RabbitSession,
     )
 from maasserver.testing.factory import factory
-from maasserver.testing.rabbit import (
-    get_rabbit,
-    uses_rabbit_fixture,
-    )
+from maasserver.testing.rabbit import uses_rabbit_fixture
 from maastesting.testcase import MAASTestCase
 from testtools.testcase import ExpectedException
 
 
-def run_rabbit_command(command):
+def run_rabbit_command(rabbit, command):
     """Run a Rabbit command through rabbitctl, and return its output."""
     if isinstance(command, unicode):
         command = command.encode('ascii')
-    rabbit_env = get_rabbit().runner.environment
+    rabbit_env = rabbit.runner.environment
     return rabbit_env.rabbitctl(command)[0]
 
 
@@ -128,7 +125,9 @@ class TestRabbitBase(MAASTestCase):
         exchange_name = factory.getRandomString()
         rabbitbase = RabbitBase(RabbitSession(), exchange_name)
         rabbitbase.channel
-        self.assertIn(exchange_name, run_rabbit_command('list_exchanges'))
+        self.assertIn(
+            exchange_name,
+            run_rabbit_command(self.rabbit, 'list_exchanges'))
 
 
 class TestRabbitExchange(MAASTestCase):

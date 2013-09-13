@@ -11,8 +11,3 @@ from __future__ import (
 
 __metaclass__ = type
 __all__ = []
-
-from maastesting.rabbit import stop_rabbit
-
-
-tearDown = stop_rabbit
