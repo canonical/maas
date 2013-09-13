@@ -30,7 +30,11 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.celery import CeleryFixture
 from maastesting.fakemethod import FakeMethod
-from mock import Mock
+from mock import (
+    call,
+    MagicMock,
+    Mock,
+    )
 from provisioningserver import tasks
 from testresources import FixtureResource
 
@@ -153,3 +157,17 @@ class TestStartUp(MAASServerTestCase):
         self.assertNotIn(
             COMPONENT.IMPORT_PXE_FILES,
             [args[0][0] for args in recorder.call_args_list])
+
+    def test_start_up_registers_atexit_lock_cleanup(self):
+        filelock_mock = MagicMock()
+        self.patch(start_up, 'FileLock', Mock(side_effect=filelock_mock))
+        # Patch atexit.register to assert it's called with the right
+        # argument.
+        atexit_mock = self.patch(start_up, 'atexit')
+
+        start_up.start_up()
+
+        self.assertEqual(
+            [call.register(
+                filelock_mock(start_up.LOCK_FILE_NAME).break_lock)],
+            atexit_mock.mock_calls)

@@ -15,6 +15,7 @@ __all__ = [
     ]
 
 
+import atexit
 from textwrap import dedent
 
 from django.db import connection
@@ -56,6 +57,9 @@ def start_up():
     internally are not ran concurrently.
     """
     lock = FileLock(LOCK_FILE_NAME)
+    # In case this process gets shut down, clean up the lock.
+    atexit.register(lock.break_lock)
+
     lock.acquire(timeout=LOCK_TIMEOUT)
     try:
         inner_start_up()
