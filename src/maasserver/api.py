@@ -740,13 +740,30 @@ class NodesHandler(OperationsHandler):
     def acquire(self, request):
         """Acquire an available node for deployment.
 
-        :param connected_to: An optional comma-separated list of routers' MAC
-            Addresses the returned node must be connected to.
-        :type connected_to: basestring
-        :param not_connected_to: An optional comma-separated list of
-            routers' MAC Addresses the returned node must not be connected
-            to.
-        :type not_connected_to: basestring
+        Constraints parameters can be used to acquire a node that possesses
+        certain characteristics.  All the constraints are optional and when
+        multiple constraints are provided, they are combined using 'AND'
+        semantics.
+
+        :param name: Hostname of the returned node.
+        :type name: basestring
+        :param arch: Architecture of the returned node (e.g. 'i386/generic',
+            'amd64', 'armhf/highbank', etc.).
+        :type arch: basestring
+        :param cpu_count: The minium number of CPUs the returned node must
+            have.
+        :type cpu_count: int
+        :param mem: The minimum amount of memory (expressed in MB) the
+             returned node must have.
+        :type mem: float
+        :param tags: List of tags the returned node must have.
+        :type tags: list of basestrings
+        :param connected_to: List of routers' MAC addresses the returned
+            node must be connected to.
+        :type connected_to: basestring or list of basestrings
+        :param not_connected_to: List of routers' MAC Addresses the returned
+            node must not be connected to.
+        :type connected_to: list of basestrings
         """
         form = AcquireNodeForm(data=request.data)
         if form.is_valid():
