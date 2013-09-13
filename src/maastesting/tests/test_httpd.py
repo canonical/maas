@@ -24,6 +24,7 @@ from urllib2 import (
     Request,
     urlopen,
     )
+from unittest import skip
 from urlparse import urljoin
 
 from maastesting.fixtures import ProxiesDisabledFixture
@@ -41,6 +42,8 @@ class TestHTTPServerFixture(MAASTestCase):
         super(TestHTTPServerFixture, self).setUp()
         self.useFixture(ProxiesDisabledFixture())
 
+    @skip(
+        "XXX: bigjools 2013-09-13 bug=1224837: Causes intermittent failures")
     def test_init(self):
         host = gethostname()
         fixture = HTTPServerFixture(host=host)
