@@ -138,10 +138,18 @@
 
 
 /******************************************************************************
+    Content modifier: content-with-sidebar
+*/
+#content-with-sidebar {
+    border-right: 1px solid #e5e2e0;
+    }
+
+
+/******************************************************************************
     Content modifier: sidebar
 */
 .sidebar #content {
-    padding-right: 250px;
+    padding-right: 220px;
     }
 
 
@@ -151,10 +159,9 @@
 #sidebar {
     display: none;
     float: right;
-    width: 180px;
+    width: 210px;
     margin-right: -250px;
     padding: 0 20px 10px 20px;
-    border-left: 1px solid #e5e2e0;
     }
 .sidebar #sidebar {
     display: block;

@@ -13,10 +13,12 @@
 {% endblock %}
 
 {% block content %}
+  <div id="content-with-sidebar">
   {% if is_commissioning %}
   This node is commissioning.  This is the commissioning preseed.
   {% endif %}
   <pre>
 {{ preseed }}
   </pre>
+  </div>
 {% endblock %}
