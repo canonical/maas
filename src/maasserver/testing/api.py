@@ -14,6 +14,9 @@ __all__ = [
     'AnonAPITestCase',
     'APITestCase',
     'APIv10TestMixin',
+    'explain_unexpected_response',
+    'log_in_as_normal_user',
+    'make_worker_client',
     'MultipleUsersScenarios',
     ]
 
@@ -25,6 +28,7 @@ from abc import (
 from maasserver.testing.factory import factory
 from maasserver.testing.oauthclient import OAuthAuthenticatedClient
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.worker_user import get_worker_user
 
 
 class APIv10TestMixin:
@@ -105,3 +109,26 @@ class APITestCase(APIv10TestMixin, MAASServerTestCase):
         if response.status_code != expected_code:
             self.fail("Expected %s response, got %s:\n%s" % (
                 expected_code, response.status_code, response.content))
+
+
+def log_in_as_normal_user(client):
+    """Log `client` in as a normal user."""
+    password = factory.getRandomString()
+    user = factory.make_user(password=password)
+    client.login(username=user.username, password=password)
+    return user
+
+
+def make_worker_client(nodegroup):
+    """Create a test client logged in as if it were `nodegroup`."""
+    return OAuthAuthenticatedClient(
+        get_worker_user(), token=nodegroup.api_token)
+
+
+def explain_unexpected_response(expected_status, response):
+    """Return human-readable failure message: unexpected http response."""
+    return "Unexpected http status (expected %s): %s - %s" % (
+        expected_status,
+        response.status_code,
+        response.content,
+        )
