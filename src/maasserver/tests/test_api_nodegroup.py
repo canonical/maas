@@ -27,6 +27,7 @@ from maasserver.enum import (
 from maasserver.models import (
     Config,
     DHCPLease,
+    DownloadProgress,
     NodeGroup,
     nodegroup as nodegroup_module,
     )
@@ -363,6 +364,62 @@ class TestNodeGroupAPI(APITestCase):
             httplib.FORBIDDEN, response.status_code,
             explain_unexpected_response(httplib.FORBIDDEN, response))
 
+    def test_report_download_progress_accepts_new_download(self):
+        nodegroup = factory.make_node_group()
+        filename = factory.getRandomString()
+        client = make_worker_client(nodegroup)
+
+        response = client.post(
+            reverse('nodegroup_handler', args=[nodegroup.uuid]),
+            {
+                'op': 'report_download_progress',
+                'filename': filename,
+            })
+        self.assertEqual(
+            httplib.OK, response.status_code,
+            explain_unexpected_response(httplib.OK, response))
+
+        progress = DownloadProgress.objects.get(nodegroup=nodegroup)
+        self.assertEqual(nodegroup, progress.nodegroup)
+        self.assertEqual(filename, progress.filename)
+        self.assertIsNone(progress.size)
+        self.assertIsNone(progress.bytes_downloaded)
+        self.assertEqual('', progress.error)
+
+    def test_report_download_progress_updates_ongoing_download(self):
+        progress = factory.make_download_progress_incomplete()
+        client = make_worker_client(progress.nodegroup)
+        new_bytes_downloaded = progress.bytes_downloaded + 1
+
+        response = client.post(
+            reverse('nodegroup_handler', args=[progress.nodegroup.uuid]),
+            {
+                'op': 'report_download_progress',
+                'filename': progress.filename,
+                'bytes_downloaded': new_bytes_downloaded,
+            })
+        self.assertEqual(
+            httplib.OK, response.status_code,
+            explain_unexpected_response(httplib.OK, response))
+
+        progress = reload_object(progress)
+        self.assertEqual(new_bytes_downloaded, progress.bytes_downloaded)
+
+    def test_report_download_progress_rejects_invalid_data(self):
+        progress = factory.make_download_progress_incomplete()
+        client = make_worker_client(progress.nodegroup)
+        
+        response = client.post(
+            reverse('nodegroup_handler', args=[progress.nodegroup.uuid]),
+            {
+                'op': 'report_download_progress',
+                'filename': progress.filename,
+                'bytes_downloaded': -1,
+            })
+        self.assertEqual(
+            httplib.BAD_REQUEST, response.status_code,
+            explain_unexpected_response(httplib.BAD_REQUEST, response))
+
 
 class TestNodeGroupAPIAuth(APIv10TestMixin, MAASServerTestCase):
     """Authorization tests for nodegroup API."""
@@ -549,3 +606,50 @@ class TestNodeGroupAPIAuth(APIv10TestMixin, MAASServerTestCase):
         parsed_result = json.loads(response.content)
         node_system_id = parsed_result[0][0]
         self.assertEqual([[node_system_id, None]], parsed_result)
+
+    def test_POST_report_download_progress_works_for_nodegroup_worker(self):
+        nodegroup = factory.make_node_group()
+        filename = factory.getRandomString()
+        client = make_worker_client(nodegroup)
+
+        response = client.post(
+            reverse('nodegroup_handler', args=[nodegroup.uuid]),
+            {
+                'op': 'report_download_progress',
+                'filename': filename,
+            })
+
+        self.assertEqual(
+            httplib.OK, response.status_code,
+            explain_unexpected_response(httplib.OK, response))
+
+    def test_POST_report_download_progress_does_not_work_for_normal_user(self):
+        nodegroup = factory.make_node_group()
+        log_in_as_normal_user(self.client)
+
+        response = self.client.post(
+            reverse('nodegroup_handler', args=[nodegroup.uuid]),
+            {
+                'op': 'report_download_progress',
+                'filename': factory.getRandomString(),
+            })
+
+        self.assertEqual(
+            httplib.FORBIDDEN, response.status_code,
+            explain_unexpected_response(httplib.FORBIDDEN, response))
+
+    def test_POST_report_download_progress_does_work_for_other_cluster(self):
+        filename = factory.getRandomString()
+        client = make_worker_client(factory.make_node_group())
+
+        response = client.post(
+            reverse(
+                'nodegroup_handler', args=[factory.make_node_group().uuid]),
+            {
+                'op': 'report_download_progress',
+                'filename': filename,
+            })
+
+        self.assertEqual(
+            httplib.FORBIDDEN, response.status_code,
+            explain_unexpected_response(httplib.FORBIDDEN, response))

@@ -161,6 +161,7 @@ from maasserver.fields import (
     validate_mac,
     )
 from maasserver.forms import (
+    DownloadProgressForm,
     get_action_form,
     get_node_create_form,
     get_node_edit_form,
@@ -1453,6 +1454,69 @@ class NodeGroupHandler(OperationsHandler):
             ).values_list('system_id', 'hardware_details')
         return HttpResponse(
             json.dumps(list(value_list)), content_type='application/json')
+
+    @operation(idempotent=False)
+    def report_download_progress(self, request, uuid):
+        """Report progress of a download.
+
+        Cluster controllers can call this to update the region controller on
+        file downloads they need to perform, such as kernels and initrd files.
+        This gives the administrator insight into what downloads are in
+        progress, how well downloads are going, and what failures may have
+        occurred.
+
+        A file is identified by an arbitrary name, which must be consistent.
+        It could be a URL, or a filesystem path, or even a symbolic name that
+        the cluster controller makes up.  A cluster controller can download
+        the same file many times over, but not simultaneously.
+
+        Before downloading a file, a cluster controller first reports progress
+        without the `bytes_downloaded` parameter.  It may optionally report
+        progress while downloading, passing the number of bytes downloaded
+        so far.  Finally, if the download succeeded, it should report one final
+        time with the full number of bytes downloaded.
+
+        If the download fails, the cluster controller should report progress
+        with an error string (and either the number of bytes that were
+        successfully downloaded, or zero).
+
+        Progress reports should include the file's size, if known.  The final
+        report after a successful download must include the size.
+
+        :param filename: Arbitrary identifier for the file being downloaded.
+        :type filename: unicode
+        :param size: Optional size of the file, in bytes.  Must be passed at
+            least once, though it can still be passed on subsequent calls.  If
+            file size is not known, pass it at the end when reporting
+            successful completion.  Do not change the size once given.
+        :param bytes_downloaded: Number of bytes that have been successfully
+            downloaded.  Cannot exceed `size`, if known.  This parameter must
+            be omitted from the initial progress report before download starts,
+            and must be included for all subsequent progress reports for that
+            download.
+        :type bytes_downloaded: int
+        :param error: Optional error string.  A download that has submitted an
+            error with its last progress report is considered to have failed.
+        :type error: unicode
+        """
+        nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
+        check_nodegroup_access(request, nodegroup)
+        filename = get_mandatory_param(request.data, 'filename')
+        bytes_downloaded = request.data.get('bytes_downloaded', None)
+
+        download = DownloadProgressForm.get_download(
+            nodegroup, filename, bytes_downloaded)
+
+        if 'size' not in request.data:
+            # No size given.  If one was specified previously, use that.
+            request.data['size'] = download.size
+
+        form = DownloadProgressForm(data=request.data, instance=download)
+        if not form.is_valid():
+            raise ValidationError(form.errors)
+        form.save()
+
+        return HttpResponse(status=httplib.OK)
 
 
 DISPLAYED_NODEGROUPINTERFACE_FIELDS = (
