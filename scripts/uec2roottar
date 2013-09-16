@@ -5,10 +5,9 @@ MP=""
 
 Usage() {
 cat <<EOF
-   ${0##*/} converts an ubuntu ephemeral image into a root
-   disk image tarball.
-
    Usage: ${0##*/} uec-tarball [output]
+
+   Supports converting from uec tarball or raw unpartitioned disk image.
 EOF
 }
 error() { echo "$(date -R):" "$@" 1>&2; }
@@ -30,21 +29,25 @@ trap cleanup EXIT
 uec="$1"
 output=${2}
 
-[ -n "$output" ] || output="${uec%.tar.gz}-root.tar.gz"; 
-error "converting ${uec} to ${output}"
+if $(LANG=C file "$uec" | grep -qi "filesystem data"); then
+   [ -n "$output" ] || output="${uec%.img}-root.tar.gz"; 
+   img="$uec"
+else
+   [ -n "$output" ] || output="${uec%.tar.gz}-root.tar.gz"; 
+   error "extracting *.img from ${uec}"
+   tar -C ${TEMP_D} --wildcards "*.img" -Sxvzf "$uec" ||
+      fail "failed extract $uec"
 
-error "extracting *.img from ${uec}"
-tar -C ${TEMP_D} --wildcards "*.img" -Sxvzf "$uec" ||
-   fail "failed extract $uec"
+   img=""
+   for cand in "${TEMP_D}/"*.img; do
+      [ -z "$img" ] || fail "multiple .img files in $uec"
+      [ -f "$cand" ] && img="$cand"
+   done
 
-img=""
-for cand in "${TEMP_D}/"*.img; do
-   [ -z "$img" ] || fail "multiple .img files in $uec"
-   [ -f "$cand" ] && img="$cand"
-done
+   [ -n "$img" ] || fail "failed to find image in $uec"
+fi
 
-[ -n "$img" ] || fail "failed to find image in $uec"
-
+error "converting ${img} to ${output}"
 mkdir "${TEMP_D}/mp" && mount -o ro "$img" "${TEMP_D}/mp" &&
   MP="$TEMP_D/mp" || fail "failed to mount $img"
 
@@ -53,4 +56,4 @@ tar -C "$MP" -cpSzf "${output}" --numeric-owner . ||
   fail "failed to create ${output}"
 
 error "finished. wrote to ${output}"
-
+exit 0

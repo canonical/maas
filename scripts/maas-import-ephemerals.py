@@ -60,6 +60,22 @@ TGT_ADMIN = ["tgt-admin", "--conf", "/etc/tgt/targets.conf"]
 
 NAME_FORMAT = 'maas-{release}-{version}-{arch}-{version_name}'
 
+# The basic process for importing ephemerals is as follows:
+#   1. do the simplestreams mirror (this is mostly handled by simplestreams);
+#      the output is one .tar.gz for each arch, which itself contains a
+#        *.img - the root filesystem image
+#        *vmlinuz* - kernel
+#        *initrd* - initramfs
+#   2. for each release/arch/serial combo, we extract the simplstreams tar and
+#      copy the kernel/disk/image to the appropriate location in DATA_DIR.
+#   2.1. create a root.tar.gz, which is basically just a copy of disk.img in
+#        .tar.gz format (fastpath only understands .tar.gz, .tar.gz compresses
+#        better, etc.)
+#   3. Run maas-provision. Since maas-provision deletes its data when it's
+#      done, we have to create _another_ directory and symlink (to avoid
+#      copying) everything over. This is annoying.
+#   4. generate tgt.conf, run tgt-admin, and symlink things to the right
+#      places.
 
 def mkdir_p(d):
     try:
@@ -70,7 +86,7 @@ def mkdir_p(d):
 
 
 def tgt_conf_d(path):
-    return join(path, 'tgt.conf.d')
+    return abspath(join(path, 'tgt.conf.d'))
 
 
 def tgt_admin_delete(name):
@@ -141,27 +157,38 @@ class MAASMirrorWriter(mirrors.ObjectStoreMirrorWriter):
                 if len(things) != 1:
                     raise AssertionError(
                         "expected one %s, got %d" % (pattern, len(things)))
-                shutil.copy(things[0], join(target_dir, target))
+                to = abspath(join(target_dir, target))
+                shutil.copy(things[0], to)
+                return to
 
             copy_thing('*-vmlinuz*', 'linux')
             copy_thing('*-initrd*', 'initrd.gz')
-            copy_thing('*disk.img', 'disk.img')
-            root_tar = source[:-len('.tar.gz')] + '-root.tar.gz'
-            shutil.copy(root_tar, join(target_dir, 'dist-root.tar.gz'))
+            image = copy_thing('*img', 'disk.img')
+
+            root_tar = join(target_dir, 'dist-root.tar.gz')
+            subprocess.check_call(["uec2roottar", image, root_tar])
+
+            name = NAME_FORMAT.format(**metadata)
+
             with codecs.open(join(target_dir, 'info'), 'w', 'utf-8') as f:
-                info = ["release", "stream", "label", "serial", "arch", "url",
-                        "name"]
+                info = ["release", "label", "serial", "arch", "name"]
+
                 # maas calls this "serial" instead of "version_name"
                 metadata['serial'] = metadata['version_name']
-                fmt = '\n'.join("%s={%s}" % (i, i) for i in info)
-                f.write(fmt.format(metadata) + '\n')
 
-            # maas-provision deletes this directory
+                metadata['name'] = name
+
+                fmt = '\n'.join("%s={%s}" % (i, i) for i in info)
+                f.write(fmt.format(**metadata) + '\n')
+
+            # maas-provision will delete this directory when it finishes.
             provision_tmp = tempfile.mkdtemp(dir=self._simplestreams_path())
-            shutil.copy(join(target_dir, 'linux'), join(provision_tmp, 'linux'))
-            shutil.copy(join(target_dir, 'initrd.gz'),
-                        join(provision_tmp, 'initrd.gz'))
-            shutil.copy(root_tar, join(provision_tmp, 'root.tar.gz'))
+            symlink(join(target_dir, 'linux'), join(provision_tmp, 'linux'))
+            symlink(join(target_dir, 'initrd.gz'),
+                    join(provision_tmp, 'initrd.gz'))
+            symlink(root_tar, join(provision_tmp, 'root.tar.gz'))
+
+            # TODO: call src/provisioningserver/pxe/install_image.py directly
             provision_cmd = ['maas-provision', 'install-pxe-image',
                              '--arch=' + metadata['arch'],
                              '--purpose="commissioning"',
@@ -169,11 +196,8 @@ class MAASMirrorWriter(mirrors.ObjectStoreMirrorWriter):
                              '--symlink="xinstall"']
             subprocess.check_call(provision_cmd)
 
-            name = NAME_FORMAT.format(metadata)
-
             tgt_conf_path = join(target_dir, 'tgt.conf')
             with codecs.open(tgt_conf_path, 'w', 'utf-8') as f:
-                image = join(target_dir, "disk.img")
                 f.write(TGT_CONF_TEMPL.format(target_name=name, image=image))
 
             tgt_admin_update(target_dir, name)
@@ -209,7 +233,7 @@ def main():
 
     cmdargs = parser.parse_args()
 
-    source = mirrors.UrlMirrorReader(cmdargs.url)
+    source = mirrors.UrlMirrorReader(cmdargs.url, policy=lambda content, path: content)
     config = {'max_items': cmdargs.max}
     target = MAASMirrorWriter(cmdargs.output, config=config)
 
