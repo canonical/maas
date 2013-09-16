@@ -410,7 +410,7 @@ class Factory(maastesting.factory.Factory):
             name=name, content=Bin(content))
 
     def make_download_progress(self, nodegroup=None, filename=None,
-                               size=NO_VALUE, bytes_downloaded=None,
+                               size=NO_VALUE, bytes_downloaded=NO_VALUE,
                                error=None):
         """Create a `DownloadProgress` in some poorly-defined state.
 
@@ -429,12 +429,15 @@ class Factory(maastesting.factory.Factory):
                 size = random.randint(0, 1000000000)
             else:
                 size = None
-        if bytes_downloaded is None:
-            if size is None:
-                max_size = 1000000000
+        if bytes_downloaded is NO_VALUE:
+            if self.getRandomBoolean():
+                if size is None:
+                    max_size = 1000000000
+                else:
+                    max_size = size
+                bytes_downloaded = random.randint(0, max_size)
             else:
-                max_size = size
-            bytes_downloaded = random.randint(0, max_size)
+                bytes_downloaded = None
         if error is None:
             if self.getRandomBoolean():
                 error = self.getRandomString()
@@ -443,6 +446,13 @@ class Factory(maastesting.factory.Factory):
         return DownloadProgress.objects.create(
             nodegroup=nodegroup, filename=filename, size=size,
             bytes_downloaded=bytes_downloaded)
+
+    def make_download_progress_initial(self, nodegroup=None, filename=None,
+                                       size=NO_VALUE):
+        """Create a `DownloadProgress` as reported before a download."""
+        return self.make_download_progress(
+            nodegroup=nodegroup, filename=filename, size=size,
+            bytes_downloaded=None, error='')
 
     def make_download_progress_success(self, nodegroup=None, filename=None,
                                        size=None):
@@ -474,8 +484,8 @@ class Factory(maastesting.factory.Factory):
             bytes_downloaded=bytes_downloaded, error='')
 
     def make_download_progress_failure(self, nodegroup=None, filename=None,
-                                       size=NO_VALUE, bytes_downloaded=None,
-                                       error=None):
+                                       size=NO_VALUE,
+                                       bytes_downloaded=NO_VALUE, error=None):
         """Create a `DownloadProgress` indicating failure."""
         if error is None:
             error = self.getRandomString()

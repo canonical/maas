@@ -44,6 +44,12 @@ class DownloadProgressManager(Manager):
             return None
 
 
+def validate_nonnegative_if_given(value):
+    """Django validator: `value` must be either `None`, zero, or positive."""
+    if value is not None and value < 0:
+        raise ValidationError("Number must not be negative (got %s)." % value)
+
+
 class DownloadProgress(CleanSave, TimestampedModel):
     """Progress report from a cluster for one of its boot-image downloads.
 
@@ -55,16 +61,16 @@ class DownloadProgress(CleanSave, TimestampedModel):
     A cluster may download a file of the same name as a file it has downloaded
     once already.  The new download will have a new record.
 
-    The download is complete when `bytes_downloaded` equals `size`.
+    The download is complete when `bytes_downloaded` equals `size`, provided
+    there is no error.  A download with a non-blank error is considered to have
+    failed.
 
     :ivar nodegroup: The cluster whose controller is doing this download.
     :ivar filename: Name of the file being downloaded.
-    :ivar size: Size of the file, in bytes.
-    :ivar bytes_downloaded: Number of bytes that have been downloaded.  This
-        may not be known in advance, but must be set at some point for any
-        successful download.
-    :ivar error: Failure message.  If this is set, the download is considered
-        a failure.
+    :ivar size: Size of the file, in bytes.  This may not be known in advance,
+        but must be set at some point for any successful download.
+    :ivar bytes_downloaded: Number of bytes that have been downloaded.
+    :ivar error: Failure message.
     """
 
     class Meta(DefaultMeta):
@@ -76,18 +82,16 @@ class DownloadProgress(CleanSave, TimestampedModel):
 
     filename = CharField(max_length=255, editable=False)
 
-    size = IntegerField(blank=True, null=True, editable=True)
+    size = IntegerField(
+        blank=True, null=True, validators=[validate_nonnegative_if_given])
 
-    bytes_downloaded = IntegerField()
+    bytes_downloaded = IntegerField(
+        blank=True, null=True, validators=[validate_nonnegative_if_given])
 
     error = CharField(max_length=1000, blank=True)
 
     def clean(self):
-        if self.bytes_downloaded < 0:
-            raise ValidationError("Bytes downloaded is less than zero.")
-        if self.size is not None:
-            if self.size < 0:
-                raise ValidationError("File size is less than zero.")
+        if self.bytes_downloaded is not None and self.size is not None:
             if self.bytes_downloaded > self.size:
                 raise ValidationError(
                     "Downloaded more bytes than the file is supposed to have.")
