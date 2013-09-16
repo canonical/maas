@@ -184,6 +184,7 @@ class SeleniumLoggedInTestCase(MAASTestCase, LiveServerTestCase):
     def tearDown(self):
         super(SeleniumLoggedInTestCase, self).tearDown()
         maastesting.djangotestcase.cleanup_db(self)
+        django_cache.clear()
 
     @classmethod
     def tearDownClass(cls):

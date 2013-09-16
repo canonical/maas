@@ -19,6 +19,7 @@ __all__ = [
 
 
 from django.conf import settings
+from django.core.cache import cache as django_cache
 from django.core.management import call_command
 from django.core.management.commands import syncdb
 from django.core.signals import request_started
@@ -107,6 +108,8 @@ class TransactionTestCase(MAASTestCase, django.test.TransactionTestCase):
     """
     def _fixture_teardown(self):
         cleanup_db(self)
+        django_cache.clear()
+        super(TransactionTestCase, self)._fixture_teardown()
 
 
 class TestModelMixin:
