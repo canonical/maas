@@ -144,7 +144,7 @@ class MAASMirrorWriter(mirrors.ObjectStoreMirrorWriter):
                 shutil.copy(things[0], join(target_dir, target))
 
             copy_thing('*-vmlinuz*', 'linux')
-            copy_thing('*-initrd*', 'initrd.rd')
+            copy_thing('*-initrd*', 'initrd.gz')
             copy_thing('*disk.img', 'disk.img')
             root_tar = source[:-len('.tar.gz')] + '-root.tar.gz'
             shutil.copy(root_tar, join(target_dir, 'dist-root.tar.gz'))
@@ -156,8 +156,12 @@ class MAASMirrorWriter(mirrors.ObjectStoreMirrorWriter):
                 fmt = '\n'.join("%s={%s}" % (i, i) for i in info)
                 f.write(fmt.format(metadata) + '\n')
 
+            # maas-provision deletes this directory
             provision_tmp = tempfile.mkdtemp(dir=self._simplestreams_path())
-            # TODO: copy things to provision_tmp
+            shutil.copy(join(target_dir, 'linux'), join(provision_tmp, 'linux'))
+            shutil.copy(join(target_dir, 'initrd.gz'),
+                        join(provision_tmp, 'initrd.gz'))
+            shutil.copy(root_tar, join(provision_tmp, 'root.tar.gz'))
             provision_cmd = ['maas-provision', 'install-pxe-image',
                              '--arch=' + metadata['arch'],
                              '--purpose="commissioning"',
