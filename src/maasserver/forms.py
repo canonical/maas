@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Forms."""
@@ -14,6 +14,7 @@ __all__ = [
     "AdminNodeWithMACAddressesForm",
     "CommissioningForm",
     "CommissioningScriptForm",
+    "DownloadProgressForm",
     "get_action_form",
     "get_node_edit_form",
     "get_node_create_form",
@@ -78,6 +79,7 @@ from maasserver.forms_settings import (
     )
 from maasserver.models import (
     Config,
+    DownloadProgress,
     MACAddress,
     Node,
     NodeGroup,
@@ -951,3 +953,49 @@ class BulkNodeActionForm(forms.Form):
             else:
                 not_actionable += 1
         return done, not_actionable, not_permitted
+
+
+class DownloadProgressForm(ModelForm):
+    """Form to update a `DownloadProgress`.
+
+    The `get_download` helper will find the right progress record to update,
+    or create one if needed.
+    """
+
+    class Meta:
+        model = DownloadProgress
+        fields = (
+            'size',
+            'bytes_downloaded',
+            'error',
+            )
+
+    @staticmethod
+    def get_download(nodegroup, filename, bytes_downloaded):
+        """Find or create a `DownloadProgress` to update.
+
+        Will create a new `DownloadProgress` if appropriate.  Use the form
+        to update its fields.
+
+        This returns `None` in exactly one situation: if `bytes_downloaded`
+        is not `None`, but there was no existing record of the download.
+        That is not something that will happen in proper usage.
+        """
+        if bytes_downloaded is None:
+            # This is a new download.  Create a new DownloadProgress.
+            return DownloadProgress.objects.create(
+                nodegroup=nodegroup, filename=filename)
+        else:
+            # This is an ongoing download.  Update the existing one.
+            return DownloadProgress.objects.get_latest_download(
+                nodegroup, filename)
+
+    def clean(self):
+        if self.instance.id is None:
+            # The form was left to create its own DownloadProgress.  This can
+            # only happen if get_download returned None, which in turn can only
+            # happen in this particular scenario.
+            raise ValidationError(
+                "bytes_downloaded was passed on a new download.")
+
+        return super(DownloadProgressForm, self).clean()

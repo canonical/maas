@@ -34,6 +34,7 @@ from maasserver.forms import (
     BulkNodeActionForm,
     CommissioningScriptForm,
     ConfigForm,
+    DownloadProgressForm,
     EditUserForm,
     get_action_form,
     get_node_create_form,
@@ -1121,3 +1122,56 @@ class TestBulkNodeActionForm(MAASServerTestCase):
                 action="invalid-action",
                 system_id=[factory.make_node().system_id]))
         self.assertFalse(form.is_valid(), form._errors)
+
+
+class TestDownloadProgressForm(MAASServerTestCase):
+
+    def test_updates_instance(self):
+        progress = factory.make_download_progress_incomplete(size=None)
+        new_bytes_downloaded = progress.bytes_downloaded + 1
+        size = progress.bytes_downloaded + 2
+        error = factory.getRandomString()
+
+        form = DownloadProgressForm(
+            data={
+                'size': size,
+                'bytes_downloaded': new_bytes_downloaded,
+                'error': error,
+            },
+            instance=progress)
+        new_progress = form.save()
+
+        progress = reload_object(progress)
+        self.assertEqual(progress, new_progress)
+        self.assertEqual(size, progress.size)
+        self.assertEqual(new_bytes_downloaded, progress.bytes_downloaded)
+        self.assertEqual(error, progress.error)
+
+    def test_rejects_unknown_ongoing_download(self):
+        form = DownloadProgressForm(
+            data={'bytes_downloaded': 1}, instance=None)
+
+        self.assertFalse(form.is_valid())
+
+    def test_get_download_returns_ongoing_download(self):
+        progress = factory.make_download_progress_incomplete()
+
+        self.assertEqual(
+            progress,
+            DownloadProgressForm.get_download(
+                progress.nodegroup, progress.filename,
+                progress.bytes_downloaded + 1))
+
+    def test_get_download_recognises_start_of_new_download(self):
+        nodegroup = factory.make_node_group()
+        filename = factory.getRandomString()
+        progress = DownloadProgressForm.get_download(nodegroup, filename, None)
+        self.assertIsNotNone(progress)
+        self.assertEqual(nodegroup, progress.nodegroup)
+        self.assertEqual(filename, progress.filename)
+        self.assertIsNone(progress.bytes_downloaded)
+
+    def test_get_download_returns_none_for_unknown_ongoing_download(self):
+        self.assertIsNone(
+            DownloadProgressForm.get_download(
+                factory.make_node_group(), factory.getRandomString(), 1))
