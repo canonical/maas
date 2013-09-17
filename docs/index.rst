@@ -63,6 +63,8 @@ Developing MAAS
    development/building-packages
    development/cluster-registration
    development/tagging
+   development/lease-scanning-and-dns
+   development/preseeds
 
 
 **********
