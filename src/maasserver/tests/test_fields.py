@@ -32,14 +32,12 @@ from maasserver.models import (
     NodeGroupInterface,
     )
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import (
-    MAASServerTestCase,
-    TestModelTestCase,
-    )
+from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.tests.models import (
     JSONFieldModel,
     XMLFieldModel,
     )
+from maastesting.djangotestcase import TestModelMixin
 from psycopg2.extensions import ISQLQuote
 
 
@@ -223,7 +221,7 @@ class TestMACAddressField(MAASServerTestCase):
         self.assertRaises(ValidationError, validate_mac, '00:11:222:33:44:55')
 
 
-class TestJSONObjectField(TestModelTestCase):
+class TestJSONObjectField(TestModelMixin, MAASServerTestCase):
 
     app = 'maasserver.tests'
 
@@ -263,7 +261,7 @@ class TestJSONObjectField(TestModelTestCase):
         self.assertRaises(TypeError, JSONFieldModel.objects.get, value__gte=3)
 
 
-class TestXMLField(TestModelTestCase):
+class TestXMLField(TestModelMixin, MAASServerTestCase):
 
     app = 'maasserver.tests'
 

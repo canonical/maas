@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.testing`."""
@@ -24,8 +24,9 @@ from maasserver.testing import (
     reload_objects,
     )
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import TestModelTestCase
+from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.testing.tests.models import TestModel
+from maastesting.djangotestcase import TestModelMixin
 
 # Horrible kludge.  Works around a bug where delete() does not work on
 # test models when using nose.  Without this, running the tests in this
@@ -37,7 +38,7 @@ from maasserver.testing.tests.models import TestModel
 TestModel._meta.get_all_related_objects()
 
 
-class TestHelpers(TestModelTestCase):
+class TestHelpers(TestModelMixin, MAASServerTestCase):
     """Test helper functions."""
 
     app = 'maasserver.testing.tests'

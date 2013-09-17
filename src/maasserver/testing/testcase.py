@@ -14,7 +14,6 @@ __all__ = [
     'AdminLoggedInTestCase',
     'LoggedInTestCase',
     'MAASTestCase',
-    'TestModelTestCase',
     ]
 
 import SocketServer
@@ -30,7 +29,10 @@ from fixtures import Fixture
 from maasserver.fields import register_mac_type
 from maasserver.testing.factory import factory
 from maastesting.celery import CeleryFixture
-import maastesting.djangotestcase
+from maastesting.djangotestcase import (
+    cleanup_db,
+    DjangoTestCase,
+    )
 from maastesting.fixtures import DisplayFixture
 from maastesting.testcase import MAASTestCase
 from mock import Mock
@@ -42,7 +44,7 @@ MIME_BOUNDARY = 'BoUnDaRyStRiNg'
 MULTIPART_CONTENT = 'multipart/form-data; boundary=%s' % MIME_BOUNDARY
 
 
-class MAASServerTestCase(maastesting.djangotestcase.DjangoTestCase):
+class MAASServerTestCase(DjangoTestCase):
     """:class:`TestCase` variant with the basics for maasserver testing."""
 
     @classmethod
@@ -73,15 +75,6 @@ class MAASServerTestCase(maastesting.djangotestcase.DjangoTestCase):
         else:
             return self.client.put(
                 path, encode_multipart(MIME_BOUNDARY, data), MULTIPART_CONTENT)
-
-
-class TestModelTestCase(MAASServerTestCase,
-                        maastesting.djangotestcase.TestModelTestCase):
-    """:class:`MAASServerTestCase` variant that lets you create testing models.
-
-    In this type of test case, you can create a model class on the fly and
-    use it as if it were a real model class in the application.
-    """
 
 
 class LoggedInTestCase(MAASServerTestCase):
@@ -183,7 +176,7 @@ class SeleniumLoggedInTestCase(MAASTestCase, LiveServerTestCase):
 
     def tearDown(self):
         super(SeleniumLoggedInTestCase, self).tearDown()
-        maastesting.djangotestcase.cleanup_db(self)
+        cleanup_db(self)
         django_cache.clear()
 
     @classmethod

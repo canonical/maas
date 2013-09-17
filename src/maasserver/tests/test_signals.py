@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for signals helpers."""
@@ -14,15 +14,16 @@ __all__ = []
 
 from maasserver.signals import connect_to_field_change
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import TestModelTestCase
+from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.tests.models import FieldChangeTestModel
+from maastesting.djangotestcase import TestModelMixin
 from mock import (
     call,
     Mock,
     )
 
 
-class ConnectToFieldChangeTest(TestModelTestCase):
+class ConnectToFieldChangeTest(TestModelMixin, MAASServerTestCase):
     """Testing for the method `connect_to_field_change`."""
 
     app = 'maasserver.tests'

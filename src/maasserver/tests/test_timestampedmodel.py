@@ -17,18 +17,15 @@ from datetime import datetime
 from django.db import transaction
 from maasserver.models.timestampedmodel import now
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import (
-    MAASServerTestCase,
-    TestModelTestCase,
-    )
+from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.tests.models import TimestampedModelTestModel
 from maastesting.djangotestcase import (
-    TestModelTransactionalTestCase,
+    TestModelMixin,
     TransactionTestCase,
     )
 
 
-class TimestampedModelTest(TestModelTestCase):
+class TimestampedModelTest(TestModelMixin, MAASServerTestCase):
     """Testing for the class `TimestampedModel`."""
 
     app = 'maasserver.tests'
@@ -56,7 +53,7 @@ class TimestampedModelTest(TestModelTestCase):
         self.assertEqual(old_created, obj.created)
 
 
-class TimestampedModelTransactionalTest(TestModelTransactionalTestCase):
+class TimestampedModelTransactionalTest(TestModelMixin, TransactionTestCase):
 
     app = 'maasserver.tests'
 

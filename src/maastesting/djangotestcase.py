@@ -12,8 +12,7 @@ from __future__ import (
 __metaclass__ = type
 __all__ = [
     'DjangoTestCase',
-    'TestModelTestCase',
-    'TestModelTransactionalTestCase',
+    'TestModelMixin',
     'TransactionTestCase',
     ]
 
@@ -113,7 +112,17 @@ class TransactionTestCase(MAASTestCase, django.test.TransactionTestCase):
 
 
 class TestModelMixin:
-    # Set the appropriate application to be loaded.
+    """Mix-in for test cases that create their own models.
+
+    Use this as a mix-in base class for test cases that need to create model
+    classes that exist only in the scope of the tests.
+
+    The `TestModelMixin` base class must come before the base `TestCase` class
+    in the test case's list of base classes.
+
+    :cvar app: The Django application that the test models should belong to.
+        Typically either "maasserver.tests" or "metadataserver.tests".
+    """
     app = None
 
     def _pre_setup(self):
@@ -133,23 +142,3 @@ class TestModelMixin:
         # Restore the settings.
         settings.INSTALLED_APPS = self._original_installed_apps
         loading.cache.loaded = False
-
-
-class TestModelTestCase(TestModelMixin, MAASTestCase):
-    """A custom test case that adds support for test-only models.
-
-    For instance, if you want to have a model object used solely for testing
-    in your application 'myapp1' you would create a test case that uses
-    TestModelTestCase as its base class and:
-    - initialize self.app with 'myapp1.tests'
-    - define the models used for testing in myapp1.tests.models
-
-    This way the models defined in myapp1.tests.models will be available in
-    this test case (and this test case only).
-    """
-
-
-class TestModelTransactionalTestCase(TestModelMixin, TransactionTestCase):
-    """A TestCase Similar to `TestModelTestCase` but with transaction
-    support.
-    """

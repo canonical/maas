@@ -12,10 +12,8 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
-from maasserver.testing.testcase import (
-    MAASServerTestCase,
-    TestModelTestCase,
-    )
+from maasserver.testing.testcase import MAASServerTestCase
+from maastesting.djangotestcase import TestModelMixin
 from metadataserver.fields import Bin
 from metadataserver.tests.models import BinaryFieldModel
 
@@ -33,7 +31,7 @@ class TestBin(MAASServerTestCase):
         self.assertRaises(AssertionError, Bin, None)
 
 
-class TestBinaryField(TestModelTestCase):
+class TestBinaryField(TestModelMixin, MAASServerTestCase):
     """Test BinaryField.  Uses BinaryFieldModel test model."""
 
     app = 'metadataserver.tests'

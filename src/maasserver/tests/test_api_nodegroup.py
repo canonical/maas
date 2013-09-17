@@ -408,7 +408,7 @@ class TestNodeGroupAPI(APITestCase):
     def test_report_download_progress_rejects_invalid_data(self):
         progress = factory.make_download_progress_incomplete()
         client = make_worker_client(progress.nodegroup)
-        
+
         response = client.post(
             reverse('nodegroup_handler', args=[progress.nodegroup.uuid]),
             {

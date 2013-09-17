@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test maasserver messages."""
@@ -23,8 +23,9 @@ from maasserver.messages import (
     )
 from maasserver.models import Node
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import TestModelTestCase
+from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.tests.models import MessagesTestModel
+from maastesting.djangotestcase import TestModelMixin
 
 
 class FakeProducer:
@@ -43,7 +44,7 @@ class TestMessenger(MessengerBase):
         return [event_name, instance]
 
 
-class MessengerBaseTest(TestModelTestCase):
+class MessengerBaseTest(TestModelMixin, MAASServerTestCase):
 
     app = 'maasserver.tests'
 
@@ -136,7 +137,7 @@ class MessengerBaseTest(TestModelTestCase):
         self.assertEqual([], messenger.producer.messages)
 
 
-class MAASMessengerTest(TestModelTestCase):
+class MAASMessengerTest(TestModelMixin, MAASServerTestCase):
 
     app = 'maasserver.tests'
 
