@@ -23,15 +23,17 @@ and the following files exist there::
 The file that is used as a template for the preseed depends on the state
 of the node that is being booted up.
 
-=====          =============
-State          Template used
-=====          =============
-Enlistment     ``enlist``
-Commissioning  ``commissioning``
-Installation   - ``generic``, plus one of:
-                 - ``preseed_master`` or
-                 - ``preseed_xinstall``
-=====          =============
++--------------+----------------------------+
+|State         |   Template used            |
++==============+============================+
+|Enlistment    |``enlist``                  |
++--------------+----------------------------+
+|Commissioning |``commissioning``           |
++--------------+----------------------------+
+|Installation  |- ``generic``, plus one of: |
+|              |- ``preseed_master`` or     |
+|              |- ``preseed_xinstall``      |
++--------------+----------------------------+
 
 The ``enlist_userdata`` is not a preseed but it is a template that's used
 to send data to ``cloud-init`` when a new node is enlisted.
