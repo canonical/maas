@@ -48,6 +48,7 @@ from provisioningserver.utils import (
     ActionScript,
     atomic_write,
     AtomicWriteScript,
+    ensure_dir,
     get_all_interface_addresses,
     get_mtime,
     incremental_write,
@@ -65,6 +66,7 @@ from testtools.matchers import (
     DirExists,
     EndsWith,
     FileContains,
+    FileExists,
     MatchesStructure,
     )
 from testtools.testcase import ExpectedException
@@ -822,3 +824,34 @@ class TestAtomicWriteScript(MAASTestCase):
 
         mocked_atomic_write.assert_called_once_with(
             content, filename, mode=0600, overwrite=True)
+
+
+class TestMakeDir(MAASTestCase):
+    def test_succeeds_if_directory_already_existed(self):
+        path = self.make_dir()
+        ensure_dir(path)
+        self.assertThat(path, DirExists())
+
+    def test_fails_if_path_is_already_a_file(self):
+        path = self.make_file()
+        self.assertRaises(OSError, ensure_dir, path)
+        self.assertThat(path, FileExists())
+
+    def test_creates_dir_if_not_present(self):
+        path = os.path.join(self.make_dir(), factory.make_name())
+        ensure_dir(path)
+        self.assertThat(path, DirExists())
+
+    def test_passes_on_other_errors(self):
+        not_a_dir = self.make_file()
+        self.assertRaises(
+            OSError,
+            ensure_dir,
+            os.path.join(not_a_dir, factory.make_name('impossible')))
+
+    def test_creates_multiple_layers_of_directories_if_needed(self):
+        path = os.path.join(
+            self.make_dir(), factory.make_name('subdir'),
+            factory.make_name('sbusubdir'))
+        ensure_dir(path)
+        self.assertThat(path, DirExists())

@@ -18,10 +18,8 @@ __all__ = [
 
 from argparse import ArgumentParser
 import codecs
-from errno import EEXIST
 from glob import glob
 from os import (
-    makedirs,
     remove,
     symlink,
     )
@@ -37,6 +35,7 @@ import tempfile
 from textwrap import dedent
 
 import distro_info
+from provisioningserver.utils import ensure_dir
 from simplestreams import (
     mirrors,
     objectstores,
@@ -79,14 +78,6 @@ NAME_FORMAT = 'maas-{release}-{version}-{arch}-{version_name}'
 #      copying) everything over. This is annoying.
 #   4. generate tgt.conf, run tgt-admin, and symlink things to the right
 #      places.
-
-
-def mkdir_p(d):
-    try:
-        makedirs(d)
-    except OSError as e:
-        if e.errno != EEXIST:
-            raise
 
 
 def tgt_conf_d(path):
@@ -154,7 +145,7 @@ class MAASMirrorWriter(mirrors.ObjectStoreMirrorWriter):
             subprocess.check_call(["tar", "-Sxzf", tar, "-C", tmp])
 
             target_dir = self._target_dir(metadata)
-            mkdir_p(target_dir)
+            ensure_dir(target_dir)
 
             def copy_thing(pattern, target):
                 things = glob(join(tmp, pattern))
@@ -213,8 +204,8 @@ class MAASMirrorWriter(mirrors.ObjectStoreMirrorWriter):
 
 
 def setup_data_dir(data_dir):
-    mkdir_p(data_dir)
-    mkdir_p(tgt_conf_d(data_dir))
+    ensure_dir(data_dir)
+    ensure_dir(tgt_conf_d(data_dir))
 
     tgt_conf = join(data_dir, 'tgt.conf')
     if not exists(tgt_conf):

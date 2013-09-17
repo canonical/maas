@@ -23,7 +23,10 @@ import time
 
 import fixtures
 from provisioningserver.dns.config import generate_rndc
-from provisioningserver.utils import atomic_write
+from provisioningserver.utils import (
+    atomic_write,
+    ensure_dir,
+    )
 from rabbitfixture.server import (
     allocate_ports,
     preexec_fn,
@@ -313,11 +316,8 @@ if __name__ == "__main__":
         default=False)
     arguments = parser.parse_args()
 
-    # Create homedir if it does not already exist.
-    try:
-        os.makedirs(arguments.homedir)
-    except OSError:
-        pass
+    ensure_dir(arguments.homedir)
+
     # Create BINDServerResources with the provided options.
     resources = BINDServerResources(
         homedir=arguments.homedir, log_file=arguments.log_file,

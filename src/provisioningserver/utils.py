@@ -18,6 +18,7 @@ __all__ = [
     "incremental_write",
     "locate_config",
     "MainScript",
+    "ensure_dir",
     "parse_key_value_file",
     "ShellTemplate",
     "sudo_write_file",
@@ -29,6 +30,7 @@ import errno
 from functools import wraps
 import os
 from os import fdopen
+from os.path import isdir
 from pipes import quote
 import signal
 from subprocess import (
@@ -496,3 +498,17 @@ def get_all_interface_addresses():
             for inet_address in addresses[netifaces.AF_INET]:
                 if "addr" in inet_address:
                     yield inet_address["addr"]
+
+
+def ensure_dir(path):
+    """Do the equivalent of `mkdir -p`, creating `path` if it didn't exist."""
+    try:
+        os.makedirs(path)
+    except OSError as e:
+        if e.errno != errno.EEXIST:
+            raise
+        if not isdir(path):
+            # Path exists, but isn't a directory.
+            raise
+        # Otherwise, the error is that the directory already existed.
+        # Which is actually success.
