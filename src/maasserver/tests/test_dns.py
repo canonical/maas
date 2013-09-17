@@ -162,7 +162,7 @@ class TestDNSConfigModifications(MAASServerTestCase):
         self.patch(conf, 'DNS_CONFIG_DIR', self.bind.config.homedir)
 
         # Use a random port for rndc.
-        self.patch(conf, 'DNS_RNDC_PORT', allocate_ports(1)[0])
+        self.patch(conf, 'DNS_RNDC_PORT', allocate_ports("localhost")[0])
         # This simulates what should happen when the package is
         # installed:
         # Create MAAS-specific DNS configuration files.

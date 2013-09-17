@@ -158,9 +158,9 @@ class BINDServerResources(fixtures.Fixture):
 
     def set_up_config(self):
         if self.port is None:
-            [self.port] = allocate_ports(1)
+            [self.port] = allocate_ports("localhost")
         if self.rndc_port is None:
-            [self.rndc_port] = allocate_ports(1)
+            [self.rndc_port] = allocate_ports("localhost")
         if self.homedir is None:
             self.homedir = self.useFixture(fixtures.TempDir()).path
         if self.log_file is None:
