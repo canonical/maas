@@ -46,6 +46,7 @@ class TestRabbitSession(MAASTestCase):
     @uses_rabbit_fixture
     def test_connection_gets_connection(self):
         session = RabbitSession()
+        self.addCleanup(session.disconnect)
         # Referencing the connection property causes a connection to be
         # created.
         connection = session.connection
@@ -84,6 +85,7 @@ class TestRabbitMessaging(MAASTestCase):
     def test_messaging_getExchange(self):
         exchange_name = factory.getRandomString()
         messaging = RabbitMessaging(exchange_name)
+        self.addCleanup(messaging._session.disconnect)
         exchange = messaging.getExchange()
         self.assertIsInstance(exchange, RabbitExchange)
         self.assertEqual(messaging._session, exchange._session)
@@ -94,6 +96,7 @@ class TestRabbitMessaging(MAASTestCase):
     def test_messaging_getQueue(self):
         exchange_name = factory.getRandomString()
         messaging = RabbitMessaging(exchange_name)
+        self.addCleanup(messaging._session.disconnect)
         queue = messaging.getQueue()
         self.assertIsInstance(queue, RabbitQueue)
         self.assertEqual(messaging._session, queue._session)
@@ -115,6 +118,7 @@ class TestRabbitBase(MAASTestCase):
     @uses_rabbit_fixture
     def test_base_channel(self):
         rabbitbase = RabbitBase(RabbitSession(), factory.getRandomString())
+        self.addCleanup(rabbitbase._session.disconnect)
         # Referencing the channel property causes an open channel to be
         # created.
         channel = rabbitbase.channel
@@ -127,6 +131,7 @@ class TestRabbitBase(MAASTestCase):
     def test_base_channel_creates_exchange(self):
         exchange_name = factory.getRandomString()
         rabbitbase = RabbitBase(RabbitSession(), exchange_name)
+        self.addCleanup(rabbitbase._session.disconnect)
         rabbitbase.channel
         self.assertIn(
             exchange_name,
@@ -151,8 +156,11 @@ class TestRabbitExchange(MAASTestCase):
         exchange_name = factory.getRandomString()
         message_content = factory.getRandomString()
         exchange = RabbitExchange(RabbitSession(), exchange_name)
+        self.addCleanup(exchange._session.disconnect)
 
-        channel = RabbitBase(RabbitSession(), exchange_name).channel
+        rabbitbase = RabbitBase(RabbitSession(), exchange_name)
+        self.addCleanup(rabbitbase._session.disconnect)
+        channel = rabbitbase.channel
         queue_name = channel.queue_declare(auto_delete=True)[0]
         channel.queue_bind(exchange=exchange_name, queue=queue_name)
         exchange.publish(message_content)
@@ -167,9 +175,11 @@ class TestRabbitQueue(MAASTestCase):
         exchange_name = factory.getRandomString()
         message_content = factory.getRandomString()
         queue = RabbitQueue(RabbitSession(), exchange_name)
+        self.addCleanup(queue._session.disconnect)
 
         # Publish to queue.name.
         base = RabbitBase(RabbitSession(), exchange_name)
+        self.addCleanup(base._session.disconnect)
         channel = base.channel
         msg = amqp.Message(message_content)
         channel.basic_publish(
