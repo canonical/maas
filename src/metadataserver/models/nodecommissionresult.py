@@ -25,6 +25,7 @@ from django.shortcuts import get_object_or_404
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 from metadataserver import DefaultMeta
+from metadataserver.fields import BinaryField
 
 
 class NodeCommissionResultManager(Manager):
@@ -35,7 +36,24 @@ class NodeCommissionResultManager(Manager):
         self.filter(node=node).delete()
 
     def store_data(self, node, name, script_result, data):
-        """Store data about a node."""
+        """Store data about a node.
+
+        :param node: The node that this result pertains to.
+        :type node: :class:`maasserver.models.Node`
+
+        :param name: The name of this result, typically the name of
+            the commissioning script that generated it.
+        :type name: string
+
+        :param script_result: The exit code of the commissioning
+            script.
+        :type script_result: int
+
+        :param data: The raw binary output of the commissioning
+            script.
+        :type data: :class:`metadataserver.fields.Bin`
+
+        """
         existing, created = self.get_or_create(
             node=node, name=name,
             defaults=dict(script_result=script_result, data=data))
@@ -73,5 +91,6 @@ class NodeCommissionResult(CleanSave, TimestampedModel):
         'maasserver.Node', null=False, editable=False, unique=False)
     script_result = IntegerField(editable=False)
     name = CharField(max_length=255, unique=False, editable=False)
-    data = CharField(
-        max_length=1024 * 1024, editable=True, blank=True, default='')
+    data = BinaryField(
+        max_length=1024 * 1024, editable=True, blank=True, default=b'',
+        null=False)

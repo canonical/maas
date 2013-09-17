@@ -12,6 +12,7 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
+from base64 import b64encode
 from datetime import (
     datetime,
     timedelta,
@@ -106,7 +107,7 @@ class AdminCommissioningScriptsAPITest(APIv10TestMixin, AdminLoggedInTestCase):
         # This uses Piston's built-in POST code, so there are no tests for
         # corner cases (like "script already exists") here.
         name = factory.make_name('script')
-        content = factory.getRandomString().encode('ascii')
+        content = factory.getRandomBytes()
 
         # Every uploaded file also has a name.  But this is completely
         # unrelated to the name we give to the commissioning script.
@@ -120,7 +121,7 @@ class AdminCommissioningScriptsAPITest(APIv10TestMixin, AdminLoggedInTestCase):
 
         returned_script = json.loads(response.content)
         self.assertEqual(
-            (name, content),
+            (name, b64encode(content).decode("ascii")),
             (returned_script['name'], returned_script['content']))
 
         stored_script = CommissioningScript.objects.get(name=name)
@@ -220,7 +221,7 @@ class NodeCommissionResultHandlerAPITest(APITestCase):
             [(
                 commissioning_result.name,
                 commissioning_result.script_result,
-                commissioning_result.data,
+                b64encode(commissioning_result.data),
                 commissioning_result.node.system_id,
             )
             for commissioning_result in commissioning_results
@@ -253,7 +254,8 @@ class NodeCommissionResultHandlerAPITest(APITestCase):
         self.assertEqual(httplib.OK, response.status_code, response.content)
         parsed_results = json.loads(response.content)
         self.assertItemsEqual(
-            [commissioning_results[0].data, commissioning_results[1].data],
+            [b64encode(commissioning_results[0].data),
+             b64encode(commissioning_results[1].data)],
             [result.get('data') for result in parsed_results])
 
     def test_list_can_be_filtered_by_name(self):
@@ -271,7 +273,7 @@ class NodeCommissionResultHandlerAPITest(APITestCase):
         self.assertEqual(httplib.OK, response.status_code, response.content)
         parsed_results = json.loads(response.content)
         self.assertItemsEqual(
-            [commissioning_results[0].data],
+            [b64encode(commissioning_results[0].data)],
             [result.get('data') for result in parsed_results])
 
     def test_list_displays_only_visible_nodes(self):

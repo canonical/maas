@@ -57,6 +57,7 @@ from maasserver.preseed import (
 from maasserver.utils import find_nodegroup
 from maasserver.utils.orm import get_one
 from metadataserver.enum import COMMISSIONING_STATUS
+from metadataserver.fields import Bin
 from metadataserver.models import (
     CommissioningScript,
     NodeCommissionResult,
@@ -199,9 +200,8 @@ class VersionIndexHandler(MetadataViewHandler):
             if name in BUILTIN_COMMISSIONING_SCRIPTS:
                 postprocess_hook = BUILTIN_COMMISSIONING_SCRIPTS[name]['hook']
                 postprocess_hook(node, raw_content)
-            contents = raw_content.decode('utf-8')
             NodeCommissionResult.objects.store_data(
-                node, name, script_result, contents)
+                node, name, script_result, Bin(raw_content))
 
     @operation(idempotent=False)
     def signal(self, request, version=None, mac=None):

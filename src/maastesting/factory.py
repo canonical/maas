@@ -23,6 +23,7 @@ from itertools import (
     islice,
     repeat,
     )
+import os
 import os.path
 import random
 import string
@@ -64,6 +65,9 @@ class Factory:
             return "".join(islice(self.random_letters_with_spaces, size))
         else:
             return "".join(islice(self.random_letters, size))
+
+    def getRandomBytes(self, size=10):
+        return os.urandom(size)
 
     def getRandomUsername(self, size=10):
         return "".join(islice(self.random_letters_for_usernames, size))

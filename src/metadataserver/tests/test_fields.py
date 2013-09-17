@@ -12,9 +12,15 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
+from base64 import b64encode
+
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.djangotestcase import TestModelMixin
-from metadataserver.fields import Bin
+from maastesting.factory import factory
+from metadataserver.fields import (
+    Bin,
+    BinaryField,
+    )
 from metadataserver.tests.models import BinaryFieldModel
 
 
@@ -29,6 +35,16 @@ class TestBin(MAASServerTestCase):
 
     def test_refuses_to_construct_from_None(self):
         self.assertRaises(AssertionError, Bin, None)
+
+    def test_emits_base64(self):
+        # Piston hooks onto an __emittable__() method, if present.
+        # Bin() returns a base-64 encoded string so that it can be
+        # transmitted in JSON.
+        self.assertEqual(b"", Bin(b"").__emittable__())
+        example_bytes = factory.getRandomBytes()
+        self.assertEqual(
+            b64encode(example_bytes),
+            Bin(example_bytes).__emittable__())
 
 
 class TestBinaryField(TestModelMixin, MAASServerTestCase):
@@ -78,3 +94,18 @@ class TestBinaryField(TestModelMixin, MAASServerTestCase):
         binary_item.save()
         self.assertEqual(
             binary_item, BinaryFieldModel.objects.get(data=Bin(data)))
+
+    def test_get_default_returns_None(self):
+        field = BinaryField(null=True)
+        self.patch(field, "default", None)
+        self.assertIsNone(field.get_default())
+
+    def test_get_default_returns_Bin(self):
+        field = BinaryField(null=True)
+        self.patch(field, "default", Bin(b"wotcha"))
+        self.assertEqual(Bin(b"wotcha"), field.get_default())
+
+    def test_get_default_returns_Bin_from_bytes(self):
+        field = BinaryField(null=True)
+        self.patch(field, "default", b"wotcha")
+        self.assertEqual(Bin(b"wotcha"), field.get_default())

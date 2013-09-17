@@ -629,7 +629,7 @@ class NodeViewsTest(LoggedInTestCase):
 
     def test_view_node_shows_lldp_output_if_set(self):
         node = factory.make_node(owner=self.logged_in_user)
-        lldp_data = factory.getRandomString()
+        lldp_data = "abc123\u1234".encode("utf-8")
         factory.make_node_commission_result(
             node=node, name=LLDP_OUTPUT_NAME, script_result=0, data=lldp_data)
         node_link = reverse('node-view', args=[node.system_id])
@@ -639,7 +639,7 @@ class NodeViewsTest(LoggedInTestCase):
 
         doc = fromstring(response.content)
         content = doc.cssselect('#lldp-output')[0].text_content()
-        self.assertIn(lldp_data, content)
+        self.assertIn(lldp_data.decode("utf-8"), content)
 
     def test_view_node_POST_commission(self):
         self.become_admin()

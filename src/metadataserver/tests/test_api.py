@@ -32,7 +32,10 @@ from maasserver.exceptions import (
     MAASAPINotFound,
     Unauthorized,
     )
-from maasserver.models import SSHKey, Tag
+from maasserver.models import (
+    SSHKey,
+    Tag,
+    )
 from maasserver.testing import reload_object
 from maasserver.testing.factory import factory
 from maasserver.testing.oauthclient import OAuthAuthenticatedClient
@@ -511,7 +514,7 @@ class TestViews(DjangoTestCase):
             self.call_signal(
                 client, status=status,
                 script_result=script_result,
-                files={filename: factory.getRandomString().encode('ascii')})
+                files={filename: factory.getRandomBytes()})
         self.assertEqual(
             {status: filename for status in statuses},
             {
@@ -529,7 +532,7 @@ class TestViews(DjangoTestCase):
         self.assertEqual(
             text, NodeCommissionResult.objects.get_data(node, 'file.txt'))
 
-    def test_signal_decodes_file_from_UTF8(self):
+    def test_signal_stores_binary(self):
         unicode_text = '<\u2621>'
         node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
         client = self.make_node_client(node=node)
@@ -539,7 +542,7 @@ class TestViews(DjangoTestCase):
             files={'file.txt': unicode_text.encode('utf-8')})
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(
-            unicode_text,
+            unicode_text.encode("utf-8"),
             NodeCommissionResult.objects.get_data(node, 'file.txt'))
 
     def test_signal_stores_multiple_files(self):

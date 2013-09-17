@@ -173,8 +173,6 @@ class ExampleFallbackHandler(OperationsHandler):
 class TestDescribingAPI(MAASServerTestCase):
     """Tests for functions that describe a Piston API."""
 
-    maxDiff = 10000
-
     def setUp(self):
         super(TestDescribingAPI, self).setUp()
         # Override DEFAULT_MAAS_URL so that it's stable for testing.

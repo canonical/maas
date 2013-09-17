@@ -86,8 +86,6 @@ class TestDocstringParsing(MAASTestCase):
 class TestFunctions(MAASTestCase):
     """Tests for miscellaneous functions in `maascli.utils`."""
 
-    maxDiff = MAASTestCase.maxDiff * 2
-
     def test_safe_name(self):
         # safe_name attempts to discriminate parts of a vaguely camel-cased
         # string, and rejoins them using a hyphen.

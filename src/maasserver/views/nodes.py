@@ -401,7 +401,10 @@ class NodeView(NodeViewMixin, UpdateView):
             'tag': kernel_opts[0],
             'value': kernel_opts[1]
             }
-        context['lldp_output'] = node.get_lldp_output()
+        lldp_output = node.get_lldp_output()
+        if lldp_output is not None:
+            lldp_output = lldp_output.decode("utf-8", "replace")
+        context['lldp_output'] = lldp_output
         return context
 
     def dispatch(self, *args, **kwargs):

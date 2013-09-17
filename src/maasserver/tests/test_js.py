@@ -19,10 +19,16 @@ from abc import (
 from glob import glob
 import json
 import os
-from os.path import abspath
+from os.path import (
+    abspath,
+    join,
+    )
 from urlparse import urljoin
 
-from maastesting import yui3
+from maastesting import (
+    root,
+    yui3,
+    )
 from maastesting.fixtures import (
     DisplayFixture,
     ProxiesDisabledFixture,
@@ -108,7 +114,7 @@ class YUIUnitTestsBase:
 
     __metaclass__ = ABCMeta
 
-    test_paths = glob("src/maasserver/static/js/tests/*.html")
+    test_paths = glob(join(root, "src/maasserver/static/js/tests/*.html"))
     assert test_paths != [], "No JavaScript unit test pages found."
 
     # Indicates if this test has been cloned.

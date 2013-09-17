@@ -261,11 +261,11 @@ class Factory(maastesting.factory.Factory):
         if name is None:
             name = "ncrname-" + self.getRandomString(92)
         if data is None:
-            data = "ncrdata-" + self.getRandomString(1000)
+            data = b"ncrdata-" + self.getRandomBytes()
         if script_result is None:
             script_result = random.randint(0, 10)
         ncr = NodeCommissionResult(
-            node=node, name=name, script_result=script_result, data=data)
+            node=node, name=name, script_result=script_result, data=Bin(data))
         ncr.save()
         return ncr
 

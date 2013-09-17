@@ -48,6 +48,7 @@ from maasserver.utils import (
     )
 from maastesting.testcase import MAASTestCase
 from metadataserver import commissioning
+from metadataserver.fields import Bin
 from metadataserver.models import (
     NodeCommissionResult,
     NodeUserData,
@@ -554,21 +555,21 @@ class NodeTest(MAASServerTestCase):
         NodeCommissionResult.objects.store_data(
             node, factory.getRandomString(),
             random.randint(0, 10),
-            factory.getRandomString())
+            Bin(factory.getRandomBytes()))
         node.start_commissioning(factory.make_admin())
         self.assertItemsEqual([], node.nodecommissionresult_set.all())
 
     def test_start_commissioning_ignores_other_commissioning_results(self):
         node = factory.make_node()
         filename = factory.getRandomString()
-        text = factory.getRandomString()
+        data = factory.getRandomBytes()
         script_result = random.randint(0, 10)
         NodeCommissionResult.objects.store_data(
-            node, filename, script_result, text)
+            node, filename, script_result, Bin(data))
         other_node = factory.make_node(status=NODE_STATUS.DECLARED)
         other_node.start_commissioning(factory.make_admin())
         self.assertEqual(
-            text, NodeCommissionResult.objects.get_data(node, filename))
+            data, NodeCommissionResult.objects.get_data(node, filename))
 
     def test_full_clean_checks_status_transition_and_raises_if_invalid(self):
         # RETIRED -> ALLOCATED is an invalid transition.
@@ -833,7 +834,7 @@ class NodeTest(MAASServerTestCase):
         self.assertIsNone(factory.make_node().get_lldp_output())
 
     def test_get_lldp_output_returns_stored_lldp_output(self):
-        lldp_output = factory.getRandomString()
+        lldp_output = factory.getRandomBytes()
         node = factory.make_node()
         factory.make_node_commission_result(
             node=node, name=LLDP_OUTPUT_NAME, script_result=0,
@@ -843,7 +844,7 @@ class NodeTest(MAASServerTestCase):
     def test_get_lldp_output_returns_output_even_if_empty(self):
         node = factory.make_node()
         factory.make_node_commission_result(
-            node=node, name=LLDP_OUTPUT_NAME, script_result=0, data='')
+            node=node, name=LLDP_OUTPUT_NAME, script_result=0, data=b'')
         self.assertEqual('', node.get_lldp_output())
 
     def test_get_lldp_output_ignores_other_nodes(self):

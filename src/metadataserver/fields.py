@@ -19,6 +19,7 @@ from base64 import (
     b64encode,
     )
 
+from django.db import connection
 from django.db.models import (
     Field,
     SubfieldBase,
@@ -53,6 +54,13 @@ class Bin(bytes):
             raise AssertionError(
                 "Not a binary string: '%s'" % repr(initializer))
         super(Bin, self).__init__(initializer)
+
+    def __emittable__(self):
+        """Emit base-64 encoded bytes.
+
+        Exists as a hook for Piston's JSON encoder.
+        """
+        return b64encode(self)
 
 
 # The BinaryField does not introduce any new parameters compared to its
@@ -117,3 +125,25 @@ class BinaryField(Field):
 
     def get_internal_type(self):
         return 'TextField'
+
+    def _get_default(self):
+        """Cargo-cult of Django's `Field.get_default`.
+
+        Django is totally smoking crack on this one. It forces a
+        unicode string out of the default which is demonstrably not
+        unicode. This corrects that behaviour.
+
+        """
+        if self.has_default():
+            if callable(self.default):
+                return self.default()
+            return self.default
+        if (not self.empty_strings_allowed or (self.null and
+                   not connection.features.interprets_empty_strings_as_nulls)):
+            return None
+        return b""
+
+    def get_default(self):
+        """Override Django's crack-smoking ``Field.get_default``."""
+        default = self._get_default()
+        return None if default is None else Bin(default)

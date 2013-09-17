@@ -63,6 +63,9 @@ class MAASTestCase(WithScenarios, testtools.TestCase):
 
     """
 
+    # Allow testtools to generate longer diffs when tests fail.
+    maxDiff = testtools.TestCase.maxDiff * 3
+
     # testresources.ResourcedTestCase does something similar to this class
     # (with respect to setUpResources and tearDownResources) but it explicitly
     # up-calls to unittest.TestCase instead of using super() even though it is
