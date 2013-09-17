@@ -15,6 +15,7 @@ __all__ = []
 
 import socket
 import time
+from unittest import skip
 
 from amqplib import client_0_8 as amqp
 from django.conf import settings
@@ -78,6 +79,7 @@ class TestRabbitSession(MAASTestCase):
 
 class TestRabbitMessaging(MAASTestCase):
 
+    @skip("XXX bug=1225980: This breaks on the lander.")
     @uses_rabbit_fixture
     def test_messaging_getExchange(self):
         exchange_name = factory.getRandomString()
@@ -87,6 +89,7 @@ class TestRabbitMessaging(MAASTestCase):
         self.assertEqual(messaging._session, exchange._session)
         self.assertEqual(exchange_name, exchange.exchange_name)
 
+    @skip("XXX bug=1225980: This breaks on the lander.")
     @uses_rabbit_fixture
     def test_messaging_getQueue(self):
         exchange_name = factory.getRandomString()
