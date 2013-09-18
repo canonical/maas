@@ -19,6 +19,7 @@ import re
 
 from django import forms
 from django.core.exceptions import ValidationError
+from django.db.models import Q
 from maasserver.enum import (
     ARCHITECTURE_CHOICES,
     ARCHITECTURE_CHOICES_DICT,
@@ -201,7 +202,19 @@ class AcquireNodeForm(RenamableFieldsForm):
         # Filter by hostname.
         hostname = self.cleaned_data.get(self.get_field_name('name'))
         if hostname:
-            filtered_nodes = filtered_nodes.filter(hostname=hostname)
+            clause = Q(hostname=hostname)
+            # If the given hostname has a domain part, try matching
+            # against the nodes' FQDNs as well (the FQDN is built using
+            # the nodegroup's name as the domain name).
+            if "." in hostname:
+                host, domain = hostname.split('.', 1)
+                hostname_clause = (
+                    Q(hostname__startswith="%s." % host) |
+                    Q(hostname=host)
+                )
+                domain_clause = Q(nodegroup__name=domain)
+                clause = clause | (hostname_clause & domain_clause)
+            filtered_nodes = filtered_nodes.filter(clause)
 
         # Filter by architecture.
         arch = self.cleaned_data.get(self.get_field_name('arch'))

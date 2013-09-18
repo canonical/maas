@@ -135,6 +135,26 @@ class TestAcquireNodeForm(MAASServerTestCase):
         self.assertConstrainedNodes([nodes[0]], {'name': nodes[0].hostname})
         self.assertConstrainedNodes([], {'name': 'unknown-name'})
 
+    def test_hostname_with_domain_part(self):
+        nodes = [factory.make_node() for i in range(3)]
+        self.assertConstrainedNodes(
+            [nodes[0]],
+            {'name': '%s.%s' % (nodes[0].hostname, nodes[0].nodegroup.name)})
+        self.assertConstrainedNodes(
+            [],
+            {'name': '%s.%s' % (nodes[0].hostname, 'unknown-domain')})
+        self.assertConstrainedNodes(
+            [],
+            {'name': '%s.%s' % (nodes[0].hostname, nodes[1].nodegroup.name)})
+        node = factory.make_node(hostname="host21.mydomain")
+        self.assertConstrainedNodes(
+            [node],
+            {'name': 'host21.mydomain'})
+
+        self.assertConstrainedNodes(
+            [node],
+            {'name': 'host21.%s' % node.nodegroup.name})
+
     def test_cpu_count(self):
         node1 = factory.make_node(cpu_count=1)
         node2 = factory.make_node(cpu_count=2)
