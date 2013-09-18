@@ -524,20 +524,30 @@ class NodeTest(MAASServerTestCase):
             {status: node.status for status, node in nodes.items()})
 
     def test_start_commissioning_changes_status_and_starts_node(self):
-        user = factory.make_user()
         node = factory.make_node(
             status=NODE_STATUS.DECLARED, power_type=POWER_TYPE.WAKE_ON_LAN)
         factory.make_mac_address(node=node)
-        node.start_commissioning(user)
+        node.start_commissioning(factory.make_admin())
 
         expected_attrs = {
             'status': NODE_STATUS.COMMISSIONING,
-            'owner': user,
         }
         self.assertAttributes(node, expected_attrs)
         self.assertEqual(
-            (1, 'provisioningserver.tasks.power_on'),
-            (len(self.celery.tasks), self.celery.tasks[0]['task'].name))
+            ['provisioningserver.tasks.power_on'],
+            [task['task'].name for task in self.celery.tasks])
+
+    def test_start_commisssioning_doesnt_start_nodes_for_non_admin_users(self):
+        node = factory.make_node(
+            status=NODE_STATUS.DECLARED, power_type=POWER_TYPE.WAKE_ON_LAN)
+        factory.make_mac_address(node=node)
+        node.start_commissioning(factory.make_user())
+
+        expected_attrs = {
+            'status': NODE_STATUS.COMMISSIONING,
+        }
+        self.assertAttributes(node, expected_attrs)
+        self.assertEqual([], self.celery.tasks)
 
     def test_start_commissioning_sets_user_data(self):
         node = factory.make_node(status=NODE_STATUS.DECLARED)

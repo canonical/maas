@@ -678,7 +678,6 @@ class Node(CleanSave, TimestampedModel):
         commissioning_user_data = generate_user_data(nodegroup=self.nodegroup)
         NodeCommissionResult.objects.clear_results(self)
         self.status = NODE_STATUS.COMMISSIONING
-        self.owner = user
         self.save()
         # The commissioning profile is handled in start_nodes.
         Node.objects.start_nodes(
