@@ -15,7 +15,6 @@ __all__ = []
 
 from functools import partial
 from itertools import islice
-import logging
 import socket
 
 from celery.task import task
@@ -105,14 +104,14 @@ class TestDNSUtilities(MAASServerTestCase):
         self.assertRaises(dns.DNSException, dns.get_dns_server_address)
 
     def test_get_dns_server_address_logs_warning_if_ip_is_localhost(self):
-        logger = self.patch(logging, 'getLogger')
+        logger = self.patch(dns, 'logger')
         self.patch(
             dns, 'get_maas_facing_server_address',
             Mock(return_value='127.0.0.1'))
         dns.get_dns_server_address()
         self.assertEqual(
             call(dns.WARNING_MESSAGE % '127.0.0.1'),
-            logger.return_value.warn.call_args)
+            logger.warn.call_args)
 
     def test_get_dns_server_address_uses_nodegroup_maas_url(self):
         ip = factory.getRandomIPAddress()

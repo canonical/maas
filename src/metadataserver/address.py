@@ -15,12 +15,13 @@ __all__ = [
     ]
 
 from fcntl import ioctl
-from logging import getLogger
 from os import environ
 import re
 import socket
 import struct
 from subprocess import check_output
+
+from metadataserver import logger
 
 # fcntl operation as defined in <ioctls.h>.  This is GNU/Linux-specific!
 SIOCGIFADDR = 0x8915
@@ -79,7 +80,7 @@ def get_ip_address(interface):
     try:
         info = ioctl(s.fileno(), SIOCGIFADDR, interface_name)
     except IOError as e:
-        getLogger('maasserver').warn(
+        logger.warn(
             "Could not determine address for apparent default interface %s "
             "(%s)"
             % (interface, e))

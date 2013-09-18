@@ -12,7 +12,14 @@ from __future__ import (
 __metaclass__ = type
 __all__ = [
     'DefaultMeta',
+    'logger',
     ]
+
+import logging
+
+# The configuration for this logger is in
+# contrib/maas_local_settings.py.
+logger = logging.getLogger("metadataserver")
 
 
 class DefaultMeta:

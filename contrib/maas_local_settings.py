@@ -48,7 +48,11 @@ LOGGING = {
         },
     },
     'loggers': {
-        'maas': {
+        'maasserver': {
+            'handlers': ['log'],
+            'propagate': True,
+        },
+        'metadataserver': {
             'handlers': ['log'],
             'propagate': True,
         },

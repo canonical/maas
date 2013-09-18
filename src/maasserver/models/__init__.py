@@ -27,8 +27,6 @@ __all__ = [
     'UserProfile',
     ]
 
-from logging import getLogger
-
 from django.contrib import admin
 from django.contrib.auth.backends import ModelBackend
 from django.contrib.auth.models import User
@@ -38,6 +36,7 @@ from django.core.urlresolvers import (
     get_script_prefix,
     )
 from django.db.models.signals import post_save
+from maasserver import logger
 from maasserver.enum import NODE_PERMISSION
 from maasserver.models.bootimage import BootImage
 from maasserver.models.component_error import ComponentError
@@ -56,10 +55,6 @@ from maasserver.models.userprofile import UserProfile
 from maasserver.utils import ignore_unused
 from piston.doc import HandlerDocumentation
 from piston.models import Consumer
-
-
-logger = getLogger('maasserver')
-
 
 # Suppress warning about symbols being imported, but only used for
 # export in __all__.

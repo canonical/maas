@@ -21,7 +21,6 @@ from abc import (
     ABCMeta,
     abstractmethod,
     )
-from logging import getLogger
 
 from django.conf import settings
 from django.core.serializers.json import DjangoJSONEncoder
@@ -29,6 +28,7 @@ from django.db.models.signals import (
     post_delete,
     post_save,
     )
+from maasserver import logger
 from maasserver.exceptions import NoRabbit
 from maasserver.models import Node
 from maasserver.rabbit import RabbitMessaging
@@ -74,7 +74,7 @@ class MessengerBase:
         try:
             self.producer.publish(message)
         except NoRabbit as e:
-            getLogger('maasserver').warn("Could not reach RabbitMQ: %s", e)
+            logger.warn("Could not reach RabbitMQ: %s", e)
 
     def update_obj(self, sender, instance, created, **kwargs):
         event_name = (

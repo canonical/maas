@@ -17,8 +17,9 @@ __all__ = [
 
 import logging
 
-
-logger = logging.getLogger(__name__)
+# The configuration for this logger is in
+# contrib/maas_local_settings.py.
+logger = logging.getLogger("maasserver")
 
 
 class DefaultMeta:

@@ -25,10 +25,10 @@ from itertools import (
     chain,
     groupby,
     )
-import logging
 import socket
 
 from django.conf import settings
+from maasserver import logger
 from maasserver.enum import (
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
@@ -102,7 +102,7 @@ WARNING_MESSAGE = (
 def warn_loopback(ip):
     """Warn if the given IP address is in the loopback network."""
     if IPAddress(ip) in IPNetwork('127.0.0.1/8'):
-        logging.getLogger('maas').warn(WARNING_MESSAGE % ip)
+        logger.warn(WARNING_MESSAGE % ip)
 
 
 def get_dns_server_address(nodegroup=None):

@@ -21,7 +21,6 @@ __all__ = [
     'prefetch_nodes_listing',
     ]
 
-from logging import getLogger
 from urllib import urlencode
 
 from django.conf import settings as django_settings
@@ -44,6 +43,7 @@ from django.views.generic.edit import (
     FormMixin,
     ProcessFormView,
     )
+from maasserver import logger
 from maasserver.enum import (
     NODE_PERMISSION,
     NODE_STATUS,
@@ -87,8 +87,7 @@ def get_longpoll_context():
                 'LONGPOLL_PATH': django_settings.LONGPOLL_PATH,
                 }
         except NoRabbit as e:
-            getLogger('maasserver').warn(
-                "Could not connect to RabbitMQ: %s", e)
+            logger.warn("Could not connect to RabbitMQ: %s", e)
             return {}
     else:
         return {}

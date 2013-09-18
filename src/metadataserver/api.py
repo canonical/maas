@@ -20,12 +20,12 @@ __all__ = [
     ]
 
 import httplib
-from logging import getLogger
 
 from django.conf import settings
 from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
+from metadataserver import logger
 from maasserver.api import store_node_power_parameters
 from maasserver.api_support import (
     operation,
@@ -68,9 +68,6 @@ from metadataserver.models.commissioningscript import (
     BUILTIN_COMMISSIONING_SCRIPTS,
     )
 from piston.utils import rc
-
-
-logger = getLogger("metadataserver")
 
 
 class UnknownMetadataVersion(MAASAPINotFound):
