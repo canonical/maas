@@ -61,6 +61,7 @@ from provisioningserver.utils import (
     ShellTemplate,
     sudo_write_file,
     write_custom_config_section,
+    write_text_file,
     )
 from testtools.matchers import (
     DirExists,
@@ -826,7 +827,7 @@ class TestAtomicWriteScript(MAASTestCase):
             content, filename, mode=0600, overwrite=True)
 
 
-class TestMakeDir(MAASTestCase):
+class TestEnsureDir(MAASTestCase):
     def test_succeeds_if_directory_already_existed(self):
         path = self.make_dir()
         ensure_dir(path)
@@ -855,3 +856,31 @@ class TestMakeDir(MAASTestCase):
             factory.make_name('sbusubdir'))
         ensure_dir(path)
         self.assertThat(path, DirExists())
+
+
+class TestWriteTextFile(MAASTestCase):
+    def test_creates_file(self):
+        path = os.path.join(self.make_dir(), factory.make_name('text'))
+        text = factory.getRandomString()
+        write_text_file(path, text)
+        self.assertThat(path, FileContains(text))
+
+    def test_overwrites_file(self):
+        path = self.make_file(contents="original text")
+        text = factory.getRandomString()
+        write_text_file(path, text)
+        self.assertThat(path, FileContains(text))
+
+    def test_defaults_to_utf8(self):
+        path = self.make_file()
+        # Test input: "registered trademark" (ringed R) symbol.
+        text = '\xae'
+        write_text_file(path, text)
+        self.assertThat(path, FileContains(text.encode('utf-8')))
+
+    def test_uses_given_encoding(self):
+        path = self.make_file()
+        # Test input: "registered trademark" (ringed R) symbol.
+        text = '\xae'
+        write_text_file(path, text, encoding='utf-16')
+        self.assertThat(path, FileContains(text.encode('utf-16')))

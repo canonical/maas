@@ -23,9 +23,11 @@ __all__ = [
     "ShellTemplate",
     "sudo_write_file",
     "write_custom_config_section",
+    "write_text_file",
     ]
 
 from argparse import ArgumentParser
+import codecs
 import errno
 from functools import wraps
 import os
@@ -512,3 +514,12 @@ def ensure_dir(path):
             raise
         # Otherwise, the error is that the directory already existed.
         # Which is actually success.
+
+
+def write_text_file(path, text, encoding='utf-8'):
+    """Write the given unicode text to the given file path.
+
+    If the file existed, it will be overwritten.
+    """
+    with codecs.open(path, 'w', encoding) as outfile:
+        outfile.write(text)
