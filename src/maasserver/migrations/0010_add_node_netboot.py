@@ -4,9 +4,12 @@
 
 # encoding: utf-8
 import datetime
+
+from django.db import models
+from maasserver.enum import NODE_STATUS
 from south.db import db
 from south.v2 import SchemaMigration
-from django.db import models
+
 
 class Migration(SchemaMigration):
 
@@ -15,6 +18,11 @@ class Migration(SchemaMigration):
         # Adding field 'Node.netboot'
         db.add_column(u'maasserver_node', 'netboot', self.gf('django.db.models.fields.BooleanField')(default=True), keep_default=False)
 
+        # Find all the allocated nodes with netboot=True.
+        allocated_nodes = orm['maasserver.node'].objects.filter(
+            status=NODE_STATUS.ALLOCATED, netboot=True)
+        # Set netboot=False on these nodes.
+        allocated_nodes.update(netboot=False)
 
     def backwards(self, orm):
         
