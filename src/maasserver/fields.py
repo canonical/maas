@@ -25,7 +25,6 @@ from json import (
 import re
 
 from django.core.exceptions import ValidationError
-import django.core.serializers.json
 from django.core.validators import RegexValidator
 from django.db.models import (
     Field,
@@ -212,16 +211,6 @@ class MAC:
 
     def __hash__(self):
         return self.get_raw().__hash__()
-
-
-class MACJSONEncoder(django.core.serializers.json.DjangoJSONEncoder):
-    """Teach simplejson how to represent a `MAC` in JSON: as a string."""
-
-    def default(self, value):
-        if isinstance(value, MAC):
-            return value.get_raw()
-        else:
-            return super(MACJSONEncoder, self).default(value)
 
 
 def register_mac_type(cursor):

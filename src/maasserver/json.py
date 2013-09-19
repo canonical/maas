@@ -15,26 +15,39 @@ from __future__ import (
 
 __metaclass__ = type
 __all__ = [
-    'Serializer',
     'Deserializer',
+    'MAASJSONEncoder',
+    'Serializer',
     ]
 
 import django.core.serializers.json
+from maasserver.fields import MAC
 import simplejson
+
+
+class MAASJSONEncoder(django.core.serializers.json.DjangoJSONEncoder):
+    """MAAS-specific JSON encoder.
+
+    Compared to Django's encoder, it adds support for representing a
+    `MAC` in JSON.
+    """
+
+    def default(self, value):
+        if isinstance(value, MAC):
+            return value.get_raw()
+        else:
+            return super(MAASJSONEncoder, self).default(value)
 
 
 class Serializer(django.core.serializers.json.Serializer):
     """A copy of Django's serializer for JSON, but using our own encoder."""
-    # TODO bug=1217239: This may break in Django 1.5.
     def end_serialization(self):
-        # Import lazily to avoid forcing import orders on startup.
-        from maasserver.fields import MACJSONEncoder
         if simplejson.__version__.split('.') >= ['2', '1', '3']:
             # Use JS strings to represent Python Decimal instances
             # (ticket #16850)
             self.options.update({'use_decimal': False})
         simplejson.dump(
-            self.objects, self.stream, cls=MACJSONEncoder, **self.options)
+            self.objects, self.stream, cls=MAASJSONEncoder, **self.options)
 
 
 # Keep using Django's deserializer.  Loading a MAC from JSON will produce a

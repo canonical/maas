@@ -164,3 +164,10 @@ class MAASMessengerTest(TestModelMixin, MAASServerTestCase):
             ['id', 'name'], list(decoded_msg['instance']))
         self.assertEqual(
             obj_name, decoded_msg['instance']['name'])
+
+    def test_msg_containing_node_representation(self):
+        node = factory.make_node()
+        messenger = MAASMessenger(Node, FakeProducer())
+        msg = messenger.create_msg(factory.getRandomString(), node)
+        decoded_msg = json.loads(msg)
+        self.assertItemsEqual(['instance', 'event_key'], list(decoded_msg))

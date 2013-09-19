@@ -23,13 +23,13 @@ from abc import (
     )
 
 from django.conf import settings
-from django.core.serializers.json import DjangoJSONEncoder
 from django.db.models.signals import (
     post_delete,
     post_save,
     )
 from maasserver import logger
 from maasserver.exceptions import NoRabbit
+from maasserver.json import MAASJSONEncoder
 from maasserver.models import Node
 from maasserver.rabbit import RabbitMessaging
 
@@ -119,7 +119,7 @@ class MAASMessenger(MessengerBase):
 
     def create_msg(self, event_name, instance):
         event_key = self.event_key(event_name, instance)
-        message = DjangoJSONEncoder().encode({
+        message = MAASJSONEncoder().encode({
             'instance':
                 {k: v for k, v in instance.__dict__.items()
                  if not k.startswith('_')},
