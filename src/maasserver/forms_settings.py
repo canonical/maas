@@ -194,7 +194,15 @@ CONFIG_ITEMS = {
         'default': False,
         'form': forms.BooleanField,
         'form_kwargs': {
-            'label': "Log the request/response information (debug option)",
+            'label': "Log the requests information (debug option)",
+            'required': False,
+        }
+    },
+    'response_log_debug': {
+        'default': False,
+        'form': forms.BooleanField,
+        'form_kwargs': {
+            'label': "Log the responses information (debug option)",
             'required': False,
         }
     },
