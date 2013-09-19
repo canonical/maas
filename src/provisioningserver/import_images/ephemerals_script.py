@@ -17,7 +17,6 @@ __all__ = [
     ]
 
 from argparse import ArgumentParser
-import codecs
 from glob import glob
 from os import (
     remove,
@@ -28,13 +27,21 @@ from os.path import (
     exists,
     join,
     )
-import re
 import shutil
 import subprocess
 import tempfile
-from textwrap import dedent
 
 import distro_info
+from provisioningserver.import_images.tgt import (
+    clean_up_info_file,
+    get_conf_path,
+    get_target_name,
+    set_up_data_dir,
+    tgt_admin_delete,
+    tgt_admin_update,
+    write_conf,
+    write_info_file,
+    )
 from provisioningserver.utils import ensure_dir
 from simplestreams import (
     mirrors,
@@ -44,23 +51,12 @@ from simplestreams import (
 
 
 RELEASES = distro_info.UbuntuDistroInfo().supported()
-RELEASES_URL = 'http://maas.ubuntu.com/images/'
+# This must end in a slash, for later concatenation.
+RELEASES_URL = 'http://maas.ubuntu.com/images/ephemeral/releases/'
 ARCHES = ["amd64/generic", "i386/generic", "armhf/highbank"]
 
-DATA_DIR = "/var/lib/maas/simplestreams"
+DATA_DIR = "/var/lib/maas/ephemeral"
 
-TGT_CONF_CONTENT = "include {path}\ndefault-driver iscsi\n"
-
-TGT_CONF_TEMPL = dedent("""\
-    <target iqn.2004-05.com.ubuntu:maas:{target_name}>
-        readonly 1
-        backing-store "{image}"
-    </target>
-    """)
-
-TGT_ADMIN = ["tgt-admin", "--conf", "/etc/tgt/targets.conf"]
-
-NAME_FORMAT = 'maas-{release}-{version}-{arch}-{version_name}'
 
 # The basic process for importing ephemerals is as follows:
 #   1. do the simplestreams mirror (this is mostly handled by simplestreams);
@@ -80,34 +76,9 @@ NAME_FORMAT = 'maas-{release}-{version}-{arch}-{version_name}'
 #      places.
 
 
-def tgt_conf_d(path):
-    return abspath(join(path, 'tgt.conf.d'))
-
-
-def tgt_admin_delete(name):
-    subprocess.check_call(TGT_ADMIN + ["--delete", name])
-
-
-def tgt_admin_update(target_dir, name):
-    def cleanup_on_fail():
-        tgt_admin_delete(name)
-        remove(join(target_dir, 'tgt.conf'))
-        shutil.move(join(target_dir, 'info'), join(target_dir, 'info.failed'))
-    try:
-        subprocess.check_call(TGT_ADMIN + ["--update", name])
-        status = subprocess.check_output(TGT_ADMIN + ["--show"])
-        m = re.match('^Target [0-9][0-9]*: %s' % name, status)
-        if not m:
-            cleanup_on_fail()
-            raise Exception("failed tgt-admin add for " + name)
-    except subprocess.CalledProcessError:
-        cleanup_on_fail()
-        raise
-
-
 class MAASMirrorWriter(mirrors.ObjectStoreMirrorWriter):
     def __init__(self, local_path, config=None):
-        self.local_path = local_path
+        self.local_path = abspath(local_path)
         objectstore = objectstores.FileStore(self._simplestreams_path())
         super(MAASMirrorWriter, self).__init__(config, objectstore)
 
@@ -132,13 +103,14 @@ class MAASMirrorWriter(mirrors.ObjectStoreMirrorWriter):
         super(MAASMirrorWriter, self).remove_item(data, src, target, pedigree)
         metadata = util.products_exdata(src, pedigree)
 
-        name = NAME_FORMAT.format(metadata)
+        name = get_target_name(**metadata)
         tgt_admin_delete(name)
-        remove(join(tgt_conf_d(self.local_path), name + ".conf"))
+        remove(get_conf_path(self.local_path, name))
 
         shutil.rmtree(self._target_dir(metadata))
 
     def extract_item(self, source, metadata):
+        error_cleanups = []
         try:
             tmp = tempfile.mkdtemp(dir=self._simplestreams_path())
             tar = join(self._simplestreams_path(), source)
@@ -152,7 +124,7 @@ class MAASMirrorWriter(mirrors.ObjectStoreMirrorWriter):
                 if len(things) != 1:
                     raise AssertionError(
                         "expected one %s, got %d" % (pattern, len(things)))
-                to = abspath(join(target_dir, target))
+                to = join(target_dir, target)
                 shutil.copy(things[0], to)
                 return to
 
@@ -163,18 +135,13 @@ class MAASMirrorWriter(mirrors.ObjectStoreMirrorWriter):
             root_tar = join(target_dir, 'dist-root.tar.gz')
             subprocess.check_call(["uec2roottar", image, root_tar])
 
-            name = NAME_FORMAT.format(**metadata)
+            name = get_target_name(**metadata)
 
-            with codecs.open(join(target_dir, 'info'), 'w', 'utf-8') as f:
-                info = ["release", "label", "serial", "arch", "name"]
-
-                # maas calls this "serial" instead of "version_name"
-                metadata['serial'] = metadata['version_name']
-
-                metadata['name'] = name
-
-                fmt = '\n'.join("%s={%s}" % (i, i) for i in info)
-                f.write(fmt.format(**metadata) + '\n')
+            write_info_file(
+                target_dir, name, release=metadata['release'],
+                label=metadata['label'], serial=metadata['version_name'],
+                arch=metadata['arch'])
+            error_cleanups.append(lambda: clean_up_info_file(target_dir))
 
             # maas-provision will delete this directory when it finishes.
             provision_tmp = tempfile.mkdtemp(dir=self._simplestreams_path())
@@ -184,33 +151,37 @@ class MAASMirrorWriter(mirrors.ObjectStoreMirrorWriter):
             symlink(root_tar, join(provision_tmp, 'root.tar.gz'))
 
             # TODO: call src/provisioningserver/pxe/install_image.py directly
-            provision_cmd = ['maas-provision', 'install-pxe-image',
-                             '--arch=' + metadata['arch'],
-                             '--purpose="commissioning"',
-                             '--image="%s"' % provision_tmp,
-                             '--symlink="xinstall"']
+            provision_cmd = [
+                'maas-provision', 'install-pxe-image',
+                '--release=%s' % metadata['release'],
+                '--arch=%s' % metadata['arch'],
+                # TODO: Something more reasonable for ARM.
+                # Simplestreams doesn't really know about this
+                # right now, although it might some day for HWE
+                # kernels.
+                '--subarch=generic',
+                '--purpose=commissioning',
+                '--image="%s"' % provision_tmp,
+                '--symlink=xinstall',
+            ]
             subprocess.check_call(provision_cmd)
 
             tgt_conf_path = join(target_dir, 'tgt.conf')
-            with codecs.open(tgt_conf_path, 'w', 'utf-8') as f:
-                f.write(TGT_CONF_TEMPL.format(target_name=name, image=image))
+            write_conf(tgt_conf_path, name, image)
+            error_cleanups.append(lambda: remove(tgt_conf_path))
+
+            conf_name = get_conf_path(self.local_path, name)
+            if not exists(conf_name):
+                symlink(tgt_conf_path, conf_name)
 
             tgt_admin_update(target_dir, name)
-
-            conf_name = join(tgt_conf_d(self.local_path), '%s.conf' % name)
-            symlink(abspath(tgt_conf_path), conf_name)
+            error_cleanups.append(lambda: tgt_admin_delete(name))
+        except Exception:
+            for cleanup in reversed(error_cleanups):
+                cleanup()
+            raise
         finally:
             shutil.rmtree(tmp)
-
-
-def setup_data_dir(data_dir):
-    ensure_dir(data_dir)
-    ensure_dir(tgt_conf_d(data_dir))
-
-    tgt_conf = join(data_dir, 'tgt.conf')
-    if not exists(tgt_conf):
-        with codecs.open(tgt_conf, 'w', 'utf-8') as f:
-            f.write(TGT_CONF_CONTENT.format(path=tgt_conf_d(data_dir)))
 
 
 def make_arg_parser(doc):
@@ -236,10 +207,9 @@ def main(args):
 
     :param args: Command-line arguments, in parsed form.
     """
-    policy = lambda content, path: content
-    source = mirrors.UrlMirrorReader(args.url, policy=policy)
+    source = mirrors.UrlMirrorReader(args.url)
     config = {'max_items': args.max}
     target = MAASMirrorWriter(args.output, config=config)
 
-    setup_data_dir(args.output)
+    set_up_data_dir(args.output)
     target.sync(source, args.path)
