@@ -14,8 +14,10 @@ __all__ = []
 
 import httplib
 import json
+from textwrap import dedent
 
 from apiclient.maas_client import MAASClient
+import bson
 from django.conf import settings
 from django.contrib.auth.models import AnonymousUser
 from django.core.urlresolvers import reverse
@@ -50,6 +52,11 @@ from maasserver.testing.oauthclient import OAuthAuthenticatedClient
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.celery import CeleryFixture
 from maastesting.fakemethod import FakeMethod
+from metadataserver.fields import Bin
+from metadataserver.models import (
+    commissioningscript,
+    NodeCommissionResult,
+    )
 from mock import (
     ANY,
     Mock,
@@ -606,6 +613,111 @@ class TestNodeGroupAPIAuth(APIv10TestMixin, MAASServerTestCase):
         parsed_result = json.loads(response.content)
         node_system_id = parsed_result[0][0]
         self.assertEqual([[node_system_id, None]], parsed_result)
+
+    def make_details_request(self, client, nodegroup=None):
+        if nodegroup is None:
+            nodegroup = factory.make_node_group()
+        node = factory.make_node(nodegroup=nodegroup)
+        return client.post(
+            reverse('nodegroup_handler', args=[nodegroup.uuid]),
+            {'op': 'details', 'system_ids': [node.system_id]})
+
+    example_lshw_details = dedent("""\
+        <?xml version="1.0" standalone="yes"?>
+        <list><node id="dunedin" /></list>
+        """).encode("ascii")
+
+    example_lshw_details_bin = bson.binary.Binary(example_lshw_details)
+
+    example_lldp_details = dedent("""\
+        <?xml version="1.0" encoding="UTF-8"?>
+        <lldp label="LLDP neighbors">%d</lldp>
+        """).encode("ascii")
+
+    example_lldp_details_bin = bson.binary.Binary(example_lldp_details)
+
+    def set_lshw_details(self, node, data):
+        node.set_hardware_details(data)
+
+    def set_lldp_details(self, node, data):
+        NodeCommissionResult.objects.store_data(
+            node, commissioningscript.LLDP_OUTPUT_NAME,
+            script_result=0, data=Bin(data))
+
+    def test_details_requires_authentication(self):
+        response = self.make_details_request(self.client)
+        self.assertEqual(httplib.UNAUTHORIZED, response.status_code)
+
+    def test_details_refuses_nonworker(self):
+        log_in_as_normal_user(self.client)
+        response = self.make_details_request(self.client)
+        self.assertEqual(
+            httplib.FORBIDDEN, response.status_code,
+            explain_unexpected_response(httplib.FORBIDDEN, response))
+
+    def test_details_returns_details(self):
+        nodegroup = factory.make_node_group()
+        node = factory.make_node(nodegroup=nodegroup)
+        self.set_lshw_details(node, self.example_lshw_details)
+        self.set_lldp_details(node, self.example_lldp_details)
+        client = make_worker_client(nodegroup)
+        response = client.post(
+            reverse('nodegroup_handler', args=[nodegroup.uuid]),
+            {'op': 'details', 'system_ids': [node.system_id]})
+        self.assertEqual(httplib.OK, response.status_code)
+        parsed_result = bson.BSON(response.content).decode()
+        self.assertDictEqual(
+            {
+                node.system_id: {
+                    "lshw": self.example_lshw_details_bin,
+                    "lldp": self.example_lldp_details_bin,
+                },
+            },
+            parsed_result)
+
+    def test_details_allows_admin(self):
+        nodegroup = factory.make_node_group()
+        node = factory.make_node(nodegroup=nodegroup)
+        user = factory.make_admin()
+        client = OAuthAuthenticatedClient(user)
+        response = client.post(
+            reverse('nodegroup_handler', args=[nodegroup.uuid]),
+            {'op': 'details', 'system_ids': [node.system_id]})
+        self.assertEqual(httplib.OK, response.status_code)
+        parsed_result = bson.BSON(response.content).decode()
+        self.assertDictEqual({}, parsed_result)
+
+    def test_details_does_not_see_other_node_groups(self):
+        nodegroup_mine = factory.make_node_group()
+        nodegroup_theirs = factory.make_node_group()
+        node_mine = factory.make_node(nodegroup=nodegroup_mine)
+        self.set_lshw_details(node_mine, self.example_lshw_details)
+        node_theirs = factory.make_node(nodegroup=nodegroup_theirs)
+        self.set_lldp_details(node_theirs, self.example_lldp_details)
+        client = make_worker_client(nodegroup_mine)
+        response = client.post(
+            reverse('nodegroup_handler', args=[nodegroup_mine.uuid]),
+            {'op': 'details',
+             'system_ids': [node_mine.system_id, node_theirs.system_id]})
+        self.assertEqual(httplib.OK, response.status_code)
+        parsed_result = bson.BSON(response.content).decode()
+        self.assertDictEqual(
+            {
+                node_mine.system_id: {
+                    "lshw": self.example_lshw_details_bin,
+                    "lldp": None,
+                },
+            },
+            parsed_result)
+
+    def test_details_with_no_details(self):
+        # If there are no details for a node, an empty map is returned.
+        nodegroup = factory.make_node_group()
+        client = make_worker_client(nodegroup)
+        response = self.make_details_request(client, nodegroup)
+        self.assertEqual(httplib.OK, response.status_code)
+        parsed_result = bson.BSON(response.content).decode()
+        self.assertDictEqual({}, parsed_result)
 
     def test_POST_report_download_progress_works_for_nodegroup_worker(self):
         nodegroup = factory.make_node_group()

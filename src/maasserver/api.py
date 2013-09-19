@@ -100,6 +100,7 @@ from textwrap import dedent
 from urlparse import urlparse
 from xml.sax.saxutils import quoteattr
 
+import bson
 from celery.app import app_or_default
 from django.conf import settings
 from django.core.exceptions import (
@@ -210,6 +211,7 @@ from maasserver.utils.orm import (
     )
 from metadataserver.fields import Bin
 from metadataserver.models import (
+    commissioningscript,
     CommissioningScript,
     NodeCommissionResult,
     )
@@ -1431,7 +1433,9 @@ class NodeGroupHandler(OperationsHandler):
     #    ids into something unusable. .post() does the right thing.
     @operation(idempotent=False)
     def node_hardware_details(self, request, uuid):
-        """Return specific hardware_details for each node specified.
+        """Obtain hardware details for each node specified.
+
+        Returns a ``[[system_id, lshw_xml], ...]`` list.
 
         For security purposes we do:
 
@@ -1444,16 +1448,87 @@ class NodeGroupHandler(OperationsHandler):
         to be stored in the cluster controllers (nodegroup) instead of the
         master controller.
         """
-        system_ids = get_list_from_dict_or_multidict(
-            request.data, 'system_ids', [])
         nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
         if not request.user.is_superuser:
             check_nodegroup_access(request, nodegroup)
+        system_ids = get_list_from_dict_or_multidict(
+            request.data, 'system_ids', [])
         value_list = Node.objects.filter(
             system_id__in=system_ids, nodegroup=nodegroup
             ).values_list('system_id', 'hardware_details')
         return HttpResponse(
             json.dumps(list(value_list)), content_type='application/json')
+
+    # details is actually idempotent, however:
+    # a) We expect to get a list of system_ids which is quite long (~100 ids,
+    #    each 40 bytes, is 4000 bytes), which is a bit too long for a URL.
+    # b) MAASClient.get() just uses urlencode(params) but urlencode ends up
+    #    just calling str(lst) and encoding that, which transforms te list of
+    #    ids into something unusable. .post() does the right thing.
+    @operation(idempotent=False)
+    def details(self, request, uuid):
+        """Obtain various system details for each node specified.
+
+        For example, LLDP and ``lshw`` XML dumps.
+
+        Returns a ``{system_id: {detail_type: xml, ...}, ...}`` map,
+        where ``detail_type`` is something like "lldp" or "lshw".
+
+        Note that this is returned as BSON and not JSON. This is for
+        efficiency, but mainly because JSON can't do binary content
+        without applying additional encoding like base-64.
+
+        For security purposes:
+
+        a) Requests are only fulfilled for the worker assigned to the
+           nodegroup.
+        b) Requests for nodes that are not part of the nodegroup are
+           just ignored.
+
+        """
+        nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
+        if not request.user.is_superuser:
+            check_nodegroup_access(request, nodegroup)
+        system_ids = get_list_from_dict_or_multidict(
+            request.data, 'system_ids', [])
+
+        p_interesting = lambda data: data is not None and len(data) > 0
+
+        lshw_details = Node.objects.filter(
+            system_id__in=system_ids, nodegroup=nodegroup)
+        lshw_details = {
+            system_id: xml for system_id, xml in
+            lshw_details.values_list('system_id', 'hardware_details')
+            if p_interesting(xml)
+        }
+
+        lldp_details = NodeCommissionResult.objects.filter(
+            node__system_id__in=system_ids, node__nodegroup=nodegroup,
+            name=commissioningscript.LLDP_OUTPUT_NAME, script_result=0)
+        lldp_details = {
+            system_id: b64decode(data) for system_id, data in
+            lldp_details.values_list('node__system_id', 'data')
+            if p_interesting(data)
+        }
+
+        system_ids_with_details = set().union(lshw_details, lldp_details)
+
+        def as_binary(value, binary=bson.binary.Binary):
+            # Attempt to coerce value into a BSON binary wrapper.
+            return None if value is None else binary(value)
+
+        details = {
+            system_id: {
+                "lshw": as_binary(lshw_details.get(system_id)),
+                "lldp": as_binary(lldp_details.get(system_id)),
+            }
+            for system_id in system_ids_with_details
+        }
+
+        return HttpResponse(
+            bson.BSON.encode(details),
+            # Not sure what media type to use here.
+            content_type='application/bson')
 
     @operation(idempotent=False)
     def report_download_progress(self, request, uuid):

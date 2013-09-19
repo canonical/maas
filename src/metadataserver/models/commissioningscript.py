@@ -15,6 +15,7 @@ __all__ = [
     'BUILTIN_COMMISSIONING_SCRIPTS',
     'CommissioningScript',
     'LLDP_OUTPUT_NAME',
+    'LSHW_OUTPUT_NAME',
     ]
 
 from functools import partial
@@ -41,6 +42,9 @@ from metadataserver.fields import BinaryField
 # Path prefix for commissioning scripts.  Commissioning scripts will be
 # extracted into this directory.
 ARCHIVE_PREFIX = "commissioning.d"
+
+# Name of the file where the commissioning scripts store lshw output.
+LSHW_OUTPUT_NAME = '00-maas-01-lshw.out'
 
 # Name of the file where the commissioning scripts store LLDP output.
 LLDP_OUTPUT_NAME = '99-maas-02-capture-lldp.out'
@@ -247,34 +251,46 @@ def null_hook(node, raw_content):
 # The post-processing hook is a function that will be passed the node
 # and the raw content of the script's output, e.g. "hook(node, raw_content)"
 BUILTIN_COMMISSIONING_SCRIPTS = {
-    '00-maas-01-lshw.out': {
-        'name': '00-maas-01-lshw',
+    LSHW_OUTPUT_NAME: {
         'content': LSHW_SCRIPT.encode('ascii'),
         'hook': set_hardware_details,
     },
     '00-maas-02-virtuality.out': {
-        'name': '00-maas-02-virtuality',
         'content': VIRTUALITY_SCRIPT.encode('ascii'),
         'hook': set_virtual_tag,
     },
     '00-maas-03-install-lldpd.out': {
-        'name': '00-maas-02-install-lldpd',
         'content': make_function_call_script(
             lldpd_install, config_file="/etc/default/lldpd"),
         'hook': null_hook,
     },
     '99-maas-01-wait-for-lldpd.out': {
-        'name': '99-maas-01-wait-for-lldpd',
         'content': make_function_call_script(
             lldpd_wait, "/var/run/lldpd.socket", time_delay=60),
         'hook': null_hook,
     },
     LLDP_OUTPUT_NAME: {
-        'name': '99-maas-02-capture-lldp',
         'content': make_function_call_script(lldpd_capture),
         'hook': set_node_routers,
     },
 }
+
+
+def add_names_to_scripts(scripts):
+    """Derive script names from the script output filename.
+
+    Designed for working with the `BUILTIN_COMMISSIONING_SCRIPTS`
+    structure.
+
+    """
+    for output_name, config in scripts.items():
+        if "name" not in config:
+            script_name = os.path.basename(output_name)
+            script_name, _ = os.path.splitext(script_name)
+            config["name"] = script_name
+
+
+add_names_to_scripts(BUILTIN_COMMISSIONING_SCRIPTS)
 
 
 def add_script_to_archive(tarball, name, content, mtime):
