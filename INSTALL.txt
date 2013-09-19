@@ -235,9 +235,14 @@ see that there are currently 0 nodes attached to this controller.
 Configure DHCP
 --------------
 
-If you are using MAAS to control DHCP, you need to configure this using
-the maas-cli command, by first :ref:`logging in to the API <api-key>` and then
-:ref:`following this procedure <cli-dhcp>` 
+If you want MAAS to control DHCP, you can either:
+
+#. Follow the instructions at :doc:`cluster-configuration` to
+   use the web UI to set up your cluster controller.
+
+#. Use the command line interface `maas-cli` by first
+   :ref:`logging in to the API <api-key>` and then
+   :ref:`following this procedure <cli-dhcp>` 
 
 If you are manually configuring a DHCP server, you should take a look at
 :ref:`manual-dhcp`

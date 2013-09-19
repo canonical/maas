@@ -222,7 +222,14 @@ locally for commissioning::
   $ maas-cli maas node-groups import-boot-images
 
 ...and optionally set up the DHCP and DNS for 
-the cluster by first :ref:`logging in to the API <api-key>` and then
-:ref:`following this procedure <cli-dhcp>` 
+the cluster by either:
+
+*Using the web UI*
+  Follow the instructions at :doc:`cluster-configuration` to
+  use the web UI to set up your cluster controller.
+
+*Using the command line client*
+  First :ref:`logging in to the API <api-key>` and then
+  :ref:`following this procedure <cli-dhcp>` 
 
 

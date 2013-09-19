@@ -27,6 +27,7 @@ Getting started
 
    install
    configure
+   cluster-configuration
    nodes
 
 
