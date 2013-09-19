@@ -20,6 +20,7 @@ __all__ = [
     "MainScript",
     "ensure_dir",
     "parse_key_value_file",
+    "read_text_file",
     "ShellTemplate",
     "sudo_write_file",
     "write_custom_config_section",
@@ -514,6 +515,12 @@ def ensure_dir(path):
             raise
         # Otherwise, the error is that the directory already existed.
         # Which is actually success.
+
+
+def read_text_file(path, encoding='utf-8'):
+    """Read and decode the text file at the given path."""
+    with codecs.open(path, encoding=encoding) as infile:
+        return infile.read()
 
 
 def write_text_file(path, text, encoding='utf-8'):

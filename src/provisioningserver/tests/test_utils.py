@@ -57,6 +57,7 @@ from provisioningserver.utils import (
     MainScript,
     parse_key_value_file,
     pick_new_mtime,
+    read_text_file,
     Safe,
     ShellTemplate,
     sudo_write_file,
@@ -856,6 +857,28 @@ class TestEnsureDir(MAASTestCase):
             factory.make_name('sbusubdir'))
         ensure_dir(path)
         self.assertThat(path, DirExists())
+
+
+class TestReadTextFile(MAASTestCase):
+    def test_reads_file(self):
+        text = factory.getRandomString()
+        self.assertEqual(text, read_text_file(self.make_file(contents=text)))
+
+    def test_defaults_to_utf8(self):
+        # Test input: "registered trademark" (ringed R) symbol.
+        text = '\xae'
+        self.assertEqual(
+            text,
+            read_text_file(self.make_file(contents=text.encode('utf-8'))))
+
+    def test_uses_given_encoding(self):
+        # Test input: "registered trademark" (ringed R) symbol.
+        text = '\xae'
+        self.assertEqual(
+            text,
+            read_text_file(
+                self.make_file(contents=text.encode('utf-16')),
+                encoding='utf-16'))
 
 
 class TestWriteTextFile(MAASTestCase):

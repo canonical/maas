@@ -23,7 +23,7 @@ __all__ = [
     ]
 
 import os
-from provisioningserver.utils import locate_config
+from provisioningserver.utils import locate_config, read_text_file
 
 USERDATA_BASE_DIR = 'templates/commissioning-user-data'
 
@@ -50,9 +50,7 @@ def read_snippet(snippets_dir, name, encoding='utf-8'):
 
     :rtype: `unicode`
     """
-    path = os.path.join(snippets_dir, name)
-    with open(path, 'rb') as snippet_file:
-        return snippet_file.read().decode(encoding)
+    return read_text_file(os.path.join(snippets_dir, name), encoding=encoding)
 
 
 def is_snippet(filename):
