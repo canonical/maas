@@ -27,6 +27,7 @@ from apiclient.maas_client import (
     MAASDispatcher,
     MAASOAuth,
     )
+import bson
 from lxml import etree
 from provisioningserver.auth import (
     get_recorded_api_credentials,
@@ -64,18 +65,37 @@ def get_cached_knowledge():
     return client, nodegroup_uuid
 
 
+# A content-type: function mapping that can decode data of that type.
+decoders = {
+    "application/json": lambda data: json.loads(data),
+    "application/bson": lambda data: bson.BSON(data).decode(),
+}
+
+
 def process_response(response):
-    """All responses should be httplib.OK and contain JSON content.
+    """All responses should be httplib.OK.
+
+    Additionally, `decoders` will be consulted in an attempt to decode
+    the content. If it can't be decoded it will be returned as bytes.
 
     :param response: The result of MAASClient.get/post/etc.
     :type response: urllib2.addinfourl (a file-like object that has a .code
         attribute.)
+
     """
     if response.code != httplib.OK:
         text_status = httplib.responses.get(response.code, '<unknown>')
-        raise AssertionError('Unexpected HTTP status: %s %s, expected 200 OK'
-            % (response.code, text_status))
-    return json.loads(response.read())
+        message = '%s, expected 200 OK' % text_status
+        raise urllib2.HTTPError(
+            response.url, response.code, message,
+            response.headers, response.fp)
+    content = response.read()
+    content_type = response.headers.gettype()
+    if content_type in decoders:
+        decode = decoders[content_type]
+        return decode(content)
+    else:
+        return content
 
 
 def get_nodes_for_node_group(client, nodegroup_uuid):
@@ -99,6 +119,18 @@ def get_hardware_details_for_nodes(client, nodegroup_uuid, system_ids):
     path = '/api/1.0/nodegroups/%s/' % (nodegroup_uuid,)
     return process_response(client.post(
         path, op='node_hardware_details', as_json=True, system_ids=system_ids))
+
+
+def get_details_for_nodes(client, nodegroup_uuid, system_ids):
+    """Retrieve details for a set of nodes.
+
+    :param client: MAAS client
+    :param system_ids: List of UUIDs of systems for which to fetch LLDP data
+    :return: Dictionary mapping node UUIDs to details, e.g. LLDP output
+    """
+    path = '/api/1.0/nodegroups/%s/' % (nodegroup_uuid,)
+    return process_response(client.post(
+        path, op='details', system_ids=system_ids))
 
 
 def post_updated_nodes(client, tag_name, tag_definition, uuid, added, removed):
@@ -131,6 +163,70 @@ def post_updated_nodes(client, tag_name, tag_definition, uuid, added, removed):
             logger.info("Got a CONFLICT while updating tag: %s", msg)
             return {}
         raise
+
+
+def merge_details(details):
+    """Merge node details into a single XML document.
+
+    `details` should be of the form::
+
+      {"name": xml-as-bytes, "name2": xml-as-bytes, ...}
+
+    where `name` is the namespace (and prefix) where each detail's XML
+    should be placed in the composite document; elements in each
+    detail document without a namespace are moved into that namespace.
+
+    The ``lshw`` detail is treated specially, purely for backwards
+    compatibility. If present, it forms the root of the composite
+    document, without any namespace changes, plus it will be included
+    in the composite document in the ``lshw`` namespace.
+
+    The returned document is always rooted with a ``list`` element.
+
+    """
+    # We may mutate the details later, so copy now to prevent
+    # affecting the caller's data.
+    details = details.copy()
+
+    # Root everything in a namespace-less element. Setting the nsmap
+    # here ensures that prefixes are preserved when dumping later.
+    # This element will be replaced by the root of the lshw detail.
+    # However, if there is no lshw detail, this root element shares
+    # its tag with the tag of an lshw XML tree, so that XPath
+    # expressions written with the lshw tree in mind will still work
+    # without it, e.g. "/list//{lldp}something".
+    root = etree.Element("list", nsmap={
+        namespace: namespace for namespace in details})
+
+    # For backward-compatibilty, if lshw details are available, these
+    # should form the root of the composite document.
+    xmldata = details.get("lshw")
+    if xmldata is not None:
+        try:
+            lshw = etree.fromstring(xmldata)
+        except etree.XMLSyntaxError as e:
+            logger.warn("Invalid lshw details: %s", e)
+            del details["lshw"]  # Don't process again later.
+        else:
+            # We're throwing away the existing root, but we can adopt
+            # its nsmap by becoming its child.
+            root.append(lshw)
+            root = lshw
+
+    # Merge the remaining details into the composite document.
+    for namespace in sorted(details):
+        xmldata = details[namespace]
+        try:
+            detail = etree.fromstring(xmldata)
+        except etree.XMLSyntaxError as e:
+            logger.warn("Invalid %s details: %s", namespace, e)
+        else:
+            # Add the namespace to all unqualified elements.
+            for elem in detail.iter("{}*"):
+                elem.tag = etree.QName(namespace, elem.tag)
+            root.append(detail)
+
+    return root
 
 
 def process_batch(xpath, hardware_details):

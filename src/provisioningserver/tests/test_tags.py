@@ -12,10 +12,15 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
+import doctest
 import httplib
+import io
+import json
+from textwrap import dedent
 import urllib2
 
 from apiclient.maas_client import MAASClient
+import bson
 from fixtures import FakeLogger
 from lxml import etree
 from maastesting.factory import factory
@@ -27,16 +32,212 @@ from mock import MagicMock
 from provisioningserver import tags
 from provisioningserver.auth import get_recorded_nodegroup_uuid
 from provisioningserver.testing.testcase import PservTestCase
+from testtools.matchers import (
+    DocTestMatches,
+    Equals,
+    MatchesStructure,
+    )
 
 
-class FakeResponse:
+def make_response(status_code, content, content_type=None):
+    """Return a similar response to that which `urllib2` returns."""
+    if content_type is None:
+        headers_raw = b""
+    else:
+        if isinstance(content_type, unicode):
+            content_type = content_type.encode("ascii")
+        headers_raw = b"Content-Type: %s" % content_type
+    headers = httplib.HTTPMessage(io.BytesIO(headers_raw))
+    return urllib2.addinfourl(
+        fp=io.BytesIO(content), headers=headers,
+        url=None, code=status_code)
 
-    def __init__(self, status_code, content):
-        self.code = status_code
-        self.content = content
 
-    def read(self):
-        return self.content
+class TestProcessResponse(PservTestCase):
+
+    def setUp(self):
+        super(TestProcessResponse, self).setUp()
+        self.useFixture(FakeLogger())
+
+    def test_process_OK_response_with_JSON_content(self):
+        data = {"abc": 123}
+        response = make_response(
+            httplib.OK, json.dumps(data), "application/json")
+        self.assertEqual(data, tags.process_response(response))
+
+    def test_process_OK_response_with_BSON_content(self):
+        data = {"abc": 123}
+        response = make_response(
+            httplib.OK, bson.BSON.encode(data), "application/bson")
+        self.assertEqual(data, tags.process_response(response))
+
+    def test_process_OK_response_with_other_content(self):
+        data = factory.getRandomBytes()
+        response = make_response(
+            httplib.OK, data, "application/octet-stream")
+        self.assertEqual(data, tags.process_response(response))
+
+    def test_process_not_OK_response(self):
+        response = make_response(httplib.NOT_FOUND, b"", "application/json")
+        response.url = factory.getRandomString()
+        error = self.assertRaises(
+            urllib2.HTTPError, tags.process_response, response)
+        self.assertThat(
+            error, MatchesStructure.byEquality(
+                url=response.url, code=response.code,
+                msg="Not Found, expected 200 OK",
+                headers=response.headers, fp=response.fp))
+
+
+class EqualsXML(Equals):
+
+    @staticmethod
+    def normalise(xml):
+        if isinstance(xml, basestring):
+            xml = etree.fromstring(dedent(xml))
+        return etree.tostring(xml, pretty_print=True)
+
+    def __init__(self, tree):
+        super(EqualsXML, self).__init__(self.normalise(tree))
+
+    def match(self, other):
+        return super(EqualsXML, self).match(self.normalise(other))
+
+
+class TestMergeDetails(PservTestCase):
+
+    def setUp(self):
+        super(TestMergeDetails, self).setUp()
+        self.logger = self.useFixture(FakeLogger())
+
+    def test_merge_with_no_details(self):
+        xml = tags.merge_details({})
+        self.assertThat("<list/>", EqualsXML(xml))
+
+    def test_merge_with_only_lshw_details(self):
+        xml = tags.merge_details({"lshw": b"<list><foo>Hello</foo></list>"})
+        expected = """\
+            <list xmlns:lshw="lshw">
+              <foo>Hello</foo>
+              <lshw:list>
+                <lshw:foo>Hello</lshw:foo>
+              </lshw:list>
+            </list>
+        """
+        self.assertThat(expected, EqualsXML(xml))
+
+    def test_merge_with_only_lldp_details(self):
+        xml = tags.merge_details({"lldp": b"<node><foo>Hello</foo></node>"})
+        expected = """\
+            <list xmlns:lldp="lldp">
+              <lldp:node>
+                <lldp:foo>Hello</lldp:foo>
+              </lldp:node>
+            </list>
+        """
+        self.assertThat(expected, EqualsXML(xml))
+
+    def test_merge_with_multiple_details(self):
+        xml = tags.merge_details({
+            "lshw": b"<list><foo>Hello</foo></list>",
+            "lldp": b"<node><foo>Hello</foo></node>",
+            "zoom": b"<zoom>zoom</zoom>",
+        })
+        expected = """\
+            <list xmlns:lldp="lldp" xmlns:lshw="lshw" xmlns:zoom="zoom">
+              <foo>Hello</foo>
+              <lldp:node>
+                <lldp:foo>Hello</lldp:foo>
+              </lldp:node>
+              <lshw:list>
+                <lshw:foo>Hello</lshw:foo>
+              </lshw:list>
+              <zoom:zoom>zoom</zoom:zoom>
+            </list>
+        """
+        self.assertThat(expected, EqualsXML(xml))
+
+    def assertDocTestMatches(self, expected, observed):
+        return self.assertThat(observed, DocTestMatches(
+            dedent(expected), doctest.ELLIPSIS | doctest.NORMALIZE_WHITESPACE))
+
+    def test_merge_with_invalid_lshw_details(self):
+        # The lshw details cannot be parsed, but merge_details() still
+        # returns a usable tree, albeit without any lshw details.
+        xml = tags.merge_details({"lshw": b"<not>well</formed>"})
+        self.assertThat('<list xmlns:lshw="lshw"/>', EqualsXML(xml))
+        # The error is logged however.
+        self.assertDocTestMatches(
+            """\
+            Invalid lshw details: ...
+            """,
+            self.logger.output)
+
+    def test_merge_with_invalid_lshw_details_and_others_valid(self):
+        # The lshw details cannot be parsed, but merge_details() still
+        # returns a usable tree, albeit without any lshw details.
+        xml = tags.merge_details({
+            "lshw": b"<not>well</formed>",
+            "lldp": b"<node><foo>Hello</foo></node>",
+            "zoom": b"<zoom>zoom</zoom>",
+        })
+        expected = """\
+            <list xmlns:lldp="lldp" xmlns:lshw="lshw" xmlns:zoom="zoom">
+              <lldp:node>
+                <lldp:foo>Hello</lldp:foo>
+              </lldp:node>
+              <zoom:zoom>zoom</zoom:zoom>
+            </list>
+        """
+        self.assertThat(expected, EqualsXML(xml))
+        # The error is logged however.
+        self.assertDocTestMatches(
+            """\
+            Invalid lshw details: ...
+            """,
+            self.logger.output)
+
+    def test_merge_with_invalid_other_details(self):
+        xml = tags.merge_details({
+            "lshw": b"<list><foo>Hello</foo></list>",
+            "foom": b"<not>well</formed>",
+            "zoom": b"<zoom>zoom</zoom>",
+        })
+        expected = """\
+            <list xmlns:foom="foom" xmlns:lshw="lshw" xmlns:zoom="zoom">
+              <foo>Hello</foo>
+              <lshw:list>
+                <lshw:foo>Hello</lshw:foo>
+              </lshw:list>
+              <zoom:zoom>zoom</zoom:zoom>
+            </list>
+        """
+        self.assertThat(expected, EqualsXML(xml))
+        # The error is logged however.
+        self.assertDocTestMatches(
+            """\
+            Invalid foom details: ...
+            """,
+            self.logger.output)
+
+    def test_merge_with_all_invalid_details(self):
+        xml = tags.merge_details({
+            "lshw": b"<gibber></ish>",
+            "foom": b"<not>well</formed>",
+            "zoom": b"<>" + factory.getRandomBytes(),
+        })
+        expected = """\
+            <list xmlns:foom="foom" xmlns:lshw="lshw" xmlns:zoom="zoom"/>
+        """
+        self.assertThat(expected, EqualsXML(xml))
+        # The error is logged however.
+        self.assertDocTestMatches(
+            """\
+            Invalid lshw details: ...
+            Invalid foom details: ...
+            Invalid zoom details: ...
+            """,
+            self.logger.output)
 
 
 class TestTagUpdating(PservTestCase):
@@ -77,7 +278,11 @@ class TestTagUpdating(PservTestCase):
 
     def test_get_nodes_calls_correct_api_and_parses_result(self):
         client, uuid = self.fake_cached_knowledge()
-        response = FakeResponse(httplib.OK, '["system-id1", "system-id2"]')
+        response = make_response(
+            httplib.OK,
+            b'["system-id1", "system-id2"]',
+            'application/json',
+        )
         mock = MagicMock(return_value=response)
         self.patch(client, 'get', mock)
         result = tags.get_nodes_for_node_group(client, uuid)
@@ -87,9 +292,9 @@ class TestTagUpdating(PservTestCase):
 
     def test_get_hardware_details_calls_correct_api_and_parses_result(self):
         client, uuid = self.fake_cached_knowledge()
-        xml_data = "<test><data /></test>"
-        content = '[["system-id1", "%s"]]' % (xml_data,)
-        response = FakeResponse(httplib.OK, content)
+        xml_data = b"<test><data /></test>"
+        content = b'[["system-id1", "%s"]]' % (xml_data,)
+        response = make_response(httplib.OK, content, 'application/json')
         mock = MagicMock(return_value=response)
         self.patch(client, 'post', mock)
         result = tags.get_hardware_details_for_nodes(
@@ -100,10 +305,33 @@ class TestTagUpdating(PservTestCase):
             url, op='node_hardware_details', as_json=True,
             system_ids=["system-id1", "system-id2"])
 
+    def test_get_details_calls_correct_api_and_parses_result(self):
+        client, uuid = self.fake_cached_knowledge()
+        data = {
+            "system-1": {
+                "lshw": bson.binary.Binary(b"<lshw><data1 /></lshw>"),
+                "lldp": bson.binary.Binary(b"<lldp><data1 /></lldp>"),
+            },
+            "system-2": {
+                "lshw": bson.binary.Binary(b"<lshw><data2 /></lshw>"),
+                "lldp": bson.binary.Binary(b"<lldp><data2 /></lldp>"),
+            },
+        }
+        content = bson.BSON.encode(data)
+        response = make_response(httplib.OK, content, 'application/bson')
+        post = self.patch(client, 'post')
+        post.return_value = response
+        result = tags.get_details_for_nodes(
+            client, uuid, ['system-1', 'system-2'])
+        self.assertEqual(data, result)
+        url = '/api/1.0/nodegroups/%s/' % (uuid,)
+        post.assert_called_once_with(
+            url, op='details', system_ids=["system-1", "system-2"])
+
     def test_post_updated_nodes_calls_correct_api_and_parses_result(self):
         client, uuid = self.fake_cached_knowledge()
-        content = '{"added": 1, "removed": 2}'
-        response = FakeResponse(httplib.OK, content)
+        content = b'{"added": 1, "removed": 2}'
+        response = make_response(httplib.OK, content, 'application/json')
         post_mock = MagicMock(return_value=response)
         self.patch(client, 'post', post_mock)
         name = factory.make_name('tag')
@@ -171,13 +399,25 @@ class TestTagUpdating(PservTestCase):
     def test_process_node_tags_integration(self):
         self.set_secrets()
         get_nodes = FakeMethod(
-            result=FakeResponse(httplib.OK, '["system-id1", "system-id2"]'))
+            result=make_response(
+                httplib.OK,
+                b'["system-id1", "system-id2"]',
+                'application/json',
+            ))
         post_hw_details = FakeMethod(
-            result=FakeResponse(httplib.OK,
-                '[["system-id1", "<node />"], ["system-id2", "<no-node />"]]'))
+            result=make_response(
+                httplib.OK,
+                (b'[["system-id1", "<node />"], '
+                 b'["system-id2", "<no-node />"]]'),
+                'application/json',
+            ))
         get_fake = MultiFakeMethod([get_nodes])
         post_update_fake = FakeMethod(
-            result=FakeResponse(httplib.OK, '{"added": 1, "removed": 1}'))
+            result=make_response(
+                httplib.OK,
+                b'{"added": 1, "removed": 1}',
+                'application/json',
+            ))
         post_fake = MultiFakeMethod([post_hw_details, post_update_fake])
         self.patch(MAASClient, 'get', get_fake)
         self.patch(MAASClient, 'post', post_fake)

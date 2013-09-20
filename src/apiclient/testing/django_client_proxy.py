@@ -18,24 +18,18 @@ __all__ = [
     'MAASDjangoTestClient',
     ]
 
+import httplib
+import io
+import urllib2
 
-class FileLikeWrapper:
-    """Wrap a Django response object to look like a urllib2.addinfourl object.
 
-    Django returns something that has a 'status_code' and a 'content'
-    attributes. urllib2 returns something that has a 'code' and a 'read()'
-    method.
-    """
-
-    def __init__(self, response):
-        self.response = response
-
-    def read(self):
-        return self.response.content
-
-    @property
-    def code(self):
-        return self.response.status_code
+def to_addinfourl(response):
+    """Convert a `django.http.HttpResponse` to a `urllib2.addinfourl`."""
+    headers_raw = response.serialize_headers()
+    headers = httplib.HTTPMessage(io.BytesIO(headers_raw))
+    return urllib2.addinfourl(
+        fp=io.BytesIO(response.content), headers=headers,
+        url=None, code=response.status_code)
 
 
 class MAASDjangoTestClient:
@@ -46,14 +40,14 @@ class MAASDjangoTestClient:
 
     def get(self, path, op=None, **kwargs):
         kwargs['op'] = op
-        return FileLikeWrapper(self.django_client.get(path, kwargs))
+        return to_addinfourl(self.django_client.get(path, kwargs))
 
     def post(self, path, op=None, **kwargs):
         kwargs['op'] = op
-        return FileLikeWrapper(self.django_client.post(path, kwargs))
+        return to_addinfourl(self.django_client.post(path, kwargs))
 
     def put(self, path, **kwargs):
-        return FileLikeWrapper(self.django_client.put(path, kwargs))
+        return to_addinfourl(self.django_client.put(path, kwargs))
 
     def delete(self, path):
-        return FileLikeWrapper(self.django_client.delete(path))
+        return to_addinfourl(self.django_client.delete(path))
