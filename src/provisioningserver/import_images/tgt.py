@@ -106,7 +106,7 @@ def tgt_admin_update(target_dir, target_name):
     # Reportedly tgt-admin tends to return 0 even when it fails, so check
     # actively.
     status = subprocess.check_output(TGT_ADMIN + ["--show"])
-    if re.match('Target [0-9]+: %s$' % full_name, status) is None:
+    if re.match('Target [0-9]+: %s\\b' % re.escape(full_name), status) is None:
         raise TargetNotCreated("Failed tgt-admin add for %s" % full_name)
 
 

@@ -47,16 +47,21 @@ from simplestreams import (
     mirrors,
     objectstores,
     util,
+    filters,
     )
 
 
 RELEASES = distro_info.UbuntuDistroInfo().supported()
 # This must end in a slash, for later concatenation.
 RELEASES_URL = 'http://maas.ubuntu.com/images/ephemeral/releases/'
-ARCHES = ["amd64/generic", "i386/generic", "armhf/highbank"]
+
+DEFAULT_FILTERS = ['arch~(amd64|i386|armhf)']
+
+PRODUCTS_REGEX = 'com[.]ubuntu[.]maas:ephemeral:.*'
 
 DATA_DIR = "/var/lib/maas/ephemeral"
 
+DEFAULT_KEYRING = "/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg"
 
 # The basic process for importing ephemerals is as follows:
 #   1. do the simplestreams mirror (this is mostly handled by simplestreams);
@@ -77,21 +82,40 @@ DATA_DIR = "/var/lib/maas/ephemeral"
 
 
 class MAASMirrorWriter(mirrors.ObjectStoreMirrorWriter):
-    def __init__(self, local_path, config=None):
+    def __init__(self, local_path, config=None, delete=False,
+                 item_filters=None, product_regex=PRODUCTS_REGEX):
         self.local_path = abspath(local_path)
+        self.delete = delete
+
+        # Any user specified filters such as arch~(amd64|i386) are in
+        # addition to us only understanding how to unpack tar.gz files.
+        self.item_filters = item_filters or []
+        self.item_filters.append('ftype=tar.gz')
+        self.item_filters = filters.get_filters(self.item_filters)
+
+        self.product_filters = [filters.ItemFilter(
+            'product_name~' + product_regex)]
+
         objectstore = objectstores.FileStore(self._simplestreams_path())
         super(MAASMirrorWriter, self).__init__(config, objectstore)
 
     def _simplestreams_path(self):
         return join(self.local_path, ".simplestreams")
 
+    def filter_product(self, data, src, target, pedigree):
+        """See `ObjectStoreMirrorWriter`"""
+        return filters.filter_item(self.product_filters, data, src, pedigree)
+
+    def filter_item(self, data, src, target, pedigree):
+        """See `ObjectStoreMirrorWriter`"""
+        return filters.filter_item(self.item_filters, data, src, pedigree)
+
     def insert_item(self, data, src, target, pedigree, contentsource):
         super(MAASMirrorWriter, self).insert_item(data, src, target, pedigree,
                                                   contentsource)
         path = data.get('path', None)
         flat = util.products_exdata(src, pedigree)
-        # TODO: use filters to do this part
-        if path and flat.get('ftype') == 'tar.gz':
+        if path is not None:
             self.extract_item(path, flat)
 
     def _target_dir(self, metadata):
@@ -100,14 +124,15 @@ class MAASMirrorWriter(mirrors.ObjectStoreMirrorWriter):
                     metadata['arch'], metadata['version_name'])
 
     def remove_item(self, data, src, target, pedigree):
-        super(MAASMirrorWriter, self).remove_item(data, src, target, pedigree)
-        metadata = util.products_exdata(src, pedigree)
+        if self.delete:
+            super(MAASMirrorWriter, self).remove_item(data, src, target, pedigree)
+            metadata = util.products_exdata(src, pedigree)
 
-        name = get_target_name(**metadata)
-        tgt_admin_delete(name)
-        remove(get_conf_path(self.local_path, name))
+            name = get_target_name(**metadata)
+            tgt_admin_delete(name)
+            remove(get_conf_path(self.local_path, name))
 
-        shutil.rmtree(self._target_dir(metadata))
+            shutil.rmtree(self._target_dir(metadata))
 
     def extract_item(self, source, metadata):
         error_cleanups = []
@@ -151,20 +176,31 @@ class MAASMirrorWriter(mirrors.ObjectStoreMirrorWriter):
             symlink(root_tar, join(provision_tmp, 'root.tar.gz'))
 
             # TODO: call src/provisioningserver/pxe/install_image.py directly
-            provision_cmd = [
-                'maas-provision', 'install-pxe-image',
-                '--release=%s' % metadata['release'],
-                '--arch=%s' % metadata['arch'],
-                # TODO: Something more reasonable for ARM.
-                # Simplestreams doesn't really know about this
-                # right now, although it might some day for HWE
-                # kernels.
-                '--subarch=generic',
-                '--purpose=commissioning',
-                '--image="%s"' % provision_tmp,
-                '--symlink=xinstall',
-            ]
-            subprocess.check_call(provision_cmd)
+            def do_provision(subarch='generic'):
+                provision_cmd = [
+                    'maas-provision', 'install-pxe-image',
+                    '--release=%s' % metadata['release'],
+                    '--arch=%s' % metadata['arch'],
+                    # TODO: Something more reasonable for ARM.
+                    # Simplestreams doesn't really know about this
+                    # right now, although it might some day for HWE
+                    # kernels.
+                    '--subarch=%s' % subarch,
+                    '--purpose=commissioning',
+                    '--image=%s' % provision_tmp,
+                    '--symlink=xinstall',
+                ]
+                subprocess.check_call(provision_cmd)
+
+            # HACK: In order to be backwards compatible, we need to deploy
+            # kernels with subarch=highbank in ARM land. However, the special
+            # hardware support required there is now available in stock
+            # kernels, so we can use the same one everywhere. Rather than take
+            # subarch support out, we'll leave it for now given that we might
+            # (ab-)use it for HWE or custom kernels.
+            do_provision()
+            if metadata['arch'] == 'armhf':
+                do_provision(subarch='highbank')
 
             tgt_conf_path = join(target_dir, 'tgt.conf')
             write_conf(tgt_conf_path, name, image)
@@ -199,6 +235,17 @@ def make_arg_parser(doc):
                         help="The directory to dump maas output in")
     parser.add_argument('--max', action='store', default=1,
                         help="store at most MAX items in the target")
+    parser.add_argument('--keyring', action='store', default=DEFAULT_KEYRING,
+                        help='gpg keyring for verifying boot image metadata')
+    parser.add_argument('--delete', action='store_true', default=False,
+                        help="Delete local copies of images when no longer "
+                        "available?")
+    parser.add_argument('--products', action='store', default=PRODUCTS_REGEX,
+                        help="regex matching products to import, e.g. "
+                        "com.ubuntu.maas.daily:ephemerals:.* for daily")
+    parser.add_argument('filters', nargs='*', default=DEFAULT_FILTERS,
+                        help="filters over image metadata, e.g. "
+                        "arch=i386 release=precise")
     return parser
 
 
@@ -207,9 +254,11 @@ def main(args):
 
     :param args: Command-line arguments, in parsed form.
     """
-    source = mirrors.UrlMirrorReader(args.url)
+    def verify_signature(content, path):
+        return util.read_signed(content, keyring=args.keyring)
+    source = mirrors.UrlMirrorReader(args.url, policy=verify_signature)
     config = {'max_items': args.max}
-    target = MAASMirrorWriter(args.output, config=config)
+    target = MAASMirrorWriter(args.output, config=config, delete=args.delete)
 
     set_up_data_dir(args.output)
     target.sync(source, args.path)
