@@ -208,10 +208,7 @@ def extract_router_mac_addresses(raw_content):
     assert isinstance(raw_content, bytes)
     parser = etree.XMLParser()
     doc = etree.XML(raw_content.strip(), parser)
-    routers = doc.xpath(_xpath_routers)
-    if len(routers) == 0:
-        return None
-    return routers
+    return doc.xpath(_xpath_routers)
 
 
 def set_node_routers(node, raw_content):
@@ -221,7 +218,10 @@ def set_node_routers(node, raw_content):
     information and stored on the given node.
     """
     routers = extract_router_mac_addresses(raw_content)
-    node.routers = [MAC(router) for router in routers]
+    if routers is None:
+        node.routers = None
+    else:
+        node.routers = [MAC(router) for router in routers]
     node.save()
 
 

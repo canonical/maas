@@ -286,9 +286,9 @@ class TestExtractRouters(MAASServerTestCase):
     def test_extract_router_mac_addresses_returns_None_when_empty_input(self):
         self.assertIsNone(extract_router_mac_addresses(''))
 
-    def test_extract_router_mac_addresses_returns_None_when_no_routers(self):
+    def test_extract_router_mac_addresses_returns_empty_list(self):
         lldp_output = make_lldp_output([])
-        self.assertIsNone(extract_router_mac_addresses(lldp_output))
+        self.assertItemsEqual([], extract_router_mac_addresses(lldp_output))
 
     def test_extract_router_mac_addresses_returns_routers_list(self):
         macs = ["11:22:33:44:55:66", "aa:bb:cc:dd:ee:ff"]
@@ -306,3 +306,9 @@ class TestSetNodeRouters(MAASServerTestCase):
         set_node_routers(node, lldp_output)
         self.assertItemsEqual(
             [MAC(mac) for mac in macs], reload_object(node).routers)
+
+    def test_set_node_routers_updates_node_if_no_routers(self):
+        node = factory.make_node()
+        lldp_output = make_lldp_output([])
+        set_node_routers(node, lldp_output)
+        self.assertItemsEqual([], reload_object(node).routers)
