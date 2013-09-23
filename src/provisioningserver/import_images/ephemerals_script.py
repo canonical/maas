@@ -22,11 +22,7 @@ from os import (
     remove,
     symlink,
     )
-from os.path import (
-    abspath,
-    exists,
-    join,
-    )
+import os.path
 import shutil
 import subprocess
 import tempfile
@@ -82,37 +78,42 @@ DEFAULT_KEYRING = "/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg"
 
 
 class MAASMirrorWriter(mirrors.ObjectStoreMirrorWriter):
+    """Implement a local simplestreams mirror."""
+
     def __init__(self, local_path, config=None, delete=False,
                  item_filters=None, product_regex=PRODUCTS_REGEX):
-        self.local_path = abspath(local_path)
+        self.local_path = os.path.abspath(local_path)
         self.delete = delete
 
         # Any user specified filters such as arch~(amd64|i386) are in
-        # addition to us only understanding how to unpack tar.gz files.
+        # addition to our selecting only tar.gz files.  That's the only type
+        # of file we know how to unpack.
         self.item_filters = item_filters or []
         self.item_filters.append('ftype=tar.gz')
         self.item_filters = filters.get_filters(self.item_filters)
 
-        self.product_filters = [filters.ItemFilter(
-            'product_name~' + product_regex)]
+        self.product_filters = [
+            filters.ItemFilter('product_name~' + product_regex)]
 
         objectstore = objectstores.FileStore(self._simplestreams_path())
         super(MAASMirrorWriter, self).__init__(config, objectstore)
 
     def _simplestreams_path(self):
-        return join(self.local_path, ".simplestreams")
+        """Return the local directory where we mirror simplestreams data."""
+        return os.path.join(self.local_path, ".simplestreams")
 
     def filter_product(self, data, src, target, pedigree):
-        """See `ObjectStoreMirrorWriter`"""
+        """See `ObjectStoreMirrorWriter`."""
         return filters.filter_item(self.product_filters, data, src, pedigree)
 
     def filter_item(self, data, src, target, pedigree):
-        """See `ObjectStoreMirrorWriter`"""
+        """See `ObjectStoreMirrorWriter`."""
         return filters.filter_item(self.item_filters, data, src, pedigree)
 
     def insert_item(self, data, src, target, pedigree, contentsource):
-        super(MAASMirrorWriter, self).insert_item(data, src, target, pedigree,
-                                                  contentsource)
+        """See `ObjectStoreMirrorWriter`."""
+        super(MAASMirrorWriter, self).insert_item(
+            data, src, target, pedigree, contentsource)
         path = data.get('path', None)
         flat = util.products_exdata(src, pedigree)
         if path is not None:
@@ -120,37 +121,46 @@ class MAASMirrorWriter(mirrors.ObjectStoreMirrorWriter):
 
     def _target_dir(self, metadata):
         """ Generate the target directory in maas land. """
-        return join(self.local_path, metadata['release'], "ephemeral",
-                    metadata['arch'], metadata['version_name'])
+        return os.path.join(
+            self.local_path, metadata['release'], "ephemeral",
+            metadata['arch'], metadata['version_name'])
 
     def remove_item(self, data, src, target, pedigree):
-        if self.delete:
-            super(MAASMirrorWriter, self).remove_item(
-                data, src, target, pedigree)
-            metadata = util.products_exdata(src, pedigree)
+        """See `ObjectStoreMirrorWriter`.
 
-            name = get_target_name(**metadata)
-            tgt_admin_delete(name)
-            remove(get_conf_path(self.local_path, name))
+        Remove items from our local mirror that are no longer available
+        upstream.
+        """
+        if not self.delete:
+            # Caller didn't ask for obsolete items to be deleted.
+            return
 
-            shutil.rmtree(self._target_dir(metadata))
+        super(MAASMirrorWriter, self).remove_item(data, src, target, pedigree)
+        metadata = util.products_exdata(src, pedigree)
+
+        name = get_target_name(**metadata)
+        tgt_admin_delete(name)
+        remove(get_conf_path(self.local_path, name))
+
+        shutil.rmtree(self._target_dir(metadata))
 
     def extract_item(self, source, metadata):
+        """See `ObjectStoreMirrorWriter`."""
         error_cleanups = []
         try:
             tmp = tempfile.mkdtemp(dir=self._simplestreams_path())
-            tar = join(self._simplestreams_path(), source)
+            tar = os.path.join(self._simplestreams_path(), source)
             subprocess.check_call(["tar", "-Sxzf", tar, "-C", tmp])
 
             target_dir = self._target_dir(metadata)
             ensure_dir(target_dir)
 
             def copy_thing(pattern, target):
-                things = glob(join(tmp, pattern))
+                things = glob(os.path.join(tmp, pattern))
                 if len(things) != 1:
                     raise AssertionError(
                         "expected one %s, got %d" % (pattern, len(things)))
-                to = join(target_dir, target)
+                to = os.path.join(target_dir, target)
                 shutil.copy(things[0], to)
                 return to
 
@@ -158,7 +168,7 @@ class MAASMirrorWriter(mirrors.ObjectStoreMirrorWriter):
             copy_thing('*-initrd*', 'initrd.gz')
             image = copy_thing('*img', 'disk.img')
 
-            root_tar = join(target_dir, 'dist-root.tar.gz')
+            root_tar = os.path.join(target_dir, 'dist-root.tar.gz')
             subprocess.check_call(["uec2roottar", image, root_tar])
 
             name = get_target_name(**metadata)
@@ -171,10 +181,13 @@ class MAASMirrorWriter(mirrors.ObjectStoreMirrorWriter):
 
             # maas-provision will delete this directory when it finishes.
             provision_tmp = tempfile.mkdtemp(dir=self._simplestreams_path())
-            symlink(join(target_dir, 'linux'), join(provision_tmp, 'linux'))
-            symlink(join(target_dir, 'initrd.gz'),
-                    join(provision_tmp, 'initrd.gz'))
-            symlink(root_tar, join(provision_tmp, 'root.tar.gz'))
+            symlink(
+                os.path.join(target_dir, 'linux'),
+                os.path.join(provision_tmp, 'linux'))
+            symlink(
+                os.path.join(target_dir, 'initrd.gz'),
+                os.path.join(provision_tmp, 'initrd.gz'))
+            symlink(root_tar, os.path.join(provision_tmp, 'root.tar.gz'))
 
             # TODO: call src/provisioningserver/pxe/install_image.py directly
             def do_provision(subarch='generic'):
@@ -201,14 +214,16 @@ class MAASMirrorWriter(mirrors.ObjectStoreMirrorWriter):
             # (ab-)use it for HWE or custom kernels.
             do_provision()
             if metadata['arch'] == 'armhf':
+                # TODO: Will this work?  Doesn't the first invocation move the
+                # image away from where we expect it?
                 do_provision(subarch='highbank')
 
-            tgt_conf_path = join(target_dir, 'tgt.conf')
+            tgt_conf_path = os.path.join(target_dir, 'tgt.conf')
             write_conf(tgt_conf_path, name, image)
             error_cleanups.append(lambda: remove(tgt_conf_path))
 
             conf_name = get_conf_path(self.local_path, name)
-            if not exists(conf_name):
+            if not os.path.exists(conf_name):
                 symlink(tgt_conf_path, conf_name)
 
             tgt_admin_update(target_dir, name)
@@ -227,26 +242,31 @@ def make_arg_parser(doc):
     :param doc: Description of the script, for help output.
     """
     parser = ArgumentParser(description=doc)
-    parser.add_argument('--path', action="store",
-                        default="streams/v1/index.sjson",
-                        help="the path to the index json on the remote mirror")
-    parser.add_argument('--url', action='store', default=RELEASES_URL,
-                        help="the mirror URL (either remote or file://)")
-    parser.add_argument('--output', action='store', default=DATA_DIR,
-                        help="The directory to dump maas output in")
-    parser.add_argument('--max', action='store', default=1,
-                        help="store at most MAX items in the target")
-    parser.add_argument('--keyring', action='store', default=DEFAULT_KEYRING,
-                        help='gpg keyring for verifying boot image metadata')
-    parser.add_argument('--delete', action='store_true', default=False,
-                        help="Delete local copies of images when no longer "
-                        "available?")
-    parser.add_argument('--products', action='store', default=PRODUCTS_REGEX,
-                        help="regex matching products to import, e.g. "
-                        "com.ubuntu.maas.daily:ephemerals:.* for daily")
-    parser.add_argument('filters', nargs='*', default=DEFAULT_FILTERS,
-                        help="filters over image metadata, e.g. "
-                        "arch=i386 release=precise")
+    parser.add_argument(
+        '--path', action="store", default="streams/v1/index.sjson",
+        help="the path to the index json on the remote mirror")
+    parser.add_argument(
+        '--url', action='store', default=RELEASES_URL,
+        help="the mirror URL (either remote or file://)")
+    parser.add_argument(
+        '--output', action='store', default=DATA_DIR,
+        help="The directory to dump maas output in")
+    parser.add_argument(
+        '--max', action='store', default=1,
+        help="store at most MAX items in the target")
+    parser.add_argument(
+        '--keyring', action='store', default=DEFAULT_KEYRING,
+        help='gpg keyring for verifying boot image metadata')
+    parser.add_argument(
+        '--delete', action='store_true', default=False,
+        help="Delete local copies of images when no longer available?")
+    parser.add_argument(
+        '--products', action='store', default=PRODUCTS_REGEX,
+        help="regex matching products to import, e.g. "
+             "com.ubuntu.maas.daily:ephemerals:.* for daily")
+    parser.add_argument(
+        'filters', nargs='*', default=DEFAULT_FILTERS,
+        help="filters over image metadata, e.g. arch=i386 release=precise")
     return parser
 
 
@@ -257,6 +277,7 @@ def main(args):
     """
     def verify_signature(content, path):
         return util.read_signed(content, keyring=args.keyring)
+
     source = mirrors.UrlMirrorReader(args.url, policy=verify_signature)
     config = {'max_items': args.max}
     target = MAASMirrorWriter(args.output, config=config, delete=args.delete)
