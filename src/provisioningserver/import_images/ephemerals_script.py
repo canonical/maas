@@ -44,10 +44,10 @@ from provisioningserver.import_images.tgt import (
     )
 from provisioningserver.utils import ensure_dir
 from simplestreams import (
+    filters,
     mirrors,
     objectstores,
     util,
-    filters,
     )
 
 
@@ -125,7 +125,8 @@ class MAASMirrorWriter(mirrors.ObjectStoreMirrorWriter):
 
     def remove_item(self, data, src, target, pedigree):
         if self.delete:
-            super(MAASMirrorWriter, self).remove_item(data, src, target, pedigree)
+            super(MAASMirrorWriter, self).remove_item(
+                data, src, target, pedigree)
             metadata = util.products_exdata(src, pedigree)
 
             name = get_target_name(**metadata)
