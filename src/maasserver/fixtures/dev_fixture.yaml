@@ -96,7 +96,7 @@
     is_superuser: true
     last_login: 2012-01-24 09:45:50
     last_name: ''
-    password: sha1$a0be0$0117b50a178c65f4bd5dde6aec8702c4d0165a13
+    password: md5$uZic1a8frlfp$5eb190821d99ca2a68ec2f5bd46b4ae7
     user_permissions: []
     username: admin
   model: auth.user
@@ -111,7 +111,7 @@
     is_superuser: false
     last_login: 2012-01-24 10:49:41
     last_name: ''
-    password: sha1$f7c88$8811d5d3e536d1bb5a891dba3a34bfe159d04e93
+    password: md5$uZic1a8frlfp$5eb190821d99ca2a68ec2f5bd46b4ae7
     user_permissions: []
     username: gaston
   model: auth.user
@@ -126,7 +126,7 @@
     is_superuser: false
     last_login: 2012-01-24 10:50:03
     last_name: ''
-    password: sha1$c61f9$39c9c799284c868d12e9dc7857965df2a5dc547a
+    password: md5$uZic1a8frlfp$5eb190821d99ca2a68ec2f5bd46b4ae7
     user_permissions: []
     username: dave
   model: auth.user
@@ -141,7 +141,7 @@
     is_superuser: false
     last_login: 2012-01-24 10:50:21
     last_name: ''
-    password: sha1$d1d8d$cb86bba0708102854acd5fcca33d7bc4acdfd6b5
+    password: md5$uZic1a8frlfp$5eb190821d99ca2a68ec2f5bd46b4ae7
     user_permissions: []
     username: raph
   model: auth.user
@@ -156,7 +156,7 @@
     is_superuser: false
     last_login: 2012-01-24 10:50:38
     last_name: ''
-    password: sha1$9a168$cda4cc93060bd0782a1696b91f664c975934384d
+    password: md5$uZic1a8frlfp$5eb190821d99ca2a68ec2f5bd46b4ae7
     user_permissions: []
     username: diane
   model: auth.user
@@ -171,7 +171,7 @@
     is_superuser: false
     last_login: 2012-01-24 10:50:53
     last_name: ''
-    password: sha1$6c48c$3afe3785b93a5e6a25a819b5ba6c4a8ef5916e7f
+    password: md5$uZic1a8frlfp$5eb190821d99ca2a68ec2f5bd46b4ae7
     user_permissions: []
     username: test
   model: auth.user

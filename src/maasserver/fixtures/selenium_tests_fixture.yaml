@@ -47,7 +47,7 @@
     is_superuser: true
     last_login: 2012-01-24 09:45:50
     last_name: ''
-    password: sha1$a0be0$0117b50a178c65f4bd5dde6aec8702c4d0165a13
+    password: md5$uZic1a8frlfp$5eb190821d99ca2a68ec2f5bd46b4ae7
     user_permissions: []
     username: admin
   model: auth.user
@@ -62,7 +62,7 @@
     is_superuser: false
     last_login: 2012-01-24 10:49:41
     last_name: ''
-    password: sha1$f7c88$8811d5d3e536d1bb5a891dba3a34bfe159d04e93
+    password: md5$uZic1a8frlfp$5eb190821d99ca2a68ec2f5bd46b4ae7
     user_permissions: []
     username: user
   model: auth.user

@@ -110,5 +110,9 @@ os.environ['CELERY_CONFIG_MODULE'] = 'democeleryconfig'
 # Use the in-branch development version of maas_cluster.conf.
 LOCAL_CLUSTER_CONFIG = abspath("etc/demo_maas_cluster.conf")
 
+PASSWORD_HASHERS = (
+    'django.contrib.auth.hashers.MD5PasswordHasher',
+)
+
 # Allow the user to override settings in maas_local_settings.
 import_local_settings()
