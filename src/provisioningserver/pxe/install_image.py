@@ -12,6 +12,7 @@ from __future__ import (
 __metaclass__ = type
 __all__ = [
     "add_arguments",
+    "install_image",
     "run",
     ]
 
@@ -129,6 +130,22 @@ def install_dir(new, old, symlink=None):
         os.symlink(old, sdest)
 
 
+def install_image(image_dir, arch, subarch, release, purpose, config_file=None,
+                  symlink=None):
+    """Install a PXE boot image.
+
+    This is the function-call equivalent to a command-line invocation calling
+    `add_arguments` and `run`.
+    """
+    config = Config.load_from_cache(config_file)
+    tftproot = config["tftp"]["root"]
+    destination = make_destination(tftproot, arch, subarch, release, purpose)
+    if not are_identical_dirs(destination, image_dir):
+        # Image has changed.  Move the new version into place.
+        install_dir(image_dir, destination, symlink)
+    rmtree(image_dir, ignore_errors=True)
+
+
 def add_arguments(parser):
     parser.add_argument(
         '--arch', dest='arch', default=None,
@@ -158,11 +175,7 @@ def run(args):
     containing identical files, the new image is deleted and the old one
     is left untouched.
     """
-    config = Config.load(args.config_file)
-    tftproot = config["tftp"]["root"]
-    destination = make_destination(
-        tftproot, args.arch, args.subarch, args.release, args.purpose)
-    if not are_identical_dirs(destination, args.image):
-        # Image has changed.  Move the new version into place.
-        install_dir(args.image, destination, args.symlink)
-    rmtree(args.image, ignore_errors=True)
+    install_image(
+        args.image, arch=args.arch, subarch=args.subarch, release=args.release,
+        purpose=args.purpose, config_file=args.config_file,
+        symlink=args.symlink)

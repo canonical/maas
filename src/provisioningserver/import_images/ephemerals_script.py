@@ -38,6 +38,7 @@ from provisioningserver.import_images.tgt import (
     write_conf,
     write_info_file,
     )
+from provisioningserver.pxe.install_image import install_image
 from provisioningserver.utils import ensure_dir
 from simplestreams import (
     filters,
@@ -58,6 +59,26 @@ PRODUCTS_REGEX = 'com[.]ubuntu[.]maas:ephemeral:.*'
 DATA_DIR = "/var/lib/maas/ephemeral"
 
 DEFAULT_KEYRING = "/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg"
+
+
+def copy_file_by_glob(source_dir, pattern, target_dir, target):
+    """Copy a single file, identified by a glob pattern.
+
+    :param source_dir: Directory where the file should be.
+    :param pattern: A glob pattern identifying the single file to be copied.
+    :param target_dir: Directory to copy to.
+    :param target: Name for the copy.
+    :return: Full path to the copy.
+    """
+    matches = glob(os.path.join(source_dir, pattern))
+    if len(matches) != 1:
+        raise AssertionError(
+            "expected one %s, found %d" % (pattern, len(matches)))
+    [original] = matches
+    to = os.path.join(target_dir, target)
+    shutil.copy(original, to)
+    return to
+
 
 # The basic process for importing ephemerals is as follows:
 #   1. do the simplestreams mirror (this is mostly handled by simplestreams);
@@ -146,27 +167,20 @@ class MAASMirrorWriter(mirrors.ObjectStoreMirrorWriter):
 
     def extract_item(self, source, metadata):
         """See `ObjectStoreMirrorWriter`."""
+        arch = metadata['arch']
+
+        tmp = tempfile.mkdtemp(dir=self._simplestreams_path())
         error_cleanups = []
         try:
-            tmp = tempfile.mkdtemp(dir=self._simplestreams_path())
             tar = os.path.join(self._simplestreams_path(), source)
             subprocess.check_call(["tar", "-Sxzf", tar, "-C", tmp])
 
             target_dir = self._target_dir(metadata)
             ensure_dir(target_dir)
 
-            def copy_thing(pattern, target):
-                things = glob(os.path.join(tmp, pattern))
-                if len(things) != 1:
-                    raise AssertionError(
-                        "expected one %s, got %d" % (pattern, len(things)))
-                to = os.path.join(target_dir, target)
-                shutil.copy(things[0], to)
-                return to
-
-            copy_thing('*-vmlinuz*', 'linux')
-            copy_thing('*-initrd*', 'initrd.gz')
-            image = copy_thing('*img', 'disk.img')
+            copy_file_by_glob(tmp, '*-vmlinuz*', target_dir, 'linux')
+            copy_file_by_glob(tmp, '*-initrd*', target_dir, 'initrd.gz')
+            image = copy_file_by_glob(tmp, '*img', target_dir, 'disk.img')
 
             root_tar = os.path.join(target_dir, 'dist-root.tar.gz')
             subprocess.check_call(["uec2roottar", image, root_tar])
@@ -176,11 +190,12 @@ class MAASMirrorWriter(mirrors.ObjectStoreMirrorWriter):
             write_info_file(
                 target_dir, name, release=metadata['release'],
                 label=metadata['label'], serial=metadata['version_name'],
-                arch=metadata['arch'])
+                arch=arch)
             error_cleanups.append(lambda: clean_up_info_file(target_dir))
 
-            # maas-provision will delete this directory when it finishes.
+            # install_image will delete this directory when it finishes.
             provision_tmp = tempfile.mkdtemp(dir=self._simplestreams_path())
+            error_cleanups.append(lambda: shutil.rmtree(provision_tmp))
             symlink(
                 os.path.join(target_dir, 'linux'),
                 os.path.join(provision_tmp, 'linux'))
@@ -189,34 +204,25 @@ class MAASMirrorWriter(mirrors.ObjectStoreMirrorWriter):
                 os.path.join(provision_tmp, 'initrd.gz'))
             symlink(root_tar, os.path.join(provision_tmp, 'root.tar.gz'))
 
-            # TODO: call src/provisioningserver/pxe/install_image.py directly
-            def do_provision(subarch='generic'):
-                provision_cmd = [
-                    'maas-provision', 'install-pxe-image',
-                    '--release=%s' % metadata['release'],
-                    '--arch=%s' % metadata['arch'],
-                    # TODO: Something more reasonable for ARM.
-                    # Simplestreams doesn't really know about this
-                    # right now, although it might some day for HWE
-                    # kernels.
-                    '--subarch=%s' % subarch,
-                    '--purpose=commissioning',
-                    '--image=%s' % provision_tmp,
-                    '--symlink=xinstall',
-                ]
-                subprocess.check_call(provision_cmd)
-
             # HACK: In order to be backwards compatible, we need to deploy
-            # kernels with subarch=highbank in ARM land. However, the special
+            # ARM kernels with subarch=highbank. However, the special
             # hardware support required there is now available in stock
-            # kernels, so we can use the same one everywhere. Rather than take
-            # subarch support out, we'll leave it for now given that we might
-            # (ab-)use it for HWE or custom kernels.
-            do_provision()
-            if metadata['arch'] == 'armhf':
+            # kernels, so we can use the same one everywhere.
+            # TODO: Something more reasonable for ARM.
+            # Simplestreams doesn't really know about this
+            # right now, although it might some day for HWE
+            # kernels.
+            install_image(
+                provision_tmp,
+                release=metadata['release'], arch=arch, subarch='generic',
+                purpose='commissioning', symlink='xinstall')
+            if arch == 'armhf':
                 # TODO: Will this work?  Doesn't the first invocation move the
                 # image away from where we expect it?
-                do_provision(subarch='highbank')
+                install_image(
+                    provision_tmp,
+                    release=metadata['release'], arch=arch, subarch='highbank',
+                    purpose='commissioning', symlink='xinstall')
 
             tgt_conf_path = os.path.join(target_dir, 'tgt.conf')
             write_conf(tgt_conf_path, name, image)
