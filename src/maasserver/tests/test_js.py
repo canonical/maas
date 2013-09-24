@@ -22,6 +22,7 @@ import os
 from os.path import (
     abspath,
     join,
+    relpath,
     )
 from urlparse import urljoin
 
@@ -157,7 +158,7 @@ class YUIUnitTestsBase:
 class YUIUnitTestsLocal(YUIUnitTestsBase, MAASTestCase):
 
     scenarios = tuple(
-        (path, {"test_url": "file://%s" % abspath(path)})
+        (relpath(path, root), {"test_url": "file://%s" % abspath(path)})
         for path in YUIUnitTestsBase.test_paths)
 
     def multiply(self, result):
@@ -186,7 +187,7 @@ class YUIUnitTestsRemote(YUIUnitTestsBase, MAASTestCase):
         # are proxied. See <https://saucelabs.com/docs/ondemand/connect>.
         with HTTPServerFixture(port=5555) as httpd:
             scenarios = tuple(
-                (path, {"test_url": urljoin(httpd.url, path)})
+                (relpath(path, root), {"test_url": urljoin(httpd.url, path)})
                 for path in self.test_paths)
             with SauceConnectFixture() as sauce_connect:
                 for browser_name in browser_names:
