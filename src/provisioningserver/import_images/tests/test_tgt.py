@@ -13,16 +13,20 @@ __metaclass__ = type
 __all__ = []
 
 import os.path
+from random import randint
 import subprocess
+from textwrap import dedent
 
 from maastesting.factory import factory
 from maastesting.matchers import ContainsAll
 from maastesting.testcase import MAASTestCase
+from provisioningserver.import_images import tgt as tgt_module
 from provisioningserver.import_images.tgt import (
     clean_up_info_file,
     get_conf_path,
     get_target_name,
     set_up_data_dir,
+    target_exists,
     TARGET_NAME_PREFIX,
     TargetNotCreated,
     tgt_admin_delete,
@@ -88,10 +92,7 @@ class TestTGT(MAASTestCase):
         check_call = self.patch(subprocess, 'check_call')
         target = factory.make_name('target')
         full_name = TARGET_NAME_PREFIX + target
-        # Simulate output that will make tgt_admin_update believe that
-        # everything is OK.  It checks.
-        check_output = self.patch(subprocess, 'check_output')
-        check_output.return_value = "Target 123: %s" % full_name
+        self.patch(tgt_module, 'target_exists').return_value = True
         target_dir = self.make_dir()
 
         tgt_admin_update(target_dir, target)
@@ -102,20 +103,97 @@ class TestTGT(MAASTestCase):
             '--update',
             full_name,
             ])
-        check_output.assert_called_once_with([
-            'tgt-admin',
-            '--conf', '/etc/tgt/targets.conf',
-            '--show',
-            ])
 
     def test_tgt_admin_update_detects_target_not_created(self):
         self.patch(subprocess, 'check_call')
         # Simulate tgt-admin's failure to create the target.
-        self.patch(subprocess, 'check_output').return_value = ""
+        check_output = self.patch(subprocess, 'check_output')
+        check_output.return_value = b""
 
         self.assertRaises(
             TargetNotCreated,
             tgt_admin_update, self.make_dir(), factory.make_name('target'))
+
+    def make_target_line(self, target_name=None, number=None):
+        """Create a fake line of `tgt` output for a given target.
+
+        This is the header line which `target_exists` recognises as the header
+        for the description of that target.
+
+        The line is in ASCII `bytes`, not `unicode`.
+        """
+        if target_name is None:
+            target_name = factory.make_name('target')
+        if number is None:
+            number = randint(0, 99999)
+        line = "Target %d: %s" % (number, target_name)
+        return line.encode('ascii')
+
+    def test_target_exists_calls_tgt_admin(self):
+        target_name = factory.make_name('target')
+        check_output = self.patch(subprocess, 'check_output')
+        check_output.return_value = self.make_target_line(target_name)
+
+        target_exists(target_name)
+
+        check_output.assert_called_once_with([
+            "tgt-admin",
+            '--conf', '/etc/tgt/targets.conf',
+            '--show',
+            ])
+
+    def test_target_exists_reecognises_target_line(self):
+        target_name = factory.make_name('target')
+        self.patch(subprocess, 'check_output').return_value = (
+            self.make_target_line(target_name))
+        self.assertTrue(target_exists(target_name))
+
+    def test_target_exists_ignores_other_lines(self):
+        target_name = factory.make_name('target')
+        self.patch(subprocess, 'check_output').return_value = dedent(b"""\
+            Other targets.
+            %s
+            Further text.
+            """ % self.make_target_line(target_name))
+
+        self.assertTrue(target_exists(target_name))
+
+    def test_target_exists_requires_target_line(self):
+        self.patch(subprocess, 'check_output').return_value = b"""
+            Lots of stuff here.
+            But not the target we're looking for.
+            Sorry.
+            """
+        self.assertFalse(target_exists(factory.make_name('target')))
+
+    def test_target_exists_requires_unindented_target_line(self):
+        target_name = factory.make_name('target')
+        self.patch(subprocess, 'check_output').return_value = (
+            b"  " + self.make_target_line(target_name))
+        self.assertFalse(target_exists(target_name))
+
+    def test_target_exists_tolerates_trailing_whitespace(self):
+        target_name = factory.make_name('target')
+        self.patch(subprocess, 'check_output').return_value = (
+            self.make_target_line(target_name) + b"  ")
+        self.assertTrue(target_exists(target_name))
+
+    def test_target_exists_ignores_other_targets(self):
+        self.patch(subprocess, 'check_output').return_value = (
+            self.make_target_line())
+        self.assertFalse(target_exists(factory.make_name('missing-target')))
+
+    def test_target_exists_ignores_superset_target_names(self):
+        target_name = factory.make_name('target')
+        self.patch(subprocess, 'check_output').return_value = (
+            self.make_target_line(target_name + "PLUS"))
+        self.assertFalse(target_exists(target_name))
+
+    def test_target_exists_escapes_target_name(self):
+        self.patch(subprocess, 'check_output').return_value = (
+            self.make_target_line())
+
+        self.assertFalse(target_exists('.*'))
 
     def test_set_up_data_dir_creates_dir(self):
         data_dir = os.path.join(self.make_dir(), factory.make_name('data'))

@@ -95,6 +95,18 @@ class TargetNotCreated(RuntimeError):
     """tgt-admin failed to create a target."""
 
 
+def target_exists(full_name):
+    """Run `tgt --show` to determine whether the given target exists.
+
+    :param full_name: Full target name, including `TARGET_NAME_PREFIX`.
+    :return: bool.
+    """
+    status = subprocess.check_output(TGT_ADMIN + ["--show"])
+    regex = b'^Target [0-9]+: %s\\s*$' % re.escape(full_name).encode('ascii')
+    match = re.search(regex, status, flags=re.MULTILINE)
+    return match is not None
+
+
 def tgt_admin_update(target_dir, target_name):
     """Update a target using `tgt-admin`.
 
@@ -105,8 +117,7 @@ def tgt_admin_update(target_dir, target_name):
     # Check that the target was really created.
     # Reportedly tgt-admin tends to return 0 even when it fails, so check
     # actively.
-    status = subprocess.check_output(TGT_ADMIN + ["--show"])
-    if re.match('Target [0-9]+: %s\\b' % re.escape(full_name), status) is None:
+    if not target_exists(full_name):
         raise TargetNotCreated("Failed tgt-admin add for %s" % full_name)
 
 
