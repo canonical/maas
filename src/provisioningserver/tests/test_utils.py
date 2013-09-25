@@ -18,6 +18,7 @@ from argparse import (
     )
 import os
 from random import randint
+from shutil import rmtree
 import stat
 import StringIO
 from subprocess import (
@@ -61,6 +62,7 @@ from provisioningserver.utils import (
     Safe,
     ShellTemplate,
     sudo_write_file,
+    tempdir,
     write_custom_config_section,
     write_text_file,
     )
@@ -70,6 +72,8 @@ from testtools.matchers import (
     FileContains,
     FileExists,
     MatchesStructure,
+    Not,
+    StartsWith,
     )
 from testtools.testcase import ExpectedException
 
@@ -857,6 +861,113 @@ class TestEnsureDir(MAASTestCase):
             factory.make_name('sbusubdir'))
         ensure_dir(path)
         self.assertThat(path, DirExists())
+
+
+class TestTempDir(MAASTestCase):
+    def test_creates_real_fresh_directory(self):
+        stored_text = factory.getRandomString()
+        filename = factory.make_name('test-file')
+        with tempdir() as directory:
+            self.assertThat(directory, DirExists())
+            write_text_file(os.path.join(directory, filename), stored_text)
+            retrieved_text = read_text_file(os.path.join(directory, filename))
+            files = os.listdir(directory)
+
+        self.assertEqual(stored_text, retrieved_text)
+        self.assertEqual([filename], files)
+
+    def test_creates_unique_directory(self):
+        with tempdir() as dir1, tempdir() as dir2:
+            pass
+        self.assertNotEqual(dir1, dir2)
+
+    def test_cleans_up_on_successful_exit(self):
+        with tempdir() as directory:
+            file_path = factory.make_file(directory)
+
+        self.assertThat(directory, Not(DirExists()))
+        self.assertThat(file_path, Not(FileExists()))
+
+    def test_cleans_up_on_exception_exit(self):
+        class DeliberateFailure(Exception):
+            pass
+
+        with ExpectedException(DeliberateFailure):
+            with tempdir() as directory:
+                file_path = factory.make_file(directory)
+                raise DeliberateFailure("Exiting context by exception")
+
+        self.assertThat(directory, Not(DirExists()))
+        self.assertThat(file_path, Not(FileExists()))
+
+    def test_tolerates_disappearing_dir(self):
+        with tempdir() as directory:
+            rmtree(directory)
+
+        self.assertThat(directory, Not(DirExists()))
+
+    def test_uses_location(self):
+        temp_location = self.make_dir()
+        with tempdir(location=temp_location) as directory:
+            self.assertThat(directory, DirExists())
+            location_listing = os.listdir(temp_location)
+
+        self.assertNotEqual(temp_location, directory)
+        self.assertThat(directory, StartsWith(temp_location + os.path.sep))
+        self.assertIn(os.path.basename(directory), location_listing)
+        self.assertThat(temp_location, DirExists())
+        self.assertThat(directory, Not(DirExists()))
+
+    def test_yields_unicode(self):
+        with tempdir() as directory:
+            pass
+
+        self.assertIsInstance(directory, unicode)
+
+    def test_accepts_unicode_from_mkdtemp(self):
+        fake_dir = os.path.join(self.make_dir(), factory.make_name('tempdir'))
+        self.assertIsInstance(fake_dir, unicode)
+        self.patch(tempfile, 'mkdtemp').return_value = fake_dir
+
+        with tempdir() as directory:
+            pass
+
+        self.assertEqual(fake_dir, directory)
+        self.assertIsInstance(directory, unicode)
+
+    def test_decodes_bytes_from_mkdtemp(self):
+        encoding = 'utf-16'
+        self.patch(sys, 'getfilesystemencoding').return_value = encoding
+        fake_dir = os.path.join(self.make_dir(), factory.make_name('tempdir'))
+        self.patch(tempfile, 'mkdtemp').return_value = fake_dir.encode(
+            encoding)
+
+        with tempdir() as directory:
+            pass
+
+        self.assertEqual(fake_dir, directory)
+        self.assertIsInstance(directory, unicode)
+
+    def test_uses_prefix(self):
+        prefix = factory.getRandomString(3)
+        with tempdir(prefix=prefix) as directory:
+            pass
+
+        self.assertThat(os.path.basename(directory), StartsWith(prefix))
+
+    def test_uses_suffix(self):
+        suffix = factory.getRandomString(3)
+        with tempdir(suffix=suffix) as directory:
+            pass
+
+        self.assertThat(os.path.basename(directory), EndsWith(suffix))
+
+    def test_restricts_access(self):
+        with tempdir() as directory:
+            mode = os.stat(directory).st_mode
+        self.assertEqual(
+            stat.S_IMODE(mode),
+            stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR)
 
 
 class TestReadTextFile(MAASTestCase):

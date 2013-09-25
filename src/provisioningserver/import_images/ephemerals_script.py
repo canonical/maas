@@ -39,7 +39,10 @@ from provisioningserver.import_images.tgt import (
     write_info_file,
     )
 from provisioningserver.pxe.install_image import install_image
-from provisioningserver.utils import ensure_dir
+from provisioningserver.utils import (
+    ensure_dir,
+    tempdir,
+    )
 from simplestreams import (
     filters,
     mirrors,
@@ -103,8 +106,7 @@ def extract_image_tarball(tarball, target_dir, temp_location=None):
     :param temp_location: Optional location where the function may create a
         temporary working directory for extracting the tarball.
     """
-    tmp = tempfile.mkdtemp(dir=temp_location)
-    try:
+    with tempdir(location=temp_location) as tmp:
         # Unpack tarball.  The -S flag is for sparse files; the disk image
         # may have holes.
         subprocess.check_call(["tar", "-Sxzf", tarball, "-C", tmp])
@@ -112,8 +114,6 @@ def extract_image_tarball(tarball, target_dir, temp_location=None):
         copy_file_by_glob(tmp, '*-vmlinuz*', target_dir, 'linux')
         copy_file_by_glob(tmp, '*-initrd*', target_dir, 'initrd.gz')
         image = copy_file_by_glob(tmp, '*img', target_dir, 'disk.img')
-    finally:
-        shutil.rmtree(tmp)
 
     call_uec2roottar(image, os.path.join(target_dir, 'dist-root.tar.gz'))
 

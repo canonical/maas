@@ -19,17 +19,18 @@ __all__ = [
 
 import os
 import re
-import shutil
 from subprocess import (
     CalledProcessError,
     check_output,
     PIPE,
     Popen,
     )
-from tempfile import mkdtemp
 from textwrap import dedent
 
-from provisioningserver.utils import parse_key_value_file
+from provisioningserver.utils import (
+    parse_key_value_file,
+    tempdir,
+    )
 
 
 bad_key_pattern = re.compile("[+/]no|no[+/]", flags=re.IGNORECASE)
@@ -87,15 +88,12 @@ def generate_omapi_key():
     """
     # dnssec-keygen writes out files to a specified directory, so we
     # need to make a temp directory for that.
-
-    # mkdtemp() says it will return a directory that is readable,
-    # writable, and searchable only by the creating user ID.
-    tmpdir = mkdtemp(prefix="%s." % os.path.basename(__file__))
-    try:
+    # This relies on the temporary directory being accessible only to its
+    # owner.
+    temp_prefix = "%s." % os.path.basename(__file__)
+    with tempdir(prefix=temp_prefix) as tmpdir:
         key = run_repeated_keygen(tmpdir)
         return key
-    finally:
-        shutil.rmtree(tmpdir)
 
 
 class Omshell:

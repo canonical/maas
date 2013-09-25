@@ -29,6 +29,7 @@ __all__ = [
 
 from argparse import ArgumentParser
 import codecs
+from contextlib import contextmanager
 import errno
 from functools import wraps
 import os
@@ -36,6 +37,7 @@ from os import fdopen
 from os.path import isdir
 from pipes import quote
 import signal
+from shutil import rmtree
 from subprocess import (
     CalledProcessError,
     PIPE,
@@ -515,6 +517,36 @@ def ensure_dir(path):
             raise
         # Otherwise, the error is that the directory already existed.
         # Which is actually success.
+
+
+@contextmanager
+def tempdir(suffix=b'', prefix=b'maas-', location=None):
+    """Context manager: temporary directory.
+
+    Creates a temporary directory (yielding its path, as `unicode`), and
+    cleans it up again when exiting the context.
+
+    The directory will be readable, writable, and searchable only to the
+    system user who creates it.
+
+    >>> with tempdir() as playground:
+    ...     my_file = os.path.join(playground, "my-file")
+    ...     with open(my_file, 'wb') as handle:
+    ...         handle.write(b"Hello.\n")
+    ...     files = os.listdir(playground)
+    >>> files
+    [u'my-file']
+    >>> os.path.isdir(playground)
+    False
+    """
+    path = tempfile.mkdtemp(suffix, prefix, location)
+    if isinstance(path, bytes):
+        path = path.decode(sys.getfilesystemencoding())
+    assert isinstance(path, unicode)
+    try:
+        yield path
+    finally:
+        rmtree(path, ignore_errors=True)
 
 
 def read_text_file(path, encoding='utf-8'):
