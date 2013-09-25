@@ -16,6 +16,7 @@ from datetime import datetime
 from itertools import count
 import os.path
 from random import randint
+import subprocess
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
@@ -175,3 +176,26 @@ class TestFactory(MAASTestCase):
         self.assertSequenceEqual(
             ["abc-xxx", "def-xxx", "ghi-xxx"],
             list(factory.make_names("abc", "def", "ghi")))
+
+    def test_make_tarball_writes_tarball(self):
+        filename = factory.make_name()
+        contents = {filename: factory.getRandomString()}
+
+        tarball = factory.make_tarball(self.make_dir(), contents)
+
+        dest = self.make_dir()
+        subprocess.check_call(['tar', '-xzf', tarball, '-C', dest])
+        self.assertThat(
+            os.path.join(dest, filename),
+            FileContains(contents[filename]))
+
+    def test_make_tarball_makes_up_content_if_None(self):
+        filename = factory.make_name()
+        tarball = factory.make_tarball(self.make_dir(), {filename: None})
+
+        dest = self.make_dir()
+        subprocess.check_call(['tar', '-xzf', tarball, '-C', dest])
+        self.assertThat(os.path.join(dest, filename), FileExists())
+        with open(os.path.join(dest, filename), 'rb') as unpacked_file:
+            contents = unpacked_file.read()
+        self.assertGreater(len(contents), 0)

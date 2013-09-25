@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test object factories."""
@@ -27,9 +27,11 @@ import os
 import os.path
 import random
 import string
+import subprocess
 import time
 from uuid import uuid1
 
+from fixtures import TempDir
 from netaddr import (
     IPAddress,
     IPNetwork,
@@ -181,6 +183,24 @@ class Factory:
         """
         for prefix in prefixes:
             yield self.make_name(prefix)
+
+    def make_tarball(self, location, contents):
+        """Create a tarball containing the given files.
+
+        :param location: Path to a directory where the tarball can be stored.
+        :param contents: A dict mapping file names to file contents.  Where
+            the value is `None`, the file will contain arbitrary data.
+        :return: Path to a gzip-compressed tarball.
+        """
+        tarball = os.path.join(location, '%s.tar.gz' % self.make_name())
+        with TempDir() as working_dir:
+            source = working_dir.path
+            for name, content in contents.iteritems():
+                self.make_file(source, name, content)
+
+            subprocess.check_call(['tar', '-C', source, '-czf', tarball, '.'])
+
+        return tarball
 
 
 # Create factory singleton.
