@@ -77,7 +77,7 @@ def get_conf_path(data_dir, config_name):
     return os.path.join(tgt_conf_d(data_dir), "%s.conf" % config_name)
 
 
-def get_target_name(release, version, arch, version_name, **kwargs):
+def get_target_name(release, version, arch, version_name):
     """Compose a target's name based on its parameters.
 
     The `**kwargs` are inert.  They are only here for calling convenience.

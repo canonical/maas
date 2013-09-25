@@ -80,6 +80,109 @@ def copy_file_by_glob(source_dir, pattern, target_dir, target):
     return to
 
 
+def call_uec2roottar(*args):
+    """Invoke `uec2roottar` with the given arguments.
+
+    Here only so tests can stub it out.
+    """
+    subprocess.check_call(["uec2roottar"] + list(args))
+
+
+def extract_image_tarball(tarball, target_dir, temp_location=None):
+    """Extract image from simplestreams tarball into `target_dir`.
+
+    This copies the kernel, initrd, and .img file from the tarball into the
+    target directory.  The exact names of these files in the tarball may vary,
+    but they will always be installed as `linux`, `initrd.gz`, and `disk.img`.
+
+    Finally, this will run uec2roottar on the `disk.image` file, in order to
+    create a `dist-root.tar.gz` tarball.
+
+    :param tarball: Path to a tar file containing the image.
+    :param target_dir: Directory where the image files should be installed.
+    :param temp_location: Optional location where the function may create a
+        temporary working directory for extracting the tarball.
+    """
+    tmp = tempfile.mkdtemp(dir=temp_location)
+    try:
+        # Unpack tarball.  The -S flag is for sparse files; the disk image
+        # may have holes.
+        subprocess.check_call(["tar", "-Sxzf", tarball, "-C", tmp])
+
+        copy_file_by_glob(tmp, '*-vmlinuz*', target_dir, 'linux')
+        copy_file_by_glob(tmp, '*-initrd*', target_dir, 'initrd.gz')
+        image = copy_file_by_glob(tmp, '*img', target_dir, 'disk.img')
+    finally:
+        shutil.rmtree(tmp)
+
+    call_uec2roottar(image, os.path.join(target_dir, 'dist-root.tar.gz'))
+
+
+def create_symlinked_image_dir(original_dir, temp_location=None):
+    """Create a boot image directory, containing symlinks to an original.
+
+    The result will be a temporary directory (so be sure to clean it up!)
+    containing `linux`, `initrd.gz`, and `root.tar.gz` as in the original
+    directory.
+
+    For unclear historical reasons, `root.tar.gz` must be called
+    `dist-root.tar.gz` in the original directory even though its link in
+    the resulting directory will be called `root.tar.gz`.
+
+    :param original_dir: A directory containing the actual boot-image files.
+    :param temp_location: An optional location where the function may create
+        its boot image directory.
+    :return: Path to a temporary directory containing a boot image in the
+        form of symlinks.
+    """
+    image_dir = tempfile.mkdtemp(dir=temp_location)
+    try:
+        symlink(
+            os.path.join(original_dir, 'linux'),
+            os.path.join(image_dir, 'linux'))
+        symlink(
+            os.path.join(original_dir, 'initrd.gz'),
+            os.path.join(image_dir, 'initrd.gz'))
+        symlink(
+            os.path.join(original_dir, 'dist-root.tar.gz'),
+            os.path.join(image_dir, 'root.tar.gz'))
+    except:
+        shutil.rmtree(image_dir)
+        raise
+    return image_dir
+
+
+def install_image_from_simplestreams(storage_dir, release, arch,
+                                     subarch='generic',
+                                     purpose='commissioning',
+                                     symlink='xinstall', temp_location=None):
+    """Install boot image, based on files downloaded from simplestreams.
+
+    :param storage_dir: Directory containing the image files (`linux`,
+        `initrd.gz`, `dist-root.tar.gz`).  The image that will be installed is
+        a directory of symlinks to these files.
+    :param release: Release name to install, e.g. "precise".
+    :param arch: Architecture for the image, e.g. "i386".
+    :param subarch: Sub-architecture.  Defaults to "generic".
+    :param purpose: Boot purpose for the image.  Defaults to `commissioning`.
+    :param symlink: Alternate name for boot image.  If given, in addition to
+        the image directory itself, this will also install a symlink to the
+        installed image directory under this alternate name.
+    :param temp_location: Optional location where temporary image directories
+        and such may be created.
+    """
+    # install_image will delete this directory when it finishes.
+    provision_tmp = create_symlinked_image_dir(
+        storage_dir, temp_location=temp_location)
+
+    try:
+        install_image(
+            provision_tmp, release=release, arch=arch, subarch=subarch,
+            purpose=purpose, symlink=symlink)
+    finally:
+        shutil.rmtree(provision_tmp, ignore_errors=True)
+
+
 # The basic process for importing ephemerals is as follows:
 #   1. do the simplestreams mirror (this is mostly handled by simplestreams);
 #      the output is one .tar.gz for each arch, which itself contains a
@@ -168,41 +271,26 @@ class MAASMirrorWriter(mirrors.ObjectStoreMirrorWriter):
     def extract_item(self, source, metadata):
         """See `ObjectStoreMirrorWriter`."""
         arch = metadata['arch']
+        release = metadata['release']
+        version = metadata['version']
+        version_name = metadata['version_name']
+        label = metadata['label']
+        target_dir = self._target_dir(metadata)
+        name = get_target_name(
+            release=release, version=version, arch=arch,
+            version_name=version_name)
+        tarball = os.path.join(self._simplestreams_path(), source)
 
-        tmp = tempfile.mkdtemp(dir=self._simplestreams_path())
         error_cleanups = []
         try:
-            tar = os.path.join(self._simplestreams_path(), source)
-            subprocess.check_call(["tar", "-Sxzf", tar, "-C", tmp])
-
-            target_dir = self._target_dir(metadata)
             ensure_dir(target_dir)
-
-            copy_file_by_glob(tmp, '*-vmlinuz*', target_dir, 'linux')
-            copy_file_by_glob(tmp, '*-initrd*', target_dir, 'initrd.gz')
-            image = copy_file_by_glob(tmp, '*img', target_dir, 'disk.img')
-
-            root_tar = os.path.join(target_dir, 'dist-root.tar.gz')
-            subprocess.check_call(["uec2roottar", image, root_tar])
-
-            name = get_target_name(**metadata)
+            extract_image_tarball(
+                tarball, target_dir, temp_location=self._simplestreams_path())
 
             write_info_file(
-                target_dir, name, release=metadata['release'],
-                label=metadata['label'], serial=metadata['version_name'],
-                arch=arch)
+                target_dir, name, release=release, label=label,
+                serial=version_name, arch=arch)
             error_cleanups.append(lambda: clean_up_info_file(target_dir))
-
-            # install_image will delete this directory when it finishes.
-            provision_tmp = tempfile.mkdtemp(dir=self._simplestreams_path())
-            error_cleanups.append(lambda: shutil.rmtree(provision_tmp))
-            symlink(
-                os.path.join(target_dir, 'linux'),
-                os.path.join(provision_tmp, 'linux'))
-            symlink(
-                os.path.join(target_dir, 'initrd.gz'),
-                os.path.join(provision_tmp, 'initrd.gz'))
-            symlink(root_tar, os.path.join(provision_tmp, 'root.tar.gz'))
 
             # HACK: In order to be backwards compatible, we need to deploy
             # ARM kernels with subarch=highbank. However, the special
@@ -212,20 +300,17 @@ class MAASMirrorWriter(mirrors.ObjectStoreMirrorWriter):
             # Simplestreams doesn't really know about this
             # right now, although it might some day for HWE
             # kernels.
-            install_image(
-                provision_tmp,
-                release=metadata['release'], arch=arch, subarch='generic',
-                purpose='commissioning', symlink='xinstall')
+            install_image_from_simplestreams(
+                target_dir, release=release, arch=arch,
+                temp_location=self._simplestreams_path())
             if arch == 'armhf':
-                # TODO: Will this work?  Doesn't the first invocation move the
-                # image away from where we expect it?
-                install_image(
-                    provision_tmp,
-                    release=metadata['release'], arch=arch, subarch='highbank',
-                    purpose='commissioning', symlink='xinstall')
+                install_image_from_simplestreams(
+                    target_dir, release=release, arch=arch, subarch='highbank',
+                    temp_location=self._simplestreams_path())
 
             tgt_conf_path = os.path.join(target_dir, 'tgt.conf')
-            write_conf(tgt_conf_path, name, image)
+            write_conf(
+                tgt_conf_path, name, os.path.join(target_dir, 'disk.img'))
             error_cleanups.append(lambda: remove(tgt_conf_path))
 
             conf_name = get_conf_path(self.local_path, name)
@@ -238,8 +323,6 @@ class MAASMirrorWriter(mirrors.ObjectStoreMirrorWriter):
             for cleanup in reversed(error_cleanups):
                 cleanup()
             raise
-        finally:
-            shutil.rmtree(tmp)
 
 
 def make_arg_parser(doc):
