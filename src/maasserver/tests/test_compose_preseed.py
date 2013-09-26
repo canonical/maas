@@ -92,3 +92,19 @@ class TestComposePreseed(MAASServerTestCase):
         self.assertEqual(data["manage_etc_hosts"], "localhost")
         self.assertIn("apt_preserve_sources_list", data)
         self.assertEqual(data["apt_preserve_sources_list"], True)
+
+    def test_compose_preseed_with_curtin_installer(self):
+        node = factory.make_node(status=NODE_STATUS.READY)
+        node.use_fastpath_installer()
+        preseed = compose_preseed(node)
+
+        preseed = yaml.safe_load(compose_preseed(node))
+        self.assertIn('datasource', preseed)
+        self.assertIn('MAAS', preseed['datasource'])
+        self.assertThat(
+            preseed['datasource']['MAAS'],
+            KeysEqual(
+                'metadata_url', 'consumer_key', 'token_key', 'token_secret'))
+        self.assertEqual(
+            absolute_reverse('curtin-metadata'),
+            preseed['datasource']['MAAS']['metadata_url'])

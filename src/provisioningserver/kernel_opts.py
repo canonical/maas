@@ -145,8 +145,6 @@ def compose_purpose_opts(params):
             # Read by cloud-init.
             "cloud-config-url=%s" % params.preseed_url,
             ]
-        if params.purpose == "xinstall":
-            kernel_params.append("ds=nocloud-net")
         return kernel_params
     else:
         # These are options used by the Debian Installer.

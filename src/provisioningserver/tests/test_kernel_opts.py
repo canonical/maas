@@ -128,7 +128,6 @@ class TestKernelOpts(MAASTestCase):
         self.assertThat(
             cmdline,
             ContainsAll([
-                "ds=nocloud-net",
                 "root=/dev/disk/by-path/ip-",
                 "iscsi_initiator=",
                 "overlayroot=tmpfs",
@@ -213,7 +212,6 @@ class TestKernelOpts(MAASTestCase):
         self.assertThat(
             compose_kernel_command_line(params),
             ContainsAll([
-                "ds=nocloud-net",
                 "iscsi_target_name=%s:%s" % (
                     ISCSI_TARGET_NAME_PREFIX, ephemeral_name),
                 "iscsi_target_port=3260",

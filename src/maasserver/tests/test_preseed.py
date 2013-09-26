@@ -18,8 +18,10 @@ from pipes import quote
 from urlparse import urlparse
 
 from django.conf import settings
+from django.core.urlresolvers import reverse
 from maasserver.enum import (
     ARCHITECTURE,
+    DISTRO_SERIES,
     NODE_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
     PRESEED_TYPE,
@@ -29,6 +31,10 @@ from maasserver.preseed import (
     compose_enlistment_preseed_url,
     compose_preseed_url,
     GENERIC_FILENAME,
+    get_curtin_config,
+    get_curtin_context,
+    get_curtin_installer_url,
+    get_curtin_userdata,
     get_enlist_preseed,
     get_hostname_and_path,
     get_node_preseed_context,
@@ -36,6 +42,7 @@ from maasserver.preseed import (
     get_preseed_context,
     get_preseed_filenames,
     get_preseed_template,
+    get_preseed_type_for,
     load_preseed_template,
     PreseedTemplate,
     render_enlistment_preseed,
@@ -479,6 +486,60 @@ class TestRenderEnlistmentPreseed(MAASServerTestCase):
             preseed, MatchesAll(*[Contains(ng_url), Not(Contains(maas_url))]))
 
 
+class TestGetCurtinUserData(MAASServerTestCase):
+    """Tests for `get_curtin_userdata`."""
+
+    def test_get_curtin_userdata(self):
+        node = factory.make_node()
+        node.use_fastpath_installer()
+        user_data = get_curtin_userdata(node)
+        # Just check that the user data looks good.
+        self.assertIn("PREFIX='curtin'", user_data)
+
+
+class TestCurtinUtilities(MAASServerTestCase):
+    """Tests for the curtin-related utilities."""
+
+    def test_get_curtin_config(self):
+        node = factory.make_node()
+        node.use_fastpath_installer()
+        config = get_curtin_config(node)
+        self.assertThat(
+            config,
+            ContainsAll(
+                [
+                    'mode: reboot',
+                    "debconf_selections:",
+                ]
+            ))
+
+    def test_get_curtin_context(self):
+        node = factory.make_node()
+        node.use_fastpath_installer()
+        context = get_curtin_context(node)
+        self.assertItemsEqual(['curtin_preseed'], context)
+        self.assertIn('cloud-init', context['curtin_preseed'])
+
+    def test_get_curtin_installer_url(self):
+        series = factory.getRandomEnum(DISTRO_SERIES)
+        arch = factory.getRandomEnum(ARCHITECTURE)
+        node = factory.make_node(architecture=arch, distro_series=series)
+        installer_url = get_curtin_installer_url(node)
+        self.assertEqual(
+            'http://%s/MAAS/static/images/%s/%s/xinstall/root.tar.gz' % (
+                node.nodegroup.get_managed_interface().ip, arch, series),
+            installer_url)
+
+    def test_get_preseed_type_for(self):
+        normal = factory.make_node()
+        normal.use_traditional_installer()
+        fpi = factory.make_node()
+        fpi.use_fastpath_installer()
+
+        self.assertEqual(PRESEED_TYPE.DEFAULT, get_preseed_type_for(normal))
+        self.assertEqual(PRESEED_TYPE.CURTIN, get_preseed_type_for(fpi))
+
+
 class TestRenderPreseedArchives(MAASServerTestCase):
     """Test that the default preseed contains the default mirrors."""
 
@@ -541,11 +602,12 @@ class TestPreseedMethods(MAASServerTestCase):
         preseed = get_preseed(node)
         self.assertIn('preseed/late_command', preseed)
 
-    def test_get_preseed_returns_xinstall_preseed(self):
+    def test_get_preseed_returns_curtin_preseed(self):
         node = factory.make_node()
         node.use_fastpath_installer()
         preseed = get_preseed(node)
-        self.assertIn('# Disabled by default', preseed)
+        curtin_url = reverse('curtin-metadata')
+        self.assertIn(curtin_url, preseed)
 
     def test_get_enlist_preseed_returns_enlist_preseed(self):
         preseed = get_enlist_preseed()

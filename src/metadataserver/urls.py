@@ -23,6 +23,7 @@ from maasserver.api_support import OperationsResource
 from metadataserver.api import (
     AnonMetaDataHandler,
     CommissioningScriptsHandler,
+    CurtinUserDataHandler,
     EnlistMetaDataHandler,
     EnlistUserDataHandler,
     EnlistVersionIndexHandler,
@@ -37,6 +38,8 @@ meta_data_handler = OperationsResource(
     MetaDataHandler, authentication=api_auth)
 user_data_handler = OperationsResource(
     UserDataHandler, authentication=api_auth)
+curtin_user_data_handler = OperationsResource(
+    CurtinUserDataHandler, authentication=api_auth)
 version_index_handler = OperationsResource(
     VersionIndexHandler, authentication=api_auth)
 index_handler = OperationsResource(
@@ -88,6 +91,26 @@ node_patterns = patterns(
     url(
         r'^/*', index_handler, name='metadata'),
     )
+
+# The curtin-specific metadata API.  Only the user-data end-point is
+# really curtin-specific, all the other end-points are similar to the
+# normal metadata API.
+curtin_patterns = patterns(
+    '',
+    url(
+        r'^/*curtin/(?P<version>[^/]+)/meta-data/(?P<item>.*)$',
+        meta_data_handler,
+        name='curtin-metadata-meta-data'),
+    url(
+        r'^/*curtin/(?P<version>[^/]+)/user-data$', curtin_user_data_handler,
+        name='curtin-metadata-user-data'),
+    url(
+        r'^/*curtin/(?P<version>[^/]+)/', version_index_handler,
+        name='curtin-metadata-version'),
+    url(
+        r'^/*curtin[/]*$', index_handler, name='curtin-metadata'),
+    )
+
 
 # Anonymous random metadata access, keyed by system ID.  These serve requests
 # from the nodes which happen when the environment is so minimal that proper
@@ -152,4 +175,4 @@ enlist_metadata_patterns = patterns(
 # mistaken for one of these based on URL pattern match.
 urlpatterns = (
     enlist_metadata_patterns + by_id_patterns + by_mac_patterns +
-    node_patterns)
+    curtin_patterns + node_patterns)

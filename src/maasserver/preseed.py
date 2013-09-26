@@ -13,6 +13,7 @@ __metaclass__ = type
 __all__ = [
     'compose_enlistment_preseed_url',
     'compose_preseed_url',
+    'get_curtin_userdata',
     'get_enlist_preseed',
     'get_preseed',
     'get_preseed_context',
@@ -24,18 +25,23 @@ from pipes import quote
 from urllib import urlencode
 from urlparse import urlparse
 
+from curtin.pack import pack_install
 from django.conf import settings
-from maasserver.compose_preseed import compose_preseed
+from maasserver.compose_preseed import (
+    compose_cloud_init_preseed,
+    compose_preseed,
+    )
 from maasserver.enum import (
     NODE_STATUS,
     PRESEED_TYPE,
+    USERDATA_TYPE,
     )
 from maasserver.models import Config
 from maasserver.server_address import get_maas_facing_server_host
 from maasserver.utils import absolute_reverse
-import tempita
-
 from metadataserver.commissioning.snippets import get_snippet_context
+from metadataserver.models import NodeKey
+import tempita
 
 
 GENERIC_FILENAME = 'generic'
@@ -60,13 +66,75 @@ def get_enlist_userdata(nodegroup=None):
     :rtype: basestring.
     """
     return render_enlistment_preseed(
-        PRESEED_TYPE.ENLIST_USERDATA, nodegroup=nodegroup)
+        USERDATA_TYPE.ENLIST, nodegroup=nodegroup)
+
+
+def get_curtin_userdata(node):
+    """Return the curtin user-data.
+
+    :param node: The node for which to generate the user-data.
+    :return: The rendered user-data string.
+    :rtype: unicode.
+    """
+    installer_url = get_curtin_installer_url(node)
+    config = get_curtin_config(node)
+    return pack_install(configs=[config], args=[installer_url])
+
+
+def get_curtin_installer_url(node):
+    series = node.get_distro_series()
+    context = get_preseed_context(series, node.nodegroup)
+    cluster_host = context['cluster_host']
+    # TODO: This shouldn't be hardcoded like that but rather synced
+    # somehow with the content of contrib/maas-cluster-http.conf.
+    return (
+        "http://" + cluster_host + "/MAAS/static/images/" +
+        node.architecture + "/" + series +
+        "/xinstall/root.tar.gz")
+
+
+def get_curtin_config(node):
+    """Return the curtin configuration to be used by curtin.pack_install.
+
+    :param node: The node for which to generate the configuration.
+    :rtype: unicode.
+    """
+    series = node.get_distro_series()
+    context = get_preseed_context(series, node.nodegroup)
+    template = load_preseed_template(
+        node, USERDATA_TYPE.CURTIN, series)
+    context = get_preseed_context(series, nodegroup=node.nodegroup)
+    context.update(get_node_preseed_context(node, series))
+    context.update(get_curtin_context(node))
+
+    return template.substitute(**context)
+
+
+def get_curtin_context(node):
+    """Return the curtin-specific context dictionary to be used to render
+    user-data templates.
+
+    :param node: The node for which to generate the user-data.
+    :rtype: dict.
+    """
+    token = NodeKey.objects.get_token_for_node(node)
+    base_url = node.nodegroup.maas_url
+    return {
+        'curtin_preseed': compose_cloud_init_preseed(token, base_url)
+    }
+
+
+def get_preseed_type_for(node):
+    if node.should_use_traditional_installer():
+        return PRESEED_TYPE.DEFAULT
+    else:
+        return PRESEED_TYPE.CURTIN
 
 
 def get_preseed(node):
     """Return the preseed for a given node.  Depending on the node's status
-    this will be a commissioning preseed (if the node is commissioning) or the
-    standard preseed (normal installation preseed).
+    this will be a commissioning preseed (if the node is commissioning) or an
+    install preseed (normal installation preseed or curtin preseed).
 
     :param node: The node to return preseed for.
     :type node: :class:`maasserver.models.Node`
@@ -78,7 +146,8 @@ def get_preseed(node):
             node, PRESEED_TYPE.COMMISSIONING,
             release=Config.objects.get_config('commissioning_distro_series'))
     else:
-        return render_preseed(node, PRESEED_TYPE.DEFAULT,
+        return render_preseed(
+            node, get_preseed_type_for(node),
             release=node.get_distro_series())
 
 

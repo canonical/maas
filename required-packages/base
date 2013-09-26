@@ -16,6 +16,7 @@ python-avahi
 python-bzrlib
 python-celery
 python-convoy
+python-curtin
 python-dbus
 python-dev
 python-django

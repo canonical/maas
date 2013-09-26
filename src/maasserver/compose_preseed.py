@@ -57,11 +57,21 @@ def compose_cloud_init_preseed(token, base_url=''):
 
 def compose_commissioning_preseed(token, base_url=''):
     """Compose the preseed value for a Commissioning node."""
+    metadata_url = absolute_reverse('metadata', base_url=base_url)
+    return _compose_cloud_init_preseed(token, metadata_url)
+
+
+def compose_curtin_preseed(token, base_url=''):
+    """Compose the preseed value for a node being installed with curtin."""
+    metadata_url = absolute_reverse('curtin-metadata', base_url=base_url)
+    return _compose_cloud_init_preseed(token, metadata_url)
+
+
+def _compose_cloud_init_preseed(token, metadata_url):
     return "#cloud-config\n%s" % yaml.safe_dump({
         'datasource': {
             'MAAS': {
-                'metadata_url': absolute_reverse(
-                    'metadata', base_url=base_url),
+                'metadata_url': metadata_url,
                 'consumer_key': token.consumer.key,
                 'token_key': token.key,
                 'token_secret': token.secret,
@@ -92,4 +102,7 @@ def compose_preseed(node):
     if node.status == NODE_STATUS.COMMISSIONING:
         return compose_commissioning_preseed(token, base_url)
     else:
-        return compose_cloud_init_preseed(token, base_url)
+        if node.should_use_traditional_installer():
+            return compose_cloud_init_preseed(token, base_url)
+        else:
+            return compose_curtin_preseed(token, base_url)

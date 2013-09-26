@@ -41,6 +41,7 @@ from maasserver.testing.factory import factory
 from maasserver.testing.oauthclient import OAuthAuthenticatedClient
 from maastesting.djangotestcase import DjangoTestCase
 from maastesting.matchers import ContainsAll
+from maastesting.utils import sample_binary_data
 from metadataserver import api
 from metadataserver.api import (
     check_version,
@@ -139,61 +140,86 @@ class TestHelpers(DjangoTestCase):
         self.assertEqual(node, get_queried_node(request))
 
 
-class TestViews(DjangoTestCase):
-    """Tests for the API views."""
+def make_node_client(node=None):
+    """Create a test client logged in as if it were `node`."""
+    if node is None:
+        node = factory.make_node()
+    token = NodeKey.objects.get_token_for_node(node)
+    return OAuthAuthenticatedClient(get_node_init_user(), token)
 
-    def make_node_client(self, node=None):
-        """Create a test client logged in as if it were `node`."""
-        if node is None:
-            node = factory.make_node()
-        token = NodeKey.objects.get_token_for_node(node)
-        return OAuthAuthenticatedClient(get_node_init_user(), token)
 
-    def call_signal(self, client=None, version='latest', files={}, **kwargs):
-        """Call the API's signal method.
+def call_signal(client=None, version='latest', files={}, **kwargs):
+    """Call the API's signal method.
 
-        :param client: Optional client to POST with.  If omitted, will create
-            one for a commissioning node.
-        :param version: API version to post on.  Defaults to "latest".
-        :param files: Optional dict of files to attach.  Maps file name to
-            file contents.
-        :param **kwargs: Any other keyword parameters are passed on directly
-            to the "signal" call.
+    :param client: Optional client to POST with.  If omitted, will create
+        one for a commissioning node.
+    :param version: API version to post on.  Defaults to "latest".
+    :param files: Optional dict of files to attach.  Maps file name to
+        file contents.
+    :param **kwargs: Any other keyword parameters are passed on directly
+        to the "signal" call.
+    """
+    if client is None:
+        client = make_node_client(factory.make_node(
+            status=NODE_STATUS.COMMISSIONING))
+    params = {
+        'op': 'signal',
+        'status': 'OK',
+    }
+    params.update(kwargs)
+    params.update({
+        name: factory.make_file_upload(name, content)
+        for name, content in files.items()
+    })
+    url = reverse('metadata-version', args=[version])
+    return client.post(url, params)
+
+
+class TestMetadataCommon(DjangoTestCase):
+    """Tests for the common metadata/curtin-metadata API views."""
+
+    # The curtin-metadata and the metadata views are similar in every
+    # aspect except the user-data end-point.  The same tests are used to
+    # test both end-points.
+    scenarios = [
+        ('metadata', {'metadata_prefix': 'metadata'}),
+        ('curtin-metadata', {'metadata_prefix': 'curtin-metadata'}),
+    ]
+
+    def get_metadata_name(self, name_suffix=''):
+        """Return the Django name of the metadata view.
+
+        :param name_suffix: Suffix of the view name.  The default value is
+            the empty string (get_metadata_name() will return the root of
+            the metadata API in this case).
+
+        Depending on the value of self.metadata_prefix, this will return
+        the name of the metadata view or of the curtin-metadata view.
         """
-        if client is None:
-            client = self.make_node_client(factory.make_node(
-                status=NODE_STATUS.COMMISSIONING))
-        params = {
-            'op': 'signal',
-            'status': 'OK',
-        }
-        params.update(kwargs)
-        params.update({
-            name: factory.make_file_upload(name, content)
-            for name, content in files.items()
-        })
-        url = reverse('metadata-version', args=[version])
-        return client.post(url, params)
+        return self.metadata_prefix + name_suffix
 
     def test_no_anonymous_access(self):
+        url = reverse(self.get_metadata_name())
         self.assertEqual(
-            httplib.UNAUTHORIZED,
-            self.client.get(reverse('metadata')).status_code)
+            httplib.UNAUTHORIZED, self.client.get(url).status_code)
 
     def test_metadata_index_shows_latest(self):
-        client = self.make_node_client()
-        self.assertIn('latest', client.get(reverse('metadata')).content)
+        client = make_node_client()
+        url = reverse(self.get_metadata_name())
+        self.assertIn('latest', client.get(url).content)
 
     def test_metadata_index_shows_only_known_versions(self):
-        client = self.make_node_client()
-        for item in client.get(reverse('metadata')).content.splitlines():
+        client = make_node_client()
+        url = reverse(self.get_metadata_name())
+        for item in client.get(url).content.splitlines():
             check_version(item)
         # The test is that we get here without exception.
         pass
 
     def test_version_index_shows_unconditional_entries(self):
-        client = self.make_node_client()
-        url = reverse('metadata-version', args=['latest'])
+        client = make_node_client()
+        view_name = self.get_metadata_name('-version')
+        url = reverse(view_name, args=['latest'])
         items = client.get(url).content.splitlines()
         self.assertThat(items, ContainsAll([
             'meta-data',
@@ -201,16 +227,18 @@ class TestViews(DjangoTestCase):
             ]))
 
     def test_version_index_does_not_show_user_data_if_not_available(self):
-        client = self.make_node_client()
-        url = reverse('metadata-version', args=['latest'])
+        client = make_node_client()
+        view_name = self.get_metadata_name('-version')
+        url = reverse(view_name, args=['latest'])
         items = client.get(url).content.splitlines()
         self.assertNotIn('user-data', items)
 
     def test_version_index_shows_user_data_if_available(self):
         node = factory.make_node()
         NodeUserData.objects.set_user_data(node, b"User data for node")
-        client = self.make_node_client(node)
-        url = reverse('metadata-version', args=['latest'])
+        client = make_node_client(node)
+        view_name = self.get_metadata_name('-version')
+        url = reverse(view_name, args=['latest'])
         items = client.get(url).content.splitlines()
         self.assertIn('user-data', items)
 
@@ -218,23 +246,26 @@ class TestViews(DjangoTestCase):
         # Some fields only are returned if there is data related to them.
         user, _ = factory.make_user_with_keys(n_keys=2, username='my-user')
         node = factory.make_node(owner=user)
-        client = self.make_node_client(node=node)
-        url = reverse('metadata-meta-data', args=['latest', ''])
+        client = make_node_client(node=node)
+        view_name = self.get_metadata_name('-meta-data')
+        url = reverse(view_name, args=['latest', ''])
         response = client.get(url)
         self.assertIn('text/plain', response['Content-Type'])
         self.assertItemsEqual(
             MetaDataHandler.fields, response.content.split())
 
     def test_meta_data_view_is_sorted(self):
-        client = self.make_node_client()
-        url = reverse('metadata-meta-data', args=['latest', ''])
+        client = make_node_client()
+        view_name = self.get_metadata_name('-meta-data')
+        url = reverse(view_name, args=['latest', ''])
         response = client.get(url)
         attributes = response.content.split()
         self.assertEqual(sorted(attributes), attributes)
 
     def test_meta_data_unknown_item_is_not_found(self):
-        client = self.make_node_client()
-        url = reverse('metadata-meta-data', args=['latest', 'UNKNOWN-ITEM'])
+        client = make_node_client()
+        view_name = self.get_metadata_name('-meta-data')
+        url = reverse(view_name, args=['latest', 'UNKNOWN-ITEM'])
         response = client.get(url)
         self.assertEqual(httplib.NOT_FOUND, response.status_code)
 
@@ -251,8 +282,9 @@ class TestViews(DjangoTestCase):
         domain = factory.getRandomString()
         node = factory.make_node(
             hostname='%s.%s' % (hostname, domain), nodegroup=nodegroup)
-        client = self.make_node_client(node)
-        url = reverse('metadata-meta-data', args=['latest', 'local-hostname'])
+        client = make_node_client(node)
+        view_name = self.get_metadata_name('-meta-data')
+        url = reverse(view_name, args=['latest', 'local-hostname'])
         response = client.get(url)
         self.assertEqual(
             (httplib.OK, node.fqdn),
@@ -261,33 +293,19 @@ class TestViews(DjangoTestCase):
 
     def test_meta_data_instance_id_returns_system_id(self):
         node = factory.make_node()
-        client = self.make_node_client(node)
-        url = reverse('metadata-meta-data', args=['latest', 'instance-id'])
+        client = make_node_client(node)
+        view_name = self.get_metadata_name('-meta-data')
+        url = reverse(view_name, args=['latest', 'instance-id'])
         response = client.get(url)
         self.assertEqual(
             (httplib.OK, node.system_id),
             (response.status_code, response.content.decode('ascii')))
         self.assertIn('text/plain', response['Content-Type'])
 
-    def test_user_data_view_returns_binary_data(self):
-        data = b"\x00\xff\xff\xfe\xff"
-        node = factory.make_node()
-        NodeUserData.objects.set_user_data(node, data)
-        client = self.make_node_client(node)
-        response = client.get(reverse('metadata-user-data', args=['latest']))
-        self.assertEqual('application/octet-stream', response['Content-Type'])
-        self.assertIsInstance(response.content, str)
-        self.assertEqual(
-            (httplib.OK, data), (response.status_code, response.content))
-
-    def test_user_data_for_node_without_user_data_returns_not_found(self):
-        client = self.make_node_client()
-        response = client.get(reverse('metadata-user-data', args=['latest']))
-        self.assertEqual(httplib.NOT_FOUND, response.status_code)
-
     def test_public_keys_not_listed_for_node_without_public_keys(self):
-        url = reverse('metadata-meta-data', args=['latest', ''])
-        client = self.make_node_client()
+        view_name = self.get_metadata_name('-meta-data')
+        url = reverse(view_name, args=['latest', ''])
+        client = make_node_client()
         response = client.get(url)
         self.assertNotIn(
             'public-keys', response.content.decode('ascii').split('\n'))
@@ -295,15 +313,17 @@ class TestViews(DjangoTestCase):
     def test_public_keys_listed_for_node_with_public_keys(self):
         user, _ = factory.make_user_with_keys(n_keys=2, username='my-user')
         node = factory.make_node(owner=user)
-        url = reverse('metadata-meta-data', args=['latest', ''])
-        client = self.make_node_client(node=node)
+        view_name = self.get_metadata_name('-meta-data')
+        url = reverse(view_name, args=['latest', ''])
+        client = make_node_client(node=node)
         response = client.get(url)
         self.assertIn(
             'public-keys', response.content.decode('ascii').split('\n'))
 
     def test_public_keys_for_node_without_public_keys_returns_empty(self):
-        url = reverse('metadata-meta-data', args=['latest', 'public-keys'])
-        client = self.make_node_client()
+        view_name = self.get_metadata_name('-meta-data')
+        url = reverse(view_name, args=['latest', 'public-keys'])
+        client = make_node_client()
         response = client.get(url)
         self.assertEqual(
             (httplib.OK, ''),
@@ -312,8 +332,9 @@ class TestViews(DjangoTestCase):
     def test_public_keys_for_node_returns_list_of_keys(self):
         user, _ = factory.make_user_with_keys(n_keys=2, username='my-user')
         node = factory.make_node(owner=user)
-        url = reverse('metadata-meta-data', args=['latest', 'public-keys'])
-        client = self.make_node_client(node=node)
+        view_name = self.get_metadata_name('-meta-data')
+        url = reverse(view_name, args=['latest', 'public-keys'])
+        client = make_node_client(node=node)
         response = client.get(url)
         self.assertEqual(httplib.OK, response.status_code)
         keys = SSHKey.objects.filter(user=user).values_list('key', flat=True)
@@ -328,19 +349,56 @@ class TestViews(DjangoTestCase):
         # slashes after 'metadata': e.g. http://host/metadata///rest-of-url.
         user, _ = factory.make_user_with_keys(n_keys=2, username='my-user')
         node = factory.make_node(owner=user)
-        url = reverse('metadata-meta-data', args=['latest', 'public-keys'])
+        view_name = self.get_metadata_name('-meta-data')
+        url = reverse(view_name, args=['latest', 'public-keys'])
         # Insert additional slashes.
         url = url.replace('metadata', 'metadata/////')
-        client = self.make_node_client(node=node)
+        client = make_node_client(node=node)
         response = client.get(url)
         keys = SSHKey.objects.filter(user=user).values_list('key', flat=True)
         self.assertItemsEqual(
             '\n'.join(keys),
             response.content.decode('ascii'))
 
+
+class TestMetadataUserData(DjangoTestCase):
+    """Tests for the metadata user-data API endpoint."""
+
+    def test_user_data_view_returns_binary_data(self):
+        node = factory.make_node()
+        NodeUserData.objects.set_user_data(node, sample_binary_data)
+        client = make_node_client(node)
+        response = client.get(reverse('metadata-user-data', args=['latest']))
+        self.assertEqual('application/octet-stream', response['Content-Type'])
+        self.assertIsInstance(response.content, str)
+        self.assertEqual(
+            (httplib.OK, sample_binary_data),
+            (response.status_code, response.content))
+
+    def test_user_data_for_node_without_user_data_returns_not_found(self):
+        client = make_node_client()
+        response = client.get(reverse('metadata-user-data', args=['latest']))
+        self.assertEqual(httplib.NOT_FOUND, response.status_code)
+
+
+class TestCurtinMetadataUserData(DjangoTestCase):
+    """Tests for the curtin-metadata user-data API endpoint."""
+
+    def test_curtin_user_data_view_returns_curtin_data(self):
+        node = factory.make_node()
+        client = make_node_client(node)
+        response = client.get(
+            reverse('curtin-metadata-user-data', args=['latest']))
+
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertIn("PREFIX='curtin'", response.content)
+
+
+class TestCommissioningAPI(DjangoTestCase):
+
     def test_commissioning_scripts(self):
         script = factory.make_commissioning_script()
-        response = self.make_node_client().get(
+        response = make_node_client().get(
             reverse('commissioning-scripts', args=['latest']))
         self.assertEqual(
             httplib.OK, response.status_code,
@@ -362,35 +420,35 @@ class TestViews(DjangoTestCase):
     def test_other_user_than_node_cannot_signal_commissioning_result(self):
         node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
         client = OAuthAuthenticatedClient(factory.make_user())
-        response = self.call_signal(client)
+        response = call_signal(client)
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
         self.assertEqual(
             NODE_STATUS.COMMISSIONING, reload_object(node).status)
 
     def test_signaling_commissioning_result_does_not_affect_other_node(self):
         node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
-        client = self.make_node_client(
+        client = make_node_client(
             node=factory.make_node(status=NODE_STATUS.COMMISSIONING))
-        response = self.call_signal(client, status='OK')
+        response = call_signal(client, status='OK')
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(
             NODE_STATUS.COMMISSIONING, reload_object(node).status)
 
     def test_signaling_requires_status_code(self):
         node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
-        client = self.make_node_client(node=node)
+        client = make_node_client(node=node)
         url = reverse('metadata-version', args=['latest'])
         response = client.post(url, {'op': 'signal'})
         self.assertEqual(httplib.BAD_REQUEST, response.status_code)
 
     def test_signaling_rejects_unknown_status_code(self):
-        response = self.call_signal(status=factory.getRandomString())
+        response = call_signal(status=factory.getRandomString())
         self.assertEqual(httplib.BAD_REQUEST, response.status_code)
 
     def test_signaling_refuses_if_node_in_unexpected_state(self):
         node = factory.make_node(status=NODE_STATUS.DECLARED)
-        client = self.make_node_client(node=node)
-        response = self.call_signal(client)
+        client = make_node_client(node=node)
+        response = call_signal(client)
         self.assertEqual(
             (
                 httplib.CONFLICT,
@@ -400,18 +458,18 @@ class TestViews(DjangoTestCase):
 
     def test_signaling_accepts_WORKING_status(self):
         node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
-        client = self.make_node_client(node=node)
-        response = self.call_signal(client, status='WORKING')
+        client = make_node_client(node=node)
+        response = call_signal(client, status='WORKING')
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(
             NODE_STATUS.COMMISSIONING, reload_object(node).status)
 
     def test_signaling_stores_script_result(self):
         node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
-        client = self.make_node_client(node=node)
+        client = make_node_client(node=node)
         script_result = random.randint(0, 10)
         filename = factory.getRandomString()
-        response = self.call_signal(
+        response = call_signal(
             client, script_result=script_result,
             files={filename: factory.getRandomString().encode('ascii')})
         self.assertEqual(httplib.OK, response.status_code, response.content)
@@ -420,8 +478,8 @@ class TestViews(DjangoTestCase):
 
     def test_signaling_stores_empty_script_result(self):
         node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
-        client = self.make_node_client(node=node)
-        response = self.call_signal(
+        client = make_node_client(node=node)
+        response = call_signal(
             client, script_result=random.randint(0, 10),
             files={factory.getRandomString(): ''.encode('ascii')})
         self.assertEqual(httplib.OK, response.status_code, response.content)
@@ -433,23 +491,23 @@ class TestViews(DjangoTestCase):
         node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
         node.owner = user
         node.save()
-        client = self.make_node_client(node=node)
-        response = self.call_signal(client, status='WORKING')
+        client = make_node_client(node=node)
+        response = call_signal(client, status='WORKING')
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(user, reload_object(node).owner)
 
     def test_signaling_commissioning_success_makes_node_Ready(self):
         node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
-        client = self.make_node_client(node=node)
-        response = self.call_signal(client, status='OK')
+        client = make_node_client(node=node)
+        response = call_signal(client, status='OK')
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(NODE_STATUS.READY, reload_object(node).status)
 
     def test_signaling_commissioning_success_is_idempotent(self):
         node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
-        client = self.make_node_client(node=node)
-        self.call_signal(client, status='OK')
-        response = self.call_signal(client, status='OK')
+        client = make_node_client(node=node)
+        call_signal(client, status='OK')
+        response = call_signal(client, status='OK')
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(NODE_STATUS.READY, reload_object(node).status)
 
@@ -457,31 +515,31 @@ class TestViews(DjangoTestCase):
         node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
         node.owner = factory.make_user()
         node.save()
-        client = self.make_node_client(node=node)
-        response = self.call_signal(client, status='OK')
+        client = make_node_client(node=node)
+        response = call_signal(client, status='OK')
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(None, reload_object(node).owner)
 
     def test_signaling_commissioning_failure_makes_node_Failed_Tests(self):
         node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
-        client = self.make_node_client(node=node)
-        response = self.call_signal(client, status='FAILED')
+        client = make_node_client(node=node)
+        response = call_signal(client, status='FAILED')
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(NODE_STATUS.FAILED_TESTS, reload_object(node).status)
 
     def test_signaling_commissioning_failure_is_idempotent(self):
         node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
-        client = self.make_node_client(node=node)
-        self.call_signal(client, status='FAILED')
-        response = self.call_signal(client, status='FAILED')
+        client = make_node_client(node=node)
+        call_signal(client, status='FAILED')
+        response = call_signal(client, status='FAILED')
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(NODE_STATUS.FAILED_TESTS, reload_object(node).status)
 
     def test_signaling_commissioning_failure_sets_node_error(self):
         node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
-        client = self.make_node_client(node=node)
+        client = make_node_client(node=node)
         error_text = factory.getRandomString()
-        response = self.call_signal(client, status='FAILED', error=error_text)
+        response = call_signal(client, status='FAILED', error=error_text)
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(error_text, reload_object(node).error)
 
@@ -489,16 +547,16 @@ class TestViews(DjangoTestCase):
         node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
         node.owner = factory.make_user()
         node.save()
-        client = self.make_node_client(node=node)
-        response = self.call_signal(client, status='FAILED')
+        client = make_node_client(node=node)
+        response = call_signal(client, status='FAILED')
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(None, reload_object(node).owner)
 
     def test_signaling_no_error_clears_existing_error(self):
         node = factory.make_node(
             status=NODE_STATUS.COMMISSIONING, error=factory.getRandomString())
-        client = self.make_node_client(node=node)
-        response = self.call_signal(client)
+        client = make_node_client(node=node)
+        response = call_signal(client)
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual('', reload_object(node).error)
 
@@ -509,9 +567,9 @@ class TestViews(DjangoTestCase):
             status: factory.make_node(status=NODE_STATUS.COMMISSIONING)
             for status in statuses}
         for status, node in nodes.items():
-            client = self.make_node_client(node=node)
+            client = make_node_client(node=node)
             script_result = random.randint(0, 10)
-            self.call_signal(
+            call_signal(
                 client, status=status,
                 script_result=script_result,
                 files={filename: factory.getRandomBytes()})
@@ -523,10 +581,10 @@ class TestViews(DjangoTestCase):
 
     def test_signal_stores_file_contents(self):
         node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
-        client = self.make_node_client(node=node)
+        client = make_node_client(node=node)
         text = factory.getRandomString().encode('ascii')
         script_result = random.randint(0, 10)
-        response = self.call_signal(
+        response = call_signal(
             client, script_result=script_result, files={'file.txt': text})
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(
@@ -535,9 +593,9 @@ class TestViews(DjangoTestCase):
     def test_signal_stores_binary(self):
         unicode_text = '<\u2621>'
         node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
-        client = self.make_node_client(node=node)
+        client = make_node_client(node=node)
         script_result = random.randint(0, 10)
-        response = self.call_signal(
+        response = call_signal(
             client, script_result=script_result,
             files={'file.txt': unicode_text.encode('utf-8')})
         self.assertEqual(httplib.OK, response.status_code)
@@ -551,9 +609,9 @@ class TestViews(DjangoTestCase):
                 'ascii')
             for counter in range(3)}
         node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
-        client = self.make_node_client(node=node)
+        client = make_node_client(node=node)
         script_result = random.randint(0, 10)
-        response = self.call_signal(
+        response = call_signal(
             client, script_result=script_result, files=contents)
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(
@@ -570,9 +628,9 @@ class TestViews(DjangoTestCase):
         size_limit = 2 ** 20
         contents = factory.getRandomString(size_limit, spaces=True)
         node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
-        client = self.make_node_client(node=node)
+        client = make_node_client(node=node)
         script_result = random.randint(0, 10)
-        response = self.call_signal(
+        response = call_signal(
             client, script_result=script_result,
             files={'output.txt': contents.encode('utf-8')})
         self.assertEqual(httplib.OK, response.status_code)
@@ -582,10 +640,10 @@ class TestViews(DjangoTestCase):
 
     def test_signal_stores_lshw_file_on_node(self):
         node = factory.make_node(status=NODE_STATUS.COMMISSIONING, memory=512)
-        client = self.make_node_client(node=node)
+        client = make_node_client(node=node)
         xmlbytes = "<t\xe9st/>".encode("utf-8")
         script_result = random.randint(0, 10)
-        response = self.call_signal(
+        response = call_signal(
             client, script_result=script_result,
             files={'00-maas-01-lshw.out': xmlbytes})
         self.assertEqual(httplib.OK, response.status_code)
@@ -595,9 +653,9 @@ class TestViews(DjangoTestCase):
 
     def test_signal_stores_virtual_tag_on_node_if_virtual(self):
         node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
-        client = self.make_node_client(node=node)
+        client = make_node_client(node=node)
         content = 'virtual'.encode('utf-8')
-        response = self.call_signal(
+        response = call_signal(
             client, script_result=0,
             files={'00-maas-02-virtuality.out': content})
         self.assertEqual(httplib.OK, response.status_code)
@@ -609,9 +667,9 @@ class TestViews(DjangoTestCase):
         node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
         tag, _ = Tag.objects.get_or_create(name='virtual')
         node.tags.add(tag)
-        client = self.make_node_client(node=node)
+        client = make_node_client(node=node)
         content = 'notvirtual'.encode('utf-8')
-        response = self.call_signal(
+        response = call_signal(
             client, script_result=0,
             files={'00-maas-02-virtuality.out': content})
         self.assertEqual(httplib.OK, response.status_code)
@@ -620,9 +678,9 @@ class TestViews(DjangoTestCase):
 
     def test_signal_leaves_untagged_physical_node_unaltered(self):
         node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
-        client = self.make_node_client(node=node)
+        client = make_node_client(node=node)
         content = 'notvirtual'.encode('utf-8')
-        response = self.call_signal(
+        response = call_signal(
             client, script_result=0,
             files={'00-maas-02-virtuality.out': content})
         self.assertEqual(httplib.OK, response.status_code)
@@ -631,20 +689,20 @@ class TestViews(DjangoTestCase):
 
     def test_signal_refuses_bad_power_type(self):
         node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
-        client = self.make_node_client(node=node)
-        response = self.call_signal(client, power_type="foo")
+        client = make_node_client(node=node)
+        response = call_signal(client, power_type="foo")
         self.assertEqual(
             (httplib.BAD_REQUEST, "Bad power_type 'foo'"),
             (response.status_code, response.content))
 
     def test_signal_power_type_stores_params(self):
         node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
-        client = self.make_node_client(node=node)
+        client = make_node_client(node=node)
         params = dict(
             power_address=factory.getRandomString(),
             power_user=factory.getRandomString(),
             power_pass=factory.getRandomString())
-        response = self.call_signal(
+        response = call_signal(
             client, power_type="ipmi", power_parameters=json.dumps(params))
         self.assertEqual(httplib.OK, response.status_code, response.content)
         node = reload_object(node)
@@ -655,12 +713,12 @@ class TestViews(DjangoTestCase):
 
     def test_signal_power_type_lower_case_works(self):
         node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
-        client = self.make_node_client(node=node)
+        client = make_node_client(node=node)
         params = dict(
             power_address=factory.getRandomString(),
             power_user=factory.getRandomString(),
             power_pass=factory.getRandomString())
-        response = self.call_signal(
+        response = call_signal(
             client, power_type="ipmi", power_parameters=json.dumps(params))
         self.assertEqual(httplib.OK, response.status_code, response.content)
         node = reload_object(node)
@@ -669,12 +727,15 @@ class TestViews(DjangoTestCase):
 
     def test_signal_invalid_power_parameters(self):
         node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
-        client = self.make_node_client(node=node)
-        response = self.call_signal(
+        client = make_node_client(node=node)
+        response = call_signal(
             client, power_type="ipmi", power_parameters="badjson")
         self.assertEqual(
             (httplib.BAD_REQUEST, "Failed to parse JSON power_parameters"),
             (response.status_code, response.content))
+
+
+class TestByMACMetadataAPI(DjangoTestCase):
 
     def test_api_retrieves_node_metadata_by_mac(self):
         mac = factory.make_mac_address()
@@ -706,9 +767,12 @@ class TestViews(DjangoTestCase):
         response = self.client.get(url)
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
+
+class TestNetbootOperationAPI(DjangoTestCase):
+
     def test_netboot_off(self):
         node = factory.make_node(netboot=True)
-        client = self.make_node_client(node=node)
+        client = make_node_client(node=node)
         url = reverse('metadata-version', args=['latest'])
         response = client.post(url, {'op': 'netboot_off'})
         node = reload_object(node)
@@ -716,11 +780,14 @@ class TestViews(DjangoTestCase):
 
     def test_netboot_on(self):
         node = factory.make_node(netboot=False)
-        client = self.make_node_client(node=node)
+        client = make_node_client(node=node)
         url = reverse('metadata-version', args=['latest'])
         response = client.post(url, {'op': 'netboot_on'})
         node = reload_object(node)
         self.assertTrue(node.netboot, response)
+
+
+class TestAnonymousAPI(DjangoTestCase):
 
     def test_anonymous_netboot_off(self):
         node = factory.make_node(netboot=True)

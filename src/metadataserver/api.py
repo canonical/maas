@@ -13,6 +13,7 @@ __metaclass__ = type
 __all__ = [
     'AnonMetaDataHandler',
     'CommissioningScriptsHandler',
+    'CurtinUserDataHandler',
     'IndexHandler',
     'MetaDataHandler',
     'UserDataHandler',
@@ -50,6 +51,7 @@ from maasserver.models import (
     SSHKey,
     )
 from maasserver.preseed import (
+    get_curtin_userdata,
     get_enlist_preseed,
     get_enlist_userdata,
     get_preseed,
@@ -346,6 +348,18 @@ class UserDataHandler(MetadataViewHandler):
             logger.info(
                 "No user data registered for node named %s" % node.hostname)
             return HttpResponse(status=httplib.NOT_FOUND)
+
+
+class CurtinUserDataHandler(MetadataViewHandler):
+    """Curtin user-data blob for a given version."""
+
+    def read(self, request, version, mac=None):
+        check_version(version)
+        node = get_queried_node(request, for_mac=mac)
+        user_data = get_curtin_userdata(node)
+        return HttpResponse(
+            user_data,
+            mimetype='application/octet-stream')
 
 
 class CommissioningScriptsHandler(MetadataViewHandler):

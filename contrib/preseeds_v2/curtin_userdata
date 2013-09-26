@@ -1,0 +1,23 @@
+#cloud-config
+debconf_selections:
+ maas: |
+  {{for line in str(curtin_preseed).splitlines()}}
+  {{line}}
+  {{endfor}}
+late_commands:
+  maas: [wget, '--no-proxy', '{{node_disable_pxe_url|escape.shell}}', '--post-data', '{{node_disable_pxe_data|escape.shell}}', '-O', '/dev/null']
+
+power_state:
+  mode: reboot
+
+{{if node.architecture in {'i386/generic', 'amd64/generic'} }}
+apt_mirror: http://{{main_archive_hostname}}/{{main_archive_directory}}
+{{else}}
+apt_mirror: http://{{ports_archive_hostname}}/{{ports_archive_directory}}
+{{endif}}
+
+{{if http_proxy }}
+apt_proxy: {{http_proxy}}
+{{else}}
+apt_proxy: http://{{server_host}}:8000/
+{{endif}}

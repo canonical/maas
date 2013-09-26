@@ -27,6 +27,7 @@ __all__ = [
     'PRESEED_TYPE',
     'DISTRO_SERIES',
     'DISTRO_SERIES_CHOICES',
+    'USERDATA_TYPE',
     ]
 
 from collections import OrderedDict
@@ -165,7 +166,13 @@ class PRESEED_TYPE:
     DEFAULT = ''
     COMMISSIONING = 'commissioning'
     ENLIST = 'enlist'
-    ENLIST_USERDATA = 'enlist_userdata'
+    CURTIN = 'curtin'
+
+
+class USERDATA_TYPE:
+    """Types of user-data documents that can be generated."""
+    ENLIST = 'enlist_userdata'
+    CURTIN = 'curtin_userdata'
 
 
 class NODEGROUP_STATUS:
