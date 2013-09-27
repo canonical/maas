@@ -20,6 +20,8 @@ import provisioningserver.pxe.install_image
 from provisioningserver.pxe.install_image import (
     are_identical_dirs,
     install_dir,
+    install_image,
+    install_symlink,
     make_destination,
     )
 from provisioningserver.pxe.tftppath import (
@@ -117,6 +119,14 @@ class TestInstallPXEImage(MAASTestCase):
                 os.path.join(self.make_dir(), factory.getRandomString()),
                 os.path.dirname(self.make_file())))
 
+    def test_are_identical_dirs_sees_symlink_as_different_from_dir(self):
+        images = self.make_dir()
+        link = os.path.join(images, 'symlink')
+        new_image = os.path.dirname(self.make_file())
+        os.symlink(new_image, os.path.join(images, link))
+
+        self.assertFalse(are_identical_dirs(link, new_image))
+
     def test_are_identical_dirs_returns_true_if_identical(self):
         name = factory.getRandomString()
         contents = factory.getRandomString()
@@ -174,6 +184,22 @@ class TestInstallPXEImage(MAASTestCase):
             FileExists())
         self.assertThat(obsolete_file, Not(FileExists()))
 
+    def test_install_dir_replaces_existing_symlink(self):
+        download_image = os.path.join(self.make_dir(), 'download-image')
+        published_image = os.path.join(self.make_dir(), 'published-image')
+        linked_image = os.path.join(self.make_dir(), 'linked-image')
+        os.makedirs(download_image)
+        sample_file = factory.make_file(download_image)
+        os.makedirs(published_image)
+        os.symlink(published_image, linked_image)
+
+        install_dir(download_image, linked_image)
+
+        self.assertThat(linked_image, DirExists())
+        self.assertThat(
+            os.path.join(linked_image, os.path.basename(sample_file)),
+            FileExists())
+
     def test_install_dir_sweeps_aside_dot_new_and_dot_old_if_any(self):
         # If directories <old>.old or <old>.new already exist, they're
         # probably from an aborted previous run.  They won't stop
@@ -210,39 +236,75 @@ class TestInstallPXEImage(MAASTestCase):
             "rw-r--r--",
             target_dir.child("image").getPermissions().shorthand())
 
-    def test_install_dir_moves_dir_into_place_with_symlink(self):
-        download_image = os.path.join(self.make_dir(), 'download-image')
-        published_image = os.path.join(self.make_dir(), 'published-image')
-        base_path = os.path.dirname(published_image)
-        symlink_dest = 'xinstall'
-        contents = factory.getRandomString()
-        os.makedirs(download_image)
-        sample_file = factory.make_file(download_image, contents=contents)
-        install_dir(download_image, published_image, symlink_dest)
-        self.assertThat(
-            os.path.join(published_image, os.path.basename(sample_file)),
-            FileContains(contents))
-        self.assertThat(
-            os.path.join(
-                base_path, symlink_dest, os.path.basename(sample_file)),
-            FileContains(contents))
+    def test_install_symlink_creates_symlink(self):
+        images = self.make_dir()
+        installed_image = os.path.join(images, 'installed-image')
+        os.makedirs(installed_image)
+        linked_image = os.path.join(images, 'linked-image')
 
-    def test_install_dir_replaces_existing_dir_with_symlink(self):
-        download_image = os.path.join(self.make_dir(), 'download-image')
-        published_image = os.path.join(self.make_dir(), 'published-image')
-        base_path = os.path.dirname(published_image)
-        symlink_dest = 'xinstall'
-        os.makedirs(download_image)
-        sample_file = factory.make_file(download_image)
-        os.makedirs(published_image)
-        os.symlink(published_image, os.path.join(base_path, symlink_dest))
-        obsolete_file = factory.make_file(published_image)
-        install_dir(download_image, published_image, symlink_dest)
+        install_symlink(installed_image, linked_image)
+
+        self.assertEqual(installed_image, os.readlink(linked_image))
+
+    def test_install_symlink_overwrites_existing_symlink(self):
+        images = self.make_dir()
+        installed_image = os.path.join(images, 'installed-image')
+        os.makedirs(installed_image)
+        linked_image = os.path.join(images, 'linked-image')
+        os.symlink(self.make_dir(), linked_image)
+
+        install_symlink(installed_image, linked_image)
+
+        self.assertEqual(installed_image, os.readlink(linked_image))
+
+    def test_install_symlink_overwrites_existing_dir(self):
+        images = self.make_dir()
+        installed_image = os.path.join(images, 'installed-image')
+        os.makedirs(installed_image)
+        linked_image = os.path.join(images, 'linked-image')
+        os.makedirs(linked_image)
+        factory.make_file(linked_image, 'obsolete-file')
+
+        install_symlink(installed_image, linked_image)
+
+        self.assertEqual(installed_image, os.readlink(linked_image))
+
+    def test_install_symlink_sweeps_aside_dot_old(self):
+        images = self.make_dir()
+        installed_image = os.path.join(images, 'installed-image')
+        os.makedirs(installed_image)
+        linked_image = os.path.join(images, 'linked-image')
+        os.makedirs(linked_image + '.old')
+        factory.make_file(linked_image + '.old')
+
+        install_symlink(installed_image, linked_image)
+
+        self.assertEqual(installed_image, os.readlink(linked_image))
+        self.assertThat(linked_image + '.old', Not(DirExists()))
+
+    def test_install_image_installs_alternate_purpose_as_symlink(self):
+        tftp_root = self.make_dir()
+        self.useFixture(ConfigFixture({'tftp': {'root': tftp_root}}))
+        kernel_content = factory.getRandomString()
+        kernel = self.make_file(name='linux', contents=kernel_content)
+        downloaded_image = os.path.dirname(kernel)
+        arch = factory.make_name('arch')
+        subarch = factory.make_name('subarch')
+        release = factory.make_name('release')
+        purpose = factory.make_name('purpose')
+        alternate_purpose = factory.make_name('alt')
+
+        install_image(
+            downloaded_image, arch, subarch, release, purpose,
+            alternate_purpose=alternate_purpose)
+
+        main_image = os.path.join(tftp_root, arch, subarch, release, purpose)
         self.assertThat(
-            os.path.join(published_image, os.path.basename(sample_file)),
-            FileExists())
-        self.assertThat(obsolete_file, Not(FileExists()))
+            os.path.join(main_image, 'linux'),
+            FileContains(kernel_content))
+        alternate_image = os.path.join(
+            tftp_root, arch, subarch, release, alternate_purpose)
+        self.assertTrue(os.path.islink(os.path.join(alternate_image)))
         self.assertThat(
-            os.path.join(
-                base_path, symlink_dest, os.path.basename(sample_file)),
-            FileExists())
+            os.path.join(alternate_image, 'linux'),
+            FileContains(kernel_content))

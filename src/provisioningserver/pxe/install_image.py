@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Install a netboot image directory for TFTP download."""
@@ -59,9 +59,13 @@ def are_identical_dirs(old, new):
     It's OK for `old` not to exist; that is considered a difference rather
     than an error.  But `new` is assumed to exist - if it doesn't, you
     shouldn't have come far enough to call this function.
+
+    If `old` is a symlink, this always returns False.
     """
     assert os.path.isdir(new)
-    if os.path.isdir(old):
+    if os.path.islink(old):
+        return False
+    elif os.path.isdir(old):
         files = set(os.listdir(old) + os.listdir(new))
         # The shallow=False is needed to make cmpfiles() compare file
         # contents.  Otherwise it only compares os.stat() results,
@@ -71,7 +75,7 @@ def are_identical_dirs(old, new):
         return False
 
 
-def install_dir(new, old, symlink=None):
+def install_dir(new, old):
     """Install directory `new`, replacing directory `old` if it exists.
 
     This works as atomically as possible, but isn't entirely.  Moreover,
@@ -114,7 +118,7 @@ def install_dir(new, old, symlink=None):
             filepath.chmod(0644)
 
     # Start of critical window.
-    if os.path.isdir(old):
+    if os.path.exists(old):
         os.rename(old, '%s.old' % old)
     os.rename('%s.new' % old, old)
     # End of critical window.
@@ -122,16 +126,37 @@ def install_dir(new, old, symlink=None):
     # Now delete the old image directory at leisure.
     rmtree('%s.old' % old, ignore_errors=True)
 
-    # Symlink the new image directory to 'symlink'.
-    if symlink is not None:
-        sdest = "%s/%s" % (os.path.dirname(old), symlink)
-        if os.path.exists(sdest) or os.path.islink(sdest):
-            os.unlink(sdest)
-        os.symlink(old, sdest)
+
+def install_symlink(new, old):
+    """Install a symlink to directory `new`, replacing `old` if it exists.
+
+    :param new: Path to an already installed image directory.
+    :param old: Path where the symlink to `new` should be.
+    """
+    # Get rid of any leftover temporary directories from potential
+    # interrupted previous runs.
+    rmtree('%s.old' % old, ignore_errors=True)
+
+    if os.path.islink(old) and os.readlink(old) == new:
+        # Symlink is unchanged.
+        return
+
+    # There's a very brief period here where neither the old nor the new
+    # entry is in place.  We keep this as short as possible by moving any old
+    # link or directory out of the way first, setting up the symlink, and only
+    # deleting the old directory or symlink afterwards.
+    # Start of critical window.
+    if os.path.exists(old):
+        os.rename(old, '%s.old' % old)
+    os.symlink(new, old)
+    # End of critical window.
+
+    # Now delete the old image directory at leisure.
+    rmtree('%s.old' % old, ignore_errors=True)
 
 
 def install_image(image_dir, arch, subarch, release, purpose, config_file=None,
-                  symlink=None):
+                  alternate_purpose=None):
     """Install a PXE boot image.
 
     This is the function-call equivalent to a command-line invocation calling
@@ -142,7 +167,14 @@ def install_image(image_dir, arch, subarch, release, purpose, config_file=None,
     destination = make_destination(tftproot, arch, subarch, release, purpose)
     if not are_identical_dirs(destination, image_dir):
         # Image has changed.  Move the new version into place.
-        install_dir(image_dir, destination, symlink)
+        install_dir(image_dir, destination)
+
+    if alternate_purpose is not None:
+        # Symlink the new image directory under the alternate purpose name.
+        alternate_destination = make_destination(
+            tftproot, arch, subarch, release, alternate_purpose)
+        install_symlink(destination, alternate_destination)
+
     rmtree(image_dir, ignore_errors=True)
 
 
@@ -164,7 +196,7 @@ def add_arguments(parser):
         help="Netboot image directory, containing kernel & initrd.")
     parser.add_argument(
         '--symlink', dest='symlink', default=None,
-        help="Destination directory to symlink the installed images to.")
+        help="Also install the same image for an alternate purpose.")
 
 
 def run(args):
@@ -178,4 +210,4 @@ def run(args):
     install_image(
         args.image, arch=args.arch, subarch=args.subarch, release=args.release,
         purpose=args.purpose, config_file=args.config_file,
-        symlink=args.symlink)
+        alternate_purpose=args.symlink)

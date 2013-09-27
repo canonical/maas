@@ -155,7 +155,8 @@ def create_symlinked_image_dir(original_dir, temp_location=None):
 def install_image_from_simplestreams(storage_dir, release, arch,
                                      subarch='generic',
                                      purpose='commissioning',
-                                     symlink='xinstall', temp_location=None):
+                                     alternate_purpose='xinstall',
+                                     temp_location=None):
     """Install boot image, based on files downloaded from simplestreams.
 
     :param storage_dir: Directory containing the image files (`linux`,
@@ -165,9 +166,9 @@ def install_image_from_simplestreams(storage_dir, release, arch,
     :param arch: Architecture for the image, e.g. "i386".
     :param subarch: Sub-architecture.  Defaults to "generic".
     :param purpose: Boot purpose for the image.  Defaults to `commissioning`.
-    :param symlink: Alternate name for boot image.  If given, in addition to
-        the image directory itself, this will also install a symlink to the
-        installed image directory under this alternate name.
+    :param alternate_purpose: Alternate purpose for boot image.  If given, in
+        addition to the image under its own directory, this will also install a
+        symlink to the installed image directory with this alternate purpose.
     :param temp_location: Optional location where temporary image directories
         and such may be created.
     """
@@ -178,7 +179,7 @@ def install_image_from_simplestreams(storage_dir, release, arch,
     try:
         install_image(
             provision_tmp, release=release, arch=arch, subarch=subarch,
-            purpose=purpose, symlink=symlink)
+            purpose=purpose, alternate_purpose=alternate_purpose)
     finally:
         shutil.rmtree(provision_tmp, ignore_errors=True)
 
