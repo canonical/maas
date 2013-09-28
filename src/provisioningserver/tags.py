@@ -18,6 +18,8 @@ __all__ = [
     ]
 
 
+from collections import OrderedDict
+from functools import partial
 import httplib
 from logging import getLogger
 import urllib2
@@ -44,7 +46,12 @@ class MissingCredentials(Exception):
     """The MAAS URL or credentials are not yet set."""
 
 
-DEFAULT_BATCH_SIZE = 1000
+# An example laptop's lshw XML dump was 135kB. An example lab's LLDP
+# XML dump was 1.6kB. A batch size of 100 would mean downloading ~14MB
+# from the region controller, which seems workable. The previous batch
+# size of 1000 would have resulted in a ~140MB download, which, on the
+# face of it, appears excessive.
+DEFAULT_BATCH_SIZE = 100
 
 
 def get_cached_knowledge():
@@ -81,7 +88,6 @@ def process_response(response):
     :param response: The result of MAASClient.get/post/etc.
     :type response: urllib2.addinfourl (a file-like object that has a .code
         attribute.)
-
     """
     if response.code != httplib.OK:
         text_status = httplib.responses.get(response.code, '<unknown>')
@@ -107,18 +113,6 @@ def get_nodes_for_node_group(client, nodegroup_uuid):
     """
     path = '/api/1.0/nodegroups/%s/' % (nodegroup_uuid)
     return process_response(client.get(path, op='list_nodes'))
-
-
-def get_hardware_details_for_nodes(client, nodegroup_uuid, system_ids):
-    """Retrieve the lshw output for a set of nodes.
-
-    :param client: MAAS client
-    :param system_ids: List of UUIDs of systems for which to fetch lshw data
-    :return: Dictionary mapping node UUIDs to lshw output
-    """
-    path = '/api/1.0/nodegroups/%s/' % (nodegroup_uuid,)
-    return process_response(client.post(
-        path, op='node_hardware_details', as_json=True, system_ids=system_ids))
 
 
 def get_details_for_nodes(client, nodegroup_uuid, system_ids):
@@ -182,11 +176,14 @@ def merge_details(details):
     in the composite document in the ``lshw`` namespace.
 
     The returned document is always rooted with a ``list`` element.
-
     """
     # We may mutate the details later, so copy now to prevent
     # affecting the caller's data.
     details = details.copy()
+
+    # Prepare an nsmap in an OrderedDict. This ensures that lxml
+    # serializes namespace declarations in a stable order.
+    nsmap = OrderedDict((ns, ns) for ns in sorted(details))
 
     # Root everything in a namespace-less element. Setting the nsmap
     # here ensures that prefixes are preserved when dumping later.
@@ -195,8 +192,7 @@ def merge_details(details):
     # its tag with the tag of an lshw XML tree, so that XPath
     # expressions written with the lshw tree in mind will still work
     # without it, e.g. "/list//{lldp}something".
-    root = etree.Element("list", nsmap={
-        namespace: namespace for namespace in details})
+    root = etree.Element("list", nsmap=nsmap)
 
     # For backward-compatibilty, if lshw details are available, these
     # should form the root of the composite document.
@@ -216,70 +212,107 @@ def merge_details(details):
     # Merge the remaining details into the composite document.
     for namespace in sorted(details):
         xmldata = details[namespace]
-        try:
-            detail = etree.fromstring(xmldata)
-        except etree.XMLSyntaxError as e:
-            logger.warn("Invalid %s details: %s", namespace, e)
-        else:
-            # Add the namespace to all unqualified elements.
-            for elem in detail.iter("{}*"):
-                elem.tag = etree.QName(namespace, elem.tag)
-            root.append(detail)
+        if xmldata is not None:
+            try:
+                detail = etree.fromstring(xmldata)
+            except etree.XMLSyntaxError as e:
+                logger.warn("Invalid %s details: %s", namespace, e)
+            else:
+                # Add the namespace to all unqualified elements.
+                for elem in detail.iter("{}*"):
+                    elem.tag = etree.QName(namespace, elem.tag)
+                root.append(detail)
 
     return root
 
 
-def process_batch(xpath, hardware_details):
-    """Get the details for one batch, and process whether they match or not.
+def gen_batch_slices(count, size):
+    """Generate `slice`s to split `count` objects into batches.
+
+    The batches will be evenly distributed; no batch will differ in
+    length from any other by more than 1.
+
+    Note that the slices returned include a step. This means that
+    slicing a list with the aid of this function then concatenating
+    the results will not give you the same list. All the elements will
+    be present, but not in the same order.
+
+    :return: An iterator of `slice`s.
     """
-    # Fetch node XML in batches
-    matched_nodes = []
-    unmatched_nodes = []
-    for system_id, hw_xml in hardware_details:
-        matched = False
-        if hw_xml is not None:
-            try:
-                xml = etree.XML(hw_xml)
-            except etree.XMLSyntaxError as e:
-                logger.debug(
-                    "Invalid hardware_details for %s: %s" % (system_id, e))
-            else:
-                if xpath(xml):
-                    matched = True
-        if matched:
-            matched_nodes.append(system_id)
-        else:
-            unmatched_nodes.append(system_id)
-    return matched_nodes, unmatched_nodes
+    batch_count, remaining = divmod(count, size)
+    batch_count += 1 if remaining > 0 else 0
+    for batch in xrange(batch_count):
+        yield slice(batch, None, batch_count)
+
+
+def gen_batches(things, batch_size):
+    """Split `things` into even batches of <= `batch_size`.
+
+    Note that batches are calculated by `get_batch_slices` which does
+    not guarantee ordering.
+
+    :type things: `list`, or anything else that can be sliced.
+
+    :return: An iterator of `slice`s of `things`.
+    """
+    slices = gen_batch_slices(len(things), batch_size)
+    return (things[s] for s in slices)
+
+
+def gen_node_details(client, nodegroup_uuid, batches):
+    """Fetch node details.
+
+    This lazily fetches data in batches, but this detail is hidden
+    from callers.
+
+    :return: An iterator of ``(system-id, details-document)`` tuples.
+    """
+    get_details = partial(get_details_for_nodes, client, nodegroup_uuid)
+    for batch in batches:
+        for system_id, details in get_details(batch).iteritems():
+            yield system_id, merge_details(details)
+
+
+def classify(func, subjects):
+    """Classify `subjects` according to `func`.
+
+    Splits `subjects` into two lists: one for those which `func`
+    returns a truth-like value, and one for the others.
+
+    :param subjects: An iterable of arguments that can be passed to
+        `func` for classification.
+    :param func: A function that takes a single argument.
+
+    :return: A ``(matched, other)`` tuple, where ``matched`` and
+        ``other`` are `list`s.
+    """
+    matched, other = [], []
+    for ident, subject in subjects:
+        bucket = matched if func(subject) else other
+        bucket.append(ident)
+    return matched, other
 
 
 def process_all(client, tag_name, tag_definition, nodegroup_uuid, system_ids,
                 xpath, batch_size=None):
+    logger.debug(
+        "processing %d system_ids for tag %s nodegroup %s",
+        len(system_ids), tag_name, nodegroup_uuid)
+
     if batch_size is None:
         batch_size = DEFAULT_BATCH_SIZE
-    all_matched = []
-    all_unmatched = []
-    logger.debug(
-        "processing %d system_ids for tag %s nodegroup %s"
-        % (len(system_ids), tag_name, nodegroup_uuid))
-    for i in range(0, len(system_ids), batch_size):
-        selected_ids = system_ids[i:i + batch_size]
-        details = get_hardware_details_for_nodes(
-            client, nodegroup_uuid, selected_ids)
-        matched, unmatched = process_batch(xpath, details)
-        logger.debug(
-            "processing batch of %d ids received %d details"
-            " (%d matched, %d unmatched)"
-            % (len(selected_ids), len(details), len(matched), len(unmatched)))
-        all_matched.extend(matched)
-        all_unmatched.extend(unmatched)
+
+    batches = gen_batches(system_ids, batch_size)
+    node_details = gen_node_details(client, nodegroup_uuid, batches)
+    nodes_matched, nodes_unmatched = classify(xpath, node_details)
+
     # Upload all updates for one nodegroup at one time. This should be no more
     # than ~41*10,000 = 410kB. That should take <1s even on a 10Mbit network.
     # This also allows us to track if a nodegroup has been processed in the DB,
     # without having to add another API call.
     post_updated_nodes(
-        client, tag_name, tag_definition, nodegroup_uuid, all_matched,
-        all_unmatched)
+        client, tag_name, tag_definition, nodegroup_uuid,
+        nodes_matched, nodes_unmatched)
 
 
 def process_node_tags(tag_name, tag_definition, batch_size=None):

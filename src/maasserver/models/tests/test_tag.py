@@ -65,7 +65,7 @@ class TagTest(MAASServerTestCase):
         node1.set_hardware_details('<node><child /></node>')
         node2 = factory.make_node()
         node2.set_hardware_details('<node />')
-        tag = factory.make_tag(definition='/node/child')
+        tag = factory.make_tag(definition='//node/child')
         self.assertItemsEqual([tag.name], node1.tag_names())
         self.assertItemsEqual([], node2.tag_names())
 
@@ -74,15 +74,15 @@ class TagTest(MAASServerTestCase):
         node1.set_hardware_details('<node><foo /></node>')
         node2 = factory.make_node()
         node2.set_hardware_details('<node><bar /></node>')
-        tag = factory.make_tag(definition='/node/foo')
+        tag = factory.make_tag(definition='//node/foo')
         self.assertItemsEqual([tag.name], node1.tag_names())
         self.assertItemsEqual([], node2.tag_names())
-        tag.definition = '/node/bar'
+        tag.definition = '//node/bar'
         tag.save()
         self.assertItemsEqual([], node1.tag_names())
         self.assertItemsEqual([tag.name], node2.tag_names())
         # And we notice if we change it *again* and then save.
-        tag.definition = '/node/foo'
+        tag.definition = '//node/foo'
         tag.save()
         self.assertItemsEqual([tag.name], node1.tag_names())
         self.assertItemsEqual([], node2.tag_names())
@@ -92,17 +92,17 @@ class TagTest(MAASServerTestCase):
         node1.set_hardware_details('<node><foo /></node>')
         node2 = factory.make_node()
         node2.set_hardware_details('<node><bar /></node>')
-        tag1 = factory.make_tag(definition='/node/foo')
+        tag1 = factory.make_tag(definition='//node/foo')
         self.assertItemsEqual([tag1.name], node1.tag_names())
         self.assertItemsEqual([], node2.tag_names())
-        tag2 = factory.make_tag(definition='/node/bar')
+        tag2 = factory.make_tag(definition='//node/bar')
         self.assertItemsEqual([tag1.name], node1.tag_names())
         self.assertItemsEqual([tag2.name], node2.tag_names())
 
     def test_rollsback_invalid_xpath(self):
         node = factory.make_node()
         node.set_hardware_details('<node><foo /></node>')
-        tag = factory.make_tag(definition='/node/foo')
+        tag = factory.make_tag(definition='//node/foo')
         self.assertItemsEqual([tag.name], node.tag_names())
         tag.definition = 'invalid::tag'
         self.assertRaises(ValidationError, tag.save)

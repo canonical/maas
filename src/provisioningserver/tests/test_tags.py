@@ -15,6 +15,7 @@ __all__ = []
 import doctest
 import httplib
 import io
+from itertools import chain
 import json
 from textwrap import dedent
 import urllib2
@@ -28,7 +29,11 @@ from maastesting.fakemethod import (
     FakeMethod,
     MultiFakeMethod,
     )
-from mock import MagicMock
+from mock import (
+    call,
+    MagicMock,
+    sentinel,
+    )
 from provisioningserver import tags
 from provisioningserver.auth import get_recorded_nodegroup_uuid
 from provisioningserver.testing.testcase import PservTestCase
@@ -112,7 +117,7 @@ class TestMergeDetails(PservTestCase):
 
     def test_merge_with_no_details(self):
         xml = tags.merge_details({})
-        self.assertThat("<list/>", EqualsXML(xml))
+        self.assertThat(xml, EqualsXML("<list/>"))
 
     def test_merge_with_only_lshw_details(self):
         xml = tags.merge_details({"lshw": b"<list><foo>Hello</foo></list>"})
@@ -124,7 +129,7 @@ class TestMergeDetails(PservTestCase):
               </lshw:list>
             </list>
         """
-        self.assertThat(expected, EqualsXML(xml))
+        self.assertThat(xml, EqualsXML(expected))
 
     def test_merge_with_only_lldp_details(self):
         xml = tags.merge_details({"lldp": b"<node><foo>Hello</foo></node>"})
@@ -135,7 +140,7 @@ class TestMergeDetails(PservTestCase):
               </lldp:node>
             </list>
         """
-        self.assertThat(expected, EqualsXML(xml))
+        self.assertThat(xml, EqualsXML(expected))
 
     def test_merge_with_multiple_details(self):
         xml = tags.merge_details({
@@ -155,7 +160,7 @@ class TestMergeDetails(PservTestCase):
               <zoom:zoom>zoom</zoom:zoom>
             </list>
         """
-        self.assertThat(expected, EqualsXML(xml))
+        self.assertThat(xml, EqualsXML(expected))
 
     def assertDocTestMatches(self, expected, observed):
         return self.assertThat(observed, DocTestMatches(
@@ -165,7 +170,7 @@ class TestMergeDetails(PservTestCase):
         # The lshw details cannot be parsed, but merge_details() still
         # returns a usable tree, albeit without any lshw details.
         xml = tags.merge_details({"lshw": b"<not>well</formed>"})
-        self.assertThat('<list xmlns:lshw="lshw"/>', EqualsXML(xml))
+        self.assertThat(xml, EqualsXML('<list xmlns:lshw="lshw"/>'))
         # The error is logged however.
         self.assertDocTestMatches(
             """\
@@ -189,7 +194,7 @@ class TestMergeDetails(PservTestCase):
               <zoom:zoom>zoom</zoom:zoom>
             </list>
         """
-        self.assertThat(expected, EqualsXML(xml))
+        self.assertThat(xml, EqualsXML(expected))
         # The error is logged however.
         self.assertDocTestMatches(
             """\
@@ -202,9 +207,11 @@ class TestMergeDetails(PservTestCase):
             "lshw": b"<list><foo>Hello</foo></list>",
             "foom": b"<not>well</formed>",
             "zoom": b"<zoom>zoom</zoom>",
+            "oops": None,
         })
         expected = """\
-            <list xmlns:foom="foom" xmlns:lshw="lshw" xmlns:zoom="zoom">
+            <list xmlns:foom="foom" xmlns:lshw="lshw"
+                  xmlns:oops="oops" xmlns:zoom="zoom">
               <foo>Hello</foo>
               <lshw:list>
                 <lshw:foo>Hello</lshw:foo>
@@ -212,7 +219,7 @@ class TestMergeDetails(PservTestCase):
               <zoom:zoom>zoom</zoom:zoom>
             </list>
         """
-        self.assertThat(expected, EqualsXML(xml))
+        self.assertThat(xml, EqualsXML(expected))
         # The error is logged however.
         self.assertDocTestMatches(
             """\
@@ -225,11 +232,13 @@ class TestMergeDetails(PservTestCase):
             "lshw": b"<gibber></ish>",
             "foom": b"<not>well</formed>",
             "zoom": b"<>" + factory.getRandomBytes(),
+            "oops": None,
         })
         expected = """\
-            <list xmlns:foom="foom" xmlns:lshw="lshw" xmlns:zoom="zoom"/>
+            <list xmlns:foom="foom" xmlns:lshw="lshw"
+                  xmlns:oops="oops" xmlns:zoom="zoom"/>
         """
-        self.assertThat(expected, EqualsXML(xml))
+        self.assertThat(xml, EqualsXML(expected))
         # The error is logged however.
         self.assertDocTestMatches(
             """\
@@ -238,6 +247,140 @@ class TestMergeDetails(PservTestCase):
             Invalid zoom details: ...
             """,
             self.logger.output)
+
+
+class TestGenBatchSlices(PservTestCase):
+
+    def test_batch_of_1_no_things(self):
+        self.assertSequenceEqual(
+            [], list(tags.gen_batch_slices(0, 1)))
+
+    def test_batch_of_1_one_thing(self):
+        self.assertSequenceEqual(
+            [slice(0, None, 1)], list(tags.gen_batch_slices(1, 1)))
+
+    def test_batch_of_1_more_things(self):
+        self.assertSequenceEqual(
+            [slice(0, None, 3), slice(1, None, 3), slice(2, None, 3)],
+            list(tags.gen_batch_slices(3, 1)))
+
+    def test_no_things(self):
+        self.assertSequenceEqual(
+            [], list(tags.gen_batch_slices(0, 4)))
+
+    def test_one_thing(self):
+        self.assertSequenceEqual(
+            [slice(0, None, 1)], list(tags.gen_batch_slices(1, 4)))
+
+    def test_more_things(self):
+        self.assertSequenceEqual(
+            [slice(0, None, 3), slice(1, None, 3), slice(2, None, 3)],
+            list(tags.gen_batch_slices(10, 4)))
+
+    def test_batches_by_brute_force(self):
+        expected = range(99)
+        for size in xrange(1, len(expected) // 2):
+            slices = tags.gen_batch_slices(len(expected), size)
+            batches = list(expected[sl] for sl in slices)
+            # Every element in the original list is present in the
+            # reconsolidated list.
+            observed = sorted(chain.from_iterable(batches))
+            self.assertSequenceEqual(expected, observed)
+            # The longest batch is never more than 1 element longer
+            # than the shortest batch.
+            lens = [len(batch) for batch in batches]
+            self.assertIn(max(lens) - min(lens), (0, 1))
+
+
+class TestGenBatches(PservTestCase):
+
+    def test_batch_of_1_no_things(self):
+        self.assertSequenceEqual(
+            [], list(tags.gen_batches([], 1)))
+
+    def test_batch_of_1_one_thing(self):
+        self.assertSequenceEqual(
+            [[1]], list(tags.gen_batches([1], 1)))
+
+    def test_batch_of_1_more_things(self):
+        self.assertSequenceEqual(
+            [[1], [2], [3]], list(tags.gen_batches([1, 2, 3], 1)))
+
+    def test_no_things(self):
+        self.assertSequenceEqual(
+            [], list(tags.gen_batches([], 4)))
+
+    def test_one_thing(self):
+        self.assertSequenceEqual(
+            [[1]], list(tags.gen_batches([1], 4)))
+
+    def test_more_things(self):
+        self.assertSequenceEqual(
+            [[0, 3, 6, 9], [1, 4, 7], [2, 5, 8]],
+            list(tags.gen_batches(range(10), 4)))
+
+    def test_brute(self):
+        expected = range(99)
+        for size in xrange(1, len(expected) // 2):
+            batches = list(tags.gen_batches(expected, size))
+            # Every element in the original list is present in the
+            # reconsolidated list.
+            observed = sorted(chain.from_iterable(batches))
+            self.assertSequenceEqual(expected, observed)
+            # The longest batch is never more than 1 element longer
+            # than the shortest batch.
+            lens = [len(batch) for batch in batches]
+            self.assertIn(max(lens) - min(lens), (0, 1))
+
+
+class TestGenNodeDetails(PservTestCase):
+
+    def fake_merge_details(self):
+        """Modify `merge_details` to return a simple textual token.
+
+        Specifically, it will return `merged:n1+n2+...`, where `n1`,
+        `n2` and `...` are the names of the details passed into
+        `merge_details`.
+
+        This means we can test code that uses `merge_details` without
+        having to come up with example XML and match on it later.
+        """
+        self.patch(
+            tags, "merge_details",
+            lambda mapping: "merged:" + "+".join(mapping))
+
+    def test(self):
+        batches = [["s1", "s2"], ["s3"]]
+        responses = [
+            {"s1": {"foo": "<node>s1</node>"},
+             "s2": {"bar": "<node>s2</node>"}},
+            {"s3": {"cob": "<node>s3</node>"}},
+        ]
+        get_details_for_nodes = self.patch(tags, "get_details_for_nodes")
+        get_details_for_nodes.side_effect = lambda *args: responses.pop(0)
+        self.fake_merge_details()
+        node_details = tags.gen_node_details(
+            sentinel.client, sentinel.uuid, batches)
+        self.assertItemsEqual(
+            [('s1', 'merged:foo'), ('s2', 'merged:bar'), ('s3', 'merged:cob')],
+            node_details)
+        self.assertSequenceEqual(
+            [call(sentinel.client, sentinel.uuid, batch) for batch in batches],
+            get_details_for_nodes.mock_calls)
+
+
+class TestClassify(PservTestCase):
+
+    def test_no_subjects(self):
+        self.assertSequenceEqual(
+            ([], []), tags.classify(sentinel.func, []))
+
+    def test_subjects(self):
+        subjects = [("one", 1), ("two", 2), ("three", 3)]
+        is_even = lambda subject: subject % 2 == 0
+        self.assertSequenceEqual(
+            (['two'], ['one', 'three']),
+            tags.classify(is_even, subjects))
 
 
 class TestTagUpdating(PservTestCase):
@@ -289,21 +432,6 @@ class TestTagUpdating(PservTestCase):
         self.assertEqual(['system-id1', 'system-id2'], result)
         url = '/api/1.0/nodegroups/%s/' % (uuid,)
         mock.assert_called_once_with(url, op='list_nodes')
-
-    def test_get_hardware_details_calls_correct_api_and_parses_result(self):
-        client, uuid = self.fake_cached_knowledge()
-        xml_data = b"<test><data /></test>"
-        content = b'[["system-id1", "%s"]]' % (xml_data,)
-        response = make_response(httplib.OK, content, 'application/json')
-        mock = MagicMock(return_value=response)
-        self.patch(client, 'post', mock)
-        result = tags.get_hardware_details_for_nodes(
-            client, uuid, ['system-id1', 'system-id2'])
-        self.assertEqual([['system-id1', xml_data]], result)
-        url = '/api/1.0/nodegroups/%s/' % (uuid,)
-        mock.assert_called_once_with(
-            url, op='node_hardware_details', as_json=True,
-            system_ids=["system-id1", "system-id2"])
 
     def test_get_details_calls_correct_api_and_parses_result(self):
         client, uuid = self.fake_cached_knowledge()
@@ -369,23 +497,18 @@ class TestTagUpdating(PservTestCase):
             definition=wrong_tag_definition,
             add=['add-system-id'], remove=['remove-1', 'remove-2'])
 
-    def test_process_batch_evaluates_xpath(self):
+    def test_classify_evaluates_xpath(self):
         # Yay, something that doesn't need patching...
         xpath = etree.XPath('//node')
-        node_details = [['a', '<node />'],
-                        ['b', '<not-node />'],
-                        ['c', '<parent><node /></parent>'],
-                       ]
+        xml = etree.fromstring
+        node_details = [
+            ('a', xml('<node />')),
+            ('b', xml('<not-node />')),
+            ('c', xml('<parent><node /></parent>')),
+        ]
         self.assertEqual(
             (['a', 'c'], ['b']),
-            tags.process_batch(xpath, node_details))
-
-    def test_process_batch_handles_invalid_hardware(self):
-        xpath = etree.XPath('//node')
-        details = [['a', ''], ['b', 'not-xml'], ['c', None]]
-        self.assertEqual(
-            ([], ['a', 'b', 'c']),
-            tags.process_batch(xpath, details))
+            tags.classify(xpath, node_details))
 
     def test_process_node_tags_no_secrets(self):
         self.patch(MAASClient, 'get')
@@ -407,9 +530,11 @@ class TestTagUpdating(PservTestCase):
         post_hw_details = FakeMethod(
             result=make_response(
                 httplib.OK,
-                (b'[["system-id1", "<node />"], '
-                 b'["system-id2", "<no-node />"]]'),
-                'application/json',
+                bson.BSON.encode({
+                    'system-id1': {'lshw': b'<node />'},
+                    'system-id2': {'lshw': b'<not-node />'},
+                }),
+                'application/bson',
             ))
         get_fake = MultiFakeMethod([get_nodes])
         post_update_fake = FakeMethod(
@@ -427,21 +552,29 @@ class TestTagUpdating(PservTestCase):
         tags.process_node_tags(tag_name, tag_definition)
         nodegroup_url = '/api/1.0/nodegroups/%s/' % (nodegroup_uuid,)
         tag_url = '/api/1.0/tags/%s/' % (tag_name,)
-        self.assertEqual([((nodegroup_url,), {'op': 'list_nodes'})],
-                         get_nodes.calls)
-        self.assertEqual([((nodegroup_url,),
-                          {'as_json': True,
-                           'op': 'node_hardware_details',
-                           'system_ids': ['system-id1', 'system-id2']})],
-                         post_hw_details.calls)
-        self.assertEqual([((tag_url,),
-                          {'as_json': True,
-                           'op': 'update_nodes',
-                           'nodegroup': nodegroup_uuid,
-                           'definition': tag_definition,
-                           'add': ['system-id1'],
-                           'remove': ['system-id2'],
-                          })], post_update_fake.calls)
+        self.assertEqual(
+            [((nodegroup_url,), {'op': 'list_nodes'})],
+            get_nodes.calls)
+        self.assertEqual(
+            [
+                ((nodegroup_url,), {
+                    'op': 'details',
+                    'system_ids': ['system-id1', 'system-id2'],
+                }),
+            ],
+            post_hw_details.calls)
+        self.assertEqual(
+            [
+                ((tag_url,), {
+                    'as_json': True,
+                    'op': 'update_nodes',
+                    'nodegroup': nodegroup_uuid,
+                    'definition': tag_definition,
+                    'add': ['system-id1'],
+                    'remove': ['system-id2'],
+                }),
+            ],
+            post_update_fake.calls)
 
     def test_process_node_tags_requests_details_in_batches(self):
         client = object()
@@ -452,11 +585,15 @@ class TestTagUpdating(PservTestCase):
         self.patch(
             tags, 'get_nodes_for_node_group',
             MagicMock(return_value=['a', 'b', 'c']))
-        fake_first = FakeMethod(
-            result=[['a', '<node />'], ['b', '<not-node />']])
-        fake_second = FakeMethod(
-            result=[['c', '<parent><node /></parent>']])
-        self.patch(tags, 'get_hardware_details_for_nodes',
+        fake_first = FakeMethod(result={
+            'a': {'lshw': b'<node />'},
+            'c': {'lshw': b'<parent><node /></parent>'},
+        })
+        fake_second = FakeMethod(result={
+            'b': {'lshw': b'<not-node />'},
+        })
+        self.patch(
+            tags, 'get_details_for_nodes',
             MultiFakeMethod([fake_first, fake_second]))
         self.patch(tags, 'post_updated_nodes')
         tag_name = factory.make_name('tag')
@@ -464,7 +601,7 @@ class TestTagUpdating(PservTestCase):
         tags.process_node_tags(tag_name, tag_definition, batch_size=2)
         tags.get_cached_knowledge.assert_called_once_with()
         tags.get_nodes_for_node_group.assert_called_once_with(client, uuid)
-        self.assertEqual([((client, uuid, ['a', 'b']), {})], fake_first.calls)
-        self.assertEqual([((client, uuid, ['c']), {})], fake_second.calls)
+        self.assertEqual([((client, uuid, ['a', 'c']), {})], fake_first.calls)
+        self.assertEqual([((client, uuid, ['b']), {})], fake_second.calls)
         tags.post_updated_nodes.assert_called_once_with(
             client, tag_name, tag_definition, uuid, ['a', 'c'], ['b'])

@@ -96,13 +96,13 @@ class TestTagAPI(APITestCase):
         node1.set_hardware_details('<node><foo/></node>')
         node2 = factory.make_node()
         node2.set_hardware_details('<node><bar/></node>')
-        tag = factory.make_tag(definition='/node/foo')
+        tag = factory.make_tag(definition='//node/foo')
         self.assertItemsEqual([tag.name], node1.tag_names())
         self.assertItemsEqual([], node2.tag_names())
         self.become_admin()
         response = self.client_put(
             self.get_tag_uri(tag),
-            {'definition': '/node/bar'})
+            {'definition': '//node/bar'})
         self.assertEqual(httplib.OK, response.status_code)
         self.assertItemsEqual([], node1.tag_names())
         self.assertItemsEqual([tag.name], node2.tag_names())
@@ -134,7 +134,7 @@ class TestTagAPI(APITestCase):
         node1.set_hardware_details('<node><foo/></node>')
         node2 = factory.make_node(status=NODE_STATUS.ALLOCATED, owner=user2)
         node2.set_hardware_details('<node><bar/></node>')
-        tag = factory.make_tag(definition='/node')
+        tag = factory.make_tag(definition='//node')
         response = self.client.get(self.get_tag_uri(tag), {'op': 'nodes'})
 
         self.assertEqual(httplib.OK, response.status_code)
@@ -309,7 +309,7 @@ class TestTagAPI(APITestCase):
         self.assertItemsEqual([], node.tags.all())
 
     def test_POST_rebuild_rebuilds_node_mapping(self):
-        tag = factory.make_tag(definition='/foo/bar')
+        tag = factory.make_tag(definition='//foo/bar')
         # Only one node matches the tag definition, rebuilding should notice
         node_matching = factory.make_node()
         node_matching.set_hardware_details('<foo><bar/></foo>')
@@ -463,7 +463,7 @@ class TestTagsAPI(APITestCase):
         self.assertItemsEqual([], node1.tag_names())
         self.assertItemsEqual([], node2.tag_names())
         name = factory.getRandomString()
-        definition = '/node/child'
+        definition = '//node/child'
         comment = factory.getRandomString()
         response = self.client.post(
             self.get_uri('tags/'),
