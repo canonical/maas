@@ -521,7 +521,10 @@ class TestCurtinUtilities(MAASServerTestCase):
         self.assertIn('cloud-init', context['curtin_preseed'])
 
     def test_get_curtin_installer_url(self):
-        series = factory.getRandomEnum(DISTRO_SERIES)
+        # Exclude DISTRO_SERIES.default. It's a special value that defers
+        # to a run-time setting which we don't provide in this test.
+        series = factory.getRandomEnum(
+            DISTRO_SERIES, but_not=DISTRO_SERIES.default)
         arch = factory.getRandomEnum(ARCHITECTURE)
         node = factory.make_node(architecture=arch, distro_series=series)
         installer_url = get_curtin_installer_url(node)
