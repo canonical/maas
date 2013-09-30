@@ -24,7 +24,12 @@ from maastesting.utils import (
     )
 from provisioningserver.pxe import tftppath
 from provisioningserver.testing.config import ConfigFixture
-from testtools.matchers import FileContains
+from testtools.content import text_content
+from testtools.matchers import (
+    DirExists,
+    FileContains,
+    Not,
+    )
 
 
 def read_file(path, name):
@@ -64,7 +69,7 @@ def compose_download_dir(archive, arch, release):
         fullpath = os.path.join(basepath, arch[1], 'netboot')
         return basepath, fullpath
     else:
-        raise NotImplementedError('Unknown architecture: %r' % arch)
+        raise NotImplementedError('Unknown architecture: %r' % (arch, ))
 
 
 def compose_download_kernel_name(arch, release):
@@ -128,10 +133,12 @@ def compose_tftp_path(tftproot, arch, release, purpose, *path):
 
 class TestImportPXEFiles(MAASTestCase):
 
+    # There are some differences between architectures, so run these tests for
+    # all supported architectures.
     scenarios = (
-        ("i386/generic", dict(arch=("i386", "generic"))),
-        ("amd64/generic", dict(arch=("amd64", "generic"))),
-        ("armhf/highbank", dict(arch=("armhf", "highbank"))),
+        ('i386/generic', {'arch': ('i386', 'generic')}),
+        ('amd64/generic', {'arch': ('amd64', 'generic')}),
+        ('armhf/highbank', {'arch': ('armhf', 'highbank')}),
         )
 
     def setUp(self):
@@ -140,6 +147,11 @@ class TestImportPXEFiles(MAASTestCase):
         self.config = {"tftp": {"root": self.tftproot}}
         self.config_fixture = ConfigFixture(self.config)
         self.useFixture(self.config_fixture)
+
+    def get_arch(self):
+        """Return an existing, supported architecture/subarchitecture pair."""
+        # Use the architecture which the current test scenario targets.
+        return self.arch
 
     def make_downloads(self, release=None, arch=None):
         """Set up a directory with an image for "download" by the script.
@@ -186,66 +198,85 @@ class TestImportPXEFiles(MAASTestCase):
             env['ARCHES'] = '/'.join(arch)
         if release is not None:
             env['RELEASES'] = release
+        errfile = self.make_file()
 
-        with open(os.devnull, 'wb') as dev_null:
-            check_call(script, env=env, stdout=dev_null)
+        try:
+            with open(os.devnull, 'wb') as out, open(errfile, 'wb') as err:
+                check_call(script, env=env, stdout=out, stderr=err)
+        finally:
+            with open(errfile, 'r') as error_output:
+                self.addDetail('stderr', text_content(error_output.read()))
 
     def test_procures_pre_boot_loader(self):
+        arch = self.get_arch()
         release = 'precise'
-        archive = self.make_downloads(arch=self.arch, release=release)
-        self.call_script(
-            archive, self.tftproot, arch=self.arch, release=release)
+        archive = self.make_downloads(arch=arch, release=release)
+        self.call_script(archive, self.tftproot, arch=arch, release=release)
         tftp_path = compose_tftp_bootloader_path(self.tftproot)
         expected_contents = read_file('/usr/lib/syslinux', 'pxelinux.0')
         self.assertThat(tftp_path, FileContains(expected_contents))
 
     def test_updates_pre_boot_loader(self):
+        arch = self.get_arch()
         release = 'precise'
         tftp_path = compose_tftp_bootloader_path(self.tftproot)
         with open(tftp_path, 'w') as existing_file:
             existing_file.write(factory.getRandomString())
-        archive = self.make_downloads(arch=self.arch, release=release)
-        self.call_script(
-            archive, self.tftproot, arch=self.arch, release=release)
+        archive = self.make_downloads(arch=arch, release=release)
+        self.call_script(archive, self.tftproot, arch=arch, release=release)
         expected_contents = read_file('/usr/lib/syslinux', 'pxelinux.0')
         self.assertThat(tftp_path, FileContains(expected_contents))
 
     def test_procures_install_image(self):
+        arch = self.get_arch()
         release = 'precise'
-        archive = self.make_downloads(arch=self.arch, release=release)
-        self.call_script(
-            archive, self.tftproot, arch=self.arch, release=release)
+        archive = self.make_downloads(arch=arch, release=release)
+        self.call_script(archive, self.tftproot, arch=arch, release=release)
         tftp_path = compose_tftp_path(
-            self.tftproot, self.arch, release, 'install', 'linux')
-        _, download_path = compose_download_dir(archive, self.arch, release)
-        expected_contents = read_file(download_path,
-            compose_download_kernel_name(self.arch, release))
+            self.tftproot, arch, release, 'install', 'linux')
+        _, download_path = compose_download_dir(archive, arch, release)
+        expected_contents = read_file(
+            download_path, compose_download_kernel_name(arch, release))
         self.assertThat(tftp_path, FileContains(expected_contents))
 
     def test_updates_install_image(self):
+        arch = self.get_arch()
         release = 'precise'
         tftp_path = compose_tftp_path(
-            self.tftproot, self.arch, release, 'install', 'linux')
+            self.tftproot, arch, release, 'install', 'linux')
         os.makedirs(os.path.dirname(tftp_path))
         with open(tftp_path, 'w') as existing_file:
             existing_file.write(factory.getRandomString())
-        archive = self.make_downloads(arch=self.arch, release=release)
-        self.call_script(
-            archive, self.tftproot, arch=self.arch, release=release)
-        _, download_path = compose_download_dir(archive, self.arch, release)
-        expected_contents = read_file(download_path,
-            compose_download_kernel_name(self.arch, release))
+        archive = self.make_downloads(arch=arch, release=release)
+        self.call_script(archive, self.tftproot, arch=arch, release=release)
+        _, download_path = compose_download_dir(archive, arch, release)
+        expected_contents = read_file(
+            download_path, compose_download_kernel_name(arch, release))
         self.assertThat(tftp_path, FileContains(expected_contents))
 
     def test_leaves_install_image_untouched_if_unchanged(self):
+        arch = self.get_arch()
         release = 'precise'
-        archive = self.make_downloads(arch=self.arch, release=release)
-        self.call_script(
-            archive, self.tftproot, arch=self.arch, release=release)
+        archive = self.make_downloads(arch=arch, release=release)
+        self.call_script(archive, self.tftproot, arch=arch, release=release)
         tftp_path = compose_tftp_path(
-            self.tftproot, self.arch, release, 'install', 'linux')
+            self.tftproot, arch, release, 'install', 'linux')
         backdate(tftp_path)
         original_timestamp = get_write_time(tftp_path)
-        self.call_script(
-            archive, self.tftproot, arch=self.arch, release=release)
+        self.call_script(archive, self.tftproot, arch=arch, release=release)
         self.assertEqual(original_timestamp, get_write_time(tftp_path))
+
+    def test_survives_failed_download(self):
+        arch = self.get_arch()
+        release = 'precise'
+        archive = self.make_downloads(arch=arch, release=release)
+        # Initrd can't be found.  This breaks the download.
+        _, download = compose_download_dir(archive, arch, release)
+        os.remove(os.path.join(download, 'initrd.gz'))
+
+        self.call_script(archive, self.tftproot, arch=arch, release=release)
+
+        # The script does not install the broken image, and does not fail.
+        installed_kernel = compose_tftp_path(
+            self.tftproot, arch, release, 'initrd.gz')
+        self.assertThat(installed_kernel, Not(DirExists()))
