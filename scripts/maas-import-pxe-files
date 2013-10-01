@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 #
 # Download static files needed for net-booting nodes through TFTP:
@@ -21,7 +21,9 @@ settings="/etc/maas/import_pxe_files"
 # Location of the GPG keyring for the Ubuntu archive.
 GPG_KEYRING="${GPG_KEYRING:-/usr/share/keyrings/ubuntu-archive-keyring.gpg}"
 
-# Whether to check GPG keys (necessary for testing of this script).
+# Whether to skip checking GPG keys (necessary for testing of this script).
+# Set this to a nonempty string to skip checking.  This is needed for test
+# programs, because they can't possibly sign with the right key.
 IGNORE_GPG="${IGNORE_GPG:-}"
 
 # Download locations for Ubuntu releases.  When the cluster controller runs
@@ -130,23 +132,32 @@ compose_installer_download_url() {
     echo "$base_url/$postfix"
 }
 
+# Fetch MD5SUMS file.  This returns false (i.e. nonzero) in the case of
+# survivable failure, so that the caller can skip this image and move on.
 fetch_server_md5sums() {
     local base_url=$1
-    local ignore
 
-    # Make $IGNORE_GPG non-empty for test programs, as they can't possibly
-    # GPG sign with the right key.
-    if [ "x$IGNORE_GPG" == "x" ]; then
-        $DOWNLOAD "$base_url/MD5SUMS" &&
-            $DOWNLOAD "$base_url/MD5SUMS.gpg" ||
-                fail "unable to download $base_url/MD5SUMS[.gpg]"
-
-        ignore=$(gpg --keyring=$GPG_KEYRING --verify MD5SUMS.gpg MD5SUMS 2>&1) ||
-            fail "failed to verify MD5SUMS via $GPG_KEYRING ($base_url/MD5SUMS)"
-    else
-        $DOWNLOAD "$base_url/MD5SUMS" ||
-            fail "unable to download $base_url/MD5SUMS"
+    if ! $DOWNLOAD "$base_url/MD5SUMS"
+    then
+        echo "Unable to download $base_url/MD5SUMS" >&2
+        return 1
     fi
+
+    if [ "x$IGNORE_GPG" == "x" ]
+    then
+        if ! $DOWNLOAD "$base_url/MD5SUMS.gpg"
+        then
+            echo "Unable to download $base_url/MD5SUMS.gpg" >&2
+            return 1
+        fi
+
+        if ! gpg --keyring=$GPG_KEYRING --verify MD5SUMS.gpg MD5SUMS >/dev/null 2>/dev/null
+        then
+            echo "Failed to verify MD5SUMS via $GPG_KEYRING ($base_url/MD5SUMS)" >&2
+            return 1
+        fi
+    fi
+    return 0
 }
 
 get_md5sum_for_file() {
@@ -224,7 +235,7 @@ update_pre_boot_loader() {
 
 
 # Download kernel/initrd for installing Ubuntu release $2 for
-# architecture $1 and install it into the TFTP directory hierarchy.
+# architecture $1, and install them into the TFTP directory hierarchy.
 update_install_files() {
     local arch=$1 release=$2
     local files file url file_prefix filename_in_md5sums_file md5sum
@@ -234,11 +245,24 @@ update_install_files() {
 
     mkdir "install"
     pushd "install" >/dev/null
-    fetch_server_md5sums $(compose_installer_base_url $arch $release)
+    if ! fetch_server_md5sums $(compose_installer_base_url $arch $release)
+    then
+        echo "Failed to download MD5 sums for $arch $release." >&2
+        popd >/dev/null
+        rm -rf "install"
+        return
+    fi
     echo "MD5SUMS GPG signature OK for $arch $release"
     for file in $files
     do
-        $DOWNLOAD $url/$file
+        if ! $DOWNLOAD $url/$file
+        then
+            # Download failed.  Log error, and skip this image.
+            echo "Failed to download $url/$file" >&2
+            popd >/dev/null
+            rm -rf "install"
+            return
+        fi
         file_prefix=$(compose_installer_download_url_postfix $arch)
         filename_in_md5sums_file=$file_prefix$file
         md5sum=$(get_md5sum_for_file $filename_in_md5sums_file)
