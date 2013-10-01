@@ -61,6 +61,8 @@ PRODUCTS_REGEX = 'com[.]ubuntu[.]maas:ephemeral:.*'
 
 DATA_DIR = "/var/lib/maas/ephemeral"
 
+# Path of the keys used for files on cloud-images.ubuntu.com.
+# The keys are in the 'ubuntu-cloudimage-keyring' package.
 DEFAULT_KEYRING = "/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg"
 
 
