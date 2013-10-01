@@ -26,9 +26,14 @@ import os.path
 import shutil
 import subprocess
 import tempfile
+import yaml
 
 import distro_info
+from provisioningserver.config import (
+    Config,
+    )
 from provisioningserver.import_images.tgt import (
+    TARGET_NAME_PREFIX,
     clean_up_info_file,
     get_conf_path,
     get_target_name,
@@ -54,8 +59,6 @@ from simplestreams import (
 RELEASES = distro_info.UbuntuDistroInfo().supported()
 # This must end in a slash, for later concatenation.
 RELEASES_URL = 'http://maas.ubuntu.com/images/ephemeral/releases/'
-
-DEFAULT_FILTERS = ['arch~(amd64|i386|armhf)']
 
 PRODUCTS_REGEX = 'com[.]ubuntu[.]maas:ephemeral:.*'
 
@@ -328,11 +331,64 @@ class MAASMirrorWriter(mirrors.ObjectStoreMirrorWriter):
             raise
 
 
+def parse_old_config():
+    def read_opt(opt):
+        try:
+            return subprocess.check_output(
+                ['bash', '-c',
+                 'source /etc/maas/import_ephemerals; echo $' + opt])
+        except subprocess.CalledProcessError:
+            return ''
+
+    # REMOTE_IMAGES_MIRROR is no longer relevant, since we are using a new data
+    # format. If people were running their own mirrors, presumably they'll set
+    # up new simplestreams mirrors which probably won't have the same path.
+    #
+    # TARBALL_CACHE_D could be where we stick our cache of the simplestreams
+    # data, although for now it is unused.
+    options = ["TARGET_NAME_PREFIX", "DATA_DIR", "RELEASES", "ARCHES",
+               "TARBALL_CACHE_D"]
+    old_config = {opt : read_opt(opt).strip() for opt in options}
+    return old_config
+
+
+def maybe_update_config(config):
+    """ Update the config if it doesn't have values from the old config. """
+    # We need to test something here to see whether or not we've actually ported the old config
+    if config["boot"]["ephemeral"]["target_name_prefix"] is None:
+        old = parse_old_config()
+        if any(v is not None and v != '' for v in old.values()):
+            eph = config["boot"]["ephemeral"]
+            eph["directory"] = old["DATA_DIR"] or DATA_DIR
+            eph["target_name_prefix"] = (
+                old["TARGET_NAME_PREFIX"] or TARGET_NAME_PREFIX)
+            eph["releases"] = old["RELEASES"].split() or RELEASES
+            eph["arches"] = old["ARCHES"].split() or ["amd64", "i386", "armhf"]
+            return True
+    return False
+
+
+def load_config():
+    current = Config.load()
+
+    changed = maybe_update_config(current)
+    if changed:
+        with open(Config.DEFAULT_FILENAME, "wb") as out:
+            out.write(yaml.safe_dump(current))
+
+    return Config.load()
+
+
 def make_arg_parser(doc):
     """Create an `argparse.ArgumentParser` for this script.
 
     :param doc: Description of the script, for help output.
     """
+    config = load_config()["boot"]["ephemeral"]
+
+    arches = "arch~(%s)" % '|'.join(config["arches"])
+    releases = "release~(%s)" % '|'.join(config["releases"])
+
     parser = ArgumentParser(description=doc)
     parser.add_argument(
         '--path', action="store", default="streams/v1/index.sjson",
@@ -341,7 +397,7 @@ def make_arg_parser(doc):
         '--url', action='store', default=RELEASES_URL,
         help="the mirror URL (either remote or file://)")
     parser.add_argument(
-        '--output', action='store', default=DATA_DIR,
+        '--output', action='store', default=config["directory"],
         help="The directory to dump maas output in")
     parser.add_argument(
         '--max', action='store', default=1,
@@ -357,7 +413,7 @@ def make_arg_parser(doc):
         help="regex matching products to import, e.g. "
              "com.ubuntu.maas.daily:ephemerals:.* for daily")
     parser.add_argument(
-        'filters', nargs='*', default=DEFAULT_FILTERS,
+        'filters', nargs='*', default=[arches, releases],
         help="filters over image metadata, e.g. arch=i386 release=precise")
     return parser
 
