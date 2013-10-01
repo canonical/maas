@@ -23,6 +23,7 @@ from os import (
     symlink,
     )
 import os.path
+import re
 import shutil
 import subprocess
 import tempfile
@@ -386,8 +387,10 @@ def make_arg_parser(doc):
     """
     config = load_config()["boot"]["ephemeral"]
 
-    arches = "arch~(%s)" % '|'.join(config["arches"])
-    releases = "release~(%s)" % '|'.join(config["releases"])
+    def make_or_list(things):
+        return '|'.join(re.escape(t) for t in things)
+    arches = "arch~(%s)" % make_or_list(config['arches'])
+    releases = "release~(%s)" % make_or_list(config['releases'])
 
     parser = ArgumentParser(description=doc)
     parser.add_argument(
@@ -428,7 +431,9 @@ def main(args):
 
     source = mirrors.UrlMirrorReader(args.url, policy=verify_signature)
     config = {'max_items': args.max}
-    target = MAASMirrorWriter(args.output, config=config, delete=args.delete)
+    target = MAASMirrorWriter(args.output, config=config, delete=args.delete,
+                              item_filters=args.filters,
+                              product_regex=args.products)
 
     set_up_data_dir(args.output)
     target.sync(source, args.path)
