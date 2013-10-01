@@ -18,6 +18,7 @@ import httplib
 import json
 import sys
 
+import bson
 from maasserver.enum import (
     ARCHITECTURE_CHOICES,
     DISTRO_SERIES,
@@ -45,10 +46,13 @@ from maasserver.testing.testcase import (
     MAASServerTestCase,
     )
 from maasserver.utils import map_enum
+from metadataserver.fields import Bin
 from metadataserver.models import (
+    commissioningscript,
     NodeKey,
     NodeUserData,
     )
+from metadataserver.models.nodecommissionresult import NodeCommissionResult
 from metadataserver.nodeinituser import get_node_init_user
 from provisioningserver.enum import (
     POWER_TYPE,
@@ -713,4 +717,53 @@ class TestNodeAPI(APITestCase):
         # if no node is found.
         response = self.client.delete(self.get_uri('nodes/no-node-here/'))
 
+        self.assertEqual(httplib.NOT_FOUND, response.status_code)
+
+
+class TestGetDetails(APITestCase):
+    """Tests for /api/1.0/nodes/<node>/?op=details."""
+
+    def make_lshw_result(self, node, data=b"<lshw-data/>", script_result=0):
+        NodeCommissionResult.objects.store_data(
+            node, commissioningscript.LSHW_OUTPUT_NAME,
+            script_result=script_result, data=Bin(data))
+
+    def make_lldp_result(self, node, data=b"<lldp-data/>", script_result=0):
+        NodeCommissionResult.objects.store_data(
+            node, commissioningscript.LLDP_OUTPUT_NAME,
+            script_result=script_result, data=Bin(data))
+
+    def get_details(self, node):
+        url = self.get_uri('nodes/%s/') % node.system_id
+        response = self.client.get(url, {'op': 'details'})
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual('application/bson', response['content-type'])
+        return bson.BSON(response.content).decode()
+
+    def test_GET_returns_empty_details_when_there_are_none(self):
+        node = factory.make_node()
+        self.assertDictEqual(
+            {"lshw": None, "lldp": None},
+            self.get_details(node))
+
+    def test_GET_returns_all_details(self):
+        node = factory.make_node()
+        self.make_lshw_result(node)
+        self.make_lldp_result(node)
+        self.assertDictEqual(
+            {"lshw": bson.Binary(b"<lshw-data/>"),
+             "lldp": bson.Binary(b"<lldp-data/>")},
+            self.get_details(node))
+
+    def test_GET_returns_only_those_details_that_exist(self):
+        node = factory.make_node()
+        self.make_lshw_result(node)
+        self.assertDictEqual(
+            {"lshw": bson.Binary(b"<lshw-data/>"),
+             "lldp": None},
+            self.get_details(node))
+
+    def test_GET_returns_not_found_when_node_does_not_exist(self):
+        url = self.get_uri('nodes/does-not-exist/')
+        response = self.client.get(url, {'op': 'details'})
         self.assertEqual(httplib.NOT_FOUND, response.status_code)

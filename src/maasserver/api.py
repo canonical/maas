@@ -435,6 +435,29 @@ class NodeHandler(OperationsHandler):
         else:
             raise ValidationError(form.errors)
 
+    @operation(idempotent=True)
+    def details(self, request, system_id):
+        """Obtain various system details.
+
+        For example, LLDP and ``lshw`` XML dumps.
+
+        Returns a ``{detail_type: xml, ...}`` map, where
+        ``detail_type`` is something like "lldp" or "lshw".
+
+        Note that this is returned as BSON and not JSON. This is for
+        efficiency, but mainly because JSON can't do binary content
+        without applying additional encoding like base-64.
+        """
+        node = get_object_or_404(Node, system_id=system_id)
+        details = {
+            name: None if data is None else bson.Binary(data)
+            for name, data in node.get_details().iteritems()
+        }
+        return HttpResponse(
+            bson.BSON.encode(details),
+            # Not sure what media type to use here.
+            content_type='application/bson')
+
 
 def create_node(request):
     """Service an http request to create a node.

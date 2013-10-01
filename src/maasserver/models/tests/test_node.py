@@ -50,6 +50,7 @@ from maastesting.testcase import MAASTestCase
 from metadataserver import commissioning
 from metadataserver.fields import Bin
 from metadataserver.models import (
+    commissioningscript,
     NodeCommissionResult,
     NodeUserData,
     )
@@ -906,6 +907,48 @@ class NodeTransitionsTests(MAASServerTestCase):
         allowed_states = set(NODE_STATUS_CHOICES_DICT.keys())
 
         self.assertTrue(set(all_destination_states) <= allowed_states)
+
+
+class TestNodeGetDetails(MAASServerTestCase):
+
+    def make_lshw_result(self, node, data=b"<lshw-data/>", script_result=0):
+        NodeCommissionResult.objects.store_data(
+            node, commissioningscript.LSHW_OUTPUT_NAME,
+            script_result=script_result, data=Bin(data))
+
+    def make_lldp_result(self, node, data=b"<lldp-data/>", script_result=0):
+        NodeCommissionResult.objects.store_data(
+            node, commissioningscript.LLDP_OUTPUT_NAME,
+            script_result=script_result, data=Bin(data))
+
+    def test_returns_null_details_when_there_are_none(self):
+        node = factory.make_node()
+        self.assertDictEqual(
+            {"lshw": None, "lldp": None},
+            node.get_details())
+
+    def test_returns_all_details(self):
+        node = factory.make_node()
+        self.make_lshw_result(node)
+        self.make_lldp_result(node)
+        self.assertDictEqual(
+            {"lshw": b"<lshw-data/>", "lldp": b"<lldp-data/>"},
+            node.get_details())
+
+    def test_returns_only_those_details_that_exist(self):
+        node = factory.make_node()
+        self.make_lshw_result(node)
+        self.assertDictEqual(
+            {"lshw": b"<lshw-data/>", "lldp": None},
+            node.get_details())
+
+    def test_returns_only_details_from_okay_commissioning_results(self):
+        node = factory.make_node()
+        self.make_lshw_result(node)
+        self.make_lldp_result(node, script_result=1)
+        self.assertDictEqual(
+            {"lshw": b"<lshw-data/>", "lldp": None},
+            node.get_details())
 
 
 class NodeManagerTest(MAASServerTestCase):

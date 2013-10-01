@@ -351,23 +351,25 @@ class NodeManager(Manager):
         return processed_nodes
 
 
-_xpath_processor_count = (
-    "count(//node[@id='core']/"
-        "node[@class='processor'][not(@disabled)])")
+_xpath_processor_count = """\
+    count(//node[@id='core']/
+        node[@class='processor'][not(@disabled)])
+"""
 
 # Some machines have a <size> element in their memory <node> with the total
 # amount of memory, and other machines declare the size of the memory in
 # individual memory banks. This expression is mean to cope with both.
+_xpath_memory_bytes = """\
+    sum(//node[@id='memory']/size[@units='bytes'] |
+        //node[starts-with(@id, 'memory:')]
+            /node[starts-with(@id, 'bank:')]/size[@units='bytes'])
+    div 1024 div 1024
+"""
 
-_xpath_memory_bytes = (
-    "sum(//node[@id='memory']/size[@units='bytes']"
-        "|//node[starts-with(@id, 'memory:')]"
-            "/node[starts-with(@id, 'bank:')]/size[@units='bytes'])"
-       "div 1024 div 1024")
-
-_xpath_storage_bytes = (
-    "sum(//node[starts-with(@id, 'volume:')]/size[@units='bytes'])"
-       "div 1024 div 1024")
+_xpath_storage_bytes = """\
+    sum(//node[starts-with(@id, 'volume:')]/size[@units='bytes'])
+    div 1024 div 1024
+"""
 
 
 def update_hardware_details(node, xmlbytes, tag_manager):
@@ -917,3 +919,28 @@ class Node(CleanSave, TimestampedModel):
                 self, LLDP_OUTPUT_NAME)
         except Http404:
             return None
+
+    def get_details(self):
+        """Return details of the node.
+
+        Currently this consists of the node's ``lshw`` XML dump and an
+        LLDP XML capture done during commissioning, but may be
+        extended in the future.
+
+        :return: A `dict` with the keys ``lshw`` and ``lldp``.
+        """
+        from metadataserver.models import NodeCommissionResult
+        from metadataserver.models import commissioningscript
+        result_name_ns = {
+            commissioningscript.LLDP_OUTPUT_NAME: "lldp",
+            commissioningscript.LSHW_OUTPUT_NAME: "lshw",
+        }
+        results = NodeCommissionResult.objects.filter(
+            node__system_id=self.system_id,
+            name__in=result_name_ns,
+            script_result=0)
+        results = {result.name: result.data for result in results}
+        return {
+            namespace: results.get(output_name)
+            for output_name, namespace in result_name_ns.iteritems()
+        }

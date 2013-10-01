@@ -218,6 +218,7 @@ class TestDescribingAPI(MAASServerTestCase):
         expected_actions = {
             "DELETE delete op=None restful=True",
             "GET read op=None restful=True",
+            "GET details op=details restful=False",
             "POST start op=start restful=False",
             "POST stop op=stop restful=False",
             "POST release op=release restful=False",
