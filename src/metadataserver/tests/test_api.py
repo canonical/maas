@@ -638,19 +638,6 @@ class TestCommissioningAPI(DjangoTestCase):
             node, 'output.txt')
         self.assertEqual(size_limit, len(stored_data))
 
-    def test_signal_stores_lshw_file_on_node(self):
-        node = factory.make_node(status=NODE_STATUS.COMMISSIONING, memory=512)
-        client = make_node_client(node=node)
-        xmlbytes = "<t\xe9st/>".encode("utf-8")
-        script_result = random.randint(0, 10)
-        response = call_signal(
-            client, script_result=script_result,
-            files={'00-maas-01-lshw.out': xmlbytes})
-        self.assertEqual(httplib.OK, response.status_code)
-        node = reload_object(node)
-        self.assertEqual(xmlbytes, node.hardware_details)
-        self.assertEqual(0, node.memory)
-
     def test_signal_stores_virtual_tag_on_node_if_virtual(self):
         node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node=node)

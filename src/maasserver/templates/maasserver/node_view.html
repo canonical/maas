@@ -179,7 +179,7 @@
     </li>
     {% endif %}
 
-    {% if node.routers or lldp_output %}
+    {% if node.routers or probed_details.lldp %}
       <li class="block first separate">
         <h2>Network discovery</h2>
       </li>
@@ -192,14 +192,14 @@
         </span>
       </li>
     {% endif %}
-    {% if lldp_output %}
+    {% if probed_details.lldp %}
       <li class="block separate first pad-top-small">
         {# Button link for the Reveal widget that shows/hides LLDP output. #}
         <a href="#" id="lldp-trigger"></a>
         {# Content div for the LLDP output. #}
         <div id="lldp-output">
           {# The Reveal widget needs a content tag inside the content div. #}
-          <pre>{{ lldp_output }}</pre>
+          <pre>{{ probed_details.lldp }}</pre>
         </div>
       </li>
     {% endif %}

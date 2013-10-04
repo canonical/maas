@@ -37,7 +37,6 @@ from maasserver.models import (
 from maasserver.models.node import (
     generate_hostname,
     NODE_TRANSITIONS,
-    update_hardware_details,
     )
 from maasserver.models.user import create_auth_token
 from maasserver.testing import reload_object
@@ -54,7 +53,7 @@ from metadataserver.models import (
     NodeCommissionResult,
     NodeUserData,
     )
-from metadataserver.models.commissioningscript import LLDP_OUTPUT_NAME
+from metadataserver.models.commissioningscript import update_hardware_details
 from provisioningserver.enum import POWER_TYPE
 from provisioningserver.power.poweraction import PowerAction
 from testtools.matchers import (
@@ -629,18 +628,6 @@ class NodeTest(MAASServerTestCase):
         node.nodegroup = None
         self.assertRaises(ValidationError, node.save)
 
-    def test_set_hardware_details(self):
-        xmlbytes = "<test/>"
-        node = factory.make_node(owner=factory.make_user())
-        update_hardware_details(node, xmlbytes)
-        self.assertEqual(xmlbytes, node.hardware_details)
-
-    def test_set_invalid_hardware_details(self):
-        node = factory.make_node(owner=factory.make_user())
-        update_hardware_details(node, '<test />')
-        self.assertRaises(ValidationError, update_hardware_details, node, '')
-        self.assertEqual('<test />', node.hardware_details)
-
     def test_hardware_updates_cpu_count(self):
         node = factory.make_node()
         xmlbytes = (
@@ -840,28 +827,6 @@ class NodeTest(MAASServerTestCase):
         self.assertIn(
             "The use-fastpath-installer tag is defined with an expression",
             unicode(error))
-
-    def test_get_lldp_output_returns_None_if_none_set(self):
-        self.assertIsNone(factory.make_node().get_lldp_output())
-
-    def test_get_lldp_output_returns_stored_lldp_output(self):
-        lldp_output = factory.getRandomBytes()
-        node = factory.make_node()
-        factory.make_node_commission_result(
-            node=node, name=LLDP_OUTPUT_NAME, script_result=0,
-            data=lldp_output)
-        self.assertEqual(lldp_output, node.get_lldp_output())
-
-    def test_get_lldp_output_returns_output_even_if_empty(self):
-        node = factory.make_node()
-        factory.make_node_commission_result(
-            node=node, name=LLDP_OUTPUT_NAME, script_result=0, data=b'')
-        self.assertEqual('', node.get_lldp_output())
-
-    def test_get_lldp_output_ignores_other_nodes(self):
-        factory.make_node_commission_result(
-            name=LLDP_OUTPUT_NAME, script_result=0)
-        self.assertIsNone(factory.make_node().get_lldp_output())
 
 
 class NodeRoutersTest(MAASServerTestCase):

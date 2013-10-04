@@ -13,7 +13,6 @@ __metaclass__ = type
 __all__ = [
     "NODE_TRANSITIONS",
     "Node",
-    "update_hardware_details",
     ]
 
 from itertools import (
@@ -21,7 +20,6 @@ from itertools import (
     islice,
     repeat,
     )
-import math
 import random
 from string import whitespace
 from uuid import uuid1
@@ -40,10 +38,8 @@ from django.db.models import (
     ManyToManyField,
     Q,
     )
-from django.http import Http404
 from django.shortcuts import get_object_or_404
 import djorm_pgarray.fields
-from lxml import etree
 from maasserver import DefaultMeta
 from maasserver.enum import (
     ARCHITECTURE,
@@ -61,7 +57,6 @@ from maasserver.exceptions import NodeStateViolation
 from maasserver.fields import (
     JSONObjectField,
     MAC,
-    XMLField,
     )
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.config import Config
@@ -351,63 +346,6 @@ class NodeManager(Manager):
         return processed_nodes
 
 
-_xpath_processor_count = """\
-    count(//node[@id='core']/
-        node[@class='processor'][not(@disabled)])
-"""
-
-# Some machines have a <size> element in their memory <node> with the total
-# amount of memory, and other machines declare the size of the memory in
-# individual memory banks. This expression is mean to cope with both.
-_xpath_memory_bytes = """\
-    sum(//node[@id='memory']/size[@units='bytes'] |
-        //node[starts-with(@id, 'memory:')]
-            /node[starts-with(@id, 'bank:')]/size[@units='bytes'])
-    div 1024 div 1024
-"""
-
-_xpath_storage_bytes = """\
-    sum(//node[starts-with(@id, 'volume:')]/size[@units='bytes'])
-    div 1024 div 1024
-"""
-
-
-def update_hardware_details(node, xmlbytes):
-    """Set node hardware_details from lshw output and update related fields
-
-    This is a helper function just so it can be used in the south migration
-    to do the correct updates to mem and cpu_count when hardware_details is
-    first set.
-    """
-    try:
-        doc = etree.XML(xmlbytes)
-    except etree.XMLSyntaxError as e:
-        raise ValidationError(
-            {'hardware_details': ['Invalid XML: %s' % (e,)]})
-    node.hardware_details = xmlbytes
-    # Same document, many queries: use XPathEvaluator.
-    evaluator = etree.XPathEvaluator(doc)
-    cpu_count = evaluator(_xpath_processor_count)
-    memory = evaluator(_xpath_memory_bytes)
-    if not memory or math.isnan(memory):
-        memory = 0
-    storage = evaluator(_xpath_storage_bytes)
-    if not storage or math.isnan(storage):
-        storage = 0
-    node.cpu_count = cpu_count or 0
-    node.memory = memory
-    node.storage = storage
-    for tag in Tag.objects.all():
-        if not tag.definition:
-            continue
-        has_tag = evaluator(tag.definition)
-        if has_tag:
-            node.tags.add(tag)
-        else:
-            node.tags.remove(tag)
-    node.save()
-
-
 # Non-ambiguous characters (i.e. without 'ilousvz1250').
 non_ambiguous_characters = imap(
     random.choice, repeat('abcdefghjkmnpqrtwxy346789'))
@@ -496,12 +434,10 @@ class Node(CleanSave, TimestampedModel):
     routers = djorm_pgarray.fields.ArrayField(dbtype="macaddr")
 
     # Juju expects the following standard constraints, which are stored here
-    # as a basic optimisation over querying the hardware_details field.
+    # as a basic optimisation over querying the lshw output.
     cpu_count = IntegerField(default=0)
     memory = IntegerField(default=0)
     storage = IntegerField(default=0)
-
-    hardware_details = XMLField(default=None, blank=True, null=True)
 
     # For strings, Django insists on abusing the empty string ("blank")
     # to mean "none."
@@ -905,13 +841,3 @@ class Node(CleanSave, TimestampedModel):
                 "expression. This expression must be updated to make this "
                 "node boot with the Fast Path Installer.")
         self.tags.add(uti_tag)
-
-    def get_lldp_output(self):
-        """Return LLDP output gathered during commissioning, or None."""
-        from metadataserver.models import NodeCommissionResult
-        from metadataserver.models.commissioningscript import LLDP_OUTPUT_NAME
-        try:
-            return NodeCommissionResult.objects.get_data(
-                self, LLDP_OUTPUT_NAME)
-        except Http404:
-            return None

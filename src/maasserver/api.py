@@ -1452,40 +1452,6 @@ class NodeGroupHandler(OperationsHandler):
         nodes = Node.objects.filter(nodegroup=nodegroup).only('system_id')
         return [node.system_id for node in nodes]
 
-    # node_hardware_details is actually idempotent, however:
-    # a) We expect to get a list of system_ids which is quite long (~100 ids,
-    #    each 40 bytes, is 4000 bytes), which is a bit too long for a URL.
-    # b) MAASClient.get() just uses urlencode(params) but urlencode ends up
-    #    just calling str(lst) and encoding that, which transforms te list of
-    #    ids into something unusable. .post() does the right thing.
-    @operation(idempotent=False)
-    def node_hardware_details(self, request, uuid):
-        """Obtain hardware details for each node specified.
-
-        Returns a ``[[system_id, lshw_xml], ...]`` list.
-
-        For security purposes we do:
-
-        a) Requests are only fulfilled for the worker assigned to the
-           nodegroup.
-        b) Requests for nodes that are not part of the nodegroup are just
-           ignored.
-
-        This API may be removed in the future when hardware details are moved
-        to be stored in the cluster controllers (nodegroup) instead of the
-        master controller.
-        """
-        nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
-        if not request.user.is_superuser:
-            check_nodegroup_access(request, nodegroup)
-        system_ids = get_list_from_dict_or_multidict(
-            request.data, 'system_ids', [])
-        value_list = Node.objects.filter(
-            system_id__in=system_ids, nodegroup=nodegroup
-            ).values_list('system_id', 'hardware_details')
-        return HttpResponse(
-            json.dumps(list(value_list)), content_type='application/json')
-
     # details is actually idempotent, however:
     # a) We expect to get a list of system_ids which is quite long (~100 ids,
     #    each 40 bytes, is 4000 bytes), which is a bit too long for a URL.

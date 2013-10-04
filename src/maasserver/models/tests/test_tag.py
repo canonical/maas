@@ -13,11 +13,13 @@ __metaclass__ = type
 __all__ = []
 
 from django.core.exceptions import ValidationError
-from maasserver.models.node import update_hardware_details
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from metadataserver.fields import Bin
-from metadataserver.models.commissioningscript import LSHW_OUTPUT_NAME
+from metadataserver.models.commissioningscript import (
+    LSHW_OUTPUT_NAME,
+    update_hardware_details,
+    )
 from metadataserver.models.nodecommissionresult import NodeCommissionResult
 
 

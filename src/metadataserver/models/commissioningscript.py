@@ -23,6 +23,7 @@ from inspect import getsource
 from io import BytesIO
 from itertools import chain
 import json
+import math
 import os.path
 import tarfile
 from textwrap import dedent
@@ -35,7 +36,6 @@ from django.db.models import (
     )
 from lxml import etree
 from maasserver.fields import MAC
-from maasserver.models.node import update_hardware_details
 from maasserver.models.tag import Tag
 from metadataserver import DefaultMeta
 from metadataserver.fields import BinaryField
@@ -100,6 +100,63 @@ LSHW_SCRIPT = dedent("""\
     #!/bin/sh
     lshw -xml
     """)
+
+
+_xpath_processor_count = """\
+    count(//node[@id='core']/
+        node[@class='processor'][not(@disabled)])
+"""
+
+# Some machines have a <size> element in their memory <node> with the total
+# amount of memory, and other machines declare the size of the memory in
+# individual memory banks. This expression is mean to cope with both.
+_xpath_memory_bytes = """\
+    sum(//node[@id='memory']/size[@units='bytes'] |
+        //node[starts-with(@id, 'memory:')]
+            /node[starts-with(@id, 'bank:')]/size[@units='bytes'])
+    div 1024 div 1024
+"""
+
+_xpath_storage_bytes = """\
+    sum(//node[starts-with(@id, 'volume:')]/size[@units='bytes'])
+    div 1024 div 1024
+"""
+
+
+def update_hardware_details(node, xmlbytes, tag_manager=Tag.objects):
+    """Process the results of `LSHW_SCRIPT`.
+
+    Updates `node.cpu_count`, `node.memory`, and `node.storage`
+    fields, and also evaluates all tag expressions against the given
+    ``lshw`` XML.
+    """
+    try:
+        doc = etree.XML(xmlbytes)
+    except etree.XMLSyntaxError:
+        # TODO: log this
+        pass
+    else:
+        # Same document, many queries: use XPathEvaluator.
+        evaluator = etree.XPathEvaluator(doc)
+        cpu_count = evaluator(_xpath_processor_count)
+        memory = evaluator(_xpath_memory_bytes)
+        if not memory or math.isnan(memory):
+            memory = 0
+        storage = evaluator(_xpath_storage_bytes)
+        if not storage or math.isnan(storage):
+            storage = 0
+        node.cpu_count = cpu_count or 0
+        node.memory = memory
+        node.storage = storage
+        for tag in tag_manager.all():
+            if not tag.definition:
+                continue
+            has_tag = evaluator(tag.definition)
+            if has_tag:
+                node.tags.add(tag)
+            else:
+                node.tags.remove(tag)
+        node.save()
 
 
 # Built-in script to detect virtual instances. It will only detect QEMU

@@ -64,6 +64,7 @@ from maasserver.models import (
     Node,
     Tag,
     )
+from maasserver.models.nodeprobeddetails import get_single_probed_details
 from maasserver.node_action import ACTIONS_DICT
 from maasserver.node_constraint_filter_forms import (
     AcquireNodeForm,
@@ -400,10 +401,11 @@ class NodeView(NodeViewMixin, UpdateView):
             'tag': kernel_opts[0],
             'value': kernel_opts[1]
             }
-        lldp_output = node.get_lldp_output()
-        if lldp_output is not None:
-            lldp_output = lldp_output.decode("utf-8", "replace")
-        context['lldp_output'] = lldp_output
+        probed_details = get_single_probed_details(node.system_id)
+        context["probed_details"] = {
+            ns: None if data is None else data.decode("utf-8", "replace")
+            for ns, data in probed_details.iteritems()
+        }
         return context
 
     def dispatch(self, *args, **kwargs):

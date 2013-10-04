@@ -17,10 +17,7 @@ import json
 
 from maasserver.enum import NODE_STATUS
 from maasserver.models import Tag
-from maasserver.models.node import (
-    generate_node_system_id,
-    update_hardware_details,
-    )
+from maasserver.models.node import generate_node_system_id
 from maasserver.testing import reload_object
 from maasserver.testing.api import (
     APITestCase,
@@ -29,7 +26,10 @@ from maasserver.testing.api import (
 from maasserver.testing.factory import factory
 from maasserver.testing.oauthclient import OAuthAuthenticatedClient
 from metadataserver.fields import Bin
-from metadataserver.models.commissioningscript import LSHW_OUTPUT_NAME
+from metadataserver.models.commissioningscript import (
+    LSHW_OUTPUT_NAME,
+    update_hardware_details,
+    )
 from metadataserver.models.nodecommissionresult import NodeCommissionResult
 
 

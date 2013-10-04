@@ -26,7 +26,6 @@ from django.conf import settings
 from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
-from metadataserver import logger
 from maasserver.api import store_node_power_parameters
 from maasserver.api_support import (
     operation,
@@ -58,6 +57,7 @@ from maasserver.preseed import (
     )
 from maasserver.utils import find_nodegroup
 from maasserver.utils.orm import get_one
+from metadataserver import logger
 from metadataserver.enum import COMMISSIONING_STATUS
 from metadataserver.fields import Bin
 from metadataserver.models import (
