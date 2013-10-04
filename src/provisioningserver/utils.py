@@ -36,8 +36,8 @@ import os
 from os import fdopen
 from os.path import isdir
 from pipes import quote
-import signal
 from shutil import rmtree
+import signal
 from subprocess import (
     CalledProcessError,
     PIPE,
@@ -127,6 +127,16 @@ def _write_temp_file(content, filename):
     else:
         with os.fdopen(temp_fd, "wb") as f:
             f.write(content)
+            # Finish writing this file to the filesystem, and then, tell the
+            # filesystem to push it down onto persistent storage.  This
+            # prevents a nasty hazard in aggressively optimized filesystems
+            # where you replace an old but consistent file with a new one that
+            # is still in cache, and lose power before the new file can be made
+            # fully persistent.
+            # This was a particular problem with ext4 at one point; it may
+            # still be.
+            f.flush()
+            os.fsync(f)
         return temp_file
 
 
