@@ -688,14 +688,6 @@ nullable_fields = [
 
 class TestNodeGroupInterfaceForm(TestCase):
 
-    def test_NodeGroupInterfaceForm_save_sets_nodegroup(self):
-        nodegroup = factory.make_node_group(
-            management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
-        form = NodeGroupInterfaceForm(data=make_interface_settings())
-        self.assertTrue(form.is_valid(), form._errors)
-        interface = form.save(nodegroup=nodegroup)
-        self.assertEqual(nodegroup, interface.nodegroup)
-
     def test_NodeGroupInterfaceForm_validates_parameters(self):
         form = NodeGroupInterfaceForm(data={'ip': factory.getRandomString()})
         self.assertFalse(form.is_valid())
@@ -707,9 +699,10 @@ class TestNodeGroupInterfaceForm(TestCase):
         settings['management'] = NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED
         for field_name in nullable_fields:
             del settings[field_name]
-        form = NodeGroupInterfaceForm(data=settings)
         nodegroup = factory.make_node_group()
-        interface = form.save(nodegroup=nodegroup)
+        form = NodeGroupInterfaceForm(
+            data=settings, instance=NodeGroupInterface(nodegroup=nodegroup))
+        interface = form.save()
         field_values = [
             getattr(interface, field_name) for field_name in nullable_fields]
         self.assertThat(field_values, AllMatch(Equals('')))

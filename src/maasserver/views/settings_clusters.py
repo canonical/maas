@@ -126,12 +126,18 @@ class ClusterInterfaceCreate(CreateView):
     form_class = NodeGroupInterfaceForm
     context_object_name = 'interface'
 
+    def get_form_kwargs(self):
+        kwargs = super(ClusterInterfaceCreate, self).get_form_kwargs()
+        assert kwargs.get('instance', None) is None
+        kwargs['instance'] = NodeGroupInterface(nodegroup=self.get_nodegroup())
+        return kwargs
+
     def get_success_url(self):
         uuid = self.kwargs.get('uuid', None)
         return reverse('cluster-edit', args=[uuid])
 
     def form_valid(self, form):
-        self.object = form.save(nodegroup=self.get_nodegroup())
+        self.object = form.save()
         messages.info(self.request, "Interface created.")
         return super(ClusterInterfaceCreate, self).form_valid(form)
 
