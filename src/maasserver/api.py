@@ -190,6 +190,10 @@ from maasserver.models import (
     SSHKey,
     Tag,
     )
+from maasserver.models.nodeprobeddetails import (
+    get_probed_details,
+    get_single_probed_details,
+    )
 from maasserver.node_action import Commission
 from maasserver.node_constraint_filter_forms import AcquireNodeForm
 from maasserver.preseed import (
@@ -211,7 +215,6 @@ from maasserver.utils.orm import (
     )
 from metadataserver.fields import Bin
 from metadataserver.models import (
-    commissioningscript,
     CommissioningScript,
     NodeCommissionResult,
     )
@@ -449,12 +452,13 @@ class NodeHandler(OperationsHandler):
         without applying additional encoding like base-64.
         """
         node = get_object_or_404(Node, system_id=system_id)
-        details = {
+        probe_details = get_single_probed_details(node.system_id)
+        probe_details_report = {
             name: None if data is None else bson.Binary(data)
-            for name, data in node.get_details().iteritems()
+            for name, data in probe_details.iteritems()
         }
         return HttpResponse(
-            bson.BSON.encode(details),
+            bson.BSON.encode(probe_details_report),
             # Not sure what media type to use here.
             content_type='application/bson')
 
@@ -1514,40 +1518,20 @@ class NodeGroupHandler(OperationsHandler):
             check_nodegroup_access(request, nodegroup)
         system_ids = get_list_from_dict_or_multidict(
             request.data, 'system_ids', [])
-
-        p_interesting = lambda data: data is not None and len(data) > 0
-
-        lshw_details = Node.objects.filter(
+        # Filter out system IDs that are not in this nodegroup.
+        system_ids = Node.objects.filter(
             system_id__in=system_ids, nodegroup=nodegroup)
-        lshw_details = {
-            system_id: xml for system_id, xml in
-            lshw_details.values_list('system_id', 'hardware_details')
-            if p_interesting(xml)
+        # Unwrap the values_list.
+        system_ids = {
+            system_id for (system_id,) in
+            system_ids.values_list('system_id')
         }
-
-        lldp_details = NodeCommissionResult.objects.filter(
-            node__system_id__in=system_ids, node__nodegroup=nodegroup,
-            name=commissioningscript.LLDP_OUTPUT_NAME, script_result=0)
-        lldp_details = {
-            system_id: b64decode(data) for system_id, data in
-            lldp_details.values_list('node__system_id', 'data')
-            if p_interesting(data)
-        }
-
-        system_ids_with_details = set().union(lshw_details, lldp_details)
-
-        def as_binary(value, binary=bson.binary.Binary):
-            # Attempt to coerce value into a BSON binary wrapper.
-            return None if value is None else binary(value)
-
-        details = {
-            system_id: {
-                "lshw": as_binary(lshw_details.get(system_id)),
-                "lldp": as_binary(lldp_details.get(system_id)),
-            }
-            for system_id in system_ids_with_details
-        }
-
+        # Obtain details and prepare for BSON encoding.
+        details = get_probed_details(system_ids)
+        for detail in details.itervalues():
+            for name, value in detail.iteritems():
+                if value is not None:
+                    detail[name] = bson.Binary(value)
         return HttpResponse(
             bson.BSON.encode(details),
             # Not sure what media type to use here.

@@ -13,8 +13,28 @@ __metaclass__ = type
 __all__ = []
 
 from django.core.exceptions import ValidationError
+from maasserver.models.node import update_hardware_details
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from metadataserver.fields import Bin
+from metadataserver.models.commissioningscript import LSHW_OUTPUT_NAME
+from metadataserver.models.nodecommissionresult import NodeCommissionResult
+
+
+def set_hardware_details(node, xmlbytes):
+    # FIXME: Gavin Panella, bug=1235174, 2013-10-04
+    #
+    # This is a temporary shim to allow removal of
+    # Node.set_hardware_details(), and thus the use of the
+    # Node.hardware_details field.
+    #
+    # It is being replaced by storing the results only in
+    # NodeCommissionResult, and reprocessing tags using all
+    # relevant probed details.
+    assert isinstance(xmlbytes, bytes)
+    NodeCommissionResult.objects.store_data(
+        node, LSHW_OUTPUT_NAME, script_result=0, data=Bin(xmlbytes))
+    update_hardware_details(node, xmlbytes)
 
 
 class TagTest(MAASServerTestCase):
@@ -62,18 +82,18 @@ class TagTest(MAASServerTestCase):
 
     def test_applies_tags_to_nodes(self):
         node1 = factory.make_node()
-        node1.set_hardware_details('<node><child /></node>')
+        set_hardware_details(node1, b'<node><child /></node>')
         node2 = factory.make_node()
-        node2.set_hardware_details('<node />')
+        set_hardware_details(node2, b'<node />')
         tag = factory.make_tag(definition='//node/child')
         self.assertItemsEqual([tag.name], node1.tag_names())
         self.assertItemsEqual([], node2.tag_names())
 
     def test_removes_old_values(self):
         node1 = factory.make_node()
-        node1.set_hardware_details('<node><foo /></node>')
+        set_hardware_details(node1, b'<node><foo /></node>')
         node2 = factory.make_node()
-        node2.set_hardware_details('<node><bar /></node>')
+        set_hardware_details(node2, b'<node><bar /></node>')
         tag = factory.make_tag(definition='//node/foo')
         self.assertItemsEqual([tag.name], node1.tag_names())
         self.assertItemsEqual([], node2.tag_names())
@@ -89,9 +109,9 @@ class TagTest(MAASServerTestCase):
 
     def test_doesnt_touch_other_tags(self):
         node1 = factory.make_node()
-        node1.set_hardware_details('<node><foo /></node>')
+        set_hardware_details(node1, b'<node><foo /></node>')
         node2 = factory.make_node()
-        node2.set_hardware_details('<node><bar /></node>')
+        set_hardware_details(node2, b'<node><bar /></node>')
         tag1 = factory.make_tag(definition='//node/foo')
         self.assertItemsEqual([tag1.name], node1.tag_names())
         self.assertItemsEqual([], node2.tag_names())
@@ -101,7 +121,7 @@ class TagTest(MAASServerTestCase):
 
     def test_rollsback_invalid_xpath(self):
         node = factory.make_node()
-        node.set_hardware_details('<node><foo /></node>')
+        set_hardware_details(node, b'<node><foo /></node>')
         tag = factory.make_tag(definition='//node/foo')
         self.assertItemsEqual([tag.name], node.tag_names())
         tag.definition = 'invalid::tag'

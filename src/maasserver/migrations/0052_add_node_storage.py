@@ -1,11 +1,74 @@
 # -*- coding: utf-8 -*-
 import datetime
+import math
 
+from django.core.exceptions import ValidationError
 from django.db import models
+from lxml import etree
 from south.db import db
 from south.v2 import SchemaMigration
 
-from maasserver.models.node import update_hardware_details
+
+_xpath_processor_count = """\
+    count(//node[@id='core']/
+        node[@class='processor'][not(@disabled)])
+"""
+
+# Some machines have a <size> element in their memory <node> with the total
+# amount of memory, and other machines declare the size of the memory in
+# individual memory banks. This expression is meant to cope with both.
+_xpath_memory_bytes = """\
+    sum(//node[@id='memory']/size[@units='bytes'] |
+        //node[starts-with(@id, 'memory:')]
+            /node[starts-with(@id, 'bank:')]/size[@units='bytes'])
+    div 1024 div 1024
+"""
+
+_xpath_storage_bytes = """\
+    sum(//node[starts-with(@id, 'volume:')]/size[@units='bytes'])
+    div 1024 div 1024
+"""
+
+
+def update_hardware_details(node, xmlbytes, tag_manager):
+    """Set node hardware_details from lshw output and update related fields
+
+    This is a helper function just so it can be used in the south migration
+    to do the correct updates to mem and cpu_count when hardware_details is
+    first set.
+
+    Note: this previously resided in `maasserver.models.node`, but has
+    been moved to this migration before being modified in its original
+    location.
+    """
+    try:
+        doc = etree.XML(xmlbytes)
+    except etree.XMLSyntaxError as e:
+        raise ValidationError(
+            {'hardware_details': ['Invalid XML: %s' % (e,)]})
+    node.hardware_details = xmlbytes
+    # Same document, many queries: use XPathEvaluator.
+    evaluator = etree.XPathEvaluator(doc)
+    cpu_count = evaluator(_xpath_processor_count)
+    memory = evaluator(_xpath_memory_bytes)
+    if not memory or math.isnan(memory):
+        memory = 0
+    storage = evaluator(_xpath_storage_bytes)
+    if not storage or math.isnan(storage):
+        storage = 0
+    node.cpu_count = cpu_count or 0
+    node.memory = memory
+    node.storage = storage
+    for tag in tag_manager.all():
+        if not tag.definition:
+            continue
+        has_tag = evaluator(tag.definition)
+        if has_tag:
+            node.tags.add(tag)
+        else:
+            node.tags.remove(tag)
+    node.save()
+
 
 class Migration(SchemaMigration):
 

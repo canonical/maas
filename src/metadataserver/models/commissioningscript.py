@@ -35,6 +35,7 @@ from django.db.models import (
     )
 from lxml import etree
 from maasserver.fields import MAC
+from maasserver.models.node import update_hardware_details
 from maasserver.models.tag import Tag
 from metadataserver import DefaultMeta
 from metadataserver.fields import BinaryField
@@ -99,11 +100,6 @@ LSHW_SCRIPT = dedent("""\
     #!/bin/sh
     lshw -xml
     """)
-
-
-def set_hardware_details(node, raw_content):
-    """Process the results of LSHW_SCRIPT."""
-    node.set_hardware_details(raw_content)
 
 
 # Built-in script to detect virtual instances. It will only detect QEMU
@@ -253,7 +249,7 @@ def null_hook(node, raw_content):
 BUILTIN_COMMISSIONING_SCRIPTS = {
     LSHW_OUTPUT_NAME: {
         'content': LSHW_SCRIPT.encode('ascii'),
-        'hook': set_hardware_details,
+        'hook': update_hardware_details,
     },
     '00-maas-02-virtuality.out': {
         'content': VIRTUALITY_SCRIPT.encode('ascii'),

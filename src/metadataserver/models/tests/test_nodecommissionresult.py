@@ -84,12 +84,13 @@ class TestNodeCommissionResultManager(DjangoTestCase):
         name = factory.getRandomString(255)
         data = factory.getRandomBytes(1024 * 1024)
         script_result = randint(0, 10)
-        NodeCommissionResult.objects.store_data(
+        result = NodeCommissionResult.objects.store_data(
             node, name=name, script_result=script_result, data=Bin(data))
+        result_in_db = NodeCommissionResult.objects.get(node=node)
 
-        self.assertAttributes(
-            get_one(NodeCommissionResult.objects.filter(node=node)),
-            dict(name=name, data=data))
+        self.assertAttributes(result_in_db, dict(name=name, data=data))
+        # store_data() returns the model object.
+        self.assertEqual(result, result_in_db)
 
     def test_store_data_updates_existing(self):
         node = factory.make_node()
@@ -101,7 +102,7 @@ class TestNodeCommissionResultManager(DjangoTestCase):
             node, name=name, script_result=script_result, data=Bin(data))
 
         self.assertAttributes(
-            get_one(NodeCommissionResult.objects.filter(node=node)),
+            NodeCommissionResult.objects.get(node=node),
             dict(name=name, data=data))
 
     def test_get_data(self):

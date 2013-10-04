@@ -33,6 +33,7 @@ from maasserver.models import (
     NodeGroup,
     nodegroup as nodegroup_module,
     )
+from maasserver.models.node import update_hardware_details
 from maasserver.refresh_worker import refresh_worker
 from maasserver.testing import (
     reload_object,
@@ -562,7 +563,7 @@ class TestNodeGroupAPIAuth(APIv10TestMixin, MAASServerTestCase):
         nodegroup = factory.make_node_group()
         hardware_details = '<node/>'
         node = factory.make_node(nodegroup=nodegroup)
-        node.set_hardware_details(hardware_details)
+        update_hardware_details(node, hardware_details)
         client = make_worker_client(nodegroup)
         response = client.post(
             reverse('nodegroup_handler', args=[nodegroup.uuid]),
@@ -575,7 +576,7 @@ class TestNodeGroupAPIAuth(APIv10TestMixin, MAASServerTestCase):
         nodegroup = factory.make_node_group()
         hardware_details = '<node/>'
         node = factory.make_node(nodegroup=nodegroup)
-        node.set_hardware_details(hardware_details)
+        update_hardware_details(node, hardware_details)
         user = factory.make_user()
         user.is_superuser = True
         user.save()
@@ -592,9 +593,9 @@ class TestNodeGroupAPIAuth(APIv10TestMixin, MAASServerTestCase):
         nodegroup_mine = factory.make_node_group()
         nodegroup_theirs = factory.make_node_group()
         node_mine = factory.make_node(nodegroup=nodegroup_mine)
-        node_mine.set_hardware_details(hardware_details)
+        update_hardware_details(node_mine, hardware_details)
         node_theirs = factory.make_node(nodegroup=nodegroup_theirs)
-        node_theirs.set_hardware_details(hardware_details)
+        update_hardware_details(node_theirs, hardware_details)
         client = make_worker_client(nodegroup_mine)
         response = client.post(
             reverse('nodegroup_handler', args=[nodegroup_mine.uuid]),
@@ -614,13 +615,11 @@ class TestNodeGroupAPIAuth(APIv10TestMixin, MAASServerTestCase):
         node_system_id = parsed_result[0][0]
         self.assertEqual([[node_system_id, None]], parsed_result)
 
-    def make_details_request(self, client, nodegroup=None):
-        if nodegroup is None:
-            nodegroup = factory.make_node_group()
-        node = factory.make_node(nodegroup=nodegroup)
+    def make_details_request(self, client, nodegroup):
+        system_ids = {node.system_id for node in nodegroup.node_set.all()}
         return client.post(
             reverse('nodegroup_handler', args=[nodegroup.uuid]),
-            {'op': 'details', 'system_ids': [node.system_id]})
+            {'op': 'details', 'system_ids': system_ids})
 
     example_lshw_details = dedent("""\
         <?xml version="1.0" standalone="yes"?>
@@ -637,7 +636,9 @@ class TestNodeGroupAPIAuth(APIv10TestMixin, MAASServerTestCase):
     example_lldp_details_bin = bson.binary.Binary(example_lldp_details)
 
     def set_lshw_details(self, node, data):
-        node.set_hardware_details(data)
+        NodeCommissionResult.objects.store_data(
+            node, commissioningscript.LSHW_OUTPUT_NAME,
+            script_result=0, data=Bin(data))
 
     def set_lldp_details(self, node, data):
         NodeCommissionResult.objects.store_data(
@@ -645,12 +646,14 @@ class TestNodeGroupAPIAuth(APIv10TestMixin, MAASServerTestCase):
             script_result=0, data=Bin(data))
 
     def test_details_requires_authentication(self):
-        response = self.make_details_request(self.client)
+        nodegroup = factory.make_node_group()
+        response = self.make_details_request(self.client, nodegroup)
         self.assertEqual(httplib.UNAUTHORIZED, response.status_code)
 
     def test_details_refuses_nonworker(self):
         log_in_as_normal_user(self.client)
-        response = self.make_details_request(self.client)
+        nodegroup = factory.make_node_group()
+        response = self.make_details_request(self.client, nodegroup)
         self.assertEqual(
             httplib.FORBIDDEN, response.status_code,
             explain_unexpected_response(httplib.FORBIDDEN, response))
@@ -685,7 +688,14 @@ class TestNodeGroupAPIAuth(APIv10TestMixin, MAASServerTestCase):
             {'op': 'details', 'system_ids': [node.system_id]})
         self.assertEqual(httplib.OK, response.status_code)
         parsed_result = bson.BSON(response.content).decode()
-        self.assertDictEqual({}, parsed_result)
+        self.assertDictEqual(
+            {
+                node.system_id: {
+                    "lshw": None,
+                    "lldp": None,
+                },
+            },
+            parsed_result)
 
     def test_details_does_not_see_other_node_groups(self):
         nodegroup_mine = factory.make_node_group()

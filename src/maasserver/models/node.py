@@ -372,7 +372,7 @@ _xpath_storage_bytes = """\
 """
 
 
-def update_hardware_details(node, xmlbytes, tag_manager):
+def update_hardware_details(node, xmlbytes):
     """Set node hardware_details from lshw output and update related fields
 
     This is a helper function just so it can be used in the south migration
@@ -397,7 +397,7 @@ def update_hardware_details(node, xmlbytes, tag_manager):
     node.cpu_count = cpu_count or 0
     node.memory = memory
     node.storage = storage
-    for tag in tag_manager.all():
+    for tag in Tag.objects.all():
         if not tag.definition:
             continue
         has_tag = evaluator(tag.definition)
@@ -850,10 +850,6 @@ class Node(CleanSave, TimestampedModel):
         self.netboot = on
         self.save()
 
-    def set_hardware_details(self, xmlbytes):
-        """Set the `lshw -xml` output"""
-        update_hardware_details(self, xmlbytes, Tag.objects)
-
     def should_use_traditional_installer(self):
         """Should this node be installed with the traditional installer?
 
@@ -919,28 +915,3 @@ class Node(CleanSave, TimestampedModel):
                 self, LLDP_OUTPUT_NAME)
         except Http404:
             return None
-
-    def get_details(self):
-        """Return details of the node.
-
-        Currently this consists of the node's ``lshw`` XML dump and an
-        LLDP XML capture done during commissioning, but may be
-        extended in the future.
-
-        :return: A `dict` with the keys ``lshw`` and ``lldp``.
-        """
-        from metadataserver.models import NodeCommissionResult
-        from metadataserver.models import commissioningscript
-        result_name_ns = {
-            commissioningscript.LLDP_OUTPUT_NAME: "lldp",
-            commissioningscript.LSHW_OUTPUT_NAME: "lshw",
-        }
-        results = NodeCommissionResult.objects.filter(
-            node__system_id=self.system_id,
-            name__in=result_name_ns,
-            script_result=0)
-        results = {result.name: result.data for result in results}
-        return {
-            namespace: results.get(output_name)
-            for output_name, namespace in result_name_ns.iteritems()
-        }

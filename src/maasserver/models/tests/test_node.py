@@ -37,6 +37,7 @@ from maasserver.models import (
 from maasserver.models.node import (
     generate_hostname,
     NODE_TRANSITIONS,
+    update_hardware_details,
     )
 from maasserver.models.user import create_auth_token
 from maasserver.testing import reload_object
@@ -50,7 +51,6 @@ from maastesting.testcase import MAASTestCase
 from metadataserver import commissioning
 from metadataserver.fields import Bin
 from metadataserver.models import (
-    commissioningscript,
     NodeCommissionResult,
     NodeUserData,
     )
@@ -632,13 +632,13 @@ class NodeTest(MAASServerTestCase):
     def test_set_hardware_details(self):
         xmlbytes = "<test/>"
         node = factory.make_node(owner=factory.make_user())
-        node.set_hardware_details(xmlbytes)
+        update_hardware_details(node, xmlbytes)
         self.assertEqual(xmlbytes, node.hardware_details)
 
     def test_set_invalid_hardware_details(self):
         node = factory.make_node(owner=factory.make_user())
-        node.set_hardware_details('<test />')
-        self.assertRaises(ValidationError, node.set_hardware_details, '')
+        update_hardware_details(node, '<test />')
+        self.assertRaises(ValidationError, update_hardware_details, node, '')
         self.assertEqual('<test />', node.hardware_details)
 
     def test_hardware_updates_cpu_count(self):
@@ -648,7 +648,7 @@ class NodeTest(MAASServerTestCase):
                 '<node id="cpu:0" class="processor"/>'
                 '<node id="cpu:1" class="processor"/>'
             '</node>')
-        node.set_hardware_details(xmlbytes)
+        update_hardware_details(node, xmlbytes)
         node = reload_object(node)
         self.assertEqual(2, node.cpu_count)
 
@@ -660,7 +660,7 @@ class NodeTest(MAASServerTestCase):
                 '<node id="cpu:1" disabled="true" class="processor"/>'
                 '<node id="cpu:2" disabled="true" class="processor"/>'
             '</node>')
-        node.set_hardware_details(xmlbytes)
+        update_hardware_details(node, xmlbytes)
         node = reload_object(node)
         self.assertEqual(1, node.cpu_count)
 
@@ -670,7 +670,7 @@ class NodeTest(MAASServerTestCase):
             '<node id="memory">'
                 '<size units="bytes">4294967296</size>'
             '</node>')
-        node.set_hardware_details(xmlbytes)
+        update_hardware_details(node, xmlbytes)
         node = reload_object(node)
         self.assertEqual(4096, node.memory)
 
@@ -694,7 +694,7 @@ class NodeTest(MAASServerTestCase):
             '<node id="memory:2" class="memory"></node>'
           '</node>'
           )
-        node.set_hardware_details(xmlbytes)
+        update_hardware_details(node, xmlbytes)
         node = reload_object(node)
         mega = 2 ** 20
         expected = (4294967296 + 3221225472 + 536879812) / mega
@@ -705,7 +705,7 @@ class NodeTest(MAASServerTestCase):
         tag2 = factory.make_tag(factory.getRandomString(10), "//node")
         node = factory.make_node()
         xmlbytes = '<node/>'
-        node.set_hardware_details(xmlbytes)
+        update_hardware_details(node, xmlbytes)
         node = reload_object(node)
         self.assertEqual([tag1, tag2], list(node.tags.all()))
 
@@ -717,20 +717,20 @@ class NodeTest(MAASServerTestCase):
         node.tags = [tag2]
         node.save()
         xmlbytes = '<node/>'
-        node.set_hardware_details(xmlbytes)
+        update_hardware_details(node, xmlbytes)
         node = reload_object(node)
         self.assertEqual([], list(node.tags.all()))
 
     def test_hardware_updates_ignores_empty_tags(self):
         # Tags with empty definitions are ignored when
-        # node.set_hardware_details gets called.
+        # update_hardware_details gets called.
         factory.make_tag(definition='')
         node = factory.make_node()
         node.save()
         xmlbytes = '<node/>'
-        node.set_hardware_details(xmlbytes)
+        update_hardware_details(node, xmlbytes)
         node = reload_object(node)
-        # The real test is that node.set_hardware_details does not blow
+        # The real test is that update_hardware_details does not blow
         # up, see bug 1131418.
         self.assertEqual([], list(node.tags.all()))
 
@@ -907,48 +907,6 @@ class NodeTransitionsTests(MAASServerTestCase):
         allowed_states = set(NODE_STATUS_CHOICES_DICT.keys())
 
         self.assertTrue(set(all_destination_states) <= allowed_states)
-
-
-class TestNodeGetDetails(MAASServerTestCase):
-
-    def make_lshw_result(self, node, data=b"<lshw-data/>", script_result=0):
-        NodeCommissionResult.objects.store_data(
-            node, commissioningscript.LSHW_OUTPUT_NAME,
-            script_result=script_result, data=Bin(data))
-
-    def make_lldp_result(self, node, data=b"<lldp-data/>", script_result=0):
-        NodeCommissionResult.objects.store_data(
-            node, commissioningscript.LLDP_OUTPUT_NAME,
-            script_result=script_result, data=Bin(data))
-
-    def test_returns_null_details_when_there_are_none(self):
-        node = factory.make_node()
-        self.assertDictEqual(
-            {"lshw": None, "lldp": None},
-            node.get_details())
-
-    def test_returns_all_details(self):
-        node = factory.make_node()
-        self.make_lshw_result(node)
-        self.make_lldp_result(node)
-        self.assertDictEqual(
-            {"lshw": b"<lshw-data/>", "lldp": b"<lldp-data/>"},
-            node.get_details())
-
-    def test_returns_only_those_details_that_exist(self):
-        node = factory.make_node()
-        self.make_lshw_result(node)
-        self.assertDictEqual(
-            {"lshw": b"<lshw-data/>", "lldp": None},
-            node.get_details())
-
-    def test_returns_only_details_from_okay_commissioning_results(self):
-        node = factory.make_node()
-        self.make_lshw_result(node)
-        self.make_lldp_result(node, script_result=1)
-        self.assertDictEqual(
-            {"lshw": b"<lshw-data/>", "lldp": None},
-            node.get_details())
 
 
 class NodeManagerTest(MAASServerTestCase):

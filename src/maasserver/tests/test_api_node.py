@@ -46,13 +46,11 @@ from maasserver.testing.testcase import (
     MAASServerTestCase,
     )
 from maasserver.utils import map_enum
-from metadataserver.fields import Bin
 from metadataserver.models import (
     commissioningscript,
     NodeKey,
     NodeUserData,
     )
-from metadataserver.models.nodecommissionresult import NodeCommissionResult
 from metadataserver.nodeinituser import get_node_init_user
 from provisioningserver.enum import (
     POWER_TYPE,
@@ -723,15 +721,15 @@ class TestNodeAPI(APITestCase):
 class TestGetDetails(APITestCase):
     """Tests for /api/1.0/nodes/<node>/?op=details."""
 
-    def make_lshw_result(self, node, data=b"<lshw-data/>", script_result=0):
-        NodeCommissionResult.objects.store_data(
-            node, commissioningscript.LSHW_OUTPUT_NAME,
-            script_result=script_result, data=Bin(data))
+    def make_lshw_result(self, node, script_result=0):
+        return factory.make_node_commission_result(
+            node=node, name=commissioningscript.LSHW_OUTPUT_NAME,
+            script_result=script_result)
 
-    def make_lldp_result(self, node, data=b"<lldp-data/>", script_result=0):
-        NodeCommissionResult.objects.store_data(
-            node, commissioningscript.LLDP_OUTPUT_NAME,
-            script_result=script_result, data=Bin(data))
+    def make_lldp_result(self, node, script_result=0):
+        return factory.make_node_commission_result(
+            node=node, name=commissioningscript.LLDP_OUTPUT_NAME,
+            script_result=script_result)
 
     def get_details(self, node):
         url = self.get_uri('nodes/%s/') % node.system_id
@@ -748,18 +746,18 @@ class TestGetDetails(APITestCase):
 
     def test_GET_returns_all_details(self):
         node = factory.make_node()
-        self.make_lshw_result(node)
-        self.make_lldp_result(node)
+        lshw_result = self.make_lshw_result(node)
+        lldp_result = self.make_lldp_result(node)
         self.assertDictEqual(
-            {"lshw": bson.Binary(b"<lshw-data/>"),
-             "lldp": bson.Binary(b"<lldp-data/>")},
+            {"lshw": bson.Binary(lshw_result.data),
+             "lldp": bson.Binary(lldp_result.data)},
             self.get_details(node))
 
     def test_GET_returns_only_those_details_that_exist(self):
         node = factory.make_node()
-        self.make_lshw_result(node)
+        lshw_result = self.make_lshw_result(node)
         self.assertDictEqual(
-            {"lshw": bson.Binary(b"<lshw-data/>"),
+            {"lshw": bson.Binary(lshw_result.data),
              "lldp": None},
             self.get_details(node))
 

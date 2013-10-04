@@ -17,7 +17,10 @@ import json
 
 from maasserver.enum import NODE_STATUS
 from maasserver.models import Tag
-from maasserver.models.node import generate_node_system_id
+from maasserver.models.node import (
+    generate_node_system_id,
+    update_hardware_details,
+    )
 from maasserver.testing import reload_object
 from maasserver.testing.api import (
     APITestCase,
@@ -25,6 +28,25 @@ from maasserver.testing.api import (
     )
 from maasserver.testing.factory import factory
 from maasserver.testing.oauthclient import OAuthAuthenticatedClient
+from metadataserver.fields import Bin
+from metadataserver.models.commissioningscript import LSHW_OUTPUT_NAME
+from metadataserver.models.nodecommissionresult import NodeCommissionResult
+
+
+def set_hardware_details(node, xmlbytes):
+    # FIXME: Gavin Panella, bug=1235174, 2013-10-04
+    #
+    # This is a temporary shim to allow removal of
+    # Node.set_hardware_details(), and thus the use of the
+    # Node.hardware_details field.
+    #
+    # It is being replaced by storing the results only in
+    # NodeCommissionResult, and reprocessing tags using all
+    # relevant probed details.
+    assert isinstance(xmlbytes, bytes)
+    NodeCommissionResult.objects.store_data(
+        node, LSHW_OUTPUT_NAME, script_result=0, data=Bin(xmlbytes))
+    update_hardware_details(node, xmlbytes)
 
 
 class TestTagAPI(APITestCase):
@@ -93,9 +115,9 @@ class TestTagAPI(APITestCase):
 
     def test_PUT_updates_node_associations(self):
         node1 = factory.make_node()
-        node1.set_hardware_details('<node><foo/></node>')
+        set_hardware_details(node1, b'<node><foo/></node>')
         node2 = factory.make_node()
-        node2.set_hardware_details('<node><bar/></node>')
+        set_hardware_details(node2, b'<node><bar/></node>')
         tag = factory.make_tag(definition='//node/foo')
         self.assertItemsEqual([tag.name], node1.tag_names())
         self.assertItemsEqual([], node2.tag_names())
@@ -131,9 +153,9 @@ class TestTagAPI(APITestCase):
     def test_GET_nodes_hides_invisible_nodes(self):
         user2 = factory.make_user()
         node1 = factory.make_node()
-        node1.set_hardware_details('<node><foo/></node>')
+        set_hardware_details(node1, b'<node><foo/></node>')
         node2 = factory.make_node(status=NODE_STATUS.ALLOCATED, owner=user2)
-        node2.set_hardware_details('<node><bar/></node>')
+        set_hardware_details(node2, b'<node><bar/></node>')
         tag = factory.make_tag(definition='//node')
         response = self.client.get(self.get_tag_uri(tag), {'op': 'nodes'})
 
@@ -152,7 +174,7 @@ class TestTagAPI(APITestCase):
     def test_PUT_invalid_definition(self):
         self.become_admin()
         node = factory.make_node()
-        node.set_hardware_details('<node ><child/></node>')
+        set_hardware_details(node, b'<node ><child/></node>')
         tag = factory.make_tag(definition='//child')
         self.assertItemsEqual([tag.name], node.tag_names())
         response = self.client_put(
@@ -312,9 +334,9 @@ class TestTagAPI(APITestCase):
         tag = factory.make_tag(definition='//foo/bar')
         # Only one node matches the tag definition, rebuilding should notice
         node_matching = factory.make_node()
-        node_matching.set_hardware_details('<foo><bar/></foo>')
+        set_hardware_details(node_matching, b'<foo><bar/></foo>')
         node_bogus = factory.make_node()
-        node_bogus.set_hardware_details('<foo/>')
+        set_hardware_details(node_bogus, b'<foo/>')
         node_matching.tags.add(tag)
         node_bogus.tags.add(tag)
         self.assertItemsEqual(
@@ -456,10 +478,10 @@ class TestTagsAPI(APITestCase):
     def test_POST_new_populates_nodes(self):
         self.become_admin()
         node1 = factory.make_node()
-        node1.set_hardware_details('<node><child/></node>')
+        set_hardware_details(node1, b'<node><child/></node>')
         # Create another node that doesn't have a 'child'
         node2 = factory.make_node()
-        node2.set_hardware_details('<node/>')
+        set_hardware_details(node2, b'<node/>')
         self.assertItemsEqual([], node1.tag_names())
         self.assertItemsEqual([], node2.tag_names())
         name = factory.getRandomString()

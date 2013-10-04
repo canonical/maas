@@ -60,6 +60,7 @@ class NodeCommissionResultManager(Manager):
         if not created:
             existing.data = data
             existing.save()
+        return existing
 
     def get_data(self, node, name):
         """Get data about a node."""

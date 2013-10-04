@@ -82,9 +82,6 @@ This:
 #. Evaluates each tag expression and updates the node's tags as
    appropriate.
 
-See also
-``metadataserver.models.commissioningscript.set_hardware_details``.
-
 
 Manual tags, or tags without expressions
 ========================================
