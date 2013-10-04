@@ -190,22 +190,6 @@ CONFIG_ITEMS = {
                 'invalid_choice': INVALID_DISTRO_SERIES_MESSAGE},
         }
     },
-    'request_log_debug': {
-        'default': False,
-        'form': forms.BooleanField,
-        'form_kwargs': {
-            'label': "Log the requests information (debug option)",
-            'required': False,
-        }
-    },
-    'response_log_debug': {
-        'default': False,
-        'form': forms.BooleanField,
-        'form_kwargs': {
-            'label': "Log the responses information (debug option)",
-            'required': False,
-        }
-    },
 }
 
 

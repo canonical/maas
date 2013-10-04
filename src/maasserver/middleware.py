@@ -23,6 +23,7 @@ from abc import (
     )
 import httplib
 import json
+import logging
 import re
 
 from django.conf import settings
@@ -38,13 +39,13 @@ from django.http import (
     HttpResponseForbidden,
     HttpResponseRedirect,
     )
+from django.http.request import build_request_repr
 from django.utils.http import urlquote_plus
 from maasserver import logger
 from maasserver.exceptions import (
     ExternalComponentException,
     MAASAPIException,
     )
-from maasserver.models import Config
 
 
 def get_relative_path(path):
@@ -217,15 +218,28 @@ class ExceptionLoggerMiddleware:
 
 class DebuggingLoggerMiddleware:
 
+    log_level = logging.DEBUG
+
     def process_request(self, request):
-        if Config.objects.get_config("request_log_debug"):
+        if logger.isEnabledFor(self.log_level):
             header = " Request dump ".center(79, "#")
-            logger.info("%s\n%r\n%s", header, request, request.content)
+            logger.log(
+                self.log_level,
+                "%s\n%s", header, build_request_repr(request))
         return None  # Allow request processing to continue unabated.
 
     def process_response(self, request, response):
-        if Config.objects.get_config("response_log_debug"):
+        if logger.isEnabledFor(self.log_level):
             header = " Response dump ".center(79, "#")
             content = getattr(response, "content", "{no content}")
-            logger.info("%s\n%r\n%s", header, response, content)
+            try:
+                decoded_content = content.decode('utf-8')
+            except UnicodeDecodeError:
+                logger.log(
+                    self.log_level,
+                    "%s\n%s", header, "** non-utf-8 (binary?) content **")
+            else:
+                logger.log(
+                    self.log_level,
+                    "%s\n%s", header, decoded_content)
         return response  # Return response unaltered.

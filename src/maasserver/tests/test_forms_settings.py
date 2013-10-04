@@ -50,20 +50,6 @@ class TestGetConfigForm(MAASServerTestCase):
         self.assertEqual(
             {'maas_name': maas_name}, form.initial)
 
-    def test_request_log_debug(self):
-        form = get_config_form('request_log_debug')
-        self.assertItemsEqual(['request_log_debug'], form.fields)
-        self.assertEqual(
-            forms.BooleanField,
-            form.fields['request_log_debug'].__class__)
-
-    def test_response_log_debug(self):
-        form = get_config_form('response_log_debug')
-        self.assertItemsEqual(['response_log_debug'], form.fields)
-        self.assertEqual(
-            forms.BooleanField,
-            form.fields['response_log_debug'].__class__)
-
 
 class TestGetConfigDoc(MAASServerTestCase):
 

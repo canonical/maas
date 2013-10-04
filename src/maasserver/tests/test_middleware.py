@@ -22,6 +22,7 @@ from django.core.exceptions import (
     ValidationError,
     )
 from django.http import HttpResponse
+from django.http.request import build_request_repr
 from django.test.client import RequestFactory
 import maasserver
 from maasserver.exceptions import (
@@ -37,13 +38,13 @@ from maasserver.middleware import (
     ExceptionLoggerMiddleware,
     ExceptionMiddleware,
     )
-from maasserver.models import Config
 from maasserver.testing import extract_redirect
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
     LoggedInTestCase,
     MAASServerTestCase,
     )
+from maastesting.utils import sample_binary_data
 from testtools.matchers import (
     Contains,
     FileContains,
@@ -188,6 +189,7 @@ class LoggingTest(MAASServerTestCase):
         handler = logging.handlers.RotatingFileHandler(filename)
         logger.addHandler(handler)
         self.addCleanup(logger.removeHandler, handler)
+        return logger
 
 
 class ExceptionLoggerMiddlewareTest(LoggingTest):
@@ -207,21 +209,18 @@ class DebuggingLoggerMiddlewareTest(LoggingTest):
     def setUp(self):
         super(LoggingTest, self).setUp()
         self.logfile = self.make_file(contents="")
-        self.set_up_logger(self.logfile)
+        self.logger = self.set_up_logger(self.logfile)
 
-    def test_that_default_request_log_config_is_false(self):
-        self.assertFalse(Config.objects.get_config("request_log_debug"))
-
-    def test_that_default_response_log_config_is_false(self):
-        self.assertFalse(Config.objects.get_config("response_log_debug"))
-
-    def test_debugging_logger_does_not_log_request_if_config_is_false(self):
+    def test_debugging_logger_does_not_log_request_if_info_level(self):
+        self.logger.setLevel(logging.INFO)
         request = fake_request("/api/1.0/nodes/")
         DebuggingLoggerMiddleware().process_request(request)
         self.assertThat(
-            self.logfile, Not(FileContains(matcher=Contains(repr(request)))))
+            self.logfile,
+            Not(FileContains(matcher=Contains(build_request_repr(request)))))
 
-    def test_debugging_logger_does_not_log_response_if_config_is_false(self):
+    def test_debugging_logger_does_not_log_response_if_info_level(self):
+        self.logger.setLevel(logging.INFO)
         request = fake_request("/api/1.0/nodes/")
         response = HttpResponse(
             content="test content",
@@ -229,20 +228,20 @@ class DebuggingLoggerMiddlewareTest(LoggingTest):
             mimetype=b"text/plain; charset=utf-8")
         DebuggingLoggerMiddleware().process_response(request, response)
         self.assertThat(
-            self.logfile, Not(FileContains(matcher=Contains(repr(request)))))
+            self.logfile,
+            Not(FileContains(matcher=Contains(build_request_repr(request)))))
 
     def test_debugging_logger_logs_request(self):
-        Config.objects.set_config("request_log_debug", True)
+        self.logger.setLevel(logging.DEBUG)
         request = fake_request("/api/1.0/nodes/")
         request.content = "test content"
         DebuggingLoggerMiddleware().process_request(request)
         self.assertThat(
-            self.logfile, FileContains(matcher=Contains(repr(request))))
-        self.assertThat(
-            self.logfile, FileContains(matcher=Contains(request.content)))
+            self.logfile,
+            FileContains(matcher=Contains(build_request_repr(request))))
 
     def test_debugging_logger_logs_response(self):
-        Config.objects.set_config("response_log_debug", True)
+        self.logger.setLevel(logging.DEBUG)
         request = fake_request("foo")
         response = HttpResponse(
             content="test content",
@@ -250,9 +249,19 @@ class DebuggingLoggerMiddlewareTest(LoggingTest):
             mimetype=b"text/plain; charset=utf-8")
         DebuggingLoggerMiddleware().process_response(request, response)
         self.assertThat(
-            self.logfile, FileContains(matcher=Contains(repr(response))))
-        self.assertThat(
             self.logfile, FileContains(matcher=Contains(response.content)))
+
+    def test_debugging_logger_logs_binary_response(self):
+        self.logger.setLevel(logging.DEBUG)
+        request = fake_request("foo")
+        response = HttpResponse(
+            content=sample_binary_data,
+            status=httplib.OK,
+            mimetype=b"application/octet-stream")
+        DebuggingLoggerMiddleware().process_response(request, response)
+        self.assertThat(
+            self.logfile,
+            FileContains(matcher=Contains("non-utf-8 (binary?) content")))
 
 
 class ErrorsMiddlewareTest(LoggedInTestCase):
