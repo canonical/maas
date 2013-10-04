@@ -1313,10 +1313,10 @@ class NodeGroupInterfacesHandler(OperationsHandler):
         :type ip_range_high: basestring (IP Address)
         """
         nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
-        form = NodeGroupInterfaceForm(request.data)
+        instance = NodeGroupInterface(nodegroup=nodegroup)
+        form = NodeGroupInterfaceForm(request.data, instance=instance)
         if form.is_valid():
-            return form.save(
-                nodegroup=nodegroup)
+            return form.save()
         else:
             raise ValidationError(form.errors)
 

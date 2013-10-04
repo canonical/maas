@@ -697,14 +697,6 @@ class NodeGroupInterfaceForm(ModelForm):
             'ip_range_high',
             )
 
-    def save(self, nodegroup=None, commit=True, *args, **kwargs):
-        interface = super(NodeGroupInterfaceForm, self).save(commit=False)
-        if nodegroup is not None:
-            interface.nodegroup = nodegroup
-        if commit:
-            interface.save(*args, **kwargs)
-        return interface
-
 
 INTERFACES_VALIDATION_ERROR_MESSAGE = (
     "Invalid json value: should be a list of dictionaries, each containing "
@@ -789,8 +781,9 @@ class NodeGroupWithInterfacesForm(ModelForm):
     def save(self):
         nodegroup = super(NodeGroupWithInterfacesForm, self).save()
         for interface in self.cleaned_data['interfaces']:
-            form = NodeGroupInterfaceForm(data=interface)
-            form.save(nodegroup=nodegroup)
+            instance = NodeGroupInterface(nodegroup=nodegroup)
+            form = NodeGroupInterfaceForm(data=interface, instance=instance)
+            form.save()
         if self.status is not None:
             nodegroup.status = self.status
             nodegroup.save()
