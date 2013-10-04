@@ -27,14 +27,9 @@ import re
 import shutil
 import subprocess
 import tempfile
-import yaml
 
-import distro_info
-from provisioningserver.config import (
-    Config,
-    )
+from provisioningserver.import_images.config import load_ephemerals_config
 from provisioningserver.import_images.tgt import (
-    TARGET_NAME_PREFIX,
     clean_up_info_file,
     get_conf_path,
     get_target_name,
@@ -56,14 +51,10 @@ from simplestreams import (
     util,
     )
 
-
-RELEASES = distro_info.UbuntuDistroInfo().supported()
 # This must end in a slash, for later concatenation.
 RELEASES_URL = 'http://maas.ubuntu.com/images/ephemeral/releases/'
 
 PRODUCTS_REGEX = 'com[.]ubuntu[.]maas:ephemeral:.*'
-
-DATA_DIR = "/var/lib/maas/ephemeral"
 
 # Path of the keys used for files on cloud-images.ubuntu.com.
 # The keys are in the 'ubuntu-cloudimage-keyring' package.
@@ -332,60 +323,12 @@ class MAASMirrorWriter(mirrors.ObjectStoreMirrorWriter):
             raise
 
 
-def parse_old_config():
-    def read_opt(opt):
-        try:
-            return subprocess.check_output(
-                ['bash', '-c',
-                 'source /etc/maas/import_ephemerals; echo $' + opt])
-        except subprocess.CalledProcessError:
-            return ''
-
-    # REMOTE_IMAGES_MIRROR is no longer relevant, since we are using a new data
-    # format. If people were running their own mirrors, presumably they'll set
-    # up new simplestreams mirrors which probably won't have the same path.
-    #
-    # TARBALL_CACHE_D could be where we stick our cache of the simplestreams
-    # data, although for now it is unused.
-    options = ["TARGET_NAME_PREFIX", "DATA_DIR", "RELEASES", "ARCHES",
-               "TARBALL_CACHE_D"]
-    old_config = {opt : read_opt(opt).strip() for opt in options}
-    return old_config
-
-
-def maybe_update_config(config):
-    """ Update the config if it doesn't have values from the old config. """
-    # We need to test something here to see whether or not we've actually ported the old config
-    if config["boot"]["ephemeral"]["target_name_prefix"] is None:
-        old = parse_old_config()
-        if any(v is not None and v != '' for v in old.values()):
-            eph = config["boot"]["ephemeral"]
-            eph["directory"] = old["DATA_DIR"] or DATA_DIR
-            eph["target_name_prefix"] = (
-                old["TARGET_NAME_PREFIX"] or TARGET_NAME_PREFIX)
-            eph["releases"] = old["RELEASES"].split() or RELEASES
-            eph["arches"] = old["ARCHES"].split() or ["amd64", "i386", "armhf"]
-            return True
-    return False
-
-
-def load_config():
-    current = Config.load()
-
-    changed = maybe_update_config(current)
-    if changed:
-        with open(Config.DEFAULT_FILENAME, "wb") as out:
-            out.write(yaml.safe_dump(current))
-
-    return Config.load()
-
-
 def make_arg_parser(doc):
     """Create an `argparse.ArgumentParser` for this script.
 
     :param doc: Description of the script, for help output.
     """
-    config = load_config()["boot"]["ephemeral"]
+    config = load_ephemerals_config()["boot"]["ephemeral"]
 
     def make_or_list(things):
         return '|'.join(re.escape(t) for t in things)
