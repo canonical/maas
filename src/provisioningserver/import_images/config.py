@@ -21,7 +21,10 @@ from subprocess import check_output
 import distro_info
 from provisioningserver.config import Config
 from provisioningserver.import_images.tgt import TARGET_NAME_PREFIX
-from provisioningserver.utils import atomic_write
+from provisioningserver.utils import (
+    atomic_write,
+    filter_dict,
+    )
 import yaml
 
 # Default settings for various options.
@@ -91,11 +94,7 @@ def parse_legacy_config(options):
         for setting in output.split('\0')
             if len(setting) > 0)
 
-    return {
-        name: value
-        for name, value in variables.iteritems()
-            if name in options
-        }
+    return filter_dict(variables, options)
 
 
 def maybe_update_config(config):

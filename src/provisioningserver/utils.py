@@ -14,6 +14,7 @@ __all__ = [
     "ActionScript",
     "atomic_write",
     "deferred",
+    "filter_dict",
     "import_settings",
     "incremental_write",
     "locate_config",
@@ -107,6 +108,19 @@ def deferred(func):
     def wrapper(*args, **kwargs):
         return maybeDeferred(func, *args, **kwargs)
     return wrapper
+
+
+def filter_dict(dictionary, desired_keys):
+    """Return a version of `dictionary` restricted to `desired_keys`.
+
+    This is like a set union, except the values from `dictionary` come along.
+    (Actually `desired_keys` can be a `dict`, but its values will be ignored).
+    """
+    return {
+        key: value
+        for key, value in dictionary.iteritems()
+            if key in desired_keys
+    }
 
 
 def _write_temp_file(content, filename):

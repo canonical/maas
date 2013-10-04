@@ -50,6 +50,7 @@ from provisioningserver.utils import (
     atomic_write,
     AtomicWriteScript,
     ensure_dir,
+    filter_dict,
     get_all_interface_addresses,
     get_mtime,
     incremental_write,
@@ -118,6 +119,39 @@ class TestLocateConfig(MAASTestCase):
         self.assertEquals(
             get_branch_dir('etc/maas/bar/szot'),
             locate_config('foo/.././bar///szot'))
+
+
+class TestFilterDict(MAASTestCase):
+    """Tests for `filter_dict`."""
+
+    def test_keeps_desired_keys(self):
+        key = factory.make_name('key')
+        value = factory.make_name('value')
+        self.assertEqual({key: value}, filter_dict({key: value}, {key}))
+
+    def test_ignores_undesired_keys(self):
+        items = {factory.make_name('key'): factory.make_name('value')}
+        self.assertEqual({}, filter_dict(items, {factory.make_name('other')}))
+
+    def test_leaves_original_intact(self):
+        desired_key = factory.make_name('key')
+        original = {
+            desired_key: factory.make_name('value'),
+            factory.make_name('otherkey'): factory.make_name('othervalue'),
+        }
+        copy = original.copy()
+
+        result = filter_dict(copy, {desired_key})
+
+        self.assertEqual({desired_key: original[desired_key]}, result)
+        self.assertEqual(original, copy)
+
+    def test_ignores_values_from_second_dict(self):
+        key = factory.make_name('key')
+        items = {key: factory.make_name('value')}
+        keys = {key: factory.make_name('othervalue')}
+
+        self.assertEqual(items, filter_dict(items, keys))
 
 
 class TestInterfaceFunctions(MAASTestCase):
