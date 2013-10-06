@@ -13,6 +13,7 @@ __metaclass__ = type
 __all__ = []
 
 from django.core.exceptions import ValidationError
+from maasserver.models.tag import Tag
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from metadataserver.fields import Bin
@@ -129,3 +130,18 @@ class TagTest(MAASServerTestCase):
         tag.definition = 'invalid::tag'
         self.assertRaises(ValidationError, tag.save)
         self.assertItemsEqual([tag.name], node.tag_names())
+
+
+class TestTagIsDefined(MAASServerTestCase):
+    """Tests for the `Tag.is_defined` property."""
+
+    scenarios = (
+        ("null", dict(definition=None, expected=False)),
+        ("empty", dict(definition="", expected=False)),
+        ("whitespace", dict(definition="   \t\n ", expected=False)),
+        ("defined", dict(definition="//node", expected=True)),
+    )
+
+    def test(self):
+        tag = Tag(name="tag", definition=self.definition)
+        self.assertIs(self.expected, tag.is_defined)

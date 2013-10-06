@@ -352,7 +352,7 @@ UPDATE_NODE_TAGS_RETRY_DELAY = 2
 
 
 @task(max_retries=UPDATE_NODE_TAGS_MAX_RETRY)
-def update_node_tags(tag_name, tag_definition, retry=True):
+def update_node_tags(tag_name, tag_definition, tag_nsmap, retry=True):
     """Update the nodes for a new/changed tag definition.
 
     :param tag_name: Name of the tag to update nodes for
@@ -360,7 +360,7 @@ def update_node_tags(tag_name, tag_definition, retry=True):
     :param retry: Whether to retry on failure
     """
     try:
-        tags.process_node_tags(tag_name, tag_definition)
+        tags.process_node_tags(tag_name, tag_definition, tag_nsmap)
     except tags.MissingCredentials, exc:
         if retry:
             return update_node_tags.retry(

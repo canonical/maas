@@ -17,6 +17,7 @@ __metaclass__ = type
 __all__ = [
     "get_probed_details",
     "get_single_probed_details",
+    "script_output_nsmap",
 ]
 
 from base64 import b64decode
@@ -47,6 +48,7 @@ def get_single_probed_details(system_id):
     :return: A `dict` of the form ``{"lshw": b"<.../>", "lldp":
         b"<.../>"}``, where values are byte strings of XML.
     """
+    assert isinstance(system_id, unicode)
     probe_details = get_probed_details((system_id,))
     return probe_details[system_id]
 

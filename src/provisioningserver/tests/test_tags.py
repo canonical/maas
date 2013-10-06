@@ -29,6 +29,7 @@ from maastesting.fakemethod import (
     FakeMethod,
     MultiFakeMethod,
     )
+from maastesting.matchers import IsCallable
 from mock import (
     call,
     MagicMock,
@@ -161,6 +162,19 @@ class TestMergeDetails(PservTestCase):
             </list>
         """
         self.assertThat(xml, EqualsXML(expected))
+
+    def test_merges_into_new_tree(self):
+        xml = tags.merge_details({
+            "lshw": b"<list><foo>Hello</foo></list>",
+            "lldp": b"<node><foo>Hello</foo></node>",
+        })
+        # The presence of a getroot() method indicates that this is a
+        # tree object, not an element.
+        self.assertThat(xml, MatchesStructure(getroot=IsCallable()))
+        # The list tag can be obtained using an XPath expression
+        # starting from the root of the tree.
+        self.assertSequenceEqual(
+            ["list"], [elem.tag for elem in xml.xpath("/list")])
 
     def assertDocTestMatches(self, expected, observed):
         return self.assertThat(observed, DocTestMatches(
@@ -369,20 +383,6 @@ class TestGenNodeDetails(PservTestCase):
             get_details_for_nodes.mock_calls)
 
 
-class TestClassify(PservTestCase):
-
-    def test_no_subjects(self):
-        self.assertSequenceEqual(
-            ([], []), tags.classify(sentinel.func, []))
-
-    def test_subjects(self):
-        subjects = [("one", 1), ("two", 2), ("three", 3)]
-        is_even = lambda subject: subject % 2 == 0
-        self.assertSequenceEqual(
-            (['two'], ['one', 'three']),
-            tags.classify(is_even, subjects))
-
-
 class TestTagUpdating(PservTestCase):
 
     def setUp(self):
@@ -514,8 +514,9 @@ class TestTagUpdating(PservTestCase):
         self.patch(MAASClient, 'get')
         self.patch(MAASClient, 'post')
         tag_name = factory.make_name('tag')
-        self.assertRaises(tags.MissingCredentials,
-            tags.process_node_tags, tag_name, '//node')
+        self.assertRaises(
+            tags.MissingCredentials,
+            tags.process_node_tags, tag_name, '//node', None)
         self.assertFalse(MAASClient.get.called)
         self.assertFalse(MAASClient.post.called)
 
@@ -548,8 +549,9 @@ class TestTagUpdating(PservTestCase):
         self.patch(MAASClient, 'post', post_fake)
         tag_name = factory.make_name('tag')
         nodegroup_uuid = get_recorded_nodegroup_uuid()
-        tag_definition = '//node'
-        tags.process_node_tags(tag_name, tag_definition)
+        tag_definition = '//lshw:node'
+        tag_nsmap = {"lshw": "lshw"}
+        tags.process_node_tags(tag_name, tag_definition, tag_nsmap=tag_nsmap)
         nodegroup_url = '/api/1.0/nodegroups/%s/' % (nodegroup_uuid,)
         tag_url = '/api/1.0/tags/%s/' % (tag_name,)
         self.assertEqual(
@@ -598,7 +600,8 @@ class TestTagUpdating(PservTestCase):
         self.patch(tags, 'post_updated_nodes')
         tag_name = factory.make_name('tag')
         tag_definition = '//node'
-        tags.process_node_tags(tag_name, tag_definition, batch_size=2)
+        tags.process_node_tags(
+            tag_name, tag_definition, tag_nsmap=None, batch_size=2)
         tags.get_cached_knowledge.assert_called_once_with()
         tags.get_nodes_for_node_group.assert_called_once_with(client, uuid)
         self.assertEqual([((client, uuid, ['a', 'c']), {})], fake_first.calls)

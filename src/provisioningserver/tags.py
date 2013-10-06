@@ -36,6 +36,10 @@ from provisioningserver.auth import (
     get_recorded_nodegroup_uuid,
     )
 from provisioningserver.cluster_config import get_maas_url
+from provisioningserver.utils import (
+    classify,
+    try_match_xpath,
+    )
 import simplejson as json
 
 
@@ -223,7 +227,13 @@ def merge_details(details):
                     elem.tag = etree.QName(namespace, elem.tag)
                 root.append(detail)
 
-    return root
+    # Re-home `root` in a new tree. This ensures that XPath
+    # expressions like "/some-tag" work correctly. Without this, when
+    # there's well-formed lshw data -- see the backward-compatibilty
+    # hack futher up -- expressions would be evaluated from the first
+    # root created in this function, even though that root is now the
+    # parent of the current `root`.
+    return etree.ElementTree(root)
 
 
 def gen_batch_slices(count, size):
@@ -273,26 +283,6 @@ def gen_node_details(client, nodegroup_uuid, batches):
             yield system_id, merge_details(details)
 
 
-def classify(func, subjects):
-    """Classify `subjects` according to `func`.
-
-    Splits `subjects` into two lists: one for those which `func`
-    returns a truth-like value, and one for the others.
-
-    :param subjects: An iterable of arguments that can be passed to
-        `func` for classification.
-    :param func: A function that takes a single argument.
-
-    :return: A ``(matched, other)`` tuple, where ``matched`` and
-        ``other`` are `list`s.
-    """
-    matched, other = [], []
-    for ident, subject in subjects:
-        bucket = matched if func(subject) else other
-        bucket.append(ident)
-    return matched, other
-
-
 def process_all(client, tag_name, tag_definition, nodegroup_uuid, system_ids,
                 xpath, batch_size=None):
     logger.debug(
@@ -304,7 +294,8 @@ def process_all(client, tag_name, tag_definition, nodegroup_uuid, system_ids,
 
     batches = gen_batches(system_ids, batch_size)
     node_details = gen_node_details(client, nodegroup_uuid, batches)
-    nodes_matched, nodes_unmatched = classify(xpath, node_details)
+    nodes_matched, nodes_unmatched = classify(
+        partial(try_match_xpath, xpath, logger=logger), node_details)
 
     # Upload all updates for one nodegroup at one time. This should be no more
     # than ~41*10,000 = 410kB. That should take <1s even on a 10Mbit network.
@@ -315,7 +306,7 @@ def process_all(client, tag_name, tag_definition, nodegroup_uuid, system_ids,
         nodes_matched, nodes_unmatched)
 
 
-def process_node_tags(tag_name, tag_definition, batch_size=None):
+def process_node_tags(tag_name, tag_definition, tag_nsmap, batch_size=None):
     """Update the nodes for a new/changed tag definition.
 
     :param tag_name: Name of the tag to update nodes for
@@ -331,7 +322,7 @@ def process_node_tags(tag_name, tag_definition, batch_size=None):
         raise MissingCredentials()
     # We evaluate this early, so we can fail before sending a bunch of data to
     # the server
-    xpath = etree.XPath(tag_definition)
+    xpath = etree.XPath(tag_definition, namespaces=tag_nsmap)
     # Get nodes to process
     system_ids = get_nodes_for_node_group(client, nodegroup_uuid)
     process_all(

@@ -513,7 +513,8 @@ class TestTagTasks(PservTestCase):
             [FakeMethod()])
         self.patch(tags, 'process_node_tags', simulate_failures)
         tag = factory.getRandomString()
-        result = update_node_tags.delay(tag, '//node', retry=True)
+        result = update_node_tags.delay(
+            tag, '//node', tag_nsmap=None, retry=True)
         self.assertTrue(result.successful())
 
     def test_update_node_tags_is_retried_a_limited_number_of_times(self):
@@ -530,7 +531,7 @@ class TestTagTasks(PservTestCase):
         tag = factory.getRandomString()
         self.assertRaises(
             MissingCredentials, update_node_tags.delay, tag,
-            '//node', retry=True)
+            '//node', tag_nsmap=None, retry=True)
 
 
 class TestImportPxeFiles(PservTestCase):

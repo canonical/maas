@@ -12,11 +12,14 @@ from __future__ import (
 __metaclass__ = type
 __all__ = [
     'ContainsAll',
+    'IsCallable',
     ]
 
 from testtools.matchers import (
     Contains,
+    Matcher,
     MatchesAll,
+    Mismatch,
     )
 
 
@@ -26,3 +29,14 @@ def ContainsAll(items):
 # upstream.  If it gets included in the next version of testtools, this code
 # should be removed.
     return MatchesAll(*[Contains(item) for item in items], first_only=False)
+
+
+class IsCallable(Matcher):
+    """Matches if the matchee is callable."""
+
+    def match(self, something):
+        if not callable(something):
+            return Mismatch("%r is not callable" % (something,))
+
+    def __str__(self):
+        return self.__class__.__name__

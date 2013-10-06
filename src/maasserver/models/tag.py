@@ -117,3 +117,11 @@ class Tag(CleanSave, TimestampedModel):
         if self.definition != self._original_definition:
             self.populate_nodes()
         self._original_definition = self.definition
+
+    @property
+    def is_defined(self):
+        return (
+            self.definition is not None and
+            self.definition != "" and
+            not self.definition.isspace()
+        )

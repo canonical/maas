@@ -17,7 +17,6 @@ from random import randint
 from django.core.exceptions import ValidationError
 from django.http import Http404
 from maasserver.testing.factory import factory
-from maasserver.utils.orm import get_one
 from maastesting.djangotestcase import DjangoTestCase
 from metadataserver.fields import Bin
 from metadataserver.models import NodeCommissionResult
