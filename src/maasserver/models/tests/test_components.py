@@ -9,6 +9,8 @@ from __future__ import (
     unicode_literals,
     )
 
+str = None
+
 __metaclass__ = type
 __all__ = []
 
@@ -25,10 +27,6 @@ from maasserver.enum import COMPONENT
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import map_enum
-
-
-def simple_error_display(error):
-    return str(error)
 
 
 def get_random_component():

@@ -9,6 +9,8 @@ from __future__ import (
     unicode_literals,
     )
 
+str = None
+
 __metaclass__ = type
 __all__ = []
 
@@ -384,4 +386,4 @@ class UserManagementTest(AdminLoggedInTestCase):
         user = factory.make_user(username="abc-123@example.com")
         for view in "edit", "view", "del":
             path = reverse("accounts-%s" % view, args=[user.username])
-            self.assertIsInstance(path, (str, unicode))
+            self.assertIsInstance(path, (bytes, unicode))

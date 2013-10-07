@@ -9,6 +9,8 @@ from __future__ import (
 
 """Access middleware."""
 
+str = None
+
 __metaclass__ = type
 __all__ = [
     "AccessMiddleware",

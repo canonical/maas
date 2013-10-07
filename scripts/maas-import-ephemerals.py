@@ -10,9 +10,9 @@ from __future__ import (
     unicode_literals,
     )
 
-__metaclass__ = type
+str = None
 
-import argparse
+__metaclass__ = type
 
 from provisioningserver.import_images.ephemerals_script import (
     main,

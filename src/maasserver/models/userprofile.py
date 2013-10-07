@@ -9,6 +9,8 @@ from __future__ import (
     unicode_literals,
     )
 
+str = None
+
 __metaclass__ = type
 __all__ = [
     'UserProfile',
@@ -113,7 +115,7 @@ class UserProfile(CleanSave, Model):
         """Delete the user's OAuth token wich key token_key.
 
         :param token_key: The key of the token to be deleted.
-        :type token_key: str
+        :type token_key: string
         :raises: `django.http.Http404`
 
         """

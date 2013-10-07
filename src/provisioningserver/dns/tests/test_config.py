@@ -9,6 +9,8 @@ from __future__ import (
     unicode_literals,
     )
 
+str = None
+
 __metaclass__ = type
 __all__ = []
 
@@ -207,7 +209,7 @@ class TestDNSConfig(MAASTestCase):
         template = tempita.Template("template: {{test}}")
         exception = self.assertRaises(
             DNSConfigFail, dnsconfig.render_template, template)
-        self.assertIn("'test' is not defined", exception.message)
+        self.assertIn("'test' is not defined", unicode(exception))
 
     def test_write_config_DNSConfigDirectoryMissing_if_dir_missing(self):
         dnsconfig = DNSConfig()

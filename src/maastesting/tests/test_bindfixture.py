@@ -9,6 +9,8 @@ from __future__ import (
     unicode_literals,
     )
 
+str = None
+
 __metaclass__ = type
 __all__ = []
 
@@ -42,7 +44,7 @@ def dig_call(port=53, server='127.0.0.1', commands=None):
     :param commands: List of dig commands to run (defaults to None
         which will perform an NS query for "." (the root)).
     :return: The output as a string.
-    :rtype: basestring
+    :rtype: unicode
     """
     # The time and tries below are high so that tests pass in environments
     # that are much slower than the average developer's machine, so beware
@@ -86,12 +88,12 @@ class TestBINDServerResources(MAASTestCase):
         with BINDServerResources() as resources:
             self.assertIsInstance(resources.port, int)
             self.assertIsInstance(resources.rndc_port, int)
-            self.assertIsInstance(resources.homedir, basestring)
-            self.assertIsInstance(resources.log_file, basestring)
-            self.assertIsInstance(resources.named_file, basestring)
-            self.assertIsInstance(resources.conf_file, basestring)
+            self.assertIsInstance(resources.homedir, unicode)
+            self.assertIsInstance(resources.log_file, unicode)
+            self.assertIsInstance(resources.named_file, unicode)
+            self.assertIsInstance(resources.conf_file, unicode)
             self.assertIsInstance(
-                resources.rndcconf_file, basestring)
+                resources.rndcconf_file, unicode)
 
     def test_setUp_copies_executable(self):
         with BINDServerResources() as resources:

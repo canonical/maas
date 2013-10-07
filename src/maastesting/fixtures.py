@@ -9,12 +9,15 @@ from __future__ import (
     unicode_literals,
     )
 
+str = None
+
 __metaclass__ = type
 __all__ = [
     "DisplayFixture",
     "LoggerSilencerFixture",
     "ProxiesDisabledFixture",
     "SSTFixture",
+    "TempDirectory",
     ]
 
 import logging
@@ -24,11 +27,12 @@ from subprocess import (
     PIPE,
     Popen,
     )
+import sys
 
+import fixtures
 from fixtures import (
     EnvironmentVariableFixture,
     Fixture,
-    TempDir,
     )
 from sst.actions import (
     start,
@@ -135,7 +139,17 @@ class ProxiesDisabledFixture(Fixture):
         self.useFixture(EnvironmentVariableFixture("https_proxy"))
 
 
-class TempWDFixture(TempDir):
+class TempDirectory(fixtures.TempDir):
+    """Create a temporary directory, ensuring Unicode paths."""
+
+    def setUp(self):
+        super(TempDirectory, self).setUp()
+        if isinstance(self.path, bytes):
+            encoding = sys.getfilesystemencoding()
+            self.path = self.path.decode(encoding)
+
+
+class TempWDFixture(TempDirectory):
     """Change the current working directory into a temp dir.
 
     This will restore the original WD and delete the temp directory on cleanup.

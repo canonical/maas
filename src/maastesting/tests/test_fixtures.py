@@ -9,18 +9,26 @@ from __future__ import (
     unicode_literals,
     )
 
+str = None
+
 __metaclass__ = type
 __all__ = []
 
 import os
 
 from fixtures import EnvironmentVariableFixture
+from maastesting import fixtures
 from maastesting.factory import factory
 from maastesting.fixtures import (
     ProxiesDisabledFixture,
+    TempDirectory,
     TempWDFixture,
     )
 from maastesting.testcase import MAASTestCase
+from testtools.matchers import (
+    DirExists,
+    Not,
+    )
 
 
 class TestProxiedDisabledFixture(MAASTestCase):
@@ -45,6 +53,21 @@ class TestProxiedDisabledFixture(MAASTestCase):
             self.assertNotIn("https_proxy", os.environ)
         # On exit, http_proxy is restored.
         self.assertEqual(https_proxy, os.environ.get("https_proxy"))
+
+
+class TestTempDirectory(MAASTestCase):
+
+    def test_path_is_unicode(self):
+        with TempDirectory() as fixture:
+            self.assertIsInstance(fixture.path, unicode)
+
+    def test_path_is_decoded_using_filesystem_encoding(self):
+        sys = self.patch(fixtures, "sys")
+        sys.getfilesystemencoding.return_value = "rot13"
+        with TempDirectory() as fixture:
+            self.assertIsInstance(fixture.path, unicode)
+            self.assertThat(fixture.path, Not(DirExists()))
+            self.assertThat(fixture.path.decode("rot13"), DirExists())
 
 
 class TestTempWDFixture(MAASTestCase):

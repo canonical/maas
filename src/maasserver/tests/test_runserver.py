@@ -9,6 +9,8 @@ from __future__ import (
     unicode_literals,
     )
 
+str = None
+
 __metaclass__ = type
 __all__ = []
 
@@ -22,11 +24,11 @@ class TestRunServer(MAASServerTestCase):
         fake_oops = {'id': 'EHOVERCRAFTFULL999'}
         self.assertIn(fake_oops['id'], render_error(fake_oops))
 
-    def test_render_error_returns_str(self):
+    def test_render_error_returns_bytes(self):
         # wsgi_oops produces oops pages as unicode strings, but django
-        # expects raw bytes.  Our own error renderer returns str.
+        # expects raw bytes.  Our own error renderer returns bytes.
         fake_oops = {'id': 'abc123'}
-        self.assertIsInstance(render_error(fake_oops), str)
+        self.assertIsInstance(render_error(fake_oops), bytes)
 
     def test_render_error_blows_up_if_oops_id_is_not_ascii(self):
         # Oopses mean that things aren't working as they should.  We

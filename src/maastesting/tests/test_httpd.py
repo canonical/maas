@@ -9,6 +9,8 @@ from __future__ import (
     unicode_literals,
     )
 
+str = None
+
 __metaclass__ = type
 __all__ = []
 
@@ -20,11 +22,11 @@ from socket import (
     gethostbyname,
     gethostname,
     )
+from unittest import skip
 from urllib2 import (
     Request,
     urlopen,
     )
-from unittest import skip
 from urlparse import urljoin
 
 from maastesting.fixtures import ProxiesDisabledFixture

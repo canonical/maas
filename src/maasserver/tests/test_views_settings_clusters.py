@@ -9,6 +9,8 @@ from __future__ import (
     unicode_literals,
     )
 
+str = None
+
 __metaclass__ = type
 __all__ = []
 
@@ -145,7 +147,7 @@ class ClusterInterfaceDeleteTest(AdminLoggedInTestCase):
             args=[nodegroup.uuid, interface.interface])
         # The real test is that reverse() does not blow up when the
         # interface's name contains an alias.
-        self.assertIsInstance(delete_link, basestring)
+        self.assertIsInstance(delete_link, (bytes, unicode))
 
 
 class ClusterInterfaceEditTest(AdminLoggedInTestCase):
@@ -177,7 +179,7 @@ class ClusterInterfaceEditTest(AdminLoggedInTestCase):
             args=[nodegroup.uuid, interface.interface])
         # The real test is that reverse() does not blow up when the
         # interface's name contains an alias.
-        self.assertIsInstance(edit_link, basestring)
+        self.assertIsInstance(edit_link, (bytes, unicode))
 
 
 class ClusterInterfaceCreateTest(AdminLoggedInTestCase):

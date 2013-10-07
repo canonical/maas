@@ -9,6 +9,8 @@ from __future__ import (
     unicode_literals,
     )
 
+str = None
+
 __metaclass__ = type
 __all__ = []
 
@@ -167,7 +169,7 @@ class TestConfiguration(MAASServerTestCase):
     def test_setting_defined(self):
         self.assertThat(
             settings.PRESEED_TEMPLATE_LOCATIONS,
-            AllMatch(IsInstance(basestring)))
+            AllMatch(IsInstance(unicode)))
 
 
 class TestGetPreseedTemplate(MAASServerTestCase):
@@ -441,7 +443,7 @@ class TestRenderPreseed(MAASServerTestCase):
         preseed = render_preseed(node, self.preseed, "precise")
         # The test really is that the preseed is rendered without an
         # error.
-        self.assertIsInstance(preseed, str)
+        self.assertIsInstance(preseed, bytes)
 
     def test_get_preseed_uses_nodegroup_maas_url(self):
         ng_url = 'http://%s' % factory.make_hostname()
@@ -469,7 +471,7 @@ class TestRenderEnlistmentPreseed(MAASServerTestCase):
         preseed = render_enlistment_preseed(self.preseed, "precise")
         # The test really is that the preseed is rendered without an
         # error.
-        self.assertIsInstance(preseed, str)
+        self.assertIsInstance(preseed, bytes)
 
     def test_render_enlistment_preseed_valid_yaml(self):
         preseed = render_enlistment_preseed(self.preseed, "precise")

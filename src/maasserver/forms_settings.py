@@ -9,6 +9,8 @@ from __future__ import (
     unicode_literals,
 )
 
+str = None
+
 __metaclass__ = type
 __all__ = [
     'compose_invalid_choice_text',
@@ -42,7 +44,7 @@ def compose_invalid_choice_text(choice_of_what, valid_choices):
 
     :param choice_of_what: The name for what the selected item is supposed
         to be, to be inserted into the error string.
-    :type choice_of_what: basestring
+    :type choice_of_what: unicode
     :param valid_choices: Valid choices, in Django choices format:
         (name, value).
     :type valid_choices: sequence
@@ -211,7 +213,7 @@ def get_config_field(config_name, **kwargs):
     """Return a configuration field.
 
     :param config_name: Name of the configuration item.
-    :type config_name: basestring
+    :type config_name: unicode
     :return: A configuration field
     :rtype: :class:`django.forms.Field`
     """
@@ -225,7 +227,7 @@ def get_config_form(config_name, data=None):
     """Return a ConfigForm with one configuration field.
 
     :param config_name: Name of the configuration item.
-    :type config_name: basestring
+    :type config_name: unicode
     :param data: Dict used to initialize the field of the form.
     :type data: dict
     :return: A configuration form with one field

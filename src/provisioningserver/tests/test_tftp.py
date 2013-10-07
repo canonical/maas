@@ -9,6 +9,8 @@ from __future__ import (
     unicode_literals,
     )
 
+str = None
+
 __metaclass__ = type
 __all__ = []
 
@@ -72,7 +74,7 @@ class TestTFTPBackendRegex(MAASTestCase):
         The path is intended to match `re_config_file`, and the components are
         the expected groups from a match.
         """
-        components = {"mac": factory.getRandomMACAddress(b"-"),
+        components = {"mac": factory.getRandomMACAddress("-"),
                       "arch": None,
                       "subarch": None}
         config_path = compose_config_path(components["mac"])
@@ -179,7 +181,7 @@ class TestTFTPBackend(MAASTestCase):
     def test_get_generator_url(self):
         # get_generator_url() merges the parameters obtained from the request
         # file path (arch, subarch, name) into the configured generator URL.
-        mac = factory.getRandomMACAddress(b"-")
+        mac = factory.getRandomMACAddress("-")
         dummy = factory.make_name("dummy").encode("ascii")
         backend_url = b"http://example.com/?" + urlencode({b"dummy": dummy})
         backend = TFTPBackend(self.make_dir(), backend_url)
@@ -215,7 +217,7 @@ class TestTFTPBackend(MAASTestCase):
         cluster_uuid = factory.getRandomUUID()
         self.patch(tftp_module, 'get_cluster_uuid').return_value = (
             cluster_uuid)
-        mac = factory.getRandomMACAddress(b"-")
+        mac = factory.getRandomMACAddress("-")
         config_path = compose_config_path(mac)
         backend = TFTPBackend(self.make_dir(), b"http://example.com/")
         # python-tx-tftp sets up call context so that backends can discover
@@ -255,7 +257,7 @@ class TestTFTPBackend(MAASTestCase):
         # `IReader` of a PXE configuration, rendered by `render_pxe_config`.
         backend = TFTPBackend(self.make_dir(), b"http://example.com/")
         # Fake configuration parameters, as discovered from the file path.
-        fake_params = {"mac": factory.getRandomMACAddress(b"-")}
+        fake_params = {"mac": factory.getRandomMACAddress("-")}
         # Fake kernel configuration parameters, as returned from the API call.
         fake_kernel_params = make_kernel_parameters()
 

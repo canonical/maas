@@ -9,6 +9,8 @@ from __future__ import (
     unicode_literals,
     )
 
+str = None
+
 __metaclass__ = type
 __all__ = [
     'configure_dhcp',
@@ -52,7 +54,7 @@ def configure_dhcp(nodegroup):
     nodegroup.ensure_dhcp_key()
 
     interface = nodegroup.get_managed_interface()
-    subnet = str(
+    subnet = unicode(
         IPAddress(interface.ip_range_low) &
         IPAddress(interface.subnet_mask))
     reload_dhcp_server_subtask = restart_dhcp_server.subtask(

@@ -9,6 +9,8 @@ from __future__ import (
     unicode_literals,
     )
 
+str = None
+
 __metaclass__ = type
 __all__ = [
     "factory",
@@ -161,13 +163,13 @@ class Factory(maastesting.factory.Factory):
         if network is None:
             network = factory.getRandomNetwork()
         if subnet_mask is None:
-            subnet_mask = str(network.netmask)
+            subnet_mask = unicode(network.netmask)
         if broadcast_ip is None:
-            broadcast_ip = str(network.broadcast)
+            broadcast_ip = unicode(network.broadcast)
         if ip_range_low is None:
-            ip_range_low = str(IPAddress(network.first))
+            ip_range_low = unicode(IPAddress(network.first))
         if ip_range_high is None:
-            ip_range_high = str(IPAddress(network.last))
+            ip_range_high = unicode(IPAddress(network.last))
         if router_ip is None:
             router_ip = factory.getRandomIPInNetwork(network)
         if ip is None:

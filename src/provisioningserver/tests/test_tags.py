@@ -9,6 +9,8 @@ from __future__ import (
     unicode_literals,
     )
 
+str = None
+
 __metaclass__ = type
 __all__ = []
 
@@ -99,7 +101,7 @@ class EqualsXML(Equals):
 
     @staticmethod
     def normalise(xml):
-        if isinstance(xml, basestring):
+        if isinstance(xml, (bytes, unicode)):
             xml = etree.fromstring(dedent(xml))
         return etree.tostring(xml, pretty_print=True)
 

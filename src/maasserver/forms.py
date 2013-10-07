@@ -9,6 +9,8 @@ from __future__ import (
     unicode_literals,
     )
 
+str = None
+
 __metaclass__ = type
 __all__ = [
     "AdminNodeWithMACAddressesForm",
@@ -497,7 +499,7 @@ def get_action_form(user, request=None):
     :rtype: class:`django.forms.Form`
     """
     return type(
-        str("SpecificNodeActionForm"), (NodeActionForm,),
+        b"SpecificNodeActionForm", (NodeActionForm,),
         {'user': user, 'request': request})
 
 

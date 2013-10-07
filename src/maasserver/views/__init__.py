@@ -9,6 +9,8 @@ from __future__ import (
     unicode_literals,
     )
 
+str = None
+
 __metaclass__ = type
 __all__ = [
     "AccountsEdit",
@@ -152,7 +154,7 @@ class PaginatedListView(ListView):
             if "page" in new_query:
                 del new_query["page"]
         else:
-            new_query["page"] = str(page_number)
+            new_query["page"] = unicode(page_number)
         if not new_query:
             return self.request.path.rsplit("/", 1)[-1] or "."
         return "?" + new_query.urlencode()
@@ -192,12 +194,12 @@ def process_form(request, form_class, redirect_url, prefix,
     :type form_class: django.forms.Form
     :param redirect_url: The url where the user should be redirected if the
         form validates successfully.
-    :type redirect_url: basestring
+    :type redirect_url: unicode
     :param prefix: The prefix of the form.
-    :type prefix: basestring
+    :type prefix: unicode
     :param success_message: An optional message that will be displayed if the
         form validates successfully.
-    :type success_message: basestring
+    :type success_message: unicode
     :param form_kwargs: An optional dict that will passed to the form creation
         method.
     :type form_kwargs: dict or None

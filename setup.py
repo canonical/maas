@@ -10,6 +10,8 @@ from __future__ import (
     unicode_literals,
     )
 
+str = None
+
 from glob import glob
 from os.path import (
     dirname,

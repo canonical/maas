@@ -9,6 +9,8 @@ from __future__ import (
 
 """Tests for `maasserver`."""
 
+str = None
+
 __metaclass__ = type
 __all__ = [
     "extract_redirect",

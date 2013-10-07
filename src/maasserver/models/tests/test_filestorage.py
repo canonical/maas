@@ -9,6 +9,8 @@ from __future__ import (
     unicode_literals,
     )
 
+str = None
+
 __metaclass__ = type
 __all__ = []
 
@@ -28,7 +30,7 @@ class FileStorageTest(MAASServerTestCase):
 
         :param including_text: Text to include in the data.  Leave something
             here to make failure messages more recognizable.
-        :type including_text: basestring
+        :type including_text: unicode
         :return: A string of bytes, including `including_text`.
         :rtype: bytes
         """

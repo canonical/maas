@@ -9,6 +9,8 @@ from __future__ import (
     unicode_literals,
     )
 
+str = None
+
 __metaclass__ = type
 __all__ = [
     "Tag",
@@ -40,7 +42,7 @@ class TagManager(Manager):
         this name exist.
 
         :param name: The Tag.name.
-        :type name: str
+        :type name: string
         :param user: The user that should be used in the permission check.
         :type user: django.contrib.auth.models.User
         :param to_edit: Are we going to edit this tag, or just view it?

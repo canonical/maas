@@ -9,6 +9,8 @@ from __future__ import (
     unicode_literals,
     )
 
+str = None
+
 __metaclass__ = type
 __all__ = []
 
@@ -33,13 +35,13 @@ class AuthTokensTest(MAASServerTestCase):
     """Test creation and retrieval of auth tokens."""
 
     def assertTokenValid(self, token):
-        self.assertIsInstance(token.key, basestring)
+        self.assertIsInstance(token.key, unicode)
         self.assertEqual(KEY_SIZE, len(token.key))
-        self.assertIsInstance(token.secret, basestring)
+        self.assertIsInstance(token.secret, unicode)
         self.assertEqual(SECRET_SIZE, len(token.secret))
 
     def assertConsumerValid(self, consumer):
-        self.assertIsInstance(consumer.key, basestring)
+        self.assertIsInstance(consumer.key, unicode)
         self.assertEqual(KEY_SIZE, len(consumer.key))
         self.assertEqual('', consumer.secret)
 

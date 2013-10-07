@@ -9,6 +9,8 @@ from __future__ import (
     unicode_literals,
     )
 
+str = None
+
 __metaclass__ = type
 __all__ = [
     'guess_server_address',
@@ -34,9 +36,9 @@ def get_command_output(*command_line):
 
     :param *command_line: Words for the command line.  No shell expansions
         are performed.
-    :type *command_line: Sequence of basestring.
+    :type *command_line: Sequence of unicode.
     :return: Output from the command.
-    :rtype: List of basestring, one per line.
+    :rtype: List of unicode, one per line.
     """
     env = {
         variable: value
@@ -55,8 +57,8 @@ def find_default_interface(ip_route_output):
     If no default is found, makes a guess.
 
     :param ip_route_output: Output lines from "ip route show" output.
-    :type ip_route_output: Sequence of basestring.
-    :return: basestring, or None.
+    :type ip_route_output: Sequence of unicode.
+    :return: unicode, or None.
     """
     route_lines = list(ip_route_output)
     for line in route_lines:

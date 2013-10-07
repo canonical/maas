@@ -9,6 +9,8 @@ from __future__ import (
     unicode_literals,
     )
 
+str = None
+
 __metaclass__ = type
 __all__ = []
 
@@ -370,7 +372,7 @@ class TestMetadataUserData(DjangoTestCase):
         client = make_node_client(node)
         response = client.get(reverse('metadata-user-data', args=['latest']))
         self.assertEqual('application/octet-stream', response['Content-Type'])
-        self.assertIsInstance(response.content, str)
+        self.assertIsInstance(response.content, bytes)
         self.assertEqual(
             (httplib.OK, sample_binary_data),
             (response.status_code, response.content))

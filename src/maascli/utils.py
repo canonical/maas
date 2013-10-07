@@ -9,6 +9,8 @@ from __future__ import (
     unicode_literals,
     )
 
+str = None
+
 __metaclass__ = type
 __all__ = [
     "ensure_trailing_slash",
@@ -44,9 +46,11 @@ def parse_docstring(thing):
     Returns a tuple: (title, body).  As per docstring convention, title is
     the docstring's first paragraph and body is the rest.
     """
-    is_string = isinstance(thing, basestring)
+    assert not isinstance(thing, bytes)
+    is_string = isinstance(thing, unicode)
     doc = cleandoc(thing) if is_string else getdoc(thing)
     doc = empty if doc is None else doc
+    assert not isinstance(doc, bytes)
     # Break the docstring into two parts: title and body.
     parts = docstring_split(doc)
     if len(parts) == 2:

@@ -9,6 +9,8 @@ from __future__ import (
     unicode_literals,
     )
 
+str = None
+
 __metaclass__ = type
 __all__ = [
     'MAASTestCase',
@@ -17,8 +19,8 @@ __all__ = [
 from contextlib import contextmanager
 import unittest
 
-from fixtures import TempDir
 from maastesting.factory import factory
+from maastesting.fixtures import TempDirectory
 from maastesting.scenarios import WithScenarios
 import mock
 from nose.proxy import ResultProxy
@@ -103,7 +105,7 @@ class MAASTestCase(WithScenarios, testtools.TestCase):
         This is a convenience wrapper around a fixture incantation.  That's
         the only reason why it's on the test case and not in a factory.
         """
-        return self.useFixture(TempDir()).path
+        return self.useFixture(TempDirectory()).path
 
     def make_file(self, name=None, contents=None):
         """Create, and write to, a file.

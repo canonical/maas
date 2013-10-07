@@ -9,6 +9,8 @@ from __future__ import (
     unicode_literals,
     )
 
+str = None
+
 __metaclass__ = type
 __all__ = [
     'compose_enlistment_preseed_url',
@@ -52,7 +54,7 @@ def get_enlist_preseed(nodegroup=None):
 
     :param nodegroup: The nodegroup used to generate the preseed.
     :return: The rendered preseed string.
-    :rtype: basestring.
+    :rtype: unicode.
     """
     return render_enlistment_preseed(
         PRESEED_TYPE.ENLIST, nodegroup=nodegroup)
@@ -63,7 +65,7 @@ def get_enlist_userdata(nodegroup=None):
 
     :param nodegroup: The nodegroup used to generate the preseed.
     :return: The rendered enlistment user-data string.
-    :rtype: basestring.
+    :rtype: unicode.
     """
     return render_enlistment_preseed(
         USERDATA_TYPE.ENLIST, nodegroup=nodegroup)
@@ -139,7 +141,7 @@ def get_preseed(node):
     :param node: The node to return preseed for.
     :type node: :class:`maasserver.models.Node`
     :return: The rendered preseed string.
-    :rtype: basestring.
+    :rtype: unicode.
     """
     if node.status == NODE_STATUS.COMMISSIONING:
         return render_preseed(
@@ -159,9 +161,9 @@ def get_preseed_filenames(node, prefix='', release='', default=False):
     :param prefix: At the top level, this is the preseed type (will be used as
         a prefix in the template filenames).  Usually one of {'', 'enlist',
         'commissioning'}.
-    :type prefix: basestring
+    :type prefix: unicode
     :param release: The Ubuntu release to be used.
-    :type release: basestring
+    :type release: unicode
     :param default: Should we return the default ('generic') template as a
         last resort template?
     :type default: boolean
@@ -210,7 +212,8 @@ def get_preseed_template(filenames):
 
     :param filenames: An iterable of relative filenames.
     """
-    assert not isinstance(filenames, basestring)
+    assert not isinstance(filenames, (bytes, unicode))
+    assert all(isinstance(filename, unicode) for filename in filenames)
     for location in settings.PRESEED_TEMPLATE_LOCATIONS:
         for filename in filenames:
             filepath = join(location, filename)
@@ -354,7 +357,7 @@ def render_enlistment_preseed(prefix, release='', nodegroup=None):
     :param release: See `get_preseed_filenames`.
     :param nodegroup: The nodegroup used to generate the preseed.
     :return: The rendered preseed string.
-    :rtype: basestring.
+    :rtype: unicode.
     """
     template = load_preseed_template(None, prefix, release)
     context = get_preseed_context(release, nodegroup=nodegroup)
@@ -371,7 +374,7 @@ def render_preseed(node, prefix, release=''):
     :param prefix: See `get_preseed_filenames`.
     :param release: See `get_preseed_filenames`.
     :return: The rendered preseed string.
-    :rtype: basestring.
+    :rtype: unicode.
     """
     template = load_preseed_template(node, prefix, release)
     nodegroup = node.nodegroup

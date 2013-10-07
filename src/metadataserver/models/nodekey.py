@@ -9,6 +9,8 @@ from __future__ import (
     unicode_literals,
     )
 
+str = None
+
 __metaclass__ = type
 __all__ = [
     'NodeKey',
@@ -97,7 +99,7 @@ class NodeKeyManager(Manager):
             get_token_for_node(get_node_for_key(key)).key == key
 
         :param key: The key part of a node's OAuth token.
-        :type key: basestring
+        :type key: unicode
         :raise NodeKey.DoesNotExist: if `key` is not associated with any
             node.
         """

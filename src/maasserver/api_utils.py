@@ -9,6 +9,8 @@ from __future__ import (
     unicode_literals,
     )
 
+str = None
+
 __metaclass__ = type
 __all__ = [
     'extract_oauth_key',
@@ -34,7 +36,7 @@ def get_mandatory_param(data, key, validator=None):
         request is a django.http.HttpRequest).
     :param data: dict
     :param key: The parameter's key.
-    :type key: basestring
+    :type key: unicode
     :param validator: An optional validator that will be used to validate the
          retrieved value.
     :type validator: formencode.validators.Validator

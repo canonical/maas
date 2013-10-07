@@ -9,6 +9,8 @@ from __future__ import (
 
 """Test permissions."""
 
+str = None
+
 __metaclass__ = type
 __all__ = []
 

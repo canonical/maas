@@ -9,6 +9,8 @@ from __future__ import (
     unicode_literals,
     )
 
+str = None
+
 __metaclass__ = type
 __all__ = [
     'MAASClient',
@@ -140,7 +142,9 @@ class MAASClient:
             or a sequence of items that make up the path.
         :return: An absolute URL leading to `path`.
         """
-        if not isinstance(path, basestring):
+        assert not isinstance(path, bytes)
+        if not isinstance(path, unicode):
+            assert not any(isinstance(element, bytes) for element in path)
             path = '/'.join(unicode(element) for element in path)
         # urljoin is very sensitive to leading slashes and when spurious
         # slashes appear it removes path parts. This is why joining is

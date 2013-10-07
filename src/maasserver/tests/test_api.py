@@ -9,6 +9,8 @@ from __future__ import (
     unicode_literals,
     )
 
+str = None
+
 __metaclass__ = type
 __all__ = []
 
@@ -176,9 +178,9 @@ class AccountAPITest(APITestCase):
         self.assertEqual(
             ['consumer_key', 'token_key', 'token_secret'],
             sorted(parsed_result))
-        self.assertIsInstance(parsed_result['consumer_key'], basestring)
-        self.assertIsInstance(parsed_result['token_key'], basestring)
-        self.assertIsInstance(parsed_result['token_secret'], basestring)
+        self.assertIsInstance(parsed_result['consumer_key'], unicode)
+        self.assertIsInstance(parsed_result['token_key'], unicode)
+        self.assertIsInstance(parsed_result['token_secret'], unicode)
 
     def test_delete_authorisation_token_not_found(self):
         # If the provided token_key does not exist (for the currently

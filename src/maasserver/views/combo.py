@@ -9,6 +9,8 @@ from __future__ import (
     unicode_literals,
     )
 
+str = None
+
 __metaclass__ = type
 __all__ = [
     'get_combo_view',
@@ -48,9 +50,9 @@ def get_absolute_location(location=''):
     location (this means that it's a development setup).
 
     :param location: An optional absolute or relative location.
-    :type location: basestring
+    :type location: unicode
     :return: The absolute path.
-    :rtype: basestring
+    :rtype: unicode
     """
     if location.startswith(os.path.sep):
         return location
@@ -65,11 +67,11 @@ def get_combo_view(location='', default_redirect=None):
     """Return a Django view to serve static resources using a combo loader.
 
     :param location: An optional absolute or relative location.
-    :type location: basestring
+    :type location: unicode
     :param default_redirect: An optional address where requests for one file
         of an unknown file type will be redirected.  If this parameter is
         omitted, such requests will lead to a "Bad request" response.
-    :type location: basestring
+    :type location: unicode
     :return: A Django view method.
     :rtype: callable
     """

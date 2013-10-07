@@ -9,6 +9,8 @@ from __future__ import (
     unicode_literals,
     )
 
+str = None
+
 __metaclass__ = type
 __all__ = [
     "factory",
@@ -31,7 +33,7 @@ import subprocess
 import time
 from uuid import uuid1
 
-from fixtures import TempDir
+from maastesting.fixtures import TempDirectory
 from netaddr import (
     IPAddress,
     IPNetwork,
@@ -89,10 +91,10 @@ class Factory:
 
     def getRandomIPAddress(self):
         octets = islice(self.random_octets, 4)
-        return b'%d.%d.%d.%d' % tuple(octets)
+        return '%d.%d.%d.%d' % tuple(octets)
 
     def getRandomUUID(self):
-        return str(uuid1())
+        return unicode(uuid1())
 
     def getRandomNetwork(self, slash=None):
         ip = self.getRandomIPAddress()
@@ -102,13 +104,13 @@ class Factory:
         return IPNetwork('%s/%s' % (ip, slash))
 
     def getRandomIPInNetwork(self, network):
-        return str(IPAddress(
+        return bytes(IPAddress(
             random.randint(network.first, network.last)))
 
-    def getRandomMACAddress(self, delimiter=b":"):
-        assert isinstance(delimiter, bytes)
+    def getRandomMACAddress(self, delimiter=":"):
+        assert isinstance(delimiter, unicode)
         octets = islice(self.random_octets, 6)
-        return delimiter.join(format(octet, b"02x") for octet in octets)
+        return delimiter.join(format(octet, "02x") for octet in octets)
 
     def make_random_leases(self, num_leases=1):
         """Create a dict of arbitrary ip-to-mac address mappings."""
@@ -193,7 +195,7 @@ class Factory:
         :return: Path to a gzip-compressed tarball.
         """
         tarball = os.path.join(location, '%s.tar.gz' % self.make_name())
-        with TempDir() as working_dir:
+        with TempDirectory() as working_dir:
             source = working_dir.path
             for name, content in contents.iteritems():
                 self.make_file(source, name, content)

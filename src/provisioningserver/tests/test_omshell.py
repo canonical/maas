@@ -9,6 +9,8 @@ from __future__ import (
     unicode_literals,
     )
 
+str = None
+
 __metaclass__ = type
 __all__ = []
 
@@ -18,9 +20,9 @@ from subprocess import CalledProcessError
 import tempfile
 from textwrap import dedent
 
-from fixtures import TempDir
 from maastesting.factory import factory
 from maastesting.fakemethod import FakeMethod
+from maastesting.fixtures import TempDirectory
 from maastesting.testcase import MAASTestCase
 from mock import Mock
 from provisioningserver import omshell
@@ -191,7 +193,7 @@ class Test_generate_omapi_key(MAASTestCase):
         self.assertThat(key, EndsWith("=="))
 
     def test_generate_omapi_key_leaves_no_temp_files(self):
-        tmpdir = self.useFixture(TempDir()).path
+        tmpdir = self.useFixture(TempDirectory()).path
         # Make mkdtemp() in omshell nest all directories within tmpdir.
         self.patch(tempfile, 'tempdir', tmpdir)
         generate_omapi_key()

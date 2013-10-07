@@ -9,6 +9,8 @@ from __future__ import (
     unicode_literals,
     )
 
+str = None
+
 __metaclass__ = type
 __all__ = []
 
@@ -662,8 +664,8 @@ class TestActionScript(MAASTestCase):
         # ActionScript.setup() is not safe to run in the test suite.
         self.patch(ActionScript, "setup", lambda self: None)
         # ArgumentParser sometimes likes to print to stdout/err. Use
-        # StringIO.StringIO to be relaxed about str/unicode (argparse uses
-        # str). When moving to Python 3 this will need to be tightened up.
+        # StringIO.StringIO to be relaxed about bytes/unicode (argparse uses
+        # bytes). When moving to Python 3 this will need to be tightened up.
         self.patch(sys, "stdout", StringIO.StringIO())
         self.patch(sys, "stderr", StringIO.StringIO())
 

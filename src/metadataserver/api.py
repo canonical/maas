@@ -9,6 +9,8 @@ from __future__ import (
     unicode_literals,
     )
 
+str = None
+
 __metaclass__ = type
 __all__ = [
     'AnonMetaDataHandler',
@@ -284,7 +286,7 @@ class MetaDataHandler(VersionIndexHandler):
 
         :param item: Sub-path for the attribute, e.g. "local-hostname" to
             get a handler that returns the logged-in node's hostname.
-        :type item: basestring
+        :type item: unicode
         :return: A callable that accepts as arguments the logged-in node;
             the requested metadata version (e.g. "latest"); and `item`.  It
             returns an HttpResponse.

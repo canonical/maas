@@ -9,6 +9,8 @@ from __future__ import (
     unicode_literals,
     )
 
+str = None
+
 __metaclass__ = type
 __all__ = []
 
@@ -100,7 +102,7 @@ class TestPXEConfigAPI(AnonAPITestCase):
         self.assertEqual(httplib.OK, response.status_code)
 
     def test_pxeconfig_returns_no_content_for_unknown_node(self):
-        params = dict(mac=factory.getRandomMACAddress(delimiter=b'-'))
+        params = dict(mac=factory.getRandomMACAddress(delimiter='-'))
         response = self.client.get(reverse('pxeconfig'), params)
         self.assertEqual(httplib.NO_CONTENT, response.status_code)
 
@@ -109,7 +111,7 @@ class TestPXEConfigAPI(AnonAPITestCase):
         arch, subarch = architecture.split('/')
         params = dict(
             self.get_default_params(),
-            mac=factory.getRandomMACAddress(delimiter=b'-'),
+            mac=factory.getRandomMACAddress(delimiter='-'),
             arch=arch,
             subarch=subarch)
         response = self.client.get(reverse('pxeconfig'), params)
@@ -125,7 +127,7 @@ class TestPXEConfigAPI(AnonAPITestCase):
         arch, subarch = architecture.split('/')
         params = dict(
             self.get_default_params(),
-            mac=factory.getRandomMACAddress(delimiter=b'-'),
+            mac=factory.getRandomMACAddress(delimiter='-'),
             arch=arch,
             subarch=subarch)
         response = self.client.get(reverse('pxeconfig'), params)

@@ -9,6 +9,8 @@ from __future__ import (
     unicode_literals,
     )
 
+str = None
+
 __metaclass__ = type
 __all__ = [
     'DNSConfig',
@@ -100,7 +102,7 @@ def generate_rndc(port=953, key_name='rndc-maas-key',
     # - Use urandom to avoid blocking on the random generator.
     rndc_content = check_output(
         ['rndc-confgen', '-b', '256', '-r', '/dev/urandom',
-         '-k', key_name, '-p', str(port)])
+         '-k', key_name, '-p', unicode(port).encode("ascii")])
     named_comment = extract_suggested_named_conf(rndc_content)
     named_conf = uncomment_named_conf(named_comment)
 
@@ -144,10 +146,10 @@ def setup_rndc():
 def execute_rndc_command(arguments):
     """Execute a rndc command."""
     rndc_conf = os.path.join(conf.DNS_CONFIG_DIR, MAAS_RNDC_CONF_NAME)
+    rndc_cmd = ['rndc', '-c', rndc_conf]
+    rndc_cmd.extend(arguments)
     with open(os.devnull, "ab") as devnull:
-        check_call(
-            ['rndc', '-c', rndc_conf] + map(str, arguments),
-            stdout=devnull)
+        check_call(rndc_cmd, stdout=devnull)
 
 
 # Location of DNS templates, relative to the configuration directory.

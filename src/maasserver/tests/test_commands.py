@@ -9,6 +9,8 @@ from __future__ import (
     unicode_literals,
     )
 
+str = None
+
 __metaclass__ = type
 __all__ = []
 
@@ -41,7 +43,7 @@ def assertCommandErrors(runner, command, *args, **kwargs):
         # Django >= 1.5 puts error text in exception.
         exception = runner.assertRaises(
             CommandError, call_command, command, *args, **kwargs)
-        return str(exception)
+        return unicode(exception)
     else:
         # Django < 1.5 prints error text on stderr.
         stderr = BytesIO()

@@ -9,6 +9,8 @@ from __future__ import (
     unicode_literals,
     )
 
+str = None
+
 __metaclass__ = type
 __all__ = [
     'absolute_reverse',
@@ -39,7 +41,7 @@ def get_db_state(instance, field_name):
     :param instance: The model instance to consider.
     :type instance: :class:`django.db.models.Model`
     :param field_name: The name of the field to return.
-    :type field_name: basestring
+    :type field_name: unicode
     """
     obj = get_one(instance.__class__.objects.filter(pk=instance.pk))
     if obj is None:

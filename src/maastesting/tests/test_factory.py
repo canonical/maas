@@ -9,6 +9,8 @@ from __future__ import (
     unicode_literals,
     )
 
+str = None
+
 __metaclass__ = type
 __all__ = []
 
@@ -49,7 +51,7 @@ class TestFactory(MAASTestCase):
 
     def test_getRandomIPAddress(self):
         ip_address = factory.getRandomIPAddress()
-        self.assertIsInstance(ip_address, str)
+        self.assertIsInstance(ip_address, unicode)
         octets = ip_address.split('.')
         self.assertEqual(4, len(octets))
         for octet in octets:
@@ -57,7 +59,7 @@ class TestFactory(MAASTestCase):
 
     def test_getRandomUUID(self):
         uuid = factory.getRandomUUID()
-        self.assertIsInstance(uuid, str)
+        self.assertIsInstance(uuid, unicode)
         self.assertEqual(36, len(uuid))
 
     def test_getRandomNetwork(self):
@@ -75,14 +77,14 @@ class TestFactory(MAASTestCase):
 
     def test_getRandomMACAddress(self):
         mac_address = factory.getRandomMACAddress()
-        self.assertIsInstance(mac_address, str)
+        self.assertIsInstance(mac_address, unicode)
         self.assertEqual(17, len(mac_address))
         for hex_octet in mac_address.split(":"):
             self.assertTrue(0 <= int(hex_octet, 16) <= 255)
 
     def test_getRandomMACAddress_alternative_delimiter(self):
         self.patch(factory, "random_octets", count(0x3a))
-        mac_address = factory.getRandomMACAddress(delimiter=b"-")
+        mac_address = factory.getRandomMACAddress(delimiter="-")
         self.assertEqual("3a-3b-3c-3d-3e-3f", mac_address)
 
     def test_make_random_leases_maps_ips_to_macs(self):

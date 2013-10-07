@@ -9,6 +9,8 @@ from __future__ import (
     unicode_literals,
     )
 
+str = None
+
 __metaclass__ = type
 __all__ = []
 
@@ -28,7 +30,10 @@ from maasserver.models import (
     NodeGroup,
     )
 from maasserver.testing import reload_object
-from maasserver.testing.api import APIv10TestMixin, MultipleUsersScenarios
+from maasserver.testing.api import (
+    APIv10TestMixin,
+    MultipleUsersScenarios,
+    )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
     AdminLoggedInTestCase,

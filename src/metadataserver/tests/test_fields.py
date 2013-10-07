@@ -9,6 +9,8 @@ from __future__ import (
     unicode_literals,
     )
 
+str = None
+
 __metaclass__ = type
 __all__ = []
 
@@ -27,8 +29,8 @@ from metadataserver.tests.models import BinaryFieldModel
 class TestBin(MAASServerTestCase):
     """Test Bin helper class."""
 
-    def test_is_basically_str(self):
-        self.assertEqual(str(b"Hello"), Bin(b"Hello"))
+    def test_is_basically_bytes(self):
+        self.assertEqual(b"Hello", Bin(b"Hello"))
 
     def test_refuses_to_construct_from_unicode(self):
         self.assertRaises(AssertionError, Bin, "Hello")
@@ -86,7 +88,7 @@ class TestBinaryField(TestModelMixin, MAASServerTestCase):
         binary_item = BinaryFieldModel(data=Bin(b"Data"))
         binary_item.save()
         retrieved_data = BinaryFieldModel.objects.get(id=binary_item.id).data
-        self.assertIsInstance(retrieved_data, str)
+        self.assertIsInstance(retrieved_data, bytes)
 
     def test_looks_up_data(self):
         data = b"Binary item"

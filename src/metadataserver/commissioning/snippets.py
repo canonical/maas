@@ -13,6 +13,8 @@ from __future__ import (
     unicode_literals,
     )
 
+str = None
+
 __metaclass__ = type
 __all__ = [
     'list_snippets',
@@ -23,7 +25,12 @@ __all__ = [
     ]
 
 import os
-from provisioningserver.utils import locate_config, read_text_file
+
+from provisioningserver.utils import (
+    locate_config,
+    read_text_file,
+    )
+
 
 USERDATA_BASE_DIR = 'templates/commissioning-user-data'
 

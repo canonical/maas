@@ -9,6 +9,8 @@ from __future__ import (
     unicode_literals,
     )
 
+str = None
+
 __metaclass__ = type
 __all__ = [
     'OAuthAuthenticatedClient',
@@ -46,8 +48,12 @@ class OAuthAuthenticatedClient(Client):
             token = get_auth_tokens(user)[0]
         assert token.user == user, "Token does not match User."
         consumer = token.consumer
-        self.consumer = OAuthConsumer(str(consumer.key), str(consumer.secret))
-        self.token = OAuthToken(str(token.key), str(token.secret))
+        self.consumer = OAuthConsumer(
+            consumer.key.encode("ascii"),
+            consumer.secret.encode("ascii"))
+        self.token = OAuthToken(
+            token.key.encode("ascii"),
+            token.secret.encode("ascii"))
 
     def _compose_auth_header(self, url):
         """Return additional header entries for request to `url`."""

@@ -9,6 +9,8 @@ from __future__ import (
     unicode_literals,
     )
 
+str = None
+
 __metaclass__ = type
 __all__ = [
     'Config',
@@ -78,7 +80,7 @@ class ConfigManager(Manager):
         exist.
 
         :param name: The name of the config item.
-        :type name: basestring
+        :type name: unicode
         :param name: The optional default value to return if no such config
             item exists.
         :type name: object
@@ -95,7 +97,7 @@ class ConfigManager(Manager):
         name.
 
         :param name: The name of the config items.
-        :type name: basestring
+        :type name: unicode
         :return: A list of the config values.
         :rtype: list
         """
@@ -105,7 +107,7 @@ class ConfigManager(Manager):
         """Set or overwrite a config value.
 
         :param name: The name of the config item to set.
-        :type name: basestring
+        :type name: unicode
         :param value: The value of the config item to set.
         :type value: Any jsonizable object
         """
@@ -119,7 +121,7 @@ class ConfigManager(Manager):
         """Connect a method to Django's 'update' signal for given config name.
 
         :param config_name: The name of the config item to track.
-        :type config_name: basestring
+        :type config_name: unicode
         :param method: The method to be called.
         :type method: callable
 
@@ -141,7 +143,7 @@ class Config(Model):
     """Configuration settings item.
 
     :ivar name: The name of the configuration option.
-    :type name: basestring
+    :type name: unicode
     :ivar value: The configuration value.
     :type value: Any pickleable python object.
     """

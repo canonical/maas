@@ -9,6 +9,8 @@ from __future__ import (
     unicode_literals,
     )
 
+str = None
+
 __metaclass__ = type
 __all__ = [
     'connect_to_field_change',
@@ -45,7 +47,7 @@ def connect_to_field_change(callback, model, field_name, delete=False):
     :param model: Specifies a particular sender to receive signals from.
     :type model: class
     :param field_name: Name of the field to monitor.
-    :type field_name: basestring
+    :type field_name: unicode
     :param delete: Should the deletion of an object be considered a change
         in the field?
     :type delete: bool

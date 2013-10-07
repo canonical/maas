@@ -10,9 +10,11 @@ from __future__ import (
     unicode_literals,
     )
 
+str = None
+
 __metaclass__ = type
 __all__ = [
-# TODO: Your class name here.
+    # TODO: Your class name here.
     'ModelClass',
     ]
 

@@ -9,6 +9,8 @@ from __future__ import (
     unicode_literals,
     )
 
+str = None
+
 __metaclass__ = type
 __all__ = [
     "HTTPServerFixture",
@@ -111,7 +113,7 @@ class SilentHTTPRequestHandler(SimpleHTTPRequestHandler):
         self.send_header("Content-type", ctype)
         self.send_header("Content-Encoding", 'gzip')
         gz_out = self._gzip_compress(f)
-        self.send_header("Content-Length", str(gz_out.tell()))
+        self.send_header("Content-Length", unicode(gz_out.tell()))
         gz_out.seek(0)
         self.end_headers()
         return gz_out
@@ -120,7 +122,7 @@ class SilentHTTPRequestHandler(SimpleHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-type", ctype)
         fs = os.fstat(f.fileno())
-        self.send_header("Content-Length", str(fs[6]))
+        self.send_header("Content-Length", unicode(fs[6]))
         self.send_header("Last-Modified", self.date_time_string(fs.st_mtime))
         self.end_headers()
         return f

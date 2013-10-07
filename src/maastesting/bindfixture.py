@@ -9,6 +9,8 @@ from __future__ import (
     unicode_literals,
     )
 
+str = None
+
 __metaclass__ = type
 __all__ = [
     'BINDServer',
@@ -22,6 +24,7 @@ from textwrap import dedent
 import time
 
 import fixtures
+from maastesting.fixtures import TempDirectory
 from provisioningserver.dns.config import generate_rndc
 from provisioningserver.utils import (
     atomic_write,
@@ -165,7 +168,7 @@ class BINDServerResources(fixtures.Fixture):
         if self.rndc_port is None:
             [self.rndc_port] = allocate_ports("localhost")
         if self.homedir is None:
-            self.homedir = self.useFixture(fixtures.TempDir()).path
+            self.homedir = self.useFixture(TempDirectory()).path
         if self.log_file is None:
             self.log_file = os.path.join(self.homedir, 'named.log')
         self.named_file = os.path.join(
@@ -224,7 +227,7 @@ class BINDServerRunner(fixtures.Fixture):
 
     def rndc(self, command):
         """Executes a ``rndc`` command and returns status."""
-        if isinstance(command, basestring):
+        if isinstance(command, unicode):
             command = (command,)
         ctl = subprocess.Popen(
             (self.RNDC_PATH, "-c", self.config.rndcconf_file) +

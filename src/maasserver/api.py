@@ -52,6 +52,8 @@ from __future__ import (
     unicode_literals,
     )
 
+str = None
+
 __metaclass__ = type
 __all__ = [
     "AccountHandler",
@@ -304,15 +306,15 @@ class NodeHandler(OperationsHandler):
         """Update a specific Node.
 
         :param hostname: The new hostname for this node.
-        :type hostname: basestring
+        :type hostname: unicode
         :param architecture: The new architecture for this node (see
             vocabulary `ARCHITECTURE`).
-        :type architecture: basestring
+        :type architecture: unicode
         :param power_type: The new power type for this node (see
             vocabulary `POWER_TYPE`).  Note that if you set power_type to
             use the default value, power_parameters will be set to the empty
             string.  Available to admin users.
-        :type power_type: basestring
+        :type power_type: unicode
         :param power_parameters_{param1}: The new value for the 'param1'
             power parameter.  Note that this is dynamic as the available
             parameters depend on the selected value of the Node's power_type.
@@ -320,12 +322,12 @@ class NodeHandler(OperationsHandler):
             parameter is 'power_address' so one would want to pass 'myaddress'
             as the value of the 'power_parameters_power_address' parameter.
             Available to admin users.
-        :type power_parameters_{param1}: basestring
+        :type power_parameters_{param1}: unicode
         :param power_parameters_skip_check: Whether or not the new power
             parameters for this node should be checked against the expected
             power parameters for the node's power type ('true' or 'false').
             The default is 'false'.
-        :type power_parameters_skip_validation: basestring
+        :type power_parameters_skip_validation: unicode
         """
         node = Node.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NODE_PERMISSION.EDIT)
@@ -373,10 +375,10 @@ class NodeHandler(OperationsHandler):
 
         :param user_data: If present, this blob of user-data to be made
             available to the nodes through the metadata service.
-        :type user_data: base64-encoded basestring
+        :type user_data: base64-encoded unicode
         :param distro_series: If present, this parameter specifies the
             Ubuntu Release the node will use.
-        :type distro_series: basestring
+        :type distro_series: unicode
 
         Ideally we'd have MIME multipart and content-transfer-encoding etc.
         deal with the encapsulation of binary data, but couldn't make it work
@@ -547,9 +549,9 @@ class AnonNodesHandler(AnonymousOperationsHandler):
         this MAAS (and attached to a non-retired node).
 
         :param mac_address: The mac address to be checked.
-        :type mac_address: basestring
+        :type mac_address: unicode
         :return: 'true' or 'false'.
-        :rtype: basestring
+        :rtype: unicode
         """
         mac_address = get_mandatory_param(request.GET, 'mac_address')
         return MACAddress.objects.filter(
@@ -776,10 +778,10 @@ class NodesHandler(OperationsHandler):
         semantics.
 
         :param name: Hostname of the returned node.
-        :type name: basestring
+        :type name: unicode
         :param arch: Architecture of the returned node (e.g. 'i386/generic',
             'amd64', 'armhf/highbank', etc.).
-        :type arch: basestring
+        :type arch: unicode
         :param cpu_count: The minium number of CPUs the returned node must
             have.
         :type cpu_count: int
@@ -787,13 +789,13 @@ class NodesHandler(OperationsHandler):
              returned node must have.
         :type mem: float
         :param tags: List of tags the returned node must have.
-        :type tags: list of basestrings
+        :type tags: list of unicodes
         :param connected_to: List of routers' MAC addresses the returned
             node must be connected to.
-        :type connected_to: basestring or list of basestrings
+        :type connected_to: unicode or list of unicodes
         :param not_connected_to: List of routers' MAC Addresses the returned
             node must not be connected to.
-        :type connected_to: list of basestrings
+        :type connected_to: list of unicodes
         """
         form = AcquireNodeForm(data=request.data)
         if form.is_valid():
@@ -1246,9 +1248,9 @@ class AnonNodeGroupsHandler(AnonymousOperationsHandler):
         - 403 (Forbidden): this cluster controller has been rejected.
 
         :param uuid: The cluster's UUID.
-        :type name: basestring
+        :type name: unicode
         :param name: The cluster's name.
-        :type name: basestring
+        :type name: unicode
         :param interfaces: The cluster controller's network interfaces.
         :type interfaces: JSON string containing a list of dictionaries with
             the data to initialize the interfaces.
@@ -1303,7 +1305,7 @@ class NodeGroupsHandler(OperationsHandler):
         """Accept nodegroup enlistment(s).
 
         :param uuid: The UUID (or list of UUIDs) of the nodegroup(s) to accept.
-        :type name: basestring (or list of basestrings)
+        :type name: unicode (or list of unicodes)
 
         This method is reserved to admin users.
         """
@@ -1331,7 +1333,7 @@ class NodeGroupsHandler(OperationsHandler):
         """Reject nodegroup enlistment(s).
 
         :param uuid: The UUID (or list of UUIDs) of the nodegroup(s) to reject.
-        :type name: basestring (or list of basestrings)
+        :type name: unicode (or list of unicodes)
 
         This method is reserved to admin users.
         """
@@ -1398,9 +1400,9 @@ class NodeGroupHandler(OperationsHandler):
         """Update a specific cluster.
 
         :param name: The new DNS name for this cluster.
-        :type name: basestring
+        :type name: unicode
         :param cluster_name: The new name for this cluster.
-        :type cluster_name: basestring
+        :type cluster_name: unicode
         :param status: The new status for this cluster (see
             vocabulary `NODEGROUP_STATUS`).
         :type status: int
@@ -1456,8 +1458,8 @@ class NodeGroupHandler(OperationsHandler):
     # a) We expect to get a list of system_ids which is quite long (~100 ids,
     #    each 40 bytes, is 4000 bytes), which is a bit too long for a URL.
     # b) MAASClient.get() just uses urlencode(params) but urlencode ends up
-    #    just calling str(lst) and encoding that, which transforms te list of
-    #    ids into something unusable. .post() does the right thing.
+    #    just stringifying the list and encoding that, which transforms the
+    #    list of ids into something unusable. .post() does the right thing.
     @operation(idempotent=False)
     def details(self, request, uuid):
         """Obtain various system details for each node specified.
@@ -1592,21 +1594,21 @@ class NodeGroupInterfacesHandler(OperationsHandler):
         """Create a new NodeGroupInterface for this NodeGroup.
 
         :param ip: Static IP of the interface.
-        :type ip: basestring (IP Address)
+        :type ip: unicode (IP Address)
         :param interface: Name of the interface.
-        :type interface: basestring
+        :type interface: unicode
         :param management: The service(s) MAAS should manage on this interface.
         :type management: Vocabulary `NODEGROUPINTERFACE_MANAGEMENT`
         :param subnet_mask: Subnet mask, e.g. 255.0.0.0.
-        :type subnet_mask: basestring (IP Address)
+        :type subnet_mask: unicode (IP Address)
         :param broadcast_ip: Broadcast address for this subnet.
-        :type broadcast_ip: basestring (IP Address)
+        :type broadcast_ip: unicode (IP Address)
         :param router_ip: Address of default gateway.
-        :type router_ip: basestring (IP Address)
+        :type router_ip: unicode (IP Address)
         :param ip_range_low: Lowest IP address to assign to clients.
-        :type ip_range_low: basestring (IP Address)
+        :type ip_range_low: unicode (IP Address)
         :param ip_range_high: Highest IP address to assign to clients.
-        :type ip_range_high: basestring (IP Address)
+        :type ip_range_high: unicode (IP Address)
         """
         nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
         instance = NodeGroupInterface(nodegroup=nodegroup)
@@ -1645,21 +1647,21 @@ class NodeGroupInterfaceHandler(OperationsHandler):
         """Update a specific NodeGroupInterface.
 
         :param ip: Static IP of the interface.
-        :type ip: basestring (IP Address)
+        :type ip: unicode (IP Address)
         :param interface: Name of the interface.
-        :type interface: basestring
+        :type interface: unicode
         :param management: The service(s) MAAS should manage on this interface.
         :type management: Vocabulary `NODEGROUPINTERFACE_MANAGEMENT`
         :param subnet_mask: Subnet mask, e.g. 255.0.0.0.
-        :type subnet_mask: basestring (IP Address)
+        :type subnet_mask: unicode (IP Address)
         :param broadcast_ip: Broadcast address for this subnet.
-        :type broadcast_ip: basestring (IP Address)
+        :type broadcast_ip: unicode (IP Address)
         :param router_ip: Address of default gateway.
-        :type router_ip: basestring (IP Address)
+        :type router_ip: unicode (IP Address)
         :param ip_range_low: Lowest IP address to assign to clients.
-        :type ip_range_low: basestring (IP Address)
+        :type ip_range_low: unicode (IP Address)
         :param ip_range_high: Highest IP address to assign to clients.
-        :type ip_range_high: basestring (IP Address)
+        :type ip_range_high: unicode (IP Address)
         """
         nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
         nodegroupinterface = get_object_or_404(
@@ -1720,7 +1722,7 @@ class AccountHandler(OperationsHandler):
         """Delete an authorisation OAuth token and the related OAuth consumer.
 
         :param token_key: The key of the token to be deleted.
-        :type token_key: basestring
+        :type token_key: unicode
         """
         profile = request.user.get_profile()
         token_key = get_mandatory_param(request.data, 'token_key')
@@ -1916,7 +1918,7 @@ class MaasHandler(OperationsHandler):
         """Set a config value.
 
         :param name: The name of the config item to be set.
-        :type name: basestring
+        :type name: unicode
         :param value: The value of the config item to be set.
         :type value: json object
 
@@ -1940,7 +1942,7 @@ class MaasHandler(OperationsHandler):
         """Get a config value.
 
         :param name: The name of the config item to be retrieved.
-        :type name: basestring
+        :type name: unicode
 
         %s
         """

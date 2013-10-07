@@ -9,6 +9,8 @@ from __future__ import (
     unicode_literals,
     )
 
+str = None
+
 __metaclass__ = type
 __all__ = [
     'SSHKey',
@@ -68,12 +70,12 @@ def get_html_display_for_key(key, size):
     to fit in, we simply display a cropped version of the whole string.
 
     :param key: The key for which we want an HTML representation.
-    :type name: basestring
+    :type name: unicode
     :param size: The maximum size of the representation.  This may not be
         met exactly.
     :type size: int
     :return: The HTML representation of this key.
-    :rtype: basestring
+    :rtype: unicode
     """
     key = key.strip()
     key_parts = key.split(' ', 2)
@@ -139,6 +141,6 @@ class SSHKey(CleanSave, TimestampedModel):
         """Return a compact HTML representation of this key.
 
         :return: The HTML representation of this key.
-        :rtype: basestring
+        :rtype: unicode
         """
         return mark_safe(get_html_display_for_key(self.key, MAX_KEY_DISPLAY))

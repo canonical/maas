@@ -9,6 +9,8 @@ from __future__ import (
     unicode_literals,
     )
 
+str = None
+
 __metaclass__ = type
 __all__ = [
     'DictCharField',
@@ -327,7 +329,7 @@ class DictCharWidget(forms.widgets.MultiWidget):
             django.http.HttpRequest).
         :type files: dict
         :param name: The name of the widget.
-        :type name: basestring
+        :type name: unicode
         :return: The extracted values as a dictionary.
         :rtype: dict or list
         """

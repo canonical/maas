@@ -9,6 +9,8 @@ from __future__ import (
     unicode_literals,
     )
 
+str = None
+
 __metaclass__ = type
 __all__ = []
 
@@ -188,7 +190,7 @@ class TestDNSConfigModifications(MAASServerTestCase):
             nodegroup=nodegroup)
         mac = factory.make_mac_address(node=node)
         ips = IPRange(interface.ip_range_low, interface.ip_range_high)
-        lease_ip = str(islice(ips, lease_number, lease_number + 1).next())
+        lease_ip = unicode(islice(ips, lease_number, lease_number + 1).next())
         lease = factory.make_dhcp_lease(
             nodegroup=nodegroup, mac=mac.mac_address, ip=lease_ip)
         # Simulate that this lease was created by

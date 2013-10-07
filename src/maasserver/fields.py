@@ -9,6 +9,8 @@ from __future__ import (
     unicode_literals,
     )
 
+str = None
+
 __metaclass__ = type
 __all__ = [
     "MAC",
@@ -157,8 +159,11 @@ class MAC:
             # Avoid double-wrapping.  It's the value that matters, not the
             # MAC object that wraps it.
             value = value.get_raw()
-        # TODO bug=1215447: Remove this assertion.
-        assert value is None or isinstance(value, basestring)
+        elif isinstance(value, bytes):
+            value = value.decode("ascii")
+        else:
+            # TODO bug=1215447: Remove this assertion.
+            assert value is None or isinstance(value, unicode)
         # The wrapped attribute is stored as self._wrapped, following
         # ISQLQuote's example.
         self._wrapped = value
@@ -242,8 +247,9 @@ class JSONObjectField(Field):
 
     def to_python(self, value):
         """db -> python: json load."""
+        assert not isinstance(value, bytes)
         if value is not None:
-            if isinstance(value, basestring):
+            if isinstance(value, unicode):
                 try:
                     return loads(value)
                 except ValueError:

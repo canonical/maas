@@ -9,6 +9,8 @@ from __future__ import (
     unicode_literals,
     )
 
+str = None
+
 __metaclass__ = type
 __all__ = [
     "ConfigFixture",
@@ -19,8 +21,8 @@ from os import path
 from fixtures import (
     EnvironmentVariableFixture,
     Fixture,
-    TempDir,
     )
+from maastesting.fixtures import TempDirectory
 import yaml
 
 
@@ -33,7 +35,7 @@ class ConfigFixture(Fixture):
     def setUp(self):
         super(ConfigFixture, self).setUp()
         # Create a real configuration file, and populate it.
-        self.dir = self.useFixture(TempDir()).path
+        self.dir = self.useFixture(TempDirectory()).path
         self.filename = path.join(self.dir, "config.yaml")
         with open(self.filename, "wb") as stream:
             yaml.safe_dump(self.config, stream=stream)

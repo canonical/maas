@@ -9,6 +9,8 @@ from __future__ import (
     unicode_literals,
     )
 
+str = None
+
 __metaclass__ = type
 __all__ = [
     "NODE_TRANSITIONS",
@@ -251,11 +253,11 @@ class NodeManager(Manager):
         permission on this `Node`.
 
         :param name: The system_id.
-        :type name: str
+        :type name: string
         :param user: The user that should be used in the permission check.
         :type user: django.contrib.auth.models.User
         :param perm: The permission to assert that the user has on the node.
-        :type perm: basestring
+        :type perm: unicode
         :raises: django.http.Http404_,
             :class:`maasserver.exceptions.PermissionDenied`.
 
@@ -319,7 +321,7 @@ class NodeManager(Manager):
         :param user_data: Optional blob of user-data to be made available to
             the nodes through the metadata service.  If not given, any
             previous user data is used.
-        :type user_data: basestring
+        :type user_data: unicode
         :return: Those Nodes for which power-on was actually requested.
         :rtype: list
         """
@@ -556,7 +558,7 @@ class Node(CleanSave, TimestampedModel):
         """Add a new MAC address to this `Node`.
 
         :param mac_address: The MAC address to be added.
-        :type mac_address: basestring
+        :type mac_address: unicode
         :raises: django.core.exceptions.ValidationError_
 
         .. _django.core.exceptions.ValidationError: https://
@@ -574,7 +576,7 @@ class Node(CleanSave, TimestampedModel):
         """Remove a MAC address from this `Node`.
 
         :param mac_address: The MAC address to be removed.
-        :type mac_address: str
+        :type mac_address: string
 
         """
         # Avoid circular imports

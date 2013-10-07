@@ -6,6 +6,8 @@ from __future__ import (
     print_function,
     )
 
+str = None
+
 __metaclass__ = type
 __all__ = ['Migration']
 

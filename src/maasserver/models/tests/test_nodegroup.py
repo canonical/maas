@@ -9,6 +9,8 @@ from __future__ import (
     unicode_literals,
     )
 
+str = None
+
 __metaclass__ = type
 __all__ = []
 
@@ -54,8 +56,8 @@ def make_dhcp_settings():
     network = factory.getRandomNetwork()
     return network, {
         'interface': factory.make_name('interface'),
-        'subnet_mask': str(network.netmask),
-        'broadcast_ip': str(network.broadcast),
+        'subnet_mask': unicode(network.netmask),
+        'broadcast_ip': unicode(network.broadcast),
         'router_ip': factory.getRandomIPInNetwork(network),
         'ip_range_low': factory.getRandomIPInNetwork(network),
         'ip_range_high': factory.getRandomIPInNetwork(network),
