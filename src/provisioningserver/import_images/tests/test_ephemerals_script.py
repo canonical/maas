@@ -22,6 +22,7 @@ import subprocess
 from maastesting.factory import factory
 from provisioningserver.import_images import ephemerals_script
 from provisioningserver.import_images.ephemerals_script import (
+    compose_filter,
     copy_file_by_glob,
     create_symlinked_image_dir,
     extract_image_tarball,
@@ -109,6 +110,26 @@ class TestHelpers(PservTestCase):
             AssertionError,
             copy_file_by_glob,
             source_dir, '*', self.make_dir(), factory.make_name())
+
+    def test_compose_filter_returns_single_literal(self):
+        key = factory.make_name('key')
+        literal = factory.getRandomString()
+        self.assertEqual(
+            '%s~(%s)' % (key, literal),
+            compose_filter(key, [literal]))
+
+    def test_compose_filter_combines_literals(self):
+        key = factory.make_name('key')
+        values = (factory.getRandomString(), factory.getRandomString())
+        self.assertEqual(
+            '%s~(%s|%s)' % (key, values[0], values[1]),
+            compose_filter(key, values))
+
+    def test_compose_filter_escapes_literals_for_regex_use(self):
+        key = factory.make_name('key')
+        self.assertEqual(
+            '%s~(x\\.y\\*)' % key,
+            compose_filter(key, ['x.y*']))
 
 
 class TestExtractImageTarball(PservTestCase):

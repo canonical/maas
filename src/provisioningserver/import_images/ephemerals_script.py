@@ -323,6 +323,24 @@ class MAASMirrorWriter(mirrors.ObjectStoreMirrorWriter):
             raise
 
 
+def compose_filter(key, values):
+    """Create a simplestreams filter string.
+
+    The filter string that is returned performs a regex match of `key` against
+    given literal `values`, e.g. "arch~(i386|amd64|armhf)" (for key 'arch'
+    with values 'i386' etc.).
+
+    :param key: The simplestreams key that is to be filtered.
+    :param values: Iterable of strings.  Any of these literal values for `key`
+        will match the simplestream filter; nothing else will.
+    :return: A regex string suitable for passing to simplestreams.
+    """
+    return "%s~(%s)" % (
+        key,
+        '|'.join(re.escape(literal) for literal in values),
+        )
+
+
 def make_arg_parser(doc):
     """Create an `argparse.ArgumentParser` for this script.
 
@@ -330,10 +348,14 @@ def make_arg_parser(doc):
     """
     config = load_ephemerals_config()["boot"]["ephemeral"]
 
-    def make_or_list(things):
-        return '|'.join(re.escape(t) for t in things)
-    arches = "arch~(%s)" % make_or_list(config['arches'])
-    releases = "release~(%s)" % make_or_list(config['releases'])
+    filters = []
+    arches = config['boot']['ephemeral'].get('arches')
+    if arches is not None:
+        filters.append(compose_filter('arch', arches))
+    releases = config['boot']['ephemeral'].get('releases')
+    if releases is not None:
+        filters.append(compose_filter('release', releases))
+    directory = config['boot']['ephemeral'].get('directory')
 
     parser = ArgumentParser(description=doc)
     parser.add_argument(
@@ -343,7 +365,7 @@ def make_arg_parser(doc):
         '--url', action='store', default=RELEASES_URL,
         help="the mirror URL (either remote or file://)")
     parser.add_argument(
-        '--output', action='store', default=config["directory"],
+        '--output', action='store', default=directory,
         help="The directory to dump maas output in")
     parser.add_argument(
         '--max', action='store', default=1,
@@ -359,7 +381,7 @@ def make_arg_parser(doc):
         help="regex matching products to import, e.g. "
              "com.ubuntu.maas.daily:ephemerals:.* for daily")
     parser.add_argument(
-        'filters', nargs='*', default=[arches, releases],
+        'filters', nargs='*', default=filters,
         help="filters over image metadata, e.g. arch=i386 release=precise")
     return parser
 
