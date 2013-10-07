@@ -178,6 +178,16 @@ class TestConfig(MAASTestCase):
         observed = Config.load(filename)
         self.assertEqual("/some/where.log", observed["logfile"])
 
+    def test_load_defaults_to_default_filename(self):
+        logfile = self.make_file(name='test.log')
+        config = yaml.safe_dump({'logfile': logfile})
+        filename = self.make_file(name="config.yaml", contents=config)
+        self.patch(Config, 'DEFAULT_FILENAME', filename)
+
+        observed = Config.load()
+
+        self.assertEqual(logfile, observed['logfile'])
+
     def test_load_example(self):
         # The example configuration is designed for development.
         filename = os.path.join(root, "etc", "maas", "pserv.yaml")
@@ -211,3 +221,30 @@ class TestConfig(MAASTestCase):
         self.assertIs(
             Config.fields["tftp"].fields["root"],
             Config.field("tftp", "root"))
+
+    def test_save_and_load_interoperate(self):
+        logfile = self.make_file(name='test.log')
+        saved_file = self.make_file()
+
+        Config.save({'logfile': logfile}, saved_file)
+        loaded_config = Config.load(saved_file)
+        self.assertEqual(logfile, loaded_config['logfile'])
+
+    def test_save_saves_yaml_file(self):
+        config = {'logfile': self.make_file()}
+        saved_file = self.make_file()
+
+        Config.save(config, saved_file)
+
+        with open(saved_file, 'rb') as written_file:
+            loaded_config = yaml.load(written_file)
+        self.assertEqual(config, loaded_config)
+
+    def test_save_defaults_to_default_filename(self):
+        logfile = self.make_file(name='test.log')
+        filename = self.make_file(name="config.yaml")
+        self.patch(Config, 'DEFAULT_FILENAME', filename)
+
+        Config.save({'logfile': logfile})
+
+        self.assertEqual(logfile, Config.load(filename)['logfile'])

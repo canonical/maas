@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """MAAS Provisioning Configuration."""
@@ -24,9 +24,10 @@ from formencode.declarative import DeclarativeMeta
 from formencode.validators import (
     Int,
     RequireIfPresent,
-    String,
     Set,
+    String,
     )
+from provisioningserver.utils import atomic_write
 import yaml
 
 
@@ -138,6 +139,14 @@ class Config(Schema):
             filename = cls.DEFAULT_FILENAME
         with open(filename, "rb") as stream:
             return cls.parse(stream)
+
+    @classmethod
+    def save(cls, config, filename=None):
+        """Save a YAML configuration to `filename`, or to the default file."""
+        if filename is None:
+            filename = cls.DEFAULT_FILENAME
+        dump = yaml.safe_dump(config)
+        atomic_write(dump, filename)
 
     _cache = {}
     _cache_lock = RLock()

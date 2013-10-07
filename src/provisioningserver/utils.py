@@ -52,7 +52,6 @@ from time import time
 from lockfile import FileLock
 from lxml import etree
 import netifaces
-from provisioningserver.config import Config
 import tempita
 from twisted.internet.defer import maybeDeferred
 
@@ -475,6 +474,9 @@ class MainScript(ActionScript):
     """
 
     def __init__(self, description):
+        # Avoid circular imports.
+        from provisioningserver.config import Config
+
         super(MainScript, self).__init__(description)
         self.parser.add_argument(
             "-c", "--config-file", metavar="FILENAME",
