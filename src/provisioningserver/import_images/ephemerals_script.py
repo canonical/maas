@@ -346,7 +346,7 @@ def make_arg_parser(doc):
 
     :param doc: Description of the script, for help output.
     """
-    config = load_ephemerals_config()["boot"]["ephemeral"]
+    config = load_ephemerals_config()
 
     filters = []
     arches = config['boot']['ephemeral'].get('arches')

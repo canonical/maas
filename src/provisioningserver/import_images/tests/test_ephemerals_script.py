@@ -12,6 +12,7 @@ from __future__ import (
 __metaclass__ = type
 __all__ = []
 
+from argparse import ArgumentParser
 from os import (
     listdir,
     readlink,
@@ -27,6 +28,7 @@ from provisioningserver.import_images.ephemerals_script import (
     create_symlinked_image_dir,
     extract_image_tarball,
     install_image_from_simplestreams,
+    make_arg_parser,
     )
 from provisioningserver.pxe.tftppath import (
     compose_image_path,
@@ -34,11 +36,11 @@ from provisioningserver.pxe.tftppath import (
     )
 from provisioningserver.testing.config import ConfigFixture
 from provisioningserver.testing.testcase import PservTestCase
+from provisioningserver.utils import read_text_file
 from testtools.matchers import (
     FileContains,
     StartsWith,
     )
-from provisioningserver.utils import read_text_file
 
 
 def split_path(path):
@@ -350,3 +352,42 @@ class TestInstallImageFromSimplestreams(PservTestCase):
             arch=factory.make_name('arch'), temp_location=temp_location)
 
         self.assertItemsEqual([], listdir(temp_location))
+
+
+class TestMakeArgParser(PservTestCase):
+
+    def test_creates_parser(self):
+        self.useFixture(ConfigFixture({'boot': {'ephemeral': {}}}))
+        documentation = factory.getRandomString()
+
+        parser = make_arg_parser(documentation)
+
+        self.assertIsInstance(parser, ArgumentParser)
+        self.assertEqual(documentation, parser.description)
+
+    def test_defaults_to_config(self):
+        directory = self.make_dir()
+        arches = [factory.make_name('arch1'), factory.make_name('arch2')]
+        releases = [factory.make_name('rel1'), factory.make_name('rel2')]
+        self.useFixture(ConfigFixture(
+            {
+                'boot': {
+                    'ephemeral': {
+                        'target_name_prefix': factory.getRandomString(),
+                        'directory': directory,
+                        'arches': arches,
+                        'releases': releases,
+                    },
+                },
+            }))
+
+        parser = make_arg_parser(factory.getRandomString())
+
+        args = parser.parse_args('')
+        self.assertEqual(directory, args.output)
+        self.assertItemsEqual(
+            [
+                compose_filter('arch', arches),
+                compose_filter('release', releases),
+            ],
+            args.filters)
