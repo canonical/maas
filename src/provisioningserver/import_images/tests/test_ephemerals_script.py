@@ -22,10 +22,21 @@ from os import (
 import os.path
 import subprocess
 
+from fixtures import EnvironmentVariableFixture
 from maastesting.factory import factory
-from provisioningserver.import_images import ephemerals_script
+from maastesting.utils import (
+    age_file,
+    get_write_time,
+    )
+from provisioningserver.config import Config
+from provisioningserver.import_images import (
+    config as config_module,
+    ephemerals_script,
+    )
+from provisioningserver.import_images.config import DEFAULTS
 from provisioningserver.import_images.ephemerals_script import (
     compose_filter,
+    convert_legacy_config,
     copy_file_by_glob,
     create_symlinked_image_dir,
     extract_image_tarball,
@@ -393,3 +404,76 @@ class TestMakeArgParser(PservTestCase):
                 compose_filter('release', releases),
             ],
             args.filters)
+
+    def test_does_not_require_config(self):
+        no_file = os.path.join(self.make_dir(), factory.make_name() + '.yaml')
+        self.useFixture(
+            EnvironmentVariableFixture('MAAS_PROVISIONING_SETTINGS', no_file))
+
+        parser = make_arg_parser(factory.getRandomString())
+
+        args = parser.parse_args('')
+        self.assertEqual(DEFAULTS['directory'], args.output)
+        self.assertItemsEqual([], args.filters)
+
+
+class TestConvertLegacyConfig(PservTestCase):
+
+    def test_converts_legacy_config_if_no_new_config_set(self):
+        self.useFixture(ConfigFixture({'boot': {'ephemeral': {}}}))
+        data_dir = self.make_dir()
+        arches = [factory.make_name('arch')]
+        releases = [factory.make_name('rel')]
+        prefix = factory.make_name('prefix')
+        self.patch(config_module, 'parse_legacy_config').return_value = {
+            'DATA_DIR': data_dir,
+            'ARCHES': arches,
+            'RELEASES': releases,
+            'TARGET_NAME_PREFIX': prefix,
+            }
+
+        convert_legacy_config()
+
+        self.assertEqual({
+            'directory': data_dir,
+            'arches': arches,
+            'releases': releases,
+            'target_name_prefix': prefix,
+            },
+            Config.load()['boot']['ephemeral'])
+
+    def test_does_nothing_if_already_populated(self):
+        data_dir = self.make_dir()
+        arches = [factory.make_name('arch')]
+        releases = [factory.make_name('rel')]
+        prefix = factory.make_name('prefix')
+        config = self.useFixture(ConfigFixture(
+            {
+                'boot': {
+                    'ephemeral': {
+                        'directory': data_dir,
+                        'arches': arches,
+                        'releases': releases,
+                        'target_name_prefix': prefix,
+                    }
+                 }
+            }))
+        self.patch(config_module, 'parse_legacy_config').return_value = {
+            'DATA_DIR': factory.make_name('legacy-dir'),
+            'ARCHES': [factory.make_name('legacy-arch')],
+            'RELEASES': [factory.make_name('legacy-rel')],
+            'TARGET_NAME_PREFIX': factory.make_name('legacy-prefix'),
+            }
+        age_file(config.filename, 600)
+        config_last_written = get_write_time(config.filename)
+
+        convert_legacy_config()
+
+        self.assertEqual(config_last_written, get_write_time(config.filename))
+        self.assertEqual({
+            'directory': data_dir,
+            'arches': arches,
+            'releases': releases,
+            'target_name_prefix': prefix,
+            },
+            Config.load()['boot']['ephemeral'])

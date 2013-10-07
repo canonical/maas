@@ -11,27 +11,24 @@ from __future__ import (
 
 __metaclass__ = type
 __all__ = [
-    'load_ephemerals_config',
+    'DEFAULTS',
+    'merge_legacy_ephemerals_config',
     ]
 
 
 import os.path
 from subprocess import check_output
 
-import distro_info
-from provisioningserver.config import Config
 from provisioningserver.import_images.tgt import TARGET_NAME_PREFIX
-from provisioningserver.utils import (
-    atomic_write,
-    filter_dict,
-    )
-import yaml
+from provisioningserver.utils import filter_dict
 
 # Default settings for various options.
 DEFAULTS = {
     'directory': "/var/lib/maas/ephemeral",
-    'arches': ["amd64", "i386", "armhf"],
-    'releases': distro_info.UbuntuDistroInfo().supported(),
+    # Default to downloading all supported architectures.
+    'arches': None,
+    # Default to downloading all supported releases.
+    'releases': None,
     'target_name_prefix': TARGET_NAME_PREFIX,
 }
 
@@ -120,18 +117,3 @@ def merge_legacy_ephemerals_config(config):
         eph[option] = old.get(legacy_option) or DEFAULTS[option]
 
     return True
-
-
-def load_ephemerals_config():
-    """Load config for the ephemerals import script.
-
-    If there is no configuration yet, this attempts to import a legacy-style
-    shell-script configuration.
-    """
-    current = Config.load()
-
-    changed = merge_legacy_ephemerals_config(current)
-    if changed:
-        atomic_write(yaml.safe_dump(current), Config.DEFAULT_FILENAME)
-
-    return Config.load()

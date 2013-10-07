@@ -19,7 +19,9 @@ __all__ = [
     ]
 
 from argparse import ArgumentParser
+import errno
 from glob import glob
+from logging import getLogger
 from os import (
     remove,
     symlink,
@@ -30,7 +32,11 @@ import shutil
 import subprocess
 import tempfile
 
-from provisioningserver.import_images.config import load_ephemerals_config
+from provisioningserver.config import Config
+from provisioningserver.import_images.config import (
+    DEFAULTS,
+    merge_legacy_ephemerals_config,
+    )
 from provisioningserver.import_images.tgt import (
     clean_up_info_file,
     get_conf_path,
@@ -61,6 +67,8 @@ PRODUCTS_REGEX = 'com[.]ubuntu[.]maas:ephemeral:.*'
 # Path of the keys used for files on cloud-images.ubuntu.com.
 # The keys are in the 'ubuntu-cloudimage-keyring' package.
 DEFAULT_KEYRING = "/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg"
+
+logger = getLogger(__name__)
 
 
 def copy_file_by_glob(source_dir, pattern, target_dir, target):
@@ -348,7 +356,15 @@ def make_arg_parser(doc):
 
     :param doc: Description of the script, for help output.
     """
-    config = load_ephemerals_config()
+    try:
+        config = Config.load_from_cache()
+    except IOError as e:
+        if e.errno != errno.ENOENT:
+            raise
+        # Plod on with defaults, in case this is just a --help run.  If it's
+        # not, main() will fail anyway.
+        config = {'boot': {'ephemeral': DEFAULTS}}
+    merge_legacy_ephemerals_config(config)
 
     filters = []
     arches = config['boot']['ephemeral'].get('arches')
@@ -389,12 +405,23 @@ def make_arg_parser(doc):
     return parser
 
 
+def convert_legacy_config():
+    """If appropriate, update config based on legacy shell-script config."""
+    config = Config.load_from_cache()
+    if merge_legacy_ephemerals_config(config):
+        logger.info("Updating configuration from legacy shell-script config.")
+        Config.save(config)
+
+
 def main(args):
     """Import ephemeral images.
 
     :param args: Command-line arguments, in parsed form.
     """
+    convert_legacy_config()
+
     def verify_signature(content, path):
+        """Policy callback for Simplestreams: verify index signature."""
         return util.read_signed(content, keyring=args.keyring)
 
     source = mirrors.UrlMirrorReader(args.url, policy=verify_signature)

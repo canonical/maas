@@ -16,19 +16,12 @@ import os.path
 from subprocess import CalledProcessError
 
 from maastesting.factory import factory
-from maastesting.utils import (
-    age_file,
-    get_write_time,
-    )
-from provisioningserver.config import Config
 from provisioningserver.import_images import config as config_module
 from provisioningserver.import_images.config import (
     DEFAULTS,
-    load_ephemerals_config,
     merge_legacy_ephemerals_config,
     parse_legacy_config,
     )
-from provisioningserver.testing.config import ConfigFixture
 from provisioningserver.testing.testcase import PservTestCase
 
 
@@ -211,73 +204,3 @@ class TestMergeLegacyEphemeralsConfig(PservTestCase):
         self.assertEqual(
             {'boot': {'ephemeral': DEFAULTS}},
             config)
-
-
-class TestLoadEphemeralsConfig(PservTestCase):
-
-    def test_loads_existing_config(self):
-        data_dir = self.make_dir()
-        arches = [factory.make_name('arch')]
-        releases = [factory.make_name('release')]
-        prefix = factory.getRandomString()
-        self.useFixture(ConfigFixture(
-            {
-                'boot': {
-                    'ephemeral': {
-                        'directory': data_dir,
-                        'arches': arches,
-                        'releases': releases,
-                        'target_name_prefix': prefix,
-                    },
-                },
-            }))
-        # Make it look as if the config file hasn't been changed for a day.
-        # That way we can check that loading the config didn't modify it.
-        age_file(Config.DEFAULT_FILENAME, 60 * 60 * 24)
-        config_last_modified = get_write_time(Config.DEFAULT_FILENAME)
-        make_legacy_config(self, {'directory': self.make_dir()})
-
-        config = load_ephemerals_config()
-
-        self.assertEqual(
-            {
-                'directory': data_dir,
-                'arches': arches,
-                'releases': releases,
-                'target_name_prefix': prefix,
-            },
-            config['boot']['ephemeral'])
-        self.assertEqual(
-            config_last_modified,
-            get_write_time(Config.DEFAULT_FILENAME))
-
-    def test_converts_legacy_config_if_needed(self):
-        data_dir = self.make_dir()
-        arch = factory.make_name('arch')
-        releas = factory.make_name('release')
-        prefix = factory.getRandomString()
-        self.useFixture(ConfigFixture({'boot': {'ephemeral': {}}}))
-        make_legacy_config(self, {
-            'DATA_DIR': data_dir,
-            'ARCHES': arch,
-            'RELEASES': releas,
-            'TARGET_NAME_PREFIX': prefix,
-            })
-        # Make it look as if the config file hasn't been changed for a day.
-        # That way we can easily check that it's been rewritten.
-        age_file(Config.DEFAULT_FILENAME, 60 * 60 * 24)
-        config_last_modified = get_write_time(Config.DEFAULT_FILENAME)
-
-        config = load_ephemerals_config()
-
-        self.assertEqual(
-            {
-                'directory': data_dir,
-                'arches': [arch],
-                'releases': [releas],
-                'target_name_prefix': prefix,
-            },
-            config['boot']['ephemeral'])
-        self.assertLess(
-            config_last_modified,
-            get_write_time(Config.DEFAULT_FILENAME))
