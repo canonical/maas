@@ -360,29 +360,30 @@ def make_arg_parser(doc):
     parser = ArgumentParser(description=doc)
     parser.add_argument(
         '--path', action="store", default="streams/v1/index.sjson",
-        help="the path to the index json on the remote mirror")
+        help="Path to simplestreams index file, relative to mirror URL")
     parser.add_argument(
         '--url', action='store', default=RELEASES_URL,
-        help="the mirror URL (either remote or file://)")
+        help="Simplestreams mirror URL (may use 'file://' for local mirror)")
     parser.add_argument(
         '--output', action='store', default=directory,
-        help="The directory to dump maas output in")
+        help="Directory where boot images should be stored")
     parser.add_argument(
         '--max', action='store', default=1,
-        help="store at most MAX items in the target")
+        help="Store downloads for only the MAX most recent images.")
     parser.add_argument(
         '--keyring', action='store', default=DEFAULT_KEYRING,
-        help='gpg keyring for verifying boot image metadata')
+        help="gpg keyring for verifying boot image metadata")
     parser.add_argument(
         '--delete', action='store_true', default=False,
-        help="Delete local copies of images when no longer available?")
+        help="Delete local copies of images when no longer available")
     parser.add_argument(
         '--products', action='store', default=PRODUCTS_REGEX,
-        help="regex matching products to import, e.g. "
-             "com.ubuntu.maas.daily:ephemerals:.* for daily")
+        help="Regular expression matching products to import, "
+             "e.g. com.ubuntu.maas.daily:ephemerals:.* for daily")
     parser.add_argument(
         'filters', nargs='*', default=filters,
-        help="filters over image metadata, e.g. arch=i386 release=precise")
+        help="Simplestreams filters for image metadata to download, "
+             "e.g. arch=i386 release=precise")
     return parser
 
 
@@ -396,9 +397,9 @@ def main(args):
 
     source = mirrors.UrlMirrorReader(args.url, policy=verify_signature)
     config = {'max_items': args.max}
-    target = MAASMirrorWriter(args.output, config=config, delete=args.delete,
-                              item_filters=args.filters,
-                              product_regex=args.products)
+    target = MAASMirrorWriter(
+        args.output, config=config, delete=args.delete,
+        item_filters=args.filters, product_regex=args.products)
 
     set_up_data_dir(args.output)
     target.sync(source, args.path)

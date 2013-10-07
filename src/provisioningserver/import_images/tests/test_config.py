@@ -25,7 +25,7 @@ from provisioningserver.import_images import config as config_module
 from provisioningserver.import_images.config import (
     DEFAULTS,
     load_ephemerals_config,
-    maybe_update_config,
+    merge_legacy_ephemerals_config,
     parse_legacy_config,
     )
 from provisioningserver.testing.config import ConfigFixture
@@ -148,7 +148,7 @@ class TestParseLegacyConfig(PservTestCase):
             parse_legacy_config, dict([make_option_and_value()]))
 
 
-class TestMaybeUpdateConfig(PservTestCase):
+class TestMergeLegacyEphemeralsConfig(PservTestCase):
 
     def test_populates_new_config_from_legacy(self):
         arches = [factory.make_name('arch') for counter in range(3)]
@@ -162,7 +162,7 @@ class TestMaybeUpdateConfig(PservTestCase):
         make_legacy_config(self, legacy_options)
         config = {'boot': {'ephemeral': {}}}
 
-        changed = maybe_update_config(config)
+        changed = merge_legacy_ephemerals_config(config)
 
         self.assertTrue(changed)
         self.assertEqual(
@@ -184,7 +184,7 @@ class TestMaybeUpdateConfig(PservTestCase):
             'target_name_prefix': factory.getRandomString(),
             })
 
-        changed = maybe_update_config(config)
+        changed = merge_legacy_ephemerals_config(config)
 
         self.assertFalse(changed)
         self.assertEqual(
@@ -195,7 +195,7 @@ class TestMaybeUpdateConfig(PservTestCase):
         make_legacy_config(self, {})
         config = {'boot': {'ephemeral': {}}}
 
-        changed = maybe_update_config(config)
+        changed = merge_legacy_ephemerals_config(config)
 
         self.assertFalse(changed)
         self.assertEqual({'boot': {'ephemeral': {}}}, config)
@@ -205,7 +205,7 @@ class TestMaybeUpdateConfig(PservTestCase):
             self, {'TARBALL_CACHE_D': factory.getRandomString()})
         config = {'boot': {'ephemeral': {}}}
 
-        changed = maybe_update_config(config)
+        changed = merge_legacy_ephemerals_config(config)
 
         self.assertTrue(changed)
         self.assertEqual(

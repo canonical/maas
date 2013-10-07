@@ -97,8 +97,11 @@ def parse_legacy_config(options):
     return filter_dict(variables, options)
 
 
-def maybe_update_config(config):
-    """Update the config if it doesn't have values from the old config.
+def merge_legacy_ephemerals_config(config):
+    """Update `config` based on legacy shell-script config if appropriate.
+
+    Only uses legacy config if the modern-style config lacks configuration for
+    the ephemerals script.
 
     :return: Whether the configuration has been updated.
     """
@@ -109,9 +112,7 @@ def maybe_update_config(config):
 
     old = parse_legacy_config(EPHEMERALS_OPTIONS)
     if len(old) == 0:
-        # The legacy config is empty.  There may be a problem, so don't rewrite
-        # our non-legacy config.
-        # TODO: Log this.
+        # The legacy config is empty.  There is no information to add.
         return False
 
     eph = config['boot']['ephemeral']
@@ -129,7 +130,7 @@ def load_ephemerals_config():
     """
     current = Config.load()
 
-    changed = maybe_update_config(current)
+    changed = merge_legacy_ephemerals_config(current)
     if changed:
         atomic_write(yaml.safe_dump(current), Config.DEFAULT_FILENAME)
 
