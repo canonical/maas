@@ -150,7 +150,7 @@ class Config(Schema):
 
     @classmethod
     def create_backup(cls, message, filename=None):
-        """Save a backup copy of a YAML configuration.
+        """Create a backup of the YAML configuration.
 
         The given 'message' will be used in the name of the backup file.
         """
