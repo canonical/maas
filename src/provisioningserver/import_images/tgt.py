@@ -30,7 +30,10 @@ import shutil
 import subprocess
 from textwrap import dedent
 
-from provisioningserver.kernel_opts import prefix_target_name
+from provisioningserver.kernel_opts import (
+    ISCSI_TARGET_NAME_PREFIX,
+    prefix_target_name,
+    )
 from provisioningserver.utils import (
     ensure_dir,
     write_text_file,
@@ -45,15 +48,13 @@ DATA_DIR_TGT_CONF_TEMPLATE = dedent("""\
     default-driver iscsi
     """)
 
-TARGET_NAME_PREFIX = "iqn.2004-05.com.ubuntu:maas:"
-
 # Template for individual tgt.conf files in target directories.
 TGT_CONF_TEMPLATE = dedent("""\
-    <target {prefix}{{target_name}}>
+    <target {prefix}:{{target_name}}>
         readonly 1
         backing-store "{{image}}"
     </target>
-    """).format(prefix=TARGET_NAME_PREFIX)
+    """).format(prefix=ISCSI_TARGET_NAME_PREFIX)
 
 INFO_TEMPLATE = dedent("""\
     release={release}
@@ -100,7 +101,7 @@ class TargetNotCreated(RuntimeError):
 def target_exists(full_name):
     """Run `tgt --show` to determine whether the given target exists.
 
-    :param full_name: Full target name, including `TARGET_NAME_PREFIX`.
+    :param full_name: Full target name, including `ISCSI_TARGET_NAME_PREFIX`.
     :return: bool.
     """
     status = subprocess.check_output(TGT_ADMIN + ["--show"])

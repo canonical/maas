@@ -155,7 +155,6 @@ class TestMergeLegacyEphemeralsConfig(PservTestCase):
             'DATA_DIR': factory.getRandomString(),
             'ARCHES': "'%s'" % ' '.join(arches),
             'RELEASES': "'%s'" % ' '.join(releases),
-            'TARGET_NAME_PREFIX': factory.getRandomString(),
         }
         make_legacy_config(self, legacy_options)
         config = {'boot': {'ephemeral': {}}}
@@ -168,7 +167,6 @@ class TestMergeLegacyEphemeralsConfig(PservTestCase):
                 'directory': legacy_options['DATA_DIR'],
                 'arches': ' '.join(arches),
                 'releases': ' '.join(releases),
-                'target_name_prefix': legacy_options['TARGET_NAME_PREFIX'],
             },
             config['boot']['ephemeral'])
 
@@ -179,7 +177,6 @@ class TestMergeLegacyEphemeralsConfig(PservTestCase):
             'directory': factory.getRandomString(),
             'arches': factory.make_name('arch'),
             'releases': factory.make_name('release'),
-            'target_name_prefix': factory.getRandomString(),
             })
 
         changed = merge_legacy_ephemerals_config(config)

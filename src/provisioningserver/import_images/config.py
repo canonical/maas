@@ -14,6 +14,7 @@ __all__ = [
     'DEFAULTS',
     'EPHEMERALS_LEGACY_CONFIG',
     'merge_legacy_ephemerals_config',
+    'retire_legacy_config',
     ]
 
 
@@ -22,7 +23,6 @@ from os import rename
 import os.path
 from subprocess import check_output
 
-from provisioningserver.import_images.tgt import TARGET_NAME_PREFIX
 from provisioningserver.utils import filter_dict
 
 # Default settings for various options.
@@ -32,7 +32,6 @@ DEFAULTS = {
     'arches': None,
     # Default to downloading all supported releases.
     'releases': None,
-    'target_name_prefix': TARGET_NAME_PREFIX,
 }
 
 
@@ -41,7 +40,6 @@ EPHEMERALS_LEGACY_OPTIONS = {
     'directory': 'DATA_DIR',
     'arches': 'ARCHES',
     'releases': 'RELEASES',
-    'target_name_prefix': 'TARGET_NAME_PREFIX',
 }
 
 
@@ -57,7 +55,6 @@ EPHEMERALS_LEGACY_CONFIG = '/etc/maas/import_ephemerals'
 # TARBALL_CACHE_D could be where we stick our cache of the simplestreams
 # data, although for now it is unused.
 EPHEMERALS_OPTIONS = {
-    'TARGET_NAME_PREFIX',
     'DATA_DIR',
     'RELEASES',
     'ARCHES',

@@ -132,7 +132,6 @@ class TestConfig(MAASTestCase):
                 'arches': None,
                 'directory': '/var/lib/maas/ephemeral',
                 'releases': None,
-                'target_name_prefix': None,
                 },
             },
         'broker': {

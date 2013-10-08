@@ -20,6 +20,7 @@ from os import (
     readlink,
     )
 import os.path
+from pipes import quote
 import subprocess
 from textwrap import dedent
 
@@ -389,7 +390,6 @@ class TestMakeArgParser(PservTestCase):
             {
                 'boot': {
                     'ephemeral': {
-                        'target_name_prefix': factory.getRandomString(),
                         'directory': directory,
                         'arches': arches,
                         'releases': releases,
@@ -421,9 +421,7 @@ class TestMakeArgParser(PservTestCase):
 
 
 class TestConvertLegacyConfig(PservTestCase):
-
-    def make_legacy_config(self, data_dir=None, arches=None, releases=None,
-                           prefix=None):
+    def make_legacy_config(self, data_dir=None, arches=None, releases=None):
         """Create contents for a legacy, shell-script config file."""
         if data_dir is None:
             data_dir = self.make_dir()
@@ -431,14 +429,15 @@ class TestConvertLegacyConfig(PservTestCase):
             arches = [factory.make_name('arch') for counter in range(2)]
         if releases is None:
             releases = [factory.make_name('release') for counter in range(2)]
-        if prefix is None:
-            prefix = factory.make_name('prefix')
         return dedent("""\
-            export DATA_DIR="%s"
-            export ARCHES="%s"
-            export RELEASES="%s"
-            export TARGET_NAME_PREFIX="%s"
-            """) % (data_dir, ' '.join(arches), ' '.join(releases), prefix)
+            export DATA_DIR=%s
+            export ARCHES=%s
+            export RELEASES=%s
+            """) % (
+                quote(data_dir),
+                quote(' '.join(arches)),
+                quote(' '.join(releases)),
+            )
 
     def install_legacy_config(self, contents):
         """Set up a legacy config file with the given contents.
@@ -454,9 +453,7 @@ class TestConvertLegacyConfig(PservTestCase):
         data_dir = self.make_dir()
         arches = [factory.make_name('arch')]
         releases = [factory.make_name('rel')]
-        prefix = factory.make_name('prefix')
-        legacy_config = self.make_legacy_config(
-            data_dir, arches, releases, prefix)
+        legacy_config = self.make_legacy_config(data_dir, arches, releases)
         legacy_file = self.install_legacy_config(legacy_config)
 
         convert_legacy_config()
@@ -465,7 +462,6 @@ class TestConvertLegacyConfig(PservTestCase):
             'directory': data_dir,
             'arches': arches,
             'releases': releases,
-            'target_name_prefix': prefix,
             },
             Config.load()['boot']['ephemeral'])
         self.assertThat(legacy_file, Not(FileExists()))
@@ -475,7 +471,6 @@ class TestConvertLegacyConfig(PservTestCase):
         data_dir = self.make_dir()
         arches = [factory.make_name('arch')]
         releases = [factory.make_name('rel')]
-        prefix = factory.make_name('prefix')
         config = self.useFixture(ConfigFixture(
             {
                 'boot': {
@@ -483,7 +478,6 @@ class TestConvertLegacyConfig(PservTestCase):
                         'directory': data_dir,
                         'arches': arches,
                         'releases': releases,
-                        'target_name_prefix': prefix,
                     }
                  }
             }))
@@ -498,7 +492,6 @@ class TestConvertLegacyConfig(PservTestCase):
             'directory': data_dir,
             'arches': arches,
             'releases': releases,
-            'target_name_prefix': prefix,
             },
             Config.load()['boot']['ephemeral'])
 

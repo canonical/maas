@@ -134,8 +134,8 @@ def compose_purpose_opts(params):
     """Return the list of the purpose-specific kernel options."""
     if params.purpose == "commissioning" or params.purpose == "xinstall":
         # These are kernel parameters read by the ephemeral environment.
-        tname = "%s:%s" % (ISCSI_TARGET_NAME_PREFIX,
-                           get_ephemeral_name(params.release, params.arch))
+        tname = prefix_target_name(
+            get_ephemeral_name(params.release, params.arch))
         kernel_params = [
             # Read by the open-iscsi initramfs code.
             "iscsi_target_name=%s" % tname,
