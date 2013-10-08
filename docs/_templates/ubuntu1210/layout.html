@@ -52,14 +52,6 @@
 <div class="span12" style="padding-right: 10px;padding-left: 10px;">
 <nav role="navigation" class="nav-secondary">
 <ul class="clearfix">
-    {%- if pagename != "search" %}
-      <form class="pull-right" style="padding-top: 5px;" action="{{ pathto('search') }}" method="get">
-        <input type="submit" id="search-submit"/>
-        <input style="float:right;" type="search" name="q" placeholder="Search" />
-        <input type="hidden" name="check_keywords" value="yes" />
-        <input type="hidden" name="area" value="default" />
-      </form>
-   {%- endif %}
 </ul>
 </nav>
 </div>
