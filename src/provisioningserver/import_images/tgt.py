@@ -30,6 +30,7 @@ import shutil
 import subprocess
 from textwrap import dedent
 
+from provisioningserver.kernel_opts import prefix_target_name
 from provisioningserver.utils import (
     ensure_dir,
     write_text_file,
@@ -89,8 +90,7 @@ def get_target_name(release, version, arch, version_name):
 
 def tgt_admin_delete(name):
     """Delete a target using `tgt-admin`."""
-    full_name = TARGET_NAME_PREFIX + name
-    subprocess.check_call(TGT_ADMIN + ["--delete", full_name])
+    subprocess.check_call(TGT_ADMIN + ["--delete", prefix_target_name(name)])
 
 
 class TargetNotCreated(RuntimeError):
@@ -114,7 +114,7 @@ def tgt_admin_update(target_dir, target_name):
 
     Actually we use this to add new targets.
     """
-    full_name = TARGET_NAME_PREFIX + target_name
+    full_name = prefix_target_name(target_name)
     subprocess.check_call(TGT_ADMIN + ["--update", full_name])
     # Check that the target was really created.
     # Reportedly tgt-admin tends to return 0 even when it fails, so check

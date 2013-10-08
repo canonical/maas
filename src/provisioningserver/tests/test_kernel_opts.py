@@ -29,6 +29,7 @@ from provisioningserver.kernel_opts import (
     get_last_directory,
     ISCSI_TARGET_NAME_PREFIX,
     KernelParameters,
+    prefix_target_name,
     )
 from provisioningserver.testing.config import ConfigFixture
 from testtools.matchers import (
@@ -63,6 +64,23 @@ class TestUtilitiesKernelOpts(MAASTestCase):
         params = make_kernel_parameters()
         self.assertTrue(callable(params))
         self.assertIs(params._replace.im_func, params.__call__.im_func)
+
+    def test_prefix_target_name_adds_prefix(self):
+        prefix = factory.make_name('prefix')
+        target = factory.make_name('tgt')
+        self.patch(kernel_opts, 'ISCSI_TARGET_NAME_PREFIX', prefix)
+
+        self.assertEqual(
+            '%s:%s' % (prefix, target),
+            prefix_target_name(target))
+
+    def test_prefix_target_name_produces_exactly_one_separating_colon(self):
+        target = factory.make_name('tgt')
+
+        full_name = prefix_target_name(target)
+
+        self.assertIn(':' + target, full_name)
+        self.assertNotIn('::' + target, full_name)
 
 
 class TestKernelOpts(MAASTestCase):

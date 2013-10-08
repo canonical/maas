@@ -27,9 +27,9 @@ from provisioningserver.import_images.tgt import (
     clean_up_info_file,
     get_conf_path,
     get_target_name,
+    prefix_target_name,
     set_up_data_dir,
     target_exists,
-    TARGET_NAME_PREFIX,
     TargetNotCreated,
     tgt_admin_delete,
     tgt_admin_update,
@@ -87,13 +87,13 @@ class TestTGT(MAASTestCase):
         run.assert_called_once_with([
             "tgt-admin",
             "--conf", "/etc/tgt/targets.conf",
-            "--delete", TARGET_NAME_PREFIX + target,
+            "--delete", prefix_target_name(target),
             ])
 
     def test_tgt_admin_update_calls_tgt_admin(self):
         check_call = self.patch(subprocess, 'check_call')
         target = factory.make_name('target')
-        full_name = TARGET_NAME_PREFIX + target
+        full_name = prefix_target_name(target)
         self.patch(tgt_module, 'target_exists').return_value = True
         target_dir = self.make_dir()
 

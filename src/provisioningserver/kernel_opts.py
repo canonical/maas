@@ -15,6 +15,7 @@ __metaclass__ = type
 __all__ = [
     'compose_kernel_command_line',
     'KernelParameters',
+    'prefix_target_name',
     ]
 
 from collections import namedtuple
@@ -122,6 +123,11 @@ def compose_hostname_opts(params):
     if params.domain is not None:
         options.append('domain=%s' % params.domain)
     return options
+
+
+def prefix_target_name(name):
+    """Prefix an ISCSI target name with the standard target-name prefix."""
+    return "%s:%s" % (ISCSI_TARGET_NAME_PREFIX, name)
 
 
 def compose_purpose_opts(params):
