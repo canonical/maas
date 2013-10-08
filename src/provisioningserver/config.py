@@ -19,6 +19,7 @@ __all__ = [
 from getpass import getuser
 from os import environ
 import os.path
+from shutil import copyfile
 from threading import RLock
 
 from formencode import Schema
@@ -140,6 +141,23 @@ class Config(Schema):
             filename = cls.DEFAULT_FILENAME
         with open(filename, "rb") as stream:
             return cls.parse(stream)
+
+    @classmethod
+    def _get_backup_name(cls, message, filename=None):
+        if filename is None:
+            filename = cls.DEFAULT_FILENAME
+        return "%s.%s.bak" % (filename, message)
+
+    @classmethod
+    def create_backup(cls, message, filename=None):
+        """Save a backup copy of a YAML configuration.
+
+        The given 'message' will be used in the name of the backup file.
+        """
+        backup_name = cls._get_backup_name(message, filename)
+        if filename is None:
+            filename = cls.DEFAULT_FILENAME
+        copyfile(filename, backup_name)
 
     @classmethod
     def save(cls, config, filename=None):

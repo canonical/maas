@@ -29,6 +29,7 @@ from provisioningserver.config import Config
 from provisioningserver.testing.config import ConfigFixture
 from testtools.matchers import (
     DirExists,
+    FileContains,
     FileExists,
     MatchesException,
     Raises,
@@ -249,3 +250,16 @@ class TestConfig(MAASTestCase):
         Config.save({'logfile': logfile})
 
         self.assertEqual(logfile, Config.load(filename)['logfile'])
+
+    def test_create_backup_creates_backup(self):
+        logfile = self.make_file(name='test.log')
+        filename = self.make_file(name="config.yaml")
+        config = {'logfile': logfile}
+        yaml_config = yaml.safe_dump(config)
+        self.patch(Config, 'DEFAULT_FILENAME', filename)
+        Config.save(config)
+
+        Config.create_backup('test')
+
+        backup_name = "%s.%s.bak" % (filename, 'test')
+        self.assertThat(backup_name, FileContains(yaml_config))

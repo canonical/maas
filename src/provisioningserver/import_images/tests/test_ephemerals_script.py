@@ -455,6 +455,7 @@ class TestConvertLegacyConfig(PservTestCase):
         releases = [factory.make_name('rel')]
         legacy_config = self.make_legacy_config(data_dir, arches, releases)
         legacy_file = self.install_legacy_config(legacy_config)
+        initial_config = file(Config.DEFAULT_FILENAME).read()
 
         convert_legacy_config()
 
@@ -464,8 +465,14 @@ class TestConvertLegacyConfig(PservTestCase):
             'releases': releases,
             },
             Config.load()['boot']['ephemeral'])
+        # Legacy config file has been deleted.
         self.assertThat(legacy_file, Not(FileExists()))
+        # A backup of the legacy config file has been kept.
         self.assertThat(legacy_file + '.obsolete', FileContains(legacy_config))
+        # A copy of the initial config (i.e. the pserv config before
+        # migration) has been kept.
+        backup_name = Config._get_backup_name('legacy-script-migration')
+        self.assertThat(backup_name, FileContains(initial_config))
 
     def test_does_nothing_without_old_config(self):
         data_dir = self.make_dir()

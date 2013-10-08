@@ -417,6 +417,9 @@ def convert_legacy_config():
     logger.info(
         "Updating configuration %s from legacy shell-script config %s.",
         Config.DEFAULT_FILENAME, EPHEMERALS_LEGACY_CONFIG)
+    # Backup the old config.
+    Config.create_backup('legacy-script-migration')
+    # Save the new config.
     Config.save(config)
     # Now move the legacy config out of the way, so that we don't convert it
     # a second time.
