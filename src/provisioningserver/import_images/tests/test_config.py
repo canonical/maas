@@ -18,11 +18,16 @@ from subprocess import CalledProcessError
 from maastesting.factory import factory
 from provisioningserver.import_images import config as config_module
 from provisioningserver.import_images.config import (
-    DEFAULTS,
     merge_legacy_ephemerals_config,
     parse_legacy_config,
+    retire_legacy_config,
     )
 from provisioningserver.testing.testcase import PservTestCase
+from testtools.matchers import (
+    FileContains,
+    FileExists,
+    Not,
+    )
 
 
 def make_var_name():
@@ -167,9 +172,9 @@ class TestMergeLegacyEphemeralsConfig(PservTestCase):
             },
             config['boot']['ephemeral'])
 
-    def test_does_nothing_if_new_config_is_populated(self):
-        prefix = factory.getRandomString()
-        config = {'boot': {'ephemeral': {'target_name_prefix': prefix}}}
+    def test_does_nothing_without_legacy_config(self):
+        directory = self.make_dir()
+        config = {'boot': {'ephemeral': {'directory': directory}}}
         make_legacy_config(self, {
             'directory': factory.getRandomString(),
             'arches': factory.make_name('arch'),
@@ -181,7 +186,7 @@ class TestMergeLegacyEphemeralsConfig(PservTestCase):
 
         self.assertFalse(changed)
         self.assertEqual(
-            {'boot': {'ephemeral': {'target_name_prefix': prefix}}},
+            {'boot': {'ephemeral': {'directory': directory}}},
             config)
 
     def test_does_nothing_if_legacy_config_has_no_items(self):
@@ -193,14 +198,33 @@ class TestMergeLegacyEphemeralsConfig(PservTestCase):
         self.assertFalse(changed)
         self.assertEqual({'boot': {'ephemeral': {}}}, config)
 
-    def test_uses_defaults(self):
-        make_legacy_config(
-            self, {'TARBALL_CACHE_D': factory.getRandomString()})
-        config = {'boot': {'ephemeral': {}}}
 
-        changed = merge_legacy_ephemerals_config(config)
+class TestRetireLegacyConfig(PservTestCase):
 
-        self.assertTrue(changed)
-        self.assertEqual(
-            {'boot': {'ephemeral': DEFAULTS}},
-            config)
+    def make_legacy_config(self, text):
+        """Set up a legacy config file."""
+        legacy_config = self.make_file(contents=text)
+        self.patch(config_module, 'EPHEMERALS_LEGACY_CONFIG', legacy_config)
+        return legacy_config
+
+    def test_renames_existing_file(self):
+        text = factory.getRandomString()
+        legacy_config = self.make_legacy_config(text)
+
+        retire_legacy_config()
+
+        self.assertThat(legacy_config, Not(FileExists()))
+        self.assertThat(legacy_config + '.obsolete', FileContains(text))
+
+    def test_overwrites_existing_obsolete_file(self):
+        text = factory.getRandomString()
+        legacy_config = self.make_legacy_config(text)
+        obsolete_config = legacy_config + '.obsolete'
+        factory.make_file(
+            os.path.dirname(obsolete_config),
+            os.path.basename(obsolete_config))
+
+        retire_legacy_config()
+
+        self.assertThat(legacy_config, Not(FileExists()))
+        self.assertThat(obsolete_config, FileContains(text))

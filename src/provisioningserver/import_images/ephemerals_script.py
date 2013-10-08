@@ -35,7 +35,9 @@ import tempfile
 from provisioningserver.config import Config
 from provisioningserver.import_images.config import (
     DEFAULTS,
+    EPHEMERALS_LEGACY_CONFIG,
     merge_legacy_ephemerals_config,
+    retire_legacy_config,
     )
 from provisioningserver.import_images.tgt import (
     clean_up_info_file,
@@ -408,9 +410,17 @@ def make_arg_parser(doc):
 def convert_legacy_config():
     """If appropriate, update config based on legacy shell-script config."""
     config = Config.load_from_cache()
-    if merge_legacy_ephemerals_config(config):
-        logger.info("Updating configuration from legacy shell-script config.")
-        Config.save(config)
+    changed = merge_legacy_ephemerals_config(config)
+    if not changed:
+        return
+
+    logger.info(
+        "Updating configuration %s from legacy shell-script config %s.",
+        Config.DEFAULT_FILENAME, EPHEMERALS_LEGACY_CONFIG)
+    Config.save(config)
+    # Now move the legacy config out of the way, so that we don't convert it
+    # a second time.
+    retire_legacy_config()
 
 
 def main(args):

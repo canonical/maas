@@ -12,10 +12,13 @@ from __future__ import (
 __metaclass__ = type
 __all__ = [
     'DEFAULTS',
+    'EPHEMERALS_LEGACY_CONFIG',
     'merge_legacy_ephemerals_config',
     ]
 
 
+from copy import deepcopy
+from os import rename
 import os.path
 from subprocess import check_output
 
@@ -95,25 +98,23 @@ def parse_legacy_config(options):
 
 
 def merge_legacy_ephemerals_config(config):
-    """Update `config` based on legacy shell-script config if appropriate.
-
-    Only uses legacy config if the modern-style config lacks configuration for
-    the ephemerals script.
+    """Update `config` based on legacy shell-script config (if any).
 
     :return: Whether the configuration has been updated.
     """
-    if config['boot']['ephemeral'].get('target_name_prefix') is not None:
-        # The config we have is nonempty.  If there was any legacy config to
-        # port, we've already done it.
+    loaded_boot_config = deepcopy(config['boot'])
+
+    legacy_config = parse_legacy_config(EPHEMERALS_OPTIONS)
+    if len(legacy_config) == 0:
         return False
 
-    old = parse_legacy_config(EPHEMERALS_OPTIONS)
-    if len(old) == 0:
-        # The legacy config is empty.  There is no information to add.
-        return False
-
-    eph = config['boot']['ephemeral']
     for option, legacy_option in EPHEMERALS_LEGACY_OPTIONS.iteritems():
-        eph[option] = old.get(legacy_option) or DEFAULTS[option]
+        if legacy_option in legacy_config:
+            config['boot']['ephemeral'][option] = legacy_config[legacy_option]
 
-    return True
+    return config['boot'] != loaded_boot_config
+
+
+def retire_legacy_config():
+    """Rename the legacy config file so we don't convert it again."""
+    rename(EPHEMERALS_LEGACY_CONFIG, EPHEMERALS_LEGACY_CONFIG + '.obsolete')

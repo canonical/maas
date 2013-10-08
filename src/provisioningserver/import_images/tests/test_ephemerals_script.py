@@ -21,6 +21,7 @@ from os import (
     )
 import os.path
 import subprocess
+from textwrap import dedent
 
 from fixtures import EnvironmentVariableFixture
 from maastesting.factory import factory
@@ -52,6 +53,8 @@ from provisioningserver.testing.testcase import PservTestCase
 from provisioningserver.utils import read_text_file
 from testtools.matchers import (
     FileContains,
+    FileExists,
+    Not,
     StartsWith,
     )
 
@@ -419,18 +422,42 @@ class TestMakeArgParser(PservTestCase):
 
 class TestConvertLegacyConfig(PservTestCase):
 
-    def test_converts_legacy_config_if_no_new_config_set(self):
+    def make_legacy_config(self, data_dir=None, arches=None, releases=None,
+                           prefix=None):
+        """Create contents for a legacy, shell-script config file."""
+        if data_dir is None:
+            data_dir = self.make_dir()
+        if arches is None:
+            arches = [factory.make_name('arch') for counter in range(2)]
+        if releases is None:
+            releases = [factory.make_name('release') for counter in range(2)]
+        if prefix is None:
+            prefix = factory.make_name('prefix')
+        return dedent("""\
+            export DATA_DIR="%s"
+            export ARCHES="%s"
+            export RELEASES="%s"
+            export TARGET_NAME_PREFIX="%s"
+            """) % (data_dir, ' '.join(arches), ' '.join(releases), prefix)
+
+    def install_legacy_config(self, contents):
+        """Set up a legacy config file with the given contents.
+
+        Returns the config file's path.
+        """
+        legacy_file = self.make_file(contents=contents)
+        self.patch(config_module, 'EPHEMERALS_LEGACY_CONFIG', legacy_file)
+        return legacy_file
+
+    def test_converts_legacy_config_if_old_config_available(self):
         self.useFixture(ConfigFixture({'boot': {'ephemeral': {}}}))
         data_dir = self.make_dir()
         arches = [factory.make_name('arch')]
         releases = [factory.make_name('rel')]
         prefix = factory.make_name('prefix')
-        self.patch(config_module, 'parse_legacy_config').return_value = {
-            'DATA_DIR': data_dir,
-            'ARCHES': arches,
-            'RELEASES': releases,
-            'TARGET_NAME_PREFIX': prefix,
-            }
+        legacy_config = self.make_legacy_config(
+            data_dir, arches, releases, prefix)
+        legacy_file = self.install_legacy_config(legacy_config)
 
         convert_legacy_config()
 
@@ -441,8 +468,10 @@ class TestConvertLegacyConfig(PservTestCase):
             'target_name_prefix': prefix,
             },
             Config.load()['boot']['ephemeral'])
+        self.assertThat(legacy_file, Not(FileExists()))
+        self.assertThat(legacy_file + '.obsolete', FileContains(legacy_config))
 
-    def test_does_nothing_if_already_populated(self):
+    def test_does_nothing_without_old_config(self):
         data_dir = self.make_dir()
         arches = [factory.make_name('arch')]
         releases = [factory.make_name('rel')]
@@ -458,12 +487,7 @@ class TestConvertLegacyConfig(PservTestCase):
                     }
                  }
             }))
-        self.patch(config_module, 'parse_legacy_config').return_value = {
-            'DATA_DIR': factory.make_name('legacy-dir'),
-            'ARCHES': [factory.make_name('legacy-arch')],
-            'RELEASES': [factory.make_name('legacy-rel')],
-            'TARGET_NAME_PREFIX': factory.make_name('legacy-prefix'),
-            }
+        self.patch(config_module, 'parse_legacy_config').return_value = {}
         age_file(config.filename, 600)
         config_last_written = get_write_time(config.filename)
 
@@ -477,3 +501,16 @@ class TestConvertLegacyConfig(PservTestCase):
             'target_name_prefix': prefix,
             },
             Config.load()['boot']['ephemeral'])
+
+    def test_is_idempotent(self):
+        self.useFixture(ConfigFixture({'boot': {'ephemeral': {}}}))
+        legacy_config = self.make_legacy_config()
+        legacy_file = self.install_legacy_config(legacy_config)
+        convert_legacy_config()
+        converted_config = Config.load()['boot']
+
+        convert_legacy_config()
+
+        self.assertEqual(converted_config, Config.load()['boot'])
+        self.assertThat(legacy_file, Not(FileExists()))
+        self.assertThat(legacy_file + '.obsolete', FileContains(legacy_config))
