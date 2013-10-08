@@ -663,7 +663,8 @@ class TestCommissioningAPI(DjangoTestCase):
             files={'00-maas-02-virtuality.out': content})
         self.assertEqual(httplib.OK, response.status_code)
         node = reload_object(node)
-        self.assertEqual(0, len(node.tags.all()))
+        self.assertEqual(
+            [], [each_tag.name for each_tag in node.tags.all()])
 
     def test_signal_leaves_untagged_physical_node_unaltered(self):
         node = factory.make_node(status=NODE_STATUS.COMMISSIONING)

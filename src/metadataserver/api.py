@@ -195,12 +195,14 @@ class VersionIndexHandler(MetadataViewHandler):
 
     def _store_commissioning_results(self, node, request):
         """Store commissioning result files for `node`."""
-        script_result = request.POST.get('script_result', None)
+        script_result = int(request.POST.get('script_result', 0))
         for name, uploaded_file in request.FILES.items():
             raw_content = uploaded_file.read()
             if name in BUILTIN_COMMISSIONING_SCRIPTS:
                 postprocess_hook = BUILTIN_COMMISSIONING_SCRIPTS[name]['hook']
-                postprocess_hook(node, raw_content)
+                postprocess_hook(
+                    node=node, output=raw_content,
+                    exit_status=script_result)
             NodeCommissionResult.objects.store_data(
                 node, name, script_result, Bin(raw_content))
 

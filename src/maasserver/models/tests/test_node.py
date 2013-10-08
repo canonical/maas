@@ -44,10 +44,7 @@ from maasserver.models.user import create_auth_token
 from maasserver.testing import reload_object
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils import (
-    ignore_unused,
-    map_enum,
-    )
+from maasserver.utils import map_enum
 from maastesting.testcase import MAASTestCase
 from metadataserver import commissioning
 from metadataserver.fields import Bin
@@ -55,7 +52,6 @@ from metadataserver.models import (
     NodeCommissionResult,
     NodeUserData,
     )
-from metadataserver.models.commissioningscript import update_hardware_details
 from provisioningserver.enum import POWER_TYPE
 from provisioningserver.power.poweraction import PowerAction
 from testtools.matchers import (
@@ -629,99 +625,6 @@ class NodeTest(MAASServerTestCase):
         node = factory.make_node()
         node.nodegroup = None
         self.assertRaises(ValidationError, node.save)
-
-    def test_hardware_updates_cpu_count(self):
-        node = factory.make_node()
-        xmlbytes = (
-            '<node id="core">'
-                '<node id="cpu:0" class="processor"/>'
-                '<node id="cpu:1" class="processor"/>'
-            '</node>')
-        update_hardware_details(node, xmlbytes)
-        node = reload_object(node)
-        self.assertEqual(2, node.cpu_count)
-
-    def test_cpu_count_skips_disabled_cpus(self):
-        node = factory.make_node()
-        xmlbytes = (
-            '<node id="core">'
-                '<node id="cpu:0" class="processor"/>'
-                '<node id="cpu:1" disabled="true" class="processor"/>'
-                '<node id="cpu:2" disabled="true" class="processor"/>'
-            '</node>')
-        update_hardware_details(node, xmlbytes)
-        node = reload_object(node)
-        self.assertEqual(1, node.cpu_count)
-
-    def test_hardware_updates_memory(self):
-        node = factory.make_node()
-        xmlbytes = (
-            '<node id="memory">'
-                '<size units="bytes">4294967296</size>'
-            '</node>')
-        update_hardware_details(node, xmlbytes)
-        node = reload_object(node)
-        self.assertEqual(4096, node.memory)
-
-    def test_hardware_updates_memory_lenovo(self):
-        node = factory.make_node()
-        xmlbytes = (
-          '<node>'
-            '<node id="memory:0" class="memory">'
-              '<node id="bank:0" class="memory" handle="DMI:002D">'
-                '<size units="bytes">4294967296</size>'
-              '</node>'
-              '<node id="bank:1" class="memory" handle="DMI:002E">'
-                '<size units="bytes">3221225472</size>'
-              '</node>'
-            '</node>'
-            '<node id="memory:1" class="memory">'
-              '<node id="bank:0" class="memory" handle="DMI:002F">'
-                '<size units="bytes">536870912</size>'
-              '</node>'
-            '</node>'
-            '<node id="memory:2" class="memory"></node>'
-          '</node>'
-          )
-        update_hardware_details(node, xmlbytes)
-        node = reload_object(node)
-        mega = 2 ** 20
-        expected = (4294967296 + 3221225472 + 536879812) / mega
-        self.assertEqual(expected, node.memory)
-
-    def test_hardware_updates_tags_match(self):
-        tag1 = factory.make_tag(factory.getRandomString(10), "/node")
-        tag2 = factory.make_tag(factory.getRandomString(10), "//node")
-        node = factory.make_node()
-        xmlbytes = '<node/>'
-        update_hardware_details(node, xmlbytes)
-        node = reload_object(node)
-        self.assertEqual([tag1, tag2], list(node.tags.all()))
-
-    def test_hardware_updates_tags_no_match(self):
-        tag1 = factory.make_tag(factory.getRandomString(10), "/missing")
-        ignore_unused(tag1)
-        tag2 = factory.make_tag(factory.getRandomString(10), "/nothing")
-        node = factory.make_node()
-        node.tags = [tag2]
-        node.save()
-        xmlbytes = '<node/>'
-        update_hardware_details(node, xmlbytes)
-        node = reload_object(node)
-        self.assertEqual([], list(node.tags.all()))
-
-    def test_hardware_updates_ignores_empty_tags(self):
-        # Tags with empty definitions are ignored when
-        # update_hardware_details gets called.
-        factory.make_tag(definition='')
-        node = factory.make_node()
-        node.save()
-        xmlbytes = '<node/>'
-        update_hardware_details(node, xmlbytes)
-        node = reload_object(node)
-        # The real test is that update_hardware_details does not blow
-        # up, see bug 1131418.
-        self.assertEqual([], list(node.tags.all()))
 
     def test_fqdn_returns_hostname_if_dns_not_managed(self):
         nodegroup = factory.make_node_group(

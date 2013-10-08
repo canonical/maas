@@ -25,6 +25,7 @@ from inspect import getsource
 from io import BytesIO
 from itertools import chain
 import json
+import logging
 import math
 import os.path
 import tarfile
@@ -41,6 +42,10 @@ from maasserver.fields import MAC
 from maasserver.models.tag import Tag
 from metadataserver import DefaultMeta
 from metadataserver.fields import BinaryField
+
+
+logger = logging.getLogger(__name__)
+
 
 # Path prefix for commissioning scripts.  Commissioning scripts will be
 # extracted into this directory.
@@ -125,18 +130,23 @@ _xpath_storage_bytes = """\
 """
 
 
-def update_hardware_details(node, xmlbytes, tag_manager=Tag.objects):
+def update_hardware_details(node, output, exit_status):
     """Process the results of `LSHW_SCRIPT`.
 
     Updates `node.cpu_count`, `node.memory`, and `node.storage`
     fields, and also evaluates all tag expressions against the given
     ``lshw`` XML.
+
+    If `exit_status` is non-zero, this function returns without doing
+    anything.
     """
+    assert isinstance(output, bytes)
+    if exit_status != 0:
+        return
     try:
-        doc = etree.XML(xmlbytes)
+        doc = etree.XML(output)
     except etree.XMLSyntaxError:
-        # TODO: log this
-        pass
+        logger.exception("Invalid lshw data.")
     else:
         # Same document, many queries: use XPathEvaluator.
         evaluator = etree.XPathEvaluator(doc)
@@ -150,7 +160,7 @@ def update_hardware_details(node, xmlbytes, tag_manager=Tag.objects):
         node.cpu_count = cpu_count or 0
         node.memory = memory
         node.storage = storage
-        for tag in tag_manager.all():
+        for tag in Tag.objects.all():
             if not tag.definition:
                 continue
             has_tag = evaluator(tag.definition)
@@ -174,13 +184,28 @@ VIRTUALITY_SCRIPT = dedent("""\
     """)
 
 
-def set_virtual_tag(node, raw_content):
-    """Process the results of VIRTUALITY_SCRIPT."""
+def set_virtual_tag(node, output, exit_status):
+    """Process the results of `VIRTUALITY_SCRIPT`.
+
+    This adds or removes the *virtual* tag from the node, depending on
+    the presence of the terms "notvirtual" or "virtual" in `output`.
+
+    If `exit_status` is non-zero, this function returns without doing
+    anything.
+    """
+    assert isinstance(output, bytes)
+    if exit_status != 0:
+        return
     tag, _ = Tag.objects.get_or_create(name='virtual')
-    if 'notvirtual' in raw_content:
+    if b'notvirtual' in output:
         node.tags.remove(tag)
-    else:
+    elif b'virtual' in output:
         node.tags.add(tag)
+    else:
+        logger.warn(
+            "Neither 'virtual' nor 'notvirtual' appeared in the "
+            "captured VIRTUALITY_SCRIPT output for node %s.",
+            node.system_id)
 
 
 # This function must be entirely self-contained. It must not use
@@ -266,13 +291,19 @@ def extract_router_mac_addresses(raw_content):
     return doc.xpath(_xpath_routers)
 
 
-def set_node_routers(node, raw_content):
+def set_node_routers(node, output, exit_status):
     """Process recently captured raw LLDP information.
 
     The list of the routers' MAC Addresses is extracted from the raw LLDP
     information and stored on the given node.
+
+    If `exit_status` is non-zero, this function returns without doing
+    anything.
     """
-    routers = extract_router_mac_addresses(raw_content)
+    assert isinstance(output, bytes)
+    if exit_status != 0:
+        return
+    routers = extract_router_mac_addresses(output)
     if routers is None:
         node.routers = None
     else:
@@ -280,7 +311,7 @@ def set_node_routers(node, raw_content):
     node.save()
 
 
-def null_hook(node, raw_content):
+def null_hook(node, output, exit_status):
     """Intentionally do nothing.
 
     Use this to explicitly ignore the response from a built-in

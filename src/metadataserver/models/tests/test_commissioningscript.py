@@ -14,6 +14,7 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+import doctest
 from inspect import getsource
 from io import BytesIO
 from math import (
@@ -32,10 +33,13 @@ import tarfile
 from textwrap import dedent
 import time
 
+from fixtures import FakeLogger
 from maasserver.fields import MAC
+from maasserver.models.tag import Tag
 from maasserver.testing import reload_object
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils import ignore_unused
 from maastesting.matchers import ContainsAll
 from maastesting.utils import sample_binary_data
 from metadataserver.fields import Bin
@@ -48,9 +52,12 @@ from metadataserver.models.commissioningscript import (
     extract_router_mac_addresses,
     make_function_call_script,
     set_node_routers,
+    set_virtual_tag,
+    update_hardware_details,
     )
 from mock import call
 from testtools.content import text_content
+from testtools.matchers import DocTestMatches
 
 
 def open_tarfile(content):
@@ -305,12 +312,187 @@ class TestSetNodeRouters(MAASServerTestCase):
         node = factory.make_node(routers=None)
         macs = ["11:22:33:44:55:66", "aa:bb:cc:dd:ee:ff"]
         lldp_output = make_lldp_output(macs)
-        set_node_routers(node, lldp_output)
+        set_node_routers(node, lldp_output, 0)
         self.assertItemsEqual(
             [MAC(mac) for mac in macs], reload_object(node).routers)
 
     def test_set_node_routers_updates_node_if_no_routers(self):
         node = factory.make_node()
         lldp_output = make_lldp_output([])
-        set_node_routers(node, lldp_output)
+        set_node_routers(node, lldp_output, 0)
         self.assertItemsEqual([], reload_object(node).routers)
+
+    def test_set_node_routers_does_nothing_if_script_failed(self):
+        node = factory.make_node()
+        routers_before = node.routers
+        macs = ["11:22:33:44:55:66", "aa:bb:cc:dd:ee:ff"]
+        lldp_output = make_lldp_output(macs)
+        set_node_routers(node, lldp_output, exit_status=1)
+        routers_after = reload_object(node).routers
+        self.assertItemsEqual(routers_before, routers_after)
+
+
+class TestSetVirtualTag(MAASServerTestCase):
+
+    def getVirtualTag(self):
+        virtual_tag, _ = Tag.objects.get_or_create(name='virtual')
+        return virtual_tag
+
+    def assertTagsEqual(self, node, tags):
+        self.assertItemsEqual(
+            tags, [tag.name for tag in node.tags.all()])
+
+    def test_sets_virtual_tag(self):
+        node = factory.make_node()
+        self.assertTagsEqual(node, [])
+        set_virtual_tag(node, b"virtual", 0)
+        self.assertTagsEqual(node, ["virtual"])
+
+    def test_removes_virtual_tag(self):
+        node = factory.make_node()
+        node.tags.add(self.getVirtualTag())
+        self.assertTagsEqual(node, ["virtual"])
+        set_virtual_tag(node, b"notvirtual", 0)
+        self.assertTagsEqual(node, [])
+
+    def test_output_not_containing_virtual_does_not_set_tag(self):
+        logger = self.useFixture(FakeLogger())
+        node = factory.make_node()
+        self.assertTagsEqual(node, [])
+        set_virtual_tag(node, b"wibble", 0)
+        self.assertTagsEqual(node, [])
+        self.assertEqual(
+            "Neither 'virtual' nor 'notvirtual' appeared in the captured "
+            "VIRTUALITY_SCRIPT output for node %s.\n" % node.system_id,
+            logger.output)
+
+    def test_output_not_containing_virtual_does_not_remove_tag(self):
+        logger = self.useFixture(FakeLogger())
+        node = factory.make_node()
+        node.tags.add(self.getVirtualTag())
+        self.assertTagsEqual(node, ["virtual"])
+        set_virtual_tag(node, b"wibble", 0)
+        self.assertTagsEqual(node, ["virtual"])
+        self.assertEqual(
+            "Neither 'virtual' nor 'notvirtual' appeared in the captured "
+            "VIRTUALITY_SCRIPT output for node %s.\n" % node.system_id,
+            logger.output)
+
+
+class TestUpdateHardwareDetails(MAASServerTestCase):
+
+    doctest_flags = doctest.ELLIPSIS | doctest.NORMALIZE_WHITESPACE
+
+    def test_hardware_updates_cpu_count(self):
+        node = factory.make_node()
+        xmlbytes = dedent("""\
+        <node id="core">
+           <node id="cpu:0" class="processor"/>
+           <node id="cpu:1" class="processor"/>
+        </node>
+        """).encode("utf-8")
+        update_hardware_details(node, xmlbytes, 0)
+        node = reload_object(node)
+        self.assertEqual(2, node.cpu_count)
+
+    def test_cpu_count_skips_disabled_cpus(self):
+        node = factory.make_node()
+        xmlbytes = dedent("""\
+        <node id="core">
+           <node id="cpu:0" class="processor"/>
+           <node id="cpu:1" disabled="true" class="processor"/>
+           <node id="cpu:2" disabled="true" class="processor"/>
+        </node>
+        """).encode("utf-8")
+        update_hardware_details(node, xmlbytes, 0)
+        node = reload_object(node)
+        self.assertEqual(1, node.cpu_count)
+
+    def test_hardware_updates_memory(self):
+        node = factory.make_node()
+        xmlbytes = dedent("""\
+        <node id="memory">
+           <size units="bytes">4294967296</size>
+        </node>
+        """).encode("utf-8")
+        update_hardware_details(node, xmlbytes, 0)
+        node = reload_object(node)
+        self.assertEqual(4096, node.memory)
+
+    def test_hardware_updates_memory_lenovo(self):
+        node = factory.make_node()
+        xmlbytes = dedent("""\
+        <node>
+          <node id="memory:0" class="memory">
+            <node id="bank:0" class="memory" handle="DMI:002D">
+              <size units="bytes">4294967296</size>
+            </node>
+            <node id="bank:1" class="memory" handle="DMI:002E">
+              <size units="bytes">3221225472</size>
+            </node>
+          </node>
+          <node id="memory:1" class="memory">
+            <node id="bank:0" class="memory" handle="DMI:002F">
+              <size units="bytes">536870912</size>
+            </node>
+          </node>
+          <node id="memory:2" class="memory"></node>
+        </node>
+        """).encode("utf-8")
+        update_hardware_details(node, xmlbytes, 0)
+        node = reload_object(node)
+        mega = 2 ** 20
+        expected = (4294967296 + 3221225472 + 536879812) / mega
+        self.assertEqual(expected, node.memory)
+
+    def test_hardware_updates_tags_match(self):
+        tag1 = factory.make_tag(factory.getRandomString(10), "/node")
+        tag2 = factory.make_tag(factory.getRandomString(10), "//node")
+        node = factory.make_node()
+        xmlbytes = '<node/>'.encode("utf-8")
+        update_hardware_details(node, xmlbytes, 0)
+        node = reload_object(node)
+        self.assertEqual([tag1, tag2], list(node.tags.all()))
+
+    def test_hardware_updates_tags_no_match(self):
+        tag1 = factory.make_tag(factory.getRandomString(10), "/missing")
+        ignore_unused(tag1)
+        tag2 = factory.make_tag(factory.getRandomString(10), "/nothing")
+        node = factory.make_node()
+        node.tags = [tag2]
+        node.save()
+        xmlbytes = '<node/>'.encode("utf-8")
+        update_hardware_details(node, xmlbytes, 0)
+        node = reload_object(node)
+        self.assertEqual([], list(node.tags.all()))
+
+    def test_hardware_updates_ignores_empty_tags(self):
+        # Tags with empty definitions are ignored when
+        # update_hardware_details gets called.
+        factory.make_tag(definition='')
+        node = factory.make_node()
+        node.save()
+        xmlbytes = '<node/>'.encode("utf-8")
+        update_hardware_details(node, xmlbytes, 0)
+        node = reload_object(node)
+        # The real test is that update_hardware_details does not blow
+        # up, see bug 1131418.
+        self.assertEqual([], list(node.tags.all()))
+
+    def test_hardware_updates_logs_invalid_xml(self):
+        logger = self.useFixture(FakeLogger())
+        update_hardware_details(factory.make_node(), b"garbage", 0)
+        expected_log = dedent("""\
+        Invalid lshw data.
+        Traceback (most recent call last):
+        ...
+        XMLSyntaxError: Start tag expected, '<' not found, line 1, column 1
+        """)
+        self.assertThat(
+            logger.output, DocTestMatches(
+                expected_log, self.doctest_flags))
+
+    def test_hardware_updates_does_nothing_when_exit_status_is_not_zero(self):
+        logger = self.useFixture(FakeLogger())
+        update_hardware_details(factory.make_node(), b"garbage", exit_status=1)
+        self.assertEqual("", logger.output)

@@ -39,7 +39,7 @@ def set_hardware_details(node, xmlbytes):
     assert isinstance(xmlbytes, bytes)
     NodeCommissionResult.objects.store_data(
         node, LSHW_OUTPUT_NAME, script_result=0, data=Bin(xmlbytes))
-    update_hardware_details(node, xmlbytes)
+    update_hardware_details(node, xmlbytes, 0)
 
 
 class TagTest(MAASServerTestCase):
