@@ -893,7 +893,9 @@ class BulkNodeActionForm(forms.Form):
     system_id = UnconstrainedMultipleChoiceField()
     action = forms.ChoiceField(
         required=True,
-        choices=[
+        # Put an empty action as the first displayed option to avoid
+        # fat-fingered bulk actions.
+        choices=[('', '')] + [
             (action.name, action.display_bulk)
             for action in ACTION_CLASSES])
 

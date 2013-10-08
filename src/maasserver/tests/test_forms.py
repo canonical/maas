@@ -1037,6 +1037,15 @@ class TestBulkNodeActionForm(MAASServerTestCase):
             [[], node3.system_id],
             [existing_nodes, node3_system_id])
 
+    def test_first_action_is_empty(self):
+        form = BulkNodeActionForm(user=factory.make_admin())
+        action = form.fields['action']
+        default_action = action.choices[0][0]
+        required = action.required
+        # The default action is the empty string (i.e. no action)
+        # and it's a required field.
+        self.assertEqual(('', True), (default_action, required))
+
     def test_gives_stat_when_not_applicable(self):
         node1 = factory.make_node(status=NODE_STATUS.DECLARED)
         node2 = factory.make_node(status=NODE_STATUS.FAILED_TESTS)
