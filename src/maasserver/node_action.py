@@ -44,6 +44,7 @@ from maasserver.models import (
     Node,
     SSHKey,
     )
+from maasserver.utils import map_enum
 
 # All node statuses.
 ALL_STATUSES = set(NODE_STATUS_CHOICES_DICT.keys())
@@ -180,6 +181,42 @@ class Commission(NodeAction):
         return "Node commissioning started."
 
 
+class UseCurtin(NodeAction):
+    """Set this node to use curtin for installation."""
+    name = "usecurtin"
+    display = "Use the fast installer"
+    display_bulk = "Mark the selected nodes as using the fast installer"
+    actionable_statuses = map_enum(NODE_STATUS).values()
+    permission = NODE_PERMISSION.EDIT
+
+    def is_permitted(self):
+        permitted = super(UseCurtin, self).is_permitted()
+        return permitted and self.node.should_use_traditional_installer()
+
+    def execute(self, allow_redirect=True):
+        """See `NodeAction.execute`."""
+        self.node.use_fastpath_installer()
+        return "Node marked as using curtin for install."
+
+
+class UseDI(NodeAction):
+    """Set this node to use d-i for installation."""
+    name = "usedi"
+    display = "Use the default installer"
+    display_bulk = "Mark the selected nodes as using the default installer"
+    actionable_statuses = map_enum(NODE_STATUS).values()
+    permission = NODE_PERMISSION.EDIT
+
+    def is_permitted(self):
+        permitted = super(UseDI, self).is_permitted()
+        return permitted and self.node.should_use_fastpath_installer()
+
+    def execute(self, allow_redirect=True):
+        """See `NodeAction.execute`."""
+        self.node.use_traditional_installer()
+        return "Node marked as using the default installer."
+
+
 class StartNode(NodeAction):
     """Acquire and start a node."""
     name = "start"
@@ -236,6 +273,8 @@ ACTION_CLASSES = (
     Commission,
     StartNode,
     StopNode,
+    UseCurtin,
+    UseDI,
     )
 
 

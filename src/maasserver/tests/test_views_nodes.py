@@ -915,7 +915,7 @@ class MessageFromFormStatsTest(MAASServerTestCase):
                 (Delete, 0, 1, 1),
                 (
                     'could not be performed on 1 node because its state',
-                    "could not be performed on 1 node because you don't",
+                    "could not be performed on 1 node because that action",
                 )
             ),
              (
@@ -930,14 +930,14 @@ class MessageFromFormStatsTest(MAASServerTestCase):
                      % Delete.display_bulk,
                     'It could not be performed on 4 nodes because their '
                     'state does not allow that action.',
-                    "It could not be performed on 2 nodes because you "
-                    "don't have the required permissions.",
+                    "It could not be performed on 2 nodes because that "
+                    "action is not permitted on these nodes.",
                 ),
             ),
             (
                 (Delete, 0, 0, 3),
                 ('The action "%s" could not be performed on 3 nodes '
-                 "because you don't have the required permissions."
+                 "because that action is not permitted on these nodes."
                  % Delete.display_bulk,),
             ),
         ]

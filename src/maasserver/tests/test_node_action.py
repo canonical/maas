@@ -30,6 +30,8 @@ from maasserver.node_action import (
     NodeAction,
     StartNode,
     StopNode,
+    UseCurtin,
+    UseDI,
     )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -261,3 +263,51 @@ class TestStopNodeNodeAction(MAASServerTestCase):
         self.assertEqual(
             'provisioningserver.tasks.power_off',
             self.celery.tasks[0]['task'].name)
+
+
+class TestUseCurtinNodeAction(MAASServerTestCase):
+
+    def test_sets_tag(self):
+        user = factory.make_user()
+        node = factory.make_node(owner=user)
+        node.use_traditional_installer()
+        action = UseCurtin(node, user)
+        self.assertTrue(action.is_permitted())
+        action.execute()
+        self.assertTrue(node.should_use_fastpath_installer())
+
+    def test_requires_edit_permission(self):
+        user = factory.make_user()
+        node = factory.make_node()
+        node.use_traditional_installer()
+        self.assertFalse(UseCurtin(node, user).is_permitted())
+
+    def test_not_permitted_if_already_uses_curtin(self):
+        node = factory.make_node()
+        node.use_fastpath_installer()
+        user = factory.make_admin()
+        self.assertFalse(UseCurtin(node, user).is_permitted())
+
+
+class TestUseDINodeAction(MAASServerTestCase):
+
+    def test_sets_tag(self):
+        user = factory.make_user()
+        node = factory.make_node(owner=user)
+        node.use_fastpath_installer()
+        action = UseDI(node, user)
+        self.assertTrue(action.is_permitted())
+        action.execute()
+        self.assertTrue(node.should_use_traditional_installer())
+
+    def test_requires_edit_permission(self):
+        user = factory.make_user()
+        node = factory.make_node()
+        node.use_fastpath_installer()
+        self.assertFalse(UseDI(node, user).is_permitted())
+
+    def test_not_permitted_if_already_uses_di(self):
+        node = factory.make_node()
+        node.use_traditional_installer()
+        user = factory.make_admin()
+        self.assertFalse(UseDI(node, user).is_permitted())

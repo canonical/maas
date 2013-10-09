@@ -69,6 +69,7 @@ from maasserver.node_action import (
     Delete,
     StartNode,
     StopNode,
+    UseCurtin,
     )
 from maasserver.testing import reload_object
 from maasserver.testing.factory import factory
@@ -474,10 +475,11 @@ class TestNodeActionForm(MAASServerTestCase):
     def test_get_action_form_for_admin(self):
         admin = factory.make_admin()
         node = factory.make_node(status=NODE_STATUS.DECLARED)
+        node.use_traditional_installer()
         form = get_action_form(admin)(node)
 
         self.assertItemsEqual(
-            [Commission.name, Delete.name],
+            [Commission.name, Delete.name, UseCurtin.name],
             form.actions)
 
     def test_get_action_form_for_user(self):

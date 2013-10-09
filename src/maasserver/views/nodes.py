@@ -131,10 +131,10 @@ def message_from_form_stats(action, done, not_actionable, not_permitted):
          'state does not allow that action.'),
     ]
     not_permitted_templates = [
-        ('%s could not be performed on %d node because you '
-         "don't have the required permissions."),
-        ('%s could not be performed on %d nodes because you '
-         "don't have the required permissions."),
+        ('%s could not be performed on %d node because that '
+         "action is not permitted on that node."),
+        ('%s could not be performed on %d nodes because that '
+         "action is not permitted on these nodes."),
     ]
     number_message = [
         (done, done_templates),
