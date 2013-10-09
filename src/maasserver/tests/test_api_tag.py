@@ -27,28 +27,7 @@ from maasserver.testing.api import (
     )
 from maasserver.testing.factory import factory
 from maasserver.testing.oauthclient import OAuthAuthenticatedClient
-from metadataserver.fields import Bin
-from metadataserver.models.commissioningscript import (
-    LSHW_OUTPUT_NAME,
-    update_hardware_details,
-    )
-from metadataserver.models.nodecommissionresult import NodeCommissionResult
-
-
-def set_hardware_details(node, xmlbytes):
-    # FIXME: Gavin Panella, bug=1235174, 2013-10-04
-    #
-    # This is a temporary shim to allow removal of
-    # Node.set_hardware_details(), and thus the use of the
-    # Node.hardware_details field.
-    #
-    # It is being replaced by storing the results only in
-    # NodeCommissionResult, and reprocessing tags using all
-    # relevant probed details.
-    assert isinstance(xmlbytes, bytes)
-    NodeCommissionResult.objects.store_data(
-        node, LSHW_OUTPUT_NAME, script_result=0, data=Bin(xmlbytes))
-    update_hardware_details(node, xmlbytes, 0)
+from metadataserver.models.commissioningscript import inject_lshw_result
 
 
 class TestTagAPI(APITestCase):
@@ -117,9 +96,9 @@ class TestTagAPI(APITestCase):
 
     def test_PUT_updates_node_associations(self):
         node1 = factory.make_node()
-        set_hardware_details(node1, b'<node><foo/></node>')
+        inject_lshw_result(node1, b'<node><foo/></node>')
         node2 = factory.make_node()
-        set_hardware_details(node2, b'<node><bar/></node>')
+        inject_lshw_result(node2, b'<node><bar/></node>')
         tag = factory.make_tag(definition='//node/foo')
         self.assertItemsEqual([tag.name], node1.tag_names())
         self.assertItemsEqual([], node2.tag_names())
@@ -155,9 +134,9 @@ class TestTagAPI(APITestCase):
     def test_GET_nodes_hides_invisible_nodes(self):
         user2 = factory.make_user()
         node1 = factory.make_node()
-        set_hardware_details(node1, b'<node><foo/></node>')
+        inject_lshw_result(node1, b'<node><foo/></node>')
         node2 = factory.make_node(status=NODE_STATUS.ALLOCATED, owner=user2)
-        set_hardware_details(node2, b'<node><bar/></node>')
+        inject_lshw_result(node2, b'<node><bar/></node>')
         tag = factory.make_tag(definition='//node')
         response = self.client.get(self.get_tag_uri(tag), {'op': 'nodes'})
 
@@ -176,7 +155,7 @@ class TestTagAPI(APITestCase):
     def test_PUT_invalid_definition(self):
         self.become_admin()
         node = factory.make_node()
-        set_hardware_details(node, b'<node ><child/></node>')
+        inject_lshw_result(node, b'<node ><child/></node>')
         tag = factory.make_tag(definition='//child')
         self.assertItemsEqual([tag.name], node.tag_names())
         response = self.client_put(
@@ -336,9 +315,9 @@ class TestTagAPI(APITestCase):
         tag = factory.make_tag(definition='//foo/bar')
         # Only one node matches the tag definition, rebuilding should notice
         node_matching = factory.make_node()
-        set_hardware_details(node_matching, b'<foo><bar/></foo>')
+        inject_lshw_result(node_matching, b'<foo><bar/></foo>')
         node_bogus = factory.make_node()
-        set_hardware_details(node_bogus, b'<foo/>')
+        inject_lshw_result(node_bogus, b'<foo/>')
         node_matching.tags.add(tag)
         node_bogus.tags.add(tag)
         self.assertItemsEqual(
@@ -480,10 +459,10 @@ class TestTagsAPI(APITestCase):
     def test_POST_new_populates_nodes(self):
         self.become_admin()
         node1 = factory.make_node()
-        set_hardware_details(node1, b'<node><child/></node>')
+        inject_lshw_result(node1, b'<node><child/></node>')
         # Create another node that doesn't have a 'child'
         node2 = factory.make_node()
-        set_hardware_details(node2, b'<node/>')
+        inject_lshw_result(node2, b'<node/>')
         self.assertItemsEqual([], node1.tag_names())
         self.assertItemsEqual([], node2.tag_names())
         name = factory.getRandomString()

@@ -51,6 +51,8 @@ from maasserver.models import (
     Node,
     SSHKey,
     )
+from maasserver.models.tag import Tag
+from maasserver.populate_tags import populate_tags_for_single_node
 from maasserver.preseed import (
     get_curtin_userdata,
     get_enlist_preseed,
@@ -252,11 +254,14 @@ class VersionIndexHandler(MetadataViewHandler):
 
         node.status = target_status
         # When moving to a terminal state, remove the allocation.
-        if target_status is not None:
-            node.owner = None
+        node.owner = None
         node.error = request.POST.get('error', '')
-        node.save()
 
+        # When moving to a successful terminal state, recalculate tags.
+        populate_tags_for_single_node(Tag.objects.all(), node)
+
+        # Done.
+        node.save()
         return rc.ALL_OK
 
     @operation(idempotent=False)

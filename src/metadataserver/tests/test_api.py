@@ -436,6 +436,17 @@ class TestCommissioningAPI(DjangoTestCase):
         self.assertEqual(
             NODE_STATUS.COMMISSIONING, reload_object(node).status)
 
+    def test_signaling_commissioning_OK_repopulates_tags(self):
+        populate_tags_for_single_node = self.patch(
+            api, "populate_tags_for_single_node")
+        node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
+        client = make_node_client(node)
+        response = call_signal(client, status='OK', script_result='0')
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(NODE_STATUS.READY, reload_object(node).status)
+        from mock import ANY
+        populate_tags_for_single_node.assert_called_once_with(ANY, node)
+
     def test_signaling_requires_status_code(self):
         node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node=node)

@@ -16,6 +16,9 @@ __metaclass__ = type
 __all__ = [
     'BUILTIN_COMMISSIONING_SCRIPTS',
     'CommissioningScript',
+    'inject_lldp_result',
+    'inject_lshw_result',
+    'inject_result',
     'LLDP_OUTPUT_NAME',
     'LSHW_OUTPUT_NAME',
     ]
@@ -41,7 +44,11 @@ from lxml import etree
 from maasserver.fields import MAC
 from maasserver.models.tag import Tag
 from metadataserver import DefaultMeta
-from metadataserver.fields import BinaryField
+from metadataserver.fields import (
+    Bin,
+    BinaryField,
+    )
+from metadataserver.models.nodecommissionresult import NodeCommissionResult
 
 
 logger = logging.getLogger(__name__)
@@ -436,3 +443,28 @@ class CommissioningScript(Model):
 
     name = CharField(max_length=255, null=False, editable=True, unique=True)
     content = BinaryField(null=False)
+
+
+def inject_result(node, name, output, exit_status=0):
+    """Inject a `name` result and trigger related hooks, if any.
+
+    `output` and `exit_status` are recorded as `NodeCommissionResult`
+    instances with the `name` given. A built-in hook is then searched
+    for; if found, it is invoked.
+    """
+    assert isinstance(output, bytes)
+    NodeCommissionResult.objects.store_data(
+        node, name, script_result=exit_status, data=Bin(output))
+    if name in BUILTIN_COMMISSIONING_SCRIPTS:
+        postprocess_hook = BUILTIN_COMMISSIONING_SCRIPTS[name]['hook']
+        postprocess_hook(node=node, output=output, exit_status=exit_status)
+
+
+def inject_lshw_result(node, output, exit_status=0):
+    """Convenience to call `inject_result(name=LSHW_OUTPUT_NAME, ...)`."""
+    return inject_result(node, LSHW_OUTPUT_NAME, output, exit_status)
+
+
+def inject_lldp_result(node, output, exit_status=0):
+    """Convenience to call `inject_result(name=LLDP_OUTPUT_NAME, ...)`."""
+    return inject_result(node, LLDP_OUTPUT_NAME, output, exit_status)

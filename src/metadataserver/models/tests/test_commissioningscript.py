@@ -50,14 +50,28 @@ from metadataserver.models import (
 from metadataserver.models.commissioningscript import (
     ARCHIVE_PREFIX,
     extract_router_mac_addresses,
+    inject_lldp_result,
+    inject_lshw_result,
+    inject_result,
+    LLDP_OUTPUT_NAME,
+    LSHW_OUTPUT_NAME,
     make_function_call_script,
     set_node_routers,
     set_virtual_tag,
     update_hardware_details,
     )
-from mock import call
+from metadataserver.models.nodecommissionresult import NodeCommissionResult
+from mock import (
+    call,
+    create_autospec,
+    Mock,
+    sentinel,
+    )
 from testtools.content import text_content
-from testtools.matchers import DocTestMatches
+from testtools.matchers import (
+    DocTestMatches,
+    MatchesStructure,
+    )
 
 
 def open_tarfile(content):
@@ -330,6 +344,56 @@ class TestSetNodeRouters(MAASServerTestCase):
         set_node_routers(node, lldp_output, exit_status=1)
         routers_after = reload_object(node).routers
         self.assertItemsEqual(routers_before, routers_after)
+
+
+class TestInjectResult(MAASServerTestCase):
+
+    def test_inject_result_stores_data(self):
+        node = factory.make_node()
+        name = factory.make_name("result")
+        output = factory.getRandomBytes()
+        exit_status = next(factory.random_octets)
+
+        inject_result(node, name, output, exit_status)
+
+        self.assertThat(
+            NodeCommissionResult.objects.get(node=node, name=name),
+            MatchesStructure.byEquality(
+                node=node, name=name, script_result=exit_status,
+                data=output))
+
+    def test_inject_result_calls_hook(self):
+        node = factory.make_node()
+        name = factory.make_name("result")
+        output = factory.getRandomBytes()
+        exit_status = next(factory.random_octets)
+        hook = Mock()
+        self.patch(
+            cs_module, "BUILTIN_COMMISSIONING_SCRIPTS",
+            {name: {"hook": hook}})
+
+        inject_result(node, name, output, exit_status)
+
+        hook.assert_called_once_with(
+            node=node, output=output, exit_status=exit_status)
+
+    def inject_lshw_result(self):
+        # inject_lshw_result() just calls through to inject_result().
+        inject_result = self.patch(
+            cs_module, "inject_result",
+            create_autospec(cs_module.inject_result))
+        inject_lshw_result(sentinel.node, sentinel.output, sentinel.status)
+        inject_result.assert_called_once_with(
+            sentinel.node, LSHW_OUTPUT_NAME, sentinel.output, sentinel.status)
+
+    def inject_lldp_result(self):
+        # inject_lldp_result() just calls through to inject_result().
+        inject_result = self.patch(
+            cs_module, "inject_result",
+            create_autospec(cs_module.inject_result))
+        inject_lldp_result(sentinel.node, sentinel.output, sentinel.status)
+        inject_result.assert_called_once_with(
+            sentinel.node, LLDP_OUTPUT_NAME, sentinel.output, sentinel.status)
 
 
 class TestSetVirtualTag(MAASServerTestCase):
