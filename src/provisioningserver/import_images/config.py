@@ -20,6 +20,7 @@ __all__ = [
 from copy import deepcopy
 from os import rename
 import os.path
+from pipes import quote
 from subprocess import check_output
 
 from provisioningserver.utils import filter_dict
@@ -59,10 +60,11 @@ def parse_legacy_config(options):
     # Source the legacy settings file, and print the environment.  Use the nul
     # character as a separator, so we don't get confused by newlines in the
     # values.
-    output = check_output([
-        'bash', '-c',
-        'source %s >/dev/null; env -0' % EPHEMERALS_LEGACY_CONFIG,
-        ])
+    source_config = 'source %s >/dev/null' % quote(EPHEMERALS_LEGACY_CONFIG)
+    export_vars = 'export ' + ' '.join(quote(var) for var in options)
+    dump_env = 'env -0'
+    shell_code = '; '.join([source_config, export_vars, dump_env])
+    output = check_output(['bash', '-c', shell_code])
     # Assume UTF-8 encoding.  If the system uses something else but the
     # variables are all ASCII, that's probably fine too.
     output = output.decode('utf-8')

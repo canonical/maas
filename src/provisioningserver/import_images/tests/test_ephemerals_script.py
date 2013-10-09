@@ -432,9 +432,9 @@ class TestConvertLegacyConfig(PservTestCase):
         if releases is None:
             releases = [factory.make_name('release') for counter in range(2)]
         return dedent("""\
-            export DATA_DIR=%s
-            export ARCHES=%s
-            export RELEASES=%s
+            DATA_DIR=%s
+            ARCHES=%s
+            RELEASES=%s
             """) % (
                 quote(data_dir),
                 quote(' '.join(arches)),

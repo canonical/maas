@@ -50,7 +50,7 @@ def make_legacy_config(testcase, options):
     single-quoted, for example, add the the quotes in `options`.
     """
     contents = ''.join(
-        'export %s=%s\n' % (variable, value)
+        '%s=%s\n' % (variable, value)
         for variable, value in options.iteritems())
     legacy_config = testcase.make_file(contents=contents.encode('utf-8'))
     testcase.patch(config_module, 'EPHEMERALS_LEGACY_CONFIG', legacy_config)
