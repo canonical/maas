@@ -749,6 +749,7 @@ class Node(CleanSave, TimestampedModel):
         power_params.setdefault('virsh', '/usr/bin/virsh')
         power_params.setdefault('fence_cdu', '/usr/sbin/fence_cdu')
         power_params.setdefault('ipmipower', '/usr/sbin/ipmipower')
+        power_params.setdefault('ipmitool', '/usr/bin/ipmitool')
         power_params.setdefault(
             'ipmi_chassis_config', '/usr/sbin/ipmi-chassis-config')
         power_params.setdefault('ipmi_config', 'ipmi.conf')

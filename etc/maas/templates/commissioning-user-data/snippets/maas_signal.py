@@ -17,7 +17,7 @@ from maas_api_helper import (
 
 MD_VERSION = "2012-03-01"
 VALID_STATUS = ("OK", "FAILED", "WORKING")
-POWER_TYPES = ("ipmi", "virsh", "ether_wake")
+POWER_TYPES = ("ipmi", "virsh", "ether_wake", "moonshot")
 
 
 def _encode_field(field_name, data, boundary):
@@ -151,11 +151,21 @@ def main():
 
     if args.power_parms is not None:
         params["power_type"] = args.power_type
-        power_parms = dict(
-            power_user=args.power_parms.split(",")[0],
-            power_pass=args.power_parms.split(",")[1],
-            power_address=args.power_parms.split(",")[2]
-            )
+        if params["power_type"] == "moonshot":
+            user, passwd, address, hwaddress = args.power_parms.split(",")
+            power_parms = dict(
+                power_user=user,
+                power_pass=passwd,
+                power_address=address,
+                power_hwaddress=hwaddress
+                )
+        else:
+            user, passwd, address = args.power_parms.split(",")
+            power_parms = dict(
+                power_user=user,
+                power_pass=passwd,
+                power_address=address
+                )
         params["power_parameters"] = json.dumps(power_parms)
 
     files = {}

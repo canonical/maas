@@ -209,3 +209,17 @@ class TestPowerAction(MAASTestCase):
             ipmipower='echo', ipmi_chassis_config='echo', config_dir='dir',
             ipmi_config='file.conf', power_driver='LAN')
         self.assertIn(conf_dir, script)
+
+    def test_moonshot_checks_state(self):
+        # We can't test the fence_cdu template in detail (and it may be
+        # customized), but by making it use "echo" instead of a real
+        # fence_cdu we can make it get a bogus answer from its status check.
+        # The bogus answer is actually the rest of the fence_cdu command
+        # line.  It will complain about this and fail.
+        action = PowerAction(POWER_TYPE.MOONSHOT)
+        script = action.render_template(
+            action.get_template(), power_change='on',
+            power_address='mysystem', power_user='me',
+            power_pass='me', power_hwaddress='me', ipmitool='echo')
+        output = action.run_shell(script)
+        self.assertIn("Got unknown power state from ipmipower", output)

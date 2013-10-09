@@ -43,12 +43,16 @@ class POWER_TYPE:
     # IPMI (Intelligent Platform Management Interface).
     IPMI = 'ipmi'
 
+    # ILO4/bridging/IPMI
+    MOONSHOT = 'moonshot'
+
 
 POWER_TYPE_CHOICES = (
     (POWER_TYPE.VIRSH, "virsh (virtual systems)"),
     (POWER_TYPE.WAKE_ON_LAN, "Wake-on-LAN"),
     (POWER_TYPE.CDU, "Sentry Switch CDU"),
     (POWER_TYPE.IPMI, "IPMI"),
+    (POWER_TYPE.MOONSHOT, "iLO4 Moonshot Chassis"),
     )
 
 

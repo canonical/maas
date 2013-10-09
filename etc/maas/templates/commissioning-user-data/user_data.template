@@ -126,7 +126,7 @@ main() {
 
    # Install tools and load modules.
    aptget update
-   aptget install freeipmi-tools
+   aptget install freeipmi-tools openipmi ipmitool
    load_modules
 
    # The main function, actually execute stuff that is written below.
@@ -153,9 +153,17 @@ main() {
    if $IPMI_CHANGE_STATIC_TO_DHCP; then
       pargs="--dhcp-if-static"
    fi
-   power_settings=$(maas-ipmi-autodetect --configdir "$IPMI_CONFIG_D" ${pargs})
+   power_type=$(maas-ipmi-autodetect-tool)
+   case "$power_type" in
+       ipmi)
+           power_settings=$(maas-ipmi-autodetect --configdir "$IPMI_CONFIG_D" ${pargs})
+           ;;
+       moonshot)
+           power_settings=$(maas-moonshot-autodetect)
+           ;;
+   esac
    if [ ! -z "$power_settings" ]; then
-      signal "--power-type=ipmi" "--power-parameters=${power_settings}" WORKING "finished [maas-ipmi-autodetect]"
+      signal "--power-type=${power_type}" "--power-parameters=${power_settings}" WORKING "finished [maas-ipmi-autodetect]"
    fi
 
    # Download and extract commissioning scripts.  It will contain a
@@ -218,9 +226,17 @@ Section Lan_Channel
 EndSection
 END_IPMI_CONFIG
 
+add_bin "maas-ipmi-autodetect-tool" <<"END_MAAS_IPMI_AUTODETECT_TOOL"
+{{maas_ipmi_autodetect_tool_py}}
+END_MAAS_IPMI_AUTODETECT_TOOL
+
 add_bin "maas-ipmi-autodetect" <<"END_MAAS_IPMI_AUTODETECT"
 {{maas_ipmi_autodetect_py}}
 END_MAAS_IPMI_AUTODETECT
+
+add_bin "maas-moonshot-autodetect" <<"END_MAAS_MOONSHOT_AUTODETECT"
+{{maas_moonshot_autodetect_py}}
+END_MAAS_MOONSHOT_AUTODETECT
 
 add_bin "maas_api_helper.py" <<"END_MAAS_API_HELPER"
 {{maas_api_helper_py}}
