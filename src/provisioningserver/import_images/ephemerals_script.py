@@ -1,4 +1,3 @@
-#!/usr/bin/env python2.7
 # Copyright 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
@@ -19,6 +18,7 @@ __all__ = [
     ]
 
 from argparse import ArgumentParser
+from copy import deepcopy
 import errno
 from glob import glob
 from logging import getLogger
@@ -365,6 +365,10 @@ def make_arg_parser(doc):
         # Plod on with defaults, in case this is just a --help run.  If it's
         # not, main() will fail anyway.
         config = Config.get_defaults()
+    # Merge legacy settings into the config, but make sure this doesn't affect
+    # the original in the Config cache.  We want to be able to compare them
+    # later to see if the merge changed anything.
+    config = deepcopy(config)
     merge_legacy_ephemerals_config(config)
 
     filters = []

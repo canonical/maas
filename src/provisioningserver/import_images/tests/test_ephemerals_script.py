@@ -15,6 +15,7 @@ __metaclass__ = type
 __all__ = []
 
 from argparse import ArgumentParser
+from copy import deepcopy
 from os import (
     listdir,
     readlink,
@@ -370,6 +371,35 @@ class TestInstallImageFromSimplestreams(PservTestCase):
         self.assertItemsEqual([], listdir(temp_location))
 
 
+def make_legacy_config(data_dir=None, arches=None, releases=None):
+    """Create contents for a legacy, shell-script config file."""
+    if data_dir is None:
+        data_dir = factory.make_name('datadir')
+    if arches is None:
+        arches = [factory.make_name('arch') for counter in range(2)]
+    if releases is None:
+        releases = [factory.make_name('release') for counter in range(2)]
+    return dedent("""\
+        DATA_DIR=%s
+        ARCHES=%s
+        RELEASES=%s
+        """) % (
+            quote(data_dir),
+            quote(' '.join(arches)),
+            quote(' '.join(releases)),
+        )
+
+
+def install_legacy_config(testcase, contents):
+    """Set up a legacy config file with the given contents.
+
+    Returns the config file's path.
+    """
+    legacy_file = testcase.make_file(contents=contents)
+    testcase.patch(config_module, 'EPHEMERALS_LEGACY_CONFIG', legacy_file)
+    return legacy_file
+
+
 class TestMakeArgParser(PservTestCase):
 
     def test_creates_parser(self):
@@ -421,42 +451,36 @@ class TestMakeArgParser(PservTestCase):
             args.output)
         self.assertItemsEqual([], args.filters)
 
+    def test_does_not_modify_config(self):
+        self.useFixture(ConfigFixture(
+            {
+                'boot': {
+                    'architectures': [factory.make_name('arch')],
+                    'ephemeral': {
+                        'images_directory': self.make_dir(),
+                        'releases': [factory.make_name('release')],
+                    },
+                },
+            }))
+        original_boot_config = deepcopy(Config.load_from_cache()['boot'])
+        install_legacy_config(self, make_legacy_config())
+
+        make_arg_parser(factory.getRandomString())
+
+        self.assertEqual(
+            original_boot_config,
+            Config.load_from_cache()['boot'])
+
 
 class TestConvertLegacyConfig(PservTestCase):
-    def make_legacy_config(self, data_dir=None, arches=None, releases=None):
-        """Create contents for a legacy, shell-script config file."""
-        if data_dir is None:
-            data_dir = self.make_dir()
-        if arches is None:
-            arches = [factory.make_name('arch') for counter in range(2)]
-        if releases is None:
-            releases = [factory.make_name('release') for counter in range(2)]
-        return dedent("""\
-            DATA_DIR=%s
-            ARCHES=%s
-            RELEASES=%s
-            """) % (
-                quote(data_dir),
-                quote(' '.join(arches)),
-                quote(' '.join(releases)),
-            )
-
-    def install_legacy_config(self, contents):
-        """Set up a legacy config file with the given contents.
-
-        Returns the config file's path.
-        """
-        legacy_file = self.make_file(contents=contents)
-        self.patch(config_module, 'EPHEMERALS_LEGACY_CONFIG', legacy_file)
-        return legacy_file
 
     def test_converts_legacy_config_if_old_config_available(self):
         self.useFixture(ConfigFixture({'boot': {'ephemeral': {}}}))
         data_dir = self.make_dir()
         arches = [factory.make_name('arch')]
         releases = [factory.make_name('rel')]
-        legacy_config = self.make_legacy_config(data_dir, arches, releases)
-        legacy_file = self.install_legacy_config(legacy_config)
+        legacy_config = make_legacy_config(data_dir, arches, releases)
+        legacy_file = install_legacy_config(self, legacy_config)
         initial_config = file(Config.DEFAULT_FILENAME).read()
 
         convert_legacy_config()
@@ -512,8 +536,8 @@ class TestConvertLegacyConfig(PservTestCase):
 
     def test_is_idempotent(self):
         self.useFixture(ConfigFixture({'boot': {'ephemeral': {}}}))
-        legacy_config = self.make_legacy_config()
-        legacy_file = self.install_legacy_config(legacy_config)
+        legacy_config = make_legacy_config()
+        legacy_file = install_legacy_config(self, legacy_config)
         convert_legacy_config()
         converted_config = Config.load()['boot']
 
