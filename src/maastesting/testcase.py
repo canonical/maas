@@ -17,6 +17,7 @@ __all__ = [
     ]
 
 from contextlib import contextmanager
+import doctest
 import unittest
 
 from maastesting.factory import factory
@@ -28,6 +29,7 @@ from nose.tools import nottest
 from provisioningserver.testing.worker_cache import WorkerCacheFixture
 import testresources
 import testtools
+import testtools.matchers
 
 
 @nottest
@@ -119,6 +121,17 @@ class MAASTestCase(WithScenarios, testtools.TestCase):
     # Django's implementation for this seems to be broken and was
     # probably only added to support compatibility with python 2.6.
     assertItemsEqual = unittest.TestCase.assertItemsEqual
+
+    doctest_flags = doctest.ELLIPSIS | doctest.NORMALIZE_WHITESPACE
+
+    def assertDocTestMatches(self, expected, observed, flags=None):
+        """See if `observed` matches `expected`, a doctest sample.
+
+        By default uses the doctest flags `NORMALIZE_WHITESPACE` and
+        `ELLIPSIS`.
+        """
+        self.assertThat(observed, testtools.matchers.DocTestMatches(
+            expected, self.doctest_flags if flags is None else flags))
 
     def run(self, result=None):
         with active_test(result, self):

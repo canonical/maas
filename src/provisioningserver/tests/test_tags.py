@@ -112,21 +112,23 @@ class EqualsXML(Equals):
         return super(EqualsXML, self).match(self.normalise(other))
 
 
-class TestMergeDetails(PservTestCase):
+class TestMergeDetailsCleanly(PservTestCase):
+
+    do_merge_details = staticmethod(tags.merge_details_cleanly)
 
     def setUp(self):
-        super(TestMergeDetails, self).setUp()
+        super(TestMergeDetailsCleanly, self).setUp()
         self.logger = self.useFixture(FakeLogger())
 
     def test_merge_with_no_details(self):
-        xml = tags.merge_details({})
+        xml = self.do_merge_details({})
         self.assertThat(xml, EqualsXML("<list/>"))
 
     def test_merge_with_only_lshw_details(self):
-        xml = tags.merge_details({"lshw": b"<list><foo>Hello</foo></list>"})
+        xml = self.do_merge_details(
+            {"lshw": b"<list><foo>Hello</foo></list>"})
         expected = """\
             <list xmlns:lshw="lshw">
-              <foo>Hello</foo>
               <lshw:list>
                 <lshw:foo>Hello</lshw:foo>
               </lshw:list>
@@ -135,7 +137,8 @@ class TestMergeDetails(PservTestCase):
         self.assertThat(xml, EqualsXML(expected))
 
     def test_merge_with_only_lldp_details(self):
-        xml = tags.merge_details({"lldp": b"<node><foo>Hello</foo></node>"})
+        xml = self.do_merge_details(
+            {"lldp": b"<node><foo>Hello</foo></node>"})
         expected = """\
             <list xmlns:lldp="lldp">
               <lldp:node>
@@ -146,14 +149,13 @@ class TestMergeDetails(PservTestCase):
         self.assertThat(xml, EqualsXML(expected))
 
     def test_merge_with_multiple_details(self):
-        xml = tags.merge_details({
+        xml = self.do_merge_details({
             "lshw": b"<list><foo>Hello</foo></list>",
             "lldp": b"<node><foo>Hello</foo></node>",
             "zoom": b"<zoom>zoom</zoom>",
         })
         expected = """\
             <list xmlns:lldp="lldp" xmlns:lshw="lshw" xmlns:zoom="zoom">
-              <foo>Hello</foo>
               <lldp:node>
                 <lldp:foo>Hello</lldp:foo>
               </lldp:node>
@@ -166,7 +168,7 @@ class TestMergeDetails(PservTestCase):
         self.assertThat(xml, EqualsXML(expected))
 
     def test_merges_into_new_tree(self):
-        xml = tags.merge_details({
+        xml = self.do_merge_details({
             "lshw": b"<list><foo>Hello</foo></list>",
             "lldp": b"<node><foo>Hello</foo></node>",
         })
@@ -183,9 +185,9 @@ class TestMergeDetails(PservTestCase):
             dedent(expected), doctest.ELLIPSIS | doctest.NORMALIZE_WHITESPACE))
 
     def test_merge_with_invalid_lshw_details(self):
-        # The lshw details cannot be parsed, but merge_details() still
+        # The lshw details cannot be parsed, but merge_details_cleanly() still
         # returns a usable tree, albeit without any lshw details.
-        xml = tags.merge_details({"lshw": b"<not>well</formed>"})
+        xml = self.do_merge_details({"lshw": b"<not>well</formed>"})
         self.assertThat(xml, EqualsXML('<list xmlns:lshw="lshw"/>'))
         # The error is logged however.
         self.assertDocTestMatches(
@@ -195,9 +197,9 @@ class TestMergeDetails(PservTestCase):
             self.logger.output)
 
     def test_merge_with_invalid_lshw_details_and_others_valid(self):
-        # The lshw details cannot be parsed, but merge_details() still
+        # The lshw details cannot be parsed, but merge_details_cleanly() still
         # returns a usable tree, albeit without any lshw details.
-        xml = tags.merge_details({
+        xml = self.do_merge_details({
             "lshw": b"<not>well</formed>",
             "lldp": b"<node><foo>Hello</foo></node>",
             "zoom": b"<zoom>zoom</zoom>",
@@ -219,7 +221,105 @@ class TestMergeDetails(PservTestCase):
             self.logger.output)
 
     def test_merge_with_invalid_other_details(self):
-        xml = tags.merge_details({
+        xml = self.do_merge_details({
+            "lshw": b"<list><foo>Hello</foo></list>",
+            "foom": b"<not>well</formed>",
+            "zoom": b"<zoom>zoom</zoom>",
+            "oops": None,
+        })
+        expected = """\
+            <list xmlns:foom="foom" xmlns:lshw="lshw"
+                  xmlns:oops="oops" xmlns:zoom="zoom">
+              <lshw:list>
+                <lshw:foo>Hello</lshw:foo>
+              </lshw:list>
+              <zoom:zoom>zoom</zoom:zoom>
+            </list>
+        """
+        self.assertThat(xml, EqualsXML(expected))
+        # The error is logged however.
+        self.assertDocTestMatches(
+            """\
+            Invalid foom details: ...
+            """,
+            self.logger.output)
+
+    def test_merge_with_all_invalid_details(self):
+        xml = self.do_merge_details({
+            "lshw": b"<gibber></ish>",
+            "foom": b"<not>well</formed>",
+            "zoom": b"<>" + factory.getRandomBytes(),
+            "oops": None,
+        })
+        expected = """\
+            <list xmlns:foom="foom" xmlns:lshw="lshw"
+                  xmlns:oops="oops" xmlns:zoom="zoom"/>
+        """
+        self.assertThat(xml, EqualsXML(expected))
+        # The error is logged however.
+        self.assertDocTestMatches(
+            """\
+            Invalid foom details: ...
+            Invalid lshw details: ...
+            Invalid zoom details: ...
+            """,
+            self.logger.output)
+
+
+class TestMergeDetails(TestMergeDetailsCleanly):
+    # merge_details() differs from merge_details_cleanly() in a few
+    # small ways, hence why this test case subclasses that for
+    # merge_details_cleanly(), overriding tests where they produce
+    # different results.
+
+    do_merge_details = staticmethod(tags.merge_details)
+
+    def test_merge_with_only_lshw_details(self):
+        # merge_details() differs from merge_details_cleanly() in that
+        # the lshw details are in the result twice: once as a
+        # namespaced child of the root element, but they're also there
+        # *as* the root element, without namespace.
+        xml = self.do_merge_details({"lshw": b"<list><foo>Hello</foo></list>"})
+        expected = """\
+            <list xmlns:lshw="lshw">
+              <foo>Hello</foo>
+              <lshw:list>
+                <lshw:foo>Hello</lshw:foo>
+              </lshw:list>
+            </list>
+        """
+        self.assertThat(xml, EqualsXML(expected))
+
+    def test_merge_with_multiple_details(self):
+        # merge_details() differs from merge_details_cleanly() in that
+        # the lshw details are in the result twice: once as a
+        # namespaced child of the root element, but they're also there
+        # *as* the root element, without namespace.
+        xml = self.do_merge_details({
+            "lshw": b"<list><foo>Hello</foo></list>",
+            "lldp": b"<node><foo>Hello</foo></node>",
+            "zoom": b"<zoom>zoom</zoom>",
+        })
+        expected = """\
+            <list xmlns:lldp="lldp" xmlns:lshw="lshw" xmlns:zoom="zoom">
+              <foo>Hello</foo>
+              <lldp:node>
+                <lldp:foo>Hello</lldp:foo>
+              </lldp:node>
+              <lshw:list>
+                <lshw:foo>Hello</lshw:foo>
+              </lshw:list>
+              <zoom:zoom>zoom</zoom:zoom>
+            </list>
+        """
+        self.assertThat(xml, EqualsXML(expected))
+
+    def test_merge_with_invalid_other_details(self):
+        # merge_details() differs from merge_details_cleanly() in that
+        # the lshw details are in the result twice: once as a
+        # namespaced child of the root element, but they're also there
+        # *as* the root element, without namespace.
+        xml = self.do_merge_details({
             "lshw": b"<list><foo>Hello</foo></list>",
             "foom": b"<not>well</formed>",
             "zoom": b"<zoom>zoom</zoom>",
@@ -244,7 +344,11 @@ class TestMergeDetails(PservTestCase):
             self.logger.output)
 
     def test_merge_with_all_invalid_details(self):
-        xml = tags.merge_details({
+        # merge_details() differs from merge_details_cleanly() in that
+        # it first attempts to use the lshw details as the root #
+        # element. If they're invalid the log message is therefore
+        # printed first.
+        xml = self.do_merge_details({
             "lshw": b"<gibber></ish>",
             "foom": b"<not>well</formed>",
             "zoom": b"<>" + factory.getRandomBytes(),

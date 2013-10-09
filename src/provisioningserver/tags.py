@@ -15,6 +15,8 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    'merge_details',
+    'merge_details_cleanly',
     'MissingCredentials',
     'process_node_tags',
     ]
@@ -165,24 +167,7 @@ def post_updated_nodes(client, tag_name, tag_definition, uuid, added, removed):
         raise
 
 
-def merge_details(details):
-    """Merge node details into a single XML document.
-
-    `details` should be of the form::
-
-      {"name": xml-as-bytes, "name2": xml-as-bytes, ...}
-
-    where `name` is the namespace (and prefix) where each detail's XML
-    should be placed in the composite document; elements in each
-    detail document without a namespace are moved into that namespace.
-
-    The ``lshw`` detail is treated specially, purely for backwards
-    compatibility. If present, it forms the root of the composite
-    document, without any namespace changes, plus it will be included
-    in the composite document in the ``lshw`` namespace.
-
-    The returned document is always rooted with a ``list`` element.
-    """
+def _details_prepare_merge(details):
     # We may mutate the details later, so copy now to prevent
     # affecting the caller's data.
     details = details.copy()
@@ -200,6 +185,11 @@ def merge_details(details):
     # without it, e.g. "/list//{lldp}something".
     root = etree.Element("list", nsmap=nsmap)
 
+    # We have copied details, and root is new.
+    return details, root
+
+
+def _details_make_backwards_compatible(details, root):
     # For backward-compatibilty, if lshw details are available, these
     # should form the root of the composite document.
     xmldata = details.get("lshw")
@@ -215,6 +205,11 @@ def merge_details(details):
             root.append(lshw)
             root = lshw
 
+    # We may have mutated details and root.
+    return details, root
+
+
+def _details_do_merge(details, root):
     # Merge the remaining details into the composite document.
     for namespace in sorted(details):
         xmldata = details[namespace]
@@ -236,6 +231,50 @@ def merge_details(details):
     # root created in this function, even though that root is now the
     # parent of the current `root`.
     return etree.ElementTree(root)
+
+
+def merge_details(details):
+    """Merge node details into a single XML document.
+
+    `details` should be of the form::
+
+      {"name": xml-as-bytes, "name2": xml-as-bytes, ...}
+
+    where `name` is the namespace (and prefix) where each detail's XML
+    should be placed in the composite document; elements in each
+    detail document without a namespace are moved into that namespace.
+
+    The ``lshw`` detail is treated specially, purely for backwards
+    compatibility. If present, it forms the root of the composite
+    document, without any namespace changes, plus it will be included
+    in the composite document in the ``lshw`` namespace.
+
+    The returned document is always rooted with a ``list`` element.
+    """
+    details, root = _details_prepare_merge(details)
+    details, root = _details_make_backwards_compatible(details, root)
+    return _details_do_merge(details, root)
+
+
+def merge_details_cleanly(details):
+    """Merge node details into a single XML document.
+
+    `details` should be of the form::
+
+      {"name": xml-as-bytes, "name2": xml-as-bytes, ...}
+
+    where `name` is the namespace (and prefix) where each detail's XML
+    should be placed in the composite document; elements in each
+    detail document without a namespace are moved into that namespace.
+
+    This is similar to `merge_details`, but the ``lshw`` detail is not
+    treated specially. The result of this function is not compatible
+    with XPath expressions created for old releases of MAAS.
+
+    The returned document is always rooted with a ``list`` element.
+    """
+    details, root = _details_prepare_merge(details)
+    return _details_do_merge(details, root)
 
 
 def gen_batch_slices(count, size):

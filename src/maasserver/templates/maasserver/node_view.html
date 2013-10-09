@@ -23,29 +23,29 @@
   </style>
   <script type="text/javascript">
     <!--
-      var show_text = "Show discovered network data",
-          hide_text = "Hide discovered network data",
+      var show_text = "Show discovered details",
+          hide_text = "Hide discovered details",
           shown_class = "expander-shown",
           hidden_class = "expander-hidden";
       YUI().use('maas.reveal', function (Y) {
         Y.on('domready', function() {
-          {# Set up a Reveal widget for the LLDP output. #}
-          var lldp_trigger = Y.one('#lldp-trigger');
-          var lldp_expander = new Y.maas.reveal.Reveal({
-            targetNode: Y.one('#lldp-output'),
-            linkNode: lldp_trigger,
+          {# Set up a Reveal widget for the probed details output. #}
+          var trigger = Y.one('#details-trigger');
+          var expander = new Y.maas.reveal.Reveal({
+            targetNode: Y.one('#details-output'),
+            linkNode: trigger,
             showText: show_text,
             hideText: hide_text
           });
           {# Update the widget's expander icon. #}
-          lldp_expander.on('revealing', function() {
-            lldp_trigger.replaceClass(hidden_class, shown_class);
+          expander.on('revealing', function() {
+            trigger.replaceClass(hidden_class, shown_class);
           });
-          lldp_expander.on('hiding', function() {
-            lldp_trigger.replaceClass(shown_class, hidden_class);
+          expander.on('hiding', function() {
+            trigger.replaceClass(shown_class, hidden_class);
           });
           {# The widget renders in its hidden state. #}
-          lldp_expander.render();
+          expander.render();
         });
       });
     // -->
@@ -178,13 +178,10 @@
       <span>{{ node.owner }}</span>
     </li>
     {% endif %}
-
-    {% if node.routers or probed_details.lldp %}
+    {% if node.routers %}
       <li class="block first separate">
         <h2>Network discovery</h2>
       </li>
-    {% endif %}
-    {% if node.routers %}
       <li id="routers" class="block first">
         <h4>Switch MAC addresses</h4>
         <span>
@@ -192,14 +189,17 @@
         </span>
       </li>
     {% endif %}
-    {% if probed_details.lldp %}
+    {% if probed_details %}
+      <li class="block first separate">
+        <h2>Composite probed details</h2>
+      </li>
       <li class="block separate first pad-top-small">
         {# Button link for the Reveal widget that shows/hides LLDP output. #}
-        <a href="#" id="lldp-trigger"></a>
-        {# Content div for the LLDP output. #}
-        <div id="lldp-output">
+        <a href="#" id="details-trigger"></a>
+        {# Content div for the probed details output. #}
+        <div id="details-output">
           {# The Reveal widget needs a content tag inside the content div. #}
-          <pre>{{ probed_details.lldp }}</pre>
+          <pre>{{ probed_details }}</pre>
         </div>
       </li>
     {% endif %}

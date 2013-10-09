@@ -16,6 +16,7 @@ __all__ = []
 
 import httplib
 from operator import attrgetter
+from textwrap import dedent
 from unittest import skip
 from urlparse import (
     parse_qsl,
@@ -619,19 +620,19 @@ class NodeViewsTest(LoggedInTestCase):
         self.assertEqual(httplib.FOUND, response.status_code)
         self.assertEqual(NODE_STATUS.ALLOCATED, reload_object(node).status)
 
-    def test_view_node_skips_lldp_output_if_none_set(self):
+    def test_view_node_skips_probed_details_output_if_none_set(self):
         node = factory.make_node(owner=self.logged_in_user)
         node_link = reverse('node-view', args=[node.system_id])
 
         response = self.client.get(node_link)
         self.assertEqual(httplib.OK, response.status_code)
+
         doc = fromstring(response.content)
+        self.assertItemsEqual([], doc.cssselect('#details-output'))
 
-        self.assertItemsEqual([], doc.cssselect('#lldp-output'))
-
-    def test_view_node_shows_lldp_output_if_set(self):
+    def test_view_node_shows_probed_details_output_if_set(self):
         node = factory.make_node(owner=self.logged_in_user)
-        lldp_data = "abc123\u1234".encode("utf-8")
+        lldp_data = "<foo>bar</foo>".encode("utf-8")
         factory.make_node_commission_result(
             node=node, name=LLDP_OUTPUT_NAME, script_result=0, data=lldp_data)
         node_link = reverse('node-view', args=[node.system_id])
@@ -640,8 +641,17 @@ class NodeViewsTest(LoggedInTestCase):
         self.assertEqual(httplib.OK, response.status_code)
 
         doc = fromstring(response.content)
-        content = doc.cssselect('#lldp-output')[0].text_content()
-        self.assertIn(lldp_data.decode("utf-8"), content)
+        expected_content = dedent("""\
+        <list ...xmlns:lldp="lldp"...>
+          <lldp:foo>bar</lldp:foo>
+        </list>
+        """)
+        # We expect only one matched element, so this join is
+        # defensive, and gives better output on failure.
+        observed_content = "\n---\n".join(
+            element.text for element in
+            doc.cssselect('#details-output > pre'))
+        self.assertDocTestMatches(expected_content, observed_content)
 
     def test_view_node_POST_commission(self):
         self.become_admin()
@@ -851,12 +861,14 @@ class NodeListingSelectionJSControls(SeleniumLoggedInTestCase):
         self.assertTrue(master_selector.is_selected())
 
 
-class NodeLLDPExpanderTest(SeleniumLoggedInTestCase):
+class NodeProbedDetailsExpanderTest(SeleniumLoggedInTestCase):
 
     def make_node_with_lldp_output(self):
         node = factory.make_node()
         factory.make_node_commission_result(
-            node=node, name=LLDP_OUTPUT_NAME, script_result=0)
+            node=node, name=LLDP_OUTPUT_NAME,
+            data="<foo>bar</foo>".encode("utf-8"),
+            script_result=0)
         return node
 
     def load_node_page(self, node):
@@ -865,26 +877,26 @@ class NodeLLDPExpanderTest(SeleniumLoggedInTestCase):
             self.live_server_url + reverse('node-view', args=[node.system_id]))
 
     def find_content_div(self):
-        """Find the LLDP content div in the page Selenium has rendered."""
-        return self.selenium.find_element_by_id('lldp-output')
+        """Find the details content div in the page Selenium has rendered."""
+        return self.selenium.find_element_by_id('details-output')
 
     def find_button_link(self):
-        """Find the LLDP button link in the page Selenium has rendered."""
-        return self.selenium.find_element_by_id('lldp-trigger')
+        """Find the details button link in the page Selenium has rendered."""
+        return self.selenium.find_element_by_id('details-trigger')
 
     def find_tag_by_class(self, class_name):
         """Find DOM node by its CSS class."""
         return self.selenium.find_element_by_class_name(class_name)
 
-    def test_lldp_output_expands(self):
+    def test_details_output_expands(self):
         # Loading just once.  Creating a second node in a separate test causes
         # an integrity error in the database; clearly that's not working too
         # well in a Selenium test case.
         self.load_node_page(self.make_node_with_lldp_output())
 
-        # The LLDP output is in its hidden state.
+        # The ProbedDetails output is in its hidden state.
         self.assertEqual(
-            "Show discovered network data", self.find_button_link().text)
+            "Show discovered details", self.find_button_link().text)
         self.assertEqual(0, self.find_content_div().size['height'])
         # The button link has the expander-hidden class, meaning that it
         # sports a "collapsed-items" icon.  (There seems to be no way to
@@ -893,12 +905,12 @@ class NodeLLDPExpanderTest(SeleniumLoggedInTestCase):
             self.find_button_link(),
             self.find_tag_by_class('expander-hidden'))
 
-        # When we click the link, the LLDP output expands.
+        # When we click the link, the ProbedDetails output expands.
         self.find_button_link().click()
 
-        # The LLDP output is now in its visible state.
+        # The ProbedDetails output is now in its visible state.
         self.assertEqual(
-            "Hide discovered network data", self.find_button_link().text)
+            "Hide discovered details", self.find_button_link().text)
         self.assertNotEqual(0, self.find_content_div().size['height'])
         # The button link has the expander-shown class, meaning that it
         # now sports an "expanded-items" icon.

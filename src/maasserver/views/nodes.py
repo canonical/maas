@@ -45,6 +45,7 @@ from django.views.generic.edit import (
     FormMixin,
     ProcessFormView,
     )
+from lxml import etree
 from maasserver import logger
 from maasserver.enum import (
     NODE_PERMISSION,
@@ -80,6 +81,7 @@ from maasserver.views import (
     HelpfulDeleteView,
     PaginatedListView,
     )
+from provisioningserver.tags import merge_details_cleanly
 
 
 def get_longpoll_context():
@@ -403,11 +405,17 @@ class NodeView(NodeViewMixin, UpdateView):
             'tag': kernel_opts[0],
             'value': kernel_opts[1]
             }
-        probed_details = get_single_probed_details(node.system_id)
-        context["probed_details"] = {
-            ns: None if data is None else data.decode("utf-8", "replace")
-            for ns, data in probed_details.iteritems()
-        }
+        # Produce a "clean" composite details document.
+        probed_details = merge_details_cleanly(
+            get_single_probed_details(node.system_id))
+        # We check here if there's something to show instead of after
+        # the call to get_single_probed_details() because here the
+        # details will be guaranteed well-formed.
+        if len(probed_details.xpath('/*/*')) == 0:
+            context["probed_details"] = None
+        else:
+            context["probed_details"] = etree.tostring(
+                probed_details, encoding=unicode, pretty_print=True)
         return context
 
     def dispatch(self, *args, **kwargs):
