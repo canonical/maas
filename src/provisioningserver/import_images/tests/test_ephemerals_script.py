@@ -35,7 +35,6 @@ from provisioningserver.import_images import (
     config as config_module,
     ephemerals_script,
     )
-from provisioningserver.import_images.config import DEFAULTS
 from provisioningserver.import_images.ephemerals_script import (
     compose_filter,
     convert_legacy_config,
@@ -409,6 +408,7 @@ class TestMakeArgParser(PservTestCase):
             args.filters)
 
     def test_does_not_require_config(self):
+        defaults = Config.get_defaults()
         no_file = os.path.join(self.make_dir(), factory.make_name() + '.yaml')
         self.useFixture(
             EnvironmentVariableFixture('MAAS_PROVISIONING_SETTINGS', no_file))
@@ -416,7 +416,9 @@ class TestMakeArgParser(PservTestCase):
         parser = make_arg_parser(factory.getRandomString())
 
         args = parser.parse_args('')
-        self.assertEqual(DEFAULTS['directory'], args.output)
+        self.assertEqual(
+            defaults['boot']['ephemeral']['directory'],
+            args.output)
         self.assertItemsEqual([], args.filters)
 
 

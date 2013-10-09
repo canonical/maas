@@ -11,7 +11,6 @@ from __future__ import (
 
 __metaclass__ = type
 __all__ = [
-    'DEFAULTS',
     'EPHEMERALS_LEGACY_CONFIG',
     'merge_legacy_ephemerals_config',
     'retire_legacy_config',
@@ -24,16 +23,6 @@ import os.path
 from subprocess import check_output
 
 from provisioningserver.utils import filter_dict
-
-# Default settings for various options.
-DEFAULTS = {
-    'directory': "/var/lib/maas/ephemeral",
-    # Default to downloading all supported architectures.
-    'arches': None,
-    # Default to downloading all supported releases.
-    'releases': None,
-}
-
 
 # Mapping of option names to their legacy, shell-style config equivalents.
 EPHEMERALS_LEGACY_OPTIONS = {

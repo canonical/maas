@@ -34,7 +34,6 @@ import tempfile
 
 from provisioningserver.config import Config
 from provisioningserver.import_images.config import (
-    DEFAULTS,
     EPHEMERALS_LEGACY_CONFIG,
     merge_legacy_ephemerals_config,
     retire_legacy_config,
@@ -365,7 +364,7 @@ def make_arg_parser(doc):
             raise
         # Plod on with defaults, in case this is just a --help run.  If it's
         # not, main() will fail anyway.
-        config = {'boot': {'ephemeral': DEFAULTS}}
+        config = Config.get_defaults()
     merge_legacy_ephemerals_config(config)
 
     filters = []

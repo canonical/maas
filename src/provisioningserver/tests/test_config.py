@@ -161,10 +161,17 @@ class TestConfig(MAASTestCase):
     default_development_config["tftp"].update(
         port=5244, generator="http://localhost:5243/api/1.0/pxeconfig/")
 
-    def test_defaults(self):
+    def test_get_defaults_returns_default_config(self):
         # The default configuration is production-ready.
-        observed = Config.to_python({})
+        observed = Config.get_defaults()
         self.assertEqual(self.default_production_config, observed)
+
+    def test_get_defaults_ignores_settings(self):
+        self.useFixture(ConfigFixture({'logfile': self.make_file()}))
+
+        self.assertEqual(
+            self.default_production_config['logfile'],
+            Config.get_defaults()['logfile'])
 
     def test_parse(self):
         # Configuration can be parsed from a snippet of YAML.

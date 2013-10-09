@@ -191,3 +191,8 @@ class Config(Schema):
         for step in steps:
             target = target.fields[step]
         return target
+
+    @classmethod
+    def get_defaults(cls):
+        """Return the default configuration."""
+        return cls.to_python({})
