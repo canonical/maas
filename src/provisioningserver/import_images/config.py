@@ -24,18 +24,10 @@ from subprocess import check_output
 
 from provisioningserver.utils import filter_dict
 
-# Mapping of option names to their legacy, shell-style config equivalents.
-EPHEMERALS_LEGACY_OPTIONS = {
-    'images_directory': 'DATA_DIR',
-    'arches': 'ARCHES',
-    'releases': 'RELEASES',
-}
-
-
 # Legacy shell-style config file for the ephemerals config.
 EPHEMERALS_LEGACY_CONFIG = '/etc/maas/import_ephemerals'
 
-# Configuration options for the ephemerals import script.
+# Legacy configuration options for the old ephemerals import script.
 #
 # REMOTE_IMAGES_MIRROR is no longer relevant, since we are using a new data
 # format. If people were running their own mirrors, presumably they'll set
@@ -43,7 +35,7 @@ EPHEMERALS_LEGACY_CONFIG = '/etc/maas/import_ephemerals'
 #
 # TARBALL_CACHE_D could be where we stick our cache of the simplestreams
 # data, although for now it is unused.
-EPHEMERALS_OPTIONS = {
+EPHEMERALS_LEGACY_OPTIONS = {
     'DATA_DIR',
     'RELEASES',
     'ARCHES',
@@ -90,13 +82,19 @@ def merge_legacy_ephemerals_config(config):
     """
     loaded_boot_config = deepcopy(config['boot'])
 
-    legacy_config = parse_legacy_config(EPHEMERALS_OPTIONS)
+    legacy_config = parse_legacy_config(EPHEMERALS_LEGACY_OPTIONS)
     if len(legacy_config) == 0:
         return False
 
-    for option, legacy_option in EPHEMERALS_LEGACY_OPTIONS.iteritems():
-        if legacy_option in legacy_config:
-            config['boot']['ephemeral'][option] = legacy_config[legacy_option]
+    arches = legacy_config.get('ARCHES')
+    data_dir = legacy_config.get('DATA_DIR')
+    releases = legacy_config.get('RELEASES')
+    if arches is not None:
+        config['boot']['architectures'] = arches
+    if data_dir is not None:
+        config['boot']['ephemeral']['images_directory'] = data_dir
+    if releases is not None:
+        config['boot']['ephemeral']['releases'] = releases
 
     return config['boot'] != loaded_boot_config
 

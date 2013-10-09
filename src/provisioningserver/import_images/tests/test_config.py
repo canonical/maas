@@ -164,11 +164,13 @@ class TestMergeLegacyEphemeralsConfig(PservTestCase):
         self.assertTrue(changed)
         self.assertEqual(
             {
+            'architectures': ' '.join(arches),
+            'ephemeral': {
                 'images_directory': legacy_options['DATA_DIR'],
-                'arches': ' '.join(arches),
                 'releases': ' '.join(releases),
+                },
             },
-            config['boot']['ephemeral'])
+            config['boot'])
 
     def test_does_nothing_without_legacy_config(self):
         images_directory = self.make_dir()
@@ -179,11 +181,7 @@ class TestMergeLegacyEphemeralsConfig(PservTestCase):
                 }
             }
         }
-        make_legacy_config(self, {
-            'images_directory': factory.getRandomString(),
-            'arches': factory.make_name('arch'),
-            'releases': factory.make_name('release'),
-            })
+        make_legacy_config(self, {})
 
         changed = merge_legacy_ephemerals_config(config)
 

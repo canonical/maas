@@ -129,8 +129,8 @@ class TestConfig(MAASTestCase):
 
     default_production_config = {
         'boot': {
+            'architectures': None,
             'ephemeral': {
-                'arches': None,
                 'images_directory': '/var/lib/maas/ephemeral',
                 'releases': None,
                 },

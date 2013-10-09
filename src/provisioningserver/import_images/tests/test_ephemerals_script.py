@@ -388,9 +388,9 @@ class TestMakeArgParser(PservTestCase):
         self.useFixture(ConfigFixture(
             {
                 'boot': {
+                    'architectures': arches,
                     'ephemeral': {
                         'images_directory': images_directory,
-                        'arches': arches,
                         'releases': releases,
                     },
                 },
@@ -461,12 +461,15 @@ class TestConvertLegacyConfig(PservTestCase):
 
         convert_legacy_config()
 
-        self.assertEqual({
-            'images_directory': data_dir,
-            'arches': arches,
-            'releases': releases,
+        self.assertEqual(
+            {
+                'architectures': arches,
+                'ephemeral': {
+                    'images_directory': data_dir,
+                    'releases': releases,
+                },
             },
-            Config.load()['boot']['ephemeral'])
+            Config.load()['boot'])
         # Legacy config file has been deleted.
         self.assertThat(legacy_file, Not(FileExists()))
         # A backup of the legacy config file has been kept.
@@ -483,9 +486,9 @@ class TestConvertLegacyConfig(PservTestCase):
         config = self.useFixture(ConfigFixture(
             {
                 'boot': {
+                    'architectures': arches,
                     'ephemeral': {
                         'images_directory': data_dir,
-                        'arches': arches,
                         'releases': releases,
                     }
                  }
@@ -497,12 +500,15 @@ class TestConvertLegacyConfig(PservTestCase):
         convert_legacy_config()
 
         self.assertEqual(config_last_written, get_write_time(config.filename))
-        self.assertEqual({
-            'images_directory': data_dir,
-            'arches': arches,
-            'releases': releases,
+        self.assertEqual(
+            {
+                'architectures': arches,
+                'ephemeral': {
+                    'images_directory': data_dir,
+                    'releases': releases,
+                },
             },
-            Config.load()['boot']['ephemeral'])
+            Config.load()['boot'])
 
     def test_is_idempotent(self):
         self.useFixture(ConfigFixture({'boot': {'ephemeral': {}}}))

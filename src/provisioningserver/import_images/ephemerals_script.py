@@ -368,7 +368,7 @@ def make_arg_parser(doc):
     merge_legacy_ephemerals_config(config)
 
     filters = []
-    arches = config['boot']['ephemeral'].get('arches')
+    arches = config['boot'].get('architectures')
     if arches is not None:
         filters.append(compose_filter('arch', arches))
     releases = config['boot']['ephemeral'].get('releases')
