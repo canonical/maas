@@ -15,6 +15,7 @@ Introduction
    :maxdepth: 2
 
    about
+   changelog
    orientation
 
 
