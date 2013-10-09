@@ -164,17 +164,23 @@ class TestMergeLegacyEphemeralsConfig(PservTestCase):
         self.assertTrue(changed)
         self.assertEqual(
             {
-                'directory': legacy_options['DATA_DIR'],
+                'images_directory': legacy_options['DATA_DIR'],
                 'arches': ' '.join(arches),
                 'releases': ' '.join(releases),
             },
             config['boot']['ephemeral'])
 
     def test_does_nothing_without_legacy_config(self):
-        directory = self.make_dir()
-        config = {'boot': {'ephemeral': {'directory': directory}}}
+        images_directory = self.make_dir()
+        config = {
+            'boot': {
+                'ephemeral': {
+                    'images_directory': images_directory
+                }
+            }
+        }
         make_legacy_config(self, {
-            'directory': factory.getRandomString(),
+            'images_directory': factory.getRandomString(),
             'arches': factory.make_name('arch'),
             'releases': factory.make_name('release'),
             })
@@ -183,7 +189,7 @@ class TestMergeLegacyEphemeralsConfig(PservTestCase):
 
         self.assertFalse(changed)
         self.assertEqual(
-            {'boot': {'ephemeral': {'directory': directory}}},
+            {'boot': {'ephemeral': {'images_directory': images_directory}}},
             config)
 
     def test_does_nothing_if_legacy_config_has_no_items(self):

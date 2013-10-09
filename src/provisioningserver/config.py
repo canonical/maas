@@ -74,7 +74,7 @@ class ConfigBootEphemeral(Schema):
 
     if_key_missing = None
 
-    directory = String(if_missing="/var/lib/maas/ephemeral")
+    images_directory = String(if_missing="/var/lib/maas/ephemeral")
     releases = Set(if_missing=None)
     arches = Set(if_missing=None)
 

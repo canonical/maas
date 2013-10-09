@@ -214,7 +214,7 @@ class TestKernelOpts(MAASTestCase):
             name=%s
             """ % (release, arch, name)
         ephemeral_root = self.make_dir()
-        config = {"boot": {"ephemeral": {"directory": ephemeral_root}}}
+        config = {"boot": {"ephemeral": {"images_directory": ephemeral_root}}}
         self.useFixture(ConfigFixture(config))
         ephemeral_dir = os.path.join(
             ephemeral_root, release, 'ephemeral', arch, release)
@@ -257,7 +257,7 @@ class TestKernelOpts(MAASTestCase):
     def test_compose_kernel_command_line_reports_error_about_missing_dir(self):
         params = make_kernel_parameters(purpose="commissioning")
         missing_dir = factory.make_name('missing-dir')
-        config = {"boot": {"ephemeral": {"directory": missing_dir}}}
+        config = {"boot": {"ephemeral": {"images_directory": missing_dir}}}
         self.useFixture(ConfigFixture(config))
         self.assertRaises(
             EphemeralImagesDirectoryNotFound,

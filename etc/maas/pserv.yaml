@@ -42,4 +42,4 @@ tftp:
 boot:
   # ephemeral:
   ## Directory containing ephemeral boot images, etc.
-  #   directory: /var/lib/maas/ephemeral
+  #   images_directory: /var/lib/maas/ephemeral

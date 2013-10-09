@@ -131,7 +131,7 @@ class TestConfig(MAASTestCase):
         'boot': {
             'ephemeral': {
                 'arches': None,
-                'directory': '/var/lib/maas/ephemeral',
+                'images_directory': '/var/lib/maas/ephemeral',
                 'releases': None,
                 },
             },

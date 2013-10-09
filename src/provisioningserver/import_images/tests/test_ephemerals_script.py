@@ -382,14 +382,14 @@ class TestMakeArgParser(PservTestCase):
         self.assertEqual(documentation, parser.description)
 
     def test_defaults_to_config(self):
-        directory = self.make_dir()
+        images_directory = self.make_dir()
         arches = [factory.make_name('arch1'), factory.make_name('arch2')]
         releases = [factory.make_name('rel1'), factory.make_name('rel2')]
         self.useFixture(ConfigFixture(
             {
                 'boot': {
                     'ephemeral': {
-                        'directory': directory,
+                        'images_directory': images_directory,
                         'arches': arches,
                         'releases': releases,
                     },
@@ -399,7 +399,7 @@ class TestMakeArgParser(PservTestCase):
         parser = make_arg_parser(factory.getRandomString())
 
         args = parser.parse_args('')
-        self.assertEqual(directory, args.output)
+        self.assertEqual(images_directory, args.output)
         self.assertItemsEqual(
             [
                 compose_filter('arch', arches),
@@ -417,7 +417,7 @@ class TestMakeArgParser(PservTestCase):
 
         args = parser.parse_args('')
         self.assertEqual(
-            defaults['boot']['ephemeral']['directory'],
+            defaults['boot']['ephemeral']['images_directory'],
             args.output)
         self.assertItemsEqual([], args.filters)
 
@@ -462,7 +462,7 @@ class TestConvertLegacyConfig(PservTestCase):
         convert_legacy_config()
 
         self.assertEqual({
-            'directory': data_dir,
+            'images_directory': data_dir,
             'arches': arches,
             'releases': releases,
             },
@@ -484,7 +484,7 @@ class TestConvertLegacyConfig(PservTestCase):
             {
                 'boot': {
                     'ephemeral': {
-                        'directory': data_dir,
+                        'images_directory': data_dir,
                         'arches': arches,
                         'releases': releases,
                     }
@@ -498,7 +498,7 @@ class TestConvertLegacyConfig(PservTestCase):
 
         self.assertEqual(config_last_written, get_write_time(config.filename))
         self.assertEqual({
-            'directory': data_dir,
+            'images_directory': data_dir,
             'arches': arches,
             'releases': releases,
             },

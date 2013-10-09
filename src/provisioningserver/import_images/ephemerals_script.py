@@ -374,7 +374,7 @@ def make_arg_parser(doc):
     releases = config['boot']['ephemeral'].get('releases')
     if releases is not None:
         filters.append(compose_filter('release', releases))
-    directory = config['boot']['ephemeral'].get('directory')
+    images_directory = config['boot']['ephemeral'].get('images_directory')
 
     parser = ArgumentParser(description=doc)
     parser.add_argument(
@@ -384,7 +384,7 @@ def make_arg_parser(doc):
         '--url', action='store', default=RELEASES_URL,
         help="Simplestreams mirror URL (may use 'file://' for local mirror)")
     parser.add_argument(
-        '--output', action='store', default=directory,
+        '--output', action='store', default=images_directory,
         help="Directory where boot images should be stored")
     parser.add_argument(
         '--max', action='store', default=1,

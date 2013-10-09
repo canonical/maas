@@ -26,7 +26,7 @@ from provisioningserver.utils import filter_dict
 
 # Mapping of option names to their legacy, shell-style config equivalents.
 EPHEMERALS_LEGACY_OPTIONS = {
-    'directory': 'DATA_DIR',
+    'images_directory': 'DATA_DIR',
     'arches': 'ARCHES',
     'releases': 'RELEASES',
 }

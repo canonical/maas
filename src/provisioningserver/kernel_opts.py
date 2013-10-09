@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Generate kernel command-line options for inclusion in PXE configs."""
@@ -99,7 +99,7 @@ def get_ephemeral_name(release, arch):
     """
     config = Config.load_from_cache()
     root = os.path.join(
-        config["boot"]["ephemeral"]["directory"],
+        config["boot"]["ephemeral"]["images_directory"],
         release, 'ephemeral', arch)
     try:
         filename = os.path.join(get_last_directory(root), 'info')
