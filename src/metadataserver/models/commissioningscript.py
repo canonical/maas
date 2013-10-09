@@ -257,6 +257,11 @@ def lldpd_install(config_file):
         fd.write('\n')  # Ensure there's a newline.
         fd.write('# Configured by MAAS:\n')
         fd.write('DAEMON_ARGS="-c -f -s -e -r"\n')
+    # Reload initctl configuration in order to make sure that the
+    # lldpd init script is available before restart, otherwise
+    # it might cause commissioning to fail. This is due bug
+    # (LP: #882147) in the kernel.
+    check_call(("initctl", "reload-configuration"))
     check_call(("service", "lldpd", "restart"))
 
 

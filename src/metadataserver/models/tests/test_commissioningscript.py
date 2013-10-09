@@ -232,8 +232,11 @@ class TestLLDPScripts(MAASServerTestCase):
         # lldpd is installed and restarted.
         self.assertEqual(
             check_call.call_args_list,
-            [call(("apt-get", "install", "--yes", "lldpd")),
-             call(("service", "lldpd", "restart"))])
+            [
+                call(("apt-get", "install", "--yes", "lldpd")),
+                call(("initctl", "reload-configuration")),
+                call(("service", "lldpd", "restart"))
+            ])
         # lldpd's config was updated to include an updated DAEMON_ARGS
         # setting. Note that the new comment is on a new line, and
         # does not interfere with existing config.
