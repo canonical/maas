@@ -102,7 +102,7 @@ class TestDHCPConfig(PservTestCase):
             config.DHCPConfigError, config.get_config, **params)
 
         self.assertThat(
-            e.message, MatchesRegex(
+            unicode(e), MatchesRegex(
                 "name 'subnet' is not defined at line \d+ column \d+ "
                 "in file %s" % template.name))
 
