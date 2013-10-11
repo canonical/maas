@@ -92,11 +92,11 @@ def merge_legacy_ephemerals_config(config):
     data_dir = legacy_config.get('DATA_DIR')
     releases = legacy_config.get('RELEASES')
     if arches is not None:
-        config['boot']['architectures'] = arches
+        config['boot']['architectures'] = arches.split()
     if data_dir is not None:
         config['boot']['ephemeral']['images_directory'] = data_dir
     if releases is not None:
-        config['boot']['ephemeral']['releases'] = releases
+        config['boot']['ephemeral']['releases'] = releases.split()
 
     return config['boot'] != loaded_boot_config
 
