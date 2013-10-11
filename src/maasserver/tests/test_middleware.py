@@ -26,7 +26,7 @@ from django.core.exceptions import (
 from django.http import HttpResponse
 from django.http.request import build_request_repr
 from django.test.client import RequestFactory
-import maasserver
+from fixtures import FakeLogger
 from maasserver.exceptions import (
     ExternalComponentException,
     MAASAPIException,
@@ -49,7 +49,6 @@ from maasserver.testing.testcase import (
 from maastesting.utils import sample_binary_data
 from testtools.matchers import (
     Contains,
-    FileContains,
     Not,
     )
 
@@ -184,45 +183,29 @@ class APIErrorsMiddlewareTest(MAASServerTestCase):
             middleware.process_exception(non_api_request, exception))
 
 
-class LoggingTest(MAASServerTestCase):
-
-    def set_up_logger(self, filename):
-        logger = maasserver.logger
-        handler = logging.handlers.RotatingFileHandler(filename)
-        logger.addHandler(handler)
-        self.addCleanup(logger.removeHandler, handler)
-        return logger
-
-
-class ExceptionLoggerMiddlewareTest(LoggingTest):
+class ExceptionLoggerMiddlewareTest(MAASServerTestCase):
 
     def test_exception_logger_logs_error(self):
+        logger = self.useFixture(FakeLogger('maasserver'))
         error_text = factory.getRandomString()
-        logfile = self.make_file(contents="")
-        self.set_up_logger(logfile)
         ExceptionLoggerMiddleware().process_exception(
             fake_request('/middleware/api/hello'),
             ValueError(error_text))
-        self.assertThat(logfile, FileContains(matcher=Contains(error_text)))
+        self.assertThat(logger.output, Contains(error_text))
 
 
-class DebuggingLoggerMiddlewareTest(LoggingTest):
-
-    def setUp(self):
-        super(LoggingTest, self).setUp()
-        self.logfile = self.make_file(contents="")
-        self.logger = self.set_up_logger(self.logfile)
+class DebuggingLoggerMiddlewareTest(MAASServerTestCase):
 
     def test_debugging_logger_does_not_log_request_if_info_level(self):
-        self.logger.setLevel(logging.INFO)
+        logger = self.useFixture(FakeLogger('maasserver', logging.INFO))
         request = fake_request("/api/1.0/nodes/")
         DebuggingLoggerMiddleware().process_request(request)
         self.assertThat(
-            self.logfile,
-            Not(FileContains(matcher=Contains(build_request_repr(request)))))
+            logger.output,
+            Not(Contains(build_request_repr(request))))
 
     def test_debugging_logger_does_not_log_response_if_info_level(self):
-        self.logger.setLevel(logging.INFO)
+        logger = self.useFixture(FakeLogger('maasserver', logging.INFO))
         request = fake_request("/api/1.0/nodes/")
         response = HttpResponse(
             content="test content",
@@ -230,20 +213,17 @@ class DebuggingLoggerMiddlewareTest(LoggingTest):
             mimetype=b"text/plain; charset=utf-8")
         DebuggingLoggerMiddleware().process_response(request, response)
         self.assertThat(
-            self.logfile,
-            Not(FileContains(matcher=Contains(build_request_repr(request)))))
+            logger.output, Not(Contains(build_request_repr(request))))
 
     def test_debugging_logger_logs_request(self):
-        self.logger.setLevel(logging.DEBUG)
+        logger = self.useFixture(FakeLogger('maasserver', logging.DEBUG))
         request = fake_request("/api/1.0/nodes/")
         request.content = "test content"
         DebuggingLoggerMiddleware().process_request(request)
-        self.assertThat(
-            self.logfile,
-            FileContains(matcher=Contains(build_request_repr(request))))
+        self.assertThat(logger.output, Contains(build_request_repr(request)))
 
     def test_debugging_logger_logs_response(self):
-        self.logger.setLevel(logging.DEBUG)
+        logger = self.useFixture(FakeLogger('maasserver', logging.DEBUG))
         request = fake_request("foo")
         response = HttpResponse(
             content="test content",
@@ -251,10 +231,10 @@ class DebuggingLoggerMiddlewareTest(LoggingTest):
             mimetype=b"text/plain; charset=utf-8")
         DebuggingLoggerMiddleware().process_response(request, response)
         self.assertThat(
-            self.logfile, FileContains(matcher=Contains(response.content)))
+            logger.output, Contains(response.content))
 
     def test_debugging_logger_logs_binary_response(self):
-        self.logger.setLevel(logging.DEBUG)
+        logger = self.useFixture(FakeLogger('maasserver', logging.DEBUG))
         request = fake_request("foo")
         response = HttpResponse(
             content=sample_binary_data,
@@ -262,8 +242,8 @@ class DebuggingLoggerMiddlewareTest(LoggingTest):
             mimetype=b"application/octet-stream")
         DebuggingLoggerMiddleware().process_response(request, response)
         self.assertThat(
-            self.logfile,
-            FileContains(matcher=Contains("non-utf-8 (binary?) content")))
+            logger.output,
+            Contains("non-utf-8 (binary?) content"))
 
 
 class ErrorsMiddlewareTest(LoggedInTestCase):
@@ -271,15 +251,15 @@ class ErrorsMiddlewareTest(LoggedInTestCase):
     def test_error_middleware_ignores_GET_requests(self):
         request = fake_request(factory.getRandomString(), 'GET')
         exception = MAASException()
-        middleware = ErrorsMiddleware()
-        response = middleware.process_exception(request, exception)
+        error_middleware = ErrorsMiddleware()
+        response = error_middleware.process_exception(request, exception)
         self.assertIsNone(response)
 
     def test_error_middleware_ignores_non_ExternalComponentException(self):
         request = fake_request(factory.getRandomString(), 'GET')
         exception = ValueError()
-        middleware = ErrorsMiddleware()
-        response = middleware.process_exception(request, exception)
+        error_middleware = ErrorsMiddleware()
+        response = error_middleware.process_exception(request, exception)
         self.assertIsNone(response)
 
     def test_error_middleware_handles_ExternalComponentException(self):
@@ -287,8 +267,8 @@ class ErrorsMiddlewareTest(LoggedInTestCase):
         request = fake_request(url, 'POST')
         error_message = factory.getRandomString()
         exception = ExternalComponentException(error_message)
-        middleware = ErrorsMiddleware()
-        response = middleware.process_exception(request, exception)
+        error_middleware = ErrorsMiddleware()
+        response = error_middleware.process_exception(request, exception)
         # The response is a redirect.
         self.assertEqual(request.path, extract_redirect(response))
         # An error message has been published.
