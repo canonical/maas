@@ -33,9 +33,7 @@ import tempfile
 
 from provisioningserver.config import Config
 from provisioningserver.import_images.config import (
-    EPHEMERALS_LEGACY_CONFIG,
     merge_legacy_ephemerals_config,
-    retire_legacy_config,
     )
 from provisioningserver.import_images.tgt import (
     clean_up_info_file,
@@ -361,8 +359,7 @@ def make_arg_parser(doc):
     except IOError as e:
         if e.errno != errno.ENOENT:
             raise
-        # Plod on with defaults, in case this is just a --help run.  If it's
-        # not, main() will fail anyway.
+        # Plod on with defaults.  There may be a legacy shell-script config.
         config = Config.get_defaults()
     # Merge legacy settings into our copy of the config.
     merge_legacy_ephemerals_config(config)
@@ -406,31 +403,11 @@ def make_arg_parser(doc):
     return parser
 
 
-def convert_legacy_config():
-    """If appropriate, update config based on legacy shell-script config."""
-    config = Config.load_from_cache()
-    changed = merge_legacy_ephemerals_config(config)
-    if not changed:
-        return
-
-    logger.info(
-        "Updating configuration %s from legacy shell-script config %s.",
-        Config.DEFAULT_FILENAME, EPHEMERALS_LEGACY_CONFIG)
-    # Backup the old config.
-    Config.create_backup('legacy-script-migration')
-    # Save the new config.
-    Config.save(config)
-    # Now move the legacy config out of the way, so that we don't convert it
-    # a second time.
-    retire_legacy_config()
-
-
 def main(args):
     """Import ephemeral images.
 
     :param args: Command-line arguments, in parsed form.
     """
-    convert_legacy_config()
 
     def verify_signature(content, path):
         """Policy callback for Simplestreams: verify index signature."""

@@ -27,10 +27,6 @@ from textwrap import dedent
 
 from fixtures import EnvironmentVariableFixture
 from maastesting.factory import factory
-from maastesting.utils import (
-    age_file,
-    get_write_time,
-    )
 from provisioningserver.config import Config
 from provisioningserver.import_images import (
     config as config_module,
@@ -38,7 +34,6 @@ from provisioningserver.import_images import (
     )
 from provisioningserver.import_images.ephemerals_script import (
     compose_filter,
-    convert_legacy_config,
     copy_file_by_glob,
     create_symlinked_image_dir,
     extract_image_tarball,
@@ -54,8 +49,6 @@ from provisioningserver.testing.testcase import PservTestCase
 from provisioningserver.utils import read_text_file
 from testtools.matchers import (
     FileContains,
-    FileExists,
-    Not,
     StartsWith,
     )
 
@@ -471,78 +464,12 @@ class TestMakeArgParser(PservTestCase):
             original_boot_config,
             Config.load_from_cache()['boot'])
 
-
-class TestConvertLegacyConfig(PservTestCase):
-
-    def test_converts_legacy_config_if_old_config_available(self):
-        self.useFixture(ConfigFixture({'boot': {'ephemeral': {}}}))
+    def test_uses_legacy_config(self):
         data_dir = self.make_dir()
-        arches = [factory.make_name('arch')]
-        releases = [factory.make_name('rel')]
-        legacy_config = make_legacy_config(data_dir, arches, releases)
-        legacy_file = install_legacy_config(self, legacy_config)
-        initial_config = file(Config.DEFAULT_FILENAME).read()
+        self.useFixture(ConfigFixture({}))
+        install_legacy_config(self, make_legacy_config(data_dir=data_dir))
 
-        convert_legacy_config()
+        parser = make_arg_parser(factory.getRandomString())
 
-        self.assertEqual(
-            {
-                'architectures': arches,
-                'ephemeral': {
-                    'images_directory': data_dir,
-                    'releases': releases,
-                },
-            },
-            Config.load()['boot'])
-        # Legacy config file has been deleted.
-        self.assertThat(legacy_file, Not(FileExists()))
-        # A backup of the legacy config file has been kept.
-        self.assertThat(legacy_file + '.obsolete', FileContains(legacy_config))
-        # A copy of the initial config (i.e. the pserv config before
-        # migration) has been kept.
-        backup_name = Config._get_backup_name('legacy-script-migration')
-        self.assertThat(backup_name, FileContains(initial_config))
-
-    def test_does_nothing_without_old_config(self):
-        data_dir = self.make_dir()
-        arches = [factory.make_name('arch')]
-        releases = [factory.make_name('rel')]
-        config = self.useFixture(ConfigFixture(
-            {
-                'boot': {
-                    'architectures': arches,
-                    'ephemeral': {
-                        'images_directory': data_dir,
-                        'releases': releases,
-                    }
-                 }
-            }))
-        self.patch(config_module, 'parse_legacy_config').return_value = {}
-        age_file(config.filename, 600)
-        config_last_written = get_write_time(config.filename)
-
-        convert_legacy_config()
-
-        self.assertEqual(config_last_written, get_write_time(config.filename))
-        self.assertEqual(
-            {
-                'architectures': arches,
-                'ephemeral': {
-                    'images_directory': data_dir,
-                    'releases': releases,
-                },
-            },
-            Config.load()['boot'])
-
-    def test_is_idempotent(self):
-        self.useFixture(ConfigFixture({'boot': {'ephemeral': {}}}))
-        legacy_config = make_legacy_config()
-        legacy_file = install_legacy_config(self, legacy_config)
-        convert_legacy_config()
-        converted_config = Config.load()['boot']
-
-        convert_legacy_config()
-
-        self.assertEqual(converted_config, Config.load()['boot'])
-        self.assertThat(legacy_file, Not(FileExists()))
-        self.assertThat(legacy_file + '.obsolete', FileContains(legacy_config))
+        args = parser.parse_args('')
+        self.assertEqual(data_dir, args.output)
