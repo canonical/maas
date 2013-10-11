@@ -1,7 +1,48 @@
 # Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""MAAS Provisioning Configuration."""
+"""MAAS Provisioning Configuration.
+
+Configuration for most elements of a Cluster Controller can and be obtained by
+using this module's `Config` class. At the time of writing the exceptions are
+the Celery worker's configuration, the `CLUSTER_UUID` and `MAAS_URL`
+environment variables (see `provisioningserver.cluster_config`), and the
+configuration for ``maas-import-pxe-files`` (soon to be deprecated) and
+``maas-import-ephemerals`` (deprecated).
+
+It's pretty simple. Typical usage is::
+
+  >>> config = Config.load_from_cache()
+  {...}
+
+This reads in a configuration file from `Config.DEFAULT_FILENAME` (see a note
+about that later). The configuration file is parsed as YAML, and a plain `dict`
+is returned with configuration nested within it. The configuration is validated
+at load time using `formencode`. The policy for validation is laid out in this
+module; see the various `formencode.Schema` subclasses.
+
+All configuration is optional, and a sensible default is provided in every
+instance. When adding or changing settings bear this policy in mind, and also
+that the defaults should be geared towards a system in production, and not a
+development environment. The defaults can be obtained by calling
+`Config.get_defaults()`.
+
+An alternative to `Config.load_from_cache()` is `Config.load()`, which loads
+and validates a configuration file while bypassing the cache.  See `Config` for
+other useful functions.
+
+`Config.DEFAULT_FILENAME` is a class property, so does not need to be
+referenced via an instance of `Config`. It refers to the
+``MAAS_PROVISIONING_SETTINGS`` environment variable in the first instance, but
+has a sensible default too. You can write to this property and it will update
+the environment so that child processes will also use the same configuration
+filename. To revert to the default - i.e. erase the environment variable - you
+can `del Config.DEFAULT_FILENAME`.
+
+When testing, see `provisioningserver.testing.config.ConfigFixture` to
+temporarily use a different configuration.
+
+"""
 
 from __future__ import (
     absolute_import,
