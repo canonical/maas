@@ -16,6 +16,7 @@ __all__ = [
     "Config",
     ]
 
+from copy import deepcopy
 from getpass import getuser
 from os import environ
 import os.path
@@ -174,6 +175,13 @@ class Config(Schema):
     def load_from_cache(cls, filename=None):
         """Load or return a previously loaded configuration.
 
+        Keeps an internal cache of config files.  If the requested config file
+        is not in cache, it is loaded and inserted into the cache first.
+
+        Each call returns a distinct (deep) copy of the requested config from
+        the cache, so the caller can modify its own copy without affecting what
+        other call sites see.
+
         This is thread-safe, so is okay to use from Django, for example.
         """
         if filename is None:
@@ -183,7 +191,7 @@ class Config(Schema):
             if filename not in cls._cache:
                 with open(filename, "rb") as stream:
                     cls._cache[filename] = cls.parse(stream)
-            return cls._cache[filename]
+            return deepcopy(cls._cache[filename])
 
     @classmethod
     def field(target, *steps):

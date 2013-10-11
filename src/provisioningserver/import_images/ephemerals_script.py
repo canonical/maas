@@ -18,7 +18,6 @@ __all__ = [
     ]
 
 from argparse import ArgumentParser
-from copy import deepcopy
 import errno
 from glob import glob
 from logging import getLogger
@@ -365,10 +364,7 @@ def make_arg_parser(doc):
         # Plod on with defaults, in case this is just a --help run.  If it's
         # not, main() will fail anyway.
         config = Config.get_defaults()
-    # Merge legacy settings into the config, but make sure this doesn't affect
-    # the original in the Config cache.  We want to be able to compare them
-    # later to see if the merge changed anything.
-    config = deepcopy(config)
+    # Merge legacy settings into our copy of the config.
     merge_legacy_ephemerals_config(config)
 
     filters = []

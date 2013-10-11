@@ -204,13 +204,53 @@ class TestConfig(MAASTestCase):
             self.default_development_config,
             Config.load(filename))
 
-    def test_load_from_cache(self):
+    def test_load_from_cache_loads_config(self):
+        logfile = self.make_file()
+        filename = self.make_file(
+            name="config.yaml", contents=yaml.safe_dump({'logfile': logfile}))
+        loaded_config = Config.load_from_cache(filename)
+        self.assertEqual(logfile, loaded_config['logfile'])
+
+    def test_load_from_cache_uses_defaults(self):
+        filename = self.make_file(name='config.yaml', contents='')
+        self.assertEqual(
+            Config.get_defaults(),
+            Config.load_from_cache(filename))
+
+    def test_load_from_cache_caches_each_file_separately(self):
+        log1, log2 = self.make_file(), self.make_file()
+        config1 = self.make_file(contents=yaml.safe_dump({'logfile': log1}))
+        config2 = self.make_file(contents=yaml.safe_dump({'logfile': log2}))
+
+        self.assertEqual(log1, Config.load_from_cache(config1)['logfile'])
+        self.assertEqual(log2, Config.load_from_cache(config2)['logfile'])
+
+    def test_load_from_cache_reloads_from_cache_not_from_file(self):
         # A config loaded by Config.load_from_cache() is never reloaded.
         filename = self.make_file(name="config.yaml", contents='')
         config_before = Config.load_from_cache(filename)
         os.unlink(filename)
         config_after = Config.load_from_cache(filename)
-        self.assertIs(config_before, config_after)
+        self.assertEqual(config_before, config_after)
+
+    def test_load_from_cache_caches_immutable_copy(self):
+        logfile = self.make_file()
+        filename = self.make_file(
+            name="config.yaml", contents=yaml.safe_dump({'logfile': logfile}))
+
+        first_load = Config.load_from_cache(filename)
+        second_load = Config.load_from_cache(filename)
+
+        self.assertEqual(first_load, second_load)
+        self.assertIsNot(first_load, second_load)
+        first_load['logfile'] = factory.make_name('otherlog')
+        self.assertNotEqual(first_load['logfile'], second_load['logfile'])
+        self.assertEqual(logfile, second_load['logfile'])
+        self.assertIsNot(first_load['boot'], second_load['boot'])
+        first_load['boot']['architectures'] = [factory.make_name('otherarch')]
+        self.assertNotEqual(
+            first_load['boot']['architectures'],
+            second_load['boot']['architectures'])
 
     def test_oops_directory_without_reporter(self):
         # It is an error to omit the OOPS reporter if directory is specified.
