@@ -30,6 +30,7 @@ Getting started
    configure
    cluster-configuration
    nodes
+   kernel-options
 
 
 ******************

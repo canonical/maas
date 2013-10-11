@@ -233,3 +233,19 @@ the cluster by either:
   :ref:`following this procedure <cli-dhcp>` 
 
 
+Client-side DNS configuration
+-----------------------------
+
+When using a third party tool such as ``juju`` it will need to be able to
+resolve the hostnames that the MAAS API returns to it.  In order for this to
+happen, *client-side DNS* must be configured to point to MAAS's DNS
+server.  Generally speaking, this is a simple case of adding the following
+line to the ``/etc/resolv.conf`` file on your client host::
+
+  nameserver <IP OF MAAS DNS HOST>
+
+replacing the <IP OF MAAS DNS HOST> with the actual IP address of the host
+running the MAAS DNS server.
+
+However, for hosts using the ``resolvconf`` package, please read its
+documentation for more information.
