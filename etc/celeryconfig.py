@@ -17,10 +17,22 @@ str = None
 
 __metaclass__ = type
 
+from datetime import timedelta
+
 import celeryconfig_common
 from maas import import_settings
 
+# Region worker queue.  Will be overridden by the customized setting in the
+# local MAAS Celery config.
+WORKER_QUEUE_REGION = None
+CELERY_IMPORTS = None
+
 import_settings(celeryconfig_common)
+
+CELERY_IMPORTS = CELERY_IMPORTS + (
+    # Master tasks.
+    "maasserver.tasks",
+)
 
 try:
     import maas_local_celeryconfig
@@ -29,6 +41,10 @@ except ImportError:
 else:
     import_settings(maas_local_celeryconfig)
 
-
 CELERYBEAT_SCHEDULE = {
+    'cleanup-old-nonces': {
+        'task': 'maasserver.tasks.cleanup_old_nonces',
+        'schedule': timedelta(minutes=5),
+        'options': {'queue': WORKER_QUEUE_REGION},
+    },
 }

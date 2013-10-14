@@ -56,6 +56,7 @@ CELERYD_LOG_LEVEL = 'INFO'
 CELERYBEAT_SCHEDULE_FILENAME = '/var/lib/maas/celerybeat-cluster-schedule'
 
 WORKER_QUEUE_DNS = 'celery'
+WORKER_QUEUE_REGION = 'celery'
 
 # Each cluster should have its own queue created automatically by Celery.
 CELERY_CREATE_MISSING_QUEUES = True

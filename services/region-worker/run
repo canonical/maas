@@ -15,6 +15,7 @@ cd "$(dirname "$0")/../.."
 [ -z "${logdir:-}" ] || exec &>> "${logdir}/current"
 
 export PYTHONPATH=etc/:src/
+export DJANGO_SETTINGS_MODULE=maas.demo
 script="$(readlink -f bin/celeryd)"
 # XXX GavinPanella 2013-01-02, bug=1040529: celeryd does not shutdown
 # correctly when signalled: processes are often left behind. However,
