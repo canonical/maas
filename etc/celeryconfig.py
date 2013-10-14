@@ -44,7 +44,7 @@ else:
 CELERYBEAT_SCHEDULE = {
     'cleanup-old-nonces': {
         'task': 'maasserver.tasks.cleanup_old_nonces',
-        'schedule': timedelta(minutes=5),
+        'schedule': timedelta(days=1),
         'options': {'queue': WORKER_QUEUE_REGION},
     },
 }
