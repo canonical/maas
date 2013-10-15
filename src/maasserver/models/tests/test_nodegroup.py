@@ -390,7 +390,7 @@ class TestNodeGroup(MAASServerTestCase):
         self.assertNotEqual(nodegroup1.dhcp_key, nodegroup2.dhcp_key)
 
     def test_import_boot_images_calls_script_with_proxy(self):
-        recorder = self.patch(tasks, 'check_call', Mock())
+        recorder = self.patch(tasks, 'call_and_check')
         proxy = factory.make_name('proxy')
         Config.objects.set_config('http_proxy', proxy)
         nodegroup = factory.make_node_group()

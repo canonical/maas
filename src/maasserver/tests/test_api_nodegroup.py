@@ -547,7 +547,7 @@ class TestNodeGroupAPIAuth(APIv10TestMixin, MAASServerTestCase):
         self.assertItemsEqual([node.system_id], parsed_result)
 
     def test_nodegroup_import_boot_images_calls_script(self):
-        recorder = self.patch(tasks, 'check_call')
+        recorder = self.patch(tasks, 'call_and_check')
         proxy = factory.getRandomString()
         Config.objects.set_config('http_proxy', proxy)
         nodegroup = factory.make_node_group()

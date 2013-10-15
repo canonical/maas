@@ -46,7 +46,10 @@ from provisioningserver.pxe.tftppath import (
     )
 from provisioningserver.testing.config import ConfigFixture
 from provisioningserver.testing.testcase import PservTestCase
-from provisioningserver.utils import read_text_file
+from provisioningserver.utils import (
+    ExternalProcessError,
+    read_text_file,
+    )
 from testtools.matchers import (
     FileContains,
     StartsWith,
@@ -222,10 +225,8 @@ class TestExtractImageTarball(PservTestCase):
         self.assertItemsEqual([], listdir(temp_location))
 
     def test_cleans_up_after_failure(self):
-        class DeliberateFailure(RuntimeError):
-            pass
-
-        self.patch(subprocess, 'check_call').side_effect = DeliberateFailure()
+        self.patch(subprocess, 'check_call').side_effect = (
+            ExternalProcessError(-1, "some_command"))
         fake_image = factory.make_name('image')
         self.patch(ephemerals_script, 'copy_file_by_glob').return_value = (
             fake_image)
@@ -234,7 +235,7 @@ class TestExtractImageTarball(PservTestCase):
         temp_location = self.make_dir()
 
         self.assertRaises(
-            DeliberateFailure,
+            ExternalProcessError,
             extract_image_tarball, tarball, target_dir, temp_location)
 
         self.assertItemsEqual([], listdir(temp_location))

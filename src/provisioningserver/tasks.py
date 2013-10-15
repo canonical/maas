@@ -26,10 +26,7 @@ __all__ = [
     ]
 
 import os
-from subprocess import (
-    CalledProcessError,
-    check_call,
-    )
+from subprocess import CalledProcessError
 
 from celery.app import app_or_default
 from celery.task import task
@@ -53,7 +50,11 @@ from provisioningserver.power.poweraction import (
     PowerAction,
     PowerActionFail,
     )
-from provisioningserver.utils import sudo_write_file
+from provisioningserver.utils import (
+    call_and_check,
+    ExternalProcessError,
+    sudo_write_file,
+    )
 
 # For each item passed to refresh_secrets, a refresh function to give it to.
 refresh_functions = {
@@ -327,7 +328,7 @@ def write_dhcp_config(callback=None, **kwargs):
 @task
 def restart_dhcp_server():
     """Restart the DHCP server."""
-    check_call(['sudo', '-n', 'service', 'maas-dhcp-server', 'restart'])
+    call_and_check(['sudo', '-n', 'service', 'maas-dhcp-server', 'restart'])
 
 
 # =====================================================================
@@ -388,4 +389,4 @@ def import_boot_images(http_proxy=None, main_archive=None, ports_archive=None,
         env['PORTS_ARCHIVE'] = ports_archive
     if cloud_images_archive is not None:
         env['CLOUD_IMAGES_ARCHIVE'] = cloud_images_archive
-    check_call(['sudo', '-n', '-E', 'maas-import-pxe-files'], env=env)
+    call_and_check(['sudo', '-n', '-E', 'maas-import-pxe-files'], env=env)

@@ -22,14 +22,14 @@ __all__ = [
 import os
 import re
 from subprocess import (
-    CalledProcessError,
-    check_output,
     PIPE,
     Popen,
     )
 from textwrap import dedent
 
 from provisioningserver.utils import (
+    call_capture_and_check,
+    ExternalProcessError,
     parse_key_value_file,
     tempdir,
     )
@@ -42,7 +42,7 @@ def call_dnssec_keygen(tmpdir):
     path = os.environ.get("PATH", "").split(os.pathsep)
     path.append("/usr/sbin")
     env = dict(os.environ, PATH=os.pathsep.join(path))
-    return check_output(
+    return call_capture_and_check(
         ['dnssec-keygen', '-r', '/dev/urandom', '-a', 'HMAC-MD5',
          '-b', '512', '-n', 'HOST', '-K', tmpdir, '-q', 'omapi_key'],
         env=env)
@@ -129,7 +129,7 @@ class Omshell:
         proc = Popen(command, stdin=PIPE, stdout=PIPE)
         stdout, stderr = proc.communicate(stdin)
         if proc.poll() != 0:
-            raise CalledProcessError(proc.returncode, command, stdout)
+            raise ExternalProcessError(proc.returncode, command, stdout)
         return proc.returncode, stdout
 
     def create(self, ip_address, mac_address):
@@ -162,7 +162,7 @@ class Omshell:
             # Host map already existed.  Treat as success.
             pass
         else:
-            raise CalledProcessError(returncode, "omshell", output)
+            raise ExternalProcessError(returncode, "omshell", output)
 
     def remove(self, ip_address):
         # The "name" is not a host name; it's an identifier used within
@@ -189,4 +189,4 @@ class Omshell:
         except IndexError:
             last_line = ""
         if last_line != "obj: <null>":
-            raise CalledProcessError(returncode, "omshell", output)
+            raise ExternalProcessError(returncode, "omshell", output)

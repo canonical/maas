@@ -27,7 +27,6 @@ import os
 import os.path
 import re
 import shutil
-import subprocess
 from textwrap import dedent
 
 from provisioningserver.kernel_opts import (
@@ -35,6 +34,8 @@ from provisioningserver.kernel_opts import (
     prefix_target_name,
     )
 from provisioningserver.utils import (
+    call_and_check,
+    call_capture_and_check,
     ensure_dir,
     write_text_file,
     )
@@ -91,7 +92,7 @@ def get_target_name(release, version, arch, version_name):
 
 def tgt_admin_delete(name):
     """Delete a target using `tgt-admin`."""
-    subprocess.check_call(TGT_ADMIN + ["--delete", prefix_target_name(name)])
+    call_and_check(TGT_ADMIN + ["--delete", prefix_target_name(name)])
 
 
 class TargetNotCreated(RuntimeError):
@@ -104,7 +105,7 @@ def target_exists(full_name):
     :param full_name: Full target name, including `ISCSI_TARGET_NAME_PREFIX`.
     :return: bool.
     """
-    status = subprocess.check_output(TGT_ADMIN + ["--show"])
+    status = call_capture_and_check(TGT_ADMIN + ["--show"])
     regex = b'^Target [0-9]+: %s\\s*$' % re.escape(full_name).encode('ascii')
     match = re.search(regex, status, flags=re.MULTILINE)
     return match is not None
@@ -116,7 +117,7 @@ def tgt_admin_update(target_dir, target_name):
     Actually we use this to add new targets.
     """
     full_name = prefix_target_name(target_name)
-    subprocess.check_call(TGT_ADMIN + ["--update", full_name])
+    call_and_check(TGT_ADMIN + ["--update", full_name])
     # Check that the target was really created.
     # Reportedly tgt-admin tends to return 0 even when it fails, so check
     # actively.

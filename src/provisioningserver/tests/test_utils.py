@@ -1,3 +1,4 @@
+# -*- coding: UTF-8 -*-
 # Copyright 2012-2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
@@ -24,6 +25,7 @@ from random import randint
 from shutil import rmtree
 import stat
 import StringIO
+import subprocess
 from subprocess import (
     CalledProcessError,
     PIPE,
@@ -59,8 +61,11 @@ from provisioningserver.utils import (
     ActionScript,
     atomic_write,
     AtomicWriteScript,
+    call_and_check,
+    call_capture_and_check,
     classify,
     ensure_dir,
+    ExternalProcessError,
     filter_dict,
     get_all_interface_addresses,
     get_mtime,
@@ -1175,3 +1180,68 @@ class TestClassify(MAASTestCase):
         self.assertSequenceEqual(
             (['two'], ['one', 'three']),
             classify(is_even, subjects))
+
+
+class TestSubprocessWrappers(MAASTestCase):
+    """Tests for the subprocess.* wrapper functions."""
+
+    def test_call_and_check_returns_returncode(self):
+        self.patch(subprocess, 'check_call', FakeMethod(0))
+        self.assertEqual(0, call_and_check('some_command'))
+
+    def test_call_and_check_raises_ExternalProcessError_on_failure(self):
+        self.patch(subprocess, 'check_call').side_effect = (
+            CalledProcessError('-1', 'some_command'))
+        error = self.assertRaises(ExternalProcessError, call_and_check, "some command")
+        self.assertEqual('-1', error.returncode)
+        self.assertEqual('some_command', error.cmd)
+
+    def test_call_capture_and_check_returns_returncode(self):
+        self.patch(subprocess, 'check_output', FakeMethod("Some output"))
+        self.assertEqual("Some output", call_capture_and_check('some_command'))
+
+    def test_call_capture_and_check_raises_ExternalProcessError_on_failure(self):
+        self.patch(subprocess, 'check_output').side_effect = (
+            CalledProcessError('-1', 'some_command', "Some output"))
+        error = self.assertRaises(ExternalProcessError, call_capture_and_check, "some command")
+        self.assertEqual('-1', error.returncode)
+        self.assertEqual('some_command', error.cmd)
+        self.assertEqual("Some output", error.output)
+
+
+class TestExternalProcessError(MAASTestCase):
+    """Tests for the ExternalProcessError class."""
+
+    def test_to_unicode_converts_to_unicode(self):
+        byte_string = b"This string will be converted. \xe5\xb2\x81\xe5."
+        converted_string = ExternalProcessError._to_unicode(byte_string)
+        self.assertIsInstance(converted_string, unicode)
+        self.assertEqual(byte_string.decode('ascii', 'replace'), converted_string)
+
+    def test_to_ascii_converts_to_bytes(self):
+        unicode_string = u"Thîs nøn-åßçií s†ring will be cönvërted"
+        expected_ascii_string = b"Th?s n?n-???i? s?ring will be c?nv?rted"
+        converted_string = ExternalProcessError._to_ascii(unicode_string)
+        self.assertIsInstance(converted_string, bytes)
+        self.assertEqual(expected_ascii_string, converted_string)
+
+    def test__str__returns_bytes(self):
+        error = ExternalProcessError(returncode=-1, cmd="foo-bar")
+        self.assertIsInstance(error.__str__(), bytes)
+
+    def test__unicode__returns_unicode(self):
+        error = ExternalProcessError(returncode=-1, cmd="foo-bar")
+        self.assertIsInstance(error.__unicode__(), unicode)
+
+    def test__str__contains_output(self):
+        output = u"Hëré's søme øu†pût"
+        ascii_output = "H?r?'s s?me ?u?p?t"
+        error = ExternalProcessError(
+            returncode=-1, cmd="foo-bar", output=output)
+        self.assertIn(ascii_output, error.__str__())
+
+    def test__unicode__contains_output(self):
+        output = "Hëré's søme øu†pût"
+        error = ExternalProcessError(
+            returncode=-1, cmd="foo-bar", output=output)
+        self.assertIn(output, error.__unicode__())

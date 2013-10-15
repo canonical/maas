@@ -21,6 +21,7 @@ from collections import (
 import errno
 import os.path
 import random
+from subprocess import CalledProcessError
 from textwrap import dedent
 
 from celery.conf import conf
@@ -56,7 +57,10 @@ from provisioningserver.dns.config import (
     uncomment_named_conf,
     )
 from provisioningserver.dns.utils import generated_hostname
-from provisioningserver.utils import locate_config
+from provisioningserver.utils import (
+    ExternalProcessError,
+    locate_config,
+    )
 import tempita
 from testtools.matchers import (
     Contains,
@@ -106,7 +110,7 @@ class TestRNDCUtilities(MAASTestCase):
     def test_execute_rndc_command_executes_command(self):
         recorder = FakeMethod()
         fake_dir = factory.getRandomString()
-        self.patch(config, 'check_call', recorder)
+        self.patch(config, 'call_and_check', recorder)
         self.patch(conf, 'DNS_CONFIG_DIR', fake_dir)
         command = factory.getRandomString()
         execute_rndc_command([command])

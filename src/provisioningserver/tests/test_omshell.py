@@ -16,7 +16,7 @@ __all__ = []
 
 from itertools import product
 import os
-from subprocess import CalledProcessError
+import subprocess
 import tempfile
 from textwrap import dedent
 
@@ -24,13 +24,15 @@ from maastesting.factory import factory
 from maastesting.fakemethod import FakeMethod
 from maastesting.fixtures import TempDirectory
 from maastesting.testcase import MAASTestCase
-from mock import Mock
+from mock import Mock, ANY
 from provisioningserver import omshell
 import provisioningserver.omshell
 from provisioningserver.omshell import (
+    call_dnssec_keygen,
     generate_omapi_key,
     Omshell,
     )
+from provisioningserver.utils import ExternalProcessError
 from testtools.matchers import (
     EndsWith,
     MatchesStructure,
@@ -101,7 +103,7 @@ class TestOmshell(MAASTestCase):
         shell._run = recorder
 
         exc = self.assertRaises(
-            CalledProcessError, shell.create, ip_address, mac_address)
+            ExternalProcessError, shell.create, ip_address, mac_address)
         self.assertEqual(random_output, exc.output)
 
     def test_create_succeeds_when_host_map_already_exists(self):
@@ -178,7 +180,7 @@ class TestOmshell(MAASTestCase):
         shell._run = recorder
 
         exc = self.assertRaises(
-            CalledProcessError, shell.remove, ip_address)
+            subprocess.CalledProcessError, shell.remove, ip_address)
         self.assertEqual(random_output, exc.output)
 
 
@@ -249,3 +251,18 @@ class Test_generate_omapi_key(MAASTestCase):
 
         # generate_omapi_key() does not return a key known to be bad.
         self.assertNotIn(generate_omapi_key(), bad_keys)
+
+
+class TestCallDnsSecKeygen(MAASTestCase):
+    """Tests for omshell.call_dnssec_keygen."""
+
+    def test_runs_external_script(self):
+        check_output = self.patch(subprocess, 'check_output')
+        target_dir = self.make_dir()
+        path = os.environ.get("PATH", "").split(os.pathsep)
+        path.append("/usr/sbin")
+        call_dnssec_keygen(target_dir)
+        check_output.assert_called_once_with([
+            'dnssec-keygen', '-r', '/dev/urandom', '-a', 'HMAC-MD5',
+             '-b', '512', '-n', 'HOST', '-K', target_dir, '-q', 'omapi_key'
+             ], env=ANY)

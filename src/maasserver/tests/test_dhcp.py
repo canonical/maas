@@ -114,7 +114,7 @@ class TestDHCP(MAASServerTestCase):
 
     def test_configure_dhcp_restart_dhcp_server(self):
         self.patch(tasks, "sudo_write_file")
-        mocked_check_call = self.patch(tasks, "check_call")
+        mocked_check_call = self.patch(tasks, "call_and_check")
         self.patch(settings, "DHCP_CONNECT", True)
         nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
         configure_dhcp(nodegroup)

@@ -21,9 +21,11 @@ from copy import deepcopy
 from os import rename
 import os.path
 from pipes import quote
-from subprocess import check_output
 
-from provisioningserver.utils import filter_dict
+from provisioningserver.utils import (
+    call_capture_and_check,
+    filter_dict,
+    )
 
 # Legacy shell-style config file for the ephemerals config.
 EPHEMERALS_LEGACY_CONFIG = '/etc/maas/import_ephemerals'
@@ -64,7 +66,7 @@ def parse_legacy_config(options):
     export_vars = 'export ' + ' '.join(quote(var) for var in options)
     dump_env = 'env -0'
     shell_code = '; '.join([source_config, export_vars, dump_env])
-    output = check_output(['bash', '-c', shell_code])
+    output = call_capture_and_check(['bash', '-c', shell_code])
     # Assume UTF-8 encoding.  If the system uses something else but the
     # variables are all ASCII, that's probably fine too.
     output = output.decode('utf-8')

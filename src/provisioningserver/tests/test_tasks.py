@@ -272,7 +272,7 @@ class TestDHCPTasks(PservTestCase):
 
     def test_restart_dhcp_server_sends_command(self):
         recorder = FakeMethod()
-        self.patch(tasks, 'check_call', recorder)
+        self.patch(tasks, 'call_and_check', recorder)
         restart_dhcp_server()
         self.assertEqual(
             (1, (['sudo', '-n', 'service', 'maas-dhcp-server', 'restart'],)),
@@ -417,15 +417,15 @@ class TestDNSTasks(PservTestCase):
         # If we simulate RNDC_COMMAND_MAX_RETRY + 1 failures, the
         # task fails.
         number_of_failures = RNDC_COMMAND_MAX_RETRY + 1
-        raised_exception = CalledProcessError(
-            factory.make_name('exception'), random.randint(100, 200))
+        raised_exception = utils.ExternalProcessError(
+            random.randint(100, 200), factory.make_name('exception'))
         simulate_failures = MultiFakeMethod(
             [FakeMethod(failure=raised_exception)] * number_of_failures +
             [FakeMethod()])
         self.patch(tasks, 'execute_rndc_command', simulate_failures)
         command = factory.getRandomString()
         self.assertRaises(
-            CalledProcessError, rndc_command.delay, command, retry=True)
+            utils.ExternalProcessError, rndc_command.delay, command, retry=True)
 
     def test_rndc_command_attached_to_dns_worker_queue(self):
         self.assertEqual(rndc_command.queue, celery_config.WORKER_QUEUE_DNS)
@@ -544,20 +544,20 @@ class TestImportPxeFiles(PservTestCase):
         return 'http://%s.example.com/%s' % (name, factory.make_name('path'))
 
     def test_import_boot_images(self):
-        recorder = self.patch(tasks, 'check_call', Mock())
+        recorder = self.patch(tasks, 'call_and_check')
         import_boot_images()
         recorder.assert_called_once_with(
             ['sudo', '-n', '-E', 'maas-import-pxe-files'], env=ANY)
         self.assertIsInstance(import_boot_images, Task)
 
     def test_import_boot_images_preserves_environment(self):
-        recorder = self.patch(tasks, 'check_call', Mock())
+        recorder = self.patch(tasks, 'call_and_check')
         import_boot_images()
         recorder.assert_called_once_with(
             ['sudo', '-n', '-E', 'maas-import-pxe-files'], env=os.environ)
 
     def test_import_boot_images_sets_proxy(self):
-        recorder = self.patch(tasks, 'check_call', Mock())
+        recorder = self.patch(tasks, 'call_and_check')
         proxy = factory.getRandomString()
         import_boot_images(http_proxy=proxy)
         expected_env = dict(os.environ, http_proxy=proxy, https_proxy=proxy)
@@ -565,7 +565,7 @@ class TestImportPxeFiles(PservTestCase):
             ['sudo', '-n', '-E', 'maas-import-pxe-files'], env=expected_env)
 
     def test_import_boot_images_sets_archive_locations(self):
-        self.patch(tasks, 'check_call')
+        self.patch(tasks, 'call_and_check')
         archives = {
             'main_archive': self.make_archive_url('main'),
             'ports_archive': self.make_archive_url('ports'),
@@ -575,7 +575,7 @@ class TestImportPxeFiles(PservTestCase):
             parameter.upper(): value
             for parameter, value in archives.items()}
         import_boot_images(**archives)
-        env = tasks.check_call.call_args[1]['env']
+        env = tasks.call_and_check.call_args[1]['env']
         archive_settings = {
             variable: value
             for variable, value in env.iteritems()

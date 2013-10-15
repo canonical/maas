@@ -42,6 +42,7 @@ from os.path import isdir
 from pipes import quote
 from shutil import rmtree
 import signal
+import subprocess
 from subprocess import (
     CalledProcessError,
     PIPE,
@@ -56,6 +57,69 @@ from lxml import etree
 import netifaces
 import tempita
 from twisted.internet.defer import maybeDeferred
+
+
+class ExternalProcessError(CalledProcessError):
+    """Raised when there's a problem calling an external command.
+
+    Unlike CalledProcessError, ExternalProcessError.__str__() contains
+    the output of the failed external process, if available.
+    """
+    @staticmethod
+    def _to_unicode(string):
+        if isinstance(string, bytes):
+            return string.decode("ascii", "replace")
+        else:
+            return unicode(string)
+
+    @staticmethod
+    def _to_ascii(string):
+        if isinstance(string, unicode):
+            return string.encode("ascii", "replace")
+        else:
+            string = bytes(string)
+            try:
+                string.decode("ascii")
+            except UnicodeDecodeError:
+                return "<non-ASCII string"
+            else:
+                return string
+
+    def __unicode__(self):
+        cmd = u" ".join(quote(self._to_unicode(part)) for part in self.cmd)
+        output = self._to_unicode(self.output)
+        return u"Command `%s` returned non-zero exit status %d:\n%s" % (
+            cmd, self.returncode, output)
+
+    def __str__(self):
+        cmd = b" ".join(quote(self._to_ascii(part)) for part in self.cmd)
+        output = self._to_ascii(self.output)
+        return b"Command `%s` returned non-zero exit status %d:\n%s" % (
+            cmd, self.returncode, output)
+
+
+def call_and_check(command, *args, **kwargs):
+    """A wrapper around subprocess.check_call().
+
+    When an error occurs, raise an ExternalProcessError.
+    """
+    try:
+        return subprocess.check_call(command, *args, **kwargs)
+    except subprocess.CalledProcessError as error:
+        error.__class__ = ExternalProcessError
+        raise
+
+
+def call_capture_and_check(command, *args, **kwargs):
+    """A wrapper around subprocess.check_output().
+
+    When an error occurs, raise an ExternalProcessError.
+    """
+    try:
+        return subprocess.check_output(command, *args, **kwargs)
+    except subprocess.CalledProcessError as error:
+        error.__class__ = ExternalProcessError
+        raise
 
 
 def locate_config(*path):
@@ -362,7 +426,7 @@ def sudo_write_file(filename, contents, encoding='utf-8', mode=0644):
     proc = Popen(command, stdin=PIPE)
     stdout, stderr = proc.communicate(raw_contents)
     if proc.returncode != 0:
-        raise CalledProcessError(proc.returncode, command, stderr)
+        raise ExternalProcessError(proc.returncode, command, stderr)
 
 
 class Safe:

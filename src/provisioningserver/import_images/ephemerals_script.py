@@ -28,7 +28,6 @@ from os import (
 import os.path
 import re
 import shutil
-import subprocess
 import tempfile
 
 from provisioningserver.config import Config
@@ -47,6 +46,7 @@ from provisioningserver.import_images.tgt import (
     )
 from provisioningserver.pxe.install_image import install_image
 from provisioningserver.utils import (
+    call_and_check,
     ensure_dir,
     tempdir,
     )
@@ -93,7 +93,7 @@ def call_uec2roottar(*args):
 
     Here only so tests can stub it out.
     """
-    subprocess.check_call(["uec2roottar"] + list(args))
+    call_and_check(["uec2roottar"] + list(args))
 
 
 def extract_image_tarball(tarball, target_dir, temp_location=None):
@@ -114,7 +114,7 @@ def extract_image_tarball(tarball, target_dir, temp_location=None):
     with tempdir(location=temp_location) as tmp:
         # Unpack tarball.  The -S flag is for sparse files; the disk image
         # may have holes.
-        subprocess.check_call(["tar", "-Sxzf", tarball, "-C", tmp])
+        call_and_check(["tar", "-Sxzf", tarball, "-C", tmp])
 
         copy_file_by_glob(tmp, '*-vmlinuz*', target_dir, 'linux')
         copy_file_by_glob(tmp, '*-initrd*', target_dir, 'initrd.gz')

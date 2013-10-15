@@ -13,7 +13,6 @@ __metaclass__ = type
 __all__ = []
 
 import os.path
-from subprocess import CalledProcessError
 
 from maastesting.factory import factory
 from provisioningserver.import_images import config as config_module
@@ -23,6 +22,7 @@ from provisioningserver.import_images.config import (
     retire_legacy_config,
     )
 from provisioningserver.testing.testcase import PservTestCase
+from provisioningserver.utils import ExternalProcessError
 from testtools.matchers import (
     FileContains,
     FileExists,
@@ -142,7 +142,7 @@ class TestParseLegacyConfig(PservTestCase):
         make_legacy_config(self, {make_var_name(): 'x ; exit 1'})
 
         self.assertRaises(
-            CalledProcessError,
+            ExternalProcessError,
             parse_legacy_config, dict([make_option_and_value()]))
 
 
