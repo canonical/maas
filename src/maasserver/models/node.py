@@ -770,12 +770,13 @@ class Node(CleanSave, TimestampedModel):
                 power_params['mac_address'] = primary_mac.mac_address
         return power_params
 
-    def acquire(self, user, token=None):
+    def acquire(self, user, token=None, agent_name=''):
         """Mark commissioned node as acquired by the given user and token."""
         assert self.owner is None
         assert token is None or token.user == user
         self.status = NODE_STATUS.ALLOCATED
         self.owner = user
+        self.agent_name = agent_name
         self.token = token
         self.save()
 
@@ -785,6 +786,7 @@ class Node(CleanSave, TimestampedModel):
         self.status = NODE_STATUS.READY
         self.owner = None
         self.token = None
+        self.agent_name = ''
         self.set_netboot()
         self.save()
 

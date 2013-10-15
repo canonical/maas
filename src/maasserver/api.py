@@ -796,7 +796,10 @@ class NodesHandler(OperationsHandler):
         :param not_connected_to: List of routers' MAC Addresses the returned
             node must not be connected to.
         :type connected_to: list of unicodes
-        """
+        :param agent_name: An optional agent name to attach to the
+            acquired node.
+        :type agent_name: unicode
+         """
         form = AcquireNodeForm(data=request.data)
         if form.is_valid():
             nodes = Node.objects.get_available_nodes_for_acquisition(
@@ -805,7 +808,10 @@ class NodesHandler(OperationsHandler):
             node = get_first(nodes)
             if node is None:
                 raise NodesNotAvailable("No matching node is available.")
-            node.acquire(request.user, get_oauth_token(request))
+            agent_name = request.data.get('agent_name', '')
+            node.acquire(
+                request.user, get_oauth_token(request),
+                agent_name=agent_name)
             return node
         raise ValidationError(form.errors)
 

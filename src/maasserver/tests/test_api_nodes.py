@@ -374,6 +374,27 @@ class TestNodesAPI(APITestCase):
         node = Node.objects.get(system_id=node.system_id)
         self.assertEqual(self.logged_in_user, node.owner)
 
+    def test_POST_acquire_sets_agent_name(self):
+        available_status = NODE_STATUS.READY
+        node = factory.make_node(
+            status=available_status, owner=None,
+            agent_name=factory.make_name('agent-name'))
+        agent_name = factory.make_name('agent-name')
+        self.client.post(
+            self.get_uri('nodes/'),
+            {'op': 'acquire', 'agent_name': agent_name})
+        node = Node.objects.get(system_id=node.system_id)
+        self.assertEqual(agent_name, node.agent_name)
+
+    def test_POST_acquire_agent_name_defaults_to_empty_string(self):
+        available_status = NODE_STATUS.READY
+        agent_name = factory.make_name('agent-name')
+        node = factory.make_node(
+            status=available_status, owner=None, agent_name=agent_name)
+        self.client.post(self.get_uri('nodes/'), {'op': 'acquire'})
+        node = Node.objects.get(system_id=node.system_id)
+        self.assertEqual('', node.agent_name)
+
     def test_POST_acquire_fails_if_no_node_present(self):
         # The "acquire" operation returns a Conflict error if no nodes
         # are available.

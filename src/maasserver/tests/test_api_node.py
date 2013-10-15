@@ -297,6 +297,15 @@ class TestNodeAPI(APITestCase):
         self.client.post(self.get_node_uri(node), {'op': 'release'})
         self.assertEqual('', reload_object(node).distro_series)
 
+    def test_POST_release_resets_agent_name(self):
+        agent_name = factory.make_name('agent-name')
+        node = factory.make_node(
+            status=NODE_STATUS.ALLOCATED, owner=self.logged_in_user,
+            distro_series=factory.getRandomEnum(DISTRO_SERIES),
+            agent_name=agent_name)
+        self.client.post(self.get_node_uri(node), {'op': 'release'})
+        self.assertEqual('', reload_object(node).agent_name)
+
     def test_POST_release_removes_token_and_user(self):
         node = factory.make_node(status=NODE_STATUS.READY)
         self.client.post(self.get_uri('nodes/'), {'op': 'acquire'})

@@ -374,15 +374,21 @@ class NodeTest(MAASServerTestCase):
         node = factory.make_node(status=NODE_STATUS.READY)
         user = factory.make_user()
         token = create_auth_token(user)
-        node.acquire(user, token)
-        self.assertEqual(user, node.owner)
-        self.assertEqual(NODE_STATUS.ALLOCATED, node.status)
+        agent_name = factory.make_name('agent-name')
+        node.acquire(user, token, agent_name)
+        self.assertEqual(
+            (user, NODE_STATUS.ALLOCATED, agent_name),
+            (node.owner, node.status, node.agent_name))
 
     def test_release(self):
+        agent_name = factory.make_name('agent-name')
         node = factory.make_node(
-            status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
+            status=NODE_STATUS.ALLOCATED, owner=factory.make_user(),
+            agent_name=agent_name)
         node.release()
-        self.assertEqual((NODE_STATUS.READY, None), (node.status, node.owner))
+        self.assertEqual(
+            (NODE_STATUS.READY, None, node.agent_name),
+            (node.status, node.owner, ''))
 
     def test_ip_addresses_queries_leases(self):
         node = factory.make_node()
