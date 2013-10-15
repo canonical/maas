@@ -24,9 +24,12 @@ from django.db.models import (
     Manager,
     Model,
     )
+from django.db.models.signals import post_delete
+from django.dispatch import receiver
 from maasserver import DefaultMeta
 from maasserver.fields import MACAddressField
 from maasserver.models.cleansave import CleanSave
+from maasserver.models.macaddress import MACAddress
 from maasserver.utils import strip_domain
 
 
@@ -164,3 +167,10 @@ class DHCPLease(CleanSave, Model):
 
     def __unicode__(self):
         return "%s->%s" % (self.ip, self.mac)
+
+
+# Register a signal receiver so that whenever a MAC address is deleted,
+# the corresponding DHCPLease is deleted too.
+@receiver(post_delete, sender=MACAddress)
+def delete_lease(sender, instance, **kwargs):
+    DHCPLease.objects.filter(mac=instance.mac_address).delete()

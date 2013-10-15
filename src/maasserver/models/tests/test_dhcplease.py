@@ -47,6 +47,13 @@ class TestDHCPLease(MAASServerTestCase):
         self.assertEqual(ip, lease.ip)
         self.assertEqual(mac, lease.mac)
 
+    def test_dhcplease_gets_removed_when_corresponding_node_is_deleted(self):
+        lease = factory.make_dhcp_lease()
+        mac = factory.make_mac_address(address=lease.mac)
+        mac.node.delete()
+        self.assertItemsEqual(
+            [], DHCPLease.objects.filter(mac=mac.mac_address))
+
 
 class TestDHCPLeaseManager(MAASServerTestCase):
     """Tests for :class:`DHCPLeaseManager`."""

@@ -643,6 +643,8 @@ class Node(CleanSave, TimestampedModel):
                 remove_dhcp_host_map.apply_async(
                     queue=nodegroup.uuid, kwargs=task_kwargs)
         # Delete the related mac addresses.
+        # The DHCPLease objects corresponding to these MACs will be deleted
+        # as well. See maasserver/models/dhcplease:delete_lease().
         self.macaddress_set.all().delete()
 
         super(Node, self).delete()
