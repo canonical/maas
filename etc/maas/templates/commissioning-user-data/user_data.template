@@ -30,9 +30,13 @@ trap cleanup EXIT
 
 mkdir -p "$BIN_D" "$OUT_D" "$SCRIPTS_D" "$IPMI_CONFIG_D"
 
+# Ensure that invocations of apt-get are not interactive by default,
+# here and in all subprocesses.
+export DEBIAN_FRONTEND=noninteractive
+
 ### some utility functions ####
 aptget() {
-   DEBIAN_FRONTEND=noninteractive apt-get --assume-yes -q "$@" </dev/null
+   apt-get --assume-yes -q "$@" </dev/null
 }
 
 add_bin() {
