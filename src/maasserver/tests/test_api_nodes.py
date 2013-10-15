@@ -41,7 +41,10 @@ from maasserver.testing.api import (
     )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils import map_enum
+from maasserver.utils import (
+    ignore_unused,
+    map_enum,
+    )
 from maasserver.utils.orm import get_one
 from testtools.matchers import (
     Contains,
@@ -305,6 +308,44 @@ class TestNodesAPI(APITestCase):
                 "00:E0:81:DD:D1:XX"),
             )
         self.assertThat(observed, MatchesListwise(expected))
+
+    def test_GET_list_with_agent_name_filters_by_agent_name(self):
+        non_listed_node = factory.make_node(
+            agent_name=factory.make_name('agent_name'))
+        ignore_unused(non_listed_node)
+        agent_name = factory.make_name('agent-name')
+        node = factory.make_node(agent_name=agent_name)
+        response = self.client.get(self.get_uri('nodes/'), {
+            'op': 'list',
+            'agent_name': agent_name,
+            })
+        self.assertEqual(httplib.OK, response.status_code)
+        parsed_result = json.loads(response.content)
+        self.assertSequenceEqual(
+            [node.system_id], extract_system_ids(parsed_result))
+
+    def test_GET_list_with_agent_name_filters_with_empty_string(self):
+        factory.make_node(agent_name=factory.make_name('agent-name'))
+        node = factory.make_node(agent_name='')
+        response = self.client.get(self.get_uri('nodes/'), {
+            'op': 'list',
+            'agent_name': '',
+            })
+        self.assertEqual(httplib.OK, response.status_code)
+        parsed_result = json.loads(response.content)
+        self.assertSequenceEqual(
+            [node.system_id], extract_system_ids(parsed_result))
+
+    def test_GET_list_without_agent_name_does_not_filter(self):
+        nodes = [
+            factory.make_node(agent_name=factory.make_name('agent-name'))
+            for i in range(3)]
+        response = self.client.get(self.get_uri('nodes/'), {'op': 'list'})
+        self.assertEqual(httplib.OK, response.status_code)
+        parsed_result = json.loads(response.content)
+        self.assertSequenceEqual(
+            [node.system_id for node in nodes],
+            extract_system_ids(parsed_result))
 
     def test_GET_list_allocated_returns_only_allocated_with_user_token(self):
         # If the user's allocated nodes have different session tokens,

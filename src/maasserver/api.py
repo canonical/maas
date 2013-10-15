@@ -736,6 +736,9 @@ class NodesHandler(OperationsHandler):
         :param id: An optional list of system ids.  Only nodes with
             matching system ids will be returned.
         :type id: iterable
+        :param agent_name: An optional agent name.  Only nodes with
+            matching agent names will be returned.
+        :type agent_name: unicode
         """
         # Get filters from request.
         match_ids = get_optional_list(request.GET, 'id')
@@ -751,6 +754,9 @@ class NodesHandler(OperationsHandler):
             request.user, NODE_PERMISSION.VIEW, ids=match_ids)
         if match_macs is not None:
             nodes = nodes.filter(macaddress__mac_address__in=match_macs)
+        match_agent_name = request.GET.get('agent_name', None)
+        if match_agent_name is not None:
+            nodes = nodes.filter(agent_name=match_agent_name)
         # Prefetch related macaddresses, tags and nodegroups (plus
         # related interfaces).
         nodes = nodes.prefetch_related('macaddress_set__node')
