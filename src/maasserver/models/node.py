@@ -435,6 +435,8 @@ class Node(CleanSave, TimestampedModel):
 
     routers = djorm_pgarray.fields.ArrayField(dbtype="macaddr")
 
+    agent_name = CharField(max_length=255, default='', blank=True, null=True)
+
     # Juju expects the following standard constraints, which are stored here
     # as a basic optimisation over querying the lshw output.
     cpu_count = IntegerField(default=0)
