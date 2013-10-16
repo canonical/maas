@@ -90,7 +90,7 @@ def merge_legacy_ephemerals_config(config):
     if len(legacy_config) == 0:
         return False
 
-    arches = legacy_config.get('ARCHES')
+    arches = ' '.join([f.split("/")[0] for f in legacy_config.get('ARCHES', '').split()])
     data_dir = legacy_config.get('DATA_DIR')
     releases = legacy_config.get('RELEASES')
     if arches is not None:
