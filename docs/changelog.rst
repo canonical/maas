@@ -50,6 +50,13 @@ Improved maas-cli support
 Django 1.5
   MAAS is updated to work with Django 1.5
 
+HP Moonshot Systems support.
+  MAAS can now manage HP Moonshot Systems as any other hardware. However,
+  in order for MAAS to power manage these systems, it requires the user
+  to manually specify the iLO credentials before the enlistment process
+  begins. This can be done in the ``maas_moonshot_autodetect.py``
+  template under ``/etc/maas/templates/commissioning-user-data/snippets/``.
+
 Bugs fixed in this release
 --------------------------
 #1039513  maas-import-pxe-files doesn't cryptographically verify what
