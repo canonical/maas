@@ -93,11 +93,7 @@
     </li>
     <li class="block size3">
       <h4>MAC addresses</h4>
-      <span>
-          {% for mac in node.macaddress_set.all %}
-          {{ mac }}{% if not forloop.last %}, {% endif %}
-          {% endfor %}
-      </span>
+      <span>{{ node.macaddress_set.all|join:", " }}</span>
     </li>
     <li class="block size3">
       <h4>Status</h4>
@@ -179,21 +175,16 @@
     </li>
     {% endif %}
     {% if node.routers %}
-      <li class="block first separate">
-        <h2>Network discovery</h2>
-      </li>
-      <li id="routers" class="block first">
+      <li id="routers" class="block first size3">
         <h4>Switch MAC addresses</h4>
-        <span>
-          {{ node.routers|join:", " }}
-        </span>
+        <span>{{ node.routers|join:", " }}</span>
       </li>
     {% endif %}
     {% if probed_details %}
       <li class="block first separate">
-        <h2>Composite probed details</h2>
+        <h2>Raw discovery data</h2>
       </li>
-      <li class="block separate first pad-top-small">
+      <li class="block first pad-top-small">
         {# Button link for the Reveal widget that shows/hides LLDP output. #}
         <a href="#" id="details-trigger"></a>
         {# Content div for the probed details output. #}
