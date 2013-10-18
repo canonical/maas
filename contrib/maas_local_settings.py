@@ -31,6 +31,7 @@ RABBITMQ_VIRTUAL_HOST = '/maas_longpoll'
 
 # See http://docs.djangoproject.com/en/dev/topics/logging for
 # more details on how to customize the logging configuration.
+LOGGING_LEVEL = 'INFO'
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -41,7 +42,6 @@ LOGGING = {
     },
     'handlers': {
         'log': {
-            'level': 'ERROR',
             'class': 'logging.handlers.RotatingFileHandler',
             'filename': '/var/log/maas/maas.log',
             'formatter': 'simple',
@@ -49,22 +49,26 @@ LOGGING = {
     },
     'loggers': {
         'maasserver': {
+            'level': LOGGING_LEVEL,
             'handlers': ['log'],
             'propagate': True,
         },
         'metadataserver': {
+            'level': LOGGING_LEVEL,
             'handlers': ['log'],
             'propagate': True,
         },
         'django.request': {
+            'level': LOGGING_LEVEL,
             'handlers': ['log'],
             'propagate': True,
         },
         'django.db.backends': {
+            'level': LOGGING_LEVEL,
             'handlers': ['log'],
             'propagate': True,
         },
-     }
+    }
 }
 
 # Database access configuration.
