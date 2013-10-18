@@ -239,15 +239,14 @@ class Action(Command):
         print(file=sys.stderr)
 
     @classmethod
-    def print_response(cls, response, content):
-        """Print the response body if it's textual.
+    def print_response(cls, response, content, file=sys.stdout):
+        """Write the response's content to stdout.
 
-        Otherwise write it raw to stdout.
+        If the response is textual, a trailing \n is appended.
         """
-        if is_response_textual(response):
-            print(content)  # Trailing newline, might encode.
-        else:
-            sys.stdout.write(content)  # Raw, binary.
+        file.write(content)
+        if is_response_textual(response) and file.isatty():
+            file.write("\n")
 
 
 def register_actions(profile, handler, parser):

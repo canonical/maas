@@ -224,6 +224,44 @@ class TestAction(MAASTestCase):
             (" foo ", " bar "),
             api.Action.name_value_pair(" foo = bar "))
 
+    def test_print_response_prints_textual_response_with_newline(self):
+        # If the response content is textual and sys.stdout is connected
+        # to a TTY, print_response() prints the response with a trailing
+        # \n.
+        response = httplib2.Response({
+            'content': "Lorem ipsum dolor sit amet.",
+            'content-type': 'text/unicode',
+            })
+        buf = io.StringIO()
+        self.patch(buf, 'isatty').return_value = True
+        api.Action.print_response(response, response['content'], buf)
+        self.assertEqual(response['content'] + "\n", buf.getvalue())
+
+    def test_print_response_prints_textual_response_when_redirected(self):
+        # If the response content is textual and sys.stdout is not
+        # connected to a TTY, print_response() prints the response
+        # without a trailing \n.
+        response = httplib2.Response({
+            'content': "Lorem ipsum dolor sit amet.",
+            'content-type': 'text/unicode',
+            })
+        buf = io.StringIO()
+        api.Action.print_response(response, response['content'], buf)
+        self.assertEqual(response['content'], buf.getvalue())
+
+    def test_print_response_writes_binary_response(self):
+        # Non-textual response content is written to the output stream
+        # using write(), so it carries no trailing newline, even if
+        # stdout is connected to a tty
+        response = httplib2.Response({
+            'content': "Lorem ipsum dolor sit amet.",
+            'content-type': 'image/jpeg',
+            })
+        buf = io.StringIO()
+        self.patch(buf, 'isatty').return_value = True
+        api.Action.print_response(response, response['content'], buf)
+        self.assertEqual(response['content'], buf.getvalue())
+
 
 class TestPayloadPreparation(MAASTestCase):
     """Tests for `maascli.api.Action.prepare_payload`."""
