@@ -38,7 +38,8 @@ def get_duplicates(numbers):
     return {
         numbers
         for numbers, count in Counter(numbers).items()
-            if count > 1}
+        if count > 1
+    }
 
 
 def list_migrations(app_name):
@@ -61,4 +62,5 @@ def detect_sequence_clashes(app_name):
     return sorted(
         (number, name)
         for number, name in numbers_and_names
-            if number in duplicates)
+        if number in duplicates
+    )

@@ -117,7 +117,7 @@ class TestFormWithDictCharField(MAASServerTestCase):
         class FakeFormSkip(forms.Form):
             multi_field = DictCharField(
                 [(field_name, forms.CharField(label='Unused', max_length=3))],
-            skip_check=True)
+                skip_check=True)
         form = FakeFormSkip(data)
 
         self.assertTrue(form.is_valid())
@@ -139,7 +139,7 @@ class TestFormWithDictCharField(MAASServerTestCase):
             multi_field = DictCharField(
                 [(field_name, forms.CharField(
                     label=field_label, max_length=3))],
-            skip_check=True)
+                skip_check=True)
         form = FakeFormSkip(data)
 
         self.assertFalse(form.is_valid())

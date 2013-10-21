@@ -23,15 +23,17 @@ from django.conf.urls.defaults import (
 from django.contrib.staticfiles.urls import staticfiles_urlpatterns
 
 
-urlpatterns = patterns('',
+urlpatterns = patterns(
+    '',
     url(r'^', include('maasserver.urls')),
     url(r'^metadata/', include('metadataserver.urls')),
 )
 
 if settings.STATIC_LOCAL_SERVE:
-    urlpatterns += patterns('',
+    urlpatterns += patterns(
+        '',
         (r'^media/(?P<path>.*)$', 'django.views.static.serve',
-            {'document_root': settings.MEDIA_ROOT}),
+         {'document_root': settings.MEDIA_ROOT}),
     )
 
     urlpatterns += staticfiles_urlpatterns(settings.STATIC_URL_PATTERN)
@@ -40,6 +42,7 @@ if settings.DEBUG:
     from django.contrib import admin
     admin.autodiscover()
 
-    urlpatterns += patterns('',
+    urlpatterns += patterns(
+        '',
         (r'^admin/', include(admin.site.urls)),
     )

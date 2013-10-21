@@ -24,7 +24,10 @@ from maastesting.factory import factory
 from maastesting.fakemethod import FakeMethod
 from maastesting.fixtures import TempDirectory
 from maastesting.testcase import MAASTestCase
-from mock import Mock, ANY
+from mock import (
+    ANY,
+    Mock,
+    )
 from provisioningserver import omshell
 import provisioningserver.omshell
 from provisioningserver.omshell import (
@@ -64,7 +67,7 @@ class TestOmshell(MAASTestCase):
 
         shell.create(ip_address, mac_address)
 
-        expected_args = (dedent("""\
+        expected_script = dedent("""\
             server {server}
             key omapi_key {key}
             connect
@@ -74,16 +77,15 @@ class TestOmshell(MAASTestCase):
             set hardware-type = 1
             set name = "{ip}"
             create
-            """).format(
-                server=server_address,
-                key=shared_key,
-                ip=ip_address,
-                mac=mac_address),)
+            """)
+        expected_script = expected_script.format(
+            server=server_address, key=shared_key, ip=ip_address,
+            mac=mac_address)
 
         # Check that the 'stdin' arg contains the correct set of
         # commands.
         self.assertEqual(
-            [1, expected_args],
+            [1, (expected_script,)],
             [recorder.call_count, recorder.extract_args()[0]])
 
     def test_create_raises_when_omshell_fails(self):
@@ -148,7 +150,7 @@ class TestOmshell(MAASTestCase):
 
         shell.remove(ip_address)
 
-        expected_args = (dedent("""\
+        expected_script = dedent("""\
             server {server}
             key omapi_key {key}
             connect
@@ -156,14 +158,13 @@ class TestOmshell(MAASTestCase):
             set name = "{ip}"
             open
             remove
-            """).format(
-                server=server_address,
-                key=shared_key,
-                ip=ip_address),)
+            """)
+        expected_script = expected_script.format(
+            server=server_address, key=shared_key, ip=ip_address)
 
         # Check that the 'stdin' arg contains the correct set of
         # commands.
-        self.assertEqual([expected_args], recorder.extract_args())
+        self.assertEqual([(expected_script,)], recorder.extract_args())
 
     def test_remove_raises_when_omshell_fails(self):
         # If the call to omshell doesn't result in output ending in the
@@ -262,7 +263,7 @@ class TestCallDnsSecKeygen(MAASTestCase):
         path = os.environ.get("PATH", "").split(os.pathsep)
         path.append("/usr/sbin")
         call_dnssec_keygen(target_dir)
-        check_output.assert_called_once_with([
-            'dnssec-keygen', '-r', '/dev/urandom', '-a', 'HMAC-MD5',
-             '-b', '512', '-n', 'HOST', '-K', target_dir, '-q', 'omapi_key'
-             ], env=ANY)
+        check_output.assert_called_once_with(
+            ['dnssec-keygen', '-r', '/dev/urandom', '-a', 'HMAC-MD5',
+             '-b', '512', '-n', 'HOST', '-K', target_dir, '-q', 'omapi_key'],
+            env=ANY)

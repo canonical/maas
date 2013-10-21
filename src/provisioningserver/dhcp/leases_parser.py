@@ -154,7 +154,8 @@ def gather_leases(hosts_and_leases):
     return {
         lease.ip: lease.hardware.mac
         for lease in filter(is_lease, hosts_and_leases)
-            if not has_expired(lease, now)}
+        if not has_expired(lease, now)
+    }
 
 
 def get_host_mac(host):
@@ -181,7 +182,8 @@ def gather_hosts(hosts_and_leases):
     return {
         ip: mac
         for ip, mac in host_maps.items()
-            if mac is not None}
+        if mac is not None
+    }
 
 
 def combine_entries(entries):

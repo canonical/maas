@@ -163,7 +163,7 @@ class MAASAuthorizationBackend(ModelBackend):
         else:
             raise NotImplementedError(
                 'Invalid permission check (invalid permission name: %s).' %
-                    perm)
+                perm)
 
 
 from maasserver import messages

@@ -81,7 +81,8 @@ class TestCommissioningTimeout(APIv10TestMixin, LoggedInTestCase):
             (
                 response.status_code,
                 reload_object(node).status,
-                [node['system_id'] for node in json.loads(response.content)],
+                [response_node['system_id']
+                 for response_node in json.loads(response.content)],
             ))
 
 
@@ -220,22 +221,25 @@ class NodeCommissionResultHandlerAPITest(APITestCase):
         self.assertEqual(httplib.OK, response.status_code, response.content)
         parsed_results = json.loads(response.content)
         self.assertItemsEqual(
-            [(
-                commissioning_result.name,
-                commissioning_result.script_result,
-                b64encode(commissioning_result.data),
-                commissioning_result.node.system_id,
-            )
-            for commissioning_result in commissioning_results
+            [
+                (
+                    commissioning_result.name,
+                    commissioning_result.script_result,
+                    b64encode(commissioning_result.data),
+                    commissioning_result.node.system_id,
+                )
+                for commissioning_result in commissioning_results
             ],
-            [(
-                result.get('name'),
-                result.get('script_result'),
-                result.get('data'),
-                result.get('node').get('system_id')
-            )
-            for result in parsed_results
-            ])
+            [
+                (
+                    result.get('name'),
+                    result.get('script_result'),
+                    result.get('data'),
+                    result.get('node').get('system_id'),
+                )
+                for result in parsed_results
+            ]
+        )
 
     def test_list_can_be_filtered_by_node(self):
         commissioning_results = [
@@ -246,11 +250,10 @@ class NodeCommissionResultHandlerAPITest(APITestCase):
             url,
             {
                 'op': 'list',
-                'system_id':
-                    [
-                        commissioning_results[0].node.system_id,
-                        commissioning_results[1].node.system_id,
-                    ]
+                'system_id': [
+                    commissioning_results[0].node.system_id,
+                    commissioning_results[1].node.system_id,
+                ],
             }
         )
         self.assertEqual(httplib.OK, response.status_code, response.content)

@@ -139,10 +139,10 @@ class TestMAC(MAASServerTestCase):
     def test_none_mac_equals_none(self):
         # This is a special case that Django seems to need: it does
         # "value in validators.EMPTY_VALUES".
-        self.assertTrue(MAC(None) == None)
+        self.assertEqual(None, MAC(None))
 
     def test_mac_address_does_not_equal_none(self):
-        self.assertFalse(factory.make_MAC() == None)
+        self.assertIsNotNone(factory.make_MAC())
 
     def test_ne_punches_through_double_wrapping_on_self(self):
         mac = factory.make_MAC()
@@ -289,12 +289,12 @@ class TestXMLField(TestModelMixin, MAASServerTestCase):
         self.assertEqual([], list(result))
 
     def test_save_empty_rejected(self):
-        self.assertRaises(DatabaseError, XMLFieldModel.objects.create,
-            value="")
+        self.assertRaises(
+            DatabaseError, XMLFieldModel.objects.create, value="")
 
     def test_save_non_wellformed_rejected(self):
-        self.assertRaises(DatabaseError, XMLFieldModel.objects.create,
-            value="<bad>")
+        self.assertRaises(
+            DatabaseError, XMLFieldModel.objects.create, value="<bad>")
 
     def test_lookup_none(self):
         XMLFieldModel.objects.create(value=None)

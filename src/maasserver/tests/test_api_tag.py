@@ -182,10 +182,11 @@ class TestTagAPI(APITestCase):
         node_second = factory.make_node()
         node_first.tags.add(tag)
         self.assertItemsEqual([node_first], tag.node_set.all())
-        response = self.client.post(self.get_tag_uri(tag),
-            {'op': 'update_nodes',
-             'add': [node_second.system_id],
-             'remove': [node_first.system_id],
+        response = self.client.post(
+            self.get_tag_uri(tag), {
+                'op': 'update_nodes',
+                'add': [node_second.system_id],
+                'remove': [node_first.system_id],
             })
         self.assertEqual(httplib.OK, response.status_code)
         parsed_result = json.loads(response.content)
@@ -198,10 +199,11 @@ class TestTagAPI(APITestCase):
         unknown_add_system_id = generate_node_system_id()
         unknown_remove_system_id = generate_node_system_id()
         self.assertItemsEqual([], tag.node_set.all())
-        response = self.client.post(self.get_tag_uri(tag),
-            {'op': 'update_nodes',
-             'add': [unknown_add_system_id],
-             'remove': [unknown_remove_system_id],
+        response = self.client.post(
+            self.get_tag_uri(tag), {
+                'op': 'update_nodes',
+                'add': [unknown_add_system_id],
+                'remove': [unknown_remove_system_id],
             })
         self.assertEqual(httplib.OK, response.status_code)
         parsed_result = json.loads(response.content)
@@ -213,16 +215,18 @@ class TestTagAPI(APITestCase):
         node = factory.make_node()
         self.become_admin()
         self.assertItemsEqual([], tag.node_set.all())
-        response = self.client.post(self.get_tag_uri(tag),
-            {'op': 'update_nodes',
-             'add': [node.system_id],
+        response = self.client.post(
+            self.get_tag_uri(tag), {
+                'op': 'update_nodes',
+                'add': [node.system_id],
             })
         self.assertEqual(httplib.OK, response.status_code)
         parsed_result = json.loads(response.content)
         self.assertEqual({'added': 1, 'removed': 0}, parsed_result)
-        response = self.client.post(self.get_tag_uri(tag),
-            {'op': 'update_nodes',
-             'remove': [node.system_id],
+        response = self.client.post(
+            self.get_tag_uri(tag), {
+                'op': 'update_nodes',
+                'remove': [node.system_id],
             })
         self.assertEqual(httplib.OK, response.status_code)
         parsed_result = json.loads(response.content)
@@ -231,9 +235,11 @@ class TestTagAPI(APITestCase):
     def test_POST_update_nodes_rejects_normal_user(self):
         tag = factory.make_tag()
         node = factory.make_node()
-        response = self.client.post(self.get_tag_uri(tag),
-            {'op': 'update_nodes',
-             'add': [node.system_id]})
+        response = self.client.post(
+            self.get_tag_uri(tag), {
+                'op': 'update_nodes',
+                'add': [node.system_id],
+            })
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
         self.assertItemsEqual([], tag.node_set.all())
 
@@ -242,10 +248,11 @@ class TestTagAPI(APITestCase):
         nodegroup = factory.make_node_group()
         node = factory.make_node(nodegroup=nodegroup)
         client = make_worker_client(nodegroup)
-        response = client.post(self.get_tag_uri(tag),
-            {'op': 'update_nodes',
-             'add': [node.system_id],
-             'nodegroup': nodegroup.uuid,
+        response = client.post(
+            self.get_tag_uri(tag), {
+                'op': 'update_nodes',
+                'add': [node.system_id],
+                'nodegroup': nodegroup.uuid,
             })
         self.assertEqual(httplib.OK, response.status_code)
         parsed_result = json.loads(response.content)
@@ -258,9 +265,10 @@ class TestTagAPI(APITestCase):
         node = factory.make_node(nodegroup=nodegroup)
         client = make_worker_client(nodegroup)
         # We don't pass nodegroup:uuid so we get refused
-        response = client.post(self.get_tag_uri(tag),
-            {'op': 'update_nodes',
-             'add': [node.system_id],
+        response = client.post(
+            self.get_tag_uri(tag), {
+                'op': 'update_nodes',
+                'add': [node.system_id],
             })
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
         self.assertItemsEqual([], tag.node_set.all())
@@ -269,10 +277,11 @@ class TestTagAPI(APITestCase):
         tag = factory.make_tag()
         nodegroup = factory.make_node_group()
         node = factory.make_node(nodegroup=nodegroup)
-        response = self.client.post(self.get_tag_uri(tag),
-            {'op': 'update_nodes',
-             'add': [node.system_id],
-             'nodegroup': nodegroup.uuid,
+        response = self.client.post(
+            self.get_tag_uri(tag), {
+                'op': 'update_nodes',
+                'add': [node.system_id],
+                'nodegroup': nodegroup.uuid,
             })
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
         self.assertItemsEqual([], tag.node_set.all())
@@ -283,10 +292,11 @@ class TestTagAPI(APITestCase):
         nodegroup_theirs = factory.make_node_group()
         node_theirs = factory.make_node(nodegroup=nodegroup_theirs)
         client = make_worker_client(nodegroup_mine)
-        response = client.post(self.get_tag_uri(tag),
-            {'op': 'update_nodes',
-             'add': [node_theirs.system_id],
-             'nodegroup': nodegroup_mine.uuid,
+        response = client.post(
+            self.get_tag_uri(tag), {
+                'op': 'update_nodes',
+                'add': [node_theirs.system_id],
+                'nodegroup': nodegroup_mine.uuid,
             })
         self.assertEqual(httplib.OK, response.status_code)
         parsed_result = json.loads(response.content)
@@ -301,11 +311,12 @@ class TestTagAPI(APITestCase):
         client = make_worker_client(nodegroup)
         tag.definition = '//new/node/definition'
         tag.save()
-        response = client.post(self.get_tag_uri(tag),
-            {'op': 'update_nodes',
-             'add': [node.system_id],
-             'nodegroup': nodegroup.uuid,
-             'definition': orig_def,
+        response = client.post(
+            self.get_tag_uri(tag), {
+                'op': 'update_nodes',
+                'add': [node.system_id],
+                'nodegroup': nodegroup.uuid,
+                'definition': orig_def,
             })
         self.assertEqual(httplib.CONFLICT, response.status_code)
         self.assertItemsEqual([], tag.node_set.all())
@@ -427,7 +438,8 @@ class TestTagsAPI(APITestCase):
                 'comment': comment,
                 'definition': definition,
             })
-        self.assertEqual(httplib.BAD_REQUEST, response.status_code,
+        self.assertEqual(
+            httplib.BAD_REQUEST, response.status_code,
             'We did not get BAD_REQUEST for an invalid tag name: %r'
             % (invalid,))
         self.assertFalse(Tag.objects.filter(name=invalid).exists())

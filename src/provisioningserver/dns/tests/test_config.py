@@ -21,7 +21,6 @@ from collections import (
 import errno
 import os.path
 import random
-from subprocess import CalledProcessError
 from textwrap import dedent
 
 from celery.conf import conf
@@ -57,10 +56,7 @@ from provisioningserver.dns.config import (
     uncomment_named_conf,
     )
 from provisioningserver.dns.utils import generated_hostname
-from provisioningserver.utils import (
-    ExternalProcessError,
-    locate_config,
-    )
+from provisioningserver.utils import locate_config
 import tempita
 from testtools.matchers import (
     Contains,
@@ -128,11 +124,13 @@ class TestRNDCUtilities(MAASTestCase):
             %(rndc_part)s
             # End of rndc.conf
 
-            # Use with the following in named.conf, adjusting the allow """
-            """list as needed:
+            # %(start_marker)s
             %(named_part)s
             # End of named.conf
         """) % {
+            'start_marker': (
+                'Use with the following in named.conf, '
+                'adjusting the allow list as needed:'),
             'rndc_part': factory.getRandomString(),
             'named_part': named_part,
             }
@@ -163,19 +161,18 @@ class TestRNDCUtilities(MAASTestCase):
 
     def test_uncomment_named_conf_uncomments_multiple_lines(self):
         # named.conf section, extracted from actual rndc-confgen output.
-        # Note the weird line break: the config has a line ending in a space.
+        # Note the weird %s: the config has a line ending in a space.
         named_comment = dedent("""\
             # key "rndc-key" {
             # \talgorithm hmac-md5;
             # \tsecret "FuvtYZbYYLLJQKtn3zembg==";
             # };
-            # """
-            """
+            # %s
             # controls {
             # \tinet 127.0.0.1 port 953
             # \t\tallow { 127.0.0.1; } keys { "rndc-key"; };
             # };
-            """)
+            """) % ""
 
         self.assertThat(uncomment_named_conf(named_comment), Contains(
             'key "rndc-key" {\n'
@@ -395,7 +392,7 @@ class TestDNSForwardZoneConfig(MAASTestCase):
                 (generated_hostname('192.12.0.1'), '192.12.0.1'),
                 (generated_hostname('192.12.0.2'), '192.12.0.2'),
                 (generated_hostname('192.12.0.3'), '192.12.0.3'),
-             ],
+            ],
             dns_zone_config.get_static_mapping(),
             )
 

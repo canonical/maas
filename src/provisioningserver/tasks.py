@@ -52,7 +52,6 @@ from provisioningserver.power.poweraction import (
     )
 from provisioningserver.utils import (
     call_and_check,
-    ExternalProcessError,
     sudo_write_file,
     )
 

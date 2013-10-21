@@ -321,7 +321,8 @@ class Factory(maastesting.factory.Factory):
         if definition is None:
             # Is there a 'node' in this xml?
             definition = '//node'
-        tag = Tag(name=name, definition=definition, comment=comment,
+        tag = Tag(
+            name=name, definition=definition, comment=comment,
             kernel_opts=kernel_opts)
         self._save_node_unchecked(tag)
         # Update the 'updated'/'created' fields with a call to 'update'

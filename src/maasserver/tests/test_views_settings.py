@@ -128,8 +128,8 @@ class SettingsTest(AdminLoggedInTestCase):
                 data={
                     'after_commissioning': new_after_commissioning,
                     'check_compatibility': new_check_compatibility,
-                    'commissioning_distro_series':
-                        new_commissioning_distro_series,
+                    'commissioning_distro_series': (
+                        new_commissioning_distro_series),
                 }))
 
         self.assertEqual(httplib.FOUND, response.status_code)
@@ -239,8 +239,8 @@ class SettingsTest(AdminLoggedInTestCase):
             reverse('settings'), {'import_all_boot_images': 1})
         self.assertEqual(httplib.FOUND, response.status_code)
         calls = [
-           call(queue=nodegroup.work_queue, kwargs=ANY)
-           for nodegroup in accepted_nodegroups
+            call(queue=nodegroup.work_queue, kwargs=ANY)
+            for nodegroup in accepted_nodegroups
         ]
         self.assertItemsEqual(calls, recorder.apply_async.call_args_list)
 

@@ -122,9 +122,10 @@ class MAASMessenger(MessengerBase):
     def create_msg(self, event_name, instance):
         event_key = self.event_key(event_name, instance)
         message = MAASJSONEncoder().encode({
-            'instance':
-                {k: v for k, v in instance.__dict__.items()
-                 if not k.startswith('_')},
+            'instance': {
+                k: v for k, v in instance.__dict__.items()
+                if not k.startswith('_')
+            },
             'event_key': event_key,
 
         })

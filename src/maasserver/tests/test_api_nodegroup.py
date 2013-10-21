@@ -232,8 +232,9 @@ class TestNodeGroupAPI(APITestCase):
             (response.status_code, response.content))
         self.assertItemsEqual(
             lease.keys(), [
-                lease.ip
-                for lease in DHCPLease.objects.filter(nodegroup=nodegroup)])
+                dhcplease.ip
+                for dhcplease in DHCPLease.objects.filter(nodegroup=nodegroup)
+            ])
 
     def test_update_leases_adds_new_leases_on_worker(self):
         nodegroup = factory.make_node_group()

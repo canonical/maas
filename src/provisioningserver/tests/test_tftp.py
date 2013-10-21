@@ -143,7 +143,8 @@ class TestTFTPBackendRegex(MAASTestCase):
     def test_re_config_file_with_default(self):
         match = TFTPBackend.re_config_file.match('pxelinux.cfg/default')
         self.assertIsNotNone(match)
-        self.assertEqual({'mac': None, 'arch': None, 'subarch': None},
+        self.assertEqual(
+            {'mac': None, 'arch': None, 'subarch': None},
             match.groupdict())
 
     def test_re_config_file_with_default_arch(self):
@@ -151,7 +152,8 @@ class TestTFTPBackendRegex(MAASTestCase):
         match = TFTPBackend.re_config_file.match('pxelinux.cfg/default.%s' %
                                                  arch)
         self.assertIsNotNone(match)
-        self.assertEqual({'mac': None, 'arch': arch, 'subarch': None},
+        self.assertEqual(
+            {'mac': None, 'arch': arch, 'subarch': None},
             match.groupdict())
 
     def test_re_config_file_with_default_arch_and_subarch(self):
@@ -160,7 +162,8 @@ class TestTFTPBackendRegex(MAASTestCase):
         match = TFTPBackend.re_config_file.match(
             'pxelinux.cfg/default.%s-%s' % (arch, subarch))
         self.assertIsNotNone(match)
-        self.assertEqual({'mac': None, 'arch': arch, 'subarch': subarch},
+        self.assertEqual(
+            {'mac': None, 'arch': arch, 'subarch': subarch},
             match.groupdict())
 
 

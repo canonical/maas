@@ -23,7 +23,8 @@ from django.conf.urls.defaults import (
 from maasserver.views.combo import get_combo_view
 
 
-urlpatterns = patterns('',
+urlpatterns = patterns(
+    '',
     url(
         r'^maas/', get_combo_view(
             location='', default_redirect=settings.STATIC_URL),

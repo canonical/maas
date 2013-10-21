@@ -75,7 +75,7 @@ LOGGING = {
             'handlers': ['console'],
             'propagate': True,
         },
-     }
+    },
 }
 
 # Use the in-branch development version of maas_cluster.conf.

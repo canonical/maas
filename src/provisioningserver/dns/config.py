@@ -248,7 +248,7 @@ class DNSConfig(DNSConfigBase):
         return {
             'zones': self.zones,
             'DNS_CONFIG_DIR': conf.DNS_CONFIG_DIR,
-            'named_rndc_conf_path':  get_named_rndc_conf_path(),
+            'named_rndc_conf_path': get_named_rndc_conf_path(),
             'modified': unicode(datetime.today()),
         }
 

@@ -174,16 +174,11 @@ class TestFunctions(MAASTestCase):
 
     def test_api_url(self):
         transformations = {
-            "http://example.com/":
-                "http://example.com/api/1.0/",
-            "http://example.com/foo":
-                "http://example.com/foo/api/1.0/",
-            "http://example.com/foo/":
-                "http://example.com/foo/api/1.0/",
-            "http://example.com/api/7.9":
-                "http://example.com/api/7.9/",
-            "http://example.com/api/7.9/":
-                "http://example.com/api/7.9/",
+            "http://example.com/": "http://example.com/api/1.0/",
+            "http://example.com/foo": "http://example.com/foo/api/1.0/",
+            "http://example.com/foo/": "http://example.com/foo/api/1.0/",
+            "http://example.com/api/7.9": "http://example.com/api/7.9/",
+            "http://example.com/api/7.9/": "http://example.com/api/7.9/",
             }.items()
         urls = [url for url, url_out in transformations]
         urls_out = [url_out for url, url_out in transformations]

@@ -78,8 +78,8 @@ class TestUtilities(MAASServerTestCase):
         expected_content = '/* %s */\n%s\n' % (
             test_file_name, test_file_contents)
         self.assertEqual(
-             (httplib.OK, expected_content),
-             (response.status_code, response.content))
+            (httplib.OK, expected_content),
+            (response.status_code, response.content))
 
     def test_get_combo_redirects_if_unknown_type(self):
         # The optional parameter 'default_redirect' allows to configure
@@ -144,8 +144,8 @@ class TestComboLoaderView(MAASServerTestCase):
         url = '%s?%s' % (reverse('combo-yui'), 'file.wrongextension')
         response = self.client.get(url)
         self.assertEqual(
-                (httplib.BAD_REQUEST, "Invalid file type requested."),
-                (response.status_code, response.content))
+            (httplib.BAD_REQUEST, "Invalid file type requested."),
+            (response.status_code, response.content))
 
     def test_maas_load_js(self):
         requested_files = ['js/node.js', 'js/enums.js']

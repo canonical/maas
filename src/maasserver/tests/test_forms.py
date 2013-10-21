@@ -819,7 +819,7 @@ class TestNodeGroupWithInterfacesForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), form._errors)
         form.save()
         nodegroup = NodeGroup.objects.get(uuid=uuid)
-        self.assertEqual(2,  nodegroup.nodegroupinterface_set.count())
+        self.assertEqual(2, nodegroup.nodegroupinterface_set.count())
 
     def test_populates_cluster_name_default(self):
         name = factory.make_name('name')
@@ -851,12 +851,12 @@ class TestNodeGroupWithInterfacesForm(MAASServerTestCase):
             data={'name': name, 'uuid': uuid, 'interfaces': interfaces})
         self.assertTrue(form.is_valid(), form._errors)
         form.save()
-        nodegroup = NodeGroup.objects.get(uuid=uuid)
+        uuid_nodegroup = NodeGroup.objects.get(uuid=uuid)
         self.assertEqual(
             [NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED],
             [
                 nodegroup.management for nodegroup in
-                nodegroup.nodegroupinterface_set.all()
+                uuid_nodegroup.nodegroupinterface_set.all()
             ])
 
 

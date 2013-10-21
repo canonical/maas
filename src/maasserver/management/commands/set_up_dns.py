@@ -40,7 +40,7 @@ class Command(BaseCommand):
             help=(
                 "Don't overwrite the configuration file if it already "
                 "exists.")),
-            )
+    )
     help = (
         "Set up MAAS DNS configuration: a blank configuration and "
         "all the RNDC configuration options allowing MAAS to reload "

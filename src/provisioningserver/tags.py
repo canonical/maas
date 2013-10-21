@@ -75,7 +75,8 @@ def get_cached_knowledge():
     if nodegroup_uuid is None:
         logger.error("Not updating tags: don't have UUID yet.")
         return None, None
-    client = MAASClient(MAASOAuth(*api_credentials), MAASDispatcher(),
+    client = MAASClient(
+        MAASOAuth(*api_credentials), MAASDispatcher(),
         get_maas_url())
     return client, nodegroup_uuid
 

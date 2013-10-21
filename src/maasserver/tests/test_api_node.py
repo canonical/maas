@@ -95,7 +95,7 @@ class NodeAPILoggedInTest(APIv10TestMixin, LoggedInTestCase):
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(
             [node.system_id],
-            [node.get('system_id') for node in parsed_result])
+            [parsed_node.get('system_id') for parsed_node in parsed_result])
 
 
 class TestNodeAPI(APITestCase):
@@ -237,7 +237,8 @@ class TestNodeAPI(APITestCase):
         self.assertEqual(
             (
                 httplib.BAD_REQUEST,
-                {'distro_series': ["Value u'%s' is not a valid choice." %
+                {'distro_series': [
+                    "Value u'%s' is not a valid choice." %
                     invalid_distro_series]}
             ),
             (response.status_code, json.loads(response.content)))
@@ -341,7 +342,8 @@ class TestNodeAPI(APITestCase):
         unreleasable_statuses = [
             status
             for status in map_enum(NODE_STATUS).values()
-                if status not in releasable_statuses]
+            if status not in releasable_statuses
+        ]
         nodes = [
             factory.make_node(status=status, owner=self.logged_in_user)
             for status in unreleasable_statuses]
@@ -650,7 +652,7 @@ class TestNodeAPI(APITestCase):
         new_value = factory.getRandomString()
         response = self.client_put(
             self.get_node_uri(node),
-           {
+            {
                 'power_parameters_%s' % new_param: new_value,
                 'power_parameters_skip_check': 'true',
             })

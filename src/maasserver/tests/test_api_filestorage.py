@@ -264,8 +264,8 @@ class FileStorageAPITest(FileStorageAPITestMixin, APITestCase):
 
     def test_list_files_does_not_include_file_content(self):
         factory.make_file_storage(
-             filename="filename", content=b"test content",
-             owner=self.logged_in_user)
+            filename="filename", content=b"test content",
+            owner=self.logged_in_user)
         response = self.make_API_GET_request("list")
         parsed_results = json.loads(response.content)
         self.assertNotIn('content', parsed_results[0].keys())
@@ -273,8 +273,8 @@ class FileStorageAPITest(FileStorageAPITestMixin, APITestCase):
     def test_files_resource_uri_supports_slashes_in_filenames(self):
         filename = "a/filename/with/slashes/in/it/"
         factory.make_file_storage(
-             filename=filename, content=b"test content",
-             owner=self.logged_in_user)
+            filename=filename, content=b"test content",
+            owner=self.logged_in_user)
         response = self.make_API_GET_request("list")
         parsed_results = json.loads(response.content)
         resource_uri = parsed_results[0]['resource_uri']

@@ -73,7 +73,8 @@ class AMQTest(TestCase):
         self.exchanges = set()
         self.connected_deferred = Deferred()
 
-        self.factory = AMQFactory(self.USER, self.PASSWORD, self.VHOST,
+        self.factory = AMQFactory(
+            self.USER, self.PASSWORD, self.VHOST,
             self.amq_connected, self.amq_disconnected, self.amq_failed)
         self.factory.initialDelay = 2.0
         self.connector = reactor.connectTCP(
@@ -95,7 +96,8 @@ class AMQTest(TestCase):
         return
 
         self.connected_deferred = Deferred()
-        factory = AMQFactory(self.USER, self.PASSWORD, self.VHOST,
+        factory = AMQFactory(
+            self.USER, self.PASSWORD, self.VHOST,
             self.amq_connected, self.amq_disconnected, self.amq_failed)
         connector = reactor.connectTCP(
             self.rabbit.config.hostname, self.rabbit.config.port, factory)

@@ -570,7 +570,8 @@ class TestTagUpdating(PservTestCase):
         self.patch(client, 'post', post_mock)
         name = factory.make_name('tag')
         tag_definition = factory.make_name('//')
-        result = tags.post_updated_nodes(client, name, tag_definition, uuid,
+        result = tags.post_updated_nodes(
+            client, name, tag_definition, uuid,
             ['add-system-id'], ['remove-1', 'remove-2'])
         self.assertEqual({'added': 1, 'removed': 2}, result)
         url = '/api/1.0/tags/%s/' % (name,)
@@ -593,7 +594,8 @@ class TestTagUpdating(PservTestCase):
         err = urllib2.HTTPError('url', httplib.CONFLICT, content, {}, None)
         post_mock = MagicMock(side_effect=err)
         self.patch(client, 'post', post_mock)
-        result = tags.post_updated_nodes(client, name, wrong_tag_definition,
+        result = tags.post_updated_nodes(
+            client, name, wrong_tag_definition,
             uuid, ['add-system-id'], ['remove-1', 'remove-2'])
         # self.assertEqual({'added': 1, 'removed': 2}, result)
         url = '/api/1.0/tags/%s/' % (name,)

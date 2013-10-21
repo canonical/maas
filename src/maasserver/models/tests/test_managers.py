@@ -44,4 +44,4 @@ class BulkManagerTest(TestModelMixin, MAASServerTestCase):
         self.assertNumQueries(
             2,
             lambda: [list(parent.bulkmanagertestmodel_set.iterator())
-                for parent in parents])
+                     for parent in parents])

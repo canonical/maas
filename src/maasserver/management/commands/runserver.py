@@ -55,10 +55,11 @@ def render_error(report):
 class Command(BaseRunserverCommand):
     """Customized "runserver" command that wraps the WSGI handler."""
     option_list = BaseRunserverCommand.option_list + (
-        make_option('--threading', action='store_true',
+        make_option(
+            '--threading', action='store_true',
             dest='use_threading', default=False,
             help='Use threading for web server.'),
-        )
+    )
 
     def run(self, *args, **options):
         threading = options.get('use_threading', False)

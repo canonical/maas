@@ -374,14 +374,14 @@ def make_legacy_config(data_dir=None, arches=None, releases=None):
     if releases is None:
         releases = [factory.make_name('release') for counter in range(2)]
     return dedent("""\
-        DATA_DIR=%s
-        ARCHES=%s
-        RELEASES=%s
-        """) % (
-            quote(data_dir),
-            quote(' '.join(arches)),
-            quote(' '.join(releases)),
-        )
+    DATA_DIR=%s
+    ARCHES=%s
+    RELEASES=%s
+    """) % (
+        quote(data_dir),
+        quote(' '.join(arches)),
+        quote(' '.join(releases)),
+    )
 
 
 def install_legacy_config(testcase, contents):
@@ -409,16 +409,15 @@ class TestMakeArgParser(PservTestCase):
         images_directory = self.make_dir()
         arches = [factory.make_name('arch1'), factory.make_name('arch2')]
         releases = [factory.make_name('rel1'), factory.make_name('rel2')]
-        self.useFixture(ConfigFixture(
-            {
-                'boot': {
-                    'architectures': arches,
-                    'ephemeral': {
-                        'images_directory': images_directory,
-                        'releases': releases,
-                    },
+        self.useFixture(ConfigFixture({
+            'boot': {
+                'architectures': arches,
+                'ephemeral': {
+                    'images_directory': images_directory,
+                    'releases': releases,
                 },
-            }))
+            },
+        }))
 
         parser = make_arg_parser(factory.getRandomString())
 
@@ -446,16 +445,15 @@ class TestMakeArgParser(PservTestCase):
         self.assertItemsEqual([], args.filters)
 
     def test_does_not_modify_config(self):
-        self.useFixture(ConfigFixture(
-            {
-                'boot': {
-                    'architectures': [factory.make_name('arch')],
-                    'ephemeral': {
-                        'images_directory': self.make_dir(),
-                        'releases': [factory.make_name('release')],
-                    },
+        self.useFixture(ConfigFixture({
+            'boot': {
+                'architectures': [factory.make_name('arch')],
+                'ephemeral': {
+                    'images_directory': self.make_dir(),
+                    'releases': [factory.make_name('release')],
                 },
-            }))
+            },
+        }))
         original_boot_config = deepcopy(Config.load_from_cache()['boot'])
         install_legacy_config(self, make_legacy_config())
 

@@ -1089,7 +1089,8 @@ class NodeManagerTest(MAASServerTestCase):
         nodes = [
             self.make_node_with_mac(
                 factory.make_user(), power_type=POWER_TYPE.WAKE_ON_LAN)[0]
-                for counter in range(3)]
+            for counter in range(3)
+        ]
         ids = [node.system_id for node in nodes]
         startable_node = nodes[0]
         self.assertItemsEqual(

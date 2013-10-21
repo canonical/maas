@@ -208,16 +208,17 @@ class TestComposeNodegroupRegisterResponse(MAASServerTestCase):
         response = api.compose_nodegroup_register_response(
             nodegroup, already_existed=False)
         self.assertEqual(
-           (httplib.ACCEPTED, "Cluster registered.  Awaiting admin approval."),
-           (response.status_code, response.content))
+            (httplib.ACCEPTED,
+             "Cluster registered.  Awaiting admin approval."),
+            (response.status_code, response.content))
 
     def test_returns_accepted_for_existing_pending_nodegroup(self):
         nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.PENDING)
         response = api.compose_nodegroup_register_response(
             nodegroup, already_existed=True)
         self.assertEqual(
-           (httplib.ACCEPTED, "Awaiting admin approval."),
-           (response.status_code, response.content))
+            (httplib.ACCEPTED, "Awaiting admin approval."),
+            (response.status_code, response.content))
 
 
 class TestRegisterAPI(AnonAPITestCase):

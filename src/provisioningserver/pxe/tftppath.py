@@ -101,7 +101,8 @@ def list_subdirs(directory):
     return [
         subdir
         for subdir in os.listdir(directory)
-            if is_visible_subdir(directory, subdir)]
+        if is_visible_subdir(directory, subdir)
+    ]
 
 
 def extend_path(directory, path):

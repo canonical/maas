@@ -858,7 +858,8 @@ class TestEnlistViews(DjangoTestCase):
 
     def test_get_instance_id(self):
         # instance-id must be available
-        md_url = reverse('enlist-metadata-meta-data',
+        md_url = reverse(
+            'enlist-metadata-meta-data',
             args=['latest', 'instance-id'])
         response = self.client.get(md_url)
         self.assertEqual(
@@ -889,7 +890,8 @@ class TestEnlistViews(DjangoTestCase):
             (response.status_code, response.content))
 
     def test_metadata_bogus_is_404(self):
-        md_url = reverse('enlist-metadata-meta-data',
+        md_url = reverse(
+            'enlist-metadata-meta-data',
             args=['latest', 'BOGUS'])
         response = self.client.get(md_url)
         self.assertEqual(httplib.NOT_FOUND, response.status_code)

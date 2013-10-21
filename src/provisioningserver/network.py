@@ -77,4 +77,5 @@ def discover_networks():
     return [
         info.as_dict()
         for info in infos
-            if info.may_be_subnet()]
+        if info.may_be_subnet()
+    ]

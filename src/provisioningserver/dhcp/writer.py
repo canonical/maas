@@ -29,7 +29,7 @@ def add_arguments(parser):
     """
     parser.add_argument(
         "--subnet", action="store", required=True, help=(
-        "Base subnet declaration, e.g. 192.168.1.0"))
+            "Base subnet declaration, e.g. 192.168.1.0"))
     parser.add_argument(
         "--subnet-mask", action="store", required=True, help=(
             "The mask for the subnet, e.g. 255.255.255.0"))

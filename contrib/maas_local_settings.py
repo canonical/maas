@@ -68,7 +68,7 @@ LOGGING = {
             'handlers': ['log'],
             'propagate': True,
         },
-    }
+    },
 }
 
 # Database access configuration.

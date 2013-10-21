@@ -82,10 +82,10 @@ class TestGetHostnameAndPath(MAASServerTestCase):
 
     def test_get_hostname_and_path(self):
         input_and_results = [
-            ('http://name.domain/my/path',  ('name.domain', '/my/path')),
-            ('https://domain/path',  ('domain', '/path')),
-            ('http://domain/',  ('domain', '/')),
-            ('http://domain',  ('domain', '')),
+            ('http://name.domain/my/path', ('name.domain', '/my/path')),
+            ('https://domain/path', ('domain', '/path')),
+            ('http://domain/', ('domain', '/')),
+            ('http://domain', ('domain', '')),
             ]
         inputs = [input for input, _ in input_and_results]
         results = [result for _, result in input_and_results]
@@ -436,7 +436,8 @@ class TestRenderPreseed(MAASServerTestCase):
     scenarios = [
         (name, {'preseed': value})
         for name, value in map_enum(PRESEED_TYPE).items()
-            if not value.startswith('enlist')]
+        if not value.startswith('enlist')
+    ]
 
     def test_render_preseed(self):
         node = factory.make_node()
@@ -465,7 +466,8 @@ class TestRenderEnlistmentPreseed(MAASServerTestCase):
     scenarios = [
         (name, {'preseed': value})
         for name, value in map_enum(PRESEED_TYPE).items()
-            if value.startswith('enlist')]
+        if value.startswith('enlist')
+    ]
 
     def test_render_enlistment_preseed(self):
         preseed = render_enlistment_preseed(self.preseed, "precise")
@@ -579,7 +581,7 @@ class TestPreseedProxy(MAASServerTestCase):
             server_host, factory.getRandomPort(), factory.getRandomString())
         self.patch(settings, 'DEFAULT_MAAS_URL', url)
         expected_proxy_statement = (
-                "mirror/http/proxy string http://%s:8000" % server_host)
+            "mirror/http/proxy string http://%s:8000" % server_host)
         preseed = render_preseed(
             factory.make_node(), PRESEED_TYPE.DEFAULT, "precise")
         self.assertIn(expected_proxy_statement, preseed)

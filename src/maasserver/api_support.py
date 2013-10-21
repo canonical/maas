@@ -148,14 +148,14 @@ class OperationsHandlerMixin:
 
 
 class OperationsHandler(
-    OperationsHandlerMixin, BaseHandler):
+        OperationsHandlerMixin, BaseHandler):
     """Base handler that supports operation dispatch."""
 
     __metaclass__ = OperationsHandlerType
 
 
 class AnonymousOperationsHandler(
-    OperationsHandlerMixin, AnonymousBaseHandler):
+        OperationsHandlerMixin, AnonymousBaseHandler):
     """Anonymous base handler that supports operation dispatch."""
 
     __metaclass__ = OperationsHandlerType

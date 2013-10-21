@@ -175,8 +175,8 @@ class Action(Command):
         # be used.
         insecure = options.insecure
         response, content = http_request(
-             uri, self.method, body=body, headers=headers,
-             insecure=insecure)
+            uri, self.method, body=body, headers=headers,
+            insecure=insecure)
 
         # Output.
         if options.debug:
@@ -314,22 +314,22 @@ def register_resources(profile, parser):
                 value[0] for value in actions.values())
             register_handler(profile, represent_as, parser)
 
-
+profile_help_paragraphs = [
+    """\
+    This is a profile.  Any commands you issue on this
+    profile will operate on the MAAS region server.
+    """,
+    """\
+    The command information you see here comes from the
+    region server's API; it may differ for different
+    profiles.  If you believe the API may have changed,
+    use the command's 'refresh' sub-command to fetch the
+    latest version of this help information from the
+    server.
+    """,
+]
 profile_help = '\n\n'.join(
-    map(fill, map(dedent, [
-    """\
-        This is a profile.  Any commands you issue on this
-        profile will operate on the MAAS region server.
-        """,
-    """\
-        The command information you see here comes from the
-        region server's API; it may differ for different
-        profiles.  If you believe the API may have changed,
-        use the command's 'refresh' sub-command to fetch the
-        latest version of this help information from the
-        server.
-        """,
-    ])))
+    fill(dedent(paragraph)) for paragraph in profile_help_paragraphs)
 
 
 def register_api_commands(parser):

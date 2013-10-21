@@ -84,7 +84,8 @@ commissioning_scripts_handler = AdminRestrictedResource(
     CommissioningScriptsHandler, authentication=api_auth)
 
 # API URLs accessible to anonymous users.
-urlpatterns = patterns('',
+urlpatterns = patterns(
+    '',
     url(r'doc/$', api_doc, name='api-doc'),
     url(r'describe/$', describe, name='describe'),
     url(r'pxeconfig/$', pxeconfig, name='pxeconfig'),
@@ -92,7 +93,8 @@ urlpatterns = patterns('',
 
 
 # API URLs for logged-in users.
-urlpatterns += patterns('',
+urlpatterns += patterns(
+    '',
     url(
         r'^nodes/(?P<system_id>[\w\-]+)/macs/(?P<mac_address>.+)/$',
         node_mac_handler, name='node_mac_handler'),
@@ -132,7 +134,8 @@ urlpatterns += patterns('',
 
 
 # API URLs for admin users.
-urlpatterns += patterns('',
+urlpatterns += patterns(
+    '',
     url(r'^maas/$', maas_handler, name='maas_handler'),
     url(
         r'^commissioning-scripts/$', commissioning_scripts_handler,

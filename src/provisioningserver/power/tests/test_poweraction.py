@@ -115,7 +115,8 @@ class TestPowerAction(MAASTestCase):
         template = ShellTemplate("template: {{mac}}", name=template_name)
         self.assertThat(
             lambda: pa.render_template(template),
-            Raises(MatchesException(PowerActionFail,
+            Raises(MatchesException(
+                PowerActionFail,
                 ".*name 'mac' is not defined at line \d+ column \d+ "
                 "in file %s" % re.escape(template_name))))
 
@@ -142,8 +143,8 @@ class TestPowerAction(MAASTestCase):
         path = self._create_template_file("this_is_not_valid_shell")
         self.assertThat(
             lambda: self.run_action(path),
-            Raises(MatchesException(PowerActionFail,
-                "ether_wake failed.* return.* 127")))
+            Raises(MatchesException(
+                PowerActionFail, "ether_wake failed.* return.* 127")))
 
     def test_execute_raises_PowerActionFail_with_output(self):
         path = self._create_template_file("echo reason for failure; exit 1")
@@ -197,7 +198,7 @@ class TestPowerAction(MAASTestCase):
         power_type = POWER_TYPE.WAKE_ON_LAN
         self.assertEqual(
             locate_config('templates/power'),
-             PowerAction(power_type).config_basedir)
+            PowerAction(power_type).config_basedir)
 
     def test_ipmi_script_includes_config_dir(self):
         conf_dir = factory.make_name('power_config_dir')

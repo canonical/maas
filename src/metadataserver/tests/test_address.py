@@ -52,7 +52,7 @@ class TestAddress(MAASTestCase):
             "default via 10.0.0.1 dev eth1  proto static",
             "169.254.0.0/16 dev eth2  scope link  metric 1000",
             "10.0.0.0/24 dev eth0  proto kernel  scope link  src 10.0.0.11  "
-                "metric 2",
+            "metric 2",
             "10.1.0.0/24 dev virbr0  proto kernel  scope link  src 10.1.0.1",
             "10.1.1.0/24 dev virbr1  proto kernel  scope link  src 10.1.1.1",
             ]
@@ -62,7 +62,7 @@ class TestAddress(MAASTestCase):
     def test_find_default_interface_makes_a_guess_if_no_default(self):
         sample_ip_route = [
             "10.0.0.0/24 dev eth2  proto kernel  scope link  src 10.0.0.11  "
-                "metric 2",
+            "metric 2",
             "10.1.0.0/24 dev virbr0  proto kernel  scope link  src 10.1.0.1",
             "10.1.1.0/24 dev virbr1  proto kernel  scope link  src 10.1.1.1",
             ]

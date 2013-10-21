@@ -40,21 +40,21 @@ class DictCharField(forms.MultiValueField):
     'skip_check' allows the storing of an arbitrary dictionary in the field,
     bypassing any validation made by the sub-fields.
 
-    For instance, if we create a form with a single DictCharField:
+    For instance, if we create a form with a single DictCharField::
 
-    >>> from django import forms
-    >>> class ExampleForm(forms.Form)
-            example = DictCharField(
-                [
-                    ('field1', forms.CharField(label="Field 1"),
-                    ('field2', forms.CharField(label="Field 2"),
-                ])
-    >>> data = QueryDict('example_field1=subvalue1&example_field2=subvalue2')
-    >>> form = ExampleForm(data)
-    >>> # The 'cleaned_data' of the 'example' field is populated with the
-    >>> # values of the subfields.
-    >>> form.cleaned_data['example']
-    {'field1': 'subvalue1', 'field2': 'subvalue2'}
+      >>> class ExampleForm(forms.Form):
+      ...     example = DictCharField([
+      ...             ('field1', forms.CharField(label="Field 1")),
+      ...             ('field2', forms.CharField(label="Field 2")),
+      ...         ])
+      >>> from django.http import QueryDict
+      >>> data = QueryDict('example_field1=subvalue1&example_field2=subvalue2')
+      >>> form = ExampleForm(data)
+      >>> # The 'cleaned_data' of the 'example' field is populated with the
+      >>> # values of the subfields.
+      >>> form.cleaned_data['example']
+      {'field1': 'subvalue1', 'field2': 'subvalue2'}
+
     """
 
     def __init__(self, field_items, skip_check=False, *args,
@@ -170,7 +170,7 @@ class DictCharField(forms.MultiValueField):
             # None.
             is_empty = (
                 value in validators.EMPTY_VALUES or
-               len(filter(lambda x: x is not None, value)) == 0)
+                len(filter(lambda x: x is not None, value)) == 0)
             if is_empty:
                 if self.required:
                     raise ValidationError(self.error_messages['required'])
@@ -207,8 +207,8 @@ class DictCharField(forms.MultiValueField):
                 # raise at the end of clean(), rather than raising a single
                 # exception for the first error we encounter.
                 errors.extend(
-                    ['%s: %s' % (field.label, message)
-                    for message in e.messages])
+                    '%s: %s' % (field.label, message)
+                    for message in e.messages)
         if errors:
             raise ValidationError(errors)
 
@@ -220,11 +220,12 @@ class DictCharField(forms.MultiValueField):
 def get_all_prefixed_values(data, name):
     """From a dictionary, extract a sub-dictionary of all the keys/values for
     which the key starts with a particular prefix.  In the resulting
-    dictionary, strip the prefix from the keys.
+    dictionary, strip the prefix from the keys::
 
-    >>> get_all_prefixed_values(
-        {'prefix_test': 'a', 'key': 'b'}, 'prefix_')
-    {'test': 'a'}
+      >>> get_all_prefixed_values(
+      ...     {'prefix_test': 'a', 'key': 'b'}, 'prefix_')
+      {'test': 'a'}
+
     """
     result = {}
     for key, value in data.items():

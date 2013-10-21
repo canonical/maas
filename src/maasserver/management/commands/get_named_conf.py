@@ -45,7 +45,7 @@ class Command(BaseCommand):
             help="Specifies the configuration file location ("
                  "used in conjonction with --edit). Defaults to "
                  "/etc/bind/named.conf.local."),
-      )
+    )
     help = (
         "Return the named configuration snippet used to include "
         "MAAS' DNS configuration in an existing named "

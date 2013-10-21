@@ -260,7 +260,8 @@ class NodeGroup(TimestampedModel):
         task_kwargs = {
             name: Config.objects.get_config(name)
             for name in config_parameters
-                if Config.objects.get_config(name) is not None}
+            if Config.objects.get_config(name) is not None
+        }
         import_boot_images.apply_async(queue=self.uuid, kwargs=task_kwargs)
 
     def add_dhcp_host_maps(self, new_leases):

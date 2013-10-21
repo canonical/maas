@@ -13,8 +13,8 @@ str = None
 
 __metaclass__ = type
 __all__ = [
-        "field_type"
-    ]
+    "field_type",
+]
 
 from django import template
 

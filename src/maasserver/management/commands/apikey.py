@@ -34,15 +34,19 @@ from maasserver.utils.orm import get_one
 
 class Command(BaseCommand):
     option_list = BaseCommand.option_list + (
-        make_option('--username', dest='username', default=None,
+        make_option(
+            '--username', dest='username', default=None,
             help="Specifies the username for the admin."),
-        make_option('--generate', action="store_true", dest='generate',
+        make_option(
+            '--generate', action="store_true", dest='generate',
             default=False, help="Generate a new api key."),
-        make_option('--delete', dest='delete', default=None,
+        make_option(
+            '--delete', dest='delete', default=None,
             help="Delete the supplied api key."),
-      )
-    help = ("Used to manage a user's API keys. Shows existing keys unless "
-           "--generate or --delete is passed.")
+    )
+    help = (
+        "Used to manage a user's API keys. Shows existing keys unless "
+        "--generate or --delete is passed.")
 
     def _print_token(self, token):
         """Write `token` to stdout in the standard format."""

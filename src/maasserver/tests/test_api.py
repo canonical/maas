@@ -391,7 +391,7 @@ class MAASAPITest(APITestCase):
 
         self.assertEqual(httplib.BAD_REQUEST, response.status_code)
         self.assertEqual(
-           "Invalid name: Please enter a value", response.content)
+            "Invalid name: Please enter a value", response.content)
 
     def test_set_config_requires_value_param(self):
         self.become_admin()
@@ -465,7 +465,7 @@ def dict_subset(obj, fields):
     return {
         field: value for field, value in izip(fields, values)
         if value is not undefined
-     }
+    }
 
 
 class TestNodeGroupInterfacesAPI(APITestCase):

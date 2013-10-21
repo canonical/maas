@@ -189,8 +189,9 @@ class TestRenderPXEConfig(MAASTestCase):
 
     def test_render_with_extra_arguments_does_not_affect_output(self):
         # render_pxe_config() allows any keyword arguments as a safety valve.
-        options = {"kernel_params":
-                        make_kernel_parameters(purpose="install")}
+        options = {
+            "kernel_params": make_kernel_parameters(purpose="install"),
+        }
         # Capture the output before sprinking in some random options.
         output_before = render_pxe_config(**options)
         # Sprinkle some magic in.
@@ -215,9 +216,9 @@ class TestRenderPXEConfig(MAASTestCase):
         # Intel i386 is a special case and needs to use the chain.c32
         # loader as the LOCALBOOT PXE directive is unreliable.
         options = {
-            "kernel_params":
-                make_kernel_parameters(arch="i386", purpose="local"),
-            }
+            "kernel_params": make_kernel_parameters(
+                arch="i386", purpose="local"),
+        }
         output = render_pxe_config(**options)
         self.assertIn("chain.c32", output)
         self.assertNotIn("LOCALBOOT", output)
@@ -226,9 +227,9 @@ class TestRenderPXEConfig(MAASTestCase):
         # Intel amd64 is a special case and needs to use the chain.c32
         # loader as the LOCALBOOT PXE directive is unreliable.
         options = {
-            "kernel_params":
-                make_kernel_parameters(arch="amd64", purpose="local"),
-            }
+            "kernel_params": make_kernel_parameters(
+                arch="amd64", purpose="local"),
+        }
         output = render_pxe_config(**options)
         self.assertIn("chain.c32", output)
         self.assertNotIn("LOCALBOOT", output)
@@ -248,9 +249,8 @@ class TestRenderPXEConfigScenarios(MAASTestCase):
         get_ephemeral_name = self.patch(kernel_opts, "get_ephemeral_name")
         get_ephemeral_name.return_value = factory.make_name("ephemeral")
         options = {
-            "kernel_params":
-                make_kernel_parameters(purpose=self.purpose),
-            }
+            "kernel_params": make_kernel_parameters(purpose=self.purpose),
+        }
         output = render_pxe_config(**options)
         config = parse_pxe_config(output)
         # The default section is defined.

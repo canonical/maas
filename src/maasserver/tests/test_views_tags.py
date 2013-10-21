@@ -111,37 +111,45 @@ class TagViewsTest(LoggedInTestCase):
         page_size = 2
         self.patch(tags_views.TagView, 'paginate_by', page_size)
         tag = factory.make_tag()
-        nodes = [factory.make_node(created="2012-10-12 12:00:%02d" % i)
-            for i in range(page_size * 2 + 1)]
+        nodes = [
+            factory.make_node(created="2012-10-12 12:00:%02d" % i)
+            for i in range(page_size * 2 + 1)
+        ]
         for node in nodes:
             node.tags = [tag]
         # Order node links with newest first as the view is expected to
-        node_links = [reverse('node-view', args=[node.system_id])
-            for node in reversed(nodes)]
+        node_links = [
+            reverse('node-view', args=[node.system_id])
+            for node in reversed(nodes)
+        ]
         expr_node_links = XPath("//div[@id='nodes']/table//a/@href")
         expr_page_anchors = XPath("//div[@class='pagination']//a")
         # Fetch first page, should link newest two nodes and page 2
         response = self.client.get(reverse('tag-view', args=[tag.name]))
         page1 = fromstring(response.content)
         self.assertEqual(node_links[:page_size], expr_node_links(page1))
-        self.assertEqual([("next", "?page=2"), ("last", "?page=3")],
+        self.assertEqual(
+            [("next", "?page=2"), ("last", "?page=3")],
             [(a.text.lower(), a.get("href"))
-                for a in expr_page_anchors(page1)])
+             for a in expr_page_anchors(page1)])
         # Fetch second page, should link next nodes and adjacent pages
-        response = self.client.get(reverse('tag-view', args=[tag.name]),
-            {"page": 2})
+        response = self.client.get(
+            reverse('tag-view', args=[tag.name]), {"page": 2})
         page2 = fromstring(response.content)
-        self.assertEqual(node_links[page_size:page_size * 2],
+        self.assertEqual(
+            node_links[page_size:page_size * 2],
             expr_node_links(page2))
-        self.assertEqual([("first", "."), ("previous", "."),
-                ("next", "?page=3"), ("last", "?page=3")],
+        self.assertEqual(
+            [("first", "."), ("previous", "."),
+             ("next", "?page=3"), ("last", "?page=3")],
             [(a.text.lower(), a.get("href"))
-                for a in expr_page_anchors(page2)])
+             for a in expr_page_anchors(page2)])
         # Fetch third page, should link oldest node and node list page
-        response = self.client.get(reverse('tag-view', args=[tag.name]),
-            {"page": 3})
+        response = self.client.get(
+            reverse('tag-view', args=[tag.name]), {"page": 3})
         page3 = fromstring(response.content)
         self.assertEqual(node_links[page_size * 2:], expr_node_links(page3))
-        self.assertEqual([("first", "."), ("previous", "?page=2")],
+        self.assertEqual(
+            [("first", "."), ("previous", "?page=2")],
             [(a.text.lower(), a.get("href"))
-                for a in expr_page_anchors(page3)])
+             for a in expr_page_anchors(page3)])

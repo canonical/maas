@@ -71,7 +71,7 @@ def is_dns_in_use():
     """Is there at least one interface configured to manage DNS?"""
     interfaces_with_dns = (
         NodeGroupInterface.objects.filter(
-             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS))
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS))
     return interfaces_with_dns.exists()
 
 

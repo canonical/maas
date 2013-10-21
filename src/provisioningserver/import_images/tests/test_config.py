@@ -164,10 +164,10 @@ class TestMergeLegacyEphemeralsConfig(PservTestCase):
         self.assertTrue(changed)
         self.assertEqual(
             {
-            'architectures': arches,
-            'ephemeral': {
-                'images_directory': legacy_options['DATA_DIR'],
-                'releases': releases,
+                'architectures': arches,
+                'ephemeral': {
+                    'images_directory': legacy_options['DATA_DIR'],
+                    'releases': releases,
                 },
             },
             config['boot'])
@@ -201,7 +201,7 @@ class TestMergeLegacyEphemeralsConfig(PservTestCase):
 
     def test_converts_arch_from_legacy(self):
         legacy_arches = ["amd64/generic", "i386/generic", "armhf/highbank"]
-        legacy_options = { 'ARCHES': "'%s'"  % ' '.join(legacy_arches)}
+        legacy_options = {'ARCHES': "'%s'" % ' '.join(legacy_arches)}
         new_arches = ["amd64", "i386", "armhf"]
         make_legacy_config(self, legacy_options)
         config = {'boot': {'ephemeral': {}}}
@@ -210,8 +210,8 @@ class TestMergeLegacyEphemeralsConfig(PservTestCase):
         self.assertTrue(changed)
         self.assertEqual(
             {
-            'architectures': new_arches,
-            'ephemeral': {},
+                'architectures': new_arches,
+                'ephemeral': {},
             },
             config['boot'])
 

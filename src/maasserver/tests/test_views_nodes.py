@@ -133,8 +133,9 @@ class NodeViewsTest(LoggedInTestCase):
                 'sort': 'hostname',
                 'dir': 'asc'})
         node_links = [
-             reverse('node-view', args=[node.system_id])
-             for node in sorted_nodes]
+            reverse('node-view', args=[node.system_id])
+            for node in sorted_nodes
+        ]
         self.assertEqual(
             node_links,
             [link for link in get_content_links(response)
@@ -166,8 +167,9 @@ class NodeViewsTest(LoggedInTestCase):
                 'sort': 'status',
                 'dir': 'asc'})
         node_links = [
-             reverse('node-view', args=[node.system_id])
-             for node in sorted_nodes]
+            reverse('node-view', args=[node.system_id])
+            for node in sorted_nodes
+        ]
         self.assertEqual(
             node_links,
             [link for link in get_content_links(response)
@@ -197,10 +199,11 @@ class NodeViewsTest(LoggedInTestCase):
             nodes.append(node)
 
         params = {
-                'sort': 'hostname',
-                'dir': 'asc',
-                'page': '1',
-                'query': 'maas-tags=shiny'}
+            'sort': 'hostname',
+            'dir': 'asc',
+            'page': '1',
+            'query': 'maas-tags=shiny',
+        }
         response = self.client.get(reverse('node-list'), params)
         document = fromstring(response.content)
         header_links = document.xpath("//div[@id='nodes']/table//th/a/@href")
@@ -525,7 +528,7 @@ class NodeViewsTest(LoggedInTestCase):
             response.content,
             ContainsAll(
                 [reverse('mac-delete', args=[node.system_id, mac])
-                for mac in macs]))
+                 for mac in macs]))
 
     def test_edit_nodes_contains_link_to_add_a_macaddresses(self):
         node = factory.make_node(owner=self.logged_in_user)
@@ -724,11 +727,15 @@ class NodeViewsTest(LoggedInTestCase):
         # Set a very small page size to save creating lots of nodes
         page_size = 2
         self.patch(nodes_views.NodeListView, 'paginate_by', page_size)
-        nodes = [factory.make_node(created="2012-10-12 12:00:%02d" % i)
-            for i in range(page_size * 2 + 1)]
+        nodes = [
+            factory.make_node(created="2012-10-12 12:00:%02d" % i)
+            for i in range(page_size * 2 + 1)
+        ]
         # Order node links with newest first as the view is expected to
-        node_links = [reverse('node-view', args=[node.system_id])
-            for node in reversed(nodes)]
+        node_links = [
+            reverse('node-view', args=[node.system_id])
+            for node in reversed(nodes)
+        ]
         expr_node_links = XPath(
             "//div[@id='nodes']/form/table/tr/td[2]/a/@href")
         expr_page_anchors = XPath("//div[@class='pagination']//a")
@@ -736,26 +743,29 @@ class NodeViewsTest(LoggedInTestCase):
         response = self.client.get(reverse('node-list'))
         page1 = fromstring(response.content)
         self.assertEqual(node_links[:page_size], expr_node_links(page1))
-        self.assertEqual([("next", "?page=2"), ("last", "?page=3")],
+        self.assertEqual(
+            [("next", "?page=2"), ("last", "?page=3")],
             [(a.text.lower(), a.get("href"))
-                for a in expr_page_anchors(page1)])
+             for a in expr_page_anchors(page1)])
         # Fetch second page, should link next nodes and adjacent pages
         response = self.client.get(reverse('node-list'), {"page": 2})
         page2 = fromstring(response.content)
         self.assertEqual(
             node_links[page_size:page_size * 2],
             expr_node_links(page2))
-        self.assertEqual([("first", "."), ("previous", "."),
-                ("next", "?page=3"), ("last", "?page=3")],
+        self.assertEqual(
+            [("first", "."), ("previous", "."),
+             ("next", "?page=3"), ("last", "?page=3")],
             [(a.text.lower(), a.get("href"))
-                for a in expr_page_anchors(page2)])
+             for a in expr_page_anchors(page2)])
         # Fetch third page, should link oldest node and node list page
         response = self.client.get(reverse('node-list'), {"page": 3})
         page3 = fromstring(response.content)
         self.assertEqual(node_links[page_size * 2:], expr_node_links(page3))
-        self.assertEqual([("first", "."), ("previous", "?page=2")],
+        self.assertEqual(
+            [("first", "."), ("previous", "?page=2")],
             [(a.text.lower(), a.get("href"))
-                for a in expr_page_anchors(page3)])
+             for a in expr_page_anchors(page3)])
 
     def test_node_list_query_paginates(self):
         """Node list query subset is split across multiple pages with links"""
@@ -930,7 +940,7 @@ class MessageFromFormStatsTest(MAASServerTestCase):
                     "could not be performed on 1 node because that action",
                 )
             ),
-             (
+            (
                 (Delete, 2, 0, 0),
                 ('The action "%s" was successfully performed on 2 nodes'
                  % Delete.display_bulk,),
@@ -939,7 +949,7 @@ class MessageFromFormStatsTest(MAASServerTestCase):
                 (Delete, 1, 4, 2),
                 (
                     'The action "%s" was successfully performed on 1 node'
-                     % Delete.display_bulk,
+                    % Delete.display_bulk,
                     'It could not be performed on 4 nodes because their '
                     'state does not allow that action.',
                     "It could not be performed on 2 nodes because that "
@@ -1042,7 +1052,7 @@ class NodeDeleteMacTest(LoggedInTestCase):
         response = self.client.get(mac_delete_link)
         self.assertIn(
             'Are you sure you want to delete the MAC address "%s"' %
-                mac.mac_address,
+            mac.mac_address,
             response.content)
 
     def test_node_delete_mac_POST_deletes_mac(self):

@@ -63,8 +63,8 @@ class EnlistmentAPITest(APIv10TestMixin, MultipleUsersScenarios,
                 'op': 'new',
                 'hostname': 'diane',
                 'architecture': architecture,
-                'after_commissioning_action':
-                    NODE_AFTER_COMMISSIONING_ACTION.DEFAULT,
+                'after_commissioning_action': (
+                    NODE_AFTER_COMMISSIONING_ACTION.DEFAULT),
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
             })
 
@@ -84,8 +84,8 @@ class EnlistmentAPITest(APIv10TestMixin, MultipleUsersScenarios,
                 'op': 'new',
                 'hostname': hostname,
                 'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
-                'after_commissioning_action':
-                    NODE_AFTER_COMMISSIONING_ACTION.DEFAULT,
+                'after_commissioning_action': (
+                    NODE_AFTER_COMMISSIONING_ACTION.DEFAULT),
                 'mac_addresses': [factory.getRandomMACAddress()],
             })
         parsed_result = json.loads(response.content)
@@ -131,8 +131,8 @@ class EnlistmentAPITest(APIv10TestMixin, MultipleUsersScenarios,
                 'op': 'new',
                 'hostname': 'diane',
                 'architecture': architecture.split('/')[0],
-                'after_commissioning_action':
-                    NODE_AFTER_COMMISSIONING_ACTION.DEFAULT,
+                'after_commissioning_action': (
+                    NODE_AFTER_COMMISSIONING_ACTION.DEFAULT),
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
             })
 
@@ -154,8 +154,8 @@ class EnlistmentAPITest(APIv10TestMixin, MultipleUsersScenarios,
                 'hostname': 'diane',
                 'architecture': architecture.split('/')[0],
                 'subarchitecture': architecture.split('/')[1],
-                'after_commissioning_action':
-                    NODE_AFTER_COMMISSIONING_ACTION.DEFAULT,
+                'after_commissioning_action': (
+                    NODE_AFTER_COMMISSIONING_ACTION.DEFAULT),
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
             })
 
@@ -176,13 +176,14 @@ class EnlistmentAPITest(APIv10TestMixin, MultipleUsersScenarios,
                 'hostname': 'diane',
                 'architecture': architecture,
                 'subarchitecture': architecture.split('/')[1],
-                'after_commissioning_action':
-                    NODE_AFTER_COMMISSIONING_ACTION.DEFAULT,
+                'after_commissioning_action': (
+                    NODE_AFTER_COMMISSIONING_ACTION.DEFAULT),
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
             })
         self.assertEqual(httplib.BAD_REQUEST, response.status_code)
         self.assertIn('text/plain', response['Content-Type'])
-        self.assertEqual("Subarchitecture cannot be specified twice.",
+        self.assertEqual(
+            "Subarchitecture cannot be specified twice.",
             response.content)
 
     def test_POST_new_power_type_defaults_to_asking_config(self):
@@ -207,8 +208,8 @@ class EnlistmentAPITest(APIv10TestMixin, MultipleUsersScenarios,
                 'op': 'new',
                 'hostname': 'diane',
                 'architecture': architecture,
-                'after_commissioning_action':
-                    NODE_AFTER_COMMISSIONING_ACTION.DEFAULT,
+                'after_commissioning_action': (
+                    NODE_AFTER_COMMISSIONING_ACTION.DEFAULT),
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
             })
         diane = get_one(Node.objects.filter(hostname='diane'))
@@ -356,8 +357,8 @@ class NodeHostnameEnlistmentTest(APIv10TestMixin, MultipleUsersScenarios,
                 'op': 'new',
                 'hostname': hostname_with_domain,
                 'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
-                'after_commissioning_action':
-                    NODE_AFTER_COMMISSIONING_ACTION.DEFAULT,
+                'after_commissioning_action': (
+                    NODE_AFTER_COMMISSIONING_ACTION.DEFAULT),
                 'mac_addresses': [factory.getRandomMACAddress()],
             })
         self.assertEqual(httplib.OK, response.status_code, response.content)
@@ -379,8 +380,8 @@ class NodeHostnameEnlistmentTest(APIv10TestMixin, MultipleUsersScenarios,
                 'op': 'new',
                 'hostname': hostname_without_domain,
                 'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
-                'after_commissioning_action':
-                    NODE_AFTER_COMMISSIONING_ACTION.DEFAULT,
+                'after_commissioning_action': (
+                    NODE_AFTER_COMMISSIONING_ACTION.DEFAULT),
                 'mac_addresses': [factory.getRandomMACAddress()],
             })
         self.assertEqual(httplib.OK, response.status_code, response.content)
@@ -400,8 +401,8 @@ class NodeHostnameEnlistmentTest(APIv10TestMixin, MultipleUsersScenarios,
                 'op': 'new',
                 'hostname': factory.make_name('hostname'),
                 'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
-                'after_commissioning_action':
-                    NODE_AFTER_COMMISSIONING_ACTION.DEFAULT,
+                'after_commissioning_action': (
+                    NODE_AFTER_COMMISSIONING_ACTION.DEFAULT),
                 'mac_addresses': [factory.getRandomMACAddress()],
             },
             REMOTE_ADDR=origin_ip)
@@ -418,8 +419,8 @@ class NodeHostnameEnlistmentTest(APIv10TestMixin, MultipleUsersScenarios,
                 'op': 'new',
                 'hostname': factory.make_name('hostname'),
                 'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
-                'after_commissioning_action':
-                    NODE_AFTER_COMMISSIONING_ACTION.DEFAULT,
+                'after_commissioning_action': (
+                    NODE_AFTER_COMMISSIONING_ACTION.DEFAULT),
                 'mac_addresses': [factory.getRandomMACAddress()],
             },
             HTTP_HOST=unknown_host)
@@ -448,8 +449,8 @@ class NonAdminEnlistmentAPITest(APIv10TestMixin, MultipleUsersScenarios,
                 'op': 'new',
                 'hostname': factory.getRandomString(),
                 'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
-                'after_commissioning_action':
-                    NODE_AFTER_COMMISSIONING_ACTION.DEFAULT,
+                'after_commissioning_action': (
+                    NODE_AFTER_COMMISSIONING_ACTION.DEFAULT),
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff'],
             })
         self.assertEqual(httplib.OK, response.status_code)
@@ -480,8 +481,8 @@ class AnonymousEnlistmentAPITest(APIv10TestMixin, MAASServerTestCase):
                 'op': 'new',
                 'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
                 'hostname': factory.getRandomString(),
-                'after_commissioning_action':
-                    NODE_AFTER_COMMISSIONING_ACTION.DEFAULT,
+                'after_commissioning_action': (
+                    NODE_AFTER_COMMISSIONING_ACTION.DEFAULT),
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
             })
         parsed_result = json.loads(response.content)
@@ -562,8 +563,8 @@ class SimpleUserLoggedInEnlistmentAPITest(APIv10TestMixin, LoggedInTestCase):
                 'op': 'new',
                 'hostname': factory.getRandomString(),
                 'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
-                'after_commissioning_action':
-                    NODE_AFTER_COMMISSIONING_ACTION.DEFAULT,
+                'after_commissioning_action': (
+                    NODE_AFTER_COMMISSIONING_ACTION.DEFAULT),
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
             })
         parsed_result = json.loads(response.content)
@@ -691,8 +692,8 @@ class AdminLoggedInEnlistmentAPITest(APIv10TestMixin, AdminLoggedInTestCase):
                 'op': 'new',
                 'hostname': factory.getRandomString(),
                 'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
-                'after_commissioning_action':
-                    NODE_AFTER_COMMISSIONING_ACTION.DEFAULT,
+                'after_commissioning_action': (
+                    NODE_AFTER_COMMISSIONING_ACTION.DEFAULT),
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff'],
             })
         self.assertEqual(httplib.OK, response.status_code)
@@ -708,8 +709,8 @@ class AdminLoggedInEnlistmentAPITest(APIv10TestMixin, AdminLoggedInTestCase):
                 'op': 'new',
                 'hostname': factory.getRandomString(),
                 'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
-                'after_commissioning_action':
-                    NODE_AFTER_COMMISSIONING_ACTION.DEFAULT,
+                'after_commissioning_action': (
+                    NODE_AFTER_COMMISSIONING_ACTION.DEFAULT),
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
             })
         parsed_result = json.loads(response.content)

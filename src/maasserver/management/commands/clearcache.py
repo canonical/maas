@@ -24,9 +24,10 @@ from django.core.management.base import BaseCommand
 
 class Command(BaseCommand):
     option_list = BaseCommand.option_list + (
-        make_option('--key', dest='username', default=None,
+        make_option(
+            '--key', dest='username', default=None,
             help="Specify a specific key to delete."),
-      )
+    )
     help = "Clear the cache (the entire cache or only a specific key)."
 
     def handle(self, *args, **options):

@@ -184,7 +184,7 @@ class TestStripDomain(MAASTestCase):
 
     def test_strip_domain(self):
         input_and_results = [
-            ('name.domain',  'name'),
+            ('name.domain', 'name'),
             ('name', 'name'),
             ('name.domain.what', 'name'),
             ('name..domain', 'name'),

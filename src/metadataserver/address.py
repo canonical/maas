@@ -43,7 +43,8 @@ def get_command_output(*command_line):
     env = {
         variable: value
         for variable, value in environ.items()
-            if not variable.startswith('LC_')}
+        if not variable.startswith('LC_')
+    }
     env.update({
         'LC_ALL': 'C',
         'LANG': 'en_US.UTF-8',

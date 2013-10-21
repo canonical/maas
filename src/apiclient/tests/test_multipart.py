@@ -46,13 +46,13 @@ class TestMultiPart(MAASTestCase):
 
     def test_encode_multipart_data_produces_bytes(self):
         data = {
-            factory.getRandomString():
-                factory.getRandomString().encode('ascii'),
+            factory.getRandomString(): (
+                factory.getRandomString().encode('ascii')),
         }
         files = {
-            factory.getRandomString():
-                BytesIO(factory.getRandomString().encode('ascii')),
-            }
+            factory.getRandomString(): (
+                BytesIO(factory.getRandomString().encode('ascii'))),
+        }
         body, headers = encode_multipart_data(data, files)
         self.assertIsInstance(body, bytes)
 

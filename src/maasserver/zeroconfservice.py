@@ -45,8 +45,8 @@ class ZeroconfService:
         """Publish the service through Avahi."""
         bus = dbus.SystemBus()
         server = dbus.Interface(
-             bus.get_object(avahi.DBUS_NAME, avahi.DBUS_PATH_SERVER),
-             avahi.DBUS_INTERFACE_SERVER)
+            bus.get_object(avahi.DBUS_NAME, avahi.DBUS_PATH_SERVER),
+            avahi.DBUS_INTERFACE_SERVER)
         group = dbus.Interface(
             bus.get_object(avahi.DBUS_NAME, server.EntryGroupNew()),
             avahi.DBUS_INTERFACE_ENTRY_GROUP)

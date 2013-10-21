@@ -107,8 +107,8 @@ class TestNodeGroupInterface(MAASServerTestCase):
             ValidationError, factory.make_node_group, network=big_network)
         message = (
             "Cannot create an address space bigger than a /%d network.  "
-            "This network is a /%d network." %
-                (MINIMUM_NETMASK_BITS, MINIMUM_NETMASK_BITS - 1))
+            "This network is a /%d network." % (
+                MINIMUM_NETMASK_BITS, MINIMUM_NETMASK_BITS - 1))
         self.assertEqual(
             {
                 'subnet_mask': [message],

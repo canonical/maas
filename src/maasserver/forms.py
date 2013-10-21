@@ -747,7 +747,7 @@ class NodeGroupWithInterfacesForm(ModelForm):
                             interface, form._errors))
                 management = interface.get('management', None)
                 if management not in (
-                    None, NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED):
+                        None, NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED):
                     managed.append(management)
             # XXX: rvb 2012-09-18 bug=1052339: Only one "managed" interface
             # is supported per NodeGroup.

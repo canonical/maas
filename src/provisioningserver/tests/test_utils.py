@@ -1,4 +1,4 @@
-# -*- coding: UTF-8 -*-
+# -*- coding: utf-8 -*-
 # Copyright 2012-2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
@@ -1192,7 +1192,8 @@ class TestSubprocessWrappers(MAASTestCase):
     def test_call_and_check_raises_ExternalProcessError_on_failure(self):
         self.patch(subprocess, 'check_call').side_effect = (
             CalledProcessError('-1', 'some_command'))
-        error = self.assertRaises(ExternalProcessError, call_and_check, "some command")
+        error = self.assertRaises(
+            ExternalProcessError, call_and_check, "some command")
         self.assertEqual('-1', error.returncode)
         self.assertEqual('some_command', error.cmd)
 
@@ -1200,10 +1201,11 @@ class TestSubprocessWrappers(MAASTestCase):
         self.patch(subprocess, 'check_output', FakeMethod("Some output"))
         self.assertEqual("Some output", call_capture_and_check('some_command'))
 
-    def test_call_capture_and_check_raises_ExternalProcessError_on_failure(self):
+    def test_call_capture_and_check_raises_ExternalProcessError_on_fail(self):
         self.patch(subprocess, 'check_output').side_effect = (
             CalledProcessError('-1', 'some_command', "Some output"))
-        error = self.assertRaises(ExternalProcessError, call_capture_and_check, "some command")
+        error = self.assertRaises(
+            ExternalProcessError, call_capture_and_check, "some command")
         self.assertEqual('-1', error.returncode)
         self.assertEqual('some_command', error.cmd)
         self.assertEqual("Some output", error.output)
@@ -1216,7 +1218,8 @@ class TestExternalProcessError(MAASTestCase):
         byte_string = b"This string will be converted. \xe5\xb2\x81\xe5."
         converted_string = ExternalProcessError._to_unicode(byte_string)
         self.assertIsInstance(converted_string, unicode)
-        self.assertEqual(byte_string.decode('ascii', 'replace'), converted_string)
+        self.assertEqual(
+            byte_string.decode('ascii', 'replace'), converted_string)
 
     def test_to_ascii_converts_to_bytes(self):
         unicode_string = u"Thîs nøn-åßçií s†ring will be cönvërted"

@@ -58,8 +58,10 @@ class Test404500(LoggedInTestCase):
 
     def test_500(self):
         from maasserver.urls import urlpatterns
-        urlpatterns += patterns('',
-            (r'^500/$', 'django.views.defaults.server_error'),)
+        urlpatterns += patterns(
+            '',
+            (r'^500/$', 'django.views.defaults.server_error'),
+        )
         response = self.client.get('/500/')
         doc = fromstring(response.content)
         self.assertIn(

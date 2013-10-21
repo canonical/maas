@@ -128,10 +128,9 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
                 if network.prefixlen < MINIMUM_NETMASK_BITS:
                     message = (
                         "Cannot create an address space bigger than "
-                        "a /%d network.  This network is a /%d network." %
-                            (MINIMUM_NETMASK_BITS, network.prefixlen))
-                    raise ValidationError(
-                    {
+                        "a /%d network.  This network is a /%d network." % (
+                            MINIMUM_NETMASK_BITS, network.prefixlen))
+                    raise ValidationError({
                         'broadcast_ip': [message],
                         'subnet_mask': [message],
                     })

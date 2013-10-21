@@ -29,22 +29,25 @@ class CeleryFixture(Fixture):
 
     This fixture can be used directly::
 
-    >>> class CeleryTest1(TestCase):
-    >>>
-    >>>     def setUp(self):
-    >>>         super(CeleryTest1, self).setUp()
-    >>>         self.useFixture(CeleryFixture())
+      >>> from unittest import TestCase
+
+      >>> class CeleryTest1(TestCase):
+      ...
+      ...     def setUp(self):
+      ...         super(CeleryTest1, self).setUp()
+      ...         self.useFixture(CeleryFixture())
 
     It can also be converted into a FixtureResource::
 
-    >>> from testresources import FixtureResource
-    >>>
-    >>> class CeleryTest2(TestCase):
-    >>>
-    >>>     resources = (
-    >>>         ("celery", FixtureResource(CeleryFixture())),
-    >>>         )
-    >>>
+      >>> from testresources import FixtureResource
+
+      >>> class CeleryTest2(TestCase):
+      ...
+      ...     resources = (
+      ...         ("celery", FixtureResource(CeleryFixture())),
+      ...         )
+      ...
+
     """
 
     def setUp(self):

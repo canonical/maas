@@ -181,7 +181,7 @@ class TestProvisioningServiceMaker(MAASTestCase):
         self.assertThat(services, AllMatch(expected_service))
         # Only the interface used for each service differs.
         self.assertEqual(
-            [service.kwargs for service in services],
+            [svc.kwargs for svc in services],
             [{"interface": interface} for interface in interfaces])
 
 

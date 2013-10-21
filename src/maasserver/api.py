@@ -554,9 +554,9 @@ class AnonNodesHandler(AnonymousOperationsHandler):
         :rtype: unicode
         """
         mac_address = get_mandatory_param(request.GET, 'mac_address')
-        return MACAddress.objects.filter(
-            mac_address=mac_address).exclude(
-                node__status=NODE_STATUS.RETIRED).exists()
+        mac_addresses = MACAddress.objects.filter(mac_address=mac_address)
+        mac_addresses = mac_addresses.exclude(node__status=NODE_STATUS.RETIRED)
+        return mac_addresses.exists()
 
     @operation(idempotent=False)
     def accept(self, request):
@@ -1053,8 +1053,8 @@ class FileHandler(OperationsHandler):
 
         The 'content' of the file is base64-encoded."""
         try:
-            stored_file = get_object_or_404(FileStorage,
-                filename=filename, owner=request.user)
+            stored_file = get_object_or_404(
+                FileStorage, filename=filename, owner=request.user)
         except Http404:
             # In order to fix bug 1123986 we need to distinguish between
             # a 404 returned when the file is not present and a 404 returned
@@ -1071,8 +1071,8 @@ class FileHandler(OperationsHandler):
     @operation(idempotent=False)
     def delete(self, request, filename):
         """Delete a FileStorage object."""
-        stored_file = get_object_or_404(FileStorage,
-            filename=filename, owner=request.user)
+        stored_file = get_object_or_404(
+            FileStorage, filename=filename, owner=request.user)
         stored_file.delete()
         return rc.DELETED
 
@@ -1777,8 +1777,8 @@ class TagHandler(OperationsHandler):
         :param definition: An XPATH query that will be evaluated against the
             hardware_details stored for all nodes (output of `lshw -xml`).
         """
-        tag = Tag.objects.get_tag_or_404(name=name, user=request.user,
-            to_edit=True)
+        tag = Tag.objects.get_tag_or_404(
+            name=name, user=request.user, to_edit=True)
         model_dict = model_to_dict(tag)
         data = get_overrided_query_dict(model_dict, request.data)
         form = TagForm(data, instance=tag)
@@ -2234,8 +2234,9 @@ class BootImagesHandler(OperationsHandler):
         nodegroup_ids_with_images = BootImage.objects.values_list(
             "nodegroup_id", flat=True)
         nodegroups_missing_images = NodeGroup.objects.exclude(
-            id__in=nodegroup_ids_with_images).filter(
-                status=NODEGROUP_STATUS.ACCEPTED)
+            id__in=nodegroup_ids_with_images)
+        nodegroups_missing_images = nodegroups_missing_images.filter(
+            status=NODEGROUP_STATUS.ACCEPTED)
         if nodegroups_missing_images.exists():
             accepted_clusters_url = (
                 "%s#accepted-clusters" % absolute_reverse("settings"))

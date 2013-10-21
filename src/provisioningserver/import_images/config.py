@@ -74,7 +74,7 @@ def parse_legacy_config(options):
     variables = dict(
         setting.split('=', 1)
         for setting in output.split('\0')
-            if len(setting) > 0)
+        if len(setting) > 0)
 
     return filter_dict(variables, options)
 
@@ -90,7 +90,8 @@ def merge_legacy_ephemerals_config(config):
     if len(legacy_config) == 0:
         return False
 
-    arches = ' '.join([f.split("/")[0] for f in legacy_config.get('ARCHES', '').split()])
+    arches = legacy_config.get('ARCHES', '')
+    arches = ' '.join(arch.split("/")[0] for arch in arches.split())
     data_dir = legacy_config.get('DATA_DIR')
     releases = legacy_config.get('RELEASES')
     if arches is not None:

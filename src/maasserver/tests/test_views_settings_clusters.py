@@ -87,12 +87,14 @@ class ClusterEditTest(AdminLoggedInTestCase):
         links = get_content_links(
             self.client.get(reverse('cluster-edit', args=[nodegroup.uuid])))
         interface_edit_links = [
-            reverse('cluster-interface-edit',
-            args=[nodegroup.uuid, interface.interface])
+            reverse(
+                'cluster-interface-edit',
+                args=[nodegroup.uuid, interface.interface])
             for interface in interfaces]
         interface_delete_links = [
-            reverse('cluster-interface-delete',
-            args=[nodegroup.uuid, interface.interface])
+            reverse(
+                'cluster-interface-delete',
+                args=[nodegroup.uuid, interface.interface])
             for interface in interfaces]
         self.assertThat(
             links,
@@ -141,7 +143,7 @@ class ClusterInterfaceDeleteTest(AdminLoggedInTestCase):
         nodegroup = factory.make_node_group(
             management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
         interface = factory.make_node_group_interface(
-                nodegroup=nodegroup, interface="eth0:0")
+            nodegroup=nodegroup, interface="eth0:0")
         delete_link = reverse(
             'cluster-interface-delete',
             args=[nodegroup.uuid, interface.interface])
@@ -173,7 +175,7 @@ class ClusterInterfaceEditTest(AdminLoggedInTestCase):
         nodegroup = factory.make_node_group(
             management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
         interface = factory.make_node_group_interface(
-                nodegroup=nodegroup, interface="eth0:0")
+            nodegroup=nodegroup, interface="eth0:0")
         edit_link = reverse(
             'cluster-interface-edit',
             args=[nodegroup.uuid, interface.interface])

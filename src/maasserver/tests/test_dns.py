@@ -311,8 +311,8 @@ class TestDNSConfigModifications(MAASServerTestCase):
         network = IPNetwork('192.168.7.1/24')
         ip = factory.getRandomIPInNetwork(network)
         nodegroup = factory.make_node_group(
-                network=network, status=NODEGROUP_STATUS.ACCEPTED,
-                management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
+            network=network, status=NODEGROUP_STATUS.ACCEPTED,
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
         self.assertDNSMatches(generated_hostname(ip), nodegroup.name, ip)
 
     def test_edit_nodegroupinterface_updates_DNS_zone(self):
@@ -320,8 +320,8 @@ class TestDNSConfigModifications(MAASServerTestCase):
         old_network = IPNetwork('192.168.7.1/24')
         old_ip = factory.getRandomIPInNetwork(old_network)
         nodegroup = factory.make_node_group(
-                network=old_network, status=NODEGROUP_STATUS.ACCEPTED,
-                management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
+            network=old_network, status=NODEGROUP_STATUS.ACCEPTED,
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
         interface = nodegroup.get_managed_interface()
         # Edit nodegroup's network information to '192.168.44.1/24'
         interface.ip = '192.168.44.7'
@@ -343,8 +343,8 @@ class TestDNSConfigModifications(MAASServerTestCase):
         network = IPNetwork('192.168.7.1/24')
         ip = factory.getRandomIPInNetwork(network)
         nodegroup = factory.make_node_group(
-                network=network, status=NODEGROUP_STATUS.ACCEPTED,
-                management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
+            network=network, status=NODEGROUP_STATUS.ACCEPTED,
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
         interface = nodegroup.get_managed_interface()
         interface.management = NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED
         interface.save()

@@ -140,9 +140,11 @@ class BinaryField(Field):
             if callable(self.default):
                 return self.default()
             return self.default
-        if (not self.empty_strings_allowed or (self.null and
-                   not connection.features.interprets_empty_strings_as_nulls)):
+        if not self.empty_strings_allowed:
             return None
+        if self.null:
+            if not connection.features.interprets_empty_strings_as_nulls:
+                return None
         return b""
 
     def get_default(self):

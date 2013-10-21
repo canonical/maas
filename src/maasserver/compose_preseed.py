@@ -32,9 +32,9 @@ def compose_cloud_init_preseed(token, base_url=''):
         })
 
     local_config_yaml = yaml.safe_dump({
-           "manage_etc_hosts": "localhost",
-           "apt_preserve_sources_list": True,
-        })
+        "manage_etc_hosts": "localhost",
+        "apt_preserve_sources_list": True,
+    })
     # this is debconf escaping
     local_config = local_config_yaml.replace("\\", "\\\\").replace("\n", "\\n")
 

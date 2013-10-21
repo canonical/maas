@@ -258,7 +258,7 @@ class TestDHCPTasks(PservTestCase):
         # It should construct Popen with the right parameters.
         mocked_popen.assert_any_call(
             ["sudo", "-n", "maas-provision", "atomic-write", "--filename",
-            celery_config.DHCP_CONFIG_FILE, "--mode", "0644"], stdin=PIPE)
+             celery_config.DHCP_CONFIG_FILE, "--mode", "0644"], stdin=PIPE)
 
         # It should then pass the content to communicate().
         content = config.get_config(**config_params).encode("ascii")
@@ -268,7 +268,7 @@ class TestDHCPTasks(PservTestCase):
         # /var/lib/maas/dhcpd-interfaces.
         mocked_popen.assert_any_call(
             ["sudo", "-n", "maas-provision", "atomic-write", "--filename",
-            celery_config.DHCP_INTERFACES_FILE, "--mode", "0644"], stdin=PIPE)
+             celery_config.DHCP_INTERFACES_FILE, "--mode", "0644"], stdin=PIPE)
 
     def test_restart_dhcp_server_sends_command(self):
         recorder = FakeMethod()
@@ -425,7 +425,8 @@ class TestDNSTasks(PservTestCase):
         self.patch(tasks, 'execute_rndc_command', simulate_failures)
         command = factory.getRandomString()
         self.assertRaises(
-            utils.ExternalProcessError, rndc_command.delay, command, retry=True)
+            utils.ExternalProcessError, rndc_command.delay,
+            command, retry=True)
 
     def test_rndc_command_attached_to_dns_worker_queue(self):
         self.assertEqual(rndc_command.queue, celery_config.WORKER_QUEUE_DNS)
@@ -579,5 +580,6 @@ class TestImportPxeFiles(PservTestCase):
         archive_settings = {
             variable: value
             for variable, value in env.iteritems()
-                if variable.endswith('_ARCHIVE')}
+            if variable.endswith('_ARCHIVE')
+        }
         self.assertEqual(expected_settings, archive_settings)

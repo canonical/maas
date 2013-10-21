@@ -72,7 +72,7 @@ class NodeHostnameTest(APIv10TestMixin, MultipleUsersScenarios,
             status=NODEGROUP_STATUS.ACCEPTED,
             name=domain,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
-        node = factory.make_node(
+        factory.make_node(
             hostname=hostname_with_domain, nodegroup=nodegroup)
         expected_hostname = '%s.%s' % (hostname_without_domain, domain)
         response = self.client.get(self.get_uri('nodes/'), {'op': 'list'})
@@ -149,8 +149,8 @@ class TestNodesAPI(APITestCase):
                 'op': 'new',
                 'hostname': factory.getRandomString(),
                 'architecture': architecture,
-                'after_commissioning_action':
-                    NODE_AFTER_COMMISSIONING_ACTION.DEFAULT,
+                'after_commissioning_action': (
+                    NODE_AFTER_COMMISSIONING_ACTION.DEFAULT),
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
             })
 
@@ -165,8 +165,8 @@ class TestNodesAPI(APITestCase):
                 'op': 'new',
                 'hostname': factory.getRandomString(),
                 'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
-                'after_commissioning_action':
-                    NODE_AFTER_COMMISSIONING_ACTION.DEFAULT,
+                'after_commissioning_action': (
+                    NODE_AFTER_COMMISSIONING_ACTION.DEFAULT),
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff'],
             })
         self.assertEqual(httplib.OK, response.status_code)

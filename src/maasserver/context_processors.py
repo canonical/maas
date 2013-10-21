@@ -74,10 +74,11 @@ def global_options(context):
     return {
         'persistent_errors': get_persistent_errors(),
         'node_form': get_node_edit_form(context.user)(),
-        'POWER_TYPE_PARAMETERS_FIELDS':
-            [(power_type, field.widget.render('power_parameters', []))
-                for power_type, field in POWER_TYPE_PARAMETERS.items()
-                if power_type is not POWER_TYPE.DEFAULT],
+        'POWER_TYPE_PARAMETERS_FIELDS': [
+            (power_type, field.widget.render('power_parameters', []))
+            for power_type, field in POWER_TYPE_PARAMETERS.items()
+            if power_type is not POWER_TYPE.DEFAULT
+        ],
         'global_options': {
             'site_name': Config.objects.get_config('maas_name'),
         }

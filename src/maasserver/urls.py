@@ -70,12 +70,14 @@ def adminurl(regexp, view, *args, **kwargs):
 
 ## URLs accessible to anonymous users.
 # Combo URLs.
-urlpatterns = patterns('',
+urlpatterns = patterns(
+    '',
     (r'combo/', include('maasserver.urls_combo'))
 )
 
 # Anonymous views.
-urlpatterns += patterns('maasserver.views',
+urlpatterns += patterns(
+    'maasserver.views',
     url(r'^accounts/login/$', login, name='login'),
     url(
         r'^robots\.txt$', TextTemplateView.as_view(
@@ -85,7 +87,8 @@ urlpatterns += patterns('maasserver.views',
 
 ## URLs for logged-in users.
 # Preferences views.
-urlpatterns += patterns('maasserver.views',
+urlpatterns += patterns(
+    'maasserver.views',
     url(r'^account/prefs/$', userprefsview, name='prefs'),
     url(
         r'^account/prefs/sshkey/add/$', SSHKeyCreateView.as_view(),
@@ -96,12 +99,14 @@ urlpatterns += patterns('maasserver.views',
     )
 
 # Logout view.
-urlpatterns += patterns('maasserver.views',
+urlpatterns += patterns(
+    'maasserver.views',
     url(r'^accounts/logout/$', logout, name='logout'),
 )
 
 # Nodes views.
-urlpatterns += patterns('maasserver.views',
+urlpatterns += patterns(
+    'maasserver.views',
     url(
         r'^$',
         NodeListView.as_view(template_name="maasserver/index.html"),
@@ -115,7 +120,7 @@ urlpatterns += patterns('maasserver.views',
     url(
         r'^nodes/(?P<system_id>[\w\-]+)/preseedview/$',
         NodePreseedView.as_view(), name='node-preseed-view'),
-     url(
+    url(
         r'^nodes/(?P<system_id>[\w\-]+)/edit/$', NodeEdit.as_view(),
         name='node-edit'),
     url(
@@ -132,7 +137,8 @@ urlpatterns += patterns('maasserver.views',
 
 ## URLs for admin users.
 # Settings views.
-urlpatterns += patterns('maasserver.views',
+urlpatterns += patterns(
+    'maasserver.views',
     adminurl(
         r'^clusters/(?P<uuid>[\w\-]+)/edit/$', ClusterEdit.as_view(),
         name='cluster-edit'),
@@ -183,11 +189,13 @@ urlpatterns += patterns('maasserver.views',
 )
 
 # Tag views.
-urlpatterns += patterns('maasserver.views',
+urlpatterns += patterns(
+    'maasserver.views',
     url(r'^tags/(?P<name>[\w\-]+)/view/$', TagView.as_view(), name='tag-view'),
 )
 
 # API URLs.
-urlpatterns += patterns('',
+urlpatterns += patterns(
+    '',
     (r'^api/1\.0/', include('maasserver.urls_api'))
     )

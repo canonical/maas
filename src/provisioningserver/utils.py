@@ -186,7 +186,7 @@ def filter_dict(dictionary, desired_keys):
     return {
         key: value
         for key, value in dictionary.iteritems()
-            if key in desired_keys
+        if key in desired_keys
     }
 
 
@@ -570,11 +570,11 @@ class AtomicWriteScript:
             default=False, help="Don't overwrite file if it exists")
         parser.add_argument(
             "--filename", action="store", required=True, help=(
-            "The name of the file in which to store contents of stdin"))
+                "The name of the file in which to store contents of stdin"))
         parser.add_argument(
             "--mode", action="store", required=False, default=None, help=(
-            "The permissions to set on the file. If not set will be r/w only "
-            "to owner"))
+                "They permissions to set on the file. If not set "
+                "will be r/w only to owner"))
 
     @staticmethod
     def run(args):

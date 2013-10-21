@@ -29,7 +29,7 @@ class Command(BaseCommand):
         make_option(
             '--option', dest='option', default=None,
             help="Describe option."),
-      )
+    )
     # TODO: Describe the command.
     help = "Purpose of this command."
 

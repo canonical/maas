@@ -27,13 +27,16 @@ from django.db import DEFAULT_DB_ALIAS
 
 class Command(BaseCommand):
     option_list = BaseCommand.option_list + (
-        make_option('--username', dest='username', default=None,
+        make_option(
+            '--username', dest='username', default=None,
             help="Specifies the username for the admin."),
-        make_option('--password', dest='password', default=None,
+        make_option(
+            '--password', dest='password', default=None,
             help="Specifies the password for the admin."),
-        make_option('--email', dest='email', default=None,
+        make_option(
+            '--email', dest='email', default=None,
             help="Specifies the email for the admin."),
-      )
+    )
     help = "Used to create an admin."
 
     def handle(self, *args, **options):

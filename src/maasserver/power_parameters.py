@@ -43,94 +43,68 @@ from provisioningserver.enum import (
 
 
 POWER_TYPE_PARAMETERS = {
-    POWER_TYPE.DEFAULT:
-        DictCharField([], required=False, skip_check=True),
-    POWER_TYPE.WAKE_ON_LAN:
-        DictCharField(
-            [
-                (
-                    'mac_address',
-                    MACAddressFormField(label="MAC Address", required=False)),
-            ],
-            required=False,
-            skip_check=True),
-    POWER_TYPE.VIRSH:
-        DictCharField(
-            [
-                ('driver', forms.CharField(label="Driver", required=False)),
-                (
-                    'username',
-                    forms.CharField(label="Username", required=False)),
-                (
-                    'power_address',
-                    forms.CharField(label="Address", required=False)),
-                (
-                    'power_id',
-                    forms.CharField(label="Power ID", required=False)),
-            ],
-            required=False,
-            skip_check=True),
-    POWER_TYPE.CDU:
-        DictCharField(
-            [
-                (
-                    'power_id',
-                    forms.CharField(label="Power ID",
-                        required=False)),
-                (
-                    'power_address',
-                    forms.CharField(label="IP Address or Hostname",
-                        required=False)),
-                (
-                    'power_user',
-                    forms.CharField(label="Username", required=False)),
-                (
-                    'power_pass',
-                    forms.CharField(label="Password", required=False)),
-            ],
-            required=False,
-            skip_check=True),
-    POWER_TYPE.IPMI:
-        DictCharField(
-            [
-                (
-                    'power_driver',
-                    forms.ChoiceField(
-                        label="Driver", required=False,
-                        choices=IPMI_DRIVER_CHOICES,
-                        initial=IPMI_DRIVER.DEFAULT)
-                ),
-                (
-                    'power_address',
-                    forms.CharField(label="IP Address or Hostname",
-                        required=False)),
-                (
-                    'power_user',
-                    forms.CharField(label="Username", required=False)),
-                (
-                    'power_pass',
-                    forms.CharField(label="Password", required=False)),
-            ],
-            required=False,
-            skip_check=True),
-    POWER_TYPE.MOONSHOT:
-        DictCharField(
-            [
-                (
-                    'power_address',
-                    forms.CharField(label="IP Address or Hostname",
-                        required=False)),
-                (
-                    'power_user',
-                    forms.CharField(label="Username", required=False)),
-                (
-                    'power_pass',
-                    forms.CharField(label="Password", required=False)),
-                (
-                    'power_hwaddress',
-                    forms.CharField(label="Hardware Address",
-                        required=False)),
-            ],
-            required=False,
-            skip_check=True),
-    }
+    POWER_TYPE.DEFAULT: DictCharField(
+        [], required=False, skip_check=True),
+    POWER_TYPE.WAKE_ON_LAN: DictCharField(
+        [
+            ('mac_address',
+             MACAddressFormField(label="MAC Address", required=False)),
+        ],
+        required=False,
+        skip_check=True),
+    POWER_TYPE.VIRSH: DictCharField(
+        [
+            ('driver', forms.CharField(label="Driver", required=False)),
+            ('username',
+             forms.CharField(label="Username", required=False)),
+            ('power_address',
+             forms.CharField(label="Address", required=False)),
+            ('power_id',
+             forms.CharField(label="Power ID", required=False)),
+        ],
+        required=False,
+        skip_check=True),
+    POWER_TYPE.CDU: DictCharField(
+        [
+            ('power_id',
+             forms.CharField(label="Power ID", required=False)),
+            ('power_address',
+             forms.CharField(label="IP Address or Hostname", required=False)),
+            ('power_user',
+             forms.CharField(label="Username", required=False)),
+            ('power_pass',
+             forms.CharField(label="Password", required=False)),
+        ],
+        required=False,
+        skip_check=True),
+    POWER_TYPE.IPMI: DictCharField(
+        [
+            ('power_driver',
+             forms.ChoiceField(
+                 label="Driver", required=False,
+                 choices=IPMI_DRIVER_CHOICES,
+                 initial=IPMI_DRIVER.DEFAULT)),
+            ('power_address',
+             forms.CharField(label="IP Address or Hostname", required=False)),
+            ('power_user',
+             forms.CharField(label="Username", required=False)),
+            ('power_pass',
+             forms.CharField(label="Password", required=False)),
+        ],
+        required=False,
+        skip_check=True),
+    POWER_TYPE.MOONSHOT: DictCharField(
+        [
+            ('power_address',
+             forms.CharField(
+                 label="IP Address or Hostname", required=False)),
+            ('power_user',
+             forms.CharField(label="Username", required=False)),
+            ('power_pass',
+             forms.CharField(label="Password", required=False)),
+            ('power_hwaddress',
+             forms.CharField(label="Hardware Address", required=False)),
+        ],
+        required=False,
+        skip_check=True),
+}

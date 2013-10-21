@@ -230,8 +230,7 @@ class BINDServerRunner(fixtures.Fixture):
         if isinstance(command, unicode):
             command = (command,)
         ctl = subprocess.Popen(
-            (self.RNDC_PATH, "-c", self.config.rndcconf_file) +
-                command,
+            (self.RNDC_PATH, "-c", self.config.rndcconf_file) + command,
             stdout=subprocess.PIPE, stderr=subprocess.PIPE,
             preexec_fn=preexec_fn)
         outstr, errstr = ctl.communicate()
@@ -298,7 +297,7 @@ if __name__ == "__main__":
         help=(
             "A directory where to put all the files the BIND"
             "server needs (configuration files and executable)"
-           ))
+        ))
     parser.add_argument(
         '--log-file',
         help="The log file allocated for the server")

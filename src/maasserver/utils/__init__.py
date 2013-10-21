@@ -69,7 +69,7 @@ def map_enum(enum_class):
     return {
         key: value
         for key, value in vars(enum_class).items()
-            if not key.startswith('_')
+        if not key.startswith('_')
     }
 
 

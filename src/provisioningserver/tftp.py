@@ -90,8 +90,7 @@ class TFTPBackend(FilesystemSynchronousBackend):
 
     # We assume that the ARP HTYPE (hardware type) that PXELINUX sends is
     # always Ethernet.
-    re_config_file = re.compile(
-        r'''
+    re_config_file = r'''
         # Optional leading slash(es).
         ^/*
         pxelinux[.]cfg    # PXELINUX expects this.
@@ -109,10 +108,10 @@ class TFTPBackend(FilesystemSynchronousBackend):
               )?
         )
         $
-        '''.format(
-            htype=ARP_HTYPE.ETHERNET,
-            re_mac_address=re_mac_address),
-        re.VERBOSE)
+    '''
+    re_config_file = re_config_file.format(
+        htype=ARP_HTYPE.ETHERNET, re_mac_address=re_mac_address)
+    re_config_file = re.compile(re_config_file, re.VERBOSE)
 
     def __init__(self, base_path, generator_url):
         """

@@ -74,11 +74,14 @@ def macs_contain(key, macs):
 
     This method returns a tuple of the where clause (as a string) and the
     parameters (as a list of strings) used to format the where clause.
-    This is typically used with Django's QuerySet's where() method:
+    This is typically used with Django's QuerySet's where() method::
 
-    >>> where, params = get_contains_macs_clause('routers', macs)
-    >>> all_nodes = Node.objects.all()
-    >>> filtered_nodes = all_nodes.extra(where=[where], params=params)
+      >>> from maasserver.models.node import Node
+
+      >>> where, params = macs_contain('router', ["list", "of", "macs"])
+      >>> all_nodes = Node.objects.all()
+      >>> filtered_nodes = all_nodes.extra(where=[where], params=params)
+
     """
     where_clause = (
         "%s @> ARRAY[" % key +
@@ -92,11 +95,15 @@ def macs_do_not_contain(key, macs):
 
     This method returns a tuple of the where clause (as a string) and the
     parameters (as a list of strings) used to format the where clause.
-    This is typically used with Django's QuerySet's where() method:
+    This is typically used with Django's QuerySet's where() method::
 
-    >>> where, params = get_does_not_contain_macs_clause('routers', macs)
-    >>> all_nodes = Node.objects.all()
-    >>> filtered_nodes = all_nodes.extra(where=[where], params=params)
+      >>> from maasserver.models.node import Node
+
+      >>> where, params = macs_do_not_contain(
+      ...     'routers', ["list", "of", "macs"])
+      >>> all_nodes = Node.objects.all()
+      >>> filtered_nodes = all_nodes.extra(where=[where], params=params)
+
     """
     contains_any = " OR ".join([
         "%s " % key + "@> ARRAY[%s]::macaddr[]"] * len(macs))
