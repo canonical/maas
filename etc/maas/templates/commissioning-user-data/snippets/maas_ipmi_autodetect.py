@@ -21,7 +21,6 @@
 
 import os
 import commands
-import glob
 import re
 import string
 import random
@@ -30,68 +29,98 @@ import json
 
 
 def is_ipmi_dhcp():
-    (status, output) = commands.getstatusoutput('bmc-config --checkout --key-pair="Lan_Conf:IP_Address_Source"')
+    status, output = commands.getstatusoutput(
+        'bmc-config --checkout --key-pair="Lan_Conf:IP_Address_Source"')
     show_re = re.compile('IP_Address_Source\s+Use_DHCP')
-    res = show_re.search(output)
-    if res == None:
-        return False
-    return True
+    return show_re.search(output) is not None
+
 
 def set_ipmi_network_source(source):
-    (status, output) = commands.getstatusoutput('bmc-config --commit --key-pair="Lan_Conf:IP_Address_Source=%s"' % source)
+    status, output = commands.getstatusoutput(
+        'bmc-config --commit --key-pair="Lan_Conf:IP_Address_Source=%s"'
+        % source)
+
 
 def get_ipmi_ip_address():
-    (status, output) = commands.getstatusoutput('bmc-config --checkout --key-pair="Lan_Conf:IP_Address"')
+    status, output = commands.getstatusoutput(
+        'bmc-config --checkout --key-pair="Lan_Conf:IP_Address"')
     show_re = re.compile('([0-9]{1,3}[.]?){4}')
     res = show_re.search(output)
     return res.group()
 
+
 def get_ipmi_user_number(user):
     for i in range(1, 17):
         ipmi_user_number = "User%s" % i
-        (status, output) = commands.getstatusoutput('bmc-config --checkout --key-pair="%s:Username"' % ipmi_user_number)
+        status, output = commands.getstatusoutput(
+            'bmc-config --checkout --key-pair="%s:Username"'
+            % ipmi_user_number)
         if user in output:
             return ipmi_user_number
     return None
 
+
 def commit_ipmi_user_settings(user, password):
     ipmi_user_number = get_ipmi_user_number(user)
     if ipmi_user_number is None:
-        (status, output) = commands.getstatusoutput('bmc-config --commit --key-pair="User10:Username=%s"' % user)
+        status, output = commands.getstatusoutput(
+            'bmc-config --commit --key-pair="User10:Username=%s"' % user)
         ipmi_user_number = get_ipmi_user_number(user)
-    (status, output) = commands.getstatusoutput('bmc-config --commit --key-pair="%s:Username=%s"' % (ipmi_user_number, user))
-    (status, output) = commands.getstatusoutput('bmc-config --commit --key-pair="%s:Password=%s"' % (ipmi_user_number, password))
-    (status, output) = commands.getstatusoutput('bmc-config --commit --key-pair="%s:Enable_User=Yes"' % ipmi_user_number)
-    (status, output) = commands.getstatusoutput('bmc-config --commit --key-pair="%s:Lan_Enable_IPMI_Msgs=Yes"' % ipmi_user_number)
-    (status, output) = commands.getstatusoutput('bmc-config --commit --key-pair="%s:Lan_Privilege_Limit=Administrator"' % ipmi_user_number)
+    status, output = commands.getstatusoutput(
+        'bmc-config --commit --key-pair="%s:Username=%s"'
+        % (ipmi_user_number, user))
+    status, output = commands.getstatusoutput(
+        'bmc-config --commit --key-pair="%s:Password=%s"'
+        % (ipmi_user_number, password))
+    status, output = commands.getstatusoutput(
+        'bmc-config --commit --key-pair="%s:Enable_User=Yes"'
+        % ipmi_user_number)
+    status, output = commands.getstatusoutput(
+        'bmc-config --commit --key-pair="%s:Lan_Enable_IPMI_Msgs=Yes"'
+        % ipmi_user_number)
+    status, output = commands.getstatusoutput(
+        'bmc-config --commit --key-pair="%s:Lan_Privilege_Limit=Administrator"'
+        % ipmi_user_number)
+
 
 def commit_ipmi_settings(config):
-    (status, output) = commands.getstatusoutput('bmc-config --commit --filename %s' % config)
+    status, output = commands.getstatusoutput(
+        'bmc-config --commit --filename %s' % config)
+
 
 def get_maas_power_settings(user, password, ipaddress):
     return "%s,%s,%s" % (user, password, ipaddress)
 
-def get_maas_power_settings_json(user, password, ipaddress):
-    power_params = {"power_address": ipaddress, "power_pass": password, "power_user": user}
-    return json.dumps(power_params) 
 
-def generate_random_password(min=8,max=15):
-    length=random.randint(min,max)
-    letters=string.ascii_letters+string.digits
+def get_maas_power_settings_json(user, password, ipaddress):
+    power_params = {
+        "power_address": ipaddress,
+        "power_pass": password,
+        "power_user": user,
+    }
+    return json.dumps(power_params)
+
+
+def generate_random_password(min_length=8, max_length=15):
+    length = random.randint(min_length, max_length)
+    letters = string.ascii_letters + string.digits
     return ''.join([random.choice(letters) for _ in range(length)])
 
-def main():
 
+def main():
     import argparse
 
     parser = argparse.ArgumentParser(
         description='send config file to modify IPMI settings with')
-    parser.add_argument("--configdir", metavar="folder",
-        help="specify config file directory", default=None)
-    parser.add_argument("--dhcp-if-static", action="store_true",
-        dest="dhcp", help="set network source to DHCP if Static", default=False)
-    parser.add_argument("--commission-creds", action="store_true",
-        dest="commission_creds", help="Create IPMI temporary credentials", default=False)
+    parser.add_argument(
+        "--configdir", metavar="folder", help="specify config file directory",
+        default=None)
+    parser.add_argument(
+        "--dhcp-if-static", action="store_true", dest="dhcp",
+        help="set network source to DHCP if Static", default=False)
+    parser.add_argument(
+        "--commission-creds", action="store_true", dest="commission_creds",
+        help="Create IPMI temporary credentials", default=False)
 
     args = parser.parse_args()
 
@@ -103,8 +132,8 @@ def main():
         time.sleep(120)
 
     # create user/pass
-    IPMI_MAAS_USER="maas"
-    IPMI_MAAS_PASSWORD=generate_random_password()
+    IPMI_MAAS_USER = "maas"
+    IPMI_MAAS_PASSWORD = generate_random_password()
 
     # Configure IPMI user/password
     commit_ipmi_user_settings(IPMI_MAAS_USER, IPMI_MAAS_PASSWORD)
@@ -130,9 +159,11 @@ def main():
         exit(1)
 
     if args.commission_creds:
-        print get_maas_power_settings_json(IPMI_MAAS_USER, IPMI_MAAS_PASSWORD, IPMI_IP_ADDRESS)
+        print(get_maas_power_settings_json(
+            IPMI_MAAS_USER, IPMI_MAAS_PASSWORD, IPMI_IP_ADDRESS))
     else:
-        print get_maas_power_settings(IPMI_MAAS_USER, IPMI_MAAS_PASSWORD, IPMI_IP_ADDRESS)
+        print(get_maas_power_settings(
+            IPMI_MAAS_USER, IPMI_MAAS_PASSWORD, IPMI_IP_ADDRESS))
 
 if __name__ == '__main__':
     main()

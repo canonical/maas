@@ -112,7 +112,7 @@ bin/py bin/ipy: bin/buildout buildout.cfg versions.cfg setup.py
 test: build
 	echo $(wildcard bin/test.*) | xargs -n1 env
 
-lint: sources = $(wildcard *.py contrib/*.py) src templates twisted utilities
+lint: sources = $(wildcard *.py contrib/*.py) src templates twisted utilities etc
 lint: bin/flake8
 	@find $(sources) -name '*.py' ! -path '*/migrations/*' \
 	    -print0 | xargs -r0 bin/flake8

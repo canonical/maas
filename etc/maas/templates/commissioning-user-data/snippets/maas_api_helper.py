@@ -36,7 +36,7 @@ def read_config(url, creds):
         cfg = cfg['datasource']['MAAS']
 
     for key in creds.keys():
-        if key in cfg and creds[key] == None:
+        if key in cfg and creds[key] is None:
             creds[key] = cfg[key]
 
 
@@ -63,7 +63,7 @@ def oauth_headers(url, consumer_key, token_key, token_secret, consumer_secret,
 
 def authenticate_headers(url, headers, creds, clockskew):
     """Update and sign a dict of request headers."""
-    if creds.get('consumer_key', None) != None:
+    if creds.get('consumer_key', None) is not None:
         headers.update(oauth_headers(
             url,
             consumer_key=creds['consumer_key'],

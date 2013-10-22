@@ -20,8 +20,9 @@ def main():
     parser.add_argument(
         "--config", metavar="file",
         help="Config file containing MAAS API credentials", default=None)
-    parser.add_argument("--apiver", metavar="version",
-        help="Use given API version", default=MD_VERSION)
+    parser.add_argument(
+        "--apiver", metavar="version", help="Use given API version",
+        default=MD_VERSION)
     parser.add_argument('path')
 
     args = parser.parse_args()

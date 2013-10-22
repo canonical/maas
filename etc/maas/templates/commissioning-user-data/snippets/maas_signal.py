@@ -21,17 +21,22 @@ POWER_TYPES = ("ipmi", "virsh", "ether_wake", "moonshot")
 
 
 def _encode_field(field_name, data, boundary):
-    return ('--' + boundary,
-            'Content-Disposition: form-data; name="%s"' % field_name,
-            '', str(data))
+    return (
+        '--' + boundary,
+        'Content-Disposition: form-data; name="%s"' % field_name,
+        '', str(data),
+        )
 
 
 def _encode_file(name, fileObj, boundary):
-    return ('--' + boundary,
-            'Content-Disposition: form-data; name="%s"; filename="%s"' %
-                (name, name),
-            'Content-Type: %s' % _get_content_type(name),
-            '', fileObj.read())
+    return (
+        '--' + boundary,
+        'Content-Disposition: form-data; name="%s"; filename="%s"'
+        % (name, name),
+        'Content-Type: %s' % _get_content_type(name),
+        '',
+        fileObj.read(),
+        )
 
 
 def _random_string(length):
@@ -83,36 +88,45 @@ def main():
 
     parser = argparse.ArgumentParser(
         description='Send signal operation and optionally post files to MAAS')
-    parser.add_argument("--config", metavar="file",
-        help="Specify config file", default=None)
-    parser.add_argument("--ckey", metavar="key",
-        help="The consumer key to auth with", default=None)
-    parser.add_argument("--tkey", metavar="key",
-        help="The token key to auth with", default=None)
-    parser.add_argument("--csec", metavar="secret",
-        help="The consumer secret (likely '')", default="")
-    parser.add_argument("--tsec", metavar="secret",
-        help="The token secret to auth with", default=None)
-    parser.add_argument("--apiver", metavar="version",
-        help="The apiver to use ("" can be used)", default=MD_VERSION)
-    parser.add_argument("--url", metavar="url",
-        help="The data source to query", default=None)
-    parser.add_argument("--file", dest='files',
-        help="File to post", action='append', default=[])
-    parser.add_argument("--post", dest='posts',
-        help="name=value pairs to post", action='append', default=[])
-    parser.add_argument("--power-type", dest='power_type',
-        help="Power type.", choices=POWER_TYPES, default=None)
-    parser.add_argument("--power-parameters", dest='power_parms',
-        help="Power parameters.", default=None)
+    parser.add_argument(
+        "--config", metavar="file", help="Specify config file", default=None)
+    parser.add_argument(
+        "--ckey", metavar="key", help="The consumer key to auth with",
+        default=None)
+    parser.add_argument(
+        "--tkey", metavar="key", help="The token key to auth with",
+        default=None)
+    parser.add_argument(
+        "--csec", metavar="secret", help="The consumer secret (likely '')",
+        default="")
+    parser.add_argument(
+        "--tsec", metavar="secret", help="The token secret to auth with",
+        default=None)
+    parser.add_argument(
+        "--apiver", metavar="version",
+        help="The apiver to use (\"\" can be used)", default=MD_VERSION)
+    parser.add_argument(
+        "--url", metavar="url", help="The data source to query", default=None)
+    parser.add_argument(
+        "--file", dest='files', help="File to post", action='append',
+        default=[])
+    parser.add_argument(
+        "--post", dest='posts', help="name=value pairs to post",
+        action='append', default=[])
+    parser.add_argument(
+        "--power-type", dest='power_type', help="Power type.",
+        choices=POWER_TYPES, default=None)
+    parser.add_argument(
+        "--power-parameters", dest='power_parms', help="Power parameters.",
+        default=None)
     parser.add_argument(
         "--script-result", metavar="retval", type=int, dest='script_result',
         help="Return code of a commissioning script.")
 
-    parser.add_argument("status",
-        help="Status", choices=VALID_STATUS, action='store')
-    parser.add_argument("message", help="Optional message",
-        default="", nargs='?')
+    parser.add_argument(
+        "status", help="Status", choices=VALID_STATUS, action='store')
+    parser.add_argument(
+        "message", help="Optional message", default="", nargs='?')
 
     args = parser.parse_args()
 
