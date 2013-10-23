@@ -1,5 +1,15 @@
 #!/usr/bin/python
 
+from __future__ import (
+    absolute_import,
+    print_function,
+    #unicode_literals,
+    )
+
+str = None
+
+__metaclass__ = type
+
 import sys
 
 from maas_api_helper import (

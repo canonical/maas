@@ -1,5 +1,16 @@
 #!/usr/bin/python
 
+from __future__ import (
+    absolute_import,
+    print_function,
+    #unicode_literals,
+    )
+
+# TODO: Don't use str.  It stands in the way of Python 3 compatibility.
+#str = None
+
+__metaclass__ = type
+
 import json
 import mimetypes
 import os.path
@@ -67,8 +78,10 @@ def encode_multipart_data(data, files):
     lines.extend(('--%s--' % boundary, ''))
     body = '\r\n'.join(lines)
 
-    headers = {'content-type': 'multipart/form-data; boundary=' + boundary,
-               'content-length': str(len(body))}
+    headers = {
+        'content-type': 'multipart/form-data; boundary=' + boundary,
+        'content-length': "%d" % len(body),
+    }
 
     return body, headers
 
