@@ -195,13 +195,15 @@ Create a superuser account
 Once MAAS is installed, you'll need to create an administrator
 account::
 
-  $ sudo maas createsuperuser
+  $ sudo maas createadmin --username=root --email=MYEMAIL@EXAMPLE.COM 
 
-Follow the prompts to create the account which you will need to login
-to the web interface. Unless you have a special need, it is best to
-accept the default login name of `root`, as it is rather annoying if
-you forget the username (although you can simply run this command
-again to create a new superuser).
+Substitute your own email address for MYEMAIL@EXAMPLE.COM.  You may also
+use a different username for your administrator account, but "root" is a
+common convention and easy to remember.  The command will prompt for a
+password to assign to the new user.
+
+You can run this command again for any further administrator accounts you
+may wish to create, but you need at least one.
 
 
 Import the boot images

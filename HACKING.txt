@@ -225,11 +225,13 @@ not start by default.
 
 First create a superuser and start all MAAS services::
 
-    $ bin/maas createsuperuser
+    $ bin/maas createadmin --username=root --email=MYEMAIL@EXAMPLE.COM
     $ make run
 
-Get the superuser's API key on the `account preferences`_ page in web
-UI, and use it to log into MAAS at the command-line::
+Substitute your own email.  The command will prompt for a choice of password.
+
+Next, get the superuser's API key on the `account preferences`_ page in the
+web UI, and use it to log into MAAS at the command-line::
 
     $ bin/maascli login dev http://localhost:5240
 

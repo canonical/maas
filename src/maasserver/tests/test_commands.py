@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test custom commands, as found in src/maasserver/management/commands."""
@@ -23,6 +23,7 @@ from django.contrib.auth.models import User
 from django.core.cache import cache
 from django.core.management import call_command
 from django.core.management.base import CommandError
+from maasserver.management.commands import createadmin
 from maasserver.models.user import get_creds_tuple
 from maasserver.testing.factory import factory
 from maasserver.utils.orm import get_one
@@ -71,19 +72,22 @@ class TestCommands(DjangoTestCase):
         # The documentation starts with a ReST title (not indented).
         self.assertEqual('=', result[0])
 
-    def test_createadmin_requires_username(self):
-        error_text = assertCommandErrors(self, 'createadmin')
-        self.assertIn(
-            "You must provide a username with --username.",
-            error_text)
+    def test_createadmin_prompts_for_password_if_not_given(self):
+        stderr = BytesIO()
+        stdout = BytesIO()
+        username = factory.make_name('user')
+        password = factory.getRandomString()
+        email = factory.getRandomEmail()
+        self.patch(createadmin, 'prompt_for_password').return_value = password
 
-    def test_createadmin_requires_password(self):
-        username = factory.getRandomString()
-        error_text = assertCommandErrors(
-            self, 'createadmin', username=username)
-        self.assertIn(
-            "You must provide a password with --password.",
-            error_text)
+        call_command(
+            'createadmin', username=username, email=email, stdout=stdout,
+            stderr=stderr)
+        user = User.objects.get(username=username)
+
+        self.assertEquals('', stderr.getvalue().strip())
+        self.assertEquals('', stdout.getvalue().strip())
+        self.assertTrue(user.check_password(password))
 
     def test_createadmin_requires_email(self):
         username = factory.getRandomString()
@@ -111,6 +115,19 @@ class TestCommands(DjangoTestCase):
         self.assertTrue(user.check_password(password))
         self.assertTrue(user.is_superuser)
         self.assertEqual(email, user.email)
+
+    def test_prompt_for_password_returns_selected_password(self):
+        password = factory.getRandomString()
+        self.patch(createadmin, 'getpass').return_value = password
+
+        self.assertEqual(password, createadmin.prompt_for_password())
+
+    def test_prompt_for_password_checks_for_consistent_password(self):
+        self.patch(createadmin, 'getpass', lambda x: factory.getRandomString())
+
+        self.assertRaises(
+            createadmin.InconsistentPassword,
+            createadmin.prompt_for_password)
 
     def test_clearcache_clears_entire_cache(self):
         key = factory.getRandomString()

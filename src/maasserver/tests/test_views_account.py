@@ -31,7 +31,7 @@ class TestLogin(MAASServerTestCase):
         self.assertEqual(1, len(doc.cssselect('input#id_username')))
         self.assertEqual(1, len(doc.cssselect('input#id_password')))
 
-    def test_login_displays_createsuperuser_message_if_no_user(self):
+    def test_login_displays_createadmin_message_if_no_user(self):
         path = factory.getRandomString()
         self.patch(settings, 'MAAS_CLI', path)
         response = self.client.get('/accounts/login/')

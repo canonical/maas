@@ -22,8 +22,11 @@
   {% if no_users %}
       <img src="{{ STATIC_URL }}img/pictogram_no_users.png" alt="No users pictogram" class="left space-right-large" />
       <h2>No admin user has been created yet</h2>
-      <p>Run the following command from the console to create an admin user:</p>
-      <pre>{{ create_command }} createsuperuser</pre>
+      <p>
+        Use the "createadmin" administration command to create one.  For
+        instructions, run it with the <pre>-h</pre> option first:
+      </p>
+      <pre>{{ create_command }} createadmin -h</pre>
       <a href="{% url 'login' %}" class="button right space-top-small">login</a>
   {% else %}
   <h2>Login to {% include "maasserver/site_title.html" %}</h2>
