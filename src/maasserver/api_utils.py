@@ -13,6 +13,7 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    'extract_bool',
     'extract_oauth_key',
     'get_list_from_dict_or_multidict',
     'get_mandatory_param',
@@ -26,6 +27,28 @@ from django.http import QueryDict
 from formencode.validators import Invalid
 from maasserver.exceptions import Unauthorized
 from piston.models import Token
+
+
+def extract_bool(value):
+    """Extract a boolean from an API request argument.
+
+    Boolean arguments to API requests are passed as string values: "0" for
+    False, or "1" for True.  This helper converts the string value to the
+    native Boolean value.
+
+    :param value: Value of a request parameter.
+    :type value: unicode
+    :return: Boolean value encoded in `value`.
+    :rtype bool:
+    :raise ValueError: If `value` is not an accepted encoding of a boolean.
+    """
+    assert isinstance(value, unicode)
+    if value == '0':
+        return False
+    elif value == '1':
+        return True
+    else:
+        raise ValueError("Not a valid Boolean value (0 or 1): '%s'" % value)
 
 
 def get_mandatory_param(data, key, validator=None):

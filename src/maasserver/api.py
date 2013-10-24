@@ -105,6 +105,7 @@ from xml.sax.saxutils import quoteattr
 import bson
 from celery.app import app_or_default
 from django.conf import settings
+from django.contrib.auth.models import User
 from django.core.exceptions import (
     PermissionDenied,
     ValidationError,
@@ -129,6 +130,7 @@ from maasserver.api_support import (
     OperationsHandler,
     )
 from maasserver.api_utils import (
+    extract_bool,
     extract_oauth_key,
     get_list_from_dict_or_multidict,
     get_mandatory_param,
@@ -1966,6 +1968,36 @@ class MaasHandler(OperationsHandler):
     # Populate the docstring with the dynamically-generated documentation
     # about the available configuration items.
     get_config.__doc__ %= get_config_doc(indentation=8)
+
+    @operation(idempotent=False)
+    def unsafe_create_user(self, request):
+        """Create a MAAS user account.
+
+        This is not safe: the password is sent in plaintext.  Avoid it for
+        production, unless you are confident that you can prevent eavesdroppers
+        from observing the request.
+
+        :param username: Identifier-style username for the new user.
+        :type username: unicode
+        :param email: Email address for the new user.
+        :type email: unicode
+        :param password: Password for the new user.
+        :type password: unicode
+        :param is_admin: Whether the new user is to be an administrator.
+        :type is_admin: bool ('0' for False, '1' for True)
+        """
+        username = get_mandatory_param(request.data, 'username')
+        email = get_mandatory_param(request.data, 'email')
+        password = get_mandatory_param(request.data, 'password')
+        is_admin = extract_bool(get_mandatory_param(request.data, 'is_admin'))
+
+        if is_admin:
+            User.objects.create_superuser(
+                username=username, password=password, email=email)
+        else:
+            User.objects.create_user(
+                username=username, password=password, email=email)
+        return rc.ALL_OK
 
     @classmethod
     def resource_uri(cls, *args, **kwargs):

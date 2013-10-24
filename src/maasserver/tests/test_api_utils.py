@@ -18,6 +18,7 @@ from collections import namedtuple
 
 from django.http import QueryDict
 from maasserver.api_utils import (
+    extract_bool,
     extract_oauth_key,
     extract_oauth_key_from_auth_header,
     get_oauth_token,
@@ -26,6 +27,31 @@ from maasserver.api_utils import (
 from maasserver.exceptions import Unauthorized
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+
+
+class TestExtractBool(MAASServerTestCase):
+    def test_asserts_against_raw_bytes(self):
+        self.assertRaises(AssertionError, extract_bool, b'0')
+
+    def test_asserts_against_None(self):
+        self.assertRaises(AssertionError, extract_bool, None)
+
+    def test_asserts_against_number(self):
+        self.assertRaises(AssertionError, extract_bool, 0)
+
+    def test_0_means_False(self):
+        self.assertEquals(extract_bool('0'), False)
+
+    def test_1_means_True(self):
+        self.assertEquals(extract_bool('1'), True)
+
+    def test_rejects_other_numeric_strings(self):
+        self.assertRaises(ValueError, extract_bool, '00')
+        self.assertRaises(ValueError, extract_bool, '2')
+        self.assertRaises(ValueError, extract_bool, '-1')
+
+    def test_rejects_empty_string(self):
+        self.assertRaises(ValueError, extract_bool, '')
 
 
 class TestGetOverridedQueryDict(MAASServerTestCase):
