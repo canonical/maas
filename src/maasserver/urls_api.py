@@ -42,6 +42,7 @@ from maasserver.api import (
     SSHKeysHandler,
     TagHandler,
     TagsHandler,
+    UsersHandler,
     )
 from maasserver.api_auth import api_auth
 from maasserver.api_support import (
@@ -82,6 +83,8 @@ commissioning_script_handler = AdminRestrictedResource(
     CommissioningScriptHandler, authentication=api_auth)
 commissioning_scripts_handler = AdminRestrictedResource(
     CommissioningScriptsHandler, authentication=api_auth)
+users_handler = AdminRestrictedResource(UsersHandler, authentication=api_auth)
+
 
 # API URLs accessible to anonymous users.
 urlpatterns = patterns(
@@ -143,4 +146,5 @@ urlpatterns += patterns(
     url(
         r'^commissioning-scripts/(?P<name>[^/]+)$',
         commissioning_script_handler, name='commissioning_script_handler'),
+    url(r'^users/$', users_handler, name='users_handler'),
 )

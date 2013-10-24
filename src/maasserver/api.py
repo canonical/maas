@@ -83,6 +83,7 @@ __all__ = [
     "pxeconfig",
     "render_api_docs",
     "store_node_power_parameters",
+    "UsersHandler",
     ]
 
 from base64 import (
@@ -1969,8 +1970,20 @@ class MaasHandler(OperationsHandler):
     # about the available configuration items.
     get_config.__doc__ %= get_config_doc(indentation=8)
 
-    @operation(idempotent=False)
-    def unsafe_create_user(self, request):
+    @classmethod
+    def resource_uri(cls, *args, **kwargs):
+        return ('maas_handler', [])
+
+
+class UsersHandler(OperationsHandler):
+    """API for user accounts."""
+    read = update = delete = None
+
+    @classmethod
+    def resource_uri(cls, *args, **kwargs):
+        return ('users_handler', [])
+
+    def create(self, request):
         """Create a MAAS user account.
 
         This is not safe: the password is sent in plaintext.  Avoid it for
@@ -1998,10 +2011,6 @@ class MaasHandler(OperationsHandler):
             User.objects.create_user(
                 username=username, password=password, email=email)
         return rc.ALL_OK
-
-    @classmethod
-    def resource_uri(cls, *args, **kwargs):
-        return ('maas_handler', [])
 
 
 # Title section for the API documentation.  Matches in style, format,

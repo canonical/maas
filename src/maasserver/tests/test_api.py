@@ -21,7 +21,6 @@ import json
 
 from apiclient.maas_client import MAASClient
 from django.conf import settings
-from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse
 from fixtures import EnvironmentVariableFixture
 from maasserver import api
@@ -441,61 +440,6 @@ class MAASAPITest(APITestCase):
                 {name: [INVALID_SETTING_MSG_TEMPLATE % name]},
             ),
             (response.status_code, json.loads(response.content)))
-
-    def test_unsafe_create_user_creates_user(self):
-        self.become_admin()
-        username = factory.make_name('user')
-        email = factory.getRandomEmail()
-        password = factory.getRandomString()
-
-        response = self.client.post(
-            self.get_uri('maas/'),
-            {
-                'op': 'unsafe_create_user',
-                'username': username,
-                'email': email,
-                'password': password,
-                'is_admin': '0',
-            })
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-
-        created_user = User.objects.get(username=username)
-        self.assertEqual(email, created_user.email)
-        self.assertEqual(False, created_user.is_superuser)
-
-    def test_unsafe_create_user_creates_admin(self):
-        self.become_admin()
-        username = factory.make_name('user')
-        email = factory.getRandomEmail()
-        password = factory.getRandomString()
-
-        response = self.client.post(
-            self.get_uri('maas/'),
-            {
-                'op': 'unsafe_create_user',
-                'username': username,
-                'email': email,
-                'password': password,
-                'is_admin': '1',
-            })
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-
-        created_user = User.objects.get(username=username)
-        self.assertEqual(email, created_user.email)
-        self.assertEqual(True, created_user.is_superuser)
-
-    def test_unsafe_create_user_requires_admin(self):
-        response = self.client.post(
-            self.get_uri('maas/'),
-            {
-                'op': 'unsafe_create_user',
-                'username': factory.make_name('user'),
-                'email': factory.getRandomEmail(),
-                'password': factory.getRandomString(),
-                'is_admin': '1' if factory.getRandomBoolean() else '0',
-            })
-        self.assertEqual(
-            httplib.FORBIDDEN, response.status_code, response.content)
 
 
 class APIErrorsTest(APIv10TestMixin, TransactionTestCase):
