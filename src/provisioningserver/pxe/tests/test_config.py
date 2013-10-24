@@ -235,6 +235,45 @@ class TestRenderPXEConfig(MAASTestCase):
         self.assertNotIn("LOCALBOOT", output)
 
 
+class TestRenderArmhfSubarchScenarios(MAASTestCase):
+    """See bug https://bugs.launchpad.net/maas/+bug/1166994"""
+
+    scenarios = [
+        ("install_precise", dict(
+            arch="armhf", purpose="install", release="precise",
+            expect_in_output="highbank")),
+        ("install_quantal", dict(
+            arch="armhf", purpose="install", release="quantal",
+            expect_in_output="highbank")),
+        ("install_saucy", dict(
+            arch="armhf", purpose="install", release="saucy",
+            expect_in_output="generic")),
+        ("commission_precise", dict(
+            arch="armhf", purpose="commissioning", release="precise",
+            expect_in_output="highbank")),
+        ("commission_quantal", dict(
+            arch="armhf", purpose="commissioning", release="quantal",
+            expect_in_output="highbank")),
+        ("commission_saucy", dict(
+            arch="armhf", purpose="commissioning", release="saucy",
+            expect_in_output="generic")),
+    ]
+
+    def test_highbank_scenarios(self):
+        # get_ephemeral_name depends on ephemeral images being present but
+        # doesn't affect the test outcome, so patch it out.
+        self.patch(
+            kernel_opts,
+            "get_ephemeral_name").return_value = "ephemeral_name"
+        options = {
+            "kernel_params": make_kernel_parameters(
+                arch=self.arch, purpose=self.purpose, subarch="highbank",
+                release=self.release),
+        }
+        output = render_pxe_config(**options)
+        self.assertIn(self.expect_in_output, output)
+
+
 class TestRenderPXEConfigScenarios(MAASTestCase):
     """Tests for `provisioningserver.pxe.config.render_pxe_config`."""
 

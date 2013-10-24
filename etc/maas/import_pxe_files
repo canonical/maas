@@ -13,6 +13,6 @@ fi
 
 
 #RELEASES="precise quantal raring saucy"
-#ARCHES="amd64/generic i386/generic armhf/highbank"
+#ARCHES="amd64/generic i386/generic armhf/highbank armhf/generic"
 #LOCALE="en_US"
 #IMPORT_EPHEMERALS=1

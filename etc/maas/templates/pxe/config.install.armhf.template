@@ -1,7 +1,12 @@
 DEFAULT execute
 
 LABEL execute
-  {{py: # SAY is not implemented in U-Boot }}
+  {{# SAY is not implemented in U-Boot }}
+  {{if kernel_params.release not in ("precise", "quantal")}}
+    {{# Return a copy of kernel_params with an overridden subarch.
+        See https://bugs.launchpad.net/maas/+bug/1166994 }}
+    {{py: kernel_params=kernel_params(subarch="generic")}}
+  {{endif}}
   KERNEL {{kernel_params | kernel_path }}
   INITRD {{kernel_params | initrd_path }}
   APPEND {{kernel_params | kernel_command}}

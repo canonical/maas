@@ -39,10 +39,7 @@ RELEASES=${RELEASES:-$SUPPORTED_RELEASES}
 STABLE_RELEASE=$(distro-info --stable)
 
 # Supported architectures.
-# armhf/highbank is also supported by this script, but cannot be enabled here
-# until maas-import-ephemerals also supports it or IMPORT_EPHEMERALS is set to
-# 0.
-ARCHES=${ARCHES:-amd64/generic i386/generic armhf/highbank}
+ARCHES=${ARCHES:-amd64/generic i386/generic armhf/highbank armhf/generic}
 
 # Command line to download a resource at a given URL into the current
 # directory.  A wget command line will work here, but curl will do as well.
@@ -191,7 +188,7 @@ compose_installer_download_files() {
         amd64/*|i386/*)
             echo "linux initrd.gz"
             ;;
-        armhf/highbank)
+        armhf/*)
             echo "vmlinuz initrd.gz"
             ;;
         *)
@@ -211,7 +208,7 @@ rename_installer_download_files() {
         amd64/*|i386/*)
             # do nothing
             ;;
-        armhf/highbank)
+        armhf/*)
             mv vmlinuz linux
             ;;
         *)
