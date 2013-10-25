@@ -83,6 +83,7 @@ __all__ = [
     "pxeconfig",
     "render_api_docs",
     "store_node_power_parameters",
+    "UserHandler",
     "UsersHandler",
     ]
 
@@ -1977,11 +1978,15 @@ class MaasHandler(OperationsHandler):
 
 class UsersHandler(OperationsHandler):
     """API for user accounts."""
-    read = update = delete = None
+    update = delete = None
 
     @classmethod
     def resource_uri(cls, *args, **kwargs):
         return ('users_handler', [])
+
+    def read(self, request):
+        """List users."""
+        return User.objects.all().order_by('username')
 
     def create(self, request):
         """Create a MAAS user account.
@@ -1996,21 +2001,40 @@ class UsersHandler(OperationsHandler):
         :type email: unicode
         :param password: Password for the new user.
         :type password: unicode
-        :param is_admin: Whether the new user is to be an administrator.
-        :type is_admin: bool ('0' for False, '1' for True)
+        :param is_superuser: Whether the new user is to be an administrator.
+        :type is_superuser: bool ('0' for False, '1' for True)
         """
+        if not request.user.is_superuser:
+            return HttpResponse(
+                "Only an administrator can create new users.",
+                status=httplib.FORBIDDEN)
         username = get_mandatory_param(request.data, 'username')
         email = get_mandatory_param(request.data, 'email')
         password = get_mandatory_param(request.data, 'password')
-        is_admin = extract_bool(get_mandatory_param(request.data, 'is_admin'))
+        is_superuser = extract_bool(
+            get_mandatory_param(request.data, 'is_superuser'))
 
-        if is_admin:
-            User.objects.create_superuser(
+        if is_superuser:
+            return User.objects.create_superuser(
                 username=username, password=password, email=email)
         else:
-            User.objects.create_user(
+            return User.objects.create_user(
                 username=username, password=password, email=email)
-        return rc.ALL_OK
+
+
+class UserHandler(OperationsHandler):
+    """API for a user account."""
+    create = update = delete = None
+
+    model = User
+    fields = (
+        'username',
+        'email',
+        'is_superuser',
+        )
+
+    def read(self, request, username):
+        return get_object_or_404(User, username=username)
 
 
 # Title section for the API documentation.  Matches in style, format,

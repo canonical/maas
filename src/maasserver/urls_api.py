@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """URL API routing configuration."""
@@ -42,6 +42,7 @@ from maasserver.api import (
     SSHKeysHandler,
     TagHandler,
     TagsHandler,
+    UserHandler,
     UsersHandler,
     )
 from maasserver.api_auth import api_auth
@@ -71,6 +72,8 @@ commissioning_results_handler = RestrictedResource(
     CommissioningResultsHandler, authentication=api_auth)
 sshkey_handler = RestrictedResource(SSHKeyHandler, authentication=api_auth)
 sshkeys_handler = RestrictedResource(SSHKeysHandler, authentication=api_auth)
+user_handler = RestrictedResource(UserHandler, authentication=api_auth)
+users_handler = RestrictedResource(UsersHandler, authentication=api_auth)
 
 
 # Admin handlers.
@@ -83,7 +86,6 @@ commissioning_script_handler = AdminRestrictedResource(
     CommissioningScriptHandler, authentication=api_auth)
 commissioning_scripts_handler = AdminRestrictedResource(
     CommissioningScriptsHandler, authentication=api_auth)
-users_handler = AdminRestrictedResource(UsersHandler, authentication=api_auth)
 
 
 # API URLs accessible to anonymous users.
@@ -133,6 +135,8 @@ urlpatterns += patterns(
     url(
         r'^commissioning-results/$',
         commissioning_results_handler, name='commissioning_results_handler'),
+    url(r'^users/$', users_handler, name='users_handler'),
+    url(r'^users/(?P<username>[^/]+)/$', user_handler, name='user_handler'),
 )
 
 
@@ -146,5 +150,4 @@ urlpatterns += patterns(
     url(
         r'^commissioning-scripts/(?P<name>[^/]+)$',
         commissioning_script_handler, name='commissioning_script_handler'),
-    url(r'^users/$', users_handler, name='users_handler'),
 )
