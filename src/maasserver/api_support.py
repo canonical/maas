@@ -19,13 +19,20 @@ __all__ = [
     ]
 
 from django.core.exceptions import PermissionDenied
-from django.http import HttpResponseBadRequest
+from django.http import (
+    Http404,
+    HttpResponseBadRequest,
+    )
 from piston.handler import (
     AnonymousBaseHandler,
     BaseHandler,
     HandlerMetaClass,
     )
 from piston.resource import Resource
+from piston.utils import (
+    HttpStatusCode,
+    rc,
+    )
 
 
 class OperationsResource(Resource):
@@ -37,6 +44,18 @@ class OperationsResource(Resource):
 
     crudmap = Resource.callmap
     callmap = dict.fromkeys(crudmap, "dispatch")
+
+    def error_handler(self, e, request, meth, em_format):
+        """
+        Override piston's error_handler to fix bug #1228205 and generally
+        do not hide exceptions.
+        """
+        if isinstance(e, Http404):
+            return rc.NOT_FOUND
+        elif isinstance(e, HttpStatusCode):
+            return e.response
+        else:
+            raise
 
 
 class RestrictedResource(OperationsResource):
