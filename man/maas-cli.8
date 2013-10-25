@@ -1,4 +1,6 @@
-.TH "MAAS-CLI" "8" "November 22, 2012" "12.10" "MAAS"
+.\" Man page generated from reStructuredText.
+.
+.TH "MAAS-CLI" "8" "October 25, 2013" "13.10" "MAAS"
 .SH NAME
 maas-cli \- MAAS API commandline utility
 .
@@ -28,12 +30,42 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
-.\" Man page generated from reStructeredText.
 .
+.nr rst2man-indent-level 0
+.
+.de1 rstReportMargin
+\\$1 \\n[an-margin]
+level \\n[rst2man-indent-level]
+level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
+-
+\\n[rst2man-indent0]
+\\n[rst2man-indent1]
+\\n[rst2man-indent2]
+..
+.de1 INDENT
+.\" .rstReportMargin pre:
+. RS \\$1
+. nr rst2man-indent\\n[rst2man-indent-level] \\n[an-margin]
+. nr rst2man-indent-level +1
+.\" .rstReportMargin post:
+..
+.de UNINDENT
+. RE
+.\" indent \\n[an-margin]
+.\" old: \\n[rst2man-indent\\n[rst2man-indent-level]]
+.nr rst2man-indent-level -1
+.\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
+.in \\n[rst2man-indent\\n[rst2man-indent-level]]u
+..
 .SH USAGE
 .INDENT 0.0
 .INDENT 3.5
+.sp
+.nf
+.ft C
 $ maas\-cli <profile> <command> [parameters]
+.ft P
+.fi
 .UNINDENT
 .UNINDENT
 .sp
@@ -52,31 +84,38 @@ interface.
 .sp
 Login to the web interface on your MAAS. Click on the username in the
 top right corner and select \(aqPreferences\(aq from the menu which appears.
-[image]
 .sp
 A new page will load...
-[image]
 .sp
 The very first item is a list of MAAS keys. One will have already been
 generated when the system was installed. It\(aqs easiest to just select
 and copy the key (it\(aqs quite long!) and then paste it into the
 commandline. The format of the login command is:
+.INDENT 0.0
+.INDENT 3.5
 .sp
 .nf
 .ft C
 $ maas\-cli login <profile\-name> <hostname> <key>
 .ft P
 .fi
+.UNINDENT
+.UNINDENT
 .sp
 The profile created is an easy way of associating your credentials
 with any subsequent call to the API. So an example login might look
 like this:
+.INDENT 0.0
+.INDENT 3.5
 .sp
 .nf
 .ft C
-$ maas\-cli login maas http://10.98.0.13/MAAS/api/1.0 AWSCRMzqMNy:jjk...5e1FenoP82Qm5te2
+$ maas\-cli login maas http://10.98.0.13/MAAS/api/1.0
+AWSCRMzqMNy:jjk...5e1FenoP82Qm5te2
 .ft P
 .fi
+.UNINDENT
+.UNINDENT
 .sp
 which creates the profile \(aqmaas\(aq and registers it with the given key
 at the specified API endpoint.  If you omit the credentials, they will
@@ -92,14 +131,14 @@ The \fBmaas\-cli\fP command exposes the whole API, so you can do anything
 you actually \fIcan\fP do with MAAS using this command. Unsurprisingly,
 this leaves us with a vast number of options, but before we delve into
 detail on the specifics, here is a sort of \(aqcheat\-sheet\(aq for common
-tasks you might want to do using \fBmaas\-cli\fP.
+tasks you might want to do using \fBmaas\-cli\fP\&.
 .INDENT 0.0
 .INDENT 3.5
 .INDENT 0.0
 .IP \(bu 2
-\fI\%Configure DHCP and DNS services\fP
+\fIConfigure DHCP and DNS services\fP
 .IP \(bu 2
-\fI\%Commission all enlisted nodes\fP
+\fICommission all enlisted nodes\fP
 .IP \(bu 2
 \fI\%Setting IPMI power parameters for a node\fP
 .UNINDENT
@@ -251,6 +290,8 @@ by \fI<system_id>\fP
 .INDENT 3.5
 Used to change or set specific values for the node. The valid
 parameters are listed below:
+.INDENT 0.0
+.INDENT 3.5
 .sp
 .nf
 .ft C
@@ -277,8 +318,12 @@ power_parameters_skip_check \(aqtrue\(aq | \(aqfalse\(aq
 .fi
 .UNINDENT
 .UNINDENT
+.UNINDENT
+.UNINDENT
 .sp
 Example: Setting the power parameters for an ipmi enabled node:
+.INDENT 0.0
+.INDENT 3.5
 .sp
 .nf
 .ft C
@@ -289,6 +334,8 @@ maas\-cli maas node update <system_id> \e
   power_parameters_power_pass=ubuntu;
 .ft P
 .fi
+.UNINDENT
+.UNINDENT
 .SH NODES
 .sp
 Usage: maas\-cli <profile> nodes [\-h] is\-registered | list\-allocated |
@@ -353,6 +400,8 @@ nodes, their system_id, status and other details.
 Creates a new node entry given the provided key=value information
 for the node. A minimum of the MAC address and architecture must be
 provided. Other parameters may also be supplied:
+.INDENT 0.0
+.INDENT 3.5
 .sp
 .nf
 .ft C
@@ -368,6 +417,8 @@ the node (e.g. virsh, ipmi)
 .fi
 .UNINDENT
 .UNINDENT
+.UNINDENT
+.UNINDENT
 .sp
 \fBcheck\-commissioning\fP
 .INDENT 0.0
@@ -380,28 +431,40 @@ as "failed".
 .sp
 Examples:
 Accept and commission all discovered nodes:
+.INDENT 0.0
+.INDENT 3.5
 .sp
 .nf
 .ft C
 $ maas\-cli maas nodes accept\-all
 .ft P
 .fi
+.UNINDENT
+.UNINDENT
 .sp
 List all known nodes:
+.INDENT 0.0
+.INDENT 3.5
 .sp
 .nf
 .ft C
 $ maas\-cli maas nodes list
 .ft P
 .fi
+.UNINDENT
+.UNINDENT
 .sp
 Filter the list using specific key/value pairs:
+.INDENT 0.0
+.INDENT 3.5
 .sp
 .nf
 .ft C
 $ maas\-cli maas nodes list architecture="i386/generic"
 .ft P
 .fi
+.UNINDENT
+.UNINDENT
 .SH NODE-GROUPS
 .sp
 Usage: maas\-cli <profile> node\-groups [\-d \-\-debug] [\-h \-\-help] [\-k
@@ -473,12 +536,12 @@ supplied UUID
 .UNINDENT
 .SH NODE-GROUP-INTERFACE
 .sp
-For managing the interfaces. See also \fI\%node-group-interfaces\fP
+For managing the interfaces. See also \fInode\-group\-interfaces\fP
 .sp
 Usage: maas\-cli \fI<profile>\fP node\-group\-interfaces [\-d \-\-debug] [\-h
 \-\-help] [\-k \-\-insecure] read | update | delete [parameters...]
 .sp
-..program:: maas\-cli node\-group\-interface
+\&..program:: maas\-cli node\-group\-interface
 .sp
 \fBread <uuid> <interface>\fP
 .INDENT 0.0
@@ -492,6 +555,8 @@ Returns the current settings for the given UUID and interface
 .INDENT 3.5
 Changes the settings for the interface according to the given
 parameters:
+.INDENT 0.0
+.INDENT 3.5
 .sp
 .nf
 .ft C
@@ -519,6 +584,8 @@ ip_range_high=<value>
 .fi
 .UNINDENT
 .UNINDENT
+.UNINDENT
+.UNINDENT
 .sp
 \fBdelete <uuid> <interface>\fP
 .INDENT 0.0
@@ -533,15 +600,21 @@ Configuring DHCP and DNS.
 To enable MAAS to manage DHCP and DNS, it needs to be supplied with the relevant
 interface information. To do this we need to first determine the UUID of the
 node group affected:
+.INDENT 0.0
+.INDENT 3.5
 .sp
 .nf
 .ft C
 $ uuid=$(maas\-cli <profile> node\-groups list | grep uuid | cut \-d\e" \-f4)
 .ft P
 .fi
+.UNINDENT
+.UNINDENT
 .sp
 Once we have the UUID we can use this to update the node\-group\-interface for
 that nodegroup, and pass it the relevant interface details:
+.INDENT 0.0
+.INDENT 3.5
 .sp
 .nf
 .ft C
@@ -553,6 +626,8 @@ $ maas\-cli <profile> node\-group\-interface update $uuid eth0 \e
         router_ip=192.168.123.1          \e
 .ft P
 .fi
+.UNINDENT
+.UNINDENT
 .sp
 Replacing the example values with those required for this network. The
 only non\-obvious parameter is \(aqmanagement\(aq which takes the values 0
@@ -600,6 +675,8 @@ Lists the current stored configurations for the given identifier
 Creates a new interface group. The required parameters are the IP
 address and the network interface this appies to (e.g. eth0). In
 order to do anything useful, further parameters are required:
+.INDENT 0.0
+.INDENT 3.5
 .sp
 .nf
 .ft C
@@ -627,6 +704,8 @@ ip_range_high=<value>
 .fi
 .UNINDENT
 .UNINDENT
+.UNINDENT
+.UNINDENT
 .SH TAG
 .INDENT 0.0
 .TP
@@ -641,7 +720,8 @@ Returns information on the tag specified by <name>
 .UNINDENT
 .UNINDENT
 .sp
-\fBupdate\-nodes <tag_name> [add=<system_id>] [remove=<system_id>] [nodegroup=<system_id>]\fP
+\fBupdate\-nodes <tag_name> [add=<system_id>] [remove=<system_id>]
+[nodegroup=<system_id>]\fP
 .INDENT 0.0
 .INDENT 3.5
 Applies or removes the given tag from a list of nodes specified by
@@ -659,7 +739,8 @@ Triggers a rebuild of the tag to node mapping.
 .UNINDENT
 .UNINDENT
 .sp
-\fBupdate <tag_name> [name=<value>] | [comment=<value>]|[definition=<value>]\fP
+\fBupdate <tag_name> [name=<value>] | [comment=<value>]|
+[definition=<value>]\fP
 .INDENT 0.0
 .INDENT 3.5
 Updates the tag identified by tag_name. Any or all of name,comment
@@ -730,6 +811,8 @@ running \fBlshw\fP on the node.
 .sp
 Example:
 Adding a tag to all nodes which have an Intel GPU:
+.INDENT 0.0
+.INDENT 3.5
 .sp
 .nf
 .ft C
@@ -738,6 +821,8 @@ $ maas\-cli maas tags new name=\(aqintel\-gpu\(aq \e
     definition=\(aqcontains(//node[@id="display"]/vendor, "Intel")
 .ft P
 .fi
+.UNINDENT
+.UNINDENT
 .SH UNUSED COMMANDS
 .sp
 Because the \fBmaas\-cli\fP command exposes all of the API, it also lists
@@ -750,9 +835,8 @@ For more documentation of MAAS, please see \fI\%https://maas.ubuntu.com/docs\fP
 .sp
 \fImaas\fP
 .SH AUTHOR
-Canonical 2012
+Canonical 2013
 .SH COPYRIGHT
-2012, MAAS Developers
+2013, MAAS Developers
 .\" Generated by docutils manpage writer.
-.\" 
 .
