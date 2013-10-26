@@ -98,15 +98,16 @@ def commit_ipmi_settings(config):
         'bmc-config --commit --filename %s' % config)
 
 
-def get_maas_power_settings(user, password, ipaddress):
-    return "%s,%s,%s" % (user, password, ipaddress)
+def get_maas_power_settings(user, password, ipaddress, version):
+    return "%s,%s,%s,%s" % (user, password, ipaddress, version)
 
 
-def get_maas_power_settings_json(user, password, ipaddress):
+def get_maas_power_settings_json(user, password, ipaddress, version):
     power_params = {
         "power_address": ipaddress,
         "power_pass": password,
         "power_user": user,
+        "power_driver": version,
     }
     return json.dumps(power_params)
 
@@ -115,6 +116,15 @@ def generate_random_password(min_length=8, max_length=15):
     length = random.randint(min_length, max_length)
     letters = string.ascii_letters + string.digits
     return ''.join([random.choice(letters) for _ in range(length)])
+
+
+def get_ipmi_version():
+    (status, output) = commands.getstatusoutput('ipmi-locate')
+    show_re = re.compile('(IPMI\ Version:) (\d\.\d)')
+    res = show_re.search(output)
+    if res is None:
+        return
+    return res.group(2)
 
 
 def main():
@@ -168,12 +178,15 @@ def main():
         # has been detected
         exit(1)
 
+    IPMI_VERSION = "LAN"
+    if get_ipmi_version() == "2.0":
+        IPMI_VERSION = "LAN_2_0"
     if args.commission_creds:
         print(get_maas_power_settings_json(
-            IPMI_MAAS_USER, IPMI_MAAS_PASSWORD, IPMI_IP_ADDRESS))
+            IPMI_MAAS_USER, IPMI_MAAS_PASSWORD, IPMI_IP_ADDRESS, IPMI_VERSION))
     else:
         print(get_maas_power_settings(
-            IPMI_MAAS_USER, IPMI_MAAS_PASSWORD, IPMI_IP_ADDRESS))
+            IPMI_MAAS_USER, IPMI_MAAS_PASSWORD, IPMI_IP_ADDRESS, IPMI_VERSION))
 
 if __name__ == '__main__':
     main()

@@ -187,11 +187,12 @@ def main():
                 power_hwaddress=hwaddress
                 )
         else:
-            user, passwd, address = args.power_parms.split(",")
+            user, passwd, address, driver = args.power_parms.split(",")
             power_parms = dict(
                 power_user=user,
                 power_pass=passwd,
-                power_address=address
+                power_address=address,
+                power_driver=driver
                 )
         params["power_parameters"] = json.dumps(power_parms)
 
