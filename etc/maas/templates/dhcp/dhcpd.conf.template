@@ -7,9 +7,7 @@
 
 subnet {{subnet}} netmask {{subnet_mask}} {
        filename "{{bootloader}}";
-       {{if platform_codename >= 'raring'}}
        ignore-client-uids true;
-       {{endif}}
        option subnet-mask {{subnet_mask}};
        option broadcast-address {{broadcast_ip}};
        option domain-name-servers {{dns_servers}};
