@@ -168,8 +168,8 @@ class TestPowerAction(MAASTestCase):
         action = PowerAction(POWER_TYPE.VIRSH)
         script = action.render_template(
             action.get_template(), power_change='on',
-            power_address='qemu://example.com/', system_id='mysystem',
-            power_id='mysystem', username='me', virsh='echo')
+            power_address='qemu://example.com/',
+            power_id='mysystem', virsh='echo')
         output = action.run_shell(script)
         self.assertIn("Got unknown power state from virsh", output)
 

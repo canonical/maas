@@ -54,9 +54,6 @@ POWER_TYPE_PARAMETERS = {
         skip_check=True),
     POWER_TYPE.VIRSH: DictCharField(
         [
-            ('driver', forms.CharField(label="Driver", required=False)),
-            ('username',
-             forms.CharField(label="Username", required=False)),
             ('power_address',
              forms.CharField(label="Address", required=False)),
             ('power_id',

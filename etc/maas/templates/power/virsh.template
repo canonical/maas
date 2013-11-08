@@ -7,8 +7,6 @@
 power_change={{power_change}}
 power_address={{power_address}}
 power_id={{power_id}}
-username={{username}}
-system_id={{system_id}}
 virsh={{virsh}}
 
 

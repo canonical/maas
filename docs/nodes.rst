@@ -46,3 +46,49 @@ Manually add nodes
 
 If you know the MAC address of a node, you can manually enter details
 about the node through the web interface.
+
+
+Virtual machine nodes
+---------------------
+
+If you're setting up virtual machines to use as nodes with MAAS, you need
+to configure the power type as ``virsh``.  For MAAS to be able to use
+virsh, make sure you have the ``libvirt-bin`` package installed.
+
+The virsh power type takes two parameters:
+
+Power ID
+    The Power ID is the name of the virtual machine shown by
+    ``sudo virsh list --all``
+
+Address
+    This is a libvirt connection string, such as
+    ``qemu+ssh://ubuntu@10.0.0.2/system`` or ``qemu:///system``
+
+.. image:: media/virsh-config.png
+
+If you want to use ssh you'll need to generate a ssh key pair for the maas
+user.  By default there is no home directory created for the maas user::
+
+    $ sudo mkdir /home/maas
+    $ sudo chown maas:maas /home/maas
+
+Add a login shell for the maas user::
+
+    $ sudo chsh maas
+    $ /bin/bash
+
+Become the maas user and generate a SSH keypair::
+
+    # sudo su - maas
+    $ ssh-keygen
+
+Then add the public key to ``/ubuntu/.ssh/authorized_keys`` on the vm server
+so virsh can use ssh without a password::
+
+    $ ssh-copy-id -i ~/.ssh/id_rsa ubuntu@10.0.0.2
+
+As the maas user, test virsh commands against libvirt at 10.0.0.2::
+
+    $ virsh -c qemu+ssh://ubuntu@10.0.0.2/system list --all
+
