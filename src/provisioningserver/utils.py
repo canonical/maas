@@ -42,6 +42,7 @@ from os.path import isdir
 from pipes import quote
 from shutil import rmtree
 import signal
+import string
 import subprocess
 from subprocess import (
     CalledProcessError,
@@ -58,13 +59,29 @@ import netifaces
 import tempita
 from twisted.internet.defer import maybeDeferred
 
+# A table suitable for use with str.translate() to replace each
+# non-printable and non-ASCII character in a byte string with a question
+# mark, mimicking the "replace" strategy when encoding and decoding.
+non_printable_replace_table = b"".join(
+    chr(i) if chr(i) in string.printable else b"?"
+    for i in xrange(0xff + 0x01))
+
 
 class ExternalProcessError(CalledProcessError):
     """Raised when there's a problem calling an external command.
 
-    Unlike CalledProcessError, ExternalProcessError.__str__() contains
-    the output of the failed external process, if available.
+    Unlike `CalledProcessError`:
+
+    - `__str__()` returns a string containing the output of the failed
+      external process, if available. All non-printable and non-ASCII
+      characters are filtered out, replaced by question marks.
+
+    - `__unicode__()` is defined, and tries to return something
+      analagous to `__str__()` but keeping in valid unicode characters
+      from the error message.
+
     """
+
     @staticmethod
     def _to_unicode(string):
         if isinstance(string, bytes):
@@ -73,17 +90,11 @@ class ExternalProcessError(CalledProcessError):
             return unicode(string)
 
     @staticmethod
-    def _to_ascii(string):
+    def _to_ascii(string, table=non_printable_replace_table):
         if isinstance(string, unicode):
             return string.encode("ascii", "replace")
         else:
-            string = bytes(string)
-            try:
-                string.decode("ascii")
-            except UnicodeDecodeError:
-                return "<non-ASCII string"
-            else:
-                return string
+            return bytes(string).translate(table)
 
     def __unicode__(self):
         cmd = u" ".join(quote(self._to_unicode(part)) for part in self.cmd)

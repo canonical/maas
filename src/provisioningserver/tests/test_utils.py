@@ -1214,19 +1214,46 @@ class TestSubprocessWrappers(MAASTestCase):
 class TestExternalProcessError(MAASTestCase):
     """Tests for the ExternalProcessError class."""
 
-    def test_to_unicode_converts_to_unicode(self):
+    def test_to_unicode_decodes_to_unicode(self):
+        # Byte strings are decoded as ASCII by _to_unicode(), replacing
+        # all non-ASCII characters with U+FFFD REPLACEMENT CHARACTERs.
         byte_string = b"This string will be converted. \xe5\xb2\x81\xe5."
+        expected_unicode_string = (
+            u"This string will be converted. \ufffd\ufffd\ufffd\ufffd.")
         converted_string = ExternalProcessError._to_unicode(byte_string)
         self.assertIsInstance(converted_string, unicode)
-        self.assertEqual(
-            byte_string.decode('ascii', 'replace'), converted_string)
+        self.assertEqual(expected_unicode_string, converted_string)
 
-    def test_to_ascii_converts_to_bytes(self):
+    def test_to_unicode_defers_to_unicode_constructor(self):
+        # Unicode strings and non-byte strings are handed to unicode()
+        # to undergo Python's normal coercion strategy. (For unicode
+        # strings this is actually a no-op, but it's cheaper to do this
+        # than special-case unicode strings.)
+        self.assertEqual(
+            unicode(self), ExternalProcessError._to_unicode(self))
+
+    def test_to_ascii_encodes_to_bytes(self):
         unicode_string = u"Thîs nøn-åßçií s†ring will be cönvërted"
-        expected_ascii_string = b"Th?s n?n-???i? s?ring will be c?nv?rted"
+        expected_byte_string = b"Th?s n?n-???i? s?ring will be c?nv?rted"
         converted_string = ExternalProcessError._to_ascii(unicode_string)
         self.assertIsInstance(converted_string, bytes)
-        self.assertEqual(expected_ascii_string, converted_string)
+        self.assertEqual(expected_byte_string, converted_string)
+
+    def test_to_ascii_defers_to_bytes(self):
+        # Byte strings and non-unicode strings are handed to bytes() to
+        # undergo Python's normal coercion strategy. (For byte strings
+        # this is actually a no-op, but it's cheaper to do this than
+        # special-case byte strings.)
+        self.assertEqual(bytes(self), ExternalProcessError._to_ascii(self))
+
+    def test_to_ascii_removes_non_printable_chars(self):
+        # After conversion to a byte string, all non-printable and
+        # non-ASCII characters are replaced with question marks.
+        byte_string = b"*How* many roads\x01\x02\xb2\xfe"
+        expected_byte_string = b"*How* many roads????"
+        converted_string = ExternalProcessError._to_ascii(byte_string)
+        self.assertIsInstance(converted_string, bytes)
+        self.assertEqual(expected_byte_string, converted_string)
 
     def test__str__returns_bytes(self):
         error = ExternalProcessError(returncode=-1, cmd="foo-bar")
