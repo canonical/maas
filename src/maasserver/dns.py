@@ -37,6 +37,7 @@ from maasserver.enum import (
     )
 from maasserver.exceptions import MAASException
 from maasserver.models import (
+    Config,
     DHCPLease,
     NodeGroup,
     NodeGroupInterface,
@@ -312,7 +313,9 @@ def write_full_dns_config(reload_retry=False, force=False):
     if not write_conf:
         return
     zones = ZoneGenerator(NodeGroup.objects.all()).as_list()
+    upstream_dns = Config.objects.get_config("upstream_dns")
     tasks.write_full_dns_config.delay(
         zones=zones,
         callback=tasks.rndc_command.subtask(
-            args=[['reload'], reload_retry]))
+            args=[['reload'], reload_retry]),
+        upstream_dns=upstream_dns)

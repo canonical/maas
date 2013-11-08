@@ -26,8 +26,10 @@ __all__ = [
 from optparse import make_option
 
 from django.core.management.base import BaseCommand
+from maasserver.models import Config
 from provisioningserver.dns.config import (
     DNSConfig,
+    set_up_options_conf,
     setup_rndc,
     )
 
@@ -49,6 +51,9 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         no_clobber = options.get('no_clobber')
         setup_rndc()
+        upstream_dns = Config.objects.get_config("upstream_dns")
+        set_up_options_conf(
+            overwrite=not no_clobber, upstream_dns=upstream_dns)
         config = DNSConfig()
         config.write_config(
             overwrite=not no_clobber, zone_names=(), reverse_zone_names=())

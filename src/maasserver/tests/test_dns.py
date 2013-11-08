@@ -30,7 +30,10 @@ from maasserver.enum import (
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
     )
-from maasserver.models import node as node_module
+from maasserver.models import (
+    Config,
+    node as node_module,
+    )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.bindfixture import BINDServer
@@ -38,6 +41,7 @@ from maastesting.celery import CeleryFixture
 from maastesting.fakemethod import FakeMethod
 from maastesting.tests.test_bindfixture import dig_call
 from mock import (
+    ANY,
     call,
     Mock,
     )
@@ -285,9 +289,19 @@ class TestDNSConfigModifications(MAASServerTestCase):
         self.assertEqual(
             ([(['reload'], True)]), recorder.extract_args())
 
+    def test_write_full_dns_passes_upstream_dns_parameter(self):
+        self.patch(settings, 'DNS_CONNECT', True)
+        self.create_managed_nodegroup()
+        random_ip = factory.getRandomIPAddress()
+        Config.objects.set_config("upstream_dns", random_ip)
+        patched_task = self.patch(dns.tasks.write_full_dns_config, "delay")
+        dns.write_full_dns_config()
+        patched_task.assert_called_once_with(
+            zones=ANY, callback=ANY, upstream_dns=random_ip)
+
     def test_write_full_dns_doesnt_call_task_it_no_interface_configured(self):
         self.patch(settings, 'DNS_CONNECT', True)
-        patched_task = self.patch(tasks, 'write_full_dns_config')
+        patched_task = self.patch(dns.tasks.write_full_dns_config, "delay")
         dns.write_full_dns_config()
         self.assertEqual(0, patched_task.call_count)
 

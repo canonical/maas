@@ -69,6 +69,8 @@ class BINDServerResources(fixtures.Fixture):
     :ivar homedir: A directory where to put all the files the
         BIND server needs (configuration files and executable).
     :ivar log_file: The log file allocated for the server.
+    :ivar include_in_options: Name of a file under homedir to include inside
+        the options block.
     """
 
     # The full path where the 'named' executable can be
@@ -88,6 +90,9 @@ class BINDServerResources(fixtures.Fixture):
         listen-on port {{port}} {127.0.0.1;};
         pid-file "{{homedir}}/named.pid";
         session-keyfile "{{homedir}}/session.key";
+        {{if include_in_options}}
+        include "{{homedir}}/{{include_in_options}}";
+        {{endif}}
       };
 
       logging{
@@ -105,13 +110,14 @@ class BINDServerResources(fixtures.Fixture):
     """))
 
     def __init__(self, port=None, rndc_port=None, homedir=None,
-                 log_file=None):
+                 log_file=None, include_in_options=None):
         super(BINDServerResources, self).__init__()
         self._defaults = dict(
             port=port,
             rndc_port=rndc_port,
             homedir=homedir,
             log_file=log_file,
+            include_in_options=include_in_options,
             )
 
     def setUp(self, overwrite_config=False):
@@ -139,6 +145,7 @@ class BINDServerResources(fixtures.Fixture):
                 self.NAMED_CONF_TEMPLATE.substitute(
                     homedir=self.homedir, port=self.port,
                     log_file=self.log_file,
+                    include_in_options=self.include_in_options,
                     extra=namedrndcconf))
             atomic_write(
                 GENERATED_HEADER + named_conf, self.conf_file)

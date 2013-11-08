@@ -48,8 +48,10 @@ from provisioningserver.dns.config import (
     extract_suggested_named_conf,
     generate_rndc,
     MAAS_NAMED_CONF_NAME,
+    MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME,
     MAAS_NAMED_RNDC_CONF_NAME,
     MAAS_RNDC_CONF_NAME,
+    set_up_options_conf,
     setup_rndc,
     shortened_reversed_ip,
     TEMPLATES_DIR,
@@ -92,6 +94,33 @@ class TestRNDCUtilities(MAASTestCase):
             with open(os.path.join(dns_conf_dir, filename), "rb") as stream:
                 conf_content = stream.read()
                 self.assertIn(content, conf_content)
+
+    def test_set_up_options_conf_writes_configuration(self):
+        dns_conf_dir = self.make_dir()
+        self.patch(conf, 'DNS_CONFIG_DIR', dns_conf_dir)
+        fake_dns = factory.getRandomIPAddress()
+        set_up_options_conf(upstream_dns=fake_dns)
+        target_file = os.path.join(
+            dns_conf_dir, MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME)
+        self.assertThat(
+            target_file,
+            FileContains(matcher=Contains(fake_dns)))
+
+    def test_set_up_options_conf_handles_no_upstream_dns(self):
+        dns_conf_dir = self.make_dir()
+        self.patch(conf, 'DNS_CONFIG_DIR', dns_conf_dir)
+        set_up_options_conf()
+        target_file = os.path.join(
+            dns_conf_dir, MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME)
+        self.assertThat(target_file, FileExists())
+
+    def test_set_up_options_conf_raises_on_bad_template(self):
+        template = self.make_file(
+            name="named.conf.options.inside.maas.template",
+            contents=b"{{nonexistent}}")
+        self.patch(config, "TEMPLATES_DIR", os.path.dirname(template))
+        exception = self.assertRaises(DNSConfigFail, set_up_options_conf)
+        self.assertIn("name 'nonexistent' is not defined", repr(exception))
 
     def test_rndc_config_includes_default_controls(self):
         dns_conf_dir = self.make_dir()

@@ -57,6 +57,7 @@ from provisioningserver.dns.config import (
     DNSForwardZoneConfig,
     DNSReverseZoneConfig,
     MAAS_NAMED_CONF_NAME,
+    MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME,
     MAAS_NAMED_RNDC_CONF_NAME,
     MAAS_RNDC_CONF_NAME,
     )
@@ -450,7 +451,8 @@ class TestDNSTasks(PservTestCase):
         command = factory.getRandomString()
         result = write_full_dns_config.delay(
             zones=zones,
-            callback=rndc_command.subtask(args=[command]))
+            callback=rndc_command.subtask(args=[command]),
+            upstream_dns=factory.getRandomIPAddress())
 
         forward_file_name = 'zone.%s' % domain
         reverse_file_name = 'zone.0.168.192.in-addr.arpa'
@@ -461,11 +463,14 @@ class TestDNSTasks(PservTestCase):
                 os.path.join(self.dns_conf_dir, forward_file_name),
                 os.path.join(self.dns_conf_dir, reverse_file_name),
                 os.path.join(self.dns_conf_dir, MAAS_NAMED_CONF_NAME),
+                os.path.join(
+                    self.dns_conf_dir, MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME),
             ),
             MatchesListwise(
                 (
                     Equals(True),
                     Equals([((command,), {})]),
+                    FileExists(),
                     FileExists(),
                     FileExists(),
                     FileExists(),

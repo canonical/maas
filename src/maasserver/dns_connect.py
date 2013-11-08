@@ -23,6 +23,7 @@ from django.db.models.signals import (
 from django.dispatch import receiver
 from maasserver.enum import NODEGROUPINTERFACE_MANAGEMENT
 from maasserver.models import (
+    Config,
     Node,
     NodeGroup,
     NodeGroupInterface,
@@ -88,3 +89,11 @@ def dns_post_edit_hostname_Node(instance, old_field, **kwargs):
 
 
 connect_to_field_change(dns_post_edit_hostname_Node, Node, 'hostname')
+
+
+def upstream_dns_changed(sender, instance, created, **kwargs):
+    from maasserver.dns import write_full_dns_config
+    write_full_dns_config()
+
+
+Config.objects.config_changed_connect("upstream_dns", upstream_dns_changed)

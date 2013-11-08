@@ -1,0 +1,6 @@
+{{if upstream_dns}}
+    forwarders {
+        {{upstream_dns}};
+    };
+{{endif}}
+

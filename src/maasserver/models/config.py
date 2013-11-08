@@ -56,6 +56,7 @@ def get_default_config():
         'default_distro_series': DISTRO_SERIES.precise,
         'commissioning_distro_series': DISTRO_SERIES.precise,
         'http_proxy': None,
+        'upstream_dns': None,
         ## /settings
         }
 

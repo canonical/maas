@@ -43,6 +43,7 @@ from provisioningserver.dhcp.leases import upload_leases
 from provisioningserver.dns.config import (
     DNSConfig,
     execute_rndc_command,
+    set_up_options_conf,
     setup_rndc,
     )
 from provisioningserver.omshell import Omshell
@@ -197,6 +198,8 @@ def write_full_dns_config(zones=None, callback=None, **kwargs):
     # Write main config file.
     dns_config = DNSConfig(zones=zones)
     dns_config.write_config(**kwargs)
+    # Write the included options file.
+    set_up_options_conf(**kwargs)
     if callback is not None:
         callback.delay()
 

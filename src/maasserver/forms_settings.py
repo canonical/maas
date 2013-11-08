@@ -170,6 +170,20 @@ CONFIG_ITEMS = {
                 "proxy).")
         }
     },
+    'upstream_dns': {
+        'default': None,
+        'form': forms.GenericIPAddressField,
+        'form_kwargs': {
+            'label': (
+                "Upstream DNS used to resolve domains not managed by this "
+                "MAAS"),
+            'required': False,
+            'help_text': (
+                "Only used when MAAS is running its own DNS server. This "
+                "value is used as the value of 'forwarders' in the DNS "
+                "server config.")
+        }
+    },
     'default_distro_series': {
         'default': DISTRO_SERIES.precise,
         'form': forms.ChoiceField,

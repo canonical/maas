@@ -626,6 +626,7 @@ class MAASAndNetworkForm(ConfigForm):
     maas_name = get_config_field('maas_name')
     enlistment_domain = get_config_field('enlistment_domain')
     http_proxy = get_config_field('http_proxy')
+    upstream_dns = get_config_field('upstream_dns')
 
 
 class CommissioningForm(ConfigForm):

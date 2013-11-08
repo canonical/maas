@@ -17,6 +17,7 @@ __all__ = [
     'DNSForwardZoneConfig',
     'DNSReverseZoneConfig',
     'setup_rndc',
+    'set_up_options_conf',
     ]
 
 
@@ -47,6 +48,7 @@ import tempita
 
 
 MAAS_NAMED_CONF_NAME = 'named.conf.maas'
+MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME = 'named.conf.options.inside.maas'
 MAAS_NAMED_RNDC_CONF_NAME = 'named.conf.rndc.maas'
 MAAS_RNDC_CONF_NAME = 'rndc.conf.maas'
 
@@ -154,6 +156,35 @@ def execute_rndc_command(arguments):
 TEMPLATES_DIR = 'templates/dns'
 
 
+def set_up_options_conf(overwrite=True, **kwargs):
+    """Write out the named.conf.options.inside.maas file.
+
+    This file should be included by the top-level named.conf.options
+    inside its 'options' block.  MAAS cannot write the options file itself,
+    so relies on either the DNSFixture in the test suite, or the packaging.
+    Both should set that file up appropriately to include our file.
+    """
+    template_path = os.path.join(
+        locate_config(TEMPLATES_DIR),
+        "named.conf.options.inside.maas.template")
+    template = tempita.Template.from_filename(template_path)
+
+    # Make sure "upstream_dns" is set at least to None.  It's a
+    # special piece of config that can't be obtained in celery
+    # task code and we don't want to require that every call site
+    # has to specify it.  If it's not set, the substitution will
+    # fail with the default template that uses this value.
+    kwargs.setdefault("upstream_dns")
+    try:
+        rendered = template.substitute(kwargs)
+    except NameError as error:
+        raise DNSConfigFail(*error.args)
+
+    target_path = os.path.join(
+        conf.DNS_CONFIG_DIR, MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME)
+    atomic_write(rendered, target_path, overwrite=overwrite, mode=0644)
+
+
 class DNSConfigBase:
     __metaclass__ = ABCMeta
 
@@ -183,6 +214,7 @@ class DNSConfigBase:
             return tempita.Template(f.read(), name=self.template_path)
 
     def render_template(self, template, **kwargs):
+        """Substitute supplied kwargs into the supplied Tempita template."""
         try:
             return template.substitute(kwargs)
         except NameError as error:

@@ -27,6 +27,7 @@ from testtools.matchers import (
     Contains,
     FileContains,
     FileExists,
+    Not,
     )
 from testtools.testcase import gather_details
 
@@ -90,6 +91,7 @@ class TestBINDServerResources(MAASTestCase):
             self.assertIsInstance(resources.rndc_port, int)
             self.assertIsInstance(resources.homedir, unicode)
             self.assertIsInstance(resources.log_file, unicode)
+            self.assertIs(resources.include_in_options, None)
             self.assertIsInstance(resources.named_file, unicode)
             self.assertIsInstance(resources.conf_file, unicode)
             self.assertIsInstance(
@@ -110,6 +112,23 @@ class TestBINDServerResources(MAASTestCase):
                 FileContains(matcher=Contains(
                     b'default-port %s' % (
                         resources.rndc_port))))
+            # This should ideally be in its own test but it's here to cut
+            # test run time. See test_setUp_honours_include_in_options()
+            # as its counterpart.
+            self.assertThat(
+                resources.conf_file,
+                Not(FileContains(matcher=Contains(
+                    "forwarders"))))
+
+    def test_setUp_honours_include_in_options(self):
+        forwarders = "forwarders { 1.2.3.4; };"
+        with BINDServerResources(include_in_options=forwarders) as resources:
+            expected_in_file = (
+                resources.homedir + '/' + forwarders).encode("ascii")
+            self.assertThat(
+                resources.conf_file,
+                FileContains(matcher=Contains(
+                    expected_in_file)))
 
     def test_defaults_reallocated_after_teardown(self):
         seen_homedirs = set()
