@@ -19,6 +19,7 @@ __all__ = [
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from maasserver.models import (
+    Config,
     NodeGroup,
     NodeGroupInterface,
     )
@@ -43,3 +44,13 @@ def dhcp_post_edit_status_NodeGroup(instance, old_field, **kwargs):
 
 
 connect_to_field_change(dhcp_post_edit_status_NodeGroup, NodeGroup, 'status')
+
+
+def ntp_server_changed(sender, instance, created, **kwargs):
+    """The ntp_server config item changed, so write new DHCP configs."""
+    from maasserver.dhcp import configure_dhcp
+    for nodegroup in NodeGroup.objects.all():
+        configure_dhcp(nodegroup)
+
+
+Config.objects.config_changed_connect("ntp_server", ntp_server_changed)

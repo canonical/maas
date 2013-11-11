@@ -15,6 +15,7 @@ __metaclass__ = type
 __all__ = []
 
 from functools import partial
+import random
 
 from django.conf import settings
 from maasserver import dhcp
@@ -24,6 +25,8 @@ from maasserver.dhcp import (
     )
 from maasserver.dns import get_dns_server_address
 from maasserver.enum import NODEGROUP_STATUS
+from maasserver.models import Config
+from maasserver.models.config import get_default_config
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.celery import CeleryFixture
@@ -84,6 +87,7 @@ class TestDHCP(MAASServerTestCase):
 
         expected_params["omapi_key"] = nodegroup.dhcp_key
         expected_params["dns_servers"] = get_dns_server_address()
+        expected_params["ntp_server"] = get_default_config()['ntp_server']
         expected_params["domain_name"] = nodegroup.name
         expected_params["subnet"] = '192.168.100.0'
         expected_params["dhcp_interfaces"] = interface.interface
@@ -174,3 +178,22 @@ class TestDHCP(MAASServerTestCase):
                 dhcp.write_dhcp_config.apply_async.call_count,
                 kwargs['kwargs']['router_ip'],
             ))
+
+    def test_dhcp_config_gets_written_when_ntp_server_changes(self):
+        # When the "ntp_server" Config item is changed, check that all
+        # nodegroups get their DHCP config re-written.
+        num_active_nodegroups = random.randint(1, 10)
+        num_inactive_nodegroups = random.randint(1, 10)
+        for x in range(num_active_nodegroups):
+            factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
+        for x in range(num_inactive_nodegroups):
+            factory.make_node_group(status=NODEGROUP_STATUS.PENDING)
+
+        self.patch(settings, "DHCP_CONNECT", True)
+        self.patch(dhcp, 'write_dhcp_config')
+
+        Config.objects.set_config("ntp_server", factory.getRandomIPAddress())
+
+        self.assertEqual(
+            num_active_nodegroups,
+            dhcp.write_dhcp_config.apply_async.call_count)

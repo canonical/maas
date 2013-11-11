@@ -184,6 +184,17 @@ CONFIG_ITEMS = {
                 "server config.")
         }
     },
+    'ntp_server': {
+        'default': None,
+        'form': forms.GenericIPAddressField,
+        'form_kwargs': {
+            'label': "Address of NTP server for nodes",
+            'required': False,
+            'help_text': (
+                "NTP server address passed to nodes via a DHCP response. "
+                "e.g. for ntp.ubuntu.com: '91.189.94.4'")
+        }
+    },
     'default_distro_series': {
         'default': DISTRO_SERIES.precise,
         'form': forms.ChoiceField,

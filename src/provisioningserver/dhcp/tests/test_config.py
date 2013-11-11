@@ -55,6 +55,7 @@ def make_sample_params():
         subnet_mask="255.0.0.0",
         broadcast_ip="10.255.255.255",
         dns_servers="10.1.0.1 10.1.0.2",
+        ntp_server="8.8.8.8",
         domain_name="example.com",
         router_ip="10.0.0.2",
         ip_range_low="10.0.0.3",
@@ -109,3 +110,11 @@ class TestDHCPConfig(PservTestCase):
         params = make_sample_params()
         output = config.get_config(**params)
         self.assertThat(output, Contains(compose_bootloader_path()))
+
+    def test_renders_without_ntp_servers_set(self):
+        params = make_sample_params()
+        del params['ntp_server']
+        template = self.patch_template()
+        rendered = template.substitute(params)
+        self.assertEqual(rendered, config.get_config(**params))
+        self.assertNotIn("ntp-servers", rendered)

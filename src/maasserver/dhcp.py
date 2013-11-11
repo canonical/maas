@@ -22,6 +22,7 @@ from maasserver.enum import (
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
     )
+from maasserver.models import Config
 from netaddr import IPAddress
 from provisioningserver.tasks import (
     restart_dhcp_server,
@@ -67,6 +68,7 @@ def configure_dhcp(nodegroup):
         broadcast_ip=interface.broadcast_ip,
         router_ip=interface.router_ip,
         dns_servers=get_dns_server_address(nodegroup),
+        ntp_server=Config.objects.get_config("ntp_server"),
         domain_name=nodegroup.name,
         ip_range_low=interface.ip_range_low,
         ip_range_high=interface.ip_range_high,

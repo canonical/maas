@@ -38,6 +38,7 @@ class TestScript(MAASTestCase):
         '--subnet-mask', 'subnet-mask',
         '--broadcast-ip', 'broadcast-ip',
         '--dns-servers', 'dns-servers',
+        '--ntp-server', 'ntp-server',
         '--domain-name', 'domain-name',
         '--router-ip', 'router-ip',
         '--ip-range-low', 'ip-range-low',
@@ -53,8 +54,8 @@ class TestScript(MAASTestCase):
         output, err = cmd.communicate()
         contains_all_params = ContainsAll(
             ['subnet', 'subnet-mask', 'broadcast-ip',
-             'omapi-key', 'dns-servers', 'domain-name', 'router-ip',
-             'ip-range-low', 'ip-range-high'])
+             'omapi-key', 'dns-servers', 'ntp-server', 'domain-name',
+             'router-ip', 'ip-range-low', 'ip-range-high'])
         self.assertThat(output, contains_all_params)
 
     def test_arg_setup(self):
@@ -67,6 +68,7 @@ class TestScript(MAASTestCase):
                 subnet_mask='subnet-mask',
                 broadcast_ip='broadcast-ip',
                 dns_servers='dns-servers',
+                ntp_server='ntp-server',
                 domain_name='domain-name',
                 router_ip='router-ip',
                 omapi_key='omapi-key',
@@ -86,6 +88,7 @@ class TestScript(MAASTestCase):
             'broadcast-ip',
             'omapi-key',
             'dns-servers',
+            'ntp-server',
             'domain-name',
             'router-ip',
             'ip-range-low',
@@ -108,6 +111,7 @@ class TestScript(MAASTestCase):
             'broadcast-ip',
             'omapi-key',
             'dns-servers',
+            'ntp-server',
             'domain-name',
             'router-ip',
             'ip-range-low',

@@ -13,6 +13,9 @@ subnet {{subnet}} netmask {{subnet_mask}} {
        option domain-name-servers {{dns_servers}};
        option domain-name "{{domain_name}}";
        option routers {{router_ip}};
+       {{if ntp_server}}
+       option ntp-servers {{ntp_server}};
+       {{endif}}
        range dynamic-bootp {{ip_range_low}} {{ip_range_high}};
        class "PXE" {
           match if substring (option vendor-class-identifier, 0, 3) = "PXE";

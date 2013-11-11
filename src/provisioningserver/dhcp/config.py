@@ -41,6 +41,7 @@ def get_config(**params):
         e.g. 192.168.1.255
     :param dns_servers: One or more IP addresses of the DNS server for the
         subnet
+    :param ntp_server: IP address of the NTP server for the nodes
     :param domain_name: name that will be appended to the client's hostname to
         form a fully-qualified domain-name
     :param gateway: The router/gateway IP address for the subnet.
@@ -52,6 +53,7 @@ def get_config(**params):
     template_file = locate_config(TEMPLATES_DIR, 'dhcpd.conf.template')
     params['bootloader'] = compose_bootloader_path()
     params['platform_codename'] = linux_distribution()[2]
+    params.setdefault("ntp_server")
     try:
         template = tempita.Template.from_filename(
             template_file, encoding="UTF-8")

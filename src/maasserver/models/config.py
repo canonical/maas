@@ -57,6 +57,7 @@ def get_default_config():
         'commissioning_distro_series': DISTRO_SERIES.precise,
         'http_proxy': None,
         'upstream_dns': None,
+        'ntp_server': '91.189.94.4',  # ntp.ubuntu.com
         ## /settings
         }
 
