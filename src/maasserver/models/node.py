@@ -716,7 +716,7 @@ class Node(CleanSave, TimestampedModel):
         tags = self.tags.filter(kernel_opts__isnull=False)
         tags = tags.order_by('name')[:1]
         tag = get_one(tags)
-        if tag is not None:
+        if tag is not None and tag.kernel_opts != '':
             return tag, tag.kernel_opts
         global_value = Config.objects.get_config('kernel_opts')
         return None, global_value

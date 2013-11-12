@@ -325,9 +325,18 @@ class NodeTest(MAASServerTestCase):
         self.assertEqual(
             (None, kernel_opts), node.get_effective_kernel_options())
 
-    def test_get_effective_kernel_options_not_confused_by_empty_tag(self):
+    def test_get_effective_kernel_options_not_confused_by_None_opts(self):
         node = factory.make_node()
         tag = factory.make_tag()
+        node.tags.add(tag)
+        kernel_opts = factory.getRandomString()
+        Config.objects.set_config('kernel_opts', kernel_opts)
+        self.assertEqual(
+            (None, kernel_opts), node.get_effective_kernel_options())
+
+    def test_get_effective_kernel_options_not_confused_by_empty_str_opts(self):
+        node = factory.make_node()
+        tag = factory.make_tag(kernel_opts="")
         node.tags.add(tag)
         kernel_opts = factory.getRandomString()
         Config.objects.set_config('kernel_opts', kernel_opts)
