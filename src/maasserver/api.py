@@ -734,6 +734,9 @@ class NodesHandler(OperationsHandler):
     def list(self, request):
         """List Nodes visible to the user, optionally filtered by criteria.
 
+        :param hostname: An optional list of hostnames.  Only nodes with
+            matching hostnames will be returned.
+        :type hostname: iterable
         :param mac_address: An optional list of MAC addresses.  Only
             nodes with matching MAC addresses will be returned.
         :type mac_address: iterable
@@ -758,6 +761,9 @@ class NodesHandler(OperationsHandler):
             request.user, NODE_PERMISSION.VIEW, ids=match_ids)
         if match_macs is not None:
             nodes = nodes.filter(macaddress__mac_address__in=match_macs)
+        match_hostnames = get_optional_list(request.GET, 'hostname')
+        if match_hostnames is not None:
+            nodes = nodes.filter(hostname__in=match_hostnames)
         match_agent_name = request.GET.get('agent_name', None)
         if match_agent_name is not None:
             nodes = nodes.filter(agent_name=match_agent_name)
