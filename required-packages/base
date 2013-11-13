@@ -43,6 +43,7 @@ python-tempita
 python-twisted
 python-txamqp
 python-txlongpoll
+python-txtftp
 python-yaml
 rabbitmq-server
 syslinux-common
