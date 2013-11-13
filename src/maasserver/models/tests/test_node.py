@@ -343,6 +343,24 @@ class NodeTest(MAASServerTestCase):
         self.assertEqual(
             (None, kernel_opts), node.get_effective_kernel_options())
 
+    def test_get_effective_kernel_options_multiple_tags_with_opts(self):
+        # In this scenario:
+        #     global   kernel_opts='fish-n-chips'
+        #     tag_a    kernel_opts=null
+        #     tag_b    kernel_opts=''
+        #     tag_c    kernel_opts='bacon-n-eggs'
+        # we require that 'bacon-n-eggs' is chosen as it is the first
+        # tag with a valid kernel option.
+        Config.objects.set_config('kernel_opts', 'fish-n-chips')
+        node = factory.make_node()
+        node.tags.add(factory.make_tag('tag_a'))
+        node.tags.add(factory.make_tag('tag_b', kernel_opts=''))
+        tag_c = factory.make_tag('tag_c', kernel_opts='bacon-n-eggs')
+        node.tags.add(tag_c)
+
+        self.assertEqual(
+            (tag_c, 'bacon-n-eggs'), node.get_effective_kernel_options())
+
     def test_get_effective_kernel_options_ignores_unassociated_tag_value(self):
         node = factory.make_node()
         factory.make_tag(kernel_opts=factory.getRandomString())
