@@ -34,6 +34,9 @@ table.list .icon-controls {
     vertical-align: top;
     text-align: right;
     }
+table.list tr.warning {
+    background-color: #ecd7a9;
+}
 .sort-none,
 .sort-asc,
 .sort-desc {

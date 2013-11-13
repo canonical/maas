@@ -27,7 +27,9 @@
       </tr>
     </thead>
     {% for node in node_list %}
-      <tr class="node {% cycle 'even' 'odd' %}">
+      <tr {% if node.power_type == '' %} class="warning"
+          {% else %} class="node {% cycle 'even' 'odd' %}"
+          {% endif %}>
         {% if actions == "true" %}
           <td><input type="checkbox" name="system_id"
                      value="{{ node.system_id }}" /></td>
@@ -36,6 +38,7 @@
           <a href="{% url 'node-view' node.system_id %}">
           {{ node.fqdn }}
           </a>
+          {% if node.power_type == '' %} <img src="{{ STATIC_URL }}img/warning.png" title="No power type defined"/> {% endif %}
         </td>
         <td>
           {% for macaddress in node.macaddress_set.all reversed %}

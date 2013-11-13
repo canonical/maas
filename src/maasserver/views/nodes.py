@@ -81,6 +81,7 @@ from maasserver.views import (
     HelpfulDeleteView,
     PaginatedListView,
     )
+from provisioningserver.enum import POWER_TYPE
 from provisioningserver.tags import merge_details_cleanly
 
 
@@ -377,6 +378,12 @@ configured DHCP server.  See
 """)
 
 
+NO_POWER_SET = mark_safe("""
+This node does not have a power type set and MAAS will be unable to
+control it. Click 'Edit node' and set one.
+""")
+
+
 class NodeView(NodeViewMixin, UpdateView):
     """View class to display a node's information and buttons for the actions
     which can be performed on this node.
@@ -394,6 +401,8 @@ class NodeView(NodeViewMixin, UpdateView):
             NODE_PERMISSION.EDIT, node)
         if node.status in (NODE_STATUS.COMMISSIONING, NODE_STATUS.READY):
             messages.info(self.request, NODE_BOOT_INFO)
+        if node.power_type == POWER_TYPE.DEFAULT:
+            messages.error(self.request, NO_POWER_SET)
         context['error_text'] = (
             node.error if node.status == NODE_STATUS.FAILED_TESTS else None)
         context['status_text'] = (
