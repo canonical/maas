@@ -67,6 +67,7 @@ from provisioningserver.utils import (
     ensure_dir,
     ExternalProcessError,
     filter_dict,
+    find_ip_via_arp,
     get_all_interface_addresses,
     get_mtime,
     incremental_write,
@@ -1275,3 +1276,24 @@ class TestExternalProcessError(MAASTestCase):
         error = ExternalProcessError(
             returncode=-1, cmd="foo-bar", output=output)
         self.assertIn(output, error.__unicode__())
+
+
+class TestFindIPViaARP(MAASTestCase):
+    def test_find_ip_via_arp(self):
+        sample = """Address HWtype  HWaddress Flags Mask            Iface
+        192.168.100.20 (incomplete)                              virbr1
+        192.168.0.104 (incomplete)                              eth0
+        192.168.0.5 (incomplete)                              eth0
+        192.168.0.2 (incomplete)                              eth0
+        192.168.0.100 (incomplete)                              eth0
+        192.168.122.20 ether   52:54:00:02:86:4b   C                     virbr0
+        192.168.0.4 (incomplete)                              eth0
+        192.168.0.1 ether   90:f6:52:f6:17:92   C                     eth0
+        """
+
+        call_capture_and_check = self.patch(
+            provisioningserver.utils, 'call_capture_and_check')
+        call_capture_and_check.return_value = sample
+        ip_address_observed = find_ip_via_arp("90:f6:52:f6:17:92")
+        call_capture_and_check.assert_called_once_with(['arp', '-n'])
+        self.assertEqual("192.168.0.1", ip_address_observed)

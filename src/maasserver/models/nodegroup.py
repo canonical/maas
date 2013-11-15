@@ -40,6 +40,7 @@ from piston.models import (
 from provisioningserver.omshell import generate_omapi_key
 from provisioningserver.tasks import (
     add_new_dhcp_host_map,
+    add_seamicro15k,
     import_boot_images,
     )
 
@@ -263,6 +264,12 @@ class NodeGroup(TimestampedModel):
             if Config.objects.get_config(name) is not None
         }
         import_boot_images.apply_async(queue=self.uuid, kwargs=task_kwargs)
+
+    def add_seamicro15k(self, mac, username, password):
+        """ Add all of the specified cards the Seamicro SM15000 chassis at the
+        specified MAC. """
+        args = (mac, username, password)
+        add_seamicro15k.apply_async(queue=self.uuid, args=args)
 
     def add_dhcp_host_maps(self, new_leases):
         if self.get_managed_interface() is not None and len(new_leases) > 0:

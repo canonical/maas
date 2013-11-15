@@ -25,6 +25,7 @@ __all__ = [
     'write_full_dns_config',
     ]
 
+from logging import getLogger
 import os
 from subprocess import CalledProcessError
 
@@ -38,8 +39,13 @@ from provisioningserver.auth import (
     record_api_credentials,
     record_nodegroup_uuid,
     )
+from provisioningserver.custom_hardware.seamicro import (
+    probe_seamicro15k_and_enlist,
+    )
 from provisioningserver.dhcp import config
-from provisioningserver.dhcp.leases import upload_leases
+from provisioningserver.dhcp.leases import (
+    upload_leases,
+    )
 from provisioningserver.dns.config import (
     DNSConfig,
     execute_rndc_command,
@@ -53,6 +59,7 @@ from provisioningserver.power.poweraction import (
     )
 from provisioningserver.utils import (
     call_and_check,
+    find_ip_via_arp,
     sudo_write_file,
     )
 
@@ -64,6 +71,8 @@ refresh_functions = {
 
 
 celery_config = app_or_default().conf
+
+logger = getLogger(__name__)
 
 
 @task
@@ -392,3 +401,17 @@ def import_boot_images(http_proxy=None, main_archive=None, ports_archive=None,
     if cloud_images_archive is not None:
         env['CLOUD_IMAGES_ARCHIVE'] = cloud_images_archive
     call_and_check(['sudo', '-n', '-E', 'maas-import-pxe-files'], env=env)
+
+
+# =====================================================================
+# Custom hardware tasks
+# =====================================================================
+
+@task
+def add_seamicro15k(mac, username, password):
+    """ See `maasserver.api.NodeGroupsHandler.add_seamicro15k`. """
+    ip = find_ip_via_arp(mac)
+    if ip is not None:
+        probe_seamicro15k_and_enlist(ip, username, password)
+    else:
+        logger.warning("Couldn't find IP address for MAC %s" % mac)

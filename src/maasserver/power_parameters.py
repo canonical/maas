@@ -104,4 +104,18 @@ POWER_TYPE_PARAMETERS = {
         ],
         required=False,
         skip_check=True),
+    POWER_TYPE.SEAMICRO15K: DictCharField(
+        [
+            ('power_address',
+             forms.CharField(
+                 label="IP Address or Hostname", required=False)),
+            ('power_user',
+             forms.CharField(label="Username", required=False)),
+            ('power_pass',
+             forms.CharField(label="Password", required=False)),
+            ('system_id',
+             forms.CharField(label="System ID", required=False)),
+        ],
+        required=False,
+        skip_check=True),
 }

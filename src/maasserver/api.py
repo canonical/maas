@@ -1590,6 +1590,39 @@ class NodeGroupHandler(OperationsHandler):
 
         return HttpResponse(status=httplib.OK)
 
+    @operation(idempotent=False)
+    def probe_and_enlist_hardware(self, request, uuid):
+        """Add special hardware types.
+
+        :param model: The type of special hardware, currently only
+            'seamicro15k' is supported.
+        :type model: unicode
+
+        The following are only required if you are probing a seamicro15k:
+
+        :param mac: The MAC of the seamicro15k chassis.
+        :type mac: unicode
+        :param username: The username for the chassis.
+        :type username: unicode
+        :param password: The password for the chassis.
+        :type password: unicode
+        """
+
+        if not request.user.is_superuser:
+            raise PermissionDenied(METHOD_RESERVED_ADMIN)
+        nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
+
+        model = get_mandatory_param(request.data, 'mode')
+        if model == 'seamicro15k':
+            mac = get_mandatory_param(request.data, 'mac')
+            username = get_mandatory_param(request.data, 'username')
+            password = get_mandatory_param(request.data, 'password')
+
+            nodegroup.add_seamicro15k(mac, username, password)
+        else:
+            return HttpResponse(status=httplib.BAD_REQUEST)
+
+        return HttpResponse(status=httplib.OK)
 
 DISPLAYED_NODEGROUPINTERFACE_FIELDS = (
     'ip', 'management', 'interface', 'subnet_mask',

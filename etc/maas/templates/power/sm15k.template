@@ -1,0 +1,10 @@
+# -*- mode: shell-script -*-
+#
+# Control a system via ipmipower, sending the seamicro specific hex codes
+#
+{{py: power_mode = 1 if power_change == 'on' else 0 }}
+
+{{ipmitool}} -I lanplus \
+    -H {{power_address}} -U {{power_user}} \
+    -P {{power_pass}} raw 0x2E 1 0x00 0x7d 0xab \
+    {{power_mode}} 0 {{system_id}}

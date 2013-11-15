@@ -46,6 +46,10 @@ class POWER_TYPE:
     # ILO4/bridging/IPMI
     MOONSHOT = 'moonshot'
 
+    # The SeaMicro SM15000.
+    # http://www.seamicro.com/sites/default/files/SM15000_Datasheet.pdf
+    SEAMICRO15K = 'sm15k'
+
 
 POWER_TYPE_CHOICES = (
     (POWER_TYPE.VIRSH, "virsh (virtual systems)"),
@@ -53,6 +57,7 @@ POWER_TYPE_CHOICES = (
     (POWER_TYPE.CDU, "Sentry Switch CDU"),
     (POWER_TYPE.IPMI, "IPMI"),
     (POWER_TYPE.MOONSHOT, "iLO4 Moonshot Chassis"),
+    (POWER_TYPE.SEAMICRO15K, "SeaMicro 15000"),
     )
 
 

@@ -17,6 +17,7 @@ __all__ = [
     "atomic_write",
     "deferred",
     "filter_dict",
+    "find_ip_via_arp",
     "import_settings",
     "incremental_write",
     "locate_config",
@@ -744,3 +745,24 @@ def classify(func, subjects):
         bucket = matched if func(subject) else other
         bucket.append(ident)
     return matched, other
+
+
+def find_ip_via_arp(mac):
+    """Find the IP address for `mac` by reading the output of arp -n.
+
+    Returns `None` if the MAC is not found.
+
+    We do this because we aren't necessarily the only DHCP server on the
+    network, so we can't check our own leases file and be guaranteed to find an
+    IP that matches.
+
+    :param mac: The mac address, e.g. '1c:6f:65:d5:56:98'.
+    """
+
+    output = call_capture_and_check(['arp', '-n']).split('\n')
+
+    for line in output:
+        columns = line.split()
+        if len(columns) == 5 and columns[2] == mac:
+            return columns[0]
+    return None
