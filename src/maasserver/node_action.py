@@ -185,7 +185,7 @@ class UseCurtin(NodeAction):
     """Set this node to use curtin for installation."""
     name = "usecurtin"
     display = "Use the fast installer"
-    display_bulk = "Mark the selected nodes as using the fast installer"
+    display_bulk = "Mark nodes as using the fast installer"
     actionable_statuses = map_enum(NODE_STATUS).values()
     permission = NODE_PERMISSION.EDIT
 
@@ -203,7 +203,7 @@ class UseDI(NodeAction):
     """Set this node to use d-i for installation."""
     name = "usedi"
     display = "Use the default installer"
-    display_bulk = "Mark the selected nodes as using the default installer"
+    display_bulk = "Mark nodes as using the default installer"
     actionable_statuses = map_enum(NODE_STATUS).values()
     permission = NODE_PERMISSION.EDIT
 
