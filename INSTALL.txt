@@ -48,6 +48,13 @@ installed if you later set the options in the web interface to have
 MAAS manage DHCP/DNS). If you need to integrate your MAAS setup under
 an existing DHCP setup, see :ref:`manual-dhcp`
 
+.. note::
+  A more up-to-date MAAS is available for the most recent Ubuntu LTS
+  release in the Canonical cloud archive.  You can activate the archive
+  with ``sudo add-apt-repository cloud-archive:tools``.  Using packages
+  from this archive is recommended as it contains important fixes and
+  new features that are not always available in the Ubuntu archive.
+
 
 Install packages
 ^^^^^^^^^^^^^^^^
@@ -221,6 +228,11 @@ run the command::
 yours something else) This will initiate downloading the required
 image files. Note that this may take some time depending on your
 network connection.
+
+.. note::
+  This API command is only available in MAAS versions 1.3 and above.
+  For lower versions, you need to run ``sudo maas-import-pxe-files`` once
+  on each cluster controller.
 
 
 Login to the server
