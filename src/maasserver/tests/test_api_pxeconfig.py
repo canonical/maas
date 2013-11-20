@@ -134,6 +134,17 @@ class TestPXEConfigAPI(AnonAPITestCase):
         response_dict = json.loads(response.content)
         self.assertEqual(value, response_dict['extra_opts'])
 
+    def test_pxeconfig_uses_present_boot_image(self):
+        release = Config.objects.get_config('commissioning_distro_series')
+        nodegroup = factory.make_node_group()
+        factory.make_boot_image(
+            architecture="amd64", release=release, nodegroup=nodegroup,
+            purpose="commissioning")
+        params = self.get_default_params()
+        params['cluster_uuid'] = nodegroup.uuid
+        params_out = self.get_pxeconfig(params)
+        self.assertEqual("amd64", params_out["arch"])
+
     def test_pxeconfig_defaults_to_i386_for_default(self):
         # As a lowest-common-denominator, i386 is chosen when the node is not
         # yet known to MAAS.

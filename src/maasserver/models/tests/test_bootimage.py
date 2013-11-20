@@ -17,6 +17,7 @@ __all__ = []
 from maasserver.models import (
     BootImage,
     NodeGroup,
+    Config,
     )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -52,3 +53,32 @@ class TestBootImageManager(MAASServerTestCase):
         BootImage.objects.register_image(self.nodegroup, **params)
         self.assertTrue(
             BootImage.objects.have_image(self.nodegroup, **params))
+
+    def test_default_arch_image_none(self):
+        series = Config.objects.get_config('commissioning_distro_series')
+        result = BootImage.objects.get_default_arch_image_in_nodegroup(
+            self.nodegroup, series, None)
+        self.assertIsNone(result)
+
+    def test_default_arch_image_one(self):
+        series = Config.objects.get_config('commissioning_distro_series')
+        purpose = factory.make_name("purpose")
+        factory.make_boot_image(
+            architecture="amd64", release=series, nodegroup=self.nodegroup,
+            purpose=purpose)
+        result = BootImage.objects.get_default_arch_image_in_nodegroup(
+            self.nodegroup, series, purpose=purpose)
+        self.assertEqual(result.architecture, "amd64")
+
+    def test_default_arch_image_many(self):
+        series = Config.objects.get_config('commissioning_distro_series')
+        purpose = factory.make_name("purpose")
+        factory.make_boot_image(
+            architecture="amd64", release=series, nodegroup=self.nodegroup,
+            purpose=purpose)
+        factory.make_boot_image(
+            architecture="other", release=series, nodegroup=self.nodegroup,
+            purpose=purpose)
+        result = BootImage.objects.get_default_arch_image_in_nodegroup(
+            self.nodegroup, series, purpose=purpose)
+        self.assertEqual(result.architecture, "amd64")

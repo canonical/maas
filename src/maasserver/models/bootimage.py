@@ -25,6 +25,7 @@ from django.db.models import (
     )
 from maasserver import DefaultMeta
 from maasserver.models.nodegroup import NodeGroup
+from maasserver.utils.orm import get_first
 
 
 class BootImageManager(Manager):
@@ -60,6 +61,15 @@ class BootImageManager(Manager):
             return True
         except BootImage.DoesNotExist:
             return False
+
+    def get_default_arch_image_in_nodegroup(self, nodegroup, series, purpose):
+        """Return the first image available for any architecture in the
+        nodegroup/series supplied.
+        """
+        images = BootImage.objects.filter(
+            release=series, nodegroup=nodegroup, purpose=purpose)
+        images = images.order_by('architecture')
+        return get_first(images)
 
 
 class BootImage(Model):

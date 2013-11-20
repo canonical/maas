@@ -2229,6 +2229,13 @@ def pxeconfig(request):
     """
     node = get_node_from_mac_string(request.GET.get('mac', None))
 
+    if node is None or node.status == NODE_STATUS.COMMISSIONING:
+        series = Config.objects.get_config('commissioning_distro_series')
+    else:
+        series = node.get_distro_series()
+
+    purpose = get_boot_purpose(node)
+
     if node:
         arch, subarch = node.architecture.split('/')
         preseed_url = compose_preseed_url(node)
@@ -2238,6 +2245,11 @@ def pxeconfig(request):
         nodegroup = node.nodegroup
         domain = nodegroup.name
     else:
+        nodegroup = find_nodegroup_for_pxeconfig_request(request)
+        preseed_url = compose_enlistment_preseed_url(nodegroup=nodegroup)
+        hostname = 'maas-enlist'
+        domain = Config.objects.get_config('enlistment_domain')
+
         try:
             pxelinux_arch = request.GET['arch']
         except KeyError:
@@ -2246,9 +2258,15 @@ def pxeconfig(request):
                 # to pxelinux.cfg/default-<arch>-<subarch> for arch detection.
                 return HttpResponse(status=httplib.NO_CONTENT)
             else:
-                # Request has already fallen back, so if arch is still not
-                # provided then use i386.
-                arch = ARCHITECTURE.i386.split('/')[0]
+                # Look in BootImage for an image that actually exists for the
+                # current series. If nothing is found, fall back to i386 like
+                # we used to. LP #1181334
+                image = BootImage.objects.get_default_arch_image_in_nodegroup(
+                    nodegroup, series, purpose=purpose)
+                if image is None:
+                    arch = ARCHITECTURE.i386.split('/')[0]
+                else:
+                    arch = image.architecture
         else:
             # Map from pxelinux namespace architecture names to MAAS namespace
             # architecture names. If this gets bigger, an external lookup table
@@ -2270,16 +2288,6 @@ def pxeconfig(request):
             # 1-1 mapping.
             subarch = pxelinux_subarch
 
-        nodegroup = find_nodegroup_for_pxeconfig_request(request)
-        preseed_url = compose_enlistment_preseed_url(nodegroup=nodegroup)
-        hostname = 'maas-enlist'
-        domain = Config.objects.get_config('enlistment_domain')
-
-    if node is None or node.status == NODE_STATUS.COMMISSIONING:
-        series = Config.objects.get_config('commissioning_distro_series')
-    else:
-        series = node.get_distro_series()
-
     if node is not None:
         # We don't care if the kernel opts is from the global setting or a tag,
         # just get the options
@@ -2289,7 +2297,6 @@ def pxeconfig(request):
         # we still need to return the global kernel options.
         extra_kernel_opts = Config.objects.get_config("kernel_opts")
 
-    purpose = get_boot_purpose(node)
     server_address = get_maas_facing_server_address(nodegroup=nodegroup)
     cluster_address = get_mandatory_param(request.GET, "local")
 
