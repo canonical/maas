@@ -69,14 +69,14 @@ DEFAULT_KEYRING = "/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg"
 logger = getLogger(__name__)
 
 
-def copy_file_by_glob(source_dir, pattern, target_dir, target):
-    """Copy a single file, identified by a glob pattern.
+def move_file_by_glob(source_dir, pattern, target_dir, target):
+    """Move a single file, identified by a glob pattern.
 
     :param source_dir: Directory where the file should be.
-    :param pattern: A glob pattern identifying the single file to be copied.
-    :param target_dir: Directory to copy to.
-    :param target: Name for the copy.
-    :return: Full path to the copy.
+    :param pattern: A glob pattern identifying the single file to be moved.
+    :param target_dir: Directory to which the file should be moved.
+    :param target: New name for the file.
+    :return: The file's full new path.
     """
     matches = glob(os.path.join(source_dir, pattern))
     if len(matches) != 1:
@@ -84,7 +84,7 @@ def copy_file_by_glob(source_dir, pattern, target_dir, target):
             "expected one %s, found %d" % (pattern, len(matches)))
     [original] = matches
     to = os.path.join(target_dir, target)
-    shutil.copy(original, to)
+    os.rename(original, to)
     return to
 
 
@@ -116,9 +116,9 @@ def extract_image_tarball(tarball, target_dir, temp_location=None):
         # may have holes.
         call_and_check(["tar", "-Sxzf", tarball, "-C", tmp])
 
-        copy_file_by_glob(tmp, '*-vmlinuz*', target_dir, 'linux')
-        copy_file_by_glob(tmp, '*-initrd*', target_dir, 'initrd.gz')
-        image = copy_file_by_glob(tmp, '*img', target_dir, 'disk.img')
+        move_file_by_glob(tmp, '*-vmlinuz*', target_dir, 'linux')
+        move_file_by_glob(tmp, '*-initrd*', target_dir, 'initrd.gz')
+        image = move_file_by_glob(tmp, '*img', target_dir, 'disk.img')
 
     call_uec2roottar(image, os.path.join(target_dir, 'dist-root.tar.gz'))
 

@@ -34,7 +34,7 @@ from provisioningserver.import_images import (
     )
 from provisioningserver.import_images.ephemerals_script import (
     compose_filter,
-    copy_file_by_glob,
+    move_file_by_glob,
     create_symlinked_image_dir,
     extract_image_tarball,
     install_image_from_simplestreams,
@@ -52,6 +52,8 @@ from provisioningserver.utils import (
     )
 from testtools.matchers import (
     FileContains,
+    FileExists,
+    Not,
     StartsWith,
     )
 
@@ -66,64 +68,64 @@ class TestHelpers(PservTestCase):
         """Return an existing directory, and nonexistent filename."""
         return self.make_dir(), factory.make_name()
 
-    def test_copy_file_by_glob_copies_file(self):
+    def test_move_file_by_glob_moves_file(self):
         content = factory.getRandomString()
         source_dir, source_name = split_path(self.make_file(contents=content))
         target_dir, target_name = self.make_target()
 
-        copy_file_by_glob(
+        move_file_by_glob(
             source_dir, source_name[:3] + '*',
             target_dir, target_name)
 
         self.assertThat(
             os.path.join(source_dir, source_name),
-            FileContains(content))
+            Not(FileExists()))
         self.assertThat(
             os.path.join(target_dir, target_name),
             FileContains(content))
 
-    def test_copy_by_file_returns_target_path(self):
+    def test_move_file_by_glob_returns_target_path(self):
         source_dir, source_name = split_path(self.make_file())
         target_dir, target_name = self.make_target()
 
-        target = copy_file_by_glob(
+        target = move_file_by_glob(
             source_dir, source_name, target_dir, target_name)
 
         self.assertEqual(os.path.join(target_dir, target_name), target)
 
-    def test_copy_file_by_glob_ignores_nonmatching_files(self):
+    def test_move_file_by_glob_ignores_nonmatching_files(self):
         content = factory.getRandomString()
         source_dir, source_name = split_path(self.make_file(contents=content))
         other_content = factory.getRandomString()
         other_file = factory.make_file(source_dir, contents=other_content)
         target_dir, target_name = self.make_target()
 
-        copy_file_by_glob(source_dir, source_name, target_dir, target_name)
+        move_file_by_glob(source_dir, source_name, target_dir, target_name)
 
         self.assertThat(other_file, FileContains(other_content))
         self.assertThat(
             os.path.join(target_dir, target_name),
             FileContains(content))
         self.assertItemsEqual(
-            [source_name, os.path.basename(other_file)],
+            [os.path.basename(other_file)],
             os.listdir(source_dir))
         self.assertItemsEqual([target_name], os.listdir(target_dir))
 
-    def test_copy_file_by_glob_fails_if_no_files_match(self):
+    def test_move_file_by_glob_fails_if_no_files_match(self):
         self.assertRaises(
             AssertionError,
-            copy_file_by_glob,
+            move_file_by_glob,
             self.make_dir(), factory.make_name() + '*',
             self.make_dir(), factory.make_name())
 
-    def test_copy_file_by_glob_fails_if_multiple_files_match(self):
+    def test_move_file_by_glob_fails_if_multiple_files_match(self):
         source_dir = self.make_dir()
         factory.make_file(source_dir)
         factory.make_file(source_dir)
 
         self.assertRaises(
             AssertionError,
-            copy_file_by_glob,
+            move_file_by_glob,
             source_dir, '*', self.make_dir(), factory.make_name())
 
     def test_compose_filter_returns_single_literal(self):
@@ -198,7 +200,7 @@ class TestExtractImageTarball(PservTestCase):
     def test_runs_uec2roottar(self):
         check_call = self.patch(subprocess, 'check_call')
         fake_image = factory.make_name('image')
-        self.patch(ephemerals_script, 'copy_file_by_glob').return_value = (
+        self.patch(ephemerals_script, 'move_file_by_glob').return_value = (
             fake_image)
         tarball = factory.make_name('tarball') + '.tar.gz'
         target_dir = self.make_dir()
@@ -214,7 +216,7 @@ class TestExtractImageTarball(PservTestCase):
     def test_cleans_up_temp_location(self):
         self.patch(subprocess, 'check_call')
         fake_image = factory.make_name('image')
-        self.patch(ephemerals_script, 'copy_file_by_glob').return_value = (
+        self.patch(ephemerals_script, 'move_file_by_glob').return_value = (
             fake_image)
         tarball = factory.make_name('tarball') + '.tar.gz'
         target_dir = self.make_dir()
@@ -228,7 +230,7 @@ class TestExtractImageTarball(PservTestCase):
         self.patch(subprocess, 'check_call').side_effect = (
             ExternalProcessError(-1, "some_command"))
         fake_image = factory.make_name('image')
-        self.patch(ephemerals_script, 'copy_file_by_glob').return_value = (
+        self.patch(ephemerals_script, 'move_file_by_glob').return_value = (
             fake_image)
         tarball = factory.make_name('tarball') + '.tar.gz'
         target_dir = self.make_dir()
