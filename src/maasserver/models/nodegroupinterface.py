@@ -81,6 +81,11 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
     ip_range_high = GenericIPAddressField(
         editable=True, unique=False, blank=True, null=True, default=None)
 
+    # Foreign DHCP server address, if any, that was detected on this
+    # interface.
+    foreign_dhcp_ip = GenericIPAddressField(
+        null=True, default=None, editable=False, unique=False)
+
     @property
     def network(self):
         """Return the network defined by the broadcast address and net mask.
