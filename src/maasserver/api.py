@@ -138,7 +138,7 @@ from maasserver.api_utils import (
     get_mandatory_param,
     get_oauth_token,
     get_optional_list,
-    get_overrided_query_dict,
+    get_overridden_query_dict,
     )
 from maasserver.apidoc import (
     describe_resource,
@@ -335,7 +335,7 @@ class NodeHandler(OperationsHandler):
         """
         node = Node.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NODE_PERMISSION.EDIT)
-        data = get_overrided_query_dict(model_to_dict(node), request.data)
+        data = get_overridden_query_dict(model_to_dict(node), request.data)
 
         Form = get_node_edit_form(request.user)
         form = Form(data, instance=node)
@@ -1432,7 +1432,8 @@ class NodeGroupHandler(OperationsHandler):
         if not request.user.is_superuser:
             raise PermissionDenied(METHOD_RESERVED_ADMIN)
         nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
-        data = get_overrided_query_dict(model_to_dict(nodegroup), request.data)
+        data = get_overridden_query_dict(
+            model_to_dict(nodegroup), request.data)
         form = NodeGroupEdit(instance=nodegroup, data=data)
         if form.is_valid():
             return form.save()
@@ -1721,7 +1722,7 @@ class NodeGroupInterfaceHandler(OperationsHandler):
         nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
         nodegroupinterface = get_object_or_404(
             NodeGroupInterface, nodegroup=nodegroup, interface=interface)
-        data = get_overrided_query_dict(
+        data = get_overridden_query_dict(
             model_to_dict(nodegroupinterface), request.data)
         form = NodeGroupInterfaceForm(data, instance=nodegroupinterface)
         if form.is_valid():
@@ -1823,7 +1824,7 @@ class TagHandler(OperationsHandler):
         tag = Tag.objects.get_tag_or_404(
             name=name, user=request.user, to_edit=True)
         model_dict = model_to_dict(tag)
-        data = get_overrided_query_dict(model_dict, request.data)
+        data = get_overridden_query_dict(model_dict, request.data)
         form = TagForm(data, instance=tag)
         if form.is_valid():
             try:

@@ -19,7 +19,7 @@ __all__ = [
     'get_mandatory_param',
     'get_oauth_token',
     'get_optional_list',
-    'get_overrided_query_dict',
+    'get_overridden_query_dict',
     ]
 
 from django.core.exceptions import ValidationError
@@ -104,7 +104,7 @@ def get_list_from_dict_or_multidict(data, key, default=None):
     return data.get(key, default)
 
 
-def get_overrided_query_dict(defaults, data):
+def get_overridden_query_dict(defaults, data):
     """Returns a QueryDict with the values of 'defaults' overridden by the
     values in 'data'.
 

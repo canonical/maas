@@ -22,7 +22,7 @@ from maasserver.api_utils import (
     extract_oauth_key,
     extract_oauth_key_from_auth_header,
     get_oauth_token,
-    get_overrided_query_dict,
+    get_overridden_query_dict,
     )
 from maasserver.exceptions import Unauthorized
 from maasserver.testing.factory import factory
@@ -58,7 +58,7 @@ class TestGetOverridedQueryDict(MAASServerTestCase):
 
     def test_returns_QueryDict(self):
         defaults = {factory.getRandomString(): factory.getRandomString()}
-        results = get_overrided_query_dict(defaults, QueryDict(''))
+        results = get_overridden_query_dict(defaults, QueryDict(''))
         expected_results = QueryDict('').copy()
         expected_results.update(defaults)
         self.assertEqual(expected_results, results)
@@ -68,7 +68,7 @@ class TestGetOverridedQueryDict(MAASServerTestCase):
         defaults = {key: factory.getRandomString()}
         data_value = factory.getRandomString()
         data = {key: data_value}
-        results = get_overrided_query_dict(defaults, data)
+        results = get_overridden_query_dict(defaults, data)
         self.assertEqual([data_value], results.getlist(key))
 
 
