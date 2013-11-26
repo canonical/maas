@@ -676,6 +676,7 @@ class NodeGroupInterfaceForm(ModelForm):
             'router_ip',
             'ip_range_low',
             'ip_range_high',
+            'foreign_dhcp_ip',
             )
 
 

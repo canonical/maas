@@ -1718,6 +1718,8 @@ class NodeGroupInterfaceHandler(OperationsHandler):
         :type ip_range_low: unicode (IP Address)
         :param ip_range_high: Highest IP address to assign to clients.
         :type ip_range_high: unicode (IP Address)
+        :param foreign_dhcp_ip: IP of non-maas DHCP server detected on network
+        :type foreign_dhcp_ip: unicode (IP Address)
         """
         nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
         nodegroupinterface = get_object_or_404(

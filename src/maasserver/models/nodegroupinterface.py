@@ -84,7 +84,7 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
     # Foreign DHCP server address, if any, that was detected on this
     # interface.
     foreign_dhcp_ip = GenericIPAddressField(
-        null=True, default=None, editable=False, unique=False)
+        null=True, default=None, editable=True, blank=True, unique=False)
 
     @property
     def network(self):

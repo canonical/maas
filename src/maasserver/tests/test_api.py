@@ -578,6 +578,37 @@ class TestNodeGroupInterfaceAPI(APITestCase):
             NodeGroupInterface.objects.filter(
                 interface=interface.interface, nodegroup=nodegroup).exists())
 
+    def test_update_foreign_dhcp_ip_sets_value(self):
+        self.become_admin()
+        nodegroup = factory.make_node_group()
+        interface = nodegroup.get_managed_interface()
+        ip = factory.getRandomIPAddress()
+        response = self.client_put(
+            reverse(
+                'nodegroupinterface_handler',
+                args=[nodegroup.uuid, interface.interface]),
+            {
+                'foreign_dhcp_ip': ip,
+            })
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(ip, reload_object(interface).foreign_dhcp_ip)
+
+    def test_update_foreign_dhcp_ip_unsets_value(self):
+        self.become_admin()
+        nodegroup = factory.make_node_group()
+        interface = nodegroup.get_managed_interface()
+        interface.foreign_dhcp_ip = factory.getRandomIPAddress()
+        interface.save()
+        response = self.client_put(
+            reverse(
+                'nodegroupinterface_handler',
+                args=[nodegroup.uuid, interface.interface]),
+            {
+                'foreign_dhcp_ip': '',
+            })
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(None, reload_object(interface).foreign_dhcp_ip)
+
 
 class TestBootImagesAPI(APITestCase):
 
