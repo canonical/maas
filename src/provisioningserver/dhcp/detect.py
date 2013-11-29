@@ -93,39 +93,79 @@ class DHCPOfferPacket:
         self.dhcp_server_ID = socket.inet_ntoa(data[245:249])
 
 
-# Example code to drive the above classes.
-if __name__ == '__main__':
-    # Set UDP.
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    # Set broadcast mode.
-    sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+# UDP ports for the BOOTP protocol.  Used for discovery requests.
+BOOTP_SERVER_PORT = 67
+BOOTP_CLIENT_PORT = 68
 
-    # Work out what MAC address eth0 has.
-    ifname = b"eth0"
-    info = fcntl.ioctl(
-        sock.fileno(), 0x8927,  struct.pack(b'256s', ifname[:15]))
-    # s/ord/str/ for Python3 here:
+# ioctl request for requesting IP address.
+SIOCGIFADDR = 0x8915
+
+# ioctl request for requesting hardware (MAC) address.
+SIOCGIFHWADDR = 0x8927
+
+
+def get_interface_MAC(sock, interface):
+    """Obtain a network interface's MAC address, as a string."""
+    ifreq = struct.pack(b'256s', interface.encode('ascii')[:15])
+    info = fcntl.ioctl(sock.fileno(), SIOCGIFHWADDR,  ifreq)
     mac = ''.join(['%02x:' % ord(char) for char in info[18:24]])[:-1]
+    return mac
 
-    # DHCP requires that you send from the privileged port 68. (requires
-    # root permissions)
+
+def get_interface_IP(sock, interface):
+    """Obtain an IP address for a network interface, as a string."""
+    ifreq = struct.pack(
+        b'16sH14s', interface.encode('ascii')[:15], socket.AF_INET, b'\x00'*14)
+    info = fcntl.ioctl(sock, SIOCGIFADDR, ifreq)
+    ip = struct.unpack(b'16sH2x4s8x', info)[2]
+    return socket.inet_ntoa(ip)
+
+
+def probe_dhcp(interface):
+    """Look for a DHCP server on the network.
+
+    This must be run with provileges to broadcast from the BOOTP port, which
+    typically requires root.  It may fail to bind to that port if a DHCP client
+    is running on that same interface.
+
+    :param interface: Network interface name, e.g. "eth0", attached to the
+        network you wish to probe.
+    :return: Set of discovered DHCP servers.
+
+    :exception IOError: If the interface does not have an IP address.
+    """
+    servers = set()
+
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
-        sock.bind(('', 68))
-    except socket.error as e:
-        print("Unable to bind socket: %s" % e)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
+        mac = get_interface_MAC(sock, interface)
+        bind_address = get_interface_IP(sock, interface)
+
+        sock.bind((bind_address, BOOTP_CLIENT_PORT))
+        discover = DHCPDiscoverPacket(mac)
+        sock.sendto(discover.packet, ('<broadcast>', BOOTP_SERVER_PORT))
+
+        # Close the socket and rebind it to IN_ANY, because DHCP servers
+        # reply using the broadcast address and we won't see that if
+        # still bound to the interface's address.
         sock.close()
-        exit()
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        sock.bind(('', BOOTP_CLIENT_PORT))
 
-    discover = DHCPDiscoverPacket(mac)
-    sock.sendto(discover.packet, ('<broadcast>', 67))
+        while True:
+            sock.settimeout(3)
+            try:
+                data = sock.recv(1024)
+            except socket.timeout:
+                break
+            offer = DHCPOfferPacket(data)
+            if offer.transaction_ID == discover.transaction_ID:
+                servers.add(offer.dhcp_server_ID)
+    finally:
+        sock.close()
 
-    sock.settimeout(3)
-    try:
-        data = sock.recv(1024)
-        offer = DHCPOfferPacket(data)
-        if offer.transaction_ID == discover.transaction_ID:
-            print("Offer received from %s" % offer.dhcp_server_ID)
-    except socket.timeout:
-        pass
-
-    sock.close()
+    return servers

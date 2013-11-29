@@ -38,6 +38,7 @@ build: \
     bin/maascli bin/test.maascli \
     bin/test.maastesting \
     bin/twistd.pserv bin/test.pserv \
+    bin/maas-probe-dhcp \
     bin/twistd.txlongpoll \
     bin/py bin/ipy \
     $(js_enums)
@@ -91,6 +92,10 @@ bin/celeryd bin/maas-provision bin/twistd.pserv: \
 
 bin/test.pserv: bin/buildout buildout.cfg versions.cfg setup.py
 	$(buildout) install pserv-test
+	@touch --no-create $@
+
+bin/maas-probe-dhcp: bin/buildout buildout.cfg versions.cfg setup.py
+	$(buildout) install maas-probe-dhcp
 	@touch --no-create $@
 
 bin/twistd.txlongpoll: bin/buildout buildout.cfg versions.cfg setup.py
