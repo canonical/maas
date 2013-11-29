@@ -15,10 +15,19 @@ __metaclass__ = type
 __all__ = []
 
 
+from contextlib import contextmanager
 import fcntl
 from random import randint
 import socket
 import struct
+
+
+def make_transaction_ID():
+    """Generate a random DHCP transaction identifier."""
+    transaction_id = b''
+    for _ in range(4):
+        transaction_id += struct.pack(b'!B', randint(0, 255))
+    return transaction_id
 
 
 class DHCPDiscoverPacket:
@@ -30,9 +39,7 @@ class DHCPDiscoverPacket:
     """
 
     def __init__(self, my_mac):
-        self.transaction_ID = b''
-        for _ in range(4):
-            self.transaction_ID += struct.pack(b'!B', randint(0, 255))
+        self.transaction_ID = make_transaction_ID()
         self.packed_mac = self.string_mac_to_packed(my_mac)
         self._build()
 
@@ -121,6 +128,48 @@ def get_interface_IP(sock, interface):
     return socket.inet_ntoa(ip)
 
 
+@contextmanager
+def udp_socket():
+    """Open, and later close, a UDP socket."""
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    # We're going to bind to the BOOTP/DHCP client socket, where dhclient may
+    # also be listening, even if it's operating on a different interface!
+    # The SO_REUSEADDR option makes this possible.
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    yield sock
+    sock.close()
+
+
+def request_dhcp(interface):
+    """Broadcast a DHCP discovery request.  Return DHCP transaction ID."""
+    with udp_socket() as sock:
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+        mac = get_interface_MAC(sock, interface)
+        bind_address = get_interface_IP(sock, interface)
+        discover = DHCPDiscoverPacket(mac)
+        sock.bind((bind_address, BOOTP_CLIENT_PORT))
+        sock.sendto(discover.packet, ('<broadcast>', BOOTP_SERVER_PORT))
+    return discover.transaction_ID
+
+
+def receive_offers(transaction_id):
+    """Receive DHCP offers.  Return set of offering servers."""
+    servers = set()
+    with udp_socket() as sock:
+        # The socket we use for receiving DHCP offers must be bound to IF_ANY.
+        sock.bind(('', BOOTP_CLIENT_PORT))
+        try:
+            while True:
+                sock.settimeout(3)
+                data = sock.recv(1024)
+                offer = DHCPOfferPacket(data)
+                if offer.transaction_ID == transaction_id:
+                    servers.add(offer.dhcp_server_ID)
+        except socket.timeout:
+            # No more offers.  Done.
+            return servers
+
+
 def probe_dhcp(interface):
     """Look for a DHCP server on the network.
 
@@ -134,38 +183,10 @@ def probe_dhcp(interface):
 
     :exception IOError: If the interface does not have an IP address.
     """
-    servers = set()
-
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    try:
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-
-        mac = get_interface_MAC(sock, interface)
-        bind_address = get_interface_IP(sock, interface)
-
-        sock.bind((bind_address, BOOTP_CLIENT_PORT))
-        discover = DHCPDiscoverPacket(mac)
-        sock.sendto(discover.packet, ('<broadcast>', BOOTP_SERVER_PORT))
-
-        # Close the socket and rebind it to IN_ANY, because DHCP servers
-        # reply using the broadcast address and we won't see that if
-        # still bound to the interface's address.
-        sock.close()
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        sock.bind(('', BOOTP_CLIENT_PORT))
-
-        while True:
-            sock.settimeout(3)
-            try:
-                data = sock.recv(1024)
-            except socket.timeout:
-                break
-            offer = DHCPOfferPacket(data)
-            if offer.transaction_ID == discover.transaction_ID:
-                servers.add(offer.dhcp_server_ID)
-    finally:
-        sock.close()
-
-    return servers
+    # There is a small race window here, after we close the first socket and
+    # before we bind the second one.  Hopefully executing a few lines of code
+    # will be faster than communication over the network.
+    # UDP is not reliable at any rate.  If detection is important, we should
+    # send out repeated requests.
+    transaction_id = request_dhcp(interface)
+    return receive_offers(transaction_id)
