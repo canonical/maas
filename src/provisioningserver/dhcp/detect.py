@@ -114,7 +114,7 @@ SIOCGIFHWADDR = 0x8927
 def get_interface_MAC(sock, interface):
     """Obtain a network interface's MAC address, as a string."""
     ifreq = struct.pack(b'256s', interface.encode('ascii')[:15])
-    info = fcntl.ioctl(sock.fileno(), SIOCGIFHWADDR,  ifreq)
+    info = fcntl.ioctl(sock.fileno(), SIOCGIFHWADDR, ifreq)
     mac = ''.join(['%02x:' % ord(char) for char in info[18:24]])[:-1]
     return mac
 
@@ -122,7 +122,8 @@ def get_interface_MAC(sock, interface):
 def get_interface_IP(sock, interface):
     """Obtain an IP address for a network interface, as a string."""
     ifreq = struct.pack(
-        b'16sH14s', interface.encode('ascii')[:15], socket.AF_INET, b'\x00'*14)
+        b'16sH14s', interface.encode('ascii')[:15],
+        socket.AF_INET, b'\x00' * 14)
     info = fcntl.ioctl(sock, SIOCGIFADDR, ifreq)
     ip = struct.unpack(b'16sH2x4s8x', info)[2]
     return socket.inet_ntoa(ip)

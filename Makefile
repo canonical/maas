@@ -120,7 +120,7 @@ test: build
 lint: sources = $(wildcard *.py contrib/*.py) src templates twisted utilities etc
 lint: bin/flake8
 	@find $(sources) -name '*.py' ! -path '*/migrations/*' \
-	    -print0 | xargs -r0 bin/flake8
+	    -print0 | xargs -r0 bin/flake8 --ignore=E123 --config=/dev/null
 
 pocketlint = $(call available,pocketlint,python-pocket-lint)
 
