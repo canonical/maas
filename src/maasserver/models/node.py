@@ -824,7 +824,7 @@ class Node(CleanSave, TimestampedModel):
         """
         uti_tag, _ = Tag.objects.get_or_create(
             name="use-fastpath-installer")
-        if uti_tag.definition != "":
+        if uti_tag.is_defined:
             raise RuntimeError(
                 "The use-fastpath-installer tag is defined with an "
                 "expression. This expression must be updated to prevent "
@@ -843,7 +843,7 @@ class Node(CleanSave, TimestampedModel):
         """
         uti_tag, _ = Tag.objects.get_or_create(
             name="use-fastpath-installer")
-        if uti_tag.definition != "":
+        if uti_tag.is_defined:
             raise RuntimeError(
                 "The use-fastpath-installer tag is defined with an "
                 "expression. This expression must be updated to make this "

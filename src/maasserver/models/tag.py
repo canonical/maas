@@ -102,7 +102,7 @@ class Tag(CleanSave, TimestampedModel):
     def populate_nodes(self):
         """Find all nodes that match this tag, and update them."""
         from maasserver.populate_tags import populate_tags
-        if not self.definition:
+        if not self.is_defined:
             return
         # before we pass off any work, ensure the definition is valid XPATH
         try:

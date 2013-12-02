@@ -62,7 +62,10 @@ from metadataserver.models import (
     )
 from metadataserver.models.commissioningscript import ARCHIVE_PREFIX
 from metadataserver.nodeinituser import get_node_init_user
-from mock import Mock
+from mock import (
+    ANY,
+    Mock,
+    )
 from netaddr import IPNetwork
 from provisioningserver.enum import POWER_TYPE
 from testtools.matchers import (
@@ -444,7 +447,6 @@ class TestCommissioningAPI(DjangoTestCase):
         response = call_signal(client, status='OK', script_result='0')
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(NODE_STATUS.READY, reload_object(node).status)
-        from mock import ANY
         populate_tags_for_single_node.assert_called_once_with(ANY, node)
 
     def test_signaling_requires_status_code(self):
