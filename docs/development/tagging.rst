@@ -60,27 +60,15 @@ out to cluster controllers. Here's how:
 New or updated commissioning result
 -----------------------------------
 
-When a new commissioning result comes in containing ``lshw`` XML
-output, every tag with an expression must be evaluated against the
+When a new commissioning result comes in containing ``lshw`` or ``lldp``
+XML output, every tag with an expression must be evaluated against the
 result so that the node is correctly tagged.
 
-To do this, ``maasserver.models.node.update_hardware_details`` is
-called. This happens in the **region**. While it's a computationally
-expensive operation, the overhead of spinning this work out to a
-cluster controller negates any benefit that might gained by doing so.
-
-This:
-
-#. Saves the raw ``lshw`` XML.
-
-#. Extracts CPU, memory, and storage numbers from the hardware
-   information, and saves these. This does not affect tag processing,
-   but it's worth knowing that the first-class constraint axes that
-   are exposed via the ``acquire()`` API call are derived from the
-   same source as tag expressions consume.
-
-#. Evaluates each tag expression and updates the node's tags as
-   appropriate.
+To do this, ``maasserver.api.VersionIndexHandler.signal`` calls
+``populate_tags_for_single_node`` just before saving all the changes.
+This happens in the **region**. While it's a computationally expensive
+operation, the overhead of spinning this work out to a cluster
+controller negates any benefit that might gained by doing so.
 
 
 Manual tags, or tags without expressions
