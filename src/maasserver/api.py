@@ -584,12 +584,12 @@ class NodesHandler(OperationsHandler):
         When a node has been added to MAAS by an admin MAAS user, it is
         ready for allocation to services running on the MAAS.
         The minimum data required is:
-        architecture=<arch string> (e.g "i386/generic")
-        mac_address=<value>
+        architecture=<arch string> (e.g. "i386/generic")
+        mac_addresses=<value> (e.g. "aa:bb:cc:dd:ee:ff")
 
         :param architecture: A string containing the architecture type of
             the node.
-        :param mac_address: The MAC address of the node.
+        :param mac_addresses: One or more MAC addresses for the node.
         :param hostname: A hostname. If not given, one will be generated.
         :param powertype: A power management type, if applicable (e.g.
             "virsh", "ipmi").
