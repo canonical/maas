@@ -18,7 +18,7 @@ import httplib
 from random import randint
 from xmlrpclib import Fault
 
-from django.conf.urls.defaults import patterns
+from django.conf.urls import patterns
 from django.core.exceptions import PermissionDenied
 from django.core.urlresolvers import reverse
 from django.http import Http404

@@ -14,7 +14,7 @@ str = None
 __metaclass__ = type
 __all__ = []
 
-from django.conf.urls.defaults import (
+from django.conf.urls import (
     patterns,
     url,
     )
