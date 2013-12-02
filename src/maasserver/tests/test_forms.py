@@ -336,6 +336,9 @@ class NodeEditForms(MAASServerTestCase):
                 'distro_series',
                 'power_type',
                 'power_parameters',
+                'cpu_count',
+                'memory',
+                'storage',
             ],
             list(form.fields))
 

@@ -537,6 +537,20 @@ class TestNodeAPI(APITestCase):
             {'mac_address': new_power_address},
             reload_object(node).power_parameters)
 
+    def test_PUT_updates_cpu_memory_storage(self):
+        self.become_admin()
+        node = factory.make_node(
+            owner=self.logged_in_user,
+            power_type=POWER_TYPE.WAKE_ON_LAN)
+        response = self.client_put(
+            self.get_node_uri(node),
+            {'cpu_count': 1, 'memory': 1024, 'storage': 2048})
+        self.assertEqual(httplib.OK, response.status_code)
+        node = reload_object(node)
+        self.assertEqual(1, node.cpu_count)
+        self.assertEqual(1024, node.memory)
+        self.assertEqual(2048, node.storage)
+
     def test_PUT_updates_power_parameters_accepts_only_mac_for_wol(self):
         self.become_admin()
         node = factory.make_node(

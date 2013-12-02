@@ -199,6 +199,16 @@ class AdminNodeForm(APIEditMixin, NodeForm):
     'power_parameters'.
     """
 
+    cpu_count = forms.IntegerField(
+        required=False, initial=0,
+        label="CPU Count")
+    memory = forms.IntegerField(
+        required=False, initial=0,
+        label="Memory")
+    storage = forms.IntegerField(
+        required=False, initial=0,
+        label="Disk space")
+
     class Meta:
         model = Node
 
@@ -207,6 +217,9 @@ class AdminNodeForm(APIEditMixin, NodeForm):
         fields = NodeForm.Meta.fields + (
             'power_type',
             'power_parameters',
+            'cpu_count',
+            'memory',
+            'storage',
             )
 
     def __init__(self, data=None, files=None, instance=None, initial=None):
