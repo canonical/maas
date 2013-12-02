@@ -167,14 +167,6 @@ def update_hardware_details(node, output, exit_status):
         node.cpu_count = cpu_count or 0
         node.memory = memory
         node.storage = storage
-        for tag in Tag.objects.all():
-            if not tag.definition:
-                continue
-            has_tag = evaluator(tag.definition)
-            if has_tag:
-                node.tags.add(tag)
-            else:
-                node.tags.remove(tag)
         node.save()
 
 

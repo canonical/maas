@@ -39,7 +39,6 @@ from maasserver.models.tag import Tag
 from maasserver.testing import reload_object
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils import ignore_unused
 from maastesting.matchers import ContainsAll
 from maastesting.utils import sample_binary_data
 from metadataserver.fields import Bin
@@ -511,27 +510,6 @@ class TestUpdateHardwareDetails(MAASServerTestCase):
         mega = 2 ** 20
         expected = (4294967296 + 3221225472 + 536879812) / mega
         self.assertEqual(expected, node.memory)
-
-    def test_hardware_updates_tags_match(self):
-        tag1 = factory.make_tag(factory.getRandomString(10), "/node")
-        tag2 = factory.make_tag(factory.getRandomString(10), "//node")
-        node = factory.make_node()
-        xmlbytes = '<node/>'.encode("utf-8")
-        update_hardware_details(node, xmlbytes, 0)
-        node = reload_object(node)
-        self.assertEqual([tag1, tag2], list(node.tags.all()))
-
-    def test_hardware_updates_tags_no_match(self):
-        tag1 = factory.make_tag(factory.getRandomString(10), "/missing")
-        ignore_unused(tag1)
-        tag2 = factory.make_tag(factory.getRandomString(10), "/nothing")
-        node = factory.make_node()
-        node.tags = [tag2]
-        node.save()
-        xmlbytes = '<node/>'.encode("utf-8")
-        update_hardware_details(node, xmlbytes, 0)
-        node = reload_object(node)
-        self.assertEqual([], list(node.tags.all()))
 
     def test_hardware_updates_ignores_empty_tags(self):
         # Tags with empty definitions are ignored when
