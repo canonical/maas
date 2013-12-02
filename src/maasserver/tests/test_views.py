@@ -167,6 +167,8 @@ class FakeDeleteView(HelpfulDeleteView):
 
     model = FakeDeletableModel
 
+    template_name = 'not-a-real-template'
+
     def __init__(self, obj=None, next_url=None, request=None):
         self.obj = obj
         self.next_url = next_url
