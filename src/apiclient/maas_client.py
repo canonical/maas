@@ -65,6 +65,18 @@ class NoAuth:
         """
 
 
+class RequestWithMethod(urllib2.Request):
+    """Enhances urllib2.Request so an http method can be supplied."""
+    def __init__(self, *args, **kwargs):
+        self._method = kwargs.pop('method', None)
+        urllib2.Request.__init__(self, *args, **kwargs)
+
+    def get_method(self):
+        return (
+            self._method if self._method
+            else super(RequestWithMethod, self).get_method())
+
+
 class MAASDispatcher:
     """Helper class to connect to a MAAS server using blocking requests.
 
@@ -97,7 +109,7 @@ class MAASDispatcher:
         else:
             set_accept_encoding = True
             headers['Accept-encoding'] = 'gzip'
-        req = urllib2.Request(request_url, data, headers)
+        req = RequestWithMethod(request_url, data, headers, method=method)
         res = urllib2.urlopen(req)
         # If we set the Accept-encoding header, then we decode the header for
         # the caller.

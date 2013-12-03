@@ -76,6 +76,25 @@ class TestMAASDispatcher(MAASTestCase):
             self.assertEqual(200, response.code)
             self.assertEqual(content, response.read())
 
+    def test_supports_any_method(self):
+        # urllib2, which MAASDispatcher uses, only supports POST and
+        # GET. There is some extra code that makes sure the passed
+        # method is honoured which is tested here.
+        self.useFixture(TempWDFixture())
+        name = factory.getRandomString()
+        content = factory.getRandomString(300).encode('ascii')
+        factory.make_file(location='.', name=name, contents=content)
+
+        method = "PUT"
+        # The test httpd doesn't like PUT, so we'll look for it bitching
+        # about that for the purposes of this test.
+        with HTTPServerFixture() as httpd:
+            url = urljoin(httpd.url, name)
+            e = self.assertRaises(
+                urllib2.HTTPError, MAASDispatcher().dispatch_query, url, {},
+                method=method)
+            self.assertIn("Unsupported method ('PUT')", e.reason)
+
     def test_supports_content_encoding_gzip(self):
         # The client will set the Accept-Encoding: gzip header, and it will
         # also decompress the response if it comes back with Content-Encoding:
