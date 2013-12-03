@@ -83,7 +83,7 @@ class TestRenamableForm(RenamableFieldsForm):
         name = self.get_field_name('field1')
         value = self.cleaned_data[name]
         if value != "foo":
-            raise ValidationError({name: "The value should be 'foo'"})
+            raise ValidationError("The value should be 'foo'")
         return value
 
 

@@ -222,9 +222,9 @@ class AdminNodeForm(APIEditMixin, NodeForm):
             'storage',
             )
 
-    def __init__(self, data=None, files=None, instance=None, initial=None):
+    def __init__(self, data=None, instance=None, **kwargs):
         super(AdminNodeForm, self).__init__(
-            data=data, files=files, instance=instance, initial=initial)
+            data=data, instance=instance, **kwargs)
         self.set_up_power_parameters_field(data, instance)
 
     def set_up_power_parameters_field(self, data, node):
