@@ -148,9 +148,8 @@ class ExceptionMiddlewareTest(MAASServerTestCase):
             (response.status_code, response.content))
 
     def test_returns_ValidationError_message_dict_as_json(self):
-        exception = ValidationError(factory.getRandomString())
-        exception_dict = {'hostname': 'invalid'}
-        setattr(exception, 'message_dict', exception_dict)
+        exception_dict = {'hostname': ['invalid']}
+        exception = ValidationError(exception_dict)
         response = self.process_exception(exception)
         self.assertEqual(exception_dict, json.loads(response.content))
         self.assertIn('application/json', response['Content-Type'])

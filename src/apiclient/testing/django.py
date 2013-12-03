@@ -15,9 +15,9 @@ __metaclass__ = type
 __all__ = []
 
 from io import BytesIO
+import os
 
 from django.core.files.uploadhandler import MemoryFileUploadHandler
-from django.core.handlers.wsgi import WSGIRequest
 from django.http.multipartparser import MultiPartParser
 from maasserver.utils import ignore_unused
 
@@ -73,6 +73,10 @@ def parse_headers_and_body_with_mimer(headers, body):
     environ['REQUEST_METHOD'] = 'POST'
     environ['SCRIPT_NAME'] = ''
     environ['PATH_INFO'] = ''
+    # Django 1.6 needs DJANGO_SETTINGS_MODULE to be defined
+    # when importing WSGIRequest.
+    os.environ['DJANGO_SETTINGS_MODULE'] = 'maas.development'
+    from django.core.handlers.wsgi import WSGIRequest
     request = WSGIRequest(environ)
     translate_mime(request)
     return request.data
