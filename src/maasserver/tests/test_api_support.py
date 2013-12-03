@@ -17,6 +17,7 @@ __all__ = []
 
 import httplib
 
+from django.core.urlresolvers import reverse
 from maasserver.models.config import (
     Config,
     ConfigManager,
@@ -42,7 +43,7 @@ class TestOperationsResource(APITestCase):
         self.patch(ConfigManager, "get_config", Mock(side_effect=TypeError))
         self.become_admin()
         response = self.client.get(
-            self.get_uri('maas/'),
+            reverse('maas_handler'),
             {
                 'op': 'get_config',
                 'name': name,

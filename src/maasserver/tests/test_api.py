@@ -50,7 +50,6 @@ from maasserver.testing import (
     )
 from maasserver.testing.api import (
     APITestCase,
-    APIv10TestMixin,
     log_in_as_normal_user,
     make_worker_client,
     )
@@ -84,7 +83,7 @@ from testtools.matchers import (
     )
 
 
-class TestAuthentication(APIv10TestMixin, MAASServerTestCase):
+class TestAuthentication(MAASServerTestCase):
     """Tests for `maasserver.api_auth`."""
 
     def test_invalid_oauth_request(self):
@@ -92,7 +91,7 @@ class TestAuthentication(APIv10TestMixin, MAASServerTestCase):
         user = factory.make_user()
         client = OAuthAuthenticatedClient(user)
         get_auth_tokens(user).delete()  # Delete the user's API keys.
-        response = client.post(self.get_uri('nodes/'), {'op': 'start'})
+        response = client.post(reverse('nodes_handler'), {'op': 'start'})
         observed = response.status_code, response.content
         expected = (
             Equals(httplib.UNAUTHORIZED),
@@ -168,11 +167,15 @@ class TestStoreNodeParameters(MAASServerTestCase):
 
 class AccountAPITest(APITestCase):
 
+    def test_handler_path(self):
+        self.assertEqual(
+            '/api/1.0/account/', reverse('account_handler'))
+
     def test_create_authorisation_token(self):
         # The api operation create_authorisation_token returns a json dict
         # with the consumer_key, the token_key and the token_secret in it.
         response = self.client.post(
-            self.get_uri('account/'), {'op': 'create_authorisation_token'})
+            reverse('account_handler'), {'op': 'create_authorisation_token'})
         parsed_result = json.loads(response.content)
 
         self.assertEqual(
@@ -186,7 +189,7 @@ class AccountAPITest(APITestCase):
         # If the provided token_key does not exist (for the currently
         # logged-in user), the api returns a 'Not Found' (404) error.
         response = self.client.post(
-            self.get_uri('account/'),
+            reverse('account_handler'),
             {'op': 'delete_authorisation_token', 'token_key': 'no-such-token'})
 
         self.assertEqual(httplib.NOT_FOUND, response.status_code)
@@ -196,18 +199,27 @@ class AccountAPITest(APITestCase):
         # delete_authorisation_token. It it is not present in the request's
         # parameters, the api returns a 'Bad Request' (400) error.
         response = self.client.post(
-            self.get_uri('account/'), {'op': 'delete_authorisation_token'})
+            reverse('account_handler'), {'op': 'delete_authorisation_token'})
 
         self.assertEqual(httplib.BAD_REQUEST, response.status_code)
 
 
 class TestSSHKeyHandlers(APITestCase):
 
+    def test_sshkeys_handler_path(self):
+        self.assertEqual(
+            '/api/1.0/account/prefs/sshkeys/', reverse('sshkeys_handler'))
+
+    def test_sshkey_handler_path(self):
+        self.assertEqual(
+            '/api/1.0/account/prefs/sshkeys/key/',
+            reverse('sshkey_handler', args=['key']))
+
     def test_list_works(self):
         _, keys = factory.make_user_with_keys(user=self.logged_in_user)
         params = dict(op="list")
         response = self.client.get(
-            self.get_uri('account/prefs/sshkeys/'), params)
+            reverse('sshkeys_handler'), params)
         self.assertEqual(httplib.OK, response.status_code, response)
         parsed_result = json.loads(response.content)
         expected_result = [
@@ -229,7 +241,7 @@ class TestSSHKeyHandlers(APITestCase):
             n_keys=1, user=self.logged_in_user)
         key = keys[0]
         response = self.client.get(
-            self.get_uri('account/prefs/sshkeys/%s/' % key.id))
+            reverse('sshkey_handler', args=[key.id]))
         self.assertEqual(httplib.OK, response.status_code, response)
         parsed_result = json.loads(response.content)
         expected = dict(
@@ -243,7 +255,7 @@ class TestSSHKeyHandlers(APITestCase):
         _, keys = factory.make_user_with_keys(
             n_keys=2, user=self.logged_in_user)
         response = self.client.delete(
-            self.get_uri('account/prefs/sshkeys/%s/' % keys[0].id))
+            reverse('sshkey_handler', args=[keys[0].id]))
         self.assertEqual(httplib.NO_CONTENT, response.status_code, response)
         keys_after = SSHKey.objects.filter(user=self.logged_in_user)
         self.assertEqual(1, len(keys_after))
@@ -252,14 +264,14 @@ class TestSSHKeyHandlers(APITestCase):
     def test_delete_fails_if_not_your_key(self):
         user, keys = factory.make_user_with_keys(n_keys=1)
         response = self.client.delete(
-            self.get_uri('account/prefs/sshkeys/%s/' % keys[0].id))
+            reverse('sshkey_handler', args=[keys[0].id]))
         self.assertEqual(httplib.FORBIDDEN, response.status_code, response)
         self.assertEqual(1, len(SSHKey.objects.filter(user=user)))
 
     def test_adding_works(self):
         key_string = get_data('data/test_rsa0.pub')
         response = self.client.post(
-            self.get_uri('account/prefs/sshkeys/'),
+            reverse('sshkeys_handler'),
             data=dict(op="new", key=key_string))
         self.assertEqual(httplib.CREATED, response.status_code)
         parsed_response = json.loads(response.content)
@@ -270,14 +282,14 @@ class TestSSHKeyHandlers(APITestCase):
     def test_adding_catches_key_validation_errors(self):
         key_string = factory.getRandomString()
         response = self.client.post(
-            self.get_uri('account/prefs/sshkeys/'),
+            reverse('sshkeys_handler'),
             data=dict(op='new', key=key_string))
         self.assertEqual(httplib.BAD_REQUEST, response.status_code, response)
         self.assertIn("Invalid", response.content)
 
     def test_adding_returns_badrequest_when_key_not_in_form(self):
         response = self.client.post(
-            self.get_uri('account/prefs/sshkeys/'),
+            reverse('sshkeys_handler'),
             data=dict(op='new'))
         self.assertEqual(httplib.BAD_REQUEST, response.status_code, response)
         self.assertEqual(
@@ -285,19 +297,19 @@ class TestSSHKeyHandlers(APITestCase):
             json.loads(response.content))
 
 
-class MAASAPIAnonTest(APIv10TestMixin, MAASServerTestCase):
+class MAASAPIAnonTest(MAASServerTestCase):
     # The MAAS' handler is not accessible to anon users.
 
     def test_anon_get_config_forbidden(self):
         response = self.client.get(
-            self.get_uri('maas/'),
+            reverse('maas_handler'),
             {'op': 'get_config'})
 
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
     def test_anon_set_config_forbidden(self):
         response = self.client.post(
-            self.get_uri('maas/'),
+            reverse('maas_handler'),
             {'op': 'set_config'})
 
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
@@ -305,16 +317,20 @@ class MAASAPIAnonTest(APIv10TestMixin, MAASServerTestCase):
 
 class MAASAPITest(APITestCase):
 
+    def test_handler_path(self):
+        self.assertEqual(
+            '/api/1.0/maas/', reverse('maas_handler'))
+
     def test_simple_user_get_config_forbidden(self):
         response = self.client.get(
-            self.get_uri('maas/'),
+            reverse('maas_handler'),
             {'op': 'get_config'})
 
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
     def test_simple_user_set_config_forbidden(self):
         response = self.client.post(
-            self.get_uri('maas/'),
+            reverse('maas_handler'),
             {'op': 'set_config'})
 
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
@@ -322,7 +338,7 @@ class MAASAPITest(APITestCase):
     def test_get_config_requires_name_param(self):
         self.become_admin()
         response = self.client.get(
-            self.get_uri('maas/'),
+            reverse('maas_handler'),
             {
                 'op': 'get_config',
             })
@@ -336,7 +352,7 @@ class MAASAPITest(APITestCase):
         value = factory.getRandomString()
         Config.objects.set_config(name, value)
         response = self.client.get(
-            self.get_uri('maas/'),
+            reverse('maas_handler'),
             {
                 'op': 'get_config',
                 'name': name,
@@ -353,7 +369,7 @@ class MAASAPITest(APITestCase):
         value = factory.getRandomString()
         Config.objects.set_config(name, value)
         response = self.client.get(
-            self.get_uri('maas/'),
+            reverse('maas_handler'),
             {
                 'op': 'get_config',
                 'name': name,
@@ -369,7 +385,7 @@ class MAASAPITest(APITestCase):
     def test_set_config_requires_name_param(self):
         self.become_admin()
         response = self.client.post(
-            self.get_uri('maas/'),
+            reverse('maas_handler'),
             {
                 'op': 'set_config',
                 'value': factory.getRandomString(),
@@ -382,7 +398,7 @@ class MAASAPITest(APITestCase):
         self.become_admin()
         value = factory.getRandomString()
         response = self.client.post(
-            self.get_uri('maas/'),
+            reverse('maas_handler'),
             {
                 'op': 'set_config',
                 'name': '',  # Invalid empty name.
@@ -396,7 +412,7 @@ class MAASAPITest(APITestCase):
     def test_set_config_requires_value_param(self):
         self.become_admin()
         response = self.client.post(
-            self.get_uri('maas/'),
+            reverse('maas_handler'),
             {
                 'op': 'set_config',
                 'name': factory.getRandomString(),
@@ -410,7 +426,7 @@ class MAASAPITest(APITestCase):
         name = 'maas_name'
         value = factory.getRandomString()
         response = self.client.post(
-            self.get_uri('maas/'),
+            reverse('maas_handler'),
             {
                 'op': 'set_config',
                 'name': name,
@@ -427,7 +443,7 @@ class MAASAPITest(APITestCase):
         name = factory.getRandomString()
         value = factory.getRandomString()
         response = self.client.post(
-            self.get_uri('maas/'),
+            reverse('maas_handler'),
             {
                 'op': 'set_config',
                 'name': name,
@@ -442,7 +458,7 @@ class MAASAPITest(APITestCase):
             (response.status_code, json.loads(response.content)))
 
 
-class APIErrorsTest(APIv10TestMixin, TransactionTestCase):
+class APIErrorsTest(TransactionTestCase):
 
     def test_internal_error_generates_proper_api_response(self):
         error_message = factory.getRandomString()
@@ -451,7 +467,7 @@ class APIErrorsTest(APIv10TestMixin, TransactionTestCase):
         def raise_exception(*args, **kwargs):
             raise RuntimeError(error_message)
         self.patch(api, 'create_node', raise_exception)
-        response = self.client.post(self.get_uri('nodes/'), {'op': 'new'})
+        response = self.client.post(reverse('nodes_handler'), {'op': 'new'})
 
         self.assertEqual(
             (httplib.INTERNAL_SERVER_ERROR, error_message),

@@ -18,6 +18,7 @@ import httplib
 import json
 
 from django.contrib.auth.models import AnonymousUser
+from django.core.urlresolvers import reverse
 from maasserver.enum import (
     ARCHITECTURE_CHOICES,
     NODE_AFTER_COMMISSIONING_ACTION,
@@ -30,10 +31,7 @@ from maasserver.models import (
     NodeGroup,
     )
 from maasserver.testing import reload_object
-from maasserver.testing.api import (
-    APIv10TestMixin,
-    MultipleUsersScenarios,
-    )
+from maasserver.testing.api import MultipleUsersScenarios
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
     AdminLoggedInTestCase,
@@ -46,7 +44,7 @@ from netaddr import IPNetwork
 from provisioningserver.enum import POWER_TYPE
 
 
-class EnlistmentAPITest(APIv10TestMixin, MultipleUsersScenarios,
+class EnlistmentAPITest(MultipleUsersScenarios,
                         MAASServerTestCase):
     """Enlistment tests."""
     scenarios = [
@@ -58,7 +56,7 @@ class EnlistmentAPITest(APIv10TestMixin, MultipleUsersScenarios,
     def test_POST_new_creates_node(self):
         architecture = factory.getRandomChoice(ARCHITECTURE_CHOICES)
         response = self.client.post(
-            self.get_uri('nodes/'),
+            reverse('nodes_handler'),
             {
                 'op': 'new',
                 'hostname': 'diane',
@@ -79,7 +77,7 @@ class EnlistmentAPITest(APIv10TestMixin, MultipleUsersScenarios,
     def test_POST_new_generates_hostname_if_ip_based_hostname(self):
         hostname = '192-168-5-19.domain'
         response = self.client.post(
-            self.get_uri('nodes/'),
+            reverse('nodes_handler'),
             {
                 'op': 'new',
                 'hostname': hostname,
@@ -107,7 +105,7 @@ class EnlistmentAPITest(APIv10TestMixin, MultipleUsersScenarios,
             "power_pass": factory.make_name("power-pass"),
             }
         response = self.client.post(
-            self.get_uri('nodes/'),
+            reverse('nodes_handler'),
             {
                 'op': 'new',
                 'hostname': hostname,
@@ -126,7 +124,7 @@ class EnlistmentAPITest(APIv10TestMixin, MultipleUsersScenarios,
             [choice for choice in ARCHITECTURE_CHOICES
              if choice[0].endswith('/generic')])
         response = self.client.post(
-            self.get_uri('nodes/'),
+            reverse('nodes_handler'),
             {
                 'op': 'new',
                 'hostname': 'diane',
@@ -148,7 +146,7 @@ class EnlistmentAPITest(APIv10TestMixin, MultipleUsersScenarios,
         # The API allows a Node to be created.
         architecture = factory.getRandomChoice(ARCHITECTURE_CHOICES)
         response = self.client.post(
-            self.get_uri('nodes/'),
+            reverse('nodes_handler'),
             {
                 'op': 'new',
                 'hostname': 'diane',
@@ -170,7 +168,7 @@ class EnlistmentAPITest(APIv10TestMixin, MultipleUsersScenarios,
     def test_POST_new_fails_node_with_double_subarchitecture(self):
         architecture = factory.getRandomChoice(ARCHITECTURE_CHOICES)
         response = self.client.post(
-            self.get_uri('nodes/'),
+            reverse('nodes_handler'),
             {
                 'op': 'new',
                 'hostname': 'diane',
@@ -189,7 +187,7 @@ class EnlistmentAPITest(APIv10TestMixin, MultipleUsersScenarios,
     def test_POST_new_power_type_defaults_to_asking_config(self):
         architecture = factory.getRandomChoice(ARCHITECTURE_CHOICES)
         response = self.client.post(
-            self.get_uri('nodes/'), {
+            reverse('nodes_handler'), {
                 'op': 'new',
                 'architecture': architecture,
                 'mac_addresses': ['00:11:22:33:44:55'],
@@ -203,7 +201,7 @@ class EnlistmentAPITest(APIv10TestMixin, MultipleUsersScenarios,
         # Addresses.
         architecture = factory.getRandomChoice(ARCHITECTURE_CHOICES)
         self.client.post(
-            self.get_uri('nodes/'),
+            reverse('nodes_handler'),
             {
                 'op': 'new',
                 'hostname': 'diane',
@@ -220,7 +218,7 @@ class EnlistmentAPITest(APIv10TestMixin, MultipleUsersScenarios,
     def test_POST_new_initializes_nodegroup_to_master_by_default(self):
         hostname = factory.make_name('host')
         self.client.post(
-            self.get_uri('nodes/'),
+            reverse('nodes_handler'),
             {
                 'op': 'new',
                 'hostname': hostname,
@@ -234,7 +232,7 @@ class EnlistmentAPITest(APIv10TestMixin, MultipleUsersScenarios,
     def test_POST_with_no_hostname_auto_populates_hostname(self):
         architecture = factory.getRandomChoice(ARCHITECTURE_CHOICES)
         response = self.client.post(
-            self.get_uri('nodes/'),
+            reverse('nodes_handler'),
             {
                 'op': 'new',
                 'architecture': architecture,
@@ -248,7 +246,7 @@ class EnlistmentAPITest(APIv10TestMixin, MultipleUsersScenarios,
         # If there is no operation ('op=operation_name') specified in the
         # request data, a 'Bad request' response is returned.
         response = self.client.post(
-            self.get_uri('nodes/'),
+            reverse('nodes_handler'),
             {
                 'hostname': 'diane',
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff', 'invalid'],
@@ -266,7 +264,7 @@ class EnlistmentAPITest(APIv10TestMixin, MultipleUsersScenarios,
         factory.make_mac_address(mac)
         architecture = factory.getRandomChoice(ARCHITECTURE_CHOICES)
         response = self.client.post(
-            self.get_uri('nodes/'),
+            reverse('nodes_handler'),
             {
                 'op': 'new',
                 'architecture': architecture,
@@ -285,7 +283,7 @@ class EnlistmentAPITest(APIv10TestMixin, MultipleUsersScenarios,
         # If the operation ('op=operation_name') specified in the
         # request data is unknown, a 'Bad request' response is returned.
         response = self.client.post(
-            self.get_uri('nodes/'),
+            reverse('nodes_handler'),
             {
                 'op': 'invalid_operation',
                 'hostname': 'diane',
@@ -301,7 +299,7 @@ class EnlistmentAPITest(APIv10TestMixin, MultipleUsersScenarios,
         # If the data provided to create a node with an invalid MAC
         # Address, a 'Bad request' response is returned.
         response = self.client.post(
-            self.get_uri('nodes/'),
+            reverse('nodes_handler'),
             {
                 'op': 'new',
                 'hostname': 'diane',
@@ -319,7 +317,7 @@ class EnlistmentAPITest(APIv10TestMixin, MultipleUsersScenarios,
         # If the architecture name provided to create a node is not a valid
         # architecture name, a 'Bad request' response is returned.
         response = self.client.post(
-            self.get_uri('nodes/'),
+            reverse('nodes_handler'),
             {
                 'op': 'new',
                 'hostname': 'diane',
@@ -333,7 +331,7 @@ class EnlistmentAPITest(APIv10TestMixin, MultipleUsersScenarios,
         self.assertItemsEqual(['architecture'], parsed_result)
 
 
-class NodeHostnameEnlistmentTest(APIv10TestMixin, MultipleUsersScenarios,
+class NodeHostnameEnlistmentTest(MultipleUsersScenarios,
                                  MAASServerTestCase):
 
     scenarios = [
@@ -352,7 +350,7 @@ class NodeHostnameEnlistmentTest(APIv10TestMixin, MultipleUsersScenarios,
             name=domain,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
         response = self.client.post(
-            self.get_uri('nodes/'),
+            reverse('nodes_handler'),
             {
                 'op': 'new',
                 'hostname': hostname_with_domain,
@@ -375,7 +373,7 @@ class NodeHostnameEnlistmentTest(APIv10TestMixin, MultipleUsersScenarios,
             name=domain,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
         response = self.client.post(
-            self.get_uri('nodes/'),
+            reverse('nodes_handler'),
             {
                 'op': 'new',
                 'hostname': hostname_without_domain,
@@ -396,7 +394,7 @@ class NodeHostnameEnlistmentTest(APIv10TestMixin, MultipleUsersScenarios,
         NodeGroup.objects.ensure_master()
         nodegroup = factory.make_node_group(network=network)
         response = self.client.post(
-            self.get_uri('nodes/'),
+            reverse('nodes_handler'),
             data={
                 'op': 'new',
                 'hostname': factory.make_name('hostname'),
@@ -414,7 +412,7 @@ class NodeHostnameEnlistmentTest(APIv10TestMixin, MultipleUsersScenarios,
     def test_created_node_uses_default_nodegroup_if_origin_not_found(self):
         unknown_host = factory.make_name('host')
         response = self.client.post(
-            self.get_uri('nodes/'),
+            reverse('nodes_handler'),
             data={
                 'op': 'new',
                 'hostname': factory.make_name('hostname'),
@@ -430,7 +428,7 @@ class NodeHostnameEnlistmentTest(APIv10TestMixin, MultipleUsersScenarios,
         self.assertEqual(NodeGroup.objects.ensure_master(), node.nodegroup)
 
 
-class NonAdminEnlistmentAPITest(APIv10TestMixin, MultipleUsersScenarios,
+class NonAdminEnlistmentAPITest(MultipleUsersScenarios,
                                 MAASServerTestCase):
     # Enlistment tests for non-admin users.
 
@@ -444,7 +442,7 @@ class NonAdminEnlistmentAPITest(APIv10TestMixin, MultipleUsersScenarios,
         # state.  Deliberate approval is required before we start
         # reinstalling the system, wiping its disks etc.
         response = self.client.post(
-            self.get_uri('nodes/'),
+            reverse('nodes_handler'),
             {
                 'op': 'new',
                 'hostname': factory.getRandomString(),
@@ -460,7 +458,7 @@ class NonAdminEnlistmentAPITest(APIv10TestMixin, MultipleUsersScenarios,
             Node.objects.get(system_id=system_id).status)
 
 
-class AnonymousEnlistmentAPITest(APIv10TestMixin, MAASServerTestCase):
+class AnonymousEnlistmentAPITest(MAASServerTestCase):
     # Enlistment tests specific to anonymous users.
 
     def test_POST_accept_not_allowed(self):
@@ -469,14 +467,14 @@ class AnonymousEnlistmentAPITest(APIv10TestMixin, MAASServerTestCase):
         # those nodes for approval.
         node_id = factory.make_node(status=NODE_STATUS.DECLARED).system_id
         response = self.client.post(
-            self.get_uri('nodes/'), {'op': 'accept', 'nodes': [node_id]})
+            reverse('nodes_handler'), {'op': 'accept', 'nodes': [node_id]})
         self.assertEqual(
             (httplib.UNAUTHORIZED, "You must be logged in to accept nodes."),
             (response.status_code, response.content))
 
     def test_POST_returns_limited_fields(self):
         response = self.client.post(
-            self.get_uri('nodes/'),
+            reverse('nodes_handler'),
             {
                 'op': 'new',
                 'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
@@ -507,7 +505,7 @@ class AnonymousEnlistmentAPITest(APIv10TestMixin, MAASServerTestCase):
             list(parsed_result))
 
 
-class SimpleUserLoggedInEnlistmentAPITest(APIv10TestMixin, LoggedInTestCase):
+class SimpleUserLoggedInEnlistmentAPITest(LoggedInTestCase):
     # Enlistment tests specific to simple (non-admin) users.
 
     def test_POST_accept_not_allowed(self):
@@ -516,7 +514,7 @@ class SimpleUserLoggedInEnlistmentAPITest(APIv10TestMixin, LoggedInTestCase):
         # those nodes for approval.
         node_id = factory.make_node(status=NODE_STATUS.DECLARED).system_id
         response = self.client.post(
-            self.get_uri('nodes/'), {'op': 'accept', 'nodes': [node_id]})
+            reverse('nodes_handler'), {'op': 'accept', 'nodes': [node_id]})
         self.assertEqual(
             (httplib.FORBIDDEN,
                 "You don't have the required permission to accept the "
@@ -531,7 +529,7 @@ class SimpleUserLoggedInEnlistmentAPITest(APIv10TestMixin, LoggedInTestCase):
         factory.make_node(status=NODE_STATUS.DECLARED),
         factory.make_node(status=NODE_STATUS.DECLARED),
         response = self.client.post(
-            self.get_uri('nodes/'), {'op': 'accept_all'})
+            reverse('nodes_handler'), {'op': 'accept_all'})
         self.assertEqual(httplib.OK, response.status_code)
         nodes_returned = json.loads(response.content)
         self.assertEqual([], nodes_returned)
@@ -539,7 +537,7 @@ class SimpleUserLoggedInEnlistmentAPITest(APIv10TestMixin, LoggedInTestCase):
     def test_POST_simple_user_can_set_power_type_and_parameters(self):
         new_power_address = factory.getRandomString()
         response = self.client.post(
-            self.get_uri('nodes/'), {
+            reverse('nodes_handler'), {
                 'op': 'new',
                 'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
                 'power_type': POWER_TYPE.WAKE_ON_LAN,
@@ -558,7 +556,7 @@ class SimpleUserLoggedInEnlistmentAPITest(APIv10TestMixin, LoggedInTestCase):
 
     def test_POST_returns_limited_fields(self):
         response = self.client.post(
-            self.get_uri('nodes/'),
+            reverse('nodes_handler'),
             {
                 'op': 'new',
                 'hostname': factory.getRandomString(),
@@ -589,14 +587,14 @@ class SimpleUserLoggedInEnlistmentAPITest(APIv10TestMixin, LoggedInTestCase):
             list(parsed_result))
 
 
-class AdminLoggedInEnlistmentAPITest(APIv10TestMixin, AdminLoggedInTestCase):
+class AdminLoggedInEnlistmentAPITest(AdminLoggedInTestCase):
     # Enlistment tests specific to admin users.
 
     def test_POST_new_creates_node_default_values_for_power_settings(self):
         architecture = factory.getRandomChoice(ARCHITECTURE_CHOICES)
         mac_address = 'AA:BB:CC:DD:EE:FF'
         response = self.client.post(
-            self.get_uri('nodes/'), {
+            reverse('nodes_handler'), {
                 'op': 'new',
                 'architecture': architecture,
                 'mac_addresses': [mac_address],
@@ -611,7 +609,7 @@ class AdminLoggedInEnlistmentAPITest(APIv10TestMixin, AdminLoggedInTestCase):
 
     def test_POST_new_sets_power_type_if_admin(self):
         response = self.client.post(
-            self.get_uri('nodes/'), {
+            reverse('nodes_handler'), {
                 'op': 'new',
                 'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
                 'power_type': POWER_TYPE.WAKE_ON_LAN,
@@ -627,7 +625,7 @@ class AdminLoggedInEnlistmentAPITest(APIv10TestMixin, AdminLoggedInTestCase):
         # Create a power_parameter valid for the selected power_type.
         new_mac_address = factory.getRandomMACAddress()
         response = self.client.post(
-            self.get_uri('nodes/'), {
+            reverse('nodes_handler'), {
                 'op': 'new',
                 'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
                 'power_type': POWER_TYPE.WAKE_ON_LAN,
@@ -645,7 +643,7 @@ class AdminLoggedInEnlistmentAPITest(APIv10TestMixin, AdminLoggedInTestCase):
     def test_POST_updates_power_parameters_rejects_unknown_param(self):
         hostname = factory.getRandomString()
         response = self.client.post(
-            self.get_uri('nodes/'), {
+            reverse('nodes_handler'), {
                 'op': 'new',
                 'hostname': hostname,
                 'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
@@ -667,7 +665,7 @@ class AdminLoggedInEnlistmentAPITest(APIv10TestMixin, AdminLoggedInTestCase):
         # power parameters.
         param = factory.getRandomString()
         response = self.client.post(
-            self.get_uri('nodes/'), {
+            reverse('nodes_handler'), {
                 'op': 'new',
                 'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
                 'power_type': POWER_TYPE.WAKE_ON_LAN,
@@ -687,7 +685,7 @@ class AdminLoggedInEnlistmentAPITest(APIv10TestMixin, AdminLoggedInTestCase):
         # When an admin user enlists a node, it goes into the
         # Commissioning state.
         response = self.client.post(
-            self.get_uri('nodes/'),
+            reverse('nodes_handler'),
             {
                 'op': 'new',
                 'hostname': factory.getRandomString(),
@@ -704,7 +702,7 @@ class AdminLoggedInEnlistmentAPITest(APIv10TestMixin, AdminLoggedInTestCase):
 
     def test_POST_returns_limited_fields(self):
         response = self.client.post(
-            self.get_uri('nodes/'),
+            reverse('nodes_handler'),
             {
                 'op': 'new',
                 'hostname': factory.getRandomString(),
@@ -741,7 +739,7 @@ class AdminLoggedInEnlistmentAPITest(APIv10TestMixin, AdminLoggedInTestCase):
             factory.make_node(status=NODE_STATUS.DECLARED),
             ]
         response = self.client.post(
-            self.get_uri('nodes/'), {'op': 'accept_all'})
+            reverse('nodes_handler'), {'op': 'accept_all'})
         self.assertEqual(httplib.OK, response.status_code)
         nodes_returned = json.loads(response.content)
         self.assertSetEqual(

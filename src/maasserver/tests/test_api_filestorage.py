@@ -73,12 +73,12 @@ class FileStorageAPITestMixin:
     def make_API_POST_request(self, op=None, filename=None, fileObj=None):
         """Make an API POST request and return the response."""
         params = self._create_API_params(op, filename, fileObj)
-        return self.client.post(self.get_uri('files/'), params)
+        return self.client.post(reverse('files_handler'), params)
 
     def make_API_GET_request(self, op=None, filename=None, fileObj=None):
         """Make an API GET request and return the response."""
         params = self._create_API_params(op, filename, fileObj)
-        return self.client.get(self.get_uri('files/'), params)
+        return self.client.get(reverse('files_handler'), params)
 
 
 class AnonymousFileStorageAPITest(FileStorageAPITestMixin, AnonAPITestCase):
@@ -103,7 +103,7 @@ class AnonymousFileStorageAPITest(FileStorageAPITestMixin, AnonAPITestCase):
     def test_get_by_key_works_anonymously(self):
         storage = factory.make_file_storage()
         response = self.client.get(
-            self.get_uri('files/'), {'key': storage.key, 'op': 'get_by_key'})
+            reverse('files_handler'), {'key': storage.key, 'op': 'get_by_key'})
 
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(storage.content, response.content)
@@ -134,6 +134,15 @@ class AnonymousFileStorageAPITest(FileStorageAPITestMixin, AnonAPITestCase):
 
 
 class FileStorageAPITest(FileStorageAPITestMixin, APITestCase):
+
+    def test_files_handler_path(self):
+        self.assertEqual(
+            '/api/1.0/files/', reverse('files_handler'))
+
+    def test_file_handler_path(self):
+        self.assertEqual(
+            '/api/1.0/files/filename/',
+            reverse('file_handler', args=['filename']))
 
     def test_add_file_succeeds(self):
         response = self.make_API_POST_request(
@@ -180,7 +189,7 @@ class FileStorageAPITest(FileStorageAPITestMixin, APITestCase):
         foo2 = factory.make_file_upload(name='foo2')
 
         response = self.client.post(
-            self.get_uri('files/'),
+            reverse('files_handler'),
             {
                 "op": "add",
                 "filename": "foo",
@@ -256,7 +265,7 @@ class FileStorageAPITest(FileStorageAPITestMixin, APITestCase):
                 filename=filename, content=b"test content",
                 owner=self.logged_in_user)
         response = self.client.get(
-            self.get_uri('files/'), {"op": "list", "prefix": "prefix-"})
+            reverse('files_handler'), {"op": "list", "prefix": "prefix-"})
         self.assertEqual(httplib.OK, response.status_code)
         parsed_results = json.loads(response.content)
         filenames = [result['filename'] for result in parsed_results]

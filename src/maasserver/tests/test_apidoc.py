@@ -24,6 +24,7 @@ from django.conf.urls import (
     url,
     )
 from django.core.exceptions import ImproperlyConfigured
+from django.core.urlresolvers import reverse
 from maasserver.api_support import (
     operation,
     OperationsHandler,
@@ -45,6 +46,10 @@ from piston.resource import Resource
 
 class TestFindingResources(MAASServerTestCase):
     """Tests for API inspection support: finding resources."""
+
+    def test_handler_path(self):
+        self.assertEqual(
+            '/api/1.0/doc/', reverse('api-doc'))
 
     @staticmethod
     def make_module():

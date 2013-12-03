@@ -26,10 +26,7 @@ from django.conf import settings
 from django.core.urlresolvers import reverse
 from maasserver.enum import NODE_STATUS
 from maasserver.testing import reload_object
-from maasserver.testing.api import (
-    APITestCase,
-    APIv10TestMixin,
-    )
+from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
     AdminLoggedInTestCase,
@@ -39,13 +36,13 @@ from maastesting.utils import sample_binary_data
 from metadataserver.models import CommissioningScript
 
 
-class TestCommissioningTimeout(APIv10TestMixin, LoggedInTestCase):
+class TestCommissioningTimeout(LoggedInTestCase):
     """Testing of commissioning timeout API."""
 
     def test_check_with_no_action(self):
         node = factory.make_node(status=NODE_STATUS.READY)
         response = self.client.post(
-            self.get_uri('nodes/'), {'op': 'check_commissioning'})
+            reverse('nodes_handler'), {'op': 'check_commissioning'})
         # Anything that's not commissioning should be ignored.
         node = reload_object(node)
         self.assertEqual(
@@ -56,7 +53,7 @@ class TestCommissioningTimeout(APIv10TestMixin, LoggedInTestCase):
         node = factory.make_node(
             status=NODE_STATUS.COMMISSIONING)
         response = self.client.post(
-            self.get_uri('nodes/'), {'op': 'check_commissioning'})
+            reverse('nodes_handler'), {'op': 'check_commissioning'})
         node = reload_object(node)
         self.assertEqual(
             (httplib.OK, NODE_STATUS.COMMISSIONING),
@@ -71,7 +68,7 @@ class TestCommissioningTimeout(APIv10TestMixin, LoggedInTestCase):
             updated=updated_at)
 
         response = self.client.post(
-            self.get_uri('nodes/'), {'op': 'check_commissioning'})
+            reverse('nodes_handler'), {'op': 'check_commissioning'})
         self.assertEqual(
             (
                 httplib.OK,
@@ -86,7 +83,7 @@ class TestCommissioningTimeout(APIv10TestMixin, LoggedInTestCase):
             ))
 
 
-class AdminCommissioningScriptsAPITest(APIv10TestMixin, AdminLoggedInTestCase):
+class AdminCommissioningScriptsAPITest(AdminLoggedInTestCase):
     """Tests for `CommissioningScriptsHandler`."""
 
     def get_url(self):
@@ -147,7 +144,7 @@ class CommissioningScriptsAPITest(APITestCase):
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
 
-class AdminCommissioningScriptAPITest(APIv10TestMixin, AdminLoggedInTestCase):
+class AdminCommissioningScriptAPITest(AdminLoggedInTestCase):
     """Tests for `CommissioningScriptHandler`."""
 
     def get_url(self, script_name):

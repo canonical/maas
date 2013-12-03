@@ -25,8 +25,10 @@ from maastesting.matchers import ContainsAll
 
 
 class TestUsers(APITestCase):
+
     def test_handler_path(self):
-        self.assertEqual(self.get_uri('users/'), reverse('users_handler'))
+        self.assertEqual(
+            '/api/1.0/users/', reverse('users_handler'))
 
     def test_POST_creates_user(self):
         self.become_admin()
@@ -117,11 +119,11 @@ class TestUsers(APITestCase):
 
 
 class TestUser(APITestCase):
+
     def test_handler_path(self):
-        user = factory.make_user()
         self.assertEqual(
-            self.get_uri('users/%s/' % user.username),
-            reverse('user_handler', args=[user.username]))
+            '/api/1.0/users/username/',
+            reverse('user_handler', args=['username']))
 
     def test_GET_finds_user(self):
         user = factory.make_user()

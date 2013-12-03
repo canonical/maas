@@ -43,7 +43,6 @@ from maasserver.testing import (
 from maasserver.testing.api import (
     AnonAPITestCase,
     APITestCase,
-    APIv10TestMixin,
     explain_unexpected_response,
     log_in_as_normal_user,
     make_worker_client,
@@ -74,7 +73,7 @@ from testtools.matchers import (
     )
 
 
-class TestNodeGroupsAPI(APIv10TestMixin, MultipleUsersScenarios,
+class TestNodeGroupsAPI(MultipleUsersScenarios,
                         MAASServerTestCase):
     scenarios = [
         ('anon', dict(userfactory=lambda: AnonymousUser())),
@@ -86,9 +85,13 @@ class TestNodeGroupsAPI(APIv10TestMixin, MultipleUsersScenarios,
         ('celery', FixtureResource(CeleryFixture())),
         )
 
+    def test_handler_path(self):
+        self.assertEqual(
+            '/api/1.0/nodegroups/', reverse('nodegroups_handler'))
+
     def test_reverse_points_to_nodegroups_api(self):
         self.assertEqual(
-            self.get_uri('nodegroups/'), reverse('nodegroups_handler'))
+            reverse('nodegroups_handler'), reverse('nodegroups_handler'))
 
     def test_nodegroups_index_lists_nodegroups(self):
         # The nodegroups index lists node groups for the MAAS.
@@ -136,11 +139,10 @@ class TestNodeGroupAPI(APITestCase):
         ('celery', FixtureResource(CeleryFixture())),
         )
 
-    def test_reverse_points_to_nodegroup(self):
-        nodegroup = factory.make_node_group()
+    def test_handler_path(self):
         self.assertEqual(
-            self.get_uri('nodegroups/%s/' % nodegroup.uuid),
-            reverse('nodegroup_handler', args=[nodegroup.uuid]))
+            '/api/1.0/nodegroups/name/',
+            reverse('nodegroup_handler', args=['name']))
 
     def test_GET_returns_node_group(self):
         nodegroup = factory.make_node_group()
@@ -152,7 +154,9 @@ class TestNodeGroupAPI(APITestCase):
 
     def test_GET_returns_404_for_unknown_node_group(self):
         response = self.client.get(
-            self.get_uri('nodegroups/%s/' % factory.make_name('nodegroup')))
+            reverse(
+                'nodegroup_handler',
+                args=[factory.make_name('nodegroup')]))
         self.assertEqual(httplib.NOT_FOUND, response.status_code)
 
     def test_PUT_reserved_to_admin_users(self):
@@ -431,7 +435,7 @@ class TestNodeGroupAPI(APITestCase):
             explain_unexpected_response(httplib.BAD_REQUEST, response))
 
 
-class TestNodeGroupAPIAuth(APIv10TestMixin, MAASServerTestCase):
+class TestNodeGroupAPIAuth(MAASServerTestCase):
     """Authorization tests for nodegroup API."""
 
     example_lshw_details = dedent("""\

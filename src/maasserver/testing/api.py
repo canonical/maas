@@ -15,7 +15,6 @@ __metaclass__ = type
 __all__ = [
     'AnonAPITestCase',
     'APITestCase',
-    'APIv10TestMixin',
     'explain_unexpected_response',
     'log_in_as_normal_user',
     'make_worker_client',
@@ -33,18 +32,7 @@ from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.worker_user import get_worker_user
 
 
-class APIv10TestMixin:
-
-    def get_uri(self, path):
-        """GET an API V1 uri.
-
-        :return: The API uri.
-        """
-        api_root = '/api/1.0/'
-        return api_root + path
-
-
-class AnonAPITestCase(APIv10TestMixin, MAASServerTestCase):
+class AnonAPITestCase(MAASServerTestCase):
     """Base class for anonymous API tests."""
 
 
@@ -87,7 +75,7 @@ class MultipleUsersScenarios:
                 username=self.logged_in_user.username, password=password)
 
 
-class APITestCase(APIv10TestMixin, MAASServerTestCase):
+class APITestCase(MAASServerTestCase):
     """Base class for logged-in API tests.
 
     :ivar logged_in_user: A user who is currently logged in and can access

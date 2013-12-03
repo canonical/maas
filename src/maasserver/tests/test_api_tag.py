@@ -17,6 +17,7 @@ __all__ = []
 import httplib
 import json
 
+from django.core.urlresolvers import reverse
 from maasserver.enum import NODE_STATUS
 from maasserver.models import Tag
 from maasserver.models.node import generate_node_system_id
@@ -33,9 +34,14 @@ from metadataserver.models.commissioningscript import inject_lshw_result
 class TestTagAPI(APITestCase):
     """Tests for /api/1.0/tags/<tagname>/."""
 
+    def test_handler_path(self):
+        self.assertEqual(
+            '/api/1.0/tags/tag-name/',
+            reverse('tag_handler', args=['tag-name']))
+
     def get_tag_uri(self, tag):
         """Get the API URI for `tag`."""
-        return self.get_uri('tags/%s/') % tag.name
+        return reverse('tag_handler', args=[tag.name])
 
     def test_DELETE_requires_admin(self):
         tag = factory.make_tag()
@@ -52,13 +58,15 @@ class TestTagAPI(APITestCase):
 
     def test_DELETE_404(self):
         self.become_admin()
-        response = self.client.delete(self.get_uri('tags/no-tag/'))
+        url = reverse('tag_handler', args=['no-tag'])
+        response = self.client.delete(url)
         self.assertEqual(httplib.NOT_FOUND, response.status_code)
 
     def test_GET_returns_tag(self):
         # The api allows for fetching a single Node (using system_id).
         tag = factory.make_tag('tag-name')
-        response = self.client.get(self.get_uri('tags/tag-name/'))
+        url = reverse('tag_handler', args=['tag-name'])
+        response = self.client.get(url)
 
         self.assertEqual(httplib.OK, response.status_code)
         parsed_result = json.loads(response.content)
@@ -69,7 +77,8 @@ class TestTagAPI(APITestCase):
     def test_GET_refuses_to_access_nonexistent_node(self):
         # When fetching a Tag, the api returns a 'Not Found' (404) error
         # if no tag is found.
-        response = self.client.get(self.get_uri('tags/no-such-tag/'))
+        url = reverse('tag_handler', args=['no-such-tag'])
+        response = self.client.get(url)
         self.assertEqual(httplib.NOT_FOUND, response.status_code)
 
     def test_PUT_refuses_non_superuser(self):
@@ -171,7 +180,7 @@ class TestTagAPI(APITestCase):
         self.become_admin()
         name = factory.make_name()
         response = self.client.post(
-            self.get_uri('tags/%s/' % (name,)),
+            reverse('tag_handler', args=[name]),
             {'op': 'update_nodes'})
         self.assertEqual(httplib.NOT_FOUND, response.status_code)
 
@@ -355,7 +364,8 @@ class TestTagAPI(APITestCase):
     def test_POST_rebuild_unknown_404(self):
         self.become_admin()
         response = self.client.post(
-            self.get_uri('tags/unknown-tag/'), {'op': 'rebuild'})
+            reverse('tag_handler', args=['unknown-tag']),
+            {'op': 'rebuild'})
         self.assertEqual(httplib.NOT_FOUND, response.status_code)
 
     def test_POST_rebuild_requires_admin(self):
@@ -367,14 +377,18 @@ class TestTagAPI(APITestCase):
 
 class TestTagsAPI(APITestCase):
 
+    def test_handler_path(self):
+        self.assertEqual(
+            '/api/1.0/tags/', reverse('tags_handler'))
+
     def test_GET_list_without_tags_returns_empty_list(self):
-        response = self.client.get(self.get_uri('tags/'), {'op': 'list'})
+        response = self.client.get(reverse('tags_handler'), {'op': 'list'})
         self.assertItemsEqual([], json.loads(response.content))
 
     def test_POST_new_refuses_non_admin(self):
         name = factory.getRandomString()
         response = self.client.post(
-            self.get_uri('tags/'),
+            reverse('tags_handler'),
             {
                 'op': 'new',
                 'name': name,
@@ -390,7 +404,7 @@ class TestTagsAPI(APITestCase):
         definition = '//node'
         comment = factory.getRandomString()
         response = self.client.post(
-            self.get_uri('tags/'),
+            reverse('tags_handler'),
             {
                 'op': 'new',
                 'name': name,
@@ -409,7 +423,7 @@ class TestTagsAPI(APITestCase):
         name = factory.getRandomString()
         comment = factory.getRandomString()
         response = self.client.post(
-            self.get_uri('tags/'),
+            reverse('tags_handler'),
             {
                 'op': 'new',
                 'name': name,
@@ -431,7 +445,7 @@ class TestTagsAPI(APITestCase):
         definition = '//node'
         comment = factory.getRandomString()
         response = self.client.post(
-            self.get_uri('tags/'),
+            reverse('tags_handler'),
             {
                 'op': 'new',
                 'name': invalid,
@@ -451,7 +465,7 @@ class TestTagsAPI(APITestCase):
         comment = factory.getRandomString()
         extra_kernel_opts = factory.getRandomString()
         response = self.client.post(
-            self.get_uri('tags/'),
+            reverse('tags_handler'),
             {
                 'op': 'new',
                 'name': name,
@@ -481,7 +495,7 @@ class TestTagsAPI(APITestCase):
         definition = '//node/child'
         comment = factory.getRandomString()
         response = self.client.post(
-            self.get_uri('tags/'),
+            reverse('tags_handler'),
             {
                 'op': 'new',
                 'name': name,

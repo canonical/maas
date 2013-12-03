@@ -18,6 +18,7 @@ import httplib
 import json
 import random
 
+from django.core.urlresolvers import reverse
 from maasserver.enum import (
     ARCHITECTURE,
     ARCHITECTURE_CHOICES,
@@ -36,7 +37,6 @@ from maasserver.models.user import (
 from maasserver.testing import reload_object
 from maasserver.testing.api import (
     APITestCase,
-    APIv10TestMixin,
     MultipleUsersScenarios,
     )
 from maasserver.testing.factory import factory
@@ -53,7 +53,7 @@ from testtools.matchers import (
     )
 
 
-class NodeHostnameTest(APIv10TestMixin, MultipleUsersScenarios,
+class NodeHostnameTest(MultipleUsersScenarios,
                        MAASServerTestCase):
 
     scenarios = [
@@ -75,7 +75,7 @@ class NodeHostnameTest(APIv10TestMixin, MultipleUsersScenarios,
         factory.make_node(
             hostname=hostname_with_domain, nodegroup=nodegroup)
         expected_hostname = '%s.%s' % (hostname_without_domain, domain)
-        response = self.client.get(self.get_uri('nodes/'), {'op': 'list'})
+        response = self.client.get(reverse('nodes_handler'), {'op': 'list'})
         self.assertEqual(httplib.OK, response.status_code, response.content)
         parsed_result = json.loads(response.content)
         self.assertItemsEqual(
@@ -83,13 +83,13 @@ class NodeHostnameTest(APIv10TestMixin, MultipleUsersScenarios,
             [node.get('hostname') for node in parsed_result])
 
 
-class AnonymousIsRegisteredAPITest(APIv10TestMixin, MAASServerTestCase):
+class AnonymousIsRegisteredAPITest(MAASServerTestCase):
 
     def test_is_registered_returns_True_if_node_registered(self):
         mac_address = factory.getRandomMACAddress()
         factory.make_mac_address(mac_address)
         response = self.client.get(
-            self.get_uri('nodes/'),
+            reverse('nodes_handler'),
             {'op': 'is_registered', 'mac_address': mac_address})
         self.assertEqual(
             (httplib.OK, "true"),
@@ -101,7 +101,7 @@ class AnonymousIsRegisteredAPITest(APIv10TestMixin, MAASServerTestCase):
         mac.node.status = NODE_STATUS.RETIRED
         mac.node.save()
         response = self.client.get(
-            self.get_uri('nodes/'),
+            reverse('nodes_handler'),
             {'op': 'is_registered', 'mac_address': mac_address})
         self.assertEqual(
             (httplib.OK, "false"),
@@ -113,7 +113,7 @@ class AnonymousIsRegisteredAPITest(APIv10TestMixin, MAASServerTestCase):
         non_normalized_mac_address2 = 'aabbccddeeff'
         factory.make_mac_address(non_normalized_mac_address)
         response = self.client.get(
-            self.get_uri('nodes/'),
+            reverse('nodes_handler'),
             {
                 'op': 'is_registered',
                 'mac_address': non_normalized_mac_address2
@@ -125,7 +125,7 @@ class AnonymousIsRegisteredAPITest(APIv10TestMixin, MAASServerTestCase):
     def test_is_registered_returns_False_if_node_not_registered(self):
         mac_address = factory.getRandomMACAddress()
         response = self.client.get(
-            self.get_uri('nodes/'),
+            reverse('nodes_handler'),
             {'op': 'is_registered', 'mac_address': mac_address})
         self.assertEqual(
             (httplib.OK, "false"),
@@ -140,11 +140,15 @@ def extract_system_ids(parsed_result):
 class TestNodesAPI(APITestCase):
     """Tests for /api/1.0/nodes/."""
 
+    def test_handler_path(self):
+        self.assertEqual(
+            '/api/1.0/nodes/', reverse('nodes_handler'))
+
     def test_POST_new_creates_node(self):
         # The API allows a non-admin logged-in user to create a Node.
         architecture = factory.getRandomChoice(ARCHITECTURE_CHOICES)
         response = self.client.post(
-            self.get_uri('nodes/'),
+            reverse('nodes_handler'),
             {
                 'op': 'new',
                 'hostname': factory.getRandomString(),
@@ -160,7 +164,7 @@ class TestNodesAPI(APITestCase):
         # When a user enlists a node, it goes into the Declared state.
         # This will change once we start doing proper commissioning.
         response = self.client.post(
-            self.get_uri('nodes/'),
+            reverse('nodes_handler'),
             {
                 'op': 'new',
                 'hostname': factory.getRandomString(),
@@ -180,7 +184,7 @@ class TestNodesAPI(APITestCase):
         node1 = factory.make_node()
         node2 = factory.make_node(
             status=NODE_STATUS.ALLOCATED, owner=self.logged_in_user)
-        response = self.client.get(self.get_uri('nodes/'), {'op': 'list'})
+        response = self.client.get(reverse('nodes_handler'), {'op': 'list'})
         parsed_result = json.loads(response.content)
 
         self.assertEqual(httplib.OK, response.status_code)
@@ -196,10 +200,10 @@ class TestNodesAPI(APITestCase):
         nodegroup = factory.make_node_group()
         self.create_nodes(nodegroup, 10)
         num_queries1, response1 = self.getNumQueries(
-            self.client.get, self.get_uri('nodes/'), {'op': 'list'})
+            self.client.get, reverse('nodes_handler'), {'op': 'list'})
         self.create_nodes(nodegroup, 10)
         num_queries2, response2 = self.getNumQueries(
-            self.client.get, self.get_uri('nodes/'), {'op': 'list'})
+            self.client.get, reverse('nodes_handler'), {'op': 'list'})
         # Make sure the responses are ok as it's not useful to compare the
         # number of queries if they are not.
         self.assertEqual(
@@ -215,13 +219,13 @@ class TestNodesAPI(APITestCase):
     def test_GET_list_without_nodes_returns_empty_list(self):
         # If there are no nodes to list, the "list" op still works but
         # returns an empty list.
-        response = self.client.get(self.get_uri('nodes/'), {'op': 'list'})
+        response = self.client.get(reverse('nodes_handler'), {'op': 'list'})
         self.assertItemsEqual([], json.loads(response.content))
 
     def test_GET_list_orders_by_id(self):
         # Nodes are returned in id order.
         nodes = [factory.make_node() for counter in range(3)]
-        response = self.client.get(self.get_uri('nodes/'), {'op': 'list'})
+        response = self.client.get(reverse('nodes_handler'), {'op': 'list'})
         parsed_result = json.loads(response.content)
         self.assertSequenceEqual(
             [node.system_id for node in nodes],
@@ -232,7 +236,7 @@ class TestNodesAPI(APITestCase):
         # nodes with matching ids will be returned.
         ids = [factory.make_node().system_id for counter in range(3)]
         matching_id = ids[0]
-        response = self.client.get(self.get_uri('nodes/'), {
+        response = self.client.get(reverse('nodes_handler'), {
             'op': 'list',
             'id': [matching_id],
         })
@@ -245,7 +249,7 @@ class TestNodesAPI(APITestCase):
         # no nodes -- even if other (non-matching) nodes exist.
         existing_id = factory.make_node().system_id
         nonexistent_id = existing_id + factory.getRandomString()
-        response = self.client.get(self.get_uri('nodes/'), {
+        response = self.client.get(reverse('nodes_handler'), {
             'op': 'list',
             'id': [nonexistent_id],
         })
@@ -255,7 +259,7 @@ class TestNodesAPI(APITestCase):
         # Even when ids are passed to "list," nodes are returned in id
         # order, not necessarily in the order of the id arguments.
         ids = [factory.make_node().system_id for counter in range(3)]
-        response = self.client.get(self.get_uri('nodes/'), {
+        response = self.client.get(reverse('nodes_handler'), {
             'op': 'list',
             'id': list(reversed(ids)),
         })
@@ -267,7 +271,7 @@ class TestNodesAPI(APITestCase):
         # matching ones are returned.
         existing_id = factory.make_node().system_id
         nonexistent_id = existing_id + factory.getRandomString()
-        response = self.client.get(self.get_uri('nodes/'), {
+        response = self.client.get(reverse('nodes_handler'), {
             'op': 'list',
             'id': [existing_id, nonexistent_id],
         })
@@ -281,7 +285,7 @@ class TestNodesAPI(APITestCase):
         nodes = [factory.make_node() for counter in range(3)]
         matching_hostname = nodes[0].hostname
         matching_system_id = nodes[0].system_id
-        response = self.client.get(self.get_uri('nodes/'), {
+        response = self.client.get(reverse('nodes_handler'), {
             'op': 'list',
             'hostname': [matching_hostname],
         })
@@ -295,7 +299,7 @@ class TestNodesAPI(APITestCase):
         macs = [factory.make_mac_address() for counter in range(3)]
         matching_mac = macs[0].mac_address
         matching_system_id = macs[0].node.system_id
-        response = self.client.get(self.get_uri('nodes/'), {
+        response = self.client.get(reverse('nodes_handler'), {
             'op': 'list',
             'mac_address': [matching_mac],
         })
@@ -310,7 +314,7 @@ class TestNodesAPI(APITestCase):
         bad_mac1 = '00:E0:81:DD:D1:ZZ'  # ZZ is bad.
         bad_mac2 = '00:E0:81:DD:D1:XX'  # XX is bad.
         ok_mac = factory.make_mac_address()
-        response = self.client.get(self.get_uri('nodes/'), {
+        response = self.client.get(reverse('nodes_handler'), {
             'op': 'list',
             'mac_address': [bad_mac1, bad_mac2, ok_mac],
             })
@@ -329,7 +333,7 @@ class TestNodesAPI(APITestCase):
         ignore_unused(non_listed_node)
         agent_name = factory.make_name('agent-name')
         node = factory.make_node(agent_name=agent_name)
-        response = self.client.get(self.get_uri('nodes/'), {
+        response = self.client.get(reverse('nodes_handler'), {
             'op': 'list',
             'agent_name': agent_name,
             })
@@ -341,7 +345,7 @@ class TestNodesAPI(APITestCase):
     def test_GET_list_with_agent_name_filters_with_empty_string(self):
         factory.make_node(agent_name=factory.make_name('agent-name'))
         node = factory.make_node(agent_name='')
-        response = self.client.get(self.get_uri('nodes/'), {
+        response = self.client.get(reverse('nodes_handler'), {
             'op': 'list',
             'agent_name': '',
             })
@@ -354,7 +358,7 @@ class TestNodesAPI(APITestCase):
         nodes = [
             factory.make_node(agent_name=factory.make_name('agent-name'))
             for i in range(3)]
-        response = self.client.get(self.get_uri('nodes/'), {'op': 'list'})
+        response = self.client.get(reverse('nodes_handler'), {'op': 'list'})
         self.assertEqual(httplib.OK, response.status_code)
         parsed_result = json.loads(response.content)
         self.assertSequenceEqual(
@@ -385,7 +389,7 @@ class TestNodesAPI(APITestCase):
         # return the node with the same token as the one used in
         # self.client, which is the one we set on node_1 above.
 
-        response = self.client.get(self.get_uri('nodes/'), {
+        response = self.client.get(reverse('nodes_handler'), {
             'op': 'list_allocated'})
         self.assertEqual(httplib.OK, response.status_code)
         parsed_result = json.loads(response.content)
@@ -403,7 +407,7 @@ class TestNodesAPI(APITestCase):
                 owner=self.logged_in_user, token=current_token))
 
         required_node_ids = [nodes[0].system_id, nodes[1].system_id]
-        response = self.client.get(self.get_uri('nodes/'), {
+        response = self.client.get(reverse('nodes_handler'), {
             'op': 'list_allocated',
             'id': required_node_ids,
         })
@@ -416,7 +420,8 @@ class TestNodesAPI(APITestCase):
         # The "acquire" operation returns an available node.
         available_status = NODE_STATUS.READY
         node = factory.make_node(status=available_status, owner=None)
-        response = self.client.post(self.get_uri('nodes/'), {'op': 'acquire'})
+        response = self.client.post(
+            reverse('nodes_handler'), {'op': 'acquire'})
         self.assertEqual(httplib.OK, response.status_code)
         parsed_result = json.loads(response.content)
         self.assertEqual(node.system_id, parsed_result['system_id'])
@@ -425,7 +430,7 @@ class TestNodesAPI(APITestCase):
         # The "acquire" operation allocates the node it returns.
         available_status = NODE_STATUS.READY
         node = factory.make_node(status=available_status, owner=None)
-        self.client.post(self.get_uri('nodes/'), {'op': 'acquire'})
+        self.client.post(reverse('nodes_handler'), {'op': 'acquire'})
         node = Node.objects.get(system_id=node.system_id)
         self.assertEqual(self.logged_in_user, node.owner)
 
@@ -436,7 +441,7 @@ class TestNodesAPI(APITestCase):
             agent_name=factory.make_name('agent-name'))
         agent_name = factory.make_name('agent-name')
         self.client.post(
-            self.get_uri('nodes/'),
+            reverse('nodes_handler'),
             {'op': 'acquire', 'agent_name': agent_name})
         node = Node.objects.get(system_id=node.system_id)
         self.assertEqual(agent_name, node.agent_name)
@@ -446,21 +451,23 @@ class TestNodesAPI(APITestCase):
         agent_name = factory.make_name('agent-name')
         node = factory.make_node(
             status=available_status, owner=None, agent_name=agent_name)
-        self.client.post(self.get_uri('nodes/'), {'op': 'acquire'})
+        self.client.post(reverse('nodes_handler'), {'op': 'acquire'})
         node = Node.objects.get(system_id=node.system_id)
         self.assertEqual('', node.agent_name)
 
     def test_POST_acquire_fails_if_no_node_present(self):
         # The "acquire" operation returns a Conflict error if no nodes
         # are available.
-        response = self.client.post(self.get_uri('nodes/'), {'op': 'acquire'})
+        response = self.client.post(
+            reverse('nodes_handler'), {'op': 'acquire'})
         # Fails with Conflict error: resource can't satisfy request.
         self.assertEqual(httplib.CONFLICT, response.status_code)
 
     def test_POST_ignores_already_allocated_node(self):
         factory.make_node(
             status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
-        response = self.client.post(self.get_uri('nodes/'), {'op': 'acquire'})
+        response = self.client.post(
+            reverse('nodes_handler'), {'op': 'acquire'})
         self.assertEqual(httplib.CONFLICT, response.status_code)
 
     def test_POST_acquire_chooses_candidate_matching_constraint(self):
@@ -473,7 +480,7 @@ class TestNodesAPI(APITestCase):
             factory.make_node(status=NODE_STATUS.READY, owner=None)
             for counter in range(20)]
         desired_node = random.choice(available_nodes)
-        response = self.client.post(self.get_uri('nodes/'), {
+        response = self.client.post(reverse('nodes_handler'), {
             'op': 'acquire',
             'name': desired_node.hostname,
         })
@@ -488,7 +495,7 @@ class TestNodesAPI(APITestCase):
         factory.make_node(status=NODE_STATUS.READY, owner=None)
         desired_node = factory.make_node(
             status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
-        response = self.client.post(self.get_uri('nodes/'), {
+        response = self.client.post(reverse('nodes_handler'), {
             'op': 'acquire',
             'name': desired_node.system_id,
         })
@@ -496,7 +503,7 @@ class TestNodesAPI(APITestCase):
 
     def test_POST_acquire_ignores_unknown_constraint(self):
         node = factory.make_node(status=NODE_STATUS.READY, owner=None)
-        response = self.client.post(self.get_uri('nodes/'), {
+        response = self.client.post(reverse('nodes_handler'), {
             'op': 'acquire',
             factory.getRandomString(): factory.getRandomString(),
         })
@@ -509,7 +516,7 @@ class TestNodesAPI(APITestCase):
         # If a name constraint is given, "acquire" attempts to allocate
         # a node of that name.
         node = factory.make_node(status=NODE_STATUS.READY, owner=None)
-        response = self.client.post(self.get_uri('nodes/'), {
+        response = self.client.post(reverse('nodes_handler'), {
             'op': 'acquire',
             'name': node.hostname,
         })
@@ -524,7 +531,7 @@ class TestNodesAPI(APITestCase):
         # Certainly it's not a 404, since the resource named in the URL
         # is "nodes/," which does exist.
         factory.make_node(status=NODE_STATUS.READY, owner=None)
-        response = self.client.post(self.get_uri('nodes/'), {
+        response = self.client.post(reverse('nodes_handler'), {
             'op': 'acquire',
             'name': factory.getRandomString(),
         })
@@ -534,7 +541,7 @@ class TestNodesAPI(APITestCase):
         # Asking for a particular arch acquires a node with that arch.
         node = factory.make_node(
             status=NODE_STATUS.READY, architecture=ARCHITECTURE.i386)
-        response = self.client.post(self.get_uri('nodes/'), {
+        response = self.client.post(reverse('nodes_handler'), {
             'op': 'acquire',
             'arch': 'i386/generic',
         })
@@ -545,7 +552,7 @@ class TestNodesAPI(APITestCase):
     def test_POST_acquire_treats_unknown_arch_as_bad_request(self):
         # Asking for an unknown arch returns an HTTP "400 Bad Request"
         factory.make_node(status=NODE_STATUS.READY)
-        response = self.client.post(self.get_uri('nodes/'), {
+        response = self.client.post(reverse('nodes_handler'), {
             'op': 'acquire',
             'arch': 'sparc',
         })
@@ -554,7 +561,7 @@ class TestNodesAPI(APITestCase):
     def test_POST_acquire_allocates_node_by_cpu(self):
         # Asking for enough cpu acquires a node with at least that.
         node = factory.make_node(status=NODE_STATUS.READY, cpu_count=3)
-        response = self.client.post(self.get_uri('nodes/'), {
+        response = self.client.post(reverse('nodes_handler'), {
             'op': 'acquire',
             'cpu_count': 2,
         })
@@ -565,7 +572,7 @@ class TestNodesAPI(APITestCase):
     def test_POST_acquire_allocates_node_by_float_cpu(self):
         # Asking for a needlessly precise number of cpus works.
         node = factory.make_node(status=NODE_STATUS.READY, cpu_count=1)
-        response = self.client.post(self.get_uri('nodes/'), {
+        response = self.client.post(reverse('nodes_handler'), {
             'op': 'acquire',
             'cpu_count': '1.0',
         })
@@ -576,7 +583,7 @@ class TestNodesAPI(APITestCase):
     def test_POST_acquire_fails_with_invalid_cpu(self):
         # Asking for an invalid amount of cpu returns a bad request.
         factory.make_node(status=NODE_STATUS.READY)
-        response = self.client.post(self.get_uri('nodes/'), {
+        response = self.client.post(reverse('nodes_handler'), {
             'op': 'acquire',
             'cpu_count': 'plenty',
         })
@@ -585,7 +592,7 @@ class TestNodesAPI(APITestCase):
     def test_POST_acquire_allocates_node_by_mem(self):
         # Asking for enough memory acquires a node with at least that.
         node = factory.make_node(status=NODE_STATUS.READY, memory=1024)
-        response = self.client.post(self.get_uri('nodes/'), {
+        response = self.client.post(reverse('nodes_handler'), {
             'op': 'acquire',
             'mem': 1024,
         })
@@ -596,7 +603,7 @@ class TestNodesAPI(APITestCase):
     def test_POST_acquire_fails_with_invalid_mem(self):
         # Asking for an invalid amount of memory returns a bad request.
         factory.make_node(status=NODE_STATUS.READY)
-        response = self.client.post(self.get_uri('nodes/'), {
+        response = self.client.post(reverse('nodes_handler'), {
             'op': 'acquire',
             'mem': 'bags',
         })
@@ -607,7 +614,7 @@ class TestNodesAPI(APITestCase):
         node_tag_names = ["fast", "stable", "cute"]
         node.tags = [factory.make_tag(t) for t in node_tag_names]
         # Legacy call using comma-separated tags.
-        response = self.client.post(self.get_uri('nodes/'), {
+        response = self.client.post(reverse('nodes_handler'), {
             'op': 'acquire',
             'tags': ['fast', 'stable'],
         })
@@ -620,7 +627,7 @@ class TestNodesAPI(APITestCase):
         node_tag_names = ["fast", "stable", "cute"]
         node.tags = [factory.make_tag(t) for t in node_tag_names]
         # Legacy call using comma-separated tags.
-        response = self.client.post(self.get_uri('nodes/'), {
+        response = self.client.post(reverse('nodes_handler'), {
             'op': 'acquire',
             'tags': 'fast, stable',
         })
@@ -633,7 +640,7 @@ class TestNodesAPI(APITestCase):
         node_tag_names = ["fast", "stable", "cute"]
         node.tags = [factory.make_tag(t) for t in node_tag_names]
         # Legacy call using space-separated tags.
-        response = self.client.post(self.get_uri('nodes/'), {
+        response = self.client.post(reverse('nodes_handler'), {
             'op': 'acquire',
             'tags': 'fast stable',
         })
@@ -646,7 +653,7 @@ class TestNodesAPI(APITestCase):
         node_tag_names = ["fast", "stable", "cute"]
         node.tags = [factory.make_tag(t) for t in node_tag_names]
         # Legacy call using comma-and-space-separated tags.
-        response = self.client.post(self.get_uri('nodes/'), {
+        response = self.client.post(reverse('nodes_handler'), {
             'op': 'acquire',
             'tags': 'fast, stable cute',
         })
@@ -659,7 +666,7 @@ class TestNodesAPI(APITestCase):
         node_tag_names = ["fast", "stable", "cute"]
         node.tags = [factory.make_tag(t) for t in node_tag_names]
         # Mixed call using comma-separated tags in a list.
-        response = self.client.post(self.get_uri('nodes/'), {
+        response = self.client.post(reverse('nodes_handler'), {
             'op': 'acquire',
             'tags': ['fast, stable', 'cute'],
         })
@@ -673,7 +680,7 @@ class TestNodesAPI(APITestCase):
         node1.tags = [factory.make_tag(t) for t in ("fast", "stable", "cute")]
         node2 = factory.make_node(status=NODE_STATUS.READY)
         node2.tags = [factory.make_tag("cheap")]
-        response = self.client.post(self.get_uri('nodes/'), {
+        response = self.client.post(reverse('nodes_handler'), {
             'op': 'acquire',
             'tags': 'fast, cheap',
         })
@@ -683,7 +690,7 @@ class TestNodesAPI(APITestCase):
         # Asking for a tag that does not exist gives a specific error.
         node = factory.make_node(status=NODE_STATUS.READY)
         node.tags = [factory.make_tag("fast")]
-        response = self.client.post(self.get_uri('nodes/'), {
+        response = self.client.post(reverse('nodes_handler'), {
             'op': 'acquire',
             'tags': 'fast, hairy, boo',
         })
@@ -697,7 +704,7 @@ class TestNodesAPI(APITestCase):
         node = factory.make_node(routers=macs, status=NODE_STATUS.READY)
         factory.make_node(routers=[])
 
-        response = self.client.post(self.get_uri('nodes/'), {
+        response = self.client.post(reverse('nodes_handler'), {
             'op': 'acquire',
             'connected_to': [macs[2].get_raw(), macs[0].get_raw()],
         })
@@ -713,7 +720,7 @@ class TestNodesAPI(APITestCase):
             routers=[MAC('11:11:11:11:11:11')], status=NODE_STATUS.READY)
         node = factory.make_node(status=NODE_STATUS.READY)
 
-        response = self.client.post(self.get_uri('nodes/'), {
+        response = self.client.post(reverse('nodes_handler'), {
             'op': 'acquire',
             'not_connected_to': ['aa:bb:cc:dd:ee:ff', '11:11:11:11:11:11'],
         })
@@ -727,7 +734,7 @@ class TestNodesAPI(APITestCase):
         # the Node that is allocated.
         available_status = NODE_STATUS.READY
         node = factory.make_node(status=available_status, owner=None)
-        self.client.post(self.get_uri('nodes/'), {'op': 'acquire'})
+        self.client.post(reverse('nodes_handler'), {'op': 'acquire'})
         node = Node.objects.get(system_id=node.system_id)
         oauth_key = self.client.token.key
         self.assertEqual(oauth_key, node.token.key)
@@ -740,7 +747,7 @@ class TestNodesAPI(APITestCase):
 
         node = factory.make_node(status=NODE_STATUS.DECLARED)
         response = self.client.post(
-            self.get_uri('nodes/'),
+            reverse('nodes_handler'),
             {'op': 'accept', 'nodes': [node.system_id]})
         accepted_ids = [
             accepted_node['system_id']
@@ -751,7 +758,7 @@ class TestNodesAPI(APITestCase):
         self.assertEqual(target_state, reload_object(node).status)
 
     def test_POST_quietly_accepts_empty_set(self):
-        response = self.client.post(self.get_uri('nodes/'), {'op': 'accept'})
+        response = self.client.post(reverse('nodes_handler'), {'op': 'accept'})
         self.assertEqual(
             (httplib.OK, "[]"), (response.status_code, response.content))
 
@@ -769,7 +776,7 @@ class TestNodesAPI(APITestCase):
             for status in unacceptable_states}
         responses = {
             status: self.client.post(
-                self.get_uri('nodes/'), {
+                reverse('nodes_handler'), {
                     'op': 'accept',
                     'nodes': [node.system_id],
                     })
@@ -796,7 +803,7 @@ class TestNodesAPI(APITestCase):
         factory.make_node()
         node_id = factory.getRandomString()
         response = self.client.post(
-            self.get_uri('nodes/'), {'op': 'accept', 'nodes': [node_id]})
+            reverse('nodes_handler'), {'op': 'accept', 'nodes': [node_id]})
         self.assertEqual(
             (httplib.BAD_REQUEST, "Unknown node(s): %s." % node_id),
             (response.status_code, response.content))
@@ -811,7 +818,7 @@ class TestNodesAPI(APITestCase):
             factory.make_node(status=NODE_STATUS.DECLARED)
             for counter in range(2)]
         node_ids = [node.system_id for node in nodes]
-        response = self.client.post(self.get_uri('nodes/'), {
+        response = self.client.post(reverse('nodes_handler'), {
             'op': 'accept',
             'nodes': node_ids,
             })
@@ -828,7 +835,7 @@ class TestNodesAPI(APITestCase):
             ]
         accepted_node = factory.make_node(status=NODE_STATUS.READY)
         nodes = acceptable_nodes + [accepted_node]
-        response = self.client.post(self.get_uri('nodes/'), {
+        response = self.client.post(reverse('nodes_handler'), {
             'op': 'accept',
             'nodes': [node.system_id for node in nodes],
             })
@@ -840,7 +847,8 @@ class TestNodesAPI(APITestCase):
         self.assertNotIn(accepted_node.system_id, accepted_ids)
 
     def test_POST_quietly_releases_empty_set(self):
-        response = self.client.post(self.get_uri('nodes/'), {'op': 'release'})
+        response = self.client.post(
+            reverse('nodes_handler'), {'op': 'release'})
         self.assertEqual(
             (httplib.OK, "[]"), (response.status_code, response.content))
 
@@ -848,7 +856,7 @@ class TestNodesAPI(APITestCase):
         node = factory.make_node(
             status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
         response = self.client.post(
-            self.get_uri('nodes/'), {
+            reverse('nodes_handler'), {
                 'op': 'release',
                 'nodes': [node.system_id],
                 })
@@ -860,7 +868,7 @@ class TestNodesAPI(APITestCase):
         factory.make_node()
         node_ids = {factory.getRandomString() for i in xrange(5)}
         response = self.client.post(
-            self.get_uri('nodes/'), {
+            reverse('nodes_handler'), {
                 'op': 'release',
                 'nodes': node_ids
                 })
@@ -883,7 +891,7 @@ class TestNodesAPI(APITestCase):
         another_node = factory.make_node(status=NODE_STATUS.RESERVED)
         node_ids.add(another_node.system_id)
         response = self.client.post(
-            self.get_uri('nodes/'), {
+            reverse('nodes_handler'), {
                 'op': 'release',
                 'nodes': node_ids
                 })
@@ -906,7 +914,7 @@ class TestNodesAPI(APITestCase):
             factory.make_node(status=status, owner=owner)
             for status in unacceptable_states]
         response = self.client.post(
-            self.get_uri('nodes/'), {
+            reverse('nodes_handler'), {
                 'op': 'release',
                 'nodes': [node.system_id for node in nodes],
                 })
@@ -935,7 +943,7 @@ class TestNodesAPI(APITestCase):
             for status in acceptable_states
             ]
         response = self.client.post(
-            self.get_uri('nodes/'), {
+            reverse('nodes_handler'), {
                 'op': 'release',
                 'nodes': [node.system_id for node in nodes],
                 })
@@ -957,7 +965,7 @@ class TestNodesAPI(APITestCase):
         # by default anyway.
         architecture = factory.getRandomChoice(ARCHITECTURE_CHOICES)
         response = self.client.post(
-            self.get_uri('nodes/MAAS/api/1.0/nodes/'),
+            '/api/1.0/nodes/MAAS/api/1.0/nodes/',
             {
                 'op': 'new',
                 'hostname': factory.getRandomString(),

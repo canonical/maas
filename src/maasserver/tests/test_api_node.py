@@ -21,6 +21,7 @@ import json
 import sys
 
 import bson
+from django.core.urlresolvers import reverse
 from maasserver.enum import (
     ARCHITECTURE_CHOICES,
     DISTRO_SERIES,
@@ -37,10 +38,7 @@ from maasserver.testing import (
     reload_object,
     reload_objects,
     )
-from maasserver.testing.api import (
-    APITestCase,
-    APIv10TestMixin,
-    )
+from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.testing.oauthclient import OAuthAuthenticatedClient
 from maasserver.testing.testcase import (
@@ -60,19 +58,19 @@ from provisioningserver.enum import (
     )
 
 
-class NodeAnonAPITest(APIv10TestMixin, MAASServerTestCase):
+class NodeAnonAPITest(MAASServerTestCase):
 
     def test_anon_nodes_GET(self):
         # Anonymous requests to the API without a specified operation
         # get a "Bad Request" response.
-        response = self.client.get(self.get_uri('nodes/'))
+        response = self.client.get(reverse('nodes_handler'))
 
         self.assertEqual(httplib.BAD_REQUEST, response.status_code)
 
     def test_anon_api_doc(self):
         # The documentation is accessible to anon users.
         self.patch(sys, "stderr", StringIO())
-        response = self.client.get(self.get_uri('doc/'))
+        response = self.client.get(reverse('api-doc'))
         self.assertEqual(httplib.OK, response.status_code)
         # No error or warning are emitted by docutils.
         self.assertEqual("", sys.stderr.getvalue())
@@ -80,16 +78,16 @@ class NodeAnonAPITest(APIv10TestMixin, MAASServerTestCase):
     def test_node_init_user_cannot_access(self):
         token = NodeKey.objects.get_token_for_node(factory.make_node())
         client = OAuthAuthenticatedClient(get_node_init_user(), token)
-        response = client.get(self.get_uri('nodes/'), {'op': 'list'})
+        response = client.get(reverse('nodes_handler'), {'op': 'list'})
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
 
-class NodeAPILoggedInTest(APIv10TestMixin, LoggedInTestCase):
+class NodeAPILoggedInTest(LoggedInTestCase):
 
     def test_nodes_GET_logged_in(self):
         # A (Django) logged-in user can access the API.
         node = factory.make_node()
-        response = self.client.get(self.get_uri('nodes/'), {'op': 'list'})
+        response = self.client.get(reverse('nodes_handler'), {'op': 'list'})
         parsed_result = json.loads(response.content)
 
         self.assertEqual(httplib.OK, response.status_code)
@@ -101,9 +99,14 @@ class NodeAPILoggedInTest(APIv10TestMixin, LoggedInTestCase):
 class TestNodeAPI(APITestCase):
     """Tests for /api/1.0/nodes/<node>/."""
 
+    def test_handler_path(self):
+        self.assertEqual(
+            '/api/1.0/nodes/node-name/',
+            reverse('node_handler', args=['node-name']))
+
     def get_node_uri(self, node):
         """Get the API URI for `node`."""
-        return self.get_uri('nodes/%s/') % node.system_id
+        return reverse('node_handler', args=[node.system_id])
 
     def test_GET_returns_node(self):
         # The api allows for fetching a single Node (using system_id).
@@ -151,7 +154,9 @@ class TestNodeAPI(APITestCase):
     def test_GET_refuses_to_access_nonexistent_node(self):
         # When fetching a Node, the api returns a 'Not Found' (404) error
         # if no node is found.
-        response = self.client.get(self.get_uri('nodes/invalid-uuid/'))
+        url = reverse('node_handler', args=['invalid-uuid'])
+
+        response = self.client.get(url)
 
         self.assertEqual(httplib.NOT_FOUND, response.status_code)
 
@@ -309,7 +314,7 @@ class TestNodeAPI(APITestCase):
 
     def test_POST_release_removes_token_and_user(self):
         node = factory.make_node(status=NODE_STATUS.READY)
-        self.client.post(self.get_uri('nodes/'), {'op': 'acquire'})
+        self.client.post(reverse('nodes_handler'), {'op': 'acquire'})
         node = Node.objects.get(system_id=node.system_id)
         self.assertEqual(NODE_STATUS.ALLOCATED, node.status)
         self.assertEqual(self.logged_in_user, node.owner)
@@ -389,7 +394,7 @@ class TestNodeAPI(APITestCase):
     def test_POST_release_combines_with_acquire(self):
         node = factory.make_node(status=NODE_STATUS.READY)
         response = self.client.post(
-            self.get_uri('nodes/'), {'op': 'acquire'})
+            reverse('nodes_handler'), {'op': 'acquire'})
         self.assertEqual(NODE_STATUS.ALLOCATED, reload_object(node).status)
         node_uri = json.loads(response.content)['resource_uri']
         response = self.client.post(node_uri, {'op': 'release'})
@@ -485,7 +490,7 @@ class TestNodeAPI(APITestCase):
         parsed_result = json.loads(response.content)
 
         self.assertEqual(
-            self.get_uri('nodes/%s/') % (parsed_result['system_id']),
+            reverse('node_handler', args=[parsed_result['system_id']]),
             parsed_result['resource_uri'])
 
     def test_PUT_rejects_invalid_data(self):
@@ -516,7 +521,8 @@ class TestNodeAPI(APITestCase):
     def test_PUT_refuses_to_update_nonexistent_node(self):
         # When updating a Node, the api returns a 'Not Found' (404) error
         # if no node is found.
-        response = self.client_put(self.get_uri('nodes/no-node-here/'))
+        url = reverse('node_handler', args=['invalid-uuid'])
+        response = self.client_put(url)
 
         self.assertEqual(httplib.NOT_FOUND, response.status_code)
 
@@ -740,7 +746,8 @@ class TestNodeAPI(APITestCase):
     def test_DELETE_refuses_to_delete_nonexistent_node(self):
         # When deleting a Node, the api returns a 'Not Found' (404) error
         # if no node is found.
-        response = self.client.delete(self.get_uri('nodes/no-node-here/'))
+        url = reverse('node_handler', args=['invalid-uuid'])
+        response = self.client.delete(url)
 
         self.assertEqual(httplib.NOT_FOUND, response.status_code)
 
@@ -759,7 +766,7 @@ class TestGetDetails(APITestCase):
             script_result=script_result)
 
     def get_details(self, node):
-        url = self.get_uri('nodes/%s/') % node.system_id
+        url = reverse('node_handler', args=[node.system_id])
         response = self.client.get(url, {'op': 'details'})
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual('application/bson', response['content-type'])
@@ -789,6 +796,6 @@ class TestGetDetails(APITestCase):
             self.get_details(node))
 
     def test_GET_returns_not_found_when_node_does_not_exist(self):
-        url = self.get_uri('nodes/does-not-exist/')
+        url = reverse('node_handler', args=['does-not-exist'])
         response = self.client.get(url, {'op': 'details'})
         self.assertEqual(httplib.NOT_FOUND, response.status_code)
