@@ -323,8 +323,7 @@ class SSHKeyForm(ModelForm):
             # error because only the 'key' errors are displayed on the
             # 'add key' form.
             error = e.message_dict.pop('__all__')
-            e.message_dict['key'] = error
-            self._update_errors(e.message_dict)
+            self._errors.setdefault('key', self.error_class()).extend(error)
 
 
 class MultipleMACAddressField(forms.MultiValueField):
