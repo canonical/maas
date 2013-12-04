@@ -27,6 +27,7 @@
             <th>Interface</th>
             <th>Network</th>
             <th>Status</th>
+            <th>Non-MAAS DHCP</th>
             <th></th>
           </tr>
         </thead>
@@ -37,6 +38,11 @@
           <td>{{ interface.interface }}</td>
           <td>{{ interface.network|default_if_none:"Not configured" }}</td>
           <td>{{ interface.display_management }}</td>
+          <td>{{ interface.foreign_dhcp_ip|default_if_none:"" }}
+            {% if interface.foreign_dhcp_ip and interface.display_management != "Unmanaged" %}
+              <img src="{{ STATIC_URL }}img/warning.png" title="Clashes with MAAS DHCP!"/>
+            {% endif %}
+          </td>
           <td>
             <a href="{% url 'cluster-interface-edit' uuid=cluster.uuid interface=interface.interface %}"
                class="icon"
