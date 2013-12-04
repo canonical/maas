@@ -42,7 +42,10 @@ from provisioningserver.auth import (
 from provisioningserver.custom_hardware.seamicro import (
     probe_seamicro15k_and_enlist,
     )
-from provisioningserver.dhcp import config
+from provisioningserver.dhcp import (
+    config,
+    detect,
+    )
 from provisioningserver.dhcp.leases import (
     upload_leases,
     )
@@ -340,6 +343,12 @@ def write_dhcp_config(callback=None, **kwargs):
 def restart_dhcp_server():
     """Restart the DHCP server."""
     call_and_check(['sudo', '-n', 'service', 'maas-dhcp-server', 'restart'])
+
+
+@task
+def periodic_probe_dhcp():
+    """Probe for foreign DHCP servers."""
+    detect.periodic_probe_task()
 
 
 # =====================================================================

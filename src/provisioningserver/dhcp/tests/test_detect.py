@@ -14,24 +14,40 @@ str = None
 __metaclass__ = type
 __all__ = []
 
-import mock
+import httplib
+import os
 import socket
+import textwrap
+import urllib2
 
+from apiclient.maas_client import MAASClient
+from apiclient.testing.credentials import make_api_credentials
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
-import provisioningserver.dhcp.detect as detect_module
+import mock
+from provisioningserver import cache
+from provisioningserver.auth import (
+    NODEGROUP_UUID_CACHE_KEY,
+    record_api_credentials,
+    )
 from provisioningserver.dhcp.detect import (
     BOOTP_CLIENT_PORT,
     BOOTP_SERVER_PORT,
+    determine_cluster_interfaces,
     DHCPDiscoverPacket,
     DHCPOfferPacket,
     get_interface_IP,
     get_interface_MAC,
     make_transaction_ID,
+    periodic_probe_task,
+    probe_interface,
     receive_offers,
     request_dhcp,
     udp_socket,
+    update_region_controller,
     )
+import provisioningserver.dhcp.detect as detect_module
+from provisioningserver.testing.testcase import PservTestCase
 
 
 class MakeTransactionID(MAASTestCase):
@@ -295,3 +311,217 @@ class TestReceiveOffers(MAASTestCase):
         self.assertRaises(
             InducedError,
             receive_offers, factory.getRandomBytes(4))
+
+
+class MockResponse:
+    # This implements just enough to look lke a urllib2 response object.
+    def __init__(self, code=None, response=None):
+        if code is None:
+            code = httplib.OK
+        self.code = code
+        if response is None:
+            response = ""
+        self.response = response
+
+    def getcode(self):
+        return self.code
+
+    def read(self):
+        return self.response
+
+
+class TestPeriodicTask(PservTestCase):
+
+    def setUp(self):
+        # Initialise the knowledge cache.
+        super(TestPeriodicTask, self).setUp()
+        uuid = factory.getRandomUUID()
+        maas_url = 'http://%s.example.com/%s/' % (
+            factory.make_name('host'),
+            factory.getRandomString(),
+            )
+        api_credentials = make_api_credentials()
+
+        cache.cache.set(NODEGROUP_UUID_CACHE_KEY, uuid)
+        os.environ["MAAS_URL"] = maas_url
+        cache.cache.set('api_credentials', ':'.join(api_credentials))
+
+        self.knowledge = dict(
+            nodegroup_uuid=uuid,
+            api_credentials=api_credentials,
+            maas_url=maas_url)
+
+    def make_fake_interfaces_response(self, interfaces_pairs):
+        stanzas = []
+        for interfaces_pair in interfaces_pairs:
+            stanza = textwrap.dedent("""
+                {{
+                    "ip_range_high": null,
+                    "ip_range_low": null,
+                    "broadcast_ip": null,
+                    "ip": "{1}",
+                    "subnet_mask": "255.255.255.0",
+                    "management": 0,
+                    "interface": "{0}"
+                }}""").format(*interfaces_pair)
+            stanzas.append(stanza)
+        interfaces_json = "["
+        interfaces_json += ",".join(stanzas)
+        interfaces_json += "]"
+        return interfaces_json
+
+    def patch_fake_interfaces_list(self, interfaces_pairs):
+        # Set up the api client to return a fake set of interfaces.
+        # Determine_cluster_interfaces calls the API to discover what
+        # interfaces are available, so any test code that calls it
+        # should first call this helper to set up the required fake response.
+        interfaces_json = self.make_fake_interfaces_response(interfaces_pairs)
+        self.patch(MAASClient, 'get').return_value = MockResponse(
+            httplib.OK, interfaces_json)
+
+    def test_determine_cluster_interfaces_returns_interface_names(self):
+        eth0_addr = factory.getRandomIPAddress()
+        wlan0_addr = factory.getRandomIPAddress()
+        self.patch_fake_interfaces_list(
+            [("eth0", eth0_addr), ("wlan0", wlan0_addr)])
+        self.assertEqual(
+            [("eth0", eth0_addr), ("wlan0", wlan0_addr)],
+            determine_cluster_interfaces(self.knowledge))
+
+    def test_probe_interface_returns_empty_set_when_nothing_detected(self):
+        eth0_addr = factory.getRandomIPAddress()
+        self.patch_fake_interfaces_list([("eth0", eth0_addr)])
+        self.patch(detect_module, 'probe_dhcp').return_value = set()
+        interfaces = determine_cluster_interfaces(self.knowledge)
+        results = probe_interface(*interfaces[0])
+        self.assertEqual(set(), results)
+
+    def test_probe_interface_returns_populated_set(self):
+        # Test that the detected DHCP server is returned.
+        eth0_addr = factory.getRandomIPAddress()
+        self.patch_fake_interfaces_list([("eth0", eth0_addr)])
+        self.patch(
+            detect_module, 'probe_dhcp').return_value = {'10.2.2.2'}
+        interfaces = determine_cluster_interfaces(self.knowledge)
+        results = probe_interface(*interfaces[0])
+        self.assertEqual({'10.2.2.2'}, results)
+
+    def test_probe_interface_filters_interface_own_ip(self):
+        # Test that the interface shows the detected DHCP server except
+        # if it is the same IP as the interface's.
+        eth0_addr = factory.getRandomIPAddress()
+        self.patch_fake_interfaces_list([("eth0", eth0_addr)])
+        detected_dhcp = eth0_addr
+        self.patch(detect_module, 'probe_dhcp').return_value = {detected_dhcp}
+        interfaces = determine_cluster_interfaces(self.knowledge)
+        results = probe_interface(*interfaces[0])
+        self.assertEqual(set(), results)
+
+    def test_determine_cluster_interfaces_catchs_HTTPError_in_MASClient(self):
+        self.patch(MAASClient, 'get').side_effect = urllib2.HTTPError(
+            mock.sentinel, mock.sentinel, mock.sentinel,
+            mock.sentinel, mock.sentinel)
+        mocked_logging = self.patch(detect_module.logger, 'error')
+        determine_cluster_interfaces(self.knowledge)
+        mocked_logging.assert_called_once()
+
+    def test_determine_cluster_interfaces_catches_URLError_in_MASClient(self):
+        self.patch(MAASClient, 'get').side_effect = urllib2.URLError(
+            mock.sentinel.arg1)
+        mocked_logging = self.patch(detect_module.logger, 'error')
+        determine_cluster_interfaces(self.knowledge)
+        mocked_logging.assert_called_once()
+
+    def test_determine_cluster_interfaces_catches_non_OK_response(self):
+        self.patch(MAASClient, 'get').return_value = MockResponse(
+            httplib.NOT_FOUND, "error text")
+        mocked_logging = self.patch(detect_module.logger, 'error')
+        determine_cluster_interfaces(self.knowledge)
+        mocked_logging.assert_called_once()
+
+    def test_update_region_controller_sets_detected_dhcp(self):
+        mocked_put = self.patch(MAASClient, 'put')
+        mocked_put.return_value = MockResponse()
+        detected_server = factory.getRandomIPAddress()
+        update_region_controller(self.knowledge, "eth0", detected_server)
+        mocked_put.assert_called_once_with(
+            'api/1.0/nodegroups/%s/interfaces/eth0/' % self.knowledge[
+                'nodegroup_uuid'],
+            foreign_dhcp_ip=detected_server)
+
+    def test_update_region_controller_clears_detected_dhcp(self):
+        mocked_put = self.patch(MAASClient, 'put')
+        mocked_put.return_value = MockResponse()
+        detected_server = None
+        update_region_controller(self.knowledge, "eth0", detected_server)
+        mocked_put.assert_called_once_with(
+            'api/1.0/nodegroups/%s/interfaces/eth0/' % self.knowledge[
+                'nodegroup_uuid'],
+            foreign_dhcp_ip='')
+
+    def test_update_region_controller_catches_HTTPError_in_MAASClient(self):
+        self.patch(MAASClient, 'put').side_effect = urllib2.HTTPError(
+            mock.sentinel, mock.sentinel, mock.sentinel,
+            mock.sentinel, mock.sentinel)
+        mocked_logging = self.patch(detect_module.logger, 'error')
+        update_region_controller(self.knowledge, "eth0", None)
+        mocked_logging.assert_called_once()
+
+    def test_update_region_controller_catches_URLError_in_MAASClient(self):
+        self.patch(MAASClient, 'put').side_effect = urllib2.URLError(
+            mock.sentinel.arg1)
+        mocked_logging = self.patch(detect_module.logger, 'error')
+        update_region_controller(self.knowledge, "eth0", None)
+        mocked_logging.assert_called_once()
+
+    def test_update_region_controller_catches_non_OK_response(self):
+        mock_response = MockResponse(httplib.NOT_FOUND, "error text")
+        self.patch(MAASClient, 'put').return_value = mock_response
+        mocked_logging = self.patch(detect_module.logger, 'error')
+        update_region_controller(self.knowledge, "eth0", None)
+        mocked_logging.assert_called_once_with(
+            mock.ANY, mock_response.getcode(), mock_response.read())
+
+    def test_periodic_probe_task_exits_with_not_enough_knowledge(self):
+        mocked = self.patch(detect_module, 'determine_cluster_interfaces')
+        record_api_credentials(None)
+        periodic_probe_task()
+        self.assertFalse(mocked.called)
+
+    def test_periodic_probe_task_exits_if_no_interfaces(self):
+        mocked = self.patch(detect_module, 'probe_interface')
+        self.patch(
+            detect_module, 'determine_cluster_interfaces').return_value = None
+        periodic_probe_task()
+        self.assertFalse(mocked.called)
+
+    def test_periodic_probe_task_updates_region_with_detected_server(self):
+        eth0_addr = factory.getRandomIPAddress()
+        wlan0_addr = factory.getRandomIPAddress()
+        detected_server = factory.getRandomIPAddress()
+        self.patch_fake_interfaces_list(
+            [("eth0", eth0_addr), ("wlan0", wlan0_addr)])
+        self.patch(
+            detect_module, 'probe_dhcp').return_value = {detected_server}
+        mocked_update = self.patch(detect_module, 'update_region_controller')
+        periodic_probe_task()
+        calls = [
+            mock.call(self.knowledge, 'eth0', detected_server),
+            mock.call(self.knowledge, 'wlan0', detected_server),
+            ]
+        mocked_update.assert_has_calls(calls, any_order=True)
+
+    def test_periodic_probe_task_updates_region_with_no_detected_server(self):
+        eth0_addr = factory.getRandomIPAddress()
+        wlan0_addr = factory.getRandomIPAddress()
+        self.patch_fake_interfaces_list(
+            [("eth0", eth0_addr), ("wlan0", wlan0_addr)])
+        self.patch(
+            detect_module, 'probe_dhcp').return_value = set()
+        mocked_update = self.patch(detect_module, 'update_region_controller')
+        periodic_probe_task()
+        calls = [
+            mock.call(self.knowledge, 'eth0', None),
+            mock.call(self.knowledge, 'wlan0', None),
+            ]
+        mocked_update.assert_has_calls(calls, any_order=True)

@@ -501,12 +501,22 @@ class TestNodeGroupInterfacesAPI(APITestCase):
             ],
             json.loads(response.content))
 
-    def test_list_only_available_to_admin(self):
-        nodegroup = factory.make_node_group()
+    def test_list_does_not_work_for_normal_user(self):
+        nodegroup = NodeGroup.objects.ensure_master()
+        log_in_as_normal_user(self.client)
         response = self.client.get(
             reverse('nodegroupinterfaces_handler', args=[nodegroup.uuid]),
             {'op': 'list'})
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(
+            httplib.FORBIDDEN, response.status_code, response.content)
+
+    def test_list_works_for_master_worker(self):
+        nodegroup = NodeGroup.objects.ensure_master()
+        client = make_worker_client(nodegroup)
+        response = client.get(
+            reverse('nodegroupinterfaces_handler', args=[nodegroup.uuid]),
+            {'op': 'list'})
+        self.assertEqual(httplib.OK, response.status_code)
 
     def test_new_creates_interface(self):
         self.become_admin()
@@ -539,12 +549,110 @@ class TestNodeGroupInterfacesAPI(APITestCase):
             ),
             (response.status_code, json.loads(response.content)))
 
-    def test_new_only_available_to_admin(self):
-        nodegroup = factory.make_node_group()
-        response = self.client.get(
+    def test_new_does_not_work_for_normal_user(self):
+        nodegroup = NodeGroup.objects.ensure_master()
+        log_in_as_normal_user(self.client)
+        response = self.client.post(
             reverse('nodegroupinterfaces_handler', args=[nodegroup.uuid]),
             {'op': 'new'})
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(
+            httplib.FORBIDDEN, response.status_code, response.content)
+
+    def test_new_works_for_master_worker(self):
+        nodegroup = NodeGroup.objects.ensure_master()
+        client = make_worker_client(nodegroup)
+        response = client.post(
+            reverse('nodegroupinterfaces_handler', args=[nodegroup.uuid]),
+            {'op': 'new'})
+        # It's a bad request because we've not entered all the required
+        # data but it's not FORBIDDEN which means we passed the test.
+        self.assertEqual(
+            (
+                httplib.BAD_REQUEST,
+                {'ip': ["This field is required."]},
+            ),
+            (response.status_code, json.loads(response.content)))
+
+
+class TestNodeGroupInterfaceAPIAccessPermissions(APITestCase):
+    # The nodegroup worker must have access because it amends the
+    # foreign_dhcp_ip property. Normal users do not have access.
+
+    def test_read_does_not_work_for_normal_user(self):
+        nodegroup = NodeGroup.objects.ensure_master()
+        interface = factory.make_node_group_interface(
+            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
+        log_in_as_normal_user(self.client)
+        response = self.client.get(
+            reverse(
+                'nodegroupinterface_handler',
+                args=[nodegroup.uuid, interface.interface]))
+        self.assertEqual(
+            httplib.FORBIDDEN, response.status_code, response.content)
+
+    def test_read_works_for_master_worker(self):
+        nodegroup = NodeGroup.objects.ensure_master()
+        interface = factory.make_node_group_interface(
+            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
+        client = make_worker_client(nodegroup)
+        response = client.get(
+            reverse(
+                'nodegroupinterface_handler',
+                args=[nodegroup.uuid, interface.interface]))
+        self.assertEqual(httplib.OK, response.status_code)
+
+    def test_update_does_not_work_for_normal_user(self):
+        nodegroup = NodeGroup.objects.ensure_master()
+        interface = factory.make_node_group_interface(
+            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
+        log_in_as_normal_user(self.client)
+        response = self.client_put(
+            reverse(
+                'nodegroupinterface_handler',
+                args=[nodegroup.uuid, interface.interface]),
+            {'ip_range_high': factory.getRandomIPAddress()})
+        self.assertEqual(
+            httplib.FORBIDDEN, response.status_code, response.content)
+
+    def test_update_works_for_master_worker(self):
+        nodegroup = NodeGroup.objects.ensure_master()
+        interface = factory.make_node_group_interface(
+            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
+        self.client = make_worker_client(nodegroup)
+        get_ip_in_network = partial(
+            factory.getRandomIPInNetwork, interface.network)
+        new_ip_range_high = next(
+            ip for ip in iter(get_ip_in_network, None)
+            if ip != interface.ip_range_high)
+        response = self.client_put(
+            reverse(
+                'nodegroupinterface_handler',
+                args=[nodegroup.uuid, interface.interface]),
+            {'ip_range_high': new_ip_range_high})
+        self.assertEqual(httplib.OK, response.status_code)
+
+    def test_delete_does_not_work_for_normal_user(self):
+        nodegroup = NodeGroup.objects.ensure_master()
+        interface = factory.make_node_group_interface(
+            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
+        log_in_as_normal_user(self.client)
+        response = self.client.delete(
+            reverse(
+                'nodegroupinterface_handler',
+                args=[nodegroup.uuid, interface.interface]))
+        self.assertEqual(
+            httplib.FORBIDDEN, response.status_code, response.content)
+
+    def test_delete_works_for_master_worker(self):
+        nodegroup = NodeGroup.objects.ensure_master()
+        interface = factory.make_node_group_interface(
+            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
+        self.client = make_worker_client(nodegroup)
+        response = self.client.delete(
+            reverse(
+                'nodegroupinterface_handler',
+                args=[nodegroup.uuid, interface.interface]))
+        self.assertEqual(httplib.NO_CONTENT, response.status_code)
 
 
 class TestNodeGroupInterfaceAPI(APITestCase):

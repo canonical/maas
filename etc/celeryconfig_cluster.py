@@ -47,4 +47,9 @@ CELERYBEAT_SCHEDULE = {
         'schedule': timedelta(minutes=5),
         'options': {'queue': CLUSTER_UUID},
     },
+    'probe-dhcp-servers': {
+        'task': 'provisioningserver.tasks.periodic_probe_dhcp',
+        'schedule': timedelta(minutes=1),
+        'options': {'queue': CLUSTER_UUID},
+    },
 }

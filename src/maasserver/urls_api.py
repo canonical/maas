@@ -64,6 +64,10 @@ nodegroup_handler = RestrictedResource(
     NodeGroupHandler, authentication=api_auth)
 nodegroups_handler = RestrictedResource(
     NodeGroupsHandler, authentication=api_auth)
+nodegroupinterface_handler = RestrictedResource(
+    NodeGroupInterfaceHandler, authentication=api_auth)
+nodegroupinterfaces_handler = RestrictedResource(
+    NodeGroupInterfacesHandler, authentication=api_auth)
 boot_images_handler = RestrictedResource(
     BootImagesHandler, authentication=api_auth)
 tag_handler = RestrictedResource(TagHandler, authentication=api_auth)
@@ -78,10 +82,6 @@ users_handler = RestrictedResource(UsersHandler, authentication=api_auth)
 
 # Admin handlers.
 maas_handler = AdminRestrictedResource(MaasHandler, authentication=api_auth)
-nodegroupinterface_handler = AdminRestrictedResource(
-    NodeGroupInterfaceHandler, authentication=api_auth)
-nodegroupinterfaces_handler = AdminRestrictedResource(
-    NodeGroupInterfacesHandler, authentication=api_auth)
 commissioning_script_handler = AdminRestrictedResource(
     CommissioningScriptHandler, authentication=api_auth)
 commissioning_scripts_handler = AdminRestrictedResource(

@@ -1643,6 +1643,8 @@ class NodeGroupInterfacesHandler(OperationsHandler):
     def list(self, request, uuid):
         """List of NodeGroupInterfaces of a NodeGroup."""
         nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
+        if not request.user.is_superuser:
+            check_nodegroup_access(request, nodegroup)
         return NodeGroupInterface.objects.filter(nodegroup=nodegroup)
 
     @operation(idempotent=False)
@@ -1667,6 +1669,8 @@ class NodeGroupInterfacesHandler(OperationsHandler):
         :type ip_range_high: unicode (IP Address)
         """
         nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
+        if not request.user.is_superuser:
+            check_nodegroup_access(request, nodegroup)
         instance = NodeGroupInterface(nodegroup=nodegroup)
         form = NodeGroupInterfaceForm(request.data, instance=instance)
         if form.is_valid():
@@ -1695,6 +1699,8 @@ class NodeGroupInterfaceHandler(OperationsHandler):
     def read(self, request, uuid, interface):
         """List of NodeGroupInterfaces of a NodeGroup."""
         nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
+        if not request.user.is_superuser:
+            check_nodegroup_access(request, nodegroup)
         nodegroupinterface = get_object_or_404(
             NodeGroupInterface, nodegroup=nodegroup, interface=interface)
         return nodegroupinterface
@@ -1722,6 +1728,8 @@ class NodeGroupInterfaceHandler(OperationsHandler):
         :type foreign_dhcp_ip: unicode (IP Address)
         """
         nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
+        if not request.user.is_superuser:
+            check_nodegroup_access(request, nodegroup)
         nodegroupinterface = get_object_or_404(
             NodeGroupInterface, nodegroup=nodegroup, interface=interface)
         data = get_overridden_query_dict(
@@ -1735,6 +1743,8 @@ class NodeGroupInterfaceHandler(OperationsHandler):
     def delete(self, request, uuid, interface):
         """Delete a specific NodeGroupInterface."""
         nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
+        if not request.user.is_superuser:
+            check_nodegroup_access(request, nodegroup)
         nodegroupinterface = get_object_or_404(
             NodeGroupInterface, nodegroup=nodegroup, interface=interface)
         nodegroupinterface.delete()

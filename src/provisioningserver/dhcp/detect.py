@@ -17,9 +17,30 @@ __all__ = []
 
 from contextlib import contextmanager
 import fcntl
+import httplib
+import json
+from logging import getLogger
 from random import randint
 import socket
 import struct
+from urllib2 import (
+    HTTPError,
+    URLError,
+    )
+
+from apiclient.maas_client import (
+    MAASClient,
+    MAASDispatcher,
+    MAASOAuth,
+    )
+from provisioningserver.auth import (
+    get_recorded_api_credentials,
+    get_recorded_nodegroup_uuid,
+    )
+from provisioningserver.cluster_config import get_maas_url
+
+
+logger = getLogger(__name__)
 
 
 def make_transaction_ID():
@@ -191,3 +212,140 @@ def probe_dhcp(interface):
     # send out repeated requests.
     transaction_id = request_dhcp(interface)
     return receive_offers(transaction_id)
+
+
+def process_request(client_func, *args, **kwargs):
+    """Run a MAASClient query and check for common errors.
+
+    :return: None if there is an error, otherwise the decoded response body.
+    """
+    try:
+        response = client_func(*args, **kwargs)
+    except (HTTPError, URLError) as e:
+        logger.error("Failed to contact region controller:\n%s", e)
+        return None
+    code = response.getcode()
+    if code != httplib.OK:
+        logger.error(
+            "Failed talking to region controller, it returned:\n%s\n%s",
+            code, response.read())
+        return None
+    try:
+        raw_data = response.read()
+        if len(raw_data) > 0:
+            data = json.loads(raw_data)
+        else:
+            return None
+    except ValueError as e:
+        logger.error(
+            "Failed to decode response from region controller:\n%s", e)
+        return None
+    return data
+
+
+def determine_cluster_interfaces(knowledge):
+    """Given server knowledge, determine network interfaces on this cluster.
+
+    :return: a list of tuples of (interface name, ip) for all interfaces.
+
+    :note: this uses an API call and not local probing because the
+        region controller has the definitive and final say in what does and
+        doesn't exist.
+    """
+    api_path = 'api/1.0/nodegroups/%s/interfaces' % knowledge['nodegroup_uuid']
+    oauth = MAASOAuth(*knowledge['api_credentials'])
+    client = MAASClient(oauth, MAASDispatcher(), knowledge['maas_url'])
+    interfaces = process_request(client.get, api_path, 'list')
+    if interfaces is None:
+        return None
+
+    interface_names = sorted(
+        (interface['interface'], interface['ip'])
+        for interface in interfaces
+        if interface['interface'] != '')
+    return interface_names
+
+
+def probe_interface(interface, ip):
+    """Probe the given interface for DHCP servers.
+
+    :param interface: interface as returned from determine_cluster_interfaces
+    :param ip: ip as returned from determine_cluster_interfaces
+    :return: A set of IP addresses of detected servers.
+
+    :note: Any servers running on the IP address of the local host are
+        filtered out as they will be the MAAS DHCP server.
+    """
+    servers = probe_dhcp(interface)
+    # Using servers.discard(ip) here breaks Mock in the tests, so
+    # we're creating a copy of the set instead.
+    results = servers.difference([ip])
+    return results
+
+
+def update_region_controller(knowledge, interface, server):
+    """Update the region controller with the status of the probe.
+
+    :param knowledge: dictionary of server info
+    :param interface: name of interface, e.g. eth0
+    :param server: IP address of detected DHCP server, or None
+    """
+    api_path = 'api/1.0/nodegroups/%s/interfaces/%s/' % (
+        knowledge['nodegroup_uuid'], interface)
+    oauth = MAASOAuth(*knowledge['api_credentials'])
+    client = MAASClient(oauth, MAASDispatcher(), knowledge['maas_url'])
+    if server is None:
+        server = ''
+    process_request(client.put, api_path, foreign_dhcp_ip=server)
+
+
+def periodic_probe_task():
+    """Probe for DHCP servers and set NodeGroupInterface.foriegn_dhcp.
+
+    This should be run periodically so that the database has an up-to-date
+    view of any rogue DHCP servers on the network.
+
+    NOTE: This uses blocking I/O with sequential polling of interfaces, and
+    hence doesn't scale well.  It's a future improvement to make
+    to throw it in parallel threads or async I/O.
+    """
+    # Items that the server must have sent us before we can do this.
+    knowledge = {
+        'maas_url': get_maas_url(),
+        'api_credentials': get_recorded_api_credentials(),
+        'nodegroup_uuid': get_recorded_nodegroup_uuid(),
+    }
+
+    if None in knowledge.values():
+        # The MAAS server hasn't sent us enough information for us to do
+        # this yet.  Leave it for another time.
+        logger.info(
+            "Not probing for rogue DHCP servers; not all required knowledge "
+            "received from server yet.  "
+            "Missing: %s" % ', '.join(sorted(
+                name for name, value in knowledge.items() if value is None)))
+        return
+
+    # Determine all the active interfaces on this cluster (nodegroup).
+    interfaces = determine_cluster_interfaces(knowledge)
+    if interfaces is None:
+        logger.info("No interfaces on cluster, not probing DHCP.")
+        return
+
+    # Iterate over interfaces and probe each one.
+    for interface, ip in interfaces:
+        try:
+            servers = probe_interface(interface, ip)
+        except socket.error:
+            logger.exception(
+                "Failed to probe sockets; did you configure authbind as per "
+                "HACKING.txt?")
+            return
+        else:
+            if len(servers) > 0:
+                # Only send one, if it gets cleared out then the
+                # next detection pass will send a different one, if it
+                # still exists.
+                update_region_controller(knowledge, interface, servers.pop())
+            else:
+                update_region_controller(knowledge, interface, None)
