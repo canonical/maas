@@ -72,12 +72,12 @@ on hardware with the tag you have created.
 Example:
 To use the 'gpu' tag we created to run a service called 'cuda' we would use::
 
-  $ juju deploy --constraints maas-tags=gpu cuda
+  $ juju deploy --constraints tags=gpu cuda
 
 You could list several tags if required, and mix in other juju constraints if
 needed::
 
-  $ juju deploy --constraints "mem=1024 maas-tags=gpu,intel" cuda
+  $ juju deploy --constraints "mem=1024 tags=gpu,intel" cuda
 
 
 Manually assigning tags

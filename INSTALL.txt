@@ -172,9 +172,14 @@ will run automatically.
 
 .. image:: media/install_15.*
 
-**NOTE:** The maas-dhcp and maas-dns packages are not installed by
-default. If you want to have MAAS run DHCP and DNS services, you
-should install these packages::
+**NOTE:** The maas-dhcp and maas-dns packages should be installed by
+default, but on older releases of MAAS they won't be. If you want to
+have MAAS run DHCP and DNS services, you should install these packages.
+Check whether they are installed with::
+
+ $ dpkg -l maas-dhcp maas-dns
+
+If they are missing, then::
 
  $ sudo apt-get install maas-dhcp maas-dns
 
