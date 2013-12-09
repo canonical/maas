@@ -1,5 +1,5 @@
 =========
-CHANGELOG
+Changelog
 =========
 
 13.10

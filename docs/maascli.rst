@@ -1,5 +1,9 @@
+----------------------
+Command Line Interface
+----------------------
+
 As well as the web interface, many tasks can be performed by accessing
-the MAAS API directly through the maas-cli command. This section
+the MAAS API directly through the `maas-cli` command. This section
 details how to login with this tool and perform some common
 operations.
 

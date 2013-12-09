@@ -1,0 +1,19 @@
+{%- extends "basic/layout.html" %}
+{% set css_files = ['https://assets.ubuntu.com/sites/guidelines/css/latest/ubuntu-styles.css', 'https://assets.ubuntu.com/sites/ubuntu/latest/u/css/global.css', '_static/css/main.css'] %}
+
+{% block sidebarlogo %}
+<a style="border:0" title="MAAS Documentation Homepage" href="{{ pathto('index.html', 1) }}"><img src="{{ pathto('_static/maas-logo-200.png',1) }}" alt="MAAS logo"/></a>
+<h2 style="text-align:center;">MAAS</h2>
+<p style="font-style:italic;font-size:0.9em; text-align:center; margin-bottom:1.5em">Metal As A Service.</p>
+<br/>
+<br/>
+{% endblock %}
+
+{%- block footer %}
+<footer class="global clearfix">
+  <div class="legal clearfix">
+    <p>&copy; Copyright {{ copyright }}. Ubuntu and Canonical are registered trademarks of
+      <a href="http://canonical.com">Canonical Ltd</a></p>
+  </div>
+</footer>
+{%- endblock %}

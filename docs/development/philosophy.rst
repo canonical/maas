@@ -44,13 +44,8 @@ does not need to be implemented as such (even though it would be great
 if it was).
 
 
-TODO
-----
-
-Security
-
-Persistence
-
-Testing
-
-…
+.. TODO
+   ----
+   Security
+   Persistence
+   Testing

@@ -1,14 +1,10 @@
 .. MAAS documentation master file
 
 ########################
-Metal As A Service: MAAS
+MAAS: Metal As A Service
 ########################
 
-This is the documentation for the MAAS project http://maas.ubuntu.com
-
-************************
-MAAS: Metal as a Service
-************************
+This is the documentation for the `MAAS project`_.
 
 Metal as a Service -- MAAS -- lets you treat physical servers like
 virtual machines in the cloud. Rather than having to manage each
@@ -21,13 +17,16 @@ have them waiting for when you need them. You can then pull nodes up,
 tear them down and redeploy them at will; just as you can with virtual
 machines in the cloud.
 
-When you're ready to deploy a service, MAAS gives Juju the nodes it
+When you're ready to deploy a service, MAAS gives `Juju`_ the nodes it
 needs to power that service. It's as simple as that: no need to
 manually provision, check and, afterwards, clean-up. As your needs
 change, you can easily scale services up or down. Need more power for
 your Hadoop cluster for a few hours? Simply tear down one of your Nova
 compute nodes and redeploy it to Hadoop. When you're done, it's just
 as easy to give the node back to Nova.
+
+.. _MAAS project: http://maas.ubuntu.com
+.. _Juju: https://juju.ubuntu.com/
 
 MAAS is ideal where you want the flexibility of the cloud, and the
 hassle-free power of Juju charms, but you need to deploy to bare
@@ -36,17 +35,18 @@ metal.
 ************
 Introduction
 ************
+
 .. toctree::
    :maxdepth: 2
    
    about
-   changelog
    orientation
+   changelog
 
 
-***************
-Getting started
-***************
+************************
+Setting up a MAAS server
+************************
 
 .. toctree::
    :maxdepth: 2
@@ -69,14 +69,25 @@ Deploying services
    tags
 
 
-******************************
-Using the maas-cli commandline
-******************************
+***********************
+API / CLI Documentation
+***********************
 
 .. toctree::
    :maxdepth: 2
 
+   api
    maascli
+
+
+***************
+Troubleshooting
+***************
+
+.. toctree::
+   :maxdepth: 2
+
+   troubleshooting
 
 
 ***************
@@ -87,6 +98,9 @@ Developing MAAS
    :maxdepth: 2
 
    development/philosophy
+   hacking
+   models
+   enum
    development/security
    development/building-packages
    development/cluster-registration
@@ -95,22 +109,12 @@ Developing MAAS
    development/preseeds
 
 
-**********
-Appendices
-**********
+******************
+Indices and tables
+******************
 
 .. toctree::
    :maxdepth: 2
-
-   troubleshooting
-   hacking
-   api
-   models
-   enum
-
-
-Indices and tables
-==================
 
 * :ref:`genindex`
 * :ref:`modindex`
