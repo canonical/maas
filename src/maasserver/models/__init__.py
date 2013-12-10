@@ -27,6 +27,7 @@ __all__ = [
     'SSHKey',
     'Tag',
     'UserProfile',
+    'Zone',
     ]
 
 from django.contrib import admin
@@ -54,6 +55,7 @@ from maasserver.models.sshkey import SSHKey
 from maasserver.models.tag import Tag
 from maasserver.models.user import create_user
 from maasserver.models.userprofile import UserProfile
+from maasserver.models.zone import Zone
 from maasserver.utils import ignore_unused
 from piston.doc import HandlerDocumentation
 from piston.models import Consumer

@@ -64,6 +64,7 @@ from maasserver.models.cleansave import CleanSave
 from maasserver.models.config import Config
 from maasserver.models.dhcplease import DHCPLease
 from maasserver.models.tag import Tag
+from maasserver.models.zone import Zone
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils import (
     get_db_state,
@@ -435,6 +436,10 @@ class Node(CleanSave, TimestampedModel):
     routers = djorm_pgarray.fields.ArrayField(dbtype="macaddr")
 
     agent_name = CharField(max_length=255, default='', blank=True, null=True)
+
+    zone = ForeignKey(
+        Zone, to_field='name', verbose_name="Availability zone",
+        default=None, blank=True, null=True, editable=True, db_index=True)
 
     # Juju expects the following standard constraints, which are stored here
     # as a basic optimisation over querying the lshw output.
