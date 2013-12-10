@@ -166,6 +166,7 @@ class NodeForm(ModelForm):
             'after_commissioning_action',
             'architecture',
             'distro_series',
+            'zone',
             )
 
 

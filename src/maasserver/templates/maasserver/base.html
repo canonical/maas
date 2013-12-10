@@ -3,7 +3,7 @@
   <head>
     <meta http-equiv="Content-type" content="text/html; charset=utf-8" />
     <meta http-equiv="Content-Language" content="en-us" />
-    <link rel="shortcut icon" href="{{ STATIC_URL }}img/favicon.ico"/> 
+    <link rel="shortcut icon" href="{{ STATIC_URL }}img/favicon.ico"/>
     <link rel="stylesheet" href="{% url "combo-maas" %}?{{ CSS_LIST|join:"&" }}" />
     <title>{% block title %}{% endblock %} | {% include "maasserver/site_title.html" %}</title>
     {% block js-conf %}{% include "maasserver/js-conf.html" %}{% endblock %}
@@ -70,6 +70,9 @@
                 </li>
                 <li class="{% block nav-active-node-list %}{% endblock %}">
                   <a href="{% url 'node-list' %}">Nodes</a>
+                </li>
+                <li class="{% block nav-active-zone-list %}{% endblock %}">
+                  <a href="{% url 'zone-list' %}">Zones</a>
                 </li>
               </ul>
             <div class="clear"></div>

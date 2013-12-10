@@ -302,6 +302,7 @@ class NodeEditForms(MAASServerTestCase):
                 'after_commissioning_action',
                 'architecture',
                 'distro_series',
+                'zone',
                 'nodegroup',
             ], list(form.fields))
 
@@ -334,6 +335,7 @@ class NodeEditForms(MAASServerTestCase):
                 'after_commissioning_action',
                 'architecture',
                 'distro_series',
+                'zone',
                 'power_type',
                 'power_parameters',
                 'cpu_count',
@@ -344,6 +346,7 @@ class NodeEditForms(MAASServerTestCase):
 
     def test_AdminNodeForm_changes_node(self):
         node = factory.make_node()
+        zone = factory.make_zone()
         hostname = factory.getRandomString()
         after_commissioning_action = factory.getRandomChoice(
             NODE_AFTER_COMMISSIONING_ACTION_CHOICES)
@@ -354,14 +357,19 @@ class NodeEditForms(MAASServerTestCase):
                 'after_commissioning_action': after_commissioning_action,
                 'power_type': power_type,
                 'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
-                },
+                'zone': zone.name,
+            },
             instance=node)
         form.save()
 
-        self.assertEqual(hostname, node.hostname)
         self.assertEqual(
-            after_commissioning_action, node.after_commissioning_action)
-        self.assertEqual(power_type, node.power_type)
+            (
+                node.hostname,
+                node.after_commissioning_action,
+                node.power_type,
+                node.zone,
+            ),
+            (hostname, after_commissioning_action, power_type, zone))
 
     def test_AdminNodeForm_refuses_to_update_hostname_on_allocated_node(self):
         old_name = factory.make_name('old-hostname')

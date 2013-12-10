@@ -39,6 +39,7 @@ from maasserver.models import (
     NodeGroupInterface,
     SSHKey,
     Tag,
+    Zone,
     )
 from maasserver.models.node import NODE_TRANSITIONS
 from maasserver.testing import (
@@ -495,6 +496,16 @@ class Factory(maastesting.factory.Factory):
         return self.make_download_progress_incomplete(
             nodegroup=nodegroup, filename=filename, size=size,
             bytes_downloaded=bytes_downloaded, error=error)
+
+    def make_zone(self, name=None, description=None, nodes=[]):
+        if name is None:
+            name = self.getRandomString()
+        if description is None:
+            description = self.getRandomString()
+        zone = Zone(name=name, description=description)
+        zone.save()
+        zone.node_set.add(*nodes)
+        return zone
 
 
 # Create factory singleton.

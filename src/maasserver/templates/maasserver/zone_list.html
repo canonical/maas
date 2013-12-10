@@ -1,0 +1,69 @@
+{% extends "maasserver/base.html" %}
+
+{% block nav-active-zone-list %}active{% endblock %}
+{% block title %}Availability zones{% endblock %}
+{% block page-title %}{{ paginator.count }}{% if input_query %} matching{% endif %} zone{{ paginator.count|pluralize }} in {% include "maasserver/site_title.html" %}{% endblock %}
+
+{% block html_includes %}{% include "maasserver/snippets.html" %}
+{% endblock %}
+
+{% block content %}
+    <div id="zones">
+      <h2>Availability zones</h2>
+      <table class="list">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Description</th>
+            <th>Number of nodes in zone</th>
+            {% if user.is_superuser %}
+            <th></th>
+            {% endif %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for zone_item in zone_list %}
+          <tr class="zone {% cycle 'even' 'odd' %}" id="{{ zone_item.name }}">
+            <td>
+              <a class="zone"
+                 href="{% url 'zone-view' zone_item.name %}">
+                {{ zone_item.name }}
+              </a>
+            </td>
+            <td>{{ zone_item.description|truncatechars:20 }}</td>
+            <td>{{ zone_item.node_set.count }}</td>
+            {% if user.is_superuser %}
+            <td>
+              <a href="{% url 'zone-edit' zone_item.name %}"
+                 title="Edit zone {{ zone_item.name }}"
+                 class="icon">
+                <img src="{{ STATIC_URL }}img/edit.png"
+                     alt="edit"
+                     class="space-right-small" />
+              </a>
+              <a title="Delete zone {{ zone_item.name }}"
+                 class="delete-zone icon"
+                 href="{% url 'zone-del' zone_item.name %}">
+                <img src="{{ STATIC_URL }}img/delete.png" alt="delete" />
+              </a>
+              <form method="POST"
+                    action="{% url 'zone-del' zone_item.name %}">
+                {% csrf_token %}
+                <input type="hidden" name="name"
+                       value="{{ zone_item.name }}" />
+              </form>
+            </td>
+            {% endif %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% if user.is_superuser %}
+      <a class="button right space-top-small" href="{% url 'zone-add' %}">
+        Add zone
+      </a>
+      {% endif %}
+      <div class="clear"></div>
+    </div>
+
+{% endblock %}

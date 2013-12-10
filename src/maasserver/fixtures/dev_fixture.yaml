@@ -176,3 +176,17 @@
     username: test
   model: auth.user
   pk: 106
+- fields:
+    created: !!timestamp '2013-12-10 12:53:49.004420'
+    updated: !!timestamp '2013-12-10 12:53:49.004420'
+    description: Description of zone a
+    name: zone-a
+  model: maasserver.zone
+  pk: 3
+- fields:
+    created: !!timestamp '2013-12-10 12:53:49.004420'
+    updated: !!timestamp '2013-12-10 12:53:49.004420'
+    description: Description of zone b
+    name: zone-b
+  model: maasserver.zone
+  pk: 4

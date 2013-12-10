@@ -21,7 +21,10 @@ from django.conf.urls import (
     url,
     )
 from django.contrib.auth.decorators import user_passes_test
-from maasserver.models import Node
+from maasserver.models import (
+    Node,
+    Zone,
+    )
 from maasserver.views import TextTemplateView
 from maasserver.views.account import (
     login,
@@ -61,6 +64,7 @@ from maasserver.views.settings_commissioning_scripts import (
     CommissioningScriptDelete,
     )
 from maasserver.views.tags import TagView
+from maasserver.views.zones import ZoneListView
 
 
 def adminurl(regexp, view, *args, **kwargs):
@@ -193,6 +197,30 @@ urlpatterns += patterns(
     'maasserver.views',
     url(r'^tags/(?P<name>[\w\-]+)/view/$', TagView.as_view(), name='tag-view'),
 )
+
+# Zone views.
+urlpatterns += patterns(
+    'maasserver.views',
+    url(
+        r'^zones/$', ZoneListView.as_view(model=Zone), name='zone-list'),
+    url(
+        r'^zones/(?P<name>[\w\-]+)/view/$', ZoneListView.as_view(model=Zone),
+        # TODO: fix me with ZoneView.as_view(),
+        name='zone-view'),
+    adminurl(
+        r'^zones/(?P<name>[\w\-]+)/edit/$', ZoneListView.as_view(model=Zone),
+        # TODO: fix me with ZoneEdit.as_view(),
+        name='zone-edit'),
+    adminurl(
+        r'^zones/(?P<name>[\w\-]+)/delete/$', ZoneListView.as_view(model=Zone),
+        # TODO: fix me with ZoneDelete.as_view(),
+        name='zone-del'),
+    adminurl(
+        r'^zones/add/$', ZoneListView.as_view(model=Zone),
+        # TODO: fix me with ZoneAdd.as_view(),
+        name='zone-add'),
+)
+
 
 # API URLs.
 urlpatterns += patterns(
