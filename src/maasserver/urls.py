@@ -64,7 +64,10 @@ from maasserver.views.settings_commissioning_scripts import (
     CommissioningScriptDelete,
     )
 from maasserver.views.tags import TagView
-from maasserver.views.zones import ZoneListView
+from maasserver.views.zones import (
+    ZoneListView,
+    ZoneView,
+    )
 
 
 def adminurl(regexp, view, *args, **kwargs):
@@ -204,8 +207,7 @@ urlpatterns += patterns(
     url(
         r'^zones/$', ZoneListView.as_view(model=Zone), name='zone-list'),
     url(
-        r'^zones/(?P<name>[\w\-]+)/view/$', ZoneListView.as_view(model=Zone),
-        # TODO: fix me with ZoneView.as_view(),
+        r'^zones/(?P<name>[\w\-]+)/view/$', ZoneView.as_view(model=Zone),
         name='zone-view'),
     adminurl(
         r'^zones/(?P<name>[\w\-]+)/edit/$', ZoneListView.as_view(model=Zone),

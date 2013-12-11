@@ -16,13 +16,17 @@ __all__ = []
 
 
 from django.core.urlresolvers import reverse
+from lxml.html import fromstring
 from maasserver.testing import get_content_links
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
     AdminLoggedInTestCase,
     LoggedInTestCase,
     )
-from maastesting.matchers import ContainsAll
+from maastesting.matchers import (
+    Contains,
+    ContainsAll,
+    )
 from testtools.matchers import (
     Equals,
     MatchesAll,
@@ -104,3 +108,55 @@ class ZoneListingViewTestAdmin(AdminLoggedInTestCase):
         response = self.client.get(reverse('zone-list'))
         add_link = reverse('zone-add')
         self.assertIn(add_link, get_content_links(response))
+
+
+class ZoneDetailViewTest(LoggedInTestCase):
+
+    def test_zone_detail_displays_zone_detail(self):
+        # The Zone detail view displays the zone name and the zone
+        # description.
+        zone = factory.make_zone()
+        response = self.client.get(reverse('zone-view', args=[zone.name]))
+        self.assertThat(response.content, Contains(zone.name))
+        self.assertThat(
+            response.content, Contains(zone.description))
+
+    def test_zone_detail_displays_node_count(self):
+        zone = factory.make_zone()
+        node = factory.make_node()
+        node.zone = zone
+        response = self.client.get(reverse('zone-view', args=[zone.name]))
+        document = fromstring(response.content)
+        count_text = document.get_element_by_id("#nodecount").text_content()
+        self.assertThat(
+            count_text, Contains(unicode(zone.node_set.count())))
+
+
+class ZoneDetailViewNonAdmin(LoggedInTestCase):
+
+    def test_zone_detail_does_not_contain_edit_link(self):
+        zone = factory.make_zone()
+        response = self.client.get(reverse('zone-view', args=[zone.name]))
+        zone_edit_link = reverse('zone-edit', args=[zone.name])
+        self.assertNotIn(zone_edit_link, get_content_links(response))
+
+    def test_zone_detail_does_not_contain_delete_link(self):
+        zone = factory.make_zone()
+        response = self.client.get(reverse('zone-view', args=[zone.name]))
+        zone_delete_link = reverse('zone-del', args=[zone.name])
+        self.assertNotIn(zone_delete_link, get_content_links(response))
+
+
+class ZoneDetailViewAdmin(AdminLoggedInTestCase):
+
+    def test_zone_detail_contains_edit_link(self):
+        zone = factory.make_zone()
+        response = self.client.get(reverse('zone-view', args=[zone.name]))
+        zone_edit_link = reverse('zone-edit', args=[zone.name])
+        self.assertIn(zone_edit_link, get_content_links(response))
+
+    def test_zone_detail_contains_delete_link(self):
+        zone = factory.make_zone()
+        response = self.client.get(reverse('zone-view', args=[zone.name]))
+        zone_delete_link = reverse('zone-del', args=[zone.name])
+        self.assertIn(zone_delete_link, get_content_links(response))

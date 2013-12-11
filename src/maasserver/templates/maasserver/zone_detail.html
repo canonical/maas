@@ -1,0 +1,44 @@
+{% extends "maasserver/base.html" %}
+
+{% block nav-active-zone-list %}active{% endblock %}
+{% block title %}Availability zone {{ zone.name }}{% endblock %}
+{% block page-title %}
+Availability zone: {{ zone.name }}
+{% endblock %}
+{% block layout-modifiers %}sidebar{% endblock %}
+{% block html_includes %}{% include "maasserver/snippets.html" %}
+{% endblock %}
+
+{% block sidebar %}
+  <h4>Actions</h4>
+  {% if user.is_superuser %}
+      <a href="{% url 'zone-edit' zone.name %}" class="button secondary">
+        Edit zone
+      </a>
+      <a href="{% url 'zone-del' zone.name %}" class="button secondary">
+        Delete zone
+      </a>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+
+  <div id="content-with-sidebar">
+  <ul class="data-list">
+    <li class="block size3 first">
+      <h4>Name</h4>
+        <span>{{ zone.name }}</span>
+    </li>
+    <li class="block size3">
+      <h4>Description</h4>
+      <span>{{ zone.description }}</span>
+    </li>
+    <li class="block size3">
+      <h4>Number of nodes in zone</h4>
+      <span id="#nodecount">{{ zone.node_set.count }}</span>
+    </li>
+  </ul>
+
+  <div class="clear"></div>
+  </div>
+{% endblock %}
