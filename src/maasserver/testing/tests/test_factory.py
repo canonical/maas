@@ -17,6 +17,7 @@ __all__ = []
 from random import randint
 
 from maasserver.models import NodeGroup
+from maasserver.testing import reload_object
 from maasserver.testing.factory import factory
 from maastesting.testcase import MAASTestCase
 
@@ -69,3 +70,34 @@ class TestFactory(MAASTestCase):
         nodegroup = factory.make_node_group()
         self.assertEqual(
             nodegroup, factory.make_node(nodegroup=nodegroup).nodegroup)
+
+    def test_make_zone_returns_availability_zone(self):
+        self.assertIsNotNone(factory.make_zone())
+
+    def test_make_zone_assigns_name(self):
+        name = factory.make_zone().name
+        self.assertIsNotNone(name)
+        self.assertNotEqual(0, len(name))
+
+    def test_make_zone_returns_unique_zone(self):
+        self.assertNotEqual(factory.make_zone(), factory.make_zone())
+
+    def test_make_zone_adds_nodes(self):
+        node = factory.make_node()
+        zone = factory.make_zone(nodes=[node])
+        node = reload_object(node)
+        self.assertEqual(zone, node.zone)
+
+    def test_make_zone_does_not_add_other_nodes(self):
+        previous_zone = factory.make_zone()
+        node = factory.make_node(zone=previous_zone)
+        factory.make_zone(nodes=[factory.make_node()])
+        node = reload_object(node)
+        self.assertEqual(previous_zone, node.zone)
+
+    def test_make_zone_adds_no_nodes_by_default(self):
+        previous_zone = factory.make_zone()
+        node = factory.make_node(zone=previous_zone)
+        factory.make_zone()
+        node = reload_object(node)
+        self.assertEqual(previous_zone, node.zone)

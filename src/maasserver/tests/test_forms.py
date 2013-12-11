@@ -302,7 +302,6 @@ class NodeEditForms(MAASServerTestCase):
                 'after_commissioning_action',
                 'architecture',
                 'distro_series',
-                'zone',
                 'nodegroup',
             ], list(form.fields))
 
@@ -335,12 +334,12 @@ class NodeEditForms(MAASServerTestCase):
                 'after_commissioning_action',
                 'architecture',
                 'distro_series',
-                'zone',
                 'power_type',
                 'power_parameters',
                 'cpu_count',
                 'memory',
                 'storage',
+                'zone',
             ],
             list(form.fields))
 

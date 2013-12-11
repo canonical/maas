@@ -166,7 +166,6 @@ class NodeForm(ModelForm):
             'after_commissioning_action',
             'architecture',
             'distro_series',
-            'zone',
             )
 
 
@@ -196,9 +195,7 @@ class APIEditMixin:
 
 
 class AdminNodeForm(APIEditMixin, NodeForm):
-    """A version of NodeForm with adds the fields 'power_type' and
-    'power_parameters'.
-    """
+    """A `NodeForm` which includes fields that only an admin may change."""
 
     cpu_count = forms.IntegerField(
         required=False, initial=0,
@@ -221,6 +218,7 @@ class AdminNodeForm(APIEditMixin, NodeForm):
             'cpu_count',
             'memory',
             'storage',
+            'zone',
             )
 
     def __init__(self, data=None, instance=None, **kwargs):
