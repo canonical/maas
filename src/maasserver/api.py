@@ -2093,6 +2093,8 @@ class UserHandler(OperationsHandler):
 # etc. whatever render_api_docs() produces, so that you can concatenate
 # the two.
 api_doc_title = dedent("""
+    .. _region-controller-api:
+
     ========
     MAAS API
     ========

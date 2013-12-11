@@ -107,6 +107,7 @@ Developing MAAS
    development/tagging
    development/lease-scanning-and-dns
    development/preseeds
+   development/metadata
 
 
 ******************

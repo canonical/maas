@@ -127,7 +127,7 @@ by_id_patterns = patterns(
         meta_data_anon_handler,
         name='metadata-node-by-id'),
     url(
-        # could-init adds additional slashes in front of urls.
+        # cloud-init adds additional slashes in front of urls.
         r'^/*(?P<version>[^/]+)/enlist-preseed/$',
         meta_data_anon_handler,
         name='metadata-enlist-preseed'),

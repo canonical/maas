@@ -28,6 +28,7 @@ from maasserver.models.user import get_creds_tuple
 from maasserver.testing.factory import factory
 from maasserver.utils.orm import get_one
 from maastesting.djangotestcase import DjangoTestCase
+from testtools.matchers import StartsWith
 
 
 def assertCommandErrors(runner, command, *args, **kwargs):
@@ -69,8 +70,10 @@ class TestCommands(DjangoTestCase):
         # Just check that the documentation looks all right.
         self.assertIn("POST /api/1.0/account/", result)
         self.assertIn("MAAS API", result)
-        # The documentation starts with a ReST title (not indented).
-        self.assertEqual('=', result[0])
+        # The documentation starts with a link target: "region-controller-api".
+        self.assertThat(result[:100], StartsWith('.. _region-controller-api:'))
+        # It also contains a ReST title (not indented).
+        self.assertIn('===', result[:100])
 
     def test_createadmin_prompts_for_password_if_not_given(self):
         stderr = BytesIO()
