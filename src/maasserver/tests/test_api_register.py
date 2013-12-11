@@ -32,7 +32,7 @@ from maasserver.enum import (
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
     )
-from maasserver.forms import DEFAULT_ZONE_NAME
+from maasserver.forms import DEFAULT_DNS_ZONE_NAME
 from maasserver.models import NodeGroup
 from maasserver.testing.api import AnonAPITestCase
 from maasserver.testing.factory import factory
@@ -314,7 +314,7 @@ class TestRegisterAPI(AnonAPITestCase):
 
         master = NodeGroup.objects.ensure_master()
         self.assertEqual(
-            (NODEGROUP_STATUS.ACCEPTED, DEFAULT_ZONE_NAME),
+            (NODEGROUP_STATUS.ACCEPTED, DEFAULT_DNS_ZONE_NAME),
             (master.status, master.name))
 
     def test_register_accepts_only_one_managed_interface(self):

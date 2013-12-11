@@ -698,8 +698,8 @@ INTERFACES_VALIDATION_ERROR_MESSAGE = (
     "the information needed to initialize an interface.")
 
 
-# The zone name used for nodegroups when none is explicitly provided.
-DEFAULT_ZONE_NAME = 'master'
+# The DNS zone name used for nodegroups when none is explicitly provided.
+DEFAULT_DNS_ZONE_NAME = 'master'
 
 
 class NodeGroupWithInterfacesForm(ModelForm):
@@ -723,7 +723,7 @@ class NodeGroupWithInterfacesForm(ModelForm):
     def clean_name(self):
         data = self.cleaned_data['name']
         if data == '':
-            return DEFAULT_ZONE_NAME
+            return DEFAULT_DNS_ZONE_NAME
         else:
             return data
 
@@ -822,7 +822,7 @@ class NodeGroupEdit(ModelForm):
 
         if interface.management != NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS:
             # MAAS is not managing DNS on this network, so the user can
-            # rename the zone at will.
+            # rename the DNS zone at will.
             return new_name
 
         nodes_in_use = Node.objects.filter(
