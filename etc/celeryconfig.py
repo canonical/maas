@@ -47,4 +47,12 @@ CELERYBEAT_SCHEDULE = {
         'schedule': timedelta(days=1),
         'options': {'queue': WORKER_QUEUE_REGION},
     },
+
+    # Periodically (re-)import boot images.  This is a job for the region
+    # controller, although the region controller delegates it to the clusters.
+    'import-boot-images': {
+        'task': 'maasserver.tasks.import_boot_images_on_schedule',
+        'schedule': timedelta(days=7),
+        'options': {'queue': WORKER_QUEUE_REGION},
+    },
 }

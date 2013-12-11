@@ -14,6 +14,7 @@ str = None
 __metaclass__ = type
 __all__ = [
     'cleanup_old_nonces',
+    'import_boot_images_on_schedule',
     ]
 
 
@@ -22,9 +23,16 @@ from maasserver import (
     logger,
     nonces_cleanup,
     )
+from maasserver.models import NodeGroup
 
 
 @task
 def cleanup_old_nonces(**kwargs):
     nb_nonces_deleted = nonces_cleanup.cleanup_old_nonces()
     logger.info("%d expired nonce(s) cleaned up." % nb_nonces_deleted)
+
+
+@task
+def import_boot_images_on_schedule(**kwargs):
+    """Periodic import of boot images, triggered from Celery schedule."""
+    NodeGroup.objects.import_boot_images_accepted_clusters()
