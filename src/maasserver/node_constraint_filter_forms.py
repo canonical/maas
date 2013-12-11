@@ -31,7 +31,10 @@ from maasserver.forms import (
     UnconstrainedMultipleChoiceField,
     ValidatorMultipleChoiceField,
     )
-from maasserver.models import Tag
+from maasserver.models import (
+    Tag,
+    Zone,
+    )
 from maasserver.utils.orm import (
     macs_contain,
     macs_do_not_contain,
@@ -148,6 +151,8 @@ class AcquireNodeForm(RenamableFieldsForm):
             'invalid_list':
             "Invalid parameter: list of MAC addresses required."})
 
+    zone = forms.CharField(label="Availability zone", required=False)
+
     ignore_unknown_constraints = True
 
     @classmethod
@@ -187,6 +192,17 @@ class AcquireNodeForm(RenamableFieldsForm):
                 raise ValidationError(
                     {self.get_field_name('arch'): [error_msg]})
             return tag_names
+        return None
+
+    def clean_zone(self):
+        value = self.cleaned_data[self.get_field_name('zone')]
+        if value:
+            zone_names = Zone.objects.all().values_list('name', flat=True)
+            if value not in zone_names:
+                error_msg = "No such zone: '%s'." % value
+                raise ValidationError(
+                    {self.get_field_name('zone'): [error_msg]})
+            return value
         return None
 
     def clean(self):
@@ -238,6 +254,11 @@ class AcquireNodeForm(RenamableFieldsForm):
         if tags:
             for tag in tags:
                 filtered_nodes = filtered_nodes.filter(tags__name=tag)
+
+        # Filter by zone.
+        zone = self.cleaned_data.get(self.get_field_name('zone'))
+        if zone:
+            filtered_nodes = filtered_nodes.filter(zone=zone)
 
         # Filter by connected_to.
         connected_to = self.cleaned_data.get(

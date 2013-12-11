@@ -622,6 +622,27 @@ class TestNodesAPI(APITestCase):
         response_json = json.loads(response.content)
         self.assertEqual(node_tag_names, response_json['tag_names'])
 
+    def test_POST_acquire_allocates_node_by_zone(self):
+        factory.make_node(status=NODE_STATUS.READY)
+        zone = factory.make_zone()
+        node = factory.make_node(status=NODE_STATUS.READY, zone=zone)
+        response = self.client.post(reverse('nodes_handler'), {
+            'op': 'acquire',
+            'zone': zone.name,
+        })
+        self.assertResponseCode(httplib.OK, response)
+        response_json = json.loads(response.content)
+        self.assertEqual(node.system_id, response_json['system_id'])
+
+    def test_POST_acquire_allocates_node_by_zone_fails_if_no_node(self):
+        factory.make_node(status=NODE_STATUS.READY)
+        zone = factory.make_zone()
+        response = self.client.post(reverse('nodes_handler'), {
+            'op': 'acquire',
+            'zone': zone.name,
+        })
+        self.assertResponseCode(httplib.CONFLICT, response)
+
     def test_POST_acquire_allocates_node_by_tags_comma_separated(self):
         node = factory.make_node(status=NODE_STATUS.READY)
         node_tag_names = ["fast", "stable", "cute"]

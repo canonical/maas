@@ -812,6 +812,9 @@ class NodesHandler(OperationsHandler):
         :param not_connected_to: List of routers' MAC Addresses the returned
             node must not be connected to.
         :type connected_to: list of unicodes
+        :param zone: An optional name for an availability zone the acquired
+            node should be located in.
+        :type zone: unicode
         :param agent_name: An optional agent name to attach to the
             acquired node.
         :type agent_name: unicode

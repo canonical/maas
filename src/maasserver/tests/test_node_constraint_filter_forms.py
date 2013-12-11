@@ -230,6 +230,28 @@ class TestAcquireNodeForm(MAASServerTestCase):
                 ["Invalid parameter: list of MAC addresses required."]}),
             (form.is_valid(), form.errors))
 
+    def test_zone(self):
+        node1 = factory.make_node()
+        node2 = factory.make_node()
+        node3 = factory.make_node()
+        zone1 = factory.make_zone(nodes=[node1, node2])
+        zone2 = factory.make_zone()
+
+        self.assertConstrainedNodes(
+            [node1, node2], {'zone': zone1.name})
+        self.assertConstrainedNodes(
+            [node1, node2, node3], {'zone': ''})
+        self.assertConstrainedNodes(
+            [node1, node2, node3], {})
+        self.assertConstrainedNodes(
+            [], {'zone': zone2.name})
+
+    def test_invalid_zone(self):
+        form = AcquireNodeForm(data={'zone': 'unknown'})
+        self.assertEquals(
+            (False, {'zone': ["No such zone: 'unknown'."]}),
+            (form.is_valid(), form.errors))
+
     def test_tags(self):
         tag_big = factory.make_tag(name='big')
         tag_burly = factory.make_tag(name='burly')
