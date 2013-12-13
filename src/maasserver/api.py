@@ -128,6 +128,7 @@ from django.template import RequestContext
 from docutils import core
 from formencode import validators
 from maasserver.api_support import (
+    admin_method,
     AnonymousOperationsHandler,
     operation,
     OperationsHandler,
@@ -2048,6 +2049,7 @@ class UsersHandler(OperationsHandler):
         """List users."""
         return User.objects.all().order_by('username')
 
+    @admin_method
     def create(self, request):
         """Create a MAAS user account.
 
@@ -2064,10 +2066,6 @@ class UsersHandler(OperationsHandler):
         :param is_superuser: Whether the new user is to be an administrator.
         :type is_superuser: bool ('0' for False, '1' for True)
         """
-        if not request.user.is_superuser:
-            return HttpResponse(
-                "Only an administrator can create new users.",
-                status=httplib.FORBIDDEN)
         username = get_mandatory_param(request.data, 'username')
         email = get_mandatory_param(request.data, 'email')
         password = get_mandatory_param(request.data, 'password')
@@ -2581,25 +2579,13 @@ class ZoneHandler(OperationsHandler):
     # Creation happens on the ZonesHandler.
     create = None
 
-    def is_admin(self, request):
-        """Is the requesting user an admin?"""
-        return request.user.is_superuser
-
-    @staticmethod
-    def complain_nonadmin():
-        """Return error: operation requires admin rights."""
-        return HttpResponse(
-            "This operation is available to administrators only.",
-            status=httplib.FORBIDDEN)
-
     def read(self, request, name):
         """GET request.  Return zone."""
         return get_object_or_404(Zone, name=name)
 
+    @admin_method
     def update(self, request, name):
         """PUT request.  Update zone."""
-        if not self.is_admin(request):
-            return self.complain_nonadmin()
         zone = get_object_or_404(Zone, name=name)
         data = get_overridden_query_dict(
             model_to_dict(zone), request.data, ZoneForm.Meta.fields)
@@ -2608,10 +2594,9 @@ class ZoneHandler(OperationsHandler):
             raise ValidationError(form.errors)
         return form.save()
 
+    @admin_method
     def delete(self, request, name):
         """DELETE request.  Delete zone."""
-        if not self.is_admin(request):
-            return self.complain_nonadmin()
         zone = get_one(Zone.objects.filter(name=name))
         if zone is not None:
             Node.objects.filter(zone=zone).update(zone=None)

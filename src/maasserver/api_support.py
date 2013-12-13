@@ -13,14 +13,19 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    'admin_method',
     'AnonymousOperationsHandler',
     'operation',
     'OperationsHandler',
     ]
 
+from functools import wraps
+import httplib
+
 from django.core.exceptions import PermissionDenied
 from django.http import (
     Http404,
+    HttpResponse,
     HttpResponseBadRequest,
     )
 from piston.handler import (
@@ -101,6 +106,25 @@ def operation(idempotent, exported_as=None):
         return func
 
     return _decorator
+
+
+def admin_method(func):
+    """Decorator to protect a method from non-admin users.
+
+    If a non-admin tries to call a methode decorated with this decorator,
+    they will get an HTTP "forbidden" error and a message saying the
+    operation is accessible only to administrators.
+    """
+
+    @wraps(func)
+    def wrapper(self, request, *args, **kwargs):
+        if not request.user.is_superuser:
+            return HttpResponse(
+                "This operation is available to administrators only.",
+                status=httplib.FORBIDDEN)
+        else:
+            return func(self, request, *args, **kwargs)
+    return wrapper
 
 
 class OperationsHandlerType(HandlerMetaClass):

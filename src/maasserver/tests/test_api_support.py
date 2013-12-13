@@ -15,16 +15,21 @@ __metaclass__ = type
 __all__ = []
 
 
+from collections import namedtuple
 import httplib
 
 from django.core.urlresolvers import reverse
+from maasserver.api_support import admin_method
 from maasserver.models.config import (
     Config,
     ConfigManager,
     )
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
-from mock import Mock
+from mock import (
+    call,
+    Mock,
+    )
 
 
 class TestOperationsResource(APITestCase):
@@ -51,3 +56,35 @@ class TestOperationsResource(APITestCase):
         self.assertEqual(
             httplib.INTERNAL_SERVER_ERROR, response.status_code,
             response.content)
+
+
+class TestAdminMethodDecorator(APITestCase):
+
+    def test_non_admin_are_rejected(self):
+        FakeRequest = namedtuple('FakeRequest', ['user'])
+        request = FakeRequest(user=factory.make_user())
+        mock = Mock()
+
+        @admin_method
+        def api_method(self, request):
+            return mock()
+
+        response = api_method('self', request)
+        self.assertEqual(
+            (httplib.FORBIDDEN, []),
+            (response.status_code, mock.mock_calls))
+
+    def test_admin_can_call_method(self):
+        FakeRequest = namedtuple('FakeRequest', ['user'])
+        request = FakeRequest(user=factory.make_admin())
+        return_value = factory.make_name('return')
+        mock = Mock(return_value=return_value)
+
+        @admin_method
+        def api_method(self, request):
+            return mock()
+
+        response = api_method('self', request)
+        self.assertEqual(
+            (return_value, [call()]),
+            (response, mock.mock_calls))
