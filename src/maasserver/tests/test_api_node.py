@@ -702,8 +702,7 @@ class TestNodeAPI(APITestCase):
         node = factory.make_node()
 
         response = self.client_put(
-            self.get_node_uri(node),
-            {'zone': new_zone.name})
+            self.get_node_uri(node), {'zone': new_zone.name})
 
         self.assertEqual(httplib.OK, response.status_code)
         node = reload_object(node)

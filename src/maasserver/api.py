@@ -337,9 +337,9 @@ class NodeHandler(OperationsHandler):
         """
         node = Node.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NODE_PERMISSION.EDIT)
-        data = get_overridden_query_dict(model_to_dict(node), request.data)
-
         Form = get_node_edit_form(request.user)
+        data = get_overridden_query_dict(
+            model_to_dict(node), request.data, Form.Meta.fields)
         form = Form(data, instance=node)
         if form.is_valid():
             return form.save()
@@ -1438,7 +1438,8 @@ class NodeGroupHandler(OperationsHandler):
             raise PermissionDenied(METHOD_RESERVED_ADMIN)
         nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
         data = get_overridden_query_dict(
-            model_to_dict(nodegroup), request.data)
+            model_to_dict(nodegroup), request.data,
+            NodeGroupEdit.Meta.fields)
         form = NodeGroupEdit(instance=nodegroup, data=data)
         if form.is_valid():
             return form.save()
@@ -1738,7 +1739,8 @@ class NodeGroupInterfaceHandler(OperationsHandler):
         nodegroupinterface = get_object_or_404(
             NodeGroupInterface, nodegroup=nodegroup, interface=interface)
         data = get_overridden_query_dict(
-            model_to_dict(nodegroupinterface), request.data)
+            model_to_dict(nodegroupinterface), request.data,
+            NodeGroupInterfaceForm.Meta.fields)
         form = NodeGroupInterfaceForm(data, instance=nodegroupinterface)
         if form.is_valid():
             return form.save()
@@ -1840,8 +1842,8 @@ class TagHandler(OperationsHandler):
         """
         tag = Tag.objects.get_tag_or_404(
             name=name, user=request.user, to_edit=True)
-        model_dict = model_to_dict(tag)
-        data = get_overridden_query_dict(model_dict, request.data)
+        data = get_overridden_query_dict(
+            model_to_dict(tag), request.data, TagForm.Meta.fields)
         form = TagForm(data, instance=tag)
         if form.is_valid():
             try:

@@ -447,6 +447,17 @@ class NodeEditForms(MAASServerTestCase):
         form = AdminNodeForm(data={'nodegroup': new_nodegroup}, instance=node)
         self.assertRaises(ValueError, form.save)
 
+    def test_AdminForm_sets_zone_initial_value(self):
+        zone = factory.make_zone()
+        node = factory.make_node(zone=zone)
+        form = AdminNodeForm(instance=node)
+        self.assertEqual(zone.name, form.initial['zone'])
+
+    def test_AdminForm_sets_zone_initial_empty_value(self):
+        node = factory.make_node(zone=None)
+        form = AdminNodeForm(instance=node)
+        self.assertEqual('', form.initial['zone'])
+
     def test_get_node_edit_form_returns_NodeForm_if_non_admin(self):
         user = factory.make_user()
         self.assertEqual(NodeForm, get_node_edit_form(user))

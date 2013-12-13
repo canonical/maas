@@ -88,6 +88,7 @@ from maasserver.models import (
     NodeGroupInterface,
     SSHKey,
     Tag,
+    Zone,
     )
 from maasserver.models.nodegroup import NODEGROUP_CLUSTER_NAME_TEMPLATE
 from maasserver.node_action import (
@@ -197,15 +198,16 @@ class APIEditMixin:
 class AdminNodeForm(APIEditMixin, NodeForm):
     """A `NodeForm` which includes fields that only an admin may change."""
 
+    zone = forms.ModelChoiceField(
+        label="Availability zone", required=False,
+        queryset=Zone.objects.all(), to_field_name='name')
+
     cpu_count = forms.IntegerField(
-        required=False, initial=0,
-        label="CPU Count")
+        required=False, initial=0, label="CPU Count")
     memory = forms.IntegerField(
-        required=False, initial=0,
-        label="Memory")
+        required=False, initial=0, label="Memory")
     storage = forms.IntegerField(
-        required=False, initial=0,
-        label="Disk space")
+        required=False, initial=0, label="Disk space")
 
     class Meta:
         model = Node
@@ -218,13 +220,21 @@ class AdminNodeForm(APIEditMixin, NodeForm):
             'cpu_count',
             'memory',
             'storage',
-            'zone',
-            )
+        )
 
     def __init__(self, data=None, instance=None, **kwargs):
         super(AdminNodeForm, self).__init__(
             data=data, instance=instance, **kwargs)
+        self.set_initial_zone(instance)
         self.set_up_power_parameters_field(data, instance)
+
+    def set_initial_zone(self, instance):
+        if instance is not None:
+            zone = instance.zone
+            if zone is None:
+                self.initial['zone'] = ''
+            else:
+                self.initial['zone'] = zone.name
 
     def set_up_power_parameters_field(self, data, node):
         """Setup the 'power_parameter' field based on the value for the
@@ -261,6 +271,15 @@ class AdminNodeForm(APIEditMixin, NodeForm):
         if is_default and not skip_check:
             cleaned_data['power_parameters'] = ''
         return cleaned_data
+
+    def save(self, *args, **kwargs):
+        node = super(AdminNodeForm, self).save(commit=False)
+        zone = self.cleaned_data.get('zone')
+        if zone:
+            node.zone = zone
+        if kwargs.get('commit', True):
+            node.save(*args, **kwargs)
+        return node
 
 
 def get_node_edit_form(user):

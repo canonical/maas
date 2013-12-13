@@ -57,19 +57,33 @@ class TestExtractBool(MAASServerTestCase):
 class TestGetOverridedQueryDict(MAASServerTestCase):
 
     def test_returns_QueryDict(self):
-        defaults = {factory.getRandomString(): factory.getRandomString()}
-        results = get_overridden_query_dict(defaults, QueryDict(''))
+        fields = [factory.make_name('field')]
+        defaults = {fields[0]: factory.make_name('field')}
+        results = get_overridden_query_dict(defaults, QueryDict(''), fields)
         expected_results = QueryDict('').copy()
         expected_results.update(defaults)
         self.assertEqual(expected_results, results)
 
     def test_data_values_override_defaults(self):
-        key = factory.getRandomString()
-        defaults = {key: factory.getRandomString()}
-        data_value = factory.getRandomString()
+        key = factory.make_name('key')
+        defaults = {key: factory.make_name('key')}
+        data_value = factory.make_name('value')
         data = {key: data_value}
-        results = get_overridden_query_dict(defaults, data)
+        results = get_overridden_query_dict(defaults, data, [key])
         self.assertEqual([data_value], results.getlist(key))
+
+    def test_fields_filter_results(self):
+        key1 = factory.getRandomString()
+        key2 = factory.getRandomString()
+        defaults = {
+            key1: factory.getRandomString(),
+            key2: factory.getRandomString(),
+        }
+        data_value1 = factory.getRandomString()
+        data_value2 = factory.getRandomString()
+        data = {key1: data_value1, key2: data_value2}
+        results = get_overridden_query_dict(defaults, data, [key1])
+        self.assertEqual([data_value2], results.getlist(key2))
 
 
 class TestOAuthHelpers(MAASServerTestCase):

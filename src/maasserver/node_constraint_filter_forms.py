@@ -258,7 +258,7 @@ class AcquireNodeForm(RenamableFieldsForm):
         # Filter by zone.
         zone = self.cleaned_data.get(self.get_field_name('zone'))
         if zone:
-            filtered_nodes = filtered_nodes.filter(zone=zone)
+            filtered_nodes = filtered_nodes.filter(zone__name=zone)
 
         # Filter by connected_to.
         connected_to = self.cleaned_data.get(

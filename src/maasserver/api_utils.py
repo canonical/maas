@@ -104,7 +104,7 @@ def get_list_from_dict_or_multidict(data, key, default=None):
     return data.get(key, default)
 
 
-def get_overridden_query_dict(defaults, data):
+def get_overridden_query_dict(defaults, data, fields):
     """Returns a QueryDict with the values of 'defaults' overridden by the
     values in 'data'.
 
@@ -112,6 +112,8 @@ def get_overridden_query_dict(defaults, data):
     :type defaults: dict
     :param data: The data used to override the defaults.
     :type data: :class:`django.http.QueryDict`
+    :param fields: The list of field names to consider.
+    :type fields: list
     :return: The updated QueryDict.
     :raises: :class:`django.http.QueryDict`
     """
@@ -120,7 +122,9 @@ def get_overridden_query_dict(defaults, data):
     # Missing fields will be taken from the node's current values.  This
     # is to circumvent Django's ModelForm (form created from a model)
     # default behaviour that requires all the fields to be defined.
-    new_data.update(defaults)
+    for k, v in defaults.items():
+        if k in fields:
+            new_data[k] = v
     # We can't use update here because data is a QueryDict and 'update'
     # does not replaces the old values with the new as one would expect.
     for k, v in data.items():
