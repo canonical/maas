@@ -643,6 +643,13 @@ class TestNodesAPI(APITestCase):
         })
         self.assertResponseCode(httplib.CONFLICT, response)
 
+    def test_POST_acquire_rejects_unknown_zone(self):
+        response = self.client.post(reverse('nodes_handler'), {
+            'op': 'acquire',
+            'zone': factory.make_name('zone'),
+        })
+        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+
     def test_POST_acquire_allocates_node_by_tags_comma_separated(self):
         node = factory.make_node(status=NODE_STATUS.READY)
         node_tag_names = ["fast", "stable", "cute"]
