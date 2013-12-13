@@ -85,6 +85,7 @@ __all__ = [
     "store_node_power_parameters",
     "UserHandler",
     "UsersHandler",
+    "ZoneHandler",
     ]
 
 from base64 import (
@@ -195,6 +196,7 @@ from maasserver.models import (
     NodeGroupInterface,
     SSHKey,
     Tag,
+    Zone,
     )
 from maasserver.models.nodeprobeddetails import (
     get_probed_details,
@@ -2556,3 +2558,68 @@ def describe(request):
     return HttpResponse(
         json.dumps(description),
         content_type="application/json")
+
+
+class ZoneHandler(OperationsHandler):
+    """Manage an availability zone.
+
+    Any node may optionally be assigned to an availability zone, or "zone" for
+    short.  The meaning of an availability zone is up to you: it could identify
+    e.g. a server rack, a network, or a data centre.  Users can then allocate
+    nodes from specific availability zones, to suit their redundancy or
+    performance requirements.
+
+    This functionality is only available to administrators.  Other users can
+    view availability zones, but not modify them.
+    """
+    model = Zone
+    fields = ('name', 'description')
+
+    # Creation happens on the ZonesHandler.
+    create = None
+
+    def is_admin(self, request):
+        """Is the requesting user an admin?"""
+        return request.user.is_superuser
+
+    @staticmethod
+    def complain_nonadmin():
+        """Return error: operation requires admin rights."""
+        return HttpResponse(
+            "This operation is available to administrators only.",
+            status=httplib.FORBIDDEN)
+
+    def read(self, request, name):
+        """GET request.  Return zone."""
+        return get_object_or_404(Zone, name=name)
+
+    def update(self, request, name):
+        """PUT request.  Update zone."""
+        if not self.is_admin(request):
+            return self.complain_nonadmin()
+        # TODO: Use proper ZoneForm, which rvba may already have in his branch.
+        #zone = get_object_or_404(Zone, name=name)
+        #data = get_overridden_query_dict(model_to_dict(zone), request.data)
+        #form = ZoneForm(instance=nodegroup, data=data)
+        #if not form.is_valid():
+        #    raise ValidationError(form.errors)
+        #return form.save()
+
+    def delete(self, request, name):
+        """DELETE request.  Delete zone."""
+        if not self.is_admin(request):
+            return self.complain_nonadmin()
+        zone = get_one(Zone.objects.filter(name=name))
+        if zone is not None:
+            Node.objects.filter(zone=zone).update(zone=None)
+            zone.delete()
+        return rc.DELETED
+
+    @classmethod
+    def resource_uri(cls, zone=None):
+        # See the comment in NodeHandler.resource_uri.
+        if zone is None:
+            name = 'name'
+        else:
+            name = zone.name
+        return ('zone_handler', (name, ))

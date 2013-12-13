@@ -82,7 +82,7 @@ class NodeAnonAPITest(MAASServerTestCase):
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
 
-class NodeAPILoggedInTest(LoggedInTestCase):
+class NodesAPILoggedInTest(LoggedInTestCase):
 
     def test_nodes_GET_logged_in(self):
         # A (Django) logged-in user can access the API.

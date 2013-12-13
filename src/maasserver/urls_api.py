@@ -44,6 +44,7 @@ from maasserver.api import (
     TagsHandler,
     UserHandler,
     UsersHandler,
+    ZoneHandler,
     )
 from maasserver.api_auth import api_auth
 from maasserver.api_support import (
@@ -78,6 +79,7 @@ sshkey_handler = RestrictedResource(SSHKeyHandler, authentication=api_auth)
 sshkeys_handler = RestrictedResource(SSHKeysHandler, authentication=api_auth)
 user_handler = RestrictedResource(UserHandler, authentication=api_auth)
 users_handler = RestrictedResource(UsersHandler, authentication=api_auth)
+zone_handler = RestrictedResource(ZoneHandler, authentication=api_auth)
 
 
 # Admin handlers.
@@ -137,6 +139,7 @@ urlpatterns += patterns(
         commissioning_results_handler, name='commissioning_results_handler'),
     url(r'^users/$', users_handler, name='users_handler'),
     url(r'^users/(?P<username>[^/]+)/$', user_handler, name='user_handler'),
+    url(r'^zones/(?P<name>[^/]+)/$', zone_handler, name='zone_handler'),
 )
 
 
