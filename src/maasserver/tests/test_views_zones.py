@@ -15,6 +15,8 @@ __metaclass__ = type
 __all__ = []
 
 
+from urllib import urlencode
+
 from django.core.urlresolvers import reverse
 from lxml.html import fromstring
 from maasserver.testing import get_content_links
@@ -130,6 +132,17 @@ class ZoneDetailViewTest(LoggedInTestCase):
         count_text = document.get_element_by_id("#nodecount").text_content()
         self.assertThat(
             count_text, Contains(unicode(zone.node_set.count())))
+
+    def test_zone_detail_links_to_node_list(self):
+        zone = factory.make_zone()
+        node = factory.make_node()
+        node.zone = zone
+        response = self.client.get(reverse('zone-view', args=[zone.name]))
+        zone_node_link = (
+            reverse('node-list') + "?" +
+            urlencode({'query': 'zone=%s' % zone.name}))
+        all_links = get_content_links(response)
+        self.assertIn(zone_node_link, all_links)
 
 
 class ZoneDetailViewNonAdmin(LoggedInTestCase):

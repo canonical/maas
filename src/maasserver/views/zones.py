@@ -16,13 +16,11 @@ __all__ = [
     'ZoneListView',
     ]
 
-from maasserver.models import (
-    Zone,
-    )
-from maasserver.views import (
-    PaginatedListView,
-    )
+from apiclient.utils import urlencode
+from django.core.urlresolvers import reverse
 from django.views.generic import DetailView
+from maasserver.models import Zone
+from maasserver.views import PaginatedListView
 
 
 class ZoneListView(PaginatedListView):
@@ -45,3 +43,11 @@ class ZoneView(DetailView):
         zone_name = self.kwargs.get('name', None)
         zone = Zone.objects.get(name=zone_name)
         return zone
+
+    def get_context_data(self, **kwargs):
+        context = super(ZoneView, self).get_context_data(**kwargs)
+        query_string = urlencode(
+            [('query', 'zone=%s' % self.get_object().name)])
+        context["node_list_link"] = (
+            reverse('node-list') + "?" + query_string)
+        return context

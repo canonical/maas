@@ -35,7 +35,10 @@ Availability zone: {{ zone.name }}
     </li>
     <li class="block size3">
       <h4>Number of nodes in zone</h4>
-      <span id="#nodecount">{{ zone.node_set.count }}</span>
+      <span id="#nodecount">
+        {{ zone.node_set.count }}
+        <a href="{{ node_list_link }}">View nodes</a>
+      </span>
     </li>
   </ul>
 
