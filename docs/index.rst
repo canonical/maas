@@ -67,6 +67,7 @@ Deploying services
 
    juju-quick-start
    tags
+   availability-zones
 
 
 ***********************
@@ -88,6 +89,18 @@ Troubleshooting
    :maxdepth: 2
 
    troubleshooting
+
+
+******************
+Command-line Tools
+******************
+
+.. toctree::
+   :maxdepth: 1
+
+   man/maas.8
+   man/maas-cli.8
+   man/maas-import-pxe-files.8
 
 
 ***************

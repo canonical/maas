@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MAAS-CLI" "8" "October 25, 2013" "13.10" "MAAS"
+.TH "MAAS-CLI" "8" "December 13, 2013" "13.10" "MAAS"
 .SH NAME
 maas-cli \- MAAS API commandline utility
 .
@@ -77,12 +77,13 @@ As well as the web interface, many tasks can be performed by accessing
 the MAAS API directly through the maas\-cli command. This section
 details how to login with this tool and perform some common
 operations.
+.SS Logging in
 .sp
 Before the API will accept any commands from maas\-cli, you must first
 login. To do this, you need the API key which can be found in the user
 interface.
 .sp
-Login to the web interface on your MAAS. Click on the username in the
+Log in to the web interface on your MAAS. Click on the username in the
 top right corner and select \(aqPreferences\(aq from the menu which appears.
 .sp
 A new page will load...
@@ -126,6 +127,7 @@ credentials, which can be useful if you are devolping scripts for
 specific tasks.  If an empty string is passed instead of the
 credentials, the profile will be logged in anonymously (and
 consequently some of the API calls will not be available)
+.SS maas\-cli commands
 .sp
 The \fBmaas\-cli\fP command exposes the whole API, so you can do anything
 you actually \fIcan\fP do with MAAS using this command. Unsurprisingly,

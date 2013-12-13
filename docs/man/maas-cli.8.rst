@@ -22,13 +22,13 @@ operations.
 
 
 Logging in
-----------
+==========
 
 Before the API will accept any commands from maas-cli, you must first
 login. To do this, you need the API key which can be found in the user
 interface.
 
-Login to the web interface on your MAAS. Click on the username in the
+Log in to the web interface on your MAAS. Click on the username in the
 top right corner and select 'Preferences' from the menu which appears.
 
 A new page will load...
@@ -59,7 +59,7 @@ consequently some of the API calls will not be available)
 
 
 maas-cli commands
------------------
+=================
 
 The ``maas-cli`` command exposes the whole API, so you can do anything
 you actually *can* do with MAAS using this command. Unsurprisingly,
