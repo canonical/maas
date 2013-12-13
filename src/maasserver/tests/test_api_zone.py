@@ -50,15 +50,12 @@ class TestZoneAPI(APITestCase):
             (zone.name, zone.description),
             (returned_zone['name'], returned_zone['description']))
 
-    #@skip("XXX: JeroenVermeulen 2013-11-12: Waiting for ZoneForm.")
     def test_PUT_updates_zone(self):
-        # Using @skip breaks tests somehow.  Doing it low-tech for now:
-        return  # XXX: Remove this to activate test.
         self.become_admin()
         zone = factory.make_zone()
         new_description = factory.getRandomString()
 
-        response = self.client.put(
+        response = self.client_put(
             get_zone_uri(zone),
             {'description': new_description})
         self.assertEqual(httplib.OK, response.status_code)
@@ -68,20 +65,17 @@ class TestZoneAPI(APITestCase):
 
     def test_PUT_requires_admin(self):
         zone = factory.make_zone()
-        response = self.client.put(
+        response = self.client_put(
             get_zone_uri(zone),
             {'description': factory.getRandomString()})
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
-    #@skip("XXX: JeroenVermeulen 2013-11-12: Waiting for ZoneForm.")
     def test_PUT_updates_zone_name(self):
-        # Using @skip breaks tests somehow.  Doing it low-tech for now:
-        return  # XXX: Remove this to activate test.
         self.become_admin()
         zone = factory.make_zone()
         new_name = factory.make_name('zone-new')
 
-        response = self.client.put(get_zone_uri(zone), {'name': new_name})
+        response = self.client_put(get_zone_uri(zone), {'name': new_name})
         self.assertEqual(httplib.OK, response.status_code)
 
         zone = reload_object(zone)
@@ -92,7 +86,7 @@ class TestZoneAPI(APITestCase):
         zone = factory.make_zone()
         node = factory.make_node(zone=zone)
 
-        response = self.client.put(
+        response = self.client_put(
             get_zone_uri(zone),
             {'name': factory.make_name('new')})
         self.assertEqual(httplib.OK, response.status_code)

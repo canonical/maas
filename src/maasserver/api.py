@@ -179,6 +179,7 @@ from maasserver.forms import (
     NodeGroupWithInterfacesForm,
     SSHKeyForm,
     TagForm,
+    ZoneForm,
     )
 from maasserver.forms_settings import (
     get_config_doc,
@@ -2599,13 +2600,13 @@ class ZoneHandler(OperationsHandler):
         """PUT request.  Update zone."""
         if not self.is_admin(request):
             return self.complain_nonadmin()
-        # TODO: Use proper ZoneForm, which rvba may already have in his branch.
-        #zone = get_object_or_404(Zone, name=name)
-        #data = get_overridden_query_dict(model_to_dict(zone), request.data)
-        #form = ZoneForm(instance=nodegroup, data=data)
-        #if not form.is_valid():
-        #    raise ValidationError(form.errors)
-        #return form.save()
+        zone = get_object_or_404(Zone, name=name)
+        data = get_overridden_query_dict(
+            model_to_dict(zone), request.data, ZoneForm.Meta.fields)
+        form = ZoneForm(instance=zone, data=data)
+        if not form.is_valid():
+            raise ValidationError(form.errors)
+        return form.save()
 
     def delete(self, request, name):
         """DELETE request.  Delete zone."""

@@ -31,6 +31,7 @@ __all__ = [
     "UbuntuForm",
     "AdminNodeForm",
     "TagForm",
+    "ZoneForm",
     ]
 
 import collections
@@ -1029,3 +1030,13 @@ class DownloadProgressForm(ModelForm):
                 "bytes_downloaded was passed on a new download.")
 
         return super(DownloadProgressForm, self).clean()
+
+
+class ZoneForm(ModelForm):
+
+    class Meta:
+        model = Zone
+        fields = (
+            'name',
+            'description',
+            )
