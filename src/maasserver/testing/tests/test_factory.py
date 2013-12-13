@@ -71,6 +71,12 @@ class TestFactory(MAASTestCase):
         self.assertEqual(
             nodegroup, factory.make_node(nodegroup=nodegroup).nodegroup)
 
+    def test_make_node_sets_zone_by_default(self):
+        self.assertIsNotNone(factory.make_node().zone)
+
+    def test_make_node_sets_no_zone_if_zone_is_None(self):
+        self.assertIsNone(factory.make_node(zone=None).zone)
+
     def test_make_zone_returns_availability_zone(self):
         self.assertIsNotNone(factory.make_zone())
 
