@@ -30,6 +30,10 @@ def get_zone_uri(zone):
 
 class TestZoneAPI(APITestCase):
 
+    def test_handler_path(self):
+        self.assertEqual(
+            '/api/1.0/zones/name/', reverse('zone_handler', args=['name']))
+
     def test_POST_is_prohibited(self):
         self.become_admin()
         zone = factory.make_zone()

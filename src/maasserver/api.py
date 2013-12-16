@@ -86,6 +86,7 @@ __all__ = [
     "UserHandler",
     "UsersHandler",
     "ZoneHandler",
+    "ZonesHandler",
     ]
 
 from base64 import (
@@ -2611,3 +2612,35 @@ class ZoneHandler(OperationsHandler):
         else:
             name = zone.name
         return ('zone_handler', (name, ))
+
+
+class ZonesHandler(OperationsHandler):
+    """API for availability zones."""
+    update = delete = None
+
+    @classmethod
+    def resource_uri(cls, *args, **kwargs):
+        return ('zones_handler', [])
+
+    @admin_method
+    def create(self, request):
+        """Create a new availability zone.
+
+        :param name: Identifier-style name for the new zone.
+        :type name: unicode
+        :param description: Free-form description of the new zone.
+        :type description: unicode
+        """
+        form = ZoneForm(request.data)
+        if form.is_valid():
+            return form.save()
+        else:
+            raise ValidationError(form.errors)
+
+    @operation(idempotent=True)
+    def read(self, request):
+        """List zones.
+
+        Get a listing of all the availability zones.
+        """
+        return Zone.objects.all().order_by('name')
