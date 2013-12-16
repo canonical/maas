@@ -19,7 +19,11 @@ from urllib import urlencode
 
 from django.core.urlresolvers import reverse
 from lxml.html import fromstring
-from maasserver.testing import get_content_links
+from maasserver.testing import (
+    extract_redirect,
+    get_content_links,
+    reload_object,
+    )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
     AdminLoggedInTestCase,
@@ -173,3 +177,33 @@ class ZoneDetailViewAdmin(AdminLoggedInTestCase):
         response = self.client.get(reverse('zone-view', args=[zone.name]))
         zone_delete_link = reverse('zone-del', args=[zone.name])
         self.assertIn(zone_delete_link, get_content_links(response))
+
+
+class ZoneEditNonAdminTest(LoggedInTestCase):
+
+    def test_cannot_access_zone_edit(self):
+        zone = factory.make_zone()
+        response = self.client.post(reverse('zone-edit', args=[zone.name]))
+        self.assertEqual(reverse('login'), extract_redirect(response))
+
+
+class ZoneEditAdminTest(AdminLoggedInTestCase):
+
+    def test_zone_edit(self):
+        zone = factory.make_zone()
+        new_name = factory.make_name('name')
+        new_description = factory.make_name('description')
+        response = self.client.post(
+            reverse('zone-edit', args=[zone.name]),
+            data={
+                'name': new_name,
+                'description': new_description,
+            })
+        self.assertEqual(
+            reverse('zone-list'), extract_redirect(response),
+            response.content)
+        zone = reload_object(zone)
+        self.assertEqual(
+            (new_name, new_description),
+            (zone.name, zone.description),
+        )

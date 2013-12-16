@@ -2625,7 +2625,6 @@ class ZonesHandler(OperationsHandler):
         else:
             raise ValidationError(form.errors)
 
-    @operation(idempotent=True)
     def read(self, request):
         """List zones.
 

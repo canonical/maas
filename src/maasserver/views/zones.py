@@ -18,7 +18,11 @@ __all__ = [
 
 from apiclient.utils import urlencode
 from django.core.urlresolvers import reverse
-from django.views.generic import DetailView
+from django.shortcuts import get_object_or_404
+from django.views.generic import (
+    DetailView,
+    UpdateView,
+    )
 from maasserver.models import Zone
 from maasserver.views import PaginatedListView
 
@@ -41,8 +45,7 @@ class ZoneView(DetailView):
 
     def get_object(self):
         zone_name = self.kwargs.get('name', None)
-        zone = Zone.objects.get(name=zone_name)
-        return zone
+        return get_object_or_404(Zone, name=zone_name)
 
     def get_context_data(self, **kwargs):
         context = super(ZoneView, self).get_context_data(**kwargs)
@@ -51,3 +54,16 @@ class ZoneView(DetailView):
         context["node_list_link"] = (
             reverse('node-list') + "?" + query_string)
         return context
+
+
+class ZoneEdit(UpdateView):
+
+    model = Zone
+    template_name = 'maasserver/zone_edit.html'
+
+    def get_object(self):
+        zone_name = self.kwargs.get('name', None)
+        return get_object_or_404(Zone, name=zone_name)
+
+    def get_success_url(self):
+        return reverse('zone-list')

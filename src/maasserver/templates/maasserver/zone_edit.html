@@ -1,0 +1,20 @@
+{% extends "maasserver/base.html" %}
+
+{% block nav-active-settings %}active{% endblock %}
+{% block title %}Edit Availability zone{% endblock %}
+{% block page-title %}Edit Availability zone{% endblock %}
+
+{% block content %}
+<div class="block size10 first">
+    <form action="." method="post" class="block">
+      {% csrf_token %}
+      <ul>
+      {% for field in form %}
+        {% include "maasserver/form_field.html" %}
+      {% endfor %}
+      </ul>
+      <input type="submit" value="Save zone"
+             class="button right" />
+      <a class="link-button" href="{% url 'zone-list' %}">Cancel</a>
+</div>
+{% endblock %}
