@@ -64,7 +64,7 @@ from maasserver.testing.testcase import (
     AdminLoggedInTestCase,
     LoggedInTestCase,
     MAASServerTestCase,
-    SeleniumLoggedInTestCase,
+    SeleniumTestCase,
     )
 from maasserver.utils import map_enum
 from maasserver.views import nodes as nodes_views
@@ -838,11 +838,11 @@ class NodeViewsTest(LoggedInTestCase):
         self.assertEqual(params.items(), query_string_params)
 
 
-class NodeListingSelectionJSControls(SeleniumLoggedInTestCase):
+class NodeListingSelectionJSControls(SeleniumTestCase):
 
     def test_node_list_js_control_select_all(self):
-        self.selenium.get(
-            '%s%s' % (self.live_server_url, reverse('node-list')))
+        self.log_in()
+        self.get_page('node-list')
         master_selector = self.selenium.find_element_by_id(
             'all_system_id_control')
         nodes_selector = self.selenium.find_elements_by_name('system_id')
@@ -871,7 +871,7 @@ class NodeListingSelectionJSControls(SeleniumLoggedInTestCase):
         self.assertTrue(master_selector.is_selected())
 
 
-class NodeProbedDetailsExpanderTest(SeleniumLoggedInTestCase):
+class NodeProbedDetailsExpanderTest(SeleniumTestCase):
 
     def make_node_with_lldp_output(self):
         node = factory.make_node()
@@ -883,8 +883,7 @@ class NodeProbedDetailsExpanderTest(SeleniumLoggedInTestCase):
 
     def load_node_page(self, node):
         """Load the given node's page in Selenium."""
-        self.selenium.get(
-            self.live_server_url + reverse('node-view', args=[node.system_id]))
+        self.get_page('node-view', args=[node.system_id])
 
     def find_content_div(self):
         """Find the details content div in the page Selenium has rendered."""
@@ -899,6 +898,7 @@ class NodeProbedDetailsExpanderTest(SeleniumLoggedInTestCase):
         return self.selenium.find_element_by_class_name(class_name)
 
     def test_details_output_expands(self):
+        self.log_in()
         # Loading just once.  Creating a second node in a separate test causes
         # an integrity error in the database; clearly that's not working too
         # well in a Selenium test case.

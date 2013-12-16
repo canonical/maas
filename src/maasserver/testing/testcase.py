@@ -16,6 +16,7 @@ __all__ = [
     'AdminLoggedInTestCase',
     'LoggedInTestCase',
     'MAASTestCase',
+    'SeleniumTestCase',
     ]
 
 import SocketServer
@@ -141,11 +142,15 @@ class LogSilencerFixture(Fixture):
         wsgiref.handlers.BaseHandler.log_exception = self.old_log_exception
 
 
-class SeleniumLoggedInTestCase(MAASTestCase, LiveServerTestCase):
+class SeleniumTestCase(MAASTestCase, LiveServerTestCase):
+    """Selenium-enabled test case.
+
+    Two users are pre-created: "user" for a regular user account, or "admin"
+    for an administrator account.  Both have the password "test".  You can log
+    in as either using `log_in`.
+    """
 
     # Load the selenium test fixture.
-    # admin user: username=admin/pw=test
-    # normal user: username=user/pw=test
     fixtures = ['selenium_tests_fixture.yaml']
 
     @classmethod
@@ -159,25 +164,16 @@ class SeleniumLoggedInTestCase(MAASTestCase, LiveServerTestCase):
         cls.silencer.__enter__()
 
         cls.selenium = WebDriver()
-        super(SeleniumLoggedInTestCase, cls).setUpClass()
-
-    def login(self):
-        self.selenium.get('%s%s' % (self.live_server_url, reverse('login')))
-        username_input = self.selenium.find_element_by_id("id_username")
-        username_input.send_keys('user')
-        password_input = self.selenium.find_element_by_id("id_password")
-        password_input.send_keys('test')
-        self.selenium.find_element_by_xpath('//input[@value="Login"]').click()
+        super(SeleniumTestCase, cls).setUpClass()
 
     def setUp(self):
         if not django_supports_selenium:
             raise SkipTest(
                 "Live tests only enabled if Django.version >=1.4.")
-        super(SeleniumLoggedInTestCase, self).setUp()
-        self.login()
+        super(SeleniumTestCase, self).setUp()
 
     def tearDown(self):
-        super(SeleniumLoggedInTestCase, self).tearDown()
+        super(SeleniumTestCase, self).tearDown()
         cleanup_db(self)
         django_cache.clear()
 
@@ -188,4 +184,18 @@ class SeleniumLoggedInTestCase(MAASTestCase, LiveServerTestCase):
         cls.selenium.quit()
         cls.display.__exit__(None, None, None)
         cls.silencer.__exit__(None, None, None)
-        super(SeleniumLoggedInTestCase, cls).tearDownClass()
+        super(SeleniumTestCase, cls).tearDownClass()
+
+    def log_in(self, user='user', password='test'):
+        """Log in as the given user.  Defaults to non-admin user."""
+        self.get_page('login')
+        username_input = self.selenium.find_element_by_id("id_username")
+        username_input.send_keys(user)
+        password_input = self.selenium.find_element_by_id("id_password")
+        password_input.send_keys(password)
+        self.selenium.find_element_by_xpath('//input[@value="Login"]').click()
+
+    def get_page(self, *reverse_args, **reverse_kwargs):
+        """GET a page.  Arguments are passed on to `reverse`."""
+        path = reverse(*reverse_args, **reverse_kwargs)
+        return self.selenium.get("%s%s" % (self.live_server_url, path))
