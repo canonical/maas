@@ -120,7 +120,16 @@ def generate_random_password(min_length=8, max_length=15):
 
 def get_ipmi_version():
     (status, output) = commands.getstatusoutput('ipmi-locate')
-    show_re = re.compile('(IPMI\ Version:) (\d\.\d)')
+    #IPMI Version: 2.0
+    #IPMI locate driver: SMBIOS
+    #IPMI interface: KCS
+    #BMC driver device:
+    #BMC I/O base address: 0xCA2
+    #Register spacing: 1
+    #show_re = re.compile('(IPMI\ Version:) (\d\.\d)')
+    show_re = re.compile(
+        '(IPMI\ Version:) (\d\.\d)(\n)(.*)(\n)(.*)(\n)(.*)(\n)'
+        '(BMC\ I\/O\ base\ address:) (0xCA2)')
     res = show_re.search(output)
     if res is None:
         return
