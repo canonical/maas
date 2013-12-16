@@ -20,12 +20,10 @@ __all__ = [
     ]
 
 from functools import wraps
-import httplib
 
 from django.core.exceptions import PermissionDenied
 from django.http import (
     Http404,
-    HttpResponse,
     HttpResponseBadRequest,
     )
 from piston.handler import (
@@ -108,6 +106,9 @@ def operation(idempotent, exported_as=None):
     return _decorator
 
 
+METHOD_RESERVED_ADMIN = "This method is reserved for admin users."
+
+
 def admin_method(func):
     """Decorator to protect a method from non-admin users.
 
@@ -119,9 +120,7 @@ def admin_method(func):
     @wraps(func)
     def wrapper(self, request, *args, **kwargs):
         if not request.user.is_superuser:
-            return HttpResponse(
-                "This operation is available to administrators only.",
-                status=httplib.FORBIDDEN)
+            raise PermissionDenied(METHOD_RESERVED_ADMIN)
         else:
             return func(self, request, *args, **kwargs)
     return wrapper

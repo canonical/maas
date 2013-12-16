@@ -255,9 +255,6 @@ DISPLAYED_NODE_FIELDS = (
     )
 
 
-METHOD_RESERVED_ADMIN = "That method is reserved for admin users."
-
-
 def store_node_power_parameters(node, request):
     """Store power parameters in request.
 
@@ -1330,6 +1327,7 @@ class NodeGroupsHandler(OperationsHandler):
         """List of node groups."""
         return NodeGroup.objects.all()
 
+    @admin_method
     @operation(idempotent=False)
     def accept(self, request):
         """Accept nodegroup enlistment(s).
@@ -1339,25 +1337,22 @@ class NodeGroupsHandler(OperationsHandler):
 
         This method is reserved to admin users.
         """
-        if request.user.is_superuser:
-            uuids = request.data.getlist('uuid')
-            for uuid in uuids:
-                nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
-                nodegroup.accept()
-            return HttpResponse("Nodegroup(s) accepted.", status=httplib.OK)
-        else:
-            raise PermissionDenied(METHOD_RESERVED_ADMIN)
+        uuids = request.data.getlist('uuid')
+        for uuid in uuids:
+            nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
+            nodegroup.accept()
+        return HttpResponse("Nodegroup(s) accepted.", status=httplib.OK)
 
+    @admin_method
     @operation(idempotent=False)
     def import_boot_images(self, request):
         """Import the boot images on all the accepted cluster controllers."""
-        if not request.user.is_superuser:
-            raise PermissionDenied(METHOD_RESERVED_ADMIN)
         NodeGroup.objects.import_boot_images_accepted_clusters()
         return HttpResponse(
             "Import of boot images started on all cluster controllers",
             status=httplib.OK)
 
+    @admin_method
     @operation(idempotent=False)
     def reject(self, request):
         """Reject nodegroup enlistment(s).
@@ -1367,14 +1362,11 @@ class NodeGroupsHandler(OperationsHandler):
 
         This method is reserved to admin users.
         """
-        if request.user.is_superuser:
-            uuids = request.data.getlist('uuid')
-            for uuid in uuids:
-                nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
-                nodegroup.reject()
-            return HttpResponse("Nodegroup(s) rejected.", status=httplib.OK)
-        else:
-            raise PermissionDenied(METHOD_RESERVED_ADMIN)
+        uuids = request.data.getlist('uuid')
+        for uuid in uuids:
+            nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
+            nodegroup.reject()
+        return HttpResponse("Nodegroup(s) rejected.", status=httplib.OK)
 
     @classmethod
     def resource_uri(cls):
@@ -1426,6 +1418,7 @@ class NodeGroupHandler(OperationsHandler):
             uuid = nodegroup.uuid
         return ('nodegroup_handler', [uuid])
 
+    @admin_method
     def update(self, request, uuid):
         """Update a specific cluster.
 
@@ -1437,8 +1430,6 @@ class NodeGroupHandler(OperationsHandler):
             vocabulary `NODEGROUP_STATUS`).
         :type status: int
         """
-        if not request.user.is_superuser:
-            raise PermissionDenied(METHOD_RESERVED_ADMIN)
         nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
         data = get_overridden_query_dict(
             model_to_dict(nodegroup), request.data,
@@ -1466,11 +1457,10 @@ class NodeGroupHandler(OperationsHandler):
                 {ip: leases[ip] for ip in new_leases if ip in leases})
         return HttpResponse("Leases updated.", status=httplib.OK)
 
+    @admin_method
     @operation(idempotent=False)
     def import_boot_images(self, request, uuid):
         """Import the pxe files on this cluster controller."""
-        if not request.user.is_superuser:
-            raise PermissionDenied(METHOD_RESERVED_ADMIN)
         nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
         nodegroup.import_boot_images()
         return HttpResponse(
@@ -1600,6 +1590,7 @@ class NodeGroupHandler(OperationsHandler):
 
         return HttpResponse(status=httplib.OK)
 
+    @admin_method
     @operation(idempotent=False)
     def probe_and_enlist_hardware(self, request, uuid):
         """Add special hardware types.
@@ -1617,9 +1608,6 @@ class NodeGroupHandler(OperationsHandler):
         :param password: The password for the chassis.
         :type password: unicode
         """
-
-        if not request.user.is_superuser:
-            raise PermissionDenied(METHOD_RESERVED_ADMIN)
         nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
 
         model = get_mandatory_param(request.data, 'mode')

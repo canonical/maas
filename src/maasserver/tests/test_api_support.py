@@ -18,6 +18,7 @@ __all__ = []
 from collections import namedtuple
 import httplib
 
+from django.core.exceptions import PermissionDenied
 from django.core.urlresolvers import reverse
 from maasserver.api_support import admin_method
 from maasserver.models.config import (
@@ -69,10 +70,8 @@ class TestAdminMethodDecorator(APITestCase):
         def api_method(self, request):
             return mock()
 
-        response = api_method('self', request)
-        self.assertEqual(
-            (httplib.FORBIDDEN, []),
-            (response.status_code, mock.mock_calls))
+        self.assertRaises(PermissionDenied, api_method, 'self', request)
+        self.assertEqual([], mock.mock_calls)
 
     def test_admin_can_call_method(self):
         FakeRequest = namedtuple('FakeRequest', ['user'])
