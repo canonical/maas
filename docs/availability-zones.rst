@@ -91,12 +91,17 @@ Or to do it in the :ref:`region-controller API <region-controller-api>`, POST
 your zone definition to the *"zones"* endpoint.
 
 
-Assigning a Node to a Zone
---------------------------
+Assigning Nodes to a Zone
+-------------------------
 
-To set the zone to which a node belongs, go to its page and select "Edit node."
-The edit page has a drop-down box where you can select its zone.  Save the
-page to make the change take effect.
+Once you have created one or more availability zones, you can set nodes' zones
+from the nodes listing page in the UI.  Select the nodes for which you wish to
+set a zone, and choose "Set availability zone" from the "Bulk action" dropdown
+list near the top.  A second dropdown list will appear, to let you select which
+zone you wish to set.  Leave it blank to clear nodes' availability zones.
+Clicking "Go" will apply the change to the selected nodes.
+
+You can also set an individual node's zone on its "Edit node" page.
 
 
 Allocating a Node in a Zone
