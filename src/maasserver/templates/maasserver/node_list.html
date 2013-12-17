@@ -44,6 +44,27 @@
       });
     });
   });
+  // Reveal the zone widget only when the "set zone" action is selected.
+  YUI().use('node', function (Y) {
+    Y.on('domready', function() {
+      var action_dropdown = Y.one('#id_action');
+      var zone_widget = Y.one('#zone_widget');
+      if (zone_widget === null || zone_widget === undefined) {
+          return
+      }
+
+      function set_zone_widget_visibility() {
+        if (action_dropdown.get('value') == 'set_zone') {
+          zone_widget.removeClass('hidden');
+        } else {
+          zone_widget.addClass('hidden');
+        }
+      }
+
+      action_dropdown.on('change', set_zone_widget_visibility);
+      set_zone_widget_visibility();
+    });
+  });
   // -->
   </script>
 {% endblock %}
@@ -67,6 +88,12 @@
         Bulk action:&nbsp;
         {{ form.action }}
         <input type="submit" value="Go" />
+        {% if form.zone %}
+          <div id="zone_widget" class="hidden">
+            Set zone to:&nbsp;
+            {{ form.zone }}
+          </div>
+        {% endif %}
         {% for field in form %}
           {% if field.errors %}
             <span class="errors">{{ field.errors }}</span>

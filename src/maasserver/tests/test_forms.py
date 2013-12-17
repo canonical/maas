@@ -1069,6 +1069,20 @@ class TestBulkNodeActionForm(MAASServerTestCase):
         # and it's a required field.
         self.assertEqual(('', True), (default_action, required))
 
+    def test_admin_is_offered_bulk_node_change(self):
+        form = BulkNodeActionForm(user=factory.make_admin())
+        choices = form.fields['action'].choices
+        self.assertNotEqual(
+            [],
+            [choice for choice in choices if choice[0] == 'set_zone'])
+
+    def test_nonadmin_is_not_offered_bulk_node_change(self):
+        form = BulkNodeActionForm(user=factory.make_user())
+        choices = form.fields['action'].choices
+        self.assertEqual(
+            [],
+            [choice for choice in choices if choice[0] == 'set_zone'])
+
     def test_gives_stat_when_not_applicable(self):
         node1 = factory.make_node(status=NODE_STATUS.DECLARED)
         node2 = factory.make_node(status=NODE_STATUS.FAILED_TESTS)
@@ -1149,6 +1163,66 @@ class TestBulkNodeActionForm(MAASServerTestCase):
                 action="invalid-action",
                 system_id=[factory.make_node().system_id]))
         self.assertFalse(form.is_valid(), form._errors)
+
+    def test_set_zone_sets_zone_on_node(self):
+        node = factory.make_node()
+        zone = factory.make_zone()
+        form = BulkNodeActionForm(
+            user=factory.make_admin(),
+            data={
+                'action': 'set_zone',
+                'zone': zone.name,
+                'system_id': [node.system_id],
+            })
+        self.assertTrue(form.is_valid(), form._errors)
+        self.assertEqual((1, 0, 0), form.save())
+        node = reload_object(node)
+        self.assertEqual(zone, node.zone)
+
+    def test_set_zone_does_not_work_if_not_admin(self):
+        node = factory.make_node()
+        form = BulkNodeActionForm(
+            user=factory.make_user(),
+            data={
+                'action': 'set_zone',
+                'zone': factory.make_zone().name,
+                'system_id': [node.system_id],
+            })
+        self.assertFalse(form.is_valid())
+        print(form._errors)
+        self.assertIn(
+            "Select a valid choice. "
+            "set_zone is not one of the available choices.",
+            form._errors['action'])
+
+    def test_set_zone_can_set_no_zone(self):
+        node = factory.make_node()
+        form = BulkNodeActionForm(
+            user=factory.make_admin(),
+            data={
+                'action': 'set_zone',
+                'zone': None,
+                'system_id': [node.system_id],
+            })
+        self.assertTrue(form.is_valid(), form._errors)
+        self.assertEqual((1, 0, 0), form.save())
+        node = reload_object(node)
+        self.assertIsNone(node.zone)
+
+    def test_set_zone_leaves_unselected_zones_alone(self):
+        unselected_node = factory.make_node()
+        original_zone = unselected_node.zone
+        form = BulkNodeActionForm(
+            user=factory.make_admin(),
+            data={
+                'action': 'set_zone',
+                'zone': factory.make_zone().name,
+                'system_id': [factory.make_node().system_id],
+            })
+        self.assertTrue(form.is_valid(), form._errors)
+        self.assertEqual((1, 0, 0), form.save())
+        unselected_node = reload_object(unselected_node)
+        self.assertEqual(original_zone, unselected_node.zone)
 
 
 class TestDownloadProgressForm(MAASServerTestCase):

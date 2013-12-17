@@ -921,21 +921,41 @@ class ValidatorMultipleChoiceField(MultipleChoiceField):
         return values
 
 
+class SetZoneBulkAction:
+    """A custom action we only offer in bulk: "Set availability zone."
+
+    Looks just enough like a node action class for presentatoin purposes, but
+    isn't one of the actions we normally offer on the node page.  The
+    difference is that this action takes an argument: the zone.
+    """
+    name = 'set_zone'
+    display_bulk = "Set availability zone"
+
+
 class BulkNodeActionForm(forms.Form):
     # system_id is a multiple-choice field so it can actually contain
     # a list of system ids.
     system_id = UnconstrainedMultipleChoiceField()
-    action = forms.ChoiceField(
-        required=True,
-        # Put an empty action as the first displayed option to avoid
-        # fat-fingered bulk actions.
-        choices=[('', '')] + [
-            (action.name, action.display_bulk)
-            for action in ACTION_CLASSES])
 
     def __init__(self, user, *args, **kwargs):
         super(BulkNodeActionForm, self).__init__(*args, **kwargs)
         self.user = user
+        action_choices = (
+            # Put an empty action as the first displayed option to avoid
+            # fat-fingered bulk actions.
+            [('', '')] +
+            [(action.name, action.display_bulk) for action in ACTION_CLASSES]
+            )
+        if user.is_superuser:
+            # Admin users also get the "set zone" bulk action.
+            action_choices.append(
+                (SetZoneBulkAction.name, SetZoneBulkAction.display_bulk))
+            # This adds an input field: the zone.
+            self.fields['zone'] = forms.ModelChoiceField(
+                label="Availability zone", required=False,
+                queryset=Zone.objects.all(), to_field_name='name')
+        self.fields['action'] = forms.ChoiceField(
+            required=True, choices=action_choices)
 
     def clean_system_id(self):
         system_ids = self.cleaned_data['system_id']
@@ -951,18 +971,13 @@ class BulkNodeActionForm(forms.Form):
                 "Some of the given system ids are invalid system ids.")
         return system_ids
 
-    def save(self, *args, **kwargs):
-        """Perform the action on the selected nodes.
+    def perform_action(self, action_name, system_ids):
+        """Perform a node action on the identified nodes.
 
-        This method returns a tuple containing 3 elements: the number of
-        nodes for which the action was successfully performed, the number of
-        nodes for which the action could not be performed because that
-        transition was not allowed and the number of nodes for which the
-        action could not be performed because the user does not have the
-        required permission.
+        :param action_name: Name of a node action in `ACTIONS_DICT`.
+        :param system_ids: Iterable of `Node.system_id` values.
+        :return: A tuple as returned by `save`.
         """
-        action_name = self.cleaned_data['action']
-        system_ids = self.cleaned_data['system_id']
         action_class = ACTIONS_DICT.get(action_name)
         not_actionable = 0
         not_permitted = 0
@@ -984,6 +999,43 @@ class BulkNodeActionForm(forms.Form):
             else:
                 not_actionable += 1
         return done, not_actionable, not_permitted
+
+    def get_selected_zone(self):
+        """Return the zone which the user has selected (or `None`).
+
+        Used for the "set zone" bulk action.
+        """
+        zone_name = self.cleaned_data['zone']
+        if zone_name is None or zone_name == '':
+            return None
+        else:
+            return Zone.objects.get(name=zone_name)
+
+    def set_zone(self, system_ids):
+        """Custom bulk action: set zone on identified nodes.
+
+        :return: A tuple as returned by `save`.
+        """
+        zone = self.get_selected_zone()
+        Node.objects.filter(system_id__in=system_ids).update(zone=zone)
+        return (len(system_ids), 0, 0)
+
+    def save(self, *args, **kwargs):
+        """Perform the action on the selected nodes.
+
+        This method returns a tuple containing 3 elements: the number of
+        nodes for which the action was successfully performed, the number of
+        nodes for which the action could not be performed because that
+        transition was not allowed and the number of nodes for which the
+        action could not be performed because the user does not have the
+        required permission.
+        """
+        action_name = self.cleaned_data['action']
+        system_ids = self.cleaned_data['system_id']
+        if action_name == SetZoneBulkAction.name:
+            return self.set_zone(system_ids)
+        else:
+            return self.perform_action(action_name, system_ids)
 
 
 class DownloadProgressForm(ModelForm):

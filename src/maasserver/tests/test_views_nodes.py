@@ -871,6 +871,34 @@ class NodeListingSelectionJSControls(SeleniumTestCase):
         self.assertTrue(master_selector.is_selected())
 
 
+class NodeListingBulkActionSelectionTest(SeleniumTestCase):
+    """Tests for JS event handling on the "bulk action" selection widget."""
+
+    def select_action(self, action_name):
+        """Select the given node action."""
+        action_dropdown = self.selenium.find_element_by_id('id_action')
+        # Loop through the options and click on the one we want.  There's
+        # supposed to be a select_by_value() on the Select item, but for some
+        # reason we're getting a plain WebElement here.
+        actions = action_dropdown.find_elements_by_tag_name('option')
+        for action in actions:
+            if action.get_attribute('value') == action_name:
+                action.click()
+
+    def test_zone_widget_is_visible_only_when_set_zone_selected(self):
+        self.log_in('admin')
+        self.get_page('node-list')
+        zone_widget = self.selenium.find_element_by_id('zone_widget')
+
+        self.assertFalse(zone_widget.is_displayed())
+
+        self.select_action('set_zone')
+        self.assertTrue(zone_widget.is_displayed())
+
+        self.select_action('delete')
+        self.assertFalse(zone_widget.is_displayed())
+
+
 class NodeProbedDetailsExpanderTest(SeleniumTestCase):
 
     def make_node_with_lldp_output(self):

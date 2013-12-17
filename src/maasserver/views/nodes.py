@@ -60,6 +60,7 @@ from maasserver.forms import (
     get_action_form,
     get_node_edit_form,
     MACAddressForm,
+    SetZoneBulkAction,
     )
 from maasserver.messages import messaging
 from maasserver.models import (
@@ -229,7 +230,11 @@ class NodeListView(PaginatedListView, FormMixin, ProcessFormView):
     def form_valid(self, form):
         """Handle the view response when the form is valid."""
         stats = form.save()
-        action_class = ACTIONS_DICT[form.cleaned_data['action']]
+        action_name = form.cleaned_data['action']
+        if action_name == SetZoneBulkAction.name:
+            action_class = SetZoneBulkAction
+        else:
+            action_class = ACTIONS_DICT[form.cleaned_data['action']]
         message = message_from_form_stats(action_class, *stats)
         messages.info(self.request, message)
         return super(NodeListView, self).form_valid(form)
