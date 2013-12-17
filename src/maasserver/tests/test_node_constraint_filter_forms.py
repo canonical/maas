@@ -21,6 +21,7 @@ from maasserver.fields import MAC
 from maasserver.models import Node
 from maasserver.node_constraint_filter_forms import (
     AcquireNodeForm,
+    detect_nonexistent_zone_names,
     generate_architecture_wildcards,
     JUJU_ACQUIRE_FORM_FIELDS_MAPPING,
     parse_legacy_tags,
@@ -73,6 +74,36 @@ class TestUtils(MAASServerTestCase):
         self.assertThat(
             list(AcquireNodeForm().fields),
             ContainsAll(JUJU_ACQUIRE_FORM_FIELDS_MAPPING))
+
+    def test_detect_nonexistent_zone_names_returns_empty_if_no_names(self):
+        self.assertEqual([], detect_nonexistent_zone_names([]))
+
+    def test_detect_nonexistent_zone_names_returns_empty_if_all_OK(self):
+        zones = [factory.make_zone() for _ in range(3)]
+        self.assertEqual(
+            [],
+            detect_nonexistent_zone_names([zone.name for zone in zones]))
+
+    def test_detect_nonexistent_zone_names_reports_unknown_zone_names(self):
+        non_zone = factory.make_name('nonzone')
+        self.assertEqual([non_zone], detect_nonexistent_zone_names([non_zone]))
+
+    def test_detect_nonexistent_zone_names_is_consistent(self):
+        names = [factory.make_name('nonzone') for _ in range(3)]
+        self.assertEqual(
+            detect_nonexistent_zone_names(names),
+            detect_nonexistent_zone_names(names))
+
+    def test_detect_nonexistent_zone_names_combines_good_and_bad_names(self):
+        zone = factory.make_zone().name
+        non_zone = factory.make_name('nonzone')
+        self.assertEqual(
+            [non_zone],
+            detect_nonexistent_zone_names([zone, non_zone]))
+
+    def test_detect_nonexistent_zone_names_asserts_parameter_type(self):
+        self.assertRaises(
+            AssertionError, detect_nonexistent_zone_names, "text")
 
 
 class TestRenamableForm(RenamableFieldsForm):
@@ -251,6 +282,41 @@ class TestAcquireNodeForm(MAASServerTestCase):
         self.assertEquals(
             (False, {'zone': ["No such zone: 'unknown'."]}),
             (form.is_valid(), form.errors))
+
+    def test_not_in_zone_excludes_given_zones(self):
+        ineligible_nodes = [factory.make_node() for _ in range(2)]
+        eligible_nodes = [factory.make_node(), factory.make_node(zone=None)]
+        self.assertConstrainedNodes(
+            eligible_nodes,
+            {'not_in_zone': [node.zone.name for node in ineligible_nodes]})
+
+    def test_not_in_zone_with_required_zone_yields_no_nodes(self):
+        zone = factory.make_zone()
+        factory.make_node(zone=zone)
+        self.assertConstrainedNodes([], {'zone': zone, 'not_in_zone': [zone]})
+
+    def test_validates_not_in_zone(self):
+        bad_zone_name = '#$&*!'
+        form = AcquireNodeForm(data={'not_in_zone': [bad_zone_name]})
+        self.assertFalse(form.is_valid())
+        self.assertEqual(['not_in_zone'], form.errors.keys())
+
+    def test_not_in_zone_must_be_zone_name(self):
+        non_zone = factory.make_name('nonzone')
+        form = AcquireNodeForm(data={'not_in_zone': [non_zone]})
+        self.assertFalse(form.is_valid())
+        self.assertEqual(
+            {'not_in_zone': ["No such zone(s): %s." % non_zone]},
+            form.errors)
+
+    def test_not_in_zone_can_exclude_multiple_zones(self):
+        # Three nodes, all in different availability zones.  If we say we don't
+        # want the first node's zone or the second node's zone, we get the node
+        # in the remaining zone.
+        nodes = [factory.make_node() for _ in range(3)]
+        self.assertConstrainedNodes(
+            [nodes[2]],
+            {'not_in_zone': [nodes[0].zone.name, nodes[1].zone.name]})
 
     def test_tags(self):
         tag_big = factory.make_tag(name='big')

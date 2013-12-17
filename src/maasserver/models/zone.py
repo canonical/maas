@@ -14,6 +14,7 @@ str = None
 __metaclass__ = type
 __all__ = [
     "Zone",
+    "ZONE_NAME_VALIDATOR",
     ]
 
 from django.core.validators import RegexValidator
@@ -24,6 +25,9 @@ from django.db.models import (
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
+
+
+ZONE_NAME_VALIDATOR = RegexValidator('^[\w-]+$')
 
 
 class Zone(CleanSave, TimestampedModel):
@@ -38,11 +42,9 @@ class Zone(CleanSave, TimestampedModel):
         verbose_name = "Availability zone"
         verbose_name_plural = "Availability zones"
 
-    _zone_name_regex = '^[\w-]+$'
-
     name = CharField(
         max_length=256, unique=True, editable=True,
-        validators=[RegexValidator(_zone_name_regex)])
+        validators=[ZONE_NAME_VALIDATOR])
     description = TextField(blank=True, editable=True)
 
     def __unicode__(self):

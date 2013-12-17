@@ -757,6 +757,30 @@ class TestNodesAPI(APITestCase):
         response_json = json.loads(response.content)
         self.assertEqual(node.system_id, response_json['system_id'])
 
+    def test_POST_acquire_obeys_not_in_zone(self):
+        # Zone we don't want to acquire from.
+        not_in_zone = factory.make_zone()
+        nodes = [
+            factory.make_node(status=NODE_STATUS.READY, zone=not_in_zone)
+            for _ in range(5)
+            ]
+        # Pick a node in the middle to avoid false negatives if acquire()
+        # always tries the oldest, or the newest, node first.
+        eligible_node = nodes[2]
+        eligible_node.zone = factory.make_zone()
+        eligible_node.save()
+
+        response = self.client.post(
+            reverse('nodes_handler'),
+            {
+                'op': 'acquire',
+                'not_in_zone': [not_in_zone.name],
+            })
+        self.assertEqual(httplib.OK, response.status_code)
+
+        system_id = json.loads(response.content)['system_id']
+        self.assertEqual(eligible_node.system_id, system_id)
+
     def test_POST_acquire_sets_a_token(self):
         # "acquire" should set the Token being used in the request on
         # the Node that is allocated.

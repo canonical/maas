@@ -817,6 +817,9 @@ class NodesHandler(OperationsHandler):
         :param zone: An optional name for an availability zone the acquired
             node should be located in.
         :type zone: unicode
+        :type not_in_zone: Optional list of availability zones from which the
+            node should not be acquired.
+        :type not_in_zone: List of unicodes.
         :param agent_name: An optional agent name to attach to the
             acquired node.
         :type agent_name: unicode

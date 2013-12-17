@@ -35,6 +35,7 @@ from maasserver.models import (
     Tag,
     Zone,
     )
+from maasserver.models.zone import ZONE_NAME_VALIDATOR
 from maasserver.utils.orm import (
     macs_contain,
     macs_do_not_contain,
@@ -122,6 +123,21 @@ class RenamableFieldsForm(forms.Form):
                 setattr(self, "clean_%s" % new_name, method)
 
 
+def detect_nonexistent_zone_names(names):
+    """Check for, and return, names of nonexistent availability zones.
+
+    Used for checking zone names as passed to the `AcquireNodeForm`.
+
+    :param names: List, tuple, or set of purpoprted zone names.
+    :return: A sorted list of those names that did not name existing zones.
+    """
+    assert isinstance(names, (list, tuple, set))
+    if len(names) == 0:
+        return []
+    existing_names = set(Zone.objects.all().values_list('name', flat=True))
+    return sorted(set(names) - existing_names)
+
+
 class AcquireNodeForm(RenamableFieldsForm):
     """A form handling the constraints used to acquire a node."""
 
@@ -152,6 +168,12 @@ class AcquireNodeForm(RenamableFieldsForm):
             "Invalid parameter: list of MAC addresses required."})
 
     zone = forms.CharField(label="Availability zone", required=False)
+
+    not_in_zone = ValidatorMultipleChoiceField(
+        validator=ZONE_NAME_VALIDATOR, label="Not in zone", required=False,
+        error_messages={
+            'invalid_list': "Invalid parameter: must list availability zones.",
+            })
 
     ignore_unknown_constraints = True
 
@@ -197,13 +219,24 @@ class AcquireNodeForm(RenamableFieldsForm):
     def clean_zone(self):
         value = self.cleaned_data[self.get_field_name('zone')]
         if value:
-            zone_names = Zone.objects.all().values_list('name', flat=True)
-            if value not in zone_names:
+            nonexistent_names = detect_nonexistent_zone_names([value])
+            if len(nonexistent_names) > 0:
                 error_msg = "No such zone: '%s'." % value
                 raise ValidationError(
                     {self.get_field_name('zone'): [error_msg]})
             return value
         return None
+
+    def clean_not_in_zone(self):
+        value = self.cleaned_data[self.get_field_name('not_in_zone')]
+        if value is None or len(value) == 0:
+            return None
+        nonexistent_names = detect_nonexistent_zone_names(value)
+        if len(nonexistent_names) > 0:
+            error_msg = "No such zone(s): %s." % ', '.join(nonexistent_names)
+            raise ValidationError(
+                {self.get_field_name('not_in_zone'): [error_msg]})
+        return value
 
     def clean(self):
         if not self.ignore_unknown_constraints:
@@ -260,6 +293,12 @@ class AcquireNodeForm(RenamableFieldsForm):
         if zone:
             zone_obj = Zone.objects.get(name=zone)
             filtered_nodes = filtered_nodes.filter(zone=zone_obj)
+
+        # Filter by not_in_zone.
+        not_in_zone = self.cleaned_data.get(self.get_field_name('not_in_zone'))
+        if not_in_zone is not None and len(not_in_zone) > 0:
+            not_in_zones = Zone.objects.filter(name__in=not_in_zone)
+            filtered_nodes = filtered_nodes.exclude(zone__in=not_in_zones)
 
         # Filter by connected_to.
         connected_to = self.cleaned_data.get(
