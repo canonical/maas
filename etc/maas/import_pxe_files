@@ -12,7 +12,7 @@ EOF
 fi
 
 
-#RELEASES="precise quantal raring saucy"
+#RELEASES="precise quantal raring saucy trusty"
 #ARCHES="amd64/generic i386/generic armhf/highbank armhf/generic"
 #LOCALE="en_US"
 #IMPORT_EPHEMERALS=1

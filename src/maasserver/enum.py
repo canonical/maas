@@ -146,6 +146,8 @@ class DISTRO_SERIES:
     raring = 'raring'
     #:
     saucy = 'saucy'
+    #:
+    trusty = 'trusty'
 
 DISTRO_SERIES_CHOICES = (
     (DISTRO_SERIES.default, 'Default Ubuntu Release'),
@@ -153,6 +155,7 @@ DISTRO_SERIES_CHOICES = (
     (DISTRO_SERIES.quantal, 'Ubuntu 12.10 "Quantal Quetzal"'),
     (DISTRO_SERIES.raring, 'Ubuntu 13.04 "Raring Ringtail"'),
     (DISTRO_SERIES.saucy, 'Ubuntu 13.10 "Saucy Salamander"'),
+    (DISTRO_SERIES.trusty, 'Ubuntu 14.04 LTS "Trusty Tahr"'),
 )
 
 
