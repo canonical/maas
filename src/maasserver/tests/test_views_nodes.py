@@ -385,6 +385,31 @@ class NodeViewsTest(LoggedInTestCase):
             ', '.join(mac.get_raw() for mac in routers),
             routers_display)
 
+    def test_view_node_links_to_availability_zone(self):
+        node = factory.make_node()
+        node_link = reverse('node-view', args=[node.system_id])
+
+        response = self.client.get(node_link)
+        self.assertEqual(httplib.OK, response.status_code)
+
+        [zone_section] = fromstring(response.content).cssselect('#zone')
+        self.assertThat(
+            zone_section.text_content(),
+            ContainsAll(["Availability zone", node.zone.name]))
+        self.assertEqual(
+            [reverse('zone-view', args=[node.zone.name])],
+            get_content_links(response, '#zone'))
+
+    def test_view_node_shows_no_availability_zone_if_not_set(self):
+        node = factory.make_node(zone=None)
+        node_link = reverse('node-view', args=[node.system_id])
+
+        response = self.client.get(node_link)
+        self.assertEqual(httplib.OK, response.status_code)
+
+        doc = fromstring(response.content)
+        self.assertEqual([], doc.cssselect('#zone'))
+
     def test_view_node_displays_link_to_edit_if_user_owns_node(self):
         node = factory.make_node(owner=self.logged_in_user)
         node_link = reverse('node-view', args=[node.system_id])
