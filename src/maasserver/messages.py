@@ -14,8 +14,8 @@ str = None
 __metaclass__ = type
 __all__ = [
     "MAASMessenger",
+    "MESSAGING",
     "MessengerBase",
-    "get_messaging",
     ]
 
 
@@ -32,7 +32,6 @@ from django.db.models.signals import (
 from maasserver import logger
 from maasserver.exceptions import NoRabbit
 from maasserver.json import MAASJSONEncoder
-from maasserver.models import Node
 from maasserver.rabbit import RabbitMessaging
 
 # This is the name of the exchange where changes to MAAS's model objects will
@@ -136,15 +135,53 @@ class MAASMessenger(MessengerBase):
             instance.__class__.__name__, event_name)
 
 
-def get_messaging():
-    """Create a RabbitMessaging object using MODEL_EXCHANGE_NAME as its
-    exchange name.
-    """
-    if settings.RABBITMQ_PUBLISH:
-        messaging = RabbitMessaging(MODEL_EXCHANGE_NAME)
-        MAASMessenger(Node, messaging.getExchange()).register()
-        return messaging
-    else:
-        return None
+class Messaging:
+    """Lazy-initialising wrapper for `RabbitMessaging`.
 
-messaging = get_messaging()
+    To access the real `RabbitMessaging` object, call `get`.  On its first
+    call it will create the object, and subsequent calls will return the same
+    object again.
+
+    :param exchange: Name of the RabbitMQ exchange to which you wish to
+        connect.  Defaults to `MODEL_EXCHANGE_NAME`.
+    """
+
+    # Sentinel: "cached RabbitMessaging has not been initialised yet."
+    UNINITIALISED = object()
+
+    def __init__(self, exchange=MODEL_EXCHANGE_NAME):
+        """Create the wrapper, but not the `RabbitMessaging` itself yet."""
+        self.exchange = exchange
+        self.reset()
+
+    def get(self):
+        """Return the actual `RabbitMessaging`, creating it if necessary."""
+        if self._cached_messaging is self.UNINITIALISED:
+            self._cached_messaging = self._create()
+        return self._cached_messaging
+
+    def reset(self):
+        """Reset the wrapper to its original, uninitialised state.
+
+        The next call to `get` will initialise a fresh `RabbitMessaging`
+        object.
+        """
+        self._cached_messaging = self.UNINITIALISED
+
+    @staticmethod
+    def _create():
+        """Create the `RabbitMessaging` object."""
+        # Importing this from the top of the module causes AlreadyRegistered
+        # errors in tests.
+        from maasserver.models import Node
+
+        if settings.RABBITMQ_PUBLISH:
+            messaging = RabbitMessaging(MODEL_EXCHANGE_NAME)
+            MAASMessenger(Node, messaging.getExchange()).register()
+            return messaging
+        else:
+            return None
+
+
+# Wrapper for global `RabbitMessaging` object.
+MESSAGING = Messaging()

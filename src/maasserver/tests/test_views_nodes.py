@@ -17,17 +17,14 @@ __all__ = []
 import httplib
 from operator import attrgetter
 from textwrap import dedent
-from unittest import skip
 from urlparse import (
     parse_qsl,
     urlparse,
     )
 
-from django.conf import settings
 from django.core.urlresolvers import reverse
 from lxml.etree import XPath
 from lxml.html import fromstring
-from maasserver import messages
 import maasserver.api
 from maasserver.enum import (
     ARCHITECTURE_CHOICES,
@@ -36,7 +33,6 @@ from maasserver.enum import (
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
     )
-from maasserver.exceptions import NoRabbit
 from maasserver.forms import NodeActionForm
 from maasserver.models import (
     Config,
@@ -59,7 +55,6 @@ from maasserver.testing import (
     reload_objects,
     )
 from maasserver.testing.factory import factory
-from maasserver.testing.rabbit import uses_rabbit_fixture
 from maasserver.testing.testcase import (
     AdminLoggedInTestCase,
     LoggedInTestCase,
@@ -68,10 +63,7 @@ from maasserver.testing.testcase import (
     )
 from maasserver.utils import map_enum
 from maasserver.views import nodes as nodes_views
-from maasserver.views.nodes import (
-    get_longpoll_context,
-    message_from_form_stats,
-    )
+from maasserver.views.nodes import message_from_form_stats
 from maastesting.matchers import ContainsAll
 from metadataserver.models.commissioningscript import LLDP_OUTPUT_NAME
 from provisioningserver.enum import POWER_TYPE_CHOICES
@@ -1154,44 +1146,6 @@ class AdminNodeViewsTest(AdminLoggedInTestCase):
         node = reload_object(node)
         self.assertEqual(httplib.FOUND, response.status_code)
         self.assertAttributes(node, params)
-
-
-class TestGetLongpollContext(MAASServerTestCase):
-
-    def test_get_longpoll_context_empty_if_rabbitmq_publish_is_none(self):
-        self.patch(settings, 'RABBITMQ_PUBLISH', None)
-        self.patch(nodes_views, 'messaging', messages.get_messaging())
-        self.assertEqual({}, get_longpoll_context())
-
-    def test_get_longpoll_context_returns_empty_if_rabbit_not_running(self):
-
-        class FakeMessaging:
-            """Fake :class:`RabbitMessaging`: fail with `NoRabbit`."""
-
-            def getQueue(self, *args, **kwargs):
-                raise NoRabbit("Pretending not to have a rabbit.")
-
-        self.patch(messages, 'messaging', FakeMessaging())
-        self.assertEqual({}, get_longpoll_context())
-
-    def test_get_longpoll_context_empty_if_longpoll_url_is_None(self):
-        self.patch(settings, 'LONGPOLL_PATH', None)
-        self.patch(nodes_views, 'messaging', messages.get_messaging())
-        self.assertEqual({}, get_longpoll_context())
-
-    @skip(
-        "XXX: GavinPanella 2012-09-27 bug=1057250: Causes test "
-        "failures in unrelated parts of the test suite.")
-    @uses_rabbit_fixture
-    def test_get_longpoll_context(self):
-        longpoll = factory.getRandomString()
-        self.patch(settings, 'LONGPOLL_PATH', longpoll)
-        self.patch(settings, 'RABBITMQ_PUBLISH', True)
-        self.patch(nodes_views, 'messaging', messages.get_messaging())
-        context = get_longpoll_context()
-        self.assertItemsEqual(
-            ['LONGPOLL_PATH', 'longpoll_queue'], context)
-        self.assertEqual(longpoll, context['LONGPOLL_PATH'])
 
 
 class ParseConstraintsTests(MAASServerTestCase):

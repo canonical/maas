@@ -62,7 +62,7 @@ from maasserver.forms import (
     MACAddressForm,
     SetZoneBulkAction,
     )
-from maasserver.messages import messaging
+from maasserver.messages import MESSAGING
 from maasserver.models import (
     MACAddress,
     Node,
@@ -87,6 +87,7 @@ from provisioningserver.tags import merge_details_cleanly
 
 
 def get_longpoll_context():
+    messaging = MESSAGING.get()
     if messaging is not None and django_settings.LONGPOLL_PATH is not None:
         try:
             return {
