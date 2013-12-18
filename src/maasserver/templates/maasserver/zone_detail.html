@@ -29,16 +29,18 @@ Availability zone: {{ zone.name }}
       <h4>Name</h4>
         <span>{{ zone.name }}</span>
     </li>
-    <li class="block size3">
-      <h4>Description</h4>
-      <span>{{ zone.description }}</span>
-    </li>
-    <li class="block size3">
-      <h4>Number of nodes in zone</h4>
+    <li class="block size1">
+      <h4>Nodes</h4>
       <span id="#nodecount">
         {{ zone.node_set.count }}
-        <a href="{{ node_list_link }}">View nodes</a>
+        <a href="{{ node_list_link }}">(View)</a>
       </span>
+    </li>
+    <li class="block size12 first">
+      {% if zone.description %}
+        <h4>Description</h4>
+        <pre>{{ zone.description }}</pre>
+      {% endif %}
     </li>
   </ul>
 

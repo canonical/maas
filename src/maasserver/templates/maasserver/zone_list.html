@@ -15,7 +15,7 @@
           <tr>
             <th>Name</th>
             <th>Description</th>
-            <th>Number of nodes in zone</th>
+            <th>Nodes</th>
             {% if user.is_superuser %}
             <th></th>
             {% endif %}
@@ -30,7 +30,7 @@
                 {{ zone_item.name }}
               </a>
             </td>
-            <td>{{ zone_item.description|truncatechars:20 }}</td>
+            <td>{{ zone_item.description|truncatechars:40 }}</td>
             <td>{{ zone_item.node_set.count }}</td>
             {% if user.is_superuser %}
             <td>
