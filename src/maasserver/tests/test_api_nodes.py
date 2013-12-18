@@ -1028,3 +1028,60 @@ class TestNodesAPI(APITestCase):
         system_id = json.loads(response.content)['system_id']
         nodes = Node.objects.filter(system_id=system_id)
         self.assertIsNotNone(get_one(nodes))
+
+    def test_POST_set_zone_sets_zone_on_nodes(self):
+        self.become_admin()
+        node = factory.make_node()
+        zone = factory.make_zone()
+        response = self.client.post(
+            reverse('nodes_handler'),
+            {
+                'op': 'set_zone',
+                'nodes': [node.system_id],
+                'zone': zone.name
+            })
+        self.assertEqual(httplib.OK, response.status_code)
+        node = reload_object(node)
+        self.assertEqual(zone, node.zone)
+
+    def test_POST_set_zone_clears_zone_on_nodes(self):
+        self.become_admin()
+        node = factory.make_node()
+        response = self.client.post(
+            reverse('nodes_handler'),
+            {
+                'op': 'set_zone',
+                'nodes': [node.system_id],
+            })
+        self.assertEqual(httplib.OK, response.status_code)
+        node = reload_object(node)
+        self.assertIsNone(node.zone)
+
+    def test_POST_set_zone_does_not_affect_other_nodes(self):
+        self.become_admin()
+        node = factory.make_node()
+        original_zone = node.zone
+        response = self.client.post(
+            reverse('nodes_handler'),
+            {
+                'op': 'set_zone',
+                'nodes': [factory.make_node().system_id],
+                'zone': factory.make_zone().name
+            })
+        self.assertEqual(httplib.OK, response.status_code)
+        node = reload_object(node)
+        self.assertEqual(original_zone, node.zone)
+
+    def test_POST_set_zone_requires_admin(self):
+        node = factory.make_node(owner=self.logged_in_user)
+        original_zone = node.zone
+        response = self.client.post(
+            reverse('nodes_handler'),
+            {
+                'op': 'set_zone',
+                'nodes': [node.system_id],
+                'zone': factory.make_zone().name
+            })
+        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        node = reload_object(node)
+        self.assertEqual(original_zone, node.zone)

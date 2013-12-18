@@ -171,6 +171,7 @@ from maasserver.fields import (
     validate_mac,
     )
 from maasserver.forms import (
+    BulkNodeActionForm,
     DownloadProgressForm,
     get_action_form,
     get_node_create_form,
@@ -838,6 +839,26 @@ class NodesHandler(OperationsHandler):
                 agent_name=agent_name)
             return node
         raise ValidationError(form.errors)
+
+    @admin_method
+    @operation(idempotent=False)
+    def set_zone(self, request):
+        """Assign multiple nodes to an availability zone at once.
+
+        :param zone: Zone name.  If omitted, the zone is "none" and the nodes
+            will be taken out of their availability zones.
+        :param nodes: system_ids of the nodes whose zones are to be set.
+           (An empty list is acceptable).
+        """
+        data = {
+            'action': 'set_zone',
+            'zone': request.data.get('zone'),
+            'system_id': get_optional_list(request.data, 'nodes'),
+        }
+        form = BulkNodeActionForm(request.user, data=data)
+        if not form.is_valid():
+            raise ValidationError(form.errors)
+        form.save()
 
     @classmethod
     def resource_uri(cls, *args, **kwargs):

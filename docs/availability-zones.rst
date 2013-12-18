@@ -101,7 +101,10 @@ list near the top.  A second dropdown list will appear, to let you select which
 zone you wish to set.  Leave it blank to clear nodes' availability zones.
 Clicking "Go" will apply the change to the selected nodes.
 
-You can also set an individual node's zone on its "Edit node" page.
+You can also set an individual node's zone on its "Edit node" page.  Both ways
+are available in the API as well: edit an individual node through a ``PUT``
+request to the node's URI, or set the zone on multiple nodes at once by calling
+the ``set_zone`` operation on the ``nodes`` endpoint.
 
 
 Allocating a Node in a Zone
