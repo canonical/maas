@@ -181,13 +181,7 @@ class NodeViewsTest(LoggedInTestCase):
                 if link.startswith('/nodes/node')])
 
     def test_node_list_sorts_by_zone(self):
-        # TODO JeroenVermeulen 2013-12-18, bug=1262160: This is cheating.
-        #      Sorting by zone should sort by zone name, but it actually sorts
-        #      by zone ID.  Make this test pass with the default random names!
-        zones = [
-            factory.make_zone(name='z-%d' % counter)
-            for counter in range(3)
-            ]
+        zones = [factory.make_zone() for _ in range(5)]
         nodes = [factory.make_node(zone=zone) for zone in zones]
 
         # First check the ascending sort order

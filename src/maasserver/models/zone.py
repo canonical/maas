@@ -41,6 +41,7 @@ class Zone(CleanSave, TimestampedModel):
         """Needed for South to recognize this model."""
         verbose_name = "Availability zone"
         verbose_name_plural = "Availability zones"
+        ordering = ["name"]
 
     name = CharField(
         max_length=256, unique=True, editable=True,
