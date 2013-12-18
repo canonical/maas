@@ -94,8 +94,10 @@ class NodeViewsTest(LoggedInTestCase):
         response = self.client.get(reverse('node-list'))
         sort_hostname = '?sort=hostname&dir=asc'
         sort_status = '?sort=status&dir=asc'
+        sort_zone = '?sort=zone&dir=asc'
         self.assertIn(sort_hostname, get_content_links(response))
         self.assertIn(sort_status, get_content_links(response))
+        self.assertIn(sort_zone, get_content_links(response))
 
     def test_node_list_ignores_unknown_sort_param(self):
         factory.make_node()
@@ -177,6 +179,42 @@ class NodeViewsTest(LoggedInTestCase):
             node_links,
             [link for link in get_content_links(response)
                 if link.startswith('/nodes/node')])
+
+    def test_node_list_sorts_by_zone(self):
+        # TODO JeroenVermeulen 2013-12-18, bug=1262160: This is cheating.
+        #      Sorting by zone should sort by zone name, but it actually sorts
+        #      by zone ID.  Make this test pass with the default random names!
+        zones = [
+            factory.make_zone(name='z-%d' % counter)
+            for counter in range(3)
+            ]
+        nodes = [factory.make_node(zone=zone) for zone in zones]
+
+        # First check the ascending sort order
+        sorted_nodes = sorted(nodes, key=attrgetter('zone.name'))
+        response = self.client.get(
+            reverse('node-list'), {
+                'sort': 'zone',
+                'dir': 'asc',
+            })
+        node_links = [
+            reverse('node-view', args=[node.system_id])
+            for node in sorted_nodes
+        ]
+        self.assertEqual(
+            node_links,
+            get_content_links(response, '.node-column'))
+
+        # Now check the reverse order
+        node_links = list(reversed(node_links))
+        response = self.client.get(
+            reverse('node-list'), {
+                'sort': 'zone',
+                'dir': 'desc',
+            })
+        self.assertEqual(
+            node_links,
+            get_content_links(response, '.node-column'))
 
     def test_node_list_sort_preserves_other_params(self):
         # Set a very small page size to save creating lots of nodes

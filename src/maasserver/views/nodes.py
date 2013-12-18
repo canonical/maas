@@ -176,7 +176,7 @@ class NodeListView(PaginatedListView, FormMixin, ProcessFormView):
 
     context_object_name = "node_list"
     form_class = BulkNodeActionForm
-    sort_fields = ('hostname', 'status')
+    sort_fields = ('hostname', 'status', 'zone')
 
     def populate_modifiers(self, request):
         self.query = request.GET.get("query")
