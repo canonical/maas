@@ -15,10 +15,12 @@ __metaclass__ = type
 __all__ = []
 
 
+import httplib
 from urllib import urlencode
 
 from django.core.urlresolvers import reverse
 from lxml.html import fromstring
+from maasserver.models import Zone
 from maasserver.testing import (
     extract_redirect,
     get_content_links,
@@ -29,6 +31,7 @@ from maasserver.testing.testcase import (
     AdminLoggedInTestCase,
     LoggedInTestCase,
     )
+from maasserver.views.zones import ZoneAdd
 from maastesting.matchers import (
     Contains,
     ContainsAll,
@@ -114,6 +117,43 @@ class ZoneListingViewTestAdmin(AdminLoggedInTestCase):
         response = self.client.get(reverse('zone-list'))
         add_link = reverse('zone-add')
         self.assertIn(add_link, get_content_links(response))
+
+
+class ZoneAddTestNonAdmin(LoggedInTestCase):
+
+    def test_cannot_add_zone(self):
+        name = factory.make_name('zone')
+        response = self.client.post(reverse('zone-add'), {'name': name})
+        # This returns an inappropriate response (302 FOUND, redirect to the
+        # login page; should be 403 FORBIDDEN) but does not actually create the
+        # zone, and that's the main thing.
+        self.assertEqual(reverse('login'), extract_redirect(response))
+        self.assertEqual([], list(Zone.objects.filter(name=name)))
+
+
+class ZoneAddTestAdmin(AdminLoggedInTestCase):
+
+    def test_adds_zone(self):
+        definition = {
+            'name': factory.make_name('zone'),
+            'description': factory.getRandomString(),
+        }
+        response = self.client.post(reverse('zone-add'), definition)
+        self.assertEqual(httplib.FOUND, response.status_code)
+        zone = Zone.objects.get(name=definition['name'])
+        self.assertEqual(definition['description'], zone.description)
+        self.assertEqual(reverse('zone-list'), extract_redirect(response))
+
+    def test_description_is_optional(self):
+        name = factory.make_name('zone')
+        response = self.client.post(reverse('zone-add'), {'name': name})
+        self.assertEqual(httplib.FOUND, response.status_code)
+        zone = Zone.objects.get(name=name)
+        self.assertEqual('', zone.description)
+
+    def test_get_success_url_returns_valid_url(self):
+        url = ZoneAdd().get_success_url()
+        self.assertIn("/zones", url)
 
 
 class ZoneDetailViewTest(LoggedInTestCase):

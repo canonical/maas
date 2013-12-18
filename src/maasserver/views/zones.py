@@ -13,16 +13,22 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    'ZoneAdd',
+    'ZoneEdit',
     'ZoneListView',
+    'ZoneView',
     ]
 
 from apiclient.utils import urlencode
+from django.contrib import messages
 from django.core.urlresolvers import reverse
 from django.shortcuts import get_object_or_404
 from django.views.generic import (
+    CreateView,
     DetailView,
     UpdateView,
     )
+from maasserver.forms import ZoneForm
 from maasserver.models import Zone
 from maasserver.views import PaginatedListView
 
@@ -36,10 +42,7 @@ class ZoneListView(PaginatedListView):
 
 
 class ZoneView(DetailView):
-    """Mixin class used to fetch a node by system_id.
-
-    The logged-in user must have View permission to access this page.
-    """
+    """Mixin class used to fetch a zone by name."""
 
     context_object_name = 'zone'
 
@@ -56,7 +59,23 @@ class ZoneView(DetailView):
         return context
 
 
+class ZoneAdd(CreateView):
+    """View for creating an availability zone."""
+
+    form_class = ZoneForm
+    template_name = 'maasserver/zone_add.html'
+    context_object_name = 'new_zone'
+
+    def get_success_url(self):
+        return reverse('zone-list')
+
+    def form_valid(self, form):
+        messages.info(self.request, "Zone added.")
+        return super(ZoneAdd, self).form_valid(form)
+
+
 class ZoneEdit(UpdateView):
+    """View for editing an availability zone."""
 
     model = Zone
     template_name = 'maasserver/zone_edit.html'

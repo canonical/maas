@@ -65,6 +65,7 @@ from maasserver.views.settings_commissioning_scripts import (
     )
 from maasserver.views.tags import TagView
 from maasserver.views.zones import (
+    ZoneAdd,
     ZoneEdit,
     ZoneListView,
     ZoneView,
@@ -194,6 +195,7 @@ urlpatterns += patterns(
         r'^commissioning-scripts/add/$',
         CommissioningScriptCreate.as_view(),
         name='commissioning-script-add'),
+    adminurl(r'^zones/add/$', ZoneAdd.as_view(), name='zone-add'),
 )
 
 # Tag views.
