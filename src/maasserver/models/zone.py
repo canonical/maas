@@ -49,3 +49,18 @@ class Zone(CleanSave, TimestampedModel):
 
     def __unicode__(self):
         return self.name
+
+    def delete(self):
+        """Delete zone, but keep its nodes!
+
+        Deleting a zone, by default, deletes all the nodes that are in that
+        zone.  Use `delete` instead: it will clear those nodes' `zone` fields
+        so they'll be zoneless, but not gone.
+        """
+        # Avoid circular imports.
+        from maasserver.models.node import Node
+
+        # Clear nodes' references to this zone.
+        Node.objects.filter(zone=self).update(zone=None)
+        # That being done, defer to the reckless default implementation.
+        super(Zone, self).delete()

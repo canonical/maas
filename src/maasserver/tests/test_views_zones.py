@@ -247,3 +247,42 @@ class ZoneEditAdminTest(AdminLoggedInTestCase):
             (new_name, new_description),
             (zone.name, zone.description),
         )
+
+
+class ZoneDeleteNonAdminTest(LoggedInTestCase):
+
+    def test_cannot_delete(self):
+        zone = factory.make_zone()
+        response = self.client.post(reverse('zone-del', args=[zone.name]))
+        self.assertEqual(reverse('login'), extract_redirect(response))
+        self.assertIsNotNone(reload_object(zone))
+
+
+class ZoneDeleteAdminTest(AdminLoggedInTestCase):
+
+    def test_deletes_zone(self):
+        zone = factory.make_zone()
+        response = self.client.post(
+            reverse('zone-del', args=[zone.name]),
+            {'post': 'yes'})
+        self.assertEqual(httplib.FOUND, response.status_code)
+        self.assertIsNone(reload_object(zone))
+
+    def test_redirects_to_listing(self):
+        zone = factory.make_zone()
+        response = self.client.post(
+            reverse('zone-del', args=[zone.name]),
+            {'post': 'yes'})
+        self.assertEqual(reverse('zone-list'), extract_redirect(response))
+
+    def test_does_not_delete_nodes(self):
+        zone = factory.make_zone()
+        node = factory.make_node(zone=zone)
+        response = self.client.post(
+            reverse('zone-del', args=[zone.name]),
+            {'post': 'yes'})
+        self.assertEqual(httplib.FOUND, response.status_code)
+        self.assertIsNone(reload_object(zone))
+        node = reload_object(node)
+        self.assertIsNotNone(node)
+        self.assertIsNone(node.zone)

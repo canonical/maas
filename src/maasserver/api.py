@@ -2614,7 +2614,6 @@ class ZoneHandler(OperationsHandler):
         """DELETE request.  Delete zone."""
         zone = get_one(Zone.objects.filter(name=name))
         if zone is not None:
-            Node.objects.filter(zone=zone).update(zone=None)
             zone.delete()
         return rc.DELETED
 

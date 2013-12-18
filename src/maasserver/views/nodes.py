@@ -16,6 +16,7 @@ __all__ = [
     'enlist_preseed_view',
     'MacAdd',
     'MacDelete',
+    'NodeDelete',
     'NodeListView',
     'NodePreseedView',
     'NodeView',

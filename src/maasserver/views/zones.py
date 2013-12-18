@@ -14,6 +14,7 @@ str = None
 __metaclass__ = type
 __all__ = [
     'ZoneAdd',
+    'ZoneDelete',
     'ZoneEdit',
     'ZoneListView',
     'ZoneView',
@@ -30,7 +31,10 @@ from django.views.generic import (
     )
 from maasserver.forms import ZoneForm
 from maasserver.models import Zone
-from maasserver.views import PaginatedListView
+from maasserver.views import (
+    HelpfulDeleteView,
+    PaginatedListView,
+    )
 
 
 class ZoneListView(PaginatedListView):
@@ -86,3 +90,22 @@ class ZoneEdit(UpdateView):
 
     def get_success_url(self):
         return reverse('zone-list')
+
+
+class ZoneDelete(HelpfulDeleteView):
+    """View for deleting an availability zone."""
+
+    template_name = 'maasserver/zone_configm_delete.html'
+    context_object_name = 'zone_to_delete'
+    model = Zone
+
+    def get_object(self):
+        name = self.kwargs.get('name', None)
+        return get_object_or_404(Zone, name=name)
+
+    def get_next_url(self):
+        return reverse('zone-list')
+
+    def name_object(self, obj):
+        """See `HelpfulDeleteView`."""
+        return "Zone %s" % obj.name

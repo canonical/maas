@@ -15,6 +15,7 @@ __metaclass__ = type
 __all__ = []
 
 from maasserver.models.zone import Zone
+from maasserver.testing import reload_object
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 
@@ -42,3 +43,17 @@ class TestZone(MAASServerTestCase):
                 node2.zone,
             ),
             (set([node1, node2]), name, description, zone, zone))
+
+    def test_delete_deletes_zone(self):
+        zone = factory.make_zone()
+        zone.delete()
+        self.assertIsNone(reload_object(zone))
+
+    def test_delete_severs_link_to_nodes(self):
+        zone = factory.make_zone()
+        node = factory.make_node(zone=zone)
+        zone.delete()
+        self.assertIsNone(reload_object(zone))
+        node = reload_object(node)
+        self.assertIsNotNone(node)
+        self.assertIsNone(node.zone)
