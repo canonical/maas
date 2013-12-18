@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from __future__ import (
@@ -119,7 +119,23 @@ def get_prefixed_form_data(prefix, data):
 
 
 def get_content_links(response, element='#content'):
-    """Extract links from :class:`HttpResponse` #content element."""
+    """Extract links from :class:`HttpResponse` content.
+
+    :param response: An HTTP response object.  Only its `content` attribute is
+        used.
+    :param element: Optional CSS selector for the node(s) in the content whose
+        links should be extracted.  Only links inside the part of the content
+        that matches this selector will be extracted; any other links will be
+        ignored.  Defaults to `#content`, which is the main document.
+    :return: List of link targets found in any matching parts of the document,
+        including their nested tags.  If a link is in a DOM subtree that
+        matches `element` at multiple levels, it may be counted more than once.
+        Otherwise, links are returned in the same order in which they are found
+        in the document.
+    """
     doc = fromstring(response.content)
-    [content_node] = doc.cssselect(element)
-    return [elem.get('href') for elem in content_node.cssselect('a')]
+    links_per_matching_node = [
+        [elem.get('href') for elem in matching_node.cssselect('a')]
+        for matching_node in doc.cssselect(element)
+        ]
+    return sum(links_per_matching_node, [])

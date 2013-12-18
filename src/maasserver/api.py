@@ -759,6 +759,7 @@ class NodesHandler(OperationsHandler):
             if len(invalid_macs) != 0:
                 raise ValidationError(
                     "Invalid MAC address(es): %s" % ", ".join(invalid_macs))
+
         # Fetch nodes and apply filters.
         nodes = Node.objects.get_nodes(
             request.user, NODE_PERMISSION.VIEW, ids=match_ids)
@@ -770,13 +771,14 @@ class NodesHandler(OperationsHandler):
         match_agent_name = request.GET.get('agent_name', None)
         if match_agent_name is not None:
             nodes = nodes.filter(agent_name=match_agent_name)
-        # Prefetch related macaddresses, tags and nodegroups (plus
-        # related interfaces).
+
+        # Prefetch related objects that are needed for rendering the result.
         nodes = nodes.prefetch_related('macaddress_set__node')
         nodes = nodes.prefetch_related('tags')
         nodes = nodes.select_related('nodegroup')
         nodes = nodes.prefetch_related('nodegroup__dhcplease_set')
         nodes = nodes.prefetch_related('nodegroup__nodegroupinterface_set')
+        nodes = nodes.prefetch_related('zone')
         return nodes.order_by('id')
 
     @operation(idempotent=True)

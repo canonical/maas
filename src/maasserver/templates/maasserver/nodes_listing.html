@@ -18,11 +18,13 @@
         <a href="{{ sort_links.status }}"
 	       class="{{ sort_classes.status }}">Status</a>
       </th>
+      <th>Zone</th>
       {% else %}
         <th><acronym title="Fully Qualified Domain Name">FQDN</acronym></th>
         <th><acronym
           title="Media Access Control addresses">MAC</acronym></th>
         <th>Status</th>
+        <th>Zone</th>
       {% endif %}
       </tr>
     </thead>
@@ -34,7 +36,7 @@
           <td><input type="checkbox" name="system_id"
                      value="{{ node.system_id }}" /></td>
         {% endif %}
-        <td>
+        <td class="node-column">
           <a href="{% url 'node-view' node.system_id %}">
           {{ node.fqdn }}
           </a>
@@ -46,6 +48,13 @@
           {% endfor %}
         </td>
         <td>{{ node.display_status }}</td>
+        <td class="zone-column">
+          {% if node.zone %}
+            <a href="{% url 'zone-view' node.zone.name %}">{{ node.zone }}</a>
+          {% else %}
+            (Default)
+          {% endif %}
+        </td>
       </tr>
     {% endfor %}
   </table>

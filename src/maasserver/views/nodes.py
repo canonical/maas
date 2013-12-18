@@ -168,7 +168,8 @@ def prefetch_nodes_listing(nodes_query):
         nodes_query
         .prefetch_related('macaddress_set')
         .select_related('nodegroup')
-        .prefetch_related('nodegroup__nodegroupinterface_set'))
+        .prefetch_related('nodegroup__nodegroupinterface_set')
+        .prefetch_related('zone'))
 
 
 class NodeListView(PaginatedListView, FormMixin, ProcessFormView):

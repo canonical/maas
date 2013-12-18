@@ -225,6 +225,26 @@ class NodeViewsTest(LoggedInTestCase):
         node_fqdns = [node.fqdn for node in nodes]
         self.assertThat(response.content, ContainsAll(node_fqdns))
 
+    def test_node_list_displays_zone(self):
+        node = factory.make_node()
+        response = self.client.get(reverse('node-list'))
+        [zone_field] = fromstring(response.content).cssselect('.zone-column')
+        self.assertEqual(node.zone.name, zone_field.text_content().strip())
+
+    def test_node_list_links_to_zone(self):
+        node = factory.make_node()
+        response = self.client.get(reverse('node-list'))
+        zone_link = reverse('zone-view', args=[node.zone.name])
+        self.assertEqual(
+            [zone_link],
+            get_content_links(response, '.zone-column'))
+
+    def test_node_list_shows_placeholder_for_zone_if_none_set(self):
+        factory.make_node(zone=None)
+        response = self.client.get(reverse('node-list'))
+        [zone_field] = fromstring(response.content).cssselect('.zone-column')
+        self.assertEqual("(Default)", zone_field.text_content().strip())
+
     def test_node_list_displays_sorted_list_of_nodes(self):
         # Nodes are sorted on the node list page, newest first.
         nodes = [factory.make_node() for i in range(3)]

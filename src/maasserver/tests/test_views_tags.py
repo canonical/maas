@@ -122,12 +122,13 @@ class TagViewsTest(LoggedInTestCase):
             reverse('node-view', args=[node.system_id])
             for node in reversed(nodes)
         ]
-        expr_node_links = XPath("//div[@id='nodes']/table//a/@href")
         expr_page_anchors = XPath("//div[@class='pagination']//a")
         # Fetch first page, should link newest two nodes and page 2
         response = self.client.get(reverse('tag-view', args=[tag.name]))
         page1 = fromstring(response.content)
-        self.assertEqual(node_links[:page_size], expr_node_links(page1))
+        self.assertEqual(
+            node_links[:page_size],
+            get_content_links(response, '.node-column'))
         self.assertEqual(
             [("next", "?page=2"), ("last", "?page=3")],
             [(a.text.lower(), a.get("href"))
@@ -138,7 +139,7 @@ class TagViewsTest(LoggedInTestCase):
         page2 = fromstring(response.content)
         self.assertEqual(
             node_links[page_size:page_size * 2],
-            expr_node_links(page2))
+            get_content_links(response, '.node-column'))
         self.assertEqual(
             [("first", "."), ("previous", "."),
              ("next", "?page=3"), ("last", "?page=3")],
@@ -148,7 +149,9 @@ class TagViewsTest(LoggedInTestCase):
         response = self.client.get(
             reverse('tag-view', args=[tag.name]), {"page": 3})
         page3 = fromstring(response.content)
-        self.assertEqual(node_links[page_size * 2:], expr_node_links(page3))
+        self.assertEqual(
+            node_links[page_size * 2:],
+            get_content_links(response, '.node-column'))
         self.assertEqual(
             [("first", "."), ("previous", "?page=2")],
             [(a.text.lower(), a.get("href"))
