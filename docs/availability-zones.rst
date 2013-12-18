@@ -115,3 +115,15 @@ To deploy in a particular zone, call the ``acquire`` method in the
 ``zone`` parameter with the name of the zone.  The method will allocate a node
 in that zone, or fail with an HTTP 409 ("conflict") error if the zone has no
 nodes available that match your request.
+
+Alternatively, you may want to request a node that is *not* in a particular
+zone, or one that is not in any of several zones.  To do that, specify the
+``not_in_zone`` parameter to ``acquire``.  This parameter takes a list of zone
+names; the allocated node will not be in any of them.  Again, if that leaves no
+nodes available that match your request, the call will return a "conflict"
+error.
+
+It is possible, though not usually useful, to combine the ``zone`` and
+``not_in_zone`` parameters.   If your choice for ``zone`` is also present in
+``not_in_zone``, no node will ever match your request.  Or if it's not, then
+the ``not_in_zone`` values will not affect the result of the call at all.
