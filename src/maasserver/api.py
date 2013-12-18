@@ -116,7 +116,6 @@ from django.core.exceptions import (
     )
 from django.core.urlresolvers import reverse
 from django.db.utils import DatabaseError
-from django.forms.models import model_to_dict
 from django.http import (
     Http404,
     HttpResponse,
@@ -141,7 +140,6 @@ from maasserver.api_utils import (
     get_mandatory_param,
     get_oauth_token,
     get_optional_list,
-    get_overridden_query_dict,
     )
 from maasserver.apidoc import (
     describe_resource,
@@ -339,9 +337,7 @@ class NodeHandler(OperationsHandler):
         node = Node.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NODE_PERMISSION.EDIT)
         Form = get_node_edit_form(request.user)
-        data = get_overridden_query_dict(
-            model_to_dict(node), request.data, Form.Meta.fields)
-        form = Form(data, instance=node)
+        form = Form(request.data, instance=node)
         if form.is_valid():
             return form.save()
         else:
@@ -1457,10 +1453,7 @@ class NodeGroupHandler(OperationsHandler):
         :type status: int
         """
         nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
-        data = get_overridden_query_dict(
-            model_to_dict(nodegroup), request.data,
-            NodeGroupEdit.Meta.fields)
-        form = NodeGroupEdit(instance=nodegroup, data=data)
+        form = NodeGroupEdit(instance=nodegroup, data=request.data)
         if form.is_valid():
             return form.save()
         else:
@@ -1755,10 +1748,8 @@ class NodeGroupInterfaceHandler(OperationsHandler):
             check_nodegroup_access(request, nodegroup)
         nodegroupinterface = get_object_or_404(
             NodeGroupInterface, nodegroup=nodegroup, interface=interface)
-        data = get_overridden_query_dict(
-            model_to_dict(nodegroupinterface), request.data,
-            NodeGroupInterfaceForm.Meta.fields)
-        form = NodeGroupInterfaceForm(data, instance=nodegroupinterface)
+        form = NodeGroupInterfaceForm(
+            request.data, instance=nodegroupinterface)
         if form.is_valid():
             return form.save()
         else:
@@ -1859,9 +1850,7 @@ class TagHandler(OperationsHandler):
         """
         tag = Tag.objects.get_tag_or_404(
             name=name, user=request.user, to_edit=True)
-        data = get_overridden_query_dict(
-            model_to_dict(tag), request.data, TagForm.Meta.fields)
-        form = TagForm(data, instance=tag)
+        form = TagForm(request.data, instance=tag)
         if form.is_valid():
             try:
                 new_tag = form.save(commit=False)
@@ -2602,9 +2591,7 @@ class ZoneHandler(OperationsHandler):
     def update(self, request, name):
         """PUT request.  Update zone."""
         zone = get_object_or_404(Zone, name=name)
-        data = get_overridden_query_dict(
-            model_to_dict(zone), request.data, ZoneForm.Meta.fields)
-        form = ZoneForm(instance=zone, data=data)
+        form = ZoneForm(instance=zone, data=request.data)
         if not form.is_valid():
             raise ValidationError(form.errors)
         return form.save()

@@ -444,8 +444,9 @@ class NodeEditForms(MAASServerTestCase):
         old_nodegroup = factory.make_node_group()
         node = factory.make_node(nodegroup=old_nodegroup)
         new_nodegroup = factory.make_node_group()
-        form = AdminNodeForm(data={'nodegroup': new_nodegroup}, instance=node)
-        self.assertRaises(ValueError, form.save)
+        AdminNodeForm(data={'nodegroup': new_nodegroup}, instance=node).save()
+        # The form saved without error, but the nodegroup change was ignored.
+        self.assertEqual(old_nodegroup, node.nodegroup)
 
     def test_AdminForm_sets_zone_initial_value(self):
         zone = factory.make_zone()

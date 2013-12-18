@@ -52,10 +52,10 @@ from django.contrib.auth.models import (
 from django.core.exceptions import ValidationError
 from django.forms import (
     Form,
-    ModelForm,
     MultipleChoiceField,
     )
 from lxml import etree
+from maasserver.api_utils import get_overridden_query_dict
 from maasserver.config_forms import SKIP_CHECK_NAME
 from maasserver.enum import (
     ARCHITECTURE,
@@ -109,6 +109,47 @@ from provisioningserver.enum import (
 
 INVALID_ARCHITECTURE_MESSAGE = compose_invalid_choice_text(
     'architecture', ARCHITECTURE_CHOICES)
+
+
+def remove_None_values(data):
+    """Return a new dictionary without the keys corresponding to None values.
+    """
+    return {key: value for key, value in data.items() if value is not None}
+
+
+class APIEditMixin:
+    """A mixin that allows sane usage of Django's form machinery via the API.
+
+    First it ensures that missing fields are not errors, then it removes
+    None values from cleaned data. This means that missing fields result
+    in no change instead of an error.
+    """
+
+    def full_clean(self):
+        """For missing fields, default to the model's existing value."""
+        self.data = get_overridden_query_dict(
+            self.initial, self.data, self.fields)
+        super(APIEditMixin, self).full_clean()
+
+    def _post_clean(self):
+        """Override Django's private hook _post_save to remove None values
+        from 'self.cleaned_data'.
+
+        _post_clean is where the fields of the instance get set with the data
+        from self.cleaned_data.  That's why the cleanup needs to happen right
+        before that.
+        """
+        self.cleaned_data = remove_None_values(self.cleaned_data)
+        super(APIEditMixin, self)._post_clean()
+
+
+class ModelForm(APIEditMixin, forms.ModelForm):
+    """A form for editing models, with MAAS-specific behaviour.
+
+    Specifically, it is much like Django's ``ModelForm``, but removes
+    ``None`` values from cleaned data. This allows the forms to be used
+    for both the UI and the API with unsuprising behaviour in both.
+    """
 
 
 class NodeForm(ModelForm):
@@ -171,32 +212,7 @@ class NodeForm(ModelForm):
             )
 
 
-def remove_None_values(data):
-    """Return a new dictionary without the keys corresponding to None values.
-    """
-    return {key: value for key, value in data.items() if value is not None}
-
-
-class APIEditMixin:
-    """A mixin that clears None values after the cleaning phase.
-
-    Form data contain None values for missing fields.  This class
-    removes these None values before processing the data.
-    """
-
-    def _post_clean(self):
-        """Override Django's private hook _post_save to remove None values
-        from 'self.cleaned_data'.
-
-        _post_clean is where the fields of the instance get set with the data
-        from self.cleaned_data.  That's why the cleanup needs to happen right
-        before that.
-        """
-        self.cleaned_data = remove_None_values(self.cleaned_data)
-        super(APIEditMixin, self)._post_clean()
-
-
-class AdminNodeForm(APIEditMixin, NodeForm):
+class AdminNodeForm(NodeForm):
     """A `NodeForm` which includes fields that only an admin may change."""
 
     zone = forms.ModelChoiceField(
