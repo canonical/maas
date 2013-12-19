@@ -501,7 +501,7 @@ class Factory(maastesting.factory.Factory):
             bytes_downloaded=bytes_downloaded, error=error)
 
     def make_zone(self, name=None, description=None, nodes=None):
-        """Create an availability `Zone`."""
+        """Create a physical `Zone`."""
         if name is None:
             name = self.make_name('zone')
         if description is None:

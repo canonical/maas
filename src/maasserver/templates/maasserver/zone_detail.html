@@ -1,9 +1,9 @@
 {% extends "maasserver/base.html" %}
 
 {% block nav-active-zone-list %}active{% endblock %}
-{% block title %}Availability zone {{ zone.name }}{% endblock %}
+{% block title %}Physical zone {{ zone.name }}{% endblock %}
 {% block page-title %}
-Availability zone: {{ zone.name }}
+Physical zone: {{ zone.name }}
 {% endblock %}
 {% block layout-modifiers %}sidebar{% endblock %}
 {% block html_includes %}{% include "maasserver/snippets.html" %}

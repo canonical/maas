@@ -77,7 +77,7 @@ class TestFactory(MAASTestCase):
     def test_make_node_sets_no_zone_if_zone_is_None(self):
         self.assertIsNone(factory.make_node(zone=None).zone)
 
-    def test_make_zone_returns_availability_zone(self):
+    def test_make_zone_returns_physical_zone(self):
         self.assertIsNotNone(factory.make_zone())
 
     def test_make_zone_assigns_name(self):

@@ -748,7 +748,7 @@ class TestNodeAPI(APITestCase):
         # Awkwardly, the request succeeds because for non-admins, "zone" is
         # an unknown parameter.  Unknown parameters are ignored.
         self.assertEqual(httplib.OK, response.status_code)
-        # The node's availability zone, however, has not been updated.
+        # The node's physical zone, however, has not been updated.
         node = reload_object(node)
         self.assertEqual(old_zone, node.zone)
 

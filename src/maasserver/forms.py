@@ -216,7 +216,7 @@ class AdminNodeForm(NodeForm):
     """A `NodeForm` which includes fields that only an admin may change."""
 
     zone = forms.ModelChoiceField(
-        label="Availability zone", required=False,
+        label="Physical zone", required=False,
         queryset=Zone.objects.all(), to_field_name='name')
 
     cpu_count = forms.IntegerField(
@@ -938,14 +938,14 @@ class ValidatorMultipleChoiceField(MultipleChoiceField):
 
 
 class SetZoneBulkAction:
-    """A custom action we only offer in bulk: "Set availability zone."
+    """A custom action we only offer in bulk: "Set physical zone."
 
     Looks just enough like a node action class for presentatoin purposes, but
     isn't one of the actions we normally offer on the node page.  The
     difference is that this action takes an argument: the zone.
     """
     name = 'set_zone'
-    display_bulk = "Set availability zone"
+    display_bulk = "Set physical zone"
 
 
 class BulkNodeActionForm(forms.Form):
@@ -968,7 +968,7 @@ class BulkNodeActionForm(forms.Form):
                 (SetZoneBulkAction.name, SetZoneBulkAction.display_bulk))
             # This adds an input field: the zone.
             self.fields['zone'] = forms.ModelChoiceField(
-                label="Availability zone", required=False,
+                label="Physical zone", required=False,
                 queryset=Zone.objects.all(), to_field_name='name')
         self.fields['action'] = forms.ChoiceField(
             required=True, choices=action_choices)

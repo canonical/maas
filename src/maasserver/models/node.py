@@ -438,7 +438,7 @@ class Node(CleanSave, TimestampedModel):
     agent_name = CharField(max_length=255, default='', blank=True, null=True)
 
     zone = ForeignKey(
-        Zone, verbose_name="Availability zone", default=None, blank=True,
+        Zone, verbose_name="Physical zone", default=None, blank=True,
         null=True, editable=True, db_index=True)
 
     # Juju expects the following standard constraints, which are stored here

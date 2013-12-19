@@ -124,7 +124,7 @@ class RenamableFieldsForm(forms.Form):
 
 
 def detect_nonexistent_zone_names(names):
-    """Check for, and return, names of nonexistent availability zones.
+    """Check for, and return, names of nonexistent physical zones.
 
     Used for checking zone names as passed to the `AcquireNodeForm`.
 
@@ -167,12 +167,12 @@ class AcquireNodeForm(RenamableFieldsForm):
             'invalid_list':
             "Invalid parameter: list of MAC addresses required."})
 
-    zone = forms.CharField(label="Availability zone", required=False)
+    zone = forms.CharField(label="Physical zone", required=False)
 
     not_in_zone = ValidatorMultipleChoiceField(
         validator=ZONE_NAME_VALIDATOR, label="Not in zone", required=False,
         error_messages={
-            'invalid_list': "Invalid parameter: must list availability zones.",
+            'invalid_list': "Invalid parameter: must list physical zones.",
             })
 
     ignore_unknown_constraints = True

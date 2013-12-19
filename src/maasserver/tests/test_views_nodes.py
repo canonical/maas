@@ -437,7 +437,7 @@ class NodeViewsTest(LoggedInTestCase):
             ', '.join(mac.get_raw() for mac in routers),
             routers_display)
 
-    def test_view_node_links_to_availability_zone(self):
+    def test_view_node_links_to_physical_zone(self):
         node = factory.make_node()
         node_link = reverse('node-view', args=[node.system_id])
 
@@ -447,12 +447,12 @@ class NodeViewsTest(LoggedInTestCase):
         [zone_section] = fromstring(response.content).cssselect('#zone')
         self.assertThat(
             zone_section.text_content(),
-            ContainsAll(["Availability zone", node.zone.name]))
+            ContainsAll(["Physical zone", node.zone.name]))
         self.assertEqual(
             [reverse('zone-view', args=[node.zone.name])],
             get_content_links(response, '#zone'))
 
-    def test_view_node_shows_no_availability_zone_if_not_set(self):
+    def test_view_node_shows_no_physical_zone_if_not_set(self):
         node = factory.make_node(zone=None)
         node_link = reverse('node-view', args=[node.system_id])
 

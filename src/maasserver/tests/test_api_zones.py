@@ -1,7 +1,7 @@
 # Copyright 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for availability `Zone` API."""
+"""Tests for physical `Zone` API."""
 
 from __future__ import (
     absolute_import,

@@ -813,10 +813,10 @@ class NodesHandler(OperationsHandler):
         :param not_connected_to: List of routers' MAC Addresses the returned
             node must not be connected to.
         :type connected_to: list of unicodes
-        :param zone: An optional name for an availability zone the acquired
+        :param zone: An optional name for a physical zone the acquired
             node should be located in.
         :type zone: unicode
-        :type not_in_zone: Optional list of availability zones from which the
+        :type not_in_zone: Optional list of physical zones from which the
             node should not be acquired.
         :type not_in_zone: List of unicodes.
         :param agent_name: An optional agent name to attach to the
@@ -841,10 +841,10 @@ class NodesHandler(OperationsHandler):
     @admin_method
     @operation(idempotent=False)
     def set_zone(self, request):
-        """Assign multiple nodes to an availability zone at once.
+        """Assign multiple nodes to a physical zone at once.
 
         :param zone: Zone name.  If omitted, the zone is "none" and the nodes
-            will be taken out of their availability zones.
+            will be taken out of their physical zones.
         :param nodes: system_ids of the nodes whose zones are to be set.
            (An empty list is acceptable).
         """
@@ -2566,16 +2566,16 @@ def describe(request):
 
 
 class ZoneHandler(OperationsHandler):
-    """Manage an availability zone.
+    """Manage a physical zone.
 
-    Any node may optionally be assigned to an availability zone, or "zone" for
-    short.  The meaning of an availability zone is up to you: it could identify
+    Any node may optionally be assigned to a physical zone, or "zone" for
+    short.  The meaning of a physical zone is up to you: it could identify
     e.g. a server rack, a network, or a data centre.  Users can then allocate
-    nodes from specific availability zones, to suit their redundancy or
+    nodes from specific physical zones, to suit their redundancy or
     performance requirements.
 
     This functionality is only available to administrators.  Other users can
-    view availability zones, but not modify them.
+    view physical zones, but not modify them.
     """
     model = Zone
     fields = ('name', 'description')
@@ -2615,7 +2615,7 @@ class ZoneHandler(OperationsHandler):
 
 
 class ZonesHandler(OperationsHandler):
-    """API for availability zones."""
+    """API for physical zones."""
     update = delete = None
 
     @classmethod
@@ -2624,7 +2624,7 @@ class ZonesHandler(OperationsHandler):
 
     @admin_method
     def create(self, request):
-        """Create a new availability zone.
+        """Create a new physical zone.
 
         :param name: Identifier-style name for the new zone.
         :type name: unicode
@@ -2640,6 +2640,6 @@ class ZonesHandler(OperationsHandler):
     def read(self, request):
         """List zones.
 
-        Get a listing of all the availability zones.
+        Get a listing of all the physical zones.
         """
         return Zone.objects.all().order_by('name')

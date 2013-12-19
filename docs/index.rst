@@ -67,7 +67,7 @@ Deploying services
 
    juju-quick-start
    tags
-   availability-zones
+   physical-zones
 
 
 ***********************

@@ -1,7 +1,7 @@
 # Copyright 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Availability zone objects."""
+"""Physical zone objects."""
 
 from __future__ import (
     absolute_import,
@@ -39,8 +39,8 @@ class Zone(CleanSave, TimestampedModel):
 
     class Meta(DefaultMeta):
         """Needed for South to recognize this model."""
-        verbose_name = "Availability zone"
-        verbose_name_plural = "Availability zones"
+        verbose_name = "Physical zone"
+        verbose_name_plural = "Physical zones"
         ordering = ["name"]
 
     name = CharField(

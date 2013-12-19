@@ -310,7 +310,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
             form.errors)
 
     def test_not_in_zone_can_exclude_multiple_zones(self):
-        # Three nodes, all in different availability zones.  If we say we don't
+        # Three nodes, all in different physical zones.  If we say we don't
         # want the first node's zone or the second node's zone, we get the node
         # in the remaining zone.
         nodes = [factory.make_node() for _ in range(3)]

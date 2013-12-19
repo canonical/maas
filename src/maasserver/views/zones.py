@@ -64,7 +64,7 @@ class ZoneView(DetailView):
 
 
 class ZoneAdd(CreateView):
-    """View for creating an availability zone."""
+    """View for creating a physical zone."""
 
     form_class = ZoneForm
     template_name = 'maasserver/zone_add.html'
@@ -79,7 +79,7 @@ class ZoneAdd(CreateView):
 
 
 class ZoneEdit(UpdateView):
-    """View for editing an availability zone."""
+    """View for editing a physical zone."""
 
     model = Zone
     template_name = 'maasserver/zone_edit.html'
@@ -93,7 +93,7 @@ class ZoneEdit(UpdateView):
 
 
 class ZoneDelete(HelpfulDeleteView):
-    """View for deleting an availability zone."""
+    """View for deleting a physical zone."""
 
     template_name = 'maasserver/zone_configm_delete.html'
     context_object_name = 'zone_to_delete'
