@@ -40,6 +40,10 @@
       <label for="id_power_parameters">Power parameters</label>
       {{ node_form.power_parameters }}
     </p>
+    <p class="zone">
+      <label for="id_zone">Physical zone</label>
+      {{ node_form.zone }}
+    </p>
   {% endif %}
 </script>
 {% for power_type, fieldset in POWER_TYPE_PARAMETERS_FIELDS %}

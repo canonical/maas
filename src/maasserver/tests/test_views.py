@@ -141,6 +141,19 @@ class TestSnippets(LoggedInTestCase):
             response.content, '#add-node',
             'select#id_power_type')
 
+    def test_zone_does_not_exist_if_not_admin(self):
+        response = self.client.get('/')
+        self.assertTemplateExistsAndDoesNotContain(
+            response.content, '#add-node',
+            'select#id_zone')
+
+    def test_zone_exists_if_admin(self):
+        self.become_admin()
+        response = self.client.get('/')
+        self.assertTemplateExistsAndContains(
+            response.content, '#add-node',
+            'select#id_zone')
+
 
 class FakeDeletableModel:
     """A fake model class, with a delete method."""
