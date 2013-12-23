@@ -76,6 +76,19 @@ class ZoneListingViewTest(LoggedInTestCase):
             [link for link in get_content_links(response)
                 if link.startswith('/zones/')])
 
+    def test_zone_list_displays_links_to_zone_node(self):
+        zones = [factory.make_zone() for i in range(3)]
+        sorted_zones = sorted(zones, key=lambda x: x.name.lower())
+        response = self.client.get(reverse('zone-list'))
+        zone_node_links = [
+            reverse('node-list') + "?" +
+            urlencode({'query': 'zone=%s' % zone.name})
+            for zone in sorted_zones]
+        self.assertEqual(
+            zone_node_links,
+            [link for link in get_content_links(response)
+                if link.startswith('/nodes/')])
+
 
 class ZoneListingViewTestNonAdmin(LoggedInTestCase):
 

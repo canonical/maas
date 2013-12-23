@@ -31,7 +31,10 @@
               </a>
             </td>
             <td>{{ zone_item.description|truncatechars:40 }}</td>
-            <td>{{ zone_item.node_set.count }}</td>
+            <td>
+              {{ zone_item.node_set.count }}
+              (<a href="{% url 'node-list' %}?query=zone%3D{{ zone_item.name }}">view</a>)
+            </td>
             {% if user.is_superuser %}
             <td>
               <a href="{% url 'zone-edit' zone_item.name %}"
