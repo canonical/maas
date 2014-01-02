@@ -67,7 +67,6 @@ from maasserver.views.nodes import message_from_form_stats
 from maastesting.matchers import ContainsAll
 from metadataserver.models.commissioningscript import LLDP_OUTPUT_NAME
 from provisioningserver.enum import POWER_TYPE_CHOICES
-from unittest import skip
 
 
 class NodeViewsTest(LoggedInTestCase):
@@ -181,31 +180,29 @@ class NodeViewsTest(LoggedInTestCase):
             [link for link in get_content_links(response)
                 if link.startswith('/nodes/node')])
 
-    # XXX 2013-12-23 gmb bug=1263644:
-    #     ISTM that this test shouldn't actually have passed; it
-    #     certainly doesn't on my local machine or, apparently, during
-    #     the CI test run.
-    @skip
     def test_node_list_sorts_by_zone(self):
         zones = [factory.make_zone() for _ in range(5)]
         nodes = [factory.make_node(zone=zone) for zone in zones]
 
-        # First check the ascending sort order
-        sorted_nodes = sorted(nodes, key=attrgetter('zone.name'))
+        # We use PostgreSQL's case-insensitive text sorting algorithm.
+        sorted_nodes = sorted(
+            nodes, key=lambda node: node.zone.name.lower())
+        node_links = [
+            reverse('node-view', args=[node.system_id])
+            for node in sorted_nodes
+        ]
+
+        # First check the ascending sort order.
         response = self.client.get(
             reverse('node-list'), {
                 'sort': 'zone',
                 'dir': 'asc',
             })
-        node_links = [
-            reverse('node-view', args=[node.system_id])
-            for node in sorted_nodes
-        ]
         self.assertEqual(
             node_links,
             get_content_links(response, '.node-column'))
 
-        # Now check the reverse order
+        # Now check the reverse order.
         node_links = list(reversed(node_links))
         response = self.client.get(
             reverse('node-list'), {
