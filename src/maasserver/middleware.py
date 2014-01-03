@@ -41,7 +41,13 @@ from django.http import (
     HttpResponseForbidden,
     HttpResponseRedirect,
     )
-from django.http.request import build_request_repr
+try:
+    from django.http.request import build_request_repr
+except ImportError:
+    # build_request_repr is only used for debugging: use
+    # a degraded version if build_request_repr is not
+    # available (i.e. if Django version < 1.5).
+    build_request_repr = repr
 from django.utils.http import urlquote_plus
 from maasserver import logger
 from maasserver.exceptions import (
