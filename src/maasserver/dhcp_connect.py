@@ -35,7 +35,7 @@ def dhcp_post_save_NodeGroupInterface(sender, instance, created, **kwargs):
 
 
 def dhcp_post_edit_status_NodeGroup(instance, old_field, **kwargs):
-    """The status of a NodeGroup changed."""
+    """Reconfigure DHCP for a NodeGroup after its status has changed."""
     # This could be optimized a bit by detecting if the status change is
     # actually a change from 'do not manage DHCP' to 'manage DHCP'.
     # Circular import.
@@ -44,6 +44,16 @@ def dhcp_post_edit_status_NodeGroup(instance, old_field, **kwargs):
 
 
 connect_to_field_change(dhcp_post_edit_status_NodeGroup, NodeGroup, 'status')
+
+
+def dhcp_post_edit_name_NodeGroup(instance, old_field, **kwargs):
+    """Reconfigure DHCP for a NodeGroup after its name has changed."""
+    # Circular import.
+    from maasserver.dhcp import configure_dhcp
+    configure_dhcp(instance)
+
+
+connect_to_field_change(dhcp_post_edit_name_NodeGroup, NodeGroup, 'name')
 
 
 def ntp_server_changed(sender, instance, created, **kwargs):

@@ -142,6 +142,17 @@ class TestDHCP(MAASServerTestCase):
         nodegroup.accept()
         self.assertEqual(1, dhcp.write_dhcp_config.apply_async.call_count)
 
+    def test_dhcp_config_gets_written_when_nodegroup_name_changes(self):
+        nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
+        self.patch(settings, "DHCP_CONNECT", True)
+        self.patch(dhcp, 'write_dhcp_config')
+        new_name = factory.make_name('dns name'),
+
+        nodegroup.name = new_name
+        nodegroup.save()
+
+        self.assertEqual(1, dhcp.write_dhcp_config.apply_async.call_count)
+
     def test_write_dhcp_config_task_routed_to_nodegroup_worker(self):
         nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.PENDING)
         self.patch(settings, "DHCP_CONNECT", True)
