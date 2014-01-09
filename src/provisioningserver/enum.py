@@ -50,6 +50,9 @@ class POWER_TYPE:
     # http://www.seamicro.com/sites/default/files/SM15000_Datasheet.pdf
     SEAMICRO15K = 'sm15k'
 
+    # Intel Active Management Technology
+    AMT = 'amt'
+
 
 POWER_TYPE_CHOICES = (
     (POWER_TYPE.VIRSH, "virsh (virtual systems)"),
@@ -58,6 +61,7 @@ POWER_TYPE_CHOICES = (
     (POWER_TYPE.IPMI, "IPMI"),
     (POWER_TYPE.MOONSHOT, "iLO4 Moonshot Chassis"),
     (POWER_TYPE.SEAMICRO15K, "SeaMicro 15000"),
+    (POWER_TYPE.AMT, "Intel AMT"),
     )
 
 

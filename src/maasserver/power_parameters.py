@@ -118,4 +118,14 @@ POWER_TYPE_PARAMETERS = {
         ],
         required=False,
         skip_check=True),
+    POWER_TYPE.AMT: DictCharField(
+        [
+            ('power_address',
+             forms.CharField(
+                 label="IP Address or Hostname", required=False)),
+            ('power_pass',
+             forms.CharField(label="Password", required=False)),
+        ],
+        required=False,
+        skip_check=True),
 }
