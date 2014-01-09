@@ -37,7 +37,7 @@ DEFAULT_MAAS_URL = "http://%s:5240/" % guess_server_address()
 
 # Use our custom test runner, which makes sure that a local database
 # cluster is running in the branch.
-TEST_RUNNER = 'maastesting.runner.TestRunner'
+TEST_RUNNER = 'maastesting.djangoloader.MAASDjangoTestRunner'
 
 # Don't connect to the DNS server in tests, this will be enabled on a case per
 # case basis.

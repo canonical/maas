@@ -14,17 +14,13 @@ __metaclass__ = type
 import httplib
 import json
 import logging
+from StringIO import StringIO
 import urllib2
 import urlparse
 
-from StringIO import StringIO
+from provisioningserver.custom_hardware.utils import create_node
+from provisioningserver.enum import POWER_TYPE
 
-from provisioningserver.custom_hardware.utils import (
-    create_node
-    )
-from provisioningserver.enum import (
-    POWER_TYPE
-    )
 
 logger = logging.getLogger(__name__)
 

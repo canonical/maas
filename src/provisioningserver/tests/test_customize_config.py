@@ -24,7 +24,7 @@ from subprocess import (
 import sys
 from textwrap import dedent
 
-from maastesting import root
+from maastesting import bindir
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver import customize_config
@@ -44,7 +44,7 @@ class TestCustomizeConfig(MAASTestCase):
     def test_runs_as_script(self):
         original_text = factory.getRandomString()
         original_file = self.make_file(original_text)
-        script = os.path.join(root, "bin", "maas-provision")
+        script = os.path.join(bindir, "maas-provision")
         command = Popen(
             [script, "customize-config", original_file],
             stdin=PIPE, stdout=PIPE,

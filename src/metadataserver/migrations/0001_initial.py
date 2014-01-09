@@ -29,6 +29,10 @@ from south.v2 import SchemaMigration
 
 class Migration(SchemaMigration):
 
+    depends_on = (
+        ("maasserver", "0059_dhcp_detection_model"),
+    )
+
     def forwards(self, orm):
         
         # Adding model 'NodeKey'

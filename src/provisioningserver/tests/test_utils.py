@@ -42,7 +42,10 @@ from fixtures import (
     FakeLogger,
     )
 from lxml import etree
-from maastesting import root
+from maastesting import (
+    bindir,
+    root,
+    )
 from maastesting.factory import factory
 from maastesting.fakemethod import FakeMethod
 from maastesting.testcase import MAASTestCase
@@ -843,7 +846,7 @@ class TestAtomicWriteScript(MAASTestCase):
 
     def test_script_executable(self):
         content = factory.getRandomString()
-        script = ["%s/bin/maas-provision" % root, 'atomic-write']
+        script = [os.path.join(bindir, "maas-provision"), 'atomic-write']
         target_file = self.make_file()
         script.extend(('--filename', target_file, '--mode', '615'))
         cmd = Popen(

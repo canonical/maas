@@ -10,10 +10,11 @@ str = None
 
 __metaclass__ = type
 
-import re
-import commands
 import argparse
+import commands
 import json
+import re
+
 
 IPMI_MAAS_USER = 'Administrator'
 IPMI_MAAS_PASSWORD = 'password'

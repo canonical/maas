@@ -12,8 +12,8 @@ __metaclass__ = type
 
 import commands
 import glob
-import subprocess
 import re
+import subprocess
 
 
 def detect_ipmi():

@@ -34,11 +34,11 @@ from provisioningserver.import_images import (
     )
 from provisioningserver.import_images.ephemerals_script import (
     compose_filter,
-    move_file_by_glob,
     create_symlinked_image_dir,
     extract_image_tarball,
     install_image_from_simplestreams,
     make_arg_parser,
+    move_file_by_glob,
     )
 from provisioningserver.pxe.tftppath import (
     compose_image_path,

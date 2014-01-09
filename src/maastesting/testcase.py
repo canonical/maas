@@ -26,7 +26,6 @@ from maastesting.scenarios import WithScenarios
 import mock
 from nose.proxy import ResultProxy
 from nose.tools import nottest
-from provisioningserver.testing.worker_cache import WorkerCacheFixture
 import testresources
 import testtools
 import testtools.matchers
@@ -86,7 +85,6 @@ class MAASTestCase(WithScenarios, testtools.TestCase):
 
     def setUp(self):
         super(MAASTestCase, self).setUp()
-        self.useFixture(WorkerCacheFixture())
         self.setUpResources()
 
     def setUpResources(self):

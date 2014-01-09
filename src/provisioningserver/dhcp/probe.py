@@ -26,6 +26,7 @@ from sys import exit
 
 from provisioningserver.dhcp.detect import probe_dhcp
 
+
 argument_parser = argparse.ArgumentParser(description=__doc__)
 
 

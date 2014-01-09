@@ -16,8 +16,8 @@ __all__ = []
 
 from maasserver.models import (
     BootImage,
-    NodeGroup,
     Config,
+    NodeGroup,
     )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase

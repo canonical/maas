@@ -29,13 +29,13 @@ str = None
 
 __metaclass__ = type
 
-import os
 import commands
+import json
+import os
+import random
 import re
 import string
-import random
 import time
-import json
 
 
 def is_ipmi_dhcp():

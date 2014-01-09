@@ -40,6 +40,7 @@ build: \
     bin/twistd.pserv bin/test.pserv \
     bin/maas-probe-dhcp \
     bin/twistd.txlongpoll \
+    bin/celeryd.cluster bin/celeryd.region \
     bin/py bin/ipy \
     $(js_enums)
 
@@ -65,7 +66,8 @@ bin/database: bin/buildout buildout.cfg versions.cfg setup.py
 	$(buildout) install database
 	@touch --no-create $@
 
-bin/maas: bin/buildout buildout.cfg versions.cfg setup.py $(js_enums)
+bin/maas bin/celeryd.region: \
+    bin/buildout buildout.cfg versions.cfg setup.py $(js_enums)
 	$(buildout) install maas
 	@touch --no-create $@
 
@@ -85,7 +87,7 @@ bin/test.maastesting: bin/buildout buildout.cfg versions.cfg setup.py
 	$(buildout) install maastesting-test
 	@touch --no-create $@
 
-bin/celeryd bin/maas-provision bin/twistd.pserv: \
+bin/maas-provision bin/twistd.pserv bin/celeryd.cluster: \
     bin/buildout buildout.cfg versions.cfg setup.py
 	$(buildout) install pserv
 	@touch --no-create $@
@@ -293,9 +295,9 @@ services/%/@supervise: services/%/@deps
 
 services/dns/@deps: bin/py
 
-services/cluster-worker/@deps: bin/celeryd
+services/cluster-worker/@deps: bin/celeryd.cluster
 
-services/region-worker/@deps: bin/celeryd
+services/region-worker/@deps: bin/celeryd.region
 
 services/database/@deps: bin/database
 

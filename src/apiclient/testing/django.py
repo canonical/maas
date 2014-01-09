@@ -19,7 +19,6 @@ import os
 
 from django.core.files.uploadhandler import MemoryFileUploadHandler
 from django.http.multipartparser import MultiPartParser
-from maasserver.utils import ignore_unused
 
 
 def parse_headers_and_body_with_django(headers, body):
@@ -64,7 +63,7 @@ def parse_headers_and_body_with_mimer(headers, body):
     #   which fails if you don't have a settings.py available. Which we don't
     #   during 'test.pserv'. So we import this late.
     from piston import emitters
-    ignore_unused(emitters)
+    emitters  # Imported for side-effects.
     from piston.utils import translate_mime
 
     environ = {'wsgi.input': BytesIO(body)}

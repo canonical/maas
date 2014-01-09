@@ -18,11 +18,11 @@ __all__ = []
 import os
 from subprocess import check_output
 
-from maastesting.bindfixture import (
+from maastesting.testcase import MAASTestCase
+from provisioningserver.testing.bindfixture import (
     BINDServer,
     BINDServerResources,
     )
-from maastesting.testcase import MAASTestCase
 from testtools.matchers import (
     Contains,
     FileContains,

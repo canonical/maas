@@ -19,7 +19,7 @@ port=5246
 rndc_port=5247
 
 # Create DNS config.
-bin/py -m maastesting.bindfixture -- \
+bin/py -m provisioningserver/testing/bindfixture -- \
     --create-config-only --overwrite-config \
     --homedir "${homedir}" --port "${port}" \
     --rndc-port "${rndc_port}"
@@ -33,6 +33,6 @@ bin/maas get_named_conf --edit --config_path "${homedir}/named.conf"
 
 # Run named.
 exec $(command -v authbind && echo --deep) \
-    bin/py -m maastesting.bindfixture -- \
+    bin/py -m provisioningserver/testing/bindfixture -- \
     --homedir "${homedir}" --port "${port}" \
     --rndc-port "${rndc_port}"

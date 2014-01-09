@@ -14,14 +14,17 @@ str = None
 __metaclass__ = type
 __all__ = []
 
-from subprocess import STDOUT
+from subprocess import check_call
+from unittest import skip
 
 from maastesting import root
 from maastesting.testcase import MAASTestCase
-from provisioningserver.utils import call_capture_and_check
 
 
 class TestLint(MAASTestCase):
 
+    @skip(
+        "XXX: GavinPanella 2014-01-09 bug=1267472: "
+        "This needs altering once the new package structure is in place.")
     def test_that_there_is_no_lint_in_the_tree(self):
-        call_capture_and_check(("make", "-C", root, "lint"), stderr=STDOUT)
+        check_call(("make", "-C", root, "lint"))

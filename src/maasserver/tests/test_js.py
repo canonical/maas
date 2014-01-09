@@ -26,6 +26,7 @@ from os.path import (
     join,
     relpath,
     )
+import sys
 from urlparse import urljoin
 
 from maastesting import (
@@ -142,8 +143,16 @@ class YUIUnitTestsBase:
             # This test has been cloned; just call-up to run the test.
             super(YUIUnitTestsBase, self).__call__(result)
         else:
-            with ProxiesDisabledFixture():
-                self.multiply(result)
+            try:
+                with ProxiesDisabledFixture():
+                    self.multiply(result)
+            except KeyboardInterrupt:
+                raise
+            except:
+                if result is None:
+                    raise
+                else:
+                    result.addError(self, sys.exc_info())
 
     def test_YUI3_unit_tests(self):
         # Load the page and then wait for #suite to contain

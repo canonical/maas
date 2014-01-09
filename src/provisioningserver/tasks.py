@@ -46,9 +46,7 @@ from provisioningserver.dhcp import (
     config,
     detect,
     )
-from provisioningserver.dhcp.leases import (
-    upload_leases,
-    )
+from provisioningserver.dhcp.leases import upload_leases
 from provisioningserver.dns.config import (
     DNSConfig,
     execute_rndc_command,

@@ -23,6 +23,7 @@ import json
 from logging import getLogger
 import os
 from pwd import getpwnam
+import sys
 from time import sleep
 from urllib2 import (
     HTTPError,
@@ -126,7 +127,10 @@ def start_celery(server_url, connection_details, user, group):
     # and the URL for the region controller.
     env = dict(
         os.environ, CELERY_BROKER_URL=broker_url, MAAS_URL=server_url)
-    command = 'celeryd', '--beat', '--queues', get_cluster_uuid()
+    command = (
+        sys.executable, "-m", "celery/bin/celeryd",
+        '--beat', '--queues', get_cluster_uuid(),
+    )
 
     # Change gid first, just in case changing the uid might deprive
     # us of the privileges required to setgid.

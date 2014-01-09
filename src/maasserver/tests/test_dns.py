@@ -36,10 +36,8 @@ from maasserver.models import (
     )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maastesting.bindfixture import BINDServer
 from maastesting.celery import CeleryFixture
 from maastesting.fakemethod import FakeMethod
-from maastesting.tests.test_bindfixture import dig_call
 from mock import (
     ANY,
     call,
@@ -57,6 +55,8 @@ from provisioningserver.dns.config import (
     DNSZoneConfigBase,
     )
 from provisioningserver.dns.utils import generated_hostname
+from provisioningserver.testing.bindfixture import BINDServer
+from provisioningserver.testing.tests.test_bindfixture import dig_call
 from rabbitfixture.server import allocate_ports
 from testresources import FixtureResource
 from testtools.matchers import (

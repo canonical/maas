@@ -13,25 +13,38 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    "bindir",
     "root",
     ]
 
-from os import listdir
 from os.path import (
     abspath,
     dirname,
     join,
     pardir,
+    realpath,
     )
 import re
+from sys import executable
 from warnings import filterwarnings
 
 # The root of the source tree.
-root = abspath(join(dirname(__file__), pardir, pardir))
+root = abspath(join(dirname(realpath(__file__)), pardir, pardir))
+
+# The directory containing the current interpreter.
+bindir = abspath(dirname(executable))
 
 # Construct a regular expression that matches all of MAAS's core
 # packages, and their subpackages.
-packages = listdir(join(root, "src"))
+packages = {
+    "apiclient",
+    "maas",
+    "maascli",
+    "maasserver",
+    "maastesting",
+    "metadataserver",
+    "provisioningserver",
+}
 packages_expr = r"^(?:%s)\b" % "|".join(
     re.escape(package) for package in packages)
 

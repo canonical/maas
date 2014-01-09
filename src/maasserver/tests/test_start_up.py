@@ -14,6 +14,8 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+import atexit
+
 from lockfile import (
     FileLock,
     LockTimeout,
@@ -64,6 +66,8 @@ class TestStartUp(MAASServerTestCase):
     def setUp(self):
         super(TestStartUp, self).setUp()
         self.patch(start_up, 'LOCK_FILE_NAME', self.make_file())
+        # Prevent tests from leaving broken atexit handlers behind.
+        self.patch(atexit, "_exithandlers", [])
 
     def test_start_up_calls_setup_maas_avahi_service(self):
         recorder = FakeMethod()

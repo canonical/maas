@@ -17,8 +17,8 @@ __all__ = []
 from fixtures import FakeLogger
 from maasserver import tasks
 from maasserver.enum import NODEGROUP_STATUS
-from maasserver.testing.factory import factory
 from maasserver.models import NodeGroup
+from maasserver.testing.factory import factory
 from maastesting.celery import CeleryFixture
 from maastesting.testcase import MAASTestCase
 import mock
