@@ -27,6 +27,7 @@ __all__ = [
     'SSHKey',
     'Tag',
     'UserProfile',
+    'Vlan',
     'Zone',
     ]
 
@@ -55,6 +56,7 @@ from maasserver.models.sshkey import SSHKey
 from maasserver.models.tag import Tag
 from maasserver.models.user import create_user
 from maasserver.models.userprofile import UserProfile
+from maasserver.models.vlan import Vlan
 from maasserver.models.zone import Zone
 from maasserver.utils import ignore_unused
 from piston.doc import HandlerDocumentation
@@ -64,7 +66,7 @@ from piston.models import Consumer
 # export in __all__.
 ignore_unused(
     ComponentError, Config, DHCPLease, FileStorage, MACAddress, NodeGroup,
-    SSHKey, Tag, UserProfile, NodeGroupInterface)
+    SSHKey, Tag, UserProfile, Vlan, NodeGroupInterface)
 
 
 # Connect the 'create_user' method to the post save signal of User.

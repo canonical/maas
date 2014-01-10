@@ -39,6 +39,7 @@ from maasserver.models import (
     NodeGroupInterface,
     SSHKey,
     Tag,
+    Vlan,
     Zone,
     )
 from maasserver.models.node import NODE_TRANSITIONS
@@ -511,6 +512,16 @@ class Factory(maastesting.factory.Factory):
         if nodes is not None:
             zone.node_set.add(*nodes)
         return zone
+
+    def make_vlan(self, tag=None, description=None):
+        """Create a `Vlan`."""
+        if description is None:
+            description = self.getRandomString()
+        if tag is None:
+            tag = random.randint(1, 0xFFE)
+        vlan = Vlan(tag=tag, description=description)
+        vlan.save()
+        return vlan
 
 
 # Create factory singleton.
