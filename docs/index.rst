@@ -88,6 +88,7 @@ Troubleshooting
 .. toctree::
    :maxdepth: 2
 
+   getting-help
    troubleshooting
 
 
