@@ -16,6 +16,7 @@ __all__ = []
 
 import httplib
 from operator import attrgetter
+import os
 from textwrap import dedent
 from urlparse import (
     parse_qsl,
@@ -23,6 +24,7 @@ from urlparse import (
     )
 
 from django.core.urlresolvers import reverse
+from django.conf import settings
 from lxml.etree import XPath
 from lxml.html import fromstring
 import maasserver.api
@@ -1076,6 +1078,13 @@ class NodeEnlistmentPreseedViewTest(LoggedInTestCase):
         # Simply test that the preseed looks ok.
         self.assertIn('metadata_url', response.content)
 
+    def test_enlistpreseedview_catches_template_error(self):
+        path = self.make_file(name="enlist", contents="{{invalid}}")
+        self.patch(
+            settings, 'PRESEED_TEMPLATE_LOCATIONS', [os.path.dirname(path)])
+        response = self.client.get(reverse('enlist-preseed-view'))
+        self.assertIn('ERROR RENDERING PRESEED', response.content)
+
     def test_enlistpreseedview_display_warning_about_url(self):
         response = self.client.get(reverse('enlist-preseed-view'))
         message_chunk = (
@@ -1092,6 +1101,15 @@ class NodePreseedViewTest(LoggedInTestCase):
         node_preseed_link = reverse('node-preseed-view', args=[node.system_id])
         response = self.client.get(node_preseed_link)
         self.assertIn(get_preseed(node), response.content)
+
+    def test_preseedview_node_catches_template_error(self):
+        node = factory.make_node(owner=self.logged_in_user)
+        node_preseed_link = reverse('node-preseed-view', args=[node.system_id])
+        path = self.make_file(name="generic", contents="{{invalid}}")
+        self.patch(
+            settings, 'PRESEED_TEMPLATE_LOCATIONS', [os.path.dirname(path)])
+        response = self.client.get(node_preseed_link)
+        self.assertIn('ERROR RENDERING PRESEED', response.content)
 
     def test_preseedview_node_displays_message_if_commissioning(self):
         node = factory.make_node(
