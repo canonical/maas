@@ -23,7 +23,7 @@ import os.path
 import random
 from textwrap import dedent
 
-from celery.conf import conf
+from celery.app import app_or_default
 from maastesting.factory import factory
 from maastesting.fakemethod import FakeMethod
 from maastesting.matchers import (
@@ -71,6 +71,9 @@ from testtools.matchers import (
     StartsWith,
     )
 from twisted.python.filepath import FilePath
+
+
+conf = app_or_default().conf
 
 
 class TestRNDCUtilities(MAASTestCase):

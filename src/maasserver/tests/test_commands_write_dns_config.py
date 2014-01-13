@@ -17,7 +17,7 @@ __all__ = []
 
 import os
 
-from celery.conf import conf
+from celery.app import app_or_default
 from django.conf import settings
 from django.core.management import call_command
 from maasserver.enum import (
@@ -29,6 +29,9 @@ from maasserver.testing.testcase import MAASServerTestCase
 from netaddr import IPNetwork
 from provisioningserver import tasks
 from testtools.matchers import FileExists
+
+
+conf = app_or_default().conf
 
 
 class TestWriteDNSConfigCommand(MAASServerTestCase):

@@ -17,7 +17,7 @@ __all__ = []
 
 import os
 
-from celery.conf import conf
+from celery.app import app_or_default
 from django.core.management import call_command
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.factory import factory
@@ -30,6 +30,9 @@ from testtools.matchers import (
     FileContains,
     FileExists,
     )
+
+
+conf = app_or_default().conf
 
 
 class TestSetUpDNSCommand(MAASServerTestCase):

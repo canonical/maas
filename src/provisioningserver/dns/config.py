@@ -35,7 +35,7 @@ from itertools import (
 import os.path
 import re
 
-from celery.conf import conf
+from celery.app import app_or_default
 from provisioningserver.dns.utils import generated_hostname
 from provisioningserver.utils import (
     atomic_write,
@@ -51,6 +51,9 @@ MAAS_NAMED_CONF_NAME = 'named.conf.maas'
 MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME = 'named.conf.options.inside.maas'
 MAAS_NAMED_RNDC_CONF_NAME = 'named.conf.rndc.maas'
 MAAS_RNDC_CONF_NAME = 'rndc.conf.maas'
+
+
+conf = app_or_default().conf
 
 
 class DNSConfigDirectoryMissing(Exception):
