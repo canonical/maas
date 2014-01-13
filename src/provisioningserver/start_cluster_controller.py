@@ -170,8 +170,8 @@ def set_up_logging():
     # produce warnings (if there is no celeryconfig).
     # Postpone the import so that we don't go through that every time
     # anything imports this module.
-    from celery.log import setup_logging_subsystem
-    setup_logging_subsystem()
+    from celery.app import app_or_default
+    app_or_default().log.setup_logging_subsystem()
 
 
 def run(args):

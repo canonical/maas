@@ -26,7 +26,6 @@ __all__ = [
 from optparse import make_option
 
 from django.core.management.base import BaseCommand
-from maasserver.models import Config
 from provisioningserver.dns.config import (
     DNSConfig,
     set_up_options_conf,
