@@ -217,6 +217,7 @@ class AdminNodeForm(NodeForm):
 
     zone = forms.ModelChoiceField(
         label="Physical zone", required=False,
+        initial=Zone.objects.get_default_zone(),
         queryset=Zone.objects.all(), to_field_name='name')
 
     cpu_count = forms.IntegerField(
@@ -242,16 +243,13 @@ class AdminNodeForm(NodeForm):
     def __init__(self, data=None, instance=None, **kwargs):
         super(AdminNodeForm, self).__init__(
             data=data, instance=instance, **kwargs)
-        self.set_initial_zone(instance)
         self.set_up_power_parameters_field(data, instance)
-
-    def set_initial_zone(self, instance):
-        if instance is not None:
-            zone = instance.zone
-            if zone is None:
-                self.initial['zone'] = ''
-            else:
-                self.initial['zone'] = zone.name
+        # The zone field is not required because we want to be able
+        # to omit it when using that form in the API.
+        # We don't want the UI to show an entry for the 'empty' zone,
+        # in the zones dropdown.  This is why we set 'empty_label' to
+        # None to force Django not to display that empty entry.
+        self.fields['zone'].empty_label = None
 
     def set_up_power_parameters_field(self, data, node):
         """Setup the 'power_parameter' field based on the value for the
@@ -969,6 +967,7 @@ class BulkNodeActionForm(forms.Form):
             # This adds an input field: the zone.
             self.fields['zone'] = forms.ModelChoiceField(
                 label="Physical zone", required=False,
+                initial=Zone.objects.get_default_zone(),
                 queryset=Zone.objects.all(), to_field_name='name')
         self.fields['action'] = forms.ChoiceField(
             required=True, choices=action_choices)
@@ -1108,3 +1107,13 @@ class ZoneForm(ModelForm):
             'name',
             'description',
             )
+
+    def clean_name(self):
+        new_name = self.cleaned_data['name']
+        renaming_instance = (
+            self.instance is not None and self.instance.is_default() and
+            self.instance.name != new_name)
+        if renaming_instance:
+            raise forms.ValidationError(
+                "This zone is the default zone, it cannot be renamed.")
+        return self.cleaned_data['name']

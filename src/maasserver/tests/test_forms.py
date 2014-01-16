@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test forms."""
@@ -55,6 +55,7 @@ from maasserver.forms import (
     remove_None_values,
     UnconstrainedMultipleChoiceField,
     ValidatorMultipleChoiceField,
+    ZoneForm,
     )
 from maasserver.models import (
     Config,
@@ -62,6 +63,7 @@ from maasserver.models import (
     Node,
     NodeGroup,
     NodeGroupInterface,
+    Zone,
     )
 from maasserver.models.config import DEFAULT_CONFIG
 from maasserver.node_action import (
@@ -446,17 +448,6 @@ class NodeEditForms(MAASServerTestCase):
         AdminNodeForm(data={'nodegroup': new_nodegroup}, instance=node).save()
         # The form saved without error, but the nodegroup change was ignored.
         self.assertEqual(old_nodegroup, node.nodegroup)
-
-    def test_AdminForm_sets_zone_initial_value(self):
-        zone = factory.make_zone()
-        node = factory.make_node(zone=zone)
-        form = AdminNodeForm(instance=node)
-        self.assertEqual(zone.name, form.initial['zone'])
-
-    def test_AdminForm_sets_zone_initial_empty_value(self):
-        node = factory.make_node(zone=None)
-        form = AdminNodeForm(instance=node)
-        self.assertEqual('', form.initial['zone'])
 
     def test_get_node_edit_form_returns_NodeForm_if_non_admin(self):
         user = factory.make_user()
@@ -1195,21 +1186,7 @@ class TestBulkNodeActionForm(MAASServerTestCase):
             "set_zone is not one of the available choices.",
             form._errors['action'])
 
-    def test_set_zone_can_set_no_zone(self):
-        node = factory.make_node()
-        form = BulkNodeActionForm(
-            user=factory.make_admin(),
-            data={
-                'action': 'set_zone',
-                'zone': None,
-                'system_id': [node.system_id],
-            })
-        self.assertTrue(form.is_valid(), form._errors)
-        self.assertEqual((1, 0, 0), form.save())
-        node = reload_object(node)
-        self.assertIsNone(node.zone)
-
-    def test_set_zone_leaves_unselected_zones_alone(self):
+    def test_set_zone_leaves_unselected_nodes_alone(self):
         unselected_node = factory.make_node()
         original_zone = unselected_node.zone
         form = BulkNodeActionForm(
@@ -1276,3 +1253,52 @@ class TestDownloadProgressForm(MAASServerTestCase):
         self.assertIsNone(
             DownloadProgressForm.get_download(
                 factory.make_node_group(), factory.getRandomString(), 1))
+
+
+class TestZoneForm(MAASServerTestCase):
+    """Tests for `ZoneForm`."""
+
+    def test_creates_zone(self):
+        name = factory.make_name('zone')
+        description = factory.getRandomString()
+        form = ZoneForm(data={'name': name, 'description': description})
+        form.save()
+        zone = Zone.objects.get(name=name)
+        self.assertIsNotNone(zone)
+        self.assertEqual(description, zone.description)
+
+    def test_updates_zone(self):
+        zone = factory.make_zone()
+        new_description = factory.getRandomString()
+        form = ZoneForm(data={'description': new_description}, instance=zone)
+        form.save()
+        zone = reload_object(zone)
+        self.assertEqual(new_description, zone.description)
+
+    def test_renames_zone(self):
+        zone = factory.make_zone()
+        new_name = factory.make_name('zone')
+        form = ZoneForm(data={'name': new_name}, instance=zone)
+        form.save()
+        zone = reload_object(zone)
+        self.assertEqual(new_name, zone.name)
+        self.assertEqual(zone, Zone.objects.get(name=new_name))
+
+    def test_updates_default_zone_description_works(self):
+        zone = Zone.objects.get_default_zone()
+        new_description = factory.getRandomString()
+        form = ZoneForm(data={'description': new_description}, instance=zone)
+        self.assertTrue(form.is_valid(), form._errors)
+        form.save()
+        zone = reload_object(zone)
+        self.assertEqual(new_description, zone.description)
+
+    def test_disallows_renaming_default_zone(self):
+        zone = Zone.objects.get_default_zone()
+        form = ZoneForm(
+            data={'name': factory.make_name('zone')},
+            instance=zone)
+        self.assertFalse(form.is_valid())
+        self.assertEqual(
+            {'name': ["This zone is the default zone, it cannot be renamed."]},
+            form.errors)

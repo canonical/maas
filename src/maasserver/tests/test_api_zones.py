@@ -58,7 +58,8 @@ class TestZonesAPI(APITestCase):
             httplib.FORBIDDEN, response.status_code, response.content)
 
     def test_list_returns_zone_list(self):
-        zones = [factory.make_zone() for i in range(3)]
+        [factory.make_zone() for i in range(3)]
+        zones = Zone.objects.all()
         response = self.client.get(
             reverse('zones_handler'),
             {})
@@ -77,7 +78,8 @@ class TestZonesAPI(APITestCase):
              for zone in parsed_result])
 
     def test_list_returns_sorted_zone_list(self):
-        zones = [factory.make_zone() for i in range(10)]
+        [factory.make_zone() for i in range(10)]
+        zones = Zone.objects.all()
         response = self.client.get(
             reverse('zones_handler'),
             {})
@@ -85,5 +87,9 @@ class TestZonesAPI(APITestCase):
         parsed_result = json.loads(response.content)
         # Sorting is case-insensitive.
         self.assertEqual(
-            sorted([zone.name for zone in zones], key=lambda s: s.lower()),
+            sorted(
+                [
+                    zone.name
+                    for zone in zones
+                ], key=lambda s: s.lower()),
             [zone.get('name') for zone in parsed_result])

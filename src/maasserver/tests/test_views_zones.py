@@ -1,4 +1,4 @@
-# Copyright 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test maasserver zones views."""
@@ -18,9 +18,11 @@ __all__ = []
 import httplib
 from urllib import urlencode
 
+from django.core.exceptions import ValidationError
 from django.core.urlresolvers import reverse
 from lxml.html import fromstring
 from maasserver.models import Zone
+from maasserver.models.zone import DEFAULT_ZONE_NAME
 from maasserver.testing import (
     extract_redirect,
     get_content_links,
@@ -54,7 +56,8 @@ class ZoneListingViewTest(LoggedInTestCase):
 
     def test_zone_list_displays_zone_details(self):
         # Zone listing displays the zone name and the zone description.
-        zones = [factory.make_zone() for i in range(3)]
+        [factory.make_zone() for i in range(3)]
+        zones = Zone.objects.all()
         response = self.client.get(reverse('zone-list'))
         zone_names = [zone.name for zone in zones]
         truncated_zone_descriptions = [
@@ -65,7 +68,8 @@ class ZoneListingViewTest(LoggedInTestCase):
 
     def test_zone_list_displays_sorted_list_of_zones(self):
         # Zones are alphabetically sorted on the zone list page.
-        zones = [factory.make_zone() for i in range(3)]
+        [factory.make_zone() for i in range(3)]
+        zones = Zone.objects.all()
         sorted_zones = sorted(zones, key=lambda x: x.name.lower())
         response = self.client.get(reverse('zone-list'))
         zone_links = [
@@ -77,7 +81,8 @@ class ZoneListingViewTest(LoggedInTestCase):
                 if link.startswith('/zones/')])
 
     def test_zone_list_displays_links_to_zone_node(self):
-        zones = [factory.make_zone() for i in range(3)]
+        [factory.make_zone() for i in range(3)]
+        zones = Zone.objects.all()
         sorted_zones = sorted(zones, key=lambda x: x.name.lower())
         response = self.client.get(reverse('zone-list'))
         zone_node_links = [
@@ -117,14 +122,21 @@ class ZoneListingViewTestAdmin(AdminLoggedInTestCase):
 
     def test_zone_list_contains_edit_links(self):
         zones = [factory.make_zone() for i in range(3)]
-        response = self.client.get(reverse('zone-list'))
+        default_zone = Zone.objects.get_default_zone()
         zone_edit_links = [
             reverse('zone-edit', args=[zone.name]) for zone in zones]
         zone_delete_links = [
             reverse('zone-del', args=[zone.name]) for zone in zones]
+        zone_default_edit = reverse('zone-edit', args=[default_zone])
+        zone_default_delete = reverse('zone-del', args=[default_zone])
+
+        response = self.client.get(reverse('zone-list'))
         all_links = get_content_links(response)
-        self.assertThat(all_links, ContainsAll(zone_edit_links))
-        self.assertThat(all_links, ContainsAll(zone_delete_links))
+
+        self.assertThat(all_links, ContainsAll(
+            zone_edit_links + zone_delete_links))
+        self.assertThat(all_links, Not(Contains(zone_default_edit)))
+        self.assertThat(all_links, Not(Contains(zone_default_delete)))
 
     def test_zone_list_contains_add_link(self):
         response = self.client.get(reverse('zone-list'))
@@ -231,6 +243,12 @@ class ZoneDetailViewAdmin(AdminLoggedInTestCase):
         zone_delete_link = reverse('zone-del', args=[zone.name])
         self.assertIn(zone_delete_link, get_content_links(response))
 
+    def test_zone_detail_for_default_zone_does_not_contain_delete_link(self):
+        response = self.client.get(
+            reverse('zone-view', args=[DEFAULT_ZONE_NAME]))
+        zone_delete_link = reverse('zone-del', args=[DEFAULT_ZONE_NAME])
+        self.assertNotIn(zone_delete_link, get_content_links(response))
+
 
 class ZoneEditNonAdminTest(LoggedInTestCase):
 
@@ -281,6 +299,28 @@ class ZoneDeleteAdminTest(AdminLoggedInTestCase):
         self.assertEqual(httplib.FOUND, response.status_code)
         self.assertIsNone(reload_object(zone))
 
+    def test_rejects_deletion_of_default_zone(self):
+        try:
+            self.client.post(
+                reverse('zone-del', args=[DEFAULT_ZONE_NAME]),
+                {'post': 'yes'})
+        except ValidationError:
+            # XXX: Right now, this generates an error because the deletion
+            # is prevented in the model code and not at the form level.
+            # This is not so bad because we make sure that the deletion link
+            # for the default zone isn't showed anywhere.
+            # Still, ideally, once the validation happens at the form level,
+            # this try/except statement should be removed and this test
+            # should be extended further to check that the reponse to
+            # the above self.client.post indicates a failure to validate
+            # the data.
+            pass
+
+        # TODO: check that the page failed to validate the data.
+
+        # The default zone is still there.
+        self.assertIsNotNone(Zone.objects.get_default_zone())
+
     def test_redirects_to_listing(self):
         zone = factory.make_zone()
         response = self.client.post(
@@ -298,4 +338,4 @@ class ZoneDeleteAdminTest(AdminLoggedInTestCase):
         self.assertIsNone(reload_object(zone))
         node = reload_object(node)
         self.assertIsNotNone(node)
-        self.assertIsNone(node.zone)
+        self.assertEqual(Zone.objects.get_default_zone(), node.zone)

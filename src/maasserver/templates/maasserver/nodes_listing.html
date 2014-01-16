@@ -52,11 +52,7 @@
         </td>
         <td>{{ node.display_status }}</td>
         <td class="zone-column">
-          {% if node.zone %}
-            <a href="{% url 'zone-view' node.zone.name %}">{{ node.zone }}</a>
-          {% else %}
-            (Default)
-          {% endif %}
+          <a href="{% url 'zone-view' node.zone.name %}">{{ node.zone }}</a>
         </td>
       </tr>
     {% endfor %}

@@ -15,6 +15,7 @@
           <tr>
             <th>Name</th>
             <th>Description</th>
+            <th>Default</th>
             <th>Nodes</th>
             {% if user.is_superuser %}
             <th></th>
@@ -31,12 +32,14 @@
               </a>
             </td>
             <td>{{ zone_item.description|truncatechars:40 }}</td>
+            <td>{% if zone_item.is_default %}Yes{% endif %}</td>
             <td>
               {{ zone_item.node_set.count }}
               (<a href="{% url 'node-list' %}?query=zone%3D{{ zone_item.name }}">view</a>)
             </td>
             {% if user.is_superuser %}
             <td>
+            {% if not zone_item.is_default %}
               <a href="{% url 'zone-edit' zone_item.name %}"
                  title="Edit zone {{ zone_item.name }}"
                  class="icon">
@@ -55,6 +58,7 @@
                 <input type="hidden" name="name"
                        value="{{ zone_item.name }}" />
               </form>
+            {% endif %}
             </td>
             {% endif %}
           </tr>

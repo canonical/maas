@@ -15,9 +15,11 @@ Physical zone: {{ zone.name }}
       <a href="{% url 'zone-edit' zone.name %}" class="button secondary">
         Edit zone
       </a>
+      {% if not zone.is_default %}
       <a href="{% url 'zone-del' zone.name %}" class="button secondary">
         Delete zone
       </a>
+      {% endif %}
   {% endif %}
 {% endblock %}
 
@@ -29,14 +31,20 @@ Physical zone: {{ zone.name }}
       <h4>Name</h4>
         <span>{{ zone.name }}</span>
     </li>
-    <li class="block size1">
+    <li class="block size3">
       <h4>Nodes</h4>
       <span id="#nodecount">
         {{ zone.node_set.count }}
         (<a href="{{ node_list_link }}">view</a>)
       </span>
     </li>
-    <li class="block size12 first">
+    <li class="block size3">
+      <h4>Default</h4>
+      <span id="#default">
+        {% if zone.default %}Yes{% else %}No{% endif %}
+      </span>
+    </li>
+     <li class="block size12 first">
       {% if zone.description %}
         <h4>Description</h4>
         <pre>{{ zone.description }}</pre>

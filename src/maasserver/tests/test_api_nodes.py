@@ -1,4 +1,4 @@
-# Copyright 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the nodes API."""
@@ -1043,19 +1043,6 @@ class TestNodesAPI(APITestCase):
         self.assertEqual(httplib.OK, response.status_code)
         node = reload_object(node)
         self.assertEqual(zone, node.zone)
-
-    def test_POST_set_zone_clears_zone_on_nodes(self):
-        self.become_admin()
-        node = factory.make_node()
-        response = self.client.post(
-            reverse('nodes_handler'),
-            {
-                'op': 'set_zone',
-                'nodes': [node.system_id],
-            })
-        self.assertEqual(httplib.OK, response.status_code)
-        node = reload_object(node)
-        self.assertIsNone(node.zone)
 
     def test_POST_set_zone_does_not_affect_other_nodes(self):
         self.become_admin()

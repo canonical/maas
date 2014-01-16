@@ -1,4 +1,4 @@
-# Copyright 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test Zone objects."""
@@ -14,10 +14,26 @@ str = None
 __metaclass__ = type
 __all__ = []
 
-from maasserver.models.zone import Zone
+from maasserver.models.zone import (
+    DEFAULT_ZONE_NAME,
+    Zone,
+    )
 from maasserver.testing import reload_object
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+
+
+class TestZoneManager(MAASServerTestCase):
+    """Tests for `Zone` manager."""
+
+    def test_get_default_zone_returns_default_zone(self):
+        self.assertEqual(
+            DEFAULT_ZONE_NAME, Zone.objects.get_default_zone().name)
+
+    def test_get_default_zone_ignores_other_zones(self):
+        factory.make_zone()
+        self.assertEqual(
+            DEFAULT_ZONE_NAME, Zone.objects.get_default_zone().name)
 
 
 class TestZone(MAASServerTestCase):
@@ -56,4 +72,10 @@ class TestZone(MAASServerTestCase):
         self.assertIsNone(reload_object(zone))
         node = reload_object(node)
         self.assertIsNotNone(node)
-        self.assertIsNone(node.zone)
+        self.assertEqual(Zone.objects.get_default_zone(), node.zone)
+
+    def test_is_default_returns_True_for_default_zone(self):
+        self.assertTrue(Zone.objects.get_default_zone().is_default())
+
+    def test_is_default_returns_False_for_normal_zone(self):
+        self.assertFalse(factory.make_zone().is_default())

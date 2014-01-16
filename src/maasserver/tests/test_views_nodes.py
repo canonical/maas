@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test maasserver nodes views."""
@@ -275,12 +275,6 @@ class NodeViewsTest(LoggedInTestCase):
             [zone_link],
             get_content_links(response, '.zone-column'))
 
-    def test_node_list_shows_placeholder_for_zone_if_none_set(self):
-        factory.make_node(zone=None)
-        response = self.client.get(reverse('node-list'))
-        [zone_field] = fromstring(response.content).cssselect('.zone-column')
-        self.assertEqual("(Default)", zone_field.text_content().strip())
-
     def test_node_list_displays_sorted_list_of_nodes(self):
         # Nodes are sorted on the node list page, newest first.
         nodes = [factory.make_node() for i in range(3)]
@@ -455,16 +449,6 @@ class NodeViewsTest(LoggedInTestCase):
         self.assertEqual(
             [reverse('zone-view', args=[node.zone.name])],
             get_content_links(response, '#zone'))
-
-    def test_view_node_shows_no_physical_zone_if_not_set(self):
-        node = factory.make_node(zone=None)
-        node_link = reverse('node-view', args=[node.system_id])
-
-        response = self.client.get(node_link)
-        self.assertEqual(httplib.OK, response.status_code)
-
-        doc = fromstring(response.content)
-        self.assertEqual([], doc.cssselect('#zone'))
 
     def test_view_node_displays_link_to_edit_if_user_owns_node(self):
         node = factory.make_node(owner=self.logged_in_user)

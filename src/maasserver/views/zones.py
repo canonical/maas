@@ -82,6 +82,7 @@ class ZoneEdit(UpdateView):
     """View for editing a physical zone."""
 
     model = Zone
+    form_class = ZoneForm
     template_name = 'maasserver/zone_edit.html'
 
     def get_object(self):
@@ -95,7 +96,7 @@ class ZoneEdit(UpdateView):
 class ZoneDelete(HelpfulDeleteView):
     """View for deleting a physical zone."""
 
-    template_name = 'maasserver/zone_configm_delete.html'
+    template_name = 'maasserver/zone_confirm_delete.html'
     context_object_name = 'zone_to_delete'
     model = Zone
 

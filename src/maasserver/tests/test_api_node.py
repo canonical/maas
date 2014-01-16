@@ -703,6 +703,19 @@ class TestNodeAPI(APITestCase):
         node = reload_object(node)
         self.assertEqual(new_zone, node.zone)
 
+    def test_PUT_does_not_set_zone_if_not_present(self):
+        self.become_admin()
+        new_name = factory.make_name()
+        node = factory.make_node()
+        old_zone = node.zone
+
+        response = self.client_put(
+            self.get_node_uri(node), {'hostname': new_name})
+
+        self.assertEqual(httplib.OK, response.status_code)
+        node = reload_object(node)
+        self.assertEqual((old_zone, new_name), (node.zone, node.hostname))
+
     #@skip(
     #    "XXX: JeroenVermeulen 2013-12-11 bug=1259872: Clearing the zone "
     #    "field does not work..")

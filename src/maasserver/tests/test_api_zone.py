@@ -1,4 +1,4 @@
-# Copyright 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for physical `Zone` API."""
@@ -18,6 +18,8 @@ import httplib
 import json
 
 from django.core.urlresolvers import reverse
+from maasserver.models import Zone
+from maasserver.models.zone import DEFAULT_ZONE_NAME
 from maasserver.testing import reload_object
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
@@ -85,6 +87,17 @@ class TestZoneAPI(APITestCase):
         zone = reload_object(zone)
         self.assertEqual(new_name, zone.name)
 
+    def test_PUT_rejects_change_of_default_zone_name(self):
+        self.become_admin()
+        zone = Zone.objects.get_default_zone()
+
+        response = self.client_put(
+            get_zone_uri(zone),
+            {'name': factory.make_name('zone')})
+        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+        zone = reload_object(zone)
+        self.assertEqual(DEFAULT_ZONE_NAME, zone.name)
+
     def test_PUT_changing_name_maintains_foreign_keys(self):
         self.become_admin()
         zone = factory.make_zone()
@@ -106,12 +119,33 @@ class TestZoneAPI(APITestCase):
         self.assertEqual(httplib.NO_CONTENT, response.status_code)
         self.assertIsNone(reload_object(zone))
 
+    def test_DELETE_rejects_deletion_of_default_zone(self):
+        self.become_admin()
+        response = self.client.delete(
+            get_zone_uri(Zone.objects.get_default_zone()))
+        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+        self.assertIsNotNone(Zone.objects.get_default_zone())
+
     def test_DELETE_requires_admin(self):
         zone = factory.make_zone()
         response = self.client.delete(get_zone_uri(zone))
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
-    def test_DELETE_clears_foreign_keys(self):
+    def test_DELETE_cannot_delete_default_zone(self):
+        self.become_admin()
+        zone = Zone.objects.get_default_zone()
+
+        response = self.client.delete(get_zone_uri(zone))
+
+        self.assertEqual(
+            (
+                httplib.BAD_REQUEST,
+                "This zone is the default zone, it cannot be deleted.",
+            ),
+            (response.status_code, response.content))
+
+    def test_DELETE_sets_foreign_keys_to_default(self):
+        default_zone = Zone.objects.get_default_zone()
         self.become_admin()
         zone = factory.make_zone()
         node = factory.make_node(zone=zone)
@@ -121,7 +155,7 @@ class TestZoneAPI(APITestCase):
 
         node = reload_object(node)
         self.assertIsNotNone(node)
-        self.assertIsNone(node.zone)
+        self.assertEquals(default_zone, node.zone)
 
     def test_DELETE_is_idempotent(self):
         self.become_admin()

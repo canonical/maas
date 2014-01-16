@@ -285,7 +285,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
 
     def test_not_in_zone_excludes_given_zones(self):
         ineligible_nodes = [factory.make_node() for _ in range(2)]
-        eligible_nodes = [factory.make_node(), factory.make_node(zone=None)]
+        eligible_nodes = [factory.make_node() for _ in range(2)]
         self.assertConstrainedNodes(
             eligible_nodes,
             {'not_in_zone': [node.zone.name for node in ineligible_nodes]})

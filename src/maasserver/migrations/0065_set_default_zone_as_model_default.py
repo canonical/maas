@@ -9,21 +9,14 @@ from south.v2 import SchemaMigration
 class Migration(SchemaMigration):
 
     def forwards(self, orm):
-        # Adding model 'Zone'
-        db.create_table(u'maasserver_zone', (
-            (u'id', self.gf('django.db.models.fields.AutoField')(primary_key=True)),
-            ('created', self.gf('django.db.models.fields.DateTimeField')()),
-            ('updated', self.gf('django.db.models.fields.DateTimeField')()),
-            ('name', self.gf('django.db.models.fields.CharField')(unique=True, max_length=256)),
-            ('description', self.gf('django.db.models.fields.TextField')(blank=True)),
-        ))
-        db.send_create_signal(u'maasserver', ['Zone'])
 
+        # Changing field 'Node.zone'
+        db.alter_column(u'maasserver_node', 'zone_id', self.gf('django.db.models.fields.related.ForeignKey')(to=orm['maasserver.Zone'], on_delete=models.SET_DEFAULT))
 
     def backwards(self, orm):
-        # Deleting model 'Zone'
-        db.delete_table(u'maasserver_zone')
 
+        # Changing field 'Node.zone'
+        db.alter_column(u'maasserver_node', 'zone_id', self.gf('django.db.models.fields.related.ForeignKey')(to=orm['maasserver.Zone'], null=True))
 
     models = {
         u'auth.group': {
@@ -108,7 +101,7 @@ class Migration(SchemaMigration):
             'content': ('metadataserver.fields.BinaryField', [], {'blank': 'True'}),
             'filename': ('django.db.models.fields.CharField', [], {'max_length': '255'}),
             u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
-            'key': ('django.db.models.fields.CharField', [], {'default': "u'e8a6d682-618f-11e3-bf15-3c970e0e56dc'", 'unique': 'True', 'max_length': '36'}),
+            'key': ('django.db.models.fields.CharField', [], {'default': "u'8498ac20-7dea-11e3-b413-9c4e363b1c94'", 'unique': 'True', 'max_length': '36'}),
             'owner': ('django.db.models.fields.related.ForeignKey', [], {'default': 'None', 'to': u"orm['auth.User']", 'null': 'True', 'blank': 'True'})
         },
         u'maasserver.macaddress': {
@@ -139,10 +132,11 @@ class Migration(SchemaMigration):
             'routers': ('djorm_pgarray.fields.ArrayField', [], {'default': 'None', 'dbtype': "u'macaddr'", 'null': 'True', 'blank': 'True'}),
             'status': ('django.db.models.fields.IntegerField', [], {'default': '0', 'max_length': '10'}),
             'storage': ('django.db.models.fields.IntegerField', [], {'default': '0'}),
-            'system_id': ('django.db.models.fields.CharField', [], {'default': "u'node-e8a7fb98-618f-11e3-bf15-3c970e0e56dc'", 'unique': 'True', 'max_length': '41'}),
+            'system_id': ('django.db.models.fields.CharField', [], {'default': "u'node-8497005a-7dea-11e3-b413-9c4e363b1c94'", 'unique': 'True', 'max_length': '41'}),
             'tags': ('django.db.models.fields.related.ManyToManyField', [], {'to': u"orm['maasserver.Tag']", 'symmetrical': 'False'}),
             'token': ('django.db.models.fields.related.ForeignKey', [], {'to': u"orm['piston.Token']", 'null': 'True'}),
-            'updated': ('django.db.models.fields.DateTimeField', [], {})
+            'updated': ('django.db.models.fields.DateTimeField', [], {}),
+            'zone': ('django.db.models.fields.related.ForeignKey', [], {'to': u"orm['maasserver.Zone']", 'on_delete': 'models.SET_DEFAULT'})
         },
         u'maasserver.nodegroup': {
             'Meta': {'object_name': 'NodeGroup'},
@@ -197,8 +191,14 @@ class Migration(SchemaMigration):
             u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
             'user': ('django.db.models.fields.related.OneToOneField', [], {'to': u"orm['auth.User']", 'unique': 'True'})
         },
+        u'maasserver.vlan': {
+            'Meta': {'object_name': 'Vlan'},
+            'description': ('django.db.models.fields.CharField', [], {'default': "u''", 'max_length': '255', 'blank': 'True'}),
+            u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
+            'tag': ('django.db.models.fields.PositiveSmallIntegerField', [], {'unique': 'True'})
+        },
         u'maasserver.zone': {
-            'Meta': {'object_name': 'Zone'},
+            'Meta': {'ordering': "[u'name']", 'object_name': 'Zone'},
             'created': ('django.db.models.fields.DateTimeField', [], {}),
             'description': ('django.db.models.fields.TextField', [], {'blank': 'True'}),
             u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
@@ -224,7 +224,7 @@ class Migration(SchemaMigration):
             'is_approved': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
             'key': ('django.db.models.fields.CharField', [], {'max_length': '18'}),
             'secret': ('django.db.models.fields.CharField', [], {'max_length': '32'}),
-            'timestamp': ('django.db.models.fields.IntegerField', [], {'default': '1386675646L'}),
+            'timestamp': ('django.db.models.fields.IntegerField', [], {'default': '1389793194L'}),
             'token_type': ('django.db.models.fields.IntegerField', [], {}),
             'user': ('django.db.models.fields.related.ForeignKey', [], {'blank': 'True', 'related_name': "'tokens'", 'null': 'True', 'to': u"orm['auth.User']"}),
             'verifier': ('django.db.models.fields.CharField', [], {'max_length': '10'})

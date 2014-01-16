@@ -38,6 +38,7 @@ from django.db.models import (
     IntegerField,
     Manager,
     ManyToManyField,
+    SET_DEFAULT,
     Q,
     )
 from django.shortcuts import get_object_or_404
@@ -438,8 +439,9 @@ class Node(CleanSave, TimestampedModel):
     agent_name = CharField(max_length=255, default='', blank=True, null=True)
 
     zone = ForeignKey(
-        Zone, verbose_name="Physical zone", default=None, blank=True,
-        null=True, editable=True, db_index=True)
+        Zone, verbose_name="Physical zone",
+        default=Zone.objects.get_default_zone, editable=True, db_index=True,
+        on_delete=SET_DEFAULT)
 
     # Juju expects the following standard constraints, which are stored here
     # as a basic optimisation over querying the lshw output.
