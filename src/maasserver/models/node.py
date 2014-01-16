@@ -72,7 +72,7 @@ from maasserver.utils import (
     )
 from piston.models import Token
 from provisioningserver.enum import (
-    POWER_TYPE,
+    DEFAULT_POWER_TYPE,
     POWER_TYPE_CHOICES,
     )
 from provisioningserver.tasks import (
@@ -301,7 +301,7 @@ class NodeManager(Manager):
             power_params = node.get_effective_power_parameters()
             node_power_type = node.get_effective_power_type()
             # WAKE_ON_LAN does not support poweroff.
-            if node_power_type != POWER_TYPE.WAKE_ON_LAN:
+            if node_power_type != 'ether_wake':
                 power_off.apply_async(
                     queue=node.work_queue, args=[node_power_type],
                     kwargs=power_params)
@@ -335,7 +335,7 @@ class NodeManager(Manager):
         for node in nodes:
             power_params = node.get_effective_power_parameters()
             node_power_type = node.get_effective_power_type()
-            if node_power_type == POWER_TYPE.WAKE_ON_LAN:
+            if node_power_type == 'ether_wake':
                 mac = power_params.get('mac_address')
                 do_start = (mac != '' and mac is not None)
             else:
@@ -451,7 +451,7 @@ class Node(CleanSave, TimestampedModel):
     # to mean "none."
     power_type = CharField(
         max_length=10, choices=POWER_TYPE_CHOICES, null=False, blank=True,
-        default=POWER_TYPE.DEFAULT)
+        default=DEFAULT_POWER_TYPE)
 
     # JSON-encoded set of parameters for power control.
     power_parameters = JSONObjectField(blank=True, default="")
@@ -686,9 +686,10 @@ class Node(CleanSave, TimestampedModel):
         If no power type has been set for the node, get the configured
         default.
         """
-        if self.power_type == POWER_TYPE.DEFAULT:
+        # FIXME: A default power type is simply useless.
+        if self.power_type == DEFAULT_POWER_TYPE:
             power_type = Config.objects.get_config('node_power_type')
-            if power_type == POWER_TYPE.DEFAULT:
+            if power_type == '':
                 raise ValueError(
                     "Node power type is set to the default, but "
                     "the default is not yet configured.  The default "

@@ -52,7 +52,10 @@ from metadataserver.models import (
     NodeCommissionResult,
     NodeUserData,
     )
-from provisioningserver.enum import POWER_TYPE
+from provisioningserver.enum import (
+    DEFAULT_POWER_TYPE,
+    get_power_types,
+    )
 from provisioningserver.power.poweraction import PowerAction
 from testtools.matchers import (
     AllMatch,
@@ -227,9 +230,9 @@ class NodeTest(MAASServerTestCase):
         self.assertEqual('new_hostname', node.hostname)
 
     def test_get_effective_power_type_defaults_to_config(self):
-        power_types = list(map_enum(POWER_TYPE).values())
-        power_types.remove(POWER_TYPE.DEFAULT)
-        node = factory.make_node(power_type=POWER_TYPE.DEFAULT)
+        power_types = list(get_power_types().keys())  # Python3 proof.
+        power_types.remove(DEFAULT_POWER_TYPE)
+        node = factory.make_node(power_type=DEFAULT_POWER_TYPE)
         effective_types = []
         for power_type in power_types:
             Config.objects.set_config('node_power_type', power_type)
@@ -237,8 +240,8 @@ class NodeTest(MAASServerTestCase):
         self.assertEqual(power_types, effective_types)
 
     def test_get_effective_power_type_reads_node_field(self):
-        power_types = list(map_enum(POWER_TYPE).values())
-        power_types.remove(POWER_TYPE.DEFAULT)
+        power_types = list(get_power_types().keys())  # Python3 proof.
+        power_types.remove(DEFAULT_POWER_TYPE)
         nodes = [
             factory.make_node(power_type=power_type)
             for power_type in power_types]
@@ -246,12 +249,12 @@ class NodeTest(MAASServerTestCase):
             power_types, [node.get_effective_power_type() for node in nodes])
 
     def test_get_effective_power_type_rejects_default_as_config_value(self):
-        node = factory.make_node(power_type=POWER_TYPE.DEFAULT)
-        Config.objects.set_config('node_power_type', POWER_TYPE.DEFAULT)
+        node = factory.make_node(power_type=DEFAULT_POWER_TYPE)
+        Config.objects.set_config('node_power_type', DEFAULT_POWER_TYPE)
         self.assertRaises(ValueError, node.get_effective_power_type)
 
     def test_power_parameters(self):
-        node = factory.make_node(power_type=POWER_TYPE.DEFAULT)
+        node = factory.make_node(power_type=DEFAULT_POWER_TYPE)
         parameters = dict(user="tarquin", address="10.1.2.3")
         node.power_parameters = parameters
         node.save()
@@ -259,7 +262,7 @@ class NodeTest(MAASServerTestCase):
         self.assertEqual(parameters, node.power_parameters)
 
     def test_power_parameters_default(self):
-        node = factory.make_node(power_type=POWER_TYPE.DEFAULT)
+        node = factory.make_node(power_type=DEFAULT_POWER_TYPE)
         self.assertEqual("", node.power_parameters)
 
     def test_get_effective_power_parameters_returns_power_parameters(self):
@@ -293,8 +296,8 @@ class NodeTest(MAASServerTestCase):
         # get_effective_power_parameters are enough to get a basic setup
         # working.
         configless_power_types = [
-            POWER_TYPE.WAKE_ON_LAN,
-            POWER_TYPE.VIRSH,
+            'ether_wake',
+            'virsh',
             ]
         # We don't actually want to fire off power events, but we'll go
         # through the motions right up to the point where we'd normally
@@ -486,7 +489,7 @@ class NodeTest(MAASServerTestCase):
         # Test that releasing a node causes a 'power_off' celery job.
         node = factory.make_node(
             status=NODE_STATUS.ALLOCATED, owner=factory.make_user(),
-            power_type=POWER_TYPE.VIRSH)
+            power_type='virsh')
         # Prevent actual job script from running.
         self.patch(PowerAction, 'run_shell', lambda *args, **kwargs: ('', ''))
         node.release()
@@ -556,7 +559,7 @@ class NodeTest(MAASServerTestCase):
 
     def test_start_commissioning_changes_status_and_starts_node(self):
         node = factory.make_node(
-            status=NODE_STATUS.DECLARED, power_type=POWER_TYPE.WAKE_ON_LAN)
+            status=NODE_STATUS.DECLARED, power_type='ether_wake')
         factory.make_mac_address(node=node)
         node.start_commissioning(factory.make_admin())
 
@@ -570,7 +573,7 @@ class NodeTest(MAASServerTestCase):
 
     def test_start_commisssioning_doesnt_start_nodes_for_non_admin_users(self):
         node = factory.make_node(
-            status=NODE_STATUS.DECLARED, power_type=POWER_TYPE.WAKE_ON_LAN)
+            status=NODE_STATUS.DECLARED, power_type='ether_wake')
         factory.make_mac_address(node=node)
         node.start_commissioning(factory.make_user())
 
@@ -997,7 +1000,7 @@ class NodeManagerTest(MAASServerTestCase):
         # run shell commands.
         self.patch(PowerAction, 'run_shell', lambda *args, **kwargs: ('', ''))
         user = factory.make_user()
-        node, mac = self.make_node_with_mac(user, power_type=POWER_TYPE.VIRSH)
+        node, mac = self.make_node_with_mac(user, power_type='virsh')
         output = Node.objects.stop_nodes([node.system_id], user)
 
         self.assertItemsEqual([node], output)
@@ -1010,7 +1013,7 @@ class NodeManagerTest(MAASServerTestCase):
 
     def test_stop_nodes_task_routed_to_nodegroup_worker(self):
         user = factory.make_user()
-        node, mac = self.make_node_with_mac(user, power_type=POWER_TYPE.VIRSH)
+        node, mac = self.make_node_with_mac(user, power_type='virsh')
         task = self.patch(node_module, 'power_off')
         Node.objects.stop_nodes([node.system_id], user)
         args, kwargs = task.apply_async.call_args
@@ -1019,7 +1022,7 @@ class NodeManagerTest(MAASServerTestCase):
     def test_stop_nodes_ignores_uneditable_nodes(self):
         nodes = [
             self.make_node_with_mac(
-                factory.make_user(), power_type=POWER_TYPE.WAKE_ON_LAN)
+                factory.make_user(), power_type='ether_wake')
             for counter in range(3)]
         ids = [node.system_id for node, mac in nodes]
         stoppable_node = nodes[0][0]
@@ -1030,7 +1033,7 @@ class NodeManagerTest(MAASServerTestCase):
     def test_start_nodes_starts_nodes(self):
         user = factory.make_user()
         node, mac = self.make_node_with_mac(
-            user, power_type=POWER_TYPE.WAKE_ON_LAN)
+            user, power_type='ether_wake')
         output = Node.objects.start_nodes([node.system_id], user)
 
         self.assertItemsEqual([node], output)
@@ -1045,20 +1048,20 @@ class NodeManagerTest(MAASServerTestCase):
     def test_start_nodes_task_routed_to_nodegroup_worker(self):
         user = factory.make_user()
         node, mac = self.make_node_with_mac(
-            user, power_type=POWER_TYPE.WAKE_ON_LAN)
+            user, power_type='ether_wake')
         task = self.patch(node_module, 'power_on')
         Node.objects.start_nodes([node.system_id], user)
         args, kwargs = task.apply_async.call_args
         self.assertEqual(node.work_queue, kwargs['queue'])
 
     def test_start_nodes_uses_default_power_type_if_not_node_specific(self):
-        # If the node has a power_type set to POWER_TYPE.DEFAULT,
+        # If the node has a power_type set to DEFAULT_POWER_TYPE
         # NodeManager.start_node(this_node) should use the default
         # power_type.
-        Config.objects.set_config('node_power_type', POWER_TYPE.WAKE_ON_LAN)
+        Config.objects.set_config('node_power_type', 'ether_wake')
         user = factory.make_user()
         node, unused = self.make_node_with_mac(
-            user, power_type=POWER_TYPE.DEFAULT)
+            user, power_type='')
         output = Node.objects.start_nodes([node.system_id], user)
 
         self.assertItemsEqual([node], output)
@@ -1072,7 +1075,7 @@ class NodeManagerTest(MAASServerTestCase):
         user = factory.make_user()
         preferred_mac = factory.getRandomMACAddress()
         node, mac = self.make_node_with_mac(
-            user, power_type=POWER_TYPE.WAKE_ON_LAN,
+            user, power_type='ether_wake',
             power_parameters=dict(mac_address=preferred_mac))
         output = Node.objects.start_nodes([node.system_id], user)
 
@@ -1090,7 +1093,7 @@ class NodeManagerTest(MAASServerTestCase):
         # then the node shouldn't be started.
         user = factory.make_user()
         node, mac = self.make_node_with_mac(
-            user, power_type=POWER_TYPE.WAKE_ON_LAN,
+            user, power_type='ether_wake',
             power_parameters=dict(jarjar="binks"))
         output = Node.objects.start_nodes([node.system_id], user)
         self.assertItemsEqual([], output)
@@ -1099,7 +1102,7 @@ class NodeManagerTest(MAASServerTestCase):
     def test_start_nodes_wakeonlan_ignores_empty_mac_address_parameter(self):
         user = factory.make_user()
         node, mac = self.make_node_with_mac(
-            user, power_type=POWER_TYPE.WAKE_ON_LAN,
+            user, power_type='ether_wake',
             power_parameters=dict(mac_address=""))
         output = Node.objects.start_nodes([node.system_id], user)
         self.assertItemsEqual([], output)
@@ -1115,7 +1118,7 @@ class NodeManagerTest(MAASServerTestCase):
     def test_start_nodes_ignores_uneditable_nodes(self):
         nodes = [
             self.make_node_with_mac(
-                factory.make_user(), power_type=POWER_TYPE.WAKE_ON_LAN)[0]
+                factory.make_user(), power_type='ether_wake')[0]
             for counter in range(3)
         ]
         ids = [node.system_id for node in nodes]

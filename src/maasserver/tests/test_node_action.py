@@ -35,7 +35,6 @@ from maasserver.node_action import (
     )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from provisioningserver.enum import POWER_TYPE
 from provisioningserver.power.poweraction import PowerAction
 
 
@@ -206,7 +205,7 @@ class TestCommissionNodeAction(MAASServerTestCase):
         for status in statuses:
             node = factory.make_node(
                 mac=True, status=status,
-                power_type=POWER_TYPE.WAKE_ON_LAN)
+                power_type='ether_wake')
             action = Commission(node, factory.make_admin())
             action.execute()
             self.assertEqual(NODE_STATUS.COMMISSIONING, node.status)
@@ -233,7 +232,7 @@ class TestStartNodeNodeAction(MAASServerTestCase):
     def test_StartNode_acquires_and_starts_node(self):
         node = factory.make_node(
             mac=True, status=NODE_STATUS.READY,
-            power_type=POWER_TYPE.WAKE_ON_LAN)
+            power_type='ether_wake')
         user = factory.make_user()
         StartNode(node, user).execute()
         self.assertEqual(NODE_STATUS.ALLOCATED, node.status)
@@ -254,7 +253,7 @@ class TestStopNodeNodeAction(MAASServerTestCase):
             power_pass=factory.getRandomString())
         node = factory.make_node(
             mac=True, status=NODE_STATUS.ALLOCATED,
-            power_type=POWER_TYPE.IPMI,
+            power_type='ipmi',
             owner=user, power_parameters=params)
         StopNode(node, user).execute()
 

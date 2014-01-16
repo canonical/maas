@@ -31,7 +31,6 @@ from maasserver.enum import (
     NODE_AFTER_COMMISSIONING_ACTION_CHOICES,
     )
 from provisioningserver.enum import (
-    POWER_TYPE,
     POWER_TYPE_CHOICES,
     )
 
@@ -81,7 +80,7 @@ CONFIG_ITEMS = {
         }
     },
     'node_power_type': {
-        'default': POWER_TYPE.WAKE_ON_LAN,
+        'default': 'ether_wake',
         'form': forms.ChoiceField,
         'form_kwargs': {
             'choices': POWER_TYPE_CHOICES,

@@ -19,7 +19,6 @@ import urllib2
 import urlparse
 
 from provisioningserver.custom_hardware.utils import create_node
-from provisioningserver.enum import POWER_TYPE
 
 
 logger = logging.getLogger(__name__)
@@ -99,4 +98,4 @@ def probe_seamicro15k_and_enlist(ip, username, password):
             'system_id': system_id
         }
 
-        create_node(mac, 'amd64', POWER_TYPE.SEAMICRO15K, params)
+        create_node(mac, 'amd64', 'sm15k', params)

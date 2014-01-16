@@ -56,6 +56,7 @@ from metadataserver.models import (
     NodeCommissionResult,
     )
 from netaddr import IPAddress
+from provisioningserver.enum import get_power_types
 
 # We have a limited number of public keys:
 # src/maasserver/tests/data/test_rsa{0, 1, 2, 3, 4}.pub
@@ -121,6 +122,21 @@ class Factory(maastesting.factory.Factory):
             but_not = ()
         return random.choice(
             [choice for choice in choices if choice[0] not in but_not])[0]
+
+    def getRandomPowerType(self, but_not=None):
+        """Pick a random power type and return it.
+
+        :param but_not: Exclude these values from result
+        :type but_not: Sequence
+        """
+        if but_not is None:
+            but_not = []
+        else:
+            but_not = list(but_not)
+        but_not.append('')
+        return random.choice(
+            [choice for choice in list(get_power_types().keys())
+                if choice not in but_not])
 
     def _save_node_unchecked(self, node):
         """Save a :class:`Node`, but circumvent status transition checks."""

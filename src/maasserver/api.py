@@ -216,7 +216,6 @@ from maasserver.utils import (
     build_absolute_uri,
     find_nodegroup,
     get_local_cluster_UUID,
-    map_enum,
     strip_domain,
     )
 from maasserver.utils.orm import (
@@ -231,7 +230,7 @@ from metadataserver.models import (
 from piston.emitters import JSONEmitter
 from piston.handler import typemapper
 from piston.utils import rc
-from provisioningserver.enum import POWER_TYPE
+from provisioningserver.enum import get_power_types
 from provisioningserver.kernel_opts import KernelParameters
 import simplejson as json
 
@@ -263,8 +262,7 @@ def store_node_power_parameters(node, request):
     if power_type is None:
         return
 
-    power_types = map_enum(POWER_TYPE).values()
-    if power_type in power_types:
+    if power_type in get_power_types():
         node.power_type = power_type
     else:
         raise MAASAPIBadRequest("Bad power_type '%s'" % power_type)

@@ -41,7 +41,7 @@ from maasserver.testing.testcase import (
 from maasserver.utils import strip_domain
 from maasserver.utils.orm import get_one
 from netaddr import IPNetwork
-from provisioningserver.enum import POWER_TYPE
+from provisioningserver.enum import DEFAULT_POWER_TYPE
 
 
 class EnlistmentAPITest(MultipleUsersScenarios,
@@ -99,7 +99,7 @@ class EnlistmentAPITest(MultipleUsersScenarios,
         self.patch(Node, "start_commissioning")
         hostname = factory.make_name("hostname")
         architecture = factory.getRandomChoice(ARCHITECTURE_CHOICES)
-        power_type = POWER_TYPE.IPMI
+        power_type = 'ipmi'
         power_parameters = {
             "power_user": factory.make_name("power-user"),
             "power_pass": factory.make_name("power-pass"),
@@ -194,7 +194,7 @@ class EnlistmentAPITest(MultipleUsersScenarios,
                 })
         node = Node.objects.get(
             system_id=json.loads(response.content)['system_id'])
-        self.assertEqual(POWER_TYPE.DEFAULT, node.power_type)
+        self.assertEqual(DEFAULT_POWER_TYPE, node.power_type)
 
     def test_POST_new_associates_mac_addresses(self):
         # The API allows a Node to be created and associated with MAC
@@ -540,7 +540,7 @@ class SimpleUserLoggedInEnlistmentAPITest(LoggedInTestCase):
             reverse('nodes_handler'), {
                 'op': 'new',
                 'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
-                'power_type': POWER_TYPE.WAKE_ON_LAN,
+                'power_type': 'ether_wake',
                 'power_parameters': json.dumps(
                     {"power_address": new_power_address}),
                 'mac_addresses': ['AA:BB:CC:DD:EE:FF'],
@@ -550,7 +550,7 @@ class SimpleUserLoggedInEnlistmentAPITest(LoggedInTestCase):
             system_id=json.loads(response.content)['system_id'])
         self.assertEqual(
             (httplib.OK, {"power_address": new_power_address},
-             POWER_TYPE.WAKE_ON_LAN),
+             'ether_wake'),
             (response.status_code, node.power_parameters,
              node.power_type))
 
@@ -604,7 +604,7 @@ class AdminLoggedInEnlistmentAPITest(AdminLoggedInTestCase):
         self.assertAttributes(
             node,
             dict(
-                architecture=architecture, power_type=POWER_TYPE.DEFAULT,
+                architecture=architecture, power_type=DEFAULT_POWER_TYPE,
                 power_parameters=''))
 
     def test_POST_new_sets_power_type_if_admin(self):
@@ -612,12 +612,12 @@ class AdminLoggedInEnlistmentAPITest(AdminLoggedInTestCase):
             reverse('nodes_handler'), {
                 'op': 'new',
                 'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
-                'power_type': POWER_TYPE.WAKE_ON_LAN,
+                'power_type': 'ether_wake',
                 'mac_addresses': ['00:11:22:33:44:55'],
                 })
         node = Node.objects.get(
             system_id=json.loads(response.content)['system_id'])
-        self.assertEqual(POWER_TYPE.WAKE_ON_LAN, node.power_type)
+        self.assertEqual('ether_wake', node.power_type)
         self.assertEqual('', node.power_parameters)
 
     def test_POST_new_sets_power_parameters_field(self):
@@ -628,7 +628,7 @@ class AdminLoggedInEnlistmentAPITest(AdminLoggedInTestCase):
             reverse('nodes_handler'), {
                 'op': 'new',
                 'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
-                'power_type': POWER_TYPE.WAKE_ON_LAN,
+                'power_type': 'ether_wake',
                 'power_parameters_mac_address': new_mac_address,
                 'mac_addresses': ['AA:BB:CC:DD:EE:FF'],
                 })
@@ -647,7 +647,7 @@ class AdminLoggedInEnlistmentAPITest(AdminLoggedInTestCase):
                 'op': 'new',
                 'hostname': hostname,
                 'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
-                'power_type': POWER_TYPE.WAKE_ON_LAN,
+                'power_type': 'ether_wake',
                 'power_parameters_unknown_param': factory.getRandomString(),
                 'mac_addresses': [factory.getRandomMACAddress()],
                 })
@@ -668,7 +668,7 @@ class AdminLoggedInEnlistmentAPITest(AdminLoggedInTestCase):
             reverse('nodes_handler'), {
                 'op': 'new',
                 'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
-                'power_type': POWER_TYPE.WAKE_ON_LAN,
+                'power_type': 'ether_wake',
                 'power_parameters_param': param,
                 'power_parameters_skip_check': 'true',
                 'mac_addresses': ['AA:BB:CC:DD:EE:FF'],

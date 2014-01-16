@@ -18,9 +18,11 @@ from maasserver.config_forms import DictCharField
 from maasserver.power_parameters import POWER_TYPE_PARAMETERS
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils import map_enum
 from maastesting.matchers import ContainsAll
-from provisioningserver.enum import POWER_TYPE
+from provisioningserver.enum import (
+    DEFAULT_POWER_TYPE,
+    get_power_types,
+    )
 from provisioningserver.power.poweraction import PowerAction
 from testtools.matchers import (
     AllMatch,
@@ -33,7 +35,7 @@ from testtools.matchers import (
 class TestPowerParameterDeclaration(MAASServerTestCase):
 
     def test_POWER_TYPE_PARAMETERS_is_dict_with_power_type_keys(self):
-        power_types = set(map_enum(POWER_TYPE).values())
+        power_types = set(get_power_types().keys())
         self.assertIsInstance(POWER_TYPE_PARAMETERS, dict)
         self.assertThat(power_types, ContainsAll(POWER_TYPE_PARAMETERS))
 
@@ -54,7 +56,7 @@ class TestPowerActionRendering(MAASServerTestCase):
     scenarios = [
         (name, {'power_type': name})
         for name in list(POWER_TYPE_PARAMETERS)
-        if name is not POWER_TYPE.DEFAULT
+        if name != DEFAULT_POWER_TYPE
     ]
 
     def make_random_parameters(self, power_change="on"):

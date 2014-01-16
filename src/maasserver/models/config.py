@@ -33,7 +33,6 @@ from maasserver.enum import (
     NODE_AFTER_COMMISSIONING_ACTION,
     )
 from maasserver.fields import JSONObjectField
-from provisioningserver.enum import POWER_TYPE
 
 
 def get_default_config():
@@ -42,7 +41,7 @@ def get_default_config():
         # Commissioning section configuration.
         'after_commissioning': NODE_AFTER_COMMISSIONING_ACTION.DEFAULT,
         'check_compatibility': False,
-        'node_power_type': POWER_TYPE.WAKE_ON_LAN,
+        'node_power_type': 'ether_wake',
         # Ubuntu section configuration.
         'fallback_master_archive': False,
         'keep_mirror_list_uptodate': False,

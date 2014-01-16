@@ -68,7 +68,6 @@ from maasserver.views import nodes as nodes_views
 from maasserver.views.nodes import message_from_form_stats
 from maastesting.matchers import ContainsAll
 from metadataserver.models.commissioningscript import LLDP_OUTPUT_NAME
-from provisioningserver.enum import POWER_TYPE_CHOICES
 
 
 class NodeViewsTest(LoggedInTestCase):
@@ -1236,7 +1235,7 @@ class AdminNodeViewsTest(AdminLoggedInTestCase):
             'hostname': factory.getRandomString(),
             'after_commissioning_action': factory.getRandomEnum(
                 NODE_AFTER_COMMISSIONING_ACTION),
-            'power_type': factory.getRandomChoice(POWER_TYPE_CHOICES),
+            'power_type': factory.getRandomPowerType(),
             'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
         }
         response = self.client.post(node_edit_link, params)

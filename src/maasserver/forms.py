@@ -102,7 +102,7 @@ from maasserver.utils import strip_domain
 from metadataserver.fields import Bin
 from metadataserver.models import CommissioningScript
 from provisioningserver.enum import (
-    POWER_TYPE,
+    DEFAULT_POWER_TYPE,
     POWER_TYPE_CHOICES,
     )
 
@@ -274,7 +274,7 @@ class AdminNodeForm(NodeForm):
             if node is not None:
                 power_type = node.power_type
             else:
-                power_type = POWER_TYPE.DEFAULT
+                power_type = DEFAULT_POWER_TYPE
         self.fields['power_parameters'] = (
             POWER_TYPE_PARAMETERS[power_type])
 
@@ -282,11 +282,11 @@ class AdminNodeForm(NodeForm):
         cleaned_data = super(AdminNodeForm, self).clean()
         # If power_type is DEFAULT and power_parameters_skip_check is not
         # on, reset power_parameters (set it to the empty string).
-        is_default = cleaned_data['power_type'] == POWER_TYPE.DEFAULT
+        is_default = cleaned_data['power_type'] == ''
         skip_check = (
             self.data.get('power_parameters_%s' % SKIP_CHECK_NAME) == 'true')
         if is_default and not skip_check:
-            cleaned_data['power_parameters'] = ''
+            cleaned_data['power_parameters'] = DEFAULT_POWER_TYPE
         return cleaned_data
 
     def save(self, *args, **kwargs):

@@ -14,13 +14,39 @@ str = None
 __metaclass__ = type
 __all__ = [
     'ARP_HTYPE',
+    'DEFAULT_POWER_TYPE',
     'IPMI_DRIVER',
     'IPMI_DRIVER_CHOICES',
     'POWER_TYPE',
     'POWER_TYPE_CHOICES',
+    'get_power_types',
     ]
 
 
+# FIXME: Get rid of this as the POWER_TYPE enum gets eventually removed.
+DEFAULT_POWER_TYPE = ''
+
+
+def get_power_types():
+    """Return the choice of mechanism to control a node's power.
+
+    :return: Dictionary mapping power type to its description.
+    """
+    return {
+        "virsh": "virsh (virtual systems)",
+        "ether_wake": "Wake-on-LAN",
+        "fence_cdu": "Sentry Switch CDU",
+        "ipmi": "IPMI",
+        "moonshot": "iLO4 Moonshot Chassis",
+        "sm15k": "SeaMicro 15000",
+        "amt": "Intel AMT",
+        # The "DEFAULT" type, remove this when possible:
+        DEFAULT_POWER_TYPE: '',
+        }
+
+
+# FIXME: This enum is deprecated but left in place until the last
+# vestiges of its use are removed (some JS uses it still).
 class POWER_TYPE:
     """Choice of mechanism to control a node's power."""
 
@@ -54,15 +80,9 @@ class POWER_TYPE:
     AMT = 'amt'
 
 
-POWER_TYPE_CHOICES = (
-    (POWER_TYPE.VIRSH, "virsh (virtual systems)"),
-    (POWER_TYPE.WAKE_ON_LAN, "Wake-on-LAN"),
-    (POWER_TYPE.CDU, "Sentry Switch CDU"),
-    (POWER_TYPE.IPMI, "IPMI"),
-    (POWER_TYPE.MOONSHOT, "iLO4 Moonshot Chassis"),
-    (POWER_TYPE.SEAMICRO15K, "SeaMicro 15000"),
-    (POWER_TYPE.AMT, "Intel AMT"),
-    )
+# Django 'Choices' format structure for its field selection mechanism.
+POWER_TYPE_CHOICES = [
+    (k, v) for (k, v) in get_power_types().items() if k != '']
 
 
 class IPMI_DRIVER:

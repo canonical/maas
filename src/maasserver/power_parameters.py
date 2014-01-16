@@ -36,23 +36,23 @@ from django import forms
 from maasserver.config_forms import DictCharField
 from maasserver.fields import MACAddressFormField
 from provisioningserver.enum import (
+    DEFAULT_POWER_TYPE,
     IPMI_DRIVER,
     IPMI_DRIVER_CHOICES,
-    POWER_TYPE,
     )
 
 
 POWER_TYPE_PARAMETERS = {
-    POWER_TYPE.DEFAULT: DictCharField(
+    DEFAULT_POWER_TYPE: DictCharField(
         [], required=False, skip_check=True),
-    POWER_TYPE.WAKE_ON_LAN: DictCharField(
+    'ether_wake': DictCharField(
         [
             ('mac_address',
              MACAddressFormField(label="MAC Address", required=False)),
         ],
         required=False,
         skip_check=True),
-    POWER_TYPE.VIRSH: DictCharField(
+    'virsh': DictCharField(
         [
             ('power_address',
              forms.CharField(label="Address", required=False)),
@@ -61,7 +61,7 @@ POWER_TYPE_PARAMETERS = {
         ],
         required=False,
         skip_check=True),
-    POWER_TYPE.CDU: DictCharField(
+    'fence_cdu': DictCharField(
         [
             ('power_id',
              forms.CharField(label="Power ID", required=False)),
@@ -74,7 +74,7 @@ POWER_TYPE_PARAMETERS = {
         ],
         required=False,
         skip_check=True),
-    POWER_TYPE.IPMI: DictCharField(
+    'ipmi': DictCharField(
         [
             ('power_driver',
              forms.ChoiceField(
@@ -90,7 +90,7 @@ POWER_TYPE_PARAMETERS = {
         ],
         required=False,
         skip_check=True),
-    POWER_TYPE.MOONSHOT: DictCharField(
+    'moonshot': DictCharField(
         [
             ('power_address',
              forms.CharField(
@@ -104,7 +104,7 @@ POWER_TYPE_PARAMETERS = {
         ],
         required=False,
         skip_check=True),
-    POWER_TYPE.SEAMICRO15K: DictCharField(
+    'sm15k': DictCharField(
         [
             ('power_address',
              forms.CharField(
@@ -118,7 +118,7 @@ POWER_TYPE_PARAMETERS = {
         ],
         required=False,
         skip_check=True),
-    POWER_TYPE.AMT: DictCharField(
+    'amt': DictCharField(
         [
             ('power_address',
              forms.CharField(

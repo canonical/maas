@@ -76,7 +76,6 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from metadataserver.models import CommissioningScript
 from netaddr import IPNetwork
-from provisioningserver.enum import POWER_TYPE_CHOICES
 from testtools.matchers import (
     AllMatch,
     Equals,
@@ -349,7 +348,7 @@ class NodeEditForms(MAASServerTestCase):
         hostname = factory.getRandomString()
         after_commissioning_action = factory.getRandomChoice(
             NODE_AFTER_COMMISSIONING_ACTION_CHOICES)
-        power_type = factory.getRandomChoice(POWER_TYPE_CHOICES)
+        power_type = factory.getRandomPowerType()
         form = AdminNodeForm(
             data={
                 'hostname': hostname,
@@ -417,7 +416,7 @@ class NodeEditForms(MAASServerTestCase):
         hostname = factory.getRandomString()
         after_commissioning_action = factory.getRandomChoice(
             NODE_AFTER_COMMISSIONING_ACTION_CHOICES)
-        power_type = factory.getRandomChoice(POWER_TYPE_CHOICES)
+        power_type = factory.getRandomPowerType()
         power_parameters_field = factory.getRandomString()
         form = AdminNodeForm(
             data={

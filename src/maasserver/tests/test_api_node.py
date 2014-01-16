@@ -52,10 +52,7 @@ from metadataserver.models import (
     NodeUserData,
     )
 from metadataserver.nodeinituser import get_node_init_user
-from provisioningserver.enum import (
-    POWER_TYPE,
-    POWER_TYPE_CHOICES,
-    )
+from provisioningserver.enum import DEFAULT_POWER_TYPE
 
 
 class NodeAnonAPITest(MAASServerTestCase):
@@ -198,7 +195,7 @@ class TestNodeAPI(APITestCase):
     def test_POST_stop_may_be_repeated(self):
         node = factory.make_node(
             owner=self.logged_in_user, mac=True,
-            power_type=POWER_TYPE.WAKE_ON_LAN)
+            power_type='ether_wake')
         self.client.post(self.get_node_uri(node), {'op': 'stop'})
         response = self.client.post(self.get_node_uri(node), {'op': 'stop'})
         self.assertEqual(httplib.OK, response.status_code)
@@ -211,7 +208,7 @@ class TestNodeAPI(APITestCase):
     def test_POST_start_returns_node(self):
         node = factory.make_node(
             owner=self.logged_in_user, mac=True,
-            power_type=POWER_TYPE.WAKE_ON_LAN)
+            power_type='ether_wake')
         response = self.client.post(self.get_node_uri(node), {'op': 'start'})
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(
@@ -220,7 +217,7 @@ class TestNodeAPI(APITestCase):
     def test_POST_start_sets_distro_series(self):
         node = factory.make_node(
             owner=self.logged_in_user, mac=True,
-            power_type=POWER_TYPE.WAKE_ON_LAN)
+            power_type='ether_wake')
         distro_series = factory.getRandomEnum(DISTRO_SERIES)
         response = self.client.post(
             self.get_node_uri(node),
@@ -234,7 +231,7 @@ class TestNodeAPI(APITestCase):
     def test_POST_start_validates_distro_series(self):
         node = factory.make_node(
             owner=self.logged_in_user, mac=True,
-            power_type=POWER_TYPE.WAKE_ON_LAN)
+            power_type='ether_wake')
         invalid_distro_series = factory.getRandomString()
         response = self.client.post(
             self.get_node_uri(node),
@@ -251,7 +248,7 @@ class TestNodeAPI(APITestCase):
     def test_POST_start_may_be_repeated(self):
         node = factory.make_node(
             owner=self.logged_in_user, mac=True,
-            power_type=POWER_TYPE.WAKE_ON_LAN)
+            power_type='ether_wake')
         self.client.post(self.get_node_uri(node), {'op': 'start'})
         response = self.client.post(self.get_node_uri(node), {'op': 'start'})
         self.assertEqual(httplib.OK, response.status_code)
@@ -259,7 +256,7 @@ class TestNodeAPI(APITestCase):
     def test_POST_start_stores_user_data(self):
         node = factory.make_node(
             owner=self.logged_in_user, mac=True,
-            power_type=POWER_TYPE.WAKE_ON_LAN)
+            power_type='ether_wake')
         user_data = (
             b'\xff\x00\xff\xfe\xff\xff\xfe' +
             factory.getRandomString().encode('ascii'))
@@ -446,10 +443,9 @@ class TestNodeAPI(APITestCase):
 
     def test_PUT_admin_can_change_power_type(self):
         self.become_admin()
-        original_power_type = factory.getRandomChoice(
-            POWER_TYPE_CHOICES)
-        new_power_type = factory.getRandomChoice(
-            POWER_TYPE_CHOICES, but_not=original_power_type)
+        original_power_type = factory.getRandomPowerType()
+        new_power_type = factory.getRandomPowerType(
+            but_not=original_power_type)
         node = factory.make_node(
             owner=self.logged_in_user,
             power_type=original_power_type,
@@ -464,10 +460,9 @@ class TestNodeAPI(APITestCase):
             new_power_type, reload_object(node).power_type)
 
     def test_PUT_non_admin_cannot_change_power_type(self):
-        original_power_type = factory.getRandomChoice(
-            POWER_TYPE_CHOICES)
-        new_power_type = factory.getRandomChoice(
-            POWER_TYPE_CHOICES, but_not=original_power_type)
+        original_power_type = factory.getRandomPowerType()
+        new_power_type = factory.getRandomPowerType(
+            but_not=original_power_type)
         node = factory.make_node(
             owner=self.logged_in_user,
             power_type=original_power_type,
@@ -531,7 +526,7 @@ class TestNodeAPI(APITestCase):
         self.become_admin()
         node = factory.make_node(
             owner=self.logged_in_user,
-            power_type=POWER_TYPE.WAKE_ON_LAN)
+            power_type='ether_wake')
         # Create a power_parameter valid for the selected power_type.
         new_power_address = factory.getRandomMACAddress()
         response = self.client_put(
@@ -547,7 +542,7 @@ class TestNodeAPI(APITestCase):
         self.become_admin()
         node = factory.make_node(
             owner=self.logged_in_user,
-            power_type=POWER_TYPE.WAKE_ON_LAN)
+            power_type=factory.getRandomPowerType())
         response = self.client_put(
             self.get_node_uri(node),
             {'cpu_count': 1, 'memory': 1024, 'storage': 2048})
@@ -561,7 +556,7 @@ class TestNodeAPI(APITestCase):
         self.become_admin()
         node = factory.make_node(
             owner=self.logged_in_user,
-            power_type=POWER_TYPE.WAKE_ON_LAN)
+            power_type='ether_wake')
         # Create an invalid power_parameter for WoL (not a valid
         # MAC address).
         new_power_address = factory.getRandomString()
@@ -581,7 +576,7 @@ class TestNodeAPI(APITestCase):
         power_parameters = factory.getRandomString()
         node = factory.make_node(
             owner=self.logged_in_user,
-            power_type=POWER_TYPE.WAKE_ON_LAN,
+            power_type='ether_wake',
             power_parameters=power_parameters)
         response = self.client_put(
             self.get_node_uri(node),
@@ -603,16 +598,16 @@ class TestNodeAPI(APITestCase):
         power_parameters = factory.getRandomString()
         node = factory.make_node(
             owner=self.logged_in_user,
-            power_type=POWER_TYPE.WAKE_ON_LAN,
+            power_type='ether_wake',
             power_parameters=power_parameters)
         response = self.client_put(
             self.get_node_uri(node),
-            {'power_type': POWER_TYPE.DEFAULT})
+            {'power_type': DEFAULT_POWER_TYPE})
 
         node = reload_object(node)
         self.assertEqual(
             (httplib.OK, node.power_type, node.power_parameters),
-            (response.status_code, POWER_TYPE.DEFAULT, ''))
+            (response.status_code, DEFAULT_POWER_TYPE, ''))
 
     def test_PUT_updates_power_type_default_rejects_params(self):
         # If one sets power_type to DEFAULT, on cannot set power_parameters.
@@ -620,13 +615,13 @@ class TestNodeAPI(APITestCase):
         power_parameters = factory.getRandomString()
         node = factory.make_node(
             owner=self.logged_in_user,
-            power_type=POWER_TYPE.WAKE_ON_LAN,
+            power_type='ether_wake',
             power_parameters=power_parameters)
         new_param = factory.getRandomString()
         response = self.client_put(
             self.get_node_uri(node),
             {
-                'power_type': POWER_TYPE.DEFAULT,
+                'power_type': DEFAULT_POWER_TYPE,
                 'power_parameters_address': new_param,
             })
 
@@ -647,13 +642,13 @@ class TestNodeAPI(APITestCase):
         power_parameters = factory.getRandomString()
         node = factory.make_node(
             owner=self.logged_in_user,
-            power_type=POWER_TYPE.WAKE_ON_LAN,
+            power_type='ether_wake',
             power_parameters=power_parameters)
         new_param = factory.getRandomString()
         response = self.client_put(
             self.get_node_uri(node),
             {
-                'power_type': POWER_TYPE.DEFAULT,
+                'power_type': DEFAULT_POWER_TYPE,
                 'power_parameters_param': new_param,
                 'power_parameters_skip_check': 'true',
             })
@@ -661,7 +656,7 @@ class TestNodeAPI(APITestCase):
         node = reload_object(node)
         self.assertEqual(
             (httplib.OK, node.power_type, node.power_parameters),
-            (response.status_code, POWER_TYPE.DEFAULT, {'param': new_param}))
+            (response.status_code, DEFAULT_POWER_TYPE, {'param': new_param}))
 
     def test_PUT_updates_power_parameters_skip_ckeck(self):
         # With power_parameters_skip_check, arbitrary data
@@ -685,7 +680,7 @@ class TestNodeAPI(APITestCase):
         self.become_admin()
         node = factory.make_node(
             owner=self.logged_in_user,
-            power_type=POWER_TYPE.WAKE_ON_LAN,
+            power_type='ether_wake',
             power_parameters=factory.getRandomString())
         response = self.client_put(
             self.get_node_uri(node),

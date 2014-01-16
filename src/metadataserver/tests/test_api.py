@@ -67,7 +67,6 @@ from mock import (
     Mock,
     )
 from netaddr import IPNetwork
-from provisioningserver.enum import POWER_TYPE
 from testtools.matchers import (
     Contains,
     MatchesAll,
@@ -709,10 +708,8 @@ class TestCommissioningAPI(DjangoTestCase):
             client, power_type="ipmi", power_parameters=json.dumps(params))
         self.assertEqual(httplib.OK, response.status_code, response.content)
         node = reload_object(node)
-        self.assertEqual(
-            POWER_TYPE.IPMI, node.power_type)
-        self.assertEqual(
-            params, node.power_parameters)
+        self.assertEqual("ipmi", node.power_type)
+        self.assertEqual(params, node.power_parameters)
 
     def test_signal_power_type_lower_case_works(self):
         node = factory.make_node(status=NODE_STATUS.COMMISSIONING)

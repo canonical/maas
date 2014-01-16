@@ -61,7 +61,6 @@ from provisioningserver.dns.config import (
     MAAS_NAMED_RNDC_CONF_NAME,
     MAAS_RNDC_CONF_NAME,
     )
-from provisioningserver.enum import POWER_TYPE
 from provisioningserver.power.poweraction import PowerActionFail
 from provisioningserver.pxe import tftppath
 from provisioningserver.tags import MissingCredentials
@@ -144,17 +143,17 @@ class TestPowerTasks(PservTestCase):
         # than being stored in the AsyncResult, so we need to test for
         # that instead of using result.get().
         self.assertRaises(
-            PowerActionFail, power_on.delay, POWER_TYPE.WAKE_ON_LAN)
+            PowerActionFail, power_on.delay, "ether_wake")
 
     def test_ether_wake_power_on(self):
         result = power_on.delay(
-            POWER_TYPE.WAKE_ON_LAN, mac_address=arbitrary_mac)
+            "ether_wake", mac_address=arbitrary_mac)
         self.assertTrue(result.successful())
 
     def test_ether_wake_does_not_support_power_off(self):
         self.assertRaises(
             PowerActionFail, power_off.delay,
-            POWER_TYPE.WAKE_ON_LAN, mac=arbitrary_mac)
+            "ether_wake", mac=arbitrary_mac)
 
 
 class TestDHCPTasks(PservTestCase):
