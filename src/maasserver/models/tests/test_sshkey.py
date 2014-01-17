@@ -55,6 +55,14 @@ class SSHKeyValidatorTest(MAASServerTestCase):
         self.assertRaises(
             ValidationError, validate_ssh_public_key, key_string)
 
+    def test_does_not_validate_non_ascii_key(self):
+        non_ascii_key = 'AAB3NzaC' + u'\u2502' + 'mN6Lo2I9w=='
+        key_string = 'ssh-rsa %s %s@%s' % (
+            non_ascii_key, factory.getRandomString(),
+            factory.getRandomString())
+        self.assertRaises(
+            ValidationError, validate_ssh_public_key, key_string)
+
     def test_does_not_validate_rsa_private_key(self):
         key_string = get_data('data/test_rsa')
         self.assertRaises(

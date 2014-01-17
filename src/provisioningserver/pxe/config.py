@@ -77,8 +77,8 @@ def get_pxe_template(purpose, arch, subarch):
             "This can happen if you manually power up a node when its "
             "state is not one that allows it. Is the node in the 'Declared' "
             "or 'Ready' states? It needs to be Enlisting, Commissioning or "
-            "Allocated."
-                % (pxe_templates_dir, purpose, arch, subarch))
+            "Allocated." % (
+                pxe_templates_dir, purpose, arch, subarch))
 
         raise AssertionError(error)
 
