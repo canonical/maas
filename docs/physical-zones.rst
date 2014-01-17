@@ -12,8 +12,8 @@ to the same UPS, or a portion of your network.  Zones are most useful when they
 represent portions of your infrastructure.  But you could also use them simply
 to keep track of where your systems are located.
 
-Each node can be in at most one physical zone.  In a default setup, no
-zones are defined and a node will not be in any zone at all.  If you do not
+Each node is in one and only one physical zone.  Each MAAS instance ships with
+a default zone to which nodes are attached by default.  If you do not
 need this feature, you can simply pretend it does not exist.
 
 

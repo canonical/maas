@@ -38,13 +38,16 @@ Physical zone: {{ zone.name }}
         (<a href="{{ node_list_link }}">view</a>)
       </span>
     </li>
+    {% if zone.is_default %}
     <li class="block size3">
       <h4>Default</h4>
       <span id="#default">
-        {% if zone.default %}Yes{% else %}No{% endif %}
+        This zone is the default zone.
+	Its name cannot be changed and it cannot be deleted.
       </span>
     </li>
-     <li class="block size12 first">
+    {% endif %}
+    <li class="block size12 first">
       {% if zone.description %}
         <h4>Description</h4>
         <pre>{{ zone.description }}</pre>

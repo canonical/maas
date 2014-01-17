@@ -1284,7 +1284,7 @@ class TestZoneForm(MAASServerTestCase):
         self.assertEqual(new_name, zone.name)
         self.assertEqual(zone, Zone.objects.get(name=new_name))
 
-    def test_updates_default_zone_description_works(self):
+    def test_update_default_zone_description_works(self):
         zone = Zone.objects.get_default_zone()
         new_description = factory.getRandomString()
         form = ZoneForm(data={'description': new_description}, instance=zone)

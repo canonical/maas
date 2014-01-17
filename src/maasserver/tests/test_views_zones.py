@@ -305,18 +305,14 @@ class ZoneDeleteAdminTest(AdminLoggedInTestCase):
                 reverse('zone-del', args=[DEFAULT_ZONE_NAME]),
                 {'post': 'yes'})
         except ValidationError:
-            # XXX: Right now, this generates an error because the deletion
+            # Right now, this generates an error because the deletion
             # is prevented in the model code and not at the form level.
             # This is not so bad because we make sure that the deletion link
-            # for the default zone isn't showed anywhere.
-            # Still, ideally, once the validation happens at the form level,
-            # this try/except statement should be removed and this test
-            # should be extended further to check that the reponse to
-            # the above self.client.post indicates a failure to validate
-            # the data.
+            # for the default zone isn't shown anywhere.
+            # If we move validation to the form level, this exception goes
+            # away and we'll have to check the HTTP response for a validation
+            # failure.
             pass
-
-        # TODO: check that the page failed to validate the data.
 
         # The default zone is still there.
         self.assertIsNotNone(Zone.objects.get_default_zone())

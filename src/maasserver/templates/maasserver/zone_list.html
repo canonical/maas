@@ -15,7 +15,6 @@
           <tr>
             <th>Name</th>
             <th>Description</th>
-            <th>Default</th>
             <th>Nodes</th>
             {% if user.is_superuser %}
             <th></th>
@@ -32,7 +31,6 @@
               </a>
             </td>
             <td>{{ zone_item.description|truncatechars:40 }}</td>
-            <td>{% if zone_item.is_default %}Yes{% endif %}</td>
             <td>
               {{ zone_item.node_set.count }}
               (<a href="{% url 'node-list' %}?query=zone%3D{{ zone_item.name }}">view</a>)
