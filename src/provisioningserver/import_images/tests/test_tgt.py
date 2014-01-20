@@ -20,7 +20,6 @@ import subprocess
 from textwrap import dedent
 
 from maastesting.factory import factory
-from maastesting.matchers import ContainsAll
 from maastesting.testcase import MAASTestCase
 from provisioningserver.import_images import tgt as tgt_module
 from provisioningserver.import_images.tgt import (
@@ -40,6 +39,7 @@ from provisioningserver.import_images.tgt import (
 from provisioningserver.utils import read_text_file
 from testtools.matchers import (
     Contains,
+    ContainsAll,
     DirExists,
     FileContains,
     FileExists,

@@ -39,7 +39,6 @@ from maasserver.models.tag import Tag
 from maasserver.testing import reload_object
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maastesting.matchers import ContainsAll
 from maastesting.utils import sample_binary_data
 from metadataserver.fields import Bin
 from metadataserver.models import (
@@ -68,6 +67,7 @@ from mock import (
     )
 from testtools.content import text_content
 from testtools.matchers import (
+    ContainsAll,
     DocTestMatches,
     MatchesStructure,
     )

@@ -26,10 +26,6 @@ from textwrap import dedent
 from celery.app import app_or_default
 from maastesting.factory import factory
 from maastesting.fakemethod import FakeMethod
-from maastesting.matchers import (
-    ContainsAll,
-    MatchesAll,
-    )
 from maastesting.testcase import MAASTestCase
 from mock import Mock
 from netaddr import (
@@ -62,10 +58,12 @@ from provisioningserver.utils import locate_config
 import tempita
 from testtools.matchers import (
     Contains,
+    ContainsAll,
     EndsWith,
     FileContains,
     FileExists,
     IsInstance,
+    MatchesAll,
     MatchesStructure,
     Not,
     StartsWith,

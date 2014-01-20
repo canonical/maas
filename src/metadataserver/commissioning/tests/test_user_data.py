@@ -16,13 +16,13 @@ __all__ = []
 
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maastesting.matchers import ContainsAll
 from metadataserver.commissioning import user_data
 from metadataserver.commissioning.user_data import generate_user_data
 from mock import (
     Mock,
     sentinel,
     )
+from testtools.matchers import ContainsAll
 
 
 class TestUserData(MAASServerTestCase):

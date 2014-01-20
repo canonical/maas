@@ -24,10 +24,12 @@ from subprocess import (
 import sys
 
 from maastesting import root
-from maastesting.matchers import ContainsAll
 from maastesting.testcase import MAASTestCase
 from provisioningserver.dhcp import writer
-from testtools.matchers import MatchesStructure
+from testtools.matchers import (
+    ContainsAll,
+    MatchesStructure,
+    )
 
 
 class TestScript(MAASTestCase):

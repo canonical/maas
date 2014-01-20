@@ -39,13 +39,13 @@ from maasserver.preseed import (
 from maasserver.testing.api import AnonAPITestCase
 from maasserver.testing.factory import factory
 from maastesting.fakemethod import FakeMethod
-from maastesting.matchers import ContainsAll
 from mock import Mock
 from netaddr import IPNetwork
 from provisioningserver import kernel_opts
 from provisioningserver.kernel_opts import KernelParameters
 from testtools.matchers import (
     Contains,
+    ContainsAll,
     Equals,
     MatchesListwise,
     StartsWith,

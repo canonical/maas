@@ -27,9 +27,11 @@ from maasserver.testing.testcase import AdminLoggedInTestCase
 from maasserver.views.settings_commissioning_scripts import (
     COMMISSIONING_SCRIPTS_ANCHOR,
     )
-from maastesting.matchers import ContainsAll
 from metadataserver.models import CommissioningScript
-from testtools.matchers import MatchesStructure
+from testtools.matchers import (
+    ContainsAll,
+    MatchesStructure,
+    )
 
 
 class CommissioningScriptListingTest(AdminLoggedInTestCase):

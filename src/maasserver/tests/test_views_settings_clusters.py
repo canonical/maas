@@ -32,10 +32,10 @@ from maasserver.testing import (
     )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import AdminLoggedInTestCase
-from maastesting.matchers import ContainsAll
 from testtools.matchers import (
     AllMatch,
     Contains,
+    ContainsAll,
     Equals,
     MatchesStructure,
     )

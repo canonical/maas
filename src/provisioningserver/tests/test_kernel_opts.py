@@ -19,7 +19,6 @@ __all__ = [
 import os
 
 from maastesting.factory import factory
-from maastesting.matchers import ContainsAll
 from maastesting.testcase import MAASTestCase
 from provisioningserver import kernel_opts
 from provisioningserver.kernel_opts import (
@@ -34,6 +33,7 @@ from provisioningserver.kernel_opts import (
 from provisioningserver.testing.config import ConfigFixture
 from testtools.matchers import (
     Contains,
+    ContainsAll,
     Not,
     )
 

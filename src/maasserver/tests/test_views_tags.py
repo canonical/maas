@@ -21,7 +21,7 @@ from maasserver.testing import get_content_links
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import LoggedInTestCase
 from maasserver.views import tags as tags_views
-from maastesting.matchers import ContainsAll
+from testtools.matchers import ContainsAll
 
 
 class TagViewsTest(LoggedInTestCase):

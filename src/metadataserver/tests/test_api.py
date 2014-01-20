@@ -42,7 +42,6 @@ from maasserver.testing import reload_object
 from maasserver.testing.factory import factory
 from maasserver.testing.oauthclient import OAuthAuthenticatedClient
 from maastesting.djangotestcase import DjangoTestCase
-from maastesting.matchers import ContainsAll
 from maastesting.utils import sample_binary_data
 from metadataserver import api
 from metadataserver.api import (
@@ -69,6 +68,7 @@ from mock import (
 from netaddr import IPNetwork
 from testtools.matchers import (
     Contains,
+    ContainsAll,
     MatchesAll,
     Not,
     )

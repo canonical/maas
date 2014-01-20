@@ -28,9 +28,11 @@ from maasserver.nonces_cleanup import (
     timestamp_threshold,
     )
 from maasserver.testing.testcase import MAASServerTestCase
-from maastesting.matchers import ContainsAll
 from piston.models import Nonce
-from testtools.matchers import StartsWith
+from testtools.matchers import (
+    ContainsAll,
+    StartsWith,
+    )
 
 
 class TestCleanupOldNonces(MAASServerTestCase):

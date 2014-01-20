@@ -34,7 +34,6 @@ from maastesting.fakemethod import (
     FakeMethod,
     MultiFakeMethod,
     )
-from maastesting.matchers import ContainsAll
 from mock import (
     ANY,
     Mock,
@@ -89,6 +88,7 @@ from provisioningserver.testing.config import ConfigFixture
 from provisioningserver.testing.testcase import PservTestCase
 from testresources import FixtureResource
 from testtools.matchers import (
+    ContainsAll,
     Equals,
     FileExists,
     MatchesListwise,

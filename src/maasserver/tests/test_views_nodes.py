@@ -23,8 +23,8 @@ from urlparse import (
     urlparse,
     )
 
-from django.core.urlresolvers import reverse
 from django.conf import settings
+from django.core.urlresolvers import reverse
 from lxml.etree import XPath
 from lxml.html import fromstring
 import maasserver.api
@@ -66,8 +66,8 @@ from maasserver.testing.testcase import (
 from maasserver.utils import map_enum
 from maasserver.views import nodes as nodes_views
 from maasserver.views.nodes import message_from_form_stats
-from maastesting.matchers import ContainsAll
 from metadataserver.models.commissioningscript import LLDP_OUTPUT_NAME
+from testtools.matchers import ContainsAll
 
 
 class NodeViewsTest(LoggedInTestCase):

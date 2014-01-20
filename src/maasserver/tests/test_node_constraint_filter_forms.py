@@ -30,7 +30,7 @@ from maasserver.node_constraint_filter_forms import (
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import ignore_unused
-from maastesting.matchers import ContainsAll
+from testtools.matchers import ContainsAll
 
 
 class TestUtils(MAASServerTestCase):

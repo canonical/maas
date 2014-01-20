@@ -38,7 +38,7 @@ from maasserver.views import (
     PaginatedListView,
     )
 from maasserver.views.nodes import NodeEdit
-from maastesting.matchers import ContainsAll
+from testtools.matchers import ContainsAll
 
 
 class Test404500(LoggedInTestCase):

@@ -16,31 +16,13 @@ __all__ = []
 
 from maastesting import matchers
 from maastesting.factory import factory
-from maastesting.matchers import (
-    ContainsAll,
-    IsCallable,
-    )
+from maastesting.matchers import IsCallable
 from maastesting.testcase import MAASTestCase
 from mock import sentinel
 from testtools.matchers import (
     Mismatch,
     MismatchError,
     )
-
-
-class TestContainsAll(MAASTestCase):
-
-    def test_ContainsAll_passes_if_all_elements_are_present(self):
-        items = [factory.getRandomString() for i in range(3)]
-        self.assertThat(items, ContainsAll([items[0], items[2]]))
-
-    def test_ContainsAll_raises_if_one_element_is_missing(self):
-        items = [factory.getRandomString() for i in range(3)]
-        self.assertRaises(
-            MismatchError,
-            self.assertThat,
-            items,
-            ContainsAll([items[0], factory.getRandomString()]))
 
 
 class TestIsCallable(MAASTestCase):

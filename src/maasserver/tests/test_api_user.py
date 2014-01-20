@@ -21,7 +21,7 @@ from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
-from maastesting.matchers import ContainsAll
+from testtools.matchers import ContainsAll
 
 
 class TestUsers(APITestCase):

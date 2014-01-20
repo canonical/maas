@@ -34,11 +34,9 @@ from maasserver.testing.testcase import (
     LoggedInTestCase,
     )
 from maasserver.views.zones import ZoneAdd
-from maastesting.matchers import (
+from testtools.matchers import (
     Contains,
     ContainsAll,
-    )
-from testtools.matchers import (
     Equals,
     MatchesAll,
     Not,

@@ -55,10 +55,10 @@ from maasserver.preseed import (
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import map_enum
-from maastesting.matchers import ContainsAll
 from testtools.matchers import (
     AllMatch,
     Contains,
+    ContainsAll,
     IsInstance,
     MatchesAll,
     Not,

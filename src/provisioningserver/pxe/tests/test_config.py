@@ -21,7 +21,6 @@ import re
 
 from fixtures import EnvironmentVariableFixture
 from maastesting.factory import factory
-from maastesting.matchers import ContainsAll
 from maastesting.testcase import MAASTestCase
 import mock
 from provisioningserver import kernel_opts
@@ -33,6 +32,7 @@ from provisioningserver.utils import locate_config
 import tempita
 from testtools.matchers import (
     Contains,
+    ContainsAll,
     IsInstance,
     MatchesAll,
     MatchesRegex,

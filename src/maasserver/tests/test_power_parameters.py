@@ -18,7 +18,6 @@ from maasserver.config_forms import DictCharField
 from maasserver.power_parameters import POWER_TYPE_PARAMETERS
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maastesting.matchers import ContainsAll
 from provisioningserver.enum import (
     DEFAULT_POWER_TYPE,
     get_power_types,
@@ -26,6 +25,7 @@ from provisioningserver.enum import (
 from provisioningserver.power.poweraction import PowerAction
 from testtools.matchers import (
     AllMatch,
+    ContainsAll,
     Equals,
     IsInstance,
     MatchesStructure,
