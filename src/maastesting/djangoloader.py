@@ -21,14 +21,18 @@ import threading
 import unittest
 
 from django.conf import settings
-from django.test.simple import (
-    DjangoTestSuiteRunner,
-    reorder_suite,
-    )
+from django.test.simple import DjangoTestSuiteRunner
 from django_nose import NoseTestSuiteRunner
 from maastesting.loader import MAASTestLoader
 from postgresfixture import ClusterFixture
 import south.management.commands
+from testtools import try_imports
+
+
+reorder_suite = try_imports((
+    "django.test.simple.reorder_suite",
+    "django.test.runner.reorder_suite",
+))
 
 
 class MAASDjangoTestRunner(NoseTestSuiteRunner):

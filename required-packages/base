@@ -10,7 +10,7 @@ isc-dhcp-common
 libjs-raphael
 libjs-yui3-min
 libpq-dev
-postgresql-9.1
+postgresql
 python-amqplib
 python-avahi
 python-bzrlib

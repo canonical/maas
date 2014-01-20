@@ -2,6 +2,7 @@
 *.egg-info
 *.log
 ./.coverage
+./.db.lock
 ./.installed.cfg
 ./.noseids
 ./acceptance/*.build

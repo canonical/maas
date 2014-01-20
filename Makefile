@@ -53,11 +53,11 @@ install-dependencies:
 	    --no-install-recommends install $(shell sort -u \
 	        $(addprefix required-packages/,base dev doc))
 
-bin/python bin/pip:
+bin/python:
 	$(virtualenv) --python=$(python) --system-site-packages $(CURDIR)
 
-bin/buildout: bin/pip bootstrap/zc.buildout-1.5.2.tar.gz
-	bin/pip --quiet install --ignore-installed \
+bin/buildout: bin/python bootstrap/zc.buildout-1.5.2.tar.gz
+	bin/python -m pip --quiet install --ignore-installed \
 	    --no-dependencies bootstrap/zc.buildout-1.5.2.tar.gz
 	$(RM) -f README.txt  # zc.buildout installs an annoying README.txt.
 	@touch --no-create $@  # Ensure it's newer than its dependencies.
