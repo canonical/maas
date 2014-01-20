@@ -291,7 +291,7 @@ def add_zone(nodegroup):
     zones = ZoneGenerator(NodeGroup.objects.all(), serial).as_list()
     reconfig_subtask = tasks.rndc_command.subtask(args=[['reconfig']])
     write_dns_config_subtask = tasks.write_dns_config.subtask(
-        zones=zones, callback=reconfig_subtask)
+        kwargs={'zones': zones, 'callback': reconfig_subtask})
     tasks.write_dns_zone_config.delay(
         zones=zones_to_write, callback=write_dns_config_subtask)
 
