@@ -35,6 +35,9 @@ class OAuthUnauthorized(Unauthorized):
     def make_http_response(self):
         return send_oauth_error(self.error)
 
+    def __str__(self):
+        return repr(self.error.message)
+
 
 class MAASAPIAuthentication(OAuthAuthentication):
     """Use the currently logged-in user; resort to OAuth if there isn't one.
