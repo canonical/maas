@@ -217,7 +217,7 @@ class AdminNodeForm(NodeForm):
 
     zone = forms.ModelChoiceField(
         label="Physical zone", required=False,
-        initial=Zone.objects.get_default_zone(),
+        initial=Zone.objects.get_default_zone,
         queryset=Zone.objects.all(), to_field_name='name')
 
     cpu_count = forms.IntegerField(
