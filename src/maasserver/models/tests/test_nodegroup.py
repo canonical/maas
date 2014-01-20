@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the NodeGroup model."""
@@ -333,11 +333,13 @@ class TestNodeGroup(MAASServerTestCase):
         args, kwargs = task.apply_async.call_args
         self.assertEqual(nodegroup.work_queue, kwargs['queue'])
 
+    # XXX JeroenVermeulen 2014-01-17, bug=1052339: Deprecated.
     def test_get_managed_interface_returns_managed_interface(self):
         nodegroup = factory.make_node_group()
         interface = nodegroup.nodegroupinterface_set.all()[0]
         self.assertEqual(interface, nodegroup.get_managed_interface())
 
+    # XXX JeroenVermeulen 2014-01-17, bug=1052339: Deprecated.
     def test_get_managed_interface_does_not_return_unmanaged_interface(self):
         nodegroup = factory.make_node_group()
         interface = nodegroup.nodegroupinterface_set.all()[0]
@@ -345,6 +347,7 @@ class TestNodeGroup(MAASServerTestCase):
         interface.save()
         self.assertIsNone(nodegroup.get_managed_interface())
 
+    # XXX JeroenVermeulen 2014-01-17, bug=1052339: Deprecated.
     def test_get_managed_interface_does_not_return_unrelated_interface(self):
         nodegroup = factory.make_node_group()
         # Create another nodegroup with a managed interface.
@@ -353,6 +356,64 @@ class TestNodeGroup(MAASServerTestCase):
         interface.management = NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED
         interface.save()
         self.assertIsNone(nodegroup.get_managed_interface())
+
+    def test_get_dns_managed_interface_returns_dns_managed_interface(self):
+        nodegroup = factory.make_node_group(
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
+        self.assertEqual(
+            nodegroup.nodegroupinterface_set.all()[0],
+            nodegroup.get_dns_managed_interface())
+
+    def test_get_dns_managed_interface_returns_None_if_dhcp_only(self):
+        nodegroup = factory.make_node_group(
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
+        self.assertIsNone(nodegroup.get_dns_managed_interface())
+
+    def test_get_dns_managed_interface_returns_None_if_unmanaged(self):
+        nodegroup = factory.make_node_group(
+            management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
+        self.assertIsNone(nodegroup.get_dns_managed_interface())
+
+    def test_get_dns_managed_interface_returns_None_if_no_interface(self):
+        nodegroup = factory.make_node_group()
+        nodegroup.nodegroupinterface_set.all().delete()
+        self.assertIsNone(nodegroup.get_dns_managed_interface())
+
+    def test_get_managed_interfaces_returns_list(self):
+        nodegroup = factory.make_node_group()
+        self.assertIsInstance(nodegroup.get_managed_interfaces(), list)
+
+    def test_get_managed_interfaces_returns_dhcp_managed_interfaces(self):
+        nodegroup = factory.make_node_group(
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
+        self.assertEqual(
+            set(nodegroup.nodegroupinterface_set.all()),
+            set(nodegroup.get_managed_interfaces()))
+
+    def test_get_managed_interfaces_returns_dns_managed_interfaces(self):
+        nodegroup = factory.make_node_group(
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
+        self.assertEqual(
+            set(nodegroup.nodegroupinterface_set.all()),
+            set(nodegroup.get_managed_interfaces()))
+
+    def test_get_managed_interfaces_ignores_unmanaged_interfaces(self):
+        nodegroup = factory.make_node_group(
+            management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
+        self.assertEqual([], nodegroup.get_managed_interfaces())
+
+    def test_get_managed_interfaces_returns_empty_list_if_none_managed(self):
+        nodegroup = factory.make_node_group(
+            management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
+        managed_interfaces = nodegroup.get_managed_interfaces()
+        self.assertIsInstance(managed_interfaces, list)
+        self.assertEqual([], managed_interfaces)
+
+    def test_get_managed_interface_returns_empty_list_if_no_interface(self):
+        nodegroup = factory.make_node_group(
+            management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
+        nodegroup.nodegroupinterface_set.all().delete()
+        self.assertEqual([], nodegroup.get_managed_interfaces())
 
     def test_accept_node_changes_status(self):
         nodegroup = factory.make_node_group(

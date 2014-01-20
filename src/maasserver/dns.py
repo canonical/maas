@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """DNS management module."""
@@ -87,11 +87,9 @@ class DNSException(MAASException):
 
 def is_dns_managed(nodegroup):
     """Does MAAS manage a DNS zone for this Nodegroup?"""
-    interface = nodegroup.get_managed_interface()
     return (
         nodegroup.status == NODEGROUP_STATUS.ACCEPTED and
-        interface is not None and
-        interface.management == NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
+        nodegroup.get_dns_managed_interface() is not None)
 
 
 WARNING_MESSAGE = (

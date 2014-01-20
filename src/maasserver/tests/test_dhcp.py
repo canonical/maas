@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for DHCP management."""
@@ -21,7 +21,7 @@ from django.conf import settings
 from maasserver import dhcp
 from maasserver.dhcp import (
     configure_dhcp,
-    is_dhcp_managed,
+    get_interfaces_managed_by,
     )
 from maasserver.dns import get_dns_server_address
 from maasserver.enum import NODEGROUP_STATUS
@@ -29,6 +29,7 @@ from maasserver.models import Config
 from maasserver.models.config import get_default_config
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils import map_enum
 from maastesting.celery import CeleryFixture
 from netaddr import IPNetwork
 from provisioningserver import tasks
@@ -42,22 +43,34 @@ class TestDHCP(MAASServerTestCase):
         ('celery', FixtureResource(CeleryFixture())),
         )
 
-    def test_is_dhcp_managed_follows_nodegroup_status(self):
-        expected_results = {
-            NODEGROUP_STATUS.PENDING: False,
-            NODEGROUP_STATUS.REJECTED: False,
-            NODEGROUP_STATUS.ACCEPTED: True,
-        }
-        nodegroups = {
-            factory.make_node_group(status=status): value
-            for status, value in expected_results.items()
-        }
+    def test_get_interfaces_managed_by_returns_managed_interfaces(self):
+        self.patch(settings, "DHCP_CONNECT", False)
+        nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
         self.patch(settings, "DHCP_CONNECT", True)
-        results = {
-            nodegroup.status: is_dhcp_managed(nodegroup)
-            for nodegroup, value in nodegroups.items()
-        }
-        self.assertEquals(expected_results, results)
+        managed_interfaces = get_interfaces_managed_by(nodegroup)
+        self.assertNotEqual([], managed_interfaces)
+        self.assertEqual(1, len(managed_interfaces))
+        self.assertEqual(
+            list(nodegroup.nodegroupinterface_set.all()),
+            managed_interfaces)
+
+    def test_get_interfaces_managed_by_obeys_DHCP_CONNECT(self):
+        self.patch(settings, "DHCP_CONNECT", False)
+        nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
+        self.assertEqual([], get_interfaces_managed_by(nodegroup))
+
+    def test_get_interfaces_managed_by_returns_empty_if_not_accepted(self):
+        self.patch(settings, "DHCP_CONNECT", True)
+        unaccepted_statuses = set(map_enum(NODEGROUP_STATUS).values())
+        unaccepted_statuses.remove(NODEGROUP_STATUS.ACCEPTED)
+        managed_interfaces = {
+            status: get_interfaces_managed_by(
+                factory.make_node_group(status=status))
+            for status in unaccepted_statuses
+            }
+        self.assertEqual(
+            {status: [] for status in unaccepted_statuses},
+            managed_interfaces)
 
     def test_configure_dhcp_writes_dhcp_config(self):
         mocked_task = self.patch(dhcp, 'write_dhcp_config')

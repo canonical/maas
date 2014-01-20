@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Model definition for NodeGroup which models a collection of Nodes."""
@@ -212,6 +212,9 @@ class NodeGroup(TimestampedModel):
             return interface
         return None
 
+    # XXX JeroenVermeulen 2014-01-17, bug=1052339: This method is going away.
+    # Use get_managed_interfaces() instead.  There may be more than one managed
+    # interface.
     def get_managed_interface(self):
         """Return the interface for which MAAS managed the DHCP service.
 
@@ -224,6 +227,25 @@ class NodeGroup(TimestampedModel):
         for interface in self.nodegroupinterface_set.all():
             if interface.management != NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED:
                 return interface
+        return None
+
+    def get_managed_interfaces(self):
+        """Return the list of interfaces for which MAAS manages DHCP."""
+        # Filter in python instead of in SQL.  This will use the cached
+        # version of self.nodegroupinterface_set if present.
+        return [
+            itf
+            for itf in self.nodegroupinterface_set.all()
+            if itf.management != NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED
+            ]
+
+    def get_dns_managed_interface(self):
+        """Return the `NodeGroupInterface`, if any, whose DNS we manage."""
+        # Filter in python instead of in SQL.  This will use the cached
+        # version of self.nodegroupinterface_set if present.
+        for itf in self.nodegroupinterface_set.all():
+            if itf.management == NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS:
+                return itf
         return None
 
     def ensure_dhcp_key(self):
