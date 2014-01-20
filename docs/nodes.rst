@@ -31,15 +31,6 @@ which :ref:`you can retrieve from the web interface <api-key>`::
 
 .. _enlist-via-boot-media:
 
-Enlist nodes via boot media
----------------------------
-
-Using Boot media such as an AVAHI boot image or the Ubuntu Server
-install disk, it is possible to perform the discovery and enlistment
-process without using DHCP/PXE.
-
-Boot from the media and follow the instructions.
-
 
 Manually add nodes
 ------------------

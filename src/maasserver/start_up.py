@@ -29,7 +29,6 @@ from maasserver.components import (
 from maasserver.dns import write_full_dns_config
 from maasserver.enum import COMPONENT
 from maasserver.fields import register_mac_type
-from maasserver.maasavahi import setup_maas_avahi_service
 from maasserver.models import (
     BootImage,
     NodeGroup,
@@ -89,9 +88,6 @@ def inner_start_up():
     """Startup jobs that must run serialized w.r.t. other starting servers."""
     # Register our MAC data type with psycopg.
     register_mac_type(connection.cursor())
-
-    # Publish the MAAS server existence over Avahi.
-    setup_maas_avahi_service()
 
     # Make sure that the master nodegroup is created.
     # This must be serialized or we may initialize the master more than once.

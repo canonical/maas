@@ -1,5 +1,4 @@
 apache2
-avahi-daemon
 bind9
 bind9utils
 daemontools
@@ -12,12 +11,10 @@ libjs-yui3-min
 libpq-dev
 postgresql
 python-amqplib
-python-avahi
 python-bzrlib
 python-celery
 python-convoy
 python-curtin
-python-dbus
 python-dev
 python-django
 python-django-piston

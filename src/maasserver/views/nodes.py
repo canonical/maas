@@ -387,7 +387,7 @@ class NodePreseedView(NodeViewMixin, DetailView):
 # Info message displayed on the node page for COMMISSIONING
 # or READY nodes.
 NODE_BOOT_INFO = mark_safe("""
-You can boot this node using Avahi-enabled boot media or an adequately
+You can boot this node using an adequately
 configured DHCP server.  See
 <a href="https://maas.ubuntu.com/docs/nodes.html"
 >https://maas.ubuntu.com/docs/nodes.html</a> for instructions.

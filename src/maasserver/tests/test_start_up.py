@@ -69,14 +69,6 @@ class TestStartUp(MAASServerTestCase):
         # Prevent tests from leaving broken atexit handlers behind.
         self.patch(atexit, "_exithandlers", [])
 
-    def test_start_up_calls_setup_maas_avahi_service(self):
-        recorder = FakeMethod()
-        self.patch(start_up, 'setup_maas_avahi_service', recorder)
-        start_up.start_up()
-        self.assertEqual(
-            (1, [()]),
-            (recorder.call_count, recorder.extract_args()))
-
     def test_start_up_calls_write_full_dns_config(self):
         recorder = FakeMethod()
         self.patch(start_up, 'write_full_dns_config', recorder)

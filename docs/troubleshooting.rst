@@ -60,14 +60,8 @@ If you are using MAAS in a setup with an existing DHCP, *DO NOT SET UP THE MAAS
 DHCP SERVER* as this will cause no end of confusion to the rest of your network
 and most likely won't discover any nodes either.
 
-**SOLUTION**: You will need to either:
-
-* Configure your existing DHCP server to point to the MAAS server.
-
-  or
-
-* Enlist nodes using Avahi, which is the preferred option. For a quick guide to
-  this, please see :ref:`enlist-via-boot-media`.
+**SOLUTION**: You will need to configure your existing DHCP server to
+point to the MAAS server.
 
 
 Can't log in to node
