@@ -1,4 +1,4 @@
-# Copyright 2012-2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """DNS configuration."""
@@ -120,12 +120,11 @@ def generate_rndc(port=953, key_name='rndc-maas-key',
 
 
 def get_named_rndc_conf_path():
-    return os.path.join(
-        conf.DNS_CONFIG_DIR, MAAS_NAMED_RNDC_CONF_NAME)
+    return compose_config_path(MAAS_NAMED_RNDC_CONF_NAME)
 
 
 def get_rndc_conf_path():
-    return os.path.join(conf.DNS_CONFIG_DIR, MAAS_RNDC_CONF_NAME)
+    return compose_config_path(MAAS_RNDC_CONF_NAME)
 
 
 def setup_rndc():
@@ -148,7 +147,7 @@ def setup_rndc():
 
 def execute_rndc_command(arguments):
     """Execute a rndc command."""
-    rndc_conf = os.path.join(conf.DNS_CONFIG_DIR, MAAS_RNDC_CONF_NAME)
+    rndc_conf = get_rndc_conf_path()
     rndc_cmd = ['rndc', '-c', rndc_conf]
     rndc_cmd.extend(arguments)
     with open(os.devnull, "ab") as devnull:
@@ -183,9 +182,13 @@ def set_up_options_conf(overwrite=True, **kwargs):
     except NameError as error:
         raise DNSConfigFail(*error.args)
 
-    target_path = os.path.join(
-        conf.DNS_CONFIG_DIR, MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME)
+    target_path = compose_config_path(MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME)
     atomic_write(rendered, target_path, overwrite=overwrite, mode=0644)
+
+
+def compose_config_path(filename):
+    """Return the full path for a DNS config or zone file."""
+    return os.path.join(conf.DNS_CONFIG_DIR, filename)
 
 
 class DNSConfigBase:

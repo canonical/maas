@@ -1,4 +1,4 @@
-# Copyright 2012-2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test cases for dns.config"""
@@ -34,6 +34,7 @@ from netaddr import (
     )
 from provisioningserver.dns import config
 from provisioningserver.dns.config import (
+    compose_config_path,
     DEFAULT_CONTROLS,
     DNSConfig,
     DNSConfigDirectoryMissing,
@@ -74,6 +75,13 @@ from twisted.python.filepath import FilePath
 conf = app_or_default().conf
 
 
+def patch_dns_config_path(testcase):
+    """Set the DNS config dir to a temporary directory, and return its path."""
+    config_dir = testcase.make_dir()
+    testcase.patch(conf, 'DNS_CONFIG_DIR', config_dir)
+    return config_dir
+
+
 class TestRNDCUtilities(MAASTestCase):
 
     def test_generate_rndc_returns_configurations(self):
@@ -85,8 +93,7 @@ class TestRNDCUtilities(MAASTestCase):
         self.assertNotIn('\n#', named_content)
 
     def test_setup_rndc_writes_configurations(self):
-        dns_conf_dir = self.make_dir()
-        self.patch(conf, 'DNS_CONFIG_DIR', dns_conf_dir)
+        dns_conf_dir = patch_dns_config_path(self)
         setup_rndc()
         expected = (
             (MAAS_RNDC_CONF_NAME, '# Start of rndc.conf'),
@@ -97,8 +104,7 @@ class TestRNDCUtilities(MAASTestCase):
                 self.assertIn(content, conf_content)
 
     def test_set_up_options_conf_writes_configuration(self):
-        dns_conf_dir = self.make_dir()
-        self.patch(conf, 'DNS_CONFIG_DIR', dns_conf_dir)
+        dns_conf_dir = patch_dns_config_path(self)
         fake_dns = factory.getRandomIPAddress()
         set_up_options_conf(upstream_dns=fake_dns)
         target_file = os.path.join(
@@ -108,8 +114,7 @@ class TestRNDCUtilities(MAASTestCase):
             FileContains(matcher=Contains(fake_dns)))
 
     def test_set_up_options_conf_handles_no_upstream_dns(self):
-        dns_conf_dir = self.make_dir()
-        self.patch(conf, 'DNS_CONFIG_DIR', dns_conf_dir)
+        dns_conf_dir = patch_dns_config_path(self)
         set_up_options_conf()
         target_file = os.path.join(
             dns_conf_dir, MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME)
@@ -124,8 +129,7 @@ class TestRNDCUtilities(MAASTestCase):
         self.assertIn("name 'nonexistent' is not defined", repr(exception))
 
     def test_rndc_config_includes_default_controls(self):
-        dns_conf_dir = self.make_dir()
-        self.patch(conf, 'DNS_CONFIG_DIR', dns_conf_dir)
+        dns_conf_dir = patch_dns_config_path(self)
         self.patch(conf, 'DNS_DEFAULT_CONTROLS', True)
         setup_rndc()
         rndc_file = os.path.join(dns_conf_dir, MAAS_NAMED_RNDC_CONF_NAME)
@@ -135,9 +139,8 @@ class TestRNDCUtilities(MAASTestCase):
 
     def test_execute_rndc_command_executes_command(self):
         recorder = FakeMethod()
-        fake_dir = factory.getRandomString()
+        fake_dir = patch_dns_config_path(self)
         self.patch(config, 'call_and_check', recorder)
-        self.patch(conf, 'DNS_CONFIG_DIR', fake_dir)
         command = factory.getRandomString()
         execute_rndc_command([command])
         rndc_conf_path = os.path.join(fake_dir, MAAS_RNDC_CONF_NAME)
@@ -207,6 +210,17 @@ class TestRNDCUtilities(MAASTestCase):
         self.assertThat(uncomment_named_conf(named_comment), Contains(
             'key "rndc-key" {\n'
             '\talgorithm hmac-md5;\n'))
+
+
+class TestComposeConfigPath(MAASTestCase):
+    """Tests for `compose_config_path`."""
+
+    def test_returns_filename_in_dns_config_dir(self):
+        dns_dir = patch_dns_config_path(self)
+        filename = factory.make_name('config')
+        self.assertEqual(
+            os.path.join(dns_dir, filename),
+            compose_config_path(filename))
 
 
 class TestDNSConfig(MAASTestCase):
