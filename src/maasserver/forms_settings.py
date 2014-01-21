@@ -30,9 +30,6 @@ from maasserver.enum import (
     NODE_AFTER_COMMISSIONING_ACTION,
     NODE_AFTER_COMMISSIONING_ACTION_CHOICES,
     )
-from provisioningserver.enum import (
-    POWER_TYPE_CHOICES,
-    )
 
 
 def compose_invalid_choice_text(choice_of_what, valid_choices):
