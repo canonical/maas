@@ -296,19 +296,9 @@ class TestReportMissingConfigDir(MAASTestCase):
 class TestDNSConfig(MAASTestCase):
     """Tests for DNSConfig."""
 
-    def test_DNSConfig_defaults(self):
-        dnsconfig = DNSConfig()
-        self.assertEqual(
-            (
-                locate_config(TEMPLATES_DIR, 'named.conf.template'),
-                os.path.join(conf.DNS_CONFIG_DIR, MAAS_NAMED_CONF_NAME)
-            ),
-            (dnsconfig.template_path, dnsconfig.target_path))
-
     def test_write_config_DNSConfigDirectoryMissing_if_dir_missing(self):
         dnsconfig = DNSConfig()
-        dir_name = self.make_dir()
-        os.rmdir(dir_name)
+        dir_name = factory.make_name('nonesuch')
         self.patch(DNSConfig, 'target_dir', dir_name)
         self.assertRaises(DNSConfigDirectoryMissing, dnsconfig.write_config)
 
@@ -321,8 +311,7 @@ class TestDNSConfig(MAASTestCase):
     def test_write_config_skips_writing_if_overwrite_false(self):
         # If DNSConfig is created with overwrite=False, it won't
         # overwrite an existing config file.
-        target_dir = self.make_dir()
-        self.patch(DNSConfig, 'target_dir', target_dir)
+        target_dir = patch_dns_config_path(self)
         random_content = factory.getRandomString()
         factory.make_file(
             location=target_dir, name=MAAS_NAMED_CONF_NAME,
@@ -336,8 +325,7 @@ class TestDNSConfig(MAASTestCase):
     def test_write_config_writes_config_if_no_existing_file(self):
         # If DNSConfig is created with overwrite=False, the config file
         # will be written if no config file exists.
-        target_dir = self.make_dir()
-        self.patch(DNSConfig, 'target_dir', target_dir)
+        target_dir = patch_dns_config_path(self)
         dnsconfig = DNSConfig()
         dnsconfig.write_config(overwrite=False)
         self.assertThat(
@@ -345,8 +333,7 @@ class TestDNSConfig(MAASTestCase):
             FileExists())
 
     def test_write_config_writes_config(self):
-        target_dir = self.make_dir()
-        self.patch(DNSConfig, 'target_dir', target_dir)
+        target_dir = patch_dns_config_path(self)
         domain = factory.getRandomString()
         network = IPNetwork('192.168.0.3/24')
         ip = factory.getRandomIPInNetwork(network)
@@ -369,24 +356,23 @@ class TestDNSConfig(MAASTestCase):
                     ])))
 
     def test_write_config_makes_config_world_readable(self):
-        target_dir = self.make_dir()
-        self.patch(DNSConfig, 'target_dir', target_dir)
+        target_dir = patch_dns_config_path(self)
         DNSConfig().write_config()
         config_file = FilePath(os.path.join(target_dir, MAAS_NAMED_CONF_NAME))
         self.assertTrue(config_file.getPermissions().other.read)
 
     def test_get_include_snippet_returns_snippet(self):
-        target_dir = self.make_dir()
-        self.patch(DNSConfig, 'target_dir', target_dir)
-        dnsconfig = DNSConfig()
-        snippet = dnsconfig.get_include_snippet()
+        target_dir = patch_dns_config_path(self)
+        snippet = DNSConfig.get_include_snippet()
         self.assertThat(
             snippet,
             MatchesAll(
                 Not(StartsWith('\n')),
                 EndsWith('\n'),
                 Contains(target_dir),
-                Contains('include "%s"' % dnsconfig.target_path)))
+                Contains(
+                    'include "%s/%s"'
+                    % (conf.DNS_CONFIG_DIR, DNSConfig.target_file_name))))
 
 
 class TestIPUtilities(MAASTestCase):

@@ -260,22 +260,8 @@ class DNSConfigBase:
         parameters used when rendering the template."""
         return {}
 
-    def write_config(self, overwrite=True, **kwargs):
-        """Write out this DNS config file.
 
-        This raises DNSConfigDirectoryMissing if any
-        "No such file or directory" error is raised because that would mean
-        that the directory containing the write to be written does not exist.
-        """
-        content = render_dns_template(
-            self.template_path, kwargs, self.get_context())
-        with report_missing_config_dir():
-            atomic_write(
-                content, self.target_path, overwrite=overwrite,
-                mode=self.access_permissions)
-
-
-class DNSConfig(DNSConfigBase):
+class DNSConfig:
     """A DNS configuration file.
 
     Encapsulation of DNS config templates and parameter substitution.
@@ -284,29 +270,35 @@ class DNSConfig(DNSConfigBase):
     template_file_name = 'named.conf.template'
     target_file_name = MAAS_NAMED_CONF_NAME
 
-    def __init__(self, zones=()):
+    def __init__(self, zones=None):
+        if zones is None:
+            zones = ()
         self.zones = zones
-        return super(DNSConfig, self).__init__()
 
-    @property
-    def template_path(self):
-        return os.path.join(self.template_dir, self.template_file_name)
+    def write_config(self, overwrite=True, **kwargs):
+        """Write out this DNS config file.
 
-    @property
-    def target_path(self):
-        return os.path.join(self.target_dir, self.target_file_name)
-
-    def get_context(self):
-        return {
+        :raises DNSConfigDirectoryMissing: if the DNS configuration directory
+            does not exist.
+        """
+        template_path = locate_config(TEMPLATES_DIR, self.template_file_name)
+        context = {
             'zones': self.zones,
             'DNS_CONFIG_DIR': conf.DNS_CONFIG_DIR,
             'named_rndc_conf_path': get_named_rndc_conf_path(),
             'modified': unicode(datetime.today()),
         }
+        content = render_dns_template(template_path, kwargs, context)
+        target_path = compose_config_path(self.target_file_name)
+        with report_missing_config_dir():
+            atomic_write(content, target_path, overwrite=overwrite, mode=0644)
 
-    def get_include_snippet(self):
-        assert '"' not in self.target_path, self.target_path
-        return 'include "%s";\n' % self.target_path
+    @classmethod
+    def get_include_snippet(cls):
+        target_path = compose_config_path(cls.target_file_name)
+        assert '"' not in target_path, (
+            "DNS config path contains quote: %s." % target_path)
+        return 'include "%s";\n' % target_path
 
 
 def shortened_reversed_ip(ip, byte_num):
@@ -359,7 +351,7 @@ class DNSZoneConfigBase(DNSConfigBase):
         return os.path.join(
             self.target_dir, 'zone.%s' % self.zone_name)
 
-    def write_config(self, **kwargs):
+    def write_config(self):
         """Write out this DNS zone file.
 
         There is a subtlety with zone files: their filesystem timestamp must
@@ -367,8 +359,7 @@ class DNSZoneConfigBase(DNSConfigBase):
         support a resolution of one second, and so this method may set an
         unexpected modification time in order to maintain that property.
         """
-        content = render_dns_template(
-            self.template_path, kwargs, self.get_context())
+        content = render_dns_template(self.template_path, self.get_context())
         with report_missing_config_dir():
             incremental_write(
                 content, self.target_path, mode=self.access_permissions)

@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Django command: get the named configuration snippet used to hook
@@ -54,7 +54,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         edit = options.get('edit')
         config_path = options.get('config_path')
-        include_snippet = DNSConfig().get_include_snippet()
+        include_snippet = DNSConfig.get_include_snippet()
 
         if edit is True:
             with open(config_path, "ab") as conf_file:
