@@ -83,7 +83,6 @@ from maasserver.views import (
     HelpfulDeleteView,
     PaginatedListView,
     )
-from provisioningserver.enum import DEFAULT_POWER_TYPE
 from provisioningserver.tags import merge_details_cleanly
 
 
@@ -417,7 +416,7 @@ class NodeView(NodeViewMixin, UpdateView):
             NODE_PERMISSION.EDIT, node)
         if node.status in (NODE_STATUS.COMMISSIONING, NODE_STATUS.READY):
             messages.info(self.request, NODE_BOOT_INFO)
-        if node.power_type == DEFAULT_POWER_TYPE:
+        if node.power_type == '':
             messages.error(self.request, NO_POWER_SET)
         context['error_text'] = (
             node.error if node.status == NODE_STATUS.FAILED_TESTS else None)

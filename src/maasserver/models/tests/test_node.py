@@ -53,7 +53,6 @@ from metadataserver.models import (
     NodeUserData,
     )
 from provisioningserver.enum import (
-    DEFAULT_POWER_TYPE,
     get_power_types,
     )
 from provisioningserver.power.poweraction import PowerAction
@@ -229,32 +228,20 @@ class NodeTest(MAASServerTestCase):
         node.set_random_hostname()
         self.assertEqual('new_hostname', node.hostname)
 
-    def test_get_effective_power_type_defaults_to_config(self):
-        power_types = list(get_power_types().keys())  # Python3 proof.
-        power_types.remove(DEFAULT_POWER_TYPE)
-        node = factory.make_node(power_type=DEFAULT_POWER_TYPE)
-        effective_types = []
-        for power_type in power_types:
-            Config.objects.set_config('node_power_type', power_type)
-            effective_types.append(node.get_effective_power_type())
-        self.assertEqual(power_types, effective_types)
+    def test_get_effective_power_type_raises_if_not_set(self):
+        node = factory.make_node(power_type='')
+        self.assertRaises(ValueError, node.get_effective_power_type)
 
     def test_get_effective_power_type_reads_node_field(self):
         power_types = list(get_power_types().keys())  # Python3 proof.
-        power_types.remove(DEFAULT_POWER_TYPE)
         nodes = [
             factory.make_node(power_type=power_type)
             for power_type in power_types]
         self.assertEqual(
             power_types, [node.get_effective_power_type() for node in nodes])
 
-    def test_get_effective_power_type_rejects_default_as_config_value(self):
-        node = factory.make_node(power_type=DEFAULT_POWER_TYPE)
-        Config.objects.set_config('node_power_type', DEFAULT_POWER_TYPE)
-        self.assertRaises(ValueError, node.get_effective_power_type)
-
-    def test_power_parameters(self):
-        node = factory.make_node(power_type=DEFAULT_POWER_TYPE)
+    def test_power_parameters_are_stored(self):
+        node = factory.make_node(power_type='')
         parameters = dict(user="tarquin", address="10.1.2.3")
         node.power_parameters = parameters
         node.save()
@@ -262,8 +249,8 @@ class NodeTest(MAASServerTestCase):
         self.assertEqual(parameters, node.power_parameters)
 
     def test_power_parameters_default(self):
-        node = factory.make_node(power_type=DEFAULT_POWER_TYPE)
-        self.assertEqual("", node.power_parameters)
+        node = factory.make_node(power_type='')
+        self.assertEqual('', node.power_parameters)
 
     def test_get_effective_power_parameters_returns_power_parameters(self):
         params = {'test_parameter': factory.getRandomString()}
@@ -1054,20 +1041,17 @@ class NodeManagerTest(MAASServerTestCase):
         args, kwargs = task.apply_async.call_args
         self.assertEqual(node.work_queue, kwargs['queue'])
 
-    def test_start_nodes_uses_default_power_type_if_not_node_specific(self):
+    def test_start_nodes_does_not_attempt_power_task_if_no_power_type(self):
         # If the node has a power_type set to DEFAULT_POWER_TYPE
         # NodeManager.start_node(this_node) should use the default
         # power_type.
-        Config.objects.set_config('node_power_type', 'ether_wake')
         user = factory.make_user()
         node, unused = self.make_node_with_mac(
             user, power_type='')
         output = Node.objects.start_nodes([node.system_id], user)
 
-        self.assertItemsEqual([node], output)
-        self.assertEqual(
-            (1, 'provisioningserver.tasks.power_on'),
-            (len(self.celery.tasks), self.celery.tasks[0]['task'].name))
+        self.assertItemsEqual([], output)
+        self.assertEqual(0, len(self.celery.tasks))
 
     def test_start_nodes_wakeonlan_prefers_power_parameters(self):
         # If power_parameters is set we should prefer it to sifting

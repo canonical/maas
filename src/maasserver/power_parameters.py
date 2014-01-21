@@ -36,14 +36,14 @@ from django import forms
 from maasserver.config_forms import DictCharField
 from maasserver.fields import MACAddressFormField
 from provisioningserver.enum import (
-    DEFAULT_POWER_TYPE,
     IPMI_DRIVER,
     IPMI_DRIVER_CHOICES,
     )
 
-
+# FIXME: These should come from a hardware driver.
 POWER_TYPE_PARAMETERS = {
-    DEFAULT_POWER_TYPE: DictCharField(
+    # Empty type, for the case where nothing is entered in the form yet.
+    '': DictCharField(
         [], required=False, skip_check=True),
     'ether_wake': DictCharField(
         [

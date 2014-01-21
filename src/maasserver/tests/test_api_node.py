@@ -52,7 +52,6 @@ from metadataserver.models import (
     NodeUserData,
     )
 from metadataserver.nodeinituser import get_node_init_user
-from provisioningserver.enum import DEFAULT_POWER_TYPE
 
 
 class NodeAnonAPITest(MAASServerTestCase):
@@ -592,7 +591,7 @@ class TestNodeAPI(APITestCase):
             power_parameters, reload_object(node).power_parameters)
 
     def test_PUT_updates_power_type_default_resets_params(self):
-        # If one sets power_type to DEFAULT, power_parameter gets
+        # If one sets power_type to empty, power_parameter gets
         # reset by default (if skip_check is not set).
         self.become_admin()
         power_parameters = factory.getRandomString()
@@ -602,15 +601,15 @@ class TestNodeAPI(APITestCase):
             power_parameters=power_parameters)
         response = self.client_put(
             self.get_node_uri(node),
-            {'power_type': DEFAULT_POWER_TYPE})
+            {'power_type': ''})
 
         node = reload_object(node)
         self.assertEqual(
             (httplib.OK, node.power_type, node.power_parameters),
-            (response.status_code, DEFAULT_POWER_TYPE, ''))
+            (response.status_code, '', ''))
 
-    def test_PUT_updates_power_type_default_rejects_params(self):
-        # If one sets power_type to DEFAULT, on cannot set power_parameters.
+    def test_PUT_updates_power_type_empty_rejects_params(self):
+        # If one sets power_type to empty, one cannot set power_parameters.
         self.become_admin()
         power_parameters = factory.getRandomString()
         node = factory.make_node(
@@ -621,7 +620,7 @@ class TestNodeAPI(APITestCase):
         response = self.client_put(
             self.get_node_uri(node),
             {
-                'power_type': DEFAULT_POWER_TYPE,
+                'power_type': '',
                 'power_parameters_address': new_param,
             })
 
@@ -635,9 +634,10 @@ class TestNodeAPI(APITestCase):
         self.assertEqual(
             power_parameters, reload_object(node).power_parameters)
 
-    def test_PUT_updates_power_type_default_skip_check_to_force_params(self):
-        # If one sets power_type to DEFAULT, it is possible to pass
+    def test_PUT_updates_power_type_empty_skip_check_to_force_params(self):
+        # If one sets power_type to empty, it is possible to pass
         # power_parameter_skip_check='true' to force power_parameters.
+        # XXX bigjools 2014-01-21 Why is this necessary?
         self.become_admin()
         power_parameters = factory.getRandomString()
         node = factory.make_node(
@@ -648,7 +648,7 @@ class TestNodeAPI(APITestCase):
         response = self.client_put(
             self.get_node_uri(node),
             {
-                'power_type': DEFAULT_POWER_TYPE,
+                'power_type': '',
                 'power_parameters_param': new_param,
                 'power_parameters_skip_check': 'true',
             })
@@ -656,7 +656,7 @@ class TestNodeAPI(APITestCase):
         node = reload_object(node)
         self.assertEqual(
             (httplib.OK, node.power_type, node.power_parameters),
-            (response.status_code, DEFAULT_POWER_TYPE, {'param': new_param}))
+            (response.status_code, '', {'param': new_param}))
 
     def test_PUT_updates_power_parameters_skip_ckeck(self):
         # With power_parameters_skip_check, arbitrary data

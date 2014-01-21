@@ -19,7 +19,6 @@ from maasserver.power_parameters import POWER_TYPE_PARAMETERS
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from provisioningserver.enum import (
-    DEFAULT_POWER_TYPE,
     get_power_types,
     )
 from provisioningserver.power.poweraction import PowerAction
@@ -37,7 +36,11 @@ class TestPowerParameterDeclaration(MAASServerTestCase):
     def test_POWER_TYPE_PARAMETERS_is_dict_with_power_type_keys(self):
         power_types = set(get_power_types().keys())
         self.assertIsInstance(POWER_TYPE_PARAMETERS, dict)
-        self.assertThat(power_types, ContainsAll(POWER_TYPE_PARAMETERS))
+        # The empty parameters is a special value just for the UI so
+        # remove it.
+        params = POWER_TYPE_PARAMETERS.copy()
+        del params['']
+        self.assertThat(power_types, ContainsAll(params))
 
     def test_POWER_TYPE_PARAMETERS_values_are_DictCharField(self):
         self.assertThat(
@@ -55,8 +58,7 @@ class TestPowerActionRendering(MAASServerTestCase):
 
     scenarios = [
         (name, {'power_type': name})
-        for name in list(POWER_TYPE_PARAMETERS)
-        if name != DEFAULT_POWER_TYPE
+        for name in list(get_power_types())
     ]
 
     def make_random_parameters(self, power_change="on"):

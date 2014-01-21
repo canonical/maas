@@ -68,9 +68,6 @@ from provisioningserver import (
     boot_images,
     tasks,
     )
-from provisioningserver.enum import (
-    DEFAULT_POWER_TYPE,
-    )
 from provisioningserver.pxe import tftppath
 from provisioningserver.testing.boot_images import make_boot_image_params
 from testresources import FixtureResource
@@ -111,9 +108,10 @@ class TestStoreNodeParameters(MAASServerTestCase):
     def test_power_type_not_given(self):
         # When power_type is not specified, nothing happens.
         self.request.POST = {}
+        self.node.power_type = ''
         store_node_power_parameters(self.node, self.request)
-        self.assertEqual(DEFAULT_POWER_TYPE, self.node.power_type)
-        self.assertEqual("", self.node.power_parameters)
+        self.assertEqual('', self.node.power_type)
+        self.assertEqual('', self.node.power_parameters)
         self.save.assert_has_calls([])
 
     def test_power_type_set_but_no_parameters(self):

@@ -41,7 +41,6 @@ from maasserver.testing.testcase import (
 from maasserver.utils import strip_domain
 from maasserver.utils.orm import get_one
 from netaddr import IPNetwork
-from provisioningserver.enum import DEFAULT_POWER_TYPE
 
 
 class EnlistmentAPITest(MultipleUsersScenarios,
@@ -61,6 +60,7 @@ class EnlistmentAPITest(MultipleUsersScenarios,
                 'op': 'new',
                 'hostname': 'diane',
                 'architecture': architecture,
+                'power_type': 'ether_wake',
                 'after_commissioning_action': (
                     NODE_AFTER_COMMISSIONING_ACTION.DEFAULT),
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
@@ -82,6 +82,7 @@ class EnlistmentAPITest(MultipleUsersScenarios,
                 'op': 'new',
                 'hostname': hostname,
                 'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
+                'power_type': 'ether_wake',
                 'after_commissioning_action': (
                     NODE_AFTER_COMMISSIONING_ACTION.DEFAULT),
                 'mac_addresses': [factory.getRandomMACAddress()],
@@ -110,6 +111,7 @@ class EnlistmentAPITest(MultipleUsersScenarios,
                 'op': 'new',
                 'hostname': hostname,
                 'architecture': architecture,
+                'power_type': 'ether_wake',
                 'mac_addresses': factory.getRandomMACAddress(),
                 'power_parameters': json.dumps(power_parameters),
                 'power_type': power_type,
@@ -129,6 +131,7 @@ class EnlistmentAPITest(MultipleUsersScenarios,
                 'op': 'new',
                 'hostname': 'diane',
                 'architecture': architecture.split('/')[0],
+                'power_type': 'ether_wake',
                 'after_commissioning_action': (
                     NODE_AFTER_COMMISSIONING_ACTION.DEFAULT),
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
@@ -152,6 +155,7 @@ class EnlistmentAPITest(MultipleUsersScenarios,
                 'hostname': 'diane',
                 'architecture': architecture.split('/')[0],
                 'subarchitecture': architecture.split('/')[1],
+                'power_type': 'ether_wake',
                 'after_commissioning_action': (
                     NODE_AFTER_COMMISSIONING_ACTION.DEFAULT),
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
@@ -183,18 +187,6 @@ class EnlistmentAPITest(MultipleUsersScenarios,
         self.assertEqual(
             "Subarchitecture cannot be specified twice.",
             response.content)
-
-    def test_POST_new_power_type_defaults_to_asking_config(self):
-        architecture = factory.getRandomChoice(ARCHITECTURE_CHOICES)
-        response = self.client.post(
-            reverse('nodes_handler'), {
-                'op': 'new',
-                'architecture': architecture,
-                'mac_addresses': ['00:11:22:33:44:55'],
-                })
-        node = Node.objects.get(
-            system_id=json.loads(response.content)['system_id'])
-        self.assertEqual(DEFAULT_POWER_TYPE, node.power_type)
 
     def test_POST_new_associates_mac_addresses(self):
         # The API allows a Node to be created and associated with MAC
@@ -236,6 +228,7 @@ class EnlistmentAPITest(MultipleUsersScenarios,
             {
                 'op': 'new',
                 'architecture': architecture,
+                'power_type': 'ether_wake',
                 'mac_addresses': [factory.getRandomMACAddress()],
             })
         node = Node.objects.get(
@@ -355,6 +348,7 @@ class NodeHostnameEnlistmentTest(MultipleUsersScenarios,
                 'op': 'new',
                 'hostname': hostname_with_domain,
                 'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
+                'power_type': 'ether_wake',
                 'after_commissioning_action': (
                     NODE_AFTER_COMMISSIONING_ACTION.DEFAULT),
                 'mac_addresses': [factory.getRandomMACAddress()],
@@ -378,6 +372,7 @@ class NodeHostnameEnlistmentTest(MultipleUsersScenarios,
                 'op': 'new',
                 'hostname': hostname_without_domain,
                 'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
+                'power_type': 'ether_wake',
                 'after_commissioning_action': (
                     NODE_AFTER_COMMISSIONING_ACTION.DEFAULT),
                 'mac_addresses': [factory.getRandomMACAddress()],
@@ -399,6 +394,7 @@ class NodeHostnameEnlistmentTest(MultipleUsersScenarios,
                 'op': 'new',
                 'hostname': factory.make_name('hostname'),
                 'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
+                'power_type': 'ether_wake',
                 'after_commissioning_action': (
                     NODE_AFTER_COMMISSIONING_ACTION.DEFAULT),
                 'mac_addresses': [factory.getRandomMACAddress()],
@@ -417,6 +413,7 @@ class NodeHostnameEnlistmentTest(MultipleUsersScenarios,
                 'op': 'new',
                 'hostname': factory.make_name('hostname'),
                 'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
+                'power_type': 'ether_wake',
                 'after_commissioning_action': (
                     NODE_AFTER_COMMISSIONING_ACTION.DEFAULT),
                 'mac_addresses': [factory.getRandomMACAddress()],
@@ -590,23 +587,6 @@ class SimpleUserLoggedInEnlistmentAPITest(LoggedInTestCase):
 class AdminLoggedInEnlistmentAPITest(AdminLoggedInTestCase):
     # Enlistment tests specific to admin users.
 
-    def test_POST_new_creates_node_default_values_for_power_settings(self):
-        architecture = factory.getRandomChoice(ARCHITECTURE_CHOICES)
-        mac_address = 'AA:BB:CC:DD:EE:FF'
-        response = self.client.post(
-            reverse('nodes_handler'), {
-                'op': 'new',
-                'architecture': architecture,
-                'mac_addresses': [mac_address],
-                })
-        node = Node.objects.get(
-            system_id=json.loads(response.content)['system_id'])
-        self.assertAttributes(
-            node,
-            dict(
-                architecture=architecture, power_type=DEFAULT_POWER_TYPE,
-                power_parameters=''))
-
     def test_POST_new_sets_power_type_if_admin(self):
         response = self.client.post(
             reverse('nodes_handler'), {
@@ -690,6 +670,7 @@ class AdminLoggedInEnlistmentAPITest(AdminLoggedInTestCase):
                 'op': 'new',
                 'hostname': factory.getRandomString(),
                 'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
+                'power_type': 'ether_wake',
                 'after_commissioning_action': (
                     NODE_AFTER_COMMISSIONING_ACTION.DEFAULT),
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff'],
@@ -707,6 +688,7 @@ class AdminLoggedInEnlistmentAPITest(AdminLoggedInTestCase):
                 'op': 'new',
                 'hostname': factory.getRandomString(),
                 'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
+                'power_type': 'ether_wake',
                 'after_commissioning_action': (
                     NODE_AFTER_COMMISSIONING_ACTION.DEFAULT),
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],

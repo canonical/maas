@@ -79,14 +79,6 @@ CONFIG_ITEMS = {
             'label': "Check component compatibility and certification"
         }
     },
-    'node_power_type': {
-        'default': 'ether_wake',
-        'form': forms.ChoiceField,
-        'form_kwargs': {
-            'choices': POWER_TYPE_CHOICES,
-            'label': "Default node power type"
-        }
-    },
     #'fallback_master_archive': {},
     #'keep_mirror_list_uptodate': {},
     #'fetch_new_releases': {},

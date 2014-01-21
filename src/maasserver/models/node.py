@@ -73,7 +73,6 @@ from maasserver.utils import (
     )
 from piston.models import Token
 from provisioningserver.enum import (
-    DEFAULT_POWER_TYPE,
     POWER_TYPE_CHOICES,
     )
 from provisioningserver.tasks import (
@@ -315,6 +314,9 @@ class NodeManager(Manager):
         Power-on is only requested for nodes that the user has ownership
         privileges for; any other nodes in the request are ignored.
 
+        Nodes are also ignored if they don't have a valid power type
+        configured.
+
         :param ids: The `system_id` values for nodes to be started.
         :type ids: Sequence
         :param by_user: Requesting user.
@@ -335,7 +337,10 @@ class NodeManager(Manager):
         processed_nodes = []
         for node in nodes:
             power_params = node.get_effective_power_parameters()
-            node_power_type = node.get_effective_power_type()
+            try:
+                node_power_type = node.get_effective_power_type()
+            except ValueError:
+                continue
             if node_power_type == 'ether_wake':
                 mac = power_params.get('mac_address')
                 do_start = (mac != '' and mac is not None)
@@ -397,9 +402,9 @@ class Node(CleanSave, TimestampedModel):
     :ivar after_commissioning_action: The action to perform after
         commissioning. See vocabulary
         :class:`NODE_AFTER_COMMISSIONING_ACTION`.
-    :ivar power_type: The :class:`POWER_TYPE` that determines how this
-        node will be powered on.  If not given, the default will be used as
-        configured in the `node_power_type` setting.
+    :ivar power_type: The power type that determines how this
+        node will be powered on. Its value must match a power driver template
+        name.
     :ivar nodegroup: The `NodeGroup` this `Node` belongs to.
     :ivar tags: The list of :class:`Tag`s associated with this `Node`.
     :ivar objects: The :class:`NodeManager`.
@@ -453,7 +458,7 @@ class Node(CleanSave, TimestampedModel):
     # to mean "none."
     power_type = CharField(
         max_length=10, choices=POWER_TYPE_CHOICES, null=False, blank=True,
-        default=DEFAULT_POWER_TYPE)
+        default='')
 
     # JSON-encoded set of parameters for power control.
     power_parameters = JSONObjectField(blank=True, default="")
@@ -685,20 +690,11 @@ class Node(CleanSave, TimestampedModel):
     def get_effective_power_type(self):
         """Get power-type to use for this node.
 
-        If no power type has been set for the node, get the configured
-        default.
+        If no power type has been set for the node, raise an error.
         """
-        # FIXME: A default power type is simply useless.
-        if self.power_type == DEFAULT_POWER_TYPE:
-            power_type = Config.objects.get_config('node_power_type')
-            if power_type == '':
-                raise ValueError(
-                    "Node power type is set to the default, but "
-                    "the default is not yet configured.  The default "
-                    "needs to be configured to another, more useful value.")
-        else:
-            power_type = self.power_type
-        return power_type
+        if self.power_type == '':
+            raise ValueError("Node power type is unconfigured")
+        return self.power_type
 
     def get_primary_mac(self):
         """Return the primary :class:`MACAddress` for this node."""

@@ -14,17 +14,12 @@ str = None
 __metaclass__ = type
 __all__ = [
     'ARP_HTYPE',
-    'DEFAULT_POWER_TYPE',
     'IPMI_DRIVER',
     'IPMI_DRIVER_CHOICES',
     'POWER_TYPE',
     'POWER_TYPE_CHOICES',
     'get_power_types',
     ]
-
-
-# FIXME: Get rid of this as the POWER_TYPE enum gets eventually removed.
-DEFAULT_POWER_TYPE = ''
 
 
 def get_power_types():
@@ -40,8 +35,6 @@ def get_power_types():
         "moonshot": "iLO4 Moonshot Chassis",
         "sm15k": "SeaMicro 15000",
         "amt": "Intel AMT",
-        # The "DEFAULT" type, remove this when possible:
-        DEFAULT_POWER_TYPE: '',
         }
 
 
