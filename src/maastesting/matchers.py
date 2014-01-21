@@ -17,9 +17,7 @@ __all__ = [
     ]
 
 from testtools.matchers import (
-    Contains,
     Matcher,
-    MatchesAll,
     Mismatch,
     )
 

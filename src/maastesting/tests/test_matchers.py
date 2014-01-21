@@ -15,14 +15,10 @@ __metaclass__ = type
 __all__ = []
 
 from maastesting import matchers
-from maastesting.factory import factory
 from maastesting.matchers import IsCallable
 from maastesting.testcase import MAASTestCase
 from mock import sentinel
-from testtools.matchers import (
-    Mismatch,
-    MismatchError,
-    )
+from testtools.matchers import Mismatch
 
 
 class TestIsCallable(MAASTestCase):

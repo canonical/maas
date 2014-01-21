@@ -26,6 +26,8 @@ from subprocess import (
 from apiclient.creds import convert_tuple_to_string
 from apiclient.maas_client import MAASClient
 from apiclient.testing.credentials import make_api_credentials
+import celery
+from celery import states
 from celery.app import app_or_default
 from celery.task import Task
 from maastesting.celery import CeleryFixture
@@ -279,11 +281,24 @@ class TestDHCPTasks(PservTestCase):
             (recorder.call_count, recorder.extract_args()[0]))
 
 
-class TestDNSTasks(PservTestCase):
+def assertTaskRetried(runner, result, nb_retries, task_name):
+    # In celery version 2.5 (in Saucy) a retried tasks that eventually
+    # succeeds comes out in a 'SUCCESS' state and in 3.1 (in Trusty) is comes
+    # out with a 'RETRY' state.
+    # In both cases the task is successfully retried.
+    if celery.VERSION[0] == 2:
+        runner.assertTrue(result.successful())
+    else:
+        runner.assertEqual(
+            len(runner.celery.tasks), nb_retries)
+        last_task = runner.celery.tasks[0]
+        # The last task succeeded.
+        runner.assertEqual(
+            (last_task['task'].name, last_task['state']),
+            (task_name, states.SUCCESS))
 
-    resources = (
-        ("celery", FixtureResource(CeleryFixture())),
-        )
+
+class TestDNSTasks(PservTestCase):
 
     def setUp(self):
         super(TestDNSTasks, self).setUp()
@@ -295,6 +310,7 @@ class TestDNSTasks(PservTestCase):
         # executing real rndc commands).
         self.rndc_recorder = FakeMethod()
         self.patch(tasks, 'execute_rndc_command', self.rndc_recorder)
+        self.celery = self.useFixture(CeleryFixture())
 
     def test_write_dns_config_writes_file(self):
         zone_names = [random.randint(1, 100), random.randint(1, 100)]
@@ -411,7 +427,9 @@ class TestDNSTasks(PservTestCase):
         self.patch(tasks, 'execute_rndc_command', simulate_failures)
         command = factory.getRandomString()
         result = rndc_command.delay(command, retry=True)
-        self.assertTrue(result.successful())
+        assertTaskRetried(
+            self, result, RNDC_COMMAND_MAX_RETRY + 1,
+            'provisioningserver.tasks.rndc_command')
 
     def test_rndc_command_is_retried_a_limited_number_of_times(self):
         # If we simulate RNDC_COMMAND_MAX_RETRY + 1 failures, the
@@ -504,9 +522,9 @@ class TestBootImagesTasks(PservTestCase):
 
 class TestTagTasks(PservTestCase):
 
-    resources = (
-        ("celery", FixtureResource(CeleryFixture())),
-        )
+    def setUp(self):
+        super(TestTagTasks, self).setUp()
+        self.celery = self.useFixture(CeleryFixture())
 
     def test_update_node_tags_can_be_retried(self):
         self.set_secrets()
@@ -522,7 +540,9 @@ class TestTagTasks(PservTestCase):
         tag = factory.getRandomString()
         result = update_node_tags.delay(
             tag, '//node', tag_nsmap=None, retry=True)
-        self.assertTrue(result.successful())
+        assertTaskRetried(
+            self, result, UPDATE_NODE_TAGS_MAX_RETRY + 1,
+            'provisioningserver.tasks.update_node_tags')
 
     def test_update_node_tags_is_retried_a_limited_number_of_times(self):
         self.set_secrets()

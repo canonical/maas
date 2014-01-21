@@ -22,12 +22,14 @@ from textwrap import dedent
 
 from fixtures import EnvironmentVariableFixture
 from maastesting.factory import factory
-from maastesting.matchers import Contains
 from provisioningserver.dhcp import config
 from provisioningserver.pxe.tftppath import compose_bootloader_path
 from provisioningserver.testing.testcase import PservTestCase
 import tempita
-from testtools.matchers import MatchesRegex
+from testtools.matchers import (
+    Contains,
+    MatchesRegex,
+    )
 
 # Simple test version of the DHCP template.  Contains parameter
 # substitutions, but none that aren't also in the real template.
