@@ -48,6 +48,7 @@ from provisioningserver.dns.config import (
     MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME,
     MAAS_NAMED_RNDC_CONF_NAME,
     MAAS_RNDC_CONF_NAME,
+    render_dns_template,
     set_up_options_conf,
     setup_rndc,
     shortened_reversed_ip,
@@ -56,7 +57,6 @@ from provisioningserver.dns.config import (
     )
 from provisioningserver.dns.utils import generated_hostname
 from provisioningserver.utils import locate_config
-import tempita
 from testtools.matchers import (
     Contains,
     ContainsAll,
@@ -223,6 +223,46 @@ class TestComposeConfigPath(MAASTestCase):
             compose_config_path(filename))
 
 
+class TestRenderDNSTemplate(MAASTestCase):
+    """Tests for `render_dns_template`."""
+
+    def test_renders_template(self):
+        template_text = 'X %d Y' % random.randint(1, 10000)
+        self.assertEqual(
+            template_text,
+            render_dns_template(self.make_file(contents=template_text)))
+
+    def test_interpolates_parameters(self):
+        param_name = factory.make_name('param', sep='_')
+        param_value = factory.getRandomString()
+        self.assertEqual(
+            "X %s Y" % param_value,
+            render_dns_template(
+                self.make_file(contents="X {{%s}} Y" % param_name),
+                {param_name: param_value}))
+
+    def test_combines_parameter_dicts(self):
+        self.assertEqual(
+            "aaa bbb",
+            render_dns_template(
+                self.make_file(contents='{{one}} {{two}}'),
+                {'one': 'aaa'}, {'two': 'bbb'}))
+
+    def test_takes_latest_value_of_redefined_parameter(self):
+        self.assertEqual(
+            "last",
+            render_dns_template(
+                self.make_file(contents='{{var}}'),
+                {'var': 'first'}, {'var': 'middle'}, {'var': 'last'}))
+
+    def test_reports_missing_parameters(self):
+        e = self.assertRaises(
+            DNSConfigFail,
+            render_dns_template,
+            self.make_file(contents='{{x}}'), {'y': '?'})
+        self.assertIn("'x' is not defined", unicode(e))
+
+
 class TestDNSConfig(MAASTestCase):
     """Tests for DNSConfig."""
 
@@ -234,27 +274,6 @@ class TestDNSConfig(MAASTestCase):
                 os.path.join(conf.DNS_CONFIG_DIR, MAAS_NAMED_CONF_NAME)
             ),
             (dnsconfig.template_path, dnsconfig.target_path))
-
-    def test_get_template_retrieves_template(self):
-        dnsconfig = DNSConfig()
-        template = dnsconfig.get_template()
-        self.assertIsInstance(template, tempita.Template)
-        self.assertThat(
-            dnsconfig.template_path, FileContains(template.content))
-
-    def test_render_template(self):
-        dnsconfig = DNSConfig()
-        random_content = factory.getRandomString()
-        template = tempita.Template("{{test}}")
-        rendered = dnsconfig.render_template(template, test=random_content)
-        self.assertEqual(random_content, rendered)
-
-    def test_render_template_raises_DNSConfigFail(self):
-        dnsconfig = DNSConfig()
-        template = tempita.Template("template: {{test}}")
-        exception = self.assertRaises(
-            DNSConfigFail, dnsconfig.render_template, template)
-        self.assertIn("'test' is not defined", unicode(exception))
 
     def test_write_config_DNSConfigDirectoryMissing_if_dir_missing(self):
         dnsconfig = DNSConfig()

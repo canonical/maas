@@ -191,6 +191,25 @@ def compose_config_path(filename):
     return os.path.join(conf.DNS_CONFIG_DIR, filename)
 
 
+def render_dns_template(template_name, *parameters):
+    """Generate contents for a DNS configuration or zone file.
+
+    :param template_name: Name of the template file that should be rendered.
+        It must be in `TEMPLATES_DIR`.
+    :param parameters: One or more dicts of paramaters to be passed to the
+        template.  Each adds to (and may overwrite) the previous ones.
+    """
+    template_path = locate_config(TEMPLATES_DIR, template_name)
+    template = tempita.Template.from_filename(template_path)
+    combined_params = {}
+    for params_dict in parameters:
+        combined_params.update(params_dict)
+    try:
+        return template.substitute(combined_params)
+    except NameError as error:
+        raise DNSConfigFail(*error.args)
+
+
 class DNSConfigBase:
     __metaclass__ = ABCMeta
 
@@ -214,17 +233,6 @@ class DNSConfigBase:
     @property
     def target_dir(self):
         return conf.DNS_CONFIG_DIR
-
-    def get_template(self):
-        with open(self.template_path, "r") as f:
-            return tempita.Template(f.read(), name=self.template_path)
-
-    def render_template(self, template, **kwargs):
-        """Substitute supplied kwargs into the supplied Tempita template."""
-        try:
-            return template.substitute(kwargs)
-        except NameError as error:
-            raise DNSConfigFail(*error.args)
 
     def get_context(self):
         """Dictionary containing parameters to be included in the
@@ -253,11 +261,10 @@ class DNSConfigBase:
 
     def inner_write_config(self, overwrite=True, **kwargs):
         """Write out this DNS config file."""
-        template = self.get_template()
-        kwargs.update(self.get_context())
-        rendered = self.render_template(template, **kwargs)
+        content = render_dns_template(
+            self.template_path, kwargs, self.get_context())
         atomic_write(
-            rendered, self.target_path, overwrite=overwrite,
+            content, self.target_path, overwrite=overwrite,
             mode=self.access_permissions)
 
 
@@ -347,11 +354,10 @@ class DNSZoneConfigBase(DNSConfigBase):
 
     def inner_write_config(self, **kwargs):
         """Write out the DNS config file for this zone."""
-        template = self.get_template()
-        kwargs.update(self.get_context())
-        rendered = self.render_template(template, **kwargs)
+        content = render_dns_template(
+            self.template_path, kwargs, self.get_context())
         incremental_write(
-            rendered, self.target_path, mode=self.access_permissions)
+            content, self.target_path, mode=self.access_permissions)
 
 
 class DNSForwardZoneConfig(DNSZoneConfigBase):
