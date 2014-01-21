@@ -315,8 +315,7 @@ class TestDNSConfig(MAASTestCase):
     def test_write_config_errors_if_unexpected_exception(self):
         dnsconfig = DNSConfig()
         exception = IOError(errno.EBUSY, factory.getRandomString())
-        self.patch(
-            DNSConfig, 'inner_write_config', Mock(side_effect=exception))
+        self.patch(config, 'atomic_write', Mock(side_effect=exception))
         self.assertRaises(IOError, dnsconfig.write_config)
 
     def test_write_config_skips_writing_if_overwrite_false(self):

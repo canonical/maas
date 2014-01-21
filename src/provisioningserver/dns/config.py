@@ -267,16 +267,12 @@ class DNSConfigBase:
         "No such file or directory" error is raised because that would mean
         that the directory containing the write to be written does not exist.
         """
-        with report_missing_config_dir():
-            self.inner_write_config(overwrite=overwrite, **kwargs)
-
-    def inner_write_config(self, overwrite=True, **kwargs):
-        """Write out this DNS config file."""
         content = render_dns_template(
             self.template_path, kwargs, self.get_context())
-        atomic_write(
-            content, self.target_path, overwrite=overwrite,
-            mode=self.access_permissions)
+        with report_missing_config_dir():
+            atomic_write(
+                content, self.target_path, overwrite=overwrite,
+                mode=self.access_permissions)
 
 
 class DNSConfig(DNSConfigBase):
@@ -363,12 +359,19 @@ class DNSZoneConfigBase(DNSConfigBase):
         return os.path.join(
             self.target_dir, 'zone.%s' % self.zone_name)
 
-    def inner_write_config(self, **kwargs):
-        """Write out the DNS config file for this zone."""
+    def write_config(self, **kwargs):
+        """Write out this DNS zone file.
+
+        There is a subtlety with zone files: their filesystem timestamp must
+        increase with every rewrite.  Some filesystems (ext3?) only seem to
+        support a resolution of one second, and so this method may set an
+        unexpected modification time in order to maintain that property.
+        """
         content = render_dns_template(
             self.template_path, kwargs, self.get_context())
-        incremental_write(
-            content, self.target_path, mode=self.access_permissions)
+        with report_missing_config_dir():
+            incremental_write(
+                content, self.target_path, mode=self.access_permissions)
 
 
 class DNSForwardZoneConfig(DNSZoneConfigBase):
