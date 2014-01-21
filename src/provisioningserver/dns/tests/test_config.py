@@ -49,6 +49,7 @@ from provisioningserver.dns.config import (
     MAAS_NAMED_RNDC_CONF_NAME,
     MAAS_RNDC_CONF_NAME,
     render_dns_template,
+    report_missing_config_dir,
     set_up_options_conf,
     setup_rndc,
     shortened_reversed_ip,
@@ -69,6 +70,7 @@ from testtools.matchers import (
     Not,
     StartsWith,
     )
+from testtools.testcase import ExpectedException
 from twisted.python.filepath import FilePath
 
 
@@ -261,6 +263,34 @@ class TestRenderDNSTemplate(MAASTestCase):
             render_dns_template,
             self.make_file(contents='{{x}}'), {'y': '?'})
         self.assertIn("'x' is not defined", unicode(e))
+
+
+class TestReportMissingConfigDir(MAASTestCase):
+    """Tests for the `report_missing_config_dir` context manager."""
+
+    def test_specially_reports_missing_config_dir(self):
+        with ExpectedException(DNSConfigDirectoryMissing):
+            with report_missing_config_dir():
+                open(os.path.join(self.make_dir(), 'nonexistent-file.txt'))
+
+    def test_succeeds_if_no_exceptions(self):
+        with report_missing_config_dir():
+            pass
+        # The real test is that we get here without error.
+        pass
+
+    def test_passes_on_other_similar_errors(self):
+        with ExpectedException(OSError):
+            with report_missing_config_dir():
+                raise OSError(errno.EACCES, "Deliberate error for testing.")
+
+    def test_passes_on_dissimilar_errors(self):
+        class DeliberateError(Exception):
+            """Deliberately induced error for testing."""
+
+        with ExpectedException(DeliberateError):
+            with report_missing_config_dir():
+                raise DeliberateError("This exception propagates unchanged.")
 
 
 class TestDNSConfig(MAASTestCase):

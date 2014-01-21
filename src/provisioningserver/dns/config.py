@@ -25,6 +25,7 @@ from abc import (
     ABCMeta,
     abstractproperty,
     )
+from contextlib import contextmanager
 from datetime import datetime
 import errno
 from itertools import (
@@ -210,6 +211,26 @@ def render_dns_template(template_name, *parameters):
         raise DNSConfigFail(*error.args)
 
 
+@contextmanager
+def report_missing_config_dir():
+    """Report missing DNS config dir as `DNSConfigDirectoryMissing`.
+
+    Use this around code that writes a new DNS configuration or zone file.
+    It catches a "no such file or directory" error and raises a more helpful
+    `DNSConfigDirectoryMissing` in its place.
+    """
+    try:
+        yield
+    except (IOError, OSError) as e:
+        if e.errno == errno.ENOENT:
+            raise DNSConfigDirectoryMissing(
+                "The directory where the DNS config files should be "
+                "written does not exist.  Make sure the 'maas-dns' "
+                "package is installed on this region controller.")
+        else:
+            raise
+
+
 class DNSConfigBase:
     __metaclass__ = ABCMeta
 
@@ -246,18 +267,8 @@ class DNSConfigBase:
         "No such file or directory" error is raised because that would mean
         that the directory containing the write to be written does not exist.
         """
-        try:
+        with report_missing_config_dir():
             self.inner_write_config(overwrite=overwrite, **kwargs)
-        except OSError as exception:
-            # Only raise a DNSConfigDirectoryMissing exception if this error
-            # is a "No such file or directory" exception.
-            if exception.errno == errno.ENOENT:
-                raise DNSConfigDirectoryMissing(
-                    "The directory where the DNS config files should be "
-                    "written does not exist.  Make sure the 'maas-dns' "
-                    "package is installed on this region controller.")
-            else:
-                raise
 
     def inner_write_config(self, overwrite=True, **kwargs):
         """Write out this DNS config file."""
