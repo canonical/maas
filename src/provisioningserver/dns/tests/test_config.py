@@ -52,11 +52,9 @@ from provisioningserver.dns.config import (
     report_missing_config_dir,
     set_up_options_conf,
     setup_rndc,
-    TEMPLATES_DIR,
     uncomment_named_conf,
     )
 from provisioningserver.dns.utils import generated_hostname
-from provisioningserver.utils import locate_config
 from testtools.matchers import (
     Contains,
     ContainsAll,
@@ -339,9 +337,7 @@ class TestDNSConfig(MAASTestCase):
         forward_zone = DNSForwardZoneConfig(
             domain, mapping={factory.getRandomString(): ip},
             networks=[network])
-        reverse_zone = DNSReverseZoneConfig(
-            domain, mapping={factory.getRandomString(): ip},
-            network=network)
+        reverse_zone = DNSReverseZoneConfig(domain, network=network)
         dnsconfig = DNSConfig((forward_zone, reverse_zone))
         dnsconfig.write_config()
         self.assertThat(
@@ -385,7 +381,7 @@ class TestDNSForwardZoneConfig(MAASTestCase):
         ip = factory.getRandomIPInNetwork(network)
         mapping = {hostname: ip}
         dns_zone_config = DNSForwardZoneConfig(
-            domain, serial, mapping, networks=[network])
+            domain, serial=serial, mapping=mapping, networks=[network])
         self.assertThat(
             dns_zone_config,
             MatchesStructure.byEquality(
@@ -400,14 +396,8 @@ class TestDNSForwardZoneConfig(MAASTestCase):
         domain = factory.make_name('zone')
         dns_zone_config = DNSForwardZoneConfig(domain)
         self.assertEqual(
-            (
-                locate_config(TEMPLATES_DIR, 'zone.template'),
-                os.path.join(conf.DNS_CONFIG_DIR, 'zone.%s' % domain),
-            ),
-            (
-                dns_zone_config.template_path,
-                dns_zone_config.target_path,
-            ))
+            os.path.join(conf.DNS_CONFIG_DIR, 'zone.%s' % domain),
+            dns_zone_config.target_path)
 
     def test_forward_zone_get_cname_mapping_returns_iterator(self):
         name = factory.getRandomString()
@@ -536,18 +526,14 @@ class TestDNSReverseZoneConfig(MAASTestCase):
     def test_fields(self):
         domain = factory.getRandomString()
         serial = random.randint(1, 200)
-        hostname = factory.getRandomString()
         network = factory.getRandomNetwork()
-        ip = factory.getRandomIPInNetwork(network)
-        mapping = {hostname: ip}
         dns_zone_config = DNSReverseZoneConfig(
-            domain, serial, mapping, network=network)
+            domain, serial=serial, network=network)
         self.assertThat(
             dns_zone_config,
             MatchesStructure.byEquality(
                 domain=domain,
                 serial=serial,
-                mapping=mapping,
                 network=network,
                 )
             )
@@ -576,24 +562,15 @@ class TestDNSReverseZoneConfig(MAASTestCase):
         dns_zone_config = DNSReverseZoneConfig(
             domain, network=IPNetwork("192.168.0.0/22"))
         self.assertEqual(
-            (
-                locate_config(TEMPLATES_DIR, 'zone.template'),
-                os.path.join(conf.DNS_CONFIG_DIR, reverse_file_name)
-            ),
-            (
-                dns_zone_config.template_path,
-                dns_zone_config.target_path,
-            ))
+            os.path.join(conf.DNS_CONFIG_DIR, reverse_file_name),
+            dns_zone_config.target_path)
 
     def test_reverse_data_slash_24(self):
         # DNSReverseZoneConfig calculates the reverse data correctly for
         # a /24 network.
         domain = factory.make_name('zone')
-        hostname = factory.getRandomString()
-        ip = '192.168.0.5'
         network = IPNetwork('192.168.0.1/24')
-        dns_zone_config = DNSReverseZoneConfig(
-            domain, mapping={hostname: ip}, network=network)
+        dns_zone_config = DNSReverseZoneConfig(domain, network=network)
         self.assertEqual(
             '0.168.192.in-addr.arpa',
             dns_zone_config.zone_name)
@@ -602,11 +579,8 @@ class TestDNSReverseZoneConfig(MAASTestCase):
         # DNSReverseZoneConfig calculates the reverse data correctly for
         # a /22 network.
         domain = factory.getRandomString()
-        hostname = factory.getRandomString()
-        ip = '192.168.0.10'
         network = IPNetwork('192.168.0.1/22')
-        dns_zone_config = DNSReverseZoneConfig(
-            domain, mapping={hostname: ip}, network=network)
+        dns_zone_config = DNSReverseZoneConfig(domain, network=network)
         self.assertEqual(
             '168.192.in-addr.arpa',
             dns_zone_config.zone_name)

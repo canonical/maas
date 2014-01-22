@@ -347,8 +347,7 @@ class TestDNSTasks(PservTestCase):
             domain, serial=random.randint(1, 100),
             mapping={factory.getRandomString(): ip}, networks=[network])
         reverse_zone = DNSReverseZoneConfig(
-            domain, serial=random.randint(1, 100),
-            mapping={factory.getRandomString(): ip}, network=network)
+            domain, serial=random.randint(1, 100), network=network)
         result = write_dns_zone_config.delay(
             zones=[forward_zone, reverse_zone],
             callback=rndc_command.subtask(args=[command]))
@@ -461,9 +460,7 @@ class TestDNSTasks(PservTestCase):
                 mapping={factory.getRandomString(): ip},
                 networks=[network]),
             DNSReverseZoneConfig(
-                domain, serial=random.randint(1, 100),
-                mapping={factory.getRandomString(): ip},
-                network=network),
+                domain, serial=random.randint(1, 100), network=network),
             ]
         command = factory.getRandomString()
         result = write_full_dns_config.delay(

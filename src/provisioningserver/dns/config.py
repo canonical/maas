@@ -21,11 +21,7 @@ __all__ = [
     ]
 
 
-from abc import (
-    ABCMeta,
-    abstractmethod,
-    abstractproperty,
-    )
+from abc import ABCMeta
 from contextlib import contextmanager
 from datetime import datetime
 import errno
@@ -252,14 +248,13 @@ class DNSConfig:
         :raises DNSConfigDirectoryMissing: if the DNS configuration directory
             does not exist.
         """
-        template_path = locate_config(TEMPLATES_DIR, self.template_file_name)
         context = {
             'zones': self.zones,
             'DNS_CONFIG_DIR': conf.DNS_CONFIG_DIR,
             'named_rndc_conf_path': get_named_rndc_conf_path(),
             'modified': unicode(datetime.today()),
         }
-        content = render_dns_template(template_path, kwargs, context)
+        content = render_dns_template(self.template_file_name, kwargs, context)
         target_path = compose_config_path(self.target_file_name)
         with report_missing_config_dir():
             atomic_write(content, target_path, overwrite=overwrite, mode=0644)
@@ -279,68 +274,50 @@ class DNSZoneConfigBase:
 
     template_file_name = 'zone.template'
 
-    def __init__(self, domain, serial=None, mapping=None):
+    def __init__(self, domain, zone_name, serial=None):
         """
         :param domain: The domain name of the forward zone.
+        :param zone_name: Fully-qualified zone name.
         :param serial: The serial to use in the zone file. This must increment
             on each change.
-        :param mapping: A hostname:ip-address mapping for all known hosts in
-            the zone.
         """
         self.domain = domain
+        self.zone_name = zone_name
         self.serial = serial
-        self.mapping = {} if mapping is None else mapping
+        self.target_path = compose_config_path('zone.%s' % self.zone_name)
 
-    @abstractproperty
-    def zone_name(self):
-        """Return the zone's fully-qualified name."""
-
-    @property
-    def template_path(self):
-        return locate_config(TEMPLATES_DIR, self.template_file_name)
-
-    @property
-    def target_path(self):
-        """Return the full path of the DNS zone file."""
-        return compose_config_path('zone.%s' % self.zone_name)
-
-    @abstractmethod
-    def get_context(self):
-        """Dictionary containing parameters to be included in the
-        parameters used when rendering the template."""
-
-    def write_config(self):
-        """Write out this DNS zone file.
+    @classmethod
+    def write_zone_file(cls, output_file, parameters):
+        """Write a zone file based on the zone file template.
 
         There is a subtlety with zone files: their filesystem timestamp must
         increase with every rewrite.  Some filesystems (ext3?) only seem to
         support a resolution of one second, and so this method may set an
         unexpected modification time in order to maintain that property.
         """
-        content = render_dns_template(self.template_path, self.get_context())
+        content = render_dns_template(cls.template_file_name, parameters)
         with report_missing_config_dir():
-            incremental_write(content, self.target_path, mode=0644)
+            incremental_write(content, output_file, mode=0644)
 
 
 class DNSForwardZoneConfig(DNSZoneConfigBase):
     """Writes forward zone files."""
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, domain, **kwargs):
         """See `DNSZoneConfigBase.__init__`.
 
         :param networks: The networks that the mapping exists within.
         :type networks: Sequence of :class:`netaddr.IPNetwork`
         :param dns_ip: The IP address of the DNS server authoritative for this
             zone.
+        :param mapping: A hostname:ip-address mapping for all known hosts in
+            the zone.
         """
         self.networks = kwargs.pop('networks', [])
         self.dns_ip = kwargs.pop('dns_ip', None)
-        super(DNSForwardZoneConfig, self).__init__(*args, **kwargs)
-
-    @property
-    def zone_name(self):
-        """Return the name of the forward zone."""
-        return self.domain
+        self.mapping = kwargs.pop('mapping', {})
+        super(DNSForwardZoneConfig, self).__init__(
+            domain, zone_name=domain, **kwargs)
 
     def get_cname_mapping(self):
         """Return a generator with the mapping: hostname->generated hostname.
@@ -384,23 +361,29 @@ class DNSForwardZoneConfig(DNSZoneConfigBase):
                 }
             }
 
+    def write_config(self):
+        """Write the zone file."""
+        self.write_zone_file(self.target_path, self.get_context())
+
 
 class DNSReverseZoneConfig(DNSZoneConfigBase):
     """Writes reverse zone files."""
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, domain, **kwargs):
         """See `DNSZoneConfigBase.__init__`.
 
         :param network: The network that the mapping exists within.
         :type network: :class:`netaddr.IPNetwork`
         """
         self.network = kwargs.pop("network", None)
-        super(DNSReverseZoneConfig, self).__init__(*args, **kwargs)
+        zone_name = self.compose_zone_name(self.network)
+        super(DNSReverseZoneConfig, self).__init__(
+            domain, zone_name=zone_name, **kwargs)
 
-    @property
-    def zone_name(self):
+    @classmethod
+    def compose_zone_name(cls, network):
         """Return the name of the reverse zone."""
-        broadcast, netmask = self.network.broadcast, self.network.netmask
+        broadcast, netmask = network.broadcast, network.netmask
         octets = broadcast.words[:netmask.words.count(255)]
         return '%s.in-addr.arpa' % '.'.join(imap(unicode, reversed(octets)))
 
@@ -445,3 +428,7 @@ class DNSReverseZoneConfig(DNSZoneConfigBase):
                 'PTR': self.get_static_mapping(),
                 }
             }
+
+    def write_config(self):
+        """Write the zone file."""
+        self.write_zone_file(self.target_path, self.get_context())

@@ -226,14 +226,14 @@ class ZoneGenerator:
                 )
 
     @staticmethod
-    def _gen_reverse_zones(nodegroups, serial, mappings, networks):
+    def _gen_reverse_zones(nodegroups, serial, networks):
         """Generator of reverse zones, sorted by network."""
         get_domain = lambda nodegroup: nodegroup.name
         reverse_nodegroups = sorted(nodegroups, key=networks.get)
         for nodegroup in reverse_nodegroups:
             yield DNSReverseZoneConfig(
                 get_domain(nodegroup), serial=serial,
-                mapping=mappings[nodegroup], network=networks[nodegroup])
+                network=networks[nodegroup])
 
     def __iter__(self):
         forward_nodegroups = self._get_forward_nodegroups(self.nodegroups)
@@ -245,7 +245,7 @@ class ZoneGenerator:
             self._gen_forward_zones(
                 forward_nodegroups, serial, mappings, networks),
             self._gen_reverse_zones(
-                reverse_nodegroups, serial, mappings, networks),
+                reverse_nodegroups, serial, networks),
             )
 
     def as_list(self):
