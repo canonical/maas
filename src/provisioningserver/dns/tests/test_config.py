@@ -52,7 +52,6 @@ from provisioningserver.dns.config import (
     report_missing_config_dir,
     set_up_options_conf,
     setup_rndc,
-    shortened_reversed_ip,
     TEMPLATES_DIR,
     uncomment_named_conf,
     )
@@ -375,24 +374,6 @@ class TestDNSConfig(MAASTestCase):
                     % (conf.DNS_CONFIG_DIR, DNSConfig.target_file_name))))
 
 
-class TestIPUtilities(MAASTestCase):
-
-    def test_shortened_reversed_ip_2(self):
-        self.assertEqual(
-            '3.0',
-            shortened_reversed_ip(IPAddress('192.156.0.3'), 2))
-
-    def test_shortened_reversed_ip_0(self):
-        self.assertEqual(
-            '',
-            shortened_reversed_ip(IPAddress('192.156.0.3'), 0))
-
-    def test_shortened_reversed_ip_4(self):
-        self.assertEqual(
-            '3.0.156.192',
-            shortened_reversed_ip(IPAddress('192.156.0.3'), 4))
-
-
 class TestDNSForwardZoneConfig(MAASTestCase):
     """Tests for DNSForwardZoneConfig."""
 
@@ -570,6 +551,24 @@ class TestDNSReverseZoneConfig(MAASTestCase):
                 network=network,
                 )
             )
+
+    def test_shortened_reversed_ip_2(self):
+        self.assertEqual(
+            '3.0',
+            DNSReverseZoneConfig.shortened_reversed_ip(
+                IPAddress('192.156.0.3'), 2))
+
+    def test_shortened_reversed_ip_0(self):
+        self.assertEqual(
+            '',
+            DNSReverseZoneConfig.shortened_reversed_ip(
+                IPAddress('192.156.0.3'), 0))
+
+    def test_shortened_reversed_ip_4(self):
+        self.assertEqual(
+            '3.0.156.192',
+            DNSReverseZoneConfig.shortened_reversed_ip(
+                IPAddress('192.156.0.3'), 4))
 
     def test_computes_dns_config_file_paths(self):
         domain = factory.make_name('zone')

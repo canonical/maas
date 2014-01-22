@@ -272,21 +272,6 @@ class DNSConfig:
         return 'include "%s";\n' % target_path
 
 
-def shortened_reversed_ip(ip, byte_num):
-    """Get a reversed version of this IP with only the significant bytes.
-
-    This method is a utility used when generating reverse zone files.
-
-    >>> shortened_reversed_ip('192.156.0.3', 2)
-    '3.0'
-
-    :type ip: :class:`netaddr.IPAddress`
-    """
-    assert 0 <= byte_num <= 4, ("byte_num should be >=0 and <= 4.")
-    significant_octets = islice(reversed(ip.words), byte_num)
-    return '.'.join(imap(unicode, significant_octets))
-
-
 class DNSZoneConfigBase:
     """Base class for zone writers."""
 
@@ -419,6 +404,21 @@ class DNSReverseZoneConfig(DNSZoneConfigBase):
         octets = broadcast.words[:netmask.words.count(255)]
         return '%s.in-addr.arpa' % '.'.join(imap(unicode, reversed(octets)))
 
+    @classmethod
+    def shortened_reversed_ip(cls, ip, byte_num):
+        """Get a reversed version of this IP with only the significant bytes.
+
+        This method is a utility used when generating reverse zone files.
+
+        >>> DNSReverseZoneConfig.shortened_reversed_ip('192.156.0.3', 2)
+        '3.0'
+
+        :type ip: :class:`netaddr.IPAddress`
+        """
+        assert 0 <= byte_num <= 4, ("byte_num should be >=0 and <= 4.")
+        significant_octets = islice(reversed(ip.words), byte_num)
+        return '.'.join(imap(unicode, significant_octets))
+
     def get_static_mapping(self):
         """Return the reverse generated mapping: (shortened) ip->fqdn.
 
@@ -427,7 +427,7 @@ class DNSReverseZoneConfig(DNSZoneConfigBase):
         """
         byte_num = 4 - self.network.netmask.words.count(255)
         return (
-            (shortened_reversed_ip(ip, byte_num),
+            (self.shortened_reversed_ip(ip, byte_num),
                 '%s.%s.' % (generated_hostname(ip), self.domain))
             for ip in self.network
             )
