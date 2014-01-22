@@ -298,8 +298,8 @@ class TestDNSConfig(MAASTestCase):
 
     def test_write_config_DNSConfigDirectoryMissing_if_dir_missing(self):
         dnsconfig = DNSConfig()
-        dir_name = factory.make_name('nonesuch')
-        self.patch(DNSConfig, 'target_dir', dir_name)
+        dir_name = patch_dns_config_path(self)
+        os.rmdir(dir_name)
         self.assertRaises(DNSConfigDirectoryMissing, dnsconfig.write_config)
 
     def test_write_config_errors_if_unexpected_exception(self):
@@ -503,8 +503,7 @@ class TestDNSForwardZoneConfig(MAASTestCase):
             )
 
     def test_writes_dns_zone_config(self):
-        target_dir = self.make_dir()
-        self.patch(DNSForwardZoneConfig, 'target_dir', target_dir)
+        target_dir = patch_dns_config_path(self)
         domain = factory.getRandomString()
         hostname = factory.getRandomString()
         network = factory.getRandomNetwork()
@@ -523,8 +522,7 @@ class TestDNSForwardZoneConfig(MAASTestCase):
                     ])))
 
     def test_writes_dns_zone_config_with_NS_record(self):
-        target_dir = self.make_dir()
-        self.patch(DNSForwardZoneConfig, 'target_dir', target_dir)
+        target_dir = patch_dns_config_path(self)
         network = factory.getRandomNetwork()
         dns_ip = factory.getRandomIPAddress()
         dns_zone_config = DNSForwardZoneConfig(
@@ -541,7 +539,7 @@ class TestDNSForwardZoneConfig(MAASTestCase):
                     ])))
 
     def test_config_file_is_world_readable(self):
-        self.patch(DNSForwardZoneConfig, 'target_dir', self.make_dir())
+        patch_dns_config_path(self)
         network = factory.getRandomNetwork()
         dns_zone_config = DNSForwardZoneConfig(
             factory.getRandomString(), serial=random.randint(1, 100),
@@ -637,13 +635,11 @@ class TestDNSReverseZoneConfig(MAASTestCase):
             )
 
     def test_writes_dns_zone_config_with_NS_record(self):
-        target_dir = self.make_dir()
-        self.patch(DNSReverseZoneConfig, 'target_dir', target_dir)
+        target_dir = patch_dns_config_path(self)
         network = factory.getRandomNetwork()
-        dns_ip = factory.getRandomIPAddress()
         dns_zone_config = DNSReverseZoneConfig(
             factory.getRandomString(), serial=random.randint(1, 100),
-            dns_ip=dns_ip, network=network)
+            network=network)
         dns_zone_config.write_config()
         self.assertThat(
             os.path.join(
@@ -652,8 +648,7 @@ class TestDNSReverseZoneConfig(MAASTestCase):
                 matcher=Contains('IN  NS  %s.' % dns_zone_config.domain)))
 
     def test_writes_reverse_dns_zone_config(self):
-        target_dir = self.make_dir()
-        self.patch(DNSReverseZoneConfig, 'target_dir', target_dir)
+        target_dir = patch_dns_config_path(self)
         domain = factory.getRandomString()
         network = IPNetwork('192.168.0.1/22')
         dns_zone_config = DNSReverseZoneConfig(
@@ -667,10 +662,9 @@ class TestDNSReverseZoneConfig(MAASTestCase):
             FileContains(matcher=expected))
 
     def test_reverse_config_file_is_world_readable(self):
-        self.patch(DNSReverseZoneConfig, 'target_dir', self.make_dir())
+        patch_dns_config_path(self)
         dns_zone_config = DNSReverseZoneConfig(
             factory.getRandomString(), serial=random.randint(1, 100),
-            dns_ip=factory.getRandomIPAddress(),
             network=factory.getRandomNetwork())
         dns_zone_config.write_config()
         filepath = FilePath(dns_zone_config.target_path)

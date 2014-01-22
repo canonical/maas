@@ -23,6 +23,7 @@ __all__ = [
 
 from abc import (
     ABCMeta,
+    abstractmethod,
     abstractproperty,
     )
 from contextlib import contextmanager
@@ -231,36 +232,6 @@ def report_missing_config_dir():
             raise
 
 
-class DNSConfigBase:
-    __metaclass__ = ABCMeta
-
-    @abstractproperty
-    def template_path(self):
-        """Return the full path of the template to be used."""
-
-    @abstractproperty
-    def target_path(self):
-        """Return the full path of the target file to be written."""
-
-    @property
-    def template_dir(self):
-        return locate_config(TEMPLATES_DIR)
-
-    @property
-    def access_permissions(self):
-        """The access permissions for the config file."""
-        return 0644
-
-    @property
-    def target_dir(self):
-        return conf.DNS_CONFIG_DIR
-
-    def get_context(self):
-        """Dictionary containing parameters to be included in the
-        parameters used when rendering the template."""
-        return {}
-
-
 class DNSConfig:
     """A DNS configuration file.
 
@@ -316,26 +287,24 @@ def shortened_reversed_ip(ip, byte_num):
     return '.'.join(imap(unicode, significant_octets))
 
 
-class DNSZoneConfigBase(DNSConfigBase):
+class DNSZoneConfigBase:
     """Base class for zone writers."""
+
+    __metaclass__ = ABCMeta
 
     template_file_name = 'zone.template'
 
-    def __init__(self, domain, serial=None, mapping=None, dns_ip=None):
+    def __init__(self, domain, serial=None, mapping=None):
         """
         :param domain: The domain name of the forward zone.
         :param serial: The serial to use in the zone file. This must increment
             on each change.
         :param mapping: A hostname:ip-address mapping for all known hosts in
             the zone.
-        :param dns_ip: The IP address of the DNS server authoritative for this
-            zone.
         """
-        super(DNSZoneConfigBase, self).__init__()
         self.domain = domain
         self.serial = serial
         self.mapping = {} if mapping is None else mapping
-        self.dns_ip = dns_ip
 
     @abstractproperty
     def zone_name(self):
@@ -343,13 +312,17 @@ class DNSZoneConfigBase(DNSConfigBase):
 
     @property
     def template_path(self):
-        return os.path.join(self.template_dir, self.template_file_name)
+        return locate_config(TEMPLATES_DIR, self.template_file_name)
 
     @property
     def target_path(self):
         """Return the full path of the DNS zone file."""
-        return os.path.join(
-            self.target_dir, 'zone.%s' % self.zone_name)
+        return compose_config_path('zone.%s' % self.zone_name)
+
+    @abstractmethod
+    def get_context(self):
+        """Dictionary containing parameters to be included in the
+        parameters used when rendering the template."""
 
     def write_config(self):
         """Write out this DNS zone file.
@@ -361,8 +334,7 @@ class DNSZoneConfigBase(DNSConfigBase):
         """
         content = render_dns_template(self.template_path, self.get_context())
         with report_missing_config_dir():
-            incremental_write(
-                content, self.target_path, mode=self.access_permissions)
+            incremental_write(content, self.target_path, mode=0644)
 
 
 class DNSForwardZoneConfig(DNSZoneConfigBase):
@@ -373,9 +345,11 @@ class DNSForwardZoneConfig(DNSZoneConfigBase):
 
         :param networks: The networks that the mapping exists within.
         :type networks: Sequence of :class:`netaddr.IPNetwork`
+        :param dns_ip: The IP address of the DNS server authoritative for this
+            zone.
         """
-        networks = kwargs.pop("networks", None)
-        self.networks = [] if networks is None else networks
+        self.networks = kwargs.pop('networks', [])
+        self.dns_ip = kwargs.pop('dns_ip', None)
         super(DNSForwardZoneConfig, self).__init__(*args, **kwargs)
 
     @property

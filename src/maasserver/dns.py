@@ -229,11 +229,10 @@ class ZoneGenerator:
     def _gen_reverse_zones(nodegroups, serial, mappings, networks):
         """Generator of reverse zones, sorted by network."""
         get_domain = lambda nodegroup: nodegroup.name
-        dns_ip = get_dns_server_address()
         reverse_nodegroups = sorted(nodegroups, key=networks.get)
         for nodegroup in reverse_nodegroups:
             yield DNSReverseZoneConfig(
-                get_domain(nodegroup), serial=serial, dns_ip=dns_ip,
+                get_domain(nodegroup), serial=serial,
                 mapping=mappings[nodegroup], network=networks[nodegroup])
 
     def __iter__(self):
