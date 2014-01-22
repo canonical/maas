@@ -588,7 +588,7 @@ class NodesHandler(OperationsHandler):
             the node.
         :param mac_addresses: One or more MAC addresses for the node.
         :param hostname: A hostname. If not given, one will be generated.
-        :param powertype: A power management type, if applicable (e.g.
+        :param power_type: A power management type, if applicable (e.g.
             "virsh", "ipmi").
         """
         node = create_node(request)

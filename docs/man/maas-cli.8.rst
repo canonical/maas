@@ -275,7 +275,7 @@ acquire | list | accept | accept-all | new | check-commissioning
      will be generated.
      mac_addresses="<value>" - The mac address(es)
      allocated to this node.
-     powertype="<value>" - the power type of
+     power_type="<value>" - the power type of
      the node (e.g. virsh, ipmi)
 
 
