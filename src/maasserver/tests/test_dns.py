@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test DNS module."""
@@ -416,7 +416,7 @@ def forward_zone(domain, *networks):
     return MatchesAll(
         IsInstance(DNSForwardZoneConfig),
         MatchesStructure.byEquality(
-            domain=domain, networks=networks))
+            domain=domain, _networks=networks))
 
 
 def reverse_zone(domain, network):
@@ -428,7 +428,7 @@ def reverse_zone(domain, network):
     return MatchesAll(
         IsInstance(DNSReverseZoneConfig),
         MatchesStructure.byEquality(
-            domain=domain, network=network))
+            domain=domain, _network=network))
 
 
 class TestZoneGenerator(MAASServerTestCase):

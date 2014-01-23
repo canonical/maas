@@ -286,8 +286,16 @@ class DNSZoneConfigBase:
         self.serial = serial
         self.target_path = compose_config_path('zone.%s' % self.zone_name)
 
+    def make_parameters(self):
+        """Return a dict of the common template parameters."""
+        return {
+            'domain': self.domain,
+            'serial': self.serial,
+            'modified': unicode(datetime.today()),
+        }
+
     @classmethod
-    def write_zone_file(cls, output_file, parameters):
+    def write_zone_file(cls, output_file, *parameters):
         """Write a zone file based on the zone file template.
 
         There is a subtlety with zone files: their filesystem timestamp must
@@ -295,7 +303,7 @@ class DNSZoneConfigBase:
         support a resolution of one second, and so this method may set an
         unexpected modification time in order to maintain that property.
         """
-        content = render_dns_template(cls.template_file_name, parameters)
+        content = render_dns_template(cls.template_file_name, *parameters)
         with report_missing_config_dir():
             incremental_write(content, output_file, mode=0644)
 
@@ -306,6 +314,9 @@ class DNSForwardZoneConfig(DNSZoneConfigBase):
     def __init__(self, domain, **kwargs):
         """See `DNSZoneConfigBase.__init__`.
 
+        :param domain: The domain name of the forward zone.
+        :param serial: The serial to use in the zone file. This must increment
+            on each change.
         :param networks: The networks that the mapping exists within.
         :type networks: Sequence of :class:`netaddr.IPNetwork`
         :param dns_ip: The IP address of the DNS server authoritative for this
@@ -313,57 +324,59 @@ class DNSForwardZoneConfig(DNSZoneConfigBase):
         :param mapping: A hostname:ip-address mapping for all known hosts in
             the zone.
         """
-        self.networks = kwargs.pop('networks', [])
-        self.dns_ip = kwargs.pop('dns_ip', None)
-        self.mapping = kwargs.pop('mapping', {})
+        self._networks = kwargs.pop('networks', [])
+        self._dns_ip = kwargs.pop('dns_ip', None)
+        self._mapping = kwargs.pop('mapping', {})
         super(DNSForwardZoneConfig, self).__init__(
             domain, zone_name=domain, **kwargs)
 
-    def get_cname_mapping(self):
-        """Return a generator with the mapping: hostname->generated hostname.
+    @classmethod
+    def get_cname_mapping(cls, mapping):
+        """Return a generator mapping hostnames to generated hostnames.
 
         The mapping only contains hosts for which the two host names differ.
 
+        :param mapping: A dict mapping host names to IP addresses.
         :return: A generator of tuples: (host name, generated host name).
         """
         # We filter out cases where the two host names are identical: it
         # would be wrong to define a CNAME that maps to itself.
-        for hostname, ip in self.mapping.items():
+        for hostname, ip in mapping.items():
             generated_name = generated_hostname(ip)
             if generated_name != hostname:
                 yield (hostname, generated_name)
 
-    def get_static_mapping(self):
-        """Return a generator with the mapping fqdn->ip for the generated ips.
+    @classmethod
+    def get_static_mapping(cls, domain, networks, dns_ip):
+        """Return a generator mapping a network's generated fqdns to ips.
 
         The generated mapping is the mapping between the generated hostnames
         and the IP addresses for all the possible IP addresses in zone.
-        Note that we return a list of tuples instead of a dictionary in order
-        to be able to return a generator.
+        The return type is a sequence of tuples, not a dictionary, so that we
+        don't have to generate the whole thing at once.
+
+        :param domain: Zone's domain name.
+        :param networks: Sequence of :class:`netaddr.IPNetwork` describing
+            the networks whose IP-based generated host names should be mapped
+            to the corresponding IP addresses.
+        :param dns_ip: IP address for the zone's authoritative DNS server.
         """
-        ips = imap(unicode, chain.from_iterable(self.networks))
+        ips = imap(unicode, chain.from_iterable(networks))
         static_mapping = ((generated_hostname(ip), ip) for ip in ips)
         # Add A record for the name server's IP.
-        return chain([('%s.' % self.domain, self.dns_ip)], static_mapping)
-
-    def get_context(self):
-        """Return the dict used to render the DNS zone file.
-
-        That context dict is used to render the DNS zone file.
-        """
-        return {
-            'domain': self.domain,
-            'serial': self.serial,
-            'modified': unicode(datetime.today()),
-            'mappings': {
-                'CNAME': self.get_cname_mapping(),
-                'A': self.get_static_mapping(),
-                }
-            }
+        return chain([('%s.' % domain, dns_ip)], static_mapping)
 
     def write_config(self):
         """Write the zone file."""
-        self.write_zone_file(self.target_path, self.get_context())
+        self.write_zone_file(
+            self.target_path, self.make_parameters(),
+            {
+                'mappings': {
+                    'CNAME': self.get_cname_mapping(self._mapping),
+                    'A': self.get_static_mapping(
+                        self.domain, self._networks, self._dns_ip),
+                },
+            })
 
 
 class DNSReverseZoneConfig(DNSZoneConfigBase):
@@ -372,11 +385,14 @@ class DNSReverseZoneConfig(DNSZoneConfigBase):
     def __init__(self, domain, **kwargs):
         """See `DNSZoneConfigBase.__init__`.
 
+        :param domain: The domain name of the forward zone.
+        :param serial: The serial to use in the zone file. This must increment
+            on each change.
         :param network: The network that the mapping exists within.
         :type network: :class:`netaddr.IPNetwork`
         """
-        self.network = kwargs.pop("network", None)
-        zone_name = self.compose_zone_name(self.network)
+        self._network = kwargs.pop("network", None)
+        zone_name = self.compose_zone_name(self._network)
         super(DNSReverseZoneConfig, self).__init__(
             domain, zone_name=zone_name, **kwargs)
 
@@ -402,33 +418,33 @@ class DNSReverseZoneConfig(DNSZoneConfigBase):
         significant_octets = islice(reversed(ip.words), byte_num)
         return '.'.join(imap(unicode, significant_octets))
 
-    def get_static_mapping(self):
-        """Return the reverse generated mapping: (shortened) ip->fqdn.
+    @classmethod
+    def get_static_mapping(cls, domain, network):
+        """Return reverse mapping: shortened IPs to generated fqdns.
 
         The reverse generated mapping is the mapping between the IP addresses
         and the generated hostnames for all the possible IP addresses in zone.
+
+        :param domain: Zone's domain name.
+        :param network: Network whose IP addresses should be mapped to their
+            corresponding generated hostnames.
+        :type network: :class:`netaddr.IPNetwork`
         """
-        byte_num = 4 - self.network.netmask.words.count(255)
+        byte_num = 4 - network.netmask.words.count(255)
         return (
-            (self.shortened_reversed_ip(ip, byte_num),
-                '%s.%s.' % (generated_hostname(ip), self.domain))
-            for ip in self.network
+            (
+                cls.shortened_reversed_ip(ip, byte_num),
+                '%s.%s.' % (generated_hostname(ip), domain),
             )
-
-    def get_context(self):
-        """Return the dict used to render the DNS reverse zone file.
-
-        That context dict is used to render the DNS reverse zone file.
-        """
-        return {
-            'domain': self.domain,
-            'serial': self.serial,
-            'modified': unicode(datetime.today()),
-            'mappings': {
-                'PTR': self.get_static_mapping(),
-                }
-            }
+            for ip in network
+            )
 
     def write_config(self):
         """Write the zone file."""
-        self.write_zone_file(self.target_path, self.get_context())
+        self.write_zone_file(
+            self.target_path, self.make_parameters(),
+            {
+                'mappings': {
+                    'PTR': self.get_static_mapping(self.domain, self._network),
+                },
+            })
