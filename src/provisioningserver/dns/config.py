@@ -309,7 +309,14 @@ class DNSZoneConfigBase:
 
 
 class DNSForwardZoneConfig(DNSZoneConfigBase):
-    """Writes forward zone files."""
+    """Writes forward zone files.
+
+    A forward zone config contains two kinds of mappings: "A" records map all
+    possible IP addresses within each of its networks to generated hostnames
+    based on those addresses.  "CNAME" records map configured hostnames to the
+    matching generated IP hostnames.  An additional "A" record maps the domain
+    to the name server itself.
+    """
 
     def __init__(self, domain, **kwargs):
         """See `DNSZoneConfigBase.__init__`.
@@ -322,7 +329,8 @@ class DNSForwardZoneConfig(DNSZoneConfigBase):
         :param dns_ip: The IP address of the DNS server authoritative for this
             zone.
         :param mapping: A hostname:ip-address mapping for all known hosts in
-            the zone.
+            the zone.  These are configured hostnames, not the ones generated
+            based on IP addresses.  They will be mapped as CNAME records.
         """
         self._networks = kwargs.pop('networks', [])
         self._dns_ip = kwargs.pop('dns_ip', None)
@@ -380,7 +388,12 @@ class DNSForwardZoneConfig(DNSZoneConfigBase):
 
 
 class DNSReverseZoneConfig(DNSZoneConfigBase):
-    """Writes reverse zone files."""
+    """Writes reverse zone files.
+
+    A reverse zone mapping contains "PTR" records, each mapping
+    reverse-notation IP addresses within a network to the matching generated
+    hostname.
+    """
 
     def __init__(self, domain, **kwargs):
         """See `DNSZoneConfigBase.__init__`.
@@ -404,18 +417,32 @@ class DNSReverseZoneConfig(DNSZoneConfigBase):
         return '%s.in-addr.arpa' % '.'.join(imap(unicode, reversed(octets)))
 
     @classmethod
-    def shortened_reversed_ip(cls, ip, byte_num):
-        """Get a reversed version of this IP with only the significant bytes.
+    def shortened_reversed_ip(cls, ip, num_bytes):
+        """Return reversed version of least-significant bytes of IP address.
 
-        This method is a utility used when generating reverse zone files.
+        This is used when generating reverse zone files.
 
-        >>> DNSReverseZoneConfig.shortened_reversed_ip('192.156.0.3', 2)
-        '3.0'
+        >>> DNSReverseZoneConfig.shortened_reversed_ip('192.168.251.12', 1)
+        '12'
+        >>> DNSReverseZoneConfig.shortened_reversed_ip('10.99.0.3', 3)
+        '3.0.99'
 
+        :param ip: IP address.  Only its least-significant bytes will be used.
+            The bytes that only identify the network itself are ignored.
         :type ip: :class:`netaddr.IPAddress`
+        :param num_bytes: Number of bytes from `ip` that should be included in
+            the result.
+        :return: A string similar to an IP address, consisting of only the
+            last `num_bytes` octets separated by dots, in reverse order:
+            starting with the least-significant octet and continuing towards
+            the most-significant.
+        :rtype: unicode
         """
-        assert 0 <= byte_num <= 4, ("byte_num should be >=0 and <= 4.")
-        significant_octets = islice(reversed(ip.words), byte_num)
+        # XXX JeroenVermeulen 2014-01-23: Does 0 bytes really make sense?
+        assert 0 <= num_bytes <= 4, (
+            "num_bytes is %d (should be between 0 and 4 inclusive)."
+            % num_bytes)
+        significant_octets = islice(reversed(ip.words), num_bytes)
         return '.'.join(imap(unicode, significant_octets))
 
     @classmethod
@@ -430,10 +457,14 @@ class DNSReverseZoneConfig(DNSZoneConfigBase):
             corresponding generated hostnames.
         :type network: :class:`netaddr.IPNetwork`
         """
-        byte_num = 4 - network.netmask.words.count(255)
+        # Count how many octets are needed to address hosts within the network.
+        # If an octet in the netmask equals 255, that means that the
+        # corresponding octet will be equal between all hosts in the network.
+        # We don't need it in our shortened reversed addresses.
+        num_bytes = 4 - network.netmask.words.count(255)
         return (
             (
-                cls.shortened_reversed_ip(ip, byte_num),
+                cls.shortened_reversed_ip(ip, num_bytes),
                 '%s.%s.' % (generated_hostname(ip), domain),
             )
             for ip in network
