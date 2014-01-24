@@ -2,7 +2,7 @@
 #
 # Control a system via ipmipower, sending the seamicro specific hex codes
 #
-{{py: power_mode = 1 if power_change == 'on' else 0 }}
+{{py: power_mode = 1 if power_change == 'on' else 6 }}
 
 {{ipmitool}} -I lanplus \
     -H {{power_address}} -U {{power_user}} \
