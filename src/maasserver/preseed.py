@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Preseed generation."""
@@ -35,6 +35,7 @@ from maasserver.compose_preseed import (
     )
 from maasserver.enum import (
     NODE_STATUS,
+    NODEGROUPINTERFACE_MANAGEMENT,
     PRESEED_TYPE,
     USERDATA_TYPE,
     )
@@ -84,10 +85,11 @@ def get_curtin_userdata(node):
 
 
 def get_curtin_installer_url(node):
+    """Return the URL where curtin on the node can download its installer."""
     series = node.get_distro_series()
     context = get_preseed_context(series, node.nodegroup)
     cluster_host = context['cluster_host']
-    # TODO: This shouldn't be hardcoded like that but rather synced
+    # XXX rvb(?): The path shouldn't be hardcoded like this, but rather synced
     # somehow with the content of contrib/maas-cluster-http.conf.
     return (
         "http://" + cluster_host + "/MAAS/static/images/" +
@@ -286,6 +288,30 @@ def get_hostname_and_path(url):
     return parsed_url.hostname, parsed_url.path
 
 
+def pick_cluster_controller_address(nodegroup=None):
+    """Return an IP address for the cluster controller, to be used by nodes.
+
+    Curtin, running on the nodes, will download its installer image from here.
+    If the controller has multiple network interfaces, this will prefer a
+    managed interface over an unmanaged one.
+    """
+    if nodegroup is None:
+        return None
+    # Sort interfaces by desirability, so we can pick the first one.
+    unmanaged = NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED
+    sort_key = lambda interface: (
+        # Put unmanaged interfaces at the end as a last resort.
+        1 if interface.management == unmanaged else 0,
+        # Sort by ID as a tie-breaker, for consistency.
+        interface.id,
+        )
+    interfaces = sorted(nodegroup.nodegroupinterface_set.all(), key=sort_key)
+    if interfaces == []:
+        return None
+    else:
+        return interfaces[0].ip
+
+
 def get_preseed_context(release='', nodegroup=None):
     """Return the node-independent context dictionary to be used to render
     preseed templates.
@@ -302,17 +328,8 @@ def get_preseed_context(release='', nodegroup=None):
         Config.objects.get_config('ports_archive'))
     if nodegroup is None:
         base_url = None
-        cluster_host = None
     else:
         base_url = nodegroup.maas_url
-        cluster_if = nodegroup.get_managed_interface()
-        any_cluster_if = nodegroup.get_any_interface()
-        cluster_host = None
-        if cluster_if is None:
-            if any_cluster_if is not None:
-                cluster_host = any_cluster_if.ip
-        else:
-            cluster_host = cluster_if.ip
     return {
         'main_archive_hostname': main_archive_hostname,
         'main_archive_directory': main_archive_directory,
@@ -323,7 +340,7 @@ def get_preseed_context(release='', nodegroup=None):
         'server_url': absolute_reverse('nodes_handler', base_url=base_url),
         'metadata_enlist_url': absolute_reverse('enlist', base_url=base_url),
         'http_proxy': Config.objects.get_config('http_proxy'),
-        'cluster_host': cluster_host,
+        'cluster_host': pick_cluster_controller_address(nodegroup),
         }
 
 

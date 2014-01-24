@@ -734,6 +734,39 @@ INTERFACES_VALIDATION_ERROR_MESSAGE = (
 DEFAULT_DNS_ZONE_NAME = 'master'
 
 
+def validate_nodegroupinterfaces_json(interfaces):
+    """Check `NodeGroupInterface` definitions as found in a requst.
+
+    This validates that the `NodeGroupInterface` definitions found in a
+    request to `NodeGroupWithInterfacesForm` conforms to the expected basic
+    structure: a list of dicts.
+
+    :type interface: `dict` extracted from JSON request body.
+    :raises ValidationError: If the interfaces definition is not a list of
+        dicts as expected.
+    """
+    if not isinstance(interfaces, collections.Iterable):
+        raise forms.ValidationError(INTERFACES_VALIDATION_ERROR_MESSAGE)
+    for interface in interfaces:
+        if not isinstance(interface, dict):
+            raise forms.ValidationError(INTERFACES_VALIDATION_ERROR_MESSAGE)
+
+
+def validate_nodegroupinterface_definition(interface):
+    """Run a `NodeGroupInterface` definition through form validation.
+
+    :param interface: Definition of a `NodeGroupInterface` as found in HTTP
+        request data.
+    :type interface: `dict` extracted from JSON request body.
+    :raises ValidationError: If `NodeGroupInterfaceForm` finds the definition
+        invalid.
+    """
+    form = NodeGroupInterfaceForm(data=interface)
+    if not form.is_valid():
+        raise forms.ValidationError(
+            "Invalid interface: %r (%r)." % (interface, form._errors))
+
+
 class NodeGroupWithInterfacesForm(ModelForm):
     """Create a NodeGroup with unmanaged interfaces."""
 
@@ -777,32 +810,24 @@ class NodeGroupWithInterfacesForm(ModelForm):
             interfaces = json.loads(data)
         except ValueError:
             raise forms.ValidationError("Invalid json value.")
-        else:
-            managed = []
-            # Raise an exception if the interfaces json object is not a list.
-            if not isinstance(interfaces, collections.Iterable):
-                raise forms.ValidationError(
-                    INTERFACES_VALIDATION_ERROR_MESSAGE)
-            for interface in interfaces:
-                # Raise an exception if the interface object is not a dict.
-                if not isinstance(interface, dict):
-                    raise forms.ValidationError(
-                        INTERFACES_VALIDATION_ERROR_MESSAGE)
-                form = NodeGroupInterfaceForm(data=interface)
-                if not form.is_valid():
-                    raise forms.ValidationError(
-                        "Invalid interface: %r (%r)." % (
-                            interface, form._errors))
-                management = interface.get('management', None)
-                if management not in (
-                        None, NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED):
-                    managed.append(management)
-            # XXX: rvb 2012-09-18 bug=1052339: Only one "managed" interface
-            # is supported per NodeGroup.
-            if len(managed) > 1:
-                raise ValidationError(
-                    "Only one managed interface can be configured for this "
-                    "cluster")
+
+        validate_nodegroupinterfaces_json(interfaces)
+        for interface in interfaces:
+            validate_nodegroupinterface_definition(interface)
+
+        unmanaged = NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED
+        managed_interfaces = [
+            interface
+            for interface in interfaces if
+            interface.get('management', unmanaged) != unmanaged
+            ]
+
+        # XXX: rvb 2012-09-18 bug=1052339: Only one "managed" interface
+        # is supported per NodeGroup.
+        if len(managed_interfaces) > 1:
+            raise ValidationError(
+                "Only one managed interface can be configured for this "
+                "cluster")
         return interfaces
 
     def save(self):
@@ -846,15 +871,9 @@ class NodeGroupEdit(ModelForm):
             # This nodegroup is not in use.  Change it at will.
             return new_name
 
-        interface = self.instance.get_managed_interface()
-        if interface is None:
-            # No network interfaces.  It's weird, but there certainly
-            # won't be a problem with the name change.
-            return new_name
-
-        if interface.management != NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS:
-            # MAAS is not managing DNS on this network, so the user can
-            # rename the DNS zone at will.
+        if self.instance.get_dns_managed_interface() is None:
+            # Not managing DNS.  There won't be any DNS problems with this
+            # name change then.
             return new_name
 
         nodes_in_use = Node.objects.filter(

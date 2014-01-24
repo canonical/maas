@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test `maasserver.preseed` and related bits and bobs."""
@@ -46,6 +46,7 @@ from maasserver.preseed import (
     get_preseed_template,
     get_preseed_type_for,
     load_preseed_template,
+    pick_cluster_controller_address,
     PreseedTemplate,
     render_enlistment_preseed,
     render_preseed,
@@ -319,6 +320,70 @@ class TestLoadPreseedTemplate(MAASServerTestCase):
         template = load_preseed_template(node, prefix)
         self.assertRaises(
             TemplateNotFoundError, template.substitute)
+
+
+class TestPickClusterControllerAddress(MAASServerTestCase):
+    """Tests for `pick_cluster_controller_address`."""
+
+    def test_returns_None_if_no_nodegroup_given(self):
+        self.assertIsNone(pick_cluster_controller_address())
+
+    def test_returns_only_interface(self):
+        nodegroup = factory.make_node_group()
+        [interface] = list(nodegroup.nodegroupinterface_set.all())
+
+        address = pick_cluster_controller_address(nodegroup)
+
+        self.assertIsNotNone(address)
+        self.assertEqual(interface.ip, address)
+
+    def test_prefers_managed_interface_over_unmanaged_interface(self):
+        nodegroup = factory.make_node_group(
+            management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
+        factory.make_node_group_interface(
+            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
+        best_interface = factory.make_node_group_interface(
+            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
+        factory.make_node_group_interface(
+            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
+
+        address = pick_cluster_controller_address(nodegroup)
+
+        self.assertIsNotNone(address)
+        self.assertEqual(best_interface.ip, address)
+
+    def test_prefers_dns_managed_interface_over_unmanaged_interface(self):
+        nodegroup = factory.make_node_group(
+            management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
+        factory.make_node_group_interface(
+            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
+        best_interface = factory.make_node_group_interface(
+            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
+        factory.make_node_group_interface(
+            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
+
+        address = pick_cluster_controller_address(nodegroup)
+
+        self.assertIsNotNone(address)
+        self.assertEqual(best_interface.ip, address)
+
+    def test_returns_None_if_no_interfaces(self):
+        nodegroup = factory.make_node_group()
+        for interface in nodegroup.nodegroupinterface_set.all():
+            interface.delete()
+        self.assertIsNone(pick_cluster_controller_address(nodegroup))
+
+    def test_makes_consistent_choice(self):
+        # Not a very thorough test, but we want at least a little bit of
+        # predictability.
+        nodegroup = factory.make_node_group(
+            NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
+        for _ in range(5):
+            factory.make_node_group_interface(
+                nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
+        self.assertEqual(
+            pick_cluster_controller_address(nodegroup),
+            pick_cluster_controller_address(nodegroup))
 
 
 def make_url(name):

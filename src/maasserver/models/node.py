@@ -643,7 +643,7 @@ class Node(CleanSave, TimestampedModel):
                 "Cannot delete node %s: node is in state %s."
                 % (self.system_id, NODE_STATUS_CHOICES_DICT[self.status]))
         nodegroup = self.nodegroup
-        if nodegroup.get_managed_interface() is not None:
+        if len(nodegroup.get_managed_interfaces()) > 0:
             # Delete the host map(s) in the DHCP server.
             macs = self.macaddress_set.values_list('mac_address', flat=True)
             leases = DHCPLease.objects.filter(

@@ -801,6 +801,7 @@ class TestNodeGroupWithInterfacesForm(MAASServerTestCase):
             MatchesStructure.byEquality(**interface))
 
     def test_checks_presence_of_other_managed_interfaces(self):
+        # XXX JeroenVermeulen 2014-01-23, bug=1052339: Remove this restriction.
         name = factory.make_name('name')
         uuid = factory.getRandomUUID()
         interfaces = []

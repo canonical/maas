@@ -294,7 +294,7 @@ class NodeGroup(TimestampedModel):
         add_seamicro15k.apply_async(queue=self.uuid, args=args)
 
     def add_dhcp_host_maps(self, new_leases):
-        if self.get_managed_interface() is not None and len(new_leases) > 0:
+        if len(new_leases) > 0 and len(self.get_managed_interfaces()) > 0:
             # XXX JeroenVermeulen 2012-08-21, bug=1039362: the DHCP
             # server is currently always local to the worker system, so
             # use 127.0.0.1 as the DHCP server address.
