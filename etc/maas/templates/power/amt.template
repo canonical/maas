@@ -8,4 +8,4 @@
   power_mode='powerdown'
 {{endif}}
 
-yes | AMT_PASSWORD={{power_pass}} amttool {{power_address}} ${power_mode}
+yes | AMT_PASSWORD={{power_pass}} amttool {{power_address}} ${power_mode} pxe
