@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for :class:`NodeGroupInterface`."""
@@ -31,7 +31,8 @@ def make_interface():
     nodegroup = factory.make_node_group(
         status=NODEGROUP_STATUS.ACCEPTED,
         management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
-    return nodegroup.get_managed_interface()
+    [interface] = nodegroup.get_managed_interfaces()
+    return interface
 
 
 class TestNodeGroupInterface(MAASServerTestCase):
@@ -76,7 +77,7 @@ class TestNodeGroupInterface(MAASServerTestCase):
             ]
         for field in checked_fields:
             nodegroup = factory.make_node_group(network=network)
-            interface = nodegroup.get_managed_interface()
+            [interface] = nodegroup.get_managed_interfaces()
             ip = '192.168.2.1'
             setattr(interface, field, '192.168.2.1')
             message = (
@@ -89,7 +90,7 @@ class TestNodeGroupInterface(MAASServerTestCase):
     def test_clean_network(self):
         nodegroup = factory.make_node_group(
             network=IPNetwork('192.168.0.3/24'))
-        interface = nodegroup.get_managed_interface()
+        [interface] = nodegroup.get_managed_interfaces()
         # Set a bogus subnet mask.
         interface.subnet_mask = '0.9.0.4'
         message = 'invalid IPNetwork 192.168.0.255/0.9.0.4'
@@ -142,7 +143,7 @@ class TestNodeGroupInterface(MAASServerTestCase):
             nodegroup = factory.make_node_group(
                 network=network,
                 management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
-            interface = nodegroup.get_managed_interface()
+            [interface] = nodegroup.get_managed_interfaces()
             setattr(interface, field, '')
             exception = self.assertRaises(
                 ValidationError, interface.full_clean)

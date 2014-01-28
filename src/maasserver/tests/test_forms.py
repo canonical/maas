@@ -940,7 +940,7 @@ class TestNodeGroupEdit(MAASServerTestCase):
 
     def test_accepts_name_change_if_nodes_in_use_but_dns_not_managed(self):
         nodegroup, node = factory.make_unrenamable_nodegroup_with_node()
-        interface = nodegroup.get_managed_interface()
+        [interface] = nodegroup.get_managed_interfaces()
         interface.management = NODEGROUPINTERFACE_MANAGEMENT.DHCP
         interface.save()
         data = self.make_form_data(nodegroup)

@@ -1,4 +1,4 @@
-# Copyright 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test object factories."""
@@ -257,7 +257,7 @@ class Factory(maastesting.factory.Factory):
         name = self.make_name('original-name')
         nodegroup = self.make_node_group(
             name=name, status=NODEGROUP_STATUS.ACCEPTED)
-        interface = nodegroup.get_managed_interface()
+        [interface] = nodegroup.get_managed_interfaces()
         interface.management = NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS
         interface.save()
         node = self.make_node(

@@ -93,7 +93,7 @@ class TestDHCP(MAASServerTestCase):
             'ip_range_high',
             ]
 
-        interface = nodegroup.get_managed_interface()
+        [interface] = nodegroup.get_managed_interfaces()
         expected_params = {
             param: getattr(interface, param)
             for param in dhcp_params}
@@ -185,7 +185,7 @@ class TestDHCP(MAASServerTestCase):
 
     def test_dhcp_config_gets_written_when_nodegroupinterface_changes(self):
         nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
-        interface = nodegroup.get_managed_interface()
+        [interface] = nodegroup.get_managed_interfaces()
         self.patch(settings, "DHCP_CONNECT", True)
         self.patch(dhcp, 'write_dhcp_config')
         get_ip_in_network = partial(

@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for miscellaneous helpers."""
@@ -221,10 +221,10 @@ class TestFindNodegroup(MAASServerTestCase):
 
     def test_find_nodegroup_looks_up_nodegroup_by_controller_ip(self):
         nodegroup = factory.make_node_group()
-        ip = nodegroup.get_managed_interface().ip
+        [interface] = nodegroup.get_managed_interfaces()
         self.assertEqual(
             nodegroup,
-            find_nodegroup(get_request(ip)))
+            find_nodegroup(get_request(interface.ip)))
 
     def test_find_nodegroup_returns_None_if_not_found(self):
         self.assertIsNone(

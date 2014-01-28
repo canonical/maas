@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test maasserver API."""
@@ -657,7 +657,7 @@ class TestNodeGroupInterfaceAPI(APITestCase):
     def test_read_interface(self):
         self.become_admin()
         nodegroup = factory.make_node_group()
-        interface = nodegroup.get_managed_interface()
+        [interface] = nodegroup.get_managed_interfaces()
         response = self.client.get(
             reverse(
                 'nodegroupinterface_handler',
@@ -671,7 +671,7 @@ class TestNodeGroupInterfaceAPI(APITestCase):
     def test_update_interface(self):
         self.become_admin()
         nodegroup = factory.make_node_group()
-        interface = nodegroup.get_managed_interface()
+        [interface] = nodegroup.get_managed_interfaces()
         get_ip_in_network = partial(
             factory.getRandomIPInNetwork, interface.network)
         new_ip_range_high = next(
@@ -689,7 +689,7 @@ class TestNodeGroupInterfaceAPI(APITestCase):
     def test_delete_interface(self):
         self.become_admin()
         nodegroup = factory.make_node_group()
-        interface = nodegroup.get_managed_interface()
+        [interface] = nodegroup.get_managed_interfaces()
         response = self.client.delete(
             reverse(
                 'nodegroupinterface_handler',
@@ -702,7 +702,7 @@ class TestNodeGroupInterfaceAPI(APITestCase):
     def test_update_foreign_dhcp_ip_sets_value(self):
         self.become_admin()
         nodegroup = factory.make_node_group()
-        interface = nodegroup.get_managed_interface()
+        [interface] = nodegroup.get_managed_interfaces()
         ip = factory.getRandomIPAddress()
         response = self.client_put(
             reverse(
@@ -717,7 +717,7 @@ class TestNodeGroupInterfaceAPI(APITestCase):
     def test_update_foreign_dhcp_ip_unsets_value(self):
         self.become_admin()
         nodegroup = factory.make_node_group()
-        interface = nodegroup.get_managed_interface()
+        [interface] = nodegroup.get_managed_interfaces()
         interface.foreign_dhcp_ip = factory.getRandomIPAddress()
         interface.save()
         response = self.client_put(
