@@ -39,11 +39,15 @@ from maasserver.enum import (
     PRESEED_TYPE,
     USERDATA_TYPE,
     )
-from maasserver.models import Config
+from maasserver.models import (
+    Config,
+    DHCPLease,
+    )
 from maasserver.server_address import get_maas_facing_server_host
 from maasserver.utils import absolute_reverse
 from metadataserver.commissioning.snippets import get_snippet_context
 from metadataserver.models import NodeKey
+from netaddr import IPAddress
 import tempita
 
 
@@ -87,8 +91,7 @@ def get_curtin_userdata(node):
 def get_curtin_installer_url(node):
     """Return the URL where curtin on the node can download its installer."""
     series = node.get_distro_series()
-    context = get_preseed_context(series, node.nodegroup)
-    cluster_host = context['cluster_host']
+    cluster_host = pick_cluster_controller_address(node)
     # XXX rvb(?): The path shouldn't be hardcoded like this, but rather synced
     # somehow with the content of contrib/maas-cluster-http.conf.
     return (
@@ -288,15 +291,13 @@ def get_hostname_and_path(url):
     return parsed_url.hostname, parsed_url.path
 
 
-def pick_cluster_controller_address(nodegroup=None):
-    """Return an IP address for the cluster controller, to be used by nodes.
+def pick_cluster_controller_address(node):
+    """Return an IP address for the cluster controller, to be used by `node`.
 
     Curtin, running on the nodes, will download its installer image from here.
-    If the controller has multiple network interfaces, this will prefer a
-    managed interface over an unmanaged one.
+    It will look for an address on a network to which `node` is connected, or
+    failing that, it will prefer a managed interface over an unmanaged one.
     """
-    if nodegroup is None:
-        return None
     # Sort interfaces by desirability, so we can pick the first one.
     unmanaged = NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED
     sort_key = lambda interface: (
@@ -305,7 +306,22 @@ def pick_cluster_controller_address(nodegroup=None):
         # Sort by ID as a tie-breaker, for consistency.
         interface.id,
         )
-    interfaces = sorted(nodegroup.nodegroupinterface_set.all(), key=sort_key)
+    interfaces = sorted(
+        node.nodegroup.nodegroupinterface_set.all(), key=sort_key)
+    macs = [mac.mac_address for mac in node.macaddress_set.all()]
+    node_ips = [
+        IPAddress(ip)
+        for ip in DHCPLease.objects.filter(mac__in=macs).values_list(
+            'ip', flat=True)
+        ]
+    # Search cluster controller's interfaces for a network that encompasses
+    # any of the node's IP addresses.
+    for interface in interfaces:
+        network = interface.network
+        for node_ip in node_ips:
+            if node_ip in network:
+                return interface.ip
+    # None found: pick the best guess, if available.
     if interfaces == []:
         return None
     else:
@@ -340,7 +356,6 @@ def get_preseed_context(release='', nodegroup=None):
         'server_url': absolute_reverse('nodes_handler', base_url=base_url),
         'metadata_enlist_url': absolute_reverse('enlist', base_url=base_url),
         'http_proxy': Config.objects.get_config('http_proxy'),
-        'cluster_host': pick_cluster_controller_address(nodegroup),
         }
 
 

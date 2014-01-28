@@ -56,6 +56,7 @@ from maasserver.preseed import (
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import map_enum
+from netaddr import IPNetwork
 from testtools.matchers import (
     AllMatch,
     Contains,
@@ -325,21 +326,62 @@ class TestLoadPreseedTemplate(MAASServerTestCase):
 class TestPickClusterControllerAddress(MAASServerTestCase):
     """Tests for `pick_cluster_controller_address`."""
 
-    def test_returns_None_if_no_nodegroup_given(self):
-        self.assertIsNone(pick_cluster_controller_address())
+    def make_bare_nodegroup(self):
+        """Create `NodeGroup` without interfaces."""
+        nodegroup = factory.make_node_group()
+        nodegroup.nodegroupinterface_set.all().delete()
+        return nodegroup
+
+    def make_nodegroupinterface(self, nodegroup, ip,
+                                mgt=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED,
+                                subnet_mask='255.255.255.0'):
+        """Create a `NodeGroupInterface` with a given IP address.
+
+        Other network settings are derived from the IP address.
+        """
+        network = IPNetwork('%s/%s' % (ip, subnet_mask))
+        return factory.make_node_group_interface(
+            nodegroup=nodegroup, management=mgt, network=network, ip=ip,
+            subnet_mask=subnet_mask)
+
+    def make_lease_for_node(self, node, ip=None):
+        """Create a `MACAddress` and corresponding `DHCPLease` for `node`."""
+        mac = factory.make_mac_address(node=node).mac_address
+        factory.make_dhcp_lease(nodegroup=node.nodegroup, mac=mac, ip=ip)
 
     def test_returns_only_interface(self):
-        nodegroup = factory.make_node_group()
-        [interface] = list(nodegroup.nodegroupinterface_set.all())
+        node = factory.make_node()
+        [interface] = list(node.nodegroup.nodegroupinterface_set.all())
 
-        address = pick_cluster_controller_address(nodegroup)
+        address = pick_cluster_controller_address(node)
 
         self.assertIsNotNone(address)
         self.assertEqual(interface.ip, address)
 
+    def test_picks_interface_on_matching_network(self):
+        nearest_address = '10.99.1.1'
+        nodegroup = self.make_bare_nodegroup()
+        self.make_nodegroupinterface(nodegroup, '192.168.11.1')
+        self.make_nodegroupinterface(nodegroup, nearest_address)
+        self.make_nodegroupinterface(nodegroup, '192.168.22.1')
+        node = factory.make_node(nodegroup=nodegroup)
+        self.make_lease_for_node(node, '192.168.33.101')
+        self.make_lease_for_node(node, '10.99.1.105')
+        self.make_lease_for_node(node, '192.168.44.101')
+        self.assertEqual('10.99.1.1', pick_cluster_controller_address(node))
+
+    def test_prefers_matching_network_over_managed_interface(self):
+        nodegroup = self.make_bare_nodegroup()
+        self.make_nodegroupinterface(
+            nodegroup, '10.100.100.1',
+            mgt=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
+        self.make_nodegroupinterface(nodegroup, '10.100.101.1')
+        node = factory.make_node(nodegroup=nodegroup)
+        self.make_lease_for_node(node, '10.100.101.99')
+        self.assertEqual('10.100.101.1', pick_cluster_controller_address(node))
+
     def test_prefers_managed_interface_over_unmanaged_interface(self):
-        nodegroup = factory.make_node_group(
-            management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
+        nodegroup = self.make_bare_nodegroup()
         factory.make_node_group_interface(
             nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
         best_interface = factory.make_node_group_interface(
@@ -347,14 +389,14 @@ class TestPickClusterControllerAddress(MAASServerTestCase):
         factory.make_node_group_interface(
             nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
 
-        address = pick_cluster_controller_address(nodegroup)
+        address = pick_cluster_controller_address(
+            factory.make_node(nodegroup=nodegroup))
 
         self.assertIsNotNone(address)
         self.assertEqual(best_interface.ip, address)
 
     def test_prefers_dns_managed_interface_over_unmanaged_interface(self):
-        nodegroup = factory.make_node_group(
-            management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
+        nodegroup = self.make_bare_nodegroup()
         factory.make_node_group_interface(
             nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
         best_interface = factory.make_node_group_interface(
@@ -362,16 +404,18 @@ class TestPickClusterControllerAddress(MAASServerTestCase):
         factory.make_node_group_interface(
             nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
 
-        address = pick_cluster_controller_address(nodegroup)
+        address = pick_cluster_controller_address(
+            factory.make_node(nodegroup=nodegroup))
 
         self.assertIsNotNone(address)
         self.assertEqual(best_interface.ip, address)
 
     def test_returns_None_if_no_interfaces(self):
         nodegroup = factory.make_node_group()
-        for interface in nodegroup.nodegroupinterface_set.all():
-            interface.delete()
-        self.assertIsNone(pick_cluster_controller_address(nodegroup))
+        nodegroup.nodegroupinterface_set.all().delete()
+        self.assertIsNone(
+            pick_cluster_controller_address(
+                factory.make_node(nodegroup=nodegroup)))
 
     def test_makes_consistent_choice(self):
         # Not a very thorough test, but we want at least a little bit of
@@ -381,9 +425,10 @@ class TestPickClusterControllerAddress(MAASServerTestCase):
         for _ in range(5):
             factory.make_node_group_interface(
                 nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
+        node = factory.make_node(nodegroup=nodegroup)
         self.assertEqual(
-            pick_cluster_controller_address(nodegroup),
-            pick_cluster_controller_address(nodegroup))
+            pick_cluster_controller_address(node),
+            pick_cluster_controller_address(node))
 
 
 def make_url(name):
@@ -403,7 +448,7 @@ class TestPreseedContext(MAASServerTestCase):
         context = get_preseed_context(release, nodegroup)
         self.assertItemsEqual(
             ['release', 'metadata_enlist_url', 'server_host', 'server_url',
-             'cluster_host', 'main_archive_hostname', 'main_archive_directory',
+             'main_archive_hostname', 'main_archive_directory',
              'ports_archive_hostname', 'ports_archive_directory',
              'http_proxy'],
             context)
@@ -432,37 +477,6 @@ class TestPreseedContext(MAASServerTestCase):
                 context['ports_archive_hostname'],
                 context['ports_archive_directory'],
             ))
-
-    def test_preseed_context_cluster_host(self):
-        # The cluster_host context variable is derived from the nodegroup.
-        release = factory.getRandomString()
-        nodegroup = factory.make_node_group(maas_url=factory.getRandomString())
-        context = get_preseed_context(release, nodegroup)
-        self.assertIsNotNone(context["cluster_host"])
-        self.assertEqual(
-            nodegroup.get_managed_interface().ip,
-            context["cluster_host"])
-
-    def test_preseed_context_cluster_host_if_unmanaged(self):
-        # If the nodegroup has no managed interface recorded, the cluster_host
-        # context variable is still present and derived from the nodegroup.
-        release = factory.getRandomString()
-        nodegroup = factory.make_node_group(maas_url=factory.getRandomString())
-        for interface in nodegroup.nodegroupinterface_set.all():
-            interface.management = NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED
-            interface.save()
-        context = get_preseed_context(release, nodegroup)
-        self.assertIsNotNone(context["cluster_host"])
-        self.assertEqual(
-            nodegroup.get_any_interface().ip,
-            context["cluster_host"])
-
-    def test_preseed_context_null_cluster_host_if_does_not_exist(self):
-        # If there's no nodegroup, the cluster_host context variable is
-        # present, but None.
-        release = factory.getRandomString()
-        context = get_preseed_context(release)
-        self.assertIsNone(context["cluster_host"])
 
 
 class TestNodePreseedContext(MAASServerTestCase):
@@ -597,9 +611,10 @@ class TestCurtinUtilities(MAASServerTestCase):
         arch = factory.getRandomEnum(ARCHITECTURE)
         node = factory.make_node(architecture=arch, distro_series=series)
         installer_url = get_curtin_installer_url(node)
+        [interface] = node.nodegroup.get_managed_interfaces()
         self.assertEqual(
             'http://%s/MAAS/static/images/%s/%s/xinstall/root.tar.gz' % (
-                node.nodegroup.get_managed_interface().ip, arch, series),
+                interface.ip, arch, series),
             installer_url)
 
     def test_get_preseed_type_for(self):
