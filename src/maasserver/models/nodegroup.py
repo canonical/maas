@@ -212,23 +212,6 @@ class NodeGroup(TimestampedModel):
             return interface
         return None
 
-    # XXX JeroenVermeulen 2014-01-17, bug=1052339: This method is going away.
-    # Use get_managed_interfaces() instead.  There may be more than one managed
-    # interface.
-    def get_managed_interface(self):
-        """Return the interface for which MAAS managed the DHCP service.
-
-        This is a temporary method that should be refactored once we add
-        proper support for multiple interfaces on a nodegroup.
-        """
-        # Iterate over all the interfaces in python instead of doing the
-        # filtering in SQL so that this will use the cached version of
-        # self.nodegroupinterface_set if it is there.
-        for interface in self.nodegroupinterface_set.all():
-            if interface.management != NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED:
-                return interface
-        return None
-
     def get_managed_interfaces(self):
         """Return the list of interfaces for which MAAS manages DHCP."""
         # Filter in python instead of in SQL.  This will use the cached

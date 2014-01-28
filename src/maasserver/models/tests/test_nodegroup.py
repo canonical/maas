@@ -333,30 +333,6 @@ class TestNodeGroup(MAASServerTestCase):
         args, kwargs = task.apply_async.call_args
         self.assertEqual(nodegroup.work_queue, kwargs['queue'])
 
-    # XXX JeroenVermeulen 2014-01-17, bug=1052339: Deprecated.
-    def test_get_managed_interface_returns_managed_interface(self):
-        nodegroup = factory.make_node_group()
-        interface = nodegroup.nodegroupinterface_set.all()[0]
-        self.assertEqual(interface, nodegroup.get_managed_interface())
-
-    # XXX JeroenVermeulen 2014-01-17, bug=1052339: Deprecated.
-    def test_get_managed_interface_does_not_return_unmanaged_interface(self):
-        nodegroup = factory.make_node_group()
-        interface = nodegroup.nodegroupinterface_set.all()[0]
-        interface.management = NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED
-        interface.save()
-        self.assertIsNone(nodegroup.get_managed_interface())
-
-    # XXX JeroenVermeulen 2014-01-17, bug=1052339: Deprecated.
-    def test_get_managed_interface_does_not_return_unrelated_interface(self):
-        nodegroup = factory.make_node_group()
-        # Create another nodegroup with a managed interface.
-        factory.make_node_group()
-        interface = nodegroup.nodegroupinterface_set.all()[0]
-        interface.management = NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED
-        interface.save()
-        self.assertIsNone(nodegroup.get_managed_interface())
-
     def test_get_dns_managed_interface_returns_dns_managed_interface(self):
         nodegroup = factory.make_node_group(
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
