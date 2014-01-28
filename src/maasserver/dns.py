@@ -169,29 +169,26 @@ class ZoneGenerator:
         self.serial = serial
 
     @staticmethod
-    def _get_forward_nodegroups(nodegroups):
-        """Return a set of all forward nodegroups.
+    def _filter_dns_managed(nodegroups):
+        """Return the subset of `nodegroups` for which we manage DNS."""
+        return set(filter(is_dns_managed, nodegroups))
 
-        This is the set of all managed nodegroups with the same domain as the
-        domain of any of the given nodegroups.
+    @staticmethod
+    def _get_forward_nodegroups(domains):
+        """Return the set of forward nodegroups for the given `domains`.
+
+        These are all nodegroups with any of the given domains.
         """
-        forward_domains = {nodegroup.name for nodegroup in nodegroups}
-        forward_nodegroups = NodeGroup.objects.filter(name__in=forward_domains)
-        return {
-            nodegroup for nodegroup in forward_nodegroups
-            if is_dns_managed(nodegroup)
-            }
+        return ZoneGenerator._filter_dns_managed(
+            NodeGroup.objects.filter(name__in=domains))
 
     @staticmethod
     def _get_reverse_nodegroups(nodegroups):
-        """Return a set of all reverse nodegroups.
+        """Return the set of reverse nodegroups among `nodegroups`.
 
         This is the subset of the given nodegroups that are managed.
         """
-        return {
-            nodegroup for nodegroup in nodegroups
-            if is_dns_managed(nodegroup)
-            }
+        return ZoneGenerator._filter_dns_managed(nodegroups)
 
     @staticmethod
     def _get_mappings():
@@ -235,7 +232,8 @@ class ZoneGenerator:
                     get_domain(nodegroup), serial=serial, network=network)
 
     def __iter__(self):
-        forward_nodegroups = self._get_forward_nodegroups(self.nodegroups)
+        forward_nodegroups = self._get_forward_nodegroups(
+            {nodegroup.name for nodegroup in self.nodegroups})
         reverse_nodegroups = self._get_reverse_nodegroups(self.nodegroups)
         mappings = self._get_mappings()
         networks = self._get_networks()

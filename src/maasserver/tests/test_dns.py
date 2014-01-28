@@ -15,7 +15,6 @@ __metaclass__ = type
 __all__ = []
 
 
-from functools import partial
 from itertools import islice
 import socket
 
@@ -33,9 +32,11 @@ from maasserver.enum import (
 from maasserver.models import (
     Config,
     node as node_module,
+    NodeGroupInterface,
     )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils import map_enum
 from maastesting.celery import CeleryFixture
 from maastesting.fakemethod import FakeMethod
 from mock import (
@@ -59,6 +60,7 @@ from provisioningserver.testing.bindfixture import BINDServer
 from provisioningserver.testing.tests.test_bindfixture import dig_call
 from rabbitfixture.server import allocate_ports
 from testresources import FixtureResource
+from testtools import TestCase
 from testtools.matchers import (
     IsInstance,
     MatchesAll,
@@ -153,6 +155,37 @@ class TestDNSUtilities(MAASServerTestCase):
             for nodegroup, _ in nodegroups_with_expected_results.items()
         }
         self.assertEqual(nodegroups_with_expected_results, results)
+
+
+class TestLazyDict(TestCase):
+    """Tests for `lazydict`."""
+
+    def test_empty_initially(self):
+        self.assertEqual({}, dns.lazydict(Mock()))
+
+    def test_populates_on_demand(self):
+        value = factory.make_name('value')
+        value_dict = dns.lazydict(lambda key: value)
+        key = factory.make_name('key')
+        retrieved_value = value_dict[key]
+        self.assertEqual(value, retrieved_value)
+        self.assertEqual({key: value}, value_dict)
+
+    def test_remembers_elements(self):
+        value_dict = dns.lazydict(lambda key: factory.make_name('value'))
+        key = factory.make_name('key')
+        self.assertEqual(value_dict[key], value_dict[key])
+
+    def test_holds_one_value_per_key(self):
+        value_dict = dns.lazydict(lambda key: key)
+        key1 = factory.make_name('key')
+        key2 = factory.make_name('key')
+
+        value1 = value_dict[key1]
+        value2 = value_dict[key2]
+
+        self.assertEqual((key1, key2), (value1, value2))
+        self.assertEqual({key1: key1, key2: key2}, value_dict)
 
 
 class TestDNSConfigModifications(MAASServerTestCase):
@@ -434,10 +467,126 @@ def reverse_zone(domain, network):
 class TestZoneGenerator(MAASServerTestCase):
     """Tests for :class:x`dns.ZoneGenerator`."""
 
-    # Factory to return an accepted nodegroup with a managed interface.
-    make_node_group = partial(
-        factory.make_node_group, status=NODEGROUP_STATUS.ACCEPTED,
-        management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
+    def make_node_group(self, **kwargs):
+        """Create an accepted nodegroup with a managed interface."""
+        return factory.make_node_group(
+            status=NODEGROUP_STATUS.ACCEPTED,
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS, **kwargs)
+
+    def test_get_forward_nodegroups_returns_empty_for_unknown_domain(self):
+        self.assertEqual(
+            set(),
+            dns.ZoneGenerator._get_forward_nodegroups(
+                factory.make_name('domain')))
+
+    def test_get_forward_nodegroups_returns_empty_for_no_domains(self):
+        self.assertEqual(set(), dns.ZoneGenerator._get_forward_nodegroups([]))
+
+    def test_get_forward_nodegroups_returns_dns_managed_nodegroups(self):
+        domain = factory.make_name('domain')
+        nodegroup = self.make_node_group(name=domain)
+        self.assertEqual(
+            {nodegroup},
+            dns.ZoneGenerator._get_forward_nodegroups([domain]))
+
+    def test_get_forward_nodegroups_includes_multiple_domains(self):
+        nodegroups = [self.make_node_group() for _ in range(3)]
+        self.assertEqual(
+            set(nodegroups),
+            dns.ZoneGenerator._get_forward_nodegroups(
+                [nodegroup.name for nodegroup in nodegroups]))
+
+    def test_get_forward_nodegroups_ignores_non_dns_nodegroups(self):
+        domain = factory.make_name('domain')
+        managed_nodegroup = self.make_node_group(name=domain)
+        factory.make_node_group(
+            name=domain, status=NODEGROUP_STATUS.ACCEPTED,
+            management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
+        factory.make_node_group(
+            name=domain, status=NODEGROUP_STATUS.ACCEPTED,
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
+        self.assertEqual(
+            {managed_nodegroup},
+            dns.ZoneGenerator._get_forward_nodegroups([domain]))
+
+    def test_get_forward_nodegroups_ignores_other_domains(self):
+        nodegroups = [self.make_node_group() for _ in range(2)]
+        self.assertEqual(
+            {nodegroups[0]},
+            dns.ZoneGenerator._get_forward_nodegroups([nodegroups[0].name]))
+
+    def test_get_forward_nodegroups_ignores_unaccepted_nodegroups(self):
+        domain = factory.make_name('domain')
+        nodegroups = {
+            status: factory.make_node_group(
+                status=status, name=domain,
+                management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
+            for status in map_enum(NODEGROUP_STATUS).values()
+            }
+        self.assertEqual(
+            {nodegroups[NODEGROUP_STATUS.ACCEPTED]},
+            dns.ZoneGenerator._get_forward_nodegroups([domain]))
+
+    def test_get_reverse_nodegroups_returns_only_dns_managed_nodegroups(self):
+        nodegroups = {
+            management: factory.make_node_group(
+                status=NODEGROUP_STATUS.ACCEPTED, management=management)
+            for management in map_enum(NODEGROUPINTERFACE_MANAGEMENT).values()
+            }
+        self.assertEqual(
+            {nodegroups[NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS]},
+            dns.ZoneGenerator._get_reverse_nodegroups(nodegroups.values()))
+
+    def test_get_reverse_nodegroups_ignores_other_nodegroups(self):
+        nodegroups = [self.make_node_group() for _ in range(3)]
+        self.assertEqual(
+            {nodegroups[0]},
+            dns.ZoneGenerator._get_reverse_nodegroups(nodegroups[:1]))
+
+    def test_get_reverse_nodegroups_ignores_unaccepted_nodegroups(self):
+        nodegroups = {
+            status: factory.make_node_group(
+                status=status,
+                management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
+            for status in map_enum(NODEGROUP_STATUS).values()
+            }
+        self.assertEqual(
+            {nodegroups[NODEGROUP_STATUS.ACCEPTED]},
+            dns.ZoneGenerator._get_reverse_nodegroups(nodegroups.values()))
+
+    def test_get_networks_returns_network(self):
+        nodegroup = self.make_node_group()
+        [interface] = nodegroup.get_managed_interfaces()
+        networks_dict = dns.ZoneGenerator._get_networks()
+        retrieved_interface = networks_dict[nodegroup]
+        self.assertEqual([interface.network], retrieved_interface)
+
+    def test_get_networks_returns_multiple_networks(self):
+        nodegroups = [self.make_node_group() for _ in range(3)]
+        networks_dict = dns.ZoneGenerator._get_networks()
+        for nodegroup in nodegroups:
+            [interface] = nodegroup.get_managed_interfaces()
+            self.assertEqual([interface.network], networks_dict[nodegroup])
+
+    def test_get_networks_returns_managed_networks(self):
+        nodegroups = [
+            factory.make_node_group(
+                status=NODEGROUP_STATUS.ACCEPTED, management=management)
+            for management in map_enum(NODEGROUPINTERFACE_MANAGEMENT).values()
+            ]
+        networks_dict = dns.ZoneGenerator._get_networks()
+        # Force lazydict to evaluate for all these nodegroups.
+        for nodegroup in nodegroups:
+            networks_dict[nodegroup]
+        self.assertEqual(
+            {
+                nodegroup: [
+                    interface.network
+                    for interface in nodegroup.get_managed_interfaces()
+                    ]
+                for nodegroup in nodegroups
+            },
+            networks_dict)
 
     def test_with_no_nodegroups_yields_nothing(self):
         self.assertEqual([], dns.ZoneGenerator(()).as_list())
@@ -450,6 +599,26 @@ class TestZoneGenerator(MAASServerTestCase):
             zones, MatchesListwise(
                 (forward_zone("henry", "10/32"),
                  reverse_zone("henry", "10/32"))))
+
+    def test_two_managed_interfaces_yields_one_forward_two_reverse_zones(self):
+        # XXX JeroenVermeulen 2014-01-28 bug=1052339: This patch becomes
+        # unnecessary once we allow multiple managed interfaces per nodegroup.
+        self.patch(NodeGroupInterface, 'clean_management')
+        nodegroup = self.make_node_group()
+        factory.make_node_group_interface(
+            nodegroup=nodegroup,
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
+        [interface1, interface2] = nodegroup.get_managed_interfaces()
+
+        expected_zones = [
+            forward_zone(
+                nodegroup.name, interface1.network, interface2.network),
+            reverse_zone(nodegroup.name, interface1.network),
+            reverse_zone(nodegroup.name, interface2.network),
+            ]
+        self.assertThat(
+            dns.ZoneGenerator([nodegroup]).as_list(),
+            MatchesListwise(expected_zones))
 
     def test_with_many_nodegroups_yields_many_zones(self):
         # This demonstrates ZoneGenerator in all-singing all-dancing mode.
