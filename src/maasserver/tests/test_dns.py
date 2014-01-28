@@ -189,7 +189,7 @@ class TestDNSConfigModifications(MAASServerTestCase):
     def create_nodegroup_with_lease(self, lease_number=1, nodegroup=None):
         if nodegroup is None:
             nodegroup = self.create_managed_nodegroup()
-        interface = nodegroup.get_managed_interface()
+        [interface] = nodegroup.get_managed_interfaces()
         node = factory.make_node(
             nodegroup=nodegroup)
         mac = factory.make_mac_address(node=node)
@@ -336,7 +336,7 @@ class TestDNSConfigModifications(MAASServerTestCase):
         nodegroup = factory.make_node_group(
             network=old_network, status=NODEGROUP_STATUS.ACCEPTED,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
-        interface = nodegroup.get_managed_interface()
+        [interface] = nodegroup.get_managed_interfaces()
         # Edit nodegroup's network information to '192.168.44.1/24'
         interface.ip = '192.168.44.7'
         interface.router_ip = '192.168.44.14'
@@ -359,7 +359,7 @@ class TestDNSConfigModifications(MAASServerTestCase):
         nodegroup = factory.make_node_group(
             network=network, status=NODEGROUP_STATUS.ACCEPTED,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
-        interface = nodegroup.get_managed_interface()
+        [interface] = nodegroup.get_managed_interfaces()
         interface.management = NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED
         interface.save()
         self.assertEqual([''], self.dig_resolve(generated_hostname(ip)))

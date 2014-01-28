@@ -201,7 +201,8 @@ class ZoneGenerator:
     @staticmethod
     def _get_networks():
         """Return a lazily evaluated nodegroup:network dict."""
-        return lazydict(lambda ng: ng.get_managed_interface().network)
+        return lazydict(lambda ng: [
+            interface.network for interface in ng.get_managed_interfaces()])
 
     @staticmethod
     def _gen_forward_zones(nodegroups, serial, mappings, networks):
@@ -211,6 +212,8 @@ class ZoneGenerator:
         forward_nodegroups = sorted(nodegroups, key=get_domain)
         for domain, nodegroups in groupby(forward_nodegroups, get_domain):
             nodegroups = list(nodegroups)
+            domain_networks = sum(
+                [networks[nodegroup] for nodegroup in nodegroups], [])
             # A forward zone encompassing all nodes in the same domain.
             yield DNSForwardZoneConfig(
                 domain, serial=serial, dns_ip=dns_ip,
@@ -219,11 +222,7 @@ class ZoneGenerator:
                     for nodegroup in nodegroups
                     for hostname, ip in mappings[nodegroup].items()
                     },
-                networks={
-                    networks[nodegroup]
-                    for nodegroup in nodegroups
-                    },
-                )
+                networks=set(domain_networks))
 
     @staticmethod
     def _gen_reverse_zones(nodegroups, serial, networks):
@@ -231,9 +230,9 @@ class ZoneGenerator:
         get_domain = lambda nodegroup: nodegroup.name
         reverse_nodegroups = sorted(nodegroups, key=networks.get)
         for nodegroup in reverse_nodegroups:
-            yield DNSReverseZoneConfig(
-                get_domain(nodegroup), serial=serial,
-                network=networks[nodegroup])
+            for network in networks[nodegroup]:
+                yield DNSReverseZoneConfig(
+                    get_domain(nodegroup), serial=serial, network=network)
 
     def __iter__(self):
         forward_nodegroups = self._get_forward_nodegroups(self.nodegroups)
