@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test custom model fields."""
@@ -31,7 +31,6 @@ from maasserver.fields import (
 from maasserver.models import (
     MACAddress,
     NodeGroup,
-    NodeGroupInterface,
     )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -47,17 +46,16 @@ class TestNodeGroupFormField(MAASServerTestCase):
 
     def test_label_from_instance_tolerates_missing_interface(self):
         nodegroup = factory.make_node_group()
-        interface = nodegroup.get_managed_interface()
-        if interface is not None:
-            NodeGroupInterface.objects.filter(id=interface.id).delete()
+        nodegroup.nodegroupinterface_set.all().delete()
         self.assertEqual(
             nodegroup.name,
             NodeGroupFormField().label_from_instance(nodegroup))
 
     def test_label_from_instance_shows_name_and_address(self):
         nodegroup = factory.make_node_group()
+        [interface] = nodegroup.get_managed_interfaces()
         self.assertEqual(
-            '%s: %s' % (nodegroup.name, nodegroup.get_managed_interface().ip),
+            '%s: %s' % (nodegroup.name, interface.ip),
             NodeGroupFormField().label_from_instance(nodegroup))
 
     def test_clean_defaults_to_master(self):

@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Custom model fields."""
@@ -88,11 +88,12 @@ class NodeGroupFormField(ModelChoiceField):
 
     def label_from_instance(self, nodegroup):
         """Django method: get human-readable choice label for nodegroup."""
-        interface = nodegroup.get_managed_interface()
-        if interface is None:
-            return nodegroup.name
+        interfaces = sorted(
+            interface.ip for interface in nodegroup.get_managed_interfaces())
+        if len(interfaces) > 0:
+            return "%s: %s" % (nodegroup.name, ', '.join(interfaces))
         else:
-            return "%s: %s" % (nodegroup.name, interface.ip)
+            return nodegroup.name
 
     def clean(self, value):
         """Django method: provide expected output for various inputs.
