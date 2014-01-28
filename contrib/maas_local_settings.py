@@ -68,6 +68,11 @@ LOGGING = {
             'handlers': ['log'],
             'propagate': True,
         },
+        'twisted': {
+            'level': LOGGING_LEVEL,
+            'handlers': ['log'],
+            'propagate': True,
+        },
     },
 }
 

@@ -38,6 +38,11 @@ tftp:
   # generator: http://localhost/MAAS/api/1.0/pxeconfig/
   generator: http://localhost:5243/api/1.0/pxeconfig/
 
+## RPC configuration, for region<-->cluster communications.
+#
+rpc:
+  # port: 5248
+
 ## Boot configuration.
 boot:
   ## CPU architectures for which boot images should be downloaded from the

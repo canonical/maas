@@ -75,6 +75,10 @@ LOGGING = {
             'handlers': ['console'],
             'propagate': True,
         },
+        'twisted': {
+            'handlers': ['console'],
+            'propagate': True,
+        }
     },
 }
 

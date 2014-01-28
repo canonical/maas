@@ -147,6 +147,7 @@ class TestConfig(MAASTestCase):
             'directory': '',
             'reporter': '',
             },
+        'rpc': {'port': 5248},
         'tftp': {
             'generator': 'http://localhost/MAAS/api/1.0/pxeconfig/',
             'port': 69,
