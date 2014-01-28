@@ -1,11 +1,71 @@
+#!/bin/sh
 # -*- mode: shell-script -*-
 #
 # Control a system via amttool
-#
-{{if power_change == 'on'}}
-  power_mode='powerup'
-{{else}}
-  power_mode='powerdown'
-{{endif}}
+power_address='{{power_address}}'
+power_change='{{power_change}}'
+power_pass='{{power_pass}}'
 
-yes | AMT_PASSWORD={{power_pass}} amttool {{power_address}} ${power_mode} pxe
+echo amt.template starting $*
+
+echo power_address $power_address
+echo power_change $power_change
+echo power_pass $power_pass
+
+amt() {
+  echo running amttool "$power_address" $*
+  AMT_PASSWORD="$power_pass" amttool "$power_address" "$@"
+}
+
+state() {
+  state=`{
+    # Retry the state if it fails because it often fails the first time.
+    amt 2> /dev/null || amt
+  } | grep '^Powerstate:' | awk '{print $2}'`
+  echo $state
+}
+
+is_power_on() {
+  [ "$power_change" '=' on ]
+}
+
+
+if is_power_on; then
+  desired_state=S0
+else
+  desired_state=S5
+fi
+
+echo desired $desired_state
+
+current_state=`state`
+for i in `seq 0 1`; do
+  echo found current_state $current_state
+  if [ "$current_state" '=' "" ]; then
+    echo Cannot get current state
+    exit 2
+  fi
+  if is_power_on; then
+    if [ "$current_state" '=' S0 ]; then
+      # If the machine is already up, the powerup command will
+      # not work - we need to powercycle instead.
+      args='powercycle pxe'
+    else
+      args='powerup pxe'
+    fi
+  else
+    if [ "$current_state" '=' S5 ]; then
+       # Machine is already off, so no need to do anything.
+       exit 0
+    fi
+    args='powerdown'
+  fi
+  yes | amt $args
+  current_state=`state`
+  if [ "$current_state" '=' $desired_state ]; then
+    exit 0
+  fi
+  echo retrying
+done
+echo Failed after several attempts
+exit 1
