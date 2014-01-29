@@ -222,14 +222,20 @@ class NodeGroup(TimestampedModel):
             if itf.management != NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED
             ]
 
-    def get_dns_managed_interface(self):
-        """Return the `NodeGroupInterface`, if any, whose DNS we manage."""
+    def manages_dns(self):
+        """Does this `NodeGroup` manage DNS on any interfaces?
+
+        This returns `True` when the `NodeGroup` is accepted, and has a
+        `NodeGroupInterface` that's set to manage both DHCP and DNS.
+        """
+        if self.status != NODEGROUP_STATUS.ACCEPTED:
+            return False
         # Filter in python instead of in SQL.  This will use the cached
         # version of self.nodegroupinterface_set if present.
         for itf in self.nodegroupinterface_set.all():
             if itf.management == NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS:
-                return itf
-        return None
+                return True
+        return False
 
     def ensure_dhcp_key(self):
         """Ensure that this nodegroup has a dhcp key.

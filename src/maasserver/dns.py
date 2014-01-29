@@ -16,7 +16,6 @@ __all__ = [
     'add_zone',
     'change_dns_zones',
     'is_dns_enabled',
-    'is_dns_managed',
     'next_zone_serial',
     'write_full_dns_config',
     ]
@@ -31,10 +30,7 @@ import socket
 
 from django.conf import settings
 from maasserver import logger
-from maasserver.enum import (
-    NODEGROUP_STATUS,
-    NODEGROUPINTERFACE_MANAGEMENT,
-    )
+from maasserver.enum import NODEGROUPINTERFACE_MANAGEMENT
 from maasserver.exceptions import MAASException
 from maasserver.models import (
     Config,
@@ -83,13 +79,6 @@ def is_dns_enabled():
 
 class DNSException(MAASException):
     """An error occured when setting up MAAS's DNS server."""
-
-
-def is_dns_managed(nodegroup):
-    """Does MAAS manage a DNS zone for this Nodegroup?"""
-    return (
-        nodegroup.status == NODEGROUP_STATUS.ACCEPTED and
-        nodegroup.get_dns_managed_interface() is not None)
 
 
 WARNING_MESSAGE = (
@@ -171,7 +160,10 @@ class ZoneGenerator:
     @staticmethod
     def _filter_dns_managed(nodegroups):
         """Return the subset of `nodegroups` for which we manage DNS."""
-        return set(filter(is_dns_managed, nodegroups))
+        return set(
+            nodegroup
+            for nodegroup in nodegroups
+            if nodegroup.manages_dns())
 
     @staticmethod
     def _get_forward_nodegroups(domains):

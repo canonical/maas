@@ -333,27 +333,51 @@ class TestNodeGroup(MAASServerTestCase):
         args, kwargs = task.apply_async.call_args
         self.assertEqual(nodegroup.work_queue, kwargs['queue'])
 
-    def test_get_dns_managed_interface_returns_dns_managed_interface(self):
+    def test_manages_dns_returns_True_if_managing_DNS(self):
         nodegroup = factory.make_node_group(
+            status=NODEGROUP_STATUS.ACCEPTED,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
+        self.assertTrue(nodegroup.manages_dns())
+
+    def test_manages_dns_returns_False_if_not_accepted(self):
+        nodegroups = [
+            factory.make_node_group(
+                status=status,
+                management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
+            for status in map_enum(NODEGROUP_STATUS).values()
+            ]
         self.assertEqual(
-            nodegroup.nodegroupinterface_set.all()[0],
-            nodegroup.get_dns_managed_interface())
+            {
+                NODEGROUP_STATUS.PENDING: False,
+                NODEGROUP_STATUS.ACCEPTED: True,
+                NODEGROUP_STATUS.REJECTED: False,
+            },
+            {
+                nodegroup.status: nodegroup.manages_dns()
+                for nodegroup in nodegroups
+            })
 
-    def test_get_dns_managed_interface_returns_None_if_dhcp_only(self):
-        nodegroup = factory.make_node_group(
-            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
-        self.assertIsNone(nodegroup.get_dns_managed_interface())
+    def test_manages_dns_returns_False_if_no_interface_manages_DNS(self):
+        nodegroups = {
+            management: factory.make_node_group(
+                status=NODEGROUP_STATUS.ACCEPTED, management=management)
+            for management in map_enum(NODEGROUPINTERFACE_MANAGEMENT).values()
+            }
+        self.assertEqual(
+            {
+                NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED: False,
+                NODEGROUPINTERFACE_MANAGEMENT.DHCP: False,
+                NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS: True,
+            },
+            {
+                management: nodegroup.manages_dns()
+                for management, nodegroup in nodegroups.items()
+            })
 
-    def test_get_dns_managed_interface_returns_None_if_unmanaged(self):
-        nodegroup = factory.make_node_group(
-            management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
-        self.assertIsNone(nodegroup.get_dns_managed_interface())
-
-    def test_get_dns_managed_interface_returns_None_if_no_interface(self):
-        nodegroup = factory.make_node_group()
+    def test_manages_dns_returns_False_if_nodegroup_has_no_interfaces(self):
+        nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
         nodegroup.nodegroupinterface_set.all().delete()
-        self.assertIsNone(nodegroup.get_dns_managed_interface())
+        self.assertFalse(nodegroup.manages_dns())
 
     def test_get_managed_interfaces_returns_list(self):
         nodegroup = factory.make_node_group()

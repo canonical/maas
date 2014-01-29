@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Node objects."""
@@ -38,8 +38,8 @@ from django.db.models import (
     IntegerField,
     Manager,
     ManyToManyField,
-    SET_DEFAULT,
     Q,
+    SET_DEFAULT,
     )
 from django.shortcuts import get_object_or_404
 import djorm_pgarray.fields
@@ -72,9 +72,7 @@ from maasserver.utils import (
     strip_domain,
     )
 from piston.models import Token
-from provisioningserver.enum import (
-    POWER_TYPE_CHOICES,
-    )
+from provisioningserver.enum import POWER_TYPE_CHOICES
 from provisioningserver.tasks import (
     power_off,
     power_on,
@@ -501,9 +499,7 @@ class Node(CleanSave, TimestampedModel):
         on the cluster controller.
         If not, simply return the node's hostname.
         """
-        # Avoid circular imports.
-        from maasserver.dns import is_dns_managed
-        if is_dns_managed(self.nodegroup):
+        if self.nodegroup.manages_dns():
             # If the hostname field contains a domain, strip it.
             hostname = strip_domain(self.hostname)
             # Build the FQDN by using the hostname and nodegroup.name

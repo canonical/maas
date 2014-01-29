@@ -132,30 +132,6 @@ class TestDNSUtilities(MAASServerTestCase):
             (ip, [(hostname, )]),
             (dns.get_dns_server_address(nodegroup), resolver.extract_args()))
 
-    def test_is_dns_managed(self):
-        nodegroups_with_expected_results = {
-            factory.make_node_group(
-                status=NODEGROUP_STATUS.PENDING,
-                management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS): False,
-            factory.make_node_group(
-                status=NODEGROUP_STATUS.REJECTED,
-                management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS): False,
-            factory.make_node_group(
-                status=NODEGROUP_STATUS.ACCEPTED,
-                management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS): True,
-            factory.make_node_group(
-                status=NODEGROUP_STATUS.ACCEPTED,
-                management=NODEGROUPINTERFACE_MANAGEMENT.DHCP): False,
-            factory.make_node_group(
-                status=NODEGROUP_STATUS.ACCEPTED,
-                management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED): False,
-        }
-        results = {
-            nodegroup: dns.is_dns_managed(nodegroup)
-            for nodegroup, _ in nodegroups_with_expected_results.items()
-        }
-        self.assertEqual(nodegroups_with_expected_results, results)
-
 
 class TestLazyDict(TestCase):
     """Tests for `lazydict`."""

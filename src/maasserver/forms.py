@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Forms."""
@@ -65,7 +65,6 @@ from maasserver.enum import (
     NODE_AFTER_COMMISSIONING_ACTION,
     NODE_AFTER_COMMISSIONING_ACTION_CHOICES,
     NODE_STATUS,
-    NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
     NODEGROUPINTERFACE_MANAGEMENT_CHOICES,
     )
@@ -101,9 +100,7 @@ from maasserver.power_parameters import POWER_TYPE_PARAMETERS
 from maasserver.utils import strip_domain
 from metadataserver.fields import Bin
 from metadataserver.models import CommissioningScript
-from provisioningserver.enum import (
-    POWER_TYPE_CHOICES,
-    )
+from provisioningserver.enum import POWER_TYPE_CHOICES
 
 
 INVALID_ARCHITECTURE_MESSAGE = compose_invalid_choice_text(
@@ -867,11 +864,7 @@ class NodeGroupEdit(ModelForm):
             # No change to the name.  Return old name.
             return old_name
 
-        if self.instance.status != NODEGROUP_STATUS.ACCEPTED:
-            # This nodegroup is not in use.  Change it at will.
-            return new_name
-
-        if self.instance.get_dns_managed_interface() is None:
+        if not self.instance.manages_dns():
             # Not managing DNS.  There won't be any DNS problems with this
             # name change then.
             return new_name
