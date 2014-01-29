@@ -395,7 +395,7 @@ def make_arg_parser(doc):
     parser.add_argument(
         '--products', action='store', default=PRODUCTS_REGEX,
         help="Regular expression matching products to import, "
-             "e.g. com.ubuntu.maas.daily:ephemerals:.* for daily")
+             "e.g. com.ubuntu.maas.daily:ephemeral:.* for daily")
     parser.add_argument(
         'filters', nargs='*', default=filters,
         help="Simplestreams filters for image metadata to download, "
