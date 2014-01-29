@@ -116,10 +116,15 @@ LSHW_SCRIPT = dedent("""\
     """)
 
 
+# Count the processors which do not declare their number of 'threads'
+# as 1 processor.
 _xpath_processor_count = """\
-    count(//node[@id='core']/
-        node[@class='processor'][not(@disabled)])
-"""
+    sum(//node[@id='core']/
+        node[@class='processor']
+            [not(@disabled)]//setting[@id='threads']/@value) +
+    count(//node[@id='core']/node[@class='processor']
+        [not(@disabled)][not(configuration/setting[@id='threads'])])"""
+
 
 # Some machines have a <size> element in their memory <node> with the total
 # amount of memory, and other machines declare the size of the memory in

@@ -461,6 +461,24 @@ class TestUpdateHardwareDetails(MAASServerTestCase):
         node = reload_object(node)
         self.assertEqual(2, node.cpu_count)
 
+    def test_cpu_count_counts_multi_cores(self):
+        node = factory.make_node()
+        xmlbytes = dedent("""\
+        <node id="core">
+           <node id="cpu:0" class="processor">
+             <configuration>
+               <setting id="cores" value="2" />
+               <setting id="enabledcores" value="2" />
+               <setting id="threads" value="4" />
+             </configuration>
+           </node>
+           <node id="cpu:1" class="processor"/>
+        </node>
+        """).encode("utf-8")
+        update_hardware_details(node, xmlbytes, 0)
+        node = reload_object(node)
+        self.assertEqual(5, node.cpu_count)
+
     def test_cpu_count_skips_disabled_cpus(self):
         node = factory.make_node()
         xmlbytes = dedent("""\
