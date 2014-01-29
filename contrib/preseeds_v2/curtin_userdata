@@ -11,9 +11,13 @@ power_state:
   mode: reboot
 
 {{if node.architecture in {'i386/generic', 'amd64/generic'} }}
-apt_mirror: http://{{main_archive_hostname}}/{{main_archive_directory}}
+apt_mirrors:
+  ubuntu_archive: http://{{main_archive_hostname}}/{{main_archive_directory}}
+  ubuntu_security: http://{{main_archive_hostname}}/{{main_archive_directory}}
 {{else}}
-apt_mirror: http://{{ports_archive_hostname}}/{{ports_archive_directory}}
+apt_mirrors:
+  ubuntu_archive: http://{{ports_archive_hostname}}/{{ports_archive_directory}}
+  ubuntu_security: http://{{ports_archive_hostname}}/{{ports_archive_directory}}
 {{endif}}
 
 {{if http_proxy }}
