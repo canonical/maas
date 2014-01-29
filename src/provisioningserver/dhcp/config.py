@@ -33,23 +33,7 @@ class DHCPConfigError(Exception):
 
 
 def get_config(**params):
-    """Return a DHCP config file based on the supplied parameters.
-
-    :param subnet: The base subnet declaration. e.g. 192.168.1.0
-    :param subnet_mask: The mask for the above subnet, e.g. 255.255.255.0
-    :param broadcast_address: The broadcast IP address for the subnet,
-        e.g. 192.168.1.255
-    :param dns_servers: One or more IP addresses of the DNS server for the
-        subnet
-    :param ntp_server: IP address of the NTP server for the nodes
-    :param domain_name: name that will be appended to the client's hostname to
-        form a fully-qualified domain-name
-    :param gateway: The router/gateway IP address for the subnet.
-    :param low_range: The first IP address in the range of IP addresses to
-        allocate
-    :param high_range: The last IP address in the range of IP addresses to
-        allocate
-    """
+    """Return a DHCP config file based on the supplied parameters."""
     template_file = locate_config(TEMPLATES_DIR, 'dhcpd.conf.template')
     params['bootloader'] = compose_bootloader_path()
     params['platform_codename'] = linux_distribution()[2]
@@ -57,6 +41,6 @@ def get_config(**params):
     try:
         template = tempita.Template.from_filename(
             template_file, encoding="UTF-8")
-        return template.substitute(params)
-    except NameError as error:
+        return template.substitute(**params)
+    except (KeyError, NameError) as error:
         raise DHCPConfigError(*error.args)

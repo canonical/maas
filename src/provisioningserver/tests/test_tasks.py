@@ -177,7 +177,6 @@ class TestDHCPTasks(PservTestCase):
         """Fake up a dict of dhcp configuration parameters."""
         param_names = [
             'interface',
-            'omapi_key',
             'subnet',
             'subnet_mask',
             'broadcast_ip',
@@ -186,8 +185,13 @@ class TestDHCPTasks(PservTestCase):
             'router_ip',
             'ip_range_low',
             'ip_range_high',
-            ]
-        return {param: factory.getRandomString() for param in param_names}
+        ]
+        return {
+            'dhcp_subnets': [
+                {param: factory.getRandomString() for param in param_names}
+            ],
+            'omapi_key': factory.getRandomString(),
+        }
 
     def test_upload_dhcp_leases(self):
         self.patch(

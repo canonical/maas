@@ -17,9 +17,7 @@ __all__ = [
     ]
 
 from django.conf import settings
-from maasserver.enum import (
-    NODEGROUP_STATUS,
-    )
+from maasserver.enum import NODEGROUP_STATUS
 from maasserver.models import Config
 from netaddr import IPAddress
 from provisioningserver.tasks import (
@@ -55,25 +53,33 @@ def configure_dhcp(nodegroup):
     # server.
     nodegroup.ensure_dhcp_key()
 
-    for interface in interfaces:
-        subnet = unicode(
-            IPAddress(interface.ip_range_low) &
-            IPAddress(interface.subnet_mask))
-        reload_dhcp_server_subtask = restart_dhcp_server.subtask(
-            options={'queue': nodegroup.work_queue})
-        task_kwargs = dict(
-            subnet=subnet,
-            omapi_key=nodegroup.dhcp_key,
+    dns_server = get_dns_server_address(nodegroup)
+    ntp_server = Config.objects.get_config("ntp_server")
+    dhcp_subnet_configs = []
+    dhcp_subnet_configs = [
+        dict(
+            subnet=unicode(
+                IPAddress(interface.ip_range_low) &
+                IPAddress(interface.subnet_mask)),
             subnet_mask=interface.subnet_mask,
-            dhcp_interfaces=interface.interface,
             broadcast_ip=interface.broadcast_ip,
             router_ip=interface.router_ip,
-            dns_servers=get_dns_server_address(nodegroup),
-            ntp_server=Config.objects.get_config("ntp_server"),
+            dns_servers=dns_server,
+            ntp_server=ntp_server,
             domain_name=nodegroup.name,
             ip_range_low=interface.ip_range_low,
             ip_range_high=interface.ip_range_high,
-            callback=reload_dhcp_server_subtask,
         )
-        write_dhcp_config.apply_async(
-            queue=nodegroup.work_queue, kwargs=task_kwargs)
+        for interface in interfaces]
+
+    reload_dhcp_server_subtask = restart_dhcp_server.subtask(
+        options={'queue': nodegroup.work_queue})
+    task_kwargs = dict(
+        dhcp_subnets=dhcp_subnet_configs,
+        omapi_key=nodegroup.dhcp_key,
+        dhcp_interfaces=' '.join(
+            [interface.interface for interface in interfaces]),
+        callback=reload_dhcp_server_subtask,
+    )
+    write_dhcp_config.apply_async(
+        queue=nodegroup.work_queue, kwargs=task_kwargs)

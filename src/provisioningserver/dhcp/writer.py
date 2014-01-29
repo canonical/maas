@@ -72,9 +72,15 @@ def add_arguments(parser):
 def run(args):
     """Generate a DHCP server configuration, and write it to stdout."""
     params = vars(args)
-    output = config.get_config(**params).encode("ascii")
-    if args.outfile is None:
+    omapi_key = params.pop('omapi_key')
+    outfile = params.pop('outfile')
+    kwargs = {
+        'dhcp_subnets': [params],
+        'omapi_key': omapi_key,
+    }
+    output = config.get_config(**kwargs).encode("ascii")
+    if outfile is None:
         sys.stdout.write(output)
     else:
-        with open(args.outfile, "wb") as out:
+        with open(outfile, "wb") as out:
             out.write(output)

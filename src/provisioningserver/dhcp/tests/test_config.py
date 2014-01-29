@@ -35,14 +35,16 @@ from testtools.matchers import (
 # substitutions, but none that aren't also in the real template.
 sample_template = dedent("""\
     {{omapi_key}}
-    {{subnet}}
-    {{subnet_mask}}
-    {{broadcast_ip}}
-    {{dns_servers}}
-    {{domain_name}}
-    {{router_ip}}
-    {{ip_range_low}}
-    {{ip_range_high}}
+    {{for dhcp_subnet in dhcp_subnets}}
+        {{dhcp_subnet['subnet']}}
+        {{dhcp_subnet['subnet_mask']}}
+        {{dhcp_subnet['broadcast_ip']}}
+        {{dhcp_subnet['dns_servers']}}
+        {{dhcp_subnet['domain_name']}}
+        {{dhcp_subnet['router_ip']}}
+        {{dhcp_subnet['ip_range_low']}}
+        {{dhcp_subnet['ip_range_high']}}
+    {{endfor}}
 """)
 
 
@@ -53,15 +55,17 @@ def make_sample_params():
     """
     return dict(
         omapi_key="random",
-        subnet="10.0.0.0",
-        subnet_mask="255.0.0.0",
-        broadcast_ip="10.255.255.255",
-        dns_servers="10.1.0.1 10.1.0.2",
-        ntp_server="8.8.8.8",
-        domain_name="example.com",
-        router_ip="10.0.0.2",
-        ip_range_low="10.0.0.3",
-        ip_range_high="10.0.0.254",
+        dhcp_subnets=[dict(
+            subnet="10.0.0.0",
+            subnet_mask="255.0.0.0",
+            broadcast_ip="10.255.255.255",
+            dns_servers="10.1.0.1 10.1.0.2",
+            ntp_server="8.8.8.8",
+            domain_name="example.com",
+            router_ip="10.0.0.2",
+            ip_range_low="10.0.0.3",
+            ip_range_high="10.0.0.254",
+            )]
         )
 
 
@@ -98,14 +102,14 @@ class TestDHCPConfig(PservTestCase):
     def test_get_config_with_too_few_parameters(self):
         template = self.patch_template()
         params = make_sample_params()
-        del params['subnet']
+        del params['dhcp_subnets'][0]['subnet']
 
         e = self.assertRaises(
             config.DHCPConfigError, config.get_config, **params)
 
         self.assertThat(
             unicode(e), MatchesRegex(
-                "name 'subnet' is not defined at line \d+ column \d+ "
+                "subnet at line \d+ column \d+ "
                 "in file %s" % template.name))
 
     def test_config_refers_to_bootloader(self):
@@ -115,7 +119,7 @@ class TestDHCPConfig(PservTestCase):
 
     def test_renders_without_ntp_servers_set(self):
         params = make_sample_params()
-        del params['ntp_server']
+        del params['dhcp_subnets'][0]['ntp_server']
         template = self.patch_template()
         rendered = template.substitute(params)
         self.assertEqual(rendered, config.get_config(**params))

@@ -24,14 +24,20 @@ from maasserver.dhcp import (
     get_interfaces_managed_by,
     )
 from maasserver.dns import get_dns_server_address
-from maasserver.enum import NODEGROUP_STATUS
+from maasserver.enum import (
+    NODEGROUP_STATUS,
+    NODEGROUPINTERFACE_MANAGEMENT,
+    )
 from maasserver.models import Config
 from maasserver.models.config import get_default_config
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import map_enum
 from maastesting.celery import CeleryFixture
-from netaddr import IPNetwork
+from netaddr import (
+    IPAddress,
+    IPNetwork,
+    )
 from provisioningserver import tasks
 from testresources import FixtureResource
 from testtools.matchers import EndsWith
@@ -72,38 +78,62 @@ class TestDHCP(MAASServerTestCase):
             {status: [] for status in unaccepted_statuses},
             managed_interfaces)
 
+    def enable_multiple_managed_interfaces(self):
+        # XXX: rvb 2012-09-18 bug=1052339: Only one "managed" interface
+        # is supported per NodeGroup.
+        # This can be removed once NodeGroupInterface.clean_management
+        # goes away.
+        from maasserver.models.nodegroupinterface import NodeGroupInterface
+        self.patch(NodeGroupInterface, 'clean_management')
+
     def test_configure_dhcp_writes_dhcp_config(self):
+        self.enable_multiple_managed_interfaces()
         mocked_task = self.patch(dhcp, 'write_dhcp_config')
         self.patch(
             settings, 'DEFAULT_MAAS_URL',
             'http://%s/' % factory.getRandomIPAddress())
+        self.patch(settings, "DHCP_CONNECT", True)
         nodegroup = factory.make_node_group(
             status=NODEGROUP_STATUS.ACCEPTED,
             dhcp_key=factory.getRandomString(),
             interface=factory.make_name('eth'),
             network=IPNetwork("192.168.102.0/22"))
+        # Create a second DHCP-managed interface.
+        factory.make_node_group_interface(
+            nodegroup=nodegroup,
+            interface=factory.make_name('eth'),
+            network=IPNetwork("10.1.1/24"),
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
+            )
 
-        self.patch(settings, "DHCP_CONNECT", True)
         configure_dhcp(nodegroup)
-        dhcp_params = [
-            'subnet_mask',
-            'broadcast_ip',
-            'router_ip',
-            'ip_range_low',
-            'ip_range_high',
-            ]
+        dhcp_subnets = []
+        for interface in nodegroup.get_managed_interfaces():
+            dhcp_params = [
+                'subnet_mask',
+                'broadcast_ip',
+                'router_ip',
+                'ip_range_low',
+                'ip_range_high',
+                ]
 
-        [interface] = nodegroup.get_managed_interfaces()
-        expected_params = {
-            param: getattr(interface, param)
-            for param in dhcp_params}
+            dhcp_subnet = {
+                param: getattr(interface, param)
+                for param in dhcp_params}
+            dhcp_subnet["dns_servers"] = get_dns_server_address()
+            dhcp_subnet["ntp_server"] = get_default_config()['ntp_server']
+            dhcp_subnet["domain_name"] = nodegroup.name
+            dhcp_subnet["subnet"] = unicode(
+                IPAddress(interface.ip_range_low) &
+                IPAddress(interface.subnet_mask))
+            dhcp_subnets.append(dhcp_subnet)
 
+        expected_params = {}
         expected_params["omapi_key"] = nodegroup.dhcp_key
-        expected_params["dns_servers"] = get_dns_server_address()
-        expected_params["ntp_server"] = get_default_config()['ntp_server']
-        expected_params["domain_name"] = nodegroup.name
-        expected_params["subnet"] = '192.168.100.0'
-        expected_params["dhcp_interfaces"] = interface.interface
+        expected_params["dhcp_interfaces"] = ' '.join([
+            interface.interface
+            for interface in nodegroup.get_managed_interfaces()])
+        expected_params["dhcp_subnets"] = dhcp_subnets
 
         args, kwargs = mocked_task.apply_async.call_args
         result_params = kwargs['kwargs']
@@ -127,7 +157,7 @@ class TestDHCP(MAASServerTestCase):
         configure_dhcp(nodegroup)
         kwargs = mocked_task.apply_async.call_args[1]['kwargs']
 
-        self.assertEqual(ip, kwargs['dns_servers'])
+        self.assertEqual(ip, kwargs['dhcp_subnets'][0]['dns_servers'])
 
     def test_configure_dhcp_restart_dhcp_server(self):
         self.patch(tasks, "sudo_write_file")
@@ -200,7 +230,7 @@ class TestDHCP(MAASServerTestCase):
             (1, new_router_ip),
             (
                 dhcp.write_dhcp_config.apply_async.call_count,
-                kwargs['kwargs']['router_ip'],
+                kwargs['kwargs']['dhcp_subnets'][0]['router_ip'],
             ))
 
     def test_dhcp_config_gets_written_when_ntp_server_changes(self):

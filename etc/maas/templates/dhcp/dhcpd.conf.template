@@ -5,24 +5,27 @@
 # will be present whenever MAAS rewrites the DHCP configuration.  Edit and save
 # the nodegroup's configuration in MAAS to trigger an update.
 
-subnet {{subnet}} netmask {{subnet_mask}} {
+{{for dhcp_subnet in dhcp_subnets}}
+subnet {{dhcp_subnet['subnet']}} netmask {{dhcp_subnet['subnet_mask']}} {
        filename "{{bootloader}}";
        ignore-client-uids true;
-       option subnet-mask {{subnet_mask}};
-       option broadcast-address {{broadcast_ip}};
-       option domain-name-servers {{dns_servers}};
-       option domain-name "{{domain_name}}";
-       option routers {{router_ip}};
-       {{if ntp_server}}
-       option ntp-servers {{ntp_server}};
+       option subnet-mask {{dhcp_subnet['subnet_mask']}};
+       option broadcast-address {{dhcp_subnet['broadcast_ip']}};
+       option domain-name-servers {{dhcp_subnet['dns_servers']}};
+       option domain-name "{{dhcp_subnet['domain_name']}}";
+       option routers {{dhcp_subnet['router_ip']}};
+       {{if dhcp_subnet.get('ntp_server')}}
+       option ntp-servers {{dhcp_subnet['ntp_server']}};
        {{endif}}
-       range dynamic-bootp {{ip_range_low}} {{ip_range_high}};
+       range dynamic-bootp {{dhcp_subnet['ip_range_low']}} {{dhcp_subnet['ip_range_high']}};
        class "PXE" {
           match if substring (option vendor-class-identifier, 0, 3) = "PXE";
           default-lease-time 30;
           max-lease-time 30;
        }
 }
+{{endfor}}
+
 omapi-port 7911;
 key omapi_key {
     algorithm HMAC-MD5;
