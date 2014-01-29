@@ -37,6 +37,7 @@ class TestScript(MAASTestCase):
 
     test_args = (
         '--subnet', 'subnet',
+        '--interface', 'eth0',
         '--subnet-mask', 'subnet-mask',
         '--broadcast-ip', 'broadcast-ip',
         '--dns-servers', 'dns-servers',
@@ -67,6 +68,7 @@ class TestScript(MAASTestCase):
         self.assertThat(
             args, MatchesStructure.byEquality(
                 subnet='subnet',
+                interface='eth0',
                 subnet_mask='subnet-mask',
                 broadcast_ip='broadcast-ip',
                 dns_servers='dns-servers',
@@ -86,6 +88,7 @@ class TestScript(MAASTestCase):
         output = sys.stdout.getvalue()
         contains_all_params = ContainsAll([
             'subnet',
+            'interface',
             'subnet-mask',
             'broadcast-ip',
             'omapi-key',
@@ -109,6 +112,7 @@ class TestScript(MAASTestCase):
             output = stream.read()
         contains_all_params = ContainsAll([
             'subnet',
+            'interface',
             'subnet-mask',
             'broadcast-ip',
             'omapi-key',

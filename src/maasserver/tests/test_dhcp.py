@@ -110,6 +110,7 @@ class TestDHCP(MAASServerTestCase):
         dhcp_subnets = []
         for interface in nodegroup.get_managed_interfaces():
             dhcp_params = [
+                'interface',
                 'subnet_mask',
                 'broadcast_ip',
                 'router_ip',

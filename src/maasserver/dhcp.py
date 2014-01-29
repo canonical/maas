@@ -63,6 +63,7 @@ def configure_dhcp(nodegroup):
                 IPAddress(interface.subnet_mask)),
             subnet_mask=interface.subnet_mask,
             broadcast_ip=interface.broadcast_ip,
+            interface=interface.interface,
             router_ip=interface.router_ip,
             dns_servers=dns_server,
             ntp_server=ntp_server,

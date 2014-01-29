@@ -8,6 +8,7 @@
 {{for dhcp_subnet in dhcp_subnets}}
 subnet {{dhcp_subnet['subnet']}} netmask {{dhcp_subnet['subnet_mask']}} {
        filename "{{bootloader}}";
+       interface {{dhcp_subnet['interface']}};
        ignore-client-uids true;
        option subnet-mask {{dhcp_subnet['subnet_mask']}};
        option broadcast-address {{dhcp_subnet['broadcast_ip']}};

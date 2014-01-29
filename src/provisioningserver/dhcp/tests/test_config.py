@@ -37,6 +37,7 @@ sample_template = dedent("""\
     {{omapi_key}}
     {{for dhcp_subnet in dhcp_subnets}}
         {{dhcp_subnet['subnet']}}
+        {{dhcp_subnet['interface']}}
         {{dhcp_subnet['subnet_mask']}}
         {{dhcp_subnet['broadcast_ip']}}
         {{dhcp_subnet['dns_servers']}}
@@ -57,6 +58,7 @@ def make_sample_params():
         omapi_key="random",
         dhcp_subnets=[dict(
             subnet="10.0.0.0",
+            interface="eth0",
             subnet_mask="255.0.0.0",
             broadcast_ip="10.255.255.255",
             dns_servers="10.1.0.1 10.1.0.2",
