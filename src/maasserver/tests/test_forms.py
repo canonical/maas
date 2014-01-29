@@ -30,6 +30,7 @@ from maasserver.enum import (
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
     )
+from maasserver import forms as forms_module
 from maasserver.forms import (
     AdminNodeForm,
     AdminNodeWithMACAddressesForm,
@@ -54,6 +55,7 @@ from maasserver.forms import (
     ProfileForm,
     remove_None_values,
     UnconstrainedMultipleChoiceField,
+    validate_nonoverlapping_networks,
     ValidatorMultipleChoiceField,
     ZoneForm,
     )
@@ -78,11 +80,15 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from metadataserver.models import CommissioningScript
 from netaddr import IPNetwork
+from testtools import TestCase
 from testtools.matchers import (
     AllMatch,
+    Contains,
     Equals,
+    MatchesAll,
     MatchesRegex,
     MatchesStructure,
+    StartsWith,
     )
 
 
@@ -667,18 +673,26 @@ class TestMACAddressForm(MAASServerTestCase):
             MACAddress.objects.filter(node=node, mac_address=mac).exists())
 
 
-def make_interface_settings():
+def make_interface_settings(network=None, management=None):
     """Create a dict of arbitrary interface configuration parameters."""
-    network = factory.getRandomNetwork()
+    if network is None:
+        network = factory.getRandomNetwork()
+    if management is None:
+        management = factory.getRandomEnum(NODEGROUPINTERFACE_MANAGEMENT)
+    # Pick upper and lower boundaries of IP range, with upper > lower.
+    boundaries = [factory.getRandomIPInNetwork(network) for _ in range(2)]
+    while boundaries[1] == boundaries[0]:
+        boundaries = [factory.getRandomIPInNetwork(network) for _ in range(2)]
+    [ip_range_low, ip_range_high] = sorted(boundaries)
     return {
         'ip': factory.getRandomIPInNetwork(network),
         'interface': factory.make_name('interface'),
         'subnet_mask': unicode(network.netmask),
         'broadcast_ip': unicode(network.broadcast),
         'router_ip': factory.getRandomIPInNetwork(network),
-        'ip_range_low': factory.getRandomIPInNetwork(network),
-        'ip_range_high': factory.getRandomIPInNetwork(network),
-        'management': factory.getRandomEnum(NODEGROUPINTERFACE_MANAGEMENT),
+        'ip_range_low': ip_range_low,
+        'ip_range_high': ip_range_high,
+        'management': management,
     }
 
 
@@ -707,6 +721,90 @@ class TestNodeGroupInterfaceForm(MAASServerTestCase):
         field_values = [
             getattr(interface, field_name) for field_name in nullable_fields]
         self.assertThat(field_values, AllMatch(Equals('')))
+
+
+class TestValidateNonoverlappingNetworks(TestCase):
+    """Tests for `validate_nonoverlapping_networks`."""
+
+    def make_interface_definition(self, ip, netmask, name=None):
+        """Return a minimal imitation of an interface definition."""
+        if name is None:
+            name = factory.make_name('itf')
+        return {
+            'interface': name,
+            'ip': ip,
+            'subnet_mask': netmask,
+            'management': NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
+        }
+
+    def test_accepts_zero_interfaces(self):
+        validate_nonoverlapping_networks([])
+        # Success is getting here without error.
+        pass
+
+    def test_accepts_single_interface(self):
+        validate_nonoverlapping_networks(
+            [self.make_interface_definition('10.1.1.1', '255.255.0.0')])
+        # Success is getting here without error.
+        pass
+
+    def test_accepts_disparate_ranges(self):
+        validate_nonoverlapping_networks([
+            self.make_interface_definition('10.1.0.0', '255.255.0.0'),
+            self.make_interface_definition('192.168.0.0', '255.255.255.0'),
+            ])
+        # Success is getting here without error.
+        pass
+
+    def test_accepts_near_neighbours(self):
+        validate_nonoverlapping_networks([
+            self.make_interface_definition('10.1.0.0', '255.255.0.0'),
+            self.make_interface_definition('10.2.0.0', '255.255.0.0'),
+            ])
+        # Success is getting here without error.
+        pass
+
+    def test_rejects_identical_ranges(self):
+        definitions = [
+            self.make_interface_definition('192.168.0.0', '255.255.255.0'),
+            self.make_interface_definition('192.168.0.0', '255.255.255.0'),
+            ]
+        error = self.assertRaises(
+            ValidationError,
+            validate_nonoverlapping_networks, definitions)
+        error_text = error.messages[0]
+        self.assertThat(
+            error_text, MatchesRegex(
+                "Conflicting networks on [^\\s]+ and [^\\s]+: "
+                "address ranges overlap."))
+        self.assertThat(
+            error_text,
+            MatchesAll(
+                *(
+                    Contains(definition['interface'])
+                    for definition in definitions
+                )))
+
+    def test_rejects_nested_ranges(self):
+        definitions = [
+            self.make_interface_definition('192.168.0.0', '255.255.0.0'),
+            self.make_interface_definition('192.168.100.0', '255.255.255.0'),
+            ]
+        error = self.assertRaises(
+            ValidationError,
+            validate_nonoverlapping_networks, definitions)
+        self.assertIn("Conflicting networks", unicode(error))
+
+    def test_detects_conflict_regardless_of_order(self):
+        definitions = [
+            self.make_interface_definition('192.168.100.0', '255.255.255.0'),
+            self.make_interface_definition('192.168.1.0', '255.255.255.0'),
+            self.make_interface_definition('192.168.64.0', '255.255.192.0'),
+            ]
+        error = self.assertRaises(
+            ValidationError,
+            validate_nonoverlapping_networks, definitions)
+        self.assertThat(error.messages[0], StartsWith("Conflicting networks"))
 
 
 class TestNodeGroupWithInterfacesForm(MAASServerTestCase):
@@ -799,6 +897,50 @@ class TestNodeGroupWithInterfacesForm(MAASServerTestCase):
         self.assertThat(
             nodegroup.nodegroupinterface_set.all()[0],
             MatchesStructure.byEquality(**interface))
+
+    def test_checks_against_conflicting_managed_networks(self):
+        # XXX JeroenVermeulen 2014-01-29, bug=1052339: Remove this patch.
+        self.patch(forms_module, 'validate_single_managed_interface')
+        big_network = IPNetwork('10.0.0.0/255.255.0.0')
+        nested_network = IPNetwork('10.0.100.0/255.255.255.0')
+        managed = NODEGROUPINTERFACE_MANAGEMENT.DHCP
+        form = NodeGroupWithInterfacesForm(
+            data={
+                'name': factory.make_name('cluster'),
+                'uuid': factory.getRandomUUID(),
+                'interfaces': json.dumps([
+                    make_interface_settings(
+                        network=big_network, management=managed),
+                    make_interface_settings(
+                        network=nested_network, management=managed),
+                    ]),
+            })
+        self.assertFalse(form.is_valid())
+        self.assertNotEqual([], form._errors['interfaces'])
+        self.assertThat(
+            form._errors['interfaces'][0],
+            StartsWith("Conflicting networks"))
+
+    def test_ignores_conflicts_on_unmanaged_interfaces(self):
+        big_network = IPNetwork('10.0.0.0/255.255.0.0')
+        nested_network = IPNetwork('10.100.100.0/255.255.255.0')
+        managed = NODEGROUPINTERFACE_MANAGEMENT.DHCP
+        unmanaged = NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED
+        form = NodeGroupWithInterfacesForm(
+            data={
+                'name': factory.make_name('cluster'),
+                'uuid': factory.getRandomUUID(),
+                'interfaces': json.dumps([
+                    make_interface_settings(
+                        network=big_network, management=managed),
+                    make_interface_settings(
+                        network=nested_network, management=unmanaged),
+                    ]),
+            })
+        is_valid = form.is_valid()
+        self.assertEqual(
+            (True, None),
+            (is_valid, form._errors.get('interfaces')))
 
     def test_checks_presence_of_other_managed_interfaces(self):
         # XXX JeroenVermeulen 2014-01-23, bug=1052339: Remove this restriction.

@@ -36,6 +36,7 @@ __all__ = [
 
 import collections
 import json
+from netaddr import IPNetwork
 import pipes
 import re
 
@@ -764,6 +765,59 @@ def validate_nodegroupinterface_definition(interface):
             "Invalid interface: %r (%r)." % (interface, form._errors))
 
 
+def validate_nonoverlapping_networks(interfaces):
+    """Check against conflicting network ranges among interface definitions.
+
+    :param interfaces: Iterable of interface definitions as found in HTTP
+        request data.
+    :raise ValidationError: If any two networks for entries of `interfaces`
+        could potentially contain the same IP address.
+    """
+    unmanaged = NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED
+    managed_interfaces = [
+        interface
+        for interface in interfaces
+        if interface.get('management', unmanaged) != unmanaged
+        ]
+
+    networks = [
+        {
+            'name': interface['interface'],
+            'network': IPNetwork(
+                '%s/%s' % (interface['ip'], interface['subnet_mask'])),
+        }
+        for interface in managed_interfaces
+        ]
+    networks = sorted(networks, key=lambda network: network['network'].first)
+    for index in range(1, len(networks)):
+        start_of_this_network = networks[index]['network'].first
+        end_of_last_network = networks[index - 1]['network'].last
+        if start_of_this_network <= end_of_last_network:
+            # IP ranges overlap.
+            raise ValidationError(
+                "Conflicting networks on %s and %s: address ranges overlap."
+                % (networks[index - 1]['name'], networks[index]['name']))
+
+
+# XXX JeroenVermeulen 2014-01-29 bug=1052339: This restriction is going away.
+def validate_single_managed_interface(interfaces):
+    """Check against multiple managed interfaces.
+
+    :param interfaces: Iterable of interface definitions as found in HTTP
+        request data.
+    :raise ValidationError: If more than one of the interfaces is managed.
+    """
+    unmanaged = NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED
+    managed_interfaces = [
+        interface
+        for interface in interfaces if
+        interface.get('management', unmanaged) != unmanaged
+        ]
+    if len(managed_interfaces) > 1:
+        raise ValidationError(
+            "Only one managed interface can be configured for this cluster")
+
+
 class NodeGroupWithInterfacesForm(ModelForm):
     """Create a NodeGroup with unmanaged interfaces."""
 
@@ -811,20 +865,8 @@ class NodeGroupWithInterfacesForm(ModelForm):
         validate_nodegroupinterfaces_json(interfaces)
         for interface in interfaces:
             validate_nodegroupinterface_definition(interface)
-
-        unmanaged = NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED
-        managed_interfaces = [
-            interface
-            for interface in interfaces if
-            interface.get('management', unmanaged) != unmanaged
-            ]
-
-        # XXX: rvb 2012-09-18 bug=1052339: Only one "managed" interface
-        # is supported per NodeGroup.
-        if len(managed_interfaces) > 1:
-            raise ValidationError(
-                "Only one managed interface can be configured for this "
-                "cluster")
+        validate_nonoverlapping_networks(interfaces)
+        validate_single_managed_interface(interfaces)
         return interfaces
 
     def save(self):

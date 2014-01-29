@@ -28,10 +28,7 @@ from django.core.exceptions import (
 from django.core.urlresolvers import reverse
 from django.test.client import RequestFactory
 from maasserver import api
-from maasserver.enum import (
-    NODEGROUP_STATUS,
-    NODEGROUPINTERFACE_MANAGEMENT,
-    )
+from maasserver.enum import NODEGROUP_STATUS
 from maasserver.forms import DEFAULT_DNS_ZONE_NAME
 from maasserver.models import NodeGroup
 from maasserver.testing.api import AnonAPITestCase
@@ -316,33 +313,6 @@ class TestRegisterAPI(AnonAPITestCase):
         self.assertEqual(
             (NODEGROUP_STATUS.ACCEPTED, DEFAULT_DNS_ZONE_NAME),
             (master.status, master.name))
-
-    def test_register_accepts_only_one_managed_interface(self):
-        create_configured_master()
-        name = factory.make_name('cluster')
-        uuid = factory.getRandomUUID()
-        # This will try to create 2 "managed" interfaces.
-        interface1 = make_interface_settings()
-        interface1['management'] = NODEGROUPINTERFACE_MANAGEMENT.DHCP
-        interface2 = interface1.copy()
-        response = self.client.post(
-            reverse('nodegroups_handler'),
-            {
-                'op': 'register',
-                'name': name,
-                'uuid': uuid,
-                'interfaces': json.dumps([interface1, interface2]),
-            })
-        self.assertEqual(
-            (
-                httplib.BAD_REQUEST,
-                {'interfaces':
-                    [
-                        "Only one managed interface can be configured for "
-                        "this cluster"
-                    ]},
-            ),
-            (response.status_code, json.loads(response.content)))
 
     def test_register_nodegroup_validates_data(self):
         create_configured_master()
