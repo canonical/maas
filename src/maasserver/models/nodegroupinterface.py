@@ -96,7 +96,9 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
         :return: :class:`IPNetwork`
         """
         if self.broadcast_ip and self.subnet_mask:
-            return IPNetwork("%s/%s" % (self.broadcast_ip, self.subnet_mask))
+            network = IPNetwork(
+                "%s/%s" % (self.broadcast_ip, self.subnet_mask)).network
+            return IPNetwork("%s/%s" % (network, self.subnet_mask))
         return None
 
     def display_management(self):

@@ -27,18 +27,26 @@ from maasserver.testing.testcase import MAASServerTestCase
 from netaddr import IPNetwork
 
 
-def make_interface():
+def make_interface(network=None):
     nodegroup = factory.make_node_group(
         status=NODEGROUP_STATUS.ACCEPTED,
-        management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
+        management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
+        network=network)
     [interface] = nodegroup.get_managed_interfaces()
     return interface
 
 
 class TestNodeGroupInterface(MAASServerTestCase):
 
+    def test_network(self):
+        network = IPNetwork("10.0.0.3/24")
+        interface = make_interface(network=network)
+        self.assertEqual(IPNetwork("10.0.0.0/24"), interface.network)
+
     def test_network_is_defined_when_broadcast_and_mask_are(self):
         interface = make_interface()
+        interface.broadcast = "10.0.0.255"
+        interface.subnet_mask = "255.255.255.0"
         self.assertIsInstance(interface.network, IPNetwork)
 
     def test_network_is_undefined_when_broadcast_is_None(self):
@@ -81,7 +89,7 @@ class TestNodeGroupInterface(MAASServerTestCase):
             ip = '192.168.2.1'
             setattr(interface, field, '192.168.2.1')
             message = (
-                "%s not in the %s network" % (ip, '192.168.0.255/24'))
+                "%s not in the %s network" % (ip, '192.168.0.0/24'))
             exception = self.assertRaises(
                 ValidationError, interface.full_clean)
             self.assertEqual(
