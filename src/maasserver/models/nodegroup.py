@@ -207,11 +207,6 @@ class NodeGroup(TimestampedModel):
             self.api_key = api_token.key
         return super(NodeGroup, self).save(*args, **kwargs)
 
-    def get_any_interface(self):
-        for interface in self.nodegroupinterface_set.all():
-            return interface
-        return None
-
     def get_managed_interfaces(self):
         """Return the list of interfaces for which MAAS manages DHCP."""
         # Filter in python instead of in SQL.  This will use the cached
