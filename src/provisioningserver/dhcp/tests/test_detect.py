@@ -14,6 +14,8 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+import errno
+import fcntl
 import httplib
 import os
 import socket
@@ -392,6 +394,31 @@ class TestPeriodicTask(PservTestCase):
         eth0_addr = factory.getRandomIPAddress()
         self.patch_fake_interfaces_list([("eth0", eth0_addr)])
         self.patch(detect_module, 'probe_dhcp').return_value = set()
+        interfaces = determine_cluster_interfaces(self.knowledge)
+        results = probe_interface(*interfaces[0])
+        self.assertEqual(set(), results)
+
+    def test_probe_interface_returns_empty_set_when_IP_missing(self):
+        # If the interface being probed has no IP address, the
+        # request_dhcr() method will raise IOError with errno 99. Make
+        # sure this is caught and ignored.
+        eth0_addr = factory.getRandomIPAddress()
+        self.patch_fake_interfaces_list([("eth0", eth0_addr)])
+        ioerror = IOError(
+            errno.EADDRNOTAVAIL, "Cannot assign requested address")
+        self.patch(fcntl, 'ioctl').side_effect = ioerror
+        interfaces = determine_cluster_interfaces(self.knowledge)
+        results = probe_interface(*interfaces[0])
+        self.assertEqual(set(), results)
+
+    def test_probe_interface_returns_empty_set_when_device_missing(self):
+        # If the interface being probed does not exist, the
+        # request_dhcp() method will raise IOError with errno 19. Make
+        # sure this is caught and ignored.
+        eth0_addr = factory.getRandomIPAddress()
+        self.patch_fake_interfaces_list([("eth0", eth0_addr)])
+        ioerror = IOError(errno.ENODEV, "No such device")
+        self.patch(fcntl, 'ioctl').side_effect = ioerror
         interfaces = determine_cluster_interfaces(self.knowledge)
         results = probe_interface(*interfaces[0])
         self.assertEqual(set(), results)

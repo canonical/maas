@@ -16,6 +16,7 @@ __all__ = []
 
 
 from contextlib import contextmanager
+import errno
 import fcntl
 import httplib
 import json
@@ -276,7 +277,26 @@ def probe_interface(interface, ip):
     :note: Any servers running on the IP address of the local host are
         filtered out as they will be the MAAS DHCP server.
     """
-    servers = probe_dhcp(interface)
+    try:
+        servers = probe_dhcp(interface)
+    except IOError as e:
+        servers = set()
+        if e.errno == errno.EADDRNOTAVAIL:
+            # Errno EADDRNOTAVAIL is "Cannot assign requested address"
+            # which we need to ignore; it means the interface has no IP
+            # and there's no need to scan this interface as it's not in
+            # use.
+            logger.info(
+                "Ignoring DHCP scan for %s, it has no IP address", interface)
+        elif e.errno == errno.ENODEV:
+            # Errno ENODEV is "no such device". This seems an odd situation
+            # since we're scanning detected devices, so this is probably
+            # a bug.
+            logger.error(
+                "Ignoring DHCP scan for %s, it no longer exists. Check "
+                "your cluster interfaces configuration.", interface)
+        else:
+            raise
     # Using servers.discard(ip) here breaks Mock in the tests, so
     # we're creating a copy of the set instead.
     results = servers.difference([ip])
