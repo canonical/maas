@@ -20,10 +20,7 @@ from lockfile import (
     FileLock,
     LockTimeout,
     )
-from maasserver import (
-    eventloop,
-    start_up,
-    )
+from maasserver import start_up
 from maasserver.components import (
     discard_persistent_error,
     register_persistent_error,
@@ -71,10 +68,6 @@ class TestStartUp(MAASServerTestCase):
         self.patch(start_up, 'LOCK_FILE_NAME', self.make_file())
         # Prevent tests from leaving broken atexit handlers behind.
         self.patch(atexit, "_exithandlers", [])
-
-    def tearDown(self):
-        super(TestStartUp, self).tearDown()
-        eventloop.stop().wait(5)
 
     def test_start_up_calls_write_full_dns_config(self):
         recorder = FakeMethod()

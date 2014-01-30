@@ -111,14 +111,6 @@ class ConfigTFTP(Schema):
     generator = String(if_missing=b"http://localhost/MAAS/api/1.0/pxeconfig/")
 
 
-class ConfigRPC(Schema):
-    """Configuration validator for the RPC service."""
-
-    if_key_missing = None
-
-    port = Int(min=1, max=65535, if_missing=5248)
-
-
 class ConfigBootEphemeral(Schema):
     """Configuration validator for ephemeral boot configuration."""
 
@@ -177,7 +169,6 @@ class Config(Schema):
     oops = ConfigOops
     broker = ConfigBroker
     tftp = ConfigTFTP
-    rpc = ConfigRPC
     boot = ConfigBoot
 
     @classmethod

@@ -22,7 +22,6 @@ from textwrap import dedent
 
 from django.db import connection
 from lockfile import FileLock
-from maasserver import eventloop
 from maasserver.components import (
     get_persistent_error,
     register_persistent_error,
@@ -67,9 +66,6 @@ def start_up():
         inner_start_up()
     finally:
         lock.release()
-
-    eventloop.start().wait(10)
-
     post_start_up()
 
 

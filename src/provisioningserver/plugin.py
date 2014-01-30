@@ -16,7 +16,6 @@ __all__ = []
 
 from provisioningserver.amqpclient import AMQFactory
 from provisioningserver.config import Config
-from provisioningserver.rpc.clusterservice import ClusterService
 from provisioningserver.services import (
     LogService,
     OOPSService,
@@ -37,7 +36,6 @@ from twisted.cred.checkers import ICredentialsChecker
 from twisted.cred.credentials import IUsernamePassword
 from twisted.cred.error import UnauthorizedLogin
 from twisted.cred.portal import IRealm
-from twisted.internet import reactor
 from twisted.internet.defer import (
     inlineCallbacks,
     returnValue,
@@ -167,11 +165,6 @@ class ProvisioningServiceMaker(object):
             tftp_service.setServiceParent(tftp_services)
         return tftp_services
 
-    def _makeRPCService(self, rpc_config):
-        rpc_service = ClusterService(reactor, rpc_config["port"])
-        rpc_service.setName("rpc")
-        return rpc_service
-
     def makeService(self, options):
         """Construct a service."""
         services = MultiService()
@@ -192,8 +185,5 @@ class ProvisioningServiceMaker(object):
 
         tftp_service = self._makeTFTPService(config["tftp"])
         tftp_service.setServiceParent(services)
-
-        rpc_service = self._makeRPCService(config["rpc"])
-        rpc_service.setServiceParent(services)
 
         return services
