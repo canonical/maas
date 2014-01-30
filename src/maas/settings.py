@@ -254,8 +254,10 @@ MIDDLEWARE_CLASSES = (
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'maasserver.middleware.AccessMiddleware',
-    'maasserver.middleware.DebuggingLoggerMiddleware',
     'django.middleware.gzip.GZipMiddleware',
+    # Keep DebuggingLoggerMiddleware underneath GZipMiddleware
+    # so that it deals with un-compressed responses.
+    'maasserver.middleware.DebuggingLoggerMiddleware',
 )
 
 ROOT_URLCONF = 'maas.urls'
