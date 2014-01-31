@@ -43,7 +43,10 @@ from django.db.models import (
     )
 from django.shortcuts import get_object_or_404
 import djorm_pgarray.fields
-from maasserver import DefaultMeta
+from maasserver import (
+    DefaultMeta,
+    logger,
+    )
 from maasserver.enum import (
     ARCHITECTURE,
     ARCHITECTURE_CHOICES,
@@ -306,6 +309,9 @@ class NodeManager(Manager):
             except UnknownPowerType:
                 # Skip the rest of the loop to avoid creating a power
                 # event for a node that we can't power down.
+                logger.warning(
+                    "Node %s has an unknown power type. Not creating "
+                    "power down event." % node.system_id)
                 continue
             # WAKE_ON_LAN does not support poweroff.
             if node_power_type != 'ether_wake':
@@ -349,6 +355,9 @@ class NodeManager(Manager):
             except UnknownPowerType:
                 # Skip the rest of the loop to avoid creating a power
                 # event for a node that we can't power up.
+                logger.warning(
+                    "Node %s has an unknown power type. Not creating "
+                    "power up event." % node.system_id)
                 continue
             if node_power_type == 'ether_wake':
                 mac = power_params.get('mac_address')
