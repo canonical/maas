@@ -7,14 +7,17 @@ Additional Configuration
 Manual DHCP configuration
 -------------------------
 
-There are some circumstances under which you may not wish the master
-MAAS worker to handle DHCP for the network. In these instances, the
-existing DHCP server for the network will need its configuration
-altered to allow MAAS to enlist and control nodes automatically.
+DHCP is needed in order for MAAS to boot and control nodes.  However, there
+are some circumstances under which you may not wish a cluster controller to
+handle DHCP address assignments for the network.  In these instances, the
+existing DHCP server for the network will need its configuration altered to
+allow MAAS to enlist and control nodes automatically.
 
-At the very least the filename should be set to pxelinux.0.
+At the very least the "filename" option should be set to "pxelinux.0".
 
-The configuration entry may look something like this::
+How to configure this depends on what software you use as a DHCP server.  If
+you are using the ISC DHCP server, for example, the configuration entry might
+look something like this::
 
    subnet 192.168.122.0 netmask 255.255.255.0 {
        filename "pxelinux.0";
@@ -23,6 +26,17 @@ The configuration entry may look something like this::
        option domain-name-servers 192.168.122.136;
        range dynamic-bootp 192.168.122.5 192.168.122.135;
    }
+
+When doing this, leave the cluster controller's interface in the "unmanaged"
+state.
+
+If your cluster controller is in charge of nodes on more than one network
+through different network interfaces, there is an additional complication.
+Without the DHCP server built into the cluster controller, MAAS may not
+know which of the cluster controller's IP addresses each node should use
+for downloading its installer image.  If you want to support this situation,
+ensure that all of the nodes can reach all of the cluster controller's
+network addresses.
 
 
 .. _ssl:
