@@ -230,7 +230,8 @@ class NodeTest(MAASServerTestCase):
 
     def test_get_effective_power_type_raises_if_not_set(self):
         node = factory.make_node(power_type='')
-        self.assertRaises(ValueError, node.get_effective_power_type)
+        self.assertRaises(
+            node_module.UnknownPowerType, node.get_effective_power_type)
 
     def test_get_effective_power_type_reads_node_field(self):
         power_types = list(get_power_types().keys())  # Python3 proof.
@@ -1016,6 +1017,18 @@ class NodeManagerTest(MAASServerTestCase):
         self.assertItemsEqual(
             [stoppable_node],
             Node.objects.stop_nodes(ids, stoppable_node.owner))
+
+    def test_stop_nodes_does_not_attempt_power_task_if_no_power_type(self):
+        # If the node has a power_type set to UNKNOWN_POWER_TYPE
+        # NodeManager.stop_node(this_node) won't create a power event
+        # for it.
+        user = factory.make_user()
+        node, unused = self.make_node_with_mac(
+            user, power_type='')
+        output = Node.objects.stop_nodes([node.system_id], user)
+
+        self.assertItemsEqual([], output)
+        self.assertEqual(0, len(self.celery.tasks))
 
     def test_start_nodes_starts_nodes(self):
         user = factory.make_user()

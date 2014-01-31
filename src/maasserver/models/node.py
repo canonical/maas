@@ -150,6 +150,10 @@ NODE_TRANSITIONS = {
     }
 
 
+class UnknownPowerType(Exception):
+    """Raised when a node has an unknown power type."""
+
+
 class NodeManager(Manager):
     """A utility to manage the collection of Nodes."""
 
@@ -297,7 +301,12 @@ class NodeManager(Manager):
         processed_nodes = []
         for node in nodes:
             power_params = node.get_effective_power_parameters()
-            node_power_type = node.get_effective_power_type()
+            try:
+                node_power_type = node.get_effective_power_type()
+            except UnknownPowerType:
+                # Skip the rest of the loop to avoid creating a power
+                # event for a node that we can't power down.
+                continue
             # WAKE_ON_LAN does not support poweroff.
             if node_power_type != 'ether_wake':
                 power_off.apply_async(
@@ -337,7 +346,9 @@ class NodeManager(Manager):
             power_params = node.get_effective_power_parameters()
             try:
                 node_power_type = node.get_effective_power_type()
-            except ValueError:
+            except UnknownPowerType:
+                # Skip the rest of the loop to avoid creating a power
+                # event for a node that we can't power up.
                 continue
             if node_power_type == 'ether_wake':
                 mac = power_params.get('mac_address')
@@ -686,10 +697,11 @@ class Node(CleanSave, TimestampedModel):
     def get_effective_power_type(self):
         """Get power-type to use for this node.
 
-        If no power type has been set for the node, raise an error.
+        If no power type has been set for the node, raise
+        UnknownPowerType.
         """
         if self.power_type == '':
-            raise ValueError("Node power type is unconfigured")
+            raise UnknownPowerType("Node power type is unconfigured")
         return self.power_type
 
     def get_primary_mac(self):
