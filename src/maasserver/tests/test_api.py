@@ -161,6 +161,18 @@ class TestStoreNodeParameters(MAASServerTestCase):
             self.node, self.request)
         self.save.assert_has_calls([])
 
+    def test_unknown_power_type(self):
+        # Sometimes a node doesn't know its power type, and will declare its
+        # powertype as ''; store_node_power_parameters will store that
+        # appropriately.
+        power_type = ''
+        self.request.POST = {
+            "power_type": '',
+            }
+        store_node_power_parameters(self.node, self.request)
+        self.assertEqual(power_type, self.node.power_type)
+        self.save.assert_called_once_with()
+
 
 class AccountAPITest(APITestCase):
 

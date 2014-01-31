@@ -230,7 +230,10 @@ from metadataserver.models import (
 from piston.emitters import JSONEmitter
 from piston.handler import typemapper
 from piston.utils import rc
-from provisioningserver.enum import get_power_types
+from provisioningserver.enum import (
+    get_power_types,
+    UNKNOWN_POWER_TYPE,
+    )
 from provisioningserver.kernel_opts import KernelParameters
 import simplejson as json
 
@@ -262,7 +265,7 @@ def store_node_power_parameters(node, request):
     if power_type is None:
         return
 
-    if power_type in get_power_types():
+    if power_type in get_power_types() or power_type == UNKNOWN_POWER_TYPE:
         node.power_type = power_type
     else:
         raise MAASAPIBadRequest("Bad power_type '%s'" % power_type)

@@ -18,8 +18,16 @@ __all__ = [
     'IPMI_DRIVER_CHOICES',
     'POWER_TYPE',
     'POWER_TYPE_CHOICES',
+    'UNKNOWN_POWER_TYPE',
     'get_power_types',
     ]
+
+
+# We specifically declare this here so that a node not knowing its own
+# powertype won't fail to enlist. However, we don't want it in the list
+# of power types since setting a node's power type to "I don't know"
+# from another type doens't make any sense.
+UNKNOWN_POWER_TYPE = ''
 
 
 def get_power_types():
