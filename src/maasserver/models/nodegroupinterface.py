@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Model definition for NodeGroupInterface."""
@@ -142,27 +142,6 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
                         'subnet_mask': [message],
                     })
 
-    def clean_management(self):
-        # XXX: rvb 2012-09-18 bug=1052339: Only one "managed" interface
-        # is supported per NodeGroup.
-        check_other_interfaces = (
-            self.management != NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED and
-            self.nodegroup_id is not None)
-        if check_other_interfaces:
-            other_interfaces = self.nodegroup.nodegroupinterface_set.all()
-            # Exclude context if it's already in the database.
-            if self.id is not None:
-                other_interfaces = (
-                    other_interfaces.exclude(id=self.id))
-            # Narrow down to the those that are managed.
-            other_managed_interfaces = other_interfaces.exclude(
-                management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
-            if other_managed_interfaces.exists():
-                raise ValidationError(
-                    {'management': [
-                        "Another managed interface already exists for this "
-                        "cluster."]})
-
     def clean_network_config_if_managed(self):
         # If management is not 'UNMANAGED', all the network information
         # should be provided.
@@ -213,5 +192,4 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
         self.clean_network_valid()
         self.clean_network_not_too_big()
         self.clean_ips_in_network()
-        self.clean_management()
         self.clean_network_config_if_managed()

@@ -32,7 +32,6 @@ from maasserver.enum import (
 from maasserver.models import (
     Config,
     node as node_module,
-    NodeGroupInterface,
     )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -577,9 +576,6 @@ class TestZoneGenerator(MAASServerTestCase):
                  reverse_zone("henry", "10/32"))))
 
     def test_two_managed_interfaces_yields_one_forward_two_reverse_zones(self):
-        # XXX JeroenVermeulen 2014-01-28 bug=1052339: This patch becomes
-        # unnecessary once we allow multiple managed interfaces per nodegroup.
-        self.patch(NodeGroupInterface, 'clean_management')
         nodegroup = self.make_node_group()
         factory.make_node_group_interface(
             nodegroup=nodegroup,

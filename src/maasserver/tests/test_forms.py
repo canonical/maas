@@ -30,7 +30,6 @@ from maasserver.enum import (
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
     )
-from maasserver import forms as forms_module
 from maasserver.forms import (
     AdminNodeForm,
     AdminNodeWithMACAddressesForm,
@@ -78,6 +77,7 @@ from maasserver.node_action import (
 from maasserver.testing import reload_object
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils import map_enum
 from metadataserver.models import CommissioningScript
 from netaddr import IPNetwork
 from testtools import TestCase
@@ -899,8 +899,6 @@ class TestNodeGroupWithInterfacesForm(MAASServerTestCase):
             MatchesStructure.byEquality(**interface))
 
     def test_checks_against_conflicting_managed_networks(self):
-        # XXX JeroenVermeulen 2014-01-29, bug=1052339: Remove this patch.
-        self.patch(forms_module, 'validate_single_managed_interface')
         big_network = IPNetwork('10.0.0.0/255.255.0.0')
         nested_network = IPNetwork('10.0.100.0/255.255.255.0')
         managed = NODEGROUPINTERFACE_MANAGEMENT.DHCP
@@ -942,39 +940,24 @@ class TestNodeGroupWithInterfacesForm(MAASServerTestCase):
             (True, None),
             (is_valid, form._errors.get('interfaces')))
 
-    def test_checks_presence_of_other_managed_interfaces(self):
-        # XXX JeroenVermeulen 2014-01-23, bug=1052339: Remove this restriction.
-        name = factory.make_name('name')
-        uuid = factory.getRandomUUID()
-        interfaces = []
-        for index in range(2):
-            interface = make_interface_settings()
-            interface['management'] = factory.getRandomEnum(
-                NODEGROUPINTERFACE_MANAGEMENT,
-                but_not=(NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED, ))
-            interfaces.append(interface)
-        interfaces = json.dumps(interfaces)
-        form = NodeGroupWithInterfacesForm(
-            data={'name': name, 'uuid': uuid, 'interfaces': interfaces})
-        self.assertFalse(form.is_valid())
-        self.assertIn(
-            "Only one managed interface can be configured for this cluster",
-            form._errors['interfaces'][0])
-
     def test_creates_multiple_interfaces(self):
         name = factory.make_name('name')
         uuid = factory.getRandomUUID()
-        interface1 = make_interface_settings()
-        # Only one interface at most can be 'managed'.
-        interface2 = make_interface_settings()
-        interface2['management'] = NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED
-        interfaces = json.dumps([interface1, interface2])
+        interfaces = [
+            make_interface_settings(management=management)
+            for management in map_enum(NODEGROUPINTERFACE_MANAGEMENT).values()
+            ]
         form = NodeGroupWithInterfacesForm(
-            data={'name': name, 'uuid': uuid, 'interfaces': interfaces})
+            data={
+                'name': name,
+                'uuid': uuid,
+                'interfaces': json.dumps(interfaces),
+                })
         self.assertTrue(form.is_valid(), form._errors)
         form.save()
         nodegroup = NodeGroup.objects.get(uuid=uuid)
-        self.assertEqual(2, nodegroup.nodegroupinterface_set.count())
+        self.assertEqual(
+            len(interfaces), nodegroup.nodegroupinterface_set.count())
 
     def test_populates_cluster_name_default(self):
         name = factory.make_name('name')

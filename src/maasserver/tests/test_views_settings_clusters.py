@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test maasserver clusters views."""
@@ -201,21 +201,6 @@ class ClusterInterfaceCreateTest(AdminLoggedInTestCase):
         self.assertThat(
             reload_object(interface),
             MatchesStructure.byEquality(**data))
-
-    def test_rejects_interface_creation_if_cluster_already_managed(self):
-        nodegroup = factory.make_node_group(
-            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
-        create_link = reverse(
-            'cluster-interface-create', args=[nodegroup.uuid])
-        # nodegroup already has a 'managed' interface, try adding another
-        # one, also 'managed'.
-        data = factory.get_interface_fields(
-            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
-        response = self.client.post(create_link, data)
-        self.assertEqual(httplib.OK, response.status_code)
-        error_message = (
-            "Another managed interface already exists for this cluster.")
-        self.assertThat(response.content, Contains(error_message))
 
 
 # XXX: rvb 2012-10-08 bug=1063881: apache transforms '//' into '/' in

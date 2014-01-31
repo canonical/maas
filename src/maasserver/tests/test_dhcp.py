@@ -78,16 +78,7 @@ class TestDHCP(MAASServerTestCase):
             {status: [] for status in unaccepted_statuses},
             managed_interfaces)
 
-    def enable_multiple_managed_interfaces(self):
-        # XXX: rvb 2012-09-18 bug=1052339: Only one "managed" interface
-        # is supported per NodeGroup.
-        # This can be removed once NodeGroupInterface.clean_management
-        # goes away.
-        from maasserver.models.nodegroupinterface import NodeGroupInterface
-        self.patch(NodeGroupInterface, 'clean_management')
-
     def test_configure_dhcp_writes_dhcp_config(self):
-        self.enable_multiple_managed_interfaces()
         mocked_task = self.patch(dhcp, 'write_dhcp_config')
         self.patch(
             settings, 'DEFAULT_MAAS_URL',

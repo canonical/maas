@@ -800,24 +800,6 @@ def validate_nonoverlapping_networks(interfaces):
 
 
 # XXX JeroenVermeulen 2014-01-29 bug=1052339: This restriction is going away.
-def validate_single_managed_interface(interfaces):
-    """Check against multiple managed interfaces.
-
-    :param interfaces: Iterable of interface definitions as found in HTTP
-        request data.
-    :raise ValidationError: If more than one of the interfaces is managed.
-    """
-    unmanaged = NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED
-    managed_interfaces = [
-        interface
-        for interface in interfaces if
-        interface.get('management', unmanaged) != unmanaged
-        ]
-    if len(managed_interfaces) > 1:
-        raise ValidationError(
-            "Only one managed interface can be configured for this cluster")
-
-
 class NodeGroupWithInterfacesForm(ModelForm):
     """Create a NodeGroup with unmanaged interfaces."""
 
@@ -865,8 +847,8 @@ class NodeGroupWithInterfacesForm(ModelForm):
         validate_nodegroupinterfaces_json(interfaces)
         for interface in interfaces:
             validate_nodegroupinterface_definition(interface)
+
         validate_nonoverlapping_networks(interfaces)
-        validate_single_managed_interface(interfaces)
         return interfaces
 
     def save(self):
