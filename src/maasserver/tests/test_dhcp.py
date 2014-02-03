@@ -14,7 +14,6 @@ str = None
 __metaclass__ = type
 __all__ = []
 
-from functools import partial
 import random
 
 from django.conf import settings
@@ -41,6 +40,30 @@ from netaddr import (
 from provisioningserver import tasks
 from testresources import FixtureResource
 from testtools.matchers import EndsWith
+
+
+def make_ip_in(network, but_not=None):
+    """Generate a random IP address in the given network.
+
+    :param network: An `IPNetwork` that the network should be in.
+    :param but_not: Optional container of IP addresses that are not eligible.
+    :return: An `IPAddress` within `network`.
+    """
+    if but_not is None:
+        but_not = []
+    ip = factory.getRandomIPInNetwork(network)
+    while ip in but_not:
+        ip = factory.getRandomIPInNetwork(network)
+    return ip
+
+
+def make_ip_range(network):
+    """Return lower and upper bounds of an IP range within `network`."""
+    # Start off with an unacceptable value.
+    ip_range = (0, 0)
+    while ip_range[1] == ip_range[0]:
+        ip_range = tuple(sorted(make_ip_in(network) for _ in range(2)))
+    return ip_range
 
 
 class TestDHCP(MAASServerTestCase):
@@ -151,7 +174,7 @@ class TestDHCP(MAASServerTestCase):
 
         self.assertEqual(ip, kwargs['dhcp_subnets'][0]['dns_servers'])
 
-    def test_configure_dhcp_restart_dhcp_server(self):
+    def test_configure_dhcp_restarts_dhcp_server(self):
         self.patch(tasks, "sudo_write_file")
         mocked_check_call = self.patch(tasks, "call_and_check")
         self.patch(settings, "DHCP_CONNECT", True)
@@ -205,25 +228,90 @@ class TestDHCP(MAASServerTestCase):
         args, kwargs = task.subtask.call_args
         self.assertEqual(nodegroup.work_queue, kwargs['options']['queue'])
 
-    def test_dhcp_config_gets_written_when_nodegroupinterface_changes(self):
+    def test_dhcp_config_gets_written_when_interface_IP_changes(self):
+        nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
+        [interface] = nodegroup.nodegroupinterface_set.all()
+        self.patch(settings, "DHCP_CONNECT", True)
+        self.patch(dhcp, 'write_dhcp_config')
+
+        interface.ip = make_ip_in(interface.network, but_not=[interface.ip])
+        interface.save()
+
+        self.assertEqual(1, dhcp.write_dhcp_config.apply_async.call_count)
+
+    def test_dhcp_config_gets_written_when_interface_management_changes(self):
+        nodegroup = factory.make_node_group(
+            status=NODEGROUP_STATUS.ACCEPTED,
+            management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
+        [interface] = nodegroup.nodegroupinterface_set.all()
+        self.patch(settings, "DHCP_CONNECT", True)
+        self.patch(dhcp, 'write_dhcp_config')
+
+        interface.management = NODEGROUPINTERFACE_MANAGEMENT.DHCP
+        interface.save()
+
+        self.assertEqual(1, dhcp.write_dhcp_config.apply_async.call_count)
+
+    def test_dhcp_config_gets_written_when_interface_name_changes(self):
         nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
         [interface] = nodegroup.get_managed_interfaces()
         self.patch(settings, "DHCP_CONNECT", True)
         self.patch(dhcp, 'write_dhcp_config')
-        get_ip_in_network = partial(
-            factory.getRandomIPInNetwork, interface.network)
-        new_router_ip = next(
-            ip for ip in iter(get_ip_in_network, None)
-            if ip != interface.router_ip)
+
+        interface.interface = factory.make_name('itf')
+        interface.save()
+
+        self.assertEqual(1, dhcp.write_dhcp_config.apply_async.call_count)
+
+    def test_dhcp_config_gets_written_when_netmask_changes(self):
+        nodegroup = factory.make_node_group(
+            status=NODEGROUP_STATUS.ACCEPTED, subnet_mask='255.255.255.0')
+        [interface] = nodegroup.get_managed_interfaces()
+        self.patch(settings, "DHCP_CONNECT", True)
+        self.patch(dhcp, 'write_dhcp_config')
+
+        interface.subnet_mask = '255.255.0.0'
+        interface.save()
+
+        self.assertEqual(1, dhcp.write_dhcp_config.apply_async.call_count)
+
+    def test_dhcp_config_gets_written_when_interface_router_ip_changes(self):
+        nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
+        [interface] = nodegroup.get_managed_interfaces()
+        self.patch(settings, "DHCP_CONNECT", True)
+        self.patch(dhcp, 'write_dhcp_config')
+        new_router_ip = make_ip_in(
+            interface.network, but_not=[interface.router_ip])
+
         interface.router_ip = new_router_ip
         interface.save()
-        args, kwargs = dhcp.write_dhcp_config.apply_async.call_args
-        self.assertEqual(
-            (1, new_router_ip),
-            (
-                dhcp.write_dhcp_config.apply_async.call_count,
-                kwargs['kwargs']['dhcp_subnets'][0]['router_ip'],
-            ))
+
+        self.assertEqual(1, dhcp.write_dhcp_config.apply_async.call_count)
+
+    def test_dhcp_config_gets_written_when_ip_range_changes(self):
+        nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
+        [interface] = nodegroup.get_managed_interfaces()
+        self.patch(settings, "DHCP_CONNECT", True)
+        self.patch(dhcp, 'write_dhcp_config')
+
+        interface.ip_range_low, interface.ip_range_high = make_ip_range(
+            interface.network)
+        interface.save()
+
+        self.assertEqual(1, dhcp.write_dhcp_config.apply_async.call_count)
+
+    def test_dhcp_config_is_not_written_when_foreign_dhcp_changes(self):
+        nodegroup = factory.make_node_group(
+            status=NODEGROUP_STATUS.ACCEPTED,
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
+        [interface] = nodegroup.get_managed_interfaces()
+        self.patch(dhcp, 'write_dhcp_config')
+        self.patch(settings, "DHCP_CONNECT", True)
+
+        interface.foreign_dhcp = make_ip_in(interface.network)
+        interface.save()
+
+        self.assertEqual([], dhcp.write_dhcp_config.apply_async.mock_calls)
 
     def test_dhcp_config_gets_written_when_ntp_server_changes(self):
         # When the "ntp_server" Config item is changed, check that all

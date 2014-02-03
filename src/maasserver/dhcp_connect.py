@@ -16,8 +16,6 @@ __all__ = [
     ]
 
 
-from django.db.models.signals import post_save
-from django.dispatch import receiver
 from maasserver.models import (
     Config,
     NodeGroup,
@@ -26,12 +24,25 @@ from maasserver.models import (
 from maasserver.signals import connect_to_field_change
 
 
-@receiver(post_save, sender=NodeGroupInterface)
-def dhcp_post_save_NodeGroupInterface(sender, instance, created, **kwargs):
+def dhcp_post_change_NodeGroupInterface(instance, old_values, **kwargs):
     """Update the DHCP config related to the saved nodegroupinterface."""
     # Circular import.
     from maasserver.dhcp import configure_dhcp
     configure_dhcp(instance.nodegroup)
+
+
+connect_to_field_change(
+    dhcp_post_change_NodeGroupInterface, NodeGroupInterface,
+    [
+        'ip',
+        'management',
+        'interface',
+        'subnet_mask',
+        'broadcast_ip',
+        'router_ip',
+        'ip_range_low',
+        'ip_range_high',
+    ])
 
 
 def dhcp_post_edit_status_NodeGroup(instance, old_values, **kwargs):
