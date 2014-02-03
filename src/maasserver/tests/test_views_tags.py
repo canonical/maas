@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test maasserver nodes views."""
@@ -19,18 +19,20 @@ from lxml.etree import XPath
 from lxml.html import fromstring
 from maasserver.testing import get_content_links
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import LoggedInTestCase
+from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.views import tags as tags_views
 from testtools.matchers import ContainsAll
 
 
-class TagViewsTest(LoggedInTestCase):
+class TagViewsTest(MAASServerTestCase):
 
     def test_view_tag_displays_tag_info(self):
         # The tag page features the basic information about the tag.
-        tag = factory.make_tag(name='the-named-tag',
-                               comment='Human description of the tag',
-                               definition='//xpath')
+        self.client_log_in()
+        tag = factory.make_tag(
+            name='the-named-tag',
+            comment='Human description of the tag',
+            definition='//xpath')
         tag_link = reverse('tag-view', args=[tag.name])
         response = self.client.get(tag_link)
         doc = fromstring(response.content)
@@ -39,6 +41,7 @@ class TagViewsTest(LoggedInTestCase):
             content_text, ContainsAll([tag.comment, tag.definition]))
 
     def test_view_tag_includes_node_links(self):
+        self.client_log_in()
         tag = factory.make_tag()
         node = factory.make_node()
         node.tags.add(tag)
@@ -54,6 +57,7 @@ class TagViewsTest(LoggedInTestCase):
         self.assertIn(node_link, get_content_links(response))
 
     def test_view_tag_num_queries_is_independent_of_num_nodes(self):
+        self.client_log_in()
         tag = factory.make_tag()
         tag_link = reverse('tag-view', args=[tag.name])
         nodegroup = factory.make_node_group()
@@ -79,6 +83,7 @@ class TagViewsTest(LoggedInTestCase):
                 if link.startswith('/nodes/node')]))
 
     def test_view_tag_hides_private_nodes(self):
+        self.client_log_in()
         tag = factory.make_tag()
         node = factory.make_node()
         node2 = factory.make_node(owner=factory.make_user())
@@ -92,6 +97,7 @@ class TagViewsTest(LoggedInTestCase):
         self.assertNotIn(node2.hostname, content_text)
 
     def test_view_tag_shows_kernel_params(self):
+        self.client_log_in()
         tag = factory.make_tag(kernel_opts='--test tag params')
         node = factory.make_node()
         node.tags = [tag]
@@ -107,6 +113,7 @@ class TagViewsTest(LoggedInTestCase):
 
         Copy-coded from NodeViewsTest.test_node_list_paginates evilly.
         """
+        self.client_log_in()
         # Set a very small page size to save creating lots of nodes
         page_size = 2
         self.patch(tags_views.TagView, 'paginate_by', page_size)

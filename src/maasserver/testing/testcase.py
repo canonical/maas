@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Custom test-case classes."""
@@ -13,9 +13,7 @@ str = None
 
 __metaclass__ = type
 __all__ = [
-    'AdminLoggedInTestCase',
-    'LoggedInTestCase',
-    'MAASTestCase',
+    'MAASServerTestCase',
     'SeleniumTestCase',
     ]
 
@@ -48,7 +46,10 @@ MULTIPART_CONTENT = 'multipart/form-data; boundary=%s' % MIME_BOUNDARY
 
 
 class MAASServerTestCase(DjangoTestCase):
-    """:class:`TestCase` variant with the basics for maasserver testing."""
+    """:class:`TestCase` variant with the basics for maasserver testing.
+
+    :ivar client: Django http test client.
+    """
 
     @classmethod
     def setUpClass(cls):
@@ -60,6 +61,19 @@ class MAASServerTestCase(DjangoTestCase):
         self.useFixture(TagCachedKnowledgeFixture())
         self.addCleanup(django_cache.clear)
         self.celery = self.useFixture(CeleryFixture())
+
+    def client_log_in(self, as_admin=False):
+        """Log `self.client` into MAAS.
+
+        Sets `self.logged_in_user` to match the logged-in identity.
+        """
+        password = 'test'
+        if as_admin:
+            user = factory.make_admin(password=password)
+        else:
+            user = factory.make_user(password=password)
+        self.client.login(username=user.username, password=password)
+        self.logged_in_user = user
 
     def client_put(self, path, data=None):
         """Perform an HTTP PUT on the Django test client.
@@ -78,36 +92,6 @@ class MAASServerTestCase(DjangoTestCase):
         else:
             return self.client.put(
                 path, encode_multipart(MIME_BOUNDARY, data), MULTIPART_CONTENT)
-
-
-class LoggedInTestCase(MAASServerTestCase):
-    """:class:`MAASServerTestCase` variant with a logged-in web client.
-
-    :ivar client: Django http test client, logged in for MAAS access.
-    :ivar logged_in_user: User identity that `client` is authenticated for.
-    """
-
-    def setUp(self):
-        super(LoggedInTestCase, self).setUp()
-        self.logged_in_user_password = 'test'
-        self.logged_in_user = factory.make_user(
-            password=self.logged_in_user_password)
-        self.client.login(
-            username=self.logged_in_user.username,
-            password=self.logged_in_user_password)
-
-    def become_admin(self):
-        """Promote the logged-in user to admin."""
-        self.logged_in_user.is_superuser = True
-        self.logged_in_user.save()
-
-
-class AdminLoggedInTestCase(LoggedInTestCase):
-    """:class:`LoggedInTestCase` variant that is logged in as an admin."""
-
-    def setUp(self):
-        super(AdminLoggedInTestCase, self).setUp()
-        self.become_admin()
 
 
 # Django supports Selenium tests only since version 1.4.

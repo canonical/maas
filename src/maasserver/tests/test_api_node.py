@@ -1,4 +1,4 @@
-# Copyright 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the Node API."""
@@ -41,10 +41,7 @@ from maasserver.testing import (
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.testing.oauthclient import OAuthAuthenticatedClient
-from maasserver.testing.testcase import (
-    LoggedInTestCase,
-    MAASServerTestCase,
-    )
+from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import map_enum
 from metadataserver.models import (
     commissioningscript,
@@ -78,10 +75,11 @@ class NodeAnonAPITest(MAASServerTestCase):
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
 
-class NodesAPILoggedInTest(LoggedInTestCase):
+class NodesAPILoggedInTest(MAASServerTestCase):
 
     def test_nodes_GET_logged_in(self):
         # A (Django) logged-in user can access the API.
+        self.client_log_in()
         node = factory.make_node()
         response = self.client.get(reverse('nodes_handler'), {'op': 'list'})
         parsed_result = json.loads(response.content)

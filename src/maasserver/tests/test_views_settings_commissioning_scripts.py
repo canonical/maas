@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test maasserver clusters views."""
@@ -23,7 +23,7 @@ from maasserver.testing import (
     get_content_links,
     )
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import AdminLoggedInTestCase
+from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.views.settings_commissioning_scripts import (
     COMMISSIONING_SCRIPTS_ANCHOR,
     )
@@ -34,9 +34,10 @@ from testtools.matchers import (
     )
 
 
-class CommissioningScriptListingTest(AdminLoggedInTestCase):
+class CommissioningScriptListingTest(MAASServerTestCase):
 
     def test_settings_contains_names_and_content_of_scripts(self):
+        self.client_log_in(as_admin=True)
         scripts = {
             factory.make_commissioning_script(),
             factory.make_commissioning_script(),
@@ -47,11 +48,13 @@ class CommissioningScriptListingTest(AdminLoggedInTestCase):
         self.assertThat(response.content, ContainsAll(names + contents))
 
     def test_settings_link_to_upload_script(self):
+        self.client_log_in(as_admin=True)
         links = get_content_links(self.client.get(reverse('settings')))
         script_add_link = reverse('commissioning-script-add')
         self.assertIn(script_add_link, links)
 
     def test_settings_contains_links_to_delete_scripts(self):
+        self.client_log_in(as_admin=True)
         scripts = {
             factory.make_commissioning_script(),
             factory.make_commissioning_script(),
@@ -63,6 +66,7 @@ class CommissioningScriptListingTest(AdminLoggedInTestCase):
         self.assertThat(links, ContainsAll(script_delete_links))
 
     def test_settings_contains_commissioning_scripts_slot_anchor(self):
+        self.client_log_in(as_admin=True)
         response = self.client.get(reverse('settings'))
         document = fromstring(response.content)
         slots = document.xpath(
@@ -72,9 +76,10 @@ class CommissioningScriptListingTest(AdminLoggedInTestCase):
             "Missing anchor '%s'" % COMMISSIONING_SCRIPTS_ANCHOR)
 
 
-class CommissioningScriptDeleteTest(AdminLoggedInTestCase):
+class CommissioningScriptDeleteTest(MAASServerTestCase):
 
     def test_can_delete_commissioning_script(self):
+        self.client_log_in(as_admin=True)
         script = factory.make_commissioning_script()
         delete_link = reverse('commissioning-script-delete', args=[script.id])
         response = self.client.post(delete_link, {'post': 'yes'})
@@ -85,9 +90,10 @@ class CommissioningScriptDeleteTest(AdminLoggedInTestCase):
             CommissioningScript.objects.filter(id=script.id).exists())
 
 
-class CommissioningScriptUploadTest(AdminLoggedInTestCase):
+class CommissioningScriptUploadTest(MAASServerTestCase):
 
     def test_can_create_commissioning_script(self):
+        self.client_log_in(as_admin=True)
         content = factory.getRandomString()
         name = factory.make_name('filename')
         create_link = reverse('commissioning-script-add')

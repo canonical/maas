@@ -1,4 +1,4 @@
-# Copyright 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the commissioning-related portions of the MAAS API."""
@@ -28,18 +28,16 @@ from maasserver.enum import NODE_STATUS
 from maasserver.testing import reload_object
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import (
-    AdminLoggedInTestCase,
-    LoggedInTestCase,
-    )
+from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.utils import sample_binary_data
 from metadataserver.models import CommissioningScript
 
 
-class TestCommissioningTimeout(LoggedInTestCase):
+class TestCommissioningTimeout(MAASServerTestCase):
     """Testing of commissioning timeout API."""
 
     def test_check_with_no_action(self):
+        self.client_log_in()
         node = factory.make_node(status=NODE_STATUS.READY)
         response = self.client.post(
             reverse('nodes_handler'), {'op': 'check_commissioning'})
@@ -50,6 +48,7 @@ class TestCommissioningTimeout(LoggedInTestCase):
             (response.status_code, node.status))
 
     def test_check_with_commissioning_but_not_expired_node(self):
+        self.client_log_in()
         node = factory.make_node(
             status=NODE_STATUS.COMMISSIONING)
         response = self.client.post(
@@ -60,6 +59,7 @@ class TestCommissioningTimeout(LoggedInTestCase):
             (response.status_code, node.status))
 
     def test_check_with_commissioning_and_expired_node(self):
+        self.client_log_in()
         # Have an interval 1 second longer than the timeout.
         interval = timedelta(seconds=1, minutes=settings.COMMISSIONING_TIMEOUT)
         updated_at = datetime.now() - interval
@@ -83,13 +83,14 @@ class TestCommissioningTimeout(LoggedInTestCase):
             ))
 
 
-class AdminCommissioningScriptsAPITest(AdminLoggedInTestCase):
+class AdminCommissioningScriptsAPITest(MAASServerTestCase):
     """Tests for `CommissioningScriptsHandler`."""
 
     def get_url(self):
         return reverse('commissioning_scripts_handler')
 
     def test_GET_lists_commissioning_scripts(self):
+        self.client_log_in(as_admin=True)
         # Use lower-case names.  The database and the test may use
         # different collation orders with different ideas about case
         # sensitivity.
@@ -104,6 +105,7 @@ class AdminCommissioningScriptsAPITest(AdminLoggedInTestCase):
             (response.status_code, json.loads(response.content)))
 
     def test_POST_creates_commissioning_script(self):
+        self.client_log_in(as_admin=True)
         # This uses Piston's built-in POST code, so there are no tests for
         # corner cases (like "script already exists") here.
         name = factory.make_name('script')
@@ -144,25 +146,28 @@ class CommissioningScriptsAPITest(APITestCase):
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
 
-class AdminCommissioningScriptAPITest(AdminLoggedInTestCase):
+class AdminCommissioningScriptAPITest(MAASServerTestCase):
     """Tests for `CommissioningScriptHandler`."""
 
     def get_url(self, script_name):
         return reverse('commissioning_script_handler', args=[script_name])
 
     def test_GET_returns_script_contents(self):
+        self.client_log_in(as_admin=True)
         script = factory.make_commissioning_script()
         response = self.client.get(self.get_url(script.name))
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(script.content, response.content)
 
     def test_GET_preserves_binary_data(self):
+        self.client_log_in(as_admin=True)
         script = factory.make_commissioning_script(content=sample_binary_data)
         response = self.client.get(self.get_url(script.name))
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(sample_binary_data, response.content)
 
     def test_PUT_updates_contents(self):
+        self.client_log_in(as_admin=True)
         old_content = b'old:%s' % factory.getRandomString().encode('ascii')
         script = factory.make_commissioning_script(content=old_content)
         new_content = b'new:%s' % factory.getRandomString().encode('ascii')
@@ -175,6 +180,7 @@ class AdminCommissioningScriptAPITest(AdminLoggedInTestCase):
         self.assertEqual(new_content, reload_object(script).content)
 
     def test_DELETE_deletes_script(self):
+        self.client_log_in(as_admin=True)
         script = factory.make_commissioning_script()
         self.client.delete(self.get_url(script.name))
         self.assertItemsEqual(

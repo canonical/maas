@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test maasserver middleware classes."""
@@ -42,10 +42,7 @@ from maasserver.middleware import (
     )
 from maasserver.testing import extract_redirect
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import (
-    LoggedInTestCase,
-    MAASServerTestCase,
-    )
+from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.utils import sample_binary_data
 from testtools.matchers import (
     Contains,
@@ -245,9 +242,10 @@ class DebuggingLoggerMiddlewareTest(MAASServerTestCase):
             Contains("non-utf-8 (binary?) content"))
 
 
-class ErrorsMiddlewareTest(LoggedInTestCase):
+class ErrorsMiddlewareTest(MAASServerTestCase):
 
     def test_error_middleware_ignores_GET_requests(self):
+        self.client_log_in()
         request = fake_request(factory.getRandomString(), 'GET')
         exception = MAASException()
         error_middleware = ErrorsMiddleware()
@@ -255,6 +253,7 @@ class ErrorsMiddlewareTest(LoggedInTestCase):
         self.assertIsNone(response)
 
     def test_error_middleware_ignores_non_ExternalComponentException(self):
+        self.client_log_in()
         request = fake_request(factory.getRandomString(), 'GET')
         exception = ValueError()
         error_middleware = ErrorsMiddleware()
@@ -262,6 +261,7 @@ class ErrorsMiddlewareTest(LoggedInTestCase):
         self.assertIsNone(response)
 
     def test_error_middleware_handles_ExternalComponentException(self):
+        self.client_log_in()
         url = factory.getRandomString()
         request = fake_request(url, 'POST')
         error_message = factory.getRandomString()

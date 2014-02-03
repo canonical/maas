@@ -58,8 +58,6 @@ from maasserver.testing import (
     )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
-    AdminLoggedInTestCase,
-    LoggedInTestCase,
     MAASServerTestCase,
     SeleniumTestCase,
     )
@@ -70,7 +68,7 @@ from metadataserver.models.commissioningscript import LLDP_OUTPUT_NAME
 from testtools.matchers import ContainsAll
 
 
-class NodeViewsTest(LoggedInTestCase):
+class NodeViewsTest(MAASServerTestCase):
 
     def set_up_oauth_token(self):
         """Set up an oauth token to be used for requests."""
@@ -79,18 +77,21 @@ class NodeViewsTest(LoggedInTestCase):
         self.patch(maasserver.api, 'get_oauth_token', lambda request: token)
 
     def test_node_list_contains_link_to_node_view(self):
+        self.client_log_in()
         node = factory.make_node()
         response = self.client.get(reverse('node-list'))
         node_link = reverse('node-view', args=[node.system_id])
         self.assertIn(node_link, get_content_links(response))
 
     def test_node_list_contains_link_to_enlist_preseed_view(self):
+        self.client_log_in()
         response = self.client.get(reverse('node-list'))
         enlist_preseed_link = reverse('enlist-preseed-view')
         self.assertIn(enlist_preseed_link, get_content_links(response))
 
     def test_node_list_contains_column_sort_links(self):
         # Just create a node to have something in the list
+        self.client_log_in()
         factory.make_node()
         response = self.client.get(reverse('node-list'))
         sort_hostname = '?sort=hostname&dir=asc'
@@ -101,6 +102,7 @@ class NodeViewsTest(LoggedInTestCase):
         self.assertIn(sort_zone, get_content_links(response))
 
     def test_node_list_ignores_unknown_sort_param(self):
+        self.client_log_in()
         factory.make_node()
         response = self.client.get(
             reverse('node-list'), {'sort': 'unknown', 'dir': 'asc'})
@@ -109,6 +111,7 @@ class NodeViewsTest(LoggedInTestCase):
 
     def test_node_list_lists_nodes_from_different_nodegroups(self):
         # Bug 1084443.
+        self.client_log_in()
         nodegroup1 = factory.make_node_group()
         nodegroup2 = factory.make_node_group()
         factory.make_node(nodegroup=nodegroup1)
@@ -118,6 +121,7 @@ class NodeViewsTest(LoggedInTestCase):
         self.assertEqual(httplib.OK, response.status_code)
 
     def test_node_list_sorts_by_hostname(self):
+        self.client_log_in()
         names = ['zero', 'one', 'five']
         nodes = [factory.make_node(hostname=n) for n in names]
 
@@ -148,6 +152,7 @@ class NodeViewsTest(LoggedInTestCase):
                 if link.startswith('/nodes/node')])
 
     def test_node_list_sorts_by_status(self):
+        self.client_log_in()
         statuses = {
             NODE_STATUS.READY,
             NODE_STATUS.DECLARED,
@@ -182,6 +187,7 @@ class NodeViewsTest(LoggedInTestCase):
                 if link.startswith('/nodes/node')])
 
     def test_node_list_sorts_by_zone(self):
+        self.client_log_in()
         zones = [factory.make_zone() for _ in range(5)]
         nodes = [factory.make_node(zone=zone) for zone in zones]
 
@@ -215,6 +221,7 @@ class NodeViewsTest(LoggedInTestCase):
             get_content_links(response, '.node-column'))
 
     def test_node_list_sort_preserves_other_params(self):
+        self.client_log_in()
         # Set a very small page size to save creating lots of nodes
         page_size = 2
         self.patch(nodes_views.NodeListView, 'paginate_by', page_size)
@@ -247,12 +254,14 @@ class NodeViewsTest(LoggedInTestCase):
                     ('dir', next(field_dirs))]))
 
     def test_node_list_displays_fqdn_dns_not_managed(self):
+        self.client_log_in()
         nodes = [factory.make_node() for i in range(3)]
         response = self.client.get(reverse('node-list'))
         node_fqdns = [node.fqdn for node in nodes]
         self.assertThat(response.content, ContainsAll(node_fqdns))
 
     def test_node_list_displays_fqdn_dns_managed(self):
+        self.client_log_in()
         nodegroup = factory.make_node_group(
             status=NODEGROUP_STATUS.ACCEPTED,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
@@ -262,12 +271,14 @@ class NodeViewsTest(LoggedInTestCase):
         self.assertThat(response.content, ContainsAll(node_fqdns))
 
     def test_node_list_displays_zone(self):
+        self.client_log_in()
         node = factory.make_node()
         response = self.client.get(reverse('node-list'))
         [zone_field] = fromstring(response.content).cssselect('.zone-column')
         self.assertEqual(node.zone.name, zone_field.text_content().strip())
 
     def test_node_list_links_to_zone(self):
+        self.client_log_in()
         node = factory.make_node()
         response = self.client.get(reverse('node-list'))
         zone_link = reverse('zone-view', args=[node.zone.name])
@@ -277,6 +288,7 @@ class NodeViewsTest(LoggedInTestCase):
 
     def test_node_list_displays_sorted_list_of_nodes(self):
         # Nodes are sorted on the node list page, newest first.
+        self.client_log_in()
         nodes = [factory.make_node() for i in range(3)]
         # Explicitely set node.created since all of these node will
         # be created in the same transaction and thus have the same
@@ -299,6 +311,7 @@ class NodeViewsTest(LoggedInTestCase):
     def test_node_list_num_queries_is_independent_of_num_nodes(self):
         # Listing nodes takes a constant number of database queries,
         # regardless of how many nodes are in the listing.
+        self.client_log_in()
 
         def is_node_link(link):
             """Is `link` (from the view's content links) a link to a node?"""
@@ -332,6 +345,7 @@ class NodeViewsTest(LoggedInTestCase):
 
     def test_view_node_displays_node_info(self):
         # The node page features the basic information about the node.
+        self.client_log_in()
         node = factory.make_node(owner=self.logged_in_user)
         node.cpu_count = 123
         node.memory = 512
@@ -348,6 +362,7 @@ class NodeViewsTest(LoggedInTestCase):
         self.assertIn(self.logged_in_user.username, content_text)
 
     def test_view_node_contains_tag_names(self):
+        self.client_log_in()
         node = factory.make_node(owner=self.logged_in_user)
         tag_a = factory.make_tag()
         tag_b = factory.make_tag()
@@ -364,6 +379,7 @@ class NodeViewsTest(LoggedInTestCase):
                 if link.startswith('/tags/')])
 
     def test_view_node_contains_ip_addresses(self):
+        self.client_log_in()
         node = factory.make_node(owner=self.logged_in_user)
         nodegroup = node.nodegroup
         macs = [
@@ -377,6 +393,7 @@ class NodeViewsTest(LoggedInTestCase):
         self.assertThat(response.content, ContainsAll(ips))
 
     def test_view_node_does_not_contain_ip_addresses_if_no_lease(self):
+        self.client_log_in()
         node = factory.make_node(owner=self.logged_in_user)
         node_link = reverse('node-view', args=[node.system_id])
         response = self.client.get(node_link)
@@ -384,6 +401,7 @@ class NodeViewsTest(LoggedInTestCase):
 
     def test_view_node_displays_node_info_no_owner(self):
         # If the node has no owner, the Owner 'slot' does not exist.
+        self.client_log_in()
         node = factory.make_node()
         node_link = reverse('node-view', args=[node.system_id])
         response = self.client.get(node_link)
@@ -392,6 +410,7 @@ class NodeViewsTest(LoggedInTestCase):
         self.assertNotIn('Owner', content_text)
 
     def test_view_node_displays_link_to_view_preseed(self):
+        self.client_log_in()
         node = factory.make_node(owner=self.logged_in_user)
         node_link = reverse('node-view', args=[node.system_id])
         response = self.client.get(node_link)
@@ -399,6 +418,7 @@ class NodeViewsTest(LoggedInTestCase):
         self.assertIn(node_preseed_link, get_content_links(response))
 
     def test_view_node_displays_no_routers_if_no_routers_discovered(self):
+        self.client_log_in()
         node = factory.make_node(owner=self.logged_in_user, routers=[])
         node_link = reverse('node-view', args=[node.system_id])
 
@@ -410,6 +430,7 @@ class NodeViewsTest(LoggedInTestCase):
         self.assertItemsEqual([], routers)
 
     def test_view_node_displays_routers_if_any(self):
+        self.client_log_in()
         router = factory.make_MAC()
         node = factory.make_node(owner=self.logged_in_user, routers=[router])
         node_link = reverse('node-view', args=[node.system_id])
@@ -422,6 +443,7 @@ class NodeViewsTest(LoggedInTestCase):
         self.assertIn(router.get_raw(), routers_display)
 
     def test_view_node_separates_routers_by_comma(self):
+        self.client_log_in()
         routers = [factory.make_MAC(), factory.make_MAC()]
         node = factory.make_node(owner=self.logged_in_user, routers=routers)
         node_link = reverse('node-view', args=[node.system_id])
@@ -436,6 +458,7 @@ class NodeViewsTest(LoggedInTestCase):
             routers_display)
 
     def test_view_node_links_to_physical_zone(self):
+        self.client_log_in()
         node = factory.make_node()
         node_link = reverse('node-view', args=[node.system_id])
 
@@ -451,6 +474,7 @@ class NodeViewsTest(LoggedInTestCase):
             get_content_links(response, '#zone'))
 
     def test_view_node_displays_link_to_edit_if_user_owns_node(self):
+        self.client_log_in()
         node = factory.make_node(owner=self.logged_in_user)
         node_link = reverse('node-view', args=[node.system_id])
         response = self.client.get(node_link)
@@ -459,6 +483,7 @@ class NodeViewsTest(LoggedInTestCase):
 
     def test_view_node_does_not_show_link_to_delete_node(self):
         # Only admin users can delete nodes.
+        self.client_log_in()
         node = factory.make_node(owner=self.logged_in_user)
         node_link = reverse('node-view', args=[node.system_id])
         response = self.client.get(node_link)
@@ -466,12 +491,14 @@ class NodeViewsTest(LoggedInTestCase):
         self.assertNotIn(node_delete_link, get_content_links(response))
 
     def test_user_cannot_delete_node(self):
+        self.client_log_in()
         node = factory.make_node(owner=self.logged_in_user)
         node_delete_link = reverse('node-delete', args=[node.system_id])
         response = self.client.get(node_delete_link)
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
     def test_view_node_shows_message_for_commissioning_node(self):
+        self.client_log_in()
         statuses_with_message = (
             NODE_STATUS.READY, NODE_STATUS.COMMISSIONING)
         help_link = "https://maas.ubuntu.com/docs/nodes.html"
@@ -486,7 +513,7 @@ class NodeViewsTest(LoggedInTestCase):
                 self.assertNotIn(help_link, links)
 
     def test_admin_can_delete_nodes(self):
-        self.become_admin()
+        self.client_log_in(as_admin=True)
         node = factory.make_node()
         node_delete_link = reverse('node-delete', args=[node.system_id])
         response = self.client.post(node_delete_link, {'post': 'yes'})
@@ -494,7 +521,7 @@ class NodeViewsTest(LoggedInTestCase):
         self.assertFalse(Node.objects.filter(id=node.id).exists())
 
     def test_allocated_node_view_page_says_node_cannot_be_deleted(self):
-        self.become_admin()
+        self.client_log_in(as_admin=True)
         node = factory.make_node(
             status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
         node_view_link = reverse('node-view', args=[node.system_id])
@@ -508,7 +535,7 @@ class NodeViewsTest(LoggedInTestCase):
             response.content)
 
     def test_allocated_node_cannot_be_deleted(self):
-        self.become_admin()
+        self.client_log_in(as_admin=True)
         node = factory.make_node(
             status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
         node_delete_link = reverse('node-delete', args=[node.system_id])
@@ -517,38 +544,42 @@ class NodeViewsTest(LoggedInTestCase):
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
     def test_user_can_view_someone_elses_node(self):
+        self.client_log_in()
         node = factory.make_node(owner=factory.make_user())
         node_view_link = reverse('node-view', args=[node.system_id])
         response = self.client.get(node_view_link)
         self.assertEqual(httplib.OK, response.status_code)
 
     def test_user_cannot_edit_someone_elses_node(self):
+        self.client_log_in()
         node = factory.make_node(owner=factory.make_user())
         node_edit_link = reverse('node-edit', args=[node.system_id])
         response = self.client.get(node_edit_link)
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
     def test_admin_can_view_someonelses_node(self):
-        self.become_admin()
+        self.client_log_in(as_admin=True)
         node = factory.make_node(owner=factory.make_user())
         node_view_link = reverse('node-view', args=[node.system_id])
         response = self.client.get(node_view_link)
         self.assertEqual(httplib.OK, response.status_code)
 
     def test_admin_can_edit_someonelses_node(self):
-        self.become_admin()
+        self.client_log_in(as_admin=True)
         node = factory.make_node(owner=factory.make_user())
         node_edit_link = reverse('node-edit', args=[node.system_id])
         response = self.client.get(node_edit_link)
         self.assertEqual(httplib.OK, response.status_code)
 
     def test_user_can_access_the_edition_page_for_his_nodes(self):
+        self.client_log_in()
         node = factory.make_node(owner=self.logged_in_user)
         node_edit_link = reverse('node-edit', args=[node.system_id])
         response = self.client.get(node_edit_link)
         self.assertEqual(httplib.OK, response.status_code)
 
     def test_user_can_edit_his_nodes(self):
+        self.client_log_in()
         node = factory.make_node(owner=self.logged_in_user)
         node_edit_link = reverse('node-edit', args=[node.system_id])
         params = {
@@ -564,6 +595,7 @@ class NodeViewsTest(LoggedInTestCase):
         self.assertAttributes(node, params)
 
     def test_edit_nodes_contains_list_of_macaddresses(self):
+        self.client_log_in()
         node = factory.make_node(owner=self.logged_in_user)
         macs = [
             unicode(factory.make_mac_address(node=node).mac_address)
@@ -574,6 +606,7 @@ class NodeViewsTest(LoggedInTestCase):
         self.assertThat(response.content, ContainsAll(macs))
 
     def test_edit_nodes_contains_links_to_delete_the_macaddresses(self):
+        self.client_log_in()
         node = factory.make_node(owner=self.logged_in_user)
         macs = [
             factory.make_mac_address(node=node).mac_address
@@ -588,6 +621,7 @@ class NodeViewsTest(LoggedInTestCase):
                  for mac in macs]))
 
     def test_edit_nodes_contains_link_to_add_a_macaddresses(self):
+        self.client_log_in()
         node = factory.make_node(owner=self.logged_in_user)
         node_edit_link = reverse('node-edit', args=[node.system_id])
         response = self.client.get(node_edit_link)
@@ -595,6 +629,7 @@ class NodeViewsTest(LoggedInTestCase):
             reverse('mac-add', args=[node.system_id]), response.content)
 
     def test_view_node_shows_global_kernel_params(self):
+        self.client_log_in()
         Config.objects.create(name='kernel_opts', value='--test param')
         node = factory.make_node()
         self.assertEqual(
@@ -612,6 +647,7 @@ class NodeViewsTest(LoggedInTestCase):
         self.assertEqual(reverse('settings'), details_link)
 
     def test_view_node_shows_tag_kernel_params(self):
+        self.client_log_in()
         tag = factory.make_tag(name='shiny', kernel_opts="--test params")
         node = factory.make_node()
         node.tags = [tag]
@@ -630,6 +666,7 @@ class NodeViewsTest(LoggedInTestCase):
 
     def test_view_node_has_button_to_accept_enlistment_for_user(self):
         # A simple user can't see the button to enlist a declared node.
+        self.client_log_in()
         node = factory.make_node(status=NODE_STATUS.DECLARED)
         node_link = reverse('node-view', args=[node.system_id])
         response = self.client.get(node_link)
@@ -641,6 +678,7 @@ class NodeViewsTest(LoggedInTestCase):
         # When node.error is set but the node's status does not indicate an
         # error condition, the contents of node.error are displayed as console
         # output.
+        self.client_log_in()
         node = factory.make_node(
             owner=self.logged_in_user, error=factory.getRandomString(),
             status=NODE_STATUS.READY)
@@ -653,6 +691,7 @@ class NodeViewsTest(LoggedInTestCase):
     def test_view_node_shows_error_output_if_error_set(self):
         # When node.error is set and the node's status indicates an error
         # condition, the contents of node.error are displayed as error output.
+        self.client_log_in()
         node = factory.make_node(
             owner=self.logged_in_user, error=factory.getRandomString(),
             status=NODE_STATUS.FAILED_TESTS)
@@ -663,6 +702,7 @@ class NodeViewsTest(LoggedInTestCase):
         self.assertEqual([node.error], error_output)
 
     def test_view_node_shows_no_error_if_no_error_set(self):
+        self.client_log_in()
         node = factory.make_node(owner=self.logged_in_user)
         node_link = reverse('node-view', args=[node.system_id])
         response = self.client.get(node_link)
@@ -671,6 +711,7 @@ class NodeViewsTest(LoggedInTestCase):
         self.assertNotIn("Error output", content_text)
 
     def test_view_node_POST_performs_action(self):
+        self.client_log_in()
         factory.make_sshkey(self.logged_in_user)
         self.set_up_oauth_token()
         node = factory.make_node(status=NODE_STATUS.READY)
@@ -681,6 +722,7 @@ class NodeViewsTest(LoggedInTestCase):
         self.assertEqual(NODE_STATUS.ALLOCATED, reload_object(node).status)
 
     def test_view_node_skips_probed_details_output_if_none_set(self):
+        self.client_log_in()
         node = factory.make_node(owner=self.logged_in_user)
         node_link = reverse('node-view', args=[node.system_id])
 
@@ -691,6 +733,7 @@ class NodeViewsTest(LoggedInTestCase):
         self.assertItemsEqual([], doc.cssselect('#details-output'))
 
     def test_view_node_shows_probed_details_output_if_set(self):
+        self.client_log_in()
         node = factory.make_node(owner=self.logged_in_user)
         lldp_data = "<foo>bar</foo>".encode("utf-8")
         factory.make_node_commission_result(
@@ -714,7 +757,7 @@ class NodeViewsTest(LoggedInTestCase):
         self.assertDocTestMatches(expected_content, observed_content)
 
     def test_view_node_POST_commission(self):
-        self.become_admin()
+        self.client_log_in(as_admin=True)
         node = factory.make_node(status=NODE_STATUS.READY)
         node_link = reverse('node-view', args=[node.system_id])
         response = self.client.post(
@@ -733,6 +776,7 @@ class NodeViewsTest(LoggedInTestCase):
         return self.client.get(redirect)
 
     def test_view_node_POST_action_displays_message(self):
+        self.client_log_in()
         factory.make_sshkey(self.logged_in_user)
         self.set_up_oauth_token()
         node = factory.make_node(status=NODE_STATUS.READY)
@@ -743,6 +787,7 @@ class NodeViewsTest(LoggedInTestCase):
             '\n'.join(msg.message for msg in response.context['messages']))
 
     def test_node_list_query_includes_current(self):
+        self.client_log_in()
         qs = factory.getRandomString()
         response = self.client.get(reverse('node-list'), {"query": qs})
         query_value = fromstring(response.content).xpath(
@@ -750,6 +795,7 @@ class NodeViewsTest(LoggedInTestCase):
         self.assertIn(qs, query_value)
 
     def test_node_list_query_error_on_missing_tag(self):
+        self.client_log_in()
         response = self.client.get(
             reverse('node-list'), {"query": "maas-tags=missing"})
         error_string = fromstring(response.content).xpath(
@@ -757,6 +803,7 @@ class NodeViewsTest(LoggedInTestCase):
         self.assertIn("No such tag(s): 'missing'", error_string)
 
     def test_node_list_query_error_on_unknown_constraint(self):
+        self.client_log_in()
         response = self.client.get(
             reverse('node-list'), {"query": "color=red"})
         error_string = fromstring(response.content).xpath(
@@ -764,6 +811,7 @@ class NodeViewsTest(LoggedInTestCase):
         self.assertEqual("color: No such constraint.", error_string.strip())
 
     def test_node_list_query_selects_subset(self):
+        self.client_log_in()
         tag = factory.make_tag("shiny")
         node1 = factory.make_node(cpu_count=1)
         node2 = factory.make_node(cpu_count=2)
@@ -781,6 +829,7 @@ class NodeViewsTest(LoggedInTestCase):
 
     def test_node_list_paginates(self):
         """Node listing is split across multiple pages with links"""
+        self.client_log_in()
         # Set a very small page size to save creating lots of nodes
         page_size = 2
         self.patch(nodes_views.NodeListView, 'paginate_by', page_size)
@@ -826,6 +875,7 @@ class NodeViewsTest(LoggedInTestCase):
 
     def test_node_list_query_paginates(self):
         """Node list query subset is split across multiple pages with links"""
+        self.client_log_in()
         # Set a very small page size to save creating lots of nodes
         self.patch(nodes_views.NodeListView, 'paginate_by', 2)
         nodes = [
@@ -854,7 +904,7 @@ class NodeViewsTest(LoggedInTestCase):
             ])
 
     def test_node_list_performs_bulk_action(self):
-        self.become_admin()
+        self.client_log_in(as_admin=True)
         node1 = factory.make_node()
         node2 = factory.make_node()
         node3 = factory.make_node()
@@ -880,6 +930,7 @@ class NodeViewsTest(LoggedInTestCase):
             [[], node3.system_id], [existing_nodes, node3_system_id])
 
     def test_node_list_post_form_preserves_get_params(self):
+        self.client_log_in()
         factory.make_node()
         params = {
             "dir": "desc",
@@ -1054,21 +1105,24 @@ class MessageFromFormStatsTest(MAASServerTestCase):
                 self.assertIn(snippet, message)
 
 
-class NodeEnlistmentPreseedViewTest(LoggedInTestCase):
+class NodeEnlistmentPreseedViewTest(MAASServerTestCase):
 
     def test_enlistpreseedview_displays_preseed_data(self):
+        self.client_log_in()
         response = self.client.get(reverse('enlist-preseed-view'))
         # Simply test that the preseed looks ok.
         self.assertIn('metadata_url', response.content)
 
     def test_enlistpreseedview_catches_template_error(self):
+        self.client_log_in()
         path = self.make_file(name="enlist", contents="{{invalid}}")
         self.patch(
             settings, 'PRESEED_TEMPLATE_LOCATIONS', [os.path.dirname(path)])
         response = self.client.get(reverse('enlist-preseed-view'))
         self.assertIn('ERROR RENDERING PRESEED', response.content)
 
-    def test_enlistpreseedview_display_warning_about_url(self):
+    def test_enlistpreseedview_displays_warning_about_url(self):
+        self.client_log_in()
         response = self.client.get(reverse('enlist-preseed-view'))
         message_chunk = (
             "The URL mentioned in the following enlistment preseed will "
@@ -1077,15 +1131,17 @@ class NodeEnlistmentPreseedViewTest(LoggedInTestCase):
         self.assertIn(message_chunk, response.content)
 
 
-class NodePreseedViewTest(LoggedInTestCase):
+class NodePreseedViewTest(MAASServerTestCase):
 
     def test_preseedview_node_displays_preseed_data(self):
+        self.client_log_in()
         node = factory.make_node(owner=self.logged_in_user)
         node_preseed_link = reverse('node-preseed-view', args=[node.system_id])
         response = self.client.get(node_preseed_link)
         self.assertIn(get_preseed(node), response.content)
 
     def test_preseedview_node_catches_template_error(self):
+        self.client_log_in()
         node = factory.make_node(owner=self.logged_in_user)
         node_preseed_link = reverse('node-preseed-view', args=[node.system_id])
         path = self.make_file(name="generic", contents="{{invalid}}")
@@ -1095,6 +1151,7 @@ class NodePreseedViewTest(LoggedInTestCase):
         self.assertIn('ERROR RENDERING PRESEED', response.content)
 
     def test_preseedview_node_displays_message_if_commissioning(self):
+        self.client_log_in()
         node = factory.make_node(
             owner=self.logged_in_user, status=NODE_STATUS.COMMISSIONING,
             )
@@ -1105,6 +1162,7 @@ class NodePreseedViewTest(LoggedInTestCase):
             ContainsAll([get_preseed(node), "This node is commissioning."]))
 
     def test_preseedview_node_displays_link_to_view_node(self):
+        self.client_log_in()
         node = factory.make_node(owner=self.logged_in_user)
         node_preseed_link = reverse('node-preseed-view', args=[node.system_id])
         response = self.client.get(node_preseed_link)
@@ -1112,16 +1170,18 @@ class NodePreseedViewTest(LoggedInTestCase):
         self.assertIn(node_link, get_content_links(response))
 
     def test_enlist_preseed_displays_enlist_preseed(self):
+        self.client_log_in()
         enlist_preseed_link = reverse('enlist-preseed-view')
         response = self.client.get(enlist_preseed_link)
         self.assertIn(get_enlist_preseed(), response.content)
 
 
-class NodeDeleteMacTest(LoggedInTestCase):
+class NodeDeleteMacTest(MAASServerTestCase):
 
     def test_node_delete_not_found_if_node_does_not_exist(self):
         # This returns a 404 rather than returning to the node page
         # with a nice error message because the node could not be found.
+        self.client_log_in()
         node_id = factory.getRandomString()
         mac = factory.getRandomMACAddress()
         mac_delete_link = reverse('mac-delete', args=[node_id, mac])
@@ -1131,6 +1191,7 @@ class NodeDeleteMacTest(LoggedInTestCase):
     def test_node_delete_redirects_if_mac_does_not_exist(self):
         # If the MAC address does not exist, the user is redirected
         # to the node edit page.
+        self.client_log_in()
         node = factory.make_node(owner=self.logged_in_user)
         mac = factory.getRandomMACAddress()
         mac_delete_link = reverse('mac-delete', args=[node.system_id, mac])
@@ -1140,6 +1201,7 @@ class NodeDeleteMacTest(LoggedInTestCase):
             extract_redirect(response))
 
     def test_node_delete_access_denied_if_user_cannot_edit_node(self):
+        self.client_log_in()
         node = factory.make_node(owner=factory.make_user())
         mac = factory.make_mac_address(node=node)
         mac_delete_link = reverse('mac-delete', args=[node.system_id, mac])
@@ -1147,6 +1209,7 @@ class NodeDeleteMacTest(LoggedInTestCase):
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
     def test_node_delete_mac_contains_mac(self):
+        self.client_log_in()
         node = factory.make_node(owner=self.logged_in_user)
         mac = factory.make_mac_address(node=node)
         mac_delete_link = reverse('mac-delete', args=[node.system_id, mac])
@@ -1157,6 +1220,7 @@ class NodeDeleteMacTest(LoggedInTestCase):
             response.content)
 
     def test_node_delete_mac_POST_deletes_mac(self):
+        self.client_log_in()
         node = factory.make_node(owner=self.logged_in_user)
         mac = factory.make_mac_address(node=node)
         mac_delete_link = reverse('mac-delete', args=[node.system_id, mac])
@@ -1167,6 +1231,7 @@ class NodeDeleteMacTest(LoggedInTestCase):
         self.assertFalse(MACAddress.objects.filter(id=mac.id).exists())
 
     def test_node_delete_mac_POST_displays_message(self):
+        self.client_log_in()
         node = factory.make_node(owner=self.logged_in_user)
         mac = factory.make_mac_address(node=node)
         mac_delete_link = reverse('mac-delete', args=[node.system_id, mac])
@@ -1178,9 +1243,10 @@ class NodeDeleteMacTest(LoggedInTestCase):
             [message.message for message in response.context['messages']])
 
 
-class NodeAddMacTest(LoggedInTestCase):
+class NodeAddMacTest(MAASServerTestCase):
 
     def test_node_add_mac_contains_form(self):
+        self.client_log_in()
         node = factory.make_node(owner=self.logged_in_user)
         mac_add_link = reverse('mac-add', args=[node.system_id])
         response = self.client.get(mac_add_link)
@@ -1188,6 +1254,7 @@ class NodeAddMacTest(LoggedInTestCase):
         self.assertEqual(1, len(doc.cssselect('form input#id_mac_address')))
 
     def test_node_add_mac_POST_adds_mac(self):
+        self.client_log_in()
         node = factory.make_node(owner=self.logged_in_user)
         mac_add_link = reverse('mac-add', args=[node.system_id])
         mac = factory.getRandomMACAddress()
@@ -1199,6 +1266,7 @@ class NodeAddMacTest(LoggedInTestCase):
             MACAddress.objects.filter(node=node, mac_address=mac).exists())
 
     def test_node_add_mac_POST_displays_message(self):
+        self.client_log_in()
         node = factory.make_node(owner=self.logged_in_user)
         mac_add_link = reverse('mac-add', args=[node.system_id])
         mac = factory.getRandomMACAddress()
@@ -1210,9 +1278,10 @@ class NodeAddMacTest(LoggedInTestCase):
             [message.message for message in response.context['messages']])
 
 
-class AdminNodeViewsTest(AdminLoggedInTestCase):
+class AdminNodeViewsTest(MAASServerTestCase):
 
     def test_admin_can_edit_nodes(self):
+        self.client_log_in(as_admin=True)
         node = factory.make_node(owner=factory.make_user())
         node_edit_link = reverse('node-edit', args=[node.system_id])
         params = {

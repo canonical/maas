@@ -1,4 +1,4 @@
-# Copyright 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for enlistment-related portions of the API."""
@@ -33,11 +33,7 @@ from maasserver.models import (
 from maasserver.testing import reload_object
 from maasserver.testing.api import MultipleUsersScenarios
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import (
-    AdminLoggedInTestCase,
-    LoggedInTestCase,
-    MAASServerTestCase,
-    )
+from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import strip_domain
 from maasserver.utils.orm import get_one
 from netaddr import IPNetwork
@@ -502,13 +498,14 @@ class AnonymousEnlistmentAPITest(MAASServerTestCase):
             list(parsed_result))
 
 
-class SimpleUserLoggedInEnlistmentAPITest(LoggedInTestCase):
-    # Enlistment tests specific to simple (non-admin) users.
+class SimpleUserLoggedInEnlistmentAPITest(MAASServerTestCase):
+    """Enlistment tests from the perspective of regular, non-admin users."""
 
     def test_POST_accept_not_allowed(self):
         # An non-admin user is not allowed to accept an anonymously
         # enlisted node.  That would defeat the whole purpose of holding
         # those nodes for approval.
+        self.client_log_in()
         node_id = factory.make_node(status=NODE_STATUS.DECLARED).system_id
         response = self.client.post(
             reverse('nodes_handler'), {'op': 'accept', 'nodes': [node_id]})
@@ -523,6 +520,7 @@ class SimpleUserLoggedInEnlistmentAPITest(LoggedInTestCase):
         # anonymously enlisted nodes, but only those for which he/she has
         # admin privs will be accepted, which currently equates to none of
         # them.
+        self.client_log_in()
         factory.make_node(status=NODE_STATUS.DECLARED),
         factory.make_node(status=NODE_STATUS.DECLARED),
         response = self.client.post(
@@ -532,6 +530,7 @@ class SimpleUserLoggedInEnlistmentAPITest(LoggedInTestCase):
         self.assertEqual([], nodes_returned)
 
     def test_POST_simple_user_can_set_power_type_and_parameters(self):
+        self.client_log_in()
         new_power_address = factory.getRandomString()
         response = self.client.post(
             reverse('nodes_handler'), {
@@ -552,6 +551,7 @@ class SimpleUserLoggedInEnlistmentAPITest(LoggedInTestCase):
              node.power_type))
 
     def test_POST_returns_limited_fields(self):
+        self.client_log_in()
         response = self.client.post(
             reverse('nodes_handler'),
             {
@@ -584,10 +584,11 @@ class SimpleUserLoggedInEnlistmentAPITest(LoggedInTestCase):
             list(parsed_result))
 
 
-class AdminLoggedInEnlistmentAPITest(AdminLoggedInTestCase):
-    # Enlistment tests specific to admin users.
+class AdminLoggedInEnlistmentAPITest(MAASServerTestCase):
+    """Enlistment tests from the perspective of admin users."""
 
     def test_POST_new_sets_power_type_if_admin(self):
+        self.client_log_in(as_admin=True)
         response = self.client.post(
             reverse('nodes_handler'), {
                 'op': 'new',
@@ -603,6 +604,7 @@ class AdminLoggedInEnlistmentAPITest(AdminLoggedInTestCase):
     def test_POST_new_sets_power_parameters_field(self):
         # The api allows the setting of a Node's power_parameters field.
         # Create a power_parameter valid for the selected power_type.
+        self.client_log_in(as_admin=True)
         new_mac_address = factory.getRandomMACAddress()
         response = self.client.post(
             reverse('nodes_handler'), {
@@ -621,6 +623,7 @@ class AdminLoggedInEnlistmentAPITest(AdminLoggedInTestCase):
             reload_object(node).power_parameters)
 
     def test_POST_updates_power_parameters_rejects_unknown_param(self):
+        self.client_log_in(as_admin=True)
         hostname = factory.getRandomString()
         response = self.client.post(
             reverse('nodes_handler'), {
@@ -643,6 +646,7 @@ class AdminLoggedInEnlistmentAPITest(AdminLoggedInTestCase):
     def test_POST_new_sets_power_parameters_skip_check(self):
         # The api allows to skip the validation step and set arbitrary
         # power parameters.
+        self.client_log_in(as_admin=True)
         param = factory.getRandomString()
         response = self.client.post(
             reverse('nodes_handler'), {
@@ -664,6 +668,7 @@ class AdminLoggedInEnlistmentAPITest(AdminLoggedInTestCase):
     def test_POST_admin_creates_node_in_commissioning_state(self):
         # When an admin user enlists a node, it goes into the
         # Commissioning state.
+        self.client_log_in(as_admin=True)
         response = self.client.post(
             reverse('nodes_handler'),
             {
@@ -682,6 +687,7 @@ class AdminLoggedInEnlistmentAPITest(AdminLoggedInTestCase):
             Node.objects.get(system_id=system_id).status)
 
     def test_POST_returns_limited_fields(self):
+        self.client_log_in(as_admin=True)
         response = self.client.post(
             reverse('nodes_handler'),
             {
@@ -716,6 +722,7 @@ class AdminLoggedInEnlistmentAPITest(AdminLoggedInTestCase):
 
     def test_POST_accept_all(self):
         # An admin user can accept all anonymously enlisted nodes.
+        self.client_log_in(as_admin=True)
         nodes = [
             factory.make_node(status=NODE_STATUS.DECLARED),
             factory.make_node(status=NODE_STATUS.DECLARED),

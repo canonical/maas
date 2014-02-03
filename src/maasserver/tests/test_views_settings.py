@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test maasserver settings views."""
@@ -36,22 +36,20 @@ from maasserver.testing import (
     reload_object,
     )
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import (
-    AdminLoggedInTestCase,
-    LoggedInTestCase,
-    )
+from maasserver.testing.testcase import MAASServerTestCase
 from mock import (
     ANY,
     call,
     )
 
 
-class SettingsTest(AdminLoggedInTestCase):
+class SettingsTest(MAASServerTestCase):
 
     def test_settings_list_users(self):
         # The settings page displays a list of the users with links to view,
         # delete or edit each user. Note that the link to delete the the
         # logged-in user is not display.
+        self.client_log_in(as_admin=True)
         [factory.make_user() for i in range(3)]
         users = UserProfile.objects.all_users()
         response = self.client.get(reverse('settings'))
@@ -92,6 +90,7 @@ class SettingsTest(AdminLoggedInTestCase):
                     reverse('accounts-del', args=[user.username]), links)
 
     def test_settings_maas_and_network_POST(self):
+        self.client_log_in(as_admin=True)
         # Disable the DNS machinery so that we can skip the required
         # setup.
         self.patch(settings, "DNS_CONNECT", False)
@@ -117,6 +116,7 @@ class SettingsTest(AdminLoggedInTestCase):
              Config.objects.get_config('http_proxy')))
 
     def test_settings_commissioning_POST(self):
+        self.client_log_in(as_admin=True)
         new_after_commissioning = factory.getRandomEnum(
             NODE_AFTER_COMMISSIONING_ACTION)
         new_check_compatibility = factory.getRandomBoolean()
@@ -146,6 +146,7 @@ class SettingsTest(AdminLoggedInTestCase):
             ))
 
     def test_settings_ubuntu_POST(self):
+        self.client_log_in(as_admin=True)
         new_main_archive = 'http://test.example.com/archive'
         new_ports_archive = 'http://test2.example.com/archive'
         new_cloud_images_archive = 'http://test3.example.com/archive'
@@ -177,6 +178,7 @@ class SettingsTest(AdminLoggedInTestCase):
             ))
 
     def test_settings_kernelopts_POST(self):
+        self.client_log_in(as_admin=True)
         new_kernel_opts = "--new='arg' --flag=1 other"
         response = self.client.post(
             reverse('settings'),
@@ -192,6 +194,7 @@ class SettingsTest(AdminLoggedInTestCase):
             Config.objects.get_config('kernel_opts'))
 
     def test_settings_contains_form_to_accept_all_nodegroups(self):
+        self.client_log_in(as_admin=True)
         factory.make_node_group(status=NODEGROUP_STATUS.PENDING),
         response = self.client.get(reverse('settings'))
         doc = fromstring(response.content)
@@ -199,6 +202,7 @@ class SettingsTest(AdminLoggedInTestCase):
         self.assertEqual(1, len(forms))
 
     def test_settings_contains_form_to_reject_all_nodegroups(self):
+        self.client_log_in(as_admin=True)
         factory.make_node_group(status=NODEGROUP_STATUS.PENDING),
         response = self.client.get(reverse('settings'))
         doc = fromstring(response.content)
@@ -206,6 +210,7 @@ class SettingsTest(AdminLoggedInTestCase):
         self.assertEqual(1, len(forms))
 
     def test_settings_accepts_all_pending_nodegroups_POST(self):
+        self.client_log_in(as_admin=True)
         nodegroups = {
             factory.make_node_group(status=NODEGROUP_STATUS.PENDING),
             factory.make_node_group(status=NODEGROUP_STATUS.PENDING),
@@ -218,6 +223,7 @@ class SettingsTest(AdminLoggedInTestCase):
             [NODEGROUP_STATUS.ACCEPTED] * 2)
 
     def test_settings_rejects_all_pending_nodegroups_POST(self):
+        self.client_log_in(as_admin=True)
         nodegroups = {
             factory.make_node_group(status=NODEGROUP_STATUS.PENDING),
             factory.make_node_group(status=NODEGROUP_STATUS.PENDING),
@@ -230,6 +236,7 @@ class SettingsTest(AdminLoggedInTestCase):
             [NODEGROUP_STATUS.REJECTED] * 2)
 
     def test_settings_import_boot_images_calls_tasks(self):
+        self.client_log_in(as_admin=True)
         recorder = self.patch(nodegroup_module, 'import_boot_images')
         accepted_nodegroups = [
             factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED),
@@ -245,6 +252,7 @@ class SettingsTest(AdminLoggedInTestCase):
         self.assertItemsEqual(calls, recorder.apply_async.call_args_list)
 
     def test_cluster_no_boot_images_message_displayed_if_no_boot_images(self):
+        self.client_log_in(as_admin=True)
         nodegroup = factory.make_node_group(
             status=NODEGROUP_STATUS.ACCEPTED)
         response = self.client.get(reverse('settings'))
@@ -253,9 +261,10 @@ class SettingsTest(AdminLoggedInTestCase):
         self.assertIn('no boot images', nodegroup_row.text_content())
 
 
-class NonAdminSettingsTest(LoggedInTestCase):
+class NonAdminSettingsTest(MAASServerTestCase):
 
     def test_settings_import_boot_images_reserved_to_admin(self):
+        self.client_log_in()
         response = self.client.post(
             reverse('settings'), {'import_all_boot_images': 1})
         self.assertEqual(reverse('login'), extract_redirect(response))
@@ -298,9 +307,10 @@ def subset_dict(input_dict, keys_subset):
     return {key: input_dict[key] for key in keys_subset}
 
 
-class UserManagementTest(AdminLoggedInTestCase):
+class UserManagementTest(MAASServerTestCase):
 
     def test_add_user_POST(self):
+        self.client_log_in(as_admin=True)
         params = {
             'username': factory.getRandomString(),
             'last_name': factory.getRandomString(30),
@@ -317,6 +327,7 @@ class UserManagementTest(AdminLoggedInTestCase):
         self.assertTrue(user.check_password(password))
 
     def test_edit_user_POST_profile_updates_attributes(self):
+        self.client_log_in(as_admin=True)
         user = factory.make_user()
         params = make_user_attribute_params(user)
         params.update({
@@ -335,6 +346,7 @@ class UserManagementTest(AdminLoggedInTestCase):
             reload_object(user), subset_dict(params, user_attributes))
 
     def test_edit_user_POST_updates_password(self):
+        self.client_log_in(as_admin=True)
         user = factory.make_user()
         new_password = factory.getRandomString()
         params = make_password_params(new_password)
@@ -346,6 +358,7 @@ class UserManagementTest(AdminLoggedInTestCase):
 
     def test_delete_user_GET(self):
         # The user delete page displays a confirmation page with a form.
+        self.client_log_in(as_admin=True)
         user = factory.make_user()
         del_link = reverse('accounts-del', args=[user.username])
         response = self.client.get(del_link)
@@ -364,6 +377,7 @@ class UserManagementTest(AdminLoggedInTestCase):
 
     def test_delete_user_POST(self):
         # A POST request to the user delete finally deletes the user.
+        self.client_log_in(as_admin=True)
         user = factory.make_user()
         user_id = user.id
         del_link = reverse('accounts-del', args=[user.username])
@@ -373,6 +387,7 @@ class UserManagementTest(AdminLoggedInTestCase):
 
     def test_view_user(self):
         # The user page feature the basic information about the user.
+        self.client_log_in(as_admin=True)
         user = factory.make_user()
         del_link = reverse('accounts-view', args=[user.username])
         response = self.client.get(del_link)
@@ -383,6 +398,7 @@ class UserManagementTest(AdminLoggedInTestCase):
 
     def test_account_views_are_routable_for_full_range_of_usernames(self):
         # Usernames can include characters in the regex [\w.@+-].
+        self.client_log_in(as_admin=True)
         user = factory.make_user(username="abc-123@example.com")
         for view in "edit", "view", "del":
             path = reverse("accounts-%s" % view, args=[user.username])

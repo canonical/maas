@@ -31,7 +31,7 @@ from maasserver.testing import (
     reload_object,
     )
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import AdminLoggedInTestCase
+from maasserver.testing.testcase import MAASServerTestCase
 from testtools.matchers import (
     AllMatch,
     Contains,
@@ -41,9 +41,10 @@ from testtools.matchers import (
     )
 
 
-class ClusterListingTest(AdminLoggedInTestCase):
+class ClusterListingTest(MAASServerTestCase):
 
     def test_settings_contains_links_to_edit_and_delete_clusters(self):
+        self.client_log_in(as_admin=True)
         nodegroups = {
             factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED),
             factory.make_node_group(status=NODEGROUP_STATUS.PENDING),
@@ -61,9 +62,10 @@ class ClusterListingTest(AdminLoggedInTestCase):
             ContainsAll(nodegroup_edit_links + nodegroup_delete_links))
 
 
-class ClusterDeleteTest(AdminLoggedInTestCase):
+class ClusterDeleteTest(MAASServerTestCase):
 
     def test_can_delete_cluster(self):
+        self.client_log_in(as_admin=True)
         nodegroup = factory.make_node_group()
         delete_link = reverse('cluster-delete', args=[nodegroup.uuid])
         response = self.client.post(delete_link, {'post': 'yes'})
@@ -74,9 +76,10 @@ class ClusterDeleteTest(AdminLoggedInTestCase):
             NodeGroup.objects.filter(uuid=nodegroup.uuid).exists())
 
 
-class ClusterEditTest(AdminLoggedInTestCase):
+class ClusterEditTest(MAASServerTestCase):
 
     def test_cluster_page_contains_links_to_edit_and_delete_interfaces(self):
+        self.client_log_in(as_admin=True)
         nodegroup = factory.make_node_group()
         interfaces = set()
         for i in range(3):
@@ -101,6 +104,7 @@ class ClusterEditTest(AdminLoggedInTestCase):
             ContainsAll(interface_edit_links + interface_delete_links))
 
     def test_can_edit_cluster(self):
+        self.client_log_in(as_admin=True)
         nodegroup = factory.make_node_group()
         edit_link = reverse('cluster-edit', args=[nodegroup.uuid])
         data = {
@@ -115,6 +119,7 @@ class ClusterEditTest(AdminLoggedInTestCase):
             MatchesStructure.byEquality(**data))
 
     def test_contains_link_to_add_interface(self):
+        self.client_log_in(as_admin=True)
         nodegroup = factory.make_node_group()
         links = get_content_links(
             self.client.get(reverse('cluster-edit', args=[nodegroup.uuid])))
@@ -122,9 +127,10 @@ class ClusterEditTest(AdminLoggedInTestCase):
             reverse('cluster-interface-create', args=[nodegroup.uuid]), links)
 
 
-class ClusterInterfaceDeleteTest(AdminLoggedInTestCase):
+class ClusterInterfaceDeleteTest(MAASServerTestCase):
 
     def test_can_delete_cluster_interface(self):
+        self.client_log_in(as_admin=True)
         nodegroup = factory.make_node_group()
         interface = factory.make_node_group_interface(
             nodegroup=nodegroup,
@@ -140,6 +146,7 @@ class ClusterInterfaceDeleteTest(AdminLoggedInTestCase):
             NodeGroupInterface.objects.filter(id=interface.id).exists())
 
     def test_interface_delete_supports_interface_alias(self):
+        self.client_log_in(as_admin=True)
         nodegroup = factory.make_node_group(
             management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
         interface = factory.make_node_group_interface(
@@ -152,9 +159,10 @@ class ClusterInterfaceDeleteTest(AdminLoggedInTestCase):
         self.assertIsInstance(delete_link, (bytes, unicode))
 
 
-class ClusterInterfaceEditTest(AdminLoggedInTestCase):
+class ClusterInterfaceEditTest(MAASServerTestCase):
 
     def test_can_edit_cluster_interface(self):
+        self.client_log_in(as_admin=True)
         nodegroup = factory.make_node_group(
             management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
         interface = factory.make_node_group_interface(
@@ -172,6 +180,7 @@ class ClusterInterfaceEditTest(AdminLoggedInTestCase):
             MatchesStructure.byEquality(**data))
 
     def test_interface_edit_supports_interface_alias(self):
+        self.client_log_in(as_admin=True)
         nodegroup = factory.make_node_group(
             management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
         interface = factory.make_node_group_interface(
@@ -184,9 +193,10 @@ class ClusterInterfaceEditTest(AdminLoggedInTestCase):
         self.assertIsInstance(edit_link, (bytes, unicode))
 
 
-class ClusterInterfaceCreateTest(AdminLoggedInTestCase):
+class ClusterInterfaceCreateTest(MAASServerTestCase):
 
     def test_can_create_cluster_interface(self):
+        self.client_log_in(as_admin=True)
         nodegroup = factory.make_node_group(
             management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
         create_link = reverse(
@@ -206,9 +216,10 @@ class ClusterInterfaceCreateTest(AdminLoggedInTestCase):
 # XXX: rvb 2012-10-08 bug=1063881: apache transforms '//' into '/' in
 # the urls it passes around and this happens when an interface has an empty
 # name.
-class ClusterInterfaceDoubleSlashBugTest(AdminLoggedInTestCase):
+class ClusterInterfaceDoubleSlashBugTest(MAASServerTestCase):
 
     def test_edit_delete_empty_cluster_interface_when_slash_removed(self):
+        self.client_log_in(as_admin=True)
         nodegroup = factory.make_node_group()
         interface = factory.make_node_group_interface(
             nodegroup=nodegroup, interface='',

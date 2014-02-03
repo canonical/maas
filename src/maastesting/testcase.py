@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test related classes and functions for maas and its applications."""
@@ -121,6 +121,16 @@ class MAASTestCase(WithScenarios, testtools.TestCase):
     assertItemsEqual = unittest.TestCase.assertItemsEqual
 
     doctest_flags = doctest.ELLIPSIS | doctest.NORMALIZE_WHITESPACE
+
+    def assertAttributes(self, tested_object, attributes):
+        """Check multiple attributes of `tested_object` against a dict.
+
+        :param tested_object: Any object whose attributes should be checked.
+        :param attributes: A dict of attributes to test, and their expected
+            values.  Only these attributes will be checked.
+        """
+        matcher = testtools.matchers.MatchesStructure.byEquality(**attributes)
+        self.assertThat(tested_object, matcher)
 
     def assertDocTestMatches(self, expected, observed, flags=None):
         """See if `observed` matches `expected`, a doctest sample.

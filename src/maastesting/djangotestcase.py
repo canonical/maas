@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Django-enabled test cases."""
@@ -32,10 +32,10 @@ from django.db import (
 from django.db.models import loading
 import django.test
 from maastesting.testcase import MAASTestCase
-import testtools
 
 
 class CountNumQueriesContext:
+    """Context manager: count number of database queries issued in context."""
 
     def __init__(self):
         self.connection = connections[DEFAULT_DB_ALIAS]
@@ -61,16 +61,6 @@ class DjangoTestCase(MAASTestCase, django.test.TestCase):
 
     Supports test resources and fixtures.
     """
-
-    def assertAttributes(self, tested_object, attributes):
-        """Check multiple attributes of `tested_objects` against a dict.
-
-        :param tested_object: Any object whose attributes should be checked.
-        :param attributes: A dict of attributes to test, and their expected
-            values.  Only these attributes will be checked.
-        """
-        matcher = testtools.matchers.MatchesStructure.byEquality(**attributes)
-        self.assertThat(tested_object, matcher)
 
     def getNumQueries(self, func, *args, **kwargs):
         """Determine the number of db queries executed while running func.

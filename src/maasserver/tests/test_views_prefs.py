@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test maasserver preferences views."""
@@ -30,14 +30,15 @@ from maasserver.testing import (
     get_prefixed_form_data,
     )
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import LoggedInTestCase
+from maasserver.testing.testcase import MAASServerTestCase
 
 
-class UserPrefsViewTest(LoggedInTestCase):
+class UserPrefsViewTest(MAASServerTestCase):
 
     def test_prefs_GET_profile(self):
         # The preferences page displays a form with the user's personal
         # information.
+        self.client_log_in()
         user = self.logged_in_user
         user.last_name = 'Steve Bam'
         user.save()
@@ -50,6 +51,7 @@ class UserPrefsViewTest(LoggedInTestCase):
 
     def test_prefs_GET_api(self):
         # The preferences page displays the API access tokens.
+        self.client_log_in()
         user = self.logged_in_user
         # Create a few tokens.
         for i in range(3):
@@ -67,6 +69,7 @@ class UserPrefsViewTest(LoggedInTestCase):
     def test_prefs_POST_profile(self):
         # The preferences page allows the user the update its profile
         # information.
+        self.client_log_in()
         params = {
             'last_name': 'John Doe',
             'email': 'jon@example.com',
@@ -79,7 +82,8 @@ class UserPrefsViewTest(LoggedInTestCase):
         self.assertAttributes(user, params)
 
     def test_prefs_POST_password(self):
-        # The preferences page allows the user to change his password.
+        # The preferences page allows the user to change their password.
+        self.client_log_in()
         self.logged_in_user.set_password('password')
         old_pw = self.logged_in_user.password
         response = self.client.post(
@@ -98,21 +102,25 @@ class UserPrefsViewTest(LoggedInTestCase):
         self.assertNotEqual(old_pw, user.password)
 
     def test_prefs_displays_message_when_no_public_keys_are_configured(self):
+        self.client_log_in()
         response = self.client.get('/account/prefs/')
         self.assertIn("No SSH key configured.", response.content)
 
     def test_prefs_displays_add_ssh_key_button(self):
+        self.client_log_in()
         response = self.client.get('/account/prefs/')
         add_key_link = reverse('prefs-add-sshkey')
         self.assertIn(add_key_link, get_content_links(response))
 
     def test_prefs_displays_compact_representation_of_users_keys(self):
+        self.client_log_in()
         _, keys = factory.make_user_with_keys(user=self.logged_in_user)
         response = self.client.get('/account/prefs/')
         for key in keys:
             self.assertIn(key.display_html(), response.content)
 
     def test_prefs_displays_link_to_delete_ssh_keys(self):
+        self.client_log_in()
         _, keys = factory.make_user_with_keys(user=self.logged_in_user)
         response = self.client.get('/account/prefs/')
         links = get_content_links(response)
@@ -121,10 +129,11 @@ class UserPrefsViewTest(LoggedInTestCase):
             self.assertIn(del_key_link, links)
 
 
-class KeyManagementTest(LoggedInTestCase):
+class KeyManagementTest(MAASServerTestCase):
 
     def test_add_key_GET(self):
         # The 'Add key' page displays a form to add a key.
+        self.client_log_in()
         response = self.client.get(reverse('prefs-add-sshkey'))
         doc = fromstring(response.content)
 
@@ -136,6 +145,7 @@ class KeyManagementTest(LoggedInTestCase):
                 '#content form')])
 
     def test_add_key_POST_adds_key(self):
+        self.client_log_in()
         key_string = get_data('data/test_rsa0.pub')
         response = self.client.post(
             reverse('prefs-add-sshkey'), {'key': key_string})
@@ -144,6 +154,7 @@ class KeyManagementTest(LoggedInTestCase):
         self.assertTrue(SSHKey.objects.filter(key=key_string).exists())
 
     def test_add_key_POST_fails_if_key_already_exists_for_the_user(self):
+        self.client_log_in()
         key_string = get_data('data/test_rsa0.pub')
         key = SSHKey(user=self.logged_in_user, key=key_string)
         key.save()
@@ -157,6 +168,7 @@ class KeyManagementTest(LoggedInTestCase):
         self.assertItemsEqual([key], SSHKey.objects.filter(key=key_string))
 
     def test_key_can_be_added_if_same_key_already_setup_for_other_user(self):
+        self.client_log_in()
         key_string = get_data('data/test_rsa0.pub')
         key = SSHKey(user=factory.make_user(), key=key_string)
         key.save()
@@ -170,6 +182,7 @@ class KeyManagementTest(LoggedInTestCase):
 
     def test_delete_key_GET(self):
         # The 'Delete key' page displays a confirmation page with a form.
+        self.client_log_in()
         key = factory.make_sshkey(self.logged_in_user)
         del_link = reverse('prefs-delete-sshkey', args=[key.id])
         response = self.client.get(del_link)
@@ -185,6 +198,7 @@ class KeyManagementTest(LoggedInTestCase):
                 '#content form')])
 
     def test_delete_key_GET_cannot_access_someone_elses_key(self):
+        self.client_log_in()
         key = factory.make_sshkey(factory.make_user())
         del_link = reverse('prefs-delete-sshkey', args=[key.id])
         response = self.client.get(del_link)
@@ -194,6 +208,7 @@ class KeyManagementTest(LoggedInTestCase):
     def test_delete_key_GET_nonexistent_key_redirects_to_prefs(self):
         # Deleting a nonexistent key requires no confirmation.  It just
         # "succeeds" instantaneously.
+        self.client_log_in()
         key = factory.make_sshkey(self.logged_in_user)
         del_link = reverse('prefs-delete-sshkey', args=[key.id])
         key.delete()
@@ -202,6 +217,7 @@ class KeyManagementTest(LoggedInTestCase):
 
     def test_delete_key_POST(self):
         # A POST request deletes the key, and redirects to the prefs.
+        self.client_log_in()
         key = factory.make_sshkey(self.logged_in_user)
         del_link = reverse('prefs-delete-sshkey', args=[key.id])
         response = self.client.post(del_link, {'post': 'yes'})
@@ -212,6 +228,7 @@ class KeyManagementTest(LoggedInTestCase):
     def test_delete_key_POST_ignores_nonexistent_key(self):
         # Deleting a key that's already been deleted?  Basically that's
         # success.
+        self.client_log_in()
         key = factory.make_sshkey(self.logged_in_user)
         del_link = reverse('prefs-delete-sshkey', args=[key.id])
         key.delete()

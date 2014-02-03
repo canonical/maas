@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test maasserver API."""
@@ -29,10 +29,7 @@ from maasserver.components import register_persistent_error
 from maasserver.exceptions import ExternalComponentException
 from maasserver.testing import extract_redirect
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import (
-    LoggedInTestCase,
-    MAASServerTestCase,
-    )
+from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.views import (
     HelpfulDeleteView,
     PaginatedListView,
@@ -41,10 +38,11 @@ from maasserver.views.nodes import NodeEdit
 from testtools.matchers import ContainsAll
 
 
-class Test404500(LoggedInTestCase):
+class Test404500(MAASServerTestCase):
     """Test pages displayed when an error 404 or an error 500 occur."""
 
     def test_404(self):
+        self.client_log_in()
         response = self.client.get('/no-found-page/')
         doc = fromstring(response.content)
         self.assertIn(
@@ -57,6 +55,7 @@ class Test404500(LoggedInTestCase):
                 doc.cssselect('h2')])
 
     def test_500(self):
+        self.client_log_in()
         from maasserver.urls import urlpatterns
         urlpatterns += patterns(
             '',
@@ -73,7 +72,7 @@ class Test404500(LoggedInTestCase):
                 doc.cssselect('h2')])
 
 
-class TestSnippets(LoggedInTestCase):
+class TestSnippets(MAASServerTestCase):
 
     def _assertTemplateExistsAndContains(self, content, template_selector,
                                          contains_selector, reverse=False):
@@ -113,42 +112,47 @@ class TestSnippets(LoggedInTestCase):
             content, template_selector, contains_selector, reverse=True)
 
     def test_architecture_snippet(self):
+        self.client_log_in()
         response = self.client.get('/')
         self.assertTemplateExistsAndContains(
             response.content, '#add-node', 'select#id_architecture')
 
     def test_hostname(self):
+        self.client_log_in()
         response = self.client.get('/')
         self.assertTemplateExistsAndContains(
             response.content, '#add-node', 'input#id_hostname')
 
     def test_after_commissioning_action_snippet(self):
+        self.client_log_in()
         response = self.client.get('/')
         self.assertTemplateExistsAndContains(
             response.content, '#add-node',
             'select#id_after_commissioning_action')
 
     def test_power_type_does_not_exist_if_not_admin(self):
+        self.client_log_in()
         response = self.client.get('/')
         self.assertTemplateExistsAndDoesNotContain(
             response.content, '#add-node',
             'select#id_power_type')
 
     def test_power_type_exists_if_admin(self):
-        self.become_admin()
+        self.client_log_in(as_admin=True)
         response = self.client.get('/')
         self.assertTemplateExistsAndContains(
             response.content, '#add-node',
             'select#id_power_type')
 
     def test_zone_does_not_exist_if_not_admin(self):
+        self.client_log_in()
         response = self.client.get('/')
         self.assertTemplateExistsAndDoesNotContain(
             response.content, '#add-node',
             'select#id_zone')
 
     def test_zone_exists_if_admin(self):
-        self.become_admin()
+        self.client_log_in(as_admin=True)
         response = self.client.get('/')
         self.assertTemplateExistsAndContains(
             response.content, '#add-node',
@@ -371,11 +375,12 @@ class PaginatedListViewTests(MAASServerTestCase):
         self.assertEqual("?lookup=value&page=4", context["last_page_link"])
 
 
-class MAASExceptionHandledInView(LoggedInTestCase):
+class MAASExceptionHandledInView(MAASServerTestCase):
 
     def test_raised_MAASException_redirects(self):
         # When a ExternalComponentException is raised in a POST request, the
         # response is a redirect to the same page.
+        self.client_log_in()
 
         # Patch NodeEdit to error on post.
         def post(self, request, *args, **kwargs):
@@ -389,6 +394,7 @@ class MAASExceptionHandledInView(LoggedInTestCase):
     def test_raised_ExternalComponentException_publishes_message(self):
         # When a ExternalComponentException is raised in a POST request, a
         # message is published with the error message.
+        self.client_log_in()
         error_message = factory.getRandomString()
 
         # Patch NodeEdit to error on post.
@@ -405,9 +411,10 @@ class MAASExceptionHandledInView(LoggedInTestCase):
             [message.message for message in response.context['messages']])
 
 
-class PermanentErrorDisplayTest(LoggedInTestCase):
+class PermanentErrorDisplayTest(MAASServerTestCase):
 
     def test_permanent_error_displayed(self):
+        self.client_log_in()
         fault_codes = [
             randint(1, 100),
             randint(101, 200),
