@@ -1,7 +1,7 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Model helpers and state for maasserver."""
+"""Model export and helpers for maasserver."""
 
 from __future__ import (
     absolute_import,
@@ -31,7 +31,6 @@ __all__ = [
     'Zone',
     ]
 
-from django.contrib import admin
 from django.contrib.auth.backends import ModelBackend
 from django.contrib.auth.models import User
 from django.core.urlresolvers import (
@@ -60,13 +59,13 @@ from maasserver.models.vlan import Vlan
 from maasserver.models.zone import Zone
 from maasserver.utils import ignore_unused
 from piston.doc import HandlerDocumentation
-from piston.models import Consumer
 
 # Suppress warning about symbols being imported, but only used for
 # export in __all__.
 ignore_unused(
-    ComponentError, Config, DHCPLease, FileStorage, MACAddress, NodeGroup,
-    SSHKey, Tag, UserProfile, Vlan, NodeGroupInterface)
+    BootImage, ComponentError, Config, DHCPLease, DownloadProgress,
+    FileStorage, MACAddress, NodeGroup, SSHKey, Tag, UserProfile, Vlan,
+    NodeGroupInterface, Zone, logger)
 
 
 # Connect the 'create_user' method to the post save signal of User.
@@ -123,18 +122,6 @@ HandlerDocumentation.get_resource_uri_template = get_resource_uri_template
 # get_resource_uri_template.
 HandlerDocumentation.resource_uri_template = (
     property(get_resource_uri_template))
-
-
-# Register the models in the admin site.
-admin.site.register(BootImage)
-admin.site.register(Config)
-admin.site.register(Consumer)
-admin.site.register(DownloadProgress)
-admin.site.register(FileStorage)
-admin.site.register(MACAddress)
-admin.site.register(Node)
-admin.site.register(Tag)
-admin.site.register(SSHKey)
 
 
 class MAASAuthorizationBackend(ModelBackend):

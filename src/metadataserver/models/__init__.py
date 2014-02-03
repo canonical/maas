@@ -1,10 +1,7 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Model for the metadata server.
-
-DO NOT add new models to this module.  Add them to the package as separate
-modules, but import them here and add them to `__all__`.
+"""Model export and helpers for metadataserver.
 """
 
 from __future__ import (

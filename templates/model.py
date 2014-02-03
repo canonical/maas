@@ -23,7 +23,7 @@ from django.db.models import (
     Manager,
     Model,
     )
-# TODO: s/maasserver/metadataserver/ when using in metadataserver.
+# TODO: Import the DefaultMeta from the appropriate app, e.g. metadataserver.
 from maasserver import DefaultMeta
 
 
@@ -33,6 +33,8 @@ class ModelManager(Manager):
     Don't import or instantiate this directly; access as `<Class>.objects` on
     the model class it manages.
     """
+
+# TODO: Import your model into, and export it from, models/__init__.py
 
 
 # TODO: Your class name here.
