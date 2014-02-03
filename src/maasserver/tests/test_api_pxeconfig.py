@@ -1,4 +1,4 @@
-# Copyright 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for PXE configuration retrieval from the API."""
@@ -36,8 +36,8 @@ from maasserver.preseed import (
     compose_enlistment_preseed_url,
     compose_preseed_url,
     )
-from maasserver.testing.api import AnonAPITestCase
 from maasserver.testing.factory import factory
+from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.fakemethod import FakeMethod
 from mock import Mock
 from netaddr import IPNetwork
@@ -52,7 +52,7 @@ from testtools.matchers import (
     )
 
 
-class TestPXEConfigAPI(AnonAPITestCase):
+class TestPXEConfigAPI(MAASServerTestCase):
 
     def get_default_params(self):
         return {

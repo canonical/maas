@@ -1,4 +1,4 @@
-# Copyright 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the `describe` view."""
@@ -26,8 +26,8 @@ from django.core.urlresolvers import (
     )
 from django.test.client import RequestFactory
 from maasserver.api import describe
-from maasserver.testing.api import AnonAPITestCase
 from maasserver.testing.factory import factory
+from maasserver.testing.testcase import MAASServerTestCase
 from testscenarios import multiply_scenarios
 from testtools.matchers import (
     AfterPreprocessing,
@@ -43,7 +43,7 @@ from testtools.matchers import (
     )
 
 
-class TestDescribe(AnonAPITestCase):
+class TestDescribe(MAASServerTestCase):
     """Tests for the `describe` view."""
 
     def test_describe_returns_json(self):
@@ -68,7 +68,7 @@ class TestDescribe(AnonAPITestCase):
         self.assertIsInstance(description["handlers"], list)
 
 
-class TestDescribeAbsoluteURIs(AnonAPITestCase):
+class TestDescribeAbsoluteURIs(MAASServerTestCase):
     """Tests for the `describe` view's URI manipulation."""
 
     scenarios_schemes = (

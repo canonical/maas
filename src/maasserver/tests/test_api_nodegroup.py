@@ -1,4 +1,4 @@
-# Copyright 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the NodeGroups API."""
@@ -41,7 +41,6 @@ from maasserver.testing import (
     reload_objects,
     )
 from maasserver.testing.api import (
-    AnonAPITestCase,
     APITestCase,
     explain_unexpected_response,
     log_in_as_normal_user,
@@ -109,7 +108,7 @@ class TestNodeGroupsAPI(MultipleUsersScenarios,
             json.loads(response.content))
 
 
-class TestAnonNodeGroupsAPI(AnonAPITestCase):
+class TestAnonNodeGroupsAPI(MAASServerTestCase):
 
     resources = (
         ('celery', FixtureResource(CeleryFixture())),

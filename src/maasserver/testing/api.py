@@ -1,4 +1,4 @@
-# Copyright 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Helpers for API testing."""
@@ -13,7 +13,6 @@ str = None
 
 __metaclass__ = type
 __all__ = [
-    'AnonAPITestCase',
     'APITestCase',
     'explain_unexpected_response',
     'log_in_as_normal_user',
@@ -30,10 +29,6 @@ from maasserver.testing.factory import factory
 from maasserver.testing.oauthclient import OAuthAuthenticatedClient
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.worker_user import get_worker_user
-
-
-class AnonAPITestCase(MAASServerTestCase):
-    """Base class for anonymous API tests."""
 
 
 class MultipleUsersScenarios:

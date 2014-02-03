@@ -1,4 +1,4 @@
-# Copyright 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for file-storage API."""
@@ -24,11 +24,9 @@ from django.conf import settings
 from django.core.urlresolvers import reverse
 from fixtures import Fixture
 from maasserver.models import FileStorage
-from maasserver.testing.api import (
-    AnonAPITestCase,
-    APITestCase,
-    )
+from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
+from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.utils import sample_binary_data
 from testtools.matchers import (
     Contains,
@@ -81,7 +79,7 @@ class FileStorageAPITestMixin:
         return self.client.get(reverse('files_handler'), params)
 
 
-class AnonymousFileStorageAPITest(FileStorageAPITestMixin, AnonAPITestCase):
+class AnonymousFileStorageAPITest(FileStorageAPITestMixin, MAASServerTestCase):
 
     def test_get_works_anonymously(self):
         storage = factory.make_file_storage()

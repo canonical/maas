@@ -31,7 +31,6 @@ from maasserver import api
 from maasserver.enum import NODEGROUP_STATUS
 from maasserver.forms import DEFAULT_DNS_ZONE_NAME
 from maasserver.models import NodeGroup
-from maasserver.testing.api import AnonAPITestCase
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.tests.test_forms import make_interface_settings
@@ -218,7 +217,7 @@ class TestComposeNodegroupRegisterResponse(MAASServerTestCase):
             (response.status_code, response.content))
 
 
-class TestRegisterAPI(AnonAPITestCase):
+class TestRegisterAPI(MAASServerTestCase):
     """Tests for the `register` method on the API.
 
     This method can be called anonymously.
