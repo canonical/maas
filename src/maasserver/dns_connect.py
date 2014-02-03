@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """DNS management module: connect DNS tasks with signals."""
@@ -54,9 +54,10 @@ def dns_post_save_NodeGroupInterface(sender, instance, created, **kwargs):
         write_full_dns_config()
 
 
-def dns_post_edit_management_NodeGroupInterface(instance, old_field, deleted):
+def dns_post_edit_management_NodeGroupInterface(instance, old_values, deleted):
     """Delete DNS zones related to the interface."""
     from maasserver.dns import write_full_dns_config
+    [old_field] = old_values
     if old_field == NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS:
         # Force the dns config to be written as this might have been
         # triggered by the last DNS-enabled interface being deleted
@@ -66,7 +67,7 @@ def dns_post_edit_management_NodeGroupInterface(instance, old_field, deleted):
 
 connect_to_field_change(
     dns_post_edit_management_NodeGroupInterface,
-    NodeGroupInterface, 'management', delete=True)
+    NodeGroupInterface, ['management'], delete=True)
 
 
 @receiver(post_delete, sender=Node)
@@ -82,13 +83,13 @@ def dns_post_delete_Node(sender, instance, **kwargs):
         pass
 
 
-def dns_post_edit_hostname_Node(instance, old_field, **kwargs):
+def dns_post_edit_hostname_Node(instance, old_values, **kwargs):
     """When a Node has been flagged, update the related zone."""
     from maasserver.dns import change_dns_zones
     change_dns_zones(instance.nodegroup)
 
 
-connect_to_field_change(dns_post_edit_hostname_Node, Node, 'hostname')
+connect_to_field_change(dns_post_edit_hostname_Node, Node, ['hostname'])
 
 
 def upstream_dns_changed(sender, instance, created, **kwargs):

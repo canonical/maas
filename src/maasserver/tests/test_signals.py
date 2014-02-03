@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for signals helpers."""
@@ -32,19 +32,19 @@ class ConnectToFieldChangeTest(TestModelMixin, MAASServerTestCase):
 
     def test_connect_to_field_change_calls_callback(self):
         callback = Mock()
-        connect_to_field_change(callback, FieldChangeTestModel, 'name1')
+        connect_to_field_change(callback, FieldChangeTestModel, ['name1'])
         old_name1_value = factory.getRandomString()
         obj = FieldChangeTestModel(name1=old_name1_value)
         obj.save()
         obj.name1 = factory.getRandomString()
         obj.save()
         self.assertEqual(
-            (1, call(obj, old_name1_value, deleted=False)),
-            (callback.call_count, callback.call_args))
+            [call(obj, (old_name1_value,), deleted=False)],
+            callback.mock_calls)
 
     def test_connect_to_field_change_calls_callback_for_each_save(self):
         callback = Mock()
-        connect_to_field_change(callback, FieldChangeTestModel, 'name1')
+        connect_to_field_change(callback, FieldChangeTestModel, ['name1'])
         old_name1_value = factory.getRandomString()
         obj = FieldChangeTestModel(name1=old_name1_value)
         obj.save()
@@ -56,7 +56,7 @@ class ConnectToFieldChangeTest(TestModelMixin, MAASServerTestCase):
 
     def test_connect_to_field_change_calls_callback_for_each_real_save(self):
         callback = Mock()
-        connect_to_field_change(callback, FieldChangeTestModel, 'name1')
+        connect_to_field_change(callback, FieldChangeTestModel, ['name1'])
         old_name1_value = factory.getRandomString()
         obj = FieldChangeTestModel(name1=old_name1_value)
         obj.save()
@@ -67,9 +67,9 @@ class ConnectToFieldChangeTest(TestModelMixin, MAASServerTestCase):
 
     def test_connect_to_field_change_calls_multiple_callbacks(self):
         callback1 = Mock()
-        connect_to_field_change(callback1, FieldChangeTestModel, 'name1')
+        connect_to_field_change(callback1, FieldChangeTestModel, ['name1'])
         callback2 = Mock()
-        connect_to_field_change(callback2, FieldChangeTestModel, 'name1')
+        connect_to_field_change(callback2, FieldChangeTestModel, ['name1'])
         old_name1_value = factory.getRandomString()
         obj = FieldChangeTestModel(name1=old_name1_value)
         obj.save()
@@ -81,14 +81,14 @@ class ConnectToFieldChangeTest(TestModelMixin, MAASServerTestCase):
         obj = FieldChangeTestModel(name2=factory.getRandomString())
         obj.save()
         callback = Mock()
-        connect_to_field_change(callback, FieldChangeTestModel, 'name1')
+        connect_to_field_change(callback, FieldChangeTestModel, ['name1'])
         obj.name2 = factory.getRandomString()
         obj.save()
         self.assertEqual(0, callback.call_count)
 
     def test_connect_to_field_change_ignores_object_creation(self):
         callback = Mock()
-        connect_to_field_change(callback, FieldChangeTestModel, 'name1')
+        connect_to_field_change(callback, FieldChangeTestModel, ['name1'])
         obj = FieldChangeTestModel(name1=factory.getRandomString())
         obj.save()
         self.assertEqual(0, callback.call_count)
@@ -97,7 +97,7 @@ class ConnectToFieldChangeTest(TestModelMixin, MAASServerTestCase):
         obj = FieldChangeTestModel(name2=factory.getRandomString())
         obj.save()
         callback = Mock()
-        connect_to_field_change(callback, FieldChangeTestModel, 'name1')
+        connect_to_field_change(callback, FieldChangeTestModel, ['name1'])
         obj.delete()
         self.assertEqual(0, callback.call_count)
 
@@ -107,8 +107,38 @@ class ConnectToFieldChangeTest(TestModelMixin, MAASServerTestCase):
         obj.save()
         callback = Mock()
         connect_to_field_change(
-            callback, FieldChangeTestModel, 'name1', delete=True)
+            callback, FieldChangeTestModel, ['name1'], delete=True)
         obj.delete()
         self.assertEqual(
-            (1, call(obj, old_name1_value, deleted=True)),
-            (callback.call_count, callback.call_args))
+            [call(obj, (old_name1_value,), deleted=True)],
+            callback.mock_calls)
+
+    def test_connect_to_field_change_notices_change_in_any_given_field(self):
+        callback = Mock()
+        connect_to_field_change(
+            callback, FieldChangeTestModel, ['name1', 'name2'])
+        name1 = factory.make_name('name1')
+        old_name2_value = factory.make_name('old')
+        obj = FieldChangeTestModel(name1=name1, name2=old_name2_value)
+        obj.save()
+        obj.name2 = factory.make_name('new')
+        obj.save()
+        self.assertEqual(
+            [call(obj, (name1, old_name2_value), deleted=False)],
+            callback.mock_calls)
+
+    def test_connect_to_field_change_only_calls_once_per_object_change(self):
+        callback = Mock()
+        connect_to_field_change(
+            callback, FieldChangeTestModel, ['name1', 'name2'])
+        old_name1_value = factory.make_name('old1')
+        old_name2_value = factory.make_name('old2')
+        obj = FieldChangeTestModel(
+            name1=old_name1_value, name2=old_name2_value)
+        obj.save()
+        obj.name1 = factory.make_name('new1')
+        obj.name2 = factory.make_name('new2')
+        obj.save()
+        self.assertEqual(
+            [call(obj, (old_name1_value, old_name2_value), deleted=False)],
+            callback.mock_calls)
