@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test maasserver models."""
@@ -45,6 +45,7 @@ from maasserver.testing import reload_object
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import map_enum
+from maastesting.djangotestcase import count_queries
 from maastesting.testcase import MAASTestCase
 from metadataserver import commissioning
 from metadataserver.fields import Bin
@@ -52,9 +53,7 @@ from metadataserver.models import (
     NodeCommissionResult,
     NodeUserData,
     )
-from provisioningserver.enum import (
-    get_power_types,
-    )
+from provisioningserver.enum import get_power_types
 from provisioningserver.power.poweraction import PowerAction
 from testtools.matchers import (
     AllMatch,
@@ -443,11 +442,11 @@ class NodeTest(MAASServerTestCase):
             query[0].nodegroup.dhcplease_set.all()._result_cache)
 
         # ip_addresses() still returns the node's leased addresses.
-        num_queries, addresses = self.getNumQueries(query[0].ip_addresses)
+        num_queries, addresses = count_queries(query[0].ip_addresses)
         # It only takes one query: to get the node's MAC addresses.
         self.assertEqual(1, num_queries)
         # The result is not a query set, so this isn't hiding a further query.
-        no_queries, _ = self.getNumQueries(list, addresses)
+        no_queries, _ = count_queries(list, addresses)
         self.assertEqual(0, no_queries)
         # We still get exactly the right IP addresses.
         self.assertItemsEqual([lease.ip for lease in leases], addresses)

@@ -13,6 +13,7 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    'count_queries',
     'DjangoTestCase',
     'TestModelMixin',
     'TransactionTestCase',
@@ -34,8 +35,12 @@ import django.test
 from maastesting.testcase import MAASTestCase
 
 
-class CountNumQueriesContext:
-    """Context manager: count number of database queries issued in context."""
+class CountQueries:
+    """Context manager: count number of database queries issued in context.
+
+    :ivar num_queries: The number of database queries that were performed while
+        this context was active.
+    """
 
     def __init__(self):
         self.connection = connections[DEFAULT_DB_ALIAS]
@@ -56,21 +61,26 @@ class CountNumQueriesContext:
         self.num_queries = final_count - self.starting_count
 
 
+def count_queries(func, *args, **kwargs):
+    """Execute `func`, and count the number of database queries performed.
+
+    :param func: Callable to be executed.
+    :param *args: Positional arguments to `func`.
+    :param **kwargs: Keyword arguments to `func`.
+    :return: A tuple of: the number of queries performed while `func` was
+        executing, and the value it returned.
+    """
+    counter = CountQueries()
+    with counter:
+        result = func(*args, **kwargs)
+    return counter.num_queries, result
+
+
 class DjangoTestCase(MAASTestCase, django.test.TestCase):
-    """`TestCase` for Metal as a Service.
+    """`TestCase` with Django support.
 
     Supports test resources and fixtures.
     """
-
-    def getNumQueries(self, func, *args, **kwargs):
-        """Determine the number of db queries executed while running func.
-
-        :return: (num_queries, result_of_func)
-        """
-        counter = CountNumQueriesContext()
-        with counter:
-            res = func(*args, **kwargs)
-        return counter.num_queries, res
 
 
 def cleanup_db(testcase):

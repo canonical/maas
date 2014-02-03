@@ -64,6 +64,7 @@ from maasserver.testing.testcase import (
 from maasserver.utils import map_enum
 from maasserver.views import nodes as nodes_views
 from maasserver.views.nodes import message_from_form_stats
+from maastesting.djangotestcase import count_queries
 from metadataserver.models.commissioningscript import LLDP_OUTPUT_NAME
 from testtools.matchers import ContainsAll
 
@@ -330,7 +331,7 @@ class NodeViewsTest(MAASServerTestCase):
         make_nodes(nodegroup, 10)
 
         url = reverse('node-list')
-        num_queries, response = self.getNumQueries(self.client.get, url)
+        num_queries, response = count_queries(self.client.get, url)
         # Make sure we counted at least the queries to get the nodes, the
         # nodegroup, and the mac addresses.
         self.assertTrue(num_queries > 3)
@@ -338,7 +339,7 @@ class NodeViewsTest(MAASServerTestCase):
 
         # Add 10 more nodes.  Should still have the same number of queries.
         make_nodes(nodegroup, 10)
-        num_bonus_queries, response = self.getNumQueries(self.client.get, url)
+        num_bonus_queries, response = count_queries(self.client.get, url)
         # We see more nodes, yet the number of queries is unchanged.
         self.assertEqual(20, count_node_links(response))
         self.assertEqual(num_queries, num_bonus_queries)

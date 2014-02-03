@@ -46,6 +46,7 @@ from maasserver.utils import (
     map_enum,
     )
 from maasserver.utils.orm import get_one
+from maastesting.djangotestcase import count_queries
 from testtools.matchers import (
     Contains,
     Equals,
@@ -199,10 +200,10 @@ class TestNodesAPI(APITestCase):
     def test_GET_list_nodes_issues_constant_number_of_queries(self):
         nodegroup = factory.make_node_group()
         self.create_nodes(nodegroup, 10)
-        num_queries1, response1 = self.getNumQueries(
+        num_queries1, response1 = count_queries(
             self.client.get, reverse('nodes_handler'), {'op': 'list'})
         self.create_nodes(nodegroup, 10)
-        num_queries2, response2 = self.getNumQueries(
+        num_queries2, response2 = count_queries(
             self.client.get, reverse('nodes_handler'), {'op': 'list'})
         # Make sure the responses are ok as it's not useful to compare the
         # number of queries if they are not.

@@ -21,6 +21,7 @@ from maasserver.testing import get_content_links
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.views import tags as tags_views
+from maastesting.djangotestcase import count_queries
 from testtools.matchers import ContainsAll
 
 
@@ -65,7 +66,7 @@ class TagViewsTest(MAASServerTestCase):
                  for i in range(20)]
         for node in nodes[:10]:
             node.tags.add(tag)
-        num_queries, response = self.getNumQueries(self.client.get, tag_link)
+        num_queries, response = count_queries(self.client.get, tag_link)
         self.assertEqual(
             10,
             len([link for link in get_content_links(response)
@@ -74,7 +75,7 @@ class TagViewsTest(MAASServerTestCase):
         self.assertTrue(num_queries > 3)
         for node in nodes[10:]:
             node.tags.add(tag)
-        num_bonus_queries, response = self.getNumQueries(
+        num_bonus_queries, response = count_queries(
             self.client.get, tag_link)
         self.assertEqual(num_queries, num_bonus_queries)
         self.assertEqual(
