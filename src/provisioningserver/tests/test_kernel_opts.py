@@ -172,9 +172,9 @@ class TestKernelOpts(MAASTestCase):
         extra_opts = "special console=ABCD -- options to pass"
         params = make_kernel_parameters(extra_opts=extra_opts)
         cmdline = compose_kernel_command_line(params)
-        # There should be a blank space before the options, but otherwise added
-        # verbatim.
-        self.assertThat(cmdline, Contains(' ' + extra_opts))
+        # There should be a double dash (--) surrounded by spaces before
+        # the options, but otherwise added verbatim.
+        self.assertThat(cmdline, Contains(' -- ' + extra_opts))
 
     def test_commissioning_compose_kernel_handles_extra_opts_None(self):
         params = make_kernel_parameters(extra_opts=None)

@@ -189,5 +189,9 @@ def compose_kernel_command_line(params):
     options += compose_logging_opts(params.log_host)
     options += compose_arch_opts(params)
     if params.extra_opts:
+        # Using -- before extra opts makes both d-i and Curtin install
+        # them into the grub config when installing an OS, thus causing
+        # the options to "stick" when local booting later.
+        options.append('--')
         options.append(params.extra_opts)
     return ' '.join(options)
