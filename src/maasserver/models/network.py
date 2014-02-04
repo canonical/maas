@@ -26,6 +26,7 @@ from django.db.models import (
     )
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
+from netaddr import IPNetwork
 
 
 class Network(CleanSave, Model):
@@ -61,6 +62,13 @@ class Network(CleanSave, Model):
     description = CharField(
         max_length=255, default='', blank=True, editable=True,
         help_text="Any short description to help users identify the network")
+
+    def __unicode__(self):
+        net = unicode(IPNetwork("%s/%s" % (self.ip, self.netmask)).cidr)
+        if self.vlan_tag == 0:
+            return net
+        else:
+            return "%s(tag:%x)" % (net, self.vlan_tag)
 
     def clean_vlan_tag(self):
         if self.vlan_tag == 0xFFF:

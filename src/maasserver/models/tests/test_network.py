@@ -19,6 +19,7 @@ from random import randint
 from django.core.exceptions import ValidationError
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from netaddr import IPNetwork
 
 
 class TestNetwork(MAASServerTestCase):
@@ -60,3 +61,13 @@ class TestNetwork(MAASServerTestCase):
             ValidationError, factory.make_network, vlan_tag=0x1000)
         self.assertRaises(
             ValidationError, factory.make_network, vlan_tag=-1)
+
+    def test_unicode_returns_cidr_if_tag_is_zero(self):
+        cidr = '10.9.0.0/16'
+        network = factory.make_network(network=IPNetwork(cidr), vlan_tag=0)
+        self.assertEqual(cidr, unicode(network))
+
+    def test_unicode_includes_tag_if_nonzero(self):
+        cidr = '10.9.0.0/16'
+        network = factory.make_network(network=IPNetwork(cidr), vlan_tag=0xabc)
+        self.assertEqual("%s(tag:abc)" % cidr, unicode(network))
