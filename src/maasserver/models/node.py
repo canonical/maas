@@ -64,6 +64,7 @@ from maasserver.fields import (
     JSONObjectField,
     MAC,
     )
+from maasserver.models import Network
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.config import Config
 from maasserver.models.dhcplease import DHCPLease
@@ -487,6 +488,8 @@ class Node(CleanSave, TimestampedModel):
     error = CharField(max_length=255, blank=True, default='')
 
     netboot = BooleanField(default=True)
+
+    networks = ManyToManyField(Network, blank=True)
 
     # This field can't be null, but we can't enforce that in the
     # database schema because we can only create the default value from
