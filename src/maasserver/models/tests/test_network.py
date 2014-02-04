@@ -43,13 +43,19 @@ class TestNetwork(MAASServerTestCase):
                 'description': description,
             })
 
-    def test_reserved_tags_do_not_validate(self):
+    def test_vlan_tag_can_be_zero_through_hex_ffe(self):
+        min_tag = 0
+        max_tag = 0xfff - 1
+        self.assertEqual(
+            min_tag, factory.make_network(vlan_tag=min_tag).vlan_tag)
+        self.assertEqual(
+            max_tag, factory.make_network(vlan_tag=max_tag).vlan_tag)
+
+    def test_reserved_vlan_tag_does_not_validate(self):
         self.assertRaises(
             ValidationError, factory.make_network, vlan_tag=0xFFF)
-        self.assertRaises(
-            ValidationError, factory.make_network, vlan_tag=0x000)
 
-    def test_out_of_range_tag_do_not_validate(self):
+    def test_out_of_range_vlan_tags_do_not_validate(self):
         self.assertRaises(
             ValidationError, factory.make_network, vlan_tag=0x1000)
         self.assertRaises(

@@ -63,9 +63,9 @@ class Network(CleanSave, Model):
         help_text="Any short description to help users identify the network")
 
     def clean_vlan_tag(self):
-        if self.vlan_tag == 0x000 or self.vlan_tag == 0xFFF:
+        if self.vlan_tag == 0xFFF:
             raise ValidationError(
-                {'tag': ["Cannot use reserved values 0x000 and 0xFFF"]})
+                {'tag': ["Cannot use reserved value 0xFFF."]})
         if self.vlan_tag < 0 or self.vlan_tag > 0xFFF:
             raise ValidationError(
                 {'tag': ["Value must be between 0x000 and 0xFFF (12 bits)"]})
