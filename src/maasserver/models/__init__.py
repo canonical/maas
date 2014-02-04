@@ -21,13 +21,13 @@ __all__ = [
     'FileStorage',
     'logger',
     'MACAddress',
+    'Network',
     'Node',
     'NodeGroup',
     'NodeGroupInterface',
     'SSHKey',
     'Tag',
     'UserProfile',
-    'Vlan',
     'Zone',
     ]
 
@@ -48,6 +48,7 @@ from maasserver.models.dhcplease import DHCPLease
 from maasserver.models.downloadprogress import DownloadProgress
 from maasserver.models.filestorage import FileStorage
 from maasserver.models.macaddress import MACAddress
+from maasserver.models.network import Network
 from maasserver.models.node import Node
 from maasserver.models.nodegroup import NodeGroup
 from maasserver.models.nodegroupinterface import NodeGroupInterface
@@ -55,7 +56,6 @@ from maasserver.models.sshkey import SSHKey
 from maasserver.models.tag import Tag
 from maasserver.models.user import create_user
 from maasserver.models.userprofile import UserProfile
-from maasserver.models.vlan import Vlan
 from maasserver.models.zone import Zone
 from maasserver.utils import ignore_unused
 from piston.doc import HandlerDocumentation
@@ -64,7 +64,7 @@ from piston.doc import HandlerDocumentation
 # export in __all__.
 ignore_unused(
     BootImage, ComponentError, Config, DHCPLease, DownloadProgress,
-    FileStorage, MACAddress, NodeGroup, SSHKey, Tag, UserProfile, Vlan,
+    FileStorage, MACAddress, Network, NodeGroup, SSHKey, Tag, UserProfile,
     NodeGroupInterface, Zone, logger)
 
 

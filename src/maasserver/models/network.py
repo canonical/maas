@@ -1,7 +1,7 @@
 # Copyright 2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Model for VLANs"""
+"""Model for networks."""
 
 from __future__ import (
     absolute_import,
@@ -13,14 +13,14 @@ str = None
 
 __metaclass__ = type
 __all__ = [
-    'Vlan',
+    'Network',
     ]
 
 
 from django.core.exceptions import ValidationError
 from django.db.models import (
     CharField,
-    Manager,
+    GenericIPAddressField,
     Model,
     PositiveSmallIntegerField,
     )
@@ -28,22 +28,24 @@ from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 
 
-class VlanManager(Manager):
-    """Manager for Vlan model class.
-
-    Don't import or instantiate this directly; access as `<Class>.objects` on
-    the model class it manages.
-    """
-
-
-class Vlan(CleanSave, Model):
+class Network(CleanSave, Model):
 
     class Meta(DefaultMeta):
         """Needed for South to recognize this model."""
 
-    objects = VlanManager()
+    name = CharField(
+        unique=True, blank=False, editable=True, max_length=255,
+        help_text="Identifying name for this network.")
 
-    tag = PositiveSmallIntegerField(
+    ip = GenericIPAddressField(
+        blank=False, editable=True, unique=True, null=False,
+        help_text="Lowest IP address of this network.")
+
+    netmask = GenericIPAddressField(
+        blank=False, editable=True, null=False,
+        help_text="Network mask (e.g. 255.255.255.0).")
+
+    vlan_tag = PositiveSmallIntegerField(
         editable=True, blank=False, unique=True,
         help_text="A 12-bit field specifying the VLAN to which the frame "
                   "belongs. The hexadecimal values of 0x000 and 0xFFF "
@@ -58,16 +60,16 @@ class Vlan(CleanSave, Model):
 
     description = CharField(
         max_length=255, default='', blank=True, editable=True,
-        help_text="Any short description to help users identify the VLAN")
+        help_text="Any short description to help users identify the network")
 
-    def clean_tag(self):
-        if self.tag == 0x000 or self.tag == 0xFFF:
+    def clean_vlan_tag(self):
+        if self.vlan_tag == 0x000 or self.vlan_tag == 0xFFF:
             raise ValidationError(
                 {'tag': ["Cannot use reserved values 0x000 and 0xFFF"]})
-        if self.tag < 0 or self.tag > 0xFFF:
+        if self.vlan_tag < 0 or self.vlan_tag > 0xFFF:
             raise ValidationError(
                 {'tag': ["Value must be between 0x000 and 0xFFF (12 bits)"]})
 
     def clean_fields(self, *args, **kwargs):
-        super(Vlan, self).clean_fields(*args, **kwargs)
-        self.clean_tag()
+        super(Network, self).clean_fields(*args, **kwargs)
+        self.clean_vlan_tag()

@@ -34,12 +34,12 @@ from maasserver.models import (
     DownloadProgress,
     FileStorage,
     MACAddress,
+    Network,
     Node,
     NodeGroup,
     NodeGroupInterface,
     SSHKey,
     Tag,
-    Vlan,
     Zone,
     )
 from maasserver.models.node import NODE_TRANSITIONS
@@ -532,15 +532,28 @@ class Factory(maastesting.factory.Factory):
             zone.node_set.add(*nodes)
         return zone
 
-    def make_vlan(self, tag=None, description=None):
-        """Create a `Vlan`."""
+    def make_network(self, name=None, network=None, vlan_tag=None,
+                     description=None):
+        """Create a `Network`.
+
+        :param network: An `IPNetwork`.  If given, the `ip` and `netmask`
+            fields will be taken from this.
+        """
+        if name is None:
+            name = factory.make_name()
+        if network is None:
+            network = self.getRandomNetwork()
+        ip = unicode(network.ip)
+        netmask = unicode(network.netmask)
         if description is None:
             description = self.getRandomString()
-        if tag is None:
-            tag = random.randint(1, 0xFFE)
-        vlan = Vlan(tag=tag, description=description)
-        vlan.save()
-        return vlan
+        if vlan_tag is None:
+            vlan_tag = random.randint(0, 0xFFE)
+        network = Network(
+            name=name, ip=ip, netmask=netmask, vlan_tag=vlan_tag,
+            description=description)
+        network.save()
+        return network
 
 
 # Create factory singleton.
