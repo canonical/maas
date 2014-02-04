@@ -613,6 +613,20 @@ class TestNewUserCreationForm(MAASServerTestCase):
         form.save()
         self.assertIsNotNone(User.objects.get(username=params['username']))
 
+    def test_email_is_required(self):
+        password = factory.make_name('password')
+        params = {
+            'email': '',
+            'username': factory.make_name('user'),
+            'password1': password,
+            'password2': password,
+        }
+        form = NewUserCreationForm(params)
+        self.assertFalse(form.is_valid())
+        self.assertEquals(
+            {'email': ['This field is required.']},
+            form._errors)
+
     def test_does_not_save_to_db_if_commit_is_False(self):
         password = factory.make_name('password')
         params = {

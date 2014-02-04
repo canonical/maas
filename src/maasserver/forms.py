@@ -573,7 +573,7 @@ class NewUserCreationForm(UserCreationForm):
         self.fields.insert(
             2, 'email',
             forms.EmailField(
-                label="E-mail address", max_length=75, required=False))
+                label="E-mail address", max_length=75, required=True))
 
     def save(self, commit=True):
         user = super(NewUserCreationForm, self).save(commit=False)
