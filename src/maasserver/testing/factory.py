@@ -150,7 +150,7 @@ class Factory(maastesting.factory.Factory):
     def make_node(self, mac=False, hostname=None, status=None,
                   architecture=ARCHITECTURE.i386, updated=None,
                   created=None, nodegroup=None, routers=None, zone=None,
-                  power_type=None, **kwargs):
+                  power_type=None, networks=None, **kwargs):
         # hostname=None is a valid value, hence the set_hostname trick.
         if hostname is None:
             hostname = self.getRandomString(20)
@@ -169,6 +169,11 @@ class Factory(maastesting.factory.Factory):
             nodegroup=nodegroup, routers=routers, zone=zone,
             power_type=power_type, **kwargs)
         self._save_node_unchecked(node)
+        # We do not generate random networks by default because the limited
+        # number of VLAN identifiers (4,094) makes it very likely to
+        # encounter collisions.
+        if networks is not None:
+            node.networks.add(*networks)
         if mac:
             self.make_mac_address(node=node)
 

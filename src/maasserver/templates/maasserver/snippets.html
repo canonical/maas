@@ -44,6 +44,10 @@
       <label for="id_zone">Physical zone</label>
       {{ node_form.zone }}
     </p>
+    <p class="networks">
+      <label for="id_networks">Networks</label>
+      {{ node_form.networks }}
+    </p>
   {% endif %}
 </script>
 {% for power_type, fieldset in POWER_TYPE_PARAMETERS_FIELDS %}

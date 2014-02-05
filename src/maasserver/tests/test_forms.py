@@ -346,6 +346,7 @@ class NodeEditForms(MAASServerTestCase):
                 'cpu_count',
                 'memory',
                 'storage',
+                'networks',
                 'zone',
             ],
             list(form.fields))
@@ -406,6 +407,49 @@ class NodeEditForms(MAASServerTestCase):
         self.assertTrue(form.is_valid(), form._errors)
         form.save()
         self.assertEqual(old_name, reload_object(node).hostname)
+
+    def test_AdminNodeForm_doesnt_require_networks_field(self):
+        node = factory.make_node()
+        networks = list(node.networks.all())
+        form = AdminNodeForm(
+            data={
+                'hostname': node.hostname,
+                'architecture': node.architecture,
+            },
+            instance=node)
+        self.assertTrue(form.is_valid(), form._errors)
+        form.save()
+        self.assertEqual(networks, list(reload_object(node).networks.all()))
+
+    def test_AdminNodeForm_initializes_networks_field(self):
+        networks = [factory.make_network() for i in range(3)]
+        node = factory.make_node(networks=networks)
+        form = AdminNodeForm(
+            data={
+                'hostname': node.hostname,
+                'architecture': node.architecture,
+            },
+            instance=node)
+        self.assertEqual(
+            [network.name for network in networks],
+            form.initial['networks']
+        )
+
+    def test_AdminNodeForm_updates_networks(self):
+        network = factory.make_network()
+        node = factory.make_node(networks=[network])
+        new_networks = [factory.make_network() for i in range(3)]
+        form = AdminNodeForm(
+            data={
+                'hostname': node.hostname,
+                'architecture': node.architecture,
+                'networks': [net.name for net in new_networks],
+            },
+            instance=node)
+        self.assertTrue(form.is_valid(), form._errors)
+        form.save()
+        self.assertItemsEqual(
+            new_networks, reload_object(node).networks.all())
 
     def test_remove_None_values_removes_None_values_in_dict(self):
         random_input = factory.getRandomString()

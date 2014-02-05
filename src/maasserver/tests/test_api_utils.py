@@ -72,6 +72,22 @@ class TestGetOverridedQueryDict(MAASServerTestCase):
         results = get_overridden_query_dict(defaults, data, [key])
         self.assertEqual([data_value], results.getlist(key))
 
+    def test_takes_multiple_values_in_default_parameters(self):
+        values = [factory.make_name('value') for i in range(2)]
+        key = factory.make_name('key')
+        defaults = {key: values}
+        results = get_overridden_query_dict(defaults, {}, [key])
+        self.assertEqual(values, results.getlist(key))
+
+    def test_querydict_data_values_override_defaults(self):
+        key = factory.make_name('key')
+        defaults = {key: factory.make_name('name')}
+        data_values = [factory.make_name('value') for i in range(2)]
+        data = QueryDict('').copy()
+        data.setlist(key, data_values)
+        results = get_overridden_query_dict(defaults, data, [key])
+        self.assertEqual(data_values, results.getlist(key))
+
     def test_fields_filter_results(self):
         key1 = factory.getRandomString()
         key2 = factory.getRandomString()

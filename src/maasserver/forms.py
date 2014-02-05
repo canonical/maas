@@ -83,6 +83,7 @@ from maasserver.models import (
     Config,
     DownloadProgress,
     MACAddress,
+    Network,
     Node,
     NodeGroup,
     NodeGroupInterface,
@@ -209,6 +210,13 @@ class NodeForm(ModelForm):
             )
 
 
+class NetworkModelChoiceField(forms.ModelMultipleChoiceField):
+    """A ModelMultipleChoiceField which shows the name of the networks."""
+
+    def label_from_instance(self, obj):
+        return obj.name
+
+
 class AdminNodeForm(NodeForm):
     """A `NodeForm` which includes fields that only an admin may change."""
 
@@ -224,6 +232,10 @@ class AdminNodeForm(NodeForm):
     storage = forms.IntegerField(
         required=False, initial=0, label="Disk space")
 
+    networks = NetworkModelChoiceField(
+        queryset=Network.objects.all(), required=False,
+        to_field_name='name')
+
     class Meta:
         model = Node
 
@@ -235,6 +247,7 @@ class AdminNodeForm(NodeForm):
             'cpu_count',
             'memory',
             'storage',
+            'networks',
         )
 
     def __init__(self, data=None, instance=None, **kwargs):
@@ -247,6 +260,20 @@ class AdminNodeForm(NodeForm):
         # in the zones dropdown.  This is why we set 'empty_label' to
         # None to force Django not to display that empty entry.
         self.fields['zone'].empty_label = None
+        self.set_up_initial_networks(instance)
+
+    def set_up_initial_networks(self, instance):
+        """Set the initial value for the field 'networks'.
+
+        This is to work around Django bug 17657: the initial value for fields
+        of type ModelMultipleChoiceField which use 'to_field_name', when it
+        is extracted from the provided instance object, is not
+        properly computed.
+        """
+        if instance is not None:
+            name = self.fields['networks'].to_field_name
+            self.initial['networks'] = [
+                getattr(obj, name) for obj in instance.networks.all()]
 
     def set_up_power_parameters_field(self, data, node):
         """Setup the 'power_parameter' field based on the value for the
@@ -286,12 +313,14 @@ class AdminNodeForm(NodeForm):
         return cleaned_data
 
     def save(self, *args, **kwargs):
+        """Persist the node into the database."""
         node = super(AdminNodeForm, self).save(commit=False)
         zone = self.cleaned_data.get('zone')
         if zone:
             node.zone = zone
         if kwargs.get('commit', True):
             node.save(*args, **kwargs)
+            self.save_m2m()  # Save many to many relations.
         return node
 
 

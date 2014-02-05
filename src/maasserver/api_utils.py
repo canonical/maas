@@ -104,6 +104,13 @@ def get_list_from_dict_or_multidict(data, key, default=None):
     return data.get(key, default)
 
 
+def listify(value):
+    """Return a list with `value` in it unless `value` is already a list."""
+    if isinstance(value, list):
+        return value
+    return [value]
+
+
 def get_overridden_query_dict(defaults, data, fields):
     """Returns a QueryDict with the values of 'defaults' overridden by the
     values in 'data'.
@@ -111,7 +118,7 @@ def get_overridden_query_dict(defaults, data, fields):
     :param defaults: The dictionary containing the default values.
     :type defaults: dict
     :param data: The data used to override the defaults.
-    :type data: :class:`django.http.QueryDict`
+    :type data: :class:`django.http.QueryDict` or dict
     :param fields: The list of field names to consider.
     :type fields: list
     :return: The updated QueryDict.
@@ -124,11 +131,13 @@ def get_overridden_query_dict(defaults, data, fields):
     # default behaviour that requires all the fields to be defined.
     for k, v in defaults.items():
         if k in fields:
-            new_data[k] = v
+            new_data.setlist(k, listify(v))
     # We can't use update here because data is a QueryDict and 'update'
     # does not replaces the old values with the new as one would expect.
-    for k, v in data.items():
-        new_data[k] = v
+    elements = data.lists() if isinstance(data, QueryDict) else data.items()
+    for k, v in elements:
+        new_data.setlist(k, listify(v))
+
     return new_data
 
 
