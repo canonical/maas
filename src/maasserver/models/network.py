@@ -47,7 +47,7 @@ class Network(CleanSave, Model):
 
     ip = GenericIPAddressField(
         blank=False, editable=True, unique=True, null=False,
-        help_text="Lowest IP address of this network.")
+        help_text="Network address (e.g. 192.168.1.0).")
 
     netmask = GenericIPAddressField(
         blank=False, editable=True, null=False,
@@ -71,7 +71,7 @@ class Network(CleanSave, Model):
         help_text="Any short description to help users identify the network")
 
     def get_network(self):
-        """Return self as `IPNetwork`.
+        """Return self as :class:`IPNetwork`.
 
         :raise AddrFormatError: If the combination of `self.ip` and
             `self.netmask` is a malformed network address.
@@ -127,6 +127,24 @@ class Network(CleanSave, Model):
         try:
             net = self.get_network()
         except AddrFormatError as e:
+            # This probably means that the netmask was invalid, in which case
+            # it will have its own error, but in case it isn't, we can't let
+            # this slide.
             raise ValidationError("Invalid network address: %s" % e)
         # Normalise self.ip.  This strips off any host bits from the address.
         self.ip = unicode(net.cidr.ip)
+
+    def validate_unique(self, exclude=None):
+        super(Network, self).validate_unique(exclude=exclude)
+        if exclude is None:
+            exclude = []
+
+        if 'ip' not in exclude and 'netmask' not in exclude:
+            # The ip and netmask have passed validation.  Now see if they don't
+            # clash with any other networks.
+            my_net = self.get_network()
+            for other in Network.objects.all().exclude(name=self.name):
+                other_net = other.get_network()
+                if my_net in other_net or other_net in my_net:
+                    raise ValidationError(
+                        "IP range clashes with network '%s'." % other.name)

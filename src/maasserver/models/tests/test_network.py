@@ -116,3 +116,30 @@ class TestNetwork(MAASServerTestCase):
         cidr = '10.9.0.0/16'
         network = factory.make_network(network=IPNetwork(cidr), vlan_tag=0xabc)
         self.assertEqual("%s(tag:abc)" % cidr, unicode(network))
+
+    def test_disallows_identical_networks_with_same_netmask(self):
+        existing_network = factory.make_network()
+        self.assertRaises(
+            ValidationError, factory.make_network,
+            network=existing_network.get_network())
+
+    def test_disallows_identical_networks_with_different_netmasks(self):
+        factory.make_network(network=IPNetwork('10.0.0.0/16'))
+        self.assertRaises(
+            ValidationError, factory.make_network,
+            network=IPNetwork('10.0.0.0/8'))
+        self.assertRaises(
+            ValidationError, factory.make_network,
+            network=IPNetwork('10.0.0.0/24'))
+
+    def test_disallows_same_network_specified_using_different_addresses(self):
+        factory.make_network(network=IPNetwork('10.1.2.3/16'))
+        self.assertRaises(
+            ValidationError, factory.make_network,
+            network=IPNetwork('10.1.0.0/16'))
+
+    def test_disallows_nested_networks_with_different_base_addresses(self):
+        factory.make_network(network=IPNetwork('10.0.0.0/16'))
+        self.assertRaises(
+            ValidationError, factory.make_network,
+            network=IPNetwork('10.0.1.0/24'))
