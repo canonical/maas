@@ -62,6 +62,40 @@ class TestNetwork(MAASServerTestCase):
         self.assertRaises(
             ValidationError, factory.make_network, vlan_tag=-1)
 
+    def test_name_validation_allows_identifier_characters(self):
+        name = 'x_9-y'
+        self.assertEqual(name, factory.make_network(name=name).name)
+
+    def test_name_validation_disallows_special_characters(self):
+        self.assertRaises(ValidationError, factory.make_network, name='a/b')
+        self.assertRaises(ValidationError, factory.make_network, name='a@b')
+        self.assertRaises(ValidationError, factory.make_network, name='a?b')
+        self.assertRaises(ValidationError, factory.make_network, name='a\\b')
+        self.assertRaises(ValidationError, factory.make_network, name='a@b')
+
+    def test_netmask_validation_accepts_netmask(self):
+        netmask = '255.255.255.128'
+        network = IPNetwork('%s/%s' % (factory.getRandomIPAddress(), netmask))
+        self.assertEqual(
+            unicode(network.netmask),
+            factory.make_network(network=network).netmask)
+
+    def test_netmask_validation_does_not_allow_extreme_cases(self):
+        ip = factory.getRandomIPAddress()
+        self.assertRaises(
+            ValidationError, factory.make_network,
+            network=IPNetwork('%s/255.255.255.255' % ip))
+        self.assertRaises(
+            ValidationError, factory.make_network,
+            network=IPNetwork('%s/0.0.0.0' % ip))
+
+    def test_netmask_validation_does_not_allow_mixed_zeroes_and_ones(self):
+        # The factory won't let us create a Network with a nonsensical netmask,
+        # so to test this by updating an existing Network object.
+        network = factory.make_network()
+        network.netmask = '255.254.255.0'
+        self.assertRaises(ValidationError, network.save)
+
     def test_unicode_returns_cidr_if_tag_is_zero(self):
         cidr = '10.9.0.0/16'
         network = factory.make_network(network=IPNetwork(cidr), vlan_tag=0)

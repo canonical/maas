@@ -18,6 +18,7 @@ __all__ = [
 
 
 from django.core.exceptions import ValidationError
+from django.core.validators import RegexValidator
 from django.db.models import (
     CharField,
     GenericIPAddressField,
@@ -27,6 +28,11 @@ from django.db.models import (
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 from netaddr import IPNetwork
+from netaddr.core import AddrFormatError
+
+# Network name validator.  Must consist of alphanumerical characters and/or
+# dashes.
+NETWORK_NAME_VALIDATOR = RegexValidator('^[\w-]+$')
 
 
 class Network(CleanSave, Model):
@@ -36,6 +42,7 @@ class Network(CleanSave, Model):
 
     name = CharField(
         unique=True, blank=False, editable=True, max_length=255,
+        validators=[NETWORK_NAME_VALIDATOR],
         help_text="Identifying name for this network.")
 
     ip = GenericIPAddressField(
@@ -71,6 +78,7 @@ class Network(CleanSave, Model):
             return "%s(tag:%x)" % (net, self.vlan_tag)
 
     def clean_vlan_tag(self):
+        """Validator for `vlan_tag`."""
         if self.vlan_tag == 0xFFF:
             raise ValidationError(
                 {'tag': ["Cannot use reserved value 0xFFF."]})
@@ -78,6 +86,25 @@ class Network(CleanSave, Model):
             raise ValidationError(
                 {'tag': ["Value must be between 0x000 and 0xFFF (12 bits)"]})
 
+    def clean_netmask(self):
+        """Validator for `vlan_tag`."""
+        # To see whether the netmask is well-formed, combine it with and
+        # arbitrary valid IP address and see if IPNetwork's constructor
+        # complains.
+        cidr = '10.1.1.1/%s' % self.netmask
+        try:
+            IPNetwork(cidr)
+        except AddrFormatError as e:
+            raise ValidationError({'netmask': [e.message]})
+
+        if self.netmask == '0.0.0.0':
+            raise ValidationError(
+                {'netmask': ["This netmask would span the entire Internet."]})
+        if self.netmask == '255.255.255.255':
+            raise ValidationError(
+                {'netmask': ["This netmask leaves no room for IP addresses."]})
+
     def clean_fields(self, *args, **kwargs):
         super(Network, self).clean_fields(*args, **kwargs)
         self.clean_vlan_tag()
+        self.clean_netmask()
