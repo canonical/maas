@@ -44,6 +44,13 @@ class TestNetwork(MAASServerTestCase):
                 'description': description,
             })
 
+    def test_clean_strips_non_network_bits_off_ip(self):
+        network = factory.make_network()
+        network.netmask = '255.255.0.0'
+        network.ip = '10.9.8.7'
+        network.save()
+        self.assertEqual('10.9.0.0', network.ip)
+
     def test_vlan_tag_can_be_zero_through_hex_ffe(self):
         min_tag = 0
         max_tag = 0xfff - 1
@@ -61,6 +68,10 @@ class TestNetwork(MAASServerTestCase):
             ValidationError, factory.make_network, vlan_tag=0x1000)
         self.assertRaises(
             ValidationError, factory.make_network, vlan_tag=-1)
+
+    def test_get_network_returns_network(self):
+        net = factory.getRandomNetwork()
+        self.assertEqual(net, factory.make_network(network=net).get_network())
 
     def test_name_validation_allows_identifier_characters(self):
         name = 'x_9-y'

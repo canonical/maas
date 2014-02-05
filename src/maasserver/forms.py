@@ -36,7 +36,6 @@ __all__ = [
 
 import collections
 import json
-from netaddr import IPNetwork
 import pipes
 import re
 
@@ -101,6 +100,7 @@ from maasserver.power_parameters import POWER_TYPE_PARAMETERS
 from maasserver.utils import strip_domain
 from metadataserver.fields import Bin
 from metadataserver.models import CommissioningScript
+from netaddr import IPNetwork
 from provisioningserver.enum import POWER_TYPE_CHOICES
 
 

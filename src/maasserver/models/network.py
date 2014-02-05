@@ -70,8 +70,21 @@ class Network(CleanSave, Model):
         max_length=255, default='', blank=True, editable=True,
         help_text="Any short description to help users identify the network")
 
+    def get_network(self):
+        """Return self as `IPNetwork`.
+
+        :raise AddrFormatError: If the combination of `self.ip` and
+            `self.netmask` is a malformed network address.
+        """
+        # Careful: IPNetwork(ip, netmask) will _seem_ to work, but the second
+        # argument does not get interpreted as the netmask!  Instead it gets
+        # accepted as a boolean that affects how to pick a default netmask.
+        # Testing may not show it, unless you try it with a different netmask
+        # than is the default for your base IP address.
+        return IPNetwork('%s/%s' % (self.ip, self.netmask))
+
     def __unicode__(self):
-        net = unicode(IPNetwork("%s/%s" % (self.ip, self.netmask)).cidr)
+        net = unicode(self.get_network().cidr)
         if self.vlan_tag == 0:
             return net
         else:
@@ -88,12 +101,12 @@ class Network(CleanSave, Model):
 
     def clean_netmask(self):
         """Validator for `vlan_tag`."""
-        # To see whether the netmask is well-formed, combine it with and
+        # To see whether the netmask is well-formed, combine it with an
         # arbitrary valid IP address and see if IPNetwork's constructor
         # complains.
-        cidr = '10.1.1.1/%s' % self.netmask
+        sample_cidr = '10.1.1.1/%s' % self.netmask
         try:
-            IPNetwork(cidr)
+            IPNetwork(sample_cidr)
         except AddrFormatError as e:
             raise ValidationError({'netmask': [e.message]})
 
@@ -108,3 +121,12 @@ class Network(CleanSave, Model):
         super(Network, self).clean_fields(*args, **kwargs)
         self.clean_vlan_tag()
         self.clean_netmask()
+
+    def clean(self):
+        super(Network, self).clean()
+        try:
+            net = self.get_network()
+        except AddrFormatError as e:
+            raise ValidationError("Invalid network address: %s" % e)
+        # Normalise self.ip.  This strips off any host bits from the address.
+        self.ip = unicode(net.cidr.ip)
