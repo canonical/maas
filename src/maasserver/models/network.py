@@ -87,10 +87,12 @@ class Network(CleanSave, Model):
         net = unicode(self.get_network().cidr)
         # A vlan_tag of zero normalises to None.  But __unicode__ may be
         # called while we're not in a clean state, so handle zero as well.
-        if self.vlan_tag is None or self.vlan_tag == 0:
-            return net
+        no_tag = [0, None]
+        if self.vlan_tag in no_tag:
+            tag = ''
         else:
-            return "%s(tag:%x)" % (net, self.vlan_tag)
+            tag = '(tag:%x)' % self.vlan_tag
+        return '%s:%s%s' % (self.name, net, tag)
 
     def clean_vlan_tag(self):
         """Validator for `vlan_tag`."""
