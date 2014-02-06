@@ -537,7 +537,7 @@ class Factory(maastesting.factory.Factory):
             zone.node_set.add(*nodes)
         return zone
 
-    def make_network(self, name=None, network=None, vlan_tag=None,
+    def make_network(self, name=None, network=None, vlan_tag=NO_VALUE,
                      description=None):
         """Create a `Network`.
 
@@ -555,7 +555,7 @@ class Factory(maastesting.factory.Factory):
         netmask = unicode(network.netmask)
         if description is None:
             description = self.getRandomString()
-        if vlan_tag is None:
+        if vlan_tag is NO_VALUE:
             # Caller wants it random.  To avoid hiding once-in-4094 bugs when
             # it comes out zero, skew the odds in favour of zero: fifty-fifty
             # choice between a zero and a nonzero tag.
