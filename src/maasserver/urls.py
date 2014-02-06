@@ -27,6 +27,13 @@ from maasserver.views.account import (
     login,
     logout,
     )
+from maasserver.views.networks import (
+    NetworkAdd,
+    NetworkDelete,
+    NetworkEdit,
+    NetworkListView,
+    NetworkView,
+    )
 from maasserver.views.nodes import (
     enlist_preseed_view,
     MacAdd,
@@ -215,6 +222,22 @@ urlpatterns += patterns(
         r'^zones/(?P<name>[\w\-]+)/delete/$', ZoneDelete.as_view(),
         name='zone-del'),
     adminurl(r'^zones/add/$', ZoneAdd.as_view(), name='zone-add'),
+)
+
+# Network views.
+urlpatterns += patterns(
+    'maasserver.views',
+    url(r'^networks/$', NetworkListView.as_view(), name='network-list'),
+    url(
+        r'^networks/(?P<name>[\w\-]+)/view/$', NetworkView.as_view(),
+        name='network-view'),
+    adminurl(
+        r'^networks/(?P<name>[\w\-]+)/edit/$', NetworkEdit.as_view(),
+        name='network-edit'),
+    adminurl(
+        r'^networks/(?P<name>[\w\-]+)/delete/$', NetworkDelete.as_view(),
+        name='network-del'),
+    adminurl(r'^networks/add/$', NetworkAdd.as_view(), name='network-add'),
 )
 
 

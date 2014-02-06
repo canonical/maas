@@ -1,0 +1,78 @@
+{% extends "maasserver/base.html" %}
+
+{% block nav-active-network-list %}active{% endblock %}
+{% block title %}Networks{% endblock %}
+{% block page-title %}
+  {{ paginator.count }}
+    {% if input_query %} matching{% endif %} 
+    network{{ paginator.count|pluralize }} in 
+    {% include "maasserver/site_title.html" %}
+{% endblock %}
+
+{% block html_includes %}{% include "maasserver/snippets.html" %}
+{% endblock %}
+
+{% block content %}
+    <div id="networks">
+      <h2>Networks</h2>
+      <table class="list">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Description</th>
+            <th>Network</th>
+            <th>Nodes</th>
+            {% if user.is_superuser %}
+  	      {% comment %} Action buttons {% endcomment %}
+              <th></th>
+            {% endif %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for network_item in network_list %}
+          <tr class="network {% cycle 'even' 'odd' %}" id="{{ network_item.name }}">
+            <td>
+              <a class="network"
+                 href="{% url 'network-view' network_item.name %}">
+                {{ network_item.name }}
+              </a>
+            <td>{{ network_item.description|truncatechars:40 }}</td>
+            <td>{{ network_item.get_network }}</td>
+            <td>{{ network_item.node_set.count }}</td>
+            {% if user.is_superuser %}
+            <td>
+            {% if not network_item.is_default %}
+              <a href="{% url 'network-edit' network_item.name %}"
+                 title="Edit network {{ network_item.name }}"
+                 class="icon">
+                <img src="{{ STATIC_URL }}img/edit.png"
+                     alt="edit"
+                     class="space-right-small" />
+              </a>
+              <a title="Delete network {{ network_item.name }}"
+                 class="delete-network icon"
+                 href="{% url 'network-del' network_item.name %}">
+                <img src="{{ STATIC_URL }}img/delete.png" alt="delete" />
+              </a>
+              <form method="POST"
+                    action="{% url 'network-del' network_item.name %}">
+                {% csrf_token %}
+                <input type="hidden" name="name"
+                       value="{{ network_item.name }}" />
+              </form>
+            {% endif %}
+            </td>
+            {% endif %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% if user.is_superuser %}
+      <a class="button right space-top-small" href="{% url 'network-add' %}">
+        Add network
+      </a>
+      {% endif %}
+      <div class="clear"></div>
+    </div>
+
+{% endblock %}
