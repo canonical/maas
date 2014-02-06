@@ -124,7 +124,10 @@ class TestNetwork(MAASServerTestCase):
 
     def test_unicode_returns_cidr_if_tag_is_zero(self):
         cidr = '10.9.0.0/16'
-        network = factory.make_network(network=IPNetwork(cidr), vlan_tag=0)
+        network = factory.make_network(network=IPNetwork(cidr))
+        # Set vlan_tag to zero here.  If we do it while creating the Network
+        # object, it would be normalised to None.
+        network.vlan_tag = 0
         self.assertEqual("%s:%s" % (network.name, cidr), unicode(network))
 
     def test_unicode_returns_cidr_if_tag_is_None(self):
