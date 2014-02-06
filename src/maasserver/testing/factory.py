@@ -543,6 +543,9 @@ class Factory(maastesting.factory.Factory):
 
         :param network: An `IPNetwork`.  If given, the `ip` and `netmask`
             fields will be taken from this.
+        :param vlan_tag: A number between 1 and 0xffe inclusive to create a
+            VLAN, or 0 to create a non-VLAN network, or None to make a random
+            choice.
         """
         if name is None:
             name = factory.make_name()
@@ -553,7 +556,13 @@ class Factory(maastesting.factory.Factory):
         if description is None:
             description = self.getRandomString()
         if vlan_tag is None:
-            vlan_tag = random.randint(0, 0xFFE)
+            # Caller wants it random.  To avoid hiding once-in-4094 bugs when
+            # it comes out zero, skew the odds in favour of zero: fifty-fifty
+            # choice between a zero and a nonzero tag.
+            if random.randint(0, 1) == 1:
+                vlan_tag = random.randint(1, 0xFFE)
+            else:
+                vlan_tag = 0
         network = Network(
             name=name, ip=ip, netmask=netmask, vlan_tag=vlan_tag,
             description=description)

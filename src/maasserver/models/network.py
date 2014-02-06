@@ -54,7 +54,7 @@ class Network(CleanSave, Model):
         help_text="Network mask (e.g. 255.255.255.0).")
 
     vlan_tag = PositiveSmallIntegerField(
-        editable=True, blank=False, unique=True,
+        editable=True, null=True, blank=True, unique=True,
         help_text="A 12-bit field specifying the VLAN to which the frame "
                   "belongs. The hexadecimal values of 0x000 and 0xFFF "
                   "are reserved. All other values may be used as VLAN "
@@ -85,13 +85,18 @@ class Network(CleanSave, Model):
 
     def __unicode__(self):
         net = unicode(self.get_network().cidr)
-        if self.vlan_tag == 0:
+        # A vlan_tag of zero normalises to None.  But __unicode__ may be
+        # called while we're not in a clean state, so handle zero as well.
+        if self.vlan_tag is None or self.vlan_tag == 0:
             return net
         else:
             return "%s(tag:%x)" % (net, self.vlan_tag)
 
     def clean_vlan_tag(self):
         """Validator for `vlan_tag`."""
+        if self.vlan_tag is None:
+            # Always OK.
+            return
         if self.vlan_tag == 0xFFF:
             raise ValidationError(
                 {'tag': ["Cannot use reserved value 0xFFF."]})
@@ -133,6 +138,9 @@ class Network(CleanSave, Model):
             raise ValidationError("Invalid network address: %s" % e)
         # Normalise self.ip.  This strips off any host bits from the address.
         self.ip = unicode(net.cidr.ip)
+        # Normalise self.vlan_tag.  A zero value ("not a VLAN") becomes None.
+        if self.vlan_tag == 0:
+            self.vlan_tag = None
 
     def validate_unique(self, exclude=None):
         super(Network, self).validate_unique(exclude=exclude)

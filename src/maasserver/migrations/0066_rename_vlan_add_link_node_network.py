@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
-import datetime
-
-from django.db import models
+from south.utils import datetime_utils as datetime
 from south.db import db
 from south.v2 import SchemaMigration
+from django.db import models
 
 
 class Migration(SchemaMigration):
@@ -18,7 +17,7 @@ class Migration(SchemaMigration):
             ('name', self.gf('django.db.models.fields.CharField')(unique=True, max_length=255)),
             ('ip', self.gf('django.db.models.fields.GenericIPAddressField')(unique=True, max_length=39)),
             ('netmask', self.gf('django.db.models.fields.GenericIPAddressField')(max_length=39)),
-            ('vlan_tag', self.gf('django.db.models.fields.PositiveSmallIntegerField')(unique=True)),
+            ('vlan_tag', self.gf('django.db.models.fields.PositiveSmallIntegerField')(unique=True, null=True, blank=True)),
             ('description', self.gf('django.db.models.fields.CharField')(default=u'', max_length=255, blank=True)),
         ))
         db.send_create_signal(u'maasserver', ['Network'])
@@ -67,7 +66,7 @@ class Migration(SchemaMigration):
             'date_joined': ('django.db.models.fields.DateTimeField', [], {'default': 'datetime.datetime.now'}),
             'email': ('django.db.models.fields.EmailField', [], {'unique': 'True', 'max_length': '75', 'blank': 'True'}),
             'first_name': ('django.db.models.fields.CharField', [], {'max_length': '30', 'blank': 'True'}),
-            'groups': ('django.db.models.fields.related.ManyToManyField', [], {'to': u"orm['auth.Group']", 'symmetrical': 'False', 'blank': 'True'}),
+            'groups': ('django.db.models.fields.related.ManyToManyField', [], {'symmetrical': 'False', 'related_name': "u'user_set'", 'blank': 'True', 'to': u"orm['auth.Group']"}),
             u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
             'is_active': ('django.db.models.fields.BooleanField', [], {'default': 'True'}),
             'is_staff': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
@@ -75,7 +74,7 @@ class Migration(SchemaMigration):
             'last_login': ('django.db.models.fields.DateTimeField', [], {'default': 'datetime.datetime.now'}),
             'last_name': ('django.db.models.fields.CharField', [], {'max_length': '30', 'blank': 'True'}),
             'password': ('django.db.models.fields.CharField', [], {'max_length': '128'}),
-            'user_permissions': ('django.db.models.fields.related.ManyToManyField', [], {'to': u"orm['auth.Permission']", 'symmetrical': 'False', 'blank': 'True'}),
+            'user_permissions': ('django.db.models.fields.related.ManyToManyField', [], {'symmetrical': 'False', 'related_name': "u'user_set'", 'blank': 'True', 'to': u"orm['auth.Permission']"}),
             'username': ('django.db.models.fields.CharField', [], {'unique': 'True', 'max_length': '30'})
         },
         u'contenttypes.contenttype': {
@@ -131,7 +130,7 @@ class Migration(SchemaMigration):
             'content': ('metadataserver.fields.BinaryField', [], {'blank': 'True'}),
             'filename': ('django.db.models.fields.CharField', [], {'max_length': '255'}),
             u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
-            'key': ('django.db.models.fields.CharField', [], {'default': "u'c9791474-8d7b-11e3-8453-9c4e363b1c94'", 'unique': 'True', 'max_length': '36'}),
+            'key': ('django.db.models.fields.CharField', [], {'default': "u'1cef8bac-8ee3-11e3-8252-94de80b61466'", 'unique': 'True', 'max_length': '36'}),
             'owner': ('django.db.models.fields.related.ForeignKey', [], {'default': 'None', 'to': u"orm['auth.User']", 'null': 'True', 'blank': 'True'})
         },
         u'maasserver.macaddress': {
@@ -149,7 +148,7 @@ class Migration(SchemaMigration):
             'ip': ('django.db.models.fields.GenericIPAddressField', [], {'unique': 'True', 'max_length': '39'}),
             'name': ('django.db.models.fields.CharField', [], {'unique': 'True', 'max_length': '255'}),
             'netmask': ('django.db.models.fields.GenericIPAddressField', [], {'max_length': '39'}),
-            'vlan_tag': ('django.db.models.fields.PositiveSmallIntegerField', [], {'unique': 'True'})
+            'vlan_tag': ('django.db.models.fields.PositiveSmallIntegerField', [], {'unique': 'True', 'null': 'True', 'blank': 'True'})
         },
         u'maasserver.node': {
             'Meta': {'object_name': 'Node'},
@@ -172,7 +171,7 @@ class Migration(SchemaMigration):
             'routers': ('djorm_pgarray.fields.ArrayField', [], {'default': 'None', 'dbtype': "u'macaddr'", 'null': 'True', 'blank': 'True'}),
             'status': ('django.db.models.fields.IntegerField', [], {'default': '0', 'max_length': '10'}),
             'storage': ('django.db.models.fields.IntegerField', [], {'default': '0'}),
-            'system_id': ('django.db.models.fields.CharField', [], {'default': "u'node-c97b5392-8d7b-11e3-8453-9c4e363b1c94'", 'unique': 'True', 'max_length': '41'}),
+            'system_id': ('django.db.models.fields.CharField', [], {'default': "u'node-1cf030fc-8ee3-11e3-8252-94de80b61466'", 'unique': 'True', 'max_length': '41'}),
             'tags': ('django.db.models.fields.related.ManyToManyField', [], {'to': u"orm['maasserver.Tag']", 'symmetrical': 'False'}),
             'token': ('django.db.models.fields.related.ForeignKey', [], {'to': u"orm['piston.Token']", 'null': 'True'}),
             'updated': ('django.db.models.fields.DateTimeField', [], {}),
@@ -258,7 +257,7 @@ class Migration(SchemaMigration):
             'is_approved': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
             'key': ('django.db.models.fields.CharField', [], {'max_length': '18'}),
             'secret': ('django.db.models.fields.CharField', [], {'max_length': '32'}),
-            'timestamp': ('django.db.models.fields.IntegerField', [], {'default': '1391504854L'}),
+            'timestamp': ('django.db.models.fields.IntegerField', [], {'default': '1391659184L'}),
             'token_type': ('django.db.models.fields.IntegerField', [], {}),
             'user': ('django.db.models.fields.related.ForeignKey', [], {'blank': 'True', 'related_name': "'tokens'", 'null': 'True', 'to': u"orm['auth.User']"}),
             'verifier': ('django.db.models.fields.CharField', [], {'max_length': '10'})
