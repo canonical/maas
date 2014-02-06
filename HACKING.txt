@@ -225,7 +225,7 @@ not start by default.
 
 First create a superuser and start all MAAS services::
 
-    $ bin/maas createadmin --username=root --email=MYEMAIL@EXAMPLE.COM
+    $ bin/maas createsuperuser
     $ make run
 
 Substitute your own email.  The command will prompt for a choice of password.
