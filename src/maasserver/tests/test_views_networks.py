@@ -15,23 +15,12 @@ __metaclass__ = type
 __all__ = []
 
 
-import httplib
-from urllib import urlencode
-
-from django.core.exceptions import ValidationError
 from django.core.urlresolvers import reverse
-from lxml.html import fromstring
 from maasserver.models import Network
-from maasserver.testing import (
-    extract_redirect,
-    get_content_links,
-    reload_object,
-    )
+from maasserver.testing import get_content_links
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.views.networks import NetworkAdd
 from testtools.matchers import (
-    Contains,
     ContainsAll,
     Equals,
     MatchesAll,
@@ -50,7 +39,8 @@ class NetworkListingViewTest(MAASServerTestCase):
             get_content_links(response, element='#main-nav'))
 
     def test_network_list_displays_network_details(self):
-        # Network listing displays the network name and the network description.
+        # Network listing displays the network name and the network
+        # description.
         self.client_log_in()
         [factory.make_network() for i in range(3)]
         networks = Network.objects.all()
@@ -85,9 +75,13 @@ class NetworkListingViewTestNonAdmin(MAASServerTestCase):
         networks = [factory.make_network() for i in range(3)]
         response = self.client.get(reverse('network-list'))
         network_edit_links = [
-            reverse('network-edit', args=[network.name]) for network in networks]
+            reverse('network-edit', args=[network.name])
+            for network in networks
+            ]
         network_delete_links = [
-            reverse('network-del', args=[network.name]) for network in networks]
+            reverse('network-del', args=[network.name])
+            for network in networks
+            ]
         all_links = get_content_links(response)
         self.assertThat(
             all_links,
@@ -109,9 +103,13 @@ class NetworkListingViewTestAdmin(MAASServerTestCase):
         self.client_log_in(as_admin=True)
         networks = [factory.make_network() for i in range(3)]
         network_edit_links = [
-            reverse('network-edit', args=[network.name]) for network in networks]
+            reverse('network-edit', args=[network.name])
+            for network in networks
+            ]
         network_delete_links = [
-            reverse('network-del', args=[network.name]) for network in networks]
+            reverse('network-del', args=[network.name])
+            for network in networks
+            ]
 
         response = self.client.get(reverse('network-list'))
         all_links = get_content_links(response)
