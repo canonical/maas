@@ -1,4 +1,4 @@
-# Copyright 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test node constraint forms."""
@@ -13,6 +13,8 @@ str = None
 
 __metaclass__ = type
 __all__ = []
+
+from random import randint
 
 from django import forms
 from django.core.exceptions import ValidationError
@@ -218,6 +220,83 @@ class TestAcquireNodeForm(MAASServerTestCase):
         self.assertEquals(
             (False, {'mem': ["Invalid memory: number of MB required."]}),
             (form.is_valid(), form.errors))
+
+    def test_networks_filters_by_name(self):
+        networks = [factory.make_network() for _ in range(5)]
+        nodes = [factory.make_node(networks=[network]) for network in networks]
+        # Filter for this network.  Take one in the middle to avoid
+        # coincidental success based on ordering.
+        pick = 2
+        self.assertConstrainedNodes(
+            {nodes[pick]},
+            {'networks': [networks[pick].name]})
+
+    def test_networks_filters_by_ip(self):
+        networks = [factory.make_network() for _ in range(5)]
+        nodes = [factory.make_node(networks=[network]) for network in networks]
+        # Filter for this network.  Take one in the middle to avoid
+        # coincidental success based on ordering.
+        pick = 2
+        self.assertConstrainedNodes(
+            {nodes[pick]},
+            {'networks': ['ip:%s' % networks[pick].ip]})
+
+    def test_networks_filters_by_vlan_tag(self):
+        vlan_tags = list(range(5))
+        networks = [factory.make_network(vlan_tag=tag) for tag in vlan_tags]
+        nodes = [factory.make_node(networks=[network]) for network in networks]
+        # Filter for this network.  Take one in the middle to avoid
+        # coincidental success based on ordering.
+        pick = 2
+        self.assertConstrainedNodes(
+            {nodes[pick]},
+            {'networks': ['vlan:%d' % vlan_tags[pick]]})
+
+    def test_invalid_networks(self):
+        form = AcquireNodeForm(data={'networks': 'ip:10.0.0.0'})
+        self.assertEquals(
+            (
+                False,
+                {
+                    'networks': [
+                        "Invalid parameter: list of networks required.",
+                        ],
+                },
+            ),
+            (form.is_valid(), form.errors))
+
+        # The validator is unit-tested separately.  This just verifies that it
+        # is being consulted.
+        form = AcquireNodeForm(data={'networks': ['vlan:-1']})
+        self.assertEquals(
+            (False, {'networks': ["VLAN tag out of range (1-4094)."]}),
+            (form.is_valid(), form.errors))
+
+    def test_networks_combines_filters(self):
+        network_by_name = factory.make_network()
+        network_by_ip = factory.make_network()
+        network_by_vlan = factory.make_network(vlan_tag=randint(1, 0xffe))
+        factory.make_node(networks=[network_by_name, network_by_ip])
+        factory.make_node(networks=[network_by_name, network_by_vlan])
+        right_node = factory.make_node(
+            networks=[network_by_name, network_by_ip, network_by_vlan])
+        factory.make_node(networks=[network_by_ip, network_by_vlan])
+        factory.make_node(networks=[])
+
+        self.assertConstrainedNodes(
+            {right_node},
+            {
+                'networks': [
+                    network_by_name.name,
+                    'ip:%s' % network_by_ip.ip,
+                    'vlan:%d' % network_by_vlan.vlan_tag,
+                    ],
+            })
+
+    def test_networks_ignores_other_networks(self):
+        network = factory.make_network()
+        node = factory.make_node(networks=[network, factory.make_network()])
+        self.assertConstrainedNodes([node], {'networks': [network.name]})
 
     def test_connected_to(self):
         mac1 = MAC('aa:bb:cc:dd:ee:ff')

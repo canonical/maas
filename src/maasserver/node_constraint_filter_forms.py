@@ -1,4 +1,4 @@
-# Copyright 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from __future__ import (
@@ -32,9 +32,11 @@ from maasserver.forms import (
     ValidatorMultipleChoiceField,
     )
 from maasserver.models import (
+    Network,
     Tag,
     Zone,
     )
+from maasserver.models.network import parse_network_spec
 from maasserver.models.zone import ZONE_NAME_VALIDATOR
 from maasserver.utils.orm import (
     macs_contain,
@@ -92,6 +94,7 @@ JUJU_ACQUIRE_FORM_FIELDS_MAPPING = {
 }
 
 
+# XXX JeroenVermeulen 2014-02-06: Can we document this please?
 class RenamableFieldsForm(forms.Form):
 
     def __init__(self, *args, **kwargs):
@@ -154,6 +157,12 @@ class AcquireNodeForm(RenamableFieldsForm):
         error_messages={'invalid': "Invalid memory: number of MB required."})
 
     tags = UnconstrainedMultipleChoiceField(label="Tags", required=False)
+
+    networks = ValidatorMultipleChoiceField(
+        validator=parse_network_spec, label="Attached to networks",
+        required=False, error_messages={
+            'invalid_list': "Invalid parameter: list of networks required.",
+            })
 
     connected_to = ValidatorMultipleChoiceField(
         validator=mac_validator, label="Connected to", required=False,
@@ -238,6 +247,15 @@ class AcquireNodeForm(RenamableFieldsForm):
                 {self.get_field_name('not_in_zone'): [error_msg]})
         return value
 
+    def clean_networks(self):
+        value = self.cleaned_data[self.get_field_name('networks')]
+        if value is None:
+            return None
+        try:
+            return [Network.objects.get_from_spec(spec) for spec in value]
+        except Network.DoesNotExist as e:
+            raise ValidationError(e.message)
+
     def clean(self):
         if not self.ignore_unknown_constraints:
             unknown_constraints = set(
@@ -299,6 +317,12 @@ class AcquireNodeForm(RenamableFieldsForm):
         if not_in_zone is not None and len(not_in_zone) > 0:
             not_in_zones = Zone.objects.filter(name__in=not_in_zone)
             filtered_nodes = filtered_nodes.exclude(zone__in=not_in_zones)
+
+        # Filter by networks.
+        networks = self.cleaned_data.get(self.get_field_name('networks'))
+        if networks is not None:
+            for network in networks:
+                filtered_nodes = filtered_nodes.filter(networks=network)
 
         # Filter by connected_to.
         connected_to = self.cleaned_data.get(

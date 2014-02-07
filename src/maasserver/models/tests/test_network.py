@@ -19,9 +19,114 @@ from random import randint
 
 from django.core.exceptions import ValidationError
 from maasserver.models import Network
+from maasserver.models.network import parse_network_spec
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from netaddr import IPNetwork
+from netaddr import (
+    IPAddress,
+    IPNetwork,
+    )
+
+
+class TestParseNetworkSpec(MAASServerTestCase):
+    """Tests for `parse_network_spec`."""
+
+    def test_accepts_network_name(self):
+        network = factory.make_network()
+        self.assertEqual(
+            ('name', network.name),
+            parse_network_spec(network.name))
+
+    def test_rejects_invalid_name(self):
+        self.assertRaises(ValidationError, parse_network_spec, '#.!')
+
+    def test_rejects_unknown_type_tag(self):
+        self.assertRaises(ValidationError, parse_network_spec, 'foo:bar')
+
+    def test_accepts_ip_address(self):
+        self.assertEqual(
+            ('ip', IPAddress('10.9.8.7')),
+            parse_network_spec('ip:10.9.8.7'))
+
+    def test_rejects_untagged_ip_address(self):
+        # If this becomes a stumbling block, it would be possible to accept
+        # plain IP addresses as network specifiers.
+        network = factory.make_network()
+        ip = unicode(network.ip)
+        self.assertRaises(ValidationError, parse_network_spec, ip)
+
+    def test_rejects_empty_ip_address(self):
+        self.assertRaises(ValidationError, parse_network_spec, 'ip:')
+
+    def test_rejects_malformed_ip_address(self):
+        self.assertRaises(ValidationError, parse_network_spec, 'ip:abc')
+
+    def test_accepts_vlan_tag_in_range(self):
+        network = factory.make_network(vlan_tag=1)
+        self.assertEqual(
+            ('vlan', network.vlan_tag),
+            parse_network_spec('vlan:%d' % network.vlan_tag))
+
+        network = factory.make_network(vlan_tag=4094)
+        self.assertEqual(
+            ('vlan', network.vlan_tag),
+            parse_network_spec('vlan:%d' % network.vlan_tag))
+
+    def test_rejects_empty_vlan_tag(self):
+        self.assertRaises(ValidationError, parse_network_spec, 'vlan:')
+
+    def test_rejects_nonnumerical_vlan_tag(self):
+        self.assertRaises(ValidationError, parse_network_spec, 'vlan:B')
+
+    def test_rejects_hexadecimal_vlan_tag(self):
+        # Hexadecimal VLAN tags are a separate planned feature.
+        self.assertRaises(ValidationError, parse_network_spec, 'vlan:0x1a')
+
+    def test_rejects_reserved_vlan_tags(self):
+        self.assertRaises(ValidationError, parse_network_spec, 'vlan:0')
+        self.assertRaises(ValidationError, parse_network_spec, 'vlan:4095')
+
+    def test_rejects_vlan_tag_out_of_range(self):
+        self.assertRaises(ValidationError, parse_network_spec, 'vlan:-1')
+        self.assertRaises(ValidationError, parse_network_spec, 'vlan:4096')
+
+
+class TestNetworkManager(MAASServerTestCase):
+
+    def test_get_from_spec_validates_first(self):
+        self.assertRaises(ValidationError, Network.objects.get_from_spec, '??')
+
+    def test_get_from_spec_finds_by_name(self):
+        network = factory.make_network()
+        self.assertEqual(network, Network.objects.get_from_spec(network.name))
+
+    def test_get_from_spec_fails_on_unknown_name(self):
+        self.assertRaises(
+            Network.DoesNotExist,
+            Network.objects.get_from_spec, factory.make_name('no'))
+
+    def test_get_from_spec_finds_by_ip(self):
+        network = factory.make_network()
+        self.assertEqual(
+            network,
+            Network.objects.get_from_spec('ip:%s' % network.ip))
+
+    def test_get_from_spec_fails_on_unknown_ip(self):
+        self.assertRaises(
+            Network.DoesNotExist,
+            Network.objects.get_from_spec, 'ip:10.99.99.99')
+
+    def test_get_from_spec_finds_by_vlan_tag(self):
+        vlan_tag = randint(1, 0xffe)
+        network = factory.make_network(vlan_tag=vlan_tag)
+        self.assertEqual(
+            network,
+            Network.objects.get_from_spec('vlan:%s' % network.vlan_tag))
+
+    def test_get_from_spec_fails_on_unknown_vlan(self):
+        self.assertRaises(
+            Network.DoesNotExist,
+            Network.objects.get_from_spec, 'vlan:999')
 
 
 class TestNetwork(MAASServerTestCase):

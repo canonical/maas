@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Restful MAAS API.
@@ -817,6 +817,13 @@ class NodesHandler(OperationsHandler):
         :param connected_to: List of routers' MAC addresses the returned
             node must be connected to.
         :type connected_to: unicode or list of unicodes
+        :param networks: List of networks (defined in MAAS) to which the node
+            must be attached.  A network can be identified by the name
+            assigned to it in MAAS; or by an `ip:` prefix followed by any IP
+            address that falls within the network; or a `vlan:` prefix
+            followed by a numeric VLAN tag, e.g. `vlan:23` for VLAN number 23.
+            Valid VLAN tags must be in the range of 1 to 4095 inclusive.
+        :type networks: list of unicodes
         :param not_connected_to: List of routers' MAC Addresses the returned
             node must not be connected to.
         :type connected_to: list of unicodes

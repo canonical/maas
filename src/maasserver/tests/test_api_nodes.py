@@ -490,7 +490,7 @@ class TestNodesAPI(APITestCase):
         # Fails with Conflict error: resource can't satisfy request.
         self.assertEqual(httplib.CONFLICT, response.status_code)
 
-    def test_POST_ignores_already_allocated_node(self):
+    def test_POST_acquire_ignores_already_allocated_node(self):
         factory.make_node(
             status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
         response = self.client.post(
@@ -783,6 +783,25 @@ class TestNodesAPI(APITestCase):
         self.assertResponseCode(httplib.OK, response)
         response_json = json.loads(response.content)
         self.assertEqual(node.system_id, response_json['system_id'])
+
+    def test_POST_acquire_allocates_node_by_network(self):
+        networks = [factory.make_network() for _ in range(5)]
+        nodes = [
+            factory.make_node(status=NODE_STATUS.READY, networks=[network])
+            for network in networks
+            ]
+        # We'll make it so that only the node and network at this index will
+        # match the request.
+        pick = 2
+
+        response = self.client.post(reverse('nodes_handler'), {
+            'op': 'acquire',
+            'networks': [networks[pick].name],
+        })
+
+        self.assertResponseCode(httplib.OK, response)
+        response_json = json.loads(response.content)
+        self.assertEqual(nodes[pick].system_id, response_json['system_id'])
 
     def test_POST_acquire_obeys_not_in_zone(self):
         # Zone we don't want to acquire from.

@@ -14,6 +14,7 @@ str = None
 __metaclass__ = type
 __all__ = [
     'Network',
+    'parse_network_spec',
     ]
 
 
@@ -22,12 +23,16 @@ from django.core.validators import RegexValidator
 from django.db.models import (
     CharField,
     GenericIPAddressField,
+    Manager,
     Model,
     PositiveSmallIntegerField,
     )
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
-from netaddr import IPNetwork
+from netaddr import (
+    IPAddress,
+    IPNetwork,
+    )
 from netaddr.core import AddrFormatError
 
 # Network name validator.  Must consist of alphanumerical characters and/or
@@ -35,10 +40,88 @@ from netaddr.core import AddrFormatError
 NETWORK_NAME_VALIDATOR = RegexValidator('^[\w-]+$')
 
 
+def parse_network_spec(spec):
+    """Parse a network specifier; return its type and value.
+
+    Networks can be identified by name, by an arbitrary IP address in the
+    network (prefixed with `ip:`), or by a VLAN tag (prefixed with `vlan:`).
+
+    :param spec: A string that should identify a network.
+    :return: A tuple of the specifier's type (`name`, `ip`, or `vlan`) and the
+        network's identifying value (a name, IP address, or numeric VLAN tag
+        respectively).
+    :raise ValidationError: If `spec` is malformed.
+    """
+    if ':' in spec:
+        type_tag, value = spec.split(':', 1)
+    else:
+        type_tag, value = 'name', spec
+
+    if type_tag == 'name':
+        # Plain network name.  See that it really validates as one.
+        NETWORK_NAME_VALIDATOR(spec)
+    elif type_tag == 'ip':
+        try:
+            value = IPAddress(value)
+        except AddrFormatError as e:
+            raise ValidationError("Invalid IP address: %s." % e)
+    elif type_tag == 'vlan':
+        try:
+            vlan_tag = int(value)
+        except ValueError:
+            raise ValidationError("Invalid VLAN tag: '%s'." % value)
+        if vlan_tag <= 0 or vlan_tag >= 0xfff:
+            raise ValidationError("VLAN tag out of range (1-4094).")
+        value = vlan_tag
+    else:
+        raise ValidationError(
+            "Invalid network specifier type: '%s'." % type_tag)
+    return type_tag, value
+
+
+class NetworkManager(Manager):
+    """Manager for :class:`Network` model class.
+
+    Don't import or instantiate this directly; access as `<Class>.objects` on
+    the model class it manages.
+    """
+
+    def get_from_spec(self, spec):
+        """Find a single `Network` from a given network specifier.
+
+        A network specifier can be a network's name, or a prefix `ip:`
+        followed by an IP address in the network's address range, or a prefix
+        `vlan:` followed by a numerical (nonzero) VLAN tag.
+
+        :raise ValidationError: If `spec` is malformed.
+        :raise Network.DoesNotExist: If the network specifier does not match
+            any known network.
+        :return: The one `Network` matching `spec`.
+        """
+        type_tag, value = parse_network_spec(spec)
+        if type_tag == 'name':
+            get_args = {'name': value}
+        elif type_tag == 'ip':
+            # XXX JeroenVermeulen 2014-02-06: Match "contains," not "equals."
+            get_args = {'ip': unicode(value)}
+        elif type_tag == 'vlan':
+            get_args = {'vlan_tag': value}
+        else:
+            # Should've been caught by parse_network_spec().
+            raise AssertionError(
+                "Unhandled network specifier type '%s'" % type_tag)
+        try:
+            return self.get(**get_args)
+        except Network.DoesNotExist:
+            raise Network.DoesNotExist("No network matching '%s'." % spec)
+
+
 class Network(CleanSave, Model):
 
     class Meta(DefaultMeta):
         """Needed for South to recognize this model."""
+
+    objects = NetworkManager()
 
     name = CharField(
         unique=True, blank=False, editable=True, max_length=255,
