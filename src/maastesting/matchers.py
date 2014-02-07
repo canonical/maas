@@ -14,10 +14,12 @@ str = None
 __metaclass__ = type
 __all__ = [
     'IsCallable',
+    'Provides',
     ]
 
 from testtools.matchers import (
     Matcher,
+    MatchesPredicate,
     Mismatch,
     )
 
@@ -31,3 +33,11 @@ class IsCallable(Matcher):
 
     def __str__(self):
         return self.__class__.__name__
+
+
+class Provides(MatchesPredicate):
+    """Match if the given interface is provided."""
+
+    def __init__(self, iface):
+        super(Provides, self).__init__(
+            iface.providedBy, "%%r does not provide %s" % iface.getName())
