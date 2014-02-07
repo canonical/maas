@@ -190,10 +190,11 @@ class Network(CleanSave, Model):
             return
         if self.vlan_tag == 0xFFF:
             raise ValidationError(
-                {'tag': ["Cannot use reserved value 0xFFF."]})
+                {'vlan_tag': ["Cannot use reserved value 0xFFF."]})
         if self.vlan_tag < 0 or self.vlan_tag > 0xFFF:
             raise ValidationError(
-                {'tag': ["Value must be between 0x000 and 0xFFF (12 bits)"]})
+                {'vlan_tag':
+                    ["Value must be between 0x000 and 0xFFF (12 bits)"]})
 
     def clean_netmask(self):
         """Validator for `vlan_tag`."""

@@ -173,14 +173,24 @@ class TestNetwork(MAASServerTestCase):
             max_tag, factory.make_network(vlan_tag=max_tag).vlan_tag)
 
     def test_reserved_vlan_tag_does_not_validate(self):
-        self.assertRaises(
+        error = self.assertRaises(
             ValidationError, factory.make_network, vlan_tag=0xFFF)
+        self.assertEqual(
+            error.message_dict,
+            {'vlan_tag': ["Cannot use reserved value 0xFFF."]})
 
     def test_out_of_range_vlan_tags_do_not_validate(self):
-        self.assertRaises(
+        out_of_range_msg = (
+            "Value must be between 0x000 and 0xFFF (12 bits)")
+        error = self.assertRaises(
             ValidationError, factory.make_network, vlan_tag=0x1000)
-        self.assertRaises(
+        self.assertEqual(
+            error.message_dict, {'vlan_tag': [out_of_range_msg]})
+
+        error = self.assertRaises(
             ValidationError, factory.make_network, vlan_tag=-1)
+        self.assertEqual(
+            error.message_dict, {'vlan_tag': [out_of_range_msg]})
 
     def test_vlan_tag_normalises_zero_to_None(self):
         self.assertIsNone(factory.make_network(vlan_tag=0).vlan_tag)
@@ -188,7 +198,11 @@ class TestNetwork(MAASServerTestCase):
     def test_nonzero_vlan_tag_is_unique(self):
         tag = randint(1, 0xffe)
         factory.make_network(vlan_tag=tag)
-        self.assertRaises(ValidationError, factory.make_network, vlan_tag=tag)
+        error = self.assertRaises(
+            ValidationError, factory.make_network, vlan_tag=tag)
+        self.assertEqual(
+            error.message_dict,
+            {'vlan_tag': ['Network with this Vlan tag already exists.']})
 
     def test_zero_vlan_tag_is_not_unique(self):
         networks = [factory.make_network(vlan_tag=0) for _ in range(3)]
