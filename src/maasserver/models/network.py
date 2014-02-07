@@ -29,10 +29,8 @@ from django.db.models import (
     )
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
-from netaddr import (
-    IPAddress,
-    IPNetwork,
-    )
+from maasserver.utils.network import make_network
+from netaddr import IPAddress
 from netaddr.core import AddrFormatError
 
 # Network name validator.  Must consist of alphanumerical characters and/or
@@ -165,12 +163,7 @@ class Network(CleanSave, Model):
         :raise AddrFormatError: If the combination of `self.ip` and
             `self.netmask` is a malformed network address.
         """
-        # Careful: IPNetwork(ip, netmask) will _seem_ to work, but the second
-        # argument does not get interpreted as the netmask!  Instead it gets
-        # accepted as a boolean that affects how to pick a default netmask.
-        # Testing may not show it, unless you try it with a different netmask
-        # than is the default for your base IP address.
-        return IPNetwork('%s/%s' % (self.ip, self.netmask))
+        return make_network(self.ip, self.netmask)
 
     def __unicode__(self):
         net = unicode(self.get_network().cidr)
@@ -201,9 +194,8 @@ class Network(CleanSave, Model):
         # To see whether the netmask is well-formed, combine it with an
         # arbitrary valid IP address and see if IPNetwork's constructor
         # complains.
-        sample_cidr = '10.1.1.1/%s' % self.netmask
         try:
-            IPNetwork(sample_cidr)
+            make_network('10.1.1.1', self.netmask)
         except AddrFormatError as e:
             raise ValidationError({'netmask': [e.message]})
 

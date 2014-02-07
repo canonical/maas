@@ -22,6 +22,7 @@ from maasserver.models import Network
 from maasserver.models.network import parse_network_spec
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.network import make_network
 from netaddr import (
     IPAddress,
     IPNetwork,
@@ -227,7 +228,7 @@ class TestNetwork(MAASServerTestCase):
 
     def test_netmask_validation_accepts_netmask(self):
         netmask = '255.255.255.128'
-        network = IPNetwork('%s/%s' % (factory.getRandomIPAddress(), netmask))
+        network = make_network(factory.getRandomIPAddress(), netmask)
         self.assertEqual(
             unicode(network.netmask),
             factory.make_network(network=network).netmask)
@@ -236,10 +237,10 @@ class TestNetwork(MAASServerTestCase):
         ip = factory.getRandomIPAddress()
         self.assertRaises(
             ValidationError, factory.make_network,
-            network=IPNetwork('%s/255.255.255.255' % ip))
+            network=make_network(ip, '255.255.255.255'))
         self.assertRaises(
             ValidationError, factory.make_network,
-            network=IPNetwork('%s/0.0.0.0' % ip))
+            network=make_network(ip, '0.0.0.0'))
 
     def test_netmask_validation_does_not_allow_mixed_zeroes_and_ones(self):
         # The factory won't let us create a Network with a nonsensical netmask,

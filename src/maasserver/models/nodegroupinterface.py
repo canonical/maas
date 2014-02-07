@@ -34,10 +34,8 @@ from maasserver.enum import (
     )
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
-from netaddr import (
-    IPAddress,
-    IPNetwork,
-    )
+from maasserver.utils.network import make_network
+from netaddr import IPAddress
 from netaddr.core import AddrFormatError
 
 # The minimum number of leading bits of the routing prefix for a
@@ -94,12 +92,18 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
         None.
 
         :return: :class:`IPNetwork`
+        :raise AddrFormatError: If the combination of broadcast address and
+            subnet mask is malformed.
         """
-        if self.broadcast_ip and self.subnet_mask:
-            network = IPNetwork(
-                "%s/%s" % (self.broadcast_ip, self.subnet_mask)).network
-            return IPNetwork("%s/%s" % (network, self.subnet_mask))
-        return None
+        broadcast = self.broadcast_ip
+        netmask = self.subnet_mask
+        # Nullness check for GenericIPAddress fields is deliberately kept
+        # vague: GenericIPAddressField seems to represent nulls as empty
+        # strings.
+        if broadcast and netmask:
+            return make_network(broadcast, netmask).cidr
+        else:
+            return None
 
     def display_management(self):
         """Return management status text as displayed to the user."""

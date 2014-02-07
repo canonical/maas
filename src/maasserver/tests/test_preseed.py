@@ -56,7 +56,7 @@ from maasserver.preseed import (
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import map_enum
-from netaddr import IPNetwork
+from maasserver.utils.network import make_network
 from testtools.matchers import (
     AllMatch,
     Contains,
@@ -339,7 +339,7 @@ class TestPickClusterControllerAddress(MAASServerTestCase):
 
         Other network settings are derived from the IP address.
         """
-        network = IPNetwork('%s/%s' % (ip, subnet_mask))
+        network = make_network(ip, subnet_mask)
         return factory.make_node_group_interface(
             nodegroup=nodegroup, management=mgt, network=network, ip=ip,
             subnet_mask=subnet_mask)

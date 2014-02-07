@@ -24,6 +24,7 @@ from maasserver.models import NodeGroup
 from maasserver.models.nodegroupinterface import MINIMUM_NETMASK_BITS
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.network import make_network
 from netaddr import IPNetwork
 
 
@@ -111,7 +112,7 @@ class TestNodeGroupInterface(MAASServerTestCase):
             exception.message_dict)
 
     def test_clean_network_rejects_huge_network(self):
-        big_network = IPNetwork('1.2.3.4/%d' % (MINIMUM_NETMASK_BITS - 1))
+        big_network = make_network('1.2.3.4', MINIMUM_NETMASK_BITS - 1)
         exception = self.assertRaises(
             ValidationError, factory.make_node_group, network=big_network)
         message = (
@@ -126,12 +127,12 @@ class TestNodeGroupInterface(MAASServerTestCase):
             exception.message_dict)
 
     def test_clean_network_accepts_network_if_not_too_big(self):
-        network = IPNetwork('1.2.3.4/%d' % MINIMUM_NETMASK_BITS)
+        network = make_network('1.2.3.4', MINIMUM_NETMASK_BITS)
         self.assertIsInstance(
             factory.make_node_group(network=network), NodeGroup)
 
     def test_clean_network_accepts_big_network_if_unmanaged(self):
-        network = IPNetwork('1.2.3.4/%d' % (MINIMUM_NETMASK_BITS - 1))
+        network = make_network('1.2.3.4', MINIMUM_NETMASK_BITS - 1)
         nodegroup = factory.make_node_group(
             network=network,
             management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)

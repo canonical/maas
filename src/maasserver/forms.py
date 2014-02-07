@@ -99,9 +99,9 @@ from maasserver.node_action import (
     )
 from maasserver.power_parameters import POWER_TYPE_PARAMETERS
 from maasserver.utils import strip_domain
+from maasserver.utils.network import make_network
 from metadataserver.fields import Bin
 from metadataserver.models import CommissioningScript
-from netaddr import IPNetwork
 from provisioningserver.enum import POWER_TYPE_CHOICES
 
 
@@ -812,8 +812,7 @@ def validate_nonoverlapping_networks(interfaces):
     networks = [
         {
             'name': interface['interface'],
-            'network': IPNetwork(
-                '%s/%s' % (interface['ip'], interface['subnet_mask'])),
+            'network': make_network(interface['ip'], interface['subnet_mask']),
         }
         for interface in managed_interfaces
         ]
