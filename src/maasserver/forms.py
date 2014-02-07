@@ -1181,3 +1181,16 @@ class ZoneForm(ModelForm):
             raise forms.ValidationError(
                 "This zone is the default zone, it cannot be renamed.")
         return self.cleaned_data['name']
+
+
+class NetworkForm(ModelForm):
+
+    class Meta:
+        model = Network
+        fields = (
+            'name',
+            'description',
+            'ip',
+            'netmask',
+            'vlan_tag',
+            )

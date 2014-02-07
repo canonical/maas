@@ -537,6 +537,9 @@ class Factory(maastesting.factory.Factory):
             zone.node_set.add(*nodes)
         return zone
 
+    def make_vlan_tag(self):
+        return random.randint(1, 0xFFE)
+
     def make_network(self, name=None, network=None, vlan_tag=NO_VALUE,
                      description=None):
         """Create a `Network`.
@@ -560,7 +563,7 @@ class Factory(maastesting.factory.Factory):
             # it comes out zero, skew the odds in favour of zero: fifty-fifty
             # choice between a zero and a nonzero tag.
             if random.randint(0, 1) == 1:
-                vlan_tag = random.randint(1, 0xFFE)
+                vlan_tag = self.make_vlan_tag()
             else:
                 vlan_tag = 0
         network = Network(

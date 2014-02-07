@@ -1,0 +1,56 @@
+{% extends "maasserver/base.html" %}
+
+{% block nav-active-network-list %}active{% endblock %}
+{% block title %}Network {{ network.name }}{% endblock %}
+{% block page-title %}
+Physical network: {{ network.name }}
+{% endblock %}
+{% block layout-modifiers %}sidebar{% endblock %}
+{% block html_includes %}{% include "maasserver/snippets.html" %}
+{% endblock %}
+
+{% block sidebar %}
+  <h4>Actions</h4>
+  {% if user.is_superuser %}
+      <a href="{% url 'network-edit' network.name %}" class="button secondary">
+        Edit network
+      </a>
+      {% if not network.is_default %}
+      <a href="{% url 'network-del' network.name %}" class="button secondary">
+        Delete network
+      </a>
+      {% endif %}
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+
+  <div id="content-with-sidebar">
+  <ul class="data-list">
+    <li class="block size3 first">
+      <h4>Name</h4>
+        <span>{{ network.name }}</span>
+    </li>
+    <li class="block size3">
+      <h4>Description</h4>
+      <span>{{ network.description }}</span>
+    </li>
+    <li class="block size3">
+      <h4>Network</h4>
+      <span>{{ network.get_network }}</span>
+    </li>
+    <li class="block size3">
+      <h4>VLAN tag</h4>
+      <span>{{ network.vlan_tag|default_if_none:"" }}</span>
+    </li>
+    <li class="block size3">
+      <h4>Attached nodes</h4>
+      <span id="nodecount">
+        {{ network.node_set.count }}
+      </span>
+    </li>
+   </ul>
+
+  <div class="clear"></div>
+  </div>
+{% endblock %}

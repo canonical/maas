@@ -44,6 +44,7 @@ from maasserver.forms import (
     initialize_node_group,
     INTERFACES_VALIDATION_ERROR_MESSAGE,
     MACAddressForm,
+    NetworkForm,
     NewUserCreationForm,
     NodeActionForm,
     NodeForm,
@@ -61,6 +62,7 @@ from maasserver.forms import (
 from maasserver.models import (
     Config,
     MACAddress,
+    Network,
     Node,
     NodeGroup,
     NodeGroupInterface,
@@ -1486,3 +1488,31 @@ class TestZoneForm(MAASServerTestCase):
         self.assertEqual(
             {'name': ["This zone is the default zone, it cannot be renamed."]},
             form.errors)
+
+
+class TestNetworkForm(MAASServerTestCase):
+    """Tests for `NetworkForm`."""
+
+    def test_creates_network(self):
+        network = factory.getRandomNetwork()
+        name = factory.make_name('network')
+        definition = {
+            'name': name,
+            'description': factory.getRandomString(),
+            'ip': "%s" % network.cidr.ip,
+            'netmask': "%s" % network.netmask,
+            'vlan_tag': factory.make_vlan_tag(),
+        }
+        form = NetworkForm(data=definition)
+        form.save()
+        network_obj = Network.objects.get(name=name)
+        self.assertAttributes(network_obj, definition)
+
+    def test_updates_network(self):
+        network = factory.make_network()
+        new_description = factory.getRandomString()
+        form = NetworkForm(
+            data={'description': new_description}, instance=network)
+        form.save()
+        network = reload_object(network)
+        self.assertEqual(new_description, network.description)
