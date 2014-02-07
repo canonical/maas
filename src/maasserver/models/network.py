@@ -64,8 +64,14 @@ def parse_network_spec(spec):
         except AddrFormatError as e:
             raise ValidationError("Invalid IP address: %s." % e)
     elif type_tag == 'vlan':
+        if value.lower().startswith('0x'):
+            # Hexadecimal.
+            base = 16
+        else:
+            # Decimal.
+            base = 10
         try:
-            vlan_tag = int(value)
+            vlan_tag = int(value, base)
         except ValueError:
             raise ValidationError("Invalid VLAN tag: '%s'." % value)
         if vlan_tag <= 0 or vlan_tag >= 0xfff:

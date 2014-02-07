@@ -78,10 +78,11 @@ class TestParseNetworkSpec(MAASServerTestCase):
 
     def test_rejects_nonnumerical_vlan_tag(self):
         self.assertRaises(ValidationError, parse_network_spec, 'vlan:B')
+        self.assertRaises(ValidationError, parse_network_spec, 'vlan:0x1g')
 
-    def test_rejects_hexadecimal_vlan_tag(self):
-        # Hexadecimal VLAN tags are a separate planned feature.
-        self.assertRaises(ValidationError, parse_network_spec, 'vlan:0x1a')
+    def test_accepts_hexadecimal_vlan_tag(self):
+        self.assertEqual(('vlan', 0xf0f), parse_network_spec('vlan:0xf0f'))
+        self.assertEqual(('vlan', 0x1ac), parse_network_spec('vlan:0x1AC'))
 
     def test_rejects_reserved_vlan_tags(self):
         self.assertRaises(ValidationError, parse_network_spec, 'vlan:0')
