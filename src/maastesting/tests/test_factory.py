@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test the factory where appropriate.  Don't overdo this."""
@@ -57,6 +57,19 @@ class TestFactory(MAASTestCase):
         for octet in octets:
             self.assertTrue(0 <= int(octet) <= 255)
 
+    def test_getRandomIPAddress_but_not(self):
+        # We want to look for clashes between identical IPs and/or netmasks.
+        # Narrow down the range of randomness so we have a decent chance of
+        # triggering a clash, but not so far that we'll loop for very long
+        # trying to find a network we haven't seen already.
+        self.patch(
+            factory, 'getRandomIPAddress',
+            lambda: '10.%d.0.0' % randint(1, 200))
+        networks = []
+        for _ in range(100):
+            networks.append(factory.getRandomNetwork(but_not=networks))
+        self.assertEquals(len(networks), len(set(networks)))
+
     def test_getRandomUUID(self):
         uuid = factory.getRandomUUID()
         self.assertIsInstance(uuid, unicode)
@@ -71,6 +84,32 @@ class TestFactory(MAASTestCase):
         ip = factory.getRandomIPInNetwork(network)
         self.assertTrue(
             network.first <= IPAddress(ip).value <= network.last)
+
+    def test_make_ip_range_returns_IPs(self):
+        low, high = factory.make_ip_range()
+        self.assertIsInstance(low, IPAddress)
+        self.assertIsInstance(high, IPAddress)
+        self.assertLess(low, high)
+
+    def test_make_ip_range_obeys_network(self):
+        network = factory.getRandomNetwork()
+        low, high = factory.make_ip_range(network)
+        self.assertIn(low, network)
+        self.assertIn(high, network)
+
+    def test_make_ip_range_returns_low_and_high(self):
+        # Make a very very small network, to maximise the chances of exposure
+        # if the method gets this wrong e.g. by returning identical addresses.
+        low, high = factory.make_ip_range(factory.getRandomNetwork(slash=31))
+        self.assertLess(low, high)
+
+    def test_make_ip_range_obeys_but_not(self):
+        # Make a very very small network, to maximise the chances of exposure
+        # if the method gets this wrong.
+        network = factory.getRandomNetwork(slash=30)
+        first_low, first_high = factory.make_ip_range(network)
+        second_low, second_high = factory.make_ip_range(network)
+        self.assertNotEqual((first_low, first_high), (second_low, second_high))
 
     def test_getRandomDate_returns_datetime(self):
         self.assertIsInstance(factory.getRandomDate(), datetime)

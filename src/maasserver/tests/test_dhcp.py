@@ -42,30 +42,6 @@ from testresources import FixtureResource
 from testtools.matchers import EndsWith
 
 
-def make_ip_in(network, but_not=None):
-    """Generate a random IP address in the given network.
-
-    :param network: An `IPNetwork` that the network should be in.
-    :param but_not: Optional container of IP addresses that are not eligible.
-    :return: An `IPAddress` within `network`.
-    """
-    if but_not is None:
-        but_not = []
-    ip = factory.getRandomIPInNetwork(network)
-    while ip in but_not:
-        ip = factory.getRandomIPInNetwork(network)
-    return ip
-
-
-def make_ip_range(network):
-    """Return lower and upper bounds of an IP range within `network`."""
-    # Start off with an unacceptable value.
-    ip_range = (0, 0)
-    while ip_range[1] == ip_range[0]:
-        ip_range = tuple(sorted(make_ip_in(network) for _ in range(2)))
-    return ip_range
-
-
 class TestDHCP(MAASServerTestCase):
 
     resources = (
@@ -234,7 +210,8 @@ class TestDHCP(MAASServerTestCase):
         self.patch(settings, "DHCP_CONNECT", True)
         self.patch(dhcp, 'write_dhcp_config')
 
-        interface.ip = make_ip_in(interface.network, but_not=[interface.ip])
+        interface.ip = factory.getRandomIPInNetwork(
+            interface.network, but_not=[interface.ip])
         interface.save()
 
         self.assertEqual(1, dhcp.write_dhcp_config.apply_async.call_count)
@@ -264,8 +241,9 @@ class TestDHCP(MAASServerTestCase):
         self.assertEqual(1, dhcp.write_dhcp_config.apply_async.call_count)
 
     def test_dhcp_config_gets_written_when_netmask_changes(self):
+        network = factory.getRandomNetwork(slash='255.255.255.0')
         nodegroup = factory.make_node_group(
-            status=NODEGROUP_STATUS.ACCEPTED, subnet_mask='255.255.255.0')
+            status=NODEGROUP_STATUS.ACCEPTED, network=network)
         [interface] = nodegroup.get_managed_interfaces()
         self.patch(settings, "DHCP_CONNECT", True)
         self.patch(dhcp, 'write_dhcp_config')
@@ -280,7 +258,7 @@ class TestDHCP(MAASServerTestCase):
         [interface] = nodegroup.get_managed_interfaces()
         self.patch(settings, "DHCP_CONNECT", True)
         self.patch(dhcp, 'write_dhcp_config')
-        new_router_ip = make_ip_in(
+        new_router_ip = factory.getRandomIPInNetwork(
             interface.network, but_not=[interface.router_ip])
 
         interface.router_ip = new_router_ip
@@ -294,8 +272,11 @@ class TestDHCP(MAASServerTestCase):
         self.patch(settings, "DHCP_CONNECT", True)
         self.patch(dhcp, 'write_dhcp_config')
 
-        interface.ip_range_low, interface.ip_range_high = make_ip_range(
-            interface.network)
+        low, high = factory.make_ip_range(
+            interface.network,
+            but_not=(interface.ip_range_low, interface.ip_range_high))
+        interface.ip_range_low = unicode(low)
+        interface.ip_range_high = unicode(high)
         interface.save()
 
         self.assertEqual(1, dhcp.write_dhcp_config.apply_async.call_count)
@@ -308,7 +289,8 @@ class TestDHCP(MAASServerTestCase):
         self.patch(dhcp, 'write_dhcp_config')
         self.patch(settings, "DHCP_CONNECT", True)
 
-        interface.foreign_dhcp = make_ip_in(interface.network)
+        interface.foreign_dhcp = factory.getRandomIPInNetwork(
+            interface.network)
         interface.save()
 
         self.assertEqual([], dhcp.write_dhcp_config.apply_async.mock_calls)

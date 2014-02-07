@@ -740,18 +740,15 @@ def make_interface_settings(network=None, management=None):
     if management is None:
         management = factory.getRandomEnum(NODEGROUPINTERFACE_MANAGEMENT)
     # Pick upper and lower boundaries of IP range, with upper > lower.
-    boundaries = [factory.getRandomIPInNetwork(network) for _ in range(2)]
-    while boundaries[1] == boundaries[0]:
-        boundaries = [factory.getRandomIPInNetwork(network) for _ in range(2)]
-    [ip_range_low, ip_range_high] = sorted(boundaries)
+    ip_range_low, ip_range_high = factory.make_ip_range(network)
     return {
         'ip': factory.getRandomIPInNetwork(network),
         'interface': factory.make_name('interface'),
         'subnet_mask': unicode(network.netmask),
         'broadcast_ip': unicode(network.broadcast),
         'router_ip': factory.getRandomIPInNetwork(network),
-        'ip_range_low': ip_range_low,
-        'ip_range_high': ip_range_high,
+        'ip_range_low': unicode(ip_range_low),
+        'ip_range_high': unicode(ip_range_high),
         'management': management,
     }
 

@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test object factories."""
@@ -43,6 +43,15 @@ from netaddr import (
 # given, make one up."  In that case, use NO_VALUE as the default and
 # accept None as a normal value.
 NO_VALUE = object()
+
+
+class TooManyRandomRetries(Exception):
+    """Something that relies on luck did not get lucky.
+
+    Some factory methods need to generate random items until they find one
+    that meets certain requirements.  This exception indicates that it took
+    too many retries, which may mean that no matching item is possible.
+    """
 
 
 class Factory:
@@ -96,16 +105,57 @@ class Factory:
     def getRandomUUID(self):
         return unicode(uuid1())
 
-    def getRandomNetwork(self, slash=None):
-        ip = self.getRandomIPAddress()
-        if slash is None:
-            # Create a *small* network.
-            slash = random.randint(24, 30)
-        return IPNetwork('%s/%s' % (ip, slash))
+    def getRandomNetwork(self, slash=None, but_not=None):
+        """Generate a random IP network.
 
-    def getRandomIPInNetwork(self, network):
-        return bytes(IPAddress(
-            random.randint(network.first, network.last)))
+        :param slash: Netmask or bit width of the network, e.g. 24 or
+            '255.255.255.0' for what used to be known as a class-C network.
+        :param but_not: Optional iterable of `IPNetwork` objects whose values
+            should not be returned.  Use this when you need a different network
+            from any returned previously.  The new network may overlap any of
+            these, but it won't be identical.
+        :return: A network spanning at least 8 IP addresses (at most 29 bits).
+        :rtype: :class:`IPNetwork`
+        """
+        if but_not is None:
+            but_not = []
+        if slash is None:
+            slash = random.randint(16, 29)
+        but_not = set(but_not)
+        for _ in range(100):
+            network = IPNetwork('%s/%s' % (self.getRandomIPAddress(), slash))
+            if network not in but_not:
+                return network
+        raise TooManyRandomRetries("Could not find available network")
+
+    def getRandomIPInNetwork(self, network, but_not=None):
+        if but_not is None:
+            but_not = []
+        but_not = [IPAddress(but) for but in but_not]
+        address = IPAddress(random.randint(network.first, network.last))
+        for _ in range(100):
+            address = IPAddress(random.randint(network.first, network.last))
+            if address not in but_not:
+                return bytes(address)
+        raise TooManyRandomRetries("Could not find available IP in network")
+
+    def make_ip_range(self, network=None, but_not=None):
+        """Return a pair of IP addresses, with the first lower than the second.
+
+        :param network: Return IP addresses within this network.
+        :param but_not: A pair of addresses that should not be returned.
+        :return: A pair of `IPAddress`.
+        """
+        if network is None:
+            network = self.getRandomNetwork()
+        for _ in range(100):
+            ip_range = tuple(sorted(
+                IPAddress(factory.getRandomIPInNetwork(network))
+                for _ in range(2)
+                ))
+            if ip_range[0] < ip_range[1] and ip_range != but_not:
+                return ip_range
+        raise TooManyRandomRetries("Could not find available IP range")
 
     def getRandomMACAddress(self, delimiter=":"):
         assert isinstance(delimiter, unicode)
