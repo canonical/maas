@@ -321,7 +321,7 @@ class AcquireNodeForm(RenamableFieldsForm):
         # Filter by networks.
         networks = self.cleaned_data.get(self.get_field_name('networks'))
         if networks is not None:
-            for network in networks:
+            for network in set(networks):
                 filtered_nodes = filtered_nodes.filter(networks=network)
 
         # Filter by connected_to.

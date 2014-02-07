@@ -99,19 +99,25 @@ class NetworkManager(Manager):
         :return: The one `Network` matching `spec`.
         """
         type_tag, value = parse_network_spec(spec)
-        if type_tag == 'name':
-            get_args = {'name': value}
-        elif type_tag == 'ip':
-            # XXX JeroenVermeulen 2014-02-06: Match "contains," not "equals."
-            get_args = {'ip': unicode(value)}
-        elif type_tag == 'vlan':
-            get_args = {'vlan_tag': value}
-        else:
-            # Should've been caught by parse_network_spec().
-            raise AssertionError(
-                "Unhandled network specifier type '%s'" % type_tag)
         try:
-            return self.get(**get_args)
+            if type_tag == 'name':
+                return self.get(name=value)
+            elif type_tag == 'ip':
+                # Use self.all().  We could narrow down the database query,
+                # but not a lot -- and this will cache better.  The number of
+                # networks should not be so large that querying them from the
+                # database becomes a problem for the region controller.
+                for network in self.all():
+                    if value in network.get_network():
+                        # Networks don't overlap, so there can be only one.
+                        return network
+                raise Network.DoesNotExist()
+            elif type_tag == 'vlan':
+                return self.get(vlan_tag=value)
+            else:
+                # Should've been caught by parse_network_spec().
+                raise AssertionError(
+                    "Unhandled network specifier type '%s'" % type_tag)
         except Network.DoesNotExist:
             raise Network.DoesNotExist("No network matching '%s'." % spec)
 

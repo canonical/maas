@@ -111,10 +111,17 @@ class TestNetworkManager(MAASServerTestCase):
             network,
             Network.objects.get_from_spec('ip:%s' % network.ip))
 
+    def test_get_from_spec_finds_by_any_ip_in_range(self):
+        network = factory.make_network(network=IPNetwork('10.99.99.0/24'))
+        self.assertEqual(
+            network,
+            Network.objects.get_from_spec('ip:10.99.99.255'))
+
     def test_get_from_spec_fails_on_unknown_ip(self):
+        factory.make_network(network=IPNetwork('10.99.99.0/24'))
         self.assertRaises(
             Network.DoesNotExist,
-            Network.objects.get_from_spec, 'ip:10.99.99.99')
+            Network.objects.get_from_spec, 'ip:10.99.100.1')
 
     def test_get_from_spec_finds_by_vlan_tag(self):
         vlan_tag = randint(1, 0xffe)
