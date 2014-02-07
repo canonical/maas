@@ -243,7 +243,7 @@ class Network(CleanSave, Model):
             # The ip and netmask have passed validation.  Now see if they don't
             # clash with any other networks.
             my_net = self.get_network()
-            for other in Network.objects.all().exclude(name=self.name):
+            for other in Network.objects.all().exclude(id=self.id):
                 other_net = other.get_network()
                 if my_net in other_net or other_net in my_net:
                     raise ValidationError(

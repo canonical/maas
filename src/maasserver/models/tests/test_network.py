@@ -282,6 +282,14 @@ class TestNetwork(MAASServerTestCase):
             ValidationError, factory.make_network,
             network=existing_network.get_network())
 
+    def test_unique_network_validation_check_doesnt_use_name(self):
+        # The check for network uniqueness skips the network being
+        # validated even if its name has been changed.
+        network = factory.make_network()
+        network.name = factory.make_name('new-network-name')
+        self.assertIsNone(network.save())
+        # The check is that network.save() doesn't raise.
+
     def test_disallows_identical_networks_with_different_netmasks(self):
         factory.make_network(network=IPNetwork('10.0.0.0/16'))
         self.assertRaises(
