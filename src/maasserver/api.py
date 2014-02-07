@@ -743,6 +743,9 @@ class NodesHandler(OperationsHandler):
         :param id: An optional list of system ids.  Only nodes with
             matching system ids will be returned.
         :type id: iterable
+        :param zone: An optional name for a physical zone. Only nodes in the
+            zone will be returned.
+        :type zone: unicode
         :param agent_name: An optional agent name.  Only nodes with
             matching agent names will be returned.
         :type agent_name: unicode
@@ -765,6 +768,9 @@ class NodesHandler(OperationsHandler):
         match_hostnames = get_optional_list(request.GET, 'hostname')
         if match_hostnames is not None:
             nodes = nodes.filter(hostname__in=match_hostnames)
+        match_zone_name = request.GET.get('zone', None)
+        if match_zone_name is not None:
+            nodes = nodes.filter(zone__name=match_zone_name)
         match_agent_name = request.GET.get('agent_name', None)
         if match_agent_name is not None:
             nodes = nodes.filter(agent_name=match_agent_name)

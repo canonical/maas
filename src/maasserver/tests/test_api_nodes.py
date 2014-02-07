@@ -366,6 +366,32 @@ class TestNodesAPI(APITestCase):
             [node.system_id for node in nodes],
             extract_system_ids(parsed_result))
 
+    def test_GET_list_with_zone_filters_by_zone(self):
+        non_listed_node = factory.make_node(
+            zone=factory.make_zone(name='twilight'))
+        ignore_unused(non_listed_node)
+        zone = factory.make_zone()
+        node = factory.make_node(zone=zone)
+        response = self.client.get(reverse('nodes_handler'), {
+            'op': 'list',
+            'zone': zone.name,
+            })
+        self.assertEqual(httplib.OK, response.status_code)
+        parsed_result = json.loads(response.content)
+        self.assertSequenceEqual(
+            [node.system_id], extract_system_ids(parsed_result))
+
+    def test_GET_list_without_zone_does_not_filter(self):
+        nodes = [
+            factory.make_node(zone=factory.make_zone())
+            for i in range(3)]
+        response = self.client.get(reverse('nodes_handler'), {'op': 'list'})
+        self.assertEqual(httplib.OK, response.status_code)
+        parsed_result = json.loads(response.content)
+        self.assertSequenceEqual(
+            [node.system_id for node in nodes],
+            extract_system_ids(parsed_result))
+
     def test_GET_list_allocated_returns_only_allocated_with_user_token(self):
         # If the user's allocated nodes have different session tokens,
         # list_allocated should only return the nodes that have the
