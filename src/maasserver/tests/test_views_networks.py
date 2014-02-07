@@ -17,6 +17,7 @@ __all__ = []
 
 from django.core.urlresolvers import reverse
 from maasserver.models import Network
+import itertools
 from maasserver.testing import get_content_links
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -39,18 +40,22 @@ class NetworkListingViewTest(MAASServerTestCase):
             get_content_links(response, element='#main-nav'))
 
     def test_network_list_displays_network_details(self):
-        # Network listing displays the network name and the network
-        # description.
+        # Network listing displays the network name, description,
+        # network information and VLAN tag.
         self.client_log_in()
         [factory.make_network() for i in range(3)]
         networks = Network.objects.all()
         response = self.client.get(reverse('network-list'))
-        network_names = [network.name for network in networks]
-        truncated_network_descriptions = [
-            network.description[:20] for network in networks]
-        self.assertThat(response.content, ContainsAll(network_names))
-        self.assertThat(
-            response.content, ContainsAll(truncated_network_descriptions))
+        details_list = [
+            [
+                network.name,
+                network.description[:20],
+                '%s' % network.get_network(),
+                '%s' % network.vlan_tag if network.vlan_tag else '',
+            ]
+            for network in networks]
+        details = list(itertools.chain(*details_list))
+        self.assertThat(response.content, ContainsAll(details))
 
     def test_network_list_displays_sorted_list_of_networks(self):
         # Networks are alphabetically sorted on the network list page.

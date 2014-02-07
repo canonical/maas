@@ -21,6 +21,7 @@
             <th>Name</th>
             <th>Description</th>
             <th>Network</th>
+            <th>VLAN tag</th>
             <th>Nodes</th>
             {% if user.is_superuser %}
   	      {% comment %} Action buttons {% endcomment %}
@@ -38,6 +39,7 @@
               </a>
             <td>{{ network_item.description|truncatechars:40 }}</td>
             <td>{{ network_item.get_network }}</td>
+            <td>{{ network_item.vlan_tag|default_if_none:"" }}</td>
             <td>{{ network_item.node_set.count }}</td>
             {% if user.is_superuser %}
             <td>
