@@ -18,6 +18,7 @@ import httplib
 import json
 
 from django.core.urlresolvers import reverse
+from maasserver.testing import reload_object
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 
@@ -58,3 +59,31 @@ class TestNetwork(APITestCase):
         self.assertEqual(
             httplib.NOT_FOUND,
             self.client.get(self.get_url('nonesuch')).status_code)
+
+    def test_DELETE_deletes_network(self):
+        self.become_admin()
+        network = factory.make_network()
+        response = self.client.delete(self.get_url(network.name))
+        self.assertEqual(httplib.NO_CONTENT, response.status_code)
+        self.assertIsNone(reload_object(network))
+
+    def test_DELETE_requires_admin(self):
+        network = factory.make_network()
+        response = self.client.delete(self.get_url(network.name))
+        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertIsNotNone(reload_object(network))
+
+    def test_DELETE_is_idempotent(self):
+        name = factory.make_name('no-net')
+        self.become_admin()
+        response1 = self.client.delete(self.get_url(name))
+        response2 = self.client.delete(self.get_url(name))
+        self.assertEqual(response1.status_code, response2.status_code)
+
+    def test_DELETE_works_with_nodes_attached(self):
+        self.become_admin()
+        network = factory.make_network()
+        factory.make_node(networks=[network])
+        response = self.client.delete(self.get_url(network.name))
+        self.assertEqual(httplib.NO_CONTENT, response.status_code)
+        self.assertIsNone(reload_object(network))

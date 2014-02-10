@@ -2697,10 +2697,10 @@ class ZonesHandler(OperationsHandler):
 
 
 class NetworkHandler(OperationsHandler):
-    # XXX JeroenVermeulen 2014-02-10: Yet to be implemented.
     model = Network
     fields = ('name', 'ip', 'netmask', 'vlan_tag', 'description')
 
+    # XXX JeroenVermeulen 2014-02-10: Yet to be implemented.
     update = None
 
     # Creation happens on the NetworksHandler.
@@ -2711,7 +2711,10 @@ class NetworkHandler(OperationsHandler):
 
     @admin_method
     def delete(self, request, name):
-        pass
+        network = get_one(Network.objects.filter(name=name))
+        if network is not None:
+            network.delete()
+        return rc.DELETED
 
 
 class NetworksHandler(OperationsHandler):
