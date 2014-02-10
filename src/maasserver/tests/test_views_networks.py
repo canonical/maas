@@ -201,14 +201,15 @@ class NetworkDetailViewTest(MAASServerTestCase):
         network = factory.make_network()
         response = self.client.get(
             reverse('network-view', args=[network.name]))
-        self.assertThat(response.content,
+        self.assertThat(
+            response.content,
             ContainsAll([
                 network.name,
                 network.description,
-                reverse('node-list') + "?" + urlencode({'query': 'networks=%s' % network.name}),
+                reverse('node-list') + "?" + urlencode(
+                    {'query': 'networks=%s' % network.name}),
             ])
         )
-        
 
     def test_network_detail_displays_node_count(self):
         self.client_log_in()

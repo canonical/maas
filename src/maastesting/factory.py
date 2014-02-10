@@ -25,7 +25,6 @@ from itertools import (
     islice,
     repeat,
     )
-from netaddr import IPAddress
 import os
 import os.path
 import random
