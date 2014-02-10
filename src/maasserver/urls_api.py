@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """URL API routing configuration."""
@@ -29,6 +29,7 @@ from maasserver.api import (
     FileHandler,
     FilesHandler,
     MaasHandler,
+    NetworksHandler,
     NodeGroupHandler,
     NodeGroupInterfaceHandler,
     NodeGroupInterfacesHandler,
@@ -57,6 +58,7 @@ from maasserver.api_support import (
 account_handler = RestrictedResource(AccountHandler, authentication=api_auth)
 files_handler = RestrictedResource(FilesHandler, authentication=api_auth)
 file_handler = RestrictedResource(FileHandler, authentication=api_auth)
+networks_handler = RestrictedResource(NetworksHandler, authentication=api_auth)
 node_handler = RestrictedResource(NodeHandler, authentication=api_auth)
 nodes_handler = RestrictedResource(NodesHandler, authentication=api_auth)
 node_mac_handler = RestrictedResource(NodeMacHandler, authentication=api_auth)
@@ -126,6 +128,7 @@ urlpatterns += patterns(
         nodegroupinterfaces_handler, name='nodegroupinterfaces_handler'),
     url(r'^nodegroups/(?P<uuid>[^/]+)/interfaces/(?P<interface>[^/]+)/$',
         nodegroupinterface_handler, name='nodegroupinterface_handler'),
+    url(r'^networks/$', networks_handler, name='networks_handler'),
     url(r'^files/$', files_handler, name='files_handler'),
     url(r'^files/(?P<filename>.+)/$', file_handler, name='file_handler'),
     url(r'^account/$', account_handler, name='account_handler'),

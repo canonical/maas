@@ -69,6 +69,7 @@ __all__ = [
     "FilesHandler",
     "get_oauth_token",
     "MaasHandler",
+    "NetworksHandler",
     "NodeGroupHandler",
     "NodeGroupsHandler",
     "NodeGroupInterfaceHandler",
@@ -193,6 +194,7 @@ from maasserver.models import (
     DHCPLease,
     FileStorage,
     MACAddress,
+    Network,
     Node,
     NodeGroup,
     NodeGroupInterface,
@@ -2617,11 +2619,10 @@ def describe(request):
 class ZoneHandler(OperationsHandler):
     """Manage a physical zone.
 
-    Any node may optionally be assigned to a physical zone, or "zone" for
-    short.  The meaning of a physical zone is up to you: it could identify
-    e.g. a server rack, a network, or a data centre.  Users can then allocate
-    nodes from specific physical zones, to suit their redundancy or
-    performance requirements.
+    Any node is in a physical zone, or "zone" for short.  The meaning of a
+    physical zone is up to you: it could identify e.g. a server rack, a
+    network, or a data centre.  Users can then allocate nodes from specific
+    physical zones, to suit their redundancy or performance requirements.
 
     This functionality is only available to administrators.  Other users can
     view physical zones, but not modify them.
@@ -2692,3 +2693,12 @@ class ZonesHandler(OperationsHandler):
         Get a listing of all the physical zones.
         """
         return Zone.objects.all().order_by('name')
+
+
+class NetworksHandler(OperationsHandler):
+    """API for networks."""
+    create = update = delete = None
+
+    def read(self, request):
+        """List networks."""
+        return Network.objects.all().order_by('name')
