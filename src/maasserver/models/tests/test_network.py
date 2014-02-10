@@ -19,7 +19,13 @@ from random import randint
 
 from django.core.exceptions import ValidationError
 from maasserver.models import Network
-from maasserver.models.network import parse_network_spec
+from maasserver.models.network import (
+    get_specifier_type,
+    IPSpecifier,
+    NameSpecifier,
+    parse_network_spec,
+    VLANSpecifier,
+    )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.network import make_network
@@ -29,68 +35,93 @@ from netaddr import (
     )
 
 
-class TestParseNetworkSpec(MAASServerTestCase):
-    """Tests for `parse_network_spec`."""
+class TestNameSpecifier(MAASServerTestCase):
 
     def test_accepts_network_name(self):
-        network = factory.make_network()
-        self.assertEqual(
-            ('name', network.name),
-            parse_network_spec(network.name))
+        name = factory.make_name('net')
+        self.assertEqual(name, NameSpecifier(name).name)
 
     def test_rejects_invalid_name(self):
-        self.assertRaises(ValidationError, parse_network_spec, '#.!')
+        self.assertRaises(ValidationError, NameSpecifier, '#.!')
+
+    def test_fails_if_wrong_type(self):
+        self.assertRaises(ValidationError, NameSpecifier, 'vlan:8')
+
+
+class TestIPSpecifier(MAASServerTestCase):
+
+    def test_accepts_ip_address(self):
+        self.assertEqual(IPAddress('10.9.8.7'), IPSpecifier('ip:10.9.8.7').ip)
+
+    def test_rejects_empty_ip_address(self):
+        self.assertRaises(ValidationError, IPSpecifier, 'ip:')
+
+    def test_rejects_malformed_ip_address(self):
+        self.assertRaises(ValidationError, IPSpecifier, 'ip:abc')
+
+    def test_fails_if_wrong_type(self):
+        self.assertRaises(AssertionError, IPSpecifier, 'vlan:8')
+
+
+class TestVLANSpecifier(MAASServerTestCase):
+
+    def test_accepts_vlan_tag_in_range(self):
+        self.assertEqual(12, VLANSpecifier('vlan:12').vlan_tag)
+        self.assertEqual(1, VLANSpecifier('vlan:1').vlan_tag)
+        self.assertEqual(4094, VLANSpecifier('vlan:4094').vlan_tag)
+
+    def test_rejects_empty_vlan_tag(self):
+        self.assertRaises(ValidationError, VLANSpecifier, 'vlan:')
+
+    def test_rejects_nonnumerical_vlan_tag(self):
+        self.assertRaises(ValidationError, VLANSpecifier, 'vlan:B')
+        self.assertRaises(ValidationError, VLANSpecifier, 'vlan:0x1g')
+
+    def test_accepts_hexadecimal_vlan_tag(self):
+        self.assertEqual(0xf0f, VLANSpecifier('vlan:0xf0f').vlan_tag)
+        self.assertEqual(0x1ac, VLANSpecifier('vlan:0x1AC').vlan_tag)
+
+    def test_rejects_reserved_vlan_tags(self):
+        self.assertRaises(ValidationError, VLANSpecifier, 'vlan:0')
+        self.assertRaises(ValidationError, VLANSpecifier, 'vlan:4095')
+
+    def test_rejects_vlan_tag_out_of_range(self):
+        self.assertRaises(ValidationError, VLANSpecifier, 'vlan:-1')
+        self.assertRaises(ValidationError, VLANSpecifier, 'vlan:4096')
+
+    def test_fails_if_wrong_type(self):
+        self.assertRaises(AssertionError, VLANSpecifier, 'ip:10.1.1.1')
+
+
+class TestGetSpecifierType(MAASServerTestCase):
+    """Tests for `get_specifier_type`."""
+
+    def test_returns_type_identified_by_type_tag(self):
+        self.assertEqual(IPSpecifier, get_specifier_type('ip:10.0.0.0'))
+        self.assertEqual(VLANSpecifier, get_specifier_type('vlan:99'))
+
+    def test_defaults_to_name_if_no_type_tag_found(self):
+        self.assertEqual(NameSpecifier, get_specifier_type('hello'))
+
+    def test_rejects_unsupported_tag(self):
+        self.assertRaises(ValidationError, get_specifier_type, 'foo:bar')
+
+
+class TestParseNetworkSpec(MAASServerTestCase):
+    """Tests for `parse_network_spec`."""
 
     def test_rejects_unknown_type_tag(self):
         self.assertRaises(ValidationError, parse_network_spec, 'foo:bar')
 
-    def test_accepts_ip_address(self):
-        self.assertEqual(
-            ('ip', IPAddress('10.9.8.7')),
-            parse_network_spec('ip:10.9.8.7'))
+    def test_accepts_valid_specifier(self):
+        spec = parse_network_spec('ip:10.8.8.8')
+        self.assertIsInstance(spec, IPSpecifier)
+        self.assertEqual(IPAddress('10.8.8.8'), spec.ip)
 
     def test_rejects_untagged_ip_address(self):
         # If this becomes a stumbling block, it would be possible to accept
         # plain IP addresses as network specifiers.
-        network = factory.make_network()
-        ip = unicode(network.ip)
-        self.assertRaises(ValidationError, parse_network_spec, ip)
-
-    def test_rejects_empty_ip_address(self):
-        self.assertRaises(ValidationError, parse_network_spec, 'ip:')
-
-    def test_rejects_malformed_ip_address(self):
-        self.assertRaises(ValidationError, parse_network_spec, 'ip:abc')
-
-    def test_accepts_vlan_tag_in_range(self):
-        network = factory.make_network(vlan_tag=1)
-        self.assertEqual(
-            ('vlan', network.vlan_tag),
-            parse_network_spec('vlan:%d' % network.vlan_tag))
-
-        network = factory.make_network(vlan_tag=4094)
-        self.assertEqual(
-            ('vlan', network.vlan_tag),
-            parse_network_spec('vlan:%d' % network.vlan_tag))
-
-    def test_rejects_empty_vlan_tag(self):
-        self.assertRaises(ValidationError, parse_network_spec, 'vlan:')
-
-    def test_rejects_nonnumerical_vlan_tag(self):
-        self.assertRaises(ValidationError, parse_network_spec, 'vlan:B')
-        self.assertRaises(ValidationError, parse_network_spec, 'vlan:0x1g')
-
-    def test_accepts_hexadecimal_vlan_tag(self):
-        self.assertEqual(('vlan', 0xf0f), parse_network_spec('vlan:0xf0f'))
-        self.assertEqual(('vlan', 0x1ac), parse_network_spec('vlan:0x1AC'))
-
-    def test_rejects_reserved_vlan_tags(self):
-        self.assertRaises(ValidationError, parse_network_spec, 'vlan:0')
-        self.assertRaises(ValidationError, parse_network_spec, 'vlan:4095')
-
-    def test_rejects_vlan_tag_out_of_range(self):
-        self.assertRaises(ValidationError, parse_network_spec, 'vlan:-1')
-        self.assertRaises(ValidationError, parse_network_spec, 'vlan:4096')
+        self.assertRaises(ValidationError, parse_network_spec, '10.4.4.4')
 
 
 class TestNetworkManager(MAASServerTestCase):

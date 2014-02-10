@@ -18,6 +18,11 @@ __all__ = [
     ]
 
 
+from abc import (
+    ABCMeta,
+    abstractmethod,
+    )
+
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
 from django.db.models import (
@@ -38,49 +43,146 @@ from netaddr.core import AddrFormatError
 NETWORK_NAME_VALIDATOR = RegexValidator('^[\w-]+$')
 
 
-def parse_network_spec(spec):
-    """Parse a network specifier; return its type and value.
+def strip_type_tag(type_tag, specifier):
+    """Return a network specifier minus its type tag."""
+    prefix = type_tag + ':'
+    assert specifier.startswith(prefix)
+    return specifier[len(prefix):]
 
-    Networks can be identified by name, by an arbitrary IP address in the
-    network (prefixed with `ip:`), or by a VLAN tag (prefixed with `vlan:`).
 
-    :param spec: A string that should identify a network.
-    :return: A tuple of the specifier's type (`name`, `ip`, or `vlan`) and the
-        network's identifying value (a name, IP address, or numeric VLAN tag
-        respectively).
-    :raise ValidationError: If `spec` is malformed.
+class NetworkSpecifier:
+    """A :class:`NetworkSpecifier` identifies a :class:`Network`.
+
+    For example, in placement constraints, a user may specify that a node
+    must be attached to a certain network.  They identify the network through
+    a network specifier, which may be its name (`dmz`), an IP address
+    (`ip:10.12.0.0`), or a VLAN tag (`vlan:15` or `vlan:0xf`).
+
+    Each type of network specifier has its own `NetworkSpecifier`
+    implementation class.  The class constructor validates and parses a
+    network specifier of its type, and the object knows how to retrieve
+    whatever network it identifies from the database.
     """
-    if ':' in spec:
-        type_tag, value = spec.split(':', 1)
-    else:
-        type_tag, value = 'name', spec
+    __metaclass__ = ABCMeta
 
-    if type_tag == 'name':
-        # Plain network name.  See that it really validates as one.
+    # Most network specifiers start with a type tag followed by a colon, e.g.
+    # "ip:10.1.0.0".
+    type_tag = None
+
+    @abstractmethod
+    def find_network(self):
+        """Load the identified :class:`Network` from the database.
+
+        :raise Network.DoesNotExist: If no network matched the specifier.
+        :return: The :class:`Network`.
+        """
+
+
+class NameSpecifier(NetworkSpecifier):
+    """Identify a network by its name.
+
+    This type of network specifier has no type tag; it's just the name.  A
+    network name cannot contain colon (:) characters.
+    """
+
+    def __init__(self, spec):
         NETWORK_NAME_VALIDATOR(spec)
-    elif type_tag == 'ip':
+        self.name = spec
+
+    def find_network(self):
+        return Network.objects.get(name=self.name)
+
+
+class IPSpecifier(NetworkSpecifier):
+    """Identify a network by any IP address it contains.
+
+    The IP address is prefixed with a type tag `ip:`, e.g. `ip:10.1.1.0`.
+    It can name any IP address within the network, including its base address,
+    its broadcast address, or any host address that falls in its IP range.
+    """
+    type_tag = 'ip'
+
+    def __init__(self, spec):
+        ip_string = strip_type_tag(self.type_tag, spec)
         try:
-            value = IPAddress(value)
+            self.ip = IPAddress(ip_string)
         except AddrFormatError as e:
             raise ValidationError("Invalid IP address: %s." % e)
-    elif type_tag == 'vlan':
-        if value.lower().startswith('0x'):
+
+    def find_network(self):
+        # Use all().  We could narrow down the database query, but not by a
+        # lot -- and this will cache better.  The number of networks should
+        # not be so large that querying them from the database becomes a
+        # problem for the region controller.
+        for network in Network.objects.all():
+            if self.ip in network.get_network():
+                # Networks don't overlap, so there can be only one.
+                return network
+        raise Network.DoesNotExist()
+
+
+class VLANSpecifier(NetworkSpecifier):
+    """Identify a network by its (nonzero) VLAN tag.
+
+    This only applies to VLANs.  The VLAN tag is a numeric value prefixed with
+    a type tag of `vlan:`, e.g. `vlan:12`.  Tags may also be given in
+    hexadecimal form: `vlan:0x1a`.  This is case-insensitive.
+    """
+    type_tag = 'vlan'
+
+    def __init__(self, spec):
+        vlan_string = strip_type_tag(self.type_tag, spec)
+        if vlan_string.lower().startswith('0x'):
             # Hexadecimal.
             base = 16
         else:
             # Decimal.
             base = 10
         try:
-            vlan_tag = int(value, base)
+            self.vlan_tag = int(vlan_string, base)
         except ValueError:
-            raise ValidationError("Invalid VLAN tag: '%s'." % value)
-        if vlan_tag <= 0 or vlan_tag >= 0xfff:
+            raise ValidationError("Invalid VLAN tag: '%s'." % vlan_string)
+        if self.vlan_tag <= 0 or self.vlan_tag >= 0xfff:
             raise ValidationError("VLAN tag out of range (1-4094).")
-        value = vlan_tag
+
+    def find_network(self):
+        return Network.objects.get(vlan_tag=self.vlan_tag)
+
+
+SPECIFIER_CLASSES = [NameSpecifier, IPSpecifier, VLANSpecifier]
+
+SPECIFIER_TAGS = {
+    spec_class.type_tag: spec_class
+    for spec_class in SPECIFIER_CLASSES
+}
+
+
+def get_specifier_type(specifier):
+    """Obtain the specifier class that knows how to parse `specifier`.
+
+    :raise ValidationError: If `specifier` does not match any accepted type of
+        network specifier.
+    :return: A concrete `NetworkSpecifier` subclass that knows how to parse
+        `specifier`.
+    """
+    if ':' in specifier:
+        type_tag, _ = specifier.split(':', 1)
     else:
+        type_tag = None
+    specifier_class = SPECIFIER_TAGS.get(type_tag)
+    if specifier_class is None:
         raise ValidationError(
             "Invalid network specifier type: '%s'." % type_tag)
-    return type_tag, value
+    return specifier_class
+
+
+def parse_network_spec(spec):
+    """Parse a network specifier; return it as a `NetworkSpecifier` object.
+
+    :raise ValidationError: If `spec` is malformed.
+    """
+    specifier_class = get_specifier_type(spec)
+    return specifier_class(spec)
 
 
 class NetworkManager(Manager):
@@ -93,35 +195,14 @@ class NetworkManager(Manager):
     def get_from_spec(self, spec):
         """Find a single `Network` from a given network specifier.
 
-        A network specifier can be a network's name, or a prefix `ip:`
-        followed by an IP address in the network's address range, or a prefix
-        `vlan:` followed by a numerical (nonzero) VLAN tag.
-
         :raise ValidationError: If `spec` is malformed.
         :raise Network.DoesNotExist: If the network specifier does not match
             any known network.
         :return: The one `Network` matching `spec`.
         """
-        type_tag, value = parse_network_spec(spec)
+        specifier = parse_network_spec(spec)
         try:
-            if type_tag == 'name':
-                return self.get(name=value)
-            elif type_tag == 'ip':
-                # Use self.all().  We could narrow down the database query,
-                # but not a lot -- and this will cache better.  The number of
-                # networks should not be so large that querying them from the
-                # database becomes a problem for the region controller.
-                for network in self.all():
-                    if value in network.get_network():
-                        # Networks don't overlap, so there can be only one.
-                        return network
-                raise Network.DoesNotExist()
-            elif type_tag == 'vlan':
-                return self.get(vlan_tag=value)
-            else:
-                # Should've been caught by parse_network_spec().
-                raise AssertionError(
-                    "Unhandled network specifier type '%s'" % type_tag)
+            return specifier.find_network()
         except Network.DoesNotExist:
             raise Network.DoesNotExist("No network matching '%s'." % spec)
 
