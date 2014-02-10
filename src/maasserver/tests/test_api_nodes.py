@@ -803,6 +803,25 @@ class TestNodesAPI(APITestCase):
         response_json = json.loads(response.content)
         self.assertEqual(nodes[pick].system_id, response_json['system_id'])
 
+    def test_POST_acquire_allocates_node_by_not_network(self):
+        networks = [factory.make_network() for _ in range(5)]
+        [
+            factory.make_node(
+                status=NODE_STATUS.READY, networks=[network])
+            for network in networks
+            ]
+        right_node = factory.make_node(
+            status=NODE_STATUS.READY, networks=[factory.make_network()])
+
+        response = self.client.post(reverse('nodes_handler'), {
+            'op': 'acquire',
+            'not_networks': [network.name for network in networks],
+        })
+
+        self.assertResponseCode(httplib.OK, response)
+        response_json = json.loads(response.content)
+        self.assertEqual(right_node.system_id, response_json['system_id'])
+
     def test_POST_acquire_obeys_not_in_zone(self):
         # Zone we don't want to acquire from.
         not_in_zone = factory.make_zone()

@@ -298,6 +298,69 @@ class TestAcquireNodeForm(MAASServerTestCase):
         node = factory.make_node(networks=[network, factory.make_network()])
         self.assertConstrainedNodes([node], {'networks': [network.name]})
 
+    def test_not_networks_filters_by_name(self):
+        networks = [factory.make_network() for _ in range(2)]
+        nodes = [factory.make_node(networks=[network]) for network in networks]
+        self.assertConstrainedNodes(
+            {nodes[0]},
+            {'not_networks': [networks[1].name]})
+
+    def test_not_networks_filters_by_ip(self):
+        networks = [factory.make_network() for _ in range(2)]
+        nodes = [factory.make_node(networks=[network]) for network in networks]
+        self.assertConstrainedNodes(
+            {nodes[0]},
+            {'not_networks': ['ip:%s' % networks[1].ip]})
+
+    def test_not_networks_filters_by_vlan_tag(self):
+        vlan_tags = range(2)
+        networks = [factory.make_network(vlan_tag=tag) for tag in vlan_tags]
+        nodes = [factory.make_node(networks=[network]) for network in networks]
+        self.assertConstrainedNodes(
+            {nodes[0]},
+            {'not_networks': ['vlan:%d' % vlan_tags[1]]})
+
+    def test_invalid_not_networks(self):
+        form = AcquireNodeForm(data={'not_networks': 'ip:10.0.0.0'})
+        self.assertEquals(
+            (
+                False,
+                {
+                    'not_networks': [
+                        "Invalid parameter: list of networks required.",
+                        ],
+                },
+            ),
+            (form.is_valid(), form.errors))
+
+        # The validator is unit-tested separately.  This just verifies that it
+        # is being consulted.
+        form = AcquireNodeForm(data={'not_networks': ['vlan:-1']})
+        self.assertEquals(
+            (False, {'not_networks': ["VLAN tag out of range (1-4094)."]}),
+            (form.is_valid(), form.errors))
+
+    def test_not_networks_combines_filters(self):
+        network_by_name = factory.make_network()
+        network_by_ip = factory.make_network()
+        network_by_vlan = factory.make_network(vlan_tag=randint(1, 0xffe))
+        factory.make_node(networks=[network_by_name])
+        factory.make_node(networks=[network_by_name, network_by_ip])
+        factory.make_node(networks=[network_by_name, network_by_vlan])
+        factory.make_node(networks=[network_by_vlan])
+        factory.make_node(networks=[network_by_vlan, factory.make_network()])
+        right_node = factory.make_node(networks=[factory.make_network()])
+
+        self.assertConstrainedNodes(
+            {right_node},
+            {
+                'not_networks': [
+                    network_by_name.name,
+                    'ip:%s' % network_by_ip.ip,
+                    'vlan:%d' % network_by_vlan.vlan_tag,
+                    ],
+            })
+
     def test_connected_to(self):
         mac1 = MAC('aa:bb:cc:dd:ee:ff')
         mac2 = MAC('00:11:22:33:44:55')

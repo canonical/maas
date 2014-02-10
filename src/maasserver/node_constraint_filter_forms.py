@@ -164,6 +164,12 @@ class AcquireNodeForm(RenamableFieldsForm):
             'invalid_list': "Invalid parameter: list of networks required.",
             })
 
+    not_networks = ValidatorMultipleChoiceField(
+        validator=parse_network_spec, label="Not attached to networks",
+        required=False, error_messages={
+            'invalid_list': "Invalid parameter: list of networks required.",
+            })
+
     connected_to = ValidatorMultipleChoiceField(
         validator=mac_validator, label="Connected to", required=False,
         error_messages={
@@ -256,6 +262,15 @@ class AcquireNodeForm(RenamableFieldsForm):
         except Network.DoesNotExist as e:
             raise ValidationError(e.message)
 
+    def clean_not_networks(self):
+        value = self.cleaned_data[self.get_field_name('not_networks')]
+        if value is None:
+            return None
+        try:
+            return [Network.objects.get_from_spec(spec) for spec in value]
+        except Network.DoesNotExist as e:
+            raise ValidationError(e.message)
+
     def clean(self):
         if not self.ignore_unknown_constraints:
             unknown_constraints = set(
@@ -323,6 +338,13 @@ class AcquireNodeForm(RenamableFieldsForm):
         if networks is not None:
             for network in set(networks):
                 filtered_nodes = filtered_nodes.filter(networks=network)
+
+        # Filter by not_networks.
+        not_networks = self.cleaned_data.get(
+            self.get_field_name('not_networks'))
+        if not_networks is not None:
+            for not_network in set(not_networks):
+                filtered_nodes = filtered_nodes.exclude(networks=not_network)
 
         # Filter by connected_to.
         connected_to = self.cleaned_data.get(

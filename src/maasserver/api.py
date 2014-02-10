@@ -828,6 +828,14 @@ class NodesHandler(OperationsHandler):
             followed by a numeric VLAN tag, e.g. `vlan:23` for VLAN number 23.
             Valid VLAN tags must be in the range of 1 to 4095 inclusive.
         :type networks: list of unicodes
+        :param not_networks: List of networks (defined in MAAS) to which the
+            node must not be attached.  The returned noded won't be attached to
+            any of the specified networks.  A network can be identified by the
+            name assigned to it in MAAS; or by an `ip:` prefix followed by any
+            IP address that falls within the network; or a `vlan:` prefix
+            followed by a numeric VLAN tag, e.g. `vlan:23` for VLAN number 23.
+            Valid VLAN tags must be in the range of 1 to 4095 inclusive.
+        :type not_networks: list of unicodes
         :param not_connected_to: List of routers' MAC Addresses the returned
             node must not be connected to.
         :type connected_to: list of unicodes
