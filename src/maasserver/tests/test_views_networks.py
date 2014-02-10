@@ -16,6 +16,7 @@ __all__ = []
 
 import httplib
 import itertools
+from urllib import urlencode
 
 from django.core.urlresolvers import reverse
 from lxml.html import fromstring
@@ -79,6 +80,21 @@ class NetworkListingViewTest(MAASServerTestCase):
             network_links,
             [link for link in get_content_links(response)
                 if link.startswith('/networks/')])
+
+    def test_network_list_displays_links_to_network_node(self):
+        self.client_log_in()
+        [factory.make_network() for i in range(3)]
+        networks = Network.objects.all()
+        sorted_networks = sorted(networks, key=lambda x: x.name.lower())
+        response = self.client.get(reverse('network-list'))
+        network_node_links = [
+            reverse('node-list') + "?" +
+            urlencode({'query': 'networks=%s' % network.name})
+            for network in sorted_networks]
+        self.assertEqual(
+            network_node_links,
+            [link for link in get_content_links(response)
+                if link.startswith('/nodes/')])
 
 
 class NetworkListingViewTestNonAdmin(MAASServerTestCase):
@@ -185,8 +201,14 @@ class NetworkDetailViewTest(MAASServerTestCase):
         network = factory.make_network()
         response = self.client.get(
             reverse('network-view', args=[network.name]))
-        self.assertThat(response.content, ContainsAll(
-            [network.name, network.description]))
+        self.assertThat(response.content,
+            ContainsAll([
+                network.name,
+                network.description,
+                reverse('node-list') + "?" + urlencode({'query': 'networks=%s' % network.name}),
+            ])
+        )
+        
 
     def test_network_detail_displays_node_count(self):
         self.client_log_in()

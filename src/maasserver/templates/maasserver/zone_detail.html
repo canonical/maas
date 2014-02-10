@@ -34,8 +34,10 @@ Physical zone: {{ zone.name }}
     <li class="block size3">
       <h4>Nodes</h4>
       <span id="#nodecount">
-        {{ zone.node_set.count }}
-        (<a href="{{ node_list_link }}">view</a>)
+        <a title="View nodes in zone {{ zone.name }}"
+           href="{{ node_list_link }}">
+          {{ zone.node_set.count }}
+        </a>        
       </span>
     </li>
     {% if zone.is_default %}

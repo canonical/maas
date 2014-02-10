@@ -41,7 +41,12 @@
             <td>{{ network_item.description|truncatechars:40 }}</td>
             <td>{{ network_item.get_network }}</td>
             <td>{{ network_item.vlan_tag|default_if_none:"" }}</td>
-            <td>{{ network_item.node_set.count }}</td>
+            <td>
+              <a title="View nodes attached to network {{ network_item.name }}"
+		 href="{% url 'node-list' %}?query=networks%3D{{ network_item.name }}">
+                {{ network_item.node_set.count }}
+              </a>
+            </td>
             {% if user.is_superuser %}
             <td>
             {% if not network_item.is_default %}
