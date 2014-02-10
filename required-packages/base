@@ -24,6 +24,7 @@ python-distro-info
 python-docutils
 python-formencode
 python-httplib2
+python-jsonschema
 python-lockfile
 python-netaddr
 python-netifaces
