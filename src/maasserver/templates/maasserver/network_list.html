@@ -15,6 +15,7 @@
 {% block content %}
     <div id="networks">
       <h2>Networks</h2>
+      {% if network_list|length %}
       <table class="list">
         <thead>
           <tr>
@@ -69,6 +70,9 @@
           {% endfor %}
         </tbody>
       </table>
+      {% else %}
+      No networks defined.
+      {% endif %}
       {% if user.is_superuser %}
       <a class="button right space-top-small" href="{% url 'network-add' %}">
         Add network
