@@ -176,6 +176,7 @@ from maasserver.forms import (
     get_action_form,
     get_node_create_form,
     get_node_edit_form,
+    NetworkForm,
     NodeActionForm,
     NodeGroupEdit,
     NodeGroupInterfaceForm,
@@ -2700,30 +2701,86 @@ class NetworkHandler(OperationsHandler):
     model = Network
     fields = ('name', 'ip', 'netmask', 'vlan_tag', 'description')
 
-    # XXX JeroenVermeulen 2014-02-10: Yet to be implemented.
-    update = None
-
     # Creation happens on the NetworksHandler.
     create = None
 
     def read(self, request, name):
+        """Read network definition."""
         return get_object_or_404(Network, name=name)
 
     @admin_method
+    def update(self, request, name):
+        """Update network definition.
+
+        :param name: A simple name for the network, to make it easier to
+            refer to.  Must consist only of letters, digits, dashes, and
+            underscores.
+        :param ip: Base IP address for the network, e.g. `10.1.0.0`.  The host
+            bits will be zeroed.
+        :param netmask: Subnet mask to indicate which parts of an IP address
+            are part of the network address.  For example, `255.255.255.0`.
+        :param vlan_tag: Optional VLAN tag: a number between 1 and 0xffe (4094)
+            inclusive, or zero for an untagged network.
+        :param description: Detailed description of the network for the benefit
+            of users and administrators.
+        """
+        network = get_object_or_404(Network, name=name)
+        form = NetworkForm(instance=network, data=request.data)
+        if not form.is_valid():
+            raise ValidationError(form.errors)
+        return form.save()
+
+    @admin_method
     def delete(self, request, name):
+        """Delete network definition.
+
+        A network cannot be deleted while it still has nodes attached to it.
+        """
         network = get_one(Network.objects.filter(name=name))
         if network is not None:
             network.delete()
         return rc.DELETED
 
+    @classmethod
+    def resource_uri(cls, network=None):
+        # See the comment in NodeHandler.resource_uri.
+        if network is None:
+            name = 'name'
+        else:
+            name = network.name
+        return ('network_handler', (name, ))
+
 
 class NetworksHandler(OperationsHandler):
     """API for networks."""
-    # XXX JeroenVermeulen 2014-02-10: Yet to be implemented.
-    create = None
 
     update = delete = None
 
     def read(self, request):
         """List networks."""
         return Network.objects.all().order_by('name')
+
+    @admin_method
+    def create(self, request):
+        """Define a network.
+
+        :param name: A simple name for the network, to make it easier to
+            refer to.  Must consist only of letters, digits, dashes, and
+            underscores.
+        :param ip: Base IP address for the network, e.g. `10.1.0.0`.  The host
+            bits will be zeroed.
+        :param netmask: Subnet mask to indicate which parts of an IP address
+            are part of the network address.  For example, `255.255.255.0`.
+        :param vlan_tag: Optional VLAN tag: a number between 1 and 0xffe (4094)
+            inclusive, or zero for an untagged network.
+        :param description: Detailed description of the network for the benefit
+            of users and administrators.
+        """
+        form = NetworkForm(request.data)
+        if not form.is_valid():
+            raise ValidationError(form.errors)
+        return form.save()
+
+    @classmethod
+    def resource_uri(cls, *args, **kwargs):
+        return ('networks_handler', [])

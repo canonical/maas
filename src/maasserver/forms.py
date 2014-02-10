@@ -13,24 +13,25 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    "AdminNodeForm",
     "AdminNodeWithMACAddressesForm",
+    "BulkNodeActionForm",
     "CommissioningForm",
     "CommissioningScriptForm",
     "DownloadProgressForm",
     "get_action_form",
     "get_node_edit_form",
     "get_node_create_form",
-    "MACAddressForm",
     "MAASAndNetworkForm",
-    "BulkNodeActionForm",
+    "MACAddressForm",
+    "NetworkForm",
+    "NodeGroupEdit",
     "NodeGroupInterfaceForm",
     "NodeGroupWithInterfacesForm",
-    "NodeGroupEdit",
     "NodeWithMACAddressesForm",
     "SSHKeyForm",
-    "UbuntuForm",
-    "AdminNodeForm",
     "TagForm",
+    "UbuntuForm",
     "ZoneForm",
     ]
 

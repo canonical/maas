@@ -32,6 +32,14 @@ class TestNetwork(APITestCase):
         name = factory.make_name('net')
         self.assertEqual('/api/1.0/networks/%s/' % name, self.get_url(name))
 
+    def test_POST_is_prohibited(self):
+        self.become_admin()
+        network = factory.make_network()
+        response = self.client.post(
+            self.get_url(network.name),
+            {'description': "New description"})
+        self.assertEqual(httplib.METHOD_NOT_ALLOWED, response.status_code)
+
     def test_GET_returns_network(self):
         network = factory.make_network()
 
@@ -59,6 +67,38 @@ class TestNetwork(APITestCase):
         self.assertEqual(
             httplib.NOT_FOUND,
             self.client.get(self.get_url('nonesuch')).status_code)
+
+    def test_PUT_updates_network(self):
+        self.become_admin()
+        network = factory.make_network()
+        new_net = factory.getRandomNetwork()
+        new_values = {
+            'name': factory.make_name('new'),
+            'ip': '%s' % new_net.cidr.ip,
+            'netmask': '%s' % new_net.netmask,
+            'vlan_tag': factory.make_vlan_tag(),
+            'description': "Changed description",
+            }
+
+        response = self.client_put(self.get_url(network.name), new_values)
+        self.assertEqual(httplib.OK, response.status_code)
+
+        network = reload_object(network)
+        self.assertAttributes(network, new_values)
+
+    def test_PUT_requires_admin(self):
+        description = "Original description"
+        network = factory.make_network(description=description)
+        response = self.client_put(
+            self.get_url(network.name), {'description': "Changed description"})
+        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(description, reload_object(network).description)
+
+    def test_PUT_returns_404_for_unknown_network(self):
+        self.become_admin()
+        self.assertEqual(
+            httplib.NOT_FOUND,
+            self.client_put(self.get_url('nonesuch')).status_code)
 
     def test_DELETE_deletes_network(self):
         self.become_admin()
