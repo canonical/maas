@@ -29,6 +29,7 @@ from maasserver.api import (
     FileHandler,
     FilesHandler,
     MaasHandler,
+    NetworkHandler,
     NetworksHandler,
     NodeGroupHandler,
     NodeGroupInterfaceHandler,
@@ -58,6 +59,7 @@ from maasserver.api_support import (
 account_handler = RestrictedResource(AccountHandler, authentication=api_auth)
 files_handler = RestrictedResource(FilesHandler, authentication=api_auth)
 file_handler = RestrictedResource(FileHandler, authentication=api_auth)
+network_handler = RestrictedResource(NetworkHandler, authentication=api_auth)
 networks_handler = RestrictedResource(NetworksHandler, authentication=api_auth)
 node_handler = RestrictedResource(NodeHandler, authentication=api_auth)
 nodes_handler = RestrictedResource(NodesHandler, authentication=api_auth)
@@ -128,6 +130,9 @@ urlpatterns += patterns(
         nodegroupinterfaces_handler, name='nodegroupinterfaces_handler'),
     url(r'^nodegroups/(?P<uuid>[^/]+)/interfaces/(?P<interface>[^/]+)/$',
         nodegroupinterface_handler, name='nodegroupinterface_handler'),
+    url(
+        r'^networks/(?P<name>[\w\-]+)/$',
+        network_handler, name='network_handler'),
     url(r'^networks/$', networks_handler, name='networks_handler'),
     url(r'^files/$', files_handler, name='files_handler'),
     url(r'^files/(?P<filename>.+)/$', file_handler, name='file_handler'),

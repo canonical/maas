@@ -69,6 +69,7 @@ __all__ = [
     "FilesHandler",
     "get_oauth_token",
     "MaasHandler",
+    "NetworkHandler",
     "NetworksHandler",
     "NodeGroupHandler",
     "NodeGroupsHandler",
@@ -2695,9 +2696,30 @@ class ZonesHandler(OperationsHandler):
         return Zone.objects.all().order_by('name')
 
 
+class NetworkHandler(OperationsHandler):
+    # XXX JeroenVermeulen 2014-02-10: Yet to be implemented.
+    model = Network
+    fields = ('name', 'ip', 'netmask', 'vlan_tag', 'description')
+
+    update = None
+
+    # Creation happens on the NetworksHandler.
+    create = None
+
+    def read(self, request, name):
+        return get_object_or_404(Network, name=name)
+
+    @admin_method
+    def delete(self, request, name):
+        pass
+
+
 class NetworksHandler(OperationsHandler):
     """API for networks."""
-    create = update = delete = None
+    # XXX JeroenVermeulen 2014-02-10: Yet to be implemented.
+    create = None
+
+    update = delete = None
 
     def read(self, request):
         """List networks."""

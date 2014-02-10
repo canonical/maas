@@ -36,21 +36,14 @@ class TestNetworksAPI(APITestCase):
         parsed_result = json.loads(response.content)
         self.assertEqual(1, len(parsed_result))
         [returned_network] = parsed_result
+        fields = {'name', 'ip', 'netmask', 'vlan_tag', 'description'}
+        self.assertEqual(fields, set(returned_network.keys()))
         self.assertEqual(
-            (
-                original_network.name,
-                original_network.ip,
-                original_network.netmask,
-                original_network.vlan_tag,
-                original_network.description,
-            ),
-            (
-                returned_network['name'],
-                returned_network['ip'],
-                returned_network['netmask'],
-                returned_network['vlan_tag'],
-                returned_network['description'],
-            ))
+            {
+                field: getattr(original_network, field)
+                for field in fields
+            },
+            returned_network)
 
     def test_list_returns_empty_if_no_networks(self):
         response = self.client.get(reverse('networks_handler'))
