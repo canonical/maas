@@ -1,4 +1,4 @@
-# Copyright 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for dhcp/detect.py"""
@@ -467,27 +467,27 @@ class TestPeriodicTask(PservTestCase):
         mocked_logging.assert_called_once()
 
     def test_update_region_controller_sets_detected_dhcp(self):
-        mocked_put = self.patch(MAASClient, 'put')
-        mocked_put.return_value = MockResponse()
+        mocked_post = self.patch(MAASClient, 'post')
+        mocked_post.return_value = MockResponse()
         detected_server = factory.getRandomIPAddress()
         update_region_controller(self.knowledge, "eth0", detected_server)
-        mocked_put.assert_called_once_with(
+        mocked_post.assert_called_once_with(
             'api/1.0/nodegroups/%s/interfaces/eth0/' % self.knowledge[
                 'nodegroup_uuid'],
-            foreign_dhcp_ip=detected_server)
+            'report_foreign_dhcp', foreign_dhcp_ip=detected_server)
 
     def test_update_region_controller_clears_detected_dhcp(self):
-        mocked_put = self.patch(MAASClient, 'put')
-        mocked_put.return_value = MockResponse()
+        mocked_post = self.patch(MAASClient, 'post')
+        mocked_post.return_value = MockResponse()
         detected_server = None
         update_region_controller(self.knowledge, "eth0", detected_server)
-        mocked_put.assert_called_once_with(
+        mocked_post.assert_called_once_with(
             'api/1.0/nodegroups/%s/interfaces/eth0/' % self.knowledge[
                 'nodegroup_uuid'],
-            foreign_dhcp_ip='')
+            'report_foreign_dhcp', foreign_dhcp_ip='')
 
     def test_update_region_controller_catches_HTTPError_in_MAASClient(self):
-        self.patch(MAASClient, 'put').side_effect = urllib2.HTTPError(
+        self.patch(MAASClient, 'post').side_effect = urllib2.HTTPError(
             mock.sentinel, mock.sentinel, mock.sentinel,
             mock.sentinel, mock.sentinel)
         mocked_logging = self.patch(detect_module.logger, 'error')
@@ -495,7 +495,7 @@ class TestPeriodicTask(PservTestCase):
         mocked_logging.assert_called_once()
 
     def test_update_region_controller_catches_URLError_in_MAASClient(self):
-        self.patch(MAASClient, 'put').side_effect = urllib2.URLError(
+        self.patch(MAASClient, 'post').side_effect = urllib2.URLError(
             mock.sentinel.arg1)
         mocked_logging = self.patch(detect_module.logger, 'error')
         update_region_controller(self.knowledge, "eth0", None)
@@ -503,7 +503,7 @@ class TestPeriodicTask(PservTestCase):
 
     def test_update_region_controller_catches_non_OK_response(self):
         mock_response = MockResponse(httplib.NOT_FOUND, "error text")
-        self.patch(MAASClient, 'put').return_value = mock_response
+        self.patch(MAASClient, 'post').return_value = mock_response
         mocked_logging = self.patch(detect_module.logger, 'error')
         update_region_controller(self.knowledge, "eth0", None)
         mocked_logging.assert_called_once_with(

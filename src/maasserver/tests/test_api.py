@@ -584,8 +584,8 @@ class TestNodeGroupInterfacesAPI(APITestCase):
 
 
 class TestNodeGroupInterfaceAPIAccessPermissions(APITestCase):
-    # The nodegroup worker must have access because it amends the
-    # foreign_dhcp_ip property. Normal users do not have access.
+    # The nodegroup worker must have access to report_foreign_dhcp.
+    # Normal users do not have access.
 
     def test_read_does_not_work_for_normal_user(self):
         nodegroup = NodeGroup.objects.ensure_master()
@@ -711,32 +711,34 @@ class TestNodeGroupInterfaceAPI(APITestCase):
             NodeGroupInterface.objects.filter(
                 interface=interface.interface, nodegroup=nodegroup).exists())
 
-    def test_update_foreign_dhcp_ip_sets_value(self):
+    def test_report_foreign_dhcp_sets_value(self):
         self.become_admin()
         nodegroup = factory.make_node_group()
         [interface] = nodegroup.get_managed_interfaces()
         ip = factory.getRandomIPAddress()
-        response = self.client_put(
+        response = self.client.post(
             reverse(
                 'nodegroupinterface_handler',
                 args=[nodegroup.uuid, interface.interface]),
             {
+                'op': 'report_foreign_dhcp',
                 'foreign_dhcp_ip': ip,
             })
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(ip, reload_object(interface).foreign_dhcp_ip)
 
-    def test_update_foreign_dhcp_ip_unsets_value(self):
+    def test_report_foreign_dhcp_unsets_value(self):
         self.become_admin()
         nodegroup = factory.make_node_group()
         [interface] = nodegroup.get_managed_interfaces()
         interface.foreign_dhcp_ip = factory.getRandomIPAddress()
         interface.save()
-        response = self.client_put(
+        response = self.client.post(
             reverse(
                 'nodegroupinterface_handler',
                 args=[nodegroup.uuid, interface.interface]),
             {
+                'op': 'report_foreign_dhcp',
                 'foreign_dhcp_ip': '',
             })
         self.assertEqual(httplib.OK, response.status_code)

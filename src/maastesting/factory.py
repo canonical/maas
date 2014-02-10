@@ -25,6 +25,7 @@ from itertools import (
     islice,
     repeat,
     )
+from netaddr import IPAddress
 import os
 import os.path
 import random
@@ -148,6 +149,9 @@ class Factory:
         """
         if network is None:
             network = self.getRandomNetwork()
+        if but_not is not None:
+            low, high = but_not
+            but_not = (IPAddress(low), IPAddress(high))
         for _ in range(100):
             ip_range = tuple(sorted(
                 IPAddress(factory.getRandomIPInNetwork(network))

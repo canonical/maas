@@ -1,4 +1,4 @@
-# Copyright 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Utilities and helpers to help discover DHCP servers on your network."""
@@ -316,7 +316,8 @@ def update_region_controller(knowledge, interface, server):
     client = MAASClient(oauth, MAASDispatcher(), knowledge['maas_url'])
     if server is None:
         server = ''
-    process_request(client.put, api_path, foreign_dhcp_ip=server)
+    process_request(
+        client.post, api_path, 'report_foreign_dhcp', foreign_dhcp_ip=server)
 
 
 def periodic_probe_task():

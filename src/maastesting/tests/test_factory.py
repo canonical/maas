@@ -108,7 +108,8 @@ class TestFactory(MAASTestCase):
         # if the method gets this wrong.
         network = factory.getRandomNetwork(slash=30)
         first_low, first_high = factory.make_ip_range(network)
-        second_low, second_high = factory.make_ip_range(network)
+        second_low, second_high = factory.make_ip_range(
+            network, but_not=(first_low, first_high))
         self.assertNotEqual((first_low, first_high), (second_low, second_high))
 
     def test_getRandomDate_returns_datetime(self):

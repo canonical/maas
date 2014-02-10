@@ -1726,14 +1726,22 @@ class NodeGroupInterfaceHandler(OperationsHandler):
     create = delete = None
     fields = DISPLAYED_NODEGROUPINTERFACE_FIELDS
 
-    def read(self, request, uuid, interface):
-        """List of NodeGroupInterfaces of a NodeGroup."""
+    def get_interface(self, request, uuid, interface):
+        """Return the :class:`NodeGroupInterface` indicated by the request.
+
+        Will check for not-found errors, as well as the user's permission to
+        perform the request's operation on the nodegroup.
+        """
         nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
         if not request.user.is_superuser:
             check_nodegroup_access(request, nodegroup)
         nodegroupinterface = get_object_or_404(
             NodeGroupInterface, nodegroup=nodegroup, interface=interface)
         return nodegroupinterface
+
+    def read(self, request, uuid, interface):
+        """List of NodeGroupInterfaces of a NodeGroup."""
+        return self.get_interface(request, uuid, interface)
 
     def update(self, request, uuid, interface):
         """Update a specific NodeGroupInterface.
@@ -1757,11 +1765,7 @@ class NodeGroupInterfaceHandler(OperationsHandler):
         :param foreign_dhcp_ip: IP of non-maas DHCP server detected on network
         :type foreign_dhcp_ip: unicode (IP Address)
         """
-        nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
-        if not request.user.is_superuser:
-            check_nodegroup_access(request, nodegroup)
-        nodegroupinterface = get_object_or_404(
-            NodeGroupInterface, nodegroup=nodegroup, interface=interface)
+        nodegroupinterface = self.get_interface(request, uuid, interface)
         form = NodeGroupInterfaceForm(
             request.data, instance=nodegroupinterface)
         if form.is_valid():
@@ -1771,13 +1775,17 @@ class NodeGroupInterfaceHandler(OperationsHandler):
 
     def delete(self, request, uuid, interface):
         """Delete a specific NodeGroupInterface."""
-        nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
-        if not request.user.is_superuser:
-            check_nodegroup_access(request, nodegroup)
-        nodegroupinterface = get_object_or_404(
-            NodeGroupInterface, nodegroup=nodegroup, interface=interface)
+        nodegroupinterface = self.get_interface(request, uuid, interface)
         nodegroupinterface.delete()
         return rc.DELETED
+
+    @operation(idempotent=False)
+    def report_foreign_dhcp(self, request, uuid, interface):
+        """Report the result of a probe for foreign DHCP servers."""
+        foreign_dhcp_ip = get_mandatory_param(request.data, 'foreign_dhcp_ip')
+        nodegroupinterface = self.get_interface(request, uuid, interface)
+        NodeGroupInterface.objects.filter(id=nodegroupinterface.id).update(
+            foreign_dhcp_ip=foreign_dhcp_ip)
 
     @classmethod
     def resource_uri(cls, nodegroup=None, interface=None):
