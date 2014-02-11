@@ -12,9 +12,8 @@
 # serve to show the default.
 
 # Import maas' settings.
-from maas import settings
-from django.core.management import setup_environ
-setup_environ(settings)
+from os import environ
+environ.setdefault("DJANGO_SETTINGS_MODULE", "maas.settings")
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
