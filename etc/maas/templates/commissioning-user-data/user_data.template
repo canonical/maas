@@ -180,7 +180,7 @@ main() {
       total=$(($total+1))
    done
 
-   local cur=1 numpass=0 name="" failed=""
+   local cur=1 numfailed=0 name="" failed="" separator=""
    for script in "${SCRIPTS_D}/"*; do
       [ -f "$script" -a -f "$script" ] || continue
       name=${script##*/}
@@ -191,21 +191,22 @@ main() {
          "$ret" "finished $name [$cur/$total]: $ret" \
          "${OUT_D}/${name}.out" \
          "${OUT_D}/${name}.err"
-      if [ $ret -eq 0 ]; then
-          numpass=$(($numpass+1))
-          failed="${failed} ${name}"
+      if [ $ret -ne 0 ]; then
+          numfailed=$(($numfailed+1))
+          failed="${failed}${separator}${name}"
+          separator=", "
       fi
       cur=$(($cur+1))
    done
 
-   if [ $numpass -eq $total ]; then
+   if [ $numfailed -neq 0 ]; then
       ( cd "${OUT_D}" &&
-         signal OK "finished [$numpass/$total]" )
+         signal OK "finished [$total/$total]" )
       return 0
    else
       ( cd "${OUT_D}" &&
-         signal FAILED "failed [$numpass/$total] ($failed)" )
-      return $(($count-$numpass))
+         signal FAILED "failed [$numfailed/$total] ($failed)" )
+      return $numfailed
    fi
 
 }
