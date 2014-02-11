@@ -514,6 +514,13 @@ def create_node(request):
         # If 'nodegroup' is not explicitely specified, get the origin of the
         # request to figure out which nodegroup the new node should be
         # attached to.
+        if request.data.get('autodetect_nodegroup', None) is None:
+            # We insist on this to protect command-line API users who
+            # are manually enlisting nodes.  You can't use the origin's
+            # IP address to indicate in which nodegroup the new node belongs.
+            raise ValidationError(
+                "'autodetect_nodegroup' must be specified if 'nodegroup' "
+                "parameter missing")
         nodegroup = find_nodegroup(request)
         if nodegroup is not None:
             altered_query_data['nodegroup'] = nodegroup
@@ -550,6 +557,11 @@ class AnonNodesHandler(AnonymousOperationsHandler):
         the enlistment is done by a non-admin, the node is held in the
         "Declared" state for approval by a MAAS admin.
         """
+        # XXX 2014-02-11 bug=1278685
+        # There's no documentation here on what parameters can be passed!
+
+        # Note that request.autodetect_nodegroup is treated as a
+        # boolean; its presence indicates True.
         return create_node(request)
 
     @operation(idempotent=True)

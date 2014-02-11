@@ -54,6 +54,7 @@ class EnlistmentAPITest(MultipleUsersScenarios,
             reverse('nodes_handler'),
             {
                 'op': 'new',
+                'autodetect_nodegroup': '1',
                 'hostname': 'diane',
                 'architecture': architecture,
                 'power_type': 'ether_wake',
@@ -76,6 +77,7 @@ class EnlistmentAPITest(MultipleUsersScenarios,
             reverse('nodes_handler'),
             {
                 'op': 'new',
+                'autodetect_nodegroup': '1',
                 'hostname': hostname,
                 'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
                 'power_type': 'ether_wake',
@@ -105,6 +107,7 @@ class EnlistmentAPITest(MultipleUsersScenarios,
             reverse('nodes_handler'),
             {
                 'op': 'new',
+                'autodetect_nodegroup': '1',
                 'hostname': hostname,
                 'architecture': architecture,
                 'power_type': 'ether_wake',
@@ -125,6 +128,7 @@ class EnlistmentAPITest(MultipleUsersScenarios,
             reverse('nodes_handler'),
             {
                 'op': 'new',
+                'autodetect_nodegroup': '1',
                 'hostname': 'diane',
                 'architecture': architecture.split('/')[0],
                 'power_type': 'ether_wake',
@@ -148,6 +152,7 @@ class EnlistmentAPITest(MultipleUsersScenarios,
             reverse('nodes_handler'),
             {
                 'op': 'new',
+                'autodetect_nodegroup': '1',
                 'hostname': 'diane',
                 'architecture': architecture.split('/')[0],
                 'subarchitecture': architecture.split('/')[1],
@@ -171,6 +176,7 @@ class EnlistmentAPITest(MultipleUsersScenarios,
             reverse('nodes_handler'),
             {
                 'op': 'new',
+                'autodetect_nodegroup': '1',
                 'hostname': 'diane',
                 'architecture': architecture,
                 'subarchitecture': architecture.split('/')[1],
@@ -192,6 +198,7 @@ class EnlistmentAPITest(MultipleUsersScenarios,
             reverse('nodes_handler'),
             {
                 'op': 'new',
+                'autodetect_nodegroup': '1',
                 'hostname': 'diane',
                 'architecture': architecture,
                 'after_commissioning_action': (
@@ -209,6 +216,7 @@ class EnlistmentAPITest(MultipleUsersScenarios,
             reverse('nodes_handler'),
             {
                 'op': 'new',
+                'autodetect_nodegroup': '1',
                 'hostname': hostname,
                 'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
                 'mac_addresses': [factory.getRandomMACAddress()],
@@ -223,6 +231,7 @@ class EnlistmentAPITest(MultipleUsersScenarios,
             reverse('nodes_handler'),
             {
                 'op': 'new',
+                'autodetect_nodegroup': '1',
                 'architecture': architecture,
                 'power_type': 'ether_wake',
                 'mac_addresses': [factory.getRandomMACAddress()],
@@ -247,6 +256,26 @@ class EnlistmentAPITest(MultipleUsersScenarios,
             "Unrecognised signature: POST None",
             response.content)
 
+    def test_POST_new_fails_if_autodetect_nodegroup_required(self):
+        # If new() is called with no nodegroup, we require the client to
+        # explicitly also supply autodetect_nodegroup (with any value)
+        # to force the autodetection. If it's not supplied then an error
+        # is raised.
+        architecture = factory.getRandomChoice(ARCHITECTURE_CHOICES)
+        response = self.client.post(
+            reverse('nodes_handler'),
+            {
+                'op': 'new',
+                'architecture': architecture,
+                'power_type': 'ether_wake',
+                'mac_addresses': [factory.getRandomMACAddress()],
+            })
+        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+        self.assertIn('text/plain', response['Content-Type'])
+        self.assertEqual(
+            "'autodetect_nodegroup' must be specified if 'nodegroup' "
+             "parameter missing", response.content)
+
     def test_POST_fails_if_mac_duplicated(self):
         # Mac Addresses should be unique.
         mac = 'aa:bb:cc:dd:ee:ff'
@@ -256,6 +285,7 @@ class EnlistmentAPITest(MultipleUsersScenarios,
             reverse('nodes_handler'),
             {
                 'op': 'new',
+                'autodetect_nodegroup': '1',
                 'architecture': architecture,
                 'hostname': factory.getRandomString(),
                 'mac_addresses': [mac],
@@ -275,6 +305,7 @@ class EnlistmentAPITest(MultipleUsersScenarios,
             reverse('nodes_handler'),
             {
                 'op': 'invalid_operation',
+                'autodetect_nodegroup': '1',
                 'hostname': 'diane',
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff', 'invalid'],
             })
@@ -291,6 +322,7 @@ class EnlistmentAPITest(MultipleUsersScenarios,
             reverse('nodes_handler'),
             {
                 'op': 'new',
+                'autodetect_nodegroup': '1',
                 'hostname': 'diane',
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff', 'invalid'],
             })
@@ -309,6 +341,7 @@ class EnlistmentAPITest(MultipleUsersScenarios,
             reverse('nodes_handler'),
             {
                 'op': 'new',
+                'autodetect_nodegroup': '1',
                 'hostname': 'diane',
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff'],
                 'architecture': 'invalid-architecture',
@@ -342,6 +375,7 @@ class NodeHostnameEnlistmentTest(MultipleUsersScenarios,
             reverse('nodes_handler'),
             {
                 'op': 'new',
+                'autodetect_nodegroup': '1',
                 'hostname': hostname_with_domain,
                 'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
                 'power_type': 'ether_wake',
@@ -366,6 +400,7 @@ class NodeHostnameEnlistmentTest(MultipleUsersScenarios,
             reverse('nodes_handler'),
             {
                 'op': 'new',
+                'autodetect_nodegroup': '1',
                 'hostname': hostname_without_domain,
                 'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
                 'power_type': 'ether_wake',
@@ -388,6 +423,7 @@ class NodeHostnameEnlistmentTest(MultipleUsersScenarios,
             reverse('nodes_handler'),
             data={
                 'op': 'new',
+                'autodetect_nodegroup': '1',
                 'hostname': factory.make_name('hostname'),
                 'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
                 'power_type': 'ether_wake',
@@ -407,6 +443,7 @@ class NodeHostnameEnlistmentTest(MultipleUsersScenarios,
             reverse('nodes_handler'),
             data={
                 'op': 'new',
+                'autodetect_nodegroup': '1',
                 'hostname': factory.make_name('hostname'),
                 'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
                 'power_type': 'ether_wake',
@@ -438,6 +475,7 @@ class NonAdminEnlistmentAPITest(MultipleUsersScenarios,
             reverse('nodes_handler'),
             {
                 'op': 'new',
+                'autodetect_nodegroup': '1',
                 'hostname': factory.getRandomString(),
                 'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
                 'after_commissioning_action': (
@@ -470,6 +508,7 @@ class AnonymousEnlistmentAPITest(MAASServerTestCase):
             reverse('nodes_handler'),
             {
                 'op': 'new',
+                'autodetect_nodegroup': '1',
                 'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
                 'hostname': factory.getRandomString(),
                 'after_commissioning_action': (
@@ -535,6 +574,7 @@ class SimpleUserLoggedInEnlistmentAPITest(MAASServerTestCase):
         response = self.client.post(
             reverse('nodes_handler'), {
                 'op': 'new',
+                'autodetect_nodegroup': '1',
                 'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
                 'power_type': 'ether_wake',
                 'power_parameters': json.dumps(
@@ -556,6 +596,7 @@ class SimpleUserLoggedInEnlistmentAPITest(MAASServerTestCase):
             reverse('nodes_handler'),
             {
                 'op': 'new',
+                'autodetect_nodegroup': '1',
                 'hostname': factory.getRandomString(),
                 'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
                 'after_commissioning_action': (
@@ -592,6 +633,7 @@ class AdminLoggedInEnlistmentAPITest(MAASServerTestCase):
         response = self.client.post(
             reverse('nodes_handler'), {
                 'op': 'new',
+                'autodetect_nodegroup': '1',
                 'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
                 'power_type': 'ether_wake',
                 'mac_addresses': ['00:11:22:33:44:55'],
@@ -609,6 +651,7 @@ class AdminLoggedInEnlistmentAPITest(MAASServerTestCase):
         response = self.client.post(
             reverse('nodes_handler'), {
                 'op': 'new',
+                'autodetect_nodegroup': '1',
                 'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
                 'power_type': 'ether_wake',
                 'power_parameters_mac_address': new_mac_address,
@@ -628,6 +671,7 @@ class AdminLoggedInEnlistmentAPITest(MAASServerTestCase):
         response = self.client.post(
             reverse('nodes_handler'), {
                 'op': 'new',
+                'autodetect_nodegroup': '1',
                 'hostname': hostname,
                 'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
                 'power_type': 'ether_wake',
@@ -651,6 +695,7 @@ class AdminLoggedInEnlistmentAPITest(MAASServerTestCase):
         response = self.client.post(
             reverse('nodes_handler'), {
                 'op': 'new',
+                'autodetect_nodegroup': '1',
                 'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
                 'power_type': 'ether_wake',
                 'power_parameters_param': param,
@@ -673,6 +718,7 @@ class AdminLoggedInEnlistmentAPITest(MAASServerTestCase):
             reverse('nodes_handler'),
             {
                 'op': 'new',
+                'autodetect_nodegroup': '1',
                 'hostname': factory.getRandomString(),
                 'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
                 'power_type': 'ether_wake',
@@ -692,6 +738,7 @@ class AdminLoggedInEnlistmentAPITest(MAASServerTestCase):
             reverse('nodes_handler'),
             {
                 'op': 'new',
+                'autodetect_nodegroup': '1',
                 'hostname': factory.getRandomString(),
                 'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
                 'power_type': 'ether_wake',

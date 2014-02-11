@@ -152,6 +152,7 @@ class TestNodesAPI(APITestCase):
             reverse('nodes_handler'),
             {
                 'op': 'new',
+                'autodetect_nodegroup': '1',
                 'hostname': factory.getRandomString(),
                 'architecture': architecture,
                 'after_commissioning_action': (
@@ -168,6 +169,7 @@ class TestNodesAPI(APITestCase):
             reverse('nodes_handler'),
             {
                 'op': 'new',
+                'autodetect_nodegroup': '1',
                 'hostname': factory.getRandomString(),
                 'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
                 'after_commissioning_action': (
@@ -1085,6 +1087,7 @@ class TestNodesAPI(APITestCase):
             '/api/1.0/nodes/MAAS/api/1.0/nodes/',
             {
                 'op': 'new',
+                'autodetect_nodegroup': '1',
                 'hostname': factory.getRandomString(),
                 'architecture': architecture,
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff'],
