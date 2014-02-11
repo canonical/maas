@@ -173,6 +173,7 @@ from maasserver.fields import (
 from maasserver.forms import (
     BulkNodeActionForm,
     DownloadProgressForm,
+    NodeGroupInterfaceForeignDHCPForm,
     get_action_form,
     get_node_create_form,
     get_node_edit_form,
@@ -1774,8 +1775,6 @@ class NodeGroupInterfaceHandler(OperationsHandler):
         :type ip_range_low: unicode (IP Address)
         :param ip_range_high: Highest IP address to assign to clients.
         :type ip_range_high: unicode (IP Address)
-        :param foreign_dhcp_ip: IP of non-maas DHCP server detected on network
-        :type foreign_dhcp_ip: unicode (IP Address)
         """
         nodegroupinterface = self.get_interface(request, uuid, interface)
         form = NodeGroupInterfaceForm(
@@ -1804,27 +1803,12 @@ class NodeGroupInterfaceHandler(OperationsHandler):
         foreign_dhcp_ip = get_mandatory_param(request.data, 'foreign_dhcp_ip')
         nodegroupinterface = self.get_interface(request, uuid, interface)
 
-        # Validate the change using the NodeGroupInterfaceForm, but do not save
-        # the form!  See below for the reasons.
-        form = NodeGroupInterfaceForm(
+        form = NodeGroupInterfaceForeignDHCPForm(
             {'foreign_dhcp_ip': foreign_dhcp_ip}, instance=nodegroupinterface)
         if not form.is_valid():
             raise ValidationError(form.errors)
-
-        # Do this through an update, not a read/modify/write.  Updating
-        # NodeGroupInterface client-side may inadvertently trigger Django
-        # signals that cause a rewrite of the DHCP config, plus restart of
-        # the DHCP server.
-        # The inadvertent triggering has been known to happen because of race
-        # conditions between read/modify/write transactions that were enabled
-        # by Django defaulting to, and being designed for, the READ COMMITTED
-        # isolation level; the ORM writing back even unmodified fields; and
-        # GenericIPAddressField's default value being prone to problems where
-        # NULL is sometimes represented as None, sometimes as an empty string,
-        # and the difference being enough to convince the signal machinery
-        # that these fields have changed when in fact they have not.
-        NodeGroupInterface.objects.filter(id=nodegroupinterface.id).update(
-            foreign_dhcp_ip=foreign_dhcp_ip)
+        else:
+            return form.save()
 
     @classmethod
     def resource_uri(cls, nodegroup=None, interface=None):

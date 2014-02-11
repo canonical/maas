@@ -23,10 +23,7 @@ from apiclient.maas_client import MAASClient
 from django.conf import settings
 from django.core.urlresolvers import reverse
 from fixtures import EnvironmentVariableFixture
-from maasserver import (
-    api,
-    dhcp as dhcp_module,
-    )
+from maasserver import api
 from maasserver.api import (
     DISPLAYED_NODEGROUPINTERFACE_FIELDS,
     store_node_power_parameters,
@@ -746,56 +743,6 @@ class TestNodeGroupInterfaceAPI(APITestCase):
             })
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(None, reload_object(interface).foreign_dhcp_ip)
-
-    def test_report_foreign_dhcp_validates(self):
-        self.become_admin()
-        nodegroup = factory.make_node_group()
-        [interface] = nodegroup.get_managed_interfaces()
-        response = self.client.post(
-            reverse(
-                'nodegroupinterface_handler',
-                args=[interface.nodegroup.uuid, interface.interface]),
-            {
-                'op': 'report_foreign_dhcp',
-                'foreign_dhcp_ip': factory.getRandomString(),
-            })
-        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
-
-    def test_report_foreign_dhcp_does_not_trigger_update_signal(self):
-        self.become_admin()
-        nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
-        [interface] = nodegroup.get_managed_interfaces()
-
-        # Patch out the DHCP rewrites as triggered by some NodeGroupInterface
-        # changes, both to stop them from happening in a test and to detect
-        # whether the signal was actually fired.
-        # We can't patch the signal handlers themselves, because they are
-        # already set up.  Nor can we patch configure_dhcp, because the signal
-        # handlers import it locally to avoid import cycles.  Patching this
-        # underlying function instead will stop configure_dhcp() from doing
-        # anything real.
-        patch = self.patch(dhcp_module, 'get_interfaces_managed_by')
-        patch.return_value = []
-        # The patch is in fact called when we make changes to the interface
-        # that should trigger a DHCP config rewrite.
-        interface.interface = factory.make_name('eth')
-        interface.save()
-        self.assertNotEqual([], patch.mock_calls)
-        # Reset the calls list for the actual test.
-        patch.mock_calls = []
-
-        # Now, on with the test.
-        response = self.client.post(
-            reverse(
-                'nodegroupinterface_handler',
-                args=[nodegroup.uuid, interface.interface]),
-            {
-                'op': 'report_foreign_dhcp',
-                'foreign_dhcp_ip': factory.getRandomIPAddress(),
-            })
-        self.assertEqual(httplib.OK, response.status_code)
-
-        self.assertEqual([], patch.mock_calls)
 
 
 class TestBootImagesAPI(APITestCase):

@@ -22,6 +22,7 @@ from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.validators import validate_email
 from django.http import QueryDict
+from maasserver import dhcp as dhcp_module
 from maasserver.enum import (
     ARCHITECTURE,
     ARCHITECTURE_CHOICES,
@@ -38,6 +39,7 @@ from maasserver.forms import (
     ConfigForm,
     DownloadProgressForm,
     EditUserForm,
+    NodeGroupInterfaceForeignDHCPForm,
     get_action_form,
     get_node_create_form,
     get_node_edit_form,
@@ -778,6 +780,61 @@ class TestNodeGroupInterfaceForm(MAASServerTestCase):
         field_values = [
             getattr(interface, field_name) for field_name in nullable_fields]
         self.assertThat(field_values, AllMatch(Equals('')))
+
+
+class TestNodeGroupInterfaceForeignDHCPForm(MAASServerTestCase):
+
+    def test_forms_saves_foreign_dhcp_ip(self):
+        nodegroup = factory.make_node_group()
+        [interface] = nodegroup.get_managed_interfaces()
+        foreign_dhcp_ip = factory.getRandomIPAddress()
+        form = NodeGroupInterfaceForeignDHCPForm(
+            data={'foreign_dhcp_ip': foreign_dhcp_ip},
+            instance=interface)
+        self.assertTrue(form.is_valid())
+        form.save()
+        self.assertEqual(
+            foreign_dhcp_ip, reload_object(interface).foreign_dhcp_ip)
+
+    def test_forms_validates_foreign_dhcp_ip(self):
+        nodegroup = factory.make_node_group()
+        [interface] = nodegroup.get_managed_interfaces()
+        form = NodeGroupInterfaceForeignDHCPForm(
+            data={'foreign_dhcp_ip': 'invalid-ip'}, instance=interface)
+        self.assertFalse(form.is_valid())
+
+    def test_report_foreign_dhcp_does_not_trigger_update_signal(self):
+        nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
+        [interface] = nodegroup.get_managed_interfaces()
+
+        # Patch out the DHCP rewrites as triggered by some NodeGroupInterface
+        # changes, both to stop them from happening in a test and to detect
+        # whether the signal was actually fired.
+        # We can't patch the signal handlers themselves, because they are
+        # already set up.  Nor can we patch configure_dhcp, because the signal
+        # handlers import it locally to avoid import cycles.  Patching this
+        # underlying function instead will stop configure_dhcp() from doing
+        # anything real.
+        patch = self.patch(dhcp_module, 'get_interfaces_managed_by')
+        patch.return_value = []
+        # The patch is in fact called when we make changes to the interface
+        # that should trigger a DHCP config rewrite.
+        interface.interface = factory.make_name('eth')
+        interface.save()
+        self.assertNotEqual([], patch.mock_calls)
+        # Reset the calls list for the actual test.
+        patch.mock_calls = []
+
+        foreign_dhcp_ip = factory.getRandomIPAddress()
+        form = NodeGroupInterfaceForeignDHCPForm(
+            data={'foreign_dhcp_ip': foreign_dhcp_ip},
+            instance=interface)
+
+        self.assertTrue(form.is_valid())
+        form.save()
+        self.assertEqual(
+            foreign_dhcp_ip, reload_object(interface).foreign_dhcp_ip)
+        self.assertEqual([], patch.mock_calls)
 
 
 class TestValidateNonoverlappingNetworks(TestCase):
