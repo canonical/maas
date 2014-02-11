@@ -124,15 +124,16 @@ to see what is going wrong. Scott Moser wrote a simple utility that injects a
 user and password into an image. Here's how to add a 'backdoor' user with a
 password to your images::
 
- bzr branch lp:~maas-maintainers/maas/backdoor-image
+ sudo apt-get install --assume-yes bzr
+ bzr branch lp:~maas-maintainers/maas/backdoor-image backdoor-image
 
- imgs=$(echo var/lib/maas/ephemeral/*/*/*/*/*.img)
+ imgs=$(echo /var/lib/maas/ephemeral/*/*/*/*/*.img)
  for img in $imgs; do
      [ -f "$img.dist" ] || cp -a --sparse=always $img $img.dist
  done
 
  for img in $imgs; do
-     sudo ./backdoor-image -v --user=backdoor --password-auth --password=ubuntu
+     sudo ./backdoor-image -v --user=backdoor --password-auth --password=ubuntu $img
  done
 
 Inside the ephemeral image
