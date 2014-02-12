@@ -44,4 +44,4 @@ For more documentation of MAAS, please see https://maas.ubuntu.com/docs
 
 See Also
 ^^^^^^^^
-`maas`, `maas-cli`
+`maas-region-admin`, `maas`

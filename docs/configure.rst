@@ -88,13 +88,13 @@ the version of Ubuntu you wish to install.
 The menu will always list all the currently available series according
 to which boot images are available.
 
-Using the maas-cli command
-^^^^^^^^^^^^^^^^^^^^^^^^^^
+Using the maas command
+^^^^^^^^^^^^^^^^^^^^^^
 
-It is also possible to select a series using the maas-cli command. This
+It is also possible to select a series using the maas command. This
 can be done on a per node basis with::
 
- $ maas-cli <profile> node update <system_id> distro_series="<value>"
+ $ maas <profile> node update <system_id> distro_series="<value>"
 
 Where the string contains one of the valid, available distro series (e.g.
 "precise") or is empty for the default value.
@@ -233,7 +233,7 @@ enter the IP address of the region controller. Additionally, you will need
 to run the ``maas-import-pxe-files`` script to install the distro image files
 locally for commissioning::
 
-  $ maas-cli maas node-groups import-boot-images
+  $ maas maas node-groups import-boot-images
 
 ...and optionally set up the DHCP and DNS for 
 the cluster by either:

@@ -34,8 +34,8 @@ export PGDATABASE := maas
 build: \
     bin/buildout \
     bin/database \
-    bin/maas bin/test.maas \
-    bin/maascli bin/test.maascli \
+    bin/maas-region-admin bin/test.maas \
+    bin/maas bin/test.maascli \
     bin/test.maastesting \
     bin/twistd.pserv bin/test.pserv \
     bin/maas-probe-dhcp \
@@ -66,7 +66,7 @@ bin/database: bin/buildout buildout.cfg versions.cfg setup.py
 	$(buildout) install database
 	@touch --no-create $@
 
-bin/maas bin/celeryd.region: \
+bin/maas-region-admin bin/celeryd.region: \
     bin/buildout buildout.cfg versions.cfg setup.py $(js_enums)
 	$(buildout) install maas
 	@touch --no-create $@
@@ -75,7 +75,7 @@ bin/test.maas: bin/buildout buildout.cfg versions.cfg setup.py $(js_enums)
 	$(buildout) install maas-test
 	@touch --no-create $@
 
-bin/maascli: bin/buildout buildout.cfg versions.cfg setup.py
+bin/maas: bin/buildout buildout.cfg versions.cfg setup.py
 	$(buildout) install maascli
 	@touch --no-create $@
 
@@ -137,11 +137,11 @@ lint-js:
 
 check: clean test
 
-docs/api.rst: bin/maas src/maasserver/api.py syncdb
-	bin/maas generate_api_doc > $@
+docs/api.rst: bin/maas-region-admin src/maasserver/api.py syncdb
+	bin/maas-region-admin generate_api_doc > $@
 
-sampledata: bin/maas bin/database syncdb
-	$(dbrun) bin/maas loaddata src/maasserver/fixtures/dev_fixture.yaml
+sampledata: bin/maas-region-admin bin/database syncdb
+	$(dbrun) bin/maas-region-admin loaddata src/maasserver/fixtures/dev_fixture.yaml
 
 doc: bin/sphinx docs/api.rst
 	bin/sphinx
@@ -176,16 +176,16 @@ distclean: clean stop
 	$(RM) -r *.egg *.egg-info src/*.egg-info
 	$(RM) -r run/* services/*/supervise
 
-harness: bin/maas bin/database
-	$(dbrun) bin/maas shell --settings=maas.demo
+harness: bin/maas-region-admin bin/database
+	$(dbrun) bin/maas-region-admin shell --settings=maas.demo
 
 dbharness: bin/database
 	bin/database --preserve shell
 
-syncdb: bin/maas bin/database
-	$(dbrun) bin/maas syncdb --noinput
-	$(dbrun) bin/maas migrate maasserver --noinput
-	$(dbrun) bin/maas migrate metadataserver --noinput
+syncdb: bin/maas-region-admin bin/database
+	$(dbrun) bin/maas-region-admin syncdb --noinput
+	$(dbrun) bin/maas-region-admin migrate maasserver --noinput
+	$(dbrun) bin/maas-region-admin migrate metadataserver --noinput
 
 define phony_targets
   build
@@ -309,7 +309,7 @@ services/txlongpoll/@deps: bin/twistd.txlongpoll
 
 services/web/@deps:
 
-services/webapp/@deps: bin/maas
+services/webapp/@deps: bin/maas-region-admin
 
 #
 # Phony stuff.

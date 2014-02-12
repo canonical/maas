@@ -99,8 +99,8 @@ Command-line Tools
 .. toctree::
    :maxdepth: 1
 
+   man/maas-region-admin.8
    man/maas.8
-   man/maas-cli.8
    man/maas-import-pxe-files.8
 
 

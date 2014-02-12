@@ -26,7 +26,7 @@ To save time, you can also accept and commission all nodes from the
 commandline. This requires that you first login with the API key,
 which :ref:`you can retrieve from the web interface <api-key>`::
 
-   $ maas-cli maas nodes accept-all
+   $ maas maas nodes accept-all
 
 
 .. _enlist-via-boot-media:

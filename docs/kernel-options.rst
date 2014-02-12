@@ -19,16 +19,16 @@ Per-node kernel options
 -----------------------
 
 Per-node kernel options are set using tags.  The easiest way of doing this
-is to use the ``maas-cli`` command.  You will need to :ref:`be
+is to use the ``maas`` command.  You will need to :ref:`be
 logged in to the API first <api-key>` and then you can add a tag which has its
 ``kernel_opts`` value set, like this::
 
-  $ maas-cli maas tags new name='nomodeset' \
+  $ maas maas tags new name='nomodeset' \
     comment='nomodeset kernel option' kernel_opts='nomodeset vga'
 
 Once the tag is defined, you can add it to a node or nodes::
 
-  $ maas-cli maas tag update-nodes nomodeset add=<system_id_1> \
+  $ maas maas tag update-nodes nomodeset add=<system_id_1> \
     add=<system_id_2>
 
 .. note::

@@ -39,10 +39,10 @@ Creating a tag
 --------------
 
 Once we have sorted out what definition we will be using, creating the
-tag is easy using the ``maas-cli`` command. You will need to :ref:`be
+tag is easy using the ``maas`` command. You will need to :ref:`be
 logged in to the API first <api-key>`::
 
-  $ maas-cli maas tags new name='gpu' \
+  $ maas maas tags new name='gpu' \
     comment='GPU with clock speed >1GHz for running CUDA type operations.' \
     definition='//node[@id="display"]/clock > 1000000000'
 
@@ -54,7 +54,7 @@ explains the definition in plain language is always a good idea!
 
 To check which nodes this tag applies to we can use the tag command::
 
-  $ maas-cli maas tag nodes gpu
+  $ maas maas tag nodes gpu
 
 The process of updating the tags does take some time  - not a lot of time, but
 if nothing shows up straight away, try running the command again after a minute
@@ -92,8 +92,8 @@ and remove the tag from specific nodes.
 In this example we are assuming you are using the 'maas' profile and you want
 to create a tag called 'my_tag'::
 
-  $ maas-cli maas tags new name='my_tag' comment='nodes which go ping'
-  $ maas-cli maas tag update-nodes my_tag add="<system_id>"
+  $ maas maas tags new name='my_tag' comment='nodes which go ping'
+  $ maas maas tag update-nodes my_tag add="<system_id>"
 
 The first line creates a new tag but omits the definition, so no nodes are
 automatically added to it. The second line applies that tag to a specific node
@@ -102,7 +102,7 @@ referenced by its system id property.
 You can easily remove a tag from a particular node, or indeed add
 and remove them at the same time::
 
-  $ maas-cli maas tag update-nodes my_tag add=<system_id_1> \
+  $ maas maas tag update-nodes my_tag add=<system_id_1> \
     add=<system_id_2> add=<system_id_3> remove=<system_id_4>
 
 As the rule is that tags without a definition are ignored when rebuilds are
@@ -113,10 +113,10 @@ associations it has with nodes. This is particularly useful if you have some
 hardware which is conceptually similar but doesn't easily fit within a single
 tag definition::
 
-  $ maas-cli maas tag new name='my_tag' comment='nodes I like ' \
+  $ maas maas tag new name='my_tag' comment='nodes I like ' \
      definition='contains(//node[@id=network]/vendor, "Intel")'
-  $ maas-cli maas tag update my_tag definition=''
-  $ maas-cli mass tag update-nodes my_tag add=<system_id>
+  $ maas maas tag update my_tag definition=''
+  $ maas mass tag update-nodes my_tag add=<system_id>
 
 .. tip::
 

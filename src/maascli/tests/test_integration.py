@@ -26,7 +26,7 @@ from maastesting.testcase import MAASTestCase
 
 
 def locate_maascli():
-    return os.path.join(root, 'bin', 'maascli')
+    return os.path.join(root, 'bin', 'maas')
 
 
 class TestMAASCli(MAASTestCase):

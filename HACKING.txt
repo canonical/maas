@@ -233,20 +233,20 @@ Substitute your own email.  The command will prompt for a choice of password.
 Next, get the superuser's API key on the `account preferences`_ page in the
 web UI, and use it to log into MAAS at the command-line::
 
-    $ bin/maascli login dev http://localhost:5240
+    $ bin/maas login dev http://localhost:5240
 
 .. _`account preferences`: http://localhost:5240/account/prefs/
 
 Start downloading PXE boot resources::
 
-    $  bin/maascli dev node-groups import-boot-images
+    $  bin/maas dev node-groups import-boot-images
 
 This sends jobs to each cluster controller, asking each to download
 the boot resources they require. This may download dozens or hundreds
 of megabytes, so it may take a while. To save bandwidth, set an HTTP
 proxy beforehand::
 
-    $ bin/maascli dev maas set-config name=http_proxy value=http://...
+    $ bin/maas dev maas set-config name=http_proxy value=http://...
 
 
 Running the built-in TFTP server
