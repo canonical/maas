@@ -173,13 +173,14 @@ from maasserver.fields import (
 from maasserver.forms import (
     BulkNodeActionForm,
     DownloadProgressForm,
-    NodeGroupInterfaceForeignDHCPForm,
     get_action_form,
     get_node_create_form,
     get_node_edit_form,
     NetworkForm,
+    NetworksListingForm,
     NodeActionForm,
     NodeGroupEdit,
+    NodeGroupInterfaceForeignDHCPForm,
     NodeGroupInterfaceForm,
     NodeGroupWithInterfacesForm,
     SSHKeyForm,
@@ -2767,12 +2768,10 @@ class NetworksHandler(OperationsHandler):
             networks.  If more than one node is given, the result will be
             restricted to networks that these nodes have in common.
         """
-        networks = Network.objects.all()
-        node_ids = get_optional_list(request.GET, 'node')
-        if node_ids is not None:
-            for node in Node.objects.filter(system_id__in=node_ids):
-                networks = networks.filter(node=node)
-        return networks.order_by('name')
+        form = NetworksListingForm(data=request.GET)
+        if not form.is_valid():
+            raise ValidationError(form.errors)
+        return form.filter_networks(Network.objects.all())
 
     @admin_method
     def create(self, request):

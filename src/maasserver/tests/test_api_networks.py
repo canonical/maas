@@ -117,3 +117,24 @@ class TestNetworksAPI(APITestCase):
         self.assertEqual(
             {networks[2].name},
             {network['name'] for network in json.loads(response.content)})
+
+    def test_GET_fails_if_filtering_by_nonexistent_node(self):
+        bad_system_id = factory.make_name('no_node')
+        response = self.client.get(
+            reverse('networks_handler'),
+            {'node': [bad_system_id]})
+        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+        self.assertEqual(
+            {'node': ["Unknown node(s): %s." % bad_system_id]},
+            json.loads(response.content))
+
+    def test_GET_ignores_duplicates(self):
+        factory.make_network()
+        node = factory.make_node(networks=[factory.make_network()])
+        response = self.client.get(
+            reverse('networks_handler'),
+            {'node': [node.system_id, node.system_id]})
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        self.assertEqual(
+            {network.name for network in node.networks.all()},
+            {network['name'] for network in json.loads(response.content)})

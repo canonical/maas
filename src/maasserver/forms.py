@@ -26,6 +26,7 @@ __all__ = [
     "MAASAndNetworkForm",
     "MACAddressForm",
     "NetworkForm",
+    "NetworksListingForm",
     "NodeGroupEdit",
     "NodeGroupInterfaceForm",
     "NodeGroupWithInterfacesForm",
@@ -856,7 +857,6 @@ def validate_nonoverlapping_networks(interfaces):
                 % (networks[index - 1]['name'], networks[index]['name']))
 
 
-# XXX JeroenVermeulen 2014-01-29 bug=1052339: This restriction is going away.
 class NodeGroupWithInterfacesForm(ModelForm):
     """Create a NodeGroup with unmanaged interfaces."""
 
@@ -1223,3 +1223,43 @@ class NetworkForm(ModelForm):
             'netmask',
             'vlan_tag',
             )
+
+
+class NetworksListingForm(forms.Form):
+    """Form for the networks listing API."""
+
+    # Multi-value parameter, but with a name in the singular.  This is going
+    # to be passed as a GET-style parameter in the URL, so repeated as "node="
+    # for every node.
+    node = UnconstrainedMultipleChoiceField(
+        label="Show only networks that are attached to all of these nodes.",
+        required=False, error_messages={
+            'invalid_list':
+            "Invalid parameter: list of node system IDs required.",
+            })
+
+    def clean_node(self):
+        system_ids = self.cleaned_data['node']
+        if system_ids is None:
+            return None
+        system_ids = set(system_ids)
+        nodes = Node.objects.filter(system_id__in=system_ids)
+        if len(nodes) != len(system_ids):
+            unknown = system_ids.difference({node.system_id for node in nodes})
+            raise forms.ValidationError(
+                "Unknown node(s): %s."
+                % ', '.join(sorted(unknown)))
+        return nodes
+
+    def filter_networks(self, networks):
+        """Filter (and order) the given networks by the form's criteria.
+
+        :param networks: A query set of :class:`Network`.
+        :return: A version of `networks` restricted and ordered according to
+            the criteria passed to the form.
+        """
+        nodes = self.cleaned_data.get('node')
+        if nodes is not None:
+            for node in nodes:
+                networks = networks.filter(node=node)
+        return networks.order_by('name')
