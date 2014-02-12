@@ -274,7 +274,7 @@ class EnlistmentAPITest(MultipleUsersScenarios,
         self.assertIn('text/plain', response['Content-Type'])
         self.assertEqual(
             "'autodetect_nodegroup' must be specified if 'nodegroup' "
-             "parameter missing", response.content)
+            "parameter missing", response.content)
 
     def test_POST_fails_if_mac_duplicated(self):
         # Mac Addresses should be unique.
