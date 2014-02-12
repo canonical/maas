@@ -37,7 +37,8 @@ div.body h1, div.body h2, div.body h3, div.body h4, div.body h5, div.body h6, di
 }
 
 div.admonition {
-	margin: 20px 0px;
+  margin: 20px 0px;
+  color: #3E4349;
 }
 
 div.admonition p.admonition-title {

@@ -1,6 +1,9 @@
 Physical Zones
 ==============
 
+.. note::
+  This feature is only available in MAAS versions 1.5 and above.
+
 To help you maximise fault-tolerance and performance of the services you
 deploy, MAAS administrators can define *physical zones* (or just *zones*
 for short), and assign nodes to them.  When a user requests a node, they can
