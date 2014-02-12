@@ -26,6 +26,7 @@ __all__ = [
 from functools import wraps
 from logging import getLogger
 from os import getpid
+from socket import gethostname
 
 import crochet
 from django.utils import autoreload
@@ -61,6 +62,16 @@ stop_event_loop_when_reloader_is_invoked()
 
 
 class RegionEventLoop:
+    """An event loop running in a region controller process.
+
+    Typically several processes will be running the web application -
+    chiefly Django - across several machines, with multiple threads of
+    execution in each process.
+
+    This class represents a single event loop for each *process*,
+    allowing convenient control of the event loop - a Twisted reactor
+    running in a thread - and to which to attach and query services.
+    """
 
     def __init__(self):
         super(RegionEventLoop, self).__init__()
@@ -93,11 +104,15 @@ class RegionEventLoop:
             crochet.reactor.removeSystemEventTrigger(handle)
         return self.services.stopService()
 
+    @property
+    def name(self):
+        """A name for identifying this service in a distributed system."""
+        return "%s:pid=%d" % (gethostname(), getpid())
+
 
 loop = RegionEventLoop()
 services = loop.services
 start = loop.start
 stop = loop.stop
-init = loop.init
 
-init()
+loop.init()

@@ -49,9 +49,6 @@ from twisted.internet.interfaces import IStreamServerEndpoint
 from twisted.internet.protocol import Factory
 from twisted.python import log
 
-# Ensure the event loop is running.
-eventloop.init()
-
 
 class TestRegionProtocol(MAASTestCase):
 
