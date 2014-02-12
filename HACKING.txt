@@ -97,8 +97,8 @@ To run the whole suite::
 
 To run tests at a lower level of granularity::
 
-    $ ./bin/maas test src/maasserver/tests/test_api.py
-    $ ./bin/maas test src/maasserver/tests/test_api.py:AnonymousEnlistmentAPITest
+    $ ./bin/test.maas test src/maasserver/tests/test_api.py
+    $ ./bin/test.maas test src/maasserver/tests/test_api.py:AnonymousEnlistmentAPITest
 
 The test runner is `nose`_, so you can pass in options like
 ``--with-coverage`` and ``--nocapture`` (short option: ``-s``). The
@@ -225,7 +225,7 @@ not start by default.
 
 First create a superuser and start all MAAS services::
 
-    $ bin/maas createsuperuser
+    $ bin/maas-region-admin createsuperuser
     $ make run
 
 Substitute your own email.  The command will prompt for a choice of password.
@@ -444,7 +444,7 @@ in ``src/<application>/models/__init__.py``
 
 Once you've changed the code, run::
 
-    $ ./bin/maas schemamigration maasserver --auto description_of_the_change
+    $ ./bin/maas-region-admin schemamigration maasserver --auto description_of_the_change
 
 This will generate a migration module named
 ``src/maasserver/migrations/<auto_number>_description_of_the_change.py``. Don't
@@ -464,7 +464,7 @@ If you need to perform data migration, very much in the same way, you will need
 to run South's `datamigration`_ command. For instance, if you want to perform
 changes to the ``maasserver`` application, run::
 
-    $ ./bin/maas datamigration maasserver description_of_the_change
+    $ ./bin/maas-region-admin datamigration maasserver description_of_the_change
 
 .. _datamigration: http://south.aeracode.org/docs/commands.html#datamigration
 
