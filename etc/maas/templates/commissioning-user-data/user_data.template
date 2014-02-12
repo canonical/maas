@@ -199,7 +199,7 @@ main() {
       cur=$(($cur+1))
    done
 
-   if [ $numfailed -ne 0 ]; then
+   if [ $numfailed -eq 0 ]; then
       ( cd "${OUT_D}" &&
          signal OK "finished [$total/$total]" )
       return 0
