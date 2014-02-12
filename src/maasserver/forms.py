@@ -1031,7 +1031,7 @@ class ValidatorMultipleChoiceField(MultipleChoiceField):
 class SetZoneBulkAction:
     """A custom action we only offer in bulk: "Set physical zone."
 
-    Looks just enough like a node action class for presentatoin purposes, but
+    Looks just enough like a node action class for presentation purposes, but
     isn't one of the actions we normally offer on the node page.  The
     difference is that this action takes an argument: the zone.
     """

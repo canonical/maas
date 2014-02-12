@@ -234,7 +234,7 @@ def register_mac_type(cursor):
 
     # Now do the same for the type array-of-MACs.  The "typecaster" created
     # for MAC is passed in; it gets used for parsing an individual element
-    # of an array's text representatoin as received from the database.
+    # of an array's text representation as received from the database.
     cursor.execute("SELECT '{}'::macaddr[]")
     oid = cursor.description[0][1]
     psycopg2.extensions.register_type(psycopg2.extensions.new_array_type(
