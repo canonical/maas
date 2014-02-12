@@ -95,6 +95,8 @@ class AccessMiddleware:
             reverse('api-doc'),
             # Metadata service is for use by nodes; no login.
             reverse('metadata'),
+            # RPC information is for use by clusters; no login.
+            reverse('rpc-info'),
             # API calls are protected by piston.
             settings.API_URL_REGEXP,
             ]

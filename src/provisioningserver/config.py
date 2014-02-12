@@ -116,8 +116,6 @@ class ConfigRPC(Schema):
 
     if_key_missing = None
 
-    port = Int(min=1, max=65535, if_missing=5248)
-
 
 class ConfigBootEphemeral(Schema):
     """Configuration validator for ephemeral boot configuration."""

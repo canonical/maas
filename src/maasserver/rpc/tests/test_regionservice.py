@@ -18,9 +18,9 @@ from itertools import product
 import os.path
 
 from crochet import wait_for_reactor
+from maasserver import eventloop
 from maasserver.rpc.regionservice import (
     Region,
-    RegionFactory,
     RegionService,
     )
 from maastesting.factory import factory
@@ -31,6 +31,7 @@ from provisioningserver.rpc.region import ReportBootImages
 from provisioningserver.rpc.testing import call_responder
 from testtools.matchers import (
     AfterPreprocessing,
+    Equals,
     Is,
     IsInstance,
     MatchesListwise,
@@ -45,7 +46,11 @@ from twisted.internet.defer import (
     fail,
     )
 from twisted.internet.interfaces import IStreamServerEndpoint
+from twisted.internet.protocol import Factory
 from twisted.python import log
+
+# Ensure the event loop is running.
+eventloop.init()
 
 
 class TestRegionProtocol(MAASTestCase):
@@ -118,7 +123,8 @@ class TestRegionService(MAASTestCase):
         service = RegionService(reactor)
         self.assertThat(service, IsInstance(Service))
         self.assertThat(service.endpoint, Provides(IStreamServerEndpoint))
-        self.assertThat(service.factory, IsInstance(RegionFactory))
+        self.assertThat(service.factory, IsInstance(Factory))
+        self.assertThat(service.factory.protocol, Equals(Region))
 
     @wait_for_reactor
     def test_starting_and_stopping_the_service(self):
@@ -129,15 +135,16 @@ class TestRegionService(MAASTestCase):
 
         def check_started(port):
             self.assertThat(port, IsInstance(tcp.Port))
-            self.assertThat(port.factory, IsInstance(RegionFactory))
-            # The port is saved on the service as an instance var.
-            self.assertThat(service.port, Is(port))
+            self.assertThat(port.factory, IsInstance(Factory))
+            self.assertThat(port.factory.protocol, Equals(Region))
+            # The port is saved as a private instance var.
+            self.assertThat(service._port, Is(port))
             return service.stopService()
 
         service.starting.addCallback(check_started)
 
         def check_stopped(ignore, service=service):
-            self.assertTrue(service.port.disconnected)
+            self.assertTrue(service._port.disconnected)
 
         service.starting.addCallback(check_stopped)
 
@@ -157,7 +164,7 @@ class TestRegionService(MAASTestCase):
 
         def check(port):
             self.assertThat(port, Is(None))
-            self.assertThat(service.port, Is(None))
+            self.assertThat(service._port, Is(None))
             return service.stopService()
 
         return service.starting.addCallback(check)
@@ -195,7 +202,7 @@ class TestRegionService(MAASTestCase):
         def check(port):
             # The CancelledError is suppressed.
             self.assertThat(port, Is(None))
-            self.assertThat(service.port, Is(None))
+            self.assertThat(service._port, Is(None))
 
         return service.starting.addCallback(check)
 

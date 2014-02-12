@@ -16,7 +16,7 @@ __all__ = []
 
 from provisioningserver.amqpclient import AMQFactory
 from provisioningserver.config import Config
-from provisioningserver.rpc.clusterservice import ClusterService
+from provisioningserver.rpc.clusterservice import ClusterClientService
 from provisioningserver.services import (
     LogService,
     OOPSService,
@@ -168,7 +168,7 @@ class ProvisioningServiceMaker(object):
         return tftp_services
 
     def _makeRPCService(self, rpc_config):
-        rpc_service = ClusterService(reactor, rpc_config["port"])
+        rpc_service = ClusterClientService(reactor)
         rpc_service.setName("rpc")
         return rpc_service
 

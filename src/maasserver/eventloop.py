@@ -18,6 +18,7 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    "services",
     "start",
     "stop",
 ]
@@ -68,9 +69,7 @@ class RegionEventLoop:
 
     def init(self):
         """Spin up a Twisted event loop in this process."""
-        if crochet.reactor.running:
-            return  # This should only be called once.
-        else:
+        if not crochet.reactor.running:
             logger.info("Starting event loop in process %d", getpid())
             crochet.setup()
 
@@ -96,7 +95,9 @@ class RegionEventLoop:
 
 
 loop = RegionEventLoop()
+services = loop.services
 start = loop.start
 stop = loop.stop
+init = loop.init
 
-loop.init()
+init()

@@ -240,9 +240,14 @@ urlpatterns += patterns(
     adminurl(r'^networks/add/$', NetworkAdd.as_view(), name='network-add'),
 )
 
-
 # API URLs.
 urlpatterns += patterns(
     '',
     (r'^api/1\.0/', include('maasserver.urls_api'))
     )
+
+# RPC URLs.
+urlpatterns += patterns(
+    'maasserver.views.rpc',
+    url(r'^rpc/$', 'info', name="rpc-info"),
+)
