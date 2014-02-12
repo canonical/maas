@@ -18,7 +18,6 @@ from itertools import product
 import os.path
 
 from crochet import wait_for_reactor
-from maasserver import eventloop
 from maasserver.rpc.regionservice import (
     Region,
     RegionService,
