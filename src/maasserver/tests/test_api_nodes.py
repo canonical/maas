@@ -690,7 +690,7 @@ class TestNodesAPI(APITestCase):
         })
         self.assertResponseCode(httplib.OK, response)
         response_json = json.loads(response.content)
-        self.assertEqual(node_tag_names, response_json['tag_names'])
+        self.assertItemsEqual(node_tag_names, response_json['tag_names'])
 
     def test_POST_acquire_allocates_node_by_tags_space_separated(self):
         node = factory.make_node(status=NODE_STATUS.READY)

@@ -51,7 +51,8 @@ class TestUtilities(MAASServerTestCase):
         rel_location = os.path.join(
             factory.getRandomString(), factory.getRandomString())
         rel_location_base = os.path.join(
-            os.path.dirname(os.path.dirname(__file__)), 'static')
+            os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+            'static')
         expected_location = os.path.join(rel_location_base, rel_location)
         self.assertEqual(
             expected_location, get_absolute_location(location=rel_location))
