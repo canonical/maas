@@ -90,3 +90,30 @@ class TestNetworksAPI(APITestCase):
         self.assertEqual(
             sorted(original_names),
             [network['name'] for network in json.loads(response.content)])
+
+    def test_GET_filters_by_node(self):
+        networks = [factory.make_network() for _ in range(5)]
+        node = factory.make_node(networks=networks[1:3])
+
+        response = self.client.get(
+            reverse('networks_handler'),
+            {'node': [node.system_id]})
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+
+        self.assertEqual(
+            {network.name for network in node.networks.all()},
+            {network['name'] for network in json.loads(response.content)})
+
+    def test_GET_combines_node_filters_as_intersection_of_networks(self):
+        networks = [factory.make_network() for _ in range(5)]
+        node1 = factory.make_node(networks=networks[1:3])
+        node2 = factory.make_node(networks=networks[2:4])
+
+        response = self.client.get(
+            reverse('networks_handler'),
+            {'node': [node1.system_id, node2.system_id]})
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+
+        self.assertEqual(
+            {networks[2].name},
+            {network['name'] for network in json.loads(response.content)})

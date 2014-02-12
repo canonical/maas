@@ -2761,8 +2761,18 @@ class NetworksHandler(OperationsHandler):
     update = delete = None
 
     def read(self, request):
-        """List networks."""
-        return Network.objects.all().order_by('name')
+        """List networks.
+
+        :param node: Optionally, nodes which must be attached to any returned
+            networks.  If more than one node is given, the result will be
+            restricted to networks that these nodes have in common.
+        """
+        networks = Network.objects.all()
+        node_ids = get_optional_list(request.GET, 'node')
+        if node_ids is not None:
+            for node in Node.objects.filter(system_id__in=node_ids):
+                networks = networks.filter(node=node)
+        return networks.order_by('name')
 
     @admin_method
     def create(self, request):
