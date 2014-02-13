@@ -199,7 +199,8 @@ JSON_POWER_TYPE_PARAMETERS = [
     {
         'name': 'amt',
         'fields': [
-            make_json_field('power_address', "Power address"),
+            make_json_field(
+                'mac_address', "MAC Address", field_type='mac_address'),
             make_json_field('power_pass', "Power password"),
         ],
     },

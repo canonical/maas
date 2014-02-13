@@ -39,6 +39,7 @@ from maastesting.fakemethod import (
 from mock import (
     ANY,
     Mock,
+    sentinel,
     )
 from netaddr import IPNetwork
 from provisioningserver import (
@@ -156,6 +157,43 @@ class TestPowerTasks(PservTestCase):
         self.assertRaises(
             PowerActionFail, power_off.delay,
             "ether_wake", mac=arbitrary_mac)
+
+
+class TestPowerTasksResolveMACAddresses(PservTestCase):
+
+    def test_ip_address_is_looked_up_from_mac_address(self):
+        # Patch out PowerAction; we're just trying to demonstrate that
+        # it's invoked with an IP address even if one is not supplied.
+        PowerAction = self.patch(tasks, "PowerAction")
+        # find_ip_via_arp() is tested elsewhere; we just want to know
+        # that it has been used.
+        self.patch(tasks, "find_ip_via_arp").return_value = sentinel.ip_address
+        # PowerAction.execute() is passed an ip_address argument in
+        # addition to the mac_address argument when the latter is
+        # supplied.
+        tasks.issue_power_action(
+            sentinel.power_type, "on", mac_address=sentinel.mac_address)
+        PowerAction.assert_called_once_with(sentinel.power_type)
+        PowerAction.return_value.execute.assert_called_once_with(
+            power_change="on", mac_address=sentinel.mac_address,
+            ip_address=sentinel.ip_address)
+
+    def test_ip_address_is_looked_up_when_already_supplied(self):
+        # Patch out PowerAction; we're just trying to demonstrate that
+        # it's invoked with an IP address even if one is not supplied.
+        PowerAction = self.patch(tasks, "PowerAction")
+        # find_ip_via_arp() is tested elsewhere; we just want to know
+        # that it has been used.
+        self.patch(tasks, "find_ip_via_arp").return_value = sentinel.ip_address
+        # The ip_address argument passed to PowerAction.execute() is
+        # looked-up via find_ip_via_arp() even if an ip_address is
+        # passed into issue_power_action().
+        tasks.issue_power_action(
+            sentinel.power_type, "on", mac_address=sentinel.mac_address,
+            ip_address=sentinel.another_ip_address)
+        PowerAction.return_value.execute.assert_called_once_with(
+            power_change="on", mac_address=sentinel.mac_address,
+            ip_address=sentinel.ip_address)
 
 
 class TestDHCPTasks(PservTestCase):

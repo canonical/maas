@@ -134,6 +134,8 @@ def issue_power_action(power_type, power_change, **kwargs):
     assert power_change in ('on', 'off'), (
         "Unknown power change keyword: %s" % power_change)
     kwargs['power_change'] = power_change
+    if 'mac_address' in kwargs:
+        kwargs['ip_address'] = find_ip_via_arp(kwargs['mac_address'])
     try:
         pa = PowerAction(power_type)
         pa.execute(**kwargs)

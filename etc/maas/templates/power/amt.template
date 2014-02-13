@@ -2,19 +2,18 @@
 # -*- mode: shell-script -*-
 #
 # Control a system via amttool
-power_address='{{power_address}}'
 power_change='{{power_change}}'
 power_pass='{{power_pass}}'
 
 echo amt.template starting $*
 
-echo power_address $power_address
+echo ip_address $ip_address
 echo power_change $power_change
 echo power_pass $power_pass
 
 amt() {
-  echo running amttool "$power_address" $*
-  AMT_PASSWORD="$power_pass" amttool "$power_address" "$@"
+  echo running amttool "$ip_address" $*
+  AMT_PASSWORD="$power_pass" amttool "$ip_address" "$@"
 }
 
 state() {
