@@ -21,6 +21,7 @@ config="$(readlink -f etc/maas/pserv.yaml)"
 # Obtain the development setting for CLUSTER_UUID.
 . etc/demo_maas_cluster.conf
 export CLUSTER_UUID
+export MAAS_URL
 
 exec $(command -v authbind && echo --deep) \
     "${script}" --nodaemon --pidfile="" maas-pserv --config-file "${config}"

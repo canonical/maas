@@ -21,10 +21,7 @@ from provisioningserver.services import (
     LogService,
     OOPSService,
     )
-from provisioningserver.tftp import TFTPBackend
-from provisioningserver.utils import get_all_interface_addresses
-from tftp.protocol import TFTP
-from twisted.application import internet
+from provisioningserver.tftp import TFTPService
 from twisted.application.internet import (
     TCPClient,
     TCPServer,
@@ -154,18 +151,9 @@ class ProvisioningServiceMaker(object):
 
     def _makeTFTPService(self, tftp_config):
         """Create the dynamic TFTP service."""
-        backend = TFTPBackend(tftp_config["root"], tftp_config["generator"])
-        # Create a UDP server individually for each discovered network
-        # interface, so that we can detect the interface via which we have
-        # received a datagram.
-        tftp_services = MultiService()
-        tftp_services.setName("tftp")
-        for address in get_all_interface_addresses():
-            tftp_service = internet.UDPServer(
-                tftp_config["port"], TFTP(backend), interface=address)
-            tftp_service.setName(address)
-            tftp_service.setServiceParent(tftp_services)
-        return tftp_services
+        tftp_service = TFTPService(**tftp_config)
+        tftp_service.setName("tftp")
+        return tftp_service
 
     def _makeRPCService(self, rpc_config):
         rpc_service = ClusterClientService(reactor)

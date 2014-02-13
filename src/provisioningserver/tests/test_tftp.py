@@ -31,9 +31,22 @@ from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
 from provisioningserver.tftp import (
     BytesReader,
     TFTPBackend,
+    TFTPService,
     )
 from testtools.deferredruntest import AsynchronousDeferredRunTest
+from testtools.matchers import (
+    AfterPreprocessing,
+    AllMatch,
+    Equals,
+    IsInstance,
+    MatchesAll,
+    MatchesStructure,
+    )
 from tftp.backend import IReader
+from tftp.protocol import TFTP
+from twisted.application import internet
+from twisted.application.service import MultiService
+from twisted.internet import reactor
 from twisted.internet.defer import (
     inlineCallbacks,
     succeed,
@@ -288,3 +301,97 @@ class TestTFTPBackend(MAASTestCase):
         self.assertEqual(fake_render_result.encode("utf-8"), output)
         backend.render_pxe_config.assert_called_once_with(
             kernel_params=fake_kernel_params, **fake_params)
+
+
+class TestTFTPService(MAASTestCase):
+
+    def test_tftp_service(self):
+        # A TFTP service is configured and added to the top-level service.
+        interfaces = [
+            factory.getRandomIPAddress(),
+            factory.getRandomIPAddress(),
+            ]
+        self.patch(
+            tftp_module, "get_all_interface_addresses",
+            lambda: interfaces)
+        example_root = self.make_dir()
+        example_generator = "http://example.com/generator"
+        example_port = factory.getRandomPort()
+        tftp_service = TFTPService(
+            root=example_root, generator=example_generator,
+            port=example_port)
+        tftp_service.updateServers()
+        # The "tftp" service is a multi-service containing UDP servers for
+        # each interface defined by get_all_interface_addresses().
+        self.assertIsInstance(tftp_service, MultiService)
+        # There's also a TimerService that updates the servers every 45s.
+        self.assertThat(
+            tftp_service.refresher, MatchesStructure.byEquality(
+                step=45, parent=tftp_service, name="refresher",
+                call=(tftp_service.updateServers, (), {}),
+            ))
+        expected_backend = MatchesAll(
+            IsInstance(TFTPBackend),
+            AfterPreprocessing(
+                lambda backend: backend.base.path,
+                Equals(example_root)),
+            AfterPreprocessing(
+                lambda backend: backend.generator_url.geturl(),
+                Equals(example_generator)))
+        expected_protocol = MatchesAll(
+            IsInstance(TFTP),
+            AfterPreprocessing(
+                lambda protocol: protocol.backend,
+                expected_backend))
+        expected_server = MatchesAll(
+            IsInstance(internet.UDPServer),
+            AfterPreprocessing(
+                lambda service: len(service.args),
+                Equals(2)),
+            AfterPreprocessing(
+                lambda service: service.args[0],  # port
+                Equals(example_port)),
+            AfterPreprocessing(
+                lambda service: service.args[1],  # protocol
+                expected_protocol))
+        self.assertThat(
+            tftp_service.getServers(),
+            AllMatch(expected_server))
+        # Only the interface used for each service differs.
+        self.assertItemsEqual(
+            [svc.kwargs for svc in tftp_service.getServers()],
+            [{"interface": interface} for interface in interfaces])
+
+    def test_tftp_service_rebinds_on_HUP(self):
+        # Initial set of interfaces to bind to.
+        interfaces = {"1.1.1.1", "2.2.2.2"}
+        self.patch(
+            tftp_module, "get_all_interface_addresses",
+            lambda: interfaces)
+
+        tftp_service = TFTPService(
+            root=self.make_dir(), generator="http://mighty/wind",
+            port=factory.getRandomPort())
+        tftp_service.updateServers()
+
+        # The child services of tftp_services are named after the
+        # interface they bind to.
+        self.assertEqual(interfaces, {
+            server.name for server in tftp_service.getServers()
+        })
+
+        # Update the set of interfaces to bind to.
+        interfaces.add("3.3.3.3")
+        interfaces.remove("1.1.1.1")
+
+        # Ask the TFTP service to update its set of servers.
+        tftp_service.updateServers()
+
+        # We're in the reactor thread but we want to move the reactor
+        # forwards, hence we need to get all explicit about it.
+        reactor.runUntilCurrent()
+
+        # The interfaces now bound match the updated interfaces set.
+        self.assertEqual(interfaces, {
+            server.name for server in tftp_service.getServers()
+        })

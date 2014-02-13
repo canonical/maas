@@ -14,6 +14,7 @@ str = None
 __metaclass__ = type
 __all__ = [
     "TFTPBackend",
+    "TFTPService",
     ]
 
 import httplib
@@ -31,12 +32,18 @@ from provisioningserver.cluster_config import get_cluster_uuid
 from provisioningserver.enum import ARP_HTYPE
 from provisioningserver.kernel_opts import KernelParameters
 from provisioningserver.pxe.config import render_pxe_config
-from provisioningserver.utils import deferred
+from provisioningserver.utils import (
+    deferred,
+    get_all_interface_addresses,
+    )
 from tftp.backend import (
     FilesystemSynchronousBackend,
     IReader,
     )
 from tftp.errors import FileNotFound
+from tftp.protocol import TFTP
+from twisted.application import internet
+from twisted.application.service import MultiService
 from twisted.python.context import get
 from twisted.web.client import getPage
 import twisted.web.error
@@ -223,3 +230,72 @@ class TFTPBackend(FilesystemSynchronousBackend):
             d = self.get_config_reader(params)
             d.addErrback(self.get_page_errback, file_name)
             return d
+
+
+class TFTPService(MultiService, object):
+    """An umbrella service representing a set of running TFTP servers.
+
+    Creates a UDP server individually for each discovered network
+    interface, so that we can detect the interface via which we have
+    received a datagram.
+
+    It then periodically updates the servers running in case there's a
+    change to the host machine's network configuration.
+
+    :ivar backend: The :class:`TFTPBackend` being used to service TFTP
+        requests.
+
+    :ivar port: The port on which each server is started.
+
+    :ivar refresher: A :class:`TimerService` that calls
+        ``updateServers`` periodically.
+
+    """
+
+    def __init__(self, root, port, generator):
+        """
+        :param root: The root directory for this TFTP server.
+        :param port: The port on which each server should be started.
+        :param generator: The URL to be queried for PXE configuration.
+        """
+        super(TFTPService, self).__init__()
+        self.backend, self.port = TFTPBackend(root, generator), port
+        # Establish a periodic call to self.updateServers() every 45
+        # seconds, so that this service eventually converges on truth.
+        # TimerService ensures that a call is made to it's target
+        # function immediately as it's started, so there's no need to
+        # call updateServers() from here.
+        self.refresher = internet.TimerService(45, self.updateServers)
+        self.refresher.setName("refresher")
+        self.refresher.setServiceParent(self)
+
+    def getServers(self):
+        """Return a set of all configured servers.
+
+        :rtype: :class:`set` of :class:`internet.UDPServer`
+        """
+        return {
+            service for service in self
+            if service is not self.refresher
+        }
+
+    def updateServers(self):
+        """Run a server on every interface.
+
+        For each configured network interface this will start a TFTP
+        server. If called later it will bring up servers on newly
+        configured interfaces and bring down servers on deconfigured
+        interfaces.
+        """
+        addrs_established = set(service.name for service in self.getServers())
+        addrs_desired = set(get_all_interface_addresses())
+
+        for address in addrs_desired - addrs_established:
+            tftp_service = internet.UDPServer(
+                self.port, TFTP(self.backend), interface=address)
+            tftp_service.setName(address)
+            tftp_service.setServiceParent(self)
+
+        for address in addrs_established - addrs_desired:
+            tftp_service = self.getServiceNamed(address)
+            tftp_service.disownServiceParent()

@@ -19,29 +19,29 @@ import os
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
-from provisioningserver import plugin
 from provisioningserver.plugin import (
     Options,
     ProvisioningRealm,
     ProvisioningServiceMaker,
     SingleUsernamePasswordChecker,
     )
-from provisioningserver.tftp import TFTPBackend
+from provisioningserver.tftp import (
+    TFTPBackend,
+    TFTPService,
+    )
 from testtools.deferredruntest import (
     assert_fails_with,
     AsynchronousDeferredRunTest,
     )
 from testtools.matchers import (
     AfterPreprocessing,
-    AllMatch,
     Equals,
     IsInstance,
     MatchesAll,
     MatchesException,
+    MatchesStructure,
     Raises,
     )
-from tftp.protocol import TFTP
-from twisted.application.internet import UDPServer
 from twisted.application.service import MultiService
 from twisted.cred.credentials import UsernamePassword
 from twisted.cred.error import UnauthorizedLogin
@@ -128,13 +128,6 @@ class TestProvisioningServiceMaker(MAASTestCase):
 
     def test_tftp_service(self):
         # A TFTP service is configured and added to the top-level service.
-        interfaces = [
-            factory.getRandomIPAddress(),
-            factory.getRandomIPAddress(),
-            ]
-        self.patch(
-            plugin, "get_all_interface_addresses",
-            lambda: interfaces)
         config = {
             "tftp": {
                 "generator": "http://candlemass/solitude",
@@ -146,14 +139,9 @@ class TestProvisioningServiceMaker(MAASTestCase):
         options["config-file"] = self.write_config(config)
         service_maker = ProvisioningServiceMaker("Harry", "Hill")
         service = service_maker.makeService(options)
-        tftp_services = service.getServiceNamed("tftp")
-        # The "tftp" service is a multi-service containing UDP servers for
-        # each interface defined by get_all_interface_addresses().
-        self.assertIsInstance(tftp_services, MultiService)
-        services = [
-            tftp_services.getServiceNamed(interface)
-            for interface in interfaces
-            ]
+        tftp_service = service.getServiceNamed("tftp")
+        self.assertIsInstance(tftp_service, TFTPService)
+
         expected_backend = MatchesAll(
             IsInstance(TFTPBackend),
             AfterPreprocessing(
@@ -162,27 +150,12 @@ class TestProvisioningServiceMaker(MAASTestCase):
             AfterPreprocessing(
                 lambda backend: backend.generator_url.geturl(),
                 Equals(config["tftp"]["generator"])))
-        expected_protocol = MatchesAll(
-            IsInstance(TFTP),
-            AfterPreprocessing(
-                lambda protocol: protocol.backend,
-                expected_backend))
-        expected_service = MatchesAll(
-            IsInstance(UDPServer),
-            AfterPreprocessing(
-                lambda service: len(service.args),
-                Equals(2)),
-            AfterPreprocessing(
-                lambda service: service.args[0],  # port
-                Equals(config["tftp"]["port"])),
-            AfterPreprocessing(
-                lambda service: service.args[1],  # protocol
-                expected_protocol))
-        self.assertThat(services, AllMatch(expected_service))
-        # Only the interface used for each service differs.
-        self.assertEqual(
-            [svc.kwargs for svc in services],
-            [{"interface": interface} for interface in interfaces])
+
+        self.assertThat(
+            tftp_service, MatchesStructure(
+                backend=expected_backend,
+                port=Equals(config["tftp"]["port"]),
+            ))
 
 
 class TestSingleUsernamePasswordChecker(MAASTestCase):
