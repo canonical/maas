@@ -18,6 +18,27 @@ DHCP servers already running on these nteworks, it will show them on the
 cluster's configuration page.
 
 
+Network requirements
+--------------------
+
+The cluster controller manages a network of nodes through one of its interfaces
+as defined in MAAS.  Cluster interfaces are discovered automatically, though
+this may not happen e.g. if the network interface was down when MAAS was
+installed.
+
+When a cluster controller manages nodes on a network through one of its
+interfaces, the nodes must be on the same subnet as the cluster interface.
+This is for two reasons:
+
+1. If the cluster controller is configured to manage DHCP, the nodes must be
+   able to configure their own network interfaces using MAAS's DHCP server.
+   This means that either they must be on the same subnet, or that DHCP packets
+   are being specially routed between the nodes' subnet and MAAS's DHCP server.
+2. The cluster controller must be able to find nodes' IP addresses based on
+   their MAC addresses, by inspecting its ARP cache.  This implies that the
+   nodes and the clsuter controler must on the same physical subnet.
+
+
 Cluster acceptance
 ------------------
 

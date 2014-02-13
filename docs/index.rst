@@ -55,6 +55,7 @@ Setting up a MAAS server
    configure
    cluster-configuration
    nodes
+   networks
    kernel-options
 
 
