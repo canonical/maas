@@ -24,8 +24,8 @@ from functools import wraps
 from django.core.exceptions import PermissionDenied
 from django.http import (
     Http404,
-    HttpResponseBadRequest,
     )
+from maasserver.exceptions import MAASAPIBadRequest
 from piston.handler import (
     AnonymousBaseHandler,
     BaseHandler,
@@ -183,7 +183,9 @@ class OperationsHandlerMixin:
         signature = request.method.upper(), request.REQUEST.get("op")
         function = self.exports.get(signature)
         if function is None:
-            return HttpResponseBadRequest(
+            # Can't use MAASAPIBadRequest here because it derives from
+            # Exception, which gets Piston all confused for some reason.
+            raise MAASAPIBadRequest(
                 "Unrecognised signature: %s %s" % signature)
         else:
             return function(self, request, *args, **kwargs)

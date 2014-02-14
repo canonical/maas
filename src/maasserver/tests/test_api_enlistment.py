@@ -251,7 +251,7 @@ class EnlistmentAPITest(MultipleUsersScenarios,
             })
 
         self.assertEqual(httplib.BAD_REQUEST, response.status_code)
-        self.assertIn('text/html', response['Content-Type'])
+        self.assertIn('text/plain', response['Content-Type'])
         self.assertEqual(
             "Unrecognised signature: POST None",
             response.content)
