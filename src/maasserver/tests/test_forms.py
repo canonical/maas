@@ -39,11 +39,11 @@ from maasserver.forms import (
     ConfigForm,
     DownloadProgressForm,
     EditUserForm,
-    NodeGroupInterfaceForeignDHCPForm,
     get_action_form,
     get_node_create_form,
     get_node_edit_form,
     initialize_node_group,
+    InstanceListField,
     INTERFACES_VALIDATION_ERROR_MESSAGE,
     MACAddressForm,
     NetworkForm,
@@ -51,6 +51,7 @@ from maasserver.forms import (
     NodeActionForm,
     NodeForm,
     NodeGroupEdit,
+    NodeGroupInterfaceForeignDHCPForm,
     NodeGroupInterfaceForm,
     NodeGroupWithInterfacesForm,
     NodeWithMACAddressesForm,
@@ -1570,3 +1571,35 @@ class TestNetworkForm(MAASServerTestCase):
         form.save()
         network = reload_object(network)
         self.assertEqual(new_description, network.description)
+
+
+class TestInstanceListField(MAASServerTestCase):
+    """Tests for `InstanceListingField`."""
+
+    def test_field_validates_valid_data(self):
+        nodes = [factory.make_node() for i in range(3)]
+        # Create other nodes.
+        [factory.make_node() for i in range(3)]
+        field = InstanceListField(model_class=Node, field_name='system_id')
+        input_data = [node.system_id for node in nodes]
+        self.assertItemsEqual(
+            input_data,
+            [node.system_id for node in field.clean(input_data)])
+
+    def test_field_ignores_duplicates(self):
+        nodes = [factory.make_node() for i in range(2)]
+        # Create other nodes.
+        [factory.make_node() for i in range(3)]
+        field = InstanceListField(model_class=Node, field_name='system_id')
+        input_data = [node.system_id for node in nodes] * 2
+        self.assertItemsEqual(
+            set(input_data),
+            [node.system_id for node in field.clean(input_data)])
+
+    def test_field_rejects_invalid_data(self):
+        nodes = [factory.make_node() for i in range(3)]
+        field = InstanceListField(model_class=Node, field_name='system_id')
+        error = self.assertRaises(
+            ValidationError,
+            field.clean, [node.system_id for node in nodes] + ['unknown'])
+        self.assertEquals(['Unknown node(s): unknown.'], error.messages)

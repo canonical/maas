@@ -1028,6 +1028,63 @@ class ValidatorMultipleChoiceField(MultipleChoiceField):
         return values
 
 
+class InstanceListField(UnconstrainedMultipleChoiceField):
+    """A multiple-choice field used to list model instances."""
+
+    def __init__(self, model_class, field_name,
+                 text_for_invalid_object=None,
+                 *args, **kwargs):
+        """Instantiate an InstanceListField.
+
+        Build an InstanceListField to deal with a list of instances of
+        the class `model_class`, identified their field named
+        `field_name`.
+
+        :param model_class:  The model class of the instances to list.
+        :param field_name:  The name of the field used to retrieve the
+            instances. This must be a unique field of the `model_class`.
+        :param text_for_invalid_object:  Option error message used to
+            create the validation error returned when any of the input
+            values doesn't match an existing object.  The default value
+            is "Unknown {obj_name}(s): {unknown_names}.".  A custom
+            message can use {obj_name} and {unknown_names} which will be
+            replaced by the name of the model instance and the list of
+            the names that didn't correspond to a valid instance
+            respectively.
+        """
+        super(InstanceListField, self).__init__(*args, **kwargs)
+        self.model_class = model_class
+        self.field_name = field_name
+        if text_for_invalid_object is None:
+            text_for_invalid_object = (
+                "Unknown {obj_name}(s): {unknown_names}.")
+        self.text_for_invalid_object = text_for_invalid_object
+
+    def clean(self, value):
+        """Clean the list of field values.
+
+        Assert that each field value corresponds to an instance of the class
+        `self.model_class`.
+        """
+        if value is None:
+            return None
+        # `value` is in fact a list of values since this field is a subclass of
+        # forms.MultipleChoiceField.
+        set_values = set(value)
+        filters = {'%s__in' % self.field_name: set_values}
+
+        instances = self.model_class.objects.filter(**filters)
+        if len(instances) != len(set_values):
+            unknown = set_values.difference(
+                {getattr(instance, self.field_name) for instance in instances})
+            error = self.text_for_invalid_object.format(
+                obj_name=self.model_class.__name__.lower(),
+                unknown_names=', '.join(sorted(unknown))
+                )
+            raise forms.ValidationError(error)
+        return instances
+
+
 class SetZoneBulkAction:
     """A custom action we only offer in bulk: "Set physical zone."
 
@@ -1231,25 +1288,13 @@ class NetworksListingForm(forms.Form):
     # Multi-value parameter, but with a name in the singular.  This is going
     # to be passed as a GET-style parameter in the URL, so repeated as "node="
     # for every node.
-    node = UnconstrainedMultipleChoiceField(
+    node = InstanceListField(
+        model_class=Node, field_name='system_id',
         label="Show only networks that are attached to all of these nodes.",
         required=False, error_messages={
             'invalid_list':
             "Invalid parameter: list of node system IDs required.",
             })
-
-    def clean_node(self):
-        system_ids = self.cleaned_data['node']
-        if system_ids is None:
-            return None
-        system_ids = set(system_ids)
-        nodes = Node.objects.filter(system_id__in=system_ids)
-        if len(nodes) != len(system_ids):
-            unknown = system_ids.difference({node.system_id for node in nodes})
-            raise forms.ValidationError(
-                "Unknown node(s): %s."
-                % ', '.join(sorted(unknown)))
-        return nodes
 
     def filter_networks(self, networks):
         """Filter (and order) the given networks by the form's criteria.
