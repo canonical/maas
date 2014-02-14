@@ -59,7 +59,7 @@ DNS_CONNECT = True
 DHCP_CONNECT = True
 
 # The MAAS CLI.
-MAAS_CLI = 'sudo maas'
+MAAS_CLI = 'sudo maas-region-admin'
 
 # The relative path where a proxy to the Longpoll server can be
 # reached.  Longpolling will be disabled in the UI if this is None.

@@ -43,7 +43,7 @@ DNS_CONNECT = True
 
 DHCP_CONNECT = True
 
-MAAS_CLI = abspath("bin/maas")
+MAAS_CLI = abspath("bin/maas-region-admin")
 
 RABBITMQ_PUBLISH = True
 
