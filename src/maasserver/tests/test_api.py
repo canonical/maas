@@ -101,6 +101,17 @@ class TestAuthentication(APIv10TestMixin, MAASServerTestCase):
         self.assertThat(observed, MatchesListwise(expected))
 
 
+class TestXSSBugs(MAASServerTestCase):
+    """Tests for making sure we don't allow cross-site scripting bugs."""
+
+    def test_invalid_signature_response_is_textplain(self):
+        response = self.client.get(
+            reverse('nodes_handler'),
+            {'op': '<script>alert(document.domain)</script>'})
+        self.assertIn("text/plain", response.get("Content-Type"))
+        self.assertNotIn("text/html", response.get("Content-Type"))
+
+
 class TestStoreNodeParameters(MAASServerTestCase):
     """Tests for `store_node_power_parameters`."""
 

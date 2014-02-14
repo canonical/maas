@@ -97,7 +97,9 @@ def combo_view(request, location, default_redirect=None, encoding='utf8'):
             return HttpResponseRedirect(
                 "%s%s" % (default_redirect, fnames[0]))
         else:
-            return HttpResponseBadRequest("Invalid file type requested.")
+            return HttpResponseBadRequest(
+                "Invalid file type requested.",
+                content_type="text/plain; charset=UTF-8")
         content = "".join(
             [content.decode(encoding) for content in combine_files(
                fnames, location, resource_prefix='/', rewrite_urls=True)])
