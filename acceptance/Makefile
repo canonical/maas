@@ -52,7 +52,7 @@ endef
 
 ## Top-level targets.
 
-test: build | services sudo container
+test: build | services sudo container-updated
 	$(ephexec-make) $@-inner
 
 # lxc-start-ephemeral does not return the exit code of any command it
@@ -65,13 +65,11 @@ build: source source/debian | services sudo container
 	@touch $@
 
 container: | services sudo
-ifneq ($(shell sudo lxc-ls -1 $(container)),$(container))
-	sudo lxc-create -n $(container) \
-	    -f /etc/lxc/default.conf -t ubuntu -- --release $(series)
-	$(abspath update-container) $(container)
-endif
+	test -n "$$(sudo lxc-ls -1 $(container))" || \
+	    sudo lxc-create -n $(container) -f /etc/lxc/default.conf \
+	        -t ubuntu -- --release $(series)
 
-container-update: container | services sudo
+container-updated: container | services sudo
 	$(abspath update-container) $(container)
 
 services:
@@ -80,7 +78,7 @@ services:
 
 define phony-outer-targets
   container
-  container-update
+  container-updated
   services
   test
 endef
