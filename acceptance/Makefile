@@ -33,14 +33,13 @@ upstream := $(abspath ..)
 
 # The container on which to base ephemerals.
 container := maas-$(series)
-containerdir := /var/lib/lxc/$(container)
 
 ## Convenience definitions.
 
 define ephexec
 sudo LC_ALL=C SSH_ASKPASS=$(abspath ubuntupass) setsid \
     lxc-start-ephemeral -b $(upstream) -o $(container) -u ubuntu -- \
-    DEBIAN_FRONTEND=noninteractive SUDO_ASKPASS=$(abspath ubuntupass)
+    env DEBIAN_FRONTEND=noninteractive SUDO_ASKPASS=$(abspath ubuntupass)
 endef
 
 define ephexec-make
@@ -65,9 +64,14 @@ build: source source/debian | services sudo container
 	@ls -1 *.deb
 	@touch $@
 
-container: $(containerdir)
+container: | services sudo
+ifneq ($(shell sudo lxc-ls -1 $(container)),$(container))
+	sudo lxc-create -n $(container) \
+	    -f /etc/lxc/default.conf -t ubuntu -- --release $(series)
+	$(abspath update-container) $(container)
+endif
 
-container-update: $(containerdir) | services sudo
+container-update: container | services sudo
 	$(abspath update-container) $(container)
 
 services:
@@ -123,11 +127,6 @@ source:
 
 source/debian: | source
 	bzr export $@ $(packaging)/debian
-
-$(containerdir): | services sudo
-	sudo lxc-create -n $(container) \
-	    -f /etc/lxc/default.conf -t ubuntu -- --release $(series)
-	$(abspath update-container) $(container)
 
 ## Miscellaneous.
 
