@@ -21,6 +21,7 @@ from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse
 from lxml.html import fromstring
 from maasserver.enum import (
+    COMMISSIONING_DISTRO_SERIES_CHOICES,
     DISTRO_SERIES,
     NODE_AFTER_COMMISSIONING_ACTION,
     NODEGROUP_STATUS,
@@ -120,7 +121,8 @@ class SettingsTest(MAASServerTestCase):
         new_after_commissioning = factory.getRandomEnum(
             NODE_AFTER_COMMISSIONING_ACTION)
         new_check_compatibility = factory.getRandomBoolean()
-        new_commissioning_distro_series = factory.getRandomEnum(DISTRO_SERIES)
+        new_commissioning_distro_series = factory.getRandomChoice(
+            COMMISSIONING_DISTRO_SERIES_CHOICES)
         response = self.client.post(
             reverse('settings'),
             get_prefixed_form_data(

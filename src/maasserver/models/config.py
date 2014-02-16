@@ -51,8 +51,8 @@ def get_default_config():
         # Network section configuration.
         'maas_name': gethostname(),
         'enlistment_domain': b'local',
-        'default_distro_series': DISTRO_SERIES.precise,
-        'commissioning_distro_series': DISTRO_SERIES.precise,
+        'default_distro_series': DISTRO_SERIES.trusty,
+        'commissioning_distro_series': DISTRO_SERIES.trusty,
         'http_proxy': None,
         'upstream_dns': None,
         'ntp_server': '91.189.94.4',  # ntp.ubuntu.com

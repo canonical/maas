@@ -16,6 +16,7 @@ __all__ = [
     'ARCHITECTURE',
     'ARCHITECTURE_CHOICES',
     'ARCHITECTURE_CHOICES_DICT',
+    'COMMISSIONING_DISTRO_SERIES_CHOICES',
     'COMPONENT',
     'NODEGROUP_STATUS',
     'NODEGROUP_STATUS_CHOICES',
@@ -156,6 +157,11 @@ DISTRO_SERIES_CHOICES = (
     (DISTRO_SERIES.raring, 'Ubuntu 13.04 "Raring Ringtail"'),
     (DISTRO_SERIES.saucy, 'Ubuntu 13.10 "Saucy Salamander"'),
     (DISTRO_SERIES.trusty, 'Ubuntu 14.04 LTS "Trusty Tahr"'),
+)
+
+
+COMMISSIONING_DISTRO_SERIES_CHOICES = (
+    (DISTRO_SERIES.trusty, dict(DISTRO_SERIES_CHOICES)[DISTRO_SERIES.trusty]),
 )
 
 

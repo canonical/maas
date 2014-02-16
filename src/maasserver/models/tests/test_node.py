@@ -157,8 +157,7 @@ class NodeTest(MAASServerTestCase):
 
     def test_get_distro_series_returns_default_series(self):
         node = factory.make_node()
-        # default_distro_series is DISTRO_SERIES.precise
-        series = DISTRO_SERIES.precise
+        series = Config.objects.get_config('commissioning_distro_series')
         self.assertEqual(series, node.get_distro_series())
 
     def test_set_get_distro_series_returns_series(self):

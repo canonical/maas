@@ -63,6 +63,7 @@ from maasserver.config_forms import SKIP_CHECK_NAME
 from maasserver.enum import (
     ARCHITECTURE,
     ARCHITECTURE_CHOICES,
+    COMMISSIONING_DISTRO_SERIES_CHOICES,
     DISTRO_SERIES,
     DISTRO_SERIES_CHOICES,
     NODE_AFTER_COMMISSIONING_ACTION,
@@ -710,7 +711,7 @@ class CommissioningForm(ConfigForm):
     check_compatibility = get_config_field('check_compatibility')
     after_commissioning = get_config_field('after_commissioning')
     commissioning_distro_series = forms.ChoiceField(
-        choices=DISTRO_SERIES_CHOICES, required=False,
+        choices=COMMISSIONING_DISTRO_SERIES_CHOICES, required=False,
         label="Default distro series used for commissioning",
         error_messages={'invalid_choice': INVALID_DISTRO_SERIES_MESSAGE})
 
