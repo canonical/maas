@@ -944,3 +944,49 @@ class TestConnectNetworks(APITestCase):
                 'networks': [],
             })
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
+
+
+class TestDisconnectNetworks(APITestCase):
+    """Tests for /api/1.0/nodes/<node>/?op=disconnect_networks."""
+
+    def test_disconnect_networks_disconnects_networks(self):
+        self.become_admin()
+        networks = [factory.make_network() for i in range(3)]
+        other_networks = [factory.make_network() for i in range(3)]
+        node = factory.make_node(networks=(networks + other_networks))
+
+        response = self.client.post(
+            reverse('node_handler', args=[node.system_id]),
+            {
+                'op': 'disconnect_networks',
+                'networks': [network.name for network in networks],
+            })
+
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertItemsEqual(other_networks, node.networks.all())
+
+    def test_disconnect_networks_ignores_already_disconnected_networks(self):
+        self.become_admin()
+        networks = [factory.make_network() for i in range(3)]
+        other_networks = [factory.make_network() for i in range(3)]
+        node = factory.make_node(networks=networks)
+
+        response = self.client.post(
+            reverse('node_handler', args=[node.system_id]),
+            {
+                'op': 'disconnect_networks',
+                'networks': [network.name for network in other_networks],
+            })
+
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertItemsEqual(networks, node.networks.all())
+
+    def test_disconnect_networks_requires_admin(self):
+        node = factory.make_node()
+        response = self.client.post(
+            reverse('node_handler', args=[node.system_id]),
+            {
+                'op': 'disconnect_networks',
+                'networks': [],
+            })
+        self.assertEqual(httplib.FORBIDDEN, response.status_code)

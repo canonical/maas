@@ -495,6 +495,19 @@ class NodeHandler(OperationsHandler):
             raise ValidationError(form.errors)
         node.networks.add(*form.get_networks())
 
+    @admin_method
+    @operation(idempotent=False)
+    def disconnect_networks(self, request, system_id):
+        """Disconnect the given networks from this node.
+
+        :param networks: A list of `name` identifiers for networks.
+        """
+        node = get_object_or_404(Node, system_id=system_id)
+        form = NetworkListForm(data=request.data)
+        if not form.is_valid():
+            raise ValidationError(form.errors)
+        node.networks.remove(*form.get_networks())
+
 
 def create_node(request):
     """Service an http request to create a node.
