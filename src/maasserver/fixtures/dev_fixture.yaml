@@ -190,3 +190,68 @@
     name: zone-b
   model: maasserver.zone
   pk: 4
+- fields:
+    created: 2012-02-17
+    updated: 2012-02-17
+    node: 16
+    name: '00-maas-01-lshw.out'
+    script_result: 0
+  model: metadataserver.nodecommissionresult
+  pk: 1
+- fields:
+    created: 2012-02-17
+    updated: 2012-02-17
+    node: 16
+    name: '00-maas-02-virtuality.out'
+    script_result: 0
+  model: metadataserver.nodecommissionresult
+  pk: 2
+- fields:
+    created: 2012-02-17
+    updated: 2012-02-17
+    node: 16
+    name: '00-maas-03-install-lldp.out'
+    script_result: 1
+    data: RXJyb3Igd2hpbGUgaW5zdGFsbGluZyBsbGRwOiBOZXR3b3JrIHVucmVhY2hhYmxlLgo=
+  model: metadataserver.nodecommissionresult
+  pk: 3
+- fields:
+    created: 2012-01-25
+    updated: 2012-01-25
+    node: 17
+    name: '00-maas-01-lshw.out'
+    script_result: 0
+  model: metadataserver.nodecommissionresult
+  pk: 4
+- fields:
+    created: 2014-01-25
+    updated: 2012-01-25
+    node: 17
+    name: '00-maas-02-virtuality.out'
+    script_result: 0
+  model: metadataserver.nodecommissionresult
+  pk: 5
+- fields:
+    created: 2014-01-25
+    updated: 2012-01-25
+    node: 17
+    name: '00-maas-03-install-lldp.out'
+    script_result: 0
+  model: metadataserver.nodecommissionresult
+  pk: 6
+- fields:
+    created: 2014-01-25
+    updated: 2012-01-25
+    node: 17
+    name: '99-maas-01-wait-for-lldp.out'
+    script_result: 0
+  model: metadataserver.nodecommissionresult
+  pk: 7
+- fields:
+    created: 2014-01-25
+    updated: 2012-01-25
+    node: 17
+    name: '99-maas-02-capture-lldp.out'
+    script_result: 0
+  model: metadataserver.nodecommissionresult
+  pk: 8
