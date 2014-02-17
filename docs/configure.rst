@@ -121,8 +121,8 @@ However, in exceptional circumstances, you may wish to alter the
 pressed file to work around some issue.
 There are actually two preseed files, stored here::
 
-  /usr/share/maas/preseeds/generic
-  /usr/share/maas/preseeds/preseed-master
+  /etc/maas/preseeds/generic
+  /etc/maas/preseeds/preseed-master
 
 The generic file actually references the preseed-master file, and is 
 used to set conditional parameters based on the type of series and 
