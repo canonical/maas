@@ -233,6 +233,7 @@ class TestDescribingAPI(MAASServerTestCase):
             "PUT update op=None restful=True",
             "GET list_connected_networks op=list_connected_networks "
             "restful=False",
+            "POST connect_networks op=connect_networks restful=False",
             }
         observed_actions = {
             "%(method)s %(name)s op=%(op)s restful=%(restful)s" % action

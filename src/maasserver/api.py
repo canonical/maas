@@ -178,6 +178,7 @@ from maasserver.forms import (
     get_node_edit_form,
     NetworkConnectNodesForm,
     NetworkForm,
+    NetworkListForm,
     NetworksListingForm,
     NodeActionForm,
     NodeGroupEdit,
@@ -480,6 +481,19 @@ class NodeHandler(OperationsHandler):
         """Returns the list of networks connected to this node."""
         node = get_object_or_404(Node, system_id=system_id)
         return node.networks.all().order_by('name')
+
+    @admin_method
+    @operation(idempotent=False)
+    def connect_networks(self, request, system_id):
+        """Connect the given networks to this node.
+
+        :param networks: A list of `name` identifiers for networks.
+        """
+        node = get_object_or_404(Node, system_id=system_id)
+        form = NetworkListForm(data=request.data)
+        if not form.is_valid():
+            raise ValidationError(form.errors)
+        node.networks.add(*form.get_networks())
 
 
 def create_node(request):

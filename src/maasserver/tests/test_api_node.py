@@ -880,3 +880,67 @@ class TestListConnectedNetworks(APITestCase):
         self.assertItemsEqual(
             connected_networks_names,
             [network['name'] for network in json.loads(response.content)])
+
+
+class TestConnectNetworks(APITestCase):
+    """Tests for /api/1.0/nodes/<node>/?op=connect_networks."""
+
+    def test_connect_networks_connects_networks(self):
+        self.become_admin()
+        networks = [factory.make_network() for i in range(3)]
+        node = factory.make_node()
+
+        response = self.client.post(
+            reverse('node_handler', args=[node.system_id]),
+            {
+                'op': 'connect_networks',
+                'networks': [network.name for network in networks],
+            })
+
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertItemsEqual(networks, node.networks.all())
+
+    def test_connect_networks_ignores_already_connected_networks(self):
+        self.become_admin()
+        networks = [factory.make_network() for i in range(3)]
+        node = factory.make_node(networks=networks)
+
+        response = self.client.post(
+            reverse('node_handler', args=[node.system_id]),
+            {
+                'op': 'connect_networks',
+                'networks': [network.name for network in networks],
+            })
+
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertItemsEqual(networks, node.networks.all())
+
+    def test_connect_networks_fails_for_unknown_networks(self):
+        self.become_admin()
+        unknown_network_name = factory.make_name('agent-name')
+        node = factory.make_node()
+
+        response = self.client.post(
+            reverse('node_handler', args=[node.system_id]),
+            {
+                'op': 'connect_networks',
+                'networks': [unknown_network_name],
+            })
+
+        self.assertEqual(
+            (
+                httplib.BAD_REQUEST,
+                {"networks": [
+                    'Unknown network(s): %s.' % unknown_network_name]},
+            ),
+            (response.status_code, json.loads(response.content)))
+
+    def test_connect_networks_requires_admin(self):
+        node = factory.make_node()
+        response = self.client.post(
+            reverse('node_handler', args=[node.system_id]),
+            {
+                'op': 'connect_networks',
+                'networks': [],
+            })
+        self.assertEqual(httplib.FORBIDDEN, response.status_code)

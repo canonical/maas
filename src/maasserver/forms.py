@@ -27,6 +27,7 @@ __all__ = [
     "NetworkConnectNodesForm",
     "NetworkForm",
     "NetworksListingForm",
+    "NetworkListForm",
     "NodeGroupEdit",
     "NodeGroupInterfaceForeignDHCPForm",
     "NodeGroupInterfaceForm",
@@ -1325,3 +1326,18 @@ class NetworkConnectNodesForm(forms.Form):
     def get_nodes(self):
         """Return the nodes whose system IDs were passed in."""
         return self.cleaned_data.get('nodes')
+
+
+class NetworkListForm(forms.Form):
+    """Form to list networks."""
+
+    networks = InstanceListField(
+        model_class=Network, field_name='name',
+        label="List of network names.", required=True, error_messages={
+            'invalid_list':
+            "Invalid parameter: list of node system IDs required.",
+            })
+
+    def get_networks(self):
+        """Return the networks whose names were passed in."""
+        return self.cleaned_data.get('networks')
