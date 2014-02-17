@@ -861,3 +861,22 @@ class TestGetDetails(APITestCase):
         url = reverse('node_handler', args=['does-not-exist'])
         response = self.client.get(url, {'op': 'details'})
         self.assertEqual(httplib.NOT_FOUND, response.status_code)
+
+
+class TestListConnectedNetworks(APITestCase):
+    """Tests for /api/1.0/nodes/<node>/?op=list_connected_networks."""
+
+    def test_returns_connected_networks(self):
+        networks = [factory.make_network() for i in range(5)]
+        connected_networks = networks[:3]
+        node = factory.make_node(networks=connected_networks)
+        url = reverse('node_handler', args=[node.system_id])
+
+        response = self.client.get(url, {'op': 'list_connected_networks'})
+
+        self.assertEqual(httplib.OK, response.status_code)
+        connected_networks_names = [
+            network.name for network in connected_networks]
+        self.assertItemsEqual(
+            connected_networks_names,
+            [network['name'] for network in json.loads(response.content)])

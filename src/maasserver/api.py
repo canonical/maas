@@ -474,6 +474,12 @@ class NodeHandler(OperationsHandler):
             # Not sure what media type to use here.
             content_type='application/bson')
 
+    @operation(idempotent=True)
+    def list_connected_networks(self, request, system_id):
+        """Returns the list of networks connected to this node."""
+        node = get_object_or_404(Node, system_id=system_id)
+        return node.networks.all().order_by('name')
+
 
 def create_node(request):
     """Service an http request to create a node.
@@ -2745,6 +2751,17 @@ class NetworkHandler(OperationsHandler):
         if network is not None:
             network.delete()
         return rc.DELETED
+
+    @operation(idempotent=True)
+    def list_connected_nodes(self, request, name):
+        """Returns the list of nodes connected to this network.
+
+        Only the nodes visible to the requesting user are returned.
+        """
+        network = get_object_or_404(Network, name=name)
+        return Node.objects.get_nodes(
+            request.user, NODE_PERMISSION.VIEW,
+            from_nodes=network.node_set.all())
 
     @classmethod
     def resource_uri(cls, network=None):

@@ -18,6 +18,7 @@ import httplib
 import json
 
 from django.core.urlresolvers import reverse
+from maasserver.enum import NODE_STATUS
 from maasserver.testing import reload_object
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
@@ -127,3 +128,29 @@ class TestNetwork(APITestCase):
         response = self.client.delete(self.get_url(network.name))
         self.assertEqual(httplib.NO_CONTENT, response.status_code)
         self.assertIsNone(reload_object(network))
+
+
+class TestListConnectedNodes(APITestCase):
+    """Tests for /api/1.0/network/s<network>/?op=list_connected_nodes."""
+
+    def test_returns_connected_nodes(self):
+        network = factory.make_network()
+        visible_connected_nodes = [
+            factory.make_node(networks=[network]) for i in range(5)]
+        # Create another node, connected to the network but not visible
+        # to the user.
+        factory.make_node(
+            status=NODE_STATUS.ALLOCATED, owner=factory.make_user(),
+            networks=[network])
+        # Create another node, not connected to any network.
+        factory.make_node()
+
+        url = reverse('network_handler', args=[network.name])
+        response = self.client.get(url, {'op': 'list_connected_nodes'})
+
+        self.assertEqual(httplib.OK, response.status_code)
+        connected_nodes_system_ids = [
+            node.system_id for node in visible_connected_nodes]
+        self.assertItemsEqual(
+            connected_nodes_system_ids,
+            [node['system_id'] for node in json.loads(response.content)])

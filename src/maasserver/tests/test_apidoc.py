@@ -231,6 +231,8 @@ class TestDescribingAPI(MAASServerTestCase):
             "POST release op=release restful=False",
             "POST commission op=commission restful=False",
             "PUT update op=None restful=True",
+            "GET list_connected_networks op=list_connected_networks "
+            "restful=False",
             }
         observed_actions = {
             "%(method)s %(name)s op=%(op)s restful=%(restful)s" % action
