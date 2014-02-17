@@ -39,7 +39,7 @@ class TestNetwork(APITestCase):
         response = self.client.post(
             self.get_url(network.name),
             {'description': "New description"})
-        self.assertEqual(httplib.METHOD_NOT_ALLOWED, response.status_code)
+        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
 
     def test_GET_returns_network(self):
         network = factory.make_network()
@@ -128,6 +128,97 @@ class TestNetwork(APITestCase):
         response = self.client.delete(self.get_url(network.name))
         self.assertEqual(httplib.NO_CONTENT, response.status_code)
         self.assertIsNone(reload_object(network))
+
+    def test_POST_connect_nodes_adds_nodes(self):
+        self.become_admin()
+        network = factory.make_network()
+        nodes = [factory.make_node(networks=[]) for _ in range(2)]
+        response = self.client.post(
+            self.get_url(network.name),
+            {
+                'op': 'connect_nodes',
+                'nodes': [node.system_id for node in nodes],
+            })
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        self.assertEqual(set(nodes), set(network.node_set.all()))
+
+    def test_POST_connect_nodes_accepts_empty_nodes_list(self):
+        self.become_admin()
+        network = factory.make_network()
+        response = self.client.post(
+            self.get_url(network.name),
+            {
+                'op': 'connect_nodes',
+                'nodes': [],
+            })
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        self.assertEqual([], list(network.node_set.all()))
+
+    def test_POST_connect_nodes_leaves_other_networks_unchanged(self):
+        self.become_admin()
+        network = factory.make_network()
+        other_network = factory.make_network()
+        node = factory.make_node(networks=[other_network])
+        response = self.client.post(
+            self.get_url(network.name),
+            {
+                'op': 'connect_nodes',
+                'nodes': [node.system_id],
+            })
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        self.assertEqual({network, other_network}, set(node.networks.all()))
+
+    def test_POST_connect_nodes_leaves_other_nodes_unchanged(self):
+        self.become_admin()
+        network = factory.make_network()
+        node = factory.make_node(networks=[])
+        other_node = factory.make_node(networks=[network])
+        response = self.client.post(
+            self.get_url(network.name),
+            {
+                'op': 'connect_nodes',
+                'nodes': [node.system_id],
+            })
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        self.assertEqual({node, other_node}, set(network.node_set.all()))
+
+    def test_POST_connect_nodes_ignores_nodes_already_on_network(self):
+        self.become_admin()
+        network = factory.make_network()
+        node = factory.make_node(networks=[network])
+        response = self.client.post(
+            self.get_url(network.name),
+            {
+                'op': 'connect_nodes',
+                'nodes': [node.system_id],
+            })
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        self.assertEqual({node}, set(network.node_set.all()))
+
+    def test_POST_connect_nodes_requires_admin(self):
+        network = factory.make_network()
+        response = self.client.post(
+            self.get_url(network.name),
+            {
+                'op': 'connect_nodes',
+                'nodes': [],
+            })
+        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+
+    def test_POST_connect_nodes_fails_on_unknown_node(self):
+        self.become_admin()
+        network = factory.make_network()
+        nonexistent_node = factory.make_name('no-node')
+        response = self.client.post(
+            self.get_url(network.name),
+            {
+                'op': 'connect_nodes',
+                'nodes': [nonexistent_node],
+            })
+        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+        self.assertEqual(
+            {'nodes': ["Unknown node(s): %s." % nonexistent_node]},
+            json.loads(response.content))
 
 
 class TestListConnectedNodes(APITestCase):

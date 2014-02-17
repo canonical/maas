@@ -19,15 +19,16 @@ __all__ = [
     "CommissioningForm",
     "CommissioningScriptForm",
     "DownloadProgressForm",
-    "NodeGroupInterfaceForeignDHCPForm",
     "get_action_form",
     "get_node_edit_form",
     "get_node_create_form",
     "MAASAndNetworkForm",
     "MACAddressForm",
+    "NetworkConnectNodesForm",
     "NetworkForm",
     "NetworksListingForm",
     "NodeGroupEdit",
+    "NodeGroupInterfaceForeignDHCPForm",
     "NodeGroupInterfaceForm",
     "NodeGroupWithInterfacesForm",
     "NodeWithMACAddressesForm",
@@ -1309,3 +1310,18 @@ class NetworksListingForm(forms.Form):
             for node in nodes:
                 networks = networks.filter(node=node)
         return networks.order_by('name')
+
+
+class NetworkConnectNodesForm(forms.Form):
+    """Form for the `Network` `connect_nodes` API call."""
+
+    nodes = InstanceListField(
+        model_class=Node, field_name='system_id',
+        label="Nodes to be connected.", required=True, error_messages={
+            'invalid_list':
+            "Invalid parameter: list of node system IDs required.",
+            })
+
+    def get_nodes(self):
+        """Return the nodes whose system IDs were passed in."""
+        return self.cleaned_data.get('nodes')

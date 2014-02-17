@@ -176,6 +176,7 @@ from maasserver.forms import (
     get_action_form,
     get_node_create_form,
     get_node_edit_form,
+    NetworkConnectNodesForm,
     NetworkForm,
     NetworksListingForm,
     NodeActionForm,
@@ -2751,6 +2752,22 @@ class NetworkHandler(OperationsHandler):
         if network is not None:
             network.delete()
         return rc.DELETED
+
+    @admin_method
+    @operation(idempotent=False)
+    def connect_nodes(self, request, name):
+        """Connect the given nodes to this network.
+
+        Connecting a node to a network which it is already connected to does
+        nothing.
+
+        :param nodes: A list of `system_id` identifiers for nodes.
+        """
+        network = get_object_or_404(Network, name=name)
+        form = NetworkConnectNodesForm(data=request.data)
+        if not form.is_valid():
+            raise ValidationError(form.errors)
+        network.node_set.add(*form.get_nodes())
 
     @operation(idempotent=True)
     def list_connected_nodes(self, request, name):
