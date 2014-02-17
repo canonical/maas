@@ -223,11 +223,11 @@ Import the boot images
 
 MAAS will check for and download new Ubuntu images once a week.
 However, you'll need to download them manually the first time. To do
-this you will need to connect to the MAAS API using the maas-cli
-tool. (see :ref:`Logging in <api-key>` for details). Then you need to
+this you will need to connect to the MAAS API using the "maas" command-line
+client. (see :ref:`Logging in <api-key>` for details). Then you need to
 run the command::
 
-  $ maas-cli maas node-groups import-boot-images
+  $ maas my-maas-session node-groups import-boot-images
 
 (substitute in a different profile name for 'maas' if you have called
 yours something else) This will initiate downloading the required
@@ -259,7 +259,7 @@ If you want MAAS to control DHCP, you can either:
 #. Follow the instructions at :doc:`cluster-configuration` to
    use the web UI to set up your cluster controller.
 
-#. Use the command line interface `maas-cli` by first
+#. Use the command line interface `maas` by first
    :ref:`logging in to the API <api-key>` and then
    :ref:`following this procedure <cli-dhcp>` 
 

@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maascli.cli`."""
@@ -59,7 +59,7 @@ class TestLogin(MAASTestCase):
 
             For help with the available commands, try:
 
-              maas-cli %(name)s --help
+              maas %(name)s --help
 
             """) % profile
         observed = stdout.getvalue()

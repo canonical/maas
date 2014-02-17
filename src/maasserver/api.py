@@ -2601,9 +2601,9 @@ def describe(request):
         describe_resource(resource)
         for resource in find_api_resources(urlconf)
         ]
-    # Make all URIs absolute. Clients - maas-cli in particular - expect that
-    # all handler URIs are absolute, not just paths. The handler URIs returned
-    # by describe_resource() are relative paths.
+    # Make all URIs absolute. Clients - and the command-line client in
+    # particular - expect that all handler URIs are absolute, not just paths.
+    # The handler URIs returned by describe_resource() are relative paths.
     absolute = partial(build_absolute_uri, request)
     for resource in resources:
         for handler_type in "anon", "auth":

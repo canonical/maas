@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """CLI management commands."""
@@ -87,7 +87,7 @@ class cmd_login(Command):
             "You are now logged in to the MAAS server at {url} "
             "with the profile name '{name}'.",
             "For help with the available commands, try:",
-            "  maas-cli {name} --help",
+            "  maas {name} --help",
             ]
         print()
         for message in what_next:
@@ -100,8 +100,8 @@ class cmd_refresh(Command):
     """Refresh the API descriptions of all profiles.
 
     This retrieves the latest version of the help information for each
-    profile.  Use it to update your maas-cli client's information after an
-    upgrade to the MAAS server.
+    profile.  Use it to update your command-line client's information after
+    an upgrade to the MAAS server.
     """
 
     def __call__(self, options):
@@ -116,8 +116,8 @@ class cmd_refresh(Command):
 class cmd_logout(Command):
     """Log out of a remote API, purging any stored credentials.
 
-    This will remove the given profile from your maas-cli client.  You can
-    re-create it by logging in again later.
+    This will remove the given profile from your command-line  client.  You
+    can re-create it by logging in again later.
     """
 
     def __init__(self, parser):

@@ -137,7 +137,7 @@ def give_api_credentials_to_user(user_from, user_dest):
 
     This ensures that users of the shared namespace environment continue to
     operate within the legacy shared namespace environment by default via the
-    API (e.g. maas-cli and Juju).
+    API (e.g. from the command-line client, or from Juju).
     """
     for token in get_auth_tokens(user_from):
         consumer = token.consumer
