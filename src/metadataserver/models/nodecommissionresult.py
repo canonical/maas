@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """:class:`NodeCommissionResult` model."""
@@ -24,6 +24,7 @@ from django.db.models import (
     Manager,
     )
 from django.shortcuts import get_object_or_404
+from django.utils.html import escape
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 from metadataserver import DefaultMeta
@@ -97,3 +98,10 @@ class NodeCommissionResult(CleanSave, TimestampedModel):
     data = BinaryField(
         max_length=1024 * 1024, editable=True, blank=True, default=b'',
         null=False)
+
+    def __unicode__(self):
+        return "%s/%s" % (self.node.system_id, self.name)
+
+    def get_data_as_html(self):
+        """More-or-less human-readable HTML representation of the output."""
+        return escape(self.data.decode('utf-8', 'replace'))

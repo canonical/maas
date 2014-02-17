@@ -17,6 +17,7 @@ __all__ = []
 import httplib
 from operator import attrgetter
 import os
+from random import randint
 from textwrap import dedent
 from urlparse import (
     parse_qsl,
@@ -945,6 +946,110 @@ class NodeViewsTest(MAASServerTestCase):
             "//form[@id='node_listing_form']/@action")
         query_string_params = parse_qsl(urlparse(form_action).query)
         self.assertEqual(params.items(), query_string_params)
+
+
+class NodeCommissionResultsDisplayTest(MAASServerTestCase):
+    """Tests for the link to node commissioning results on the Node page."""
+
+    def enable_display(self):
+        """Enable the feature flag behind which this display is hidden."""
+        # XXX jtv 2014-02-13: Remove this once feature is good enough.
+        self.patch(nodes_views, 'ENABLE_NODECOMMISSIONRESULTS', True)
+
+    def request_results_display(self, node):
+        """Request the page for `node`, and extract the results display.
+
+        Fails if generating, loading or parsing the page failed; or if
+        there was more than one section of commissioning results.
+
+        :return: An `lxml.html.HtmlElement` representing the commissioning
+            results portion of the page; or `None` if it was not present on
+            the page.
+        """
+        node_link = reverse('node-view', args=[node.system_id])
+        response = self.client.get(node_link)
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        doc = fromstring(response.content)
+        results_display = doc.cssselect('#nodecommissionresults')
+        if len(results_display) == 0:
+            return None
+        elif len(results_display) == 1:
+            return results_display[0]
+        else:
+            self.fail("Found more than one matching tag: %s" % results_display)
+
+    def get_results_link(self, display):
+        """Find the results link in `display`.
+
+        :param display: Results display section for a node, as returned by
+            `request_results_display`.
+        :return: `lxml.html.HtmlElement` for the link to the node's
+            commissioning results, as found in `display`; or `None` if it was
+            not present.
+        """
+        links = display.cssselect('a')
+        if len(links) == 0:
+            return None
+        elif len(links) == 1:
+            return links[0]
+        else:
+            self.fail("Found more than one link: %s" % links)
+
+    def normalise_whitespace(self, text):
+        """Return a version of `text` where all whitespace is single spaces."""
+        return ' '.join(text.split())
+
+    def test_view_node_links_to_commissioning_results_if_appropriate(self):
+        self.enable_display()
+        self.client_log_in(as_admin=True)
+        result = factory.make_node_commission_result()
+        section = self.request_results_display(result.node)
+        link = self.get_results_link(section)
+        results_list = reverse('nodecommissionresult-list')
+        self.assertEqual(
+            results_list + '?node=%s' % result.node.system_id,
+            link.get('href'))
+
+    def test_view_node_hides_commissioning_results_by_default(self):
+        # XXX jtv 2014-02-13: Remove this test once we get rid of feature flag.
+        self.client_log_in(as_admin=True)
+        result = factory.make_node_commission_result()
+        self.assertIsNone(self.request_results_display(result.node))
+
+    def test_view_node_shows_commissioning_results_only_if_present(self):
+        self.enable_display()
+        self.client_log_in(as_admin=True)
+        node = factory.make_node()
+        self.assertIsNone(self.request_results_display(node))
+
+    def test_view_node_shows_commissioning_results_only_to_superuser(self):
+        self.enable_display()
+        self.client_log_in(as_admin=False)
+        result = factory.make_node_commission_result()
+        self.assertIsNone(self.request_results_display(result.node))
+
+    def test_view_node_shows_single_commissioning_result(self):
+        self.enable_display()
+        self.client_log_in(as_admin=True)
+        result = factory.make_node_commission_result()
+        section = self.request_results_display(result.node)
+        link = self.get_results_link(section)
+        self.assertEqual(
+            "1 output file",
+            self.normalise_whitespace(link.text_content()))
+
+    def test_view_node_shows_multiple_commissioning_results(self):
+        self.enable_display()
+        self.client_log_in(as_admin=True)
+        node = factory.make_node()
+        num_results = randint(2, 5)
+        for _ in range(num_results):
+            factory.make_node_commission_result(node=node)
+        section = self.request_results_display(node)
+        link = self.get_results_link(section)
+        self.assertEqual(
+            "%d output files" % num_results,
+            self.normalise_whitespace(link.text_content()))
 
 
 class NodeListingSelectionJSControls(SeleniumTestCase):

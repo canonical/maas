@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Nodes views."""
@@ -83,6 +83,7 @@ from maasserver.views import (
     HelpfulDeleteView,
     PaginatedListView,
     )
+from metadataserver.models import NodeCommissionResult
 from provisioningserver.tags import merge_details_cleanly
 
 
@@ -399,6 +400,11 @@ control it. Click 'Edit node' and set one.
 """)
 
 
+# Feature flag: link to node commissioning results?
+# XXX jtv 2014-02-13: Remove this when this UI feature is good enough.
+ENABLE_NODECOMMISSIONRESULTS = False
+
+
 class NodeView(NodeViewMixin, UpdateView):
     """View class to display a node's information and buttons for the actions
     which can be performed on this node.
@@ -440,6 +446,13 @@ class NodeView(NodeViewMixin, UpdateView):
         else:
             context["probed_details"] = etree.tostring(
                 probed_details, encoding=unicode, pretty_print=True)
+
+        if ENABLE_NODECOMMISSIONRESULTS:
+            results = NodeCommissionResult.objects.filter(node=node).count()
+        else:
+            results = 0
+        context['nodecommissionresults'] = results
+
         return context
 
     def dispatch(self, *args, **kwargs):

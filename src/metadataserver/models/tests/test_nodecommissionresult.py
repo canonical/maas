@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the :class:`NodeCommissionResult` model."""
@@ -27,6 +27,12 @@ from metadataserver.models import NodeCommissionResult
 class TestNodeCommissionResult(DjangoTestCase):
     """Test the NodeCommissionResult model."""
 
+    def test_unicode_represents_result(self):
+        result = factory.make_node_commission_result()
+        self.assertEqual(
+            '%s/%s' % (result.node.system_id, result.name),
+            unicode(result))
+
     def test_can_store_data(self):
         node = factory.make_node()
         name = factory.getRandomString()
@@ -51,6 +57,27 @@ class TestNodeCommissionResult(DjangoTestCase):
         node2 = factory.make_node()
         ncr2 = factory.make_node_commission_result(node=node2, name="foo")
         self.assertEqual(ncr1.name, ncr2.name)
+
+    def test_get_data_as_html_returns_output(self):
+        output = factory.getRandomString()
+        result = factory.make_node_commission_result(
+            data=output.encode('ascii'))
+        self.assertEqual(output, result.get_data_as_html())
+
+    def test_get_data_as_html_escapes_binary(self):
+        output = b'\x00\xff'
+        result = factory.make_node_commission_result(data=output)
+        html = result.get_data_as_html()
+        self.assertIsInstance(html, unicode)
+        # The nul byte turns into the zero character.  The 0xff is an invalid
+        # character and so becomes the Unicode "replacement character" 0xfffd.
+        self.assertEqual('\x00\ufffd', html)
+
+    def test_get_data_as_html_escapes_for_html(self):
+        output = '<&>'
+        result = factory.make_node_commission_result(
+            data=output.encode('ascii'))
+        self.assertEqual('&lt;&amp;&gt;', result.get_data_as_html())
 
 
 class TestNodeCommissionResultManager(DjangoTestCase):

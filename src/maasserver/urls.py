@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """URL routing configuration."""
@@ -33,6 +33,10 @@ from maasserver.views.networks import (
     NetworkEdit,
     NetworkListView,
     NetworkView,
+    )
+from maasserver.views.nodecommissionresult import (
+    NodeCommissionResultListView,
+    NodeCommissionResultView,
     )
 from maasserver.views.nodes import (
     enlist_preseed_view,
@@ -200,6 +204,14 @@ urlpatterns += patterns(
         r'^commissioning-scripts/add/$',
         CommissioningScriptCreate.as_view(),
         name='commissioning-script-add'),
+    adminurl(
+        r'^commissioning-results/$',
+        NodeCommissionResultListView.as_view(),
+        name='nodecommissionresult-list'),
+    adminurl(
+        r'^commissioning-results/(?P<id>[0-9]+)/$',
+        NodeCommissionResultView.as_view(),
+        name='nodecommissionresult-view'),
 )
 
 # Tag views.

@@ -180,6 +180,12 @@ class Factory:
         stamp = random.randrange(start, end)
         return datetime.datetime.fromtimestamp(stamp)
 
+    def make_timedelta(self):
+        return datetime.timedelta(
+            days=random.randint(0, 3 * 365),
+            seconds=random.randint(0, 24 * 60 * 60 - 1),
+            microseconds=random.randint(0, 999999))
+
     def make_file(self, location, name=None, contents=None):
         """Create a file, and write data to it.
 

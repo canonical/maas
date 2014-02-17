@@ -188,6 +188,17 @@
         <span>{{ node.routers|join:", " }}</span>
       </li>
     {% endif %}
+    {% if user.is_superuser and nodecommissionresults > 0 %}
+      <li class="block first size5 separate" id="nodecommissionresults">
+        <h4>Commissioning output</h4>
+        <span>
+          <a href="{% url 'nodecommissionresult-list' %}?node={{node.system_id}}">
+            {{ nodecommissionresults }}
+            output file{{ nodecommissionresults|pluralize }}
+          </a>
+        </span>
+      </li>
+    {% endif %}
     {% if probed_details %}
       <li class="block first separate">
         <h2>Raw discovery data</h2>

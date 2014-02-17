@@ -1,0 +1,60 @@
+{% extends "maasserver/base.html" %}
+
+{% block nav-active-zone-list %}active{% endblock %}
+{% block title %}Node commissioning results{% endblock %}
+{% block page-title %}
+{{ paginator.count }} result{{ paginator.count|pluralize }}
+in {% include "maasserver/site_title.html" %}
+{% endblock %}
+
+{% block html_includes %}{% include "maasserver/snippets.html" %}
+{% endblock %}
+
+{% block content %}
+    <div id="results">
+      <h2>Commissioning results</h2>
+      {% if paginator.count == 0 %}
+      <p>No matching commissioning results.</p>
+      {% else %}
+      <table class="list">
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Node</th>
+            <th>Output file</th>
+            <th>Script result<th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for result_item in results_list %}
+          <tr class="result {% cycle 'even' 'odd' %}">
+            <td>{{ result_item.created }}</td>
+            <td>
+              <a href="{% url 'node-view' result_item.node.system_id %}">
+                {{ result_item.node.system_id }}
+              </a>
+            </td>
+            <td>
+                {{ result_item.name }}
+            </td>
+            <td>
+                <a href="{% url 'nodecommissionresult-view' result_item.id %}">
+                  {% if result_item.script_result == 0 %}
+                  OK: {{ result_item.script_result }}
+                  {% else %}
+                  <span class="warning">
+                    <img src="{{ STATIC_URL }}img/warning.png" title="Failed" />
+                    FAILED: {{ result_item.script_result }}
+                  </span>
+                  {% endif %}
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% endif %}
+      <div class="clear"></div>
+    </div>
+
+{% endblock %}
