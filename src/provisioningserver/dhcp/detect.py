@@ -253,7 +253,8 @@ def determine_cluster_interfaces(knowledge):
         region controller has the definitive and final say in what does and
         doesn't exist.
     """
-    api_path = 'api/1.0/nodegroups/%s/interfaces/' % knowledge['nodegroup_uuid']
+    api_path = (
+        'api/1.0/nodegroups/%s/interfaces/' % knowledge['nodegroup_uuid'])
     oauth = MAASOAuth(*knowledge['api_credentials'])
     client = MAASClient(oauth, MAASDispatcher(), knowledge['maas_url'])
     interfaces = process_request(client.get, api_path, 'list')
