@@ -3,6 +3,10 @@
 Networks
 ========
 
+.. note::
+  This feature is available in MAAS versions 1.5 and above, starting with
+  revision 1961.
+
 A MAAS cluster controller can manage nodes on one or more networks.  The
 cluster controller must have direct interfaces connected to these networks,
 and each node must be managed through one of them.
@@ -97,10 +101,31 @@ Connecting nodes to networks
 In order for network placement constraints to take effect, you must also tell
 MAAS which nodes are connected to each network.
 
-``TODO: Yet to be written.``
+To do this in the user interface, browse to the node's Edit page.  It lists
+the networks that have been defined, and lets you select any number of these
+as being connected to the node.
 
-Future versions of MAAS may detect and register some of this information
-automatically.
+.. image:: media/connect-node-to-networks.png
+
+Click "Save node" to make your changes permanent.
+
+The :ref:`region-controller API <region-controller-api>` has two ways of
+connecting nodes to networks: you can either connect a node to any number of
+networks at the same time, much like you would in the web user interface, with
+a ``POST`` to the node's ``connect_networks`` method.  Or, you can connect any
+number of nodes to a network through a ``POST`` to the network's
+``connect_nodes`` method.  Either of these will accept empty lists, and
+connecting a node and a network that are already connected is not an error.
+
+Connecting a node to a network does not affect any other connections between
+the node and other networks, or between the network and other nodes.  There is
+a separate pair of methods, ``disconnect_networks`` on the node and
+``disconnect_nodes`` on the network, to remove connections between the two.
+Again, empty lists are accepted and disconnecting a node from a network that
+it is not connected to is not an error.
+
+Future versions of MAAS may detect and register some of the networks and their
+connections to nodes automatically.
 
 
 Placement constraints
