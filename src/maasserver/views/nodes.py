@@ -400,11 +400,6 @@ control it. Click 'Edit node' and set one.
 """)
 
 
-# Feature flag: link to node commissioning results?
-# XXX jtv 2014-02-13: Remove this when this UI feature is good enough.
-ENABLE_NODECOMMISSIONRESULTS = False
-
-
 class NodeView(NodeViewMixin, UpdateView):
     """View class to display a node's information and buttons for the actions
     which can be performed on this node.
@@ -447,10 +442,7 @@ class NodeView(NodeViewMixin, UpdateView):
             context["probed_details"] = etree.tostring(
                 probed_details, encoding=unicode, pretty_print=True)
 
-        if ENABLE_NODECOMMISSIONRESULTS:
-            results = NodeCommissionResult.objects.filter(node=node).count()
-        else:
-            results = 0
+        results = NodeCommissionResult.objects.filter(node=node).count()
         context['nodecommissionresults'] = results
 
         return context

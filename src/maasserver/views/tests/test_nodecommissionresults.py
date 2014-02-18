@@ -30,6 +30,11 @@ from mock import Mock
 from testtools.matchers import HasLength
 
 
+def normalise_whitespace(text):
+    """Replace any whitespace sequence with just a single space."""
+    return ' '.join(text.split())
+
+
 class TestNodeCommissionResultView(MAASServerTestCase):
 
     def request_page(self, result):
@@ -72,7 +77,7 @@ class TestNodeCommissionResultView(MAASServerTestCase):
             result.node.hostname,
             self.extract_field(doc, 'node'))
         self.assertEqual(
-            "Script returned %d" % result.script_result,
+            "%d" % result.script_result,
             self.extract_field(doc, 'script-result'))
         self.assertEqual(result.data, self.extract_field(doc, 'output', 'pre'))
 
@@ -91,6 +96,13 @@ class TestNodeCommissionResultView(MAASServerTestCase):
         result = factory.make_node_commission_result(data=b'A\xffB')
         doc = self.request_page(result)
         self.assertEqual('A\ufffdB', self.extract_field(doc, 'output', 'pre'))
+
+    def test_hides_output_if_empty(self):
+        self.client_log_in(as_admin=True)
+        result = factory.make_node_commission_result(data=b'')
+        doc = self.request_page(result)
+        field = get_one(doc.cssselect('#output'))
+        self.assertEqual('', field.text_content().strip())
 
 
 class TestNodeCommissionResultListView(MAASServerTestCase):
@@ -143,26 +155,23 @@ class TestNodeCommissionResultListView(MAASServerTestCase):
         result_row = get_one(content.cssselect('.result'))
         fields = result_row.cssselect('td')
 
-        [time, node, output_file, script_result] = fields
+        [script_result, output_file, time, node] = fields
+        self.assertEqual('OK', script_result.text_content().strip())
         self.assertIn('%d' % result.created.year, time.text_content())
-        self.assertEqual(result.node.system_id, node.text_content().strip())
+        self.assertEqual(result.node.hostname, node.text_content().strip())
         self.assertEqual(
             reverse('node-view', args=[result.node.system_id]),
             get_one(node.cssselect('a')).get('href'))
         self.assertEqual(result.name, output_file.text_content().strip())
-        self.assertEqual('OK: 0', script_result.text_content().strip())
 
     def test_shows_failure(self):
         self.client_log_in(as_admin=True)
-        result = factory.make_node_commission_result(
-            script_result=randint(1, 100))
+        factory.make_node_commission_result(script_result=randint(1, 100))
         content = self.request_page()
         result_row = get_one(content.cssselect('.result'))
         fields = result_row.cssselect('td')
-        [_, _, _, script_result] = fields
-        self.assertEqual(
-            "FAILED: %d" % result.script_result,
-            script_result.text_content().strip())
+        [script_result, _, _, _] = fields
+        self.assertEqual("FAILED", script_result.text_content().strip())
         self.assertNotEqual([], script_result.find_class('warning'))
 
     def test_links_to_result(self):
@@ -172,7 +181,7 @@ class TestNodeCommissionResultListView(MAASServerTestCase):
         content = self.request_page()
         result_row = get_one(content.cssselect('.result'))
         fields = result_row.cssselect('td')
-        [_, _, _, script_result] = fields
+        [script_result, _, _, _] = fields
         link = get_one(script_result.cssselect('a'))
         self.assertEqual(
             reverse('nodecommissionresult-view', args=[result.id]),
@@ -241,8 +250,35 @@ class TestNodeCommissionResultListView(MAASServerTestCase):
         self.assertThat(rows, HasLength(len(matching_results)))
         matching_names = set()
         for row in rows:
-            [_, _, name, _] = row.cssselect('td')
+            [_, name, _, _] = row.cssselect('td')
             matching_names.add(name.text_content().strip())
         self.assertEqual(
             {result.name for result in matching_results},
             matching_names)
+
+    def test_does_not_show_node_if_not_filtering_by_node(self):
+        self.client_log_in(as_admin=True)
+        doc = self.request_page()
+        header = get_one(doc.cssselect('#header'))
+        self.assertEqual(
+            "Commissioning results",
+            normalise_whitespace(header.text_content()))
+
+    def test_shows_node_if_filtering_by_node(self):
+        self.client_log_in(as_admin=True)
+        node = factory.make_node()
+        doc = self.request_page(nodes=[node])
+        header = get_one(doc.cssselect('#header'))
+        self.assertEqual(
+            "Commissioning results for %s" % node.hostname,
+            normalise_whitespace(header.text_content()))
+
+    def test_shows_nodes_if_filtering_by_multiple_nodes(self):
+        self.client_log_in(as_admin=True)
+        names = [factory.make_name('node').lower() for _ in range(2)]
+        nodes = [factory.make_node(hostname=name) for name in names]
+        doc = self.request_page(nodes=nodes)
+        header = get_one(doc.cssselect('#header'))
+        self.assertEqual(
+            "Commissioning results for %s" % ', '.join(sorted(names)),
+            normalise_whitespace(header.text_content()))

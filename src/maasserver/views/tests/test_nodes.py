@@ -951,11 +951,6 @@ class NodeViewsTest(MAASServerTestCase):
 class NodeCommissionResultsDisplayTest(MAASServerTestCase):
     """Tests for the link to node commissioning results on the Node page."""
 
-    def enable_display(self):
-        """Enable the feature flag behind which this display is hidden."""
-        # XXX jtv 2014-02-13: Remove this once feature is good enough.
-        self.patch(nodes_views, 'ENABLE_NODECOMMISSIONRESULTS', True)
-
     def request_results_display(self, node):
         """Request the page for `node`, and extract the results display.
 
@@ -1000,7 +995,6 @@ class NodeCommissionResultsDisplayTest(MAASServerTestCase):
         return ' '.join(text.split())
 
     def test_view_node_links_to_commissioning_results_if_appropriate(self):
-        self.enable_display()
         self.client_log_in(as_admin=True)
         result = factory.make_node_commission_result()
         section = self.request_results_display(result.node)
@@ -1010,26 +1004,17 @@ class NodeCommissionResultsDisplayTest(MAASServerTestCase):
             results_list + '?node=%s' % result.node.system_id,
             link.get('href'))
 
-    def test_view_node_hides_commissioning_results_by_default(self):
-        # XXX jtv 2014-02-13: Remove this test once we get rid of feature flag.
-        self.client_log_in(as_admin=True)
-        result = factory.make_node_commission_result()
-        self.assertIsNone(self.request_results_display(result.node))
-
     def test_view_node_shows_commissioning_results_only_if_present(self):
-        self.enable_display()
         self.client_log_in(as_admin=True)
         node = factory.make_node()
         self.assertIsNone(self.request_results_display(node))
 
     def test_view_node_shows_commissioning_results_only_to_superuser(self):
-        self.enable_display()
         self.client_log_in(as_admin=False)
         result = factory.make_node_commission_result()
         self.assertIsNone(self.request_results_display(result.node))
 
     def test_view_node_shows_single_commissioning_result(self):
-        self.enable_display()
         self.client_log_in(as_admin=True)
         result = factory.make_node_commission_result()
         section = self.request_results_display(result.node)
@@ -1039,7 +1024,6 @@ class NodeCommissionResultsDisplayTest(MAASServerTestCase):
             self.normalise_whitespace(link.text_content()))
 
     def test_view_node_shows_multiple_commissioning_results(self):
-        self.enable_display()
         self.client_log_in(as_admin=True)
         node = factory.make_node()
         num_results = randint(2, 5)

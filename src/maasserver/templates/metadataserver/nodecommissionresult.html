@@ -19,19 +19,21 @@
       </span>
     </li>
     <li class="block size7 first" id="time">
-      <h4>Time</h4>
-      <span>Result was registered at {{ object.created }}</span>
+      <h4>Result registered at</h4>
+      <span>{{ object.created }}</span>
     </li>
     <li class="block size3" id="script-result">
-      <h4>Return value</h4>
-      <span>Script returned {{ object.script_result }}</span>
+      <h4>Script return value</h4>
+      <span>{{ object.script_result }}</span>
     </li>
 
     <li class="block first separate" id="output">
+      {% if object.data %}
       <h2>Output</h2>
-      <pre>
+<pre>
 {{ object.get_data_as_html }}
-      </pre>
+</pre>
+      {% endif %}
     </li>
   </ul>
 
