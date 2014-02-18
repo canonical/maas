@@ -19,16 +19,21 @@ import json
 from django.core.urlresolvers import reverse
 from maasserver import eventloop
 from maasserver.testing.testcase import MAASServerTestCase
-import maasserver.views.rpc
-from maastesting.factory import factory
+from provisioningserver.utils import get_all_interface_addresses
 from testtools.matchers import (
+    Equals,
     GreaterThan,
-    HasLength,
     IsInstance,
     KeysEqual,
     LessThan,
     MatchesAll,
+    MatchesDict,
+    MatchesListwise,
     )
+
+
+is_valid_port = MatchesAll(
+    IsInstance(int), GreaterThan(0), LessThan(2 ** 16))
 
 
 class RPCViewTest(MAASServerTestCase):
@@ -37,26 +42,22 @@ class RPCViewTest(MAASServerTestCase):
         response = self.client.get(reverse('rpc-info'))
         self.assertEqual("application/json", response["Content-Type"])
         info = json.loads(response.content)
-        self.assertEqual({"endpoints": []}, info)
+        self.assertEqual({"eventloops": {}}, info)
 
     def test_rpc_info_when_rpc_running(self):
         eventloop.start()
         self.addCleanup(eventloop.stop)
 
-        example_host = factory.make_hostname()
-        get_maas_facing_server_address = self.patch(
-            maasserver.views.rpc, "get_maas_facing_server_address")
-        get_maas_facing_server_address.return_value = example_host
-
         response = self.client.get(reverse('rpc-info'))
         self.assertEqual("application/json", response["Content-Type"])
         info = json.loads(response.content)
-        self.assertThat(info, KeysEqual("endpoints"))
-        self.assertThat(info["endpoints"], MatchesAll(
-            IsInstance(list), HasLength(1)))
-        [endpoint] = info["endpoints"]
-        self.assertThat(endpoint, HasLength(2))
-        host, port = endpoint
-        self.assertEqual(host, example_host)
-        self.assertThat(port, MatchesAll(
-            IsInstance(int), GreaterThan(0), LessThan(2 ** 16)))
+        self.assertThat(info, KeysEqual("eventloops"))
+        self.assertThat(info["eventloops"], MatchesDict({
+            # Each entry in the endpoints dict is a mapping from an
+            # event loop to a list of (host, port) tuples. Each tuple is
+            # a potential endpoint for connecting into that event loop.
+            eventloop.loop.name: MatchesListwise([
+                MatchesListwise((Equals(addr), is_valid_port))
+                for addr in get_all_interface_addresses()
+            ]),
+        }))

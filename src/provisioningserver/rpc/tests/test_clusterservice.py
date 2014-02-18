@@ -15,6 +15,7 @@ __metaclass__ = type
 __all__ = []
 
 from itertools import product
+import json
 import os.path
 
 from fixtures import EnvironmentVariable
@@ -22,6 +23,7 @@ from maastesting.factory import factory
 from maastesting.matchers import Provides
 from maastesting.testcase import MAASTestCase
 from mock import (
+    call,
     Mock,
     sentinel,
     )
@@ -31,10 +33,14 @@ from provisioningserver.rpc import clusterservice
 from provisioningserver.rpc.cluster import ListBootImages
 from provisioningserver.rpc.clusterservice import (
     Cluster,
+    ClusterClient,
     ClusterClientService,
     ClusterService,
     )
-from provisioningserver.rpc.testing import call_responder
+from provisioningserver.rpc.testing import (
+    call_responder,
+    TwistedLoggerFixture,
+    )
 from testtools.deferredruntest import AsynchronousDeferredRunTest
 from testtools.matchers import (
     Equals,
@@ -53,9 +59,14 @@ from twisted.application.internet import (
     StreamServerEndpointService,
     TimerService,
     )
-from twisted.internet import reactor
-from twisted.internet.address import HostnameAddress
-from twisted.internet.defer import succeed
+from twisted.internet import (
+    error,
+    reactor,
+    )
+from twisted.internet.defer import (
+    inlineCallbacks,
+    succeed,
+    )
 from twisted.internet.endpoints import TCP4ClientEndpoint
 from twisted.internet.interfaces import IStreamServerEndpoint
 from twisted.internet.protocol import Factory
@@ -134,6 +145,8 @@ class TestClusterService(MAASTestCase):
 
 class TestClusterClientService(MAASTestCase):
 
+    run_tests_with = AsynchronousDeferredRunTest.make_factory(timeout=5)
+
     def test_init_sets_appropriate_instance_attributes(self):
         service = ClusterClientService(sentinel.reactor)
         self.assertThat(service, IsInstance(TimerService))
@@ -181,53 +194,154 @@ class TestClusterClientService(MAASTestCase):
         self.assertThat(service.step, MatchesAll(
             Equals(service._loop.interval), IsInstance(int)))
 
+    # The following represents an example response from the RPC info
+    # view in maasserver. Event-loops listen on ephemeral ports, and
+    # it's up to the RPC info view to direct clients to them.
+    example_rpc_info_view_response = json.dumps({
+        "eventloops": {
+            # An event-loop in pid 1001 on host1. This host has two
+            # configured IP addresses, 1.1.1.1 and 1.1.1.2.
+            "host1:pid=1001": [
+                ("1.1.1.1", 1111),
+                ("1.1.1.2", 2222),
+            ],
+            # An event-loop in pid 2002 on host1. This host has two
+            # configured IP addresses, 1.1.1.1 and 1.1.1.2.
+            "host1:pid=2002": [
+                ("1.1.1.1", 3333),
+                ("1.1.1.2", 4444),
+            ],
+            # An event-loop in pid 3003 on host2. This host has one
+            # configured IP address, 2.2.2.2.
+            "host2:pid=3003": [
+                ("2.2.2.2", 5555),
+            ],
+        },
+    })
+
     def test_update_calls__update_connections(self):
         maas_url = "http://%s/%s/" % (
             factory.make_hostname(), factory.make_name("path"))
         self.useFixture(EnvironmentVariable("MAAS_URL", maas_url))
         getPage = self.patch(clusterservice, "getPage")
-        getPage.return_value = succeed(
-            '{"endpoints": [["example.com", 54321]]}')
+        getPage.return_value = succeed(self.example_rpc_info_view_response)
         service = ClusterClientService(Clock())
         _update_connections = self.patch(service, "_update_connections")
         service.startService()
-        _update_connections.assert_called_once_with([["example.com", 54321]])
+        _update_connections.assert_called_once_with({
+            "host2:pid=3003": [
+                ["2.2.2.2", 5555],
+            ],
+            "host1:pid=2002": [
+                ["1.1.1.1", 3333],
+                ["1.1.1.2", 4444],
+            ],
+            "host1:pid=1001": [
+                ["1.1.1.1", 1111],
+                ["1.1.1.2", 2222],
+            ],
+        })
 
+    @inlineCallbacks
     def test__update_connections_initially(self):
         service = ClusterClientService(Clock())
-        make_connections = self.patch(service, "_make_connections")
-        drop_connections = self.patch(service, "_drop_connections")
+        _make_connection = self.patch(service, "_make_connection")
+        _drop_connection = self.patch(service, "_drop_connection")
 
-        service._update_connections(
-            [("a.example.com", 1111), ("b.example.com", 2222)])
-        make_connections.assert_called_with(
-            {HostnameAddress("a.example.com", 1111),
-             HostnameAddress("b.example.com", 2222)})
-        drop_connections.assert_called_with(set())
+        info = json.loads(self.example_rpc_info_view_response)
+        yield service._update_connections(info["eventloops"])
+
+        _make_connection_expected = [
+            call("host1:pid=1001", ("1.1.1.1", 1111)),
+            call("host1:pid=2002", ("1.1.1.1", 3333)),
+            call("host2:pid=3003", ("2.2.2.2", 5555)),
+        ]
+        self.assertItemsEqual(
+            _make_connection_expected,
+            _make_connection.call_args_list)
+
+        _drop_connection.assert_not_called()
+
+    @inlineCallbacks
+    def test__update_connections_connect_error_is_logged_tersely(self):
+        service = ClusterClientService(Clock())
+        _make_connection = self.patch(service, "_make_connection")
+        _make_connection.side_effect = error.ConnectionRefusedError()
+
+        logger = self.useFixture(TwistedLoggerFixture())
+
+        eventloops = {"an-event-loop": [("hostname", 1234)]}
+        yield service._update_connections(eventloops)
+
+        _make_connection.assert_called_once_with(
+            "an-event-loop", ("hostname", 1234))
+
+        self.assertEqual(
+            "Event-loop an-event-loop (hostname:1234): Connection "
+            "was refused by other side.", logger.dump())
+
+    @inlineCallbacks
+    def test__update_connections_unknown_error_is_logged_with_stack(self):
+        service = ClusterClientService(Clock())
+        _make_connection = self.patch(service, "_make_connection")
+        _make_connection.side_effect = RuntimeError("Something went wrong.")
+
+        logger = self.useFixture(TwistedLoggerFixture())
+
+        eventloops = {"an-event-loop": [("hostname", 1234)]}
+        yield service._update_connections(eventloops)
+
+        _make_connection.assert_called_once_with(
+            "an-event-loop", ("hostname", 1234))
+
+        self.assertDocTestMatches(
+            """\
+            Unhandled Error
+            Traceback (most recent call last):
+            ...
+            exceptions.RuntimeError: Something went wrong.
+            """,
+            logger.dump())
 
     def test__update_connections_when_there_are_existing_connections(self):
         service = ClusterClientService(Clock())
-        make_connections = self.patch(service, "_make_connections")
-        drop_connections = self.patch(service, "_drop_connections")
+        _make_connection = self.patch(service, "_make_connection")
+        _drop_connection = self.patch(service, "_drop_connection")
+
+        host1client = ClusterClient(
+            ("1.1.1.1", 1111), "host1:pid=1", service)
+        host2client = ClusterClient(
+            ("2.2.2.2", 2222), "host2:pid=2", service)
+        host3client = ClusterClient(
+            ("3.3.3.3", 3333), "host3:pid=3", service)
 
         # Fake some connections.
         service.connections = {
-            HostnameAddress("a.example.com", 1111): None,
-            HostnameAddress("b.example.com", 2222): None,
+            host1client.eventloop: host1client,
+            host2client.eventloop: host2client,
         }
 
-        service._update_connections(
-            [("a.example.com", 1111), ("c.example.com", 3333)])
+        # Request a new set of connections that overlaps with the
+        # existing connections.
+        service._update_connections({
+            host1client.eventloop: [
+                host1client.address,
+            ],
+            host3client.eventloop: [
+                host3client.address,
+            ],
+        })
 
-        make_connections.assert_called_with(
-            {HostnameAddress("c.example.com", 3333)})
-        drop_connections.assert_called_with(
-            {HostnameAddress("b.example.com", 2222)})
+        # A connection is made for host3's event-loop, and the
+        # connection to host2's event-loop is dropped.
+        _make_connection.assert_called_once_with(
+            host3client.eventloop, host3client.address)
+        _drop_connection.assert_called_with(host2client)
 
-    def test__make_connections(self):
+    def test__make_connection(self):
         service = ClusterClientService(Clock())
         connectProtocol = self.patch(clusterservice, "connectProtocol")
-        service._make_connections({HostnameAddress("a.example.com", 1111)})
+        service._make_connection("an-event-loop", ("a.example.com", 1111))
         self.assertThat(connectProtocol.call_args_list, HasLength(1))
         self.assertThat(
             connectProtocol.call_args_list[0][0],
@@ -247,30 +361,26 @@ class TestClusterClientService(MAASTestCase):
                 MatchesAll(
                     IsInstance(clusterservice.ClusterClient),
                     MatchesStructure.byEquality(
-                        address=HostnameAddress("a.example.com", 1111),
+                        address=("a.example.com", 1111),
+                        eventloop="an-event-loop",
                         service=service,
                     ),
                 ),
             )))
 
-    def test__drop_connections(self):
-        address = HostnameAddress("a.example.com", 1111)
+    def test__drop_connection(self):
         connection = Mock()
         service = ClusterClientService(Clock())
-        service.connections[address] = connection
-        service._drop_connections({address})
-        connection.loseConnection.assert_called_once_with()
-        # The connection is *not* removed from the connection map;
-        # that's the responsibility of the protocol.
-        self.assertEqual({address: connection}, service.connections)
+        service._drop_connection(connection)
+        connection.transport.loseConnection.assert_called_once_with()
 
 
 class TestClusterClient(MAASTestCase):
 
     def make_running_client(self):
-        client = clusterservice.ClusterClient()
-        client.address = HostnameAddress("example.com", 1234)
-        client.service = ClusterClientService(Clock())
+        client = clusterservice.ClusterClient(
+            address=("example.com", 1234), eventloop="eventloop:pid=12345",
+            service=ClusterClientService(Clock()))
         client.service.running = True
         return client
 
@@ -280,13 +390,13 @@ class TestClusterClient(MAASTestCase):
         client.connectionMade()
         self.assertEqual(
             client.service.connections,
-            {client.address: client})
+            {client.eventloop: client})
 
     def test_disconnects_when_there_is_an_existing_connection(self):
         client = self.make_running_client()
 
         # Pretend that a connection already exists for this address.
-        client.service.connections[client.address] = sentinel.connection
+        client.service.connections[client.eventloop] = sentinel.connection
 
         # Connect via an in-memory transport.
         transport = StringTransportWithDisconnection()
@@ -297,7 +407,7 @@ class TestClusterClient(MAASTestCase):
         # immediately disconnects.
         self.assertEqual(
             client.service.connections,
-            {client.address: sentinel.connection})
+            {client.eventloop: sentinel.connection})
         self.assertFalse(client.connected)
         self.assertIsNone(client.transport)
 

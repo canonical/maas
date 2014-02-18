@@ -24,9 +24,7 @@ import json
 
 from django.http import HttpResponse
 from maasserver import eventloop
-from maasserver.models import NodeGroup
-from maasserver.server_address import get_maas_facing_server_address
-from maasserver.utils.orm import get_one
+from provisioningserver.utils import get_all_interface_addresses
 
 
 def info(request):
@@ -35,21 +33,20 @@ def info(request):
     Currently the only information returned is a list of `(host, port)`
     tuples on which the region has listening RPC endpoints.
     """
-    uuid = request.GET.get('uuid', None)
-    if uuid is None:
-        nodegroup = None
-    else:
-        nodegroup = get_one(NodeGroup.objects.filter(uuid=uuid))
-
-    endpoints = []
-    info = {"endpoints": endpoints}
-
     try:
         rpc_service = eventloop.services.getServiceNamed("rpc")
     except KeyError:
-        pass  # No endpoints.
+        endpoints = {}  # No endpoints.
     else:
-        hostname = get_maas_facing_server_address(nodegroup)
-        endpoints.append((hostname, rpc_service.getPort()))
+        port = rpc_service.getPort()
+        addrs = get_all_interface_addresses()
+        endpoints = {
+            eventloop.loop.name: [
+                (addr, port) for addr in addrs
+            ],
+        }
+
+    # Each endpoint is an entry point into this event-loop.
+    info = {"eventloops": endpoints}
 
     return HttpResponse(json.dumps(info), content_type="application/json")

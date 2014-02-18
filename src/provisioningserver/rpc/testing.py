@@ -14,7 +14,13 @@ str = None
 __metaclass__ = type
 __all__ = [
     "call_responder",
+    "TwistedLoggerFixture",
 ]
+
+import operator
+
+from fixtures import Fixture
+from twisted.python import log
 
 
 def call_responder(protocol, command, arguments):
@@ -27,3 +33,28 @@ def call_responder(protocol, command, arguments):
     d = responder(arguments)
     d.addCallback(command.parseResponse, protocol)
     return d
+
+
+class TwistedLoggerFixture(Fixture):
+    """Capture all Twisted logging.
+
+    Temporarily replaces all log observers.
+    """
+
+    def __init__(self):
+        super(TwistedLoggerFixture, self).__init__()
+        self.logs = []
+
+    def dump(self):
+        """Return all logs as a string."""
+        return "\n---\n".join(
+            log.textFromEventDict(event) for event in self.logs)
+
+    def setUp(self):
+        super(TwistedLoggerFixture, self).setUp()
+        self.addCleanup(
+            operator.setitem, self.logs, slice(None), [])
+        self.addCleanup(
+            operator.setitem, log.theLogPublisher.observers,
+            slice(None), log.theLogPublisher.observers[:])
+        log.theLogPublisher.observers[:] = [self.logs.append]
