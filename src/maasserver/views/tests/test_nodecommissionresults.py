@@ -259,7 +259,7 @@ class TestNodeCommissionResultListView(MAASServerTestCase):
     def test_does_not_show_node_if_not_filtering_by_node(self):
         self.client_log_in(as_admin=True)
         doc = self.request_page()
-        header = get_one(doc.cssselect('#header'))
+        header = get_one(doc.cssselect('#results_header'))
         self.assertEqual(
             "Commissioning results",
             normalise_whitespace(header.text_content()))
@@ -268,7 +268,7 @@ class TestNodeCommissionResultListView(MAASServerTestCase):
         self.client_log_in(as_admin=True)
         node = factory.make_node()
         doc = self.request_page(nodes=[node])
-        header = get_one(doc.cssselect('#header'))
+        header = get_one(doc.cssselect('#results_header'))
         self.assertEqual(
             "Commissioning results for %s" % node.hostname,
             normalise_whitespace(header.text_content()))
@@ -278,7 +278,7 @@ class TestNodeCommissionResultListView(MAASServerTestCase):
         names = [factory.make_name('node').lower() for _ in range(2)]
         nodes = [factory.make_node(hostname=name) for name in names]
         doc = self.request_page(nodes=nodes)
-        header = get_one(doc.cssselect('#header'))
+        header = get_one(doc.cssselect('#results_header'))
         self.assertEqual(
             "Commissioning results for %s" % ', '.join(sorted(names)),
             normalise_whitespace(header.text_content()))
