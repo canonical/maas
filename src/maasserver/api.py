@@ -2796,6 +2796,22 @@ class NetworkHandler(OperationsHandler):
             raise ValidationError(form.errors)
         network.node_set.add(*form.get_nodes())
 
+    @admin_method
+    @operation(idempotent=False)
+    def disconnect_nodes(self, request, name):
+        """Disconnect the given nodes from this network.
+
+        Removing a node from a network which it is not connected to does
+        nothing.
+
+        :param nodes: A list of `system_id` identifiers for nodes.
+        """
+        network = get_object_or_404(Network, name=name)
+        form = NetworkConnectNodesForm(data=request.data)
+        if not form.is_valid():
+            raise ValidationError(form.errors)
+        network.node_set.remove(*form.get_nodes())
+
     @operation(idempotent=True)
     def list_connected_nodes(self, request, name):
         """Returns the list of nodes connected to this network.

@@ -1318,7 +1318,8 @@ class NetworkConnectNodesForm(forms.Form):
 
     nodes = InstanceListField(
         model_class=Node, field_name='system_id',
-        label="Nodes to be connected.", required=True, error_messages={
+        label="Nodes to be connected/disconnected.", required=True,
+        error_messages={
             'invalid_list':
             "Invalid parameter: list of node system IDs required.",
             })

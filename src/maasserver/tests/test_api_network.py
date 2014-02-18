@@ -220,6 +220,89 @@ class TestNetwork(APITestCase):
             {'nodes': ["Unknown node(s): %s." % nonexistent_node]},
             json.loads(response.content))
 
+    def test_POST_disconnect_nodes_removes_nodes_from_network(self):
+        self.become_admin()
+        network = factory.make_network()
+        node = factory.make_node(networks=[network])
+        response = self.client.post(
+            self.get_url(network.name),
+            {
+                'op': 'disconnect_nodes',
+                'nodes': [node.system_id],
+            })
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual([], list(node.networks.all()))
+
+    def test_POST_disconnect_nodes_requires_admin(self):
+        response = self.client.post(
+            self.get_url(factory.make_network().name),
+            {
+                'op': 'disconnect_nodes',
+                'nodes': [factory.make_node().system_id],
+            })
+        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+
+    def test_POST_disconnect_nodes_accepts_empty_nodes_list(self):
+        self.become_admin()
+        response = self.client.post(
+            self.get_url(factory.make_network().name),
+            {
+                'op': 'disconnect_nodes',
+                'nodes': [],
+            })
+        self.assertEqual(httplib.OK, response.status_code)
+
+    def test_POST_disconnect_nodes_is_idempotent(self):
+        self.become_admin()
+        response = self.client.post(
+            self.get_url(factory.make_network().name),
+            {
+                'op': 'disconnect_nodes',
+                'nodes': [factory.make_node().system_id],
+            })
+        self.assertEqual(httplib.OK, response.status_code)
+
+    def test_POST_disconnect_nodes_leaves_other_nodes_unchanged(self):
+        self.become_admin()
+        network = factory.make_network()
+        other_node = factory.make_node(networks=[network])
+        response = self.client.post(
+            self.get_url(network.name),
+            {
+                'op': 'disconnect_nodes',
+                'nodes': [factory.make_node(networks=[network]).system_id],
+            })
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual([network], list(other_node.networks.all()))
+
+    def test_POST_disconnect_nodes_leaves_other_networks_unchanged(self):
+        self.become_admin()
+        network = factory.make_network()
+        other_network = factory.make_network()
+        node = factory.make_node(networks=[network, other_network])
+        response = self.client.post(
+            self.get_url(network.name),
+            {
+                'op': 'disconnect_nodes',
+                'nodes': [node.system_id],
+            })
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual([other_network], list(node.networks.all()))
+
+    def test_POST_disconnect_nodes_fails_on_unknown_node(self):
+        self.become_admin()
+        nonexistent_node = factory.make_name('no-node')
+        response = self.client.post(
+            self.get_url(factory.make_network().name),
+            {
+                'op': 'disconnect_nodes',
+                'nodes': [nonexistent_node],
+            })
+        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+        self.assertEqual(
+            {'nodes': ["Unknown node(s): %s." % nonexistent_node]},
+            json.loads(response.content))
+
 
 class TestListConnectedNodes(APITestCase):
     """Tests for /api/1.0/network/s<network>/?op=list_connected_nodes."""
