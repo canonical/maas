@@ -33,7 +33,8 @@ class NodeCommissionResultListView(PaginatedListView):
         return self.request.GET.getlist('node')
 
     def get_context_data(self, **kwargs):
-        context = super(NodeCommissionResultListView, self).get_context_data()
+        context = super(NodeCommissionResultListView, self).get_context_data(
+            **kwargs)
         system_ids = self.get_filter_system_ids()
         if system_ids is not None and len(system_ids) > 0:
             nodes = Node.objects.filter(system_id__in=system_ids)
