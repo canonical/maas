@@ -131,7 +131,7 @@ class TestNodeCommissionResultManager(DjangoTestCase):
 
         self.assertAttributes(
             NodeCommissionResult.objects.get(node=node),
-            dict(name=name, data=data))
+            dict(name=name, data=data, script_result=script_result))
 
     def test_get_data(self):
         ncr = factory.make_node_commission_result()

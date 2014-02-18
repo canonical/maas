@@ -61,6 +61,7 @@ class NodeCommissionResultManager(Manager):
             node=node, name=name,
             defaults=dict(script_result=script_result, data=data))
         if not created:
+            existing.script_result = script_result
             existing.data = data
             existing.save()
         return existing
