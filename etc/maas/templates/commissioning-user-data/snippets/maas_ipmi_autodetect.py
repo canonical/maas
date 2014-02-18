@@ -2,7 +2,7 @@
 #
 # maas-ipmi-autodetect - autodetect and autoconfigure IPMI.
 #
-# Copyright (C) 2011-2013 Canonical
+# Copyright (C) 2011-2014 Canonical
 #
 # Authors:
 #    Andres Rodriguez <andres.rodriguez@canonical.com>
@@ -29,31 +29,63 @@ str = None
 
 __metaclass__ = type
 
-import commands
 import json
 import os
 import random
 import re
 import string
+import subprocess
 import time
 
 
+def run_command(command_args):
+    """Run a command. Return output if successful or raise exception if not."""
+    output = subprocess.check_output(command_args, stderr=subprocess.STDOUT)
+    return output
+
+
+def bmc_get(key):
+    """Fetch the output of a key via bmc-config checkout."""
+    command = ('bmc-config', '--checkout', '--key-pair=%s' % key)
+    output = run_command(command)
+    return output
+
+
+def bmc_set(key, value):
+    """Set the value of a key via bmc-config commit."""
+    command = ('bmc-config', '--commit', '--key-pair=%s=%s' % (key, value))
+    run_command(command)
+
+
+def format_user_key(user_number, parameter):
+    """Format a user key string."""
+    return '%s:%s' % (user_number, parameter)
+
+
+def bmc_user_get(user_number, parameter):
+    """Get a user parameter via bmc-config commit."""
+    key = format_user_key(user_number, parameter)
+    return bmc_get(key)
+
+
+def bmc_user_set(user_number, parameter, value):
+    """Set a user parameter via bmc-config commit."""
+    key = format_user_key(user_number, parameter)
+    bmc_set(key, value)
+
+
 def is_ipmi_dhcp():
-    status, output = commands.getstatusoutput(
-        'bmc-config --checkout --key-pair="Lan_Conf:IP_Address_Source"')
+    output = bmc_get('Lan_Conf:IP_Address_Source')
     show_re = re.compile('IP_Address_Source\s+Use_DHCP')
     return show_re.search(output) is not None
 
 
 def set_ipmi_network_source(source):
-    status, output = commands.getstatusoutput(
-        'bmc-config --commit --key-pair="Lan_Conf:IP_Address_Source=%s"'
-        % source)
+    bmc_set('Lan_Conf:IP_Address_Source', source)
 
 
 def get_ipmi_ip_address():
-    status, output = commands.getstatusoutput(
-        'bmc-config --checkout --key-pair="Lan_Conf:IP_Address"')
+    output = bmc_get('Lan_Conf:IP_Address')
     show_re = re.compile('([0-9]{1,3}[.]?){4}')
     res = show_re.search(output)
     return res.group()
@@ -62,40 +94,32 @@ def get_ipmi_ip_address():
 def get_ipmi_user_number(user):
     for i in range(1, 17):
         ipmi_user_number = "User%s" % i
-        status, output = commands.getstatusoutput(
-            'bmc-config --checkout --key-pair="%s:Username"'
-            % ipmi_user_number)
-        if user in output:
-            return ipmi_user_number
+        # bmc-config fails if no slot for the requested user exists;
+        # instead of bailing, just keep trying remaining users.
+        try:
+            output = bmc_user_get(ipmi_user_number, 'Username')
+        except subprocess.CalledProcessError:
+            pass
+        else:
+            if user in output:
+                return ipmi_user_number
     return None
 
 
 def commit_ipmi_user_settings(user, password):
     ipmi_user_number = get_ipmi_user_number(user)
     if ipmi_user_number is None:
-        status, output = commands.getstatusoutput(
-            'bmc-config --commit --key-pair="User10:Username=%s"' % user)
+        bmc_user_set('User10', 'Username', user)
         ipmi_user_number = get_ipmi_user_number(user)
-    status, output = commands.getstatusoutput(
-        'bmc-config --commit --key-pair="%s:Username=%s"'
-        % (ipmi_user_number, user))
-    status, output = commands.getstatusoutput(
-        'bmc-config --commit --key-pair="%s:Password=%s"'
-        % (ipmi_user_number, password))
-    status, output = commands.getstatusoutput(
-        'bmc-config --commit --key-pair="%s:Enable_User=Yes"'
-        % ipmi_user_number)
-    status, output = commands.getstatusoutput(
-        'bmc-config --commit --key-pair="%s:Lan_Enable_IPMI_Msgs=Yes"'
-        % ipmi_user_number)
-    status, output = commands.getstatusoutput(
-        'bmc-config --commit --key-pair="%s:Lan_Privilege_Limit=Administrator"'
-        % ipmi_user_number)
+    bmc_user_set(ipmi_user_number, 'Username', user)
+    bmc_user_set(ipmi_user_number, 'Password', password)
+    bmc_user_set(ipmi_user_number, 'Enable_User', 'Yes')
+    bmc_user_set(ipmi_user_number, 'Lan_Enable_IPMI_Msgs', 'Yes')
+    bmc_user_set(ipmi_user_number, 'Lan_Privilege_Limit', 'Administrator')
 
 
 def commit_ipmi_settings(config):
-    status, output = commands.getstatusoutput(
-        'bmc-config --commit --filename %s' % config)
+    run_command(('bmc-config', '--commit', '--filename %s') % config)
 
 
 def get_maas_power_settings(user, password, ipaddress, version):
@@ -119,7 +143,7 @@ def generate_random_password(min_length=8, max_length=15):
 
 
 def get_ipmi_version():
-    (status, output) = commands.getstatusoutput('ipmi-locate')
+    output = run_command(('ipmi-locate'))
     #IPMI Version: 2.0
     #IPMI locate driver: SMBIOS
     #IPMI interface: KCS

@@ -65,6 +65,7 @@ def is_snippet(filename):
     return all([
         not filename.startswith('.'),
         filename != '__init__.py',
+        filename != 'tests',
         not filename.endswith('.pyc'),
         not filename.endswith('~'),
         ])

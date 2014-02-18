@@ -52,6 +52,7 @@ class TestSnippets(MAASTestCase):
             'backup~': False,
             'module.pyc': False,
             '__init__.pyc': False,
+            'tests': False,
         }
         self.assertEqual(
             are_snippets,
