@@ -232,8 +232,8 @@ update_pre_boot_loader() {
 
 
 # Download kernel/initrd for installing Ubuntu release $2 for
-# architecture $1, and install them into the TFTP directory hierarchy.
-update_install_files() {
+# architecture $1.
+download_install_files() {
     local arch=$1 release=$2
     local files file url file_prefix filename_in_md5sums_file md5sum
 
@@ -247,7 +247,7 @@ update_install_files() {
         echo "Failed to download MD5 sums for $arch $release." >&2
         popd >/dev/null
         rm -rf "install"
-        return
+        return 1
     fi
     echo "MD5SUMS GPG signature OK for $arch $release"
     for file in $files
@@ -258,16 +258,33 @@ update_install_files() {
             echo "Failed to download $url/$file" >&2
             popd >/dev/null
             rm -rf "install"
-            return
+            return 1
         fi
         file_prefix=$(compose_installer_download_url_postfix $arch)
-        filename_in_md5sums_file=$file_prefix$file
+        filename_in_md5sums_file=./$file_prefix$file
         md5sum=$(get_md5sum_for_file $filename_in_md5sums_file)
         check_checksum $md5sum $file
         echo "'$file' md5sum OK"
     done
     rename_installer_download_files $arch $release
     popd >/dev/null
+    return 0
+}
+
+# Download kernel/initrd for installing Ubuntu release $2 for
+# architecture $1, and install them into the TFTP directory hierarchy.
+update_install_files() {
+    local arch=$1 release=$2
+
+    # Try the -updates pocket first, and fall back to release if it failed.
+    if ! download_install_files $arch ${release}-updates
+    then
+        echo "$release-updates not available, falling back to release"
+        if ! download_install_files $arch $release
+        then
+            return
+        fi
+    fi
 
     maas-provision install-pxe-image \
         --arch="${arch%%/*}" --subarch="${arch#*/}" \
