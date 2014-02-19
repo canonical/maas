@@ -4,6 +4,7 @@
 # Control a system via amttool
 power_change='{{power_change}}'
 power_pass='{{power_pass}}'
+ip_address='{{ip_address}}'
 
 echo amt.template starting $*
 

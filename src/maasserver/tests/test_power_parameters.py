@@ -79,6 +79,9 @@ class TestPowerActionRendering(MAASServerTestCase):
         params = self.make_random_parameters()
         node = factory.make_node(power_type=self.power_type)
         params.update(node.get_effective_power_parameters())
+        # ip_address is determined by querying the ARP cache,
+        # hence in this test the value does not matter.
+        params.update(ip_address=factory.getRandomIPAddress())
         action = PowerAction(self.power_type)
         script = action.render_template(action.get_template(), **params)
         # The real check is that the rendering went fine.
