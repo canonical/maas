@@ -72,6 +72,12 @@ misc_bucket:
    {{endfor}}
    END_MAAS_MOONSHOT_AUTODETECT
 
+   add_bin "maas-enlist" <<"END_MAAS_ENLIST"
+   {{for line in maas_enlist_sh.splitlines()}}
+   {{line}}
+   {{endfor}}
+   END_MAAS_ENLIST
+
    # we could obtain the interface that booted from the kernel cmdline
    # thanks to 'IPAPPEND' (http://www.syslinux.org/wiki/index.php/SYSLINUX)
    url="{{server_url}}"
@@ -143,7 +149,7 @@ misc_bucket:
    initctl reload-configuration
 
 
-packages: [ maas-enlist, freeipmi-tools, openipmi, ipmitool ]
+packages: [ freeipmi-tools, openipmi, ipmitool ]
 output: {all: '| tee -a /var/log/cloud-init-output.log'}
 runcmd:
  - [ sh, -c, *maas_enlist ]
