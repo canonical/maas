@@ -201,6 +201,7 @@ define phony_targets
   lint-css
   lint-js
   man
+  package
   sampledata
   syncdb
   test
@@ -310,6 +311,22 @@ services/txlongpoll/@deps: bin/twistd.txlongpoll
 services/web/@deps:
 
 services/webapp/@deps: bin/maas-region-admin
+
+#
+# Package building
+#
+# This ought to be as simple as using bzr builddeb --export-upstream but it
+# has a bug and always considers apt-source tarballs before the specified
+# branch.  So instead, export to a local tarball which is always found.
+# Because packaging is not in the tree, we assume the LP packaging branch.
+PACKAGING := lp:~maas-maintainers/maas/packaging
+VER := $(shell dpkg-parsechangelog -l$(PACKAGING)/debian/changelog \
+              | sed -rne 's,^Version: ([^-]+).*,\1,p')
+TARBALL := maas_$(VER).orig.tar.gz
+package:
+	$(RM) -f ../build-area/$(TARBALL)
+	bzr export --root=maas-$(VER).orig ../$(TARBALL) $(CURDIR)
+	bzr bd --merge $(PACKAGING) -- -uc -us
 
 #
 # Phony stuff.
