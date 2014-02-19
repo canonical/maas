@@ -529,6 +529,39 @@ class TestUpdateHardwareDetails(MAASServerTestCase):
         expected = (4294967296 + 3221225472 + 536879812) / mega
         self.assertEqual(expected, node.memory)
 
+    def test_hardware_updates_storage(self):
+        node = factory.make_node()
+        xmlbytes = dedent("""\
+            <node id="volume:0" claimed="true" class="volume" handle="">
+                <description>Extended partition</description>
+                <physid>1</physid>
+                <businfo>scsi@0:0.0.0,1</businfo>
+                <logicalname>/dev/sda1</logicalname>
+                <dev>8:1</dev>
+                <size units="bytes">127033934848</size>
+            </node>
+        """).encode("utf-8")
+        update_hardware_details(node, xmlbytes, 0)
+        node = reload_object(node)
+        self.assertEqual(121149, node.storage)
+
+    def test_hardware_updates_storage_1279728(self):
+        # Hardware data from bug 1279728.
+        node = factory.make_node()
+        xmlbytes = dedent("""\
+            <node id="volume" claimed="true" class="volume" handle="">
+                <description>EXT4 volume</description>
+                <vendor>Linux</vendor>
+                <physid>1</physid>
+                <businfo>scsi@0:0.0.0,1</businfo>
+                <logicalname>/dev/sda1</logicalname>
+                <size units="bytes">801568677888</size>
+            </node>
+        """).encode("utf-8")
+        update_hardware_details(node, xmlbytes, 0)
+        node = reload_object(node)
+        self.assertEqual(764435, node.storage)
+
     def test_hardware_updates_ignores_empty_tags(self):
         # Tags with empty definitions are ignored when
         # update_hardware_details gets called.

@@ -137,7 +137,7 @@ _xpath_memory_bytes = """\
 """
 
 _xpath_storage_bytes = """\
-    sum(//node[starts-with(@id, 'volume:')]/size[@units='bytes'])
+    sum(//node[@class='volume']/size[@units='bytes'])
     div 1024 div 1024
 """
 
