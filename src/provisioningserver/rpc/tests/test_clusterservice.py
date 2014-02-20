@@ -156,7 +156,7 @@ class TestClusterClientService(MAASTestCase):
         maas_url = "http://%s/%s/" % (
             factory.make_hostname(), factory.make_name("path"))
         self.useFixture(EnvironmentVariable("MAAS_URL", maas_url))
-        expected_rpc_info_url = maas_url + "rpc"
+        expected_rpc_info_url = maas_url + "rpc/"
         observed_rpc_info_url = ClusterClientService._get_rpc_info_url()
         self.assertThat(observed_rpc_info_url, Equals(expected_rpc_info_url))
 

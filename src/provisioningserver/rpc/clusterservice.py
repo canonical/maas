@@ -152,7 +152,7 @@ class ClusterClientService(TimerService, object):
     def _get_rpc_info_url():
         """Return the URL to the RPC infomation page on the region."""
         url = urlparse(get_maas_url())
-        url = url._replace(path="%s/rpc" % url.path.rstrip("/"))
+        url = url._replace(path="%s/rpc/" % url.path.rstrip("/"))
         url = url.geturl()
         return ascii_url(url)
 
