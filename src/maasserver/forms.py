@@ -1246,6 +1246,13 @@ class ZoneForm(ModelForm):
         return self.cleaned_data['name']
 
 
+class NodeMACAddressChoiceField(forms.ModelMultipleChoiceField):
+    """A ModelMultipleChoiceField which shows the name of the MACs."""
+
+    def label_from_instance(self, obj):
+        return "%s (%s)" % (obj.mac_address, obj.node.hostname)
+
+
 class NetworkForm(ModelForm):
 
     class Meta:
@@ -1257,6 +1264,41 @@ class NetworkForm(ModelForm):
             'netmask',
             'vlan_tag',
             )
+
+    mac_addresses = NodeMACAddressChoiceField(
+        label="Connected network interface cards",
+        queryset=MACAddress.objects.all().order_by(
+            'node__hostname', 'mac_address'),
+        required=False,
+        to_field_name='mac_address',
+        widget=forms.SelectMultiple(attrs={'size': 10}),
+        )
+
+    def __init__(self, data=None, instance=None, **kwargs):
+        super(NetworkForm, self).__init__(
+            data=data, instance=instance, **kwargs)
+        self.set_up_initial_macaddresses(instance)
+
+    def set_up_initial_macaddresses(self, instance):
+        """Set the initial value for the field 'macaddresses'.
+        This is to work around Django bug 17657: the initial value for fields
+        of type ModelMultipleChoiceField which use 'to_field_name', when it
+        is extracted from the provided instance object, is not
+        properly computed.
+        """
+        if instance is not None:
+            name = self.fields['mac_addresses'].to_field_name
+            self.initial['mac_addresses'] = [
+                getattr(obj, name) for obj in instance.macaddress_set.all()]
+
+    def save(self, *args, **kwargs):
+        """Persist the network into the database."""
+        network = super(NetworkForm, self).save(*args, **kwargs)
+        macaddresses = self.cleaned_data.get('mac_addresses')
+        if macaddresses is not None:
+            network.macaddress_set.clear()
+            network.macaddress_set.add(*macaddresses)
+        return network
 
 
 class NetworksListingForm(forms.Form):

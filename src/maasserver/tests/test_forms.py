@@ -1528,6 +1528,71 @@ class TestNetworkForm(MAASServerTestCase):
         network = reload_object(network)
         self.assertEqual(new_description, network.description)
 
+    def test_populates_initial_macaddresses(self):
+        network = factory.make_network()
+        macs = [
+            factory.make_mac_address(networks=[network])
+            for _ in range(3)]
+        # Create other MAC addresses.
+        [factory.make_mac_address(
+            networks=[factory.make_network()]) for _ in range(2)]
+        new_description = factory.getRandomString()
+        form = NetworkForm(
+            data={'description': new_description}, instance=network)
+        self.assertItemsEqual(
+            [mac.mac_address.get_raw() for mac in macs],
+            form.initial['mac_addresses'])
+
+    def test_macaddresses_are_sorted(self):
+        network = factory.make_network()
+        macs = [
+            factory.make_mac_address(networks=[network])
+            for _ in range(3)]
+        # Create macs connected to the same node.
+        macs = macs + [
+            factory.make_mac_address(networks=[network], node=macs[0].node)
+            for _ in range(3)]
+        # Create other MAC addresses.
+        [factory.make_mac_address(
+            networks=[factory.make_network()]) for _ in range(2)]
+        form = NetworkForm(data={}, instance=network)
+        self.assertEqual(
+            list(MACAddress.objects.all().order_by(
+                'node__hostname', 'mac_address')),
+            list(form.fields['mac_addresses'].queryset))
+
+    def test_macaddresses_widget_displays_MAC_and_node_hostname(self):
+        network = factory.make_network()
+        [
+            factory.make_mac_address(networks=[network])
+            for _ in range(3)]
+        # Create other MAC addresses.
+        [factory.make_mac_address(
+            networks=[factory.make_network()]) for _ in range(2)]
+        form = NetworkForm(data={}, instance=network)
+        self.assertItemsEqual(
+            [(mac.mac_address, "%s (%s)" % (
+                mac.mac_address, mac.node.hostname))
+             for mac in MACAddress.objects.all()],
+            form.fields['mac_addresses'].widget.choices)
+
+    def test_updates_macaddresses(self):
+        network = factory.make_network()
+        # Attach a couple of MAC addresses to the network.
+        [factory.make_mac_address(networks=[network]) for _ in range(3)]
+        new_macs = [
+            factory.make_mac_address()
+            for _ in range(3)]
+        form = NetworkForm(
+            data={
+                'mac_addresses': [
+                    mac.mac_address.get_raw() for mac in new_macs],
+            },
+            instance=network)
+        form.save()
+        network = reload_object(network)
+        self.assertItemsEqual(new_macs, network.macaddress_set.all())
+
 
 class TestInstanceListField(MAASServerTestCase):
     """Tests for `InstanceListingField`."""

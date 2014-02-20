@@ -289,11 +289,15 @@ class NetworkEditAdminTest(MAASServerTestCase):
         network = factory.make_network()
         new_name = factory.make_name('name')
         new_description = factory.make_name('description')
+        new_macs = [
+            factory.make_mac_address()
+            for _ in range(3)]
         response = self.client.post(
             reverse('network-edit', args=[network.name]),
             data={
                 'name': new_name,
                 'description': new_description,
+                'mac_addresses': new_macs,
             })
         self.assertEqual(
             reverse('network-list'), extract_redirect(response),
@@ -303,6 +307,7 @@ class NetworkEditAdminTest(MAASServerTestCase):
             (new_name, new_description),
             (network.name, network.description),
         )
+        self.assertItemsEqual(new_macs, network.macaddress_set.all())
 
 
 class NetworkDeleteNonAdminTest(MAASServerTestCase):
