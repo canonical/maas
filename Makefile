@@ -203,6 +203,7 @@ define phony_targets
   man
   package
   sampledata
+  source_package
   syncdb
   test
 endef
@@ -318,17 +319,32 @@ services/webapp/@deps: bin/maas-region-admin
 # This ought to be as simple as using bzr builddeb --export-upstream but it
 # has a bug and always considers apt-source tarballs before the specified
 # branch.  So instead, export to a local tarball which is always found.
-# Because packaging is not in the tree, we assume the branch is checked out
-# locally elsewhere.
-# TODO: work out a sensible way of checking out the LP branch.
-PACKAGING := $(CURDIR)/../packaging
-package:
-	VER := $(shell dpkg-parsechangelog -l$(PACKAGING)/debian/changelog \
-              | sed -rne 's,^Version: ([^-]+).*,\1,p')
-	TARBALL := maas_$(VER).orig.tar.gz
-	$(RM) -f ../build-area/$(TARBALL)
-	bzr export --root=maas-$(VER).orig ../$(TARBALL) $(CURDIR)
+# Make sure debhelper and dh-apport packages are installed before using this.
+PACKAGING := $(CURDIR)/../packaging.trunk
+PACKAGING_BRANCH := lp:~maas-maintainers/maas/packaging
+
+package_branch:
+	@echo Downloading/refreshing packaging branch...
+	@if [ ! -d $(PACKAGING) ]; then \
+		bzr branch $(PACKAGING_BRANCH) $(PACKAGING); \
+		else bzr pull -d $(PACKAGING); fi
+
+# Make sure an orig tarball generated from the current branch is placed in the
+# build area.
+package_export: VER = $(shell dpkg-parsechangelog -l$(PACKAGING)/debian/changelog | sed -rne 's,^Version: ([^-]+).*,\1,p')
+package_export: TARBALL = maas_$(VER).orig.tar.gz
+package_export: package_branch
+	@$(RM) -f ../build-area/$(TARBALL)
+	@mkdir -p ../build-area
+	@bzr export --root=maas-$(VER).orig ../build-area/$(TARBALL) $(CURDIR)
+
+package: package_export
 	bzr bd --merge $(PACKAGING) -- -uc -us
+	@echo Binary packages built, see parent directory.
+
+source_package: package_export
+	bzr bd --merge $(PACKAGING) -- -S -uc -us
+	@echo Source package built, see parent directory.
 
 #
 # Phony stuff.
