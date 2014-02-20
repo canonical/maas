@@ -787,7 +787,7 @@ class TestNodesAPI(APITestCase):
         self.assertEqual(node.system_id, response_json['system_id'])
 
     def test_POST_acquire_allocates_node_by_network(self):
-        networks = [factory.make_network() for _ in range(5)]
+        networks = factory.make_networks(5)
         nodes = [
             factory.make_node(status=NODE_STATUS.READY, networks=[network])
             for network in networks
@@ -806,7 +806,7 @@ class TestNodesAPI(APITestCase):
         self.assertEqual(nodes[pick].system_id, response_json['system_id'])
 
     def test_POST_acquire_allocates_node_by_not_network(self):
-        networks = [factory.make_network() for _ in range(5)]
+        networks = factory.make_networks(5)
         [
             factory.make_node(
                 status=NODE_STATUS.READY, networks=[network])

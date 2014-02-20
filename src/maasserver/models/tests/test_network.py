@@ -15,7 +15,6 @@ __metaclass__ = type
 __all__ = []
 
 from operator import attrgetter
-from random import randint
 
 from django.core.exceptions import ValidationError
 from maasserver.models import Network
@@ -157,7 +156,7 @@ class TestNetworkManager(MAASServerTestCase):
             Network.objects.get_from_spec, 'ip:10.99.100.1')
 
     def test_get_from_spec_finds_by_vlan_tag(self):
-        vlan_tag = randint(1, 0xffe)
+        vlan_tag = factory.make_vlan_tag()
         network = factory.make_network(vlan_tag=vlan_tag)
         self.assertEqual(
             network,
@@ -174,7 +173,7 @@ class TestNetwork(MAASServerTestCase):
     def test_instantiation(self):
         name = factory.make_name('net')
         network = factory.getRandomNetwork()
-        vlan_tag = randint(0, 0xffe)
+        vlan_tag = factory.make_vlan_tag(allow_none=True)
         description = factory.getRandomString()
 
         network = factory.make_network(
@@ -229,7 +228,7 @@ class TestNetwork(MAASServerTestCase):
         self.assertIsNone(factory.make_network(vlan_tag=0).vlan_tag)
 
     def test_nonzero_vlan_tag_is_unique(self):
-        tag = randint(1, 0xffe)
+        tag = factory.make_vlan_tag(allow_none=False)
         factory.make_network(vlan_tag=tag)
         error = self.assertRaises(
             ValidationError, factory.make_network, vlan_tag=tag)

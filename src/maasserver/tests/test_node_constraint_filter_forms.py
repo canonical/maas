@@ -14,8 +14,6 @@ str = None
 __metaclass__ = type
 __all__ = []
 
-from random import randint
-
 from django import forms
 from django.core.exceptions import ValidationError
 from maasserver.enum import ARCHITECTURE
@@ -275,7 +273,8 @@ class TestAcquireNodeForm(MAASServerTestCase):
     def test_networks_combines_filters(self):
         network_by_name = factory.make_network()
         network_by_ip = factory.make_network()
-        network_by_vlan = factory.make_network(vlan_tag=randint(1, 0xffe))
+        network_by_vlan = factory.make_network(
+            vlan_tag=factory.make_vlan_tag())
         factory.make_node(networks=[network_by_name, network_by_ip])
         factory.make_node(networks=[network_by_name, network_by_vlan])
         right_node = factory.make_node(
@@ -343,7 +342,8 @@ class TestAcquireNodeForm(MAASServerTestCase):
     def test_not_networks_combines_filters(self):
         network_by_name = factory.make_network()
         network_by_ip = factory.make_network()
-        network_by_vlan = factory.make_network(vlan_tag=randint(1, 0xffe))
+        network_by_vlan = factory.make_network(
+            vlan_tag=factory.make_vlan_tag())
         factory.make_node(networks=[network_by_name])
         factory.make_node(networks=[network_by_name, network_by_ip])
         factory.make_node(networks=[network_by_name, network_by_vlan])

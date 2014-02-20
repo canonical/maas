@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """:class:`MACAddress` tests."""
@@ -37,7 +37,6 @@ class MACAddressTest(MAASServerTestCase):
         self.assertItemsEqual([], mac.networks.all())
 
     def test_mac_can_be_connected_to_multiple_networks(self):
-        networks = [
-            factory.make_network() for i in range(3)]
+        networks = factory.make_networks(3)
         mac = factory.make_mac_address(networks=networks)
         self.assertItemsEqual(networks, reload_object(mac).networks.all())

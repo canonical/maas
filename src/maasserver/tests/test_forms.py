@@ -1534,8 +1534,8 @@ class TestNetworkForm(MAASServerTestCase):
             factory.make_mac_address(networks=[network])
             for _ in range(3)]
         # Create other MAC addresses.
-        [factory.make_mac_address(
-            networks=[factory.make_network()]) for _ in range(2)]
+        for _ in range(2):
+            factory.make_mac_address(networks=[factory.make_network()])
         new_description = factory.getRandomString()
         form = NetworkForm(
             data={'description': new_description}, instance=network)
@@ -1553,8 +1553,8 @@ class TestNetworkForm(MAASServerTestCase):
             factory.make_mac_address(networks=[network], node=macs[0].node)
             for _ in range(3)]
         # Create other MAC addresses.
-        [factory.make_mac_address(
-            networks=[factory.make_network()]) for _ in range(2)]
+        for _ in range(2):
+            factory.make_mac_address(networks=[factory.make_network()])
         form = NetworkForm(data={}, instance=network)
         self.assertEqual(
             list(MACAddress.objects.all().order_by(
@@ -1567,8 +1567,8 @@ class TestNetworkForm(MAASServerTestCase):
             factory.make_mac_address(networks=[network])
             for _ in range(3)]
         # Create other MAC addresses.
-        [factory.make_mac_address(
-            networks=[factory.make_network()]) for _ in range(2)]
+        for _ in range(2):
+            factory.make_mac_address(networks=[factory.make_network()])
         form = NetworkForm(data={}, instance=network)
         self.assertItemsEqual(
             [(mac.mac_address, "%s (%s)" % (
