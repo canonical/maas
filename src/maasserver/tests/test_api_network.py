@@ -309,22 +309,25 @@ class TestNetwork(APITestCase):
 class TestListConnectedMACs(APITestCase):
     """Tests for /api/1.0/network/s<network>/?op=list_connected_macs."""
 
-    def make_mac(self, networks=None, owner=None):
+    def make_mac(self, networks=None, owner=None, node=None):
         """Create a MAC address.
 
         :param networks: Optional list of `Network` objects to connect the
             MAC to.  If omitted, the MAC will not be connected to any networks.
+        :param node: Optional node that will have this MAC
+            address.  If omitted, one will be created.
         :param owner: Optional owner for the node that will have this MAC
             address.  If omitted, one will be created.  The node will be in
-            the "allocated" state.
+            the "allocated" state.  This parameter is ignored if a node is
+            provided.
         """
         if networks is None:
             networks = []
         if owner is None:
             owner = factory.make_user()
-        return factory.make_mac_address(
-            networks=networks, node=factory.make_node(
-                status=NODE_STATUS.ALLOCATED, owner=owner))
+        if node is None:
+            node = factory.make_node(status=NODE_STATUS.ALLOCATED, owner=owner)
+        return factory.make_mac_address(networks=networks, node=node)
 
     def request_connected_macs(self, network):
         """Request and return the MAC addresses attached to `network`."""
@@ -366,3 +369,23 @@ class TestListConnectedMACs(APITestCase):
         network = factory.make_network()
         self.make_mac(networks=[network])
         self.assertEqual([], self.request_connected_macs(network))
+
+    def test_returns_sorted_MACs(self):
+        network = factory.make_network()
+        macs = [
+            self.make_mac(networks=[network], owner=self.logged_in_user)
+            for _ in range(4)
+            ]
+        # Create MACs connected to the same node.
+        macs = macs + [
+            self.make_mac(
+                networks=[network], owner=self.logged_in_user,
+                node=macs[0].node)
+            for _ in range(3)
+            ]
+        sorted_macs = sorted(
+            macs,
+            key=lambda x: (x.node.hostname.lower(), x.mac_address.get_raw()))
+        self.assertEqual(
+            [mac.mac_address for mac in sorted_macs],
+            self.extract_macs(self.request_connected_macs(network)))

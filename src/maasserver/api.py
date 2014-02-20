@@ -2793,7 +2793,8 @@ class NetworkHandler(OperationsHandler):
         visible_nodes = Node.objects.get_nodes(
             request.user, NODE_PERMISSION.VIEW,
             from_nodes=Node.objects.all())
-        return network.macaddress_set.filter(node__in=visible_nodes)
+        return network.macaddress_set.filter(node__in=visible_nodes).order_by(
+            'node__hostname', 'mac_address')
 
     @classmethod
     def resource_uri(cls, network=None):
