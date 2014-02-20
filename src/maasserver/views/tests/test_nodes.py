@@ -1332,6 +1332,16 @@ class NodeDeleteMacTest(MAASServerTestCase):
             ["Mac address %s deleted." % mac.mac_address],
             [message.message for message in response.context['messages']])
 
+    def test_node_delete_mac_POST_disconnects_MAC_from_network(self):
+        self.client_log_in()
+        network = factory.make_network()
+        node = factory.make_node(owner=self.logged_in_user)
+        mac = factory.make_mac_address(node=node, networks=[network])
+        response = self.client.post(
+            reverse('mac-delete', args=[node.system_id, mac]), {'post': 'yes'})
+        self.assertEqual(httplib.FOUND, response.status_code)
+        self.assertIsNotNone(reload_object(network))
+
 
 class NodeAddMacTest(MAASServerTestCase):
 

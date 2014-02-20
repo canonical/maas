@@ -121,13 +121,15 @@ class TestNetwork(APITestCase):
         response2 = self.client.delete(self.get_url(name))
         self.assertEqual(response1.status_code, response2.status_code)
 
-    def test_DELETE_works_with_nodes_attached(self):
+    def test_DELETE_works_with_MACs_attached(self):
         self.become_admin()
         network = factory.make_network()
-        factory.make_node(networks=[network])
+        mac = factory.make_mac_address(networks=[network])
         response = self.client.delete(self.get_url(network.name))
         self.assertEqual(httplib.NO_CONTENT, response.status_code)
         self.assertIsNone(reload_object(network))
+        mac = reload_object(mac)
+        self.assertEqual([], list(mac.networks.all()))
 
     def test_POST_connect_macs_connects_macs_to_network(self):
         self.become_admin()

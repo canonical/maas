@@ -1,4 +1,4 @@
-# Copyright 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for MAC-address management in the API."""
@@ -20,6 +20,7 @@ import json
 from django.core.urlresolvers import reverse
 from maasserver.enum import NODE_STATUS
 from maasserver.models import MACAddress
+from maasserver.testing import reload_object
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 
@@ -131,10 +132,20 @@ class MACAddressAPITest(APITestCase):
                 'node_mac_handler',
                 args=[node.system_id, mac1.mac_address]))
 
-        self.assertEqual(204, response.status_code)
+        self.assertEqual(httplib.NO_CONTENT, response.status_code)
         self.assertEqual(
             nb_macs - 1,
             node.macaddress_set.count())
+
+    def test_macs_DELETE_disconnects_from_network(self):
+        network = factory.make_network()
+        node = factory.make_node(owner=self.logged_in_user)
+        mac = factory.make_mac_address(node=node, networks=[network])
+        response = self.client.delete(
+            reverse(
+                'node_mac_handler', args=[node.system_id, mac.mac_address]))
+        self.assertEqual(httplib.NO_CONTENT, response.status_code)
+        self.assertIsNotNone(reload_object(network))
 
     def test_macs_DELETE_mac_forbidden(self):
         # When deleting a MAC address, the api returns a 'Forbidden' (403)

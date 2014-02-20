@@ -339,3 +339,15 @@ class NetworkDeleteAdminTest(MAASServerTestCase):
             reverse('network-del', args=[network.name]),
             {'post': 'yes'})
         self.assertEqual(reverse('network-list'), extract_redirect(response))
+
+    def test_disconnects_macs(self):
+        self.client_log_in(as_admin=True)
+        network = factory.make_network()
+        mac = factory.make_mac_address(networks=[network])
+        response = self.client.post(
+            reverse('network-del', args=[network.name]),
+            {'post': 'yes'})
+        self.assertEqual(httplib.FOUND, response.status_code)
+        mac = reload_object(mac)
+        self.assertIsNotNone(mac)
+        self.assertEqual([], list(mac.networks.all()))
