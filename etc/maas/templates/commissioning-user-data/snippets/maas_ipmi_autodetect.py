@@ -38,6 +38,10 @@ import subprocess
 import time
 
 
+class IPMIUserError(Exception):
+    """An error related to an IPMI user."""
+
+
 def run_command(command_args):
     """Run a command. Return output if successful or raise exception if not."""
     output = subprocess.check_output(command_args, stderr=subprocess.STDOUT)
@@ -62,16 +66,96 @@ def format_user_key(user_number, parameter):
     return '%s:%s' % (user_number, parameter)
 
 
-def bmc_user_get(user_number, parameter):
-    """Get a user parameter via bmc-config commit."""
-    key = format_user_key(user_number, parameter)
-    return bmc_get(key)
-
-
 def bmc_user_set(user_number, parameter, value):
     """Set a user parameter via bmc-config commit."""
     key = format_user_key(user_number, parameter)
     bmc_set(key, value)
+
+
+def parse_section(section):
+    """Parse the text of a section.
+
+    Returns a tuple of ('SectionName', section_attributes_dict)
+    """
+    # match lines with a word followed by space and then a non commment string
+    pattern = r'^\s*(\w+)\s+([^# \t\r\n\v\f]+).*$'
+    kv_tuples = re.findall(pattern, section, re.MULTILINE)
+    kv_dict = dict(kv_tuples)
+    section_name = kv_dict.pop('Section')
+    section_record = (section_name, kv_dict)
+
+    return section_record
+
+
+def bmc_get_section(section_name):
+    """Retrieve the text of a section from the BMC."""
+    command = ('bmc-config', '--checkout', '--section', section_name)
+    output = run_command(command)
+    return output
+
+
+def get_user_record(user_number):
+    """Return a dictionary of the user settings for a user number."""
+    section = bmc_get_section(user_number)
+    _, record = parse_section(section)
+    return record
+
+
+def bmc_list_sections():
+    """Retrieve the names of config sections from the BMC."""
+    command = ('bmc-config', '-L')
+    output = run_command(command)
+    return output
+
+
+def list_user_numbers():
+    """List the user numbers on the BMC."""
+    output = bmc_list_sections()
+    pattern = r'^(User\d+)$'
+    users = re.findall(pattern, output, re.MULTILINE)
+
+    return users
+
+
+def pick_user_number_from_list(search_username, user_numbers):
+    """Pick the best user number for a user from a list of user numbers.
+
+    If any any existing user's username matches the search username, pick
+    that user.
+
+    Otherwise, pick the first user that has no username set.
+
+    If no users match those criteria, raise an IPMIUserError.
+    """
+    first_unused = None
+
+    for user_number in user_numbers:
+        # The IPMI spec reserves User1 as anonymous.
+        if user_number == 'User1':
+            continue
+
+        user_record = get_user_record(user_number)
+
+        username = user_record.get('Username')
+
+        if username == search_username:
+            return user_number
+
+        if username is None and first_unused is None:
+                first_unused = user_number
+
+    return first_unused
+
+
+def pick_user_number(search_username):
+    """Pick the best user number for a username."""
+    user_numbers = list_user_numbers()
+    user_number = pick_user_number_from_list(search_username, user_numbers)
+
+    if not user_number:
+        raise IPMIUserError('No IPMI user slots available.')
+
+    return user_number
 
 
 def is_ipmi_dhcp():
@@ -91,26 +175,8 @@ def get_ipmi_ip_address():
     return res.group()
 
 
-def get_ipmi_user_number(user):
-    for i in range(1, 17):
-        ipmi_user_number = "User%s" % i
-        # bmc-config fails if no slot for the requested user exists;
-        # instead of bailing, just keep trying remaining users.
-        try:
-            output = bmc_user_get(ipmi_user_number, 'Username')
-        except subprocess.CalledProcessError:
-            pass
-        else:
-            if user in output:
-                return ipmi_user_number
-    return None
-
-
 def commit_ipmi_user_settings(user, password):
-    ipmi_user_number = get_ipmi_user_number(user)
-    if ipmi_user_number is None:
-        bmc_user_set('User10', 'Username', user)
-        ipmi_user_number = get_ipmi_user_number(user)
+    ipmi_user_number = pick_user_number(user)
     bmc_user_set(ipmi_user_number, 'Username', user)
     bmc_user_set(ipmi_user_number, 'Password', password)
     bmc_user_set(ipmi_user_number, 'Enable_User', 'Yes')
@@ -183,7 +249,6 @@ def main():
         set_ipmi_network_source("Use_DHCP")
         # allow IPMI 120 seconds to obtain an IP address
         time.sleep(120)
-
     # create user/pass
     IPMI_MAAS_USER = "maas"
     IPMI_MAAS_PASSWORD = generate_random_password()
