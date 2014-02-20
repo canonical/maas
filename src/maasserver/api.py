@@ -178,7 +178,6 @@ from maasserver.forms import (
     get_node_edit_form,
     NetworkConnectNodesForm,
     NetworkForm,
-    NetworkListForm,
     NetworksListingForm,
     NodeActionForm,
     NodeGroupEdit,
@@ -475,38 +474,6 @@ class NodeHandler(OperationsHandler):
             bson.BSON.encode(probe_details_report),
             # Not sure what media type to use here.
             content_type='application/bson')
-
-    @operation(idempotent=True)
-    def list_connected_networks(self, request, system_id):
-        """Returns the list of networks connected to this node."""
-        node = get_object_or_404(Node, system_id=system_id)
-        return node.networks.all().order_by('name')
-
-    @admin_method
-    @operation(idempotent=False)
-    def connect_networks(self, request, system_id):
-        """Connect the given networks to this node.
-
-        :param networks: A list of `name` identifiers for networks.
-        """
-        node = get_object_or_404(Node, system_id=system_id)
-        form = NetworkListForm(data=request.data)
-        if not form.is_valid():
-            raise ValidationError(form.errors)
-        node.networks.add(*form.get_networks())
-
-    @admin_method
-    @operation(idempotent=False)
-    def disconnect_networks(self, request, system_id):
-        """Disconnect the given networks from this node.
-
-        :param networks: A list of `name` identifiers for networks.
-        """
-        node = get_object_or_404(Node, system_id=system_id)
-        form = NetworkListForm(data=request.data)
-        if not form.is_valid():
-            raise ValidationError(form.errors)
-        node.networks.remove(*form.get_networks())
 
 
 def create_node(request):
