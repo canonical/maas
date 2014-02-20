@@ -1171,7 +1171,6 @@ class NodeManagerTest(MAASServerTestCase):
         self.assertItemsEqual([], node.networks.all())
 
     def test_node_can_be_multiple_networks(self):
-        networks = [
-            factory.make_network() for i in range(3)]
+        networks = factory.make_networks(3)
         node = factory.make_node(networks=networks)
         self.assertItemsEqual(networks, reload_object(node).networks.all())

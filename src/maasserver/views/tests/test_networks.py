@@ -52,7 +52,7 @@ class NetworkListingViewTest(MAASServerTestCase):
         # Network listing displays the network name, description,
         # network information and VLAN tag.
         self.client_log_in()
-        [factory.make_network() for i in range(3)]
+        factory.make_networks(3)
         networks = Network.objects.all()
         response = self.client.get(reverse('network-list'))
         details_list = [
@@ -69,7 +69,7 @@ class NetworkListingViewTest(MAASServerTestCase):
     def test_network_list_displays_sorted_list_of_networks(self):
         # Networks are alphabetically sorted on the network list page.
         self.client_log_in()
-        [factory.make_network() for i in range(3)]
+        factory.make_networks(3)
         networks = Network.objects.all()
         sorted_networks = sorted(networks, key=lambda x: x.name.lower())
         response = self.client.get(reverse('network-list'))
@@ -83,7 +83,7 @@ class NetworkListingViewTest(MAASServerTestCase):
 
     def test_network_list_displays_links_to_network_node(self):
         self.client_log_in()
-        [factory.make_network() for i in range(3)]
+        factory.make_networks(3)
         networks = Network.objects.all()
         sorted_networks = sorted(networks, key=lambda x: x.name.lower())
         response = self.client.get(reverse('network-list'))
@@ -101,7 +101,7 @@ class NetworkListingViewTestNonAdmin(MAASServerTestCase):
 
     def test_network_list_does_not_contain_edit_and_delete_links(self):
         self.client_log_in()
-        networks = [factory.make_network() for i in range(3)]
+        networks = factory.make_networks(3)
         response = self.client.get(reverse('network-list'))
         network_edit_links = [
             reverse('network-edit', args=[network.name])
@@ -130,7 +130,7 @@ class NetworkListingViewTestAdmin(MAASServerTestCase):
 
     def test_network_list_contains_edit_links(self):
         self.client_log_in(as_admin=True)
-        networks = [factory.make_network() for i in range(3)]
+        networks = factory.make_networks(3)
         network_edit_links = [
             reverse('network-edit', args=[network.name])
             for network in networks

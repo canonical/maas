@@ -537,8 +537,19 @@ class Factory(maastesting.factory.Factory):
             zone.node_set.add(*nodes)
         return zone
 
-    def make_vlan_tag(self):
-        return random.randint(1, 0xFFE)
+    def make_vlan_tag(self, allow_none=False):
+        """Create a random VLAN tag.
+
+        :param allow_none: Whether `None` ("no VLAN") can be allowed as an
+            outcome.  If `True`, `None` will be included in the possible
+            results with a deliberately over-represented probability, in order
+            to help trip up bugs that might only show up once in about 4094
+            calls otherwise.
+        """
+        if allow_none and random.randint(0, 1) == 0:
+            return None
+        else:
+            return random.randint(1, 0xffe)
 
     def make_network(self, name=None, network=None, vlan_tag=NO_VALUE,
                      description=None):
@@ -559,18 +570,38 @@ class Factory(maastesting.factory.Factory):
         if description is None:
             description = self.getRandomString()
         if vlan_tag is NO_VALUE:
-            # Caller wants it random.  To avoid hiding once-in-4094 bugs when
-            # it comes out zero, skew the odds in favour of zero: fifty-fifty
-            # choice between a zero and a nonzero tag.
-            if random.randint(0, 1) == 1:
-                vlan_tag = self.make_vlan_tag()
-            else:
-                vlan_tag = 0
+            vlan_tag = self.make_vlan_tag()
         network = Network(
             name=name, ip=ip, netmask=netmask, vlan_tag=vlan_tag,
             description=description)
         network.save()
         return network
+
+    def make_networks(self, number, with_vlans=True, **kwargs):
+        """Create multiple networks.
+
+        This avoids accidentally clashing VLAN tags.
+
+        :param with_vlans: Whether the networks should be allowed to include
+            VLANs.  If `True`, then the VLAN tags will be unique.
+        """
+        if with_vlans:
+            vlan_tags = []
+            for _ in range(1000):
+                if len(vlan_tags) == number:
+                    break
+                vlan_tag = self.make_vlan_tag(allow_none=True)
+                if vlan_tag is None or vlan_tag not in vlan_tags:
+                    vlan_tags.append(vlan_tag)
+            else:
+                raise maastesting.factory.TooManyRandomRetries(
+                    "Could not generate %d non-clashing VLAN tags" % number)
+        else:
+            vlan_tags = [None] * number
+        return [
+            self.make_network(vlan_tag=vlan_tag, **kwargs)
+            for vlan_tag in vlan_tags
+            ]
 
 
 # Create factory singleton.

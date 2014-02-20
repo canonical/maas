@@ -15,6 +15,7 @@ __metaclass__ = type
 __all__ = [
     "factory",
     "NO_VALUE",
+    "TooManyRandomRetries",
     ]
 
 import datetime

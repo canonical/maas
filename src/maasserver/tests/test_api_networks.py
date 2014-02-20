@@ -92,7 +92,7 @@ class TestNetworksAPI(APITestCase):
             [network['name'] for network in json.loads(response.content)])
 
     def test_GET_filters_by_node(self):
-        networks = [factory.make_network() for _ in range(5)]
+        networks = factory.make_networks(5)
         node = factory.make_node(networks=networks[1:3])
 
         response = self.client.get(
@@ -105,7 +105,7 @@ class TestNetworksAPI(APITestCase):
             {network['name'] for network in json.loads(response.content)})
 
     def test_GET_combines_node_filters_as_intersection_of_networks(self):
-        networks = [factory.make_network() for _ in range(5)]
+        networks = factory.make_networks(5)
         node1 = factory.make_node(networks=networks[1:3])
         node2 = factory.make_node(networks=networks[2:4])
 

@@ -867,7 +867,7 @@ class TestListConnectedNetworks(APITestCase):
     """Tests for /api/1.0/nodes/<node>/?op=list_connected_networks."""
 
     def test_returns_connected_networks(self):
-        networks = [factory.make_network() for i in range(5)]
+        networks = factory.make_networks(5)
         connected_networks = networks[:3]
         node = factory.make_node(networks=connected_networks)
         url = reverse('node_handler', args=[node.system_id])
@@ -887,7 +887,7 @@ class TestConnectNetworks(APITestCase):
 
     def test_connect_networks_connects_networks(self):
         self.become_admin()
-        networks = [factory.make_network() for i in range(3)]
+        networks = factory.make_networks(3)
         node = factory.make_node()
 
         response = self.client.post(
@@ -902,7 +902,7 @@ class TestConnectNetworks(APITestCase):
 
     def test_connect_networks_ignores_already_connected_networks(self):
         self.become_admin()
-        networks = [factory.make_network() for i in range(3)]
+        networks = factory.make_networks(3)
         node = factory.make_node(networks=networks)
 
         response = self.client.post(
@@ -951,8 +951,8 @@ class TestDisconnectNetworks(APITestCase):
 
     def test_disconnect_networks_disconnects_networks(self):
         self.become_admin()
-        networks = [factory.make_network() for i in range(3)]
-        other_networks = [factory.make_network() for i in range(3)]
+        networks = factory.make_networks(3)
+        other_networks = factory.make_networks(3)
         node = factory.make_node(networks=(networks + other_networks))
 
         response = self.client.post(
@@ -967,8 +967,8 @@ class TestDisconnectNetworks(APITestCase):
 
     def test_disconnect_networks_ignores_already_disconnected_networks(self):
         self.become_admin()
-        networks = [factory.make_network() for i in range(3)]
-        other_networks = [factory.make_network() for i in range(3)]
+        networks = factory.make_networks(3)
+        other_networks = factory.make_networks(3)
         node = factory.make_node(networks=networks)
 
         response = self.client.post(

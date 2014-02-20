@@ -222,7 +222,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
             (form.is_valid(), form.errors))
 
     def test_networks_filters_by_name(self):
-        networks = [factory.make_network() for _ in range(5)]
+        networks = factory.make_networks(5)
         nodes = [factory.make_node(networks=[network]) for network in networks]
         # Filter for this network.  Take one in the middle to avoid
         # coincidental success based on ordering.
@@ -232,7 +232,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
             {'networks': [networks[pick].name]})
 
     def test_networks_filters_by_ip(self):
-        networks = [factory.make_network() for _ in range(5)]
+        networks = factory.make_networks(5)
         nodes = [factory.make_node(networks=[network]) for network in networks]
         # Filter for this network.  Take one in the middle to avoid
         # coincidental success based on ordering.
@@ -299,14 +299,14 @@ class TestAcquireNodeForm(MAASServerTestCase):
         self.assertConstrainedNodes([node], {'networks': [network.name]})
 
     def test_not_networks_filters_by_name(self):
-        networks = [factory.make_network() for _ in range(2)]
+        networks = factory.make_networks(2)
         nodes = [factory.make_node(networks=[network]) for network in networks]
         self.assertConstrainedNodes(
             {nodes[0]},
             {'not_networks': [networks[1].name]})
 
     def test_not_networks_filters_by_ip(self):
-        networks = [factory.make_network() for _ in range(2)]
+        networks = factory.make_networks(2)
         nodes = [factory.make_node(networks=[network]) for network in networks]
         self.assertConstrainedNodes(
             {nodes[0]},
