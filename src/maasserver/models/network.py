@@ -31,6 +31,7 @@ from django.db.models import (
     Manager,
     Model,
     PositiveSmallIntegerField,
+    TextField,
     )
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
@@ -240,8 +241,8 @@ class Network(CleanSave, Model):
                   "reserved for a management VLAN; this is vendor-"
                   "specific.")
 
-    description = CharField(
-        max_length=255, default='', blank=True, editable=True,
+    description = TextField(
+        blank=True, editable=True,
         help_text="Any short description to help users identify the network")
 
     def get_network(self):

@@ -28,6 +28,7 @@ from maasserver.testing import (
     )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.orm import get_one
 from maasserver.views.networks import NetworkAdd
 from testtools.matchers import (
     Contains,
@@ -220,6 +221,17 @@ class NetworkDetailViewTest(MAASServerTestCase):
         document = fromstring(response.content)
         count_text = document.get_element_by_id("nodecount").text_content()
         self.assertThat(count_text, Contains('12'))
+
+    def test_network_detail_escapes_description(self):
+        nasty_description = 'A<B>C&D'
+        self.client_log_in()
+        network = factory.make_network(description=nasty_description)
+        response = self.client.get(
+            reverse('network-view', args=[network.name]))
+        doc = fromstring(response.content)
+        description_field = get_one(doc.cssselect('.network-description'))
+        pre_tag = get_one(description_field.cssselect('pre'))
+        self.assertEqual(nasty_description, pre_tag.text_content().strip())
 
 
 class NetworkDetailViewNonAdmin(MAASServerTestCase):
