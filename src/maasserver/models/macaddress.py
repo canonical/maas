@@ -19,7 +19,10 @@ __all__ = [
 
 import re
 
-from django.db.models import ForeignKey
+from django.db.models import (
+    ForeignKey,
+    ManyToManyField,
+    )
 from maasserver import DefaultMeta
 from maasserver.fields import MACAddressField
 from maasserver.models.cleansave import CleanSave
@@ -35,11 +38,14 @@ class MACAddress(CleanSave, TimestampedModel):
 
     :ivar mac_address: The MAC address.
     :ivar node: The :class:`Node` related to this `MACAddress`.
+    :ivar networks: The networks related to this `MACAddress`.
 
     .. _MAC address: http://en.wikipedia.org/wiki/MAC_address
     """
     mac_address = MACAddressField(unique=True)
     node = ForeignKey('Node', editable=False)
+
+    networks = ManyToManyField('maasserver.Network', blank=True)
 
     objects = BulkManager()
 
