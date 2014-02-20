@@ -101,8 +101,17 @@ Connecting nodes to networks
 In order for network placement constraints to take effect, you must also tell
 MAAS which nodes are connected to each network.
 
-``TODO: Explain how the connection goes through the MAC.``
+Nodes connect to networks through their network interface cards.  Each of
+these NICs has a MAC address, and so, a connection between a node and a
+network is associated with one of the node's MAC addresses.  The MAC address
+must be registered with MAAS before it can be attached to a network.  A node's
+MAC addresses are normally registered
+:ref:`automatically when the node is enlisted <auto-enlist>`, but in some
+situations you may need to do this manually by editing the node in the web user
+interface.
+
 ``TODO: Document new UI for connecting MACs to networks.``
+
 ``TODO: Update API description for the new design.``
 
 The :ref:`region-controller API <region-controller-api>` has two ways of
@@ -110,13 +119,13 @@ connecting nodes to networks: you can either connect a node to any number of
 networks at the same time, much like you would in the web user interface, with
 a ``POST`` to the node's ``connect_networks`` method.  Or, you can connect any
 number of nodes to a network through a ``POST`` to the network's
-``connect_nodes`` method.  Either of these will accept empty lists, and
+``connect_macs`` method.  Either of these will accept empty lists, and
 connecting a node and a network that are already connected is not an error.
 
 Connecting a node to a network does not affect any other connections between
 the node and other networks, or between the network and other nodes.  There is
 a separate pair of methods, ``disconnect_networks`` on the node and
-``disconnect_nodes`` on the network, to remove connections between the two.
+``disconnect_macs`` on the network, to remove connections between the two.
 Again, empty lists are accepted and disconnecting a node from a network that
 it is not connected to is not an error.
 

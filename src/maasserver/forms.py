@@ -24,7 +24,7 @@ __all__ = [
     "get_node_create_form",
     "MAASAndNetworkForm",
     "MACAddressForm",
-    "NetworkConnectNodesForm",
+    "NetworkConnectMACsForm",
     "NetworkForm",
     "NetworksListingForm",
     "NodeGroupEdit",
@@ -1328,17 +1328,33 @@ class NetworksListingForm(forms.Form):
         return networks.order_by('name')
 
 
-class NetworkConnectNodesForm(forms.Form):
-    """Form for the `Network` `connect_nodes` API call."""
+class NetworkConnectMACsForm(forms.Form):
+    """Form for the `Network` `connect_macs` API call."""
 
-    nodes = InstanceListField(
-        model_class=Node, field_name='system_id',
-        label="Nodes to be connected/disconnected.", required=True,
+    macs = InstanceListField(
+        model_class=MACAddress, field_name='mac_address',
+        label="MAC addresses to be connected/disconnected.", required=True,
+        text_for_invalid_object="Unknown MAC address(es): {unknown_names}.",
         error_messages={
+            'invalid_list':
+            "Invalid parameter: list of node MAC addresses required.",
+            })
+
+    def get_macs(self):
+        """Return `MACAddress` objects matching the `macs` parameter."""
+        return self.cleaned_data.get('macs')
+
+
+class NetworkListForm(forms.Form):
+    """Form to list networks."""
+
+    networks = InstanceListField(
+        model_class=Network, field_name='name',
+        label="List of network names.", required=True, error_messages={
             'invalid_list':
             "Invalid parameter: list of node system IDs required.",
             })
 
-    def get_nodes(self):
-        """Return the nodes whose system IDs were passed in."""
-        return self.cleaned_data.get('nodes')
+    def get_networks(self):
+        """Return the networks whose names were passed in."""
+        return self.cleaned_data.get('networks')

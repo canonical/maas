@@ -176,7 +176,7 @@ from maasserver.forms import (
     get_action_form,
     get_node_create_form,
     get_node_edit_form,
-    NetworkConnectNodesForm,
+    NetworkConnectMACsForm,
     NetworkForm,
     NetworksListingForm,
     NodeActionForm,
@@ -2749,46 +2749,51 @@ class NetworkHandler(OperationsHandler):
 
     @admin_method
     @operation(idempotent=False)
-    def connect_nodes(self, request, name):
-        """Connect the given nodes to this network.
+    def connect_macs(self, request, name):
+        """Connect the given MAC addresses to this network.
 
-        Connecting a node to a network which it is already connected to does
-        nothing.
+        These MAC addresses must belong to nodes in the MAAS, and have been
+        registered as such in MAAS.
 
-        :param nodes: A list of `system_id` identifiers for nodes.
+        Connecting a network interface to a network which it is already
+        connected to does nothing.
+
+        :param macs: A list of node MAC addresses, in text form.
         """
         network = get_object_or_404(Network, name=name)
-        form = NetworkConnectNodesForm(data=request.data)
+        form = NetworkConnectMACsForm(data=request.data)
         if not form.is_valid():
             raise ValidationError(form.errors)
-        network.node_set.add(*form.get_nodes())
+        network.macaddress_set.add(*form.get_macs())
 
     @admin_method
     @operation(idempotent=False)
-    def disconnect_nodes(self, request, name):
-        """Disconnect the given nodes from this network.
+    def disconnect_macs(self, request, name):
+        """Disconnect the given MAC addresses from this network.
 
-        Removing a node from a network which it is not connected to does
-        nothing.
+        Removing a MAC address from a network which it is not connected to
+        does nothing.
 
-        :param nodes: A list of `system_id` identifiers for nodes.
+        :param macs: A list of node MAC addresses, in text form.
         """
         network = get_object_or_404(Network, name=name)
-        form = NetworkConnectNodesForm(data=request.data)
+        form = NetworkConnectMACsForm(data=request.data)
         if not form.is_valid():
             raise ValidationError(form.errors)
-        network.node_set.remove(*form.get_nodes())
+        network.macaddress_set.remove(*form.get_macs())
 
     @operation(idempotent=True)
-    def list_connected_nodes(self, request, name):
-        """Returns the list of nodes connected to this network.
+    def list_connected_macs(self, request, name):
+        """Returns the list of MAC addresses connected to this network.
 
-        Only the nodes visible to the requesting user are returned.
+        Only MAC addresses for nodes visible to the requesting user are
+        returned.
         """
         network = get_object_or_404(Network, name=name)
-        return Node.objects.get_nodes(
+        visible_nodes = Node.objects.get_nodes(
             request.user, NODE_PERMISSION.VIEW,
-            from_nodes=network.node_set.all())
+            from_nodes=Node.objects.all())
+        return network.macaddress_set.filter(node__in=visible_nodes)
 
     @classmethod
     def resource_uri(cls, network=None):

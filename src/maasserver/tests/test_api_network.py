@@ -129,202 +129,240 @@ class TestNetwork(APITestCase):
         self.assertEqual(httplib.NO_CONTENT, response.status_code)
         self.assertIsNone(reload_object(network))
 
-    def test_POST_connect_nodes_adds_nodes(self):
+    def test_POST_connect_macs_connects_macs_to_network(self):
         self.become_admin()
         network = factory.make_network()
-        nodes = [factory.make_node(networks=[]) for _ in range(2)]
+        macs = [factory.make_mac_address(networks=[network]) for _ in range(2)]
         response = self.client.post(
             self.get_url(network.name),
             {
-                'op': 'connect_nodes',
-                'nodes': [node.system_id for node in nodes],
+                'op': 'connect_macs',
+                'macs': [mac.mac_address for mac in macs],
             })
         self.assertEqual(httplib.OK, response.status_code, response.content)
-        self.assertEqual(set(nodes), set(network.node_set.all()))
+        self.assertEqual(set(macs), set(network.macaddress_set.all()))
 
-    def test_POST_connect_nodes_accepts_empty_nodes_list(self):
+    def test_POST_connect_macs_accepts_empty_macs_list(self):
         self.become_admin()
         network = factory.make_network()
         response = self.client.post(
             self.get_url(network.name),
             {
-                'op': 'connect_nodes',
-                'nodes': [],
+                'op': 'connect_macs',
+                'macs': [],
             })
         self.assertEqual(httplib.OK, response.status_code, response.content)
-        self.assertEqual([], list(network.node_set.all()))
+        self.assertEqual([], list(network.macaddress_set.all()))
 
-    def test_POST_connect_nodes_leaves_other_networks_unchanged(self):
+    def test_POST_connect_macs_leaves_other_networks_unchanged(self):
         self.become_admin()
         network = factory.make_network()
         other_network = factory.make_network()
-        node = factory.make_node(networks=[other_network])
+        mac = factory.make_mac_address(networks=[other_network])
         response = self.client.post(
             self.get_url(network.name),
             {
-                'op': 'connect_nodes',
-                'nodes': [node.system_id],
+                'op': 'connect_macs',
+                'macs': [mac.mac_address],
             })
         self.assertEqual(httplib.OK, response.status_code, response.content)
-        self.assertEqual({network, other_network}, set(node.networks.all()))
+        self.assertEqual({network, other_network}, set(mac.networks.all()))
 
-    def test_POST_connect_nodes_leaves_other_nodes_unchanged(self):
+    def test_POST_connect_macs_leaves_other_MACs_unchanged(self):
         self.become_admin()
         network = factory.make_network()
-        node = factory.make_node(networks=[])
-        other_node = factory.make_node(networks=[network])
+        mac = factory.make_mac_address(networks=[])
+        other_mac = factory.make_mac_address(networks=[network])
         response = self.client.post(
             self.get_url(network.name),
             {
-                'op': 'connect_nodes',
-                'nodes': [node.system_id],
+                'op': 'connect_macs',
+                'macs': [mac.mac_address],
             })
         self.assertEqual(httplib.OK, response.status_code, response.content)
-        self.assertEqual({node, other_node}, set(network.node_set.all()))
+        self.assertEqual({mac, other_mac}, set(network.macaddress_set.all()))
 
-    def test_POST_connect_nodes_ignores_nodes_already_on_network(self):
+    def test_POST_connect_macs_ignores_MACs_already_on_network(self):
         self.become_admin()
         network = factory.make_network()
-        node = factory.make_node(networks=[network])
+        mac = factory.make_mac_address(networks=[network])
         response = self.client.post(
             self.get_url(network.name),
             {
-                'op': 'connect_nodes',
-                'nodes': [node.system_id],
+                'op': 'connect_macs',
+                'macs': [mac.mac_address],
             })
         self.assertEqual(httplib.OK, response.status_code, response.content)
-        self.assertEqual({node}, set(network.node_set.all()))
+        self.assertEqual({mac}, set(network.macaddress_set.all()))
 
-    def test_POST_connect_nodes_requires_admin(self):
+    def test_POST_connect_macs_requires_admin(self):
         network = factory.make_network()
         response = self.client.post(
             self.get_url(network.name),
             {
-                'op': 'connect_nodes',
-                'nodes': [],
+                'op': 'connect_macs',
+                'macs': [],
             })
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
-    def test_POST_connect_nodes_fails_on_unknown_node(self):
+    def test_POST_connect_macs_fails_on_unknown_MAC(self):
         self.become_admin()
         network = factory.make_network()
-        nonexistent_node = factory.make_name('no-node')
+        nonexistent_mac = factory.make_MAC()
         response = self.client.post(
             self.get_url(network.name),
             {
-                'op': 'connect_nodes',
-                'nodes': [nonexistent_node],
+                'op': 'connect_macs',
+                'macs': [nonexistent_mac],
             })
         self.assertEqual(httplib.BAD_REQUEST, response.status_code)
         self.assertEqual(
-            {'nodes': ["Unknown node(s): %s." % nonexistent_node]},
+            {'macs': ["Unknown MAC address(es): %s." % nonexistent_mac]},
             json.loads(response.content))
 
-    def test_POST_disconnect_nodes_removes_nodes_from_network(self):
+    def test_POST_disconnect_macs_removes_MACs_from_network(self):
         self.become_admin()
         network = factory.make_network()
-        node = factory.make_node(networks=[network])
+        mac = factory.make_mac_address(networks=[network])
         response = self.client.post(
             self.get_url(network.name),
             {
-                'op': 'disconnect_nodes',
-                'nodes': [node.system_id],
+                'op': 'disconnect_macs',
+                'macs': [mac.mac_address],
             })
         self.assertEqual(httplib.OK, response.status_code)
-        self.assertEqual([], list(node.networks.all()))
+        self.assertEqual([], list(mac.networks.all()))
 
-    def test_POST_disconnect_nodes_requires_admin(self):
+    def test_POST_disconnect_macs_requires_admin(self):
         response = self.client.post(
             self.get_url(factory.make_network().name),
             {
-                'op': 'disconnect_nodes',
-                'nodes': [factory.make_node().system_id],
+                'op': 'disconnect_macs',
+                'macs': [factory.make_mac_address().mac_address],
             })
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
-    def test_POST_disconnect_nodes_accepts_empty_nodes_list(self):
+    def test_POST_disconnect_macs_accepts_empty_MACs_list(self):
         self.become_admin()
         response = self.client.post(
             self.get_url(factory.make_network().name),
             {
-                'op': 'disconnect_nodes',
-                'nodes': [],
+                'op': 'disconnect_macs',
+                'macs': [],
             })
         self.assertEqual(httplib.OK, response.status_code)
 
-    def test_POST_disconnect_nodes_is_idempotent(self):
+    def test_POST_disconnect_macs_is_idempotent(self):
         self.become_admin()
         response = self.client.post(
             self.get_url(factory.make_network().name),
             {
-                'op': 'disconnect_nodes',
-                'nodes': [factory.make_node().system_id],
+                'op': 'disconnect_macs',
+                'macs': [factory.make_mac_address().mac_address],
             })
         self.assertEqual(httplib.OK, response.status_code)
 
-    def test_POST_disconnect_nodes_leaves_other_nodes_unchanged(self):
+    def test_POST_disconnect_macs_leaves_other_MACs_unchanged(self):
         self.become_admin()
         network = factory.make_network()
-        other_node = factory.make_node(networks=[network])
+        other_mac = factory.make_mac_address(networks=[network])
         response = self.client.post(
             self.get_url(network.name),
             {
-                'op': 'disconnect_nodes',
-                'nodes': [factory.make_node(networks=[network]).system_id],
+                'op': 'disconnect_macs',
+                'macs': [
+                    factory.make_mac_address(networks=[network]).mac_address
+                    ],
             })
         self.assertEqual(httplib.OK, response.status_code)
-        self.assertEqual([network], list(other_node.networks.all()))
+        self.assertEqual([network], list(other_mac.networks.all()))
 
-    def test_POST_disconnect_nodes_leaves_other_networks_unchanged(self):
+    def test_POST_disconnect_macs_leaves_other_networks_unchanged(self):
         self.become_admin()
         network = factory.make_network()
         other_network = factory.make_network()
-        node = factory.make_node(networks=[network, other_network])
+        mac = factory.make_mac_address(networks=[network, other_network])
         response = self.client.post(
             self.get_url(network.name),
             {
-                'op': 'disconnect_nodes',
-                'nodes': [node.system_id],
+                'op': 'disconnect_macs',
+                'macs': [mac.mac_address],
             })
         self.assertEqual(httplib.OK, response.status_code)
-        self.assertEqual([other_network], list(node.networks.all()))
+        self.assertEqual([other_network], list(mac.networks.all()))
 
-    def test_POST_disconnect_nodes_fails_on_unknown_node(self):
+    def test_POST_disconnect_macs_fails_on_unknown_mac(self):
         self.become_admin()
-        nonexistent_node = factory.make_name('no-node')
+        nonexistent_mac = factory.make_MAC()
         response = self.client.post(
             self.get_url(factory.make_network().name),
             {
-                'op': 'disconnect_nodes',
-                'nodes': [nonexistent_node],
+                'op': 'disconnect_macs',
+                'macs': [nonexistent_mac],
             })
         self.assertEqual(httplib.BAD_REQUEST, response.status_code)
         self.assertEqual(
-            {'nodes': ["Unknown node(s): %s." % nonexistent_node]},
+            {'macs': ["Unknown MAC address(es): %s." % nonexistent_mac]},
             json.loads(response.content))
 
 
-class TestListConnectedNodes(APITestCase):
-    """Tests for /api/1.0/network/s<network>/?op=list_connected_nodes."""
+class TestListConnectedMACs(APITestCase):
+    """Tests for /api/1.0/network/s<network>/?op=list_connected_macs."""
 
-    def test_returns_connected_nodes(self):
-        network = factory.make_network()
-        visible_connected_nodes = [
-            factory.make_node(networks=[network]) for i in range(5)]
-        # Create another node, connected to the network but not visible
-        # to the user.
-        factory.make_node(
-            status=NODE_STATUS.ALLOCATED, owner=factory.make_user(),
-            networks=[network])
-        # Create another node, not connected to any network.
-        factory.make_node()
+    def make_mac(self, networks=None, owner=None):
+        """Create a MAC address.
 
+        :param networks: Optional list of `Network` objects to connect the
+            MAC to.  If omitted, the MAC will not be connected to any networks.
+        :param owner: Optional owner for the node that will have this MAC
+            address.  If omitted, one will be created.  The node will be in
+            the "allocated" state.
+        """
+        if networks is None:
+            networks = []
+        if owner is None:
+            owner = factory.make_user()
+        return factory.make_mac_address(
+            networks=networks, node=factory.make_node(
+                status=NODE_STATUS.ALLOCATED, owner=owner))
+
+    def request_connected_macs(self, network):
+        """Request and return the MAC addresses attached to `network`."""
         url = reverse('network_handler', args=[network.name])
-        response = self.client.get(url, {'op': 'list_connected_nodes'})
-
+        response = self.client.get(url, {'op': 'list_connected_macs'})
         self.assertEqual(httplib.OK, response.status_code)
-        connected_nodes_system_ids = [
-            node.system_id for node in visible_connected_nodes]
-        self.assertItemsEqual(
-            connected_nodes_system_ids,
-            [node['system_id'] for node in json.loads(response.content)])
+        return json.loads(response.content)
+
+    def extract_macs(self, returned_macs):
+        """Extract the textual MAC addresses from an API response."""
+        return [item['mac_address'] for item in returned_macs]
+
+    def test_returns_connected_macs(self):
+        network = factory.make_network()
+        macs = [
+            self.make_mac(networks=[network], owner=self.logged_in_user)
+            for _ in range(3)
+            ]
+        self.assertEqual(
+            {mac.mac_address for mac in macs},
+            set(self.extract_macs(self.request_connected_macs(network))))
+
+    def test_ignores_unconnected_macs(self):
+        self.make_mac(
+            networks=[factory.make_network()], owner=self.logged_in_user)
+        self.make_mac(networks=[], owner=self.logged_in_user)
+        self.assertEqual(
+            [],
+            self.request_connected_macs(factory.make_network()))
+
+    def test_includes_MACs_for_nodes_visible_to_user(self):
+        network = factory.make_network()
+        mac = self.make_mac(networks=[network], owner=self.logged_in_user)
+        self.assertEqual(
+            [mac.mac_address],
+            self.extract_macs(self.request_connected_macs(network)))
+
+    def test_excludes_MACs_for_nodes_not_visible_to_user(self):
+        network = factory.make_network()
+        self.make_mac(networks=[network])
+        self.assertEqual([], self.request_connected_macs(network))
