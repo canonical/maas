@@ -318,12 +318,14 @@ services/webapp/@deps: bin/maas-region-admin
 # This ought to be as simple as using bzr builddeb --export-upstream but it
 # has a bug and always considers apt-source tarballs before the specified
 # branch.  So instead, export to a local tarball which is always found.
-# Because packaging is not in the tree, we assume the LP packaging branch.
-PACKAGING := lp:~maas-maintainers/maas/packaging
-VER := $(shell dpkg-parsechangelog -l$(PACKAGING)/debian/changelog \
-              | sed -rne 's,^Version: ([^-]+).*,\1,p')
-TARBALL := maas_$(VER).orig.tar.gz
+# Because packaging is not in the tree, we assume the branch is checked out
+# locally elsewhere.
+# TODO: work out a sensible way of checking out the LP branch.
+PACKAGING := $(CURDIR)/../packaging
 package:
+	VER := $(shell dpkg-parsechangelog -l$(PACKAGING)/debian/changelog \
+              | sed -rne 's,^Version: ([^-]+).*,\1,p')
+	TARBALL := maas_$(VER).orig.tar.gz
 	$(RM) -f ../build-area/$(TARBALL)
 	bzr export --root=maas-$(VER).orig ../$(TARBALL) $(CURDIR)
 	bzr bd --merge $(PACKAGING) -- -uc -us
