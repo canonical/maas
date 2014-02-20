@@ -101,13 +101,9 @@ Connecting nodes to networks
 In order for network placement constraints to take effect, you must also tell
 MAAS which nodes are connected to each network.
 
-To do this in the user interface, browse to the node's Edit page.  It lists
-the networks that have been defined, and lets you select any number of these
-as being connected to the node.
-
-.. image:: media/connect-node-to-networks.png
-
-Click "Save node" to make your changes permanent.
+``TODO: Explain how the connection goes through the MAC.``
+``TODO: Document new UI for connecting MACs to networks.``
+``TODO: Update API description for the new design.``
 
 The :ref:`region-controller API <region-controller-api>` has two ways of
 connecting nodes to networks: you can either connect a node to any number of
