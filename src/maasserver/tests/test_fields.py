@@ -75,6 +75,18 @@ class TestNodeGroupFormField(MAASServerTestCase):
             nodegroup,
             NodeGroupFormField().clean("%s" % nodegroup.id))
 
+    def test_clean_accepts_uuid(self):
+        nodegroup = factory.make_node_group()
+        self.assertEqual(      
+            nodegroup,
+            NodeGroupFormField().clean("%s" % nodegroup.uuid))
+
+    def test_clean_accepts_cluster_name(self):
+        nodegroup = factory.make_node_group()
+        self.assertEqual(      
+            nodegroup,
+            NodeGroupFormField().clean("%s" % nodegroup.cluster_name))
+
 
 class TestMAC(MAASServerTestCase):
 

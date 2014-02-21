@@ -99,11 +99,13 @@ class NodeGroupFormField(ModelChoiceField):
         """Django method: provide expected output for various inputs.
 
         There seems to be no clear specification on what `value` can be.
-        This method accepts the types that we see in practice: raw bytes
-        containing an IP address, a :class:`NodeGroup`, or the nodegroup's
-        numerical id in text form.
+        This method accepts the types that we see in practice:
+         * :class:`NodeGroup`
+         * the nodegroup's numerical id in text form
+         * the nodegroup's uuid
+         * the nodegroup's cluster_name
 
-        If no nodegroup is indicated, defaults to the master.
+        If no nodegroup is indicated, it defaults to the master.
         """
         # Avoid circular imports.
         from maasserver.models import NodeGroup
@@ -116,6 +118,12 @@ class NodeGroupFormField(ModelChoiceField):
             nodegroup_id = int(value)
         elif isinstance(value, bytes) and '.' not in value:
             nodegroup_id = int(value)
+        elif isinstance(value, unicode):
+            # nodegroup_id is a misnomer here, since clean() also takes
+            # a queryset, so we use that for brevity.
+            nodegroup_id = NodeGroup.objects.filter(uuid=value)
+            if len(nodegroup_id) == 0:
+                nodegroup_id = NodeGroup.objects.filter(cluster_name=value)
         else:
             raise ValidationError("Invalid nodegroup: %s." % value)
         return super(NodeGroupFormField, self).clean(nodegroup_id)
