@@ -556,7 +556,7 @@ class Factory(maastesting.factory.Factory):
             return random.randint(1, 0xffe)
 
     def make_network(self, name=None, network=None, vlan_tag=NO_VALUE,
-                     description=None):
+                     description=None, sortable_name=False):
         """Create a `Network`.
 
         :param network: An `IPNetwork`.  If given, the `ip` and `netmask`
@@ -564,9 +564,19 @@ class Factory(maastesting.factory.Factory):
         :param vlan_tag: A number between 1 and 0xffe inclusive to create a
             VLAN, or 0 to create a non-VLAN network, or None to make a random
             choice.
+        :param sortable_name: If `True`, use a that will sort consistently
+            between different collation orders.  Use this when testing sorting
+            by name, where the database and the python code may have different
+            ideas about collation orders, especially when it comes to case
+            differences.
         """
         if name is None:
             name = factory.make_name()
+        if sortable_name:
+            # The only currently known problem with sorting order is between
+            # case-sensitive and case-insensitive ordering, so use lower-case
+            # only.
+            name = name.lower()
         if network is None:
             network = self.getRandomNetwork()
         ip = unicode(network.ip)

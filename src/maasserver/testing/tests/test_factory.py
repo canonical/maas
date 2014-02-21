@@ -145,6 +145,12 @@ class TestFactory(MAASTestCase):
                 for _ in range(1000)
             })
 
+    def test_make_network_lowers_names_if_sortable_name(self):
+        networks = factory.make_networks(10, sortable_name=True)
+        self.assertEqual(
+            [network.name.lower() for network in networks],
+            [network.name for network in networks])
+
     def test_make_networks_generates_desired_number_of_networks(self):
         number = random.randint(1, 20)
         networks = factory.make_networks(number)

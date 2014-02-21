@@ -80,15 +80,12 @@ class TestNetworksAPI(APITestCase):
         self.assertEqual([], json.loads(response.content))
 
     def test_GET_sorts_by_name(self):
-        original_names = [factory.make_name('net').lower() for _ in range(3)]
-        for name in original_names:
-            factory.make_network(name=name)
-
+        networks = factory.make_networks(3, sortable_name=True)
         response = self.client.get(reverse('networks_handler'))
         self.assertEqual(httplib.OK, response.status_code, response.content)
 
         self.assertEqual(
-            sorted(original_names),
+            sorted(network.name for network in networks),
             [network['name'] for network in json.loads(response.content)])
 
     def test_GET_filters_by_node(self):

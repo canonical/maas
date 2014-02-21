@@ -294,11 +294,9 @@ class TestAcquireNodeForm(MAASServerTestCase):
             (form.is_valid(), form.errors))
 
     def test_networks_combines_filters(self):
-        [
-            network_by_name,
-            network_by_ip,
-            network_by_vlan,
-        ] = factory.make_networks(3)
+        [network_by_name, network_by_ip] = factory.make_networks(2)
+        network_by_vlan = factory.make_network(
+            vlan_tag=factory.make_vlan_tag())
         if network_by_vlan.vlan_tag is None:
             # Oops, the one non-VLAN network we got was the one we wanted to
             # use for selecting by VLAN tag.  Switch two of them around.
@@ -402,10 +400,11 @@ class TestAcquireNodeForm(MAASServerTestCase):
         [
             network_by_name,
             network_by_ip,
-            network_by_vlan,
             other_network,
             remaining_network,
-        ] = factory.make_networks(5)
+        ] = factory.make_networks(4)
+        network_by_vlan = factory.make_network(
+            vlan_tag=factory.make_vlan_tag())
         if network_by_vlan.vlan_tag is None:
             # Oops, the one non-VLAN network we got was the one we wanted to
             # use for selecting by VLAN tag.  Switch two of them around.

@@ -16,6 +16,7 @@ __all__ = []
 
 import httplib
 import itertools
+from operator import attrgetter
 from urllib import urlencode
 
 from django.core.urlresolvers import reverse
@@ -70,9 +71,9 @@ class NetworkListingViewTest(MAASServerTestCase):
     def test_network_list_displays_sorted_list_of_networks(self):
         # Networks are alphabetically sorted on the network list page.
         self.client_log_in()
-        factory.make_networks(3)
+        factory.make_networks(3, sortable_name=True)
         networks = Network.objects.all()
-        sorted_networks = sorted(networks, key=lambda x: x.name.lower())
+        sorted_networks = sorted(networks, key=attrgetter('name'))
         response = self.client.get(reverse('network-list'))
         network_links = [
             reverse('network-view', args=[network.name])
@@ -84,9 +85,9 @@ class NetworkListingViewTest(MAASServerTestCase):
 
     def test_network_list_displays_links_to_network_node(self):
         self.client_log_in()
-        factory.make_networks(3)
+        factory.make_networks(3, sortable_name=True)
         networks = Network.objects.all()
-        sorted_networks = sorted(networks, key=lambda x: x.name.lower())
+        sorted_networks = sorted(networks, key=attrgetter('name'))
         response = self.client.get(reverse('network-list'))
         network_node_links = [
             reverse('node-list') + "?" +
