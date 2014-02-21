@@ -217,9 +217,9 @@ class Factory(maastesting.factory.Factory):
             management=management,
             interface=interface)
 
-    def make_node_group(self, name=None, uuid=None, ip=None,
-                        router_ip=None, network=None, subnet_mask=None,
-                        broadcast_ip=None, ip_range_low=None,
+    def make_node_group(self, name=None, uuid=None, cluster_name=None,
+                        ip=None, router_ip=None, network=None,
+                        subnet_mask=None, broadcast_ip=None, ip_range_low=None,
                         ip_range_high=None, interface=None, management=None,
                         status=None, maas_url='', **kwargs):
         """Create a :class:`NodeGroup`.
@@ -237,14 +237,16 @@ class Factory(maastesting.factory.Factory):
             name = self.make_name('nodegroup')
         if uuid is None:
             uuid = factory.getRandomUUID()
+        if cluster_name is None:
+            cluster_name = factory.make_name('cluster')
         interface_settings = self.get_interface_fields(
             ip=ip, router_ip=router_ip, network=network,
             subnet_mask=subnet_mask, broadcast_ip=broadcast_ip,
             ip_range_low=ip_range_low, ip_range_high=ip_range_high,
             interface=interface, management=management)
         interface_settings.update(kwargs)
-        ng = NodeGroup.objects.new(
-            name=name, uuid=uuid, **interface_settings)
+        ng = NodeGroup.objects.new(name=name, uuid=uuid, **interface_settings)
+        ng.cluster_name = cluster_name
         ng.status = status
         ng.maas_url = maas_url
         ng.save()

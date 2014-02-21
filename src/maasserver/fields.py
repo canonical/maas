@@ -36,6 +36,7 @@ from django.forms import (
     ModelChoiceField,
     RegexField,
     )
+from maasserver.utils.orm import get_one
 import psycopg2.extensions
 from south.modelsinspector import add_introspection_rules
 
@@ -95,6 +96,36 @@ class NodeGroupFormField(ModelChoiceField):
         else:
             return nodegroup.name
 
+    def _get_nodegroup_from_string(self, value=None):
+        """Identify a `NodeGroup` ID from a text value.
+
+        :param value: A `unicode` that identifies a `NodeGroup` somehow: as a
+            numerical ID in text form, as a UUID, as a cluster name, or as the
+            empty string to denote the master nodegroup.  `None` also gets the
+            master nodegroup.
+        :return: Matching `NodeGroup`, or `None`.
+        """
+        # Avoid circular imports.
+        from maasserver.models import NodeGroup
+
+        if value is None or value == '':
+            # No identification given.  Default to the master.
+            return NodeGroup.objects.ensure_master()
+
+        if value.isnumeric():
+            # Try value as an ID.
+            nodegroup = get_one(NodeGroup.objects.filter(id=int(value)))
+            if nodegroup is not None:
+                return nodegroup
+
+        # Try value as a UUID.
+        nodegroup = get_one(NodeGroup.objects.filter(uuid=value))
+        if nodegroup is not None:
+            return nodegroup
+
+        # Try value as a cluster name.
+        return get_one(NodeGroup.objects.filter(cluster_name=value))
+
     def clean(self, value):
         """Django method: provide expected output for various inputs.
 
@@ -110,23 +141,20 @@ class NodeGroupFormField(ModelChoiceField):
         # Avoid circular imports.
         from maasserver.models import NodeGroup
 
-        if value in (None, '', b''):
-            nodegroup_id = NodeGroup.objects.ensure_master().id
+        if isinstance(value, bytes):
+            value = value.decode('utf-8')
+
+        if value is None or isinstance(value, unicode):
+            nodegroup = self._get_nodegroup_from_string(value)
         elif isinstance(value, NodeGroup):
-            nodegroup_id = value.id
-        elif isinstance(value, unicode) and value.isnumeric():
-            nodegroup_id = int(value)
-        elif isinstance(value, bytes) and '.' not in value:
-            nodegroup_id = int(value)
-        elif isinstance(value, unicode):
-            # nodegroup_id is a misnomer here, since clean() also takes
-            # a queryset, so we use that for brevity.
-            nodegroup_id = NodeGroup.objects.filter(uuid=value)
-            if len(nodegroup_id) == 0:
-                nodegroup_id = NodeGroup.objects.filter(cluster_name=value)
+            nodegroup = value
         else:
+            nodegroup = None
+
+        if nodegroup is None:
             raise ValidationError("Invalid nodegroup: %s." % value)
-        return super(NodeGroupFormField, self).clean(nodegroup_id)
+
+        return nodegroup
 
 
 class MACAddressFormField(RegexField):
