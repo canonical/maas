@@ -25,6 +25,7 @@ __all__ = [
     "MAASAndNetworkForm",
     "MACAddressForm",
     "NetworkConnectMACsForm",
+    "NetworkDisconnectMACsForm",
     "NetworkForm",
     "NetworksListingForm",
     "NodeGroupEdit",
@@ -1328,8 +1329,8 @@ class NetworksListingForm(forms.Form):
         return networks.order_by('name')
 
 
-class NetworkConnectMACsForm(forms.Form):
-    """Form for the `Network` `connect_macs` API call."""
+class MACsForm(forms.Form):
+    """Base form with a list of MAC addresses."""
 
     macs = InstanceListField(
         model_class=MACAddress, field_name='mac_address',
@@ -1340,9 +1341,29 @@ class NetworkConnectMACsForm(forms.Form):
             "Invalid parameter: list of node MAC addresses required.",
             })
 
+    def __init__(self, network, *args, **kwargs):
+        super(MACsForm, self).__init__(*args, **kwargs)
+        self.network = network
+
     def get_macs(self):
         """Return `MACAddress` objects matching the `macs` parameter."""
         return self.cleaned_data.get('macs')
+
+
+class NetworkConnectMACsForm(MACsForm):
+    """Form for the `Network` `connect_macs` API call."""
+
+    def save(self):
+        """Connect the MAC addresses to the form's network."""
+        self.network.macaddress_set.add(*self.get_macs())
+
+
+class NetworkDisconnectMACsForm(MACsForm):
+    """Form for the `Network` `disconnect_macs` API call."""
+
+    def save(self):
+        """Disconnect the MAC addresses from the form's network."""
+        self.network.macaddress_set.remove(*self.get_macs())
 
 
 class NetworkListForm(forms.Form):

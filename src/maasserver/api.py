@@ -177,6 +177,7 @@ from maasserver.forms import (
     get_node_create_form,
     get_node_edit_form,
     NetworkConnectMACsForm,
+    NetworkDisconnectMACsForm,
     NetworkForm,
     NetworksListingForm,
     NodeActionForm,
@@ -2761,10 +2762,10 @@ class NetworkHandler(OperationsHandler):
         :param macs: A list of node MAC addresses, in text form.
         """
         network = get_object_or_404(Network, name=name)
-        form = NetworkConnectMACsForm(data=request.data)
+        form = NetworkConnectMACsForm(network=network, data=request.data)
         if not form.is_valid():
             raise ValidationError(form.errors)
-        network.macaddress_set.add(*form.get_macs())
+        form.save()
 
     @admin_method
     @operation(idempotent=False)
@@ -2777,10 +2778,10 @@ class NetworkHandler(OperationsHandler):
         :param macs: A list of node MAC addresses, in text form.
         """
         network = get_object_or_404(Network, name=name)
-        form = NetworkConnectMACsForm(data=request.data)
+        form = NetworkDisconnectMACsForm(network=network, data=request.data)
         if not form.is_valid():
             raise ValidationError(form.errors)
-        network.macaddress_set.remove(*form.get_macs())
+        form.save()
 
     @operation(idempotent=True)
     def list_connected_macs(self, request, name):
