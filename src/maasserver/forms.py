@@ -1325,7 +1325,7 @@ class NetworksListingForm(forms.Form):
         nodes = self.cleaned_data.get('node')
         if nodes is not None:
             for node in nodes:
-                networks = networks.filter(node=node)
+                networks = networks.filter(macaddress__node=node)
         return networks.order_by('name')
 
 

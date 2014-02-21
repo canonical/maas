@@ -90,21 +90,25 @@ class TestNetworksAPI(APITestCase):
 
     def test_GET_filters_by_node(self):
         networks = factory.make_networks(5)
-        node = factory.make_node(networks=networks[1:3])
-
+        mac = factory.make_mac_address(networks=networks[1:3])
+        node = mac.node
         response = self.client.get(
             reverse('networks_handler'),
             {'node': [node.system_id]})
         self.assertEqual(httplib.OK, response.status_code, response.content)
 
         self.assertEqual(
-            {network.name for network in node.networks.all()},
+            {network.name for network in mac.networks.all()},
             {network['name'] for network in json.loads(response.content)})
 
     def test_GET_combines_node_filters_as_intersection_of_networks(self):
         networks = factory.make_networks(5)
-        node1 = factory.make_node(networks=networks[1:3])
-        node2 = factory.make_node(networks=networks[2:4])
+        mac1 = factory.make_mac_address(networks=networks[1:3])
+        mac2 = factory.make_mac_address(networks=networks[2:4])
+        node1 = mac1.node
+        # Attach another MAC address to node1.
+        factory.make_mac_address(networks=networks[1:2], node=node1)
+        node2 = mac2.node
 
         response = self.client.get(
             reverse('networks_handler'),
@@ -127,11 +131,12 @@ class TestNetworksAPI(APITestCase):
 
     def test_GET_ignores_duplicates(self):
         factory.make_network()
-        node = factory.make_node(networks=[factory.make_network()])
+        mac = factory.make_mac_address(networks=[factory.make_network()])
+        node = mac.node
         response = self.client.get(
             reverse('networks_handler'),
             {'node': [node.system_id, node.system_id]})
         self.assertEqual(httplib.OK, response.status_code, response.content)
         self.assertEqual(
-            {network.name for network in node.networks.all()},
+            {network.name for network in mac.networks.all()},
             {network['name'] for network in json.loads(response.content)})
