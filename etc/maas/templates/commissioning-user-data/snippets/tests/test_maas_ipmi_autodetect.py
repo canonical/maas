@@ -24,16 +24,17 @@ from maastesting.factory import factory
 from snippets import maas_ipmi_autodetect
 
 from snippets.maas_ipmi_autodetect import (
-    bmc_get_section,
+    apply_ipmi_user_settings,
     bmc_list_sections,
+    bmc_user_get,
+    commit_ipmi_settings,
     format_user_key,
-    get_user_record,
     list_user_numbers,
-    parse_section,
     pick_user_number,
     pick_user_number_from_list,
     run_command,
-    IPMIUserError
+    verify_ipmi_user_settings,
+    IPMIError
     )
 
 
@@ -83,6 +84,9 @@ class TestBMCKeyPairMethods(MAASTestCase):
         ('bmc_set', dict(
             method_name='bmc_set', args=['Test:Key', 'myval'],
             key_pair_fmt='--key-pair=%s=%s', direction='--commit')),
+        ('bmc_user_get', dict(
+            method_name='bmc_user_get', args=['User10', 'Username'],
+            key_pair_fmt='--key-pair=%s:%s', direction='--checkout')),
         ('bmc_user_set', dict(
             method_name='bmc_user_set', args=['User10', 'Username', 'maas'],
             key_pair_fmt='--key-pair=%s:%s=%s', direction='--commit'))
@@ -92,6 +96,7 @@ class TestBMCKeyPairMethods(MAASTestCase):
         """Ensure bmc-config is run properly."""
 
         recorder = self.patch(maas_ipmi_autodetect, 'run_command')
+        recorder.return_value = 'foo'
 
         # Grab the method from the class module where it lives.
         method = getattr(maas_ipmi_autodetect, self.method_name)
@@ -105,40 +110,6 @@ class TestBMCKeyPairMethods(MAASTestCase):
 
         expected_args = ('bmc-config', self.direction, key_pair_string)
         recorder.assert_called_once_with(expected_args)
-
-
-class TestBMCGetSection(MAASTestCase):
-    """Tests for bmc_get_section()."""
-
-    def test_runs_bmc_config(self):
-        """Ensure bmc-config is called with the correct args."""
-        recorder = self.patch(maas_ipmi_autodetect, 'run_command')
-
-        section = 'foo'
-        bmc_get_section(section)
-
-        recorder.assert_called_once_with(
-            ('bmc-config', '--checkout', '--section', section))
-
-
-class TestGetUserRecord(MAASTestCase):
-    """Tests for get_user_record()."""
-
-    def test_get_user_record(self):
-        """Ensure get_user_record() processes requests properly."""
-        user_number = 'User1'
-        user_text = 'some text'
-        user_record = {'bar': 'baz'}
-
-        bgs_mock = self.patch(maas_ipmi_autodetect, 'bmc_get_section')
-        bgs_mock.return_value = user_text
-        ps_mock = self.patch(maas_ipmi_autodetect, 'parse_section')
-        ps_mock.return_value = (user_number, user_record)
-
-        record = get_user_record(user_number)
-        self.assertEqual(record, user_record)
-        bgs_mock.assert_called_once_with(user_number)
-        ps_mock.assert_called_once_with(user_text)
 
 
 class TestBMCListSections(MAASTestCase):
@@ -170,60 +141,62 @@ class TestListUserNumbers(MAASTestCase):
 
     def test_matching(self):
         """Ensure only properly formatted User sections match."""
-        mock = self.patch(maas_ipmi_autodetect, 'bmc_list_sections')
-        mock.return_value = self.section_names
+        self.patch(maas_ipmi_autodetect,
+                   'bmc_list_sections').return_value = self.section_names
         expected = ['User1', 'User4', 'User3', 'User16']
         user_numbers = list_user_numbers()
         self.assertEqual(expected, user_numbers)
 
     def test_empty(self):
         """Ensure an empty list is handled correctly."""
-        mock = self.patch(maas_ipmi_autodetect, 'bmc_list_sections')
-        mock.return_value = ''
+        self.patch(maas_ipmi_autodetect, 'bmc_list_sections').return_value = ''
         results = list_user_numbers()
         self.assertEqual([], results)
 
 
-class TestParseSection(MAASTestCase):
-    """Tests for parse_section()."""
+class TestBMCUserGet(MAASTestCase):
+    """Tests for bmc_user_get()."""
 
-    section_template = (
-        "Section Test\n"                # Section line, no leading space.
-        "\tUsername\t\tBob\n"           # Normal line.
-        " Enabled_User\t\tNo\n"         # Leading space, not tab.
-        "\t\tPassword\t\tBobPass\n"     # Multiple leading tab.
-        "\tAnother  Value\n"            # Separating space, not tab.
-        "\tCharacters\t,./;:'\"[]{}|\\`~!@$%^&*()-_+="  # Gunk.
-        "\n"                            # Blank line.
-        "\tNotMe\n"                     # Single word.
-        "\t#Or Me\n"                    # Comment line.
-        "\tMe #Neither\n"               # Word followed by comment.
-        "\tThree\tWord\tLine\n"         # More than two words.
-        "\tFinal\tLine"                 # No trailing whitespace.
-    )
+    scenarios = [
+        ('No Leading Space', dict(
+            text="Username Bob", key='Username', value='Bob')),
+        ('Normal line.', dict(
+            text="\tUsername\t\tJoe", key='Username', value='Joe')),
+        ('Leading space, not tab', dict(
+            text=" Enable_User\t\tNo", key='Enable_User', value='No')),
+        ('Multiple leading tabs', dict(
+            text="\t\tPassword\t\tPass", key='Password', value='Pass')),
+        ('Separating space, not tab', dict(
+            text="\tAnother  Value", key='Another', value='Value')),
+        ('Gunk', dict(
+            text="\tCharacters\t,./;:'\"[]{}|\\`~!@$%^&*()-_+=",
+            key='Characters', value=",./;:'\"[]{}|\\`~!@$%^&*()-_+=")),
+        ('More than two words', dict(
+            text="\tThree\tWord Line", key='Three', value='Word Line')),
+        ('Blank line', dict(
+            text="", key='Key', value=None)),
+        ('Single word', dict(
+            text="\tNotMe", key='NotMe', value=None)),
+        ('Comment line', dict(
+            text="\t#Or Me", key='Key', value=None)),
+        ('Word followed by comment', dict(
+            text="\tMe #Neither", key='Key', value=None)),
+    ]
 
     def test_matching(self):
-        """Ensure only properly formatted User sections match."""
+        """Ensure only properly formatted record lines match."""
+        user_number = 'User2'
+        response = (
+            "Section %s\n"
+            "%s\n"
+            "EndSection"
+        ) % (user_number, self.text)
 
-        record = parse_section(self.section_template)
+        self.patch(
+            maas_ipmi_autodetect, 'bmc_get').return_value = response
 
-        expected_attributes = {
-            'Username': 'Bob',
-            'Enabled_User': 'No',
-            'Password': 'BobPass',
-            'Another': 'Value',
-            'Characters': ",./;:'\"[]{}|\\`~!@$%^&*()-_+=",
-            'Three': 'Word',
-            'Final': 'Line'
-        }
-
-        self.assertEqual('Test', record[0])
-        self.assertEqual(expected_attributes, record[1])
-
-    def test_fail_missing_section_line(self):
-        """Ensure an exception is raised if the section header is missing."""
-        no_section = self.section_template.replace('Section Test', '')
-        self.assertRaises(Exception, parse_section, no_section)
+        value = bmc_user_get(user_number, self.key)
+        self.assertEqual(self.value, value)
 
 
 def make_user(update=None):
@@ -283,6 +256,10 @@ class TestPickUserNumberFromList(MAASTestCase):
             user_attributes=make_attributes(
                 {'User7': make_user({'Username': 'foo'})}),
             expected=None)),
+        ('Username is (Empty User)', dict(
+            user_attributes=make_attributes(
+                {'User7': make_user({'Username': '(Empty User)'})}),
+            expected='User7')),
         ('One enabled blank user', dict(
             user_attributes=make_attributes({
                 'User7': {'Enable_User': 'Yes'}}),
@@ -293,15 +270,14 @@ class TestPickUserNumberFromList(MAASTestCase):
             expected=None))
     ]
 
-    def fetch_user_record(self, user_number):
-        """Return the mock user data for a user_number."""
-        return self.user_attributes[user_number]
+    def bmc_user_get(self, user_number, parameter):
+        """Return mock user data."""
+        return self.user_attributes[user_number].get(parameter)
 
     def test_user_choice(self):
         """Ensure the correct user, if any, is chosen."""
-
-        mock = self.patch(maas_ipmi_autodetect, 'get_user_record')
-        mock.side_effect = self.fetch_user_record
+        self.patch(maas_ipmi_autodetect,
+                   'bmc_user_get').side_effect = self.bmc_user_get
         current_users = self.user_attributes.keys()
         user = pick_user_number_from_list('maas', current_users)
         self.assertEqual(self.expected, user)
@@ -312,16 +288,111 @@ class TestPickUserNumber(MAASTestCase):
 
     def test_pick_user_number(self):
         """Ensure proper listing and selection of a user."""
-        lun_mock = self.patch(maas_ipmi_autodetect, 'list_user_numbers')
-        lun_mock.return_value = ['User1', 'User2']
-        punfl_mock = self.patch(maas_ipmi_autodetect,
-                                'pick_user_number_from_list')
-        punfl_mock.return_value = 'User2'
+        self.patch(maas_ipmi_autodetect,
+                   'list_user_numbers').return_value = ['User1', 'User2']
+        self.patch(maas_ipmi_autodetect,
+                   'pick_user_number_from_list').return_value = 'User2'
         user_number = pick_user_number('maas')
         self.assertEqual('User2', user_number)
 
     def test_fail_raise_exception(self):
         """Ensure an exception is raised if no acceptable user is found."""
-        mock = self.patch(maas_ipmi_autodetect, 'list_user_numbers')
-        mock.return_value = []
-        self.assertRaises(IPMIUserError, pick_user_number, 'maas')
+        self.patch(maas_ipmi_autodetect, 'list_user_numbers').return_value = []
+        self.assertRaises(IPMIError, pick_user_number, 'maas')
+
+
+class TestVerifyIpmiUserSettings(MAASTestCase):
+    """Tests for verify_ipmi_user_settings()."""
+
+    def test_fail_missing_key(self):
+        """Ensure missing settings cause raise an IPMIError."""
+        key = 'Enable_User'
+        value = 'Yes'
+        expected_settings = {key: value}
+        self.patch(maas_ipmi_autodetect, 'bmc_user_get').return_value = None
+        ipmi_error = self.assertRaises(IPMIError, verify_ipmi_user_settings,
+                                       'User2', expected_settings)
+
+        expected_message = (
+            "IPMI user setting verification failures: "
+            "for '%s', expected '%s', actual 'None'."
+        ) % (key, value)
+        self.assertEqual(expected_message, ipmi_error.message)
+
+    def test_fail_incorrect_keys(self):
+        """Ensure settings that don't match raise an IPMIError."""
+        bad_settings = {
+            'Enable_Bad': 'Yes',
+            'Enable_Bad2': 'Yes',
+        }
+        good_settings = {
+            'Enable_Good': 'No',
+            'Enable_Good2': 'No',
+        }
+
+        expected_settings = bad_settings.copy()
+        expected_settings.update(good_settings)
+
+        self.patch(maas_ipmi_autodetect, 'bmc_user_get').return_value = 'No'
+        ipmi_error = self.assertRaises(IPMIError, verify_ipmi_user_settings,
+                                       'User2', expected_settings)
+
+        self.assertRegexpMatches(ipmi_error.message,
+                                 r'^IPMI user setting verification failures: ')
+
+        for setting, expected_value in bad_settings.iteritems():
+            expected_match = r"for '%s', expected '%s', actual 'No" % (
+                setting, expected_value)
+            self.assertRegexpMatches(ipmi_error.message, expected_match)
+
+        for setting in good_settings.keys():
+            unexpected_match = r"for '%s'" % (setting)
+            self.assertNotRegexpMatches(ipmi_error.message, unexpected_match)
+
+    def test_accept_missing_password(self):
+        """Ensure no exception is raised if Password is missing."""
+        expected_settings = {'Password': 'bar'}
+        verify_ipmi_user_settings('User2', expected_settings)
+
+
+class TestApplyIpmiUserSettings(MAASTestCase):
+    """Tests for apply_ipmi_user_settings()."""
+
+    def test_use_username(self):
+        """Ensure the username provided is used."""
+        user_number = 'User2'
+        pun_mock = self.patch(maas_ipmi_autodetect, 'pick_user_number')
+        pun_mock.return_value = user_number
+        self.patch(maas_ipmi_autodetect, 'bmc_user_set')
+        self.patch(maas_ipmi_autodetect, 'verify_ipmi_user_settings')
+        username = 'foo'
+        apply_ipmi_user_settings({'Username': username})
+        pun_mock.assert_called_once_with(username)
+
+    def test_verify_user_settings(self):
+        """Ensure the user settings are committed and verified."""
+        user_number = 'User2'
+        self.patch(maas_ipmi_autodetect,
+                   'pick_user_number').return_value = 'User2'
+        bus_mock = self.patch(maas_ipmi_autodetect, 'bmc_user_set')
+        vius_mock = self.patch(maas_ipmi_autodetect,
+                               'verify_ipmi_user_settings')
+        user_settings = {'Username': user_number, 'b': 2}
+        apply_ipmi_user_settings(user_settings)
+
+        for key, value in user_settings.iteritems():
+            bus_mock.assert_any_call(user_number, key, value)
+
+        vius_mock.assert_called_once_with(user_number, user_settings)
+
+
+class TestCommitIPMISettings(MAASTestCase):
+    """Test commit_ipmi_settings()."""
+
+    def test_commit_ipmi_settings(self):
+        """Ensure bmc-config is run properly."""
+        recorder = self.patch(maas_ipmi_autodetect, 'run_command')
+        filename = 'foo'
+        commit_ipmi_settings(filename)
+        recorder.assert_called_once_with(('bmc-config', '--commit',
+                                         '--filename', filename))
