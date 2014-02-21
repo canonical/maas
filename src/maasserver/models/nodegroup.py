@@ -91,6 +91,7 @@ class NodeGroupManager(Manager):
         """Obtain the master node group, creating it first if needed."""
         # Avoid circular imports.
         from maasserver.models import Node
+        from maasserver.forms import DEFAULT_DNS_ZONE_NAME
 
         try:
             # Get the first created nodegroup if it exists.
@@ -98,7 +99,8 @@ class NodeGroupManager(Manager):
         except NodeGroup.DoesNotExist:
             # The master did not exist yet; create it on demand.
             master = self.new(
-                'master', 'master', '127.0.0.1', dhcp_key=generate_omapi_key(),
+                DEFAULT_DNS_ZONE_NAME, 'master', '127.0.0.1',
+                dhcp_key=generate_omapi_key(),
                 status=NODEGROUP_STATUS.ACCEPTED)
 
             # If any legacy nodes were still not associated with a node

@@ -764,7 +764,7 @@ INTERFACES_VALIDATION_ERROR_MESSAGE = (
 
 
 # The DNS zone name used for nodegroups when none is explicitly provided.
-DEFAULT_DNS_ZONE_NAME = 'master'
+DEFAULT_DNS_ZONE_NAME = 'maas'
 
 
 def validate_nodegroupinterfaces_json(interfaces):
