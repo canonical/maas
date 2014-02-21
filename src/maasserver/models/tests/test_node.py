@@ -1165,12 +1165,3 @@ class NodeManagerTest(MAASServerTestCase):
         node = factory.make_node(netboot=True)
         node.set_netboot(False)
         self.assertFalse(node.netboot)
-
-    def test_node_not_in_any_network_by_default(self):
-        node = factory.make_node()
-        self.assertItemsEqual([], node.networks.all())
-
-    def test_node_can_be_multiple_networks(self):
-        networks = factory.make_networks(3)
-        node = factory.make_node(networks=networks)
-        self.assertItemsEqual(networks, reload_object(node).networks.all())

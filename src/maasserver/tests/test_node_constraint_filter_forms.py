@@ -221,34 +221,57 @@ class TestAcquireNodeForm(MAASServerTestCase):
 
     def test_networks_filters_by_name(self):
         networks = factory.make_networks(5)
-        nodes = [factory.make_node(networks=[network]) for network in networks]
+        macs = [
+            factory.make_mac_address(networks=[network])
+            for network in networks
+            ]
         # Filter for this network.  Take one in the middle to avoid
         # coincidental success based on ordering.
         pick = 2
         self.assertConstrainedNodes(
-            {nodes[pick]},
+            {macs[pick].node},
             {'networks': [networks[pick].name]})
 
     def test_networks_filters_by_ip(self):
         networks = factory.make_networks(5)
-        nodes = [factory.make_node(networks=[network]) for network in networks]
+        macs = [
+            factory.make_mac_address(networks=[network])
+            for network in networks
+            ]
         # Filter for this network.  Take one in the middle to avoid
         # coincidental success based on ordering.
         pick = 2
         self.assertConstrainedNodes(
-            {nodes[pick]},
+            {macs[pick].node},
             {'networks': ['ip:%s' % networks[pick].ip]})
 
     def test_networks_filters_by_vlan_tag(self):
         vlan_tags = list(range(5))
         networks = [factory.make_network(vlan_tag=tag) for tag in vlan_tags]
-        nodes = [factory.make_node(networks=[network]) for network in networks]
+        macs = [
+            factory.make_mac_address(networks=[network])
+            for network in networks
+            ]
         # Filter for this network.  Take one in the middle to avoid
         # coincidental success based on ordering.
         pick = 2
         self.assertConstrainedNodes(
-            {nodes[pick]},
+            {macs[pick].node},
             {'networks': ['vlan:%d' % vlan_tags[pick]]})
+
+    def test_networks_filter_ignores_macs_on_other_networks(self):
+        network = factory.make_network()
+        node = factory.make_node()
+        factory.make_mac_address(node=node, networks=[network])
+        factory.make_mac_address(node=node, networks=[factory.make_network()])
+        self.assertConstrainedNodes({node}, {'networks': [network.name]})
+
+    def test_networks_filter_ignores_other_networks_on_mac(self):
+        networks = factory.make_networks(3)
+        mac = factory.make_mac_address(networks=networks)
+        self.assertConstrainedNodes(
+            {mac.node},
+            {'networks': [networks[1].name]})
 
     def test_invalid_networks(self):
         form = AcquireNodeForm(data={'networks': 'ip:10.0.0.0'})
@@ -271,19 +294,25 @@ class TestAcquireNodeForm(MAASServerTestCase):
             (form.is_valid(), form.errors))
 
     def test_networks_combines_filters(self):
-        network_by_name = factory.make_network()
-        network_by_ip = factory.make_network()
-        network_by_vlan = factory.make_network(
-            vlan_tag=factory.make_vlan_tag())
-        factory.make_node(networks=[network_by_name, network_by_ip])
-        factory.make_node(networks=[network_by_name, network_by_vlan])
-        right_node = factory.make_node(
+        [
+            network_by_name,
+            network_by_ip,
+            network_by_vlan,
+        ] = factory.make_networks(3)
+        if network_by_vlan.vlan_tag is None:
+            # Oops, the one non-VLAN network we got was the one we wanted to
+            # use for selecting by VLAN tag.  Switch two of them around.
+            network_by_name, network_by_vlan = network_by_vlan, network_by_name
+
+        factory.make_mac_address(networks=[network_by_name, network_by_ip])
+        factory.make_mac_address(networks=[network_by_name, network_by_vlan])
+        right_mac = factory.make_mac_address(
             networks=[network_by_name, network_by_ip, network_by_vlan])
-        factory.make_node(networks=[network_by_ip, network_by_vlan])
-        factory.make_node(networks=[])
+        factory.make_mac_address(networks=[network_by_ip, network_by_vlan])
+        factory.make_mac_address(networks=[])
 
         self.assertConstrainedNodes(
-            {right_node},
+            {right_mac.node},
             {
                 'networks': [
                     network_by_name.name,
@@ -294,30 +323,60 @@ class TestAcquireNodeForm(MAASServerTestCase):
 
     def test_networks_ignores_other_networks(self):
         network = factory.make_network()
-        node = factory.make_node(networks=[network, factory.make_network()])
-        self.assertConstrainedNodes([node], {'networks': [network.name]})
+        mac = factory.make_mac_address(
+            networks=[network, factory.make_network()])
+        self.assertConstrainedNodes([mac.node], {'networks': [network.name]})
 
     def test_not_networks_filters_by_name(self):
         networks = factory.make_networks(2)
-        nodes = [factory.make_node(networks=[network]) for network in networks]
+        macs = [
+            factory.make_mac_address(networks=[network])
+            for network in networks
+            ]
         self.assertConstrainedNodes(
-            {nodes[0]},
+            {macs[0].node},
             {'not_networks': [networks[1].name]})
 
     def test_not_networks_filters_by_ip(self):
         networks = factory.make_networks(2)
-        nodes = [factory.make_node(networks=[network]) for network in networks]
+        macs = [
+            factory.make_mac_address(networks=[network])
+            for network in networks
+            ]
         self.assertConstrainedNodes(
-            {nodes[0]},
+            {macs[0].node},
             {'not_networks': ['ip:%s' % networks[1].ip]})
 
     def test_not_networks_filters_by_vlan_tag(self):
         vlan_tags = range(2)
         networks = [factory.make_network(vlan_tag=tag) for tag in vlan_tags]
-        nodes = [factory.make_node(networks=[network]) for network in networks]
+        macs = [
+            factory.make_mac_address(networks=[network])
+            for network in networks
+            ]
         self.assertConstrainedNodes(
-            {nodes[0]},
+            {macs[0].node},
             {'not_networks': ['vlan:%d' % vlan_tags[1]]})
+
+    def test_not_networks_accepts_nodes_without_network_connections(self):
+        macless_node = factory.make_node()
+        unconnected_mac = factory.make_mac_address(networks=[])
+        self.assertConstrainedNodes(
+            {macless_node, unconnected_mac.node},
+            {'not_networks': [factory.make_network().name]})
+
+    def test_not_networks_excludes_node_with_any_mac_on_not_networks(self):
+        network = factory.make_network()
+        node = factory.make_node()
+        factory.make_mac_address(node=node, networks=[network])
+        factory.make_mac_address(node=node, networks=[factory.make_network()])
+        self.assertConstrainedNodes([], {'not_networks': [network.name]})
+
+    def test_not_networks_excludes_node_with_mac_on_any_not_networks(self):
+        networks = factory.make_networks(3)
+        not_network = networks[1]
+        factory.make_mac_address(networks=[not_network])
+        self.assertConstrainedNodes([], {'not_networks': [not_network.name]})
 
     def test_invalid_not_networks(self):
         form = AcquireNodeForm(data={'not_networks': 'ip:10.0.0.0'})
@@ -340,19 +399,27 @@ class TestAcquireNodeForm(MAASServerTestCase):
             (form.is_valid(), form.errors))
 
     def test_not_networks_combines_filters(self):
-        network_by_name = factory.make_network()
-        network_by_ip = factory.make_network()
-        network_by_vlan = factory.make_network(
-            vlan_tag=factory.make_vlan_tag())
-        factory.make_node(networks=[network_by_name])
-        factory.make_node(networks=[network_by_name, network_by_ip])
-        factory.make_node(networks=[network_by_name, network_by_vlan])
-        factory.make_node(networks=[network_by_vlan])
-        factory.make_node(networks=[network_by_vlan, factory.make_network()])
-        right_node = factory.make_node(networks=[factory.make_network()])
+        [
+            network_by_name,
+            network_by_ip,
+            network_by_vlan,
+            other_network,
+            remaining_network,
+        ] = factory.make_networks(5)
+        if network_by_vlan.vlan_tag is None:
+            # Oops, the one non-VLAN network we got was the one we wanted to
+            # use for selecting by VLAN tag.  Switch two of them around.
+            network_by_name, network_by_vlan = network_by_vlan, network_by_name
+
+        factory.make_mac_address(networks=[network_by_name])
+        factory.make_mac_address(networks=[network_by_name, network_by_ip])
+        factory.make_mac_address(networks=[network_by_name, network_by_vlan])
+        factory.make_mac_address(networks=[network_by_vlan])
+        factory.make_mac_address(networks=[network_by_vlan, other_network])
+        right_mac = factory.make_mac_address(networks=[remaining_network])
 
         self.assertConstrainedNodes(
-            {right_node},
+            {right_mac.node},
             {
                 'not_networks': [
                     network_by_name.name,

@@ -788,8 +788,10 @@ class TestNodesAPI(APITestCase):
 
     def test_POST_acquire_allocates_node_by_network(self):
         networks = factory.make_networks(5)
-        nodes = [
-            factory.make_node(status=NODE_STATUS.READY, networks=[network])
+        macs = [
+            factory.make_mac_address(
+                node=factory.make_node(status=NODE_STATUS.READY),
+                networks=[network])
             for network in networks
             ]
         # We'll make it so that only the node and network at this index will
@@ -803,17 +805,15 @@ class TestNodesAPI(APITestCase):
 
         self.assertResponseCode(httplib.OK, response)
         response_json = json.loads(response.content)
-        self.assertEqual(nodes[pick].system_id, response_json['system_id'])
+        self.assertEqual(macs[pick].node.system_id, response_json['system_id'])
 
     def test_POST_acquire_allocates_node_by_not_network(self):
         networks = factory.make_networks(5)
-        [
-            factory.make_node(
-                status=NODE_STATUS.READY, networks=[network])
-            for network in networks
-            ]
-        right_node = factory.make_node(
-            status=NODE_STATUS.READY, networks=[factory.make_network()])
+        for network in networks:
+            node = factory.make_node(status=NODE_STATUS.READY)
+            factory.make_mac_address(node=node, networks=[network])
+        right_node = factory.make_node(status=NODE_STATUS.READY)
+        factory.make_mac_address(node=node, networks=[factory.make_network()])
 
         response = self.client.post(reverse('nodes_handler'), {
             'op': 'acquire',
