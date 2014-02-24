@@ -61,8 +61,8 @@ class Command(BaseCommand):
 
     def parse_file(self, config_path, options_file):
         """Read the named.conf.options file and parse it with iscpy.
-        
-        We# also use iscpy to insert the include statement that we need.
+
+        We also use iscpy to insert the include statement that we need.
         """
         try:
             config_dict = ParseISCString(options_file)
@@ -87,7 +87,7 @@ class Command(BaseCommand):
 
     def remove_forwarders(self, options_block):
         """Remove existing forwarders from the options block.
-        
+
         It's a syntax error to have more than one in the combined
         configuration for named so we just remove whatever was there.
         There is no data loss due to the backup file made later.
