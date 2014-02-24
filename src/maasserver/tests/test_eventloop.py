@@ -15,7 +15,9 @@ __metaclass__ = type
 __all__ = []
 
 from maasserver import eventloop
+from maasserver.rpc import regionservice
 from maastesting.testcase import MAASTestCase
+from testtools.matchers import IsInstance
 from twisted.application.service import (
     MultiService,
     Service,
@@ -30,9 +32,11 @@ class TestRegionEventLoop(MAASTestCase):
         self.assertEqual("foo:pid=12345", eventloop.loop.name)
 
     def test_start_and_stop(self):
-        # Replace RegionService with a non-functional dummy to avoid
-        # bringing up real services here, and reset the service list.
-        self.patch(eventloop, "RegionService").return_value = Service()
+        # Replace the factories in RegionEventLoop with non-functional
+        # dummies to avoid bringing up real services here.
+        self.patch(eventloop.loop, "factories", tuple(
+            (name, Service) for name, _ in eventloop.loop.factories))
+        # Reset the services list.
         self.patch(eventloop.loop, "services", MultiService())
         # At the outset, the eventloop's services are dorment.
         self.assertFalse(eventloop.loop.services.running)
@@ -44,8 +48,8 @@ class TestRegionEventLoop(MAASTestCase):
         eventloop.loop.start().wait(5)
         self.assertTrue(eventloop.loop.services.running)
         self.assertEqual(
-            set(eventloop.loop.services),
-            {eventloop.RegionService.return_value})
+            {service.name for service in eventloop.loop.services},
+            {name for name, _ in eventloop.loop.factories})
         # A shutdown hook is registered with the reactor.
         stopService = eventloop.loop.services.stopService
         self.assertEqual(
@@ -56,8 +60,8 @@ class TestRegionEventLoop(MAASTestCase):
         eventloop.loop.stop().wait(5)
         self.assertFalse(eventloop.loop.services.running)
         self.assertEqual(
-            set(eventloop.loop.services),
-            {eventloop.RegionService.return_value})
+            {service.name for service in eventloop.loop.services},
+            {name for name, _ in eventloop.loop.factories})
         # The hook has been cleared.
         self.assertIsNone(eventloop.loop.handle)
 
@@ -67,3 +71,23 @@ class TestRegionEventLoop(MAASTestCase):
         # Must compare by equality here; these methods are decorated.
         self.assertEqual(eventloop.start, eventloop.loop.start)
         self.assertEqual(eventloop.stop, eventloop.loop.stop)
+
+
+class TestFactories(MAASTestCase):
+
+    def test_make_RegionService(self):
+        service = eventloop.make_RegionService()
+        self.assertThat(service, IsInstance(regionservice.RegionService))
+        # It is registered as a factory in RegionEventLoop.
+        self.assertIn(
+            eventloop.make_RegionService,
+            {factory for _, factory in eventloop.loop.factories})
+
+    def test_make_RegionAdvertisingService(self):
+        service = eventloop.make_RegionAdvertisingService()
+        self.assertThat(service, IsInstance(
+            regionservice.RegionAdvertisingService))
+        # It is registered as a factory in RegionEventLoop.
+        self.assertIn(
+            eventloop.make_RegionAdvertisingService,
+            {factory for _, factory in eventloop.loop.factories})

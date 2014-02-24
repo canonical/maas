@@ -16,6 +16,7 @@ __all__ = []
 
 import json
 
+from crochet import run_in_reactor
 from django.core.urlresolvers import reverse
 from maasserver import eventloop
 from maasserver.testing.testcase import MAASServerTestCase
@@ -30,6 +31,8 @@ from testtools.matchers import (
     MatchesDict,
     MatchesListwise,
     )
+from twisted.internet.defer import inlineCallbacks
+from twisted.internet.threads import deferToThread
 
 
 is_valid_port = MatchesAll(
@@ -45,10 +48,24 @@ class RPCViewTest(MAASServerTestCase):
         self.assertEqual({"eventloops": {}}, info)
 
     def test_rpc_info_when_rpc_running(self):
-        eventloop.start()
-        self.addCleanup(eventloop.stop)
+        eventloop.start().wait(5)
+        self.addCleanup(lambda: eventloop.stop().wait(5))
+
+        getServiceNamed = eventloop.services.getServiceNamed
+
+        @run_in_reactor
+        @inlineCallbacks
+        def wait_for_startup():
+            # Wait for the rpc and the rpc-advertise services to start.
+            yield getServiceNamed("rpc").starting
+            yield getServiceNamed("rpc-advertise").starting
+            # Force an update, because it's very hard to track when the
+            # first iteration of the rpc-advertise service has completed.
+            yield deferToThread(getServiceNamed("rpc-advertise").update)
+        wait_for_startup().wait(5)
 
         response = self.client.get(reverse('rpc-info'))
+
         self.assertEqual("application/json", response["Content-Type"])
         info = json.loads(response.content)
         self.assertThat(info, KeysEqual("eventloops"))

@@ -18,6 +18,7 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    "loop",
     "services",
     "start",
     "stop",
@@ -30,7 +31,6 @@ from socket import gethostname
 
 import crochet
 from django.utils import autoreload
-from maasserver.rpc.regionservice import RegionService
 from twisted.application.service import MultiService
 from twisted.internet.error import ReactorNotRunning
 
@@ -61,6 +61,18 @@ def stop_event_loop_when_reloader_is_invoked():
 stop_event_loop_when_reloader_is_invoked()
 
 
+def make_RegionService():
+    # Import here to avoid a circular import.
+    from maasserver.rpc import regionservice
+    return regionservice.RegionService()
+
+
+def make_RegionAdvertisingService():
+    # Import here to avoid a circular import.
+    from maasserver.rpc import regionservice
+    return regionservice.RegionAdvertisingService()
+
+
 class RegionEventLoop:
     """An event loop running in a region controller process.
 
@@ -72,6 +84,11 @@ class RegionEventLoop:
     allowing convenient control of the event loop - a Twisted reactor
     running in a thread - and to which to attach and query services.
     """
+
+    factories = (
+        ("rpc", make_RegionService),
+        ("rpc-advertise", make_RegionAdvertisingService),
+    )
 
     def __init__(self):
         super(RegionEventLoop, self).__init__()
@@ -86,13 +103,13 @@ class RegionEventLoop:
 
     @crochet.run_in_reactor
     def start(self):
-        try:
-            rpc = self.services.getServiceNamed("rpc")
-        except KeyError:
-            rpc = RegionService(crochet.reactor)
-            rpc.setName("rpc")
-            rpc.setServiceParent(self.services)
-
+        for name, factory in self.factories:
+            try:
+                self.services.getServiceNamed(name)
+            except KeyError:
+                service = factory()
+                service.setName(name)
+                service.setServiceParent(self.services)
         self.handle = crochet.reactor.addSystemEventTrigger(
             'before', 'shutdown', self.services.stopService)
         return self.services.startService()

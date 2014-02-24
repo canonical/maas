@@ -21,9 +21,11 @@ __all__ = [
     'ignore_unused',
     'map_enum',
     'strip_domain',
+    'synchronised',
     ]
 
 import errno
+from functools import wraps
 import re
 from urllib import urlencode
 from urlparse import urljoin
@@ -191,3 +193,19 @@ def find_nodegroup(request):
                     "one cluster may manage the network of which "
                     "%s is a member." % ip_address)
             return nodegroups[0]
+
+
+def synchronised(lock):
+    """Decorator to synchronise a call against a given lock.
+
+    Note: if the function being wrapped is a generator, the lock will
+    *not* be held for the lifetime of the generator; to this decorator,
+    it looks like the wrapped function has returned.
+    """
+    def synchronise(func):
+        @wraps(func)
+        def call_with_lock(*args, **kwargs):
+            with lock:
+                return func(*args, **kwargs)
+        return call_with_lock
+    return synchronise

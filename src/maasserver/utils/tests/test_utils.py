@@ -15,6 +15,7 @@ __metaclass__ = type
 __all__ = []
 
 import httplib
+import threading
 from urllib import urlencode
 
 from django.conf import settings
@@ -36,8 +37,10 @@ from maasserver.utils import (
     get_local_cluster_UUID,
     map_enum,
     strip_domain,
+    synchronised,
     )
 from maastesting.testcase import MAASTestCase
+from mock import sentinel
 from netaddr import IPNetwork
 
 
@@ -292,3 +295,18 @@ class TestFindNodegroup(MAASServerTestCase):
             network=IPNetwork("192.168.41.0/24"))
         self.assertEqual(
             nodegroup1, find_nodegroup(get_request('192.168.41.199')))
+
+
+class TestSynchronised(MAASTestCase):
+
+    def test_locks_when_calling(self):
+        lock = threading.Lock()
+
+        @synchronised(lock)
+        def example_synchronised_function():
+            self.assertTrue(lock.locked())
+            return sentinel.called
+
+        self.assertFalse(lock.locked())
+        self.assertEqual(sentinel.called, example_synchronised_function())
+        self.assertFalse(lock.locked())

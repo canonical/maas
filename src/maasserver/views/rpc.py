@@ -24,7 +24,6 @@ import json
 
 from django.http import HttpResponse
 from maasserver import eventloop
-from provisioningserver.utils import get_all_interface_addresses
 
 
 def info(request):
@@ -34,17 +33,23 @@ def info(request):
     tuples on which the region has listening RPC endpoints.
     """
     try:
-        rpc_service = eventloop.services.getServiceNamed("rpc")
+        advertiser = eventloop.services.getServiceNamed("rpc-advertise")
     except KeyError:
-        endpoints = {}  # No endpoints.
+        # RPC advertising service has not been created, so we declare
+        # that there are no endpoints *at all*.
+        endpoints = {}
     else:
-        port = rpc_service.getPort()
-        addrs = get_all_interface_addresses()
-        endpoints = {
-            eventloop.loop.name: [
-                (addr, port) for addr in addrs
-            ],
-        }
+        if advertiser.running:
+            endpoints = {}
+            for name, addr, port in advertiser.dump():
+                if name in endpoints:
+                    endpoints[name].append((addr, port))
+                else:
+                    endpoints[name] = [(addr, port)]
+        else:
+            # RPC advertising service is not running, so we declare that
+            # there are no endpoints *at all*.
+            endpoints = {}
 
     # Each endpoint is an entry point into this event-loop.
     info = {"eventloops": endpoints}
