@@ -44,7 +44,7 @@ Physical network: {{ network.name }}
       <span id="nodecount">
         <a title="View nodes attached to network {{ network.name }}"
            href="{% url 'node-list' %}?query=networks%3D{{ network.name }}">
-          {{ network.node_set.count }}
+          {{ network.get_connected_nodes.count }}
         </a>
       </span>
     </li>

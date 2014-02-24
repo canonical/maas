@@ -56,6 +56,8 @@ class NetworkListingViewTest(MAASServerTestCase):
         self.client_log_in()
         factory.make_networks(3)
         networks = Network.objects.all()
+        # Attach some NICs to some of the networks.
+        [factory.make_mac_address(networks=networks[1:3]) for _ in range(12)]
         response = self.client.get(reverse('network-list'))
         details_list = [
             [
@@ -63,6 +65,7 @@ class NetworkListingViewTest(MAASServerTestCase):
                 network.description[:20],
                 '%s' % network.get_network(),
                 '%s' % network.vlan_tag if network.vlan_tag else '',
+                '%d' % network.get_connected_nodes().count(),
             ]
             for network in networks]
         details = list(itertools.chain(*details_list))
@@ -216,12 +219,12 @@ class NetworkDetailViewTest(MAASServerTestCase):
     def test_network_detail_displays_node_count(self):
         self.client_log_in()
         network = factory.make_network()
-        [factory.make_node(networks=[network]) for i in range(12)]
+        [factory.make_mac_address(networks=[network]) for i in range(5)]
         response = self.client.get(
             reverse('network-view', args=[network.name]))
         document = fromstring(response.content)
         count_text = document.get_element_by_id("nodecount").text_content()
-        self.assertThat(count_text, Contains('12'))
+        self.assertThat(count_text, Contains('5'))
 
     def test_network_detail_escapes_description(self):
         nasty_description = 'A<B>C&D'

@@ -253,6 +253,16 @@ class Network(CleanSave, Model):
         """
         return make_network(self.ip, self.netmask)
 
+    def get_connected_nodes(self):
+        """Return the `QuerySet` of the nodes connected to this network.
+
+        :rtype: `django.db.models.query.QuerySet`
+        """
+        # Circular imports.
+        from maasserver.models import Node
+        return Node.objects.filter(
+            macaddress__in=self.macaddress_set.all()).distinct()
+
     def __unicode__(self):
         net = unicode(self.get_network().cidr)
         # A vlan_tag of zero normalises to None.  But __unicode__ may be

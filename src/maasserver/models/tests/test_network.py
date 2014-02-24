@@ -17,6 +17,7 @@ __all__ = []
 from operator import attrgetter
 
 from django.core.exceptions import ValidationError
+from django.db.models.query import QuerySet
 from maasserver.models import Network
 from maasserver.models.network import (
     get_specifier_type,
@@ -245,6 +246,28 @@ class TestNetwork(MAASServerTestCase):
     def test_get_network_returns_network(self):
         net = factory.getRandomNetwork()
         self.assertEqual(net, factory.make_network(network=net).get_network())
+
+    def test_get_connected_nodes_returns_QuerySet(self):
+        network = factory.make_network()
+        self.assertIsInstance(network.get_connected_nodes(), QuerySet)
+
+    def test_get_connected_nodes_returns_connected_nodes(self):
+        network = factory.make_network()
+        macs = [factory.make_mac_address(networks=[network]) for _ in range(4)]
+        nodes = [mac.node for mac in macs]
+        # Create a handful of MAC addresses not connected to the network.
+        [factory.make_mac_address() for _ in range(3)]
+        self.assertItemsEqual(nodes, network.get_connected_nodes())
+
+    def test_get_connected_nodes_doesnt_count_multiple_connections_twice(self):
+        network = factory.make_network()
+        node1 = factory.make_node()
+        node2 = factory.make_node()
+        [factory.make_mac_address(
+            node=node1, networks=[network]) for _ in range(3)]
+        [factory.make_mac_address(
+            node=node2, networks=[network]) for _ in range(3)]
+        self.assertItemsEqual([node1, node2], network.get_connected_nodes())
 
     def test_name_validation_allows_identifier_characters(self):
         name = 'x_9-y'

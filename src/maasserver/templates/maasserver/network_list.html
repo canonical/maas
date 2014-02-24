@@ -44,7 +44,7 @@
             <td>
               <a title="View nodes attached to network {{ network_item.name }}"
 		 href="{% url 'node-list' %}?query=networks%3D{{ network_item.name }}">
-                {{ network_item.node_set.count }}
+                {{ network_item.get_connected_nodes.count }}
               </a>
             </td>
             {% if user.is_superuser %}
