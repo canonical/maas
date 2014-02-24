@@ -488,8 +488,6 @@ class Node(CleanSave, TimestampedModel):
 
     netboot = BooleanField(default=True)
 
-    networks = ManyToManyField('maasserver.Network', blank=True)
-
     # This field can't be null, but we can't enforce that in the
     # database schema because we can only create the default value from
     # a complete schema, after schema migration.  We can't use custom
