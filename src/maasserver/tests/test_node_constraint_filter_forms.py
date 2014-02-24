@@ -320,10 +320,12 @@ class TestAcquireNodeForm(MAASServerTestCase):
             })
 
     def test_networks_ignores_other_networks(self):
-        network = factory.make_network()
+        [this_network, other_network] = factory.make_networks(2)
         mac = factory.make_mac_address(
-            networks=[network, factory.make_network()])
-        self.assertConstrainedNodes([mac.node], {'networks': [network.name]})
+            networks=[this_network, other_network])
+        self.assertConstrainedNodes(
+            [mac.node],
+            {'networks': [this_network.name]})
 
     def test_not_networks_filters_by_name(self):
         networks = factory.make_networks(2)

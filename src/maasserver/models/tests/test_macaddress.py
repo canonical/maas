@@ -14,6 +14,8 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+from operator import attrgetter
+
 from django.core.exceptions import ValidationError
 from maasserver.models import MACAddress
 from maasserver.testing import reload_object
@@ -40,3 +42,19 @@ class MACAddressTest(MAASServerTestCase):
         networks = factory.make_networks(3)
         mac = factory.make_mac_address(networks=networks)
         self.assertItemsEqual(networks, reload_object(mac).networks.all())
+
+    def test_get_networks_returns_empty_if_no_networks(self):
+        mac = factory.make_mac_address(networks=[])
+        self.assertEqual([], list(mac.get_networks()))
+
+    def test_get_networks_returns_networks(self):
+        network = factory.make_network()
+        mac = factory.make_mac_address(networks=[network])
+        self.assertEqual([network], list(mac.get_networks()))
+
+    def test_get_networks_sorts_by_network_name(self):
+        networks = factory.make_networks(3, sortable_name=True)
+        mac = factory.make_mac_address(networks=networks)
+        self.assertEqual(
+            sorted(networks, key=attrgetter('name')),
+            list(mac.get_networks()))

@@ -63,6 +63,7 @@ from maasserver.testing.testcase import (
     SeleniumTestCase,
     )
 from maasserver.utils import map_enum
+from maasserver.utils.orm import get_one
 from maasserver.views import nodes as nodes_views
 from maasserver.views.nodes import message_from_form_stats
 from maastesting.djangotestcase import count_queries
@@ -474,6 +475,70 @@ class NodeViewsTest(MAASServerTestCase):
         self.assertEqual(
             [reverse('zone-view', args=[node.zone.name])],
             get_content_links(response, '#zone'))
+
+    def test_view_node_shows_macs(self):
+        self.client_log_in()
+        mac = factory.make_mac_address()
+
+        response = self.client.get(
+            reverse('node-view', args=[mac.node.system_id]))
+        self.assertEqual(httplib.OK, response.status_code)
+
+        [macs_section] = fromstring(response.content).cssselect('#macs')
+        self.assertEqual(
+            mac.mac_address,
+            get_one(macs_section.cssselect('span')).text_content().strip())
+
+    def test_view_node_joins_macs_with_semicolons(self):
+        self.client_log_in()
+        node = factory.make_node()
+        factory.make_mac_address('11:11:11:11:11:11', node=node)
+        factory.make_mac_address('22:22:22:22:22:22', node=node)
+
+        response = self.client.get(reverse('node-view', args=[node.system_id]))
+        self.assertEqual(httplib.OK, response.status_code)
+
+        [macs_section] = fromstring(response.content).cssselect('#macs')
+        [span] = macs_section.cssselect('span')
+        self.assertEqual(
+            ['11:11:11:11:11:11;', '22:22:22:22:22:22'],
+            span.text_content().split())
+
+    def test_view_node_links_macs_to_networks(self):
+        self.client_log_in()
+        network = factory.make_network()
+        mac = factory.make_mac_address(networks=[network])
+
+        response = self.client.get(
+            reverse('node-view', args=[mac.node.system_id]))
+        self.assertEqual(httplib.OK, response.status_code)
+
+        [macs_section] = fromstring(response.content).cssselect('#macs')
+        [span] = macs_section.cssselect('span')
+        self.assertEqual(
+            "%s (on %s)" % (mac.mac_address, network.name),
+            ' '.join(span.text_content().split()))
+        [link] = span.cssselect('a')
+        self.assertEqual(network.name, link.text_content().strip())
+        self.assertEqual(
+            reverse('network-view', args=[network.name]),
+            link.get('href'))
+
+    def test_view_node_sorts_networks_by_name(self):
+        self.client_log_in()
+        networks = factory.make_networks(3, sortable_name=True)
+        mac = factory.make_mac_address(networks=networks)
+
+        response = self.client.get(
+            reverse('node-view', args=[mac.node.system_id]))
+        self.assertEqual(httplib.OK, response.status_code)
+
+        sorted_names = sorted(network.name for network in networks)
+        [macs_section] = fromstring(response.content).cssselect('#macs')
+        [span] = macs_section.cssselect('span')
+        self.assertEqual(
+            "%s (on %s)" % (mac.mac_address, ', '.join(sorted_names)),
+            ' '.join(span.text_content().split()))
 
     def test_view_node_displays_link_to_edit_if_user_owns_node(self):
         self.client_log_in()

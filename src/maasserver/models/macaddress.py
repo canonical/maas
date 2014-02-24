@@ -65,3 +65,7 @@ class MACAddress(CleanSave, TimestampedModel):
                 return "This MAC address is already registered."
         return super(
             MACAddress, self).unique_error_message(model_class, unique_check)
+
+    def get_networks(self):
+        """Return networks to which this MAC is connected, sorted by name."""
+        return self.networks.all().order_by('name')
