@@ -16,6 +16,7 @@ __all__ = [
     'DNSConfig',
     'DNSForwardZoneConfig',
     'DNSReverseZoneConfig',
+    'MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME',
     'setup_rndc',
     'set_up_options_conf',
     ]
