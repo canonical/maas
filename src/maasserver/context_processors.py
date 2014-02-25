@@ -51,6 +51,7 @@ def static_resources(context):
             'css/components/search_box.css',
             'css/components/slider.css',
             'css/ubuntu-webfonts.css',
+            'css/multiselect_widget.css',
         ],
         'JS_LIST': [
             'js/morph.js',

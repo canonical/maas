@@ -1,5 +1,6 @@
 {% extends "maasserver/base.html" %}
 
+{% block pre_head %}{% include "maasserver/multiselect_widget_include.html" %}{% endblock %}
 {% block nav-active-settings %}active{% endblock %}
 {% block title %}Edit network{% endblock %}
 {% block page-title %}Edit network{% endblock %}
@@ -17,4 +18,7 @@
              class="button right" />
       <a class="link-button" href="{% url 'network-list' %}">Cancel</a>
 </div>
+<script type="text/javascript">
+    addEvent(window, "load", function(e) { SelectFilter.init("id_mac_addresses", "network interfaces", 0, "{{ STATIC_URL }}admin/"); });
+</script>
 {% endblock %}
