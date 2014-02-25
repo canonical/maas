@@ -294,13 +294,17 @@ class TestAcquireNodeForm(MAASServerTestCase):
             (form.is_valid(), form.errors))
 
     def test_networks_combines_filters(self):
-        [network_by_name, network_by_ip] = factory.make_networks(2)
-        network_by_vlan = factory.make_network(
-            vlan_tag=factory.make_vlan_tag())
+        networks = factory.make_networks(3)
+        [
+            network_by_name,
+            network_by_ip,
+            network_by_vlan,
+        ] = networks
         if network_by_vlan.vlan_tag is None:
-            # Oops, the one non-VLAN network we got was the one we wanted to
-            # use for selecting by VLAN tag.  Switch two of them around.
-            network_by_name, network_by_vlan = network_by_vlan, network_by_name
+            # For this test we need network_by_vlan to be a VLAN.
+            network_by_vlan.vlan_tag = factory.make_vlan_tag(
+                but_not=[network.vlan_tag for network in networks])
+            network_by_vlan.save()
 
         factory.make_mac_address(networks=[network_by_name, network_by_ip])
         factory.make_mac_address(networks=[network_by_name, network_by_vlan])
@@ -399,18 +403,19 @@ class TestAcquireNodeForm(MAASServerTestCase):
             (form.is_valid(), form.errors))
 
     def test_not_networks_combines_filters(self):
+        networks = factory.make_networks(5)
         [
             network_by_name,
             network_by_ip,
+            network_by_vlan,
             other_network,
             remaining_network,
-        ] = factory.make_networks(4)
-        network_by_vlan = factory.make_network(
-            vlan_tag=factory.make_vlan_tag())
+        ] = networks
         if network_by_vlan.vlan_tag is None:
-            # Oops, the one non-VLAN network we got was the one we wanted to
-            # use for selecting by VLAN tag.  Switch two of them around.
-            network_by_name, network_by_vlan = network_by_vlan, network_by_name
+            # For this test we need network_by_vlan to be a VLAN.
+            network_by_vlan.vlan_tag = factory.make_vlan_tag(
+                but_not=[network.vlan_tag for network in networks])
+            network_by_vlan.save()
 
         factory.make_mac_address(networks=[network_by_name])
         factory.make_mac_address(networks=[network_by_name, network_by_ip])
