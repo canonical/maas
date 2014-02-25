@@ -14,7 +14,7 @@ already managing the network can cause serious disruption, and it can be hard
 for administrators to track the source of the problem.  Worse, the problems
 may not become immediately noticeable.  Make sure you understand the
 implications of running a DHCP server before doing this.  If MAAS detects any
-DHCP servers already running on these nteworks, it will show them on the
+DHCP servers already running on these networks, it will show them on the
 cluster's configuration page.
 
 

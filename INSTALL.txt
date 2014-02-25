@@ -59,7 +59,7 @@ an existing DHCP setup, see :ref:`manual-dhcp`
 Install packages
 ^^^^^^^^^^^^^^^^
 
-At the command-line, type::
+At the command line, type::
 
   $ sudo apt-get install maas maas-dhcp maas-dns
 
@@ -191,6 +191,7 @@ And then proceed to the post-install setup below.
 Post-Install tasks
 ==================
 
+Your MAAS is now installed, but there are a few more things to be done.
 If you now use a web browser to connect to the region controller, you
 should see that MAAS is running, but there will also be some errors on
 the screen:
@@ -218,37 +219,60 @@ You can run this command again for any further administrator accounts you
 may wish to create, but you need at least one.
 
 
+Log in on the server
+--------------------
+
+Looking at the region controller's main web page again, you should now see
+a login screen.  Log in using the user name and password which you have just
+created.
+
+.. image:: media/install-login.*
+
+
 Import the boot images
 ----------------------
 
-MAAS will check for and download new Ubuntu images once a week.
-However, you'll need to download them manually the first time. To do
-this you will need to connect to the MAAS API using the "maas" command-line
-client. (see :ref:`Logging in <api-key>` for details). Then you need to
+MAAS will check for and download new Ubuntu images once a week.  To avoid
+having to wait that long, you'll need to download them manually the first time
+once you have set up your MAAS region and cluster controllers.  Do it again if
+you add a cluster controller later, so that the new cluster controller also has
+the images.
+
+There are two ways to start the import: through the web user interface, or
+through the remote API.
+
+To do it in the web user interface, go to the Settings page (the cogwheel on
+the right-hand side of the top bar) and look for the "Cluster controllers"
+section.  Click "Import boot images."
+
+.. image:: media/import-images.*
+
+A message will appear to let you know that the import has started, and after a
+while, the warnings about the lack of boot images will disappear.
+
+It may take longer for the exact boot images you need to be downloaded.  Give
+the import time to run; do not click the "Import boot images" button again
+until the script has had time to download several hundred megabytes from the
+archive server.
+
+The other way to start the import is through the
+:ref:`region-controller API <region-controller-api>`, which you can invoke most
+conveniently through the :ref:`command-line interface <cli>`.
+
+To do this, connect to the MAAS API using the "maas" command-line client.
+See :ref:`Logging in <api-key>` for how to get set up with this tool.  Then,
 run the command::
 
   $ maas my-maas-session node-groups import-boot-images
 
-(substitute in a different profile name for 'maas' if you have called
-yours something else) This will initiate downloading the required
-image files. Note that this may take some time depending on your
-network connection.
+(Substitute a different profile name for 'my-maas-session' if you have named
+yours something else.)  This will initiate the download, just as if you had
+clicked "Import boot images" in the web user interface.
 
 .. note::
   This API command is only available in MAAS versions 1.3 and above.
-  For lower versions, you need to run ``sudo maas-import-pxe-files`` once
-  on each cluster controller.
-
-
-Login to the server
--------------------
-
-To check that everything is working properly, you should try and login
-to the server now. Both the error messages should have gone (it can
-take a few minutes for the boot image files to register) and you can
-see that there are currently 0 nodes attached to this controller.
-
-.. image:: media/install-login.*
+  If you are using an earlier version, you will need to run the shell command
+  ``sudo maas-import-pxe-files`` on each of your cluster controllers.
 
 
 Configure DHCP

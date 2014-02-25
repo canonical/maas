@@ -1,10 +1,12 @@
+.. _cli:
+
 ----------------------
 Command Line Interface
 ----------------------
 
 As well as the web interface, many tasks can be performed by accessing
 the MAAS API directly through the `maas` command. This section
-details how to login with this tool and perform some common
+details how to log in with this tool and perform some common
 operations.
 
 
@@ -14,11 +16,16 @@ Logging in
 ----------
 
 Before the API will accept any commands from maas, you must first
-login. To do this, you need the API key which can be found in the user
-interface.
+log in. To do this, you need an API key for your MAAS account.  A key was
+generated for you as soon as your account was created, although you can still
+generate additional keys if you prefer.
 
-Login to the web interface on your MAAS. Click on the username in the
-top right corner and select 'Preferences' from the menu which appears.
+The key can be found in the web user interface, or if you have root privileges
+on the region controller, retrieved from the command line.
+
+To obtain the key from the web user interface, log in and click on your
+user name in the top right corner of the page, and select 'Preferences' from
+the menu which appears.
 
 .. image:: media/maascli-prefs.*
 
@@ -26,33 +33,51 @@ A new page will load...
 
 .. image:: media/maascli-key.*
 
-The very first item is a list of MAAS keys. One will have already been
-generated when the system was installed. It's easiest to just select
-and copy the key (it's quite long!) and then paste it into the
-commandline. The format of the login command is::
+Your MAAS API keys appear at the top of the preferences form.  It's easiest to
+just select and copy the key (it's quite long!) and then paste it into the
+command line.
+
+To obtain the key through the command line, run this command on the region
+controller::
+
+ $ maas-region-admin apikey my-username
+
+(Substitute your MAAS user name for my-username).
+
+Once you have your API key, log in with::
 
  $ maas login <profile-name> <hostname> <key>
 
-The profile created is an easy way of associating your credentials
-with any subsequent call to the API. So an example login might look
-like this::
+This command logs you in, and creates a "profile" with the profile name you
+have selected.   The profile is an easy way of storing the server URL and your
+login credentials, and re-using them across command-line invocations.  Think
+of the profile as a persistent session.  You can have multiple profiles open
+at the same time, and so as part of the login command, you assign a unique
+name to the new profile.  Later invocations of the maas command line will
+refer to the profile by this name.
 
- $ maas login maas http://10.98.0.13/MAAS/api/1.0
+For example, you might log in with a command line like::
+
+ $ maas login my-maas http://10.98.0.13/MAAS/api/1.0
  AWSCRMzqMNy:jjk...5e1FenoP82Qm5te2
 
-which creates the profile 'maas' and registers it with the given key
-at the specified API endpoint.  If you omit the credentials, they will
-be prompted for in the console. It is also possible to use a hyphen,
-'-' in place of the credentials. In this case a single line will be
-read from stdin, stripped of any whitespace and used as the
-credentials, which can be useful if you are devolping scripts for
-specific tasks.  If an empty string is passed instead of the
-credentials, the profile will be logged in anonymously (and
-consequently some of the API calls will not be available)
+This creates the profile 'my-maas' and registers it with the given key
+at the specified API endpoint URL.
+
+If you omit the API key, the command will prompt you for it in the console.
+It is also possible to use a hyphen, '-' in place of the API key.  In this
+case the command will read the API key from standard input, as a single
+line, ignoring whitespace.  This mode of input can be useful if you want to
+read the API key from a file, or if you wish to avoid including the API key in
+a command line where it may be observed by other users on the system.
+
+Specifying an empty string instead of an API key will make the profile act as
+an anonymous user.  Some calls in the API are accessible without logging in,
+but most of them are not.
 
 
 maas commands
------------------
+-------------
 
 The ``maas`` command exposes the whole API, so you can do anything
 you actually *can* do with MAAS using this command. Unsurprisingly,

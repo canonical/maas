@@ -31,16 +31,14 @@ from piston.models import Token
 
 
 class UserProfileManager(Manager):
-    """A utility to manage the collection of UserProfile (or User).
+    """A utility to manage the collection of `UserProfile` (or `User`).
 
-    This should be used when dealing with UserProfiles or Users because it
-    returns only users with a profile attached to them (as opposed to system
-    users who don't have a profile).
+    Use this when dealing with users that represent real-world users.  System
+    users do not have `UserProfile` objects attached to them.
     """
 
     def all_users(self):
-        """Returns all the "real" users (the users which are not system users
-        and thus have a UserProfile object attached to them).
+        """Returns all "real" users (i.e. not including system users).
 
         :return: A QuerySet of the users.
         :rtype: django.db.models.query.QuerySet_
@@ -58,7 +56,7 @@ class UserProfile(CleanSave, Model):
 
     :ivar user: The related User_.
 
-    .. _UserProfile: https://docs.djangoproject.com/
+    .. _User: https://docs.djangoproject.com/
        en/dev/topics/auth/
        #storing-additional-information-about-users
 
