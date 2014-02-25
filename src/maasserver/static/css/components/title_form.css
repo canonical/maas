@@ -1,6 +1,7 @@
 .page-title-form {
     background: transparent url(../?img/content_tail.png) no-repeat 50px bottom;
     }
+
 .page-title-form input {
     border: 2px solid transparent;
     background-color: transparent;
@@ -14,6 +15,7 @@
     -webkit-border-radius: 6px;
     border-radius: 6px;
     }
+
 .page-title-form input:focus,
 .page-title-form input:hover {
     border: 2px solid #5E2750;

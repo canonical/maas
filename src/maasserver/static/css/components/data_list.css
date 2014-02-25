@@ -3,15 +3,19 @@
     margin: 0;
     padding: 0;
     }
+
 .data-list h4 {
     margin-bottom: 5px;
     }
+
 .data-list span {
     font-size: 16px;
     }
+
 .data-list .block {
     word-wrap: break-word;
     }
+
 .data-list li.separate {
     border-top: 1px solid #e5e2e0;
-}
+    }

@@ -3,68 +3,88 @@
     margin: 0;
     padding: 0;
     }
+
 .nav li {
     float: left;
     }
+
 .clear {
     clear: both;
     }
+
 .hidden {
     display: none;
     }
+
 .left {
     float: left;
     }
+
 .right {
     float: right;
     }
+
 img.icon {
     vertical-align: text-bottom;
     margin-right: 3px;
     }
+
 a.icon:hover {
     text-decoration: none;
     }
+
 .divider {
     clear: both;
     margin: 30px 0;
     border-top: 1px solid #e5e2e0;
     }
+
 /* Spacing */
 .block.space-top-small,
 .space-top-small {
     margin-top: 10px;
     }
+
 .space-top {
     margin-top: 20px;
     }
+
 .space-top-none {
     margin-top: 0;
     }
+
 .space-right-large {
     margin-right: 40px;
     }
+
 .space-right-small {
     margin-right: 10px;
     }
+
 .space-left-small {
     margin-left: 10px;
     }
+
 .space-bottom-none {
     margin-bottom: 0;
     }
+
 .space-bottom-small {
     margin-bottom: 5px;
     }
+
 .pad-top-small {
     padding-top: 10px;
     }
+
 .pad-top {
     padding-top: 20px;
     }
+
 .pad-top-large {
     padding-top: 40px;
     }
+
 .warning {
     color: #9F6000;
     }

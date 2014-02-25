@@ -120,7 +120,7 @@ test: build
 	echo $(wildcard bin/test.*) | xargs -n1 env
 
 lint: sources = $(wildcard *.py contrib/*.py) src templates twisted utilities etc
-lint: bin/flake8 lint-js lint-doc
+lint: bin/flake8 lint-js lint-css lint-doc
 	@find $(sources) -name '*.py' ! -path '*/migrations/*' \
 	    -print0 | xargs -r0 bin/flake8 --ignore=E123 --config=/dev/null
 

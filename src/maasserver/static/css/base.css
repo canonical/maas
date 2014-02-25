@@ -1,21 +1,26 @@
-html, body {
+html,
+body {
     margin: 0;
     padding: 0;
     }
+
 body {
     background: #2C001E url(../?img/bg_dots.png) repeat top center;
     }
+
 table {
     width: 100%;
     border-collapse: collapse;
     border-spacing: 0;
     }
+
 pre {
     background-color: #f2f2f2;
     padding: 5px 5px 5px 3px;
     display: block;
     overflow: auto;
     }
+
 #flash-messages .warning pre {
     background-color: #ECA918;
-}
+    }

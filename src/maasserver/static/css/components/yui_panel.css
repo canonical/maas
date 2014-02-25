@@ -2,6 +2,7 @@
     background-color: #000;
     opacity: 0.3;
     }
+
 .yui3-panel {
     background-color: #FFF;
     padding: 50px 80px 50px 80px;
@@ -11,19 +12,24 @@
     -webkit-box-shadow: 0 0 15px 0 rgba(0,0,0,1);
     box-shadow: 0 0 15px 0 rgba(0,0,0,1);
     }
+
 .yui3-widget-hd {
     margin-bottom: 30px;
     font-size: 24px;
     }
+
 .yui3-widget-ft {
     margin-top: 50px;
     }
+
 .yui3-widget-button-wrapper {
     width: 100%;
     }
+
 .yui3-panel .yui3-button {
     float: right;
     }
+
 .yui3-panel .yui3-button.link-button {
     float: left;
     padding-left: 0;
