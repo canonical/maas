@@ -70,17 +70,17 @@ Choosing a series to install
 You may have some specific reason to choose a particular version of Ubuntu
 to install on your nodes, perhaps based around package availability,
 hardware support or some other reason.
- 
-It is possible to choose a specific series from those available in a 
+
+It is possible to choose a specific series from those available in a
 number of ways.
 
 From the user interface
 ^^^^^^^^^^^^^^^^^^^^^^^
 
 The web-based user interface makes it easy to select which Ubuntu series you
-wish to install on an individual node. When either adding a node 
+wish to install on an individual node. When either adding a node
 manually, or on the node page when the node has been automatically
-discovered but before it is accepted, there is a drop down menu to select 
+discovered but before it is accepted, there is a drop down menu to select
 the version of Ubuntu you wish to install.
 
 .. image:: media/series.*
@@ -106,32 +106,32 @@ Altering the Preseed file
 -------------------------
 
 .. warning::
-  Do not try to alter the preseed files if you don't have a good 
-  understanding of what you are doing. Altering the installed version 
+  Do not try to alter the preseed files if you don't have a good
+  understanding of what you are doing. Altering the installed version
   of Ubuntu can prevent MAAS from working as intended, and may have
-  security and stability consequences. 
+  security and stability consequences.
 
-When MAAS commissions a node it installs a version of Ubuntu. The 
-installation is performed using a 'preseed' file, which is 
-effectively a list of answers to the questions you would get were 
+When MAAS commissions a node it installs a version of Ubuntu. The
+installation is performed using a 'preseed' file, which is
+effectively a list of answers to the questions you would get were
 you to run the installer manually.
-The preseed file used by MAAS is carefully made so that the 
+The preseed file used by MAAS is carefully made so that the
 target node can be brought up and do all the jobs expected of it.
-However, in exceptional circumstances, you may wish to alter the 
+However, in exceptional circumstances, you may wish to alter the
 pressed file to work around some issue.
 There are actually two preseed files, stored here::
 
   /etc/maas/preseeds/generic
   /etc/maas/preseeds/preseed-master
 
-The generic file actually references the preseed-master file, and is 
-used to set conditional parameters based on the type of series and 
+The generic file actually references the preseed-master file, and is
+used to set conditional parameters based on the type of series and
 architecture to install as well as to define the minimum set of install
-packages and to tidy up the PXE boot process if that has been used for 
-the node. Unless you have a specific need to change where install 
+packages and to tidy up the PXE boot process if that has been used for
+the node. Unless you have a specific need to change where install
 packages come from, you should not need to edit this file.
 
-For the more usual sorts of things you may wish to change, you should 
+For the more usual sorts of things you may wish to change, you should
 edit the preseed-master file. For example, depending on your network
 you may wish to change the clock settings::
 
@@ -147,7 +147,7 @@ find it better to run an ntp service on the MAAS controller and change
 the `ntp.ubuntu.com` in the last line for a more appropriate server.
 
 One thing you may wish to alter in the preseed file is the disk
-partitioning. This is a simple recipe that creates a swap partition and 
+partitioning. This is a simple recipe that creates a swap partition and
 uses the rest of the disk for one large root filesystem::
 
 	partman-auto/text/atomic_scheme ::
@@ -186,12 +186,12 @@ marks it as the primary partition. The other specifiers used are:
 *mountpoint{ / }*
 	Where to mount the partition.
 
-For more information on preseed options, you should refer to 
-`the official Ubuntu documentation 
+For more information on preseed options, you should refer to
+`the official Ubuntu documentation
 <https://help.ubuntu.com/12.04/installation-guide/i386/preseed-contents.html>`_
 
 .. note::
-  Future versions of MAAS are likely to replace this type of automatic 
+  Future versions of MAAS are likely to replace this type of automatic
   installation with a different installer.
 
 
@@ -200,18 +200,18 @@ Installing additional clusters
 
 In an environment comprising large numbers of nodes, it is likely that you will
 want to organise the nodes on a more distributed basis. The standard install of
-the MAAS region controller includes a cluster controller, but it is 
-possible to add additional cluster controllers to the configuration, as 
+the MAAS region controller includes a cluster controller, but it is
+possible to add additional cluster controllers to the configuration, as
 shown in the diagram below:
 
 .. image:: media/orientation_architecture-diagram.*
 
-Each cluster controller will need to run on a separate Ubuntu server. 
-Installing and configuring the software is straightforward though:: 
+Each cluster controller will need to run on a separate Ubuntu server.
+Installing and configuring the software is straightforward though::
 
   $ sudo apt-get install maas-cluster-controller
 
-This meta-package will install all the basic requirements of the system. 
+This meta-package will install all the basic requirements of the system.
 However, you may also wish or need to run DHCP and/or DNS services, in
 which case you should also specify these::
 
@@ -221,21 +221,21 @@ Configuring the cluster controller
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Once the packages are installed, the cluster controller needs to know
-where to look for the region controller. This is achieved using `dpkg` to 
+where to look for the region controller. This is achieved using `dpkg` to
 configure the software::
 
   $ dpkg-reconfigure maas-cluster-controller
 
 .. image:: media/cluster-config.*
 
-The configuration script should then bring up a screen where you can 
+The configuration script should then bring up a screen where you can
 enter the IP address of the region controller. Additionally, you will need
 to run the ``maas-import-pxe-files`` script to install the distro image files
 locally for commissioning::
 
   $ maas maas node-groups import-boot-images
 
-...and optionally set up the DHCP and DNS for 
+...and optionally set up the DHCP and DNS for
 the cluster by either:
 
 *Using the web UI*
@@ -244,7 +244,7 @@ the cluster by either:
 
 *Using the command line client*
   First :ref:`logging in to the API <api-key>` and then
-  :ref:`following this procedure <cli-dhcp>` 
+  :ref:`following this procedure <cli-dhcp>`
 
 
 Client-side DNS configuration

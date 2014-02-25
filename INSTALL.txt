@@ -207,7 +207,7 @@ Create a superuser account
 Once MAAS is installed, you'll need to create an administrator
 account::
 
-  $ sudo maas createadmin --username=root --email=MYEMAIL@EXAMPLE.COM 
+  $ sudo maas createadmin --username=root --email=MYEMAIL@EXAMPLE.COM
 
 Substitute your own email address for MYEMAIL@EXAMPLE.COM.  You may also
 use a different username for your administrator account, but "root" is a
@@ -261,7 +261,7 @@ If you want MAAS to control DHCP, you can either:
 
 #. Use the command line interface `maas` by first
    :ref:`logging in to the API <api-key>` and then
-   :ref:`following this procedure <cli-dhcp>` 
+   :ref:`following this procedure <cli-dhcp>`
 
 If you are manually configuring a DHCP server, you should take a look at
 :ref:`manual-dhcp`

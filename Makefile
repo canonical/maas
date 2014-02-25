@@ -120,16 +120,20 @@ test: build
 	echo $(wildcard bin/test.*) | xargs -n1 env
 
 lint: sources = $(wildcard *.py contrib/*.py) src templates twisted utilities etc
-lint: bin/flake8
+lint: bin/flake8 lint-js lint-doc
 	@find $(sources) -name '*.py' ! -path '*/migrations/*' \
 	    -print0 | xargs -r0 bin/flake8 --ignore=E123 --config=/dev/null
 
 pocketlint = $(call available,pocketlint,python-pocket-lint)
 
+# XXX jtv 2014-02-25: Clean up this lint, then make it part of "make lint".
 lint-css: sources = src/maasserver/static/css
 lint-css:
 	@find $(sources) -type f \
 	    -print0 | xargs -r0 $(pocketlint) --max-length=120
+
+lint-doc:
+	@./utilities/doc-lint
 
 lint-js: sources = src/maasserver/static/js
 lint-js:
@@ -199,6 +203,7 @@ define phony_targets
   install-dependencies
   lint
   lint-css
+  lint-doc
   lint-js
   man
   package

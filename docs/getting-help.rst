@@ -22,7 +22,7 @@ Gathering debugging information
 
 If your question is related to a problem related to a specific MAAS installation, we encourage you to gather debugging information and make it available before you head over to Ask Ubuntu or the IRC channel.  This way, you'll have all the required information handy for people who can help you.
 
-Gathering debugging information is a fully automated process that is performed with the help of `sosreport`_. 
+Gathering debugging information is a fully automated process that is performed with the help of `sosreport`_.
 
 If your MAAS server is running Ubuntu version 14.04 (Trusty Tahr) or later, you can get sosreport from the official archives::
 

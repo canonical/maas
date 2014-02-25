@@ -38,7 +38,7 @@ Introduction
 
 .. toctree::
    :maxdepth: 2
-   
+
    about
    orientation
    changelog

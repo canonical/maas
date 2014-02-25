@@ -478,13 +478,13 @@ Usage: maas *<profile>* node-group-interfaces [-d --debug] [-h
 
 tag
 ^^^
-The tag command is used  to manually alter tags, tagged nodes or 
-rebuild the automatic tags. 
+The tag command is used  to manually alter tags, tagged nodes or
+rebuild the automatic tags.
 
   For more information on how to use them effectively, please see
   :ref:`deploy-tags`
 
-Usage: maas <profile> tag read | update-nodes | rebuild 
+Usage: maas <profile> tag read | update-nodes | rebuild
 | update | nodes | delete
 
 

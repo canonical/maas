@@ -107,7 +107,7 @@ access it, there are a few things to try:
   #. Check that the hostname is correct - It may seem obvious, but check that
      the hostname is being resolved properly. Try running a browser (even a text
      mode one like lynx) on the same box as the MAAS server and navigating to
-     the page. If that doesn't work, try ``http://127.0.0.1/MAAS/``, which will 
+     the page. If that doesn't work, try ``http://127.0.0.1/MAAS/``, which will
      always point at the local server.
   #. If you are still getting "404 - Page not found" errors, check that the MAAS
      web interface has been installed in the right place. There should be a file
