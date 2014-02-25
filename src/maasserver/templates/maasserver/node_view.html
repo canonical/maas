@@ -91,20 +91,23 @@
       <h4><acronym title="Fully Qualified Domain Name">FQDN</acronym></h4>
         <span>{{ node.fqdn }}</span>
     </li>
-    <li id="macs" class="block size3">
-      <h4>MAC addresses</h4>
+    <li id="network-interfaces" class="block size5">
+      <h4>Network interfaces</h4>
       <span>
-        {# Semicolon-separated list of network interfaces. #}
-        {% for mac in node.macaddress_set.all %}
-        {{ mac }}{% if mac.get_networks %}
-        (on
-        {# Per network interface, comma-separated list of networks. #}
-        {% for network in mac.get_networks %}
-        <a href="{% url 'network-view' network.name %}">
-            {# Ugly formatting follows.  Can't have whitespace here. #}
-            {{ network.name }}</a>{% if not forloop.last %},
-            {% endif %}{% endfor %}){% endif %}{% if not forloop.last %};{% endif %}
-        {% endfor %}
+        <ul class="data-list">
+          {% for mac in node.macaddress_set.all %}
+          <li>
+            {{ mac }}
+            {% if mac.get_networks %}
+            (on
+            {# Per network interface, comma-separated list of networks. #}
+            {% for network in mac.get_networks %}
+            <a href="{% url 'network-view' network.name %}">
+                {{ network.name }}</a>{% if not forloop.last %},
+                {% endif %}{% endfor %}){% endif %}
+          </li>
+          {% endfor %}
+        </ul>
       </span>
     </li>
     <li class="block size3">

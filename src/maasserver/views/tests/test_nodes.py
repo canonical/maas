@@ -484,12 +484,12 @@ class NodeViewsTest(MAASServerTestCase):
             reverse('node-view', args=[mac.node.system_id]))
         self.assertEqual(httplib.OK, response.status_code)
 
-        [macs_section] = fromstring(response.content).cssselect('#macs')
-        self.assertEqual(
-            mac.mac_address,
-            get_one(macs_section.cssselect('span')).text_content().strip())
+        [interfaces_section] = fromstring(response.content).cssselect(
+            '#network-interfaces')
+        [listing] = get_one(interfaces_section.cssselect('span'))
+        self.assertEqual(mac.mac_address, listing.text_content().strip())
 
-    def test_view_node_joins_macs_with_semicolons(self):
+    def test_view_node_lists_macs_as_list_items(self):
         self.client_log_in()
         node = factory.make_node()
         factory.make_mac_address('11:11:11:11:11:11', node=node)
@@ -498,13 +498,15 @@ class NodeViewsTest(MAASServerTestCase):
         response = self.client.get(reverse('node-view', args=[node.system_id]))
         self.assertEqual(httplib.OK, response.status_code)
 
-        [macs_section] = fromstring(response.content).cssselect('#macs')
-        [span] = macs_section.cssselect('span')
+        [interfaces_section] = fromstring(response.content).cssselect(
+            '#network-interfaces')
+        [interfaces_list] = interfaces_section.cssselect('ul')
+        interfaces = interfaces_list.cssselect('li')
         self.assertEqual(
-            ['11:11:11:11:11:11;', '22:22:22:22:22:22'],
-            span.text_content().split())
+            ['11:11:11:11:11:11', '22:22:22:22:22:22'],
+            [interface.text_content().strip() for interface in interfaces])
 
-    def test_view_node_links_macs_to_networks(self):
+    def test_view_node_links_network_interfaces_to_networks(self):
         self.client_log_in()
         network = factory.make_network()
         mac = factory.make_mac_address(networks=[network])
@@ -513,12 +515,14 @@ class NodeViewsTest(MAASServerTestCase):
             reverse('node-view', args=[mac.node.system_id]))
         self.assertEqual(httplib.OK, response.status_code)
 
-        [macs_section] = fromstring(response.content).cssselect('#macs')
-        [span] = macs_section.cssselect('span')
+        [interfaces_section] = fromstring(response.content).cssselect(
+            '#network-interfaces')
+        [interfaces_list] = interfaces_section.cssselect('ul')
+        [interface] = interfaces_list.cssselect('li')
         self.assertEqual(
             "%s (on %s)" % (mac.mac_address, network.name),
-            ' '.join(span.text_content().split()))
-        [link] = span.cssselect('a')
+            ' '.join(interface.text_content().split()))
+        [link] = interface.cssselect('a')
         self.assertEqual(network.name, link.text_content().strip())
         self.assertEqual(
             reverse('network-view', args=[network.name]),
@@ -534,11 +538,13 @@ class NodeViewsTest(MAASServerTestCase):
         self.assertEqual(httplib.OK, response.status_code)
 
         sorted_names = sorted(network.name for network in networks)
-        [macs_section] = fromstring(response.content).cssselect('#macs')
-        [span] = macs_section.cssselect('span')
+        [interfaces_section] = fromstring(response.content).cssselect(
+            '#network-interfaces')
+        [interfaces_list] = interfaces_section.cssselect('ul')
+        [interface] = interfaces_list.cssselect('li')
         self.assertEqual(
             "%s (on %s)" % (mac.mac_address, ', '.join(sorted_names)),
-            ' '.join(span.text_content().split()))
+            ' '.join(interface.text_content().split()))
 
     def test_view_node_displays_link_to_edit_if_user_owns_node(self):
         self.client_log_in()
@@ -1370,7 +1376,7 @@ class NodeDeleteMacTest(MAASServerTestCase):
         mac_delete_link = reverse('mac-delete', args=[node.system_id, mac])
         response = self.client.get(mac_delete_link)
         self.assertIn(
-            'Are you sure you want to delete the MAC address "%s"' %
+            'Are you sure you want to delete network interface "%s"' %
             mac.mac_address,
             response.content)
 
