@@ -79,6 +79,7 @@ from provisioningserver.tasks import (
     rndc_command,
     RNDC_COMMAND_MAX_RETRY,
     setup_rndc_configuration,
+    stop_dhcp_server,
     update_node_tags,
     UPDATE_NODE_TAGS_MAX_RETRY,
     write_dhcp_config,
@@ -315,12 +316,16 @@ class TestDHCPTasks(PservTestCase):
              celery_config.DHCP_INTERFACES_FILE, "--mode", "0644"], stdin=PIPE)
 
     def test_restart_dhcp_server_sends_command(self):
-        recorder = FakeMethod()
-        self.patch(tasks, 'call_and_check', recorder)
+        self.patch(tasks, 'call_and_check')
         restart_dhcp_server()
-        self.assertEqual(
-            (1, (['sudo', '-n', 'service', 'maas-dhcp-server', 'restart'],)),
-            (recorder.call_count, recorder.extract_args()[0]))
+        tasks.call_and_check.assert_called_once_with(
+            ['sudo', '-n', 'service', 'maas-dhcp-server', 'restart'])
+
+    def test_stop_dhcp_server_sends_command(self):
+        self.patch(tasks, 'call_and_check')
+        stop_dhcp_server()
+        tasks.call_and_check.assert_called_once_with(
+            ['sudo', '-n', 'service', 'maas-dhcp-server', 'stop'])
 
 
 def assertTaskRetried(runner, result, nb_retries, task_name):

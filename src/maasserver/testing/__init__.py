@@ -17,10 +17,13 @@ __all__ = [
     "get_content_links",
     "get_data",
     "get_prefixed_form_data",
+    "NoReceivers",
     "reload_object",
     "reload_objects",
     ]
 
+import collections
+from contextlib import contextmanager
 import httplib
 import os
 from urlparse import urlparse
@@ -139,3 +142,24 @@ def get_content_links(response, element='#content'):
         for matching_node in doc.cssselect(element)
         ]
     return sum(links_per_matching_node, [])
+
+
+@contextmanager
+def NoReceivers(signals):
+    """Disconnect signal receivers from the supplied signals.
+    
+    :param signals: A signal (or iterable of signals) for which to disable
+        signal receivers while in the context manager.
+    :type signal: django.dispatch.Signal
+    """
+    saved = dict()
+    if not isinstance(signals, collections.Iterable):
+        signals = [signals]
+    for signal in signals:
+        saved[signal] = signal.receivers
+        signal.receivers = []
+    try:
+        yield
+    finally:
+        for signal in signals:
+            signal.receivers = saved[signal]

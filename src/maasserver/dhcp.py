@@ -29,24 +29,30 @@ from provisioningserver.tasks import (
 def get_interfaces_managed_by(nodegroup):
     """Return `NodeGroupInterface` objects for which `nodegroup` manages DHCP.
 
-    Returns only interfaces for which MAAS is supposed to serve DHCP.  If DHCP
-    is disabled, or the node group is not accepted, an empty list will be
-    returned.  Interfaces whose DHCP is not managed are not returned in any
-    case.
+    Returns only interfaces for which MAAS is supposed to serve DHCP.
+    If the node group is not accepted, an empty list will be returned.
+    Interfaces whose DHCP is not managed are not returned in any case.
     """
-    if settings.DHCP_CONNECT and nodegroup.status == NODEGROUP_STATUS.ACCEPTED:
+    if nodegroup.status == NODEGROUP_STATUS.ACCEPTED:
         return nodegroup.get_managed_interfaces()
-    else:
-        return []
+
+    return None
 
 
 def configure_dhcp(nodegroup):
     """Write the DHCP configuration file and restart the DHCP server."""
+    # Let's get this out of the way first up shall we?
+    if not settings.DHCP_CONNECT:
+        # For the uninitiated, DHCP_CONNECT is set, by default, to False
+        # in all tests and True in non-tests.  This avoids unnecessary
+        # calls to async tasks.
+        return
+
     # Circular imports.
     from maasserver.dns import get_dns_server_address
 
     interfaces = get_interfaces_managed_by(nodegroup)
-    if interfaces == []:
+    if interfaces is None:
         return
 
     # Make sure this nodegroup has a key to communicate with the dhcp

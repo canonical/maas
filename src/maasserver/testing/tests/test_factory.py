@@ -20,7 +20,9 @@ from maasserver.models import (
     Network,
     NodeGroup,
     )
-from maasserver.testing import reload_object
+from maasserver.testing import (
+    reload_object,
+    )
 from maasserver.testing.factory import factory
 from maastesting.factory import TooManyRandomRetries
 from maastesting.testcase import MAASTestCase

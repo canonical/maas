@@ -16,12 +16,17 @@ __all__ = []
 
 import httplib
 
+from django.db.models.signals import (
+    post_save,
+    pre_save,
+    )
 from django.http import (
     HttpResponse,
     HttpResponseRedirect,
     )
 from maasserver.testing import (
     extract_redirect,
+    NoReceivers,
     reload_object,
     reload_objects,
     )
@@ -97,3 +102,37 @@ class TestHelpers(TestModelMixin, MAASServerTestCase):
         dead_obj = objs.pop(0)
         TestModel.objects.filter(id=dead_obj.id).delete()
         self.assertItemsEqual(objs, reload_objects(TestModel, objs))
+
+
+class TestNoReceivers(MAASServerTestCase):
+
+    def test_clears_and_restores_signal(self):
+        # post_save already has some receivers on it, but make sure.
+        self.assertNotEqual(0, len(post_save.receivers))
+        old_values = list(post_save.receivers)
+
+        with NoReceivers(post_save):
+            self.assertEqual([], post_save.receivers)
+
+        self.assertItemsEqual(old_values, post_save.receivers)
+
+    def test_clears_and_restores_many_signals(self):
+        self.assertNotEqual(0, len(post_save.receivers))
+        self.assertNotEqual(0, len(pre_save.receivers))
+        old_pre_values = pre_save.receivers
+        old_post_values = post_save.receivers
+        
+        with NoReceivers((post_save, pre_save)):
+            self.assertEqual([], post_save.receivers)
+            self.assertEqual([], pre_save.receivers)
+        
+        self.assertItemsEqual(old_pre_values, pre_save.receivers)
+        self.assertItemsEqual(old_post_values, post_save.receivers)
+
+    def test_leaves_some_other_signals_alone(self):
+        self.assertNotEqual(0, len(post_save.receivers))
+
+        old_pre_values = pre_save.receivers
+
+        with NoReceivers(post_save):
+            self.assertItemsEqual(old_pre_values, pre_save.receivers)

@@ -19,6 +19,7 @@ __all__ = [
     'rndc_command',
     'setup_rndc_configuration',
     'restart_dhcp_server',
+    'stop_dhcp_server',
     'write_dhcp_config',
     'write_dns_config',
     'write_dns_zone_config',
@@ -343,6 +344,12 @@ def write_dhcp_config(callback=None, **kwargs):
 def restart_dhcp_server():
     """Restart the DHCP server."""
     call_and_check(['sudo', '-n', 'service', 'maas-dhcp-server', 'restart'])
+
+
+@task
+def stop_dhcp_server():
+    """Stop a DHCP server."""
+    call_and_check(['sudo', '-n', 'service', 'maas-dhcp-server', 'stop'])
 
 
 @task

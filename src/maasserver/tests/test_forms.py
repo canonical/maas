@@ -17,6 +17,7 @@ __all__ = []
 import json
 
 from django import forms
+from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -85,6 +86,7 @@ from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import map_enum
 from metadataserver.models import CommissioningScript
 from netaddr import IPNetwork
+from provisioningserver import tasks
 from testtools import TestCase
 from testtools.matchers import (
     AllMatch,
@@ -726,13 +728,13 @@ class TestNodeGroupInterfaceForm(MAASServerTestCase):
             {'ip': ['Enter a valid IPv4 or IPv6 address.']}, form._errors)
 
     def test_NodeGroupInterfaceForm_can_save_fields_being_None(self):
-        settings = make_interface_settings()
-        settings['management'] = NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED
+        int_settings = make_interface_settings()
+        int_settings['management'] = NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED
         for field_name in nullable_fields:
-            del settings[field_name]
+            del int_settings[field_name]
         nodegroup = factory.make_node_group()
         form = NodeGroupInterfaceForm(
-            data=settings, instance=NodeGroupInterface(nodegroup=nodegroup))
+            data=int_settings, instance=NodeGroupInterface(nodegroup=nodegroup))
         interface = form.save()
         field_values = [
             getattr(interface, field_name) for field_name in nullable_fields]
@@ -761,26 +763,12 @@ class TestNodeGroupInterfaceForeignDHCPForm(MAASServerTestCase):
         self.assertFalse(form.is_valid())
 
     def test_report_foreign_dhcp_does_not_trigger_update_signal(self):
+        self.patch(settings, "DHCP_CONNECT", False)
         nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
         [interface] = nodegroup.get_managed_interfaces()
 
-        # Patch out the DHCP rewrites as triggered by some NodeGroupInterface
-        # changes, both to stop them from happening in a test and to detect
-        # whether the signal was actually fired.
-        # We can't patch the signal handlers themselves, because they are
-        # already set up.  Nor can we patch configure_dhcp, because the signal
-        # handlers import it locally to avoid import cycles.  Patching this
-        # underlying function instead will stop configure_dhcp() from doing
-        # anything real.
-        patch = self.patch(dhcp_module, 'get_interfaces_managed_by')
-        patch.return_value = []
-        # The patch is in fact called when we make changes to the interface
-        # that should trigger a DHCP config rewrite.
-        interface.interface = factory.make_name('eth')
-        interface.save()
-        self.assertNotEqual([], patch.mock_calls)
-        # Reset the calls list for the actual test.
-        patch.mock_calls = []
+        self.patch(settings, "DHCP_CONNECT", True)
+        self.patch(tasks, 'write_dhcp_config')
 
         foreign_dhcp_ip = factory.getRandomIPAddress()
         form = NodeGroupInterfaceForeignDHCPForm(
@@ -791,7 +779,7 @@ class TestNodeGroupInterfaceForeignDHCPForm(MAASServerTestCase):
         form.save()
         self.assertEqual(
             foreign_dhcp_ip, reload_object(interface).foreign_dhcp_ip)
-        self.assertEqual([], patch.mock_calls)
+        tasks.write_dhcp_config.apply_async.assert_has_calls([])
 
 
 class TestValidateNonoverlappingNetworks(TestCase):

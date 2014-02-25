@@ -33,6 +33,7 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import map_enum
 from maastesting.celery import CeleryFixture
+from mock import ANY
 from netaddr import (
     IPAddress,
     IPNetwork,
@@ -59,13 +60,7 @@ class TestDHCP(MAASServerTestCase):
             list(nodegroup.nodegroupinterface_set.all()),
             managed_interfaces)
 
-    def test_get_interfaces_managed_by_obeys_DHCP_CONNECT(self):
-        self.patch(settings, "DHCP_CONNECT", False)
-        nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
-        self.assertEqual([], get_interfaces_managed_by(nodegroup))
-
-    def test_get_interfaces_managed_by_returns_empty_if_not_accepted(self):
-        self.patch(settings, "DHCP_CONNECT", True)
+    def test_get_interfaces_managed_by_returns_None_if_not_accepted(self):
         unaccepted_statuses = set(map_enum(NODEGROUP_STATUS).values())
         unaccepted_statuses.remove(NODEGROUP_STATUS.ACCEPTED)
         managed_interfaces = {
@@ -74,8 +69,14 @@ class TestDHCP(MAASServerTestCase):
             for status in unaccepted_statuses
             }
         self.assertEqual(
-            {status: [] for status in unaccepted_statuses},
+            {status: None for status in unaccepted_statuses},
             managed_interfaces)
+
+    def test_configure_dhcp_obeys_DHCP_CONNECT(self):
+        self.patch(settings, "DHCP_CONNECT", False)
+        self.patch(dhcp, 'write_dhcp_config')
+        factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
+        self.assertEqual(0, dhcp.write_dhcp_config.apply_async.call_count)
 
     def test_configure_dhcp_writes_dhcp_config(self):
         mocked_task = self.patch(dhcp, 'write_dhcp_config')
@@ -203,6 +204,19 @@ class TestDHCP(MAASServerTestCase):
         nodegroup.accept()
         args, kwargs = task.subtask.call_args
         self.assertEqual(nodegroup.work_queue, kwargs['options']['queue'])
+
+    def test_write_dhcp_config_called_when_no_managed_interfaces(self):
+        nodegroup = factory.make_node_group(
+            status=NODEGROUP_STATUS.ACCEPTED,
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
+        [interface] = nodegroup.nodegroupinterface_set.all()
+        self.patch(settings, "DHCP_CONNECT", True)
+        self.patch(tasks, 'sudo_write_file')
+        self.patch(dhcp, 'write_dhcp_config')
+        interface.management = NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED
+        interface.save()
+        dhcp.write_dhcp_config.apply_async.assert_called_once_with(
+            queue=nodegroup.work_queue, kwargs=ANY)
 
     def test_dhcp_config_gets_written_when_interface_IP_changes(self):
         nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)

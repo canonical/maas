@@ -245,7 +245,8 @@ class Factory(maastesting.factory.Factory):
             ip_range_low=ip_range_low, ip_range_high=ip_range_high,
             interface=interface, management=management)
         interface_settings.update(kwargs)
-        ng = NodeGroup.objects.new(name=name, uuid=uuid, **interface_settings)
+        ng = NodeGroup.objects.new(
+            name=name, uuid=uuid, **interface_settings)
         ng.cluster_name = cluster_name
         ng.status = status
         ng.maas_url = maas_url
