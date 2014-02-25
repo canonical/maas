@@ -43,6 +43,7 @@ def get_power_types():
         "moonshot": "iLO4 Moonshot Chassis",
         "sm15k": "SeaMicro 15000",
         "amt": "Intel AMT",
+        "dli": "Digital Loggers, Inc. PDU",
         }
 
 
@@ -79,6 +80,9 @@ class POWER_TYPE:
 
     # Intel Active Management Technology
     AMT = 'amt'
+
+    # Digital Loggers, Inc. PDU
+    DLI = 'dli'
 
 
 # Django 'Choices' format structure for its field selection mechanism.

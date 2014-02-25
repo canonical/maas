@@ -1,0 +1,9 @@
+#!/bin/sh
+# -*- mode: shell-script -*-
+#
+# Control a system via the Digital Loggers, Inc. RESTful interface
+#
+{{py: power_mode = 'ON' if power_change == 'on' else 'OFF' }}
+
+wget --auth-no-challenge -O /dev/null \
+    http://{{power_user}}:{{power_pass}}@{{power_address}}/outlet?{{system_id}}={{power_mode}}

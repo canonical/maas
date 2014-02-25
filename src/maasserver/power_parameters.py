@@ -204,6 +204,15 @@ JSON_POWER_TYPE_PARAMETERS = [
             make_json_field('power_pass', "Power password"),
         ],
     },
+    {
+        'name': 'dli',
+        'fields': [
+            make_json_field('system_id', "Outlet ID"),
+            make_json_field('power_address', "Power address"),
+            make_json_field('power_user', "Power user"),
+            make_json_field('power_pass', "Power password"),
+        ],
+    },
 ]
 
 
