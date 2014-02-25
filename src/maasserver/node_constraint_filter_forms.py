@@ -281,6 +281,14 @@ class AcquireNodeForm(RenamableFieldsForm):
         return super(AcquireNodeForm, self).clean()
 
     def filter_nodes(self, nodes):
+        """Return the subset of nodes that match the form's constraints.
+
+        :param nodes:  The set of nodes on which the form should apply
+            constraints.
+        :type nodes: `django.db.models.query.QuerySet`
+        :return: A QuerySet of the nodes that match the form's constraints.
+        :rtype: `django.db.models.query.QuerySet`
+        """
         filtered_nodes = nodes
 
         # Filter by hostname.
@@ -366,4 +374,4 @@ class AcquireNodeForm(RenamableFieldsForm):
             filtered_nodes = filtered_nodes.extra(
                 where=[where], params=params)
 
-        return filtered_nodes
+        return filtered_nodes.distinct()

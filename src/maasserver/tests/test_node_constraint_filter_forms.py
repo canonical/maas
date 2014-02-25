@@ -161,7 +161,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
         nodes = [factory.make_node() for i in range(3)]
         form = AcquireNodeForm(data={})
         self.assertTrue(form.is_valid())
-        self.assertItemsEqual(nodes, form.filter_nodes(nodes))
+        self.assertItemsEqual(nodes, Node.objects.all())
 
     def test_hostname(self):
         nodes = [factory.make_node() for i in range(3)]
@@ -576,3 +576,15 @@ class TestAcquireNodeForm(MAASServerTestCase):
                 'mem': ["Invalid memory: number of MB required."],
             }),
             (form.is_valid(), form.errors))
+
+    def test_returns_distinct_nodes(self):
+        network = factory.make_network()
+        node = factory.make_node()
+        # Create multiple NICs for `node` connected to `network`.
+        [
+            factory.make_mac_address(node=node, networks=[network])
+            for _ in range(3)
+            ]
+        self.assertConstrainedNodes(
+            {node},
+            {'networks': [network.name]})
