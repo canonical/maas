@@ -103,31 +103,42 @@ MAAS which nodes are connected to each network.
 
 Nodes connect to networks through their network interface cards.  Each of
 these NICs has a MAC address, and so, a connection between a node and a
-network is associated with one of the node's MAC addresses.  The MAC address
-must be registered with MAAS before it can be attached to a network.  A node's
-MAC addresses are normally registered
+network is associated with one of the node's MAC addresses.  The network
+interface and its MAC address must be registered with MAAS before it can be
+attached to a network.  A node's network interfaces are normally registered
 :ref:`automatically when the node is enlisted <auto-enlist>`, but in some
-situations you may need to do this manually by editing the node in the web user
-interface.
+situations you may need to do this manually in the web user interface.
 
-``TODO: Document new UI for connecting MACs to networks.``
+To inform MAAS about nodes' connections to a network through the user
+interface, you must either specify them when creating the network, or edit the
+network's details.  You can get to a network's edit page either by browsing to
+its details page and clicking the "Edit" link in the right-hand bar, or by
+clicking on the "pencil" icon for the network's entry in the networks listing
+under the "Networks" section in the top bar.
 
-``TODO: Update API description for the new design.``
+On the network add/edit pages, you will see a selection box where you can
+select which network interfaces are connected to that network, as well as the
+nodes to which they belong.
 
-The :ref:`region-controller API <region-controller-api>` has two ways of
-connecting nodes to networks: you can either connect a node to any number of
-networks at the same time, much like you would in the web user interface, with
-a ``POST`` to the node's ``connect_networks`` method.  Or, you can connect any
-number of nodes to a network through a ``POST`` to the network's
-``connect_macs`` method.  Either of these will accept empty lists, and
-connecting a node and a network that are already connected is not an error.
+.. image:: media/connect-nodes-to-network.png
+
+The box lets you select multiple network interfaces, even if they belong to
+the same node.  Click "Save network" to make your changes permanent.
+
+You can also connect nodes to networks using the
+:ref:`region-controller API <region-controller-api>`.  A network has a ``POST``
+method ``connect_macs``, which lets you connect any number of network
+interfaces to the network in one call.  The network interfaces are identified
+as a list of MAC addresses.  The list may also be empty (in which case the
+call does nothing), and connecting a network and a network interface that are
+already connected is not an error.
 
 Connecting a node to a network does not affect any other connections between
-the node and other networks, or between the network and other nodes.  There is
-a separate pair of methods, ``disconnect_networks`` on the node and
-``disconnect_macs`` on the network, to remove connections between the two.
-Again, empty lists are accepted and disconnecting a node from a network that
-it is not connected to is not an error.
+the node and other networks, or between the network and other nodes.  A
+matching ``POST`` method, ``disconnect_macs``, removes connections between a
+network and network interfaces.  Again, empty lists are accepted and
+disconnecting a node from a network that it is not connected to is not an
+error.
 
 Future versions of MAAS may detect and register some of the networks and their
 connections to nodes automatically.
