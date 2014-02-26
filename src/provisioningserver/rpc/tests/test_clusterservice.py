@@ -20,7 +20,11 @@ import os.path
 
 from fixtures import EnvironmentVariable
 from maastesting.factory import factory
-from maastesting.matchers import Provides
+from maastesting.matchers import (
+    MockCalledOnceWith,
+    MockCalledWith,
+    Provides,
+    )
 from maastesting.testcase import MAASTestCase
 from mock import (
     call,
@@ -178,7 +182,7 @@ class TestClusterClientService(MAASTestCase):
         self.assertIs(
             sentinel.randint,
             ClusterClientService._get_random_interval())
-        random.randint.assert_called_once_with(30, 90)
+        self.assertThat(random.randint, MockCalledOnceWith(30, 90))
 
     def test__update_interval(self):
         service = ClusterClientService(Clock())
@@ -228,7 +232,7 @@ class TestClusterClientService(MAASTestCase):
         service = ClusterClientService(Clock())
         _update_connections = self.patch(service, "_update_connections")
         service.startService()
-        _update_connections.assert_called_once_with({
+        self.assertThat(_update_connections, MockCalledOnceWith({
             "host2:pid=3003": [
                 ["2.2.2.2", 5555],
             ],
@@ -240,7 +244,7 @@ class TestClusterClientService(MAASTestCase):
                 ["1.1.1.1", 1111],
                 ["1.1.1.2", 2222],
             ],
-        })
+        }))
 
     @inlineCallbacks
     def test__update_connections_initially(self):
@@ -260,7 +264,7 @@ class TestClusterClientService(MAASTestCase):
             _make_connection_expected,
             _make_connection.call_args_list)
 
-        _drop_connection.assert_not_called()
+        self.assertEqual([], _drop_connection.mock_calls)
 
     @inlineCallbacks
     def test__update_connections_connect_error_is_logged_tersely(self):
@@ -273,8 +277,9 @@ class TestClusterClientService(MAASTestCase):
         eventloops = {"an-event-loop": [("hostname", 1234)]}
         yield service._update_connections(eventloops)
 
-        _make_connection.assert_called_once_with(
-            "an-event-loop", ("hostname", 1234))
+        self.assertThat(
+            _make_connection,
+            MockCalledOnceWith("an-event-loop", ("hostname", 1234)))
 
         self.assertEqual(
             "Event-loop an-event-loop (hostname:1234): Connection "
@@ -291,8 +296,9 @@ class TestClusterClientService(MAASTestCase):
         eventloops = {"an-event-loop": [("hostname", 1234)]}
         yield service._update_connections(eventloops)
 
-        _make_connection.assert_called_once_with(
-            "an-event-loop", ("hostname", 1234))
+        self.assertThat(
+            _make_connection,
+            MockCalledOnceWith("an-event-loop", ("hostname", 1234)))
 
         self.assertDocTestMatches(
             """\
@@ -334,9 +340,10 @@ class TestClusterClientService(MAASTestCase):
 
         # A connection is made for host3's event-loop, and the
         # connection to host2's event-loop is dropped.
-        _make_connection.assert_called_once_with(
-            host3client.eventloop, host3client.address)
-        _drop_connection.assert_called_with(host2client)
+        self.assertThat(
+            _make_connection,
+            MockCalledOnceWith(host3client.eventloop, host3client.address))
+        self.assertThat(_drop_connection, MockCalledWith(host2client))
 
     def test__make_connection(self):
         service = ClusterClientService(Clock())
@@ -372,7 +379,9 @@ class TestClusterClientService(MAASTestCase):
         connection = Mock()
         service = ClusterClientService(Clock())
         service._drop_connection(connection)
-        connection.transport.loseConnection.assert_called_once_with()
+        self.assertThat(
+            connection.transport.loseConnection,
+            MockCalledOnceWith())
 
 
 class TestClusterClient(MAASTestCase):

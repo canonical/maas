@@ -1,4 +1,4 @@
-# Copyright 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for import script's iSCSI code."""
@@ -20,6 +20,7 @@ import subprocess
 from textwrap import dedent
 
 from maastesting.factory import factory
+from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from provisioningserver.import_images import tgt as tgt_module
 from provisioningserver.import_images.tgt import (
@@ -84,11 +85,11 @@ class TestTGT(MAASTestCase):
 
         tgt_admin_delete(target)
 
-        run.assert_called_once_with([
+        self.assertThat(run, MockCalledOnceWith([
             "tgt-admin",
             "--conf", "/etc/tgt/targets.conf",
             "--delete", prefix_target_name(target),
-            ])
+            ]))
 
     def test_tgt_admin_update_calls_tgt_admin(self):
         check_call = self.patch(subprocess, 'check_call')
@@ -99,12 +100,12 @@ class TestTGT(MAASTestCase):
 
         tgt_admin_update(target_dir, target)
 
-        check_call.assert_called_once_with([
+        self.assertThat(check_call, MockCalledOnceWith([
             'tgt-admin',
             '--conf', '/etc/tgt/targets.conf',
             '--update',
             full_name,
-            ])
+            ]))
 
     def test_tgt_admin_update_detects_target_not_created(self):
         self.patch(subprocess, 'check_call')
@@ -138,11 +139,11 @@ class TestTGT(MAASTestCase):
 
         target_exists(target_name)
 
-        check_output.assert_called_once_with([
+        self.assertThat(check_output, MockCalledOnceWith([
             "tgt-admin",
             '--conf', '/etc/tgt/targets.conf',
             '--show',
-            ])
+            ]))
 
     def test_target_exists_reecognises_target_line(self):
         target_name = factory.make_name('target')
