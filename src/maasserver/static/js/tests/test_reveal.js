@@ -1,4 +1,4 @@
-/* Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+/* Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  */
 
@@ -160,11 +160,11 @@ suite.add(new Y.maas.testing.TestCase({
         var div = this.make_div('<pre>Content here</pre>');
         var content = div.one('pre');
         var original_height = (
-            parseInt(content.getStyle('height')) +
-            parseInt(content.getStyle('marginTop')) +
-            parseInt(content.getStyle('marginBottom')) +
-            parseInt(content.getStyle('paddingTop')) +
-            parseInt(content.getStyle('paddingBottom')));
+            parseInt(content.getStyle('height'), 10) +
+            parseInt(content.getStyle('marginTop'), 10) +
+            parseInt(content.getStyle('marginBottom'), 10) +
+            parseInt(content.getStyle('paddingTop'), 10) +
+            parseInt(content.getStyle('paddingBottom'), 10));
 
         var revealer = new module.Reveal({
             linkNode: this.make_link(),
@@ -180,7 +180,7 @@ suite.add(new Y.maas.testing.TestCase({
                     "The content div was not revealed.");
                 Y.Assert.areEqual(
                     original_height,
-                    parseInt(div.getStyle('height')), 
+                    parseInt(div.getStyle('height'), 10),
                     "The content div was not resized to its original height.");
             });
         });

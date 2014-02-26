@@ -1,4 +1,4 @@
-/* Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+/* Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
  * Widget to expand (make visible) or fold (make invisible) a content div,
@@ -100,7 +100,7 @@ Reveal.ATTRS = {
 // Return a style attribute for a node, as an int.
 // Any suffix to the number, such as the typical "px," is ignored.
 function get_style_int(node, attribute) {
-    return parseInt(node.getStyle(attribute));
+    return parseInt(node.getStyle(attribute), 10);
 }
 
 

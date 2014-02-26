@@ -1,4 +1,4 @@
-/* Copyright 2012 Canonical Ltd.  This software is licensed under the
+/* Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  */
 
@@ -26,7 +26,7 @@ suite.add(new Y.maas.testing.TestCase({
         Y.Assert.areNotEqual(
             Y.maas.enums.NODE_STATUS.READY,
             Y.maas.enums.NODE_STATUS.RETIRED,
-            "Different values of an enum were equal somehow.")
+            "Different values of an enum were equal somehow.");
     }
 }));
 

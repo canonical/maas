@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Generate JavaScript enum definitions based on Python definitions.
@@ -30,6 +30,7 @@ from datetime import datetime
 from itertools import chain
 import json
 from operator import attrgetter
+import os.path
 import sys
 from textwrap import dedent
 
@@ -48,7 +49,7 @@ YUI.add('maas.enums', function(Y) {
 Y.log('loading maas.enums');
 var module = Y.namespace('maas.enums');
 """ % {
-    'script': sys.argv[0],
+    'script': os.path.basename(sys.argv[0]),
     'timestamp': datetime.now(),
 })
 
@@ -81,9 +82,12 @@ def get_enums(filename):
 
 def serialize_enum(enum):
     """Represent a MAAS enum class in JavaScript."""
-    return "module.%s = %s;\n" % (
-        enum.__name__,
-        json.dumps(map_enum(enum), indent=4, sort_keys=True))
+    definitions = json.dumps(map_enum(enum), indent=4, sort_keys=True)
+    definitions = '\n'.join(
+        line.rstrip()
+        for line in definitions.splitlines()
+        )
+    return "module.%s = %s;\n" % (enum.__name__, definitions)
 
 
 def parse_args():

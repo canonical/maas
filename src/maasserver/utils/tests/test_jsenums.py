@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.utils.jsenums`."""
@@ -39,7 +39,7 @@ class TestFunctions(MAASTestCase):
         # indented correctly.
         self.assertEqual(
             'module.ENUM = {\n'
-            '    "ALICE": 1, \n'
+            '    "ALICE": 1,\n'
             '    "BOB": 2\n'
             '};\n',
             serialize_enum(ENUM))
