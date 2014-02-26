@@ -15,9 +15,17 @@ __metaclass__ = type
 __all__ = []
 
 from maastesting import matchers
-from maastesting.matchers import IsCallable
+from maastesting.matchers import (
+    IsCallable,
+    MockAnyCall,
+    MockCalledOnceWith,
+    MockCalledWith,
+    )
 from maastesting.testcase import MAASTestCase
-from mock import sentinel
+from mock import (
+    Mock,
+    sentinel,
+    )
 from testtools.matchers import Mismatch
 
 
@@ -48,3 +56,96 @@ class TestIsCallable(MAASTestCase):
         self.assertEqual(
             "%r is not callable" % sentinel.function,
             result.describe())
+
+
+class MockTestMixin:
+
+    def assertMismatch(self, result, message):
+        self.assertIsInstance(result, Mismatch)
+        self.assertIn(message, result.describe())
+
+
+class TestMockCalledWith(MAASTestCase, MockTestMixin):
+
+    def test_returns_none_when_matches(self):
+        mock = Mock()
+        mock(1, 2, frob=5, nob=6)
+
+        matcher = MockCalledWith(1, 2, frob=5, nob=6)
+        result = matcher.match(mock)
+        self.assertIsNone(result)
+
+    def test_returns_mismatch_when_does_not_match(self):
+        mock = Mock()
+        mock(1, 2, a=5)
+
+        matcher = MockCalledWith(9, 2, a=5)
+        result = matcher.match(mock)
+        self.assertMismatch(result, "Expected call:")
+
+    def test_str(self):
+        matcher = MockCalledWith(1, a=2)
+        self.assertEqual(
+            "MockCalledWith(args=(1,), kwargs={'a': 2})", matcher.__str__())
+
+
+class TestMockCalledOnceWith(MAASTestCase, MockTestMixin):
+
+    def test_returns_none_when_matches(self):
+        mock = Mock()
+        mock(1, 2, frob=5, nob=6)
+
+        matcher = MockCalledOnceWith(1, 2, frob=5, nob=6)
+        result = matcher.match(mock)
+        self.assertIsNone(result)
+
+    def test_returns_mismatch_when_multiple_calls(self):
+        mock = Mock()
+        mock(1, 2, frob=5, nob=6)
+        mock(1, 2, frob=5, nob=6)
+
+        matcher = MockCalledOnceWith(1, 2, frob=5, nob=6)
+        result = matcher.match(mock)
+        self.assertMismatch(result, "Expected to be called once")
+
+    def test_returns_mismatch_when_single_call_does_not_match(self):
+        mock = Mock()
+        mock(1, 2, a=5)
+
+        matcher = MockCalledOnceWith(9, 2, a=5)
+        result = matcher.match(mock)
+        self.assertMismatch(result, "Expected call:")
+
+    def test_str(self):
+        matcher = MockCalledOnceWith(1, a=2)
+        self.assertEqual(
+            "MockCalledOnceWith(args=(1,), kwargs={'a': 2})",
+            matcher.__str__())
+
+
+class TestMockAnyCall(MAASTestCase, MockTestMixin):
+
+    def test_returns_none_when_matches(self):
+        mock = Mock()
+        mock(1, 2, frob=5, nob=6)
+
+        matcher = MockAnyCall(1, 2, frob=5, nob=6)
+        result = matcher.match(mock)
+        self.assertIsNone(result)
+
+    def test_returns_none_when_multiple_calls(self):
+        mock = Mock()
+        mock(1, 2, frob=5, nob=6)
+        mock(1, 2, frob=5, nob=6)
+
+        matcher = MockAnyCall(1, 2, frob=5, nob=6)
+        result = matcher.match(mock)
+        self.assertIsNone(result)
+
+    def test_returns_mismatch_when_call_does_not_match(self):
+        mock = Mock()
+        mock(1, 2, a=5)
+
+        matcher = MockAnyCall(1, 2, frob=5, nob=6)
+        result = matcher.match(mock)
+        self.assertMismatch(result, "call not found")

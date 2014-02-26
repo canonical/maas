@@ -14,6 +14,9 @@ str = None
 __metaclass__ = type
 __all__ = [
     'IsCallable',
+    'MockAnyCall',
+    'MockCalledOnceWith',
+    'MockCalledWith',
     'Provides',
     ]
 
@@ -41,3 +44,60 @@ class Provides(MatchesPredicate):
     def __init__(self, iface):
         super(Provides, self).__init__(
             iface.providedBy, "%%r does not provide %s" % iface.getName())
+
+
+class MockCalledWith:
+    """Matches if the matchee Mock was called with the provided args.
+    
+    Use of Mock.assert_called_with is discouraged as it passes if you typo
+    the function name.
+    """
+
+    def __init__(self, *args, **kwargs):
+        self.args = args
+        self.kwargs = kwargs
+
+    def __str__(self):
+        return "%s(args=%r, kwargs=%r)" % (
+            self.__class__.__name__, self.args, self.kwargs)
+
+    def match(self, mock):
+        try:
+            mock.assert_called_with(*self.args, **self.kwargs)
+        except AssertionError as e:
+            return Mismatch(e.message)
+
+        return None
+
+
+class MockCalledOnceWith(MockCalledWith):
+    """Matches if the matchee Mock was called once with the provided args.
+    
+    Use of Mock.assert_called_once_with is discouraged as it passes if you typo
+    the function name.
+    """
+
+    def match(self, mock):
+        try:
+            mock.assert_called_once_with(*self.args, **self.kwargs)
+        except AssertionError as e:
+            return Mismatch(e.message)
+
+        return None
+
+
+class MockAnyCall(MockCalledWith):
+    """Matches if the matchee Mock was called at any time with the provided
+    args.
+    
+    Use of Mock.assert_any_call is discouraged as it passes if you typo
+    the function name.
+    """
+
+    def match(self, mock):
+        try:
+            mock.assert_any_call(*self.args, **self.kwargs)
+        except AssertionError as e:
+            return Mismatch(e.message)
+
+        return None
