@@ -35,21 +35,33 @@ except ImportError:
 else:
     import_settings(maas_local_celeryconfig_cluster)
 
+DHCP_LEASE_UPLOAD_SCHEDULE = timedelta(minutes=1)
+REPORT_BOOT_IMAGES_SCHEDULE = timedelta(minutes=5)
+PROBE_DHCP_SERVERS_SCHEDULE = timedelta(minutes=1)
 
 CELERYBEAT_SCHEDULE = {
     'unconditional-dhcp-lease-upload': {
         'task': 'provisioningserver.tasks.upload_dhcp_leases',
-        'schedule': timedelta(minutes=1),
-        'options': {'queue': CLUSTER_UUID},
+        'schedule': DHCP_LEASE_UPLOAD_SCHEDULE,
+        'options': {
+            'queue': CLUSTER_UUID,
+            'expires': int(DHCP_LEASE_UPLOAD_SCHEDULE.total_seconds()),
+        },
     },
     'report-boot-images': {
         'task': 'provisioningserver.tasks.report_boot_images',
-        'schedule': timedelta(minutes=5),
-        'options': {'queue': CLUSTER_UUID},
+        'schedule': REPORT_BOOT_IMAGES_SCHEDULE,
+        'options': {
+            'queue': CLUSTER_UUID,
+            'expires': int(REPORT_BOOT_IMAGES_SCHEDULE.total_seconds()),
+        },
     },
     'probe-dhcp-servers': {
         'task': 'provisioningserver.tasks.periodic_probe_dhcp',
-        'schedule': timedelta(minutes=1),
-        'options': {'queue': CLUSTER_UUID},
+        'schedule': PROBE_DHCP_SERVERS_SCHEDULE,
+        'options': {
+            'queue': CLUSTER_UUID,
+            'expires': int(PROBE_DHCP_SERVERS_SCHEDULE.total_seconds()),
+        },
     },
 }

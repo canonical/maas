@@ -41,18 +41,27 @@ except ImportError:
 else:
     import_settings(maas_local_celeryconfig)
 
+CLEANUP_OLD_NONCES_SCHEDULE = timedelta(days=1)
+IMPORT_BOOT_IMAGES_SCHEDULE = timedelta(days=7)
+
 CELERYBEAT_SCHEDULE = {
     'cleanup-old-nonces': {
         'task': 'maasserver.tasks.cleanup_old_nonces',
-        'schedule': timedelta(days=1),
-        'options': {'queue': WORKER_QUEUE_REGION},
+        'schedule': CLEANUP_OLD_NONCES_SCHEDULE,
+        'options': {
+            'queue': WORKER_QUEUE_REGION,
+            'expires': int(CLEANUP_OLD_NONCES_SCHEDULE.total_seconds()),
+        },
     },
 
     # Periodically (re-)import boot images.  This is a job for the region
     # controller, although the region controller delegates it to the clusters.
     'import-boot-images': {
         'task': 'maasserver.tasks.import_boot_images_on_schedule',
-        'schedule': timedelta(days=7),
-        'options': {'queue': WORKER_QUEUE_REGION},
+        'schedule': IMPORT_BOOT_IMAGES_SCHEDULE,
+        'options': {
+            'queue': WORKER_QUEUE_REGION,
+            'expires': int(IMPORT_BOOT_IMAGES_SCHEDULE.total_seconds()),
+        },
     },
 }
