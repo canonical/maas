@@ -21,7 +21,6 @@ from django.contrib.auth.models import AnonymousUser
 from django.core.urlresolvers import reverse
 from maasserver.enum import (
     ARCHITECTURE_CHOICES,
-    NODE_AFTER_COMMISSIONING_ACTION,
     NODE_STATUS,
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
@@ -58,8 +57,6 @@ class EnlistmentAPITest(MultipleUsersScenarios,
                 'hostname': 'diane',
                 'architecture': architecture,
                 'power_type': 'ether_wake',
-                'after_commissioning_action': (
-                    NODE_AFTER_COMMISSIONING_ACTION.DEFAULT),
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
             })
 
@@ -81,8 +78,6 @@ class EnlistmentAPITest(MultipleUsersScenarios,
                 'hostname': hostname,
                 'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
                 'power_type': 'ether_wake',
-                'after_commissioning_action': (
-                    NODE_AFTER_COMMISSIONING_ACTION.DEFAULT),
                 'mac_addresses': [factory.getRandomMACAddress()],
             })
         parsed_result = json.loads(response.content)
@@ -132,8 +127,6 @@ class EnlistmentAPITest(MultipleUsersScenarios,
                 'hostname': 'diane',
                 'architecture': architecture.split('/')[0],
                 'power_type': 'ether_wake',
-                'after_commissioning_action': (
-                    NODE_AFTER_COMMISSIONING_ACTION.DEFAULT),
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
             })
 
@@ -157,8 +150,6 @@ class EnlistmentAPITest(MultipleUsersScenarios,
                 'architecture': architecture.split('/')[0],
                 'subarchitecture': architecture.split('/')[1],
                 'power_type': 'ether_wake',
-                'after_commissioning_action': (
-                    NODE_AFTER_COMMISSIONING_ACTION.DEFAULT),
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
             })
 
@@ -180,8 +171,6 @@ class EnlistmentAPITest(MultipleUsersScenarios,
                 'hostname': 'diane',
                 'architecture': architecture,
                 'subarchitecture': architecture.split('/')[1],
-                'after_commissioning_action': (
-                    NODE_AFTER_COMMISSIONING_ACTION.DEFAULT),
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
             })
         self.assertEqual(httplib.BAD_REQUEST, response.status_code)
@@ -201,8 +190,6 @@ class EnlistmentAPITest(MultipleUsersScenarios,
                 'autodetect_nodegroup': '1',
                 'hostname': 'diane',
                 'architecture': architecture,
-                'after_commissioning_action': (
-                    NODE_AFTER_COMMISSIONING_ACTION.DEFAULT),
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
             })
         diane = get_one(Node.objects.filter(hostname='diane'))
@@ -379,8 +366,6 @@ class NodeHostnameEnlistmentTest(MultipleUsersScenarios,
                 'hostname': hostname_with_domain,
                 'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
                 'power_type': 'ether_wake',
-                'after_commissioning_action': (
-                    NODE_AFTER_COMMISSIONING_ACTION.DEFAULT),
                 'mac_addresses': [factory.getRandomMACAddress()],
             })
         self.assertEqual(httplib.OK, response.status_code, response.content)
@@ -404,8 +389,6 @@ class NodeHostnameEnlistmentTest(MultipleUsersScenarios,
                 'hostname': hostname_without_domain,
                 'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
                 'power_type': 'ether_wake',
-                'after_commissioning_action': (
-                    NODE_AFTER_COMMISSIONING_ACTION.DEFAULT),
                 'mac_addresses': [factory.getRandomMACAddress()],
             })
         self.assertEqual(httplib.OK, response.status_code, response.content)
@@ -427,8 +410,6 @@ class NodeHostnameEnlistmentTest(MultipleUsersScenarios,
                 'hostname': factory.make_name('hostname'),
                 'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
                 'power_type': 'ether_wake',
-                'after_commissioning_action': (
-                    NODE_AFTER_COMMISSIONING_ACTION.DEFAULT),
                 'mac_addresses': [factory.getRandomMACAddress()],
             },
             REMOTE_ADDR=origin_ip)
@@ -447,8 +428,6 @@ class NodeHostnameEnlistmentTest(MultipleUsersScenarios,
                 'hostname': factory.make_name('hostname'),
                 'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
                 'power_type': 'ether_wake',
-                'after_commissioning_action': (
-                    NODE_AFTER_COMMISSIONING_ACTION.DEFAULT),
                 'mac_addresses': [factory.getRandomMACAddress()],
             },
             HTTP_HOST=unknown_host)
@@ -478,8 +457,6 @@ class NonAdminEnlistmentAPITest(MultipleUsersScenarios,
                 'autodetect_nodegroup': '1',
                 'hostname': factory.getRandomString(),
                 'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
-                'after_commissioning_action': (
-                    NODE_AFTER_COMMISSIONING_ACTION.DEFAULT),
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff'],
             })
         self.assertEqual(httplib.OK, response.status_code)
@@ -511,8 +488,6 @@ class AnonymousEnlistmentAPITest(MAASServerTestCase):
                 'autodetect_nodegroup': '1',
                 'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
                 'hostname': factory.getRandomString(),
-                'after_commissioning_action': (
-                    NODE_AFTER_COMMISSIONING_ACTION.DEFAULT),
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
             })
         parsed_result = json.loads(response.content)
@@ -599,8 +574,6 @@ class SimpleUserLoggedInEnlistmentAPITest(MAASServerTestCase):
                 'autodetect_nodegroup': '1',
                 'hostname': factory.getRandomString(),
                 'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
-                'after_commissioning_action': (
-                    NODE_AFTER_COMMISSIONING_ACTION.DEFAULT),
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
             })
         parsed_result = json.loads(response.content)
@@ -722,8 +695,6 @@ class AdminLoggedInEnlistmentAPITest(MAASServerTestCase):
                 'hostname': factory.getRandomString(),
                 'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
                 'power_type': 'ether_wake',
-                'after_commissioning_action': (
-                    NODE_AFTER_COMMISSIONING_ACTION.DEFAULT),
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff'],
             })
         self.assertEqual(httplib.OK, response.status_code)
@@ -742,8 +713,6 @@ class AdminLoggedInEnlistmentAPITest(MAASServerTestCase):
                 'hostname': factory.getRandomString(),
                 'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
                 'power_type': 'ether_wake',
-                'after_commissioning_action': (
-                    NODE_AFTER_COMMISSIONING_ACTION.DEFAULT),
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
             })
         parsed_result = json.loads(response.content)

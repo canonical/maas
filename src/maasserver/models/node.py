@@ -52,8 +52,6 @@ from maasserver.enum import (
     ARCHITECTURE_CHOICES,
     DISTRO_SERIES,
     DISTRO_SERIES_CHOICES,
-    NODE_AFTER_COMMISSIONING_ACTION,
-    NODE_AFTER_COMMISSIONING_ACTION_CHOICES,
     NODE_PERMISSION,
     NODE_STATUS,
     NODE_STATUS_CHOICES,
@@ -417,9 +415,6 @@ class Node(CleanSave, TimestampedModel):
     :ivar status: This `Node`'s status. See the vocabulary
         :class:`NODE_STATUS`.
     :ivar owner: This `Node`'s owner if it's in use, None otherwise.
-    :ivar after_commissioning_action: The action to perform after
-        commissioning. See vocabulary
-        :class:`NODE_AFTER_COMMISSIONING_ACTION`.
     :ivar power_type: The power type that determines how this
         node will be powered on. Its value must match a power driver template
         name.
@@ -444,10 +439,6 @@ class Node(CleanSave, TimestampedModel):
 
     owner = ForeignKey(
         User, default=None, blank=True, null=True, editable=False)
-
-    after_commissioning_action = IntegerField(
-        choices=NODE_AFTER_COMMISSIONING_ACTION_CHOICES,
-        default=NODE_AFTER_COMMISSIONING_ACTION.DEFAULT)
 
     distro_series = CharField(
         max_length=20, choices=DISTRO_SERIES_CHOICES, null=True,

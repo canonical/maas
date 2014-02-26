@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Configuration items."""
@@ -28,10 +28,7 @@ from django.db.models import (
     )
 from django.db.models.signals import post_save
 from maasserver import DefaultMeta
-from maasserver.enum import (
-    DISTRO_SERIES,
-    NODE_AFTER_COMMISSIONING_ACTION,
-    )
+from maasserver.enum import DISTRO_SERIES
 from maasserver.fields import JSONObjectField
 
 
@@ -39,7 +36,6 @@ def get_default_config():
     return {
         ## settings default values.
         # Commissioning section configuration.
-        'after_commissioning': NODE_AFTER_COMMISSIONING_ACTION.DEFAULT,
         'check_compatibility': False,
         # Ubuntu section configuration.
         'fallback_master_archive': False,

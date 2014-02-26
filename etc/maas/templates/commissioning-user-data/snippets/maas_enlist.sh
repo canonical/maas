@@ -2,7 +2,7 @@
 #
 #    maas-enlist: MAAS Enlistment Tool
 #
-#    Copyright (C) 2012 Canonical Ltd.
+#    Copyright (C) 2012-2014 Canonical Ltd.
 #
 #    Authors: Andres Rodriguez <andres.rodriguez@canonical.com>
 #
@@ -96,7 +96,6 @@ enlist_node() {
 	    --data-urlencode "hostname=${hostname}" \
 	    --data-urlencode "architecture=${arch}" \
 	    --data-urlencode "subarchitecture=${subarch}" \
-	    --data-urlencode "after_commissioning_action=0" \
 	    --data-urlencode "power_type=${power_type}" \
 	    --data-urlencode "power_parameters=${power_params}" \
 	    ${macparms} \

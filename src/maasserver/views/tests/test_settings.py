@@ -23,7 +23,6 @@ from lxml.html import fromstring
 from maasserver.enum import (
     COMMISSIONING_DISTRO_SERIES_CHOICES,
     DISTRO_SERIES,
-    NODE_AFTER_COMMISSIONING_ACTION,
     NODEGROUP_STATUS,
     )
 from maasserver.models import (
@@ -118,8 +117,6 @@ class SettingsTest(MAASServerTestCase):
 
     def test_settings_commissioning_POST(self):
         self.client_log_in(as_admin=True)
-        new_after_commissioning = factory.getRandomEnum(
-            NODE_AFTER_COMMISSIONING_ACTION)
         new_check_compatibility = factory.getRandomBoolean()
         new_commissioning_distro_series = factory.getRandomChoice(
             COMMISSIONING_DISTRO_SERIES_CHOICES)
@@ -128,7 +125,6 @@ class SettingsTest(MAASServerTestCase):
             get_prefixed_form_data(
                 prefix='commissioning',
                 data={
-                    'after_commissioning': new_after_commissioning,
                     'check_compatibility': new_check_compatibility,
                     'commissioning_distro_series': (
                         new_commissioning_distro_series),
@@ -137,12 +133,10 @@ class SettingsTest(MAASServerTestCase):
         self.assertEqual(httplib.FOUND, response.status_code)
         self.assertEqual(
             (
-                new_after_commissioning,
                 new_check_compatibility,
                 new_commissioning_distro_series,
             ),
             (
-                Config.objects.get_config('after_commissioning'),
                 Config.objects.get_config('check_compatibility'),
                 Config.objects.get_config('commissioning_distro_series'),
             ))

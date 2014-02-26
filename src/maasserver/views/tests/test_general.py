@@ -123,13 +123,6 @@ class TestSnippets(MAASServerTestCase):
         self.assertTemplateExistsAndContains(
             response.content, '#add-node', 'input#id_hostname')
 
-    def test_after_commissioning_action_snippet(self):
-        self.client_log_in()
-        response = self.client.get('/')
-        self.assertTemplateExistsAndContains(
-            response.content, '#add-node',
-            'select#id_after_commissioning_action')
-
     def test_power_type_does_not_exist_if_not_admin(self):
         self.client_log_in()
         response = self.client.get('/')

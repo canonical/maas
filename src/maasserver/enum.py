@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Enumerations meaningful to the maasserver application."""
@@ -82,36 +82,6 @@ NODE_STATUS_CHOICES = (
 
 
 NODE_STATUS_CHOICES_DICT = OrderedDict(NODE_STATUS_CHOICES)
-
-
-class NODE_AFTER_COMMISSIONING_ACTION:
-    """The vocabulary of a `Node`'s possible value for its field
-    after_commissioning_action.
-
-    """
-# TODO: document this when it's stabilized.
-    #:
-    DEFAULT = 0
-    #:
-    QUEUE = 0
-    #:
-    #CHECK = 1
-    #:
-    #DEPLOY_12_04 = 2
-
-
-NODE_AFTER_COMMISSIONING_ACTION_CHOICES = (
-    (NODE_AFTER_COMMISSIONING_ACTION.QUEUE,
-        "Queue for dynamic allocation to services"),
-    #(NODE_AFTER_COMMISSIONING_ACTION.CHECK,
-    #    "Check compatibility and hold for future decision"),
-    #(NODE_AFTER_COMMISSIONING_ACTION.DEPLOY_12_04,
-    #    "Deploy with Ubuntu 12.04 LTS"),
-)
-
-
-NODE_AFTER_COMMISSIONING_ACTION_CHOICES_DICT = dict(
-    NODE_AFTER_COMMISSIONING_ACTION_CHOICES)
 
 
 class ARCHITECTURE:

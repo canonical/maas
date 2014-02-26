@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Configuration items definition and utilities."""
@@ -27,8 +27,6 @@ from django import forms
 from maasserver.enum import (
     DISTRO_SERIES,
     DISTRO_SERIES_CHOICES,
-    NODE_AFTER_COMMISSIONING_ACTION,
-    NODE_AFTER_COMMISSIONING_ACTION_CHOICES,
     )
 
 
@@ -60,14 +58,6 @@ INVALID_DISTRO_SERIES_MESSAGE = compose_invalid_choice_text(
 
 
 CONFIG_ITEMS = {
-    'after_commissioning': {
-        'default': NODE_AFTER_COMMISSIONING_ACTION.DEFAULT,
-        'form': forms.ChoiceField,
-        'form_kwargs': {
-            'choices': NODE_AFTER_COMMISSIONING_ACTION_CHOICES,
-            'label': "After commissioning action"
-        }
-    },
     'check_compatibility': {
         'default': False,
         'form': forms.BooleanField,

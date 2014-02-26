@@ -25,7 +25,6 @@ from django.core.urlresolvers import reverse
 from maasserver.enum import (
     ARCHITECTURE_CHOICES,
     DISTRO_SERIES,
-    NODE_AFTER_COMMISSIONING_ACTION,
     NODE_STATUS,
     NODE_STATUS_CHOICES_DICT,
     )
@@ -426,10 +425,7 @@ class TestNodeAPI(APITestCase):
         self.assertTrue(Node.objects.filter(hostname=hostname).exists())
 
     def test_PUT_ignores_unknown_fields(self):
-        node = factory.make_node(
-            owner=self.logged_in_user,
-            after_commissioning_action=(
-                NODE_AFTER_COMMISSIONING_ACTION.DEFAULT))
+        node = factory.make_node(owner=self.logged_in_user)
         field = factory.getRandomString()
         response = self.client_put(
             self.get_node_uri(node),
@@ -445,9 +441,7 @@ class TestNodeAPI(APITestCase):
             but_not=original_power_type)
         node = factory.make_node(
             owner=self.logged_in_user,
-            power_type=original_power_type,
-            after_commissioning_action=(
-                NODE_AFTER_COMMISSIONING_ACTION.DEFAULT))
+            power_type=original_power_type)
         self.client_put(
             self.get_node_uri(node),
             {'power_type': new_power_type}
@@ -461,10 +455,7 @@ class TestNodeAPI(APITestCase):
         new_power_type = factory.getRandomPowerType(
             but_not=original_power_type)
         node = factory.make_node(
-            owner=self.logged_in_user,
-            power_type=original_power_type,
-            after_commissioning_action=(
-                NODE_AFTER_COMMISSIONING_ACTION.DEFAULT))
+            owner=self.logged_in_user, power_type=original_power_type)
         self.client_put(
             self.get_node_uri(node),
             {'power_type': new_power_type}

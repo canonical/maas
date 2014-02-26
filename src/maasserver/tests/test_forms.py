@@ -26,7 +26,6 @@ from django.http import QueryDict
 from maasserver.enum import (
     ARCHITECTURE,
     ARCHITECTURE_CHOICES,
-    NODE_AFTER_COMMISSIONING_ACTION_CHOICES,
     NODE_STATUS,
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
@@ -312,7 +311,6 @@ class NodeEditForms(MAASServerTestCase):
         self.assertEqual(
             [
                 'hostname',
-                'after_commissioning_action',
                 'architecture',
                 'distro_series',
                 'nodegroup',
@@ -321,21 +319,16 @@ class NodeEditForms(MAASServerTestCase):
     def test_NodeForm_changes_node(self):
         node = factory.make_node()
         hostname = factory.getRandomString()
-        after_commissioning_action = factory.getRandomChoice(
-            NODE_AFTER_COMMISSIONING_ACTION_CHOICES)
 
         form = NodeForm(
             data={
                 'hostname': hostname,
-                'after_commissioning_action': after_commissioning_action,
                 'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
                 },
             instance=node)
         form.save()
 
         self.assertEqual(hostname, node.hostname)
-        self.assertEqual(
-            after_commissioning_action, node.after_commissioning_action)
 
     def test_AdminNodeForm_contains_limited_set_of_fields(self):
         node = factory.make_node()
@@ -344,7 +337,6 @@ class NodeEditForms(MAASServerTestCase):
         self.assertEqual(
             [
                 'hostname',
-                'after_commissioning_action',
                 'architecture',
                 'distro_series',
                 'power_type',
@@ -360,13 +352,10 @@ class NodeEditForms(MAASServerTestCase):
         node = factory.make_node()
         zone = factory.make_zone()
         hostname = factory.getRandomString()
-        after_commissioning_action = factory.getRandomChoice(
-            NODE_AFTER_COMMISSIONING_ACTION_CHOICES)
         power_type = factory.getRandomPowerType()
         form = AdminNodeForm(
             data={
                 'hostname': hostname,
-                'after_commissioning_action': after_commissioning_action,
                 'power_type': power_type,
                 'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
                 'zone': zone.name,
@@ -375,13 +364,8 @@ class NodeEditForms(MAASServerTestCase):
         form.save()
 
         self.assertEqual(
-            (
-                node.hostname,
-                node.after_commissioning_action,
-                node.power_type,
-                node.zone,
-            ),
-            (hostname, after_commissioning_action, power_type, zone))
+            (node.hostname, node.power_type, node.zone),
+            (hostname, power_type, zone))
 
     def test_AdminNodeForm_refuses_to_update_hostname_on_allocated_node(self):
         old_name = factory.make_name('old-hostname')
@@ -428,14 +412,11 @@ class NodeEditForms(MAASServerTestCase):
     def test_AdminNodeForm_changes_node_with_skip_check(self):
         node = factory.make_node()
         hostname = factory.getRandomString()
-        after_commissioning_action = factory.getRandomChoice(
-            NODE_AFTER_COMMISSIONING_ACTION_CHOICES)
         power_type = factory.getRandomPowerType()
         power_parameters_field = factory.getRandomString()
         form = AdminNodeForm(
             data={
                 'hostname': hostname,
-                'after_commissioning_action': after_commissioning_action,
                 'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
                 'power_type': power_type,
                 'power_parameters_field': power_parameters_field,
@@ -445,10 +426,8 @@ class NodeEditForms(MAASServerTestCase):
         form.save()
 
         self.assertEqual(
-            (hostname, after_commissioning_action, power_type,
-                {'field': power_parameters_field}),
-            (node.hostname, node.after_commissioning_action, node.power_type,
-                node.power_parameters))
+            (hostname, power_type, {'field': power_parameters_field}),
+            (node.hostname, node.power_type, node.power_parameters))
 
     def test_AdminForm_does_not_permit_nodegroup_change(self):
         # We had to make Node.nodegroup editable to get Django to

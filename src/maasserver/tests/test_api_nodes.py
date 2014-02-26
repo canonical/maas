@@ -22,7 +22,6 @@ from django.core.urlresolvers import reverse
 from maasserver.enum import (
     ARCHITECTURE,
     ARCHITECTURE_CHOICES,
-    NODE_AFTER_COMMISSIONING_ACTION,
     NODE_STATUS,
     NODE_STATUS_CHOICES_DICT,
     NODEGROUP_STATUS,
@@ -155,8 +154,6 @@ class TestNodesAPI(APITestCase):
                 'autodetect_nodegroup': '1',
                 'hostname': factory.getRandomString(),
                 'architecture': architecture,
-                'after_commissioning_action': (
-                    NODE_AFTER_COMMISSIONING_ACTION.DEFAULT),
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
             })
 
@@ -172,8 +169,6 @@ class TestNodesAPI(APITestCase):
                 'autodetect_nodegroup': '1',
                 'hostname': factory.getRandomString(),
                 'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
-                'after_commissioning_action': (
-                    NODE_AFTER_COMMISSIONING_ACTION.DEFAULT),
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff'],
             })
         self.assertEqual(httplib.OK, response.status_code)

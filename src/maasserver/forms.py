@@ -68,8 +68,6 @@ from maasserver.enum import (
     COMMISSIONING_DISTRO_SERIES_CHOICES,
     DISTRO_SERIES,
     DISTRO_SERIES_CHOICES,
-    NODE_AFTER_COMMISSIONING_ACTION,
-    NODE_AFTER_COMMISSIONING_ACTION_CHOICES,
     NODE_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
     NODEGROUPINTERFACE_MANAGEMENT_CHOICES,
@@ -178,11 +176,6 @@ class NodeForm(ModelForm):
 
         return new_hostname
 
-    after_commissioning_action = forms.TypedChoiceField(
-        label="After commissioning",
-        choices=NODE_AFTER_COMMISSIONING_ACTION_CHOICES, required=False,
-        empty_value=NODE_AFTER_COMMISSIONING_ACTION.DEFAULT)
-
     distro_series = forms.ChoiceField(
         choices=DISTRO_SERIES_CHOICES, required=False,
         initial=DISTRO_SERIES.default,
@@ -210,7 +203,6 @@ class NodeForm(ModelForm):
         # model:
         fields = (
             'hostname',
-            'after_commissioning_action',
             'architecture',
             'distro_series',
             )
@@ -685,7 +677,6 @@ class MAASAndNetworkForm(ConfigForm):
 class CommissioningForm(ConfigForm):
     """Settings page, Commissioning section."""
     check_compatibility = get_config_field('check_compatibility')
-    after_commissioning = get_config_field('after_commissioning')
     commissioning_distro_series = forms.ChoiceField(
         choices=COMMISSIONING_DISTRO_SERIES_CHOICES, required=False,
         label="Default distro series used for commissioning",
