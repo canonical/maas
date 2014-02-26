@@ -121,11 +121,11 @@ class TestNoReceivers(MAASServerTestCase):
         self.assertNotEqual(0, len(pre_save.receivers))
         old_pre_values = pre_save.receivers
         old_post_values = post_save.receivers
-        
+
         with NoReceivers((post_save, pre_save)):
             self.assertEqual([], post_save.receivers)
             self.assertEqual([], pre_save.receivers)
-        
+
         self.assertItemsEqual(old_pre_values, pre_save.receivers)
         self.assertItemsEqual(old_post_values, post_save.receivers)
 

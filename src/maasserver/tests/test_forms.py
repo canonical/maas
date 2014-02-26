@@ -23,7 +23,6 @@ from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.validators import validate_email
 from django.http import QueryDict
-from maasserver import dhcp as dhcp_module
 from maasserver.enum import (
     ARCHITECTURE,
     ARCHITECTURE_CHOICES,
@@ -734,7 +733,8 @@ class TestNodeGroupInterfaceForm(MAASServerTestCase):
             del int_settings[field_name]
         nodegroup = factory.make_node_group()
         form = NodeGroupInterfaceForm(
-            data=int_settings, instance=NodeGroupInterface(nodegroup=nodegroup))
+            data=int_settings,
+            instance=NodeGroupInterface(nodegroup=nodegroup))
         interface = form.save()
         field_values = [
             getattr(interface, field_name) for field_name in nullable_fields]

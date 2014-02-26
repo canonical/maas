@@ -147,7 +147,7 @@ def get_content_links(response, element='#content'):
 @contextmanager
 def NoReceivers(signals):
     """Disconnect signal receivers from the supplied signals.
-    
+
     :param signals: A signal (or iterable of signals) for which to disable
         signal receivers while in the context manager.
     :type signal: django.dispatch.Signal
