@@ -97,7 +97,6 @@ class IPMI_DRIVER:
 
 
 IPMI_DRIVER_CHOICES = [
-    [IPMI_DRIVER.DEFAULT, "Auto-detect"],
     [IPMI_DRIVER.LAN, "LAN [IPMI 1.5]"],
     [IPMI_DRIVER.LAN_2_0, "LAN_2_0 [IPMI 2.0]"],
     ]

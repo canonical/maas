@@ -172,7 +172,7 @@ JSON_POWER_TYPE_PARAMETERS = [
         'fields': [
             make_json_field(
                 'power_driver', "Power driver", field_type='choice',
-                choices=IPMI_DRIVER_CHOICES, default=IPMI_DRIVER.DEFAULT),
+                choices=IPMI_DRIVER_CHOICES, default=IPMI_DRIVER.LAN_2_0),
             make_json_field('power_address', "Power address"),
             make_json_field('power_user', "Power user"),
             make_json_field('power_pass', "Power password"),

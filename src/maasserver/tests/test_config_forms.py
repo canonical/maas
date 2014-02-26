@@ -19,12 +19,17 @@ from django.forms import widgets
 from django.http import QueryDict
 from lxml.etree import XPath
 from lxml.html import fromstring
+from mock import (
+    ANY,
+    Mock
+)
 from maasserver.config_forms import (
     DictCharField,
     DictCharWidget,
     get_all_prefixed_values,
     )
 from maasserver.testing.factory import factory
+from maastesting.matchers import MockCalledOnceWith
 from maasserver.testing.testcase import MAASServerTestCase
 
 
@@ -192,20 +197,22 @@ class TestDictCharWidget(MAASServerTestCase):
 
     def test_DictCharWidget_id_for_label_uses_first_fields_name(self):
         names = [factory.getRandomString()]
+        initials = []
         labels = [factory.getRandomString()]
         widget = DictCharWidget(
-            [widgets.TextInput, widgets.TextInput], names, labels)
+            [widgets.TextInput, widgets.TextInput], names, initials, labels)
         self.assertEqual(
             ' _%s' % names[0],
             widget.id_for_label(' '))
 
     def test_DictCharWidget_renders_fieldset_with_label_and_field_names(self):
         names = [factory.getRandomString(), factory.getRandomString()]
+        initials = []
         labels = [factory.getRandomString(), factory.getRandomString()]
         values = [factory.getRandomString(), factory.getRandomString()]
         widget = DictCharWidget(
             [widgets.TextInput, widgets.TextInput, widgets.CheckboxInput],
-            names, labels, skip_check=True)
+            names, initials, labels, skip_check=True)
         name = factory.getRandomString()
         html_widget = fromstring(
             '<root>' + widget.render(name, values) + '</root>')
@@ -220,13 +227,14 @@ class TestDictCharWidget(MAASServerTestCase):
 
     def test_empty_DictCharWidget_renders_as_empty_string(self):
         widget = DictCharWidget(
-            [widgets.CheckboxInput], [], [], skip_check=True)
+            [widgets.CheckboxInput], [], [], [], skip_check=True)
         self.assertEqual('', widget.render(factory.getRandomString(), ''))
 
     def test_DictCharWidget_value_from_datadict_values_from_data(self):
         # 'value_from_datadict' extracts the values corresponding to the
         # field as a dictionary.
         names = [factory.getRandomString(), factory.getRandomString()]
+        initials = []
         labels = [factory.getRandomString(), factory.getRandomString()]
         name = factory.getRandomString()
         field_1_value = factory.getRandomString()
@@ -240,17 +248,18 @@ class TestDictCharWidget(MAASServerTestCase):
                 factory.getRandomString(), factory.getRandomString())
             )
         widget = DictCharWidget(
-            [widgets.TextInput, widgets.TextInput], names, labels)
+            [widgets.TextInput, widgets.TextInput], names, initials, labels)
         self.assertEqual(
             {names[0]: field_1_value, names[1]: field_2_value},
             widget.value_from_datadict(data, None, name))
 
     def test_DictCharWidget_renders_with_empty_string_as_input_data(self):
         names = [factory.getRandomString(), factory.getRandomString()]
+        initials = []
         labels = [factory.getRandomString(), factory.getRandomString()]
         widget = DictCharWidget(
             [widgets.TextInput, widgets.TextInput, widgets.CheckboxInput],
-            names, labels, skip_check=True)
+            names, initials, labels, skip_check=True)
         name = factory.getRandomString()
         html_widget = fromstring(
             '<root>' + widget.render(name, '') + '</root>')
@@ -261,3 +270,17 @@ class TestDictCharWidget(MAASServerTestCase):
         self.assertEqual(
             [expected_names, labels],
             [widget_names, widget_labels])
+
+    def test_DictCharWidget_renders_with_initial_when_no_value(self):
+        """Widgets should use initial value if rendered without value."""
+        names = [factory.make_name()]
+        initials = [factory.make_name()]
+        labels = [factory.make_name()]
+        mock_widget = Mock()
+        widget = DictCharWidget([mock_widget, widgets.TextInput],
+                                names, initials, labels, skip_check=True)
+        self.patch(widget, 'format_output')
+        widget.render('foo', [])
+
+        self.assertThat(
+            mock_widget.render, MockCalledOnceWith(ANY, initials[0], ANY))

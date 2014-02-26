@@ -83,6 +83,7 @@ class DictCharField(forms.MultiValueField):
         self.widget = DictCharWidget(
             [field.widget for field in self.fields],
             self.names,
+            [field.initial for field in self.fields],
             [field.label for field in self.fields],
             skip_check=skip_check,
             )
@@ -264,10 +265,22 @@ class DictCharWidget(forms.widgets.MultiWidget):
 
     .. _MultiWidget: http://code.djangoproject.com/
         svn/django/tags/releases/1.3.1/django/forms/widgets.py
+
+    Arguments:
+    widgets -- list of widgets for sub-fields.
+    names -- list of names for sub-fields.
+    initials -- list of initial values for sub-fields.
+    labels -- list of labels for sub-fields
+
+    Keyword arguments:
+    skip_check -- boolean indicating validation will be skipped.
+    attrs -- see Widget.attrs
     """
 
-    def __init__(self, widgets, names, labels, skip_check=False, attrs=None):
+    def __init__(self, widgets, names,
+                 initials, labels, skip_check=False, attrs=None):
         self.names = names
+        self.initials = initials
         self.labels = labels
         self.skip_check = skip_check
         super(DictCharWidget, self).__init__(widgets, attrs)
@@ -293,7 +306,10 @@ class DictCharWidget(forms.widgets.MultiWidget):
             try:
                 widget_value = value[index]
             except IndexError:
-                widget_value = None
+                try:
+                    widget_value = self.initials[index]
+                except IndexError:
+                    widget_value = None
             if id_:
                 final_attrs = dict(
                     final_attrs, id='%s_%s' % (id_, self.names[index]))
