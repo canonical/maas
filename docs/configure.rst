@@ -97,7 +97,7 @@ can be done on a per node basis with::
  $ maas <profile> node update <system_id> distro_series="<value>"
 
 Where the string contains one of the valid, available distro series (e.g.
-"precise") or is empty for the default value.
+"trusty") or is empty for the default value.
 
 
 .. _preseed:

@@ -48,7 +48,7 @@ so use a Precise instance to make packages for Precise, for example.
    * the right upstream revision number in the version,
 
    * the series you're building for; if ``UNRELEASED`` appears in the
-     first entry, ``s/UNRELEASED/precise/`` (or the series you want),
+     first entry, ``s/UNRELEASED/trusty/`` (or the series you want),
 
    * the name and email address that correspond to the PGP key you
      want to use to sign the package; these appear near the end of the

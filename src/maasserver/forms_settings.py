@@ -25,6 +25,7 @@ from socket import gethostname
 
 from django import forms
 from maasserver.enum import (
+    COMMISSIONING_DISTRO_SERIES_CHOICES,
     DISTRO_SERIES,
     DISTRO_SERIES_CHOICES,
     )
@@ -174,7 +175,7 @@ CONFIG_ITEMS = {
         }
     },
     'default_distro_series': {
-        'default': DISTRO_SERIES.precise,
+        'default': DISTRO_SERIES.trusty,
         'form': forms.ChoiceField,
         'form_kwargs': {
             'label': "Default distro series used for deployment",
@@ -185,11 +186,11 @@ CONFIG_ITEMS = {
         }
     },
     'commissioning_distro_series': {
-        'default': DISTRO_SERIES.precise,
+        'default': DISTRO_SERIES.trusty,
         'form': forms.ChoiceField,
         'form_kwargs': {
             'label': "Default distro series used for commissioning",
-            'choices': DISTRO_SERIES_CHOICES,
+            'choices': COMMISSIONING_DISTRO_SERIES_CHOICES,
             'required': False,
             'error_messages': {
                 'invalid_choice': INVALID_DISTRO_SERIES_MESSAGE},
