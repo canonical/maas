@@ -33,7 +33,10 @@ from maastesting.factory import factory
 from maastesting.matchers import Provides
 from maastesting.testcase import MAASTestCase
 from provisioningserver.config import Config
-from provisioningserver.rpc.region import ReportBootImages
+from provisioningserver.rpc.region import (
+    Identify,
+    ReportBootImages,
+    )
 from provisioningserver.rpc.testing import call_responder
 from testtools.matchers import (
     AfterPreprocessing,
@@ -56,6 +59,20 @@ from twisted.python import log
 
 
 class TestRegionProtocol(MAASTestCase):
+
+    def test_identify_is_registered(self):
+        protocol = Region()
+        responder = protocol.locateResponder(Identify.commandName)
+        self.assertIsNot(responder, None)
+
+    @wait_for_reactor
+    def test_identify_reports_event_loop_name(self):
+        d = call_responder(Region(), Identify, {})
+
+        def check(response):
+            self.assertEqual({"name": eventloop.loop.name}, response)
+
+        return d.addCallback(check)
 
     def test_report_boot_images_is_registered(self):
         protocol = Region()

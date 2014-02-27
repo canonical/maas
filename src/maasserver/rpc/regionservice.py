@@ -49,6 +49,10 @@ class Region(amp.AMP):
     connection is established, AMP is symmetric.
     """
 
+    @region.Identify.responder
+    def identify(self):
+        return {b"name": eventloop.loop.name}
+
     @region.ReportBootImages.responder
     def report_boot_images(self, uuid, images):
         return {}

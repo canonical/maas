@@ -12,9 +12,18 @@ from __future__ import (
 str = None
 
 __metaclass__ = type
-__all__ = []
+__all__ = [
+    "Identify",
+    "ReportBootImages",
+]
 
 from twisted.protocols import amp
+
+
+class Identify(amp.Command):
+    """Request the identity of the region, i.e. the event-loop name."""
+
+    response = [(b"name", amp.Unicode())]
 
 
 class ReportBootImages(amp.Command):
