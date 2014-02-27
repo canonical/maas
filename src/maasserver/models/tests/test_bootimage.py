@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for :class:`BootImage`."""
@@ -17,7 +17,6 @@ __all__ = []
 from maasserver.models import (
     BootImage,
     Config,
-    NodeGroup,
     )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -26,59 +25,87 @@ from provisioningserver.testing.boot_images import make_boot_image_params
 
 class TestBootImageManager(MAASServerTestCase):
 
-    def setUp(self):
-        super(TestBootImageManager, self).setUp()
-        self.nodegroup = NodeGroup.objects.ensure_master()
-
     def test_have_image_returns_False_if_image_not_available(self):
         self.assertFalse(
             BootImage.objects.have_image(
-                self.nodegroup, **make_boot_image_params()))
+                factory.make_node_group(), **make_boot_image_params()))
 
     def test_have_image_returns_True_if_image_available(self):
+        nodegroup = factory.make_node_group()
         params = make_boot_image_params()
-        factory.make_boot_image(nodegroup=self.nodegroup, **params)
-        self.assertTrue(
-            BootImage.objects.have_image(self.nodegroup, **params))
+        factory.make_boot_image(nodegroup=nodegroup, **params)
+        self.assertTrue(BootImage.objects.have_image(nodegroup, **params))
 
     def test_register_image_registers_new_image(self):
+        nodegroup = factory.make_node_group()
         params = make_boot_image_params()
-        BootImage.objects.register_image(self.nodegroup, **params)
-        self.assertTrue(
-            BootImage.objects.have_image(self.nodegroup, **params))
+        BootImage.objects.register_image(nodegroup, **params)
+        self.assertTrue(BootImage.objects.have_image(nodegroup, **params))
 
     def test_register_image_leaves_existing_image_intact(self):
+        nodegroup = factory.make_node_group()
         params = make_boot_image_params()
-        factory.make_boot_image(nodegroup=self.nodegroup, **params)
-        BootImage.objects.register_image(self.nodegroup, **params)
-        self.assertTrue(
-            BootImage.objects.have_image(self.nodegroup, **params))
+        factory.make_boot_image(nodegroup=nodegroup, **params)
+        BootImage.objects.register_image(nodegroup, **params)
+        self.assertTrue(BootImage.objects.have_image(nodegroup, **params))
 
-    def test_default_arch_image_none(self):
+    def test_default_arch_image_returns_None_if_no_images_match(self):
         series = Config.objects.get_config('commissioning_distro_series')
         result = BootImage.objects.get_default_arch_image_in_nodegroup(
-            self.nodegroup, series, None)
+            factory.make_node_group(), series, factory.make_name('purpose'))
         self.assertIsNone(result)
 
-    def test_default_arch_image_one(self):
-        series = Config.objects.get_config('commissioning_distro_series')
+    def test_default_arch_image_returns_only_matching_image(self):
+        nodegroup = factory.make_node_group()
+        series = factory.make_name('series')
+        arch = factory.make_name('arch')
         purpose = factory.make_name("purpose")
         factory.make_boot_image(
-            architecture="amd64", release=series, nodegroup=self.nodegroup,
+            architecture=arch, release=series, nodegroup=nodegroup,
             purpose=purpose)
         result = BootImage.objects.get_default_arch_image_in_nodegroup(
-            self.nodegroup, series, purpose=purpose)
-        self.assertEqual(result.architecture, "amd64")
+            nodegroup, series, purpose=purpose)
+        self.assertEqual(result.architecture, arch)
 
-    def test_default_arch_image_many(self):
-        series = Config.objects.get_config('commissioning_distro_series')
+    def test_default_arch_image_prefers_i386(self):
+        nodegroup = factory.make_node_group()
+        series = factory.make_name('series')
         purpose = factory.make_name("purpose")
-        factory.make_boot_image(
-            architecture="amd64", release=series, nodegroup=self.nodegroup,
-            purpose=purpose)
-        factory.make_boot_image(
-            architecture="other", release=series, nodegroup=self.nodegroup,
-            purpose=purpose)
+        for arch in ['amd64', 'axp', 'i386', 'm88k']:
+            factory.make_boot_image(
+                architecture=arch, release=series, nodegroup=nodegroup,
+                purpose=purpose)
         result = BootImage.objects.get_default_arch_image_in_nodegroup(
-            self.nodegroup, series, purpose=purpose)
-        self.assertEqual(result.architecture, "amd64")
+            nodegroup, series, purpose=purpose)
+        self.assertEqual(result.architecture, "i386")
+
+    def test_default_arch_image_returns_arbitrary_pick_if_all_else_fails(self):
+        nodegroup = factory.make_node_group()
+        series = factory.make_name('series')
+        purpose = factory.make_name("purpose")
+        images = [
+            factory.make_boot_image(
+                architecture=factory.make_name('arch'), release=series,
+                nodegroup=nodegroup, purpose=purpose)
+            for _ in range(3)
+            ]
+        self.assertIn(
+            BootImage.objects.get_default_arch_image_in_nodegroup(
+                nodegroup, series, purpose=purpose),
+            images)
+
+    def test_default_arch_image_copes_with_subarches(self):
+        nodegroup = factory.make_node_group()
+        arch = 'i386'
+        series = factory.make_name('series')
+        purpose = factory.make_name("purpose")
+        images = [
+            factory.make_boot_image(
+                architecture=arch, subarchitecture=factory.make_name('sub'),
+                release=series, nodegroup=nodegroup, purpose=purpose)
+            for _ in range(3)
+            ]
+        self.assertIn(
+            BootImage.objects.get_default_arch_image_in_nodegroup(
+                nodegroup, series, purpose=purpose),
+            images)

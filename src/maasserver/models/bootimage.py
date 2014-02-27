@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Registration of available boot images."""
@@ -63,11 +63,19 @@ class BootImageManager(Manager):
             return False
 
     def get_default_arch_image_in_nodegroup(self, nodegroup, series, purpose):
-        """Return the first image available for any architecture in the
-        nodegroup/series supplied.
+        """Return any image for the given nodegroup, series, and purpose.
+
+        Prefers `i386` images if available.  Returns `None` if no images match
+        requirements.
         """
         images = BootImage.objects.filter(
             release=series, nodegroup=nodegroup, purpose=purpose)
+        for image in images:
+            # Prefer i386, any available subarchitecture (usually just
+            # "generic").  It will work for most cases where we don't know
+            # the actual architecture.
+            if image.architecture == 'i386':
+                return image
         images = images.order_by('architecture')
         return get_first(images)
 
