@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the metadata API."""
@@ -42,6 +42,7 @@ from maasserver.testing import reload_object
 from maasserver.testing.factory import factory
 from maasserver.testing.oauthclient import OAuthAuthenticatedClient
 from maastesting.djangotestcase import DjangoTestCase
+from maastesting.matchers import MockCalledOnceWith
 from maastesting.utils import sample_binary_data
 from metadataserver import api
 from metadataserver.api import (
@@ -446,7 +447,9 @@ class TestCommissioningAPI(DjangoTestCase):
         response = call_signal(client, status='OK', script_result='0')
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(NODE_STATUS.READY, reload_object(node).status)
-        populate_tags_for_single_node.assert_called_once_with(ANY, node)
+        self.assertThat(
+            populate_tags_for_single_node,
+            MockCalledOnceWith(ANY, node))
 
     def test_signaling_requires_status_code(self):
         node = factory.make_node(status=NODE_STATUS.COMMISSIONING)

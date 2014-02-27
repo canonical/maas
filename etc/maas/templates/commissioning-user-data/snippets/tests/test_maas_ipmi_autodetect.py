@@ -14,27 +14,28 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+from collections import OrderedDict
 import subprocess
 
-from collections import OrderedDict
-
-from maastesting.testcase import MAASTestCase
 from maastesting.factory import factory
-
+from maastesting.matchers import (
+    MockAnyCall,
+    MockCalledOnceWith,
+    )
+from maastesting.testcase import MAASTestCase
 from snippets import maas_ipmi_autodetect
-
 from snippets.maas_ipmi_autodetect import (
     apply_ipmi_user_settings,
     bmc_list_sections,
     bmc_user_get,
     commit_ipmi_settings,
     format_user_key,
+    IPMIError,
     list_user_numbers,
     pick_user_number,
     pick_user_number_from_list,
     run_command,
     verify_ipmi_user_settings,
-    IPMIError
     )
 
 
@@ -109,7 +110,7 @@ class TestBMCKeyPairMethods(MAASTestCase):
         key_pair_string = self.key_pair_fmt % tuple(self.args)
 
         expected_args = ('bmc-config', self.direction, key_pair_string)
-        recorder.assert_called_once_with(expected_args)
+        self.assertThat(recorder, MockCalledOnceWith(expected_args))
 
 
 class TestBMCListSections(MAASTestCase):
@@ -119,7 +120,7 @@ class TestBMCListSections(MAASTestCase):
         """Ensure bmc-config is called with the correct args."""
         recorder = self.patch(maas_ipmi_autodetect, 'run_command')
         bmc_list_sections()
-        recorder.assert_called_once_with(('bmc-config', '-L'))
+        self.assertThat(recorder, MockCalledOnceWith(('bmc-config', '-L')))
 
 
 class TestListUserNumbers(MAASTestCase):
@@ -367,7 +368,7 @@ class TestApplyIpmiUserSettings(MAASTestCase):
         self.patch(maas_ipmi_autodetect, 'verify_ipmi_user_settings')
         username = 'foo'
         apply_ipmi_user_settings({'Username': username})
-        pun_mock.assert_called_once_with(username)
+        self.assertThat(pun_mock, MockCalledOnceWith(username))
 
     def test_verify_user_settings(self):
         """Ensure the user settings are committed and verified."""
@@ -381,9 +382,11 @@ class TestApplyIpmiUserSettings(MAASTestCase):
         apply_ipmi_user_settings(user_settings)
 
         for key, value in user_settings.iteritems():
-            bus_mock.assert_any_call(user_number, key, value)
+            self.assertThat(bus_mock, MockAnyCall(user_number, key, value))
 
-        vius_mock.assert_called_once_with(user_number, user_settings)
+        self.assertThat(
+            vius_mock,
+            MockCalledOnceWith(user_number, user_settings))
 
 
 class TestCommitIPMISettings(MAASTestCase):
@@ -394,5 +397,5 @@ class TestCommitIPMISettings(MAASTestCase):
         recorder = self.patch(maas_ipmi_autodetect, 'run_command')
         filename = 'foo'
         commit_ipmi_settings(filename)
-        recorder.assert_called_once_with(('bmc-config', '--commit',
-                                         '--filename', filename))
+        self.assertThat(recorder, MockCalledOnceWith(
+            ('bmc-config', '--commit', '--filename', filename)))

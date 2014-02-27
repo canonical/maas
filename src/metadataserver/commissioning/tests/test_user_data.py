@@ -1,4 +1,4 @@
-# Copyright 2012-2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test generation of commissioning user data."""
@@ -16,6 +16,7 @@ __all__ = []
 
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maastesting.matchers import MockCalledWith
 from metadataserver.commissioning import user_data
 from metadataserver.commissioning.user_data import generate_user_data
 from mock import (
@@ -47,7 +48,9 @@ class TestUserData(MAASServerTestCase):
         user_data.get_preseed_context = Mock(return_value=fake_context)
         nodegroup = sentinel.nodegroup
         generate_user_data(nodegroup)
-        user_data.get_preseed_context.assert_called_with(nodegroup=nodegroup)
+        self.assertThat(
+            user_data.get_preseed_context,
+            MockCalledWith(nodegroup=nodegroup))
 
     def test_generate_user_data_generates_mime_multipart(self):
         # The generate_user_data func should create a MIME multipart

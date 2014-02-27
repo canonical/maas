@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test `maasserver.support.pertenant.migration."""
@@ -45,6 +45,7 @@ from maasserver.testing import (
     )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maastesting.matchers import MockCalledOnceWith
 from mock import (
     call,
     sentinel,
@@ -233,7 +234,7 @@ class TestGiveFileToUser(MAASServerTestCase):
         file = factory.make_file_storage(owner=None)
         save = self.patch(file, "save")
         give_file_to_user(file, user)
-        save.assert_called_once()
+        self.assertThat(save, MockCalledOnceWith())
 
 
 class TestGiveCredentialsToUser(MAASServerTestCase):
@@ -291,7 +292,7 @@ class TestMigrateToUser(MAASServerTestCase):
         migrate_to_user(sentinel.user)
 
         # Each unowned file is given to the destination user one at a time.
-        get_unowned_files.assert_called_once()
+        self.assertThat(get_unowned_files, MockCalledOnceWith())
         self.assertEqual(
             [call(sentinel.file1, sentinel.user),
              call(sentinel.file2, sentinel.user)],
@@ -299,7 +300,7 @@ class TestMigrateToUser(MAASServerTestCase):
         # The SSH keys of each node owner are copied to the destination user,
         # one at a time, and the credentials of these users are given to the
         # destination user.
-        get_owned_nodes_owners.assert_called_once()
+        self.assertThat(get_owned_nodes_owners, MockCalledOnceWith())
         self.assertEqual(
             [call(sentinel.node_owner1, sentinel.user),
              call(sentinel.node_owner2, sentinel.user)],
@@ -309,7 +310,7 @@ class TestMigrateToUser(MAASServerTestCase):
              call(sentinel.node_owner2, sentinel.user)],
             give_api_credentials_to_user.call_args_list)
         # Each owned node is given to the destination user one at a time.
-        get_owned_nodes.assert_called_once()
+        self.assertThat(get_owned_nodes, MockCalledOnceWith())
         self.assertEqual(
             [call(sentinel.node1, sentinel.user),
              call(sentinel.node2, sentinel.user)],

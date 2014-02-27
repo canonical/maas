@@ -1,4 +1,4 @@
-# Copyright 2005-2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2005-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the maastftp Twisted plugin."""
@@ -24,7 +24,9 @@ from urlparse import (
     )
 
 from maastesting.factory import factory
+from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
+import mock
 from provisioningserver import tftp as tftp_module
 from provisioningserver.pxe.tftppath import compose_config_path
 from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
@@ -295,12 +297,12 @@ class TestTFTPBackend(MAASTestCase):
         output = reader.read(10000)
 
         # The kernel parameters were fetched using `backend.get_page`.
-        backend.get_page.assert_called_once()
+        self.assertThat(backend.get_page, MockCalledOnceWith(mock.ANY))
 
         # The result has been rendered by `backend.render_pxe_config`.
         self.assertEqual(fake_render_result.encode("utf-8"), output)
-        backend.render_pxe_config.assert_called_once_with(
-            kernel_params=fake_kernel_params, **fake_params)
+        self.assertThat(backend.render_pxe_config, MockCalledOnceWith(
+            kernel_params=fake_kernel_params, **fake_params))
 
 
 class TestTFTPService(MAASTestCase):

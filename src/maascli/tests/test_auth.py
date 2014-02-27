@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maascli.auth`."""
@@ -19,8 +19,12 @@ import sys
 from apiclient.creds import convert_tuple_to_string
 from maascli import auth
 from maastesting.factory import factory
+from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
-from mock import sentinel
+from mock import (
+    ANY,
+    sentinel,
+    )
 
 
 class TestAuth(MAASTestCase):
@@ -29,13 +33,13 @@ class TestAuth(MAASTestCase):
         getpass = self.patch(auth, "getpass")
         getpass.return_value = sentinel.credentials
         self.assertIs(sentinel.credentials, auth.try_getpass(sentinel.prompt))
-        getpass.assert_called_once_with(sentinel.prompt)
+        self.assertThat(getpass, MockCalledOnceWith(sentinel.prompt))
 
     def test_try_getpass_eof(self):
         getpass = self.patch(auth, "getpass")
         getpass.side_effect = EOFError
         self.assertIsNone(auth.try_getpass(sentinel.prompt))
-        getpass.assert_called_once_with(sentinel.prompt)
+        self.assertThat(getpass, MockCalledOnceWith(sentinel.prompt))
 
     @staticmethod
     def make_credentials():
@@ -53,7 +57,7 @@ class TestAuth(MAASTestCase):
         stdin.readline.return_value = (
             convert_tuple_to_string(credentials) + "\n")
         self.assertEqual(credentials, auth.obtain_credentials("-"))
-        stdin.readline.assert_called_once()
+        self.assertThat(stdin.readline, MockCalledOnceWith())
 
     def test_obtain_credentials_via_getpass(self):
         # When None is passed to obtain_credentials, it attempts to obtain
@@ -62,7 +66,7 @@ class TestAuth(MAASTestCase):
         getpass = self.patch(auth, "getpass")
         getpass.return_value = convert_tuple_to_string(credentials)
         self.assertEqual(credentials, auth.obtain_credentials(None))
-        getpass.assert_called_once()
+        self.assertThat(getpass, MockCalledOnceWith(ANY))
 
     def test_obtain_credentials_empty(self):
         # If the entered credentials are empty or only whitespace,
@@ -70,4 +74,4 @@ class TestAuth(MAASTestCase):
         getpass = self.patch(auth, "getpass")
         getpass.return_value = None
         self.assertEqual(None, auth.obtain_credentials(None))
-        getpass.assert_called_once()
+        self.assertThat(getpass, MockCalledOnceWith(ANY))

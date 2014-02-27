@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test the start up utility."""
@@ -37,6 +37,7 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.celery import CeleryFixture
 from maastesting.fakemethod import FakeMethod
+from maastesting.matchers import MockCalledOnceWith
 from mock import (
     call,
     MagicMock,
@@ -93,8 +94,9 @@ class TestStartUp(MAASServerTestCase):
         patched_handlers['nodegroup_uuid'] = Mock()
         self.patch(tasks, 'refresh_functions', patched_handlers)
         start_up.start_up()
-        patched_handlers['nodegroup_uuid'].assert_called_once_with(
-            NodeGroup.objects.ensure_master().uuid)
+        self.assertThat(
+            patched_handlers['nodegroup_uuid'],
+            MockCalledOnceWith(NodeGroup.objects.ensure_master().uuid))
 
     def test_start_up_refreshes_workers_outside_lock(self):
         lock_checker = LockChecker()

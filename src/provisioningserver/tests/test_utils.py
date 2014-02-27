@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright 2012-2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test `provisioningserver.utils`."""
@@ -48,6 +48,7 @@ from maastesting import (
     )
 from maastesting.factory import factory
 from maastesting.fakemethod import FakeMethod
+from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from mock import (
     Mock,
@@ -577,18 +578,20 @@ class SudoWriteFileTest(MAASTestCase):
 
         sudo_write_file(path, contents)
 
-        provisioningserver.utils.Popen.assert_called_once_with([
+        self.assertThat(provisioningserver.utils.Popen, MockCalledOnceWith([
             'sudo', '-n', 'maas-provision', 'atomic-write',
             '--filename', path, '--mode', '0644',
             ],
-            stdin=PIPE)
+            stdin=PIPE))
 
     def test_encodes_contents(self):
         process = self.patch_popen()
         contents = factory.getRandomString()
         encoding = 'utf-16'
         sudo_write_file(self.make_file(), contents, encoding=encoding)
-        process.communicate.assert_called_once_with(contents.encode(encoding))
+        self.assertThat(
+            process.communicate,
+            MockCalledOnceWith(contents.encode(encoding)))
 
     def test_catches_failures(self):
         self.patch_popen(1)
@@ -863,8 +866,9 @@ class TestAtomicWriteScript(MAASTestCase):
             content, filename,
             ('--filename', filename, '--no-overwrite'))
 
-        mocked_atomic_write.assert_called_once_with(
-            content, filename, mode=0600, overwrite=False)
+        self.assertThat(
+            mocked_atomic_write,
+            MockCalledOnceWith(content, filename, mode=0600, overwrite=False))
 
     def test_passes_mode_flag(self):
         content = factory.getRandomString()
@@ -875,8 +879,9 @@ class TestAtomicWriteScript(MAASTestCase):
             content, filename,
             ('--filename', filename, '--mode', oct(mode)))
 
-        mocked_atomic_write.assert_called_once_with(
-            content, filename, mode=mode, overwrite=True)
+        self.assertThat(
+            mocked_atomic_write,
+            MockCalledOnceWith(content, filename, mode=mode, overwrite=True))
 
     def test_default_mode(self):
         content = factory.getRandomString()
@@ -885,8 +890,9 @@ class TestAtomicWriteScript(MAASTestCase):
             content, filename,
             ('--filename', filename))
 
-        mocked_atomic_write.assert_called_once_with(
-            content, filename, mode=0600, overwrite=True)
+        self.assertThat(
+            mocked_atomic_write,
+            MockCalledOnceWith(content, filename, mode=0600, overwrite=True))
 
 
 class TestEnsureDir(MAASTestCase):
@@ -1168,8 +1174,9 @@ class TestTryMatchXPath(MAASTestCase):
         callers_logger = Mock()
         try_match_xpath(xpath, doc, callers_logger)
         self.assertEqual("", root_logger.output)
-        callers_logger.exception.assert_called_once_with(
-            "Invalid expression: %s", xpath.path)
+        self.assertThat(
+            callers_logger.exception,
+            MockCalledOnceWith("Invalid expression: %s", xpath.path))
 
 
 class TestClassify(MAASTestCase):
@@ -1298,5 +1305,7 @@ class TestFindIPViaARP(MAASTestCase):
             provisioningserver.utils, 'call_capture_and_check')
         call_capture_and_check.return_value = sample
         ip_address_observed = find_ip_via_arp("90:f6:52:f6:17:92")
-        call_capture_and_check.assert_called_once_with(['arp', '-n'])
+        self.assertThat(
+            call_capture_and_check,
+            MockCalledOnceWith(['arp', '-n']))
         self.assertEqual("192.168.0.1", ip_address_observed)

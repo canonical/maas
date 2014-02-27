@@ -38,6 +38,7 @@ from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import map_enum
 from maastesting.celery import CeleryFixture
 from maastesting.fakemethod import FakeMethod
+from maastesting.matchers import MockCalledOnceWith
 from mock import (
     ANY,
     call,
@@ -304,8 +305,8 @@ class TestDNSConfigModifications(MAASServerTestCase):
         Config.objects.set_config("upstream_dns", random_ip)
         patched_task = self.patch(dns.tasks.write_full_dns_config, "delay")
         dns.write_full_dns_config()
-        patched_task.assert_called_once_with(
-            zones=ANY, callback=ANY, upstream_dns=random_ip)
+        self.assertThat(patched_task, MockCalledOnceWith(
+            zones=ANY, callback=ANY, upstream_dns=random_ip))
 
     def test_write_full_dns_doesnt_call_task_it_no_interface_configured(self):
         self.patch(settings, 'DNS_CONNECT', True)

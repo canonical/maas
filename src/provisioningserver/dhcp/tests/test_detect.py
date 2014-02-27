@@ -25,6 +25,7 @@ import urllib2
 from apiclient.maas_client import MAASClient
 from apiclient.testing.credentials import make_api_credentials
 from maastesting.factory import factory
+from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 import mock
 from provisioningserver import cache
@@ -450,41 +451,43 @@ class TestPeriodicTask(PservTestCase):
             mock.sentinel, mock.sentinel)
         mocked_logging = self.patch(detect_module.logger, 'error')
         determine_cluster_interfaces(self.knowledge)
-        mocked_logging.assert_called_once()
+        self.assertThat(mocked_logging, MockCalledOnceWith(mock.ANY, mock.ANY))
 
     def test_determine_cluster_interfaces_catches_URLError_in_MASClient(self):
         self.patch(MAASClient, 'get').side_effect = urllib2.URLError(
             mock.sentinel.arg1)
         mocked_logging = self.patch(detect_module.logger, 'error')
         determine_cluster_interfaces(self.knowledge)
-        mocked_logging.assert_called_once()
+        self.assertThat(mocked_logging, MockCalledOnceWith(mock.ANY, mock.ANY))
 
     def test_determine_cluster_interfaces_catches_non_OK_response(self):
         self.patch(MAASClient, 'get').return_value = MockResponse(
             httplib.NOT_FOUND, "error text")
         mocked_logging = self.patch(detect_module.logger, 'error')
         determine_cluster_interfaces(self.knowledge)
-        mocked_logging.assert_called_once()
+        self.assertThat(
+            mocked_logging,
+            MockCalledOnceWith(mock.ANY, mock.ANY, mock.ANY))
 
     def test_update_region_controller_sets_detected_dhcp(self):
         mocked_post = self.patch(MAASClient, 'post')
         mocked_post.return_value = MockResponse()
         detected_server = factory.getRandomIPAddress()
         update_region_controller(self.knowledge, "eth0", detected_server)
-        mocked_post.assert_called_once_with(
-            'api/1.0/nodegroups/%s/interfaces/eth0/' % self.knowledge[
-                'nodegroup_uuid'],
-            'report_foreign_dhcp', foreign_dhcp_ip=detected_server)
+        uuid = self.knowledge['nodegroup_uuid']
+        self.assertThat(mocked_post, MockCalledOnceWith(
+            'api/1.0/nodegroups/%s/interfaces/eth0/' % uuid,
+            'report_foreign_dhcp', foreign_dhcp_ip=detected_server))
 
     def test_update_region_controller_clears_detected_dhcp(self):
         mocked_post = self.patch(MAASClient, 'post')
         mocked_post.return_value = MockResponse()
         detected_server = None
         update_region_controller(self.knowledge, "eth0", detected_server)
-        mocked_post.assert_called_once_with(
-            'api/1.0/nodegroups/%s/interfaces/eth0/' % self.knowledge[
-                'nodegroup_uuid'],
-            'report_foreign_dhcp', foreign_dhcp_ip='')
+        uuid = self.knowledge['nodegroup_uuid']
+        self.assertThat(mocked_post, MockCalledOnceWith(
+            'api/1.0/nodegroups/%s/interfaces/eth0/' % uuid,
+            'report_foreign_dhcp', foreign_dhcp_ip=''))
 
     def test_update_region_controller_catches_HTTPError_in_MAASClient(self):
         self.patch(MAASClient, 'post').side_effect = urllib2.HTTPError(
@@ -492,22 +495,22 @@ class TestPeriodicTask(PservTestCase):
             mock.sentinel, mock.sentinel)
         mocked_logging = self.patch(detect_module.logger, 'error')
         update_region_controller(self.knowledge, "eth0", None)
-        mocked_logging.assert_called_once()
+        self.assertThat(mocked_logging, MockCalledOnceWith(mock.ANY, mock.ANY))
 
     def test_update_region_controller_catches_URLError_in_MAASClient(self):
         self.patch(MAASClient, 'post').side_effect = urllib2.URLError(
             mock.sentinel.arg1)
         mocked_logging = self.patch(detect_module.logger, 'error')
         update_region_controller(self.knowledge, "eth0", None)
-        mocked_logging.assert_called_once()
+        self.assertThat(mocked_logging, MockCalledOnceWith(mock.ANY, mock.ANY))
 
     def test_update_region_controller_catches_non_OK_response(self):
         mock_response = MockResponse(httplib.NOT_FOUND, "error text")
         self.patch(MAASClient, 'post').return_value = mock_response
         mocked_logging = self.patch(detect_module.logger, 'error')
         update_region_controller(self.knowledge, "eth0", None)
-        mocked_logging.assert_called_once_with(
-            mock.ANY, mock_response.getcode(), mock_response.read())
+        self.assertThat(mocked_logging, MockCalledOnceWith(
+            mock.ANY, mock_response.getcode(), mock_response.read()))
 
     def test_periodic_probe_task_exits_with_not_enough_knowledge(self):
         mocked = self.patch(detect_module, 'determine_cluster_interfaces')

@@ -34,6 +34,7 @@ from maasserver.models import NodeGroup
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.tests.test_forms import make_interface_settings
+from maastesting.matchers import MockCalledOnceWith
 from mock import (
     ANY,
     Mock,
@@ -394,7 +395,7 @@ class TestRegisterAPI(MAASServerTestCase):
             reverse('nodegroups_handler'),
             {'op': 'register', 'uuid': nodegroup.uuid})
         self.assertEqual(httplib.OK, response.status_code, response)
-        update_maas_url.assert_called_once_with(nodegroup, ANY)
+        self.assertThat(update_maas_url, MockCalledOnceWith(nodegroup, ANY))
 
     def test_register_pending_nodegroup_does_not_update_maas_url(self):
         # When registering an existing, pending cluster, the MAAS URL we give

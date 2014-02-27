@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test custom commissioning scripts."""
@@ -39,6 +39,7 @@ from maasserver.models.tag import Tag
 from maasserver.testing import reload_object
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maastesting.matchers import MockCalledOnceWith
 from maastesting.utils import sample_binary_data
 from metadataserver.fields import Bin
 from metadataserver.models import (
@@ -257,14 +258,14 @@ class TestLLDPScripts(MAASServerTestCase):
         lldpd_wait = isolate_function(cs_module.lldpd_wait)
         lldpd_wait(reference_file, time_delay)
         # lldpd_wait checks the mtime of the reference file,
-        os.path.getmtime.assert_called_once_with(reference_file)
+        self.assertThat(os.path.getmtime, MockCalledOnceWith(reference_file))
         # and gets the current time,
-        time.time.assert_called_once_with()
+        self.assertThat(time.time, MockCalledOnceWith())
         # then sleeps until time_delay seconds has passed since the
         # mtime of the reference file.
-        time.sleep.assert_called_once_with(
+        self.assertThat(time.sleep, MockCalledOnceWith(
             os.path.getmtime.return_value + time_delay -
-            time.time.return_value)
+            time.time.return_value))
 
     def test_capture_calls_lldpdctl(self):
         check_call = self.patch(subprocess, "check_call")
@@ -376,8 +377,8 @@ class TestInjectResult(MAASServerTestCase):
 
         inject_result(node, name, output, exit_status)
 
-        hook.assert_called_once_with(
-            node=node, output=output, exit_status=exit_status)
+        self.assertThat(hook, MockCalledOnceWith(
+            node=node, output=output, exit_status=exit_status))
 
     def inject_lshw_result(self):
         # inject_lshw_result() just calls through to inject_result().
@@ -385,8 +386,8 @@ class TestInjectResult(MAASServerTestCase):
             cs_module, "inject_result",
             create_autospec(cs_module.inject_result))
         inject_lshw_result(sentinel.node, sentinel.output, sentinel.status)
-        inject_result.assert_called_once_with(
-            sentinel.node, LSHW_OUTPUT_NAME, sentinel.output, sentinel.status)
+        self.assertThat(inject_result, MockCalledOnceWith(
+            sentinel.node, LSHW_OUTPUT_NAME, sentinel.output, sentinel.status))
 
     def inject_lldp_result(self):
         # inject_lldp_result() just calls through to inject_result().
@@ -394,8 +395,8 @@ class TestInjectResult(MAASServerTestCase):
             cs_module, "inject_result",
             create_autospec(cs_module.inject_result))
         inject_lldp_result(sentinel.node, sentinel.output, sentinel.status)
-        inject_result.assert_called_once_with(
-            sentinel.node, LLDP_OUTPUT_NAME, sentinel.output, sentinel.status)
+        self.assertThat(inject_result, MockCalledOnceWith(
+            sentinel.node, LLDP_OUTPUT_NAME, sentinel.output, sentinel.status))
 
 
 class TestSetVirtualTag(MAASServerTestCase):

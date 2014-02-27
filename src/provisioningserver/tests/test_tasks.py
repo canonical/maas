@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for Celery tasks."""
@@ -35,6 +35,10 @@ from maastesting.factory import factory
 from maastesting.fakemethod import (
     FakeMethod,
     MultiFakeMethod,
+    )
+from maastesting.matchers import (
+    MockAnyCall,
+    MockCalledOnceWith,
     )
 from mock import (
     ANY,
@@ -174,10 +178,10 @@ class TestPowerTasksResolveMACAddresses(PservTestCase):
         # supplied.
         tasks.issue_power_action(
             sentinel.power_type, "on", mac_address=sentinel.mac_address)
-        PowerAction.assert_called_once_with(sentinel.power_type)
-        PowerAction.return_value.execute.assert_called_once_with(
+        self.assertThat(PowerAction, MockCalledOnceWith(sentinel.power_type))
+        self.assertThat(PowerAction.return_value.execute, MockCalledOnceWith(
             power_change="on", mac_address=sentinel.mac_address,
-            ip_address=sentinel.ip_address)
+            ip_address=sentinel.ip_address))
 
     def test_ip_address_is_looked_up_when_already_supplied(self):
         # Patch out PowerAction; we're just trying to demonstrate that
@@ -192,9 +196,9 @@ class TestPowerTasksResolveMACAddresses(PservTestCase):
         tasks.issue_power_action(
             sentinel.power_type, "on", mac_address=sentinel.mac_address,
             ip_address=sentinel.another_ip_address)
-        PowerAction.return_value.execute.assert_called_once_with(
+        self.assertThat(PowerAction.return_value.execute, MockCalledOnceWith(
             power_change="on", mac_address=sentinel.mac_address,
-            ip_address=sentinel.ip_address)
+            ip_address=sentinel.ip_address))
 
 
 class TestDHCPTasks(PservTestCase):
@@ -301,31 +305,34 @@ class TestDHCPTasks(PservTestCase):
         write_dhcp_config(**config_params)
 
         # It should construct Popen with the right parameters.
-        mocked_popen.assert_any_call(
+        self.assertThat(mocked_popen, MockAnyCall(
             ["sudo", "-n", "maas-provision", "atomic-write", "--filename",
-             celery_config.DHCP_CONFIG_FILE, "--mode", "0644"], stdin=PIPE)
+             celery_config.DHCP_CONFIG_FILE, "--mode", "0644"], stdin=PIPE))
 
         # It should then pass the content to communicate().
         content = config.get_config(**config_params).encode("ascii")
-        mocked_proc.communicate.assert_any_call(content)
+        self.assertThat(mocked_proc.communicate, MockAnyCall(content))
 
         # Similarly, it also writes the DHCPD interfaces to
         # /var/lib/maas/dhcpd-interfaces.
-        mocked_popen.assert_any_call(
-            ["sudo", "-n", "maas-provision", "atomic-write", "--filename",
-             celery_config.DHCP_INTERFACES_FILE, "--mode", "0644"], stdin=PIPE)
+        self.assertThat(mocked_popen, MockAnyCall(
+            [
+                "sudo", "-n", "maas-provision", "atomic-write", "--filename",
+                celery_config.DHCP_INTERFACES_FILE, "--mode", "0644",
+            ],
+            stdin=PIPE))
 
     def test_restart_dhcp_server_sends_command(self):
         self.patch(tasks, 'call_and_check')
         restart_dhcp_server()
-        tasks.call_and_check.assert_called_once_with(
-            ['sudo', '-n', 'service', 'maas-dhcp-server', 'restart'])
+        self.assertThat(tasks.call_and_check, MockCalledOnceWith(
+            ['sudo', '-n', 'service', 'maas-dhcp-server', 'restart']))
 
     def test_stop_dhcp_server_sends_command(self):
         self.patch(tasks, 'call_and_check')
         stop_dhcp_server()
-        tasks.call_and_check.assert_called_once_with(
-            ['sudo', '-n', 'service', 'maas-dhcp-server', 'stop'])
+        self.assertThat(tasks.call_and_check, MockCalledOnceWith(
+            ['sudo', '-n', 'service', 'maas-dhcp-server', 'stop']))
 
 
 def assertTaskRetried(runner, result, nb_retries, task_name):
@@ -615,23 +622,23 @@ class TestImportPxeFiles(PservTestCase):
     def test_import_boot_images(self):
         recorder = self.patch(tasks, 'call_and_check')
         import_boot_images()
-        recorder.assert_called_once_with(
-            ['sudo', '-n', '-E', 'maas-import-pxe-files'], env=ANY)
+        self.assertThat(recorder, MockCalledOnceWith(
+            ['sudo', '-n', '-E', 'maas-import-pxe-files'], env=ANY))
         self.assertIsInstance(import_boot_images, Task)
 
     def test_import_boot_images_preserves_environment(self):
         recorder = self.patch(tasks, 'call_and_check')
         import_boot_images()
-        recorder.assert_called_once_with(
-            ['sudo', '-n', '-E', 'maas-import-pxe-files'], env=os.environ)
+        self.assertThat(recorder, MockCalledOnceWith(
+            ['sudo', '-n', '-E', 'maas-import-pxe-files'], env=os.environ))
 
     def test_import_boot_images_sets_proxy(self):
         recorder = self.patch(tasks, 'call_and_check')
         proxy = factory.getRandomString()
         import_boot_images(http_proxy=proxy)
         expected_env = dict(os.environ, http_proxy=proxy, https_proxy=proxy)
-        recorder.assert_called_once_with(
-            ['sudo', '-n', '-E', 'maas-import-pxe-files'], env=expected_env)
+        self.assertThat(recorder, MockCalledOnceWith(
+            ['sudo', '-n', '-E', 'maas-import-pxe-files'], env=expected_env))
 
     def test_import_boot_images_sets_archive_locations(self):
         self.patch(tasks, 'call_and_check')

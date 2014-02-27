@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maascli.api`."""
@@ -30,6 +30,7 @@ from maascli.utils import (
     safe_name,
     )
 from maastesting.factory import factory
+from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from mock import (
     Mock,
@@ -93,9 +94,9 @@ class TestFunctions(MAASTestCase):
         request.return_value = response, json.dumps(content)
         self.assertEqual(
             content, api.fetch_api_description("http://example.com/api/1.0/"))
-        request.assert_called_once_with(
+        self.assertThat(request, MockCalledOnceWith(
             b"http://example.com/api/1.0/describe/", "GET", body=None,
-            headers=None)
+            headers=None))
 
     def test_fetch_api_description_not_okay(self):
         # If the response is not 200 OK, fetch_api_description throws toys.
@@ -197,7 +198,7 @@ class TestIsResponseTextual(MAASTestCase):
         self.assertEqual(
             self.is_textual,
             api.is_response_textual(sentinel.response))
-        grct.assert_called_once_with(sentinel.response)
+        self.assertThat(grct, MockCalledOnceWith(sentinel.response))
 
 
 class TestAction(MAASTestCase):
@@ -396,4 +397,5 @@ class TestPayloadPreparation(MAASTestCase):
         # encode_multipart_data, when called, is passed the data
         # unadulterated.
         if self.expected_body is sentinel.body:
-            api.encode_multipart_data.assert_called_once_with(self.data)
+            self.assertThat(
+                api.encode_multipart_data, MockCalledOnceWith(self.data))
