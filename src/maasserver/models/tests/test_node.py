@@ -1093,8 +1093,11 @@ class NodeManagerTest(MAASServerTestCase):
         output = Node.objects.start_nodes([node.system_id], user)
         self.assertItemsEqual([node], output)
         self.assertEqual(
-            unicode(node.get_primary_mac()),
+            node.get_primary_mac().mac_address.get_raw(),
             self.celery.tasks[0]['kwargs']['mac_address'])
+        self.assertIsInstance(
+            self.celery.tasks[0]['kwargs']['mac_address'],
+            unicode)
 
     def test_start_nodes_wakeonlan_ignores_empty_mac_address_parameter(self):
         user = factory.make_user()
