@@ -48,7 +48,7 @@ class Provides(MatchesPredicate):
 
 class MockCalledWith:
     """Matches if the matchee Mock was called with the provided args.
-    
+
     Use of Mock.assert_called_with is discouraged as it passes if you typo
     the function name.
     """
@@ -72,7 +72,7 @@ class MockCalledWith:
 
 class MockCalledOnceWith(MockCalledWith):
     """Matches if the matchee Mock was called once with the provided args.
-    
+
     Use of Mock.assert_called_once_with is discouraged as it passes if you typo
     the function name.
     """
@@ -89,7 +89,7 @@ class MockCalledOnceWith(MockCalledWith):
 class MockAnyCall(MockCalledWith):
     """Matches if the matchee Mock was called at any time with the provided
     args.
-    
+
     Use of Mock.assert_any_call is discouraged as it passes if you typo
     the function name.
     """
