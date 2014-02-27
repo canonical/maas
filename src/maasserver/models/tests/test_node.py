@@ -1083,16 +1083,18 @@ class NodeManagerTest(MAASServerTestCase):
                 self.celery.tasks[0]['kwargs']['mac_address'],
             ))
 
-    def test_start_nodes_wakeonlan_ignores_invalid_parameters(self):
+    def test_start_nodes_wakeonlan_falls_back_to_primary_mac(self):
         # If node.power_params is set but doesn't have "mac_address" in it,
-        # then the node shouldn't be started.
+        # then use the node's primary MAC.
         user = factory.make_user()
         node, mac = self.make_node_with_mac(
             user, power_type='ether_wake',
             power_parameters=dict(jarjar="binks"))
         output = Node.objects.start_nodes([node.system_id], user)
-        self.assertItemsEqual([], output)
-        self.assertEqual([], self.celery.tasks)
+        self.assertItemsEqual([node], output)
+        self.assertEqual(
+            unicode(node.get_primary_mac()),
+            self.celery.tasks[0]['kwargs']['mac_address'])
 
     def test_start_nodes_wakeonlan_ignores_empty_mac_address_parameter(self):
         user = factory.make_user()

@@ -774,8 +774,8 @@ class Node(CleanSave, TimestampedModel):
         power_params.setdefault('power_driver', '')
 
         # The "mac" parameter defaults to the node's primary MAC
-        # address, but only if no power parameters were set at all.
-        if not self.power_parameters:
+        # address, but only if not already set.
+        if 'mac_address' not in power_params:
             primary_mac = self.get_primary_mac()
             if primary_mac is not None:
                 power_params['mac_address'] = primary_mac.mac_address
