@@ -263,8 +263,9 @@ def get_config_doc(indentation=0):
         form_details = config_details['form_kwargs']
         doc.append("- " + config_name + ": " + form_details['label'] + ". ")
         # Append help text if present.
-        help_text = form_details.get('help_text', "")
-        doc.append(help_text)
+        help_text = form_details.get('help_text')
+        if help_text is not None:
+            doc.append(help_text.strip())
         # Append list of possible choices if present.
         choices = form_details.get('choices')
         if choices is not None:

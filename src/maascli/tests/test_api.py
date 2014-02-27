@@ -18,6 +18,8 @@ import collections
 import httplib
 import io
 import json
+import sys
+from textwrap import dedent
 
 import httplib2
 from maascli import api
@@ -37,10 +39,12 @@ from mock import (
     sentinel,
     )
 from testtools.matchers import (
+    EndsWith,
     Equals,
     IsInstance,
     MatchesAll,
     MatchesListwise,
+    Not,
     )
 
 
@@ -262,6 +266,240 @@ class TestAction(MAASTestCase):
         self.patch(buf, 'isatty').return_value = True
         api.Action.print_response(response, response['content'], buf)
         self.assertEqual(response['content'], buf.getvalue())
+
+
+class TestActionHelp(MAASTestCase):
+
+    def make_help(self):
+        """Create an `ActionHelp` object."""
+        option_strings = []
+        dest = 'arg'
+        return api.ActionHelp(option_strings, dest)
+
+    def make_namespace(self):
+        """Return a `namespace` argument that `argparse.Action` will accept."""
+        return factory.make_name('namespace')
+
+    def make_values(self):
+        """Return a `values` argument that `argparse.Action` will accept."""
+        return []
+
+    def make_option_string(self):
+        """Return an `options_string` that `argparse.Action` will accept."""
+        return ""
+
+    def test_get_positional_args_returns_empty_list_if_no_args(self):
+        self.assertEqual(
+            [],
+            api.ActionHelp.get_positional_args(ArgumentParser()))
+
+    def test_get_positional_args_lists_arguments(self):
+        option = factory.make_name('opt', sep='_')
+        parser = ArgumentParser()
+        parser.add_argument(option)
+        self.assertEqual([option], api.ActionHelp.get_positional_args(parser))
+
+    def test_get_positional_args_omits_final_data_arg(self):
+        parser = ArgumentParser()
+        option = factory.make_name('opt', sep='_')
+        parser.add_argument(option)
+        parser.add_argument('data')
+        self.assertEqual([option], api.ActionHelp.get_positional_args(parser))
+
+    def test_get_positional_args_includes_other_arg(self):
+        parser = ArgumentParser()
+        parser.add_argument('data')
+        option = factory.make_name('opt', sep='_')
+        parser.add_argument(option)
+        self.assertEqual(
+            ['data', option],
+            api.ActionHelp.get_positional_args(parser))
+
+    def test_get_positional_args_returns_empty_if_data_is_only_arg(self):
+        parser = ArgumentParser()
+        parser.add_argument('data')
+        self.assertEqual([], api.ActionHelp.get_positional_args(parser))
+
+    def test_get_positional_args_ignores_optional_args(self):
+        parser = ArgumentParser()
+        parser.add_argument('--option')
+        self.assertEqual([], api.ActionHelp.get_positional_args(parser))
+
+    def test_get_optional_args_returns_empty_if_no_args(self):
+        self.assertEqual(
+            [],
+            api.ActionHelp.get_optional_args(ArgumentParser(add_help=False)))
+
+    def test_get_optional_args_returns_optional_args(self):
+        option = '--%s' % factory.make_name('opt')
+        parser = ArgumentParser(add_help=False)
+        parser.add_argument(option)
+        args = api.ActionHelp.get_optional_args(parser)
+        self.assertEqual(
+            [[option]],
+            [action.option_strings for action in args])
+
+    def test_compose_positional_args_returns_empty_if_no_args(self):
+        self.assertEqual(
+            [],
+            api.ActionHelp.compose_positional_args(ArgumentParser()))
+
+    def test_compose_positional_args_describes_positional_args(self):
+        arg = factory.make_name('arg', sep='_')
+        parser = ArgumentParser()
+        parser.add_argument(arg)
+        self.assertEqual(
+            dedent("""\
+
+
+                Positional arguments:
+                \t%s
+                """.rstrip()) % arg,
+            '\n'.join(api.ActionHelp.compose_positional_args(parser)))
+
+    def test_compose_positional_args_does_not_end_with_newline(self):
+        arg = factory.make_name('arg', sep='_')
+        parser = ArgumentParser()
+        parser.add_argument(arg)
+        self.assertThat(
+            '\n'.join(api.ActionHelp.compose_positional_args(parser)),
+            Not(EndsWith('\n')))
+
+    def test_compose_epilog_returns_empty_if_no_epilog(self):
+        self.assertEqual([], api.ActionHelp.compose_epilog(ArgumentParser()))
+
+    def test_compose_epilog_returns_empty_if_epilog_is_empty(self):
+        self.assertEqual(
+            [],
+            api.ActionHelp.compose_epilog(ArgumentParser(epilog='')))
+
+    def test_compose_epilog_returns_empty_if_epilog_is_whitespace(self):
+        self.assertEqual(
+            [],
+            api.ActionHelp.compose_epilog(ArgumentParser(epilog='  \n')))
+
+    def test_compose_epilog_returns_epilog(self):
+        epilog = factory.make_name('epi')
+        self.assertEqual(
+            "\n\n%s" % epilog,
+            '\n'.join(
+                api.ActionHelp.compose_epilog(ArgumentParser(epilog=epilog))))
+
+    def test_compose_epilog_preserves_indentation(self):
+        indent = ' ' * 8
+        epilog = indent + factory.make_name('epi')
+        self.assertEqual(
+            "\n\n%s" % epilog,
+            '\n'.join(
+                api.ActionHelp.compose_epilog(ArgumentParser(epilog=epilog))))
+
+    def test_compose_epilog_explains_documented_keyword_args(self):
+        epilog = ":param foo: The amount of foo."
+        self.assertEqual(
+            '\n\n%s\n%s' % (api.ActionHelp.keyword_args_help, epilog),
+            '\n'.join(
+                api.ActionHelp.compose_epilog(ArgumentParser(epilog=epilog))))
+
+    def test_compose_optional_args_returns_empty_if_none_defined(self):
+        self.assertEqual(
+            [],
+            api.ActionHelp.compose_optional_args(
+                ArgumentParser(add_help=False)))
+
+    def test_compose_optional_args_describes_optional_args(self):
+        long_option = '--%s' % factory.make_name('opt', sep='_')
+        short_option = '-o'
+        option_help = factory.make_name('help')
+        parser = ArgumentParser(add_help=False)
+        parser.add_argument(long_option, short_option, help=option_help)
+        expected_text = dedent("""\
+
+
+            Common command-line options:
+                %s
+            \t%s
+            """) % (', '.join([long_option, short_option]), option_help)
+        self.assertEqual(
+            expected_text.rstrip(),
+            '\n'.join(api.ActionHelp.compose_optional_args(parser)))
+
+    def test_compose_shows_at_least_usage_and_description(self):
+        usage = factory.make_name('usage')
+        description = factory.make_name('description')
+        parser = ArgumentParser(
+            usage=usage, description=description, add_help=False)
+        self.assertEqual(
+            dedent("""\
+                usage: %s
+
+                %s
+                """).rstrip() % (usage, description),
+            api.ActionHelp.compose(parser))
+
+    def test_call_exits(self):
+        parser = ArgumentParser(description=factory.getRandomString())
+        action_help = self.make_help()
+        self.patch(sys, 'exit')
+        self.patch(api, 'print')
+        action_help(
+            parser, self.make_namespace(), self.make_values(),
+            self.make_option_string())
+        self.assertThat(sys.exit, MockCalledOnceWith(0))
+
+    def test_call_shows_full_enchilada(self):
+        usage = factory.make_name('usage')
+        description = factory.make_name('description')
+        epilog = dedent("""\
+            More detailed description here.
+            Typically more than one line.
+            :param foo: The amount of foo.
+            """).rstrip()
+        arg = factory.make_name('arg', sep='_')
+        parser = ArgumentParser(
+            usage=usage, description=description, epilog=epilog,
+            add_help=False)
+        parser.add_argument(arg)
+        option = '--%s' % factory.make_name('opt')
+        option_help = factory.make_name('help')
+        parser.add_argument(option, help=option_help)
+        params = {
+            'usage': usage,
+            'description': description,
+            'arg': arg,
+            'keyword_args_help': api.ActionHelp.keyword_args_help.rstrip(),
+            'epilog': epilog,
+            'option': option,
+            'option_help': option_help,
+            }
+        expected_text = dedent("""\
+            usage: %(usage)s
+
+            %(description)s
+
+
+            Positional arguments:
+            \t%(arg)s
+
+
+            %(keyword_args_help)s
+
+            %(epilog)s
+
+
+            Common command-line options:
+                %(option)s
+            \t%(option_help)s
+            """).rstrip() % params
+        action_help = self.make_help()
+        self.patch(sys, 'exit')
+        self.patch(api, 'print')
+
+        # Invoke ActionHelp.__call__, so we can see what it prints.
+        action_help(
+            parser, self.make_namespace(), self.make_values(),
+            self.make_option_string())
+
+        self.assertThat(api.print, MockCalledOnceWith(expected_text))
 
 
 class TestPayloadPreparation(MAASTestCase):

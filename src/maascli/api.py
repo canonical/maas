@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Interact with a remote MAAS server."""
@@ -16,6 +16,7 @@ __all__ = [
     "register_api_commands",
     ]
 
+import argparse
 from collections import defaultdict
 from email.message import Message
 import httplib
@@ -249,6 +250,124 @@ class Action(Command):
             file.write("\n")
 
 
+class ActionHelp(argparse.Action):
+    """Custom "help" function for an action `ArgumentParser`.
+
+    We use the argument parser's "epilog" field for the action's detailed
+    description.
+
+    This class is stateless.
+    """
+
+    keyword_args_help = dedent("""\
+        This method accepts keyword arguments.  Pass each argument as a
+        key-value pair with an equals sign between the key and the value:
+        key1=value1 key2=value key3=value3.  Keyword arguments must come after
+        any positional arguments.
+        """)
+
+    @classmethod
+    def get_positional_args(cls, parser):
+        """Return an API action's positional arguments.
+
+        Most typically, this holds a URL path fragment for the object that's
+        being addressed, e.g. a physical zone's name.
+
+        There will also be a "data" argument, representing the request's
+        embedded data, but that's of no interest to end-users.  The CLI offers
+        a more fine-grained interface to pass parameters, so as a special case,
+        that one item is left out.
+        """
+        # Use private method on the parser.  The list of actions does not
+        # seem to be publicly exposed.
+        positional_actions = parser._get_positional_actions()
+        names = [action.dest for action in positional_actions]
+        if len(names) > 0 and names[-1] == 'data':
+            names = names[:-1]
+        return names
+
+    @classmethod
+    def get_optional_args(cls, parser):
+        """Return an API action's optional arguments."""
+        # Use private method on the parser.  The list of actions does not
+        # seem to be publicly exposed.
+        optional_args = parser._get_optional_actions()
+        return optional_args
+
+    @classmethod
+    def compose_positional_args(cls, parser):
+        """Describe positional arguments for `parser`, as a list of strings."""
+        positional_args = cls.get_positional_args(parser)
+        if len(positional_args) == 0:
+            return []
+        else:
+            return [
+                '',
+                '',
+                "Positional arguments:",
+                ] + ["\t%s" % arg for arg in positional_args]
+
+    @classmethod
+    def compose_epilog(cls, parser):
+        """Describe action in detail, as a list of strings."""
+        epilog = parser.epilog
+        if parser.epilog is None:
+            return []
+        epilog = epilog.rstrip()
+        if epilog == '':
+            return []
+
+        lines = [
+            '',
+            '',
+            ]
+        if ':param ' in epilog:
+            # This API action documents keyword arguments.  Explain to the
+            # user how those work first.
+            lines.append(cls.keyword_args_help)
+        # Finally, include the actual documentation body.
+        lines.append(epilog)
+        return lines
+
+    @classmethod
+    def compose_optional_args(cls, parser):
+        """Describe optional arguments for `parser`, as a list of strings."""
+        optional_args = cls.get_optional_args(parser)
+        if len(optional_args) == 0:
+            return []
+
+        lines = [
+            '',
+            '',
+            "Common command-line options:",
+            ]
+        for arg in optional_args:
+            # Minimal representation of options.  Doesn't show
+            # arguments to the options, defaults, and so on.  But it's
+            # all we need for now.
+            lines.append('    %s' % ', '.join(arg.option_strings))
+            lines.append('\t%s' % arg.help)
+        return lines
+
+    @classmethod
+    def compose(cls, parser):
+        """Put together, and return, help output for `parser`."""
+        lines = [
+            parser.format_usage().rstrip(),
+            '',
+            parser.description,
+            ]
+        lines += cls.compose_positional_args(parser)
+        lines += cls.compose_epilog(parser)
+        lines += cls.compose_optional_args(parser)
+        return '\n'.join(lines)
+
+    def __call__(self, parser, namespace, values, option_string):
+        """Overridable as defined by the `argparse` API."""
+        print(self.compose(parser))
+        sys.exit(0)
+
+
 def register_actions(profile, handler, parser):
     """Register a handler's actions."""
     for action in handler["actions"]:
@@ -263,9 +382,11 @@ def register_actions(profile, handler, parser):
         action_class = type(action_name, action_bases, action_ns)
         action_parser = parser.subparsers.add_parser(
             action_name, help=help_title, description=help_title,
-            epilog=help_body)
-        action_parser.set_defaults(
-            execute=action_class(action_parser))
+            epilog=help_body, add_help=False)
+        action_parser.add_argument(
+            '--help', '-h', action=ActionHelp, nargs=0,
+            help="Show this help message and exit.")
+        action_parser.set_defaults(execute=action_class(action_parser))
 
 
 def register_handler(profile, handler, parser):
