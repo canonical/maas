@@ -123,13 +123,13 @@ class Omshell:
     def __init__(self, server_address, shared_key):
         self.server_address = server_address
         self.shared_key = shared_key
+        self.command = ["omshell"]
 
     def _run(self, stdin):
-        command = ["omshell"]
-        proc = Popen(command, stdin=PIPE, stdout=PIPE)
+        proc = Popen(self.command, stdin=PIPE, stdout=PIPE)
         stdout, stderr = proc.communicate(stdin)
         if proc.poll() != 0:
-            raise ExternalProcessError(proc.returncode, command, stdout)
+            raise ExternalProcessError(proc.returncode, self.command, stdout)
         return proc.returncode, stdout
 
     def create(self, ip_address, mac_address):
@@ -162,7 +162,7 @@ class Omshell:
             # Host map already existed.  Treat as success.
             pass
         else:
-            raise ExternalProcessError(returncode, "omshell", output)
+            raise ExternalProcessError(returncode, self.command, output)
 
     def remove(self, ip_address):
         # The "name" is not a host name; it's an identifier used within
@@ -183,10 +183,10 @@ class Omshell:
 
         # If the omshell worked, the last line should reference a null
         # object.
-        lines = output.splitlines()
+        lines = output.strip().splitlines()
         try:
             last_line = lines[-1]
         except IndexError:
             last_line = ""
         if last_line != "obj: <null>":
-            raise ExternalProcessError(returncode, "omshell", output)
+            raise ExternalProcessError(returncode, self.command, output)

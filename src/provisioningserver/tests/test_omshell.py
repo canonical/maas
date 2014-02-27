@@ -184,6 +184,19 @@ class TestOmshell(MAASTestCase):
             subprocess.CalledProcessError, shell.remove, ip_address)
         self.assertEqual(random_output, exc.output)
 
+    def test_remove_works_when_extraneous_blank_last_lines(self):
+        # Sometimes omshell puts blank lines after the 'obj: <null>' so
+        # we need to test that the code still works if that's the case.
+        server_address = factory.getRandomString()
+        shared_key = factory.getRandomString()
+        ip_address = factory.getRandomIPAddress()
+        shell = Omshell(server_address, shared_key)
+
+        # Fake a call that results in a something with our special output.
+        output = "\nobj: <null>\n\n"
+        self.patch(shell, '_run').return_value = (0, output)
+        self.assertIsNone(shell.remove(ip_address))
+
 
 class Test_generate_omapi_key(MAASTestCase):
     """Tests for omshell.generate_omapi_key"""
