@@ -24,7 +24,10 @@ from django.db.models import (
     ManyToManyField,
     )
 from maasserver import DefaultMeta
-from maasserver.fields import MACAddressField
+from maasserver.fields import (
+    MAC,
+    MACAddressField,
+    )
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.managers import BulkManager
 from maasserver.models.timestampedmodel import TimestampedModel
@@ -54,11 +57,12 @@ class MACAddress(CleanSave, TimestampedModel):
         verbose_name_plural = "MAC addresses"
 
     def __unicode__(self):
-        text = self.mac_address.get_raw()
-        if isinstance(text, bytes):
-            return text.decode('utf-8')
-        else:
-            return text
+        address = self.mac_address
+        if isinstance(address, MAC):
+            address = address.get_raw()
+        if isinstance(address, bytes):
+            address = address.decode('utf-8')
+        return address
 
     def unique_error_message(self, model_class, unique_check):
         if unique_check == ('mac_address',):

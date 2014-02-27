@@ -58,3 +58,21 @@ class MACAddressTest(MAASServerTestCase):
         self.assertEqual(
             sorted(networks, key=attrgetter('name')),
             list(mac.get_networks()))
+
+    def test_unicode_copes_with_unclean_unicode_mac_address(self):
+        # If MACAddress.mac_address has not been cleaned yet, it will
+        # contain a string rather than a MAC.  Make sure __unicode__
+        # handles this.
+        mac_str = "aa:bb:cc:dd:ee:ff"
+        mac = MACAddress(
+            mac_address=mac_str, node=factory.make_node())
+        self.assertEqual(mac_str, unicode(mac))
+
+    def test_unicode_copes_with_unclean_bytes_mac_address(self):
+        # If MACAddress.mac_address has not been cleaned yet, it will
+        # contain a string rather than a MAC.  Make sure __str__
+        # handles this.
+        bytes_mac = bytes("aa:bb:cc:dd:ee:ff")
+        mac = MACAddress(
+            mac_address=bytes_mac, node=factory.make_node())
+        self.assertEqual(bytes_mac, mac.__str__())
