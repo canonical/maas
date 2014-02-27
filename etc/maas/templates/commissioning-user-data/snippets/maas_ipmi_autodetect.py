@@ -70,7 +70,7 @@ def bmc_user_get(user_number, parameter):
     """Get a user parameter via bmc-config commit."""
     key = format_user_key(user_number, parameter)
     raw = bmc_get(key)
-    pattern = r'^\s*%s(?:[ \t])+([^# \t\r\n\v\f]*[^\n]+)$' % (parameter)
+    pattern = r'^\s*%s(?:[ \t])+([^#\s]+[^\n]*)$' % (re.escape(parameter))
     match = re.search(pattern, raw, re.MULTILINE)
     if match is None:
         return None

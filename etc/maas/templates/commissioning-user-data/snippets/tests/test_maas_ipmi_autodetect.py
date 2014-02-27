@@ -182,6 +182,12 @@ class TestBMCUserGet(MAASTestCase):
             text="\t#Or Me", key='Key', value=None)),
         ('Word followed by comment', dict(
             text="\tMe #Neither", key='Key', value=None)),
+        ('Word followed by two spaces', dict(
+            text="\tMe  ", key='Me', value=None)),
+        ('Two words followed by space', dict(
+            text="\tMe Two ", key='Me', value='Two ')),
+        ('One character value', dict(
+            text="\tMe T", key='Me', value='T')),
     ]
 
     def test_matching(self):
