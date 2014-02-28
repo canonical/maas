@@ -23,6 +23,8 @@ from maastesting.factory import factory
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockCalledWith,
+    MockCallsMatch,
+    MockNotCalled,
     Provides,
     )
 from maastesting.testcase import MAASTestCase
@@ -41,7 +43,9 @@ from provisioningserver.rpc.clusterservice import (
     ClusterClientService,
     ClusterService,
     )
+from provisioningserver.rpc.region import Identify
 from provisioningserver.rpc.testing import (
+    are_valid_tls_parameters,
     call_responder,
     TwistedLoggerFixture,
     )
@@ -75,10 +79,43 @@ from twisted.internet.endpoints import TCP4ClientEndpoint
 from twisted.internet.interfaces import IStreamServerEndpoint
 from twisted.internet.protocol import Factory
 from twisted.internet.task import Clock
+from twisted.protocols import amp
 from twisted.test.proto_helpers import StringTransportWithDisconnection
 
 
-class TestClusterProtocol(MAASTestCase):
+class TestClusterProtocol_StartTLS(MAASTestCase):
+
+    run_tests_with = AsynchronousDeferredRunTest.make_factory(timeout=5)
+
+    def test_StartTLS_is_registered(self):
+        protocol = Cluster()
+        responder = protocol.locateResponder(amp.StartTLS.commandName)
+        self.assertIsNot(responder, None)
+
+    def test_get_tls_parameters_returns_parameters(self):
+        # get_tls_parameters() is the underlying responder function.
+        # However, locateResponder() returns a closure, so we have to
+        # side-step it.
+        protocol = Cluster()
+        cls, func = protocol._commandDispatch[amp.StartTLS.commandName]
+        self.assertThat(func(protocol), are_valid_tls_parameters)
+
+    def test_StartTLS_returns_nothing(self):
+        # The StartTLS command does some funky things - see _TLSBox and
+        # _LocalArgument for an idea - so the parameters returned from
+        # get_tls_parameters() - the registered responder - don't end up
+        # travelling over the wire as part of an AMP message. However,
+        # the responder is not aware of this, and is called just like
+        # any other.
+        d = call_responder(Cluster(), amp.StartTLS, {})
+
+        def check(response):
+            self.assertEqual({}, response)
+
+        return d.addCallback(check)
+
+
+class TestClusterProtocol_ListBootImages(MAASTestCase):
 
     run_tests_with = AsynchronousDeferredRunTest.make_factory(timeout=5)
 
@@ -386,6 +423,8 @@ class TestClusterClientService(MAASTestCase):
 
 class TestClusterClient(MAASTestCase):
 
+    run_tests_with = AsynchronousDeferredRunTest.make_factory(timeout=5)
+
     def make_running_client(self):
         client = clusterservice.ClusterClient(
             address=("example.com", 1234), eventloop="eventloop:pid=12345",
@@ -433,3 +472,67 @@ class TestClusterClient(MAASTestCase):
         # immediately disconnects.
         self.assertEqual(client.service.connections, {})
         self.assertFalse(client.connected)
+
+    @inlineCallbacks
+    def test_secureConnection_calls_StartTLS_and_Identify(self):
+        client = self.make_running_client()
+
+        callRemote = self.patch(client, "callRemote")
+        callRemote_return_values = [
+            {},  # In response to a StartTLS call.
+            {"name": client.eventloop},  # Identify.
+        ]
+        callRemote.side_effect = lambda cmd, **kwargs: (
+            callRemote_return_values.pop(0))
+
+        transport = self.patch(client, "transport")
+        logger = self.useFixture(TwistedLoggerFixture())
+
+        yield client.secureConnection()
+
+        self.assertThat(
+            callRemote, MockCallsMatch(
+                call(amp.StartTLS, **client.get_tls_parameters()),
+                call(Identify),
+            ))
+
+        # The connection is not dropped.
+        self.assertThat(transport.loseConnection, MockNotCalled())
+
+        # The certificates used are echoed to the log.
+        self.assertDocTestMatches(
+            """\
+            Host certificate: ...
+            ---
+            Peer certificate: ...
+            """,
+            logger.dump())
+
+    @inlineCallbacks
+    def test_secureConnection_disconnects_if_ident_does_not_match(self):
+        client = self.make_running_client()
+
+        callRemote = self.patch(client, "callRemote")
+        callRemote_return_values = [
+            {},  # In response to a StartTLS call.
+            {"name": "bogus-name"},  # Identify.
+        ]
+        callRemote.side_effect = lambda cmd, **kwargs: (
+            callRemote_return_values.pop(0))
+
+        transport = self.patch(client, "transport")
+        logger = self.useFixture(TwistedLoggerFixture())
+
+        yield client.secureConnection()
+
+        # The connection is dropped.
+        self.assertThat(
+            transport.loseConnection, MockCalledOnceWith())
+
+        # The log explains why.
+        self.assertDocTestMatches(
+            """\
+            The remote event-loop identifies itself as bogus-name, but
+            eventloop:pid=12345 was expected.
+            """,
+            logger.dump())

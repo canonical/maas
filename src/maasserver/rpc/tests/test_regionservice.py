@@ -37,7 +37,10 @@ from provisioningserver.rpc.region import (
     Identify,
     ReportBootImages,
     )
-from provisioningserver.rpc.testing import call_responder
+from provisioningserver.rpc.testing import (
+    are_valid_tls_parameters,
+    call_responder,
+    )
 from testtools.matchers import (
     AfterPreprocessing,
     Equals,
@@ -55,10 +58,11 @@ from twisted.internet.defer import (
 from twisted.internet.interfaces import IStreamServerEndpoint
 from twisted.internet.protocol import Factory
 from twisted.internet.threads import deferToThread
+from twisted.protocols import amp
 from twisted.python import log
 
 
-class TestRegionProtocol(MAASTestCase):
+class TestRegionProtocol_Identify(MAASTestCase):
 
     def test_identify_is_registered(self):
         protocol = Region()
@@ -73,6 +77,40 @@ class TestRegionProtocol(MAASTestCase):
             self.assertEqual({"name": eventloop.loop.name}, response)
 
         return d.addCallback(check)
+
+
+class TestRegionProtocol_StartTLS(MAASTestCase):
+
+    def test_StartTLS_is_registered(self):
+        protocol = Region()
+        responder = protocol.locateResponder(amp.StartTLS.commandName)
+        self.assertIsNot(responder, None)
+
+    def test_get_tls_parameters_returns_parameters(self):
+        # get_tls_parameters() is the underlying responder function.
+        # However, locateResponder() returns a closure, so we have to
+        # side-step it.
+        protocol = Region()
+        cls, func = protocol._commandDispatch[amp.StartTLS.commandName]
+        self.assertThat(func(protocol), are_valid_tls_parameters)
+
+    @wait_for_reactor
+    def test_StartTLS_returns_nothing(self):
+        # The StartTLS command does some funky things - see _TLSBox and
+        # _LocalArgument for an idea - so the parameters returned from
+        # get_tls_parameters() - the registered responder - don't end up
+        # travelling over the wire as part of an AMP message. However,
+        # the responder is not aware of this, and is called just like
+        # any other.
+        d = call_responder(Region(), amp.StartTLS, {})
+
+        def check(response):
+            self.assertEqual({}, response)
+
+        return d.addCallback(check)
+
+
+class TestRegionProtocol_ReportBootImages(MAASTestCase):
 
     def test_report_boot_images_is_registered(self):
         protocol = Region()

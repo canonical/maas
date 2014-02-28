@@ -25,11 +25,15 @@ from apiclient.utils import ascii_url
 from provisioningserver.cluster_config import get_maas_url
 from provisioningserver.config import Config
 from provisioningserver.pxe import tftppath
-from provisioningserver.rpc import cluster
+from provisioningserver.rpc import (
+    cluster,
+    region,
+    )
 from twisted.application.internet import (
     StreamServerEndpointService,
     TimerService,
     )
+from twisted.internet import ssl
 from twisted.internet.defer import inlineCallbacks
 from twisted.internet.endpoints import (
     connectProtocol,
@@ -39,7 +43,10 @@ from twisted.internet.endpoints import (
 from twisted.internet.error import ConnectError
 from twisted.internet.protocol import Factory
 from twisted.protocols import amp
-from twisted.python import log
+from twisted.python import (
+    filepath,
+    log,
+    )
 from twisted.web.client import getPage
 
 
@@ -55,6 +62,21 @@ class Cluster(amp.AMP, object):
         images = tftppath.list_boot_images(
             Config.load_from_cache()['tftp']['root'])
         return {"images": images}
+
+    @amp.StartTLS.responder
+    def get_tls_parameters(self):
+        # TODO: Obtain certificates from a config store.
+        testing = filepath.FilePath(__file__).sibling("testing")
+        with testing.child("cluster.crt").open() as fin:
+            tls_localCertificate = ssl.PrivateCertificate.loadPEM(fin.read())
+        with testing.child("trust.crt").open() as fin:
+            tls_verifyAuthorities = [
+                ssl.Certificate.loadPEM(fin.read()),
+            ]
+        return {
+            "tls_localCertificate": tls_localCertificate,
+            "tls_verifyAuthorities": tls_verifyAuthorities,
+        }
 
 
 class ClusterService(StreamServerEndpointService):
@@ -109,6 +131,27 @@ class ClusterClient(Cluster):
             if self.service.connections[self.eventloop] is self:
                 del self.service.connections[self.eventloop]
         super(ClusterClient, self).connectionLost(reason)
+
+    @inlineCallbacks
+    def secureConnection(self):
+        yield self.callRemote(amp.StartTLS, **self.get_tls_parameters())
+
+        # For some weird reason (it's mentioned in Twisted's source),
+        # TLS negotiation does not complete until we do something with
+        # the connection. Here we check that the remote event-loop is
+        # who we expected it to be.
+        response = yield self.callRemote(region.Identify)
+        remote_name = response.get("name")
+        if remote_name != self.eventloop:
+            log.msg(
+                "The remote event-loop identifies itself as %s, but "
+                "%s was expected." % (remote_name, self.eventloop))
+            self.transport.loseConnection()
+            return
+
+        # We should now have a full set of parameters for the transport.
+        log.msg("Host certificate: %r" % self.hostCertificate)
+        log.msg("Peer certificate: %r" % self.peerCertificate)
 
 
 class ClusterClientService(TimerService, object):

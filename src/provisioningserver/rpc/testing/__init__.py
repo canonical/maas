@@ -13,13 +13,22 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    "are_valid_tls_parameters",
     "call_responder",
     "TwistedLoggerFixture",
 ]
 
+import collections
 import operator
 
 from fixtures import Fixture
+from testtools.matchers import (
+    AllMatch,
+    IsInstance,
+    MatchesAll,
+    MatchesDict,
+    )
+from twisted.internet import ssl
 from twisted.python import log
 
 
@@ -58,3 +67,12 @@ class TwistedLoggerFixture(Fixture):
             operator.setitem, log.theLogPublisher.observers,
             slice(None), log.theLogPublisher.observers[:])
         log.theLogPublisher.observers[:] = [self.logs.append]
+
+
+are_valid_tls_parameters = MatchesDict({
+    "tls_localCertificate": IsInstance(ssl.PrivateCertificate),
+    "tls_verifyAuthorities": MatchesAll(
+        IsInstance(collections.Sequence),
+        AllMatch(IsInstance(ssl.Certificate)),
+    ),
+})

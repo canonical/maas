@@ -34,12 +34,18 @@ from provisioningserver.rpc import region
 from provisioningserver.utils import get_all_interface_addresses
 from twisted.application import service
 from twisted.application.internet import TimerService
-from twisted.internet import defer
+from twisted.internet import (
+    defer,
+    ssl,
+    )
 from twisted.internet.endpoints import TCP4ServerEndpoint
 from twisted.internet.protocol import Factory
 from twisted.internet.threads import deferToThread
 from twisted.protocols import amp
-from twisted.python import log
+from twisted.python import (
+    filepath,
+    log,
+    )
 
 
 class Region(amp.AMP):
@@ -56,6 +62,21 @@ class Region(amp.AMP):
     @region.ReportBootImages.responder
     def report_boot_images(self, uuid, images):
         return {}
+
+    @amp.StartTLS.responder
+    def get_tls_parameters(self):
+        # TODO: Obtain certificates from a config store.
+        testing = filepath.FilePath(__file__).sibling("testing")
+        with testing.child("region.crt").open() as fin:
+            tls_localCertificate = ssl.PrivateCertificate.loadPEM(fin.read())
+        with testing.child("trust.crt").open() as fin:
+            tls_verifyAuthorities = [
+                ssl.Certificate.loadPEM(fin.read()),
+            ]
+        return {
+            "tls_localCertificate": tls_localCertificate,
+            "tls_verifyAuthorities": tls_verifyAuthorities,
+        }
 
 
 class RegionService(service.Service, object):
