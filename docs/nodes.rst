@@ -66,8 +66,7 @@ user.  By default there is no home directory created for the maas user::
 
 Add a login shell for the maas user::
 
-    $ sudo chsh maas
-    $ /bin/bash
+    $ sudo chsh -s /bin/bash maas
 
 Become the maas user and generate a SSH keypair::
 
@@ -82,4 +81,3 @@ so virsh can use ssh without a password::
 As the maas user, test virsh commands against libvirt at 10.0.0.2::
 
     $ virsh -c qemu+ssh://ubuntu@10.0.0.2/system list --all
-
