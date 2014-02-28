@@ -20,13 +20,19 @@ from maastesting.matchers import (
     MockAnyCall,
     MockCalledOnceWith,
     MockCalledWith,
+    MockCallsMatch,
+    MockNotCalled,
     )
 from maastesting.testcase import MAASTestCase
 from mock import (
+    call,
     Mock,
     sentinel,
     )
-from testtools.matchers import Mismatch
+from testtools.matchers import (
+    MatchesStructure,
+    Mismatch,
+    )
 
 
 class TestIsCallable(MAASTestCase):
@@ -60,8 +66,15 @@ class TestIsCallable(MAASTestCase):
 
 class MockTestMixin:
 
+    # Some matchers return a private MismatchDecorator object, which
+    # does not descend from Mismatch, so we check the contract instead.
+    is_mismatch = MatchesStructure(
+        describe=IsCallable(),
+        get_details=IsCallable(),
+    )
+
     def assertMismatch(self, result, message):
-        self.assertIsInstance(result, Mismatch)
+        self.assertThat(result, self.is_mismatch)
         self.assertIn(message, result.describe())
 
 
@@ -149,3 +162,63 @@ class TestMockAnyCall(MAASTestCase, MockTestMixin):
         matcher = MockAnyCall(1, 2, frob=5, nob=6)
         result = matcher.match(mock)
         self.assertMismatch(result, "call not found")
+
+
+class TestMockCallsMatch(MAASTestCase, MockTestMixin):
+
+    def test_returns_none_when_matches(self):
+        mock = Mock()
+        mock(1, 2, frob=5, nob=6)
+
+        matcher = MockCallsMatch(call(1, 2, frob=5, nob=6))
+        result = matcher.match(mock)
+        self.assertIsNone(result)
+
+    def test_returns_none_when_multiple_calls(self):
+        mock = Mock()
+        mock(1, 2, frob=5, nob=6)
+        mock(1, 2, frob=5, nob=6)
+
+        matcher = MockCallsMatch(
+            call(1, 2, frob=5, nob=6),
+            call(1, 2, frob=5, nob=6))
+        result = matcher.match(mock)
+        self.assertIsNone(result)
+
+    def test_returns_mismatch_when_calls_do_not_match(self):
+        mock = Mock()
+        mock(1, 2, a=5)
+        mock(3, 4, a=5)
+
+        matcher = MockCallsMatch(
+            call(1, 2, a=5), call(3, 4, a="bogus"))
+        result = matcher.match(mock)
+        self.assertMismatch(result, "calls do not match")
+
+    def test_has_useful_string_representation(self):
+        matcher = MockCallsMatch(
+            call(1, 2, a=3), call(4, 5, a=6))
+        self.assertEqual(
+            "MockCallsMatch([call(1, 2, a=3), call(4, 5, a=6)])",
+            matcher.__str__())
+
+
+class TestMockNotCalled(MAASTestCase, MockTestMixin):
+
+    def test_returns_none_mock_has_not_been_called(self):
+        mock = Mock()
+        matcher = MockNotCalled()
+        result = matcher.match(mock)
+        self.assertIsNone(result)
+
+    def test_returns_mismatch_when_mock_has_been_called(self):
+        mock = Mock()
+        mock(1, 2, a=5)
+
+        matcher = MockNotCalled()
+        result = matcher.match(mock)
+        self.assertMismatch(result, "mock has been called")
+
+    def test_has_useful_string_representation(self):
+        matcher = MockNotCalled()
+        self.assertEqual("MockNotCalled", matcher.__str__())

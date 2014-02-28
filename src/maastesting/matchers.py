@@ -17,11 +17,20 @@ __all__ = [
     'MockAnyCall',
     'MockCalledOnceWith',
     'MockCalledWith',
+    'MockCallsMatch',
+    'MockNotCalled',
     'Provides',
     ]
 
+from mock import Mock
 from testtools.matchers import (
+    AfterPreprocessing,
+    Annotate,
+    Equals,
+    HasLength,
+    IsInstance,
     Matcher,
+    MatchesAll,
     MatchesPredicate,
     Mismatch,
     )
@@ -46,7 +55,15 @@ class Provides(MatchesPredicate):
             iface.providedBy, "%%r does not provide %s" % iface.getName())
 
 
-class MockCalledWith:
+def get_mock_calls(mock):
+    """Return a list of all calls made to the given `mock`.
+
+    :type mock: :class:`Mock`
+    """
+    return mock.call_args_list
+
+
+class MockCalledWith(Matcher):
     """Matches if the matchee Mock was called with the provided args.
 
     Use of Mock.assert_called_with is discouraged as it passes if you typo
@@ -65,7 +82,7 @@ class MockCalledWith:
         try:
             mock.assert_called_with(*self.args, **self.kwargs)
         except AssertionError as e:
-            return Mismatch(e.message)
+            return Mismatch(*e.args)
 
         return None
 
@@ -81,7 +98,7 @@ class MockCalledOnceWith(MockCalledWith):
         try:
             mock.assert_called_once_with(*self.args, **self.kwargs)
         except AssertionError as e:
-            return Mismatch(e.message)
+            return Mismatch(*e.args)
 
         return None
 
@@ -98,6 +115,62 @@ class MockAnyCall(MockCalledWith):
         try:
             mock.assert_any_call(*self.args, **self.kwargs)
         except AssertionError as e:
-            return Mismatch(e.message)
+            return Mismatch(*e.args)
 
         return None
+
+
+class MockCallsMatch(Matcher):
+    """Matches if the matchee Mock was called with exactly the given
+    sequence of calls.
+
+    :param calls: A sequence of :class:`mock.call`s that the matchee is
+        expected to have been called with.
+
+    The mock library does not have an equivalent.
+    """
+
+    def __init__(self, *calls):
+        super(Matcher, self).__init__()
+        self.calls = list(calls)
+
+    def __str__(self):
+        return "%s(%r)" % (
+            self.__class__.__name__, self.calls)
+
+    def match(self, mock):
+
+        matcher = MatchesAll(
+            IsInstance(Mock),
+            Annotate(
+                "calls do not match",
+                AfterPreprocessing(
+                    get_mock_calls,
+                    Equals(self.calls)),
+            ),
+            first_only=True,
+        )
+        return matcher.match(mock)
+
+
+class MockNotCalled(Matcher):
+    """Matches if the matchee Mock was not called.
+
+    The mock library does not have an equivalent.
+    """
+
+    def __str__(self):
+        return self.__class__.__name__
+
+    def match(self, mock):
+        matcher = MatchesAll(
+            IsInstance(Mock),
+            Annotate(
+                "mock has been called",
+                AfterPreprocessing(
+                    get_mock_calls,
+                    HasLength(0)),
+            ),
+            first_only=True,
+        )
+        return matcher.match(mock)
