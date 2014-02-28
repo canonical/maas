@@ -779,7 +779,7 @@ class Node(CleanSave, TimestampedModel):
             primary_mac = self.get_primary_mac()
             if primary_mac is not None:
                 mac = primary_mac.mac_address.get_raw()
-                power_params['mac_address'] = mac                    
+                power_params['mac_address'] = mac
         return power_params
 
     def acquire(self, user, token=None, agent_name=''):

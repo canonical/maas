@@ -96,7 +96,6 @@ def log_exception_text(func):
     return wrapper
 
 
-
 @task
 @log_exception_text
 def refresh_secrets(**kwargs):
