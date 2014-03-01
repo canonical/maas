@@ -508,6 +508,7 @@ class AnonymousEnlistmentAPITest(MAASServerTestCase):
                 'storage',
                 'memory',
                 'routers',
+                'zone',
             ],
             list(parsed_result))
 
@@ -594,6 +595,7 @@ class SimpleUserLoggedInEnlistmentAPITest(MAASServerTestCase):
                 'storage',
                 'memory',
                 'routers',
+                'zone',
             ],
             list(parsed_result))
 
@@ -733,6 +735,7 @@ class AdminLoggedInEnlistmentAPITest(MAASServerTestCase):
                 'storage',
                 'memory',
                 'routers',
+                'zone',
             ],
             list(parsed_result))
 

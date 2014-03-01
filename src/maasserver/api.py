@@ -261,6 +261,7 @@ DISPLAYED_NODE_FIELDS = (
     'tag_names',
     'ip_addresses',
     'routers',
+    'zone',
     )
 
 
@@ -342,6 +343,8 @@ class NodeHandler(OperationsHandler):
             power parameters for the node's power type ('true' or 'false').
             The default is 'false'.
         :type power_parameters_skip_validation: unicode
+        :param zone: Name of a valid physical zone in which to place this node
+        :type zone: unicode
         """
         node = Node.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NODE_PERMISSION.EDIT)

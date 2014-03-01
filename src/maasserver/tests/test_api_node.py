@@ -144,6 +144,17 @@ class TestNodeAPI(APITestCase):
         self.assertItemsEqual(
             [mac.get_raw() for mac in macs], parsed_result['routers'])
 
+    def test_GET_returns_zone(self):
+        node = factory.make_node()
+        response = self.client.get(self.get_node_uri(node))
+        self.assertEqual(httplib.OK, response.status_code)
+        parsed_result = json.loads(response.content)
+        self.assertEqual(
+            [node.zone.name, node.zone.description],
+            [
+                parsed_result['zone']['name'],
+                parsed_result['zone']['description']])
+
     def test_GET_refuses_to_access_nonexistent_node(self):
         # When fetching a Node, the api returns a 'Not Found' (404) error
         # if no node is found.
