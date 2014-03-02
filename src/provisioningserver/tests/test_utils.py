@@ -37,6 +37,7 @@ from textwrap import dedent
 import time
 import types
 
+from crochet import EventualResult
 from fixtures import (
     EnvironmentVariableFixture,
     FakeLogger,
@@ -63,6 +64,7 @@ from netifaces import (
 import provisioningserver
 from provisioningserver.utils import (
     ActionScript,
+    asynchronous,
     atomic_write,
     AtomicWriteScript,
     call_and_check,
@@ -90,17 +92,24 @@ from provisioningserver.utils import (
     write_text_file,
     )
 from testscenarios import multiply_scenarios
+from testtools.deferredruntest import AsynchronousDeferredRunTest
 from testtools.matchers import (
     DirExists,
     DocTestMatches,
     EndsWith,
     FileContains,
     FileExists,
+    IsInstance,
     MatchesStructure,
     Not,
     StartsWith,
     )
 from testtools.testcase import ExpectedException
+from twisted.internet.defer import (
+    Deferred,
+    inlineCallbacks,
+    )
+from twisted.internet.threads import deferToThread
 
 
 def get_branch_dir(*path):
@@ -1309,3 +1318,31 @@ class TestFindIPViaARP(MAASTestCase):
             call_capture_and_check,
             MockCalledOnceWith(['arp', '-n']))
         self.assertEqual("192.168.0.1", ip_address_observed)
+
+
+class TestAsynchronousDecorator(MAASTestCase):
+
+    run_tests_with = AsynchronousDeferredRunTest.make_factory(timeout=5)
+
+    @asynchronous
+    def return_args(self, *args, **kwargs):
+        return args, kwargs
+
+    def test_in_reactor_thread(self):
+        d = self.return_args(1, 2, three=3)
+        self.assertThat(d, IsInstance(Deferred))
+        # return_args() is synchronous, so the Deferred has fired.
+        self.assertEqual(((1, 2), {"three": 3}), d.result)
+
+    @inlineCallbacks
+    def test_in_other_thread(self):
+        def do_stuff_in_thread():
+            result = self.return_args(3, 4, five=5)
+            self.assertThat(result, IsInstance(EventualResult))
+            return result.wait()
+        # Call do_stuff_in_thread() from another thread.
+        result = yield deferToThread(do_stuff_in_thread)
+        # do_stuff_in_thread() waited for the result of return_args().
+        # The arguments passed back match those passed in from
+        # do_stuff_in_thread().
+        self.assertEqual(((3, 4), {"five": 5}), result)

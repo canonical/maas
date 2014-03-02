@@ -54,11 +54,13 @@ import sys
 import tempfile
 from time import time
 
+from crochet import run_in_reactor
 from lockfile import FileLock
 from lxml import etree
 import netifaces
 import tempita
 from twisted.internet.defer import maybeDeferred
+from twisted.python.threadable import isInIOThread
 
 # A table suitable for use with str.translate() to replace each
 # non-printable and non-ASCII character in a byte string with a question
@@ -186,6 +188,28 @@ def deferred(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
         return maybeDeferred(func, *args, **kwargs)
+    return wrapper
+
+
+def asynchronous(func):
+    """Decorates a function to ensure that it always runs in the reactor.
+
+    If the wrapped function is called from the reactor thread, this will
+    return a :class:`Deferred`, even if the function is synchronous,
+    otherwise it will return a :class:`crochet.EventualResult`, as if it
+    had been decorated with `crochet.run_in_reactor`.
+
+    This also serves a secondary documentation purpose; functions decorated
+    with this are readily identifiable as asynchronous.
+    """
+    func_from_outside = run_in_reactor(func)
+
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        if isInIOThread():
+            return maybeDeferred(func, *args, **kwargs)
+        else:
+            return func_from_outside(*args, **kwargs)
     return wrapper
 
 
