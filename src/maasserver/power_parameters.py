@@ -43,7 +43,6 @@ from provisioningserver.enum import (
     IPMI_DRIVER_CHOICES,
     )
 
-
 # Represent the Django choices format as JSON; an array of 2-item
 # arrays.
 CHOICE_FIELD_SCHEMA = {

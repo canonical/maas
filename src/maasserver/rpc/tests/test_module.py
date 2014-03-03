@@ -22,7 +22,7 @@ from maasserver import (
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from mock import sentinel
-from provisioningserver.rpc import errors
+from provisioningserver.rpc import exceptions
 from testtools.matchers import (
     Equals,
     Is,
@@ -34,7 +34,7 @@ class TestFunctions(MAASTestCase):
     @wait_for_reactor
     def test_getClientFor_service_not_running(self):
         self.assertRaises(
-            errors.NoConnectionsAvailable,
+            exceptions.NoConnectionsAvailable,
             rpc.getClientFor, sentinel.uuid)
 
     @wait_for_reactor

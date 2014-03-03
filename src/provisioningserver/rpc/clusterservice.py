@@ -31,7 +31,7 @@ from provisioningserver.pxe import tftppath
 from provisioningserver.rpc import (
     cluster,
     common,
-    errors,
+    exceptions,
     region,
     )
 from twisted.application.internet import (
@@ -186,12 +186,12 @@ class ClusterClientService(TimerService, object):
 
         The client is chosen at random.
 
-        :raises errors.NoConnectionsAvailable: When there are no open
+        :raises exceptions.NoConnectionsAvailable: When there are no open
             connections to a region controller.
         """
         conns = list(self.connections.viewvalues())
         if len(conns) == 0:
-            raise errors.NoConnectionsAvailable()
+            raise exceptions.NoConnectionsAvailable()
         else:
             return common.Client(random.choice(conns))
 

@@ -24,12 +24,12 @@ from django.core.management import call_command
 from django.core.management.base import CommandError
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from provisioningserver.dns.config import MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME
 from testtools.matchers import (
     Contains,
     FileContains,
     Not,
     )
-from provisioningserver.dns.config import MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME
 
 
 OPTIONS_FILE = textwrap.dedent("""\

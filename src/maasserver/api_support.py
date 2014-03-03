@@ -22,9 +22,7 @@ __all__ = [
 from functools import wraps
 
 from django.core.exceptions import PermissionDenied
-from django.http import (
-    Http404,
-    )
+from django.http import Http404
 from maasserver.exceptions import MAASAPIBadRequest
 from piston.handler import (
     AnonymousBaseHandler,

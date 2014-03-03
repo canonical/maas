@@ -45,7 +45,7 @@ from provisioningserver.config import Config
 from provisioningserver.rpc import (
     cluster,
     common,
-    errors,
+    exceptions,
     )
 from provisioningserver.rpc.region import (
     Identify,
@@ -437,7 +437,7 @@ class TestRegionService(MAASTestCase):
         service = RegionService()
         service.connections.clear()
         self.assertRaises(
-            errors.NoConnectionsAvailable,
+            exceptions.NoConnectionsAvailable,
             service.getClientFor, factory.getRandomUUID())
 
     @wait_for_reactor
@@ -446,7 +446,7 @@ class TestRegionService(MAASTestCase):
         uuid = factory.getRandomUUID()
         service.connections[uuid].clear()
         self.assertRaises(
-            errors.NoConnectionsAvailable,
+            exceptions.NoConnectionsAvailable,
             service.getClientFor, uuid)
 
     @wait_for_reactor

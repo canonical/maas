@@ -18,7 +18,7 @@ __all__ = [
 ]
 
 from maasserver import eventloop
-from provisioningserver.rpc import errors
+from provisioningserver.rpc import exceptions
 from provisioningserver.utils import asynchronous
 
 
@@ -28,7 +28,7 @@ def getClientFor(uuid):
     try:
         service = eventloop.services.getServiceNamed("rpc")
     except KeyError:
-        raise errors.NoConnectionsAvailable()
+        raise exceptions.NoConnectionsAvailable()
     else:
         return service.getClientFor(uuid)
 

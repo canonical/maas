@@ -39,7 +39,7 @@ from provisioningserver.rpc import (
     cluster,
     clusterservice,
     common,
-    errors,
+    exceptions,
     region,
     )
 from provisioningserver.rpc.clusterservice import (
@@ -464,7 +464,7 @@ class TestClusterClientService(MAASTestCase):
         service = ClusterClientService(Clock())
         service.connections = {}
         self.assertRaises(
-            errors.NoConnectionsAvailable,
+            exceptions.NoConnectionsAvailable,
             service.getClient)
 
 

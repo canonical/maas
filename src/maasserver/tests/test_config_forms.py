@@ -19,18 +19,18 @@ from django.forms import widgets
 from django.http import QueryDict
 from lxml.etree import XPath
 from lxml.html import fromstring
-from mock import (
-    ANY,
-    Mock
-)
 from maasserver.config_forms import (
     DictCharField,
     DictCharWidget,
     get_all_prefixed_values,
     )
 from maasserver.testing.factory import factory
-from maastesting.matchers import MockCalledOnceWith
 from maasserver.testing.testcase import MAASServerTestCase
+from maastesting.matchers import MockCalledOnceWith
+from mock import (
+    ANY,
+    Mock,
+    )
 
 
 class TestDictCharField(MAASServerTestCase):

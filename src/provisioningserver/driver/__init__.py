@@ -14,7 +14,11 @@ str = None
 __metaclass__ = type
 __all__ = []
 
-from abc import ABCMeta, abstractmethod, abstractproperty
+from abc import (
+    ABCMeta,
+    abstractmethod,
+    abstractproperty,
+    )
 
 
 class HardwareDriver:
@@ -120,12 +124,12 @@ class HardwareResourceContext:
     def updateResources(self):
         """Update the resources this driver needs to operate.
 
-        For those drivers that are in used, the region controller will
+        For those drivers that are in use, the region controller will
         ask them to update their own resources, perhaps by talking to a
         shared Simple Streams broker, or downloading from a vendor site.
 
-        These resources, once obtained, need to be registered the TFTP
-        server, for example.
+        These resources, once obtained, need to be registered with the
+        TFTP server, for example.
 
         TBD: How to provide progress information.
         """

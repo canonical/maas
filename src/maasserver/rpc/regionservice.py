@@ -35,7 +35,7 @@ from maasserver.utils import synchronised
 from provisioningserver.rpc import (
     cluster,
     common,
-    errors,
+    exceptions,
     region,
     )
 from provisioningserver.utils import (
@@ -211,12 +211,12 @@ class RegionService(service.Service, object):
 
         :param uuid: The UUID - as a string - of the cluster that a
             connection is wanted for.
-        :raises errors.NoConnectionsAvailable: When no connection to the
+        :raises exceptions.NoConnectionsAvailable: When no connection to the
             given cluster is available.
         """
         conns = list(self.connections[uuid])
         if len(conns) == 0:
-            raise errors.NoConnectionsAvailable()
+            raise exceptions.NoConnectionsAvailable()
         else:
             return common.Client(random.choice(conns))
 
