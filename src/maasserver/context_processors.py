@@ -22,7 +22,7 @@ from django.conf import settings
 from maasserver.components import get_persistent_errors
 from maasserver.forms import get_node_edit_form
 from maasserver.models import Config
-from maasserver.power_parameters import POWER_TYPE_PARAMETERS
+from maasserver.power_parameters import get_power_type_parameters
 
 
 def yui(context):
@@ -76,7 +76,7 @@ def global_options(context):
         'node_form': get_node_edit_form(context.user)(),
         'POWER_TYPE_PARAMETERS_FIELDS': [
             (power_type, field.widget.render('power_parameters', []))
-            for power_type, field in POWER_TYPE_PARAMETERS.items()
+            for power_type, field in get_power_type_parameters().items()
         ],
         'global_options': {
             'site_name': Config.objects.get_config('maas_name'),

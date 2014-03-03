@@ -29,6 +29,7 @@ str = None
 __metaclass__ = type
 __all__ = [
     'POWER_TYPE_PARAMETERS',
+    'get_power_type_parameters',
     ]
 
 
@@ -277,7 +278,14 @@ def get_power_type_parameters_from_json(json_power_type_parameters):
     return power_parameters
 
 
-# We do this once because there's no point re-parsing the JSON every
-# time we need to look up the power type parameters code.
+# FIXME: This method uses JSON_POWER_TYPE_PARAMETERS.  It needs changing to
+# query the cluster's information instead.
+def get_power_type_parameters():
+    return get_power_type_parameters_from_json(JSON_POWER_TYPE_PARAMETERS)
+
+
+# FIXME: POWER_TYPE_PARAMETERS needs to go away;
+# use get_power_type_parameters() instead because the power type information
+# need to be generated on the fly to incude the latest information.
 POWER_TYPE_PARAMETERS = get_power_type_parameters_from_json(
     JSON_POWER_TYPE_PARAMETERS)
