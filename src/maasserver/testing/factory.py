@@ -150,10 +150,21 @@ class Factory(maastesting.factory.Factory):
     def make_node(self, mac=False, hostname=None, status=None,
                   architecture=ARCHITECTURE.i386, updated=None,
                   created=None, nodegroup=None, routers=None, zone=None,
-                  power_type=None, networks=None, **kwargs):
+                  power_type=None, networks=None, sortable_name=False,
+                  **kwargs):
+        """Make a :class:`Node`.
+        
+        :param sortable_name: If `True`, use a that will sort consistently
+            between different collation orders.  Use this when testing sorting
+            by name, where the database and the python code may have different
+            ideas about collation orders, especially when it comes to case
+            differences.
+        """
         # hostname=None is a valid value, hence the set_hostname trick.
         if hostname is None:
             hostname = self.getRandomString(20)
+        if sortable_name:
+            hostname = hostname.lower()
         if status is None:
             status = NODE_STATUS.DEFAULT_STATUS
         if nodegroup is None:
@@ -530,10 +541,20 @@ class Factory(maastesting.factory.Factory):
             nodegroup=nodegroup, filename=filename, size=size,
             bytes_downloaded=bytes_downloaded, error=error)
 
-    def make_zone(self, name=None, description=None, nodes=None):
-        """Create a physical `Zone`."""
+    def make_zone(self, name=None, description=None, nodes=None,
+                  sortable_name=False):
+        """Create a physical `Zone`.
+
+        :param sortable_name: If `True`, use a that will sort consistently
+            between different collation orders.  Use this when testing sorting
+            by name, where the database and the python code may have different
+            ideas about collation orders, especially when it comes to case
+            differences.
+        """
         if name is None:
             name = self.make_name('zone')
+        if sortable_name:
+            name = name.lower()
         if description is None:
             description = self.getRandomString()
         zone = Zone(name=name, description=description)

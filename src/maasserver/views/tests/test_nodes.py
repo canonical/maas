@@ -190,7 +190,7 @@ class NodeViewsTest(MAASServerTestCase):
 
     def test_node_list_sorts_by_zone(self):
         self.client_log_in()
-        zones = [factory.make_zone() for _ in range(5)]
+        zones = [factory.make_zone(sortable_name=True) for _ in range(5)]
         nodes = [factory.make_node(zone=zone) for zone in zones]
 
         # We use PostgreSQL's case-insensitive text sorting algorithm.

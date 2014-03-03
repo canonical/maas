@@ -66,7 +66,7 @@ class ZoneListingViewTest(MAASServerTestCase):
     def test_zone_list_displays_sorted_list_of_zones(self):
         # Zones are alphabetically sorted on the zone list page.
         self.client_log_in()
-        [factory.make_zone() for i in range(3)]
+        [factory.make_zone(sortable_name=True) for i in range(3)]
         zones = Zone.objects.all()
         sorted_zones = sorted(zones, key=lambda x: x.name.lower())
         response = self.client.get(reverse('zone-list'))

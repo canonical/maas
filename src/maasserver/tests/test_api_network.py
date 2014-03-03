@@ -375,7 +375,9 @@ class TestListConnectedMACs(APITestCase):
     def test_returns_sorted_MACs(self):
         network = factory.make_network()
         macs = [
-            self.make_mac(networks=[network], owner=self.logged_in_user)
+            self.make_mac(
+                networks=[network], node=factory.make_node(sortable_name=True),
+                owner=self.logged_in_user)
             for _ in range(4)
             ]
         # Create MACs connected to the same node.
@@ -389,5 +391,5 @@ class TestListConnectedMACs(APITestCase):
             macs,
             key=lambda x: (x.node.hostname.lower(), x.mac_address.get_raw()))
         self.assertEqual(
-            [mac.mac_address for mac in sorted_macs],
+            [mac.mac_address.get_raw() for mac in sorted_macs],
             self.extract_macs(self.request_connected_macs(network)))
