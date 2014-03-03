@@ -123,6 +123,7 @@ Developing MAAS
    development/lease-scanning-and-dns
    development/preseeds
    development/metadata
+   development/rpc
 
 
 ******************
