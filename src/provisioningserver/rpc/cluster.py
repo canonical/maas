@@ -13,10 +13,17 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    "Identify",
     "ListBootImages",
 ]
 
 from twisted.protocols import amp
+
+
+class Identify(amp.Command):
+    """Request the identity of the cluster, i.e. its UUID."""
+
+    response = [(b"uuid", amp.Unicode())]
 
 
 class ListBootImages(amp.Command):

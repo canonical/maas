@@ -36,17 +36,17 @@ from mock import (
 from provisioningserver.config import Config
 from provisioningserver.pxe import tftppath
 from provisioningserver.rpc import (
+    cluster,
     clusterservice,
     errors,
+    region,
     )
-from provisioningserver.rpc.cluster import ListBootImages
 from provisioningserver.rpc.clusterservice import (
     Cluster,
     ClusterClient,
     ClusterClientService,
     ClusterService,
     )
-from provisioningserver.rpc.region import Identify
 from provisioningserver.rpc.testing import (
     are_valid_tls_parameters,
     call_responder,
@@ -84,6 +84,28 @@ from twisted.internet.protocol import Factory
 from twisted.internet.task import Clock
 from twisted.protocols import amp
 from twisted.test.proto_helpers import StringTransportWithDisconnection
+
+
+class TestClusterProtocol_Identify(MAASTestCase):
+
+    run_tests_with = AsynchronousDeferredRunTest.make_factory(timeout=5)
+
+    def test_identify_is_registered(self):
+        protocol = Cluster()
+        responder = protocol.locateResponder(cluster.Identify.commandName)
+        self.assertIsNot(responder, None)
+
+    def test_identify_reports_cluster_uuid(self):
+        example_uuid = b"uuid-%d" % self.getUniqueInteger()
+
+        get_cluster_uuid = self.patch(clusterservice, "get_cluster_uuid")
+        get_cluster_uuid.return_value = example_uuid
+
+        d = call_responder(Cluster(), cluster.Identify, {})
+
+        def check(response):
+            self.assertEqual({"uuid": example_uuid}, response)
+        return d.addCallback(check)
 
 
 class TestClusterProtocol_StartTLS(MAASTestCase):
@@ -124,14 +146,15 @@ class TestClusterProtocol_ListBootImages(MAASTestCase):
 
     def test_list_boot_images_is_registered(self):
         protocol = Cluster()
-        responder = protocol.locateResponder(ListBootImages.commandName)
+        responder = protocol.locateResponder(
+            cluster.ListBootImages.commandName)
         self.assertIsNot(responder, None)
 
     def test_list_boot_images_can_be_called(self):
         list_boot_images = self.patch(tftppath, "list_boot_images")
         list_boot_images.return_value = []
 
-        d = call_responder(Cluster(), ListBootImages, {})
+        d = call_responder(Cluster(), cluster.ListBootImages, {})
 
         def check(response):
             self.assertEqual({"images": []}, response)
@@ -165,7 +188,7 @@ class TestClusterProtocol_ListBootImages(MAASTestCase):
                 archs, subarchs, releases, purposes)
         ]
 
-        d = call_responder(Cluster(), ListBootImages, {})
+        d = call_responder(Cluster(), cluster.ListBootImages, {})
 
         def check(response):
             self.assertThat(response, KeysEqual("images"))
@@ -514,7 +537,7 @@ class TestClusterClient(MAASTestCase):
         self.assertThat(
             callRemote, MockCallsMatch(
                 call(amp.StartTLS, **client.get_tls_parameters()),
-                call(Identify),
+                call(region.Identify),
             ))
 
         # The connection is not dropped.

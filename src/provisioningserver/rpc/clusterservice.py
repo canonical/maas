@@ -22,7 +22,10 @@ import random
 from urlparse import urlparse
 
 from apiclient.utils import ascii_url
-from provisioningserver.cluster_config import get_maas_url
+from provisioningserver.cluster_config import (
+    get_cluster_uuid,
+    get_maas_url,
+    )
 from provisioningserver.config import Config
 from provisioningserver.pxe import tftppath
 from provisioningserver.rpc import (
@@ -57,6 +60,10 @@ class Cluster(amp.AMP, object):
     This can be used on the client or server end of a connection; once a
     connection is established, AMP is symmetric.
     """
+
+    @cluster.Identify.responder
+    def identify(self):
+        return {b"uuid": get_cluster_uuid().decode("ascii")}
 
     @cluster.ListBootImages.responder
     def list_boot_images(self):
