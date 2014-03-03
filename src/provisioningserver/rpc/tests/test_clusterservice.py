@@ -38,6 +38,7 @@ from provisioningserver.pxe import tftppath
 from provisioningserver.rpc import (
     cluster,
     clusterservice,
+    common,
     errors,
     region,
     )
@@ -454,8 +455,10 @@ class TestClusterClientService(MAASTestCase):
             sentinel.eventloop03: sentinel.client03,
         }
         self.assertIn(
-            service.getClient(),
-            service.connections.viewvalues())
+            service.getClient(), {
+                common.Client(conn)
+                for conn in service.connections.viewvalues()
+            })
 
     def test_getClient_when_there_are_no_connections(self):
         service = ClusterClientService(Clock())

@@ -30,6 +30,7 @@ from provisioningserver.config import Config
 from provisioningserver.pxe import tftppath
 from provisioningserver.rpc import (
     cluster,
+    common,
     errors,
     region,
     )
@@ -181,18 +182,18 @@ class ClusterClientService(TimerService, object):
         self.clock = reactor
 
     def getClient(self):
-        """Returns a :class:`ClusterClient` connected to a region.
+        """Returns a :class:`common.Client` connected to a region.
 
         The client is chosen at random.
 
         :raises errors.NoConnectionsAvailable: When there are no open
             connections to a region controller.
         """
-        clients = list(self.connections.viewvalues())
-        if len(clients) == 0:
+        conns = list(self.connections.viewvalues())
+        if len(conns) == 0:
             raise errors.NoConnectionsAvailable()
         else:
-            return random.choice(clients)
+            return common.Client(random.choice(conns))
 
     @inlineCallbacks
     def update(self):

@@ -19,6 +19,7 @@ from contextlib import closing
 from itertools import product
 from operator import attrgetter
 import os.path
+import random
 import threading
 
 from crochet import wait_for_reactor
@@ -39,8 +40,13 @@ from maastesting.matchers import (
     Provides,
     )
 from maastesting.testcase import MAASTestCase
+from mock import sentinel
 from provisioningserver.config import Config
-from provisioningserver.rpc import cluster
+from provisioningserver.rpc import (
+    cluster,
+    common,
+    errors,
+    )
 from provisioningserver.rpc.region import (
     Identify,
     ReportBootImages,
@@ -425,6 +431,58 @@ class TestRegionService(MAASTestCase):
         service.startService()
         # The test is that stopService() succeeds.
         return service.stopService()
+
+    @wait_for_reactor
+    def test_getClientFor_errors_when_no_connections(self):
+        service = RegionService()
+        service.connections.clear()
+        self.assertRaises(
+            errors.NoConnectionsAvailable,
+            service.getClientFor, factory.getRandomUUID())
+
+    @wait_for_reactor
+    def test_getClientFor_errors_when_no_connections_for_cluster(self):
+        service = RegionService()
+        uuid = factory.getRandomUUID()
+        service.connections[uuid].clear()
+        self.assertRaises(
+            errors.NoConnectionsAvailable,
+            service.getClientFor, uuid)
+
+    @wait_for_reactor
+    def test_getClientFor_returns_random_connection(self):
+        service = RegionService()
+        uuid = factory.getRandomUUID()
+        conns_for_uuid = service.connections[uuid]
+        conns_for_uuid.update({sentinel.c1, sentinel.c2})
+
+        def check_choice(choices):
+            self.assertItemsEqual(choices, conns_for_uuid)
+            return sentinel.chosen
+        self.patch(random, "choice", check_choice)
+
+        self.assertThat(
+            service.getClientFor(uuid),
+            Equals(common.Client(sentinel.chosen)))
+
+    @wait_for_reactor
+    def test_getAllClients_empty(self):
+        service = RegionService()
+        service.connections.clear()
+        self.assertThat(service.getAllClients(), Equals([]))
+
+    @wait_for_reactor
+    def test_getAllClients(self):
+        service = RegionService()
+        uuid1 = factory.getRandomUUID()
+        service.connections[uuid1].update({sentinel.c1, sentinel.c2})
+        uuid2 = factory.getRandomUUID()
+        service.connections[uuid2].update({sentinel.c3, sentinel.c4})
+        clients = service.getAllClients()
+        self.assertItemsEqual(clients, {
+            common.Client(sentinel.c1), common.Client(sentinel.c2),
+            common.Client(sentinel.c3), common.Client(sentinel.c4),
+        })
 
 
 class TestRegionAdvertisingService(MAASTestCase):

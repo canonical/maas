@@ -20,6 +20,7 @@ __all__ = [
 from collections import defaultdict
 from contextlib import closing
 from functools import wraps
+import random
 from textwrap import dedent
 import threading
 
@@ -33,6 +34,8 @@ from maasserver import eventloop
 from maasserver.utils import synchronised
 from provisioningserver.rpc import (
     cluster,
+    common,
+    errors,
     region,
     )
 from provisioningserver.utils import (
@@ -197,6 +200,34 @@ class RegionService(service.Service, object):
         else:
             host, port = socket.getsockname()
             return port
+
+    @asynchronous
+    def getClientFor(self, uuid):
+        """Return a :class:`common.Client` for the specified cluster.
+
+        If more than one connection exists to that cluster - implying
+        that there are multiple cluster controllers for the particular
+        cluster, for HA - one of them will be returned at random.
+
+        :param uuid: The UUID - as a string - of the cluster that a
+            connection is wanted for.
+        :raises errors.NoConnectionsAvailable: When no connection to the
+            given cluster is available.
+        """
+        conns = list(self.connections[uuid])
+        if len(conns) == 0:
+            raise errors.NoConnectionsAvailable()
+        else:
+            return common.Client(random.choice(conns))
+
+    @asynchronous
+    def getAllClients(self):
+        """Return a list of all connected :class:`common.Client`s."""
+        return [
+            common.Client(conn)
+            for conns in self.connections.itervalues()
+            for conn in conns
+        ]
 
 
 def transactional(func):
