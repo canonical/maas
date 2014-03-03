@@ -78,6 +78,7 @@ from maasserver.node_action import (
     StopNode,
     UseCurtin,
     )
+from maasserver.power_parameters import get_power_type_choices
 from maasserver.testing import reload_object
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -396,6 +397,17 @@ class NodeEditForms(MAASServerTestCase):
         self.assertTrue(form.is_valid(), form._errors)
         form.save()
         self.assertEqual(old_name, reload_object(node).hostname)
+
+    def test_AdminNodeForm_populates_power_type_choices(self):
+        form = AdminNodeForm()
+        self.assertEqual(
+            [''] + [choice[0] for choice in get_power_type_choices()],
+            [choice[0] for choice in form.fields['power_type'].choices])
+
+    def test_AdminNodeForm_populates_power_type_initial(self):
+        node = factory.make_node()
+        form = AdminNodeForm(instance=node)
+        self.assertEqual(node.power_type, form.fields['power_type'].initial)
 
     def test_remove_None_values_removes_None_values_in_dict(self):
         random_input = factory.getRandomString()

@@ -68,7 +68,6 @@ from maasserver.models.dhcplease import DHCPLease
 from maasserver.models.tag import Tag
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.models.zone import Zone
-from maasserver.power_parameters import get_power_type_choices
 from maasserver.utils import (
     get_db_state,
     strip_domain,
@@ -465,9 +464,11 @@ class Node(CleanSave, TimestampedModel):
 
     # For strings, Django insists on abusing the empty string ("blank")
     # to mean "none."
+    # The possible choices for this field depend on the power types
+    # advertised by the clusters.  This needs to be populated on the fly,
+    # in forms.py, each time the form to edit a node is instantiated.
     power_type = CharField(
-        max_length=10, choices=get_power_type_choices(), null=False,
-        blank=True, default='')
+        max_length=10, null=False, blank=True, default='')
 
     # JSON-encoded set of parameters for power control.
     power_parameters = JSONObjectField(blank=True, default="")

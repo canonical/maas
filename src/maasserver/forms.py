@@ -102,6 +102,7 @@ from maasserver.node_action import (
     compile_node_actions,
     )
 from maasserver.power_parameters import (
+    get_power_type_choices,
     get_power_type_parameters,
     )
 from maasserver.utils import strip_domain
@@ -241,6 +242,7 @@ class AdminNodeForm(NodeForm):
     def __init__(self, data=None, instance=None, **kwargs):
         super(AdminNodeForm, self).__init__(
             data=data, instance=instance, **kwargs)
+        self.set_up_power_type(data, instance)
         self.set_up_power_parameters_field(data, instance)
         # The zone field is not required because we want to be able
         # to omit it when using that form in the API.
@@ -249,14 +251,7 @@ class AdminNodeForm(NodeForm):
         # None to force Django not to display that empty entry.
         self.fields['zone'].empty_label = None
 
-    def set_up_power_parameters_field(self, data, node):
-        """Setup the 'power_parameter' field based on the value for the
-        'power_type' field.
-
-        We need to create the field for 'power_parameter' (which depend from
-        the value of the field 'power_type') before the value for power_type
-        gets validated.
-        """
+    def get_power_type(self, data, node):
         if data is None:
             data = {}
 
@@ -272,6 +267,28 @@ class AdminNodeForm(NodeForm):
             else:
                 # Empty so that the power parameters are set properly.
                 power_type = ''
+        return power_type
+
+    def set_up_power_type(self, data, node):
+        """Set up the 'power_type' field.
+
+        This can't be done at the model level because the choices need to
+        be generated on the fly by get_power_type_choices().
+        """
+        power_type = self.get_power_type(data, node)
+        choices = [('', '-------')] + get_power_type_choices()
+        self.fields['power_type'] = forms.ChoiceField(
+            required=False, choices=choices, initial=power_type)
+
+    def set_up_power_parameters_field(self, data, node):
+        """Set up the 'power_parameter' field based on the value for the
+        'power_type' field.
+
+        We need to create the field for 'power_parameter' (which depend from
+        the value of the field 'power_type') before the value for power_type
+        gets validated.
+        """
+        power_type = self.get_power_type(data, node)
         self.fields['power_parameters'] = get_power_type_parameters()[
             power_type]
 
