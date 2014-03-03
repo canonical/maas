@@ -213,6 +213,37 @@ def asynchronous(func):
     return wrapper
 
 
+def synchronous(func):
+    """Decorator to ensure that `func` never runs in the reactor thread.
+
+    If the wrapped function is called from the reactor thread, this will
+    raise a :class:`AssertionError`, implying that this is a programming
+    error. Calls from outside the reactor will proceed unaffected.
+
+    There is an asymettry with the `asynchronous` decorator. The reason
+    is that it is essential to be aware when `deferToThread()` is being
+    used, so that in-reactor code knows to synchronise with it, to add a
+    callback to the :class:`Deferred` that it returns, for example. The
+    expectation with `asynchronous` is that the return value is always
+    important, and will be appropriate to the environment in which it is
+    utilised.
+
+    This also serves a secondary documentation purpose; functions decorated
+    with this are readily identifiable as synchronous, or blocking.
+
+    :raises AssertionError: When called inside the reactor thread.
+    """
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        if isInIOThread():
+            raise AssertionError(
+                "Function %s(...) must not be called in the "
+                "reactor thread." % func.__name__)
+        else:
+            return func(*args, **kwargs)
+    return wrapper
+
+
 def filter_dict(dictionary, desired_keys):
     """Return a version of `dictionary` restricted to `desired_keys`.
 

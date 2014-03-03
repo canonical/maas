@@ -22,6 +22,7 @@ from argparse import (
 import doctest
 import os
 from random import randint
+import re
 from shutil import rmtree
 import stat
 import StringIO
@@ -86,6 +87,7 @@ from provisioningserver.utils import (
     Safe,
     ShellTemplate,
     sudo_write_file,
+    synchronous,
     tempdir,
     try_match_xpath,
     write_custom_config_section,
@@ -100,8 +102,10 @@ from testtools.matchers import (
     FileContains,
     FileExists,
     IsInstance,
+    MatchesException,
     MatchesStructure,
     Not,
+    Raises,
     StartsWith,
     )
 from testtools.testcase import ExpectedException
@@ -1345,4 +1349,31 @@ class TestAsynchronousDecorator(MAASTestCase):
         # do_stuff_in_thread() waited for the result of return_args().
         # The arguments passed back match those passed in from
         # do_stuff_in_thread().
+        self.assertEqual(((3, 4), {"five": 5}), result)
+
+
+class TestSynchronousDecorator(MAASTestCase):
+
+    run_tests_with = AsynchronousDeferredRunTest.make_factory(timeout=5)
+
+    @synchronous
+    def return_args(self, *args, **kwargs):
+        return args, kwargs
+
+    def test_in_reactor_thread(self):
+        expected = MatchesException(
+            AssertionError, re.escape(
+                "Function return_args(...) must not be called "
+                "in the reactor thread."))
+        self.assertThat(self.return_args, Raises(expected))
+
+    @inlineCallbacks
+    def test_in_other_thread(self):
+        def do_stuff_in_thread():
+            return self.return_args(3, 4, five=5)
+        # Call do_stuff_in_thread() from another thread.
+        result = yield deferToThread(do_stuff_in_thread)
+        # do_stuff_in_thread() ran straight through, without
+        # modification. The arguments passed back match those passed in
+        # from do_stuff_in_thread().
         self.assertEqual(((3, 4), {"five": 5}), result)
