@@ -42,6 +42,7 @@ from twisted.internet import (
     defer,
     ssl,
     )
+from twisted.internet.defer import inlineCallbacks
 from twisted.internet.endpoints import TCP4ServerEndpoint
 from twisted.internet.protocol import Factory
 from twisted.internet.threads import deferToThread
@@ -83,23 +84,53 @@ class Region(amp.AMP):
         }
 
 
+class RegionServer(Region):
+    """The RPC protocol supported by a region controller, server version.
+
+    This works hand-in-hand with ``RegionService``, maintaining the
+    latter's ``connections`` set.
+
+    :ivar factory: Reference to the factory that made this, set by the
+        factory. The factory must also have a reference back to the
+        service that created it.
+    """
+
+    factory = None
+
+    def connectionMade(self):
+        super(RegionServer, self).connectionMade()
+        if self.factory.service.running:
+            self.factory.service.connections.add(self)
+        else:
+            self.transport.loseConnection()
+
+    def connectionLost(self, reason):
+        self.factory.service.connections.discard(self)
+        super(RegionServer, self).connectionLost(reason)
+
+
 class RegionService(service.Service, object):
     """A region controller RPC service.
 
     This is a service - in the Twisted sense - that exposes the
     ``Region`` protocol on a port.
 
+    :ivar connections: A set of :class:`Region` connections to clusters.
+
     :ivar starting: Either `None`, or a :class:`Deferred` that fires
         with the port that's been opened, or the error that prevented it
         from opening.
     """
 
+    connections = None
     starting = None
 
     def __init__(self):
         super(RegionService, self).__init__()
         self.endpoint = TCP4ServerEndpoint(reactor, 0)
-        self.factory = Factory.forProtocol(Region)
+        self.connections = set()
+        self.factory = Factory.forProtocol(RegionServer)
+        self.factory.service = self
         self._port = None
 
     @asynchronous
@@ -120,20 +151,18 @@ class RegionService(service.Service, object):
         self.starting.addErrback(log.err)
 
     @asynchronous
+    @inlineCallbacks
     def stopService(self):
         """Stop listening."""
         self.starting.cancel()
-
-        if self._port is None:
-            d = defer.succeed(None)
-        else:
-            d = self._port.stopListening()
-
-        def stop_service(ignore):
-            return super(RegionService, self).stopService()
-        d.addCallback(stop_service)
-
-        return d
+        if self._port is not None:
+            yield self._port.stopListening()
+        for conn in self.connections:
+            try:
+                yield conn.transport.loseConnection()
+            except:
+                log.err()
+        yield super(RegionService, self).stopService()
 
     @asynchronous
     def getPort(self):

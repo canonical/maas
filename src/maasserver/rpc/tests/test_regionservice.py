@@ -16,6 +16,7 @@ __all__ = []
 
 from contextlib import closing
 from itertools import product
+from operator import attrgetter
 import os.path
 import threading
 
@@ -27,10 +28,14 @@ from maasserver.rpc import regionservice
 from maasserver.rpc.regionservice import (
     Region,
     RegionAdvertisingService,
+    RegionServer,
     RegionService,
     )
 from maastesting.factory import factory
-from maastesting.matchers import Provides
+from maastesting.matchers import (
+    MockCalledOnceWith,
+    Provides,
+    )
 from maastesting.testcase import MAASTestCase
 from provisioningserver.config import Config
 from provisioningserver.rpc.region import (
@@ -40,10 +45,12 @@ from provisioningserver.rpc.region import (
 from provisioningserver.rpc.testing import (
     are_valid_tls_parameters,
     call_responder,
+    TwistedLoggerFixture,
     )
 from provisioningserver.utils import asynchronous
 from testtools.matchers import (
     AfterPreprocessing,
+    AllMatch,
     Equals,
     Is,
     IsInstance,
@@ -175,14 +182,51 @@ class TestRegionProtocol_ReportBootImages(MAASTestCase):
         return d.addCallback(check)
 
 
+class TestRegionServer(MAASTestCase):
+
+    def test_connectionMade_updates_services_connection_set(self):
+        service = RegionService()
+        service.running = True  # Pretend it's running.
+        protocol = service.factory.buildProtocol(addr=None)  # addr is unused.
+        self.assertItemsEqual([], service.connections)
+        protocol.connectionMade()
+        self.assertItemsEqual([protocol], service.connections)
+
+    def test_connectionMade_drops_connection_if_service_not_running(self):
+        service = RegionService()
+        service.running = False  # Pretend it's not running.
+        protocol = service.factory.buildProtocol(addr=None)  # addr is unused.
+        transport = self.patch(protocol, "transport")
+        self.assertItemsEqual([], service.connections)
+        protocol.connectionMade()
+        # The protocol is not added to the connection set.
+        self.assertItemsEqual([], service.connections)
+        # The transport is instructed to lose the connection.
+        self.assertThat(transport.loseConnection, MockCalledOnceWith())
+
+    def test_connectionLost_updates_services_connection_set(self):
+        service = RegionService()
+        service.running = True  # Pretend it's running.
+        protocol = service.factory.buildProtocol(addr=None)  # addr is unused.
+        connectionLost_up_call = self.patch(amp.AMP, "connectionLost")
+        # Pretend the protocol is connected.
+        service.connections.add(protocol)
+        self.assertItemsEqual([protocol], service.connections)
+        protocol.connectionLost(reason=None)
+        self.assertItemsEqual([], service.connections)
+        # connectionLost() is called on the superclass.
+        self.assertThat(connectionLost_up_call, MockCalledOnceWith(None))
+
+
 class TestRegionService(MAASTestCase):
 
     def test_init_sets_appropriate_instance_attributes(self):
         service = RegionService()
         self.assertThat(service, IsInstance(Service))
+        self.assertThat(service.connections, IsInstance(set))
         self.assertThat(service.endpoint, Provides(IStreamServerEndpoint))
         self.assertThat(service.factory, IsInstance(Factory))
-        self.assertThat(service.factory.protocol, Equals(Region))
+        self.assertThat(service.factory.protocol, Equals(RegionServer))
 
     @wait_for_reactor
     def test_starting_and_stopping_the_service(self):
@@ -194,7 +238,7 @@ class TestRegionService(MAASTestCase):
         def check_started(port):
             self.assertThat(port, IsInstance(tcp.Port))
             self.assertThat(port.factory, IsInstance(Factory))
-            self.assertThat(port.factory.protocol, Equals(Region))
+            self.assertThat(port.factory.protocol, Equals(RegionServer))
             # The port is saved as a private instance var.
             self.assertThat(service._port, Is(port))
             return service.stopService()
@@ -263,6 +307,57 @@ class TestRegionService(MAASTestCase):
             self.assertThat(service._port, Is(None))
 
         return service.starting.addCallback(check)
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_stopping_closes_connections_cleanly(self):
+        service = RegionService()
+        service.starting = Deferred()
+        connections = {
+            service.factory.buildProtocol(None),
+            service.factory.buildProtocol(None),
+        }
+        transports = {
+            self.patch(conn, "transport")
+            for conn in connections
+        }
+        service.connections = set(connections)
+        yield service.stopService()
+        self.assertThat(
+            transports, AllMatch(
+                AfterPreprocessing(
+                    attrgetter("loseConnection"),
+                    MockCalledOnceWith())))
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_stopping_logs_errors_when_closing_connections(self):
+        service = RegionService()
+        service.starting = Deferred()
+        service.connections = {
+            service.factory.buildProtocol(None),
+            service.factory.buildProtocol(None),
+        }
+        for conn in service.connections:
+            transport = self.patch(conn, "transport")
+            transport.loseConnection.side_effect = IOError("broken")
+        logger = self.useFixture(TwistedLoggerFixture())
+        yield service.stopService()
+        # Each error is logged (the implication being that an error does
+        # not stop processing).
+        self.assertDocTestMatches(
+            """\
+            Unhandled Error
+            Traceback (most recent call last):
+            ...
+            exceptions.IOError: broken
+            ---
+            Unhandled Error
+            Traceback (most recent call last):
+            ...
+            exceptions.IOError: broken
+            """,
+            logger.dump())
 
     @wait_for_reactor
     def test_stopping_when_start_up_failed(self):
