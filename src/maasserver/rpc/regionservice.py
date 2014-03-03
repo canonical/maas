@@ -31,7 +31,11 @@ from django.db import (
 from maasserver import eventloop
 from maasserver.utils import synchronised
 from provisioningserver.rpc import region
-from provisioningserver.utils import get_all_interface_addresses
+from provisioningserver.utils import (
+    asynchronous,
+    get_all_interface_addresses,
+    synchronous,
+    )
 from twisted.application import service
 from twisted.application.internet import TimerService
 from twisted.internet import (
@@ -98,6 +102,7 @@ class RegionService(service.Service, object):
         self.factory = Factory.forProtocol(Region)
         self._port = None
 
+    @asynchronous
     def startService(self):
         """Start listening on an ephemeral port."""
         super(RegionService, self).startService()
@@ -114,6 +119,7 @@ class RegionService(service.Service, object):
 
         self.starting.addErrback(log.err)
 
+    @asynchronous
     def stopService(self):
         """Stop listening."""
         self.starting.cancel()
@@ -129,6 +135,7 @@ class RegionService(service.Service, object):
 
         return d
 
+    @asynchronous
     def getPort(self):
         """Return the port on which this service is listening.
 
@@ -191,6 +198,7 @@ class RegionAdvertisingService(TimerService, object):
         super(RegionAdvertisingService, self).__init__(
             interval, deferToThread, self.update)
 
+    @asynchronous
     def startService(self):
         self.starting = deferToThread(self.prepare)
         self.starting.addCallback(lambda ignore: (
@@ -203,6 +211,7 @@ class RegionAdvertisingService(TimerService, object):
         self.starting.addErrback(log.err)
         return self.starting
 
+    @asynchronous
     def stopService(self):
         if self.starting.called:
             # Start-up is complete; remove all records then up-call in
@@ -216,6 +225,7 @@ class RegionAdvertisingService(TimerService, object):
             self.starting.cancel()
             return self.starting
 
+    @synchronous
     @synchronised(lock)
     @transactional
     def prepare(self):
@@ -233,6 +243,7 @@ class RegionAdvertisingService(TimerService, object):
         with closing(connection.cursor()) as cursor:
             self._do_create(cursor)
 
+    @synchronous
     @synchronised(lock)
     @transactional
     def update(self):
@@ -247,6 +258,7 @@ class RegionAdvertisingService(TimerService, object):
             self._do_insert(cursor)
             self._do_collect(cursor)
 
+    @synchronous
     @synchronised(lock)
     @transactional
     def dump(self):
@@ -259,6 +271,7 @@ class RegionAdvertisingService(TimerService, object):
             self._do_select(cursor)
             return list(cursor)
 
+    @synchronous
     @synchronised(lock)
     @transactional
     def remove(self):
@@ -277,7 +290,7 @@ class RegionAdvertisingService(TimerService, object):
         except KeyError:
             pass  # No RPC service yet.
         else:
-            port = service.getPort()
+            port = service.getPort().wait(5)
             if port is not None:
                 for addr in get_all_interface_addresses():
                     yield addr, port

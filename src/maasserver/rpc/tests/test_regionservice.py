@@ -41,6 +41,7 @@ from provisioningserver.rpc.testing import (
     are_valid_tls_parameters,
     call_responder,
     )
+from provisioningserver.utils import asynchronous
 from testtools.matchers import (
     AfterPreprocessing,
     Equals,
@@ -506,17 +507,19 @@ class TestRegionAdvertisingService(MAASTestCase):
         service.call = (lambda: None), (), {}
 
         yield service.startService()
-        service.update()
+        yield deferToThread(service.update)
         yield service.stopService()
 
-        self.assertItemsEqual([], service.dump())
+        dump = yield deferToThread(service.dump)
+        self.assertItemsEqual([], dump)
 
     def test__get_addresses(self):
         service = RegionAdvertisingService()
 
         example_port = factory.getRandomPort()
         getServiceNamed = self.patch(eventloop.services, "getServiceNamed")
-        getServiceNamed.return_value.getPort.return_value = example_port
+        getPort = getServiceNamed.return_value.getPort
+        getPort.side_effect = asynchronous(lambda: example_port)
 
         example_addrs = [
             factory.getRandomIPAddress(),
@@ -539,7 +542,8 @@ class TestRegionAdvertisingService(MAASTestCase):
         getServiceNamed = self.patch(eventloop.services, "getServiceNamed")
         # getPort() returns None when the RPC service is not running or
         # not able to bind a port.
-        getServiceNamed.return_value.getPort.return_value = None
+        getPort = getServiceNamed.return_value.getPort
+        getPort.side_effect = asynchronous(lambda: None)
 
         get_all_interface_addresses = self.patch(
             regionservice, "get_all_interface_addresses")

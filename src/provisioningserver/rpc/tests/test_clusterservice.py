@@ -35,7 +35,10 @@ from mock import (
     )
 from provisioningserver.config import Config
 from provisioningserver.pxe import tftppath
-from provisioningserver.rpc import clusterservice
+from provisioningserver.rpc import (
+    clusterservice,
+    errors,
+    )
 from provisioningserver.rpc.cluster import ListBootImages
 from provisioningserver.rpc.clusterservice import (
     Cluster,
@@ -419,6 +422,24 @@ class TestClusterClientService(MAASTestCase):
         self.assertThat(
             connection.transport.loseConnection,
             MockCalledOnceWith())
+
+    def test_getClient(self):
+        service = ClusterClientService(Clock())
+        service.connections = {
+            sentinel.eventloop01: sentinel.client01,
+            sentinel.eventloop02: sentinel.client02,
+            sentinel.eventloop03: sentinel.client03,
+        }
+        self.assertIn(
+            service.getClient(),
+            service.connections.viewvalues())
+
+    def test_getClient_when_there_are_no_connections(self):
+        service = ClusterClientService(Clock())
+        service.connections = {}
+        self.assertRaises(
+            errors.NoConnectionsAvailable,
+            service.getClient)
 
 
 class TestClusterClient(MAASTestCase):

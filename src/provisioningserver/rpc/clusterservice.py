@@ -27,6 +27,7 @@ from provisioningserver.config import Config
 from provisioningserver.pxe import tftppath
 from provisioningserver.rpc import (
     cluster,
+    errors,
     region,
     )
 from twisted.application.internet import (
@@ -171,6 +172,20 @@ class ClusterClientService(TimerService, object):
             self._get_random_interval(), self.update)
         self.connections = {}
         self.clock = reactor
+
+    def getClient(self):
+        """Returns a :class:`ClusterClient` connected to a region.
+
+        The client is chosen at random.
+
+        :raises errors.NoConnectionsAvailable: When there are no open
+            connections to a region controller.
+        """
+        clients = list(self.connections.viewvalues())
+        if len(clients) == 0:
+            raise errors.NoConnectionsAvailable()
+        else:
+            return random.choice(clients)
 
     @inlineCallbacks
     def update(self):
