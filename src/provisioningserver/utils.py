@@ -194,22 +194,25 @@ def deferred(func):
 def asynchronous(func):
     """Decorates a function to ensure that it always runs in the reactor.
 
-    If the wrapped function is called from the reactor thread, this will
-    return a :class:`Deferred`, even if the function is synchronous,
-    otherwise it will return a :class:`crochet.EventualResult`, as if it
-    had been decorated with `crochet.run_in_reactor`.
+    If the wrapper is called from the reactor thread, it will call
+    straight through to the wrapped function. It will not be wrapped by
+    `maybeDeferred` for example.
+
+    If the wrapper is called from another thread, it will return a
+    :class:`crochet.EventualResult`, as if it had been decorated with
+    `crochet.run_in_reactor`.
 
     This also serves a secondary documentation purpose; functions decorated
     with this are readily identifiable as asynchronous.
     """
-    func_from_outside = run_in_reactor(func)
+    func_in_reactor = run_in_reactor(func)
 
     @wraps(func)
     def wrapper(*args, **kwargs):
         if isInIOThread():
-            return maybeDeferred(func, *args, **kwargs)
+            return func(*args, **kwargs)
         else:
-            return func_from_outside(*args, **kwargs)
+            return func_in_reactor(*args, **kwargs)
     return wrapper
 
 

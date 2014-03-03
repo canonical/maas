@@ -1333,10 +1333,8 @@ class TestAsynchronousDecorator(MAASTestCase):
         return args, kwargs
 
     def test_in_reactor_thread(self):
-        d = self.return_args(1, 2, three=3)
-        self.assertThat(d, IsInstance(Deferred))
-        # return_args() is synchronous, so the Deferred has fired.
-        self.assertEqual(((1, 2), {"three": 3}), d.result)
+        result = self.return_args(1, 2, three=3)
+        self.assertEqual(((1, 2), {"three": 3}), result)
 
     @inlineCallbacks
     def test_in_other_thread(self):
