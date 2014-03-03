@@ -24,35 +24,36 @@ suite.add(new Y.maas.testing.TestCase({
     },
 
     testInitializerSetsUpVariables: function() {
+        var driver_enum = ['', 'value1'];
         var widget = new Y.maas.power_parameters.LinkedContentWidget({
             srcNode: '.power_parameters',
-            driverEnum: ENUM,
+            driverEnum: driver_enum,
             templatePrefix: '#prefix-'
             });
-        Y.Assert.areEqual(ENUM, widget.driverEnum);
+        Y.Assert.areEqual(driver_enum, widget.driverEnum);
         Y.Assert.areEqual('#prefix-', widget.templatePrefix);
     },
 
     testInitializerInitializesTemplates: function() {
+        var driver_enum = ['', 'value1', 'value2'];
         var widget = new Y.maas.power_parameters.LinkedContentWidget({
             srcNode: '.power_parameters',
-            driverEnum: ENUM,
+            driverEnum: driver_enum,
             templatePrefix: '#prefix-'
             });
         var key;
-        for (key in ENUM) {
-            if (ENUM.hasOwnProperty(key)) {
-                var value = ENUM[key];
-                var template = Y.one('#prefix-' + value).getContent();
-                Y.Assert.areEqual(template, widget.templates[value]);
-            }
+        for (var counter = 0; counter < driver_enum.length; counter++) {
+            var value = driver_enum[counter];
+            var template = Y.one('#prefix-' + value).getContent();
+            Y.Assert.areEqual(template, widget.templates[value]);
         }
     },
 
     testBindToSetsVisibility: function() {
+        var driver_enum = ['', 'value1'];
         var widget = new Y.maas.power_parameters.LinkedContentWidget({
             srcNode: '.power_parameters',
-            driverEnum: ENUM,
+            driverEnum: driver_enum,
             templatePrefix: '#prefix-'
             });
         widget.bindTo(Y.one('.power_type').one('select'), 'change');
@@ -60,9 +61,10 @@ suite.add(new Y.maas.testing.TestCase({
     },
 
     testchangingTheDriversValueUpdatesSrcNode: function() {
+        var driver_enum = ['', 'value1'];
         var widget = new Y.maas.power_parameters.LinkedContentWidget({
             srcNode: '.power_parameters',
-            driverEnum: ENUM,
+            driverEnum: driver_enum,
             templatePrefix: '#prefix-'
             });
         widget.bindTo(Y.one('.power_type').one('select'), 'change');

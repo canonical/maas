@@ -1,4 +1,4 @@
-/* Copyright 2012 Canonical Ltd.  This software is licensed under the
+/* Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
  * Widget to add a Node.
@@ -25,8 +25,9 @@ AddNodeWidget = function() {
 
 AddNodeWidget.NAME = 'node-add-widget';
 
-module.POWER_TYPE_ENUM = Y.maas.enums.POWER_TYPE;
-
+/* CSS selector prefix for power-parameter templates.  Must match the IDs for
+ * the power-parameter templates as defined in snippets.html.
+ */
 module.POWER_PARAM_TEMPLATE_PREFIX = '#power-param-form-';
 
 AddNodeWidget.ATTRS = {
@@ -42,6 +43,18 @@ AddNodeWidget.ATTRS = {
             return this.get(
                 'srcNode').all('input[name=mac_addresses]').size();
         }
+    },
+
+    /**
+     * Supported power types.
+     *
+     * Maps power-type names to their descriptions.
+     *
+     * @attribute powerTypes
+     * @type object
+     */
+    powerTypes: {
+        value: null
     },
 
     /**
@@ -215,7 +228,7 @@ Y.extend(AddNodeWidget, Y.Widget, {
         var heading = Y.Node.create('<h2 />')
             .set('text', "Add node");
         this.get('srcNode').append(heading).append(this.createForm());
-        this.setupPowerParameterField();
+        this.setUpPowerParameterField();
         this.initializeNodes();
     },
 
@@ -223,15 +236,15 @@ Y.extend(AddNodeWidget, Y.Widget, {
      * If the 'power_type' field is present, setup the linked
      * 'power_parameter' field.
      *
-     * @method setupPowerParameterField
+     * @method setUpPowerParameterField
      */
-    setupPowerParameterField: function() {
+    setUpPowerParameterField: function() {
         if (Y.Lang.isValue(Y.one('#id_power_type'))) {
-            // If the 'power_type' field is present, setup the linked
+            // If the 'power_type' field is present, set up the linked
             // field 'power_parameters'.
             var widget = new Y.maas.power_parameters.LinkedContentWidget({
                 srcNode: '.power_parameters',
-                driverEnum: module.POWER_TYPE_ENUM,
+                driverEnum: this.get('powerTypes'),
                 templatePrefix: module.POWER_PARAM_TEMPLATE_PREFIX
                 });
             widget.bindTo(Y.one('#id_power_type'), 'change');

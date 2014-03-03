@@ -1,4 +1,4 @@
-/* Copyright 2012 Canonical Ltd.  This software is licensed under the
+/* Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  */
 
@@ -26,14 +26,22 @@ suite.add(new Y.maas.testing.TestCase({
     testSingletonCreation: function() {
         // module._add_node_singleton is originally null.
         Y.Assert.isNull(module._add_node_singleton);
-        module.showAddNodeWidget({targetNode: '#target_node', animate: false});
+        module.showAddNodeWidget({
+            powerTypes: ['', 'value1'],
+            targetNode: '#target_node',
+            animate: false
+            });
         // module._add_node_singleton is populated after the call to
         // module.showAddNodeWidget.
         Y.Assert.isNotNull(module._add_node_singleton);
     },
 
     testSingletonReCreation: function() {
-        module.showAddNodeWidget({targetNode: '#target_node', animate: false});
+        module.showAddNodeWidget({
+            powerTypes: ['', 'value1'],
+            targetNode: '#target_node',
+            animate: false
+            });
         var panel = module._add_node_singleton;
 
         // Make sure that a second call to showAddNodeWidget destroys
@@ -42,7 +50,11 @@ suite.add(new Y.maas.testing.TestCase({
         panel.on("destroy", function(){
             destroyed = true;
         });
-        module.showAddNodeWidget({targetNode: '#target_node', animate: false});
+        module.showAddNodeWidget({
+            powerTypes: ['ipmi'],
+            targetNode: '#target_node',
+            animate: false
+            });
         Y.Assert.isTrue(destroyed);
         Y.Assert.isNotNull(module._add_node_singleton);
         Y.Assert.areNotSame(panel, namespace._add_node_singleton);
@@ -216,13 +228,6 @@ suite.add(new Y.maas.testing.TestCase({
 
     setUp: function() {
         this.setUpAdminTemplate();
-        this.setUpPowerTypeEnum();
-    },
-
-    setUpPowerTypeEnum: function() {
-        // Override module.POWER_TYPE_ENUM for the sake of testing.
-        this.POWER_TYPE_ENUM = module.POWER_TYPE_ENUM;
-        module.POWER_TYPE_ENUM = ENUM;
     },
 
     setUpAdminTemplate: function() {
@@ -237,25 +242,28 @@ suite.add(new Y.maas.testing.TestCase({
 
     tearDown: function() {
         this.tearDownAdminTemplate();
-        this.tearDownPowerTypeEnum();
     },
 
     tearDownAdminTemplate: function() {
         Y.one('#add-node').set('innerHTML', this.add_node_template);
     },
 
-    tearDownPowerTypeEnum: function() {
-        module.POWER_TYPE_ENUM = this.POWER_TYPE_ENUM;
-    },
-
     testFormContainsPowerType: function() {
-        module.showAddNodeWidget({targetNode: '#target_node', animate: false});
+        module.showAddNodeWidget({
+            powerTypes: ['', 'value1'],
+            targetNode: '#target_node',
+            animate: false
+            });
         Y.Assert.isNotNull(find_widget().one('#id_power_type'));
     },
 
     testPowerParameterHidden: function() {
         // The power_parameter field starts hidden.
-        module.showAddNodeWidget({targetNode: '#target_node', animate: false});
+        module.showAddNodeWidget({
+            powerTypes: ['', 'value1'],
+            targetNode: '#target_node',
+            animate: false
+            });
         Y.Assert.isTrue(
             find_widget().one('.power_parameters').hasClass('hidden'));
     },
@@ -263,7 +271,12 @@ suite.add(new Y.maas.testing.TestCase({
     testPowerParameterDynamicallyLinked: function() {
         // When the option of the 'select' tag changes to a non empty
         // string, the 'power_parameters' field is shown.
-        module.showAddNodeWidget({targetNode: '#target_node', animate: false});
+        // The value1 power type has a template defined in test_node_add.html.
+        module.showAddNodeWidget({
+            powerTypes: ['value1'],
+            targetNode: '#target_node',
+            animate: false
+            });
         var select = Y.one('#id_power_type');
         select.set('value', 'value1');
         select.simulate('change');

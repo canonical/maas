@@ -19,6 +19,7 @@
     function (Y) {
     Y.on('load', function() {
       // Create Dashboard view.
+      var power_types = {{ power_types }};
       var view = new Y.maas.node_views.NodesDashboard({
           srcNode: '#dashboard',
           summaryNode: '#summary',
@@ -30,7 +31,10 @@
 
       Y.one('#addnode').on('click', function(e) {
         e.preventDefault();
-        Y.maas.node_add.showAddNodeWidget({targetNode: '#dashboard'});
+        Y.maas.node_add.showAddNodeWidget({
+            powerTypes: power_types,
+            targetNode: '#dashboard'
+            });
       });
 
       // Setup TitleEditWidget.

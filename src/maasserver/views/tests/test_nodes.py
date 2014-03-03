@@ -66,8 +66,56 @@ from maasserver.utils.orm import get_one
 from maasserver.views import nodes as nodes_views
 from maasserver.views.nodes import message_from_form_stats
 from maastesting.djangotestcase import count_queries
+from maastesting.testcase import MAASTestCase
 from metadataserver.models.commissioningscript import LLDP_OUTPUT_NAME
 from testtools.matchers import ContainsAll
+
+
+class TestGenerateJSPowerTypes(MAASTestCase):
+    def patch_power_types(self, enum):
+        """Make `get_power_types` return the given `enum` dict."""
+        self.patch(nodes_views, 'get_power_types').return_value = enum
+
+    def test_lists_power_types_as_JS_array(self):
+        power_type = factory.make_name('power')
+        self.patch_power_types({power_type: power_type})
+        self.assertEqual(
+            '[\n"%s"\n]' % power_type,
+            nodes_views.generate_js_power_types())
+
+    def test_uses_power_type_names_not_descriptions(self):
+        name = factory.make_name('name')
+        description = factory.make_name('description')
+        self.patch_power_types({name: description})
+        output = nodes_views.generate_js_power_types()
+        self.assertIn(name, output)
+        self.assertNotIn(description, output)
+
+    def test_works_with_real_get_power_types(self):
+        self.assertIn('ipmi', nodes_views.generate_js_power_types())
+
+    def test_uses_comma_as_item_separator_not_as_terminator(self):
+        self.patch(nodes_views, 'get_power_types').return_value = {
+            'a': factory.make_name('a'),
+            'b': factory.make_name('b'),
+            }
+        self.assertEqual(
+            ['[', '"a",', '"b"', ']'],
+            nodes_views.generate_js_power_types().strip().split())
+
+    def test_sorts_entries(self):
+        power_types = {
+            factory.make_name('power'): factory.make_name('desc')
+            for _ in range(3)
+            }
+        self.patch_power_types(power_types)
+        output = nodes_views.generate_js_power_types()
+        self.assertEqual(
+            sorted(power_types.keys()),
+            [
+                item.rstrip(',').strip('"\'')
+                for item in output.strip('[]').strip().split()
+            ])
 
 
 class NodeViewsTest(MAASServerTestCase):

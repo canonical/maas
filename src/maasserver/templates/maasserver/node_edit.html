@@ -16,9 +16,10 @@
     Y.on('load', function() {
       // Create LinkedContentWidget widget so that the power_parameter field
       // will be updated each time the value of the power_type field changes.
+      var power_types = {{ power_types }};
       var widget = new Y.maas.power_parameters.LinkedContentWidget({
           srcNode: '.power_parameters',
-          driverEnum: Y.maas.enums.POWER_TYPE,
+          driverEnum: power_types,
           templatePrefix: '#power-param-form-'
           });
       widget.bindTo(Y.one('.power_type').one('select'), 'change');

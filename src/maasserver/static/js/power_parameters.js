@@ -1,4 +1,4 @@
-/* Copyright 2012 Canonical Ltd.  This software is licensed under the
+/* Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
  * Power parameters utilities.
@@ -36,10 +36,19 @@ Y.extend(LinkedContentWidget, Y.Widget, {
     * - cfg.driverNode is the node containing a 'select' element.  When
     *   the selected element will change, the srcNode HTML will be
     *   updated.
-    * - cfg.driverEnum is an dictionary which contains all the possible values
-    *   of the driverNode's select element.
-    * - cfg.templatePrefix is the prefix string which will be used to fetch
-    *   all the templates for each possible value of driverEnum.
+    * - cfg.driverEnum is an array containing all possible values for the
+    *   driverNode's select element.  Each value will have its own template to
+    *   define additional parameter fields.  For example, each power type has
+    *   its own set of power parameter fields, as defined by a template for
+    *   that power type.  Selecting a power type on a node's edit page will
+    *   reveal input fields for the power parameters associated with that power
+    *   type.  Each power type has a template with an HTML ID like
+    *   "power-parameter-form-<power type>" to define its power parameters.
+    *   The templates are defined as script entries with a MIME type of
+    *   "text/x-template".
+    * - cfg.templatePrefix is a CSS selector prefix.  It will be used to select
+    *   the templates for the respective enumeration values defined in
+    *   driverEnum.
     *
     * @method initializer
     */
@@ -50,21 +59,18 @@ Y.extend(LinkedContentWidget, Y.Widget, {
     },
 
    /**
-    * Create a dictionary containing the templates for all the possible
-    * values from 'this.driverEnum'.
+    * Create a dictionary containing the respective templates for all values
+    * in 'this.driverEnum'.
     *
     * @method initTemplates
     */
     initTemplates: function() {
         this.templates = {};
         var driverValue;
-        for (driverValue in this.driverEnum) {
-            if (this.driverEnum.hasOwnProperty(driverValue)) {
-                var type = this.driverEnum[driverValue];
-                var template = Y.one(
-                    this.templatePrefix + type).getContent();
-                this.templates[type] = template;
-            }
+        for (var counter = 0; counter < this.driverEnum.length; counter++) {
+            var driver = this.driverEnum[counter];
+            var template = Y.one(this.templatePrefix + driver).getContent();
+            this.templates[driver] = template;
         }
     },
 

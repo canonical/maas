@@ -15,8 +15,12 @@
   YUI().use('maas.node_add', function (Y) {
     Y.on('load', function() {
       Y.one('#addnode').on('click', function(e) {
+        var power_types = {{ power_types }};
         e.preventDefault();
-        Y.maas.node_add.showAddNodeWidget({targetNode: '#nodes'});
+        Y.maas.node_add.showAddNodeWidget({
+            powerTypes: power_types,
+            targetNode: '#nodes'
+            });
       });
       // Reload the page when a new node gets added.
       Y.maas.node_add.AddNodeDispatcher.on(
