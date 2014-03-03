@@ -94,12 +94,15 @@ JSON_POWER_TYPE_PARAMETERS_SCHEMA = {
         'title': "Power type parameters",
         'type': 'object',
         'properties': {
+            'name': {
+                'type': 'string',
+            },
             'fields': {
                 'type': 'array',
                 'items': POWER_TYPE_PARAMETER_FIELD_SCHEMA,
             },
         },
-        'required': ['fields'],
+        'required': ['name', 'fields'],
     },
 }
 
@@ -251,6 +254,33 @@ def make_form_field(json_field):
         label=json_field['label'], required=json_field['required'],
         **extra_parameters)
     return form_field
+
+
+def add_power_type_parameters(
+        name, fields, parameters_set=JSON_POWER_TYPE_PARAMETERS):
+    """Add new power type parameters to JSON_POWER_TYPE_PARAMETERS.
+
+    :param name: The name of the power type for which to add parameters.
+    :type name: string
+    :param fields: The fields that make up the parameters for the power
+        type. Will be validated against
+        POWER_TYPE_PARAMETER_FIELD_SCHEMA.
+    :type field: list
+    :param parameters_set: An existing list of power type parameters to
+        mutate. By default, this is set to JSON_POWER_TYPE_PARAMETERS.
+        This parameter exists for testing purposes.
+    :type parameters_set: list
+    """
+    for power_type in parameters_set:
+        if name == power_type['name']:
+            return
+    field_set_schema = {
+        'title': "Power type parameters field set schema",
+        'type': 'array',
+        'items': POWER_TYPE_PARAMETER_FIELD_SCHEMA,
+    }
+    validate(fields, field_set_schema)
+    parameters_set.append({'name': name, 'fields': fields})
 
 
 def get_power_type_parameters_from_json(json_power_type_parameters):

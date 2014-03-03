@@ -19,9 +19,11 @@ import jsonschema
 from maasserver.config_forms import DictCharField
 from maasserver.fields import MACAddressFormField
 from maasserver.power_parameters import (
+    add_power_type_parameters,
     get_power_type_parameters_from_json,
     make_form_field,
     make_json_field,
+    JSON_POWER_TYPE_PARAMETERS_SCHEMA,
     POWER_TYPE_PARAMETERS,
     POWER_TYPE_PARAMETER_FIELD_SCHEMA,
     )
@@ -221,3 +223,47 @@ class TestMakeJSONField(MAASServerTestCase):
         self.assertRaises(
             jsonschema.ValidationError, make_json_field,
             'some_field', 'Some Label', choices="Nonsense")
+
+
+class TestAddPowerTypeParameters(MAASServerTestCase):
+
+    def make_field(self):
+        return make_json_field(
+            self.getUniqueString(), self.getUniqueString())
+
+    def test_adding_existing_types_is_a_no_op(self):
+        existing_parameters = [{
+            'name': 'blah',
+            'fields': {},
+        }]
+        add_power_type_parameters(
+            name='blah', fields=[self.make_field()],
+            parameters_set=existing_parameters)
+        self.assertEqual(
+            [{'name': 'blah', 'fields': {}}],
+            existing_parameters)
+
+    def test_adds_new_power_type_parameters(self):
+        existing_parameters = []
+        fields = [self.make_field()]
+        add_power_type_parameters(
+            name='blah', fields=fields,
+            parameters_set=existing_parameters)
+        self.assertEqual(
+            [{'name': 'blah', 'fields': fields}],
+            existing_parameters)
+
+    def test_validates_new_parameters(self):
+        self.assertRaises(
+            jsonschema.ValidationError, add_power_type_parameters,
+            name='blah', fields=[{}],
+            parameters_set=[])
+
+    def test_subsequent_parameters_set_is_valid(self):
+        parameters_set = []
+        fields = [self.make_field()]
+        add_power_type_parameters(
+            name='blah', fields=fields,
+            parameters_set=parameters_set)
+        jsonschema.validate(
+            parameters_set, JSON_POWER_TYPE_PARAMETERS_SCHEMA)
