@@ -325,10 +325,9 @@ class NodeHandler(OperationsHandler):
         :param architecture: The new architecture for this node (see
             vocabulary `ARCHITECTURE`).
         :type architecture: unicode
-        :param power_type: The new power type for this node (see
-            vocabulary `POWER_TYPE`).  Note that if you set power_type to
-            use the default value, power_parameters will be set to the empty
-            string.  Available to admin users.
+        :param power_type: The new power type for this node. If you use the
+            default value, power_parameters will be set to the empty string.
+            Available to admin users.
         :type power_type: unicode
         :param power_parameters_{param1}: The new value for the 'param1'
             power parameter.  Note that this is dynamic as the available

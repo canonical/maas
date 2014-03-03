@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Enumerations meaningful to the provisioning server."""
@@ -16,7 +16,6 @@ __all__ = [
     'ARP_HTYPE',
     'IPMI_DRIVER',
     'IPMI_DRIVER_CHOICES',
-    'POWER_TYPE',
     'UNKNOWN_POWER_TYPE',
     'get_power_types',
     ]
@@ -44,44 +43,6 @@ def get_power_types():
         "amt": "Intel AMT",
         "dli": "Digital Loggers, Inc. PDU",
         }
-
-
-# FIXME: This enum is deprecated but left in place until the last
-# vestiges of its use are removed (some JS uses it still).
-class POWER_TYPE:
-    """Choice of mechanism to control a node's power."""
-
-    # The null value.  Set this to indicate that the value should be
-    # taken from the configured default.
-    # Django doesn't deal well with null strings, so we're forced to use
-    # the empty string instead.  Hopefully this will be replaced with
-    # None at some point.
-    DEFAULT = ''
-
-    # Use virsh (for virtual machines).
-    VIRSH = 'virsh'
-
-    # Network wake-up.
-    WAKE_ON_LAN = 'ether_wake'
-
-    # Sentry Switch CDU's.
-    CDU = 'fence_cdu'
-
-    # IPMI (Intelligent Platform Management Interface).
-    IPMI = 'ipmi'
-
-    # ILO4/bridging/IPMI
-    MOONSHOT = 'moonshot'
-
-    # The SeaMicro SM15000.
-    # http://www.seamicro.com/sites/default/files/SM15000_Datasheet.pdf
-    SEAMICRO15K = 'sm15k'
-
-    # Intel Active Management Technology
-    AMT = 'amt'
-
-    # Digital Loggers, Inc. PDU
-    DLI = 'dli'
 
 
 class IPMI_DRIVER:

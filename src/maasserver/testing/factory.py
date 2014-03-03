@@ -153,7 +153,7 @@ class Factory(maastesting.factory.Factory):
                   power_type=None, networks=None, sortable_name=False,
                   **kwargs):
         """Make a :class:`Node`.
-        
+
         :param sortable_name: If `True`, use a that will sort consistently
             between different collation orders.  Use this when testing sorting
             by name, where the database and the python code may have different

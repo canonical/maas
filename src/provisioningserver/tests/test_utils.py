@@ -109,10 +109,7 @@ from testtools.matchers import (
     StartsWith,
     )
 from testtools.testcase import ExpectedException
-from twisted.internet.defer import (
-    Deferred,
-    inlineCallbacks,
-    )
+from twisted.internet.defer import inlineCallbacks
 from twisted.internet.threads import deferToThread
 
 

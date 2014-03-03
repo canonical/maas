@@ -1,4 +1,4 @@
-# Copyright 2012-2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Actions for power-related operations."""
@@ -62,7 +62,7 @@ def get_power_config_dir():
 class PowerAction:
     """Actions for power-related operations.
 
-    :param power_type: A value from :class:`POWER_TYPE`.
+    :param power_type: A power-type name, e.g. `ipmi`.
 
     The class is intended to be used in two phases:
     1. Instantiation, passing the power_type.
