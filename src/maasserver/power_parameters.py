@@ -38,6 +38,7 @@ from jsonschema import validate
 from maasserver.config_forms import DictCharField
 from maasserver.fields import MACAddressFormField
 from provisioningserver.enum import (
+    get_power_types,
     IPMI_DRIVER,
     IPMI_DRIVER_CHOICES,
     )
@@ -289,3 +290,7 @@ def get_power_type_parameters():
 # need to be generated on the fly to incude the latest information.
 POWER_TYPE_PARAMETERS = get_power_type_parameters_from_json(
     JSON_POWER_TYPE_PARAMETERS)
+
+
+def get_power_type_choices():
+    return [(k, v) for (k, v) in get_power_types().items() if k != '']

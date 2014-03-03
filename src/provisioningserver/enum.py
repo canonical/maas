@@ -17,7 +17,6 @@ __all__ = [
     'IPMI_DRIVER',
     'IPMI_DRIVER_CHOICES',
     'POWER_TYPE',
-    'POWER_TYPE_CHOICES',
     'UNKNOWN_POWER_TYPE',
     'get_power_types',
     ]
@@ -83,11 +82,6 @@ class POWER_TYPE:
 
     # Digital Loggers, Inc. PDU
     DLI = 'dli'
-
-
-# Django 'Choices' format structure for its field selection mechanism.
-POWER_TYPE_CHOICES = [
-    (k, v) for (k, v) in get_power_types().items() if k != '']
 
 
 class IPMI_DRIVER:

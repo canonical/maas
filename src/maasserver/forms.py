@@ -101,12 +101,14 @@ from maasserver.node_action import (
     ACTIONS_DICT,
     compile_node_actions,
     )
-from maasserver.power_parameters import POWER_TYPE_PARAMETERS
+from maasserver.power_parameters import (
+    get_power_type_parameters,
+    )
 from maasserver.utils import strip_domain
 from maasserver.utils.network import make_network
 from metadataserver.fields import Bin
 from metadataserver.models import CommissioningScript
-from provisioningserver.enum import POWER_TYPE_CHOICES
+from provisioningserver.enum import get_power_types
 
 
 INVALID_ARCHITECTURE_MESSAGE = compose_invalid_choice_text(
@@ -264,14 +266,14 @@ class AdminNodeForm(NodeForm):
         # form deals with an API call which does not change the value of
         # 'power_type') or invalid: get the node's current 'power_type'
         # value or the default value if this form is not linked to a node.
-        if power_type is None or power_type not in dict(POWER_TYPE_CHOICES):
+        if power_type is None or power_type not in get_power_types():
             if node is not None:
                 power_type = node.power_type
             else:
                 # Empty so that the power parameters are set properly.
                 power_type = ''
-        self.fields['power_parameters'] = (
-            POWER_TYPE_PARAMETERS[power_type])
+        self.fields['power_parameters'] = get_power_type_parameters()[
+            power_type]
 
     def clean(self):
         cleaned_data = super(AdminNodeForm, self).clean()

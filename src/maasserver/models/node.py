@@ -68,12 +68,12 @@ from maasserver.models.dhcplease import DHCPLease
 from maasserver.models.tag import Tag
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.models.zone import Zone
+from maasserver.power_parameters import get_power_type_choices
 from maasserver.utils import (
     get_db_state,
     strip_domain,
     )
 from piston.models import Token
-from provisioningserver.enum import POWER_TYPE_CHOICES
 from provisioningserver.tasks import (
     power_off,
     power_on,
@@ -466,8 +466,8 @@ class Node(CleanSave, TimestampedModel):
     # For strings, Django insists on abusing the empty string ("blank")
     # to mean "none."
     power_type = CharField(
-        max_length=10, choices=POWER_TYPE_CHOICES, null=False, blank=True,
-        default='')
+        max_length=10, choices=get_power_type_choices(), null=False,
+        blank=True, default='')
 
     # JSON-encoded set of parameters for power control.
     power_parameters = JSONObjectField(blank=True, default="")
