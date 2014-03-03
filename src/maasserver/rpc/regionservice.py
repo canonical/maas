@@ -17,6 +17,7 @@ __all__ = [
     "RegionAdvertisingService",
 ]
 
+from collections import defaultdict
 from contextlib import closing
 from functools import wraps
 from textwrap import dedent
@@ -30,7 +31,10 @@ from django.db import (
     )
 from maasserver import eventloop
 from maasserver.utils import synchronised
-from provisioningserver.rpc import region
+from provisioningserver.rpc import (
+    cluster,
+    region,
+    )
 from provisioningserver.utils import (
     asynchronous,
     get_all_interface_addresses,
@@ -93,19 +97,32 @@ class RegionServer(Region):
     :ivar factory: Reference to the factory that made this, set by the
         factory. The factory must also have a reference back to the
         service that created it.
+
+    :ivar uuid: The UUID of the remote cluster.
     """
 
     factory = None
+    uuid = None
 
     def connectionMade(self):
         super(RegionServer, self).connectionMade()
         if self.factory.service.running:
-            self.factory.service.connections.add(self)
+            d = self.callRemote(cluster.Identify)
+
+            def cb_identify(response):
+                self.uuid = response.get("uuid")
+                self.factory.service.connections[self.uuid].add(self)
+
+            def eb_identify(failure):
+                log.err(failure)
+                return self.transport.loseConnection()
+
+            d.addCallbacks(cb_identify, eb_identify)
         else:
             self.transport.loseConnection()
 
     def connectionLost(self, reason):
-        self.factory.service.connections.discard(self)
+        self.factory.service.connections[self.uuid].discard(self)
         super(RegionServer, self).connectionLost(reason)
 
 
@@ -128,7 +145,7 @@ class RegionService(service.Service, object):
     def __init__(self):
         super(RegionService, self).__init__()
         self.endpoint = TCP4ServerEndpoint(reactor, 0)
-        self.connections = set()
+        self.connections = defaultdict(set)
         self.factory = Factory.forProtocol(RegionServer)
         self.factory.service = self
         self._port = None
@@ -157,11 +174,12 @@ class RegionService(service.Service, object):
         self.starting.cancel()
         if self._port is not None:
             yield self._port.stopListening()
-        for conn in self.connections:
-            try:
-                yield conn.transport.loseConnection()
-            except:
-                log.err()
+        for conns in self.connections.itervalues():
+            for conn in conns:
+                try:
+                    yield conn.transport.loseConnection()
+                except:
+                    log.err()
         yield super(RegionService, self).stopService()
 
     @asynchronous

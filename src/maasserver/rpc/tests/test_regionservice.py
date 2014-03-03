@@ -14,6 +14,7 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+from collections import defaultdict
 from contextlib import closing
 from itertools import product
 from operator import attrgetter
@@ -31,6 +32,7 @@ from maasserver.rpc.regionservice import (
     RegionServer,
     RegionService,
     )
+from maasserver.rpc.testing import doubles
 from maastesting.factory import factory
 from maastesting.matchers import (
     MockCalledOnceWith,
@@ -38,6 +40,7 @@ from maastesting.matchers import (
     )
 from maastesting.testcase import MAASTestCase
 from provisioningserver.config import Config
+from provisioningserver.rpc import cluster
 from provisioningserver.rpc.region import (
     Identify,
     ReportBootImages,
@@ -62,6 +65,7 @@ from twisted.internet.defer import (
     Deferred,
     fail,
     inlineCallbacks,
+    succeed,
     )
 from twisted.internet.interfaces import IStreamServerEndpoint
 from twisted.internet.protocol import Factory
@@ -184,36 +188,78 @@ class TestRegionProtocol_ReportBootImages(MAASTestCase):
 
 class TestRegionServer(MAASTestCase):
 
-    def test_connectionMade_updates_services_connection_set(self):
+    def test_connectionMade_identifies_the_remote_cluster(self):
         service = RegionService()
         service.running = True  # Pretend it's running.
         protocol = service.factory.buildProtocol(addr=None)  # addr is unused.
-        self.assertItemsEqual([], service.connections)
+        example_uuid = factory.getRandomUUID()
+        callRemote = self.patch(protocol, "callRemote")
+        callRemote.return_value = succeed({b"uuid": example_uuid})
         protocol.connectionMade()
-        self.assertItemsEqual([protocol], service.connections)
+        # The Identify command was called on the cluster.
+        self.assertThat(callRemote, MockCalledOnceWith(cluster.Identify))
+        # The UUID has been saved on the protocol instance.
+        self.assertThat(protocol.uuid, Equals(example_uuid))
+
+    def test_connectionMade_drops_the_connection_on_ident_failure(self):
+        service = RegionService()
+        service.running = True  # Pretend it's running.
+        protocol = service.factory.buildProtocol(addr=None)  # addr is unused.
+        callRemote = self.patch(protocol, "callRemote")
+        callRemote.return_value = fail(IOError("no paddle"))
+        transport = self.patch(protocol, "transport")
+        logger = self.useFixture(TwistedLoggerFixture())
+        protocol.connectionMade()
+        # The transport is instructed to lose the connection.
+        self.assertThat(transport.loseConnection, MockCalledOnceWith())
+        # The connection is not in the service's connection map.
+        self.assertDictEqual({}, service.connections)
+        # The error is logged.
+        self.assertDocTestMatches(
+            """\
+            Unhandled Error
+            Traceback (most recent call last):
+            Failure: exceptions.IOError: no paddle
+            """,
+            logger.dump())
+
+    def test_connectionMade_updates_services_connection_set(self):
+        service = RegionService()
+        service.running = True  # Pretend it's running.
+        service.factory.protocol = doubles.IdentifyingRegionServer
+        protocol = service.factory.buildProtocol(addr=None)  # addr is unused.
+        self.assertDictEqual({}, service.connections)
+        protocol.connectionMade()
+        self.assertDictEqual(
+            {protocol.uuid: {protocol}},
+            service.connections)
 
     def test_connectionMade_drops_connection_if_service_not_running(self):
         service = RegionService()
         service.running = False  # Pretend it's not running.
+        service.factory.protocol = doubles.IdentifyingRegionServer
         protocol = service.factory.buildProtocol(addr=None)  # addr is unused.
         transport = self.patch(protocol, "transport")
-        self.assertItemsEqual([], service.connections)
+        self.assertDictEqual({}, service.connections)
         protocol.connectionMade()
         # The protocol is not added to the connection set.
-        self.assertItemsEqual([], service.connections)
+        self.assertDictEqual({}, service.connections)
         # The transport is instructed to lose the connection.
         self.assertThat(transport.loseConnection, MockCalledOnceWith())
 
     def test_connectionLost_updates_services_connection_set(self):
         service = RegionService()
         service.running = True  # Pretend it's running.
+        service.factory.protocol = doubles.IdentifyingRegionServer
         protocol = service.factory.buildProtocol(addr=None)  # addr is unused.
+        protocol.connectionMade()
         connectionLost_up_call = self.patch(amp.AMP, "connectionLost")
-        # Pretend the protocol is connected.
-        service.connections.add(protocol)
-        self.assertItemsEqual([protocol], service.connections)
+        self.assertDictEqual(
+            {protocol.uuid: {protocol}},
+            service.connections)
         protocol.connectionLost(reason=None)
-        self.assertItemsEqual([], service.connections)
+        # The connection is removed from the set, but the key remains.
+        self.assertDictEqual({protocol.uuid: set()}, service.connections)
         # connectionLost() is called on the superclass.
         self.assertThat(connectionLost_up_call, MockCalledOnceWith(None))
 
@@ -223,7 +269,8 @@ class TestRegionService(MAASTestCase):
     def test_init_sets_appropriate_instance_attributes(self):
         service = RegionService()
         self.assertThat(service, IsInstance(Service))
-        self.assertThat(service.connections, IsInstance(set))
+        self.assertThat(service.connections, IsInstance(defaultdict))
+        self.assertThat(service.connections.default_factory, Is(set))
         self.assertThat(service.endpoint, Provides(IStreamServerEndpoint))
         self.assertThat(service.factory, IsInstance(Factory))
         self.assertThat(service.factory.protocol, Equals(RegionServer))
@@ -313,15 +360,18 @@ class TestRegionService(MAASTestCase):
     def test_stopping_closes_connections_cleanly(self):
         service = RegionService()
         service.starting = Deferred()
+        service.factory.protocol = doubles.IdentifyingRegionServer
         connections = {
             service.factory.buildProtocol(None),
             service.factory.buildProtocol(None),
         }
+        for conn in connections:
+            # Pretend it's already connected.
+            service.connections[conn.uuid].add(conn)
         transports = {
             self.patch(conn, "transport")
             for conn in connections
         }
-        service.connections = set(connections)
         yield service.stopService()
         self.assertThat(
             transports, AllMatch(
@@ -334,17 +384,20 @@ class TestRegionService(MAASTestCase):
     def test_stopping_logs_errors_when_closing_connections(self):
         service = RegionService()
         service.starting = Deferred()
-        service.connections = {
+        service.factory.protocol = doubles.IdentifyingRegionServer
+        connections = {
             service.factory.buildProtocol(None),
             service.factory.buildProtocol(None),
         }
-        for conn in service.connections:
+        for conn in connections:
             transport = self.patch(conn, "transport")
             transport.loseConnection.side_effect = IOError("broken")
+            # Pretend it's already connected.
+            service.connections[conn.uuid].add(conn)
         logger = self.useFixture(TwistedLoggerFixture())
+        # stopService() completes without returning an error.
         yield service.stopService()
-        # Each error is logged (the implication being that an error does
-        # not stop processing).
+        # Connection-specific errors are logged.
         self.assertDocTestMatches(
             """\
             Unhandled Error
