@@ -27,6 +27,7 @@ from snippets import maas_ipmi_autodetect
 from snippets.maas_ipmi_autodetect import (
     apply_ipmi_user_settings,
     bmc_list_sections,
+    bmc_supports_lan2_0,
     bmc_user_get,
     commit_ipmi_settings,
     format_user_key,
@@ -405,3 +406,19 @@ class TestCommitIPMISettings(MAASTestCase):
         commit_ipmi_settings(filename)
         self.assertThat(recorder, MockCalledOnceWith(
             ('bmc-config', '--commit', '--filename', filename)))
+
+
+class TestBMCSupportsLANPlus(MAASTestCase):
+    """Tests for bmc_supports_lan2_0()."""
+
+    scenarios = [
+        ('Supports LAN 2.0', dict(output='IPMI Version: 2.0', support=True)),
+        ('Supports LAN 1.5', dict(output='IPMI Version: 1.5', support=False)),
+    ]
+
+    def test_support_detection(self):
+        """Test for positive and negative matches."""
+        run_command = self.patch(maas_ipmi_autodetect, 'run_command')
+        run_command.return_value = self.output
+        detected = bmc_supports_lan2_0()
+        self.assertEqual(self.support, detected)

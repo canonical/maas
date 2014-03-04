@@ -218,22 +218,10 @@ def generate_random_password(min_length=8, max_length=15):
     return ''.join([random.choice(letters) for _ in range(length)])
 
 
-def get_ipmi_version():
+def bmc_supports_lan2_0():
+    """Detect if BMC supports LAN 2.0."""
     output = run_command(('ipmi-locate'))
-    #IPMI Version: 2.0
-    #IPMI locate driver: SMBIOS
-    #IPMI interface: KCS
-    #BMC driver device:
-    #BMC I/O base address: 0xCA2
-    #Register spacing: 1
-    #show_re = re.compile('(IPMI\ Version:) (\d\.\d)')
-    show_re = re.compile(
-        '(IPMI\ Version:) (\d\.\d)(\n)(.*)(\n)(.*)(\n)(.*)(\n)'
-        '(BMC\ I\/O\ base\ address:) (0xCA2)')
-    res = show_re.search(output)
-    if res is None:
-        return
-    return res.group(2)
+    return 'IPMI Version: 2.0' in output
 
 
 def main():
@@ -295,9 +283,10 @@ def main():
         # has been detected
         exit(1)
 
-    IPMI_VERSION = "LAN"
-    if get_ipmi_version() == "2.0":
+    if bmc_supports_lan2_0():
         IPMI_VERSION = "LAN_2_0"
+    else:
+        IPMI_VERSION = "LAN"
     if args.commission_creds:
         print(get_maas_power_settings_json(
             IPMI_MAAS_USER, IPMI_MAAS_PASSWORD, IPMI_IP_ADDRESS, IPMI_VERSION))
