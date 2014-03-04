@@ -210,7 +210,8 @@ class TestClusterProtocol_DescribePowerTypes(MAASTestCase):
     @inlineCallbacks
     def test_describe_power_types_returns_jsonized_power_parameters(self):
 
-        response = yield call_responder(Cluster(), cluster.DescribePowerTypes, {})
+        response = yield call_responder(
+            Cluster(), cluster.DescribePowerTypes, {})
 
         self.assertThat(response, KeysEqual("power_types"))
         self.assertItemsEqual(
