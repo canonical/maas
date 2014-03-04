@@ -39,7 +39,7 @@ from maasserver.fields import MACAddressFormField
 from provisioningserver.enum import get_power_types
 from provisioningserver.power_schema import (
     JSON_POWER_TYPE_PARAMETERS,
-    JSON_POWER_TYPE_PARAMETERS_SCHEMA,
+    JSON_POWER_TYPE_SCHEMA,
     POWER_TYPE_PARAMETER_FIELD_SCHEMA,
     )
 
@@ -76,11 +76,14 @@ def make_form_field(json_field):
 
 
 def add_power_type_parameters(
-        name, fields, parameters_set=JSON_POWER_TYPE_PARAMETERS):
+        name, description, fields, parameters_set=JSON_POWER_TYPE_PARAMETERS):
     """Add new power type parameters to JSON_POWER_TYPE_PARAMETERS.
 
     :param name: The name of the power type for which to add parameters.
     :type name: string
+    :param description: A longer description of the power type. This
+        will be displayed in the UI.
+    :type description: string
     :param fields: The fields that make up the parameters for the power
         type. Will be validated against
         POWER_TYPE_PARAMETER_FIELD_SCHEMA.
@@ -99,7 +102,8 @@ def add_power_type_parameters(
         'items': POWER_TYPE_PARAMETER_FIELD_SCHEMA,
     }
     validate(fields, field_set_schema)
-    parameters_set.append({'name': name, 'fields': fields})
+    parameters_set.append(
+        {'name': name, 'description': description, 'fields': fields})
 
 
 def get_power_type_parameters_from_json(json_power_type_parameters):
@@ -112,7 +116,7 @@ def get_power_type_parameters_from_json(json_power_type_parameters):
     :return: A dict of power parameters for all power types, indexed by
         power type name.
     """
-    validate(json_power_type_parameters, JSON_POWER_TYPE_PARAMETERS_SCHEMA)
+    validate(json_power_type_parameters, JSON_POWER_TYPE_SCHEMA)
     power_parameters = {
         # Empty type, for the case where nothing is entered in the form yet.
         '': DictCharField(

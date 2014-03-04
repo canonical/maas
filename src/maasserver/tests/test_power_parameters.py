@@ -19,12 +19,12 @@ import jsonschema
 from maasserver.config_forms import DictCharField
 from maasserver.fields import MACAddressFormField
 from maasserver.power_parameters import (
+    JSON_POWER_TYPE_SCHEMA,
+    POWER_TYPE_PARAMETERS,
+    POWER_TYPE_PARAMETER_FIELD_SCHEMA,
     add_power_type_parameters,
     get_power_type_parameters_from_json,
-    JSON_POWER_TYPE_PARAMETERS_SCHEMA,
     make_form_field,
-    POWER_TYPE_PARAMETER_FIELD_SCHEMA,
-    POWER_TYPE_PARAMETERS,
     )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -105,6 +105,7 @@ class TestGetPowerTypeParametersFromJSON(MAASServerTestCase):
     def test_includes_empty_power_type(self):
         json_parameters = [{
             'name': 'something',
+            'description': 'Meaningless',
             'fields': [{
                 'name': 'some_field',
                 'label': 'Some Field',
@@ -119,6 +120,7 @@ class TestGetPowerTypeParametersFromJSON(MAASServerTestCase):
     def test_creates_dict_char_fields(self):
         json_parameters = [{
             'name': 'something',
+            'description': 'Meaningless',
             'fields': [{
                 'name': 'some_field',
                 'label': 'Some Field',
@@ -234,36 +236,37 @@ class TestAddPowerTypeParameters(MAASServerTestCase):
     def test_adding_existing_types_is_a_no_op(self):
         existing_parameters = [{
             'name': 'blah',
+            'description': 'baz',
             'fields': {},
         }]
         add_power_type_parameters(
-            name='blah', fields=[self.make_field()],
+            name='blah', description='baz', fields=[self.make_field()],
             parameters_set=existing_parameters)
         self.assertEqual(
-            [{'name': 'blah', 'fields': {}}],
+            [{'name': 'blah', 'description': 'baz', 'fields': {}}],
             existing_parameters)
 
     def test_adds_new_power_type_parameters(self):
         existing_parameters = []
         fields = [self.make_field()]
         add_power_type_parameters(
-            name='blah', fields=fields,
+            name='blah', description='baz', fields=fields,
             parameters_set=existing_parameters)
         self.assertEqual(
-            [{'name': 'blah', 'fields': fields}],
+            [{'name': 'blah', 'description': 'baz', 'fields': fields}],
             existing_parameters)
 
     def test_validates_new_parameters(self):
         self.assertRaises(
             jsonschema.ValidationError, add_power_type_parameters,
-            name='blah', fields=[{}],
+            name='blah', description='baz', fields=[{}],
             parameters_set=[])
 
     def test_subsequent_parameters_set_is_valid(self):
         parameters_set = []
         fields = [self.make_field()]
         add_power_type_parameters(
-            name='blah', fields=fields,
+            name='blah', description='baz', fields=fields,
             parameters_set=parameters_set)
         jsonschema.validate(
-            parameters_set, JSON_POWER_TYPE_PARAMETERS_SCHEMA)
+            parameters_set, JSON_POWER_TYPE_SCHEMA)

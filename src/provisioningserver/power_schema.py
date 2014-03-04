@@ -14,7 +14,7 @@ str = None
 __metaclass__ = type
 __all__ = [
     "JSON_POWER_TYPE_PARAMETERS",
-    "JSON_POWER_TYPE_PARAMETERS_SCHEMA",
+    "JSON_POWER_TYPE_SCHEMA",
     "POWER_TYPE_PARAMETER_FIELD_SCHEMA",
     ]
 
@@ -68,7 +68,7 @@ POWER_TYPE_PARAMETER_FIELD_SCHEMA = {
 
 
 # A basic JSON schema for what power type parameters should look like.
-JSON_POWER_TYPE_PARAMETERS_SCHEMA = {
+JSON_POWER_TYPE_SCHEMA = {
     'title': "Power parameters set",
     'type': 'array',
     'items': {
@@ -78,12 +78,15 @@ JSON_POWER_TYPE_PARAMETERS_SCHEMA = {
             'name': {
                 'type': 'string',
             },
+            'description': {
+                'type': 'string',
+            },
             'fields': {
                 'type': 'array',
                 'items': POWER_TYPE_PARAMETER_FIELD_SCHEMA,
             },
         },
-        'required': ['name', 'fields'],
+        'required': ['name', 'description', 'fields'],
     },
 }
 
@@ -130,6 +133,7 @@ def make_json_field(
 JSON_POWER_TYPE_PARAMETERS = [
     {
         'name': 'ether_wake',
+        'description': 'Wake-on-LAN',
         'fields': [
             make_json_field(
                 'mac_address', "MAC Address", field_type='mac_address'),
@@ -137,6 +141,7 @@ JSON_POWER_TYPE_PARAMETERS = [
     },
     {
         'name': 'virsh',
+        'description': 'virsh (virtual systems)',
         'fields': [
             make_json_field('power_address', "Power address"),
             make_json_field('power_id', "Power ID"),
@@ -144,6 +149,7 @@ JSON_POWER_TYPE_PARAMETERS = [
     },
     {
         'name': 'fence_cdu',
+        'description': 'Sentry Switch CDU',
         'fields': [
             make_json_field('power_address', "Power address"),
             make_json_field('power_id', "Power ID"),
@@ -153,6 +159,7 @@ JSON_POWER_TYPE_PARAMETERS = [
     },
     {
         'name': 'ipmi',
+        'description': 'IPMI',
         'fields': [
             make_json_field(
                 'power_driver', "Power driver", field_type='choice',
@@ -168,6 +175,7 @@ JSON_POWER_TYPE_PARAMETERS = [
     },
     {
         'name': 'moonshot',
+        'description': 'iLO4 Moonshot Chassis',
         'fields': [
             make_json_field('power_address', "Power address"),
             make_json_field('power_user', "Power user"),
@@ -177,6 +185,7 @@ JSON_POWER_TYPE_PARAMETERS = [
     },
     {
         'name': 'sm15k',
+        'description': 'SeaMicro 15000',
         'fields': [
             make_json_field('system_id', "System ID"),
             make_json_field('power_address', "Power address"),
@@ -186,6 +195,7 @@ JSON_POWER_TYPE_PARAMETERS = [
     },
     {
         'name': 'amt',
+        'description': 'Intel AMT',
         'fields': [
             make_json_field(
                 'mac_address', "MAC Address", field_type='mac_address'),
@@ -194,6 +204,7 @@ JSON_POWER_TYPE_PARAMETERS = [
     },
     {
         'name': 'dli',
+        'description': 'Digital Loggers, Inc. PDU',
         'fields': [
             make_json_field('system_id', "Outlet ID"),
             make_json_field('power_address', "Power address"),
