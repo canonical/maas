@@ -43,16 +43,17 @@ misc_bucket:
       chmod "${2:-644}" "${IPMI_CONFIG_D}/$1"
    }
 
-   add_ipmi_config "02-global-config.ipmi" <<"END_IPMI_CONFIG"
-   Section Lan_Channel
-        Volatile_Access_Mode                    Always_Available
-        Volatile_Enable_User_Level_Auth         Yes
-        Volatile_Channel_Privilege_Limit        Administrator
-        Non_Volatile_Access_Mode                Always_Available
-        Non_Volatile_Enable_User_Level_Auth     Yes
-        Non_Volatile_Channel_Privilege_Limit    Administrator
-   EndSection
-   END_IPMI_CONFIG
+   # Example config: enable BMC remote access (on some systems.)
+   #add_ipmi_config "02-global-config.ipmi" <<"END_IPMI_CONFIG"
+   #Section Lan_Channel
+   #     Volatile_Access_Mode                    Always_Available
+   #     Volatile_Enable_User_Level_Auth         Yes
+   #     Volatile_Channel_Privilege_Limit        Administrator
+   #     Non_Volatile_Access_Mode                Always_Available
+   #     Non_Volatile_Enable_User_Level_Auth     Yes
+   #     Non_Volatile_Channel_Privilege_Limit    Administrator
+   #EndSection
+   #END_IPMI_CONFIG
 
    add_bin "maas-ipmi-autodetect-tool" <<"END_MAAS_IPMI_AUTODETECT_TOOL"
    {{for line in maas_ipmi_autodetect_tool_py.splitlines()}}
