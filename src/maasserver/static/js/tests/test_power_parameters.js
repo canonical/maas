@@ -42,7 +42,8 @@ suite.add(new Y.maas.testing.TestCase({
             templatePrefix: '#prefix-'
             });
         var key;
-        for (var counter = 0; counter < driver_enum.length; counter++) {
+        var counter;
+        for (counter = 0; counter < driver_enum.length; counter++) {
             var value = driver_enum[counter];
             var template = Y.one('#prefix-' + value).getContent();
             Y.Assert.areEqual(template, widget.templates[value]);

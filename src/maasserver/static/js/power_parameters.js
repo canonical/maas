@@ -67,7 +67,8 @@ Y.extend(LinkedContentWidget, Y.Widget, {
     initTemplates: function() {
         this.templates = {};
         var driverValue;
-        for (var counter = 0; counter < this.driverEnum.length; counter++) {
+        var counter;
+        for (counter = 0; counter < this.driverEnum.length; counter++) {
             var driver = this.driverEnum[counter];
             var template = Y.one(this.templatePrefix + driver).getContent();
             this.templates[driver] = template;
