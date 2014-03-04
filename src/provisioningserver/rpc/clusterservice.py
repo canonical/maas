@@ -27,6 +27,7 @@ from provisioningserver.cluster_config import (
     get_maas_url,
     )
 from provisioningserver.config import Config
+from provisioningserver.power_schema import JSON_POWER_TYPE_PARAMETERS
 from provisioningserver.pxe import tftppath
 from provisioningserver.rpc import (
     cluster,
@@ -71,6 +72,10 @@ class Cluster(amp.AMP, object):
         images = tftppath.list_boot_images(
             Config.load_from_cache()['tftp']['root'])
         return {"images": images}
+
+    @cluster.DescribePowerTypes.responder
+    def describe_power_types(self):
+        return {'power_types': json.dumps(JSON_POWER_TYPE_PARAMETERS)}
 
     @amp.StartTLS.responder
     def get_tls_parameters(self):

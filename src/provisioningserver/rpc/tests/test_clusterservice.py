@@ -34,6 +34,7 @@ from mock import (
     sentinel,
     )
 from provisioningserver.config import Config
+from provisioningserver.power_schema import JSON_POWER_TYPE_PARAMETERS
 from provisioningserver.pxe import tftppath
 from provisioningserver.rpc import (
     cluster,
@@ -151,16 +152,14 @@ class TestClusterProtocol_ListBootImages(MAASTestCase):
             cluster.ListBootImages.commandName)
         self.assertIsNot(responder, None)
 
+    @inlineCallbacks
     def test_list_boot_images_can_be_called(self):
         list_boot_images = self.patch(tftppath, "list_boot_images")
         list_boot_images.return_value = []
 
-        d = call_responder(Cluster(), cluster.ListBootImages, {})
+        response = yield call_responder(Cluster(), cluster.ListBootImages, {})
 
-        def check(response):
-            self.assertEqual({"images": []}, response)
-
-        return d.addCallback(check)
+        self.assertEqual({"images": []}, response)
 
     def test_list_boot_images_with_things_to_report(self):
         # tftppath.list_boot_images()'s return value matches the
@@ -196,6 +195,26 @@ class TestClusterProtocol_ListBootImages(MAASTestCase):
             self.assertItemsEqual(expected_images, response["images"])
 
         return d.addCallback(check)
+
+
+class TestClusterProtocol_DescribePowerTypes(MAASTestCase):
+
+    run_tests_with = AsynchronousDeferredRunTest.make_factory(timeout=5)
+
+    def test_describe_power_types_is_registered(self):
+        protocol = Cluster()
+        responder = protocol.locateResponder(
+            cluster.DescribePowerTypes.commandName)
+        self.assertIsNot(responder, None)
+
+    @inlineCallbacks
+    def test_describe_power_types_returns_jsonized_power_parameters(self):
+
+        response = yield call_responder(Cluster(), cluster.DescribePowerTypes, {})
+
+        self.assertThat(response, KeysEqual("power_types"))
+        self.assertItemsEqual(
+            JSON_POWER_TYPE_PARAMETERS, json.loads(response["power_types"]))
 
 
 class TestClusterService(MAASTestCase):

@@ -13,6 +13,7 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    "DescribePowerTypes",
     "Identify",
     "ListBootImages",
 ]
@@ -34,5 +35,13 @@ class ListBootImages(amp.Command):
              (b"subarchitecture", amp.Unicode()),
              (b"release", amp.Unicode()),
              (b"purpose", amp.Unicode())]))
+    ]
+    errors = []
+
+
+class DescribePowerTypes(amp.Command):
+    arguments = []
+    response = [
+        (b"power_types", amp.Unicode())
     ]
     errors = []
