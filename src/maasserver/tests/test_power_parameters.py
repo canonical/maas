@@ -23,13 +23,13 @@ from maasserver.power_parameters import (
     get_power_type_parameters_from_json,
     JSON_POWER_TYPE_PARAMETERS_SCHEMA,
     make_form_field,
-    make_json_field,
     POWER_TYPE_PARAMETER_FIELD_SCHEMA,
     POWER_TYPE_PARAMETERS,
     )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from provisioningserver.enum import get_power_types
+from provisioningserver.power_schema import make_json_field
 from provisioningserver.power.poweraction import PowerAction
 from testtools.matchers import (
     AllMatch,

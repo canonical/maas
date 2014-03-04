@@ -13,13 +13,17 @@ str = None
 
 __metaclass__ = type
 __all__ = [
-    "make_json_field",
+    "JSON_POWER_TYPE_PARAMETERS",
     "JSON_POWER_TYPE_PARAMETERS_SCHEMA",
     "POWER_TYPE_PARAMETER_FIELD_SCHEMA",
     ]
 
 
 from jsonschema import validate
+from provisioningserver.enum import (
+    IPMI_DRIVER,
+    IPMI_DRIVER_CHOICES,
+    )
 
 # Represent the Django choices format as JSON; an array of 2-item
 # arrays.
@@ -121,3 +125,80 @@ def make_json_field(
         'default': default,
     }
     return field
+
+
+JSON_POWER_TYPE_PARAMETERS = [
+    {
+        'name': 'ether_wake',
+        'fields': [
+            make_json_field(
+                'mac_address', "MAC Address", field_type='mac_address'),
+        ],
+    },
+    {
+        'name': 'virsh',
+        'fields': [
+            make_json_field('power_address', "Power address"),
+            make_json_field('power_id', "Power ID"),
+        ],
+    },
+    {
+        'name': 'fence_cdu',
+        'fields': [
+            make_json_field('power_address', "Power address"),
+            make_json_field('power_id', "Power ID"),
+            make_json_field('power_user', "Power user"),
+            make_json_field('power_pass', "Power password"),
+        ],
+    },
+    {
+        'name': 'ipmi',
+        'fields': [
+            make_json_field(
+                'power_driver', "Power driver", field_type='choice',
+                choices=IPMI_DRIVER_CHOICES, default=IPMI_DRIVER.LAN_2_0),
+            make_json_field('power_address', "IP address"),
+            make_json_field('power_user', "Power user"),
+            make_json_field('power_pass', "Power password"),
+            make_json_field(
+                'mac_address',
+                "MAC address - the IP is looked up with ARP and overrides "
+                "IP address"),
+        ],
+    },
+    {
+        'name': 'moonshot',
+        'fields': [
+            make_json_field('power_address', "Power address"),
+            make_json_field('power_user', "Power user"),
+            make_json_field('power_pass', "Power password"),
+            make_json_field('power_hwaddress', "Power hardware address"),
+        ],
+    },
+    {
+        'name': 'sm15k',
+        'fields': [
+            make_json_field('system_id', "System ID"),
+            make_json_field('power_address', "Power address"),
+            make_json_field('power_user', "Power user"),
+            make_json_field('power_pass', "Power password"),
+        ],
+    },
+    {
+        'name': 'amt',
+        'fields': [
+            make_json_field(
+                'mac_address', "MAC Address", field_type='mac_address'),
+            make_json_field('power_pass', "Power password"),
+        ],
+    },
+    {
+        'name': 'dli',
+        'fields': [
+            make_json_field('system_id', "Outlet ID"),
+            make_json_field('power_address', "Power address"),
+            make_json_field('power_user', "Power user"),
+            make_json_field('power_pass', "Power password"),
+        ],
+    },
+]

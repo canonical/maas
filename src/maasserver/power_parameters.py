@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Power parameters.  Each possible value of a Node's power_type field can
@@ -28,7 +28,6 @@ str = None
 
 __metaclass__ = type
 __all__ = [
-    'POWER_TYPE_PARAMETERS',
     'get_power_type_parameters',
     ]
 
@@ -37,95 +36,12 @@ from django import forms
 from jsonschema import validate
 from maasserver.config_forms import DictCharField
 from maasserver.fields import MACAddressFormField
-from provisioningserver.enum import (
-    get_power_types,
-    IPMI_DRIVER,
-    IPMI_DRIVER_CHOICES,
-    )
+from provisioningserver.enum import get_power_types
 from provisioningserver.power_schema import (
-    make_json_field,
+    JSON_POWER_TYPE_PARAMETERS,
     JSON_POWER_TYPE_PARAMETERS_SCHEMA,
     POWER_TYPE_PARAMETER_FIELD_SCHEMA,
     )
-
-
-# FIXME this should all be produced by hardware drivers, not defined statically
-# like this.
-JSON_POWER_TYPE_PARAMETERS = [
-    {
-        'name': 'ether_wake',
-        'fields': [
-            make_json_field(
-                'mac_address', "MAC Address", field_type='mac_address'),
-        ],
-    },
-    {
-        'name': 'virsh',
-        'fields': [
-            make_json_field('power_address', "Power address"),
-            make_json_field('power_id', "Power ID"),
-        ],
-    },
-    {
-        'name': 'fence_cdu',
-        'fields': [
-            make_json_field('power_address', "Power address"),
-            make_json_field('power_id', "Power ID"),
-            make_json_field('power_user', "Power user"),
-            make_json_field('power_pass', "Power password"),
-        ],
-    },
-    {
-        'name': 'ipmi',
-        'fields': [
-            make_json_field(
-                'power_driver', "Power driver", field_type='choice',
-                choices=IPMI_DRIVER_CHOICES, default=IPMI_DRIVER.LAN_2_0),
-            make_json_field('power_address', "IP address"),
-            make_json_field('power_user', "Power user"),
-            make_json_field('power_pass', "Power password"),
-            make_json_field(
-                'mac_address',
-                "MAC address - the IP is looked up with ARP and overrides "
-                "IP address"),
-        ],
-    },
-    {
-        'name': 'moonshot',
-        'fields': [
-            make_json_field('power_address', "Power address"),
-            make_json_field('power_user', "Power user"),
-            make_json_field('power_pass', "Power password"),
-            make_json_field('power_hwaddress', "Power hardware address"),
-        ],
-    },
-    {
-        'name': 'sm15k',
-        'fields': [
-            make_json_field('system_id', "System ID"),
-            make_json_field('power_address', "Power address"),
-            make_json_field('power_user', "Power user"),
-            make_json_field('power_pass', "Power password"),
-        ],
-    },
-    {
-        'name': 'amt',
-        'fields': [
-            make_json_field(
-                'mac_address', "MAC Address", field_type='mac_address'),
-            make_json_field('power_pass', "Power password"),
-        ],
-    },
-    {
-        'name': 'dli',
-        'fields': [
-            make_json_field('system_id', "Outlet ID"),
-            make_json_field('power_address', "Power address"),
-            make_json_field('power_user', "Power user"),
-            make_json_field('power_pass', "Power password"),
-        ],
-    },
-]
 
 
 FIELD_TYPE_MAPPINGS = {
