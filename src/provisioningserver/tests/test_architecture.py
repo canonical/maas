@@ -33,3 +33,11 @@ class TestListSupportedArchitectures(MAASTestCase):
         self.assertEqual(
             sorted(architecture.ARCHITECTURES),
             architecture.list_supported_architectures())
+
+
+class TestListSupportedArchitectureChoices(MAASTestCase):
+
+    def test_lists_architecture_choices(self):
+        choices = architecture.list_supported_architecture_choices()
+        self.assertIsInstance(choices, tuple)
+        self.assertIn(('i386/generic', "i386"), choices)
