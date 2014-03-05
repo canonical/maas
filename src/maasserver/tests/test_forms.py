@@ -349,6 +349,21 @@ class NodeEditForms(MAASServerTestCase):
             ],
             list(form.fields))
 
+    def test_AdminNodeForm_initialises_zone(self):
+        # The zone field uses "to_field_name", so that it can refer to a zone
+        # by name instead of by ID.  A bug in Django breaks initialisation
+        # from an instance: the field tries to initialise the field using a
+        # zone's ID instead of its name, and ends up reverting to the default.
+        # The code must work around this bug.
+        zone = factory.make_zone()
+        node = factory.make_node(zone=zone)
+        # We'll create a form that makes a change, but not to the zone.
+        data = {'hostname': factory.make_name('host')}
+        form = AdminNodeForm(instance=node, data=data)
+        # The Django bug would stop the initial field value from being set,
+        # but the workaround ensures that it is initialised.
+        self.assertEqual(zone.name, form.initial['zone'])
+
     def test_AdminNodeForm_changes_node(self):
         node = factory.make_node()
         zone = factory.make_zone()
@@ -364,6 +379,7 @@ class NodeEditForms(MAASServerTestCase):
             instance=node)
         form.save()
 
+        node = reload_object(node)
         self.assertEqual(
             (node.hostname, node.power_type, node.zone),
             (hostname, power_type, zone))

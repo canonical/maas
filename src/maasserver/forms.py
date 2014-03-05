@@ -242,6 +242,7 @@ class AdminNodeForm(NodeForm):
     def __init__(self, data=None, instance=None, **kwargs):
         super(AdminNodeForm, self).__init__(
             data=data, instance=instance, **kwargs)
+        self.set_up_initial_zone(instance)
         self.set_up_power_type(data, instance)
         self.set_up_power_parameters_field(data, instance)
         # The zone field is not required because we want to be able
@@ -250,6 +251,17 @@ class AdminNodeForm(NodeForm):
         # in the zones dropdown.  This is why we set 'empty_label' to
         # None to force Django not to display that empty entry.
         self.fields['zone'].empty_label = None
+
+    def set_up_initial_zone(self, instance):
+        """Initialise `zone` field if a node instance was given.
+
+        This works around Django bug 17657: the zone field refers to a zone
+        by name, not by ID, yet Django attempts to initialise it with an ID.
+        That doesn't work, and so without this workaround the field would
+        revert to the default zone.
+        """
+        if instance is not None:
+            self.initial['zone'] = instance.zone.name
 
     def get_power_type(self, data, node):
         if data is None:
