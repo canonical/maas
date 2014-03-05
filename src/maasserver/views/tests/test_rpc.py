@@ -41,10 +41,7 @@ is_valid_port = MatchesAll(
 
 class RPCViewTest(MAASServerTestCase):
 
-    # XXX 2014-03-05 gmb bug=1288001:
-    #     This fails due to an apparent isolation problem.
     def test_rpc_info(self):
-        self.skip("Disabled due to a test isolation problem.")
         response = self.client.get(reverse('rpc-info'))
         self.assertEqual("application/json", response["Content-Type"])
         info = json.loads(response.content)

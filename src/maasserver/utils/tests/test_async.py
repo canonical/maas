@@ -17,7 +17,7 @@ __all__ = []
 from functools import partial
 from time import time
 
-from maasserver import eventloop
+import crochet
 from maasserver.utils import async
 from maastesting.testcase import MAASTestCase
 from mock import sentinel
@@ -33,8 +33,8 @@ from twisted.internet import reactor
 from twisted.internet.task import deferLater
 from twisted.python.failure import Failure
 
-
-eventloop.start()
+# These tests need a running reactor.
+crochet.setup()
 
 
 class TestGather(MAASTestCase):
