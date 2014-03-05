@@ -79,6 +79,20 @@ class BootImageManager(Manager):
         images = images.order_by('architecture')
         return get_first(images)
 
+    def get_usable_architectures(self, nodegroup):
+        """Return the list of usable architectures for a nodegroup.
+
+        Return the architectures for which we have both a commissioning and
+        an install image.
+        """
+        arches_commissioning = set(BootImage.objects.all().filter(
+            purpose="commissioning",
+            nodegroup=nodegroup).values_list('architecture', flat=True))
+        arches_install = set(BootImage.objects.all().filter(
+            purpose="install",
+            nodegroup=nodegroup).values_list('architecture', flat=True))
+        return arches_commissioning & arches_install
+
 
 class BootImage(Model):
     """Available boot image (i.e. kernel and initrd).

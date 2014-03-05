@@ -109,3 +109,47 @@ class TestBootImageManager(MAASServerTestCase):
             BootImage.objects.get_default_arch_image_in_nodegroup(
                 nodegroup, series, purpose=purpose),
             images)
+
+    def test_get_usable_architectures_returns_supported_arches(self):
+        nodegroup = factory.make_node_group()
+        arches = [factory.make_name('arch'), factory.make_name('arch')]
+        for arch in arches:
+            factory.make_boot_image(
+                architecture=arch, nodegroup=nodegroup, purpose='install')
+            factory.make_boot_image(
+                architecture=arch, nodegroup=nodegroup,
+                purpose='commissioning')
+        self.assertItemsEqual(
+            arches,
+            BootImage.objects.get_usable_architectures(nodegroup))
+
+    def test_get_usable_architectures_uses_given_nodegroup(self):
+        nodegroup = factory.make_node_group()
+        arch = factory.make_name('arch')
+        factory.make_boot_image(
+            architecture=arch, nodegroup=nodegroup, purpose='install')
+        factory.make_boot_image(
+            architecture=arch, nodegroup=nodegroup,
+            purpose='commissioning')
+        self.assertItemsEqual(
+            [],
+            BootImage.objects.get_usable_architectures(
+                factory.make_node_group()))
+
+    def test_get_usable_architectures_requires_commissioning_image(self):
+        arch = factory.make_name('arch')
+        nodegroup = factory.make_node_group()
+        factory.make_boot_image(
+            architecture=arch, nodegroup=nodegroup, purpose='install')
+        self.assertItemsEqual(
+            [],
+            BootImage.objects.get_usable_architectures(nodegroup))
+
+    def test_get_usable_architectures_requires_install_image(self):
+        arch = factory.make_name('arch')
+        nodegroup = factory.make_node_group()
+        factory.make_boot_image(
+            architecture=arch, nodegroup=nodegroup, purpose='commissioning')
+        self.assertItemsEqual(
+            [],
+            BootImage.objects.get_usable_architectures(nodegroup))
