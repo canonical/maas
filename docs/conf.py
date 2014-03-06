@@ -98,6 +98,7 @@ pygments_style = 'sphinx'
 # AutoDoc <http://sphinx.pocoo.org/ext/autodoc.html>
 autodoc_default_flags = ['members', 'show-inheritance']
 autodoc_member_order = 'bysource'
+autodoc_docstring_signature = True
 
 # AutoSummary <http://sphinx.pocoo.org/ext/autosummary.html>
 autosummary_generate = True

@@ -27,18 +27,21 @@ from twisted.python import log
 
 @wait_for_reactor
 def gather(calls, timeout=10.0):
-    """Issue calls into the reactor, passing results back to another thread.
+    """gather(calls, timeout=10.0)
+
+    Issue calls into the reactor, passing results back to another thread.
 
     :param calls: An iterable of no-argument callables to be called in
-        the reactor thread. Each will be called via `maybeDeferred`.
+        the reactor thread. Each will be called via
+        :py:func:`~twisted.internet.defer.maybeDeferred`.
 
     :param timeout: The number of seconds before further results are
-        ignored. Outstanding results (i.e. `Deferred`s) will be
-        cancelled.
+        ignored. Outstanding results will be cancelled.
 
     :return: An iterator of results. A result might be a failure,
-        i.e. an instance of :class:`twisted.python.failure.Failure`, or
-        a valid result; it's up to the caller to check.
+        i.e. an instance of :py:class:`twisted.python.failure.Failure`,
+        or a valid result; it's up to the caller to check.
+
     """
 
     # Prepare of a list of Deferreds that we're going to wait for.

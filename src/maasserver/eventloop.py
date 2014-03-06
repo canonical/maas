@@ -6,6 +6,31 @@
 This helps start up a background event loop (using Twisted, via crochet)
 to handle communications with Cluster Controllers, and any other tasks
 that are not tied to an HTTP reqoest.
+
+.. py:data:: loop
+
+   The single instance of :py:class:`RegionEventLoop` that's all a
+   process needs.
+
+.. py:data:: services
+
+   The :py:class:`~twisted.application.service.MultiService` which forms
+   the root of this process's service tree.
+
+   This is a convenient reference to :py:attr:`.loop.services`.
+
+.. py:data:: start
+
+   Start all the services in :py:data:`services`.
+
+   This is a convenient reference to :py:attr:`.loop.start`.
+
+.. py:data:: stop
+
+   Stop all the services in :py:data:`services`.
+
+   This is a convenient reference to :py:attr:`.loop.stop`.
+
 """
 
 from __future__ import (
@@ -76,13 +101,21 @@ def make_RegionAdvertisingService():
 class RegionEventLoop:
     """An event loop running in a region controller process.
 
-    Typically several processes will be running the web application -
-    chiefly Django - across several machines, with multiple threads of
+    Typically several processes will be running the web application --
+    chiefly Django -- across several machines, with multiple threads of
     execution in each process.
 
     This class represents a single event loop for each *process*,
-    allowing convenient control of the event loop - a Twisted reactor
-    running in a thread - and to which to attach and query services.
+    allowing convenient control of the event loop -- a Twisted reactor
+    running in a thread -- and to which to attach and query services.
+
+    :cvar factories: A sequence of ``(name, factory)`` tuples. Used to
+        populate :py:attr:`.services` at start time.
+
+    :ivar services:
+        A :py:class:`~twisted.application.service.MultiService` which
+        forms the root of the service tree.
+
     """
 
     factories = (
@@ -103,6 +136,10 @@ class RegionEventLoop:
 
     @crochet.run_in_reactor
     def start(self):
+        """start()
+
+        Start all services in the region's event-loop.
+        """
         for name, factory in self.factories:
             try:
                 self.services.getServiceNamed(name)
@@ -116,6 +153,10 @@ class RegionEventLoop:
 
     @crochet.run_in_reactor
     def stop(self):
+        """stop()
+
+        Stop all services in the region's event-loop.
+        """
         if self.handle is not None:
             handle, self.handle = self.handle, None
             crochet.reactor.removeSystemEventTrigger(handle)

@@ -1,7 +1,10 @@
 # Copyright 2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""RPC declarations for clusters."""
+"""RPC declarations for clusters.
+
+These are commands that a cluster controller ought to respond to.
+"""
 
 from __future__ import (
     absolute_import,
@@ -29,6 +32,8 @@ class Identify(amp.Command):
 
 
 class ListBootImages(amp.Command):
+    """List the boot images available on this cluster controller."""
+
     arguments = []
     response = [
         (b"images", amp.AmpList(
@@ -41,6 +46,8 @@ class ListBootImages(amp.Command):
 
 
 class DescribePowerTypes(amp.Command):
+    """Get a JSON Schema describing this cluster's power types."""
+
     arguments = []
     response = [
         (b"power_types", amp.Unicode())

@@ -69,14 +69,28 @@ class Region(amp.AMP):
 
     @region.Identify.responder
     def identify(self):
+        """identify()
+
+        Implementation of
+        :py:class:`~provisioningserver.rpc.region.Identify`.
+        """
         return {b"name": eventloop.loop.name}
 
     @region.ReportBootImages.responder
     def report_boot_images(self, uuid, images):
+        """report_boot_images(uuid, images)
+
+        Implementation of
+        :py:class:`~provisioningserver.rpc.region.ReportBootImages`.
+        """
         return {}
 
     @amp.StartTLS.responder
     def get_tls_parameters(self):
+        """get_tls_parameters()
+
+        Implementation of :py:class:`~twisted.protocols.amp.StartTLS`.
+        """
         # TODO: Obtain certificates from a config store.
         testing = filepath.FilePath(__file__).sibling("testing")
         with testing.child("region.crt").open() as fin:

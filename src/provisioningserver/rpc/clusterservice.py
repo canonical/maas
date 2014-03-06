@@ -65,16 +65,31 @@ class Cluster(amp.AMP, object):
 
     @cluster.Identify.responder
     def identify(self):
+        """identify()
+
+        Implementation of
+        :py:class:`~provisioningserver.rpc.cluster.Identify`.
+        """
         return {b"uuid": get_cluster_uuid().decode("ascii")}
 
     @cluster.ListBootImages.responder
     def list_boot_images(self):
+        """list_boot_images()
+
+        Implementation of
+        :py:class:`~provisioningserver.rpc.cluster.ListBootImages`.
+        """
         images = tftppath.list_boot_images(
             Config.load_from_cache()['tftp']['root'])
         return {"images": images}
 
     @cluster.DescribePowerTypes.responder
     def describe_power_types(self):
+        """describe_power_types()
+
+        Implementation of
+        :py:class:`~provisioningserver.rpc.cluster.DescribePowerTypes`.
+        """
         return {'power_types': json.dumps(JSON_POWER_TYPE_PARAMETERS)}
 
     @cluster.ListSupportedArchitectures.responder
@@ -91,6 +106,10 @@ class Cluster(amp.AMP, object):
 
     @amp.StartTLS.responder
     def get_tls_parameters(self):
+        """get_tls_parameters()
+
+        Implementation of :py:class:`~twisted.protocols.amp.StartTLS`.
+        """
         # TODO: Obtain certificates from a config store.
         testing = filepath.FilePath(__file__).sibling("testing")
         with testing.child("cluster.crt").open() as fin:
@@ -203,8 +222,8 @@ class ClusterClientService(TimerService, object):
 
         The client is chosen at random.
 
-        :raises exceptions.NoConnectionsAvailable: When there are no open
-            connections to a region controller.
+        :raises: :py:class:`~.exceptions.NoConnectionsAvailable` when
+            there are no open connections to a region controller.
         """
         conns = list(self.connections.viewvalues())
         if len(conns) == 0:

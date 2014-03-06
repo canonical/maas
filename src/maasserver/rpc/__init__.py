@@ -24,7 +24,13 @@ from provisioningserver.utils import asynchronous
 
 @asynchronous
 def getClientFor(uuid):
-    """Get a client with which to make RPCs to the specified cluster."""
+    """getClientFor(uuid)
+
+    Get a client with which to make RPCs to the specified cluster.
+
+    :raises: :py:class:`~.exceptions.NoConnectionsAvailable` when there
+        are no open connections to the specified cluster controller.
+    """
     try:
         service = eventloop.services.getServiceNamed("rpc")
     except KeyError:
@@ -35,7 +41,10 @@ def getClientFor(uuid):
 
 @asynchronous
 def getAllClients():
-    """Get all recorded clients ready to make RPCs to clusters."""
+    """getAllClients()
+
+    Get all recorded clients ready to make RPCs to clusters.
+    """
     try:
         service = eventloop.services.getServiceNamed("rpc")
     except KeyError:
