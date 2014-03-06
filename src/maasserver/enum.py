@@ -13,7 +13,6 @@ str = None
 
 __metaclass__ = type
 __all__ = [
-    'ARCHITECTURE_CHOICES_DICT',
     'COMMISSIONING_DISTRO_SERIES_CHOICES',
     'COMPONENT',
     'NODEGROUP_STATUS',
@@ -32,7 +31,6 @@ __all__ = [
     ]
 
 from collections import OrderedDict
-from maasserver.architecture import ARCHITECTURE_CHOICES
 
 
 class COMPONENT:
@@ -81,9 +79,6 @@ NODE_STATUS_CHOICES = (
 
 
 NODE_STATUS_CHOICES_DICT = OrderedDict(NODE_STATUS_CHOICES)
-
-
-ARCHITECTURE_CHOICES_DICT = OrderedDict(ARCHITECTURE_CHOICES)
 
 
 class DISTRO_SERIES:
