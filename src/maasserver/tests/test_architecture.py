@@ -14,9 +14,9 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+from maasserver import architecture
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
-from provisioningserver import architecture
 
 
 class TestListSupportedArchitectures(MAASTestCase):
