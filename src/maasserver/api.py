@@ -352,7 +352,7 @@ class NodeHandler(OperationsHandler):
             system_id=system_id, user=request.user, perm=NODE_PERMISSION.EDIT)
         Form = get_node_edit_form(request.user)
         form = Form(data=request.data, instance=node)
-        
+
         if form.is_valid():
             return form.save()
         else:

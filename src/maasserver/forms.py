@@ -204,7 +204,7 @@ class NodeForm(ModelForm):
         super(NodeForm, self).__init__(*args, **kwargs)
         # Even though it doesn't need it and doesn't use it, this form accepts
         # a parameter named 'request' because it is used interchangingly
-        # with NodeAdminForm which actually uses this parameter. 
+        # with NodeAdminForm which actually uses this parameter.
         if kwargs.get('instance') is None:
             # Creating a new node.  Offer choice of nodegroup.
             self.fields['nodegroup'] = NodeGroupFormField(
@@ -350,7 +350,7 @@ class AdminNodeForm(NodeForm):
                 messages.error(
                     self.request, CLUSTER_NOT_AVAILABLE + e.args[0])
             return ''
-        
+
         if power_type not in power_types:
             if node is not None:
                 power_type = node.power_type
