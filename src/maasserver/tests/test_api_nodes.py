@@ -21,7 +21,6 @@ import random
 from django.core.urlresolvers import reverse
 from maasserver.enum import (
     ARCHITECTURE,
-    ARCHITECTURE_CHOICES,
     NODE_STATUS,
     NODE_STATUS_CHOICES_DICT,
     NODEGROUP_STATUS,
@@ -38,6 +37,7 @@ from maasserver.testing.api import (
     APITestCase,
     MultipleUsersScenarios,
     )
+from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import (
@@ -146,14 +146,13 @@ class TestNodesAPI(APITestCase):
 
     def test_POST_new_creates_node(self):
         # The API allows a non-admin logged-in user to create a Node.
-        architecture = factory.getRandomChoice(ARCHITECTURE_CHOICES)
         response = self.client.post(
             reverse('nodes_handler'),
             {
                 'op': 'new',
                 'autodetect_nodegroup': '1',
                 'hostname': factory.getRandomString(),
-                'architecture': architecture,
+                'architecture': make_usable_architecture(self),
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
             })
 
@@ -168,7 +167,7 @@ class TestNodesAPI(APITestCase):
                 'op': 'new',
                 'autodetect_nodegroup': '1',
                 'hostname': factory.getRandomString(),
-                'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
+                'architecture': make_usable_architecture(self),
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff'],
             })
         self.assertEqual(httplib.OK, response.status_code)
@@ -1077,7 +1076,7 @@ class TestNodesAPI(APITestCase):
         # (used by maas-enlist) supports HTTP 307 redirects, which are needed
         # to support redirecting POSTs, and (b) curl does not follow redirects
         # by default anyway.
-        architecture = factory.getRandomChoice(ARCHITECTURE_CHOICES)
+        architecture = make_usable_architecture(self)
         response = self.client.post(
             '/api/1.0/nodes/MAAS/api/1.0/nodes/',
             {

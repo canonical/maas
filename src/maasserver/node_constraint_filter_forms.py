@@ -63,6 +63,7 @@ def generate_architecture_wildcards(choices):
         )
     }
 
+
 def get_architecture_wildcards():
     choices = list_supported_architecture_choices()
     architecture_wildcards = generate_architecture_wildcards(choices)

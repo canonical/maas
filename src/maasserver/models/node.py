@@ -48,8 +48,6 @@ from maasserver import (
     logger,
     )
 from maasserver.enum import (
-    ARCHITECTURE,
-    ARCHITECTURE_CHOICES,
     DISTRO_SERIES,
     DISTRO_SERIES_CHOICES,
     NODE_PERMISSION,
@@ -443,9 +441,7 @@ class Node(CleanSave, TimestampedModel):
         max_length=20, choices=DISTRO_SERIES_CHOICES, null=True,
         blank=True, default='')
 
-    architecture = CharField(
-        max_length=31, choices=ARCHITECTURE_CHOICES, blank=False,
-        default=ARCHITECTURE.i386)
+    architecture = CharField(max_length=31, blank=False)
 
     routers = djorm_pgarray.fields.ArrayField(dbtype="macaddr")
 

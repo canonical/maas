@@ -30,7 +30,6 @@ from lxml.etree import XPath
 from lxml.html import fromstring
 import maasserver.api
 from maasserver.enum import (
-    ARCHITECTURE_CHOICES,
     NODE_STATUS,
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
@@ -56,6 +55,7 @@ from maasserver.testing import (
     reload_object,
     reload_objects,
     )
+from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
     MAASServerTestCase,
@@ -704,7 +704,7 @@ class NodeViewsTest(MAASServerTestCase):
         node_edit_link = reverse('node-edit', args=[node.system_id])
         params = {
             'hostname': factory.getRandomString(),
-            'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
+            'architecture': make_usable_architecture(self),
         }
         response = self.client.post(node_edit_link, params)
 
@@ -1503,7 +1503,7 @@ class AdminNodeViewsTest(MAASServerTestCase):
         params = {
             'hostname': factory.getRandomString(),
             'power_type': factory.getRandomPowerType(),
-            'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
+            'architecture': make_usable_architecture(self),
         }
         response = self.client.post(node_edit_link, params)
 

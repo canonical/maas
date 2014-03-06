@@ -22,6 +22,7 @@ __all__ = [
     "get_action_form",
     "get_node_edit_form",
     "get_node_create_form",
+    "list_all_usable_architectures",
     "MAASAndNetworkForm",
     "MACAddressForm",
     "NetworkConnectMACsForm",
@@ -63,8 +64,6 @@ from lxml import etree
 from maasserver.api_utils import get_overridden_query_dict
 from maasserver.config_forms import SKIP_CHECK_NAME
 from maasserver.enum import (
-    ARCHITECTURE,
-    ARCHITECTURE_CHOICES,
     COMMISSIONING_DISTRO_SERIES_CHOICES,
     DISTRO_SERIES,
     DISTRO_SERIES_CHOICES,
@@ -84,6 +83,7 @@ from maasserver.forms_settings import (
     INVALID_SETTING_MSG_TEMPLATE,
     )
 from maasserver.models import (
+    BootImage,
     Config,
     DownloadProgress,
     MACAddress,
@@ -110,10 +110,6 @@ from maasserver.utils.network import make_network
 from metadataserver.fields import Bin
 from metadataserver.models import CommissioningScript
 from provisioningserver.enum import get_power_types
-
-
-INVALID_ARCHITECTURE_MESSAGE = compose_invalid_choice_text(
-    'architecture', ARCHITECTURE_CHOICES)
 
 
 def remove_None_values(data):
@@ -157,6 +153,47 @@ class ModelForm(APIEditMixin, forms.ModelForm):
     """
 
 
+def list_all_usable_architectures():
+    """Return all architectures that can be used for nodes.
+
+    These are the architectures for which any nodegroup has the boot images
+    required to commission and install nodes.
+    """
+    # The Node edit form offers all usable architectures as options for the
+    # architecture field.  Not all of these may be available in the node's
+    # nodegroup, but to represent that accurately in the UI would depend on
+    # the currently selected nodegroup.  Narrowing the options down further
+    # would have to happen browser-side.
+    architectures = set()
+    for nodegroup in NodeGroup.objects.all():
+        architectures = architectures.union(
+            BootImage.objects.get_usable_architectures(nodegroup))
+    return sorted(architectures)
+
+
+def list_architecture_choices(architectures):
+    """Return Django "choices" list for `architectures`."""
+    # XXX jtv 2014-03-05: Use proper label texts, e.g. "i386" instead of
+    # "i386/generic".
+    return [(arch, arch) for arch in architectures]
+
+
+def pick_default_architecture(all_architectures):
+    """Choose a default architecture, given a list of all usable ones.
+    """
+    if len(all_architectures) == 0:
+        # Nothing we can do.
+        return ''
+
+    global_default = 'i386/generic'
+    if global_default in all_architectures:
+        # Generally, prefer basic i386.  It covers the most cases.
+        return global_default
+    else:
+        # Failing that, just pick the first.
+        return all_architectures[0]
+
+
 class NodeForm(ModelForm):
 
     def __init__(self, *args, **kwargs):
@@ -165,6 +202,22 @@ class NodeForm(ModelForm):
             # Creating a new node.  Offer choice of nodegroup.
             self.fields['nodegroup'] = NodeGroupFormField(
                 required=False, empty_label="Default (master)")
+        self.set_up_architecture_field()
+
+    def set_up_architecture_field(self):
+        """Create the `architecture` field.
+
+        This needs to be done on the fly so that we can pass a dynamic list of
+        usable architectures.
+        """
+        architectures = list_all_usable_architectures()
+        default_arch = pick_default_architecture(architectures)
+        choices = list_architecture_choices(architectures)
+        invalid_arch_message = compose_invalid_choice_text(
+            'architecture', choices)
+        self.fields['architecture'] = forms.ChoiceField(
+            choices=choices, required=True, initial=default_arch,
+            error_messages={'invalid_choice': invalid_arch_message})
 
     def clean_hostname(self):
         # Don't allow the hostname to be changed if the node is
@@ -184,11 +237,6 @@ class NodeForm(ModelForm):
         initial=DISTRO_SERIES.default,
         label="Release",
         error_messages={'invalid_choice': INVALID_DISTRO_SERIES_MESSAGE})
-
-    architecture = forms.ChoiceField(
-        choices=ARCHITECTURE_CHOICES, required=True,
-        initial=ARCHITECTURE.i386,
-        error_messages={'invalid_choice': INVALID_ARCHITECTURE_MESSAGE})
 
     hostname = forms.CharField(
         label="Host name", required=False, help_text=(

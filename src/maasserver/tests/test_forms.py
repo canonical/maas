@@ -24,8 +24,6 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.validators import validate_email
 from django.http import QueryDict
 from maasserver.enum import (
-    ARCHITECTURE,
-    ARCHITECTURE_CHOICES,
     NODE_STATUS,
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
@@ -44,6 +42,7 @@ from maasserver.forms import (
     initialize_node_group,
     InstanceListField,
     INTERFACES_VALIDATION_ERROR_MESSAGE,
+    list_all_usable_architectures,
     MACAddressForm,
     NetworkForm,
     NewUserCreationForm,
@@ -54,6 +53,7 @@ from maasserver.forms import (
     NodeGroupInterfaceForm,
     NodeGroupWithInterfacesForm,
     NodeWithMACAddressesForm,
+    pick_default_architecture,
     ProfileForm,
     remove_None_values,
     UnconstrainedMultipleChoiceField,
@@ -80,6 +80,10 @@ from maasserver.node_action import (
     )
 from maasserver.power_parameters import get_power_type_choices
 from maasserver.testing import reload_object
+from maasserver.testing.architecture import (
+    make_usable_architecture,
+    patch_usable_architectures,
+    )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import map_enum
@@ -100,6 +104,22 @@ from testtools.matchers import (
 
 class TestHelpers(MAASServerTestCase):
 
+    def make_usable_boot_images(self, nodegroup=None, arch=None):
+        """Create a set of boot images, so the architecture becomes "usable".
+
+        This will make the images' architecture show up in the list of usable
+        architecture.
+
+        Nothing is returned.
+        """
+        if nodegroup is None:
+            nodegroup = factory.make_node_group()
+        if arch is None:
+            arch = factory.make_name('arch')
+        for purpose in ['install', 'commissioning']:
+            factory.make_boot_image(
+                nodegroup=nodegroup, architecture=arch, purpose=purpose)
+
     def test_initialize_node_group_leaves_nodegroup_reference_intact(self):
         preselected_nodegroup = factory.make_node_group()
         node = factory.make_node(nodegroup=preselected_nodegroup)
@@ -108,8 +128,7 @@ class TestHelpers(MAASServerTestCase):
 
     def test_initialize_node_group_initializes_nodegroup_to_form_value(self):
         node = Node(
-            NODE_STATUS.DECLARED,
-            architecture=factory.getRandomEnum(ARCHITECTURE))
+            NODE_STATUS.DECLARED, architecture=make_usable_architecture(self))
         nodegroup = factory.make_node_group()
         initialize_node_group(node, nodegroup)
         self.assertEqual(nodegroup, node.nodegroup)
@@ -117,9 +136,70 @@ class TestHelpers(MAASServerTestCase):
     def test_initialize_node_group_defaults_to_master(self):
         node = Node(
             NODE_STATUS.DECLARED,
-            architecture=factory.getRandomEnum(ARCHITECTURE))
+            architecture=make_usable_architecture(self))
         initialize_node_group(node)
         self.assertEqual(NodeGroup.objects.ensure_master(), node.nodegroup)
+
+    def test_list_all_usable_architectures_combines_nodegroups(self):
+        arches = [factory.make_name('arch') for _ in range(3)]
+        for arch in arches:
+            self.make_usable_boot_images(arch=arch)
+        self.assertItemsEqual(arches, list_all_usable_architectures())
+
+    def test_list_all_usable_architectures_sorts_output(self):
+        arches = [factory.make_name('arch') for _ in range(3)]
+        for arch in arches:
+            self.make_usable_boot_images(arch=arch)
+        self.assertEqual(sorted(arches), list_all_usable_architectures())
+
+    def test_list_all_usable_architectures_returns_no_duplicates(self):
+        arch = factory.make_name('arch')
+        self.make_usable_boot_images(arch=arch)
+        self.make_usable_boot_images(arch=arch)
+        self.assertEqual([arch], list_all_usable_architectures())
+
+    def test_pick_default_architecture_returns_empty_if_no_options(self):
+        self.assertEqual('', pick_default_architecture([]))
+
+    def test_pick_default_architecture_prefers_i386_generic_if_usable(self):
+        self.assertEqual(
+            'i386/generic',
+            pick_default_architecture(
+                ['amd64/generic', 'i386/generic', 'mips/generic']))
+
+    def test_pick_default_architecture_falls_back_to_first_option(self):
+        arches = [factory.make_name('arch') for _ in range(5)]
+        self.assertEqual(arches[0], pick_default_architecture(arches))
+
+    def test_remove_None_values_removes_None_values_in_dict(self):
+        random_input = factory.getRandomString()
+        self.assertEqual(
+            {random_input: random_input},
+            remove_None_values({
+                random_input: random_input,
+                factory.getRandomString(): None
+                }))
+
+    def test_remove_None_values_leaves_empty_dict_untouched(self):
+        self.assertEqual({}, remove_None_values({}))
+
+    def test_get_node_edit_form_returns_NodeForm_if_non_admin(self):
+        user = factory.make_user()
+        self.assertEqual(NodeForm, get_node_edit_form(user))
+
+    def test_get_node_edit_form_returns_APIAdminNodeEdit_if_admin(self):
+        admin = factory.make_admin()
+        self.assertEqual(AdminNodeForm, get_node_edit_form(admin))
+
+    def test_get_node_create_form_if_non_admin(self):
+        user = factory.make_user()
+        self.assertEqual(
+            NodeWithMACAddressesForm, get_node_create_form(user))
+
+    def test_get_node_create_form_if_admin(self):
+        admin = factory.make_admin()
+        self.assertEqual(
+            AdminNodeWithMACAddressesForm, get_node_create_form(admin))
 
 
 class NodeWithMACAddressesFormTest(MAASServerTestCase):
@@ -138,7 +218,7 @@ class NodeWithMACAddressesFormTest(MAASServerTestCase):
         if mac_addresses is None:
             mac_addresses = [factory.getRandomMACAddress()]
         if architecture is None:
-            architecture = factory.getRandomEnum(ARCHITECTURE)
+            architecture = factory.make_name('arch')
         if hostname is None:
             hostname = factory.make_name('hostname')
         params = {
@@ -148,10 +228,12 @@ class NodeWithMACAddressesFormTest(MAASServerTestCase):
         }
         if nodegroup is not None:
             params['nodegroup'] = nodegroup
+        # Make sure that the architecture parameter is acceptable.
+        patch_usable_architectures(self, [architecture])
         return self.get_QueryDict(params)
 
     def test_NodeWithMACAddressesForm_valid(self):
-        architecture = factory.getRandomEnum(ARCHITECTURE)
+        architecture = make_usable_architecture(self)
         form = NodeWithMACAddressesForm(
             self.make_params(
                 mac_addresses=['aa:bb:cc:dd:ee:ff', '9a:bb:c3:33:e5:7f'],
@@ -304,9 +386,9 @@ class ConfigFormTest(MAASServerTestCase):
         self.assertEqual(value, form.initial['field1'])
 
 
-class NodeEditForms(MAASServerTestCase):
+class TestNodeForm(MAASServerTestCase):
 
-    def test_NodeForm_contains_limited_set_of_fields(self):
+    def test_contains_limited_set_of_fields(self):
         form = NodeForm()
 
         self.assertEqual(
@@ -317,19 +399,48 @@ class NodeEditForms(MAASServerTestCase):
                 'nodegroup',
             ], list(form.fields))
 
-    def test_NodeForm_changes_node(self):
+    def test_changes_node(self):
         node = factory.make_node()
         hostname = factory.getRandomString()
+        patch_usable_architectures(self, [node.architecture])
 
         form = NodeForm(
             data={
                 'hostname': hostname,
-                'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
+                'architecture': make_usable_architecture(self),
                 },
             instance=node)
         form.save()
 
         self.assertEqual(hostname, node.hostname)
+
+    def test_accepts_usable_architecture(self):
+        arch = make_usable_architecture(self)
+        form = NodeForm(data={
+            'hostname': factory.make_name('host'),
+            'architecture': arch,
+            })
+        self.assertTrue(form.is_valid(), form._errors)
+
+    def test_rejects_unusable_architecture(self):
+        patch_usable_architectures(self)
+        form = NodeForm(data={
+            'hostname': factory.make_name('host'),
+            'architecture': factory.make_name('arch'),
+            })
+        self.assertFalse(form.is_valid())
+        self.assertItemsEqual(['architecture'], form._errors.keys())
+
+    def test_starts_with_default_architecture(self):
+        arches = sorted([factory.make_name('arch') for _ in range(5)])
+        patch_usable_architectures(self, arches)
+        form = NodeForm()
+        self.assertEqual(
+            pick_default_architecture(arches),
+            form.fields['architecture'].initial)
+
+
+class TestAdminNodeForm(MAASServerTestCase):
 
     def test_AdminNodeForm_contains_limited_set_of_fields(self):
         node = factory.make_node()
@@ -373,7 +484,7 @@ class NodeEditForms(MAASServerTestCase):
             data={
                 'hostname': hostname,
                 'power_type': power_type,
-                'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
+                'architecture': make_usable_architecture(self),
                 'zone': zone.name,
             },
             instance=node)
@@ -404,6 +515,7 @@ class NodeEditForms(MAASServerTestCase):
         old_name = factory.make_name('old-hostname')
         node = factory.make_node(
             hostname=old_name, status=NODE_STATUS.ALLOCATED)
+        patch_usable_architectures(self, [node.architecture])
         form = AdminNodeForm(
             data={
                 'hostname': old_name,
@@ -425,27 +537,16 @@ class NodeEditForms(MAASServerTestCase):
         form = AdminNodeForm(instance=node)
         self.assertEqual(node.power_type, form.fields['power_type'].initial)
 
-    def test_remove_None_values_removes_None_values_in_dict(self):
-        random_input = factory.getRandomString()
-        self.assertEqual(
-            {random_input: random_input},
-            remove_None_values({
-                random_input: random_input,
-                factory.getRandomString(): None
-                }))
-
-    def test_remove_None_values_leaves_empty_dict_untouched(self):
-        self.assertEqual({}, remove_None_values({}))
-
     def test_AdminNodeForm_changes_node_with_skip_check(self):
         node = factory.make_node()
         hostname = factory.getRandomString()
         power_type = factory.getRandomPowerType()
         power_parameters_field = factory.getRandomString()
+        arch = make_usable_architecture(self)
         form = AdminNodeForm(
             data={
                 'hostname': hostname,
-                'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES),
+                'architecture': arch,
                 'power_type': power_type,
                 'power_parameters_field': power_parameters_field,
                 'power_parameters_skip_check': True,
@@ -462,29 +563,13 @@ class NodeEditForms(MAASServerTestCase):
         # validate it as non-blankable, but that doesn't mean that we
         # actually want to allow people to edit it through API or UI.
         old_nodegroup = factory.make_node_group()
-        node = factory.make_node(nodegroup=old_nodegroup)
+        node = factory.make_node(
+            nodegroup=old_nodegroup,
+            architecture=make_usable_architecture(self))
         new_nodegroup = factory.make_node_group()
         AdminNodeForm(data={'nodegroup': new_nodegroup}, instance=node).save()
         # The form saved without error, but the nodegroup change was ignored.
         self.assertEqual(old_nodegroup, node.nodegroup)
-
-    def test_get_node_edit_form_returns_NodeForm_if_non_admin(self):
-        user = factory.make_user()
-        self.assertEqual(NodeForm, get_node_edit_form(user))
-
-    def test_get_node_edit_form_returns_APIAdminNodeEdit_if_admin(self):
-        admin = factory.make_admin()
-        self.assertEqual(AdminNodeForm, get_node_edit_form(admin))
-
-    def test_get_node_create_form_if_non_admin(self):
-        user = factory.make_user()
-        self.assertEqual(
-            NodeWithMACAddressesForm, get_node_create_form(user))
-
-    def test_get_node_create_form_if_admin(self):
-        admin = factory.make_admin()
-        self.assertEqual(
-            AdminNodeWithMACAddressesForm, get_node_create_form(admin))
 
 
 class TestNodeActionForm(MAASServerTestCase):

@@ -23,7 +23,6 @@ import sys
 import bson
 from django.core.urlresolvers import reverse
 from maasserver.enum import (
-    ARCHITECTURE_CHOICES,
     DISTRO_SERIES,
     NODE_STATUS,
     NODE_STATUS_CHOICES_DICT,
@@ -38,6 +37,7 @@ from maasserver.testing import (
     reload_objects,
     )
 from maasserver.testing.api import APITestCase
+from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
 from maasserver.testing.oauthclient import OAuthAuthenticatedClient
 from maasserver.testing.testcase import MAASServerTestCase
@@ -416,7 +416,9 @@ class TestNodeAPI(APITestCase):
 
     def test_PUT_updates_node(self):
         # The api allows the updating of a Node.
-        node = factory.make_node(hostname='diane', owner=self.logged_in_user)
+        node = factory.make_node(
+            hostname='diane', owner=self.logged_in_user,
+            architecture=make_usable_architecture(self))
         response = self.client_put(
             self.get_node_uri(node), {'hostname': 'francis'})
         parsed_result = json.loads(response.content)
@@ -428,15 +430,19 @@ class TestNodeAPI(APITestCase):
 
     def test_PUT_omitted_hostname(self):
         hostname = factory.make_name('hostname')
-        node = factory.make_node(hostname=hostname, owner=self.logged_in_user)
+        arch = make_usable_architecture(self)
+        node = factory.make_node(
+            hostname=hostname, owner=self.logged_in_user, architecture=arch)
         response = self.client_put(
             self.get_node_uri(node),
-            {'architecture': factory.getRandomChoice(ARCHITECTURE_CHOICES)})
+            {'architecture': arch})
         self.assertEqual(httplib.OK, response.status_code, response.content)
         self.assertTrue(Node.objects.filter(hostname=hostname).exists())
 
     def test_PUT_ignores_unknown_fields(self):
-        node = factory.make_node(owner=self.logged_in_user)
+        node = factory.make_node(
+            owner=self.logged_in_user,
+            architecture=make_usable_architecture(self))
         field = factory.getRandomString()
         response = self.client_put(
             self.get_node_uri(node),
@@ -452,7 +458,8 @@ class TestNodeAPI(APITestCase):
             but_not=original_power_type)
         node = factory.make_node(
             owner=self.logged_in_user,
-            power_type=original_power_type)
+            power_type=original_power_type,
+            architecture=make_usable_architecture(self))
         self.client_put(
             self.get_node_uri(node),
             {'power_type': new_power_type}
@@ -478,7 +485,9 @@ class TestNodeAPI(APITestCase):
     def test_resource_uri_points_back_at_node(self):
         # When a Node is returned by the API, the field 'resource_uri'
         # provides the URI for this Node.
-        node = factory.make_node(hostname='diane', owner=self.logged_in_user)
+        node = factory.make_node(
+            hostname='diane', owner=self.logged_in_user,
+            architecture=make_usable_architecture(self))
         response = self.client_put(
             self.get_node_uri(node), {'hostname': 'francis'})
         parsed_result = json.loads(response.content)
@@ -490,7 +499,9 @@ class TestNodeAPI(APITestCase):
     def test_PUT_rejects_invalid_data(self):
         # If the data provided to update a node is invalid, a 'Bad request'
         # response is returned.
-        node = factory.make_node(hostname='diane', owner=self.logged_in_user)
+        node = factory.make_node(
+            hostname='diane', owner=self.logged_in_user,
+            architecture=make_usable_architecture(self))
         response = self.client_put(
             self.get_node_uri(node), {'hostname': 'too long' * 100})
         parsed_result = json.loads(response.content)
@@ -525,7 +536,8 @@ class TestNodeAPI(APITestCase):
         self.become_admin()
         node = factory.make_node(
             owner=self.logged_in_user,
-            power_type='ether_wake')
+            power_type='ether_wake',
+            architecture=make_usable_architecture(self))
         # Create a power_parameter valid for the selected power_type.
         new_power_address = factory.getRandomMACAddress()
         response = self.client_put(
@@ -541,7 +553,8 @@ class TestNodeAPI(APITestCase):
         self.become_admin()
         node = factory.make_node(
             owner=self.logged_in_user,
-            power_type=factory.getRandomPowerType())
+            power_type=factory.getRandomPowerType(),
+            architecture=make_usable_architecture(self))
         response = self.client_put(
             self.get_node_uri(node),
             {'cpu_count': 1, 'memory': 1024, 'storage': 2048})
@@ -555,7 +568,8 @@ class TestNodeAPI(APITestCase):
         self.become_admin()
         node = factory.make_node(
             owner=self.logged_in_user,
-            power_type='ether_wake')
+            power_type='ether_wake',
+            architecture=make_usable_architecture(self))
         # Create an invalid power_parameter for WoL (not a valid
         # MAC address).
         new_power_address = factory.getRandomString()
@@ -576,7 +590,8 @@ class TestNodeAPI(APITestCase):
         node = factory.make_node(
             owner=self.logged_in_user,
             power_type='ether_wake',
-            power_parameters=power_parameters)
+            power_parameters=power_parameters,
+            architecture=make_usable_architecture(self))
         response = self.client_put(
             self.get_node_uri(node),
             {'power_parameters_unknown_param': factory.getRandomString()})
@@ -598,7 +613,8 @@ class TestNodeAPI(APITestCase):
         node = factory.make_node(
             owner=self.logged_in_user,
             power_type='ether_wake',
-            power_parameters=power_parameters)
+            power_parameters=power_parameters,
+            architecture=make_usable_architecture(self))
         response = self.client_put(
             self.get_node_uri(node),
             {'power_type': ''})
@@ -615,7 +631,8 @@ class TestNodeAPI(APITestCase):
         node = factory.make_node(
             owner=self.logged_in_user,
             power_type='ether_wake',
-            power_parameters=power_parameters)
+            power_parameters=power_parameters,
+            architecture=make_usable_architecture(self))
         new_param = factory.getRandomString()
         response = self.client_put(
             self.get_node_uri(node),
@@ -643,7 +660,8 @@ class TestNodeAPI(APITestCase):
         node = factory.make_node(
             owner=self.logged_in_user,
             power_type='ether_wake',
-            power_parameters=power_parameters)
+            power_parameters=power_parameters,
+            architecture=make_usable_architecture(self))
         new_param = factory.getRandomString()
         response = self.client_put(
             self.get_node_uri(node),
@@ -662,7 +680,9 @@ class TestNodeAPI(APITestCase):
         # With power_parameters_skip_check, arbitrary data
         # can be put in a Node's power_parameter field.
         self.become_admin()
-        node = factory.make_node(owner=self.logged_in_user)
+        node = factory.make_node(
+            owner=self.logged_in_user,
+            architecture=make_usable_architecture(self))
         new_param = factory.getRandomString()
         new_value = factory.getRandomString()
         response = self.client_put(
@@ -681,7 +701,8 @@ class TestNodeAPI(APITestCase):
         node = factory.make_node(
             owner=self.logged_in_user,
             power_type='ether_wake',
-            power_parameters=factory.getRandomString())
+            power_parameters=factory.getRandomString(),
+            architecture=make_usable_architecture(self))
         response = self.client_put(
             self.get_node_uri(node),
             {'power_parameters_mac_address': ''})
@@ -694,7 +715,7 @@ class TestNodeAPI(APITestCase):
     def test_PUT_sets_zone(self):
         self.become_admin()
         new_zone = factory.make_zone()
-        node = factory.make_node()
+        node = factory.make_node(architecture=make_usable_architecture(self))
 
         response = self.client_put(
             self.get_node_uri(node), {'zone': new_zone.name})
@@ -706,7 +727,7 @@ class TestNodeAPI(APITestCase):
     def test_PUT_does_not_set_zone_if_not_present(self):
         self.become_admin()
         new_name = factory.make_name()
-        node = factory.make_node()
+        node = factory.make_node(architecture=make_usable_architecture(self))
         old_zone = node.zone
 
         response = self.client_put(
@@ -736,7 +757,8 @@ class TestNodeAPI(APITestCase):
     def test_PUT_without_zone_leaves_zone_unchanged(self):
         self.become_admin()
         zone = factory.make_zone()
-        node = factory.make_node(zone=zone)
+        node = factory.make_node(
+            zone=zone, architecture=make_usable_architecture(self))
 
         response = self.client_put(self.get_node_uri(node), {})
 
@@ -746,7 +768,9 @@ class TestNodeAPI(APITestCase):
 
     def test_PUT_zone_change_requires_admin(self):
         new_zone = factory.make_zone()
-        node = factory.make_node(owner=self.logged_in_user)
+        node = factory.make_node(
+            owner=self.logged_in_user,
+            architecture=make_usable_architecture(self))
         old_zone = node.zone
 
         response = self.client_put(
