@@ -2350,7 +2350,7 @@ def pxeconfig(request):
         domain = Config.objects.get_config('enlistment_domain')
 
         try:
-            pxelinux_arch = request.GET['arch']
+            arch = request.GET['arch']
         except KeyError:
             if 'mac' in request.GET:
                 # Request was pxelinux.cfg/01-<mac>, so attempt fall back
@@ -2366,26 +2366,12 @@ def pxeconfig(request):
                     arch = 'i386'
                 else:
                     arch = image.architecture
-        else:
-            # Map from pxelinux namespace architecture names to MAAS namespace
-            # architecture names. If this gets bigger, an external lookup table
-            # would make sense. But here is fine for something as trivial as it
-            # is right now.
-            if pxelinux_arch == 'arm':
-                arch = 'armhf'
-            else:
-                arch = pxelinux_arch
 
         # Use subarch if supplied; otherwise assume 'generic'.
         try:
-            pxelinux_subarch = request.GET['subarch']
+            subarch = request.GET['subarch']
         except KeyError:
             subarch = 'generic'
-        else:
-            # Map from pxelinux namespace subarchitecture names to MAAS
-            # namespace subarchitecture names. Right now this happens to be a
-            # 1-1 mapping.
-            subarch = pxelinux_subarch
 
     if node is not None:
         # We don't care if the kernel opts is from the global setting or a tag,

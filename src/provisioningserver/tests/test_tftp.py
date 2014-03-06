@@ -304,6 +304,39 @@ class TestTFTPBackend(MAASTestCase):
         self.assertThat(backend.render_pxe_config, MockCalledOnceWith(
             kernel_params=fake_kernel_params, **fake_params))
 
+    @inlineCallbacks
+    def test_get_config_reader_substitutes_armhf_in_params(self):
+        # get_config_reader() should substitute "arm" for "armhf" in the
+        # arch field of the parameters (mapping from pxe to maas
+        # namespace).
+        cluster_uuid = factory.getRandomUUID()
+        self.patch(tftp_module, 'get_cluster_uuid').return_value = (
+            cluster_uuid)
+        config_path = "pxelinux.cfg/default-arm"
+        backend = TFTPBackend(self.make_dir(), b"http://example.com/")
+        # python-tx-tftp sets up call context so that backends can discover
+        # more about the environment in which they're running.
+        call_context = {
+            "local": (
+                factory.getRandomIPAddress(),
+                factory.getRandomPort()),
+            "remote": (
+                factory.getRandomIPAddress(),
+                factory.getRandomPort()),
+            }
+
+        @partial(self.patch, backend, "get_config_reader")
+        def get_config_reader(params):
+            params_json = json.dumps(params)
+            params_json_reader = BytesReader(params_json)
+            return succeed(params_json_reader)
+
+        reader = yield context.call(
+            call_context, backend.get_reader, config_path)
+        output = reader.read(10000)
+        observed_params = json.loads(output)
+        self.assertEqual("armhf", observed_params["arch"])
+
 
 class TestTFTPService(MAASTestCase):
 

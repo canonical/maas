@@ -221,6 +221,13 @@ class TFTPBackend(FilesystemSynchronousBackend):
                 for key, value in config_file_match.groupdict().items()
                 if value is not None
                 }
+
+            # XXX: hard-coded for now but move to a driver when they are
+            # ready.  Map pxe namespace architecture names to maas's.
+            arch = params.get("arch")
+            if arch is not None and arch == "arm":
+                params["arch"] = "armhf"
+
             # Send the local and remote endpoint addresses.
             local_host, local_port = get("local", (None, None))
             params["local"] = local_host
