@@ -22,15 +22,12 @@ import re
 from django import forms
 from django.core.exceptions import ValidationError
 from django.db.models import Q
-from maasserver.architecture import (
-    list_supported_architecture_choices,
-    list_supported_architectures,
-    )
 from maasserver.fields import mac_validator
 from maasserver.forms import (
     UnconstrainedMultipleChoiceField,
     ValidatorMultipleChoiceField,
     )
+import maasserver.forms as maasserver_forms
 from maasserver.models import (
     Network,
     Tag,
@@ -44,14 +41,14 @@ from maasserver.utils.orm import (
     )
 
 
-def generate_architecture_wildcards(choices):
+def generate_architecture_wildcards(arches):
     """Map 'primary' architecture names to a list of full expansions.
 
     Return a dictionary keyed by the primary architecture name (the part before
     the '/'). The value of an entry is a frozenset of full architecture names
     ('primary_arch/subarch') under the keyed primary architecture.
     """
-    sorted_arch_list = sorted(choice[0] for choice in choices)
+    sorted_arch_list = sorted(arches)
 
     def extract_primary_arch(arch):
         return arch.split('/')[0]
@@ -64,15 +61,15 @@ def generate_architecture_wildcards(choices):
     }
 
 
-def get_architecture_wildcards():
-    choices = list_supported_architecture_choices()
-    architecture_wildcards = generate_architecture_wildcards(choices)
+def get_architecture_wildcards(arches):
+    wildcards = generate_architecture_wildcards(arches)
     # juju uses a general "arm" architecture constraint across all of its
     # providers. Since armhf is the cross-distro agreed Linux userspace
     # architecture and ABI and ARM servers are expected to only use armhf,
     # interpret "arm" to mean "armhf" in MAAS.
-    architecture_wildcards['arm'] = architecture_wildcards['armhf']
-    return architecture_wildcards
+    if 'armhf' in wildcards and 'arm' not in wildcards:
+        wildcards['arm'] = wildcards['armhf']
+    return wildcards
 
 
 def parse_legacy_tags(values):
@@ -202,10 +199,15 @@ class AcquireNodeForm(RenamableFieldsForm):
         return form
 
     def clean_arch(self):
-        architecture_wildcards = get_architecture_wildcards()
+        # Import list_all_usable_architectures as part of its module, not
+        # directly, so that patch_usable_architectures can easily patch it
+        # for testing purposes.
+        usable_architectures = maasserver_forms.list_all_usable_architectures()
+        architecture_wildcards = get_architecture_wildcards(
+            usable_architectures)
         value = self.cleaned_data[self.get_field_name('arch')]
         if value:
-            if value in list_supported_architectures():
+            if value in usable_architectures:
                 # Full 'arch/subarch' specified directly.
                 return [value]
             elif value in architecture_wildcards:

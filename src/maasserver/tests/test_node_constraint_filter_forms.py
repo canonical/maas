@@ -16,17 +16,18 @@ __all__ = []
 
 from django import forms
 from django.core.exceptions import ValidationError
-from maasserver.enum import ARCHITECTURE
 from maasserver.fields import MAC
 from maasserver.models import Node
 from maasserver.node_constraint_filter_forms import (
     AcquireNodeForm,
     detect_nonexistent_zone_names,
     generate_architecture_wildcards,
+    get_architecture_wildcards,
     JUJU_ACQUIRE_FORM_FIELDS_MAPPING,
     parse_legacy_tags,
     RenamableFieldsForm,
     )
+from maasserver.testing.architecture import patch_usable_architectures
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import ignore_unused
@@ -42,23 +43,42 @@ class TestUtils(MAASServerTestCase):
         single_subarch = factory.make_name('arch'), factory.make_name('arch')
         double_subarch_1 = factory.make_name('arch'), factory.make_name('arch')
         double_subarch_2 = double_subarch_1[0], factory.make_name('arch')
-        choices = (
-            ('/'.join(single_subarch), None),
-            ('/'.join(double_subarch_1), None),
-            ('/'.join(double_subarch_2), None),
-        )
+        arches = [
+            '/'.join(single_subarch),
+            '/'.join(double_subarch_1),
+            '/'.join(double_subarch_2),
+            ]
 
         # single_subarch should end up in the dict essentially unchanged, and
         # the double_subarchs should have been flattened into a single dict
         # element with a list of them.
         self.assertEquals(
             {
-                single_subarch[0]: frozenset([choices[0][0]]),
-                double_subarch_1[0]: frozenset(
-                    [choices[1][0], choices[2][0]]),
+                single_subarch[0]: frozenset([arches[0]]),
+                double_subarch_1[0]: frozenset([arches[1], arches[2]]),
             },
-            generate_architecture_wildcards(choices=choices)
+            generate_architecture_wildcards(arches)
         )
+
+    def test_get_architecture_wildcards_aliases_armhf_as_arm(self):
+        subarch = factory.make_name('sub')
+        arches = ['armhf/%s' % subarch]
+        self.assertEqual(
+            {
+                'arm': frozenset(arches),
+                'armhf': frozenset(arches),
+            },
+            get_architecture_wildcards(arches))
+
+    def test_get_architecture_wildcards_does_not_overwrite_existing_arm(self):
+        arm = 'arm/%s' % factory.make_name('armsub')
+        armhf = 'armhf/%s' % factory.make_name('armhfsub')
+        self.assertEqual(
+            {
+                'arm': frozenset([arm]),
+                'armhf': frozenset([armhf]),
+            },
+            get_architecture_wildcards([arm, armhf]))
 
     def test_parse_legacy_tags(self):
         self.assertEquals([], parse_legacy_tags([]))
@@ -560,17 +580,19 @@ class TestAcquireNodeForm(MAASServerTestCase):
 
     def test_combined_constraints(self):
         tag_big = factory.make_tag(name='big')
-        node_big = factory.make_node(architecture=ARCHITECTURE.i386)
+        arch = '%s/generic' % factory.make_name('arch')
+        wrong_arch = '%s/generic' % factory.make_name('arch')
+        patch_usable_architectures(self, [arch, wrong_arch])
+        node_big = factory.make_node(architecture=arch)
         node_big.tags.add(tag_big)
-        node_small = factory.make_node(architecture=ARCHITECTURE.i386)
+        node_small = factory.make_node(architecture=arch)
         ignore_unused(node_small)
-        node_big_arm = factory.make_node(
-            architecture=ARCHITECTURE.armhf_highbank)
-        node_big_arm.tags.add(tag_big)
+        node_big_other_arch = factory.make_node(architecture=wrong_arch)
+        node_big_other_arch.tags.add(tag_big)
         self.assertConstrainedNodes(
-            [node_big, node_big_arm], {'tags': ['big']})
+            [node_big, node_big_other_arch], {'tags': ['big']})
         self.assertConstrainedNodes(
-            [node_big], {'arch': 'i386/generic', 'tags': ['big']})
+            [node_big], {'arch': arch, 'tags': ['big']})
 
     def test_invalid_combined_constraints(self):
         form = AcquireNodeForm(

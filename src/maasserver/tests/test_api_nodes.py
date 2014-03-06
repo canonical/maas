@@ -20,7 +20,6 @@ import random
 
 from django.core.urlresolvers import reverse
 from maasserver.enum import (
-    ARCHITECTURE,
     NODE_STATUS,
     NODE_STATUS_CHOICES_DICT,
     NODEGROUP_STATUS,
@@ -562,11 +561,11 @@ class TestNodesAPI(APITestCase):
 
     def test_POST_acquire_allocates_node_by_arch(self):
         # Asking for a particular arch acquires a node with that arch.
-        node = factory.make_node(
-            status=NODE_STATUS.READY, architecture=ARCHITECTURE.i386)
+        arch = make_usable_architecture(self)
+        node = factory.make_node(status=NODE_STATUS.READY, architecture=arch)
         response = self.client.post(reverse('nodes_handler'), {
             'op': 'acquire',
-            'arch': 'i386/generic',
+            'arch': arch,
         })
         self.assertEqual(httplib.OK, response.status_code)
         response_json = json.loads(response.content)
