@@ -603,3 +603,25 @@ class TestClusterClient(MAASTestCase):
             eventloop:pid=12345 was expected.
             """,
             logger.dump())
+
+
+class TestClusterProtocol_ListSupportedArchitectures(MAASTestCase):
+
+    run_tests_with = AsynchronousDeferredRunTest.make_factory(timeout=5)
+
+    def test_is_registered(self):
+        protocol = Cluster()
+        responder = protocol.locateResponder(
+            cluster.ListSupportedArchitectures.commandName)
+        self.assertIsNot(responder, None)
+
+    @inlineCallbacks
+    def test_returns_architectures(self):
+        architectures = yield call_responder(
+            Cluster(), cluster.ListSupportedArchitectures, {})
+        self.assertIn(
+            {
+                'name': 'i386/generic',
+                'description': 'i386',
+            },
+            architectures['architectures'])

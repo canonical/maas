@@ -77,6 +77,18 @@ class Cluster(amp.AMP, object):
     def describe_power_types(self):
         return {'power_types': json.dumps(JSON_POWER_TYPE_PARAMETERS)}
 
+    @cluster.ListSupportedArchitectures.responder
+    def list_supported_architectures(self):
+        # XXX jtv 2014-03-06: Hardcoded for now.  Might get this from e.g.
+        # simplestreams upstream.
+        return {
+            'architectures': [
+                {'name': 'i386/generic', 'description': 'i386'},
+                {'name': 'amd64/generic', 'description': 'amd64'},
+                {'name': 'armhf/highbank', 'description': 'armhf/highbank'},
+                ],
+            }
+
     @amp.StartTLS.responder
     def get_tls_parameters(self):
         # TODO: Obtain certificates from a config store.

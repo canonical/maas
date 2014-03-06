@@ -16,6 +16,7 @@ __all__ = [
     "DescribePowerTypes",
     "Identify",
     "ListBootImages",
+    "ListSupportedArchitectures",
 ]
 
 from twisted.protocols import amp
@@ -43,5 +44,16 @@ class DescribePowerTypes(amp.Command):
     arguments = []
     response = [
         (b"power_types", amp.Unicode())
+    ]
+    errors = []
+
+
+class ListSupportedArchitectures(amp.Command):
+    arguments = []
+    response = [
+        (b"architectures", amp.AmpList([
+            (b"name", amp.Unicode()),
+            (b"description", amp.Unicode()),
+            ])),
     ]
     errors = []
