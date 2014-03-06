@@ -1539,18 +1539,18 @@ class TestNetworkForm(MAASServerTestCase):
             form.initial['mac_addresses'])
 
     def test_macaddresses_are_sorted(self):
-        network = factory.make_network()
+        network1, network2 = factory.make_networks(2)
         macs = [
-            factory.make_mac_address(networks=[network])
+            factory.make_mac_address(networks=[network1])
             for _ in range(3)]
         # Create macs connected to the same node.
         macs = macs + [
-            factory.make_mac_address(networks=[network], node=macs[0].node)
+            factory.make_mac_address(networks=[network1], node=macs[0].node)
             for _ in range(3)]
         # Create other MAC addresses.
         for _ in range(2):
-            factory.make_mac_address(networks=[factory.make_network()])
-        form = NetworkForm(data={}, instance=network)
+            factory.make_mac_address(networks=[network2])
+        form = NetworkForm(data={}, instance=network1)
         self.assertEqual(
             list(MACAddress.objects.all().order_by(
                 'node__hostname', 'mac_address')),
