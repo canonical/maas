@@ -647,6 +647,5 @@ class Factory(maastesting.factory.Factory):
             for vlan_tag in vlan_tags
             ]
 
-
 # Create factory singleton.
 factory = Factory()

@@ -22,8 +22,8 @@ from maasserver.models import (
     )
 from maasserver.testing import reload_object
 from maasserver.testing.factory import factory
+from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.factory import TooManyRandomRetries
-from maastesting.testcase import MAASTestCase
 
 
 class FakeRandInt:
@@ -48,7 +48,7 @@ class FakeRandInt:
         return self.real_randint(minimum, maximum)
 
 
-class TestFactory(MAASTestCase):
+class TestFactory(MAASServerTestCase):
 
     def test_getRandomEnum_returns_enum_value(self):
         random_value = random.randint(0, 99999)
