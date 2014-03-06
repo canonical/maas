@@ -36,7 +36,6 @@ __all__ = [
 
 
 from functools import partial
-import json
 
 from django import forms
 from jsonschema import validate
@@ -212,7 +211,7 @@ def get_all_power_types_from_clusters(nodegroups=None, ignore_errors=True):
                 raise ClusterUnavailable(
                     "Failure while communicating with cluster.")
         else:
-            power_types = json.loads(response['power_types'])
+            power_types = response['power_types']
             for power_type in power_types:
                 name = power_type['name']
                 fields = power_type['fields']

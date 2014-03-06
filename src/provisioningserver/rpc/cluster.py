@@ -22,6 +22,7 @@ __all__ = [
     "ListSupportedArchitectures",
 ]
 
+from provisioningserver.rpc.arguments import StructureAsJSON
 from twisted.protocols import amp
 
 
@@ -50,7 +51,7 @@ class DescribePowerTypes(amp.Command):
 
     arguments = []
     response = [
-        (b"power_types", amp.Unicode())
+        (b"power_types", StructureAsJSON()),
     ]
     errors = []
 
