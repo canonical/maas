@@ -175,8 +175,10 @@ def list_all_usable_architectures():
 
 def list_architecture_choices(architectures):
     """Return Django "choices" list for `architectures`."""
-    # XXX jtv 2014-03-05: Use proper label texts, e.g. "i386" instead of
-    # "i386/generic".
+    # We simply return (name, name) as the choice for each architecture
+    # here. We could do something more complicated to get a "nice"
+    # label, but the truth is that architecture names are plenty
+    # readable already.
     return [(arch, arch) for arch in architectures]
 
 

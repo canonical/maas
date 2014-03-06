@@ -28,12 +28,9 @@ from maasserver.models import (
     Node,
     NodeGroup,
     )
+from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing import reload_object
 from maasserver.testing.api import MultipleUsersScenarios
-from maasserver.testing.architecture import (
-    make_usable_architecture,
-    patch_usable_architectures,
-    )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import strip_domain
@@ -95,7 +92,7 @@ class EnlistmentAPITest(MultipleUsersScenarios,
         # prevent anything from attempting to issue power instructions.
         self.patch(Node, "start_commissioning")
         hostname = factory.make_name("hostname")
-        architecture = make_usable_architecture(self),
+        architecture = make_usable_architecture(self)
         power_type = 'ipmi'
         power_parameters = {
             "power_user": factory.make_name("power-user"),
@@ -119,16 +116,14 @@ class EnlistmentAPITest(MultipleUsersScenarios,
         self.assertEqual(power_type, node.power_type)
 
     def test_POST_new_creates_node_with_arch_only(self):
-        architecture = factory.make_name('arch')
-        full_architecture = architecture + '/generic'
-        patch_usable_architectures(self, [full_architecture])
+        architecture = make_usable_architecture(self, subarch_name="generic")
         response = self.client.post(
             reverse('nodes_handler'),
             {
                 'op': 'new',
                 'autodetect_nodegroup': '1',
                 'hostname': 'diane',
-                'architecture': architecture,
+                'architecture': architecture.split('/')[0],
                 'power_type': 'ether_wake',
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
             })
@@ -139,7 +134,7 @@ class EnlistmentAPITest(MultipleUsersScenarios,
         self.assertEqual('diane', parsed_result['hostname'])
         self.assertNotEqual(0, len(parsed_result.get('system_id')))
         [diane] = Node.objects.filter(hostname='diane')
-        self.assertEqual(full_architecture, diane.architecture)
+        self.assertEqual(architecture, diane.architecture)
 
     def test_POST_new_creates_node_with_subarchitecture(self):
         # The API allows a Node to be created.

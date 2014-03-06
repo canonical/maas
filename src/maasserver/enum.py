@@ -13,8 +13,6 @@ str = None
 
 __metaclass__ = type
 __all__ = [
-    'ARCHITECTURE',
-    'ARCHITECTURE_CHOICES',
     'ARCHITECTURE_CHOICES_DICT',
     'COMMISSIONING_DISTRO_SERIES_CHOICES',
     'COMPONENT',
@@ -34,6 +32,7 @@ __all__ = [
     ]
 
 from collections import OrderedDict
+from maasserver.architecture import ARCHITECTURE_CHOICES
 
 
 class COMPONENT:
@@ -82,24 +81,6 @@ NODE_STATUS_CHOICES = (
 
 
 NODE_STATUS_CHOICES_DICT = OrderedDict(NODE_STATUS_CHOICES)
-
-
-class ARCHITECTURE:
-    """List of supported architectures."""
-    #:
-    i386 = 'i386/generic'
-    #:
-    amd64 = 'amd64/generic'
-    #:
-    armhf_highbank = 'armhf/highbank'
-
-
-# Architecture names.
-ARCHITECTURE_CHOICES = (
-    (ARCHITECTURE.i386, "i386"),
-    (ARCHITECTURE.amd64, "amd64"),
-    (ARCHITECTURE.armhf_highbank, "armhf/highbank"),
-)
 
 
 ARCHITECTURE_CHOICES_DICT = OrderedDict(ARCHITECTURE_CHOICES)

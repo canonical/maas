@@ -22,7 +22,6 @@ import time
 
 from django.contrib.auth.models import User
 from maasserver.enum import (
-    ARCHITECTURE,
     NODE_STATUS,
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
@@ -148,7 +147,7 @@ class Factory(maastesting.factory.Factory):
             NODE_TRANSITIONS[None] = valid_initial_states
 
     def make_node(self, mac=False, hostname=None, status=None,
-                  architecture=ARCHITECTURE.i386, updated=None,
+                  architecture="i386/generic", updated=None,
                   created=None, nodegroup=None, routers=None, zone=None,
                   power_type=None, networks=None, sortable_name=False,
                   **kwargs):

@@ -25,7 +25,6 @@ from maasserver import (
     )
 from maasserver.api import find_nodegroup_for_pxeconfig_request
 from maasserver.enum import (
-    ARCHITECTURE,
     NODE_STATUS,
     )
 from maasserver.models import (
@@ -36,6 +35,7 @@ from maasserver.preseed import (
     compose_enlistment_preseed_url,
     compose_preseed_url,
     )
+from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.fakemethod import FakeMethod
@@ -107,7 +107,7 @@ class TestPXEConfigAPI(MAASServerTestCase):
         self.assertEqual(httplib.NO_CONTENT, response.status_code)
 
     def test_pxeconfig_returns_success_for_detailed_but_unknown_node(self):
-        architecture = factory.getRandomEnum(ARCHITECTURE)
+        architecture = make_usable_architecture(self)
         arch, subarch = architecture.split('/')
         params = dict(
             self.get_default_params(),
@@ -123,7 +123,7 @@ class TestPXEConfigAPI(MAASServerTestCase):
         # kernel options.
         value = factory.getRandomString()
         Config.objects.set_config("kernel_opts", value)
-        architecture = factory.getRandomEnum(ARCHITECTURE)
+        architecture = make_usable_architecture(self)
         arch, subarch = architecture.split('/')
         params = dict(
             self.get_default_params(),
@@ -148,7 +148,9 @@ class TestPXEConfigAPI(MAASServerTestCase):
     def test_pxeconfig_defaults_to_i386_for_default(self):
         # As a lowest-common-denominator, i386 is chosen when the node is not
         # yet known to MAAS.
-        expected_arch = tuple(ARCHITECTURE.i386.split('/'))
+        expected_arch = tuple(
+            make_usable_architecture(
+                self, arch_name="i386", subarch_name="generic").split("/"))
         params_out = self.get_pxeconfig()
         observed_arch = params_out["arch"], params_out["subarch"]
         self.assertEqual(expected_arch, observed_arch)

@@ -22,7 +22,6 @@ from urlparse import urlparse
 from django.conf import settings
 from django.core.urlresolvers import reverse
 from maasserver.enum import (
-    ARCHITECTURE,
     DISTRO_SERIES,
     NODE_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
@@ -53,6 +52,7 @@ from maasserver.preseed import (
     split_subarch,
     TemplateNotFoundError,
     )
+from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import map_enum
@@ -608,7 +608,7 @@ class TestCurtinUtilities(MAASServerTestCase):
         # to a run-time setting which we don't provide in this test.
         series = factory.getRandomEnum(
             DISTRO_SERIES, but_not=DISTRO_SERIES.default)
-        arch = factory.getRandomEnum(ARCHITECTURE)
+        arch = make_usable_architecture(self)
         node = factory.make_node(architecture=arch, distro_series=series)
         installer_url = get_curtin_installer_url(node)
         [interface] = node.nodegroup.get_managed_interfaces()
@@ -632,8 +632,12 @@ class TestRenderPreseedArchives(MAASServerTestCase):
 
     def test_render_preseed_uses_default_archives_intel(self):
         nodes = [
-            factory.make_node(architecture=ARCHITECTURE.i386),
-            factory.make_node(architecture=ARCHITECTURE.amd64),
+            factory.make_node(
+                architecture=make_usable_architecture(
+                    self, arch_name="i386", subarch_name="generic")),
+            factory.make_node(
+                architecture=make_usable_architecture(
+                    self, arch_name="amd64", subarch_name="generic")),
             ]
         default_snippets = [
             "d-i     mirror/http/hostname string archive.ubuntu.com",
@@ -644,7 +648,8 @@ class TestRenderPreseedArchives(MAASServerTestCase):
             self.assertThat(preseed, ContainsAll(default_snippets))
 
     def test_render_preseed_uses_default_archives_arm(self):
-        node = factory.make_node(architecture=ARCHITECTURE.armhf_highbank)
+        node = factory.make_node(architecture=make_usable_architecture(
+            self, with_subarch=False, arch_name="armhf"))
         default_snippets = [
             "d-i     mirror/http/hostname string ports.ubuntu.com",
             "d-i     mirror/http/directory string /ubuntu-ports",

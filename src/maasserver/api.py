@@ -153,7 +153,6 @@ from maasserver.components import (
     register_persistent_error,
     )
 from maasserver.enum import (
-    ARCHITECTURE,
     COMPONENT,
     NODE_PERMISSION,
     NODE_STATUS,
@@ -327,8 +326,7 @@ class NodeHandler(OperationsHandler):
 
         :param hostname: The new hostname for this node.
         :type hostname: unicode
-        :param architecture: The new architecture for this node (see
-            vocabulary `ARCHITECTURE`).
+        :param architecture: The new architecture for this node.
         :type architecture: unicode
         :param power_type: The new power type for this node. If you use the
             default value, power_parameters will be set to the empty string.
@@ -2365,7 +2363,7 @@ def pxeconfig(request):
                 image = BootImage.objects.get_default_arch_image_in_nodegroup(
                     nodegroup, series, purpose=purpose)
                 if image is None:
-                    arch = ARCHITECTURE.i386.split('/')[0]
+                    arch = 'i386'
                 else:
                     arch = image.architecture
         else:

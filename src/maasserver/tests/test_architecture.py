@@ -27,6 +27,9 @@ class TestListSupportedArchitectures(MAASTestCase):
         self.assertIn('i386/generic', architectures)
 
     def test_sorts_results(self):
+        # XXX 2014-03-06 gmb:
+        #     This needs be changed (when|if) the ARCHITECTURES enum
+        #     goes away completely.
         self.patch(
             architecture, 'ARCHITECTURES',
             [factory.make_name('arch') for _ in range(3)])

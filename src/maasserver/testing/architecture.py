@@ -23,17 +23,20 @@ from maasserver import forms
 from maasserver.testing.factory import factory
 
 
-def make_arch(with_subarch=True):
+def make_arch(with_subarch=True, arch_name=None, subarch_name=None):
     """Generate an arbitrary architecture name.
 
     :param with_subarch: Should the architecture include a slash and a
         sub-architecture name?  Defaults to `True`.
     """
-    base_arch = factory.make_name('arch')
+    if arch_name is None:
+        arch_name = factory.make_name('arch')
     if with_subarch:
-        return '%s/%s' % (base_arch, factory.make_name('sub'))
+        if subarch_name is None:
+            subarch_name = factory.make_name('sub')
+        return '%s/%s' % (arch_name, subarch_name)
     else:
-        return base_arch
+        return arch_name
 
 
 def patch_usable_architectures(testcase, architectures=None):
@@ -54,7 +57,8 @@ def patch_usable_architectures(testcase, architectures=None):
     patch.return_value = architectures
 
 
-def make_usable_architecture(testcase, with_subarch=True):
+def make_usable_architecture(
+        testcase, with_subarch=True, arch_name=None, subarch_name=None):
     """Return arbitrary architecture name, and make it "usable."
 
     A usable architecture is one for which boot images are available.
@@ -63,7 +67,13 @@ def make_usable_architecture(testcase, with_subarch=True):
         `patch_usable_architectures`.
     :param with_subarch: Should the architecture include a slash and a
         sub-architecture name?  Defaults to `True`.
+    :param arch_name: The architecture name. Useful in cases where
+        we need to test that not supplying an arch works correctly.
+    :param subarch_name: The subarchitecture name. Useful in cases where
+        we need to test that not supplying a subarch works correctly.
     """
-    arch = make_arch(with_subarch=with_subarch)
+    arch = make_arch(
+        with_subarch=with_subarch, arch_name=arch_name,
+        subarch_name=subarch_name)
     patch_usable_architectures(testcase, [arch])
     return arch
