@@ -214,6 +214,10 @@ from maasserver.models.nodeprobeddetails import (
     )
 from maasserver.node_action import Commission
 from maasserver.node_constraint_filter_forms import AcquireNodeForm
+from maasserver.clusterrpc.power_parameters import (
+    get_all_power_types_from_clusters,
+    get_power_types,
+    )
 from maasserver.preseed import (
     compose_enlistment_preseed_url,
     compose_preseed_url,
@@ -239,7 +243,6 @@ from piston.emitters import JSONEmitter
 from piston.handler import typemapper
 from piston.utils import rc
 from provisioningserver.enum import (
-    get_power_types,
     UNKNOWN_POWER_TYPE,
     )
 from provisioningserver.kernel_opts import KernelParameters
@@ -274,7 +277,9 @@ def store_node_power_parameters(node, request):
     if power_type is None:
         return
 
-    if power_type in get_power_types() or power_type == UNKNOWN_POWER_TYPE:
+    power_types = get_power_types([node.nodegroup])
+
+    if power_type in power_types or power_type == UNKNOWN_POWER_TYPE:
         node.power_type = power_type
     else:
         raise MAASAPIBadRequest("Bad power_type '%s'" % power_type)
@@ -348,7 +353,8 @@ class NodeHandler(OperationsHandler):
         node = Node.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NODE_PERMISSION.EDIT)
         Form = get_node_edit_form(request.user)
-        form = Form(request.data, instance=node)
+        form = Form(data=request.data, instance=node)
+        
         if form.is_valid():
             return form.save()
         else:
@@ -531,7 +537,7 @@ def create_node(request):
             altered_query_data['nodegroup'] = nodegroup
 
     Form = get_node_create_form(request.user)
-    form = Form(altered_query_data)
+    form = Form(data=altered_query_data)
     if form.is_valid():
         node = form.save()
         # Hack in the power parameters here.
@@ -1417,6 +1423,14 @@ class NodeGroupsHandler(OperationsHandler):
         return HttpResponse(
             "Import of boot images started on all cluster controllers",
             status=httplib.OK)
+
+    @operation(idempotent=True)
+    def describe_power_types(self, request):
+        """Query all the cluster controllers for power information.
+
+        :return: a list of dicts that describe the power types in this format.
+        """
+        return get_all_power_types_from_clusters()
 
     @admin_method
     @operation(idempotent=False)

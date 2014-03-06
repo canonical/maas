@@ -75,6 +75,7 @@ from maasserver.node_constraint_filter_forms import (
     AcquireNodeForm,
     JUJU_ACQUIRE_FORM_FIELDS_MAPPING,
     )
+from maasserver.clusterrpc.power_parameters import get_power_types
 from maasserver.preseed import (
     get_enlist_preseed,
     get_preseed,
@@ -84,7 +85,6 @@ from maasserver.views import (
     PaginatedListView,
     )
 from metadataserver.models import NodeCommissionResult
-from provisioningserver.enum import get_power_types
 from provisioningserver.tags import merge_details_cleanly
 
 
@@ -174,14 +174,16 @@ def prefetch_nodes_listing(nodes_query):
         .prefetch_related('zone'))
 
 
-def generate_js_power_types():
+def generate_js_power_types(nodegroup=None):
     """Return a JavaScript definition of supported power-type choices.
 
     Produces an array of power-type identifiers, starting with the opening
     bracket and ending with the closing bracket, without line breaks on either
     end.  Entries are one per line, sorted lexicographically.
     """
-    power_types = get_power_types()
+    if nodegroup is not None:
+        nodegroup = [nodegroup]
+    power_types = get_power_types(nodegroup, ignore_errors=True)
     names = ['"%s"' % power_type for power_type in sorted(power_types)]
     return mark_safe("[\n%s\n]" % ',\n'.join(names))
 
@@ -491,12 +493,20 @@ class NodeEdit(UpdateView):
     def get_form_class(self):
         return get_node_edit_form(self.request.user)
 
+    def get_form_kwargs(self):
+        # This is here so the request can be passed to the form. The
+        # form needs it because it sets error messages for the UI.
+        kwargs = super(NodeEdit, self).get_form_kwargs()
+        kwargs['request'] = self.request
+        return kwargs
+
     def get_success_url(self):
         return reverse('node-view', args=[self.get_object().system_id])
 
     def get_context_data(self, **kwargs):
         context = super(NodeEdit, self).get_context_data(**kwargs)
-        context['power_types'] = generate_js_power_types()
+        context['power_types'] = generate_js_power_types(
+            self.get_object().nodegroup)
         return context
 
 

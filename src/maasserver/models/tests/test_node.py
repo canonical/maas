@@ -41,6 +41,7 @@ from maasserver.models.node import (
     NODE_TRANSITIONS,
     )
 from maasserver.models.user import create_auth_token
+from maasserver.clusterrpc.power_parameters import get_power_types
 from maasserver.testing import reload_object
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -53,7 +54,6 @@ from metadataserver.models import (
     NodeCommissionResult,
     NodeUserData,
     )
-from provisioningserver.enum import get_power_types
 from provisioningserver.power.poweraction import PowerAction
 from testtools.matchers import (
     AllMatch,

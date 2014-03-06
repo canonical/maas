@@ -13,6 +13,7 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    "ClusterUnavailable",
     "ExternalComponentException",
     "MAASException",
     "MAASAPIBadRequest",
@@ -102,3 +103,8 @@ class NodeGroupMisconfiguration(MAASAPIException):
     same network
     """
     api_error = httplib.CONFLICT
+
+
+class ClusterUnavailable(MAASAPIException):
+    """A Cluster Controller is not available for RPC queries."""
+    api_error = httplib.SERVICE_UNAVAILABLE

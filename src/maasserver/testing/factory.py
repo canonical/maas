@@ -43,6 +43,7 @@ from maasserver.models import (
     Zone,
     )
 from maasserver.models.node import NODE_TRANSITIONS
+from maasserver.clusterrpc.power_parameters import get_power_types
 from maasserver.testing import (
     get_data,
     reload_object,
@@ -56,7 +57,6 @@ from metadataserver.models import (
     NodeCommissionResult,
     )
 from netaddr import IPAddress
-from provisioningserver.enum import get_power_types
 
 # We have a limited number of public keys:
 # src/maasserver/tests/data/test_rsa{0, 1, 2, 3, 4}.pub

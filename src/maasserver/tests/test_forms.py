@@ -23,6 +23,7 @@ from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.validators import validate_email
 from django.http import QueryDict
+from maasserver.clusterrpc.power_parameters import get_power_type_choices
 from maasserver.enum import (
     NODE_STATUS,
     NODEGROUP_STATUS,
@@ -78,7 +79,6 @@ from maasserver.node_action import (
     StopNode,
     UseCurtin,
     )
-from maasserver.power_parameters import get_power_type_choices
 from maasserver.testing import reload_object
 from maasserver.testing.architecture import (
     make_usable_architecture,
@@ -235,11 +235,11 @@ class NodeWithMACAddressesFormTest(MAASServerTestCase):
     def test_NodeWithMACAddressesForm_valid(self):
         architecture = make_usable_architecture(self)
         form = NodeWithMACAddressesForm(
-            self.make_params(
+            data=self.make_params(
                 mac_addresses=['aa:bb:cc:dd:ee:ff', '9a:bb:c3:33:e5:7f'],
                 architecture=architecture))
 
-        self.assertTrue(form.is_valid())
+        self.assertTrue(form.is_valid(), form.errors)
         self.assertEqual(
             ['aa:bb:cc:dd:ee:ff', '9a:bb:c3:33:e5:7f'],
             form.cleaned_data['mac_addresses'])
@@ -250,7 +250,7 @@ class NodeWithMACAddressesFormTest(MAASServerTestCase):
         # the error message in form.errors['mac_addresses'] is the
         # message from the field's validation error.
         form = NodeWithMACAddressesForm(
-            self.make_params(mac_addresses=['invalid']))
+            data=self.make_params(mac_addresses=['invalid']))
 
         self.assertFalse(form.is_valid())
         self.assertEqual(['mac_addresses'], list(form.errors))
@@ -263,7 +263,7 @@ class NodeWithMACAddressesFormTest(MAASServerTestCase):
         # if one or more fields are invalid, a single error message is
         # present in form.errors['mac_addresses'] after validation.
         form = NodeWithMACAddressesForm(
-            self.make_params(mac_addresses=['invalid_1', 'invalid_2']))
+            data=self.make_params(mac_addresses=['invalid_1', 'invalid_2']))
 
         self.assertFalse(form.is_valid())
         self.assertEqual(['mac_addresses'], list(form.errors))
@@ -274,14 +274,15 @@ class NodeWithMACAddressesFormTest(MAASServerTestCase):
     def test_NodeWithMACAddressesForm_empty(self):
         # Empty values in the list of MAC addresses are simply ignored.
         form = NodeWithMACAddressesForm(
-            self.make_params(
+            data=self.make_params(
                 mac_addresses=[factory.getRandomMACAddress(), '']))
 
         self.assertTrue(form.is_valid())
 
     def test_NodeWithMACAddressesForm_save(self):
         macs = ['aa:bb:cc:dd:ee:ff', '9a:bb:c3:33:e5:7f']
-        form = NodeWithMACAddressesForm(self.make_params(mac_addresses=macs))
+        form = NodeWithMACAddressesForm(
+            data=self.make_params(mac_addresses=macs))
         node = form.save()
 
         self.assertIsNotNone(node.id)  # The node is persisted.
@@ -292,19 +293,19 @@ class NodeWithMACAddressesFormTest(MAASServerTestCase):
     def test_includes_nodegroup_field_for_new_node(self):
         self.assertIn(
             'nodegroup',
-            NodeWithMACAddressesForm(self.make_params()).fields)
+            NodeWithMACAddressesForm(data=self.make_params()).fields)
 
     def test_does_not_include_nodegroup_field_for_existing_node(self):
         params = self.make_params()
         node = factory.make_node()
         self.assertNotIn(
             'nodegroup',
-            NodeWithMACAddressesForm(params, instance=node).fields)
+            NodeWithMACAddressesForm(data=params, instance=node).fields)
 
     def test_sets_nodegroup_to_master_by_default(self):
         self.assertEqual(
             NodeGroup.objects.ensure_master(),
-            NodeWithMACAddressesForm(self.make_params()).save().nodegroup)
+            NodeWithMACAddressesForm(data=self.make_params()).save().nodegroup)
 
     def test_leaves_nodegroup_alone_if_unset_on_existing_node(self):
         # Selecting a node group for a node is only supported on new
@@ -313,19 +314,19 @@ class NodeWithMACAddressesFormTest(MAASServerTestCase):
         node = factory.make_node(nodegroup=original_nodegroup)
         factory.make_node_group(network=IPNetwork("192.168.1.0/24"))
         form = NodeWithMACAddressesForm(
-            self.make_params(nodegroup='192.168.1.0'), instance=node)
+            data=self.make_params(nodegroup='192.168.1.0'), instance=node)
         form.save()
         self.assertEqual(original_nodegroup, reload_object(node).nodegroup)
 
     def test_form_without_hostname_generates_hostname(self):
-        form = NodeWithMACAddressesForm(self.make_params(hostname=''))
+        form = NodeWithMACAddressesForm(data=self.make_params(hostname=''))
         node = form.save()
         self.assertTrue(len(node.hostname) > 0)
 
     def test_form_with_ip_based_hostname_generates_hostname(self):
         ip_based_hostname = '192-168-12-10.domain'
         form = NodeWithMACAddressesForm(
-            self.make_params(hostname=ip_based_hostname))
+            data=self.make_params(hostname=ip_based_hostname))
         node = form.save()
         self.assertNotEqual(ip_based_hostname, node.hostname)
 

@@ -60,8 +60,14 @@ from django.forms import (
     Form,
     MultipleChoiceField,
     )
+from django.utils.safestring import mark_safe
 from lxml import etree
 from maasserver.api_utils import get_overridden_query_dict
+from maasserver.clusterrpc.power_parameters import (
+    get_power_type_choices,
+    get_power_type_parameters,
+    get_power_types,
+    )
 from maasserver.config_forms import SKIP_CHECK_NAME
 from maasserver.enum import (
     COMMISSIONING_DISTRO_SERIES_CHOICES,
@@ -71,6 +77,7 @@ from maasserver.enum import (
     NODEGROUPINTERFACE_MANAGEMENT,
     NODEGROUPINTERFACE_MANAGEMENT_CHOICES,
     )
+from maasserver.exceptions import ClusterUnavailable
 from maasserver.fields import (
     MACAddressFormField,
     NodeGroupFormField,
@@ -101,15 +108,10 @@ from maasserver.node_action import (
     ACTIONS_DICT,
     compile_node_actions,
     )
-from maasserver.power_parameters import (
-    get_power_type_choices,
-    get_power_type_parameters,
-    )
 from maasserver.utils import strip_domain
 from maasserver.utils.network import make_network
 from metadataserver.fields import Bin
 from metadataserver.models import CommissioningScript
-from provisioningserver.enum import get_power_types
 
 
 def remove_None_values(data):
@@ -196,8 +198,11 @@ def pick_default_architecture(all_architectures):
 
 class NodeForm(ModelForm):
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, request=None, *args, **kwargs):
         super(NodeForm, self).__init__(*args, **kwargs)
+        # Even though it doesn't need it and doesn't use it, this form accepts
+        # a parameter named 'request' because it is used interchangingly
+        # with NodeAdminForm which actually uses this parameter. 
         if kwargs.get('instance') is None:
             # Creating a new node.  Offer choice of nodegroup.
             self.fields['nodegroup'] = NodeGroupFormField(
@@ -259,6 +264,12 @@ class NodeForm(ModelForm):
             )
 
 
+CLUSTER_NOT_AVAILABLE = mark_safe("""
+The cluster controller for this node is not responding; power type
+validation is not available.
+""")
+
+
 class AdminNodeForm(NodeForm):
     """A `NodeForm` which includes fields that only an admin may change."""
 
@@ -287,12 +298,12 @@ class AdminNodeForm(NodeForm):
             'storage',
         )
 
-    def __init__(self, data=None, instance=None, **kwargs):
+    def __init__(self, data=None, instance=None, request=None, **kwargs):
         super(AdminNodeForm, self).__init__(
             data=data, instance=instance, **kwargs)
+        self.request = request
         self.set_up_initial_zone(instance)
         self.set_up_power_type(data, instance)
-        self.set_up_power_parameters_field(data, instance)
         # The zone field is not required because we want to be able
         # to omit it when using that form in the API.
         # We don't want the UI to show an entry for the 'empty' zone,
@@ -321,16 +332,32 @@ class AdminNodeForm(NodeForm):
         # form deals with an API call which does not change the value of
         # 'power_type') or invalid: get the node's current 'power_type'
         # value or the default value if this form is not linked to a node.
-        if power_type is None or power_type not in get_power_types():
+
+        if node is not None:
+            nodegroups = [node.nodegroup]
+        else:
+            nodegroups = None
+
+        try:
+            power_types = get_power_types(nodegroups)
+        except ClusterUnavailable as e:
+            # If there's no request then this is an API call, so
+            # there's no need to add a UI message, a suitable
+            # ValidationError is raised elsewhere.
+            if self.request is not None:
+                messages.error(
+                    self.request, CLUSTER_NOT_AVAILABLE + e.args[0])
+            return ''
+        
+        if power_type not in power_types:
             if node is not None:
                 power_type = node.power_type
             else:
-                # Empty so that the power parameters are set properly.
                 power_type = ''
         return power_type
 
     def set_up_power_type(self, data, node):
-        """Set up the 'power_type' field.
+        """Set up the 'power_type' and 'power_parameters' fields.
 
         This can't be done at the model level because the choices need to
         be generated on the fly by get_power_type_choices().
@@ -339,26 +366,42 @@ class AdminNodeForm(NodeForm):
         choices = [('', '-------')] + get_power_type_choices()
         self.fields['power_type'] = forms.ChoiceField(
             required=False, choices=choices, initial=power_type)
-
-    def set_up_power_parameters_field(self, data, node):
-        """Set up the 'power_parameter' field based on the value for the
-        'power_type' field.
-
-        We need to create the field for 'power_parameter' (which depend from
-        the value of the field 'power_type') before the value for power_type
-        gets validated.
-        """
-        power_type = self.get_power_type(data, node)
         self.fields['power_parameters'] = get_power_type_parameters()[
             power_type]
 
+    def _get_nodegroup(self):
+        # This form is used for adding and editing nodes, and the
+        # nodegroup field is the cleaned_data for the former and on the
+        # instance for the latter.
+        # The field is not present on the edit form because someone
+        # decided that we should not let users move nodes between
+        # nodegroups.  It is probably better to change that behaviour to
+        # have a read-only field on the form.
+        if self.instance.nodegroup is not None:
+            return self.instance.nodegroup
+        return self.cleaned_data['nodegroup']
+
     def clean(self):
         cleaned_data = super(AdminNodeForm, self).clean()
+        # skip_check tells us to allow power_parameters to be saved
+        # without any validation.  Nobody can remember why this was
+        # added at this stage but it might have been a request from
+        # smoser, we think.
+        skip_check = (
+            self.data.get('power_parameters_%s' % SKIP_CHECK_NAME) == 'true')
+        # Try to contact the cluster controller; if it's down then we
+        # prevent saving the form as we can't validate the power
+        # parameters and type.
+        if not skip_check:
+            try:
+                get_power_types([self._get_nodegroup()])
+            except ClusterUnavailable as e:
+                # Hey Django devs, this is a crap API to set errors.
+                self._errors["power_type"] = self.error_class(
+                    [CLUSTER_NOT_AVAILABLE + e.args[0]])
         # If power_type is not set and power_parameters_skip_check is not
         # on, reset power_parameters (set it to the empty string).
         no_power_type = cleaned_data['power_type'] == ''
-        skip_check = (
-            self.data.get('power_parameters_%s' % SKIP_CHECK_NAME) == 'true')
         if no_power_type and not skip_check:
             cleaned_data['power_parameters'] = ''
         return cleaned_data

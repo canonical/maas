@@ -39,6 +39,7 @@ from maasserver.models import (
     Tag,
     )
 from maasserver.testing import reload_object
+from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.testing.factory import factory
 from maasserver.testing.oauthclient import OAuthAuthenticatedClient
 from maastesting.djangotestcase import DjangoTestCase
@@ -399,7 +400,7 @@ class TestCurtinMetadataUserData(DjangoTestCase):
         self.assertIn("PREFIX='curtin'", response.content)
 
 
-class TestCommissioningAPI(DjangoTestCase):
+class TestCommissioningAPI(MAASServerTestCase):
 
     def test_commissioning_scripts(self):
         script = factory.make_commissioning_script()

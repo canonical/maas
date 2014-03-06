@@ -66,12 +66,11 @@ from maasserver.utils.orm import get_one
 from maasserver.views import nodes as nodes_views
 from maasserver.views.nodes import message_from_form_stats
 from maastesting.djangotestcase import count_queries
-from maastesting.testcase import MAASTestCase
 from metadataserver.models.commissioningscript import LLDP_OUTPUT_NAME
 from testtools.matchers import ContainsAll
 
 
-class TestGenerateJSPowerTypes(MAASTestCase):
+class TestGenerateJSPowerTypes(MAASServerTestCase):
     def patch_power_types(self, enum):
         """Make `get_power_types` return the given `enum` dict."""
         self.patch(nodes_views, 'get_power_types').return_value = enum

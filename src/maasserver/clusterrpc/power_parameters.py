@@ -13,9 +13,10 @@ the UI to display the right power parameter fields that correspond to the
 selected power_type.  The classes in this module are used to associate each
 power type with a set of power parameters.
 
-To define a new set of power parameters for a new power_type: create a new
-mapping between the new power type and a DictCharField instance in
-`POWER_TYPE_PARAMETERS`.
+The power types are retrieved from the cluster controllers using the json
+schema provisioningserver.power_schema.JSON_POWER_TYPE_SCHEMA.  To add new
+parameters requires changes to hardware drivers that run in the cluster
+controllers.
 """
 
 from __future__ import (
@@ -28,20 +29,31 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    'get_all_power_types_from_clusters',
+    'get_power_type_choices',
     'get_power_type_parameters',
     ]
 
 
+from functools import partial
+import json
+
 from django import forms
 from jsonschema import validate
+from maasserver import logger
 from maasserver.config_forms import DictCharField
+from maasserver.exceptions import ClusterUnavailable
 from maasserver.fields import MACAddressFormField
-from provisioningserver.enum import get_power_types
+from maasserver.models import NodeGroup
+from maasserver.rpc import getClientFor
+from maasserver.utils import async
 from provisioningserver.power_schema import (
-    JSON_POWER_TYPE_PARAMETERS,
     JSON_POWER_TYPE_SCHEMA,
     POWER_TYPE_PARAMETER_FIELD_SCHEMA,
     )
+from provisioningserver.rpc import cluster
+from provisioningserver.rpc.exceptions import NoConnectionsAvailable
+from twisted.python.failure import Failure
 
 
 FIELD_TYPE_MAPPINGS = {
@@ -75,9 +87,9 @@ def make_form_field(json_field):
     return form_field
 
 
-def add_power_type_parameters(
-        name, description, fields, parameters_set=JSON_POWER_TYPE_PARAMETERS):
-    """Add new power type parameters to JSON_POWER_TYPE_PARAMETERS.
+def add_power_type_parameters(name, description, fields, parameters_set):
+    """Add new power type parameters to the given parameters_set if it
+    does not already exist.
 
     :param name: The name of the power type for which to add parameters.
     :type name: string
@@ -87,10 +99,9 @@ def add_power_type_parameters(
     :param fields: The fields that make up the parameters for the power
         type. Will be validated against
         POWER_TYPE_PARAMETER_FIELD_SCHEMA.
-    :type field: list
+    :type fields: list of `make_json_field` results.
     :param parameters_set: An existing list of power type parameters to
-        mutate. By default, this is set to JSON_POWER_TYPE_PARAMETERS.
-        This parameter exists for testing purposes.
+        mutate.
     :type parameters_set: list
     """
     for power_type in parameters_set:
@@ -132,18 +143,81 @@ def get_power_type_parameters_from_json(json_power_type_parameters):
     return power_parameters
 
 
-# FIXME: This method uses JSON_POWER_TYPE_PARAMETERS.  It needs changing to
-# query the cluster's information instead.
 def get_power_type_parameters():
-    return get_power_type_parameters_from_json(JSON_POWER_TYPE_PARAMETERS)
-
-
-# FIXME: POWER_TYPE_PARAMETERS needs to go away;
-# use get_power_type_parameters() instead because the power type information
-# need to be generated on the fly to incude the latest information.
-POWER_TYPE_PARAMETERS = get_power_type_parameters_from_json(
-    JSON_POWER_TYPE_PARAMETERS)
+    return get_power_type_parameters_from_json(
+        get_all_power_types_from_clusters())
 
 
 def get_power_type_choices():
-    return [(k, v) for (k, v) in get_power_types().items() if k != '']
+    """Mutate the power types returned from the cluster into a choices
+    structure as used by Django.
+
+    :return: list of (name, description) tuples
+    """
+    return[
+        (power_type['name'], power_type['description'])
+        for power_type in get_all_power_types_from_clusters()]
+
+
+def get_power_types(nodegroups=None, ignore_errors=False):
+    """Return the choice of mechanism to control a node's power.
+
+    :param nodegroups: Restrict to power types on the supplied
+        :class:`NodeGroup`s.
+    :param ignore_errors: If comms errors are encountered talking to any
+        clusters, ignore and carry on. This means partial data may be
+        returned if other clusters are operational.
+
+    :raises: :class:`ClusterUnavailable` if ignore_errors is False and a
+        cluster controller is unavailable.
+
+    :return: Dictionary mapping power type to its description.
+    """
+    types = dict()
+    power_types = get_all_power_types_from_clusters(nodegroups, ignore_errors)
+    for power_type in power_types:
+        types[power_type['name']] = power_type['description']
+    return types
+
+
+def get_all_power_types_from_clusters(nodegroups=None, ignore_errors=True):
+    """Query every cluster controller and obtain all known power types.
+
+    :return: a list of power types matching the schema
+        provisioningserver.power_schema.JSON_POWER_TYPE_PARAMETERS_SCHEMA
+    """
+    describe_power_types = []
+    if nodegroups is None:
+        nodegroups = NodeGroup.objects.all()
+    for ng in nodegroups:
+        try:
+            client = getClientFor(ng.uuid).wait()
+        except NoConnectionsAvailable:
+            logger.error(
+                "Unable to get RPC connection for cluster '%s'", ng.name)
+            if not ignore_errors:
+                raise ClusterUnavailable(
+                    "Unable to get RPC connection for cluster '%s'" % ng.name)
+        else:
+            call = partial(client, cluster.DescribePowerTypes)
+            describe_power_types.append(call)
+
+    merged_types = []
+    for response in async.gather(describe_power_types, timeout=10):
+        if isinstance(response, Failure):
+            # XXX: How to get the cluster ID/name here?
+            logger.error("Failure while communicating with cluster")
+            logger.error(response.getTraceback())
+            if not ignore_errors:
+                raise ClusterUnavailable(
+                    "Failure while communicating with cluster.")
+        else:
+            power_types = json.loads(response['power_types'])
+            for power_type in power_types:
+                name = power_type['name']
+                fields = power_type['fields']
+                description = power_type['description']
+                add_power_type_parameters(
+                    name, description, fields, merged_types)
+
+    return merged_types

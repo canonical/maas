@@ -15,64 +15,41 @@ __metaclass__ = type
 __all__ = []
 
 from django import forms
+from mock import sentinel
 import jsonschema
 from maasserver.config_forms import DictCharField
 from maasserver.fields import MACAddressFormField
-from maasserver.power_parameters import (
+from maasserver.clusterrpc import power_parameters
+from maasserver.clusterrpc.power_parameters import (
     JSON_POWER_TYPE_SCHEMA,
-    POWER_TYPE_PARAMETERS,
     POWER_TYPE_PARAMETER_FIELD_SCHEMA,
     add_power_type_parameters,
+    get_power_types,
+    get_power_type_parameters,
     get_power_type_parameters_from_json,
     make_form_field,
     )
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import MAASServerTestCase
-from provisioningserver.enum import get_power_types
-from provisioningserver.power_schema import make_json_field
-from provisioningserver.power.poweraction import PowerAction
-from testtools.matchers import (
-    AllMatch,
-    ContainsAll,
-    Equals,
-    IsInstance,
-    MatchesStructure,
+from maastesting.matchers import MockCalledOnceWith
+from maasserver.testing.testcase import MAASServerTestCase, MAASTestCase
+from provisioningserver.power_schema import (
+    JSON_POWER_TYPE_PARAMETERS,
+    make_json_field,
     )
-
-
-class TestPowerParameterDeclaration(MAASServerTestCase):
-
-    def test_POWER_TYPE_PARAMETERS_is_dict_with_power_type_keys(self):
-        power_types = set(get_power_types().keys())
-        self.assertIsInstance(POWER_TYPE_PARAMETERS, dict)
-        # The empty parameters is a special value just for the UI so
-        # remove it.
-        params = POWER_TYPE_PARAMETERS.copy()
-        del params['']
-        self.assertThat(power_types, ContainsAll(params))
-
-    def test_POWER_TYPE_PARAMETERS_values_are_DictCharField(self):
-        self.assertThat(
-            POWER_TYPE_PARAMETERS.values(),
-            AllMatch(IsInstance(DictCharField)))
-
-    def test_POWER_TYPE_PARAMETERS_DictCharField_objects_have_skip_check(self):
-        self.assertThat(
-            POWER_TYPE_PARAMETERS.values(),
-            AllMatch(MatchesStructure(skip_check=Equals(True))))
+from provisioningserver.power.poweraction import PowerAction
 
 
 class TestPowerActionRendering(MAASServerTestCase):
     """Test that the power templates can be rendered."""
 
     scenarios = [
-        (name, {'power_type': name})
-        for name in list(get_power_types())
+        (type['name'], {'power_type': type['name']})
+        for type in JSON_POWER_TYPE_PARAMETERS
     ]
 
     def make_random_parameters(self, power_change="on"):
         params = {'power_change': power_change}
-        param_definition = POWER_TYPE_PARAMETERS[self.power_type]
+        param_definition = get_power_type_parameters()[self.power_type]
         for name, field in param_definition.field_dict.items():
             params[name] = factory.make_name(name)
         return params
@@ -270,3 +247,38 @@ class TestAddPowerTypeParameters(MAASServerTestCase):
             parameters_set=parameters_set)
         jsonschema.validate(
             parameters_set, JSON_POWER_TYPE_SCHEMA)
+
+
+class TestPowerTypes(MAASTestCase):
+    # This is deliberately not using a MAASServerTestCase as that
+    # patches the get_all_power_types_from_clusters() function with data
+    # that's hidden from tests in here.  Instead the tests patch
+    # explicitly here.
+
+    def test_get_power_types_transforms_data_to_dict(self):
+        mocked = self.patch(
+            power_parameters, "get_all_power_types_from_clusters")
+        mocked.return_value = [
+            {
+                "name": "namevalue",
+                "description": "descvalue",
+            },
+            {
+                "name": "namevalue2",
+                "description": "descvalue2",
+            },
+        ]
+        expected = {
+            "namevalue": "descvalue",
+            "namevalue2": "descvalue2",
+            }
+        self.assertEqual(expected, get_power_types())
+
+    def test_get_power_types_passes_args_through(self):
+        mocked = self.patch(
+            power_parameters, "get_all_power_types_from_clusters")
+        mocked.return_value = []
+        get_power_types(sentinel.nodegroup, sentinel.ignore_errors)
+        self.assertThat(
+            mocked, MockCalledOnceWith(
+                sentinel.nodegroup, sentinel.ignore_errors))

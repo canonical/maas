@@ -636,9 +636,9 @@ class AdminLoggedInEnlistmentAPITest(MAASServerTestCase):
                 'mac_addresses': ['AA:BB:CC:DD:EE:FF'],
                 })
 
+        self.assertEqual(httplib.OK, response.status_code, response.content)
         node = Node.objects.get(
             system_id=json.loads(response.content)['system_id'])
-        self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(
             {'mac_address': new_mac_address},
             reload_object(node).power_parameters)

@@ -17,7 +17,6 @@ __all__ = [
     'IPMI_DRIVER',
     'IPMI_DRIVER_CHOICES',
     'UNKNOWN_POWER_TYPE',
-    'get_power_types',
     ]
 
 
@@ -26,23 +25,6 @@ __all__ = [
 # of power types since setting a node's power type to "I don't know"
 # from another type doens't make any sense.
 UNKNOWN_POWER_TYPE = ''
-
-
-def get_power_types():
-    """Return the choice of mechanism to control a node's power.
-
-    :return: Dictionary mapping power type to its description.
-    """
-    return {
-        "virsh": "virsh (virtual systems)",
-        "ether_wake": "Wake-on-LAN",
-        "fence_cdu": "Sentry Switch CDU",
-        "ipmi": "IPMI",
-        "moonshot": "iLO4 Moonshot Chassis",
-        "sm15k": "SeaMicro 15000",
-        "amt": "Intel AMT",
-        "dli": "Digital Loggers, Inc. PDU",
-        }
 
 
 class IPMI_DRIVER:

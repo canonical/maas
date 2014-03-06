@@ -28,6 +28,7 @@ from django.db import connection
 from django.test.client import encode_multipart
 from fixtures import Fixture
 from maasserver.fields import register_mac_type
+from maasserver.clusterrpc import power_parameters
 from maasserver.testing.factory import factory
 from maastesting.celery import CeleryFixture
 from maastesting.djangotestcase import (
@@ -37,6 +38,7 @@ from maastesting.djangotestcase import (
 from maastesting.fixtures import DisplayFixture
 from maastesting.testcase import MAASTestCase
 from mock import Mock
+import provisioningserver
 from provisioningserver.testing.tags import TagCachedKnowledgeFixture
 from provisioningserver.testing.worker_cache import WorkerCacheFixture
 
@@ -61,6 +63,13 @@ class MAASServerTestCase(DjangoTestCase):
         self.useFixture(TagCachedKnowledgeFixture())
         self.addCleanup(django_cache.clear)
         self.celery = self.useFixture(CeleryFixture())
+        # This patch prevents communication with a non-existent cluster
+        # controller when fetching power types.
+        static_params = (
+            provisioningserver.power_schema.JSON_POWER_TYPE_PARAMETERS)
+        self.patch(
+            power_parameters,
+            'get_all_power_types_from_clusters').return_value = static_params
 
     def client_log_in(self, as_admin=False):
         """Log `self.client` into MAAS.
