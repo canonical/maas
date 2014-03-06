@@ -19,6 +19,11 @@ config={{config_dir}}/{{ipmi_config}}
 power_address={{ip_address}}
 {{endif}}
 
+# This workaround is required on many BMCs, and should have no impact
+# on BMCs that don't require it.
+# See https://bugs.launchpad.net/maas/+bug/1287964
+workarounds="-W opensesspriv"
+
 # Determines the power command needed to execute the desired
 # action. This function receives ${power_change} as argument.
 formulate_power_command() {
@@ -55,9 +60,9 @@ issue_ipmi_command() {
     fi
 
     echo workaround |\
-    ${ipmi_chassis_config} ${driver_option} -h ${power_address} -u ${power_user} -p ${power_pass} --commit --filename ${config}
+    ${ipmi_chassis_config} ${workarounds} ${driver_option} -h ${power_address} -u ${power_user} -p ${power_pass} --commit --filename ${config}
     echo workaround |\
-    ${ipmipower} ${driver_option} -h ${power_address} -u ${power_user} -p ${power_pass} "$@"
+    ${ipmipower} ${workarounds} ${driver_option} -h ${power_address} -u ${power_user} -p ${power_pass} "$@"
 }
 
 # This script deliberately does not check the current power state
