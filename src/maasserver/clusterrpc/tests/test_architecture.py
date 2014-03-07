@@ -14,33 +14,59 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+
+from collections import OrderedDict
+
 from maasserver.clusterrpc import architecture
-from maastesting.factory import factory
-from maastesting.testcase import MAASTestCase
+from maasserver.testing.factory import factory
+from maasserver.testing.testcase import MAASServerTestCase
 
 
-class TestListSupportedArchitectures(MAASTestCase):
-
-    def test_lists_architectures_with_subarchitectures(self):
-        architectures = architecture.list_supported_architectures()
-        self.assertIsInstance(architectures, list)
-        self.assertIn('i386/generic', architectures)
-
-    def test_sorts_results(self):
-        # XXX 2014-03-06 gmb:
-        #     This needs be changed (when|if) the ARCHITECTURES enum
-        #     goes away completely.
-        self.patch(
-            architecture, 'ARCHITECTURES',
-            [factory.make_name('arch') for _ in range(3)])
-        self.assertEqual(
-            sorted(architecture.ARCHITECTURES),
-            architecture.list_supported_architectures())
-
-
-class TestListSupportedArchitectureChoices(MAASTestCase):
+class TestListSupportedArchitectures(MAASServerTestCase):
 
     def test_lists_architecture_choices(self):
-        choices = architecture.list_supported_architecture_choices()
-        self.assertIsInstance(choices, tuple)
-        self.assertIn(('i386/generic', "i386"), choices)
+        arch = factory.make_name('arch')
+        description = factory.make_name('description')
+        self.patch(architecture, 'call_clusters').return_value = [
+            {
+                'architectures': [
+                    {'name': arch, 'description': description},
+                ],
+            },
+            ]
+        choices = architecture.list_supported_architectures()
+        self.assertEqual(OrderedDict([(arch, description)]), choices)
+
+    def test_merges_results_from_multiple_nodegroups(self):
+        arch1, arch2, arch3 = (factory.make_name('arch') for _ in range(3))
+        self.patch(architecture, 'call_clusters').return_value = [
+            {'architectures': [
+                {'name': arch1, 'description': arch1},
+                {'name': arch3, 'description': arch3},
+                ]},
+            {'architectures': [
+                {'name': arch2, 'description': arch2},
+                {'name': arch3, 'description': arch3},
+                ]},
+            ]
+        choices = architecture.list_supported_architectures()
+        expected_choices = OrderedDict(
+            (name, name) for name in sorted([arch1, arch2, arch3]))
+        self.assertEqual(expected_choices, choices)
+
+    def test_returns_empty_list_if_there_are_no_node_groups(self):
+        self.assertEqual(
+            OrderedDict(), architecture.list_supported_architectures())
+
+    def test_sorts_results(self):
+        architectures = [factory.make_name('arch') for _ in range(3)]
+        self.patch(architecture, 'call_clusters').return_value = [{
+            'architectures': [
+                {'name': arch, 'description': factory.make_name('desc')}
+                for arch in architectures
+                ],
+            },
+            ]
+        self.assertEqual(
+            sorted(architectures),
+            architecture.list_supported_architectures().keys())
