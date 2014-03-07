@@ -15,31 +15,28 @@ __metaclass__ = type
 __all__ = []
 
 from django import forms
+from mock import sentinel
 import jsonschema
-from maasserver.clusterrpc import power_parameters
-from maasserver.clusterrpc.power_parameters import (
-    add_power_type_parameters,
-    get_power_type_parameters,
-    get_power_type_parameters_from_json,
-    get_power_types,
-    JSON_POWER_TYPE_SCHEMA,
-    make_form_field,
-    POWER_TYPE_PARAMETER_FIELD_SCHEMA,
-    )
 from maasserver.config_forms import DictCharField
 from maasserver.fields import MACAddressFormField
-from maasserver.testing.factory import factory
-from maasserver.testing.testcase import (
-    MAASServerTestCase,
-    MAASTestCase,
+from maasserver.clusterrpc import power_parameters
+from maasserver.clusterrpc.power_parameters import (
+    JSON_POWER_TYPE_SCHEMA,
+    POWER_TYPE_PARAMETER_FIELD_SCHEMA,
+    add_power_type_parameters,
+    get_power_types,
+    get_power_type_parameters,
+    get_power_type_parameters_from_json,
+    make_form_field,
     )
+from maasserver.testing.factory import factory
 from maastesting.matchers import MockCalledOnceWith
-from mock import sentinel
-from provisioningserver.power.poweraction import PowerAction
+from maasserver.testing.testcase import MAASServerTestCase, MAASTestCase
 from provisioningserver.power_schema import (
     JSON_POWER_TYPE_PARAMETERS,
     make_json_field,
     )
+from provisioningserver.power.poweraction import PowerAction
 
 
 class TestPowerActionRendering(MAASServerTestCase):
