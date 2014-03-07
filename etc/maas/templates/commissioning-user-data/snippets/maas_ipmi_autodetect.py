@@ -199,8 +199,10 @@ def apply_ipmi_user_settings(user_settings):
 def make_ipmi_user_settings(username, password):
     """Factory for IPMI user settings."""
     # Some BMCs care about the order these settings are applied in,
-    # particulary what's done prior to the user being enabled. Don't
-    # change the order of these without lots of testing.
+    # particulary what's done prior to the user being enabled. This
+    # behavior was seen on Dell Poweredge R240 systems, but may affect
+    # others too. Don't change the order of these without lots of
+    # testing.
     user_settings = OrderedDict((
         ('Username', username),
         ('Password', password),
