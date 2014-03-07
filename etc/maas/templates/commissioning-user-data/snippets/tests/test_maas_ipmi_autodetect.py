@@ -17,10 +17,13 @@ __all__ = []
 from collections import OrderedDict
 import subprocess
 
+from mock import call
+
 from maastesting.factory import factory
 from maastesting.matchers import (
     MockAnyCall,
     MockCalledOnceWith,
+    MockCallsMatch,
     )
 from maastesting.testcase import MAASTestCase
 from snippets import maas_ipmi_autodetect
@@ -30,9 +33,11 @@ from snippets.maas_ipmi_autodetect import (
     bmc_supports_lan2_0,
     bmc_user_get,
     commit_ipmi_settings,
+    configure_ipmi_user,
     format_user_key,
     IPMIError,
     list_user_numbers,
+    make_ipmi_user_settings,
     pick_user_number,
     pick_user_number_from_list,
     run_command,
@@ -381,7 +386,7 @@ class TestApplyIpmiUserSettings(MAASTestCase):
         """Ensure the user settings are committed and verified."""
         user_number = 'User2'
         self.patch(maas_ipmi_autodetect,
-                   'pick_user_number').return_value = 'User2'
+                   'pick_user_number').return_value = user_number
         bus_mock = self.patch(maas_ipmi_autodetect, 'bmc_user_set')
         vius_mock = self.patch(maas_ipmi_autodetect,
                                'verify_ipmi_user_settings')
@@ -394,6 +399,52 @@ class TestApplyIpmiUserSettings(MAASTestCase):
         self.assertThat(
             vius_mock,
             MockCalledOnceWith(user_number, user_settings))
+
+    def test_preserves_settings_order(self):
+        """Ensure user settings are applied in order of iteration."""
+        user_number = 'User2'
+        self.patch(maas_ipmi_autodetect,
+                   'pick_user_number').return_value = user_number
+        bus_mock = self.patch(maas_ipmi_autodetect, 'bmc_user_set')
+        self.patch(maas_ipmi_autodetect, 'verify_ipmi_user_settings')
+        user_settings = OrderedDict((('Username', 1), ('b', 2), ('c', 3)))
+        apply_ipmi_user_settings(user_settings)
+        expected_calls = (
+            call(user_number, key, value)
+            for key, value in user_settings.iteritems()
+        )
+        self.assertThat(bus_mock, MockCallsMatch(*expected_calls))
+
+
+class TestMakeIPMIUserSettings(MAASTestCase):
+    """Tests for make_ipmi_user_settings()."""
+
+    def test_settings_ordered_correctly(self):
+        """Ensure user settings are listed in the right order."""
+        settings = make_ipmi_user_settings('user', 'pass')
+        expected = ['Username', 'Password', 'Enable_User']
+        self.assertEqual(expected, settings.keys()[:3])
+
+    def test_uses_username_and_password(self):
+        """Ensure username and password supplied are used."""
+        username = 'user'
+        password = 'pass'
+        settings = make_ipmi_user_settings(username, password)
+        self.assertEquals(username, settings['Username'])
+        self.assertEquals(password, settings['Password'])
+
+
+class TestConfigureIPMIUser(MAASTestCase):
+    """Tests for configure_ipmi_user()."""
+
+    def test_preserves_setting_order(self):
+        """Ensure the order of user settings isn't modified."""
+        expected = OrderedDict((('a', 1), ('b', 2), ('c', 3)))
+        self.patch(maas_ipmi_autodetect,
+                   'make_ipmi_user_settings').return_value = expected.copy()
+        recorder = self.patch(maas_ipmi_autodetect, 'apply_ipmi_user_settings')
+        configure_ipmi_user('DC', 'DC')
+        self.assertThat(recorder, MockCalledOnceWith(expected))
 
 
 class TestCommitIPMISettings(MAASTestCase):

@@ -37,6 +37,8 @@ import string
 import subprocess
 import time
 
+from collections import OrderedDict
+
 
 class IPMIError(Exception):
     """An error related to IPMI."""
@@ -194,6 +196,27 @@ def apply_ipmi_user_settings(user_settings):
     verify_ipmi_user_settings(ipmi_user_number, user_settings)
 
 
+def make_ipmi_user_settings(username, password):
+    """Factory for IPMI user settings."""
+    # Some BMCs care about the order these settings are applied in,
+    # particulary what's done prior to the user being enabled. Don't
+    # change the order of these without lots of testing.
+    user_settings = OrderedDict((
+        ('Username', username),
+        ('Password', password),
+        ('Enable_User', 'Yes'),
+        ('Lan_Enable_IPMI_Msgs', 'Yes'),
+        ('Lan_Privilege_Limit', 'Administrator'),
+    ))
+    return user_settings
+
+
+def configure_ipmi_user(username, password):
+    """Create or configure an IPMI user for remote use."""
+    user_settings = make_ipmi_user_settings(username, password)
+    apply_ipmi_user_settings(user_settings)
+
+
 def commit_ipmi_settings(config):
     run_command(('bmc-config', '--commit', '--filename', config))
 
@@ -251,17 +274,7 @@ def main():
     IPMI_MAAS_USER = "maas"
     IPMI_MAAS_PASSWORD = generate_random_password()
 
-    # Configure IPMI user/password
-
-    user_settings = {
-        'Username': IPMI_MAAS_USER,
-        'Password': IPMI_MAAS_PASSWORD,
-        'Enable_User': 'Yes',
-        'Lan_Enable_IPMI_Msgs': 'Yes',
-        'Lan_Privilege_Limit': 'Administrator'
-    }
-
-    apply_ipmi_user_settings(user_settings)
+    configure_ipmi_user(IPMI_MAAS_USER, IPMI_MAAS_PASSWORD)
 
     # Commit other IPMI settings
     if args.configdir:
