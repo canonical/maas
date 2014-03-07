@@ -215,7 +215,7 @@ class TestClusterProtocol_DescribePowerTypes(MAASTestCase):
 
         self.assertThat(response, KeysEqual("power_types"))
         self.assertItemsEqual(
-            JSON_POWER_TYPE_PARAMETERS, json.loads(response["power_types"]))
+            JSON_POWER_TYPE_PARAMETERS, response["power_types"])
 
 
 class TestClusterService(MAASTestCase):

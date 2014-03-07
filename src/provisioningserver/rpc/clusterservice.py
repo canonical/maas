@@ -91,7 +91,7 @@ class Cluster(amp.AMP, object):
         Implementation of
         :py:class:`~provisioningserver.rpc.cluster.DescribePowerTypes`.
         """
-        return {'power_types': json.dumps(JSON_POWER_TYPE_PARAMETERS)}
+        return {'power_types': JSON_POWER_TYPE_PARAMETERS}
 
     @cluster.ListSupportedArchitectures.responder
     def list_supported_architectures(self):
