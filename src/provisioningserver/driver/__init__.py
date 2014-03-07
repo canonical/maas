@@ -12,7 +12,12 @@ from __future__ import (
 str = None
 
 __metaclass__ = type
-__all__ = []
+__all__ = [
+    "Architecture",
+    "ArchitectureRegistry",
+    "BootResource",
+    "HardwareDriver",
+    ]
 
 from abc import (
     ABCMeta,
@@ -24,147 +29,95 @@ from abc import (
 class HardwareDriver:
     """A rough skeleton for a hardware driver.
 
-    Lots remains to be determined: this is a guide, not a prescription.
-    However, three methods stand out:
-
-    * ``getControlContext``
-
-    * ``getResourceContext``
-
-    * ``getDiscoveryContext``
-
-    Many drivers will undoubtedly share the IPMI control implementation,
-    but may have quite different boot resource requirements, or a
-    proprietary discovery agent. Dividing responsibilities at this level
-    seems to be about right for modularity. We'll learn more as this
-    feature develops.
-
-    We also need a way to map to this into the RPC space, which is flat,
-    and does not have accomodation for maintaining object references
-    over the wire. A ``PowerOn`` command, for example, would receive the
-    name of the driver for that machine, look it up, get the
-    :class:`HardwareControlContext`, then call `setPowerOn`.
     """
 
     __metaclass__ = ABCMeta
 
-    @abstractproperty
-    def name(self):
-        """A stable and unique name for this driver.
-
-        For example, "generic-impi-ia" would be suitable for a generic
-        IPMI implementation for Intel Architecture machines.
-
-        :return: A string containing only [a-zA-Z0-9-+/*].
+    @abstractmethod
+    def __init__(self, architecture_driver, power_type):  # release series?
+        """Constructor for every hardware driver.
+        TODO params.
         """
 
     @abstractproperty
-    def description(self):
-        """A description of this driver, suitable for human consumption.
+    def architecture(self):
+        """The :class:`ArchitectureDriver` instance for this driver."""
 
-        :return: A ``(one-line-desc, long-desc)`` tuple.
-        """
-
-    @abstractmethod
-    def getControlContext(self):
-        """Returns a :class:`HardwareControlContext` for this driver.
-
-        For example, this might return an IPMI implementation.
-        """
+    @abstractproperty
+    def power_action(self):
+        """The :class:`PowerAction` instance for this driver."""
 
     @abstractmethod
-    def getResourceContext(self):
-        """Returns a :class:`HardwareResourceContext` for this driver.
-
-        For example, this might return a Simple Streams implementation
-        that can be shared between drivers.
-        """
+    def kernel_options(self, purpose):
+        """Custom kernel options for kernels booted by this driver."""
+        # Used by kernel_opts.py
 
     @abstractmethod
-    def getDiscoveryContext(self):
-        """Returns a :class:`HardwareDiscoverContext` for this driver.
+    def get_ephemeral_name(self, release):
+        """Return the ephemeral image name used for iscsi target."""
+        # Used by kernel_opts.py
 
-        For example, this might return a wrapper around a shared
-        ``ipmidetectd`` daemon, or an interface to a vendor-specific
-        agent.
+
+class Architecture:
+
+    def __init__(self, name, pxealiases=None):
+        """Represents an architecture in the driver context.
+
+        :param name: The architecture name as used in MAAS.
+            arch/subarch or just arch.
+        :param pxealiases: The optional list of names used if the
+            hardware uses a different name when requesting its bootloader.
         """
+        self.name = name
+        self.pxealiases = pxealiases
+
+    def map_to_maas_name(self, alias):
+        if alias in self.pxealiases:
+            return self.name
+        return alias
 
 
-class HardwareControlContext:
+class BootResource:
+    """Abstraction of ephemerals and pxe resources required for a hardware
+    driver.
+
+    This resource is responsible for importing and reporting on
+    what is potentially available in relation to a cluster controller.
+    """
 
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def setPowerOn(self, machine):
-        """Turn the power on.
+    def import_resources(self, at_location, filter=None):
+        """Import the specified resources.
 
-        :param machine: Information about the machine.
-        """
-
-    @abstractmethod
-    def setPowerOff(self, machine):
-        """Turn the power off.
-
-        :param machine: Information about the machine.
-        """
-
-    @abstractmethod
-    def isPowerOn(self, machine):
-        """True if the machine is switched on.
-
-        :param machine: Information about the machine.
-        """
-
-
-class HardwareResourceContext:
-
-    __metaclass__ = ABCMeta
-
-    @abstractmethod
-    def updateResources(self):
-        """Update the resources this driver needs to operate.
-
-        For those drivers that are in use, the region controller will
-        ask them to update their own resources, perhaps by talking to a
-        shared Simple Streams broker, or downloading from a vendor site.
-
-        These resources, once obtained, need to be registered with the
-        TFTP server, for example.
-
+        :param at_location: URL to a Simplestreams index or a local path
+            to a directory containing boot resources.
+        :param filter: A simplestreams filter.
+            e.g. "release=trusty label=beta2 arch=amd64"
+            This is ignored if the location is a local path, all resources
+            at the location will be imported.
         TBD: How to provide progress information.
         """
 
     @abstractmethod
-    def deleteResources(self):
-        """Delete all the resources this driver has previously pulled in.
+    def describe_resources(self, at_location):
+        """Enumerate all the boot resources.
 
-        If a driver is no longer in use, the region may choose to remove
-        its resources. They would also need to be deregistered from the
-        TFTP server, for example.
-        """
+        :param at_location: URL to a Simplestreams index or a local path
+            to a directory containing boot resources.
 
-    @abstractmethod
-    def canEphemeralBoot(self, machine, system):
-        """Return true if this driver has the resources to boot the machine.
-
-        This should return false if not everything required has been
-        downloaded, for example.
-
-        :param machine: Information about the machine.
-
-        :param system: The system to boot, e.g. Ubuntu 14.04 on AMD64.
-        """
-
-    @abstractmethod
-    def canInstall(self, machine, system):
-        """Return true if this driver has the resources to install the machine.
-
-        This should return false if not everything required has been
-        downloaded, for example.
-
-        :param machine: Information about the machine.
-
-        :param system: The system to install, e.g. Ubuntu 14.04 on AMD64.
+        :return: a list of dictionaries describing the available resources,
+            which will need to be imported so the driver can use them.
+        [
+            {
+                "release": "trusty",
+                "arch": "amd64",
+                "label": "beta2",
+                "size": 12344556,
+            }
+            ,
+        ]
         """
 
 
@@ -179,3 +132,29 @@ class HardwareDiscoverContext:
     @abstractmethod
     def stopDiscovery(self):
         """TBD"""
+
+
+class ArchitectureRegistry:
+    """Store all known architectures in here."""
+
+    architectures = []
+
+    @classmethod
+    def register_architecture(cls, architecture):
+        cls.architectures.append(architecture)
+
+
+builtin_architectures = [
+    Architecture("i386"),
+    Architecture("amd64"),
+    Architecture("armhf", ["arm"]),
+]
+for arch in builtin_architectures:
+    ArchitectureRegistry.register_architecture(arch)
+
+
+# TODO:
+#  * registry for power types
+#  * registry for boot resources
+#  * registry for actual drivers
+#  * hook RPC calls to registry data
