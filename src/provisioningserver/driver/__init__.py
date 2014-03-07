@@ -60,15 +60,18 @@ class HardwareDriver:
 
 class Architecture:
 
-    def __init__(self, name, pxealiases=None):
+    def __init__(self, name, description, pxealiases=None):
         """Represents an architecture in the driver context.
 
         :param name: The architecture name as used in MAAS.
             arch/subarch or just arch.
+        :param description: The human-readable description for the
+            architecture.
         :param pxealiases: The optional list of names used if the
             hardware uses a different name when requesting its bootloader.
         """
         self.name = name
+        self.description = description
         self.pxealiases = pxealiases
 
     def map_to_maas_name(self, alias):
@@ -145,9 +148,9 @@ class ArchitectureRegistry:
 
 
 builtin_architectures = [
-    Architecture("i386"),
-    Architecture("amd64"),
-    Architecture("armhf", ["arm"]),
+    Architecture("i386/generic", 'i386'),
+    Architecture("amd64/generic", 'amd64'),
+    Architecture("armhf/highbank", "armhf/highbank", ["arm"]),
 ]
 for arch in builtin_architectures:
     ArchitectureRegistry.register_architecture(arch)

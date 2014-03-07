@@ -27,6 +27,7 @@ from provisioningserver.cluster_config import (
     get_maas_url,
     )
 from provisioningserver.config import Config
+from provisioningserver.driver import ArchitectureRegistry
 from provisioningserver.power_schema import JSON_POWER_TYPE_PARAMETERS
 from provisioningserver.pxe import tftppath
 from provisioningserver.rpc import (
@@ -94,13 +95,10 @@ class Cluster(amp.AMP, object):
 
     @cluster.ListSupportedArchitectures.responder
     def list_supported_architectures(self):
-        # XXX jtv 2014-03-06: Hardcoded for now.  Might get this from e.g.
-        # simplestreams upstream.
         return {
             'architectures': [
-                {'name': 'i386/generic', 'description': 'i386'},
-                {'name': 'amd64/generic', 'description': 'amd64'},
-                {'name': 'armhf/highbank', 'description': 'armhf/highbank'},
+                {'name': arch.name, 'description': arch.description}
+                for arch in ArchitectureRegistry.architectures
                 ],
             }
 

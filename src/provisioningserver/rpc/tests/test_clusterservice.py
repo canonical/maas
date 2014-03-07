@@ -619,6 +619,8 @@ class TestClusterProtocol_ListSupportedArchitectures(MAASTestCase):
     def test_returns_architectures(self):
         architectures = yield call_responder(
             Cluster(), cluster.ListSupportedArchitectures, {})
+        # Assert that one of the built-in architectures is in the data
+        # returned by ListSupportedArchitectures.
         self.assertIn(
             {
                 'name': 'i386/generic',
