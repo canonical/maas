@@ -23,13 +23,8 @@ __all__ = [
 ]
 
 from provisioningserver.rpc.arguments import StructureAsJSON
+from provisioningserver.rpc.common import Identify
 from twisted.protocols import amp
-
-
-class Identify(amp.Command):
-    """Request the identity of the cluster, i.e. its UUID."""
-
-    response = [(b"uuid", amp.Unicode())]
 
 
 class ListBootImages(amp.Command):

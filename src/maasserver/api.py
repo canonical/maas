@@ -148,6 +148,10 @@ from maasserver.apidoc import (
     find_api_resources,
     generate_api_docs,
     )
+from maasserver.clusterrpc.power_parameters import (
+    get_all_power_types_from_clusters,
+    get_power_types,
+    )
 from maasserver.components import (
     discard_persistent_error,
     register_persistent_error,
@@ -213,10 +217,6 @@ from maasserver.models.nodeprobeddetails import (
     )
 from maasserver.node_action import Commission
 from maasserver.node_constraint_filter_forms import AcquireNodeForm
-from maasserver.clusterrpc.power_parameters import (
-    get_all_power_types_from_clusters,
-    get_power_types,
-    )
 from maasserver.preseed import (
     compose_enlistment_preseed_url,
     compose_preseed_url,
@@ -241,9 +241,7 @@ from metadataserver.models import (
 from piston.emitters import JSONEmitter
 from piston.handler import typemapper
 from piston.utils import rc
-from provisioningserver.enum import (
-    UNKNOWN_POWER_TYPE,
-    )
+from provisioningserver.enum import UNKNOWN_POWER_TYPE
 from provisioningserver.kernel_opts import KernelParameters
 import simplejson as json
 
