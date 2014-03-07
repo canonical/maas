@@ -35,24 +35,16 @@ __all__ = [
     ]
 
 
-from functools import partial
-
 from django import forms
 from jsonschema import validate
-from maasserver import logger
+from maasserver.clusterrpc.utils import call_clusters
 from maasserver.config_forms import DictCharField
-from maasserver.exceptions import ClusterUnavailable
 from maasserver.fields import MACAddressFormField
-from maasserver.models import NodeGroup
-from maasserver.rpc import getClientFor
-from maasserver.utils import async
 from provisioningserver.power_schema import (
     JSON_POWER_TYPE_SCHEMA,
     POWER_TYPE_PARAMETER_FIELD_SCHEMA,
     )
 from provisioningserver.rpc import cluster
-from provisioningserver.rpc.exceptions import NoConnectionsAvailable
-from twisted.python.failure import Failure
 
 
 FIELD_TYPE_MAPPINGS = {
@@ -185,38 +177,15 @@ def get_all_power_types_from_clusters(nodegroups=None, ignore_errors=True):
     :return: a list of power types matching the schema
         provisioningserver.power_schema.JSON_POWER_TYPE_PARAMETERS_SCHEMA
     """
-    describe_power_types = []
-    if nodegroups is None:
-        nodegroups = NodeGroup.objects.all()
-    for ng in nodegroups:
-        try:
-            client = getClientFor(ng.uuid).wait()
-        except NoConnectionsAvailable:
-            logger.error(
-                "Unable to get RPC connection for cluster '%s'", ng.name)
-            if not ignore_errors:
-                raise ClusterUnavailable(
-                    "Unable to get RPC connection for cluster '%s'" % ng.name)
-        else:
-            call = partial(client, cluster.DescribePowerTypes)
-            describe_power_types.append(call)
-
     merged_types = []
-    for response in async.gather(describe_power_types, timeout=10):
-        if isinstance(response, Failure):
-            # XXX: How to get the cluster ID/name here?
-            logger.error("Failure while communicating with cluster")
-            logger.error(response.getTraceback())
-            if not ignore_errors:
-                raise ClusterUnavailable(
-                    "Failure while communicating with cluster.")
-        else:
-            power_types = response['power_types']
-            for power_type in power_types:
-                name = power_type['name']
-                fields = power_type['fields']
-                description = power_type['description']
-                add_power_type_parameters(
-                    name, description, fields, merged_types)
-
+    responses = call_clusters(
+        cluster.DescribePowerTypes, nodegroups=nodegroups,
+        ignore_errors=ignore_errors)
+    for response in responses:
+        power_types = response['power_types']
+        for power_type in power_types:
+            name = power_type['name']
+            fields = power_type['fields']
+            description = power_type['description']
+            add_power_type_parameters(name, description, fields, merged_types)
     return merged_types
