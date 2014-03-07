@@ -25,6 +25,8 @@ from abc import (
     abstractproperty,
     )
 
+from provisioningserver.driver.registry import Registry
+
 
 class HardwareDriver:
     """A rough skeleton for a hardware driver.
@@ -90,6 +92,9 @@ class BootResource:
 
     __metaclass__ = ABCMeta
 
+    def __init__(self, name):
+        self.name = name
+
     @abstractmethod
     def import_resources(self, at_location, filter=None):
         """Import the specified resources.
@@ -137,14 +142,10 @@ class HardwareDiscoverContext:
         """TBD"""
 
 
-class ArchitectureRegistry:
-    """Store all known architectures in here."""
-
-    architectures = []
-
-    @classmethod
-    def register_architecture(cls, architecture):
-        cls.architectures.append(architecture)
+BootResourceRegistry = type(
+    b"BootResourceRegistry", (Registry,), dict(registry_name="bootresource"))
+ArchitectureRegistry = type(
+    b"ArchitectureRegistry", (Registry,), dict(registry_name="architecture"))
 
 
 builtin_architectures = [
@@ -153,11 +154,11 @@ builtin_architectures = [
     Architecture("armhf/highbank", "armhf/highbank", ["arm"]),
 ]
 for arch in builtin_architectures:
-    ArchitectureRegistry.register_architecture(arch)
+    ArchitectureRegistry.register_item(arch)
+
 
 
 # TODO:
 #  * registry for power types
-#  * registry for boot resources
 #  * registry for actual drivers
 #  * hook RPC calls to registry data

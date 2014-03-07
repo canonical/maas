@@ -98,7 +98,7 @@ class Cluster(amp.AMP, object):
         return {
             'architectures': [
                 {'name': arch.name, 'description': arch.description}
-                for arch in ArchitectureRegistry.architectures
+                for arch in ArchitectureRegistry.get_items()
                 ],
             }
 
