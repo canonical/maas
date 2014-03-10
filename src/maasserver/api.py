@@ -1685,7 +1685,7 @@ class NodeGroupHandler(OperationsHandler):
         """
         nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
 
-        model = get_mandatory_param(request.data, 'mode')
+        model = get_mandatory_param(request.data, 'model')
         if model == 'seamicro15k':
             mac = get_mandatory_param(request.data, 'mac')
             username = get_mandatory_param(request.data, 'username')
