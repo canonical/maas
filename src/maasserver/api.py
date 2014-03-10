@@ -342,7 +342,7 @@ class NodeHandler(OperationsHandler):
             parameters for this node should be checked against the expected
             power parameters for the node's power type ('true' or 'false').
             The default is 'false'.
-        :type power_parameters_skip_validation: unicode
+        :type power_parameters_skip_check: unicode
         :param zone: Name of a valid physical zone in which to place this node
         :type zone: unicode
         """
