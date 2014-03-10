@@ -20,8 +20,13 @@ __all__ = [
     "ReportBootImages",
 ]
 
-from provisioningserver.rpc.common import Identify
 from twisted.protocols import amp
+
+
+class Identify(amp.Command):
+    """Request the identity of the region, i.e. the event-loop name."""
+
+    response = [(b"name", amp.Unicode())]
 
 
 class ReportBootImages(amp.Command):

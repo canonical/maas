@@ -13,19 +13,11 @@ str = None
 
 __metaclass__ = type
 __all__ = [
-    "Identify",
     "Client",
 ]
 
-from provisioningserver.rpc.interfaces import IConnection
+
 from provisioningserver.utils import asynchronous
-from twisted.protocols import amp
-
-
-class Identify(amp.Command):
-    """Request the identity of the remote side, e.g. its UUID."""
-
-    response = [(b"ident", amp.Unicode())]
 
 
 class Client:
@@ -38,14 +30,7 @@ class Client:
 
     def __init__(self, conn):
         super(Client, self).__init__()
-        assert IConnection.providedBy(conn), (
-            "%r does not provide IConnection" % (conn,))
         self._conn = conn
-
-    @property
-    def ident(self):
-        """Something that identifies the far end of the connection."""
-        return self._conn.ident
 
     @asynchronous
     def __call__(self, cmd, **kwargs):

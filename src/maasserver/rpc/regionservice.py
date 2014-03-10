@@ -38,7 +38,6 @@ from provisioningserver.rpc import (
     exceptions,
     region,
     )
-from provisioningserver.rpc.interfaces import IConnection
 from provisioningserver.utils import (
     asynchronous,
     get_all_interface_addresses,
@@ -59,7 +58,6 @@ from twisted.python import (
     filepath,
     log,
     )
-from zope.interface import implementer
 
 
 class Region(amp.AMP):
@@ -76,7 +74,7 @@ class Region(amp.AMP):
         Implementation of
         :py:class:`~provisioningserver.rpc.region.Identify`.
         """
-        return {b"ident": eventloop.loop.name}
+        return {b"name": eventloop.loop.name}
 
     @region.ReportBootImages.responder
     def report_boot_images(self, uuid, images):
@@ -107,7 +105,6 @@ class Region(amp.AMP):
         }
 
 
-@implementer(IConnection)
 class RegionServer(Region):
     """The RPC protocol supported by a region controller, server version.
 
@@ -123,11 +120,6 @@ class RegionServer(Region):
 
     factory = None
     uuid = None
-
-    @property
-    def ident(self):
-        """The ident of the remote cluster."""
-        return self.uuid
 
     def connectionMade(self):
         super(RegionServer, self).connectionMade()

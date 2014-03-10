@@ -36,7 +36,6 @@ from provisioningserver.rpc import (
     exceptions,
     region,
     )
-from provisioningserver.rpc.interfaces import IConnection
 from twisted.application.internet import (
     StreamServerEndpointService,
     TimerService,
@@ -56,7 +55,6 @@ from twisted.python import (
     log,
     )
 from twisted.web.client import getPage
-from zope.interface import implementer
 
 
 class Cluster(amp.AMP, object):
@@ -73,7 +71,7 @@ class Cluster(amp.AMP, object):
         Implementation of
         :py:class:`~provisioningserver.rpc.cluster.Identify`.
         """
-        return {b"ident": get_cluster_uuid().decode("ascii")}
+        return {b"uuid": get_cluster_uuid().decode("ascii")}
 
     @cluster.ListBootImages.responder
     def list_boot_images(self):
@@ -137,7 +135,6 @@ class ClusterService(StreamServerEndpointService):
             Factory.forProtocol(Cluster))
 
 
-@implementer(IConnection)
 class ClusterClient(Cluster):
     """The RPC protocol supported by a cluster controller, client version.
 
@@ -162,11 +159,6 @@ class ClusterClient(Cluster):
         self.address = address
         self.eventloop = eventloop
         self.service = service
-
-    @property
-    def ident(self):
-        """The ident of the remote event-loop."""
-        return self.eventloop
 
     def connectionMade(self):
         super(ClusterClient, self).connectionMade()
