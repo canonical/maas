@@ -27,19 +27,19 @@ class TestListSupportedArchitectures(MAASServerTestCase):
     def test_lists_architecture_choices(self):
         arch = factory.make_name('arch')
         description = factory.make_name('description')
-        self.patch(architecture, 'call_clusters').return_value = [
+        self.patch(architecture, 'call_clusters').return_value = iter([
             {
                 'architectures': [
                     {'name': arch, 'description': description},
                 ],
             },
-            ]
+        ])
         choices = architecture.list_supported_architectures()
         self.assertEqual(OrderedDict([(arch, description)]), choices)
 
     def test_merges_results_from_multiple_nodegroups(self):
         arch1, arch2, arch3 = (factory.make_name('arch') for _ in range(3))
-        self.patch(architecture, 'call_clusters').return_value = [
+        self.patch(architecture, 'call_clusters').return_value = iter([
             {'architectures': [
                 {'name': arch1, 'description': arch1},
                 {'name': arch3, 'description': arch3},
@@ -48,7 +48,7 @@ class TestListSupportedArchitectures(MAASServerTestCase):
                 {'name': arch2, 'description': arch2},
                 {'name': arch3, 'description': arch3},
                 ]},
-            ]
+        ])
         choices = architecture.list_supported_architectures()
         expected_choices = OrderedDict(
             (name, name) for name in sorted([arch1, arch2, arch3]))
@@ -60,13 +60,12 @@ class TestListSupportedArchitectures(MAASServerTestCase):
 
     def test_sorts_results(self):
         architectures = [factory.make_name('arch') for _ in range(3)]
-        self.patch(architecture, 'call_clusters').return_value = [{
-            'architectures': [
+        self.patch(architecture, 'call_clusters').return_value = iter([
+            {'architectures': [
                 {'name': arch, 'description': factory.make_name('desc')}
                 for arch in architectures
-                ],
-            },
-            ]
+                ]},
+        ])
         self.assertEqual(
             sorted(architectures),
             architecture.list_supported_architectures().keys())

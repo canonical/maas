@@ -36,8 +36,11 @@ def call_clusters(command, nodegroups=None, ignore_errors=True):
     :param command: An :class:`amp.Command` to call on the clusters.
     :param ignore_errors: If True, errors encountered whilst calling
         `command` on the clusters won't raise an exception.
-    :return: A list of results, which will be either :class:`Failure` or
-        the dict returned by the RPC call.
+    :return: A generator of results, i.e. the dicts returned by the RPC
+        call.
+    :raises: :py:class:`ClusterUnavailable` when a cluster is not
+        connected or there's an error during the call, and errors are
+        not being ignored.
     """
     calls = []
     if nodegroups is None:
@@ -55,11 +58,7 @@ def call_clusters(command, nodegroups=None, ignore_errors=True):
             call = partial(client, command)
             calls.append(call)
 
-    # We deliberately listify this. async.gather() is a generator, and
-    # iterating over it multiple times seems to leave the cluster RPC
-    # connection in a bad state.
-    responses = list(async.gather(calls, timeout=10))
-    for response in responses:
+    for response in async.gather(calls, timeout=10):
         if isinstance(response, Failure):
             # XXX: How to get the cluster ID/name here?
             logger.error("Failure while communicating with cluster")
@@ -67,6 +66,5 @@ def call_clusters(command, nodegroups=None, ignore_errors=True):
             if not ignore_errors:
                 raise ClusterUnavailable(
                     "Failure while communicating with cluster.")
-    return [
-        response for response in responses
-        if not isinstance(response, Failure)]
+        else:
+            yield response
