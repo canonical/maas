@@ -20,9 +20,35 @@ from itertools import count
 from Queue import Queue
 
 from crochet import wait_for_reactor
+from maasserver.exceptions import IteratorReusedError
 from twisted.internet import reactor
 from twisted.internet.defer import maybeDeferred
 from twisted.python import log
+
+
+class UseOnceIterator:
+    """An iterator that is usable only once."""
+
+    def __init__(self, *args):
+        """Create a new :class:`UseOnceIterator`.
+
+        Takes the same arguments as iter().
+        """
+        self.iterable = iter(*args)
+        self.has_run_once = False
+
+    def __iter__(self):
+        return self
+
+    def next(self):
+        if self.has_run_once:
+            raise IteratorReusedError(
+                "It is not possible to reuse a UseOnceIterator.")
+        try:
+            return self.iterable.next()
+        except StopIteration:
+            self.has_run_once = True
+            raise
 
 
 @wait_for_reactor
@@ -38,9 +64,10 @@ def gather(calls, timeout=10.0):
     :param timeout: The number of seconds before further results are
         ignored. Outstanding results will be cancelled.
 
-    :return: An iterator of results. A result might be a failure,
-        i.e. an instance of :py:class:`twisted.python.failure.Failure`,
-        or a valid result; it's up to the caller to check.
+    :return: A :class:`UseOnceIterator` of results. A result might be a
+        failure, i.e. an instance of
+        :py:class:`twisted.python.failure.Failure`, or a valid result;
+        it's up to the caller to check.
 
     """
 
@@ -96,4 +123,4 @@ def gather(calls, timeout=10.0):
 
     # Return an iterator to the invoking thread that will stop at the
     # first sign of the `done` sentinel.
-    return iter(queue.get, done)
+    return UseOnceIterator(queue.get, done)

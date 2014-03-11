@@ -21,6 +21,7 @@ __all__ = [
     "MAASAPINotFound",
     "NodeStateViolation",
     "NodeGroupMisconfiguration",
+    "IteratorReusedError",
     ]
 
 
@@ -108,3 +109,7 @@ class NodeGroupMisconfiguration(MAASAPIException):
 class ClusterUnavailable(MAASAPIException):
     """A Cluster Controller is not available for RPC queries."""
     api_error = httplib.SERVICE_UNAVAILABLE
+
+
+class IteratorReusedError(Exception):
+    """Raise when a :class:`UseOnceIterator` gets reused."""

@@ -18,6 +18,7 @@ from functools import partial
 from time import time
 
 import crochet
+from maasserver.exceptions import IteratorReusedError
 from maasserver.utils import async
 from maastesting.testcase import MAASTestCase
 from mock import sentinel
@@ -75,6 +76,11 @@ class TestGatherScenarios(MAASTestCase):
 
         self.assertItemsEqual(values, results)
 
+    def test_returns_use_once_iterator(self):
+        calls = []
+        results = async.gather(calls)
+        self.assertIsInstance(results, async.UseOnceIterator)
+
     def test_gather_from_calls_with_errors(self):
         calls = [
             (lambda: sentinel.okay),
@@ -89,3 +95,23 @@ class TestGatherScenarios(MAASTestCase):
         failure = results[0]
         self.assertThat(failure, IsInstance(Failure))
         self.assertThat(failure.type, Is(ZeroDivisionError))
+
+
+class TestUseOnceIterator(MAASTestCase):
+
+    def test_returns_correct_items_for_list(self):
+        expected_values = [i for i in range(10)]
+        iterator = async.UseOnceIterator(expected_values)
+        actual_values = [val for val in iterator]
+        self.assertEqual(expected_values, actual_values)
+
+    def test_raises_stop_iteration(self):
+        iterator = async.UseOnceIterator([])
+        self.assertRaises(StopIteration, iterator.next)
+
+    def test_raises_iterator_reused(self):
+        iterator = async.UseOnceIterator([])
+        # Loop over the iterator to get to the point where we might try
+        # and reuse it.
+        [i for i in iterator]
+        self.assertRaises(IteratorReusedError, iterator.next)
