@@ -57,6 +57,7 @@ from maasserver.forms import (
     pick_default_architecture,
     ProfileForm,
     remove_None_values,
+    SetZoneBulkAction,
     UnconstrainedMultipleChoiceField,
     validate_nonoverlapping_networks,
     ValidatorMultipleChoiceField,
@@ -1467,16 +1468,41 @@ class TestBulkNodeActionForm(MAASServerTestCase):
         form = BulkNodeActionForm(
             user=factory.make_user(),
             data={
-                'action': 'set_zone',
+                'action': SetZoneBulkAction.name,
                 'zone': factory.make_zone().name,
                 'system_id': [node.system_id],
             })
         self.assertFalse(form.is_valid())
-        print(form._errors)
         self.assertIn(
             "Select a valid choice. "
             "set_zone is not one of the available choices.",
             form._errors['action'])
+
+    def test_zone_field_rejects_empty_zone(self):
+        # If the field is present, the zone name has to be valid
+        # and the empty string is not a valid zone name.
+        form = BulkNodeActionForm(
+            user=factory.make_admin(),
+            data={
+                'action': SetZoneBulkAction.name,
+                'zone': '',
+            })
+        self.assertFalse(form.is_valid(), form._errors)
+        self.assertEqual(
+            ["This field is required."],
+            form._errors['zone'])
+
+    def test_zone_field_present_if_data_is_empty(self):
+        form = BulkNodeActionForm(
+            user=factory.make_admin(),
+            data={})
+        self.assertIn('zone', form.fields)
+
+    def test_zone_field_not_present_action_is_not_SetZoneBulkAction(self):
+        form = BulkNodeActionForm(
+            user=factory.make_admin(),
+            data={'action': factory.make_name('action')})
+        self.assertNotIn('zone', form.fields)
 
     def test_set_zone_leaves_unselected_nodes_alone(self):
         unselected_node = factory.make_node()
@@ -1484,7 +1510,7 @@ class TestBulkNodeActionForm(MAASServerTestCase):
         form = BulkNodeActionForm(
             user=factory.make_admin(),
             data={
-                'action': 'set_zone',
+                'action': SetZoneBulkAction.name,
                 'zone': factory.make_zone().name,
                 'system_id': [factory.make_node().system_id],
             })

@@ -1202,13 +1202,25 @@ class BulkNodeActionForm(forms.Form):
             [('', '')] +
             [(action.name, action.display_bulk) for action in ACTION_CLASSES]
             )
-        if user.is_superuser:
-            # Admin users also get the "set zone" bulk action.
+        add_zone_field = (
+            user.is_superuser and
+            (
+                self.data == {} or
+                self.data.get('action') == SetZoneBulkAction.name
+            )
+        )
+        # Only admin users get the "set zone" bulk action.
+        # The 'zone' field is required only if the form is being submitted
+        # with the 'action' set to SetZoneBulkAction.name or when the UI is
+        # rendering a GET request (i.e. the zone cannot be the empty string).
+        # Thus it cannot be added to the form when the form is being
+        # submitted with an action other than SetZoneBulkAction.name.
+        if add_zone_field:
             action_choices.append(
                 (SetZoneBulkAction.name, SetZoneBulkAction.display_bulk))
             # This adds an input field: the zone.
             self.fields['zone'] = forms.ModelChoiceField(
-                label="Physical zone", required=False,
+                label="Physical zone", required=True,
                 initial=Zone.objects.get_default_zone(),
                 queryset=Zone.objects.all(), to_field_name='name')
         self.fields['action'] = forms.ChoiceField(
