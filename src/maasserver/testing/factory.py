@@ -21,6 +21,7 @@ import random
 import time
 
 from django.contrib.auth.models import User
+from maasserver.clusterrpc.power_parameters import get_power_types
 from maasserver.enum import (
     NODE_STATUS,
     NODEGROUP_STATUS,
@@ -42,7 +43,6 @@ from maasserver.models import (
     Zone,
     )
 from maasserver.models.node import NODE_TRANSITIONS
-from maasserver.clusterrpc.power_parameters import get_power_types
 from maasserver.testing import (
     get_data,
     reload_object,
@@ -255,13 +255,9 @@ class Factory(maastesting.factory.Factory):
             ip_range_low=ip_range_low, ip_range_high=ip_range_high,
             interface=interface, management=management)
         interface_settings.update(kwargs)
-        ng = NodeGroup.objects.new(
-            name=name, uuid=uuid, **interface_settings)
-        ng.cluster_name = cluster_name
-        ng.status = status
-        ng.maas_url = maas_url
-        ng.save()
-        return ng
+        return NodeGroup.objects.new(
+            name=name, uuid=uuid, cluster_name=cluster_name, status=status,
+            maas_url=maas_url, **interface_settings)
 
     def make_unrenamable_nodegroup_with_node(self):
         """Create a `NodeGroup` that can't be renamed, and `Node`.
@@ -341,13 +337,14 @@ class Factory(maastesting.factory.Factory):
         lease.save()
         return lease
 
-    def make_user(self, username=None, password=None, email=None):
+    def make_email(self):
+        return '%s@example.com' % self.getRandomString(10)
+
+    def make_user(self, username=None, password='test', email=None):
         if username is None:
             username = self.getRandomUsername()
         if email is None:
-            email = '%s@example.com' % self.getRandomString(10)
-        if password is None:
-            password = 'test'
+            email = self.make_email()
         return User.objects.create_user(
             username=username, password=password, email=email)
 
@@ -368,7 +365,7 @@ class Factory(maastesting.factory.Factory):
         tag = Tag(
             name=name, definition=definition, comment=comment,
             kernel_opts=kernel_opts)
-        self._save_node_unchecked(tag)
+        tag.save()
         # Update the 'updated'/'created' fields with a call to 'update'
         # preventing a call to save() from overriding the values.
         if updated is not None:
@@ -398,12 +395,13 @@ class Factory(maastesting.factory.Factory):
             keys.append(key)
         return user, keys
 
-    def make_admin(self, username=None, password=None, email=None):
-        admin = self.make_user(
-            username=username, password=password, email=email)
-        admin.is_superuser = True
-        admin.save()
-        return admin
+    def make_admin(self, username=None, password='test', email=None):
+        if username is None:
+            username = self.getRandomUsername()
+        if email is None:
+            email = self.make_email()
+        return User.objects.create_superuser(
+            username, password=password, email=email)
 
     def make_file_storage(self, filename=None, content=None, owner=None):
         fake_file = self.make_file_upload(filename, content)

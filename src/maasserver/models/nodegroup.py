@@ -56,7 +56,8 @@ class NodeGroupManager(Manager):
             broadcast_ip=None, router_ip=None, ip_range_low=None,
             ip_range_high=None, dhcp_key='', interface='',
             status=NODEGROUP_STATUS.DEFAULT_STATUS,
-            management=NODEGROUPINTERFACE_MANAGEMENT.DEFAULT):
+            management=NODEGROUPINTERFACE_MANAGEMENT.DEFAULT,
+            cluster_name=None, maas_url=''):
         """Create a :class:`NodeGroup` with the given parameters.
 
         This method will:
@@ -74,10 +75,11 @@ class NodeGroupManager(Manager):
         assert all(dhcp_values) or not any(dhcp_values), (
             "Provide all DHCP settings, or none at all.")
 
-        cluster_name = NODEGROUP_CLUSTER_NAME_TEMPLATE % {'uuid': uuid}
+        if cluster_name is None:
+            cluster_name = NODEGROUP_CLUSTER_NAME_TEMPLATE % {'uuid': uuid}
         nodegroup = NodeGroup(
             name=name, uuid=uuid, cluster_name=cluster_name, dhcp_key=dhcp_key,
-            status=status)
+            status=status, maas_url=maas_url)
         nodegroup.save()
         nginterface = NodeGroupInterface(
             nodegroup=nodegroup, ip=ip, subnet_mask=subnet_mask,
