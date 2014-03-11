@@ -112,15 +112,19 @@ class TestBootImageManager(MAASServerTestCase):
 
     def test_get_usable_architectures_returns_supported_arches(self):
         nodegroup = factory.make_node_group()
-        arches = [factory.make_name('arch'), factory.make_name('arch')]
-        for arch in arches:
+        arches = [
+            (factory.make_name('arch'), factory.make_name('subarch')),
+            (factory.make_name('arch'), factory.make_name('subarch'))]
+        for arch, subarch in arches:
             factory.make_boot_image(
-                architecture=arch, nodegroup=nodegroup, purpose='install')
+                architecture=arch, subarchitecture=subarch,
+                nodegroup=nodegroup, purpose='install')
             factory.make_boot_image(
-                architecture=arch, nodegroup=nodegroup,
-                purpose='commissioning')
+                architecture=arch, subarchitecture=subarch,
+                nodegroup=nodegroup, purpose='commissioning')
+        expected = ["%s/%s" % (arch, subarch) for arch, subarch in arches]
         self.assertItemsEqual(
-            arches,
+            expected,
             BootImage.objects.get_usable_architectures(nodegroup))
 
     def test_get_usable_architectures_uses_given_nodegroup(self):

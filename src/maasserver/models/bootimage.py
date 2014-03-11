@@ -85,12 +85,20 @@ class BootImageManager(Manager):
         Return the architectures for which we have both a commissioning and
         an install image.
         """
-        arches_commissioning = set(BootImage.objects.all().filter(
+        arches_commissioning = BootImage.objects.all().filter(
             purpose="commissioning",
-            nodegroup=nodegroup).values_list('architecture', flat=True))
-        arches_install = set(BootImage.objects.all().filter(
+            nodegroup=nodegroup).values_list(
+                'architecture', 'subarchitecture')
+        arches_commissioning = set(
+            "%s/%s" % (architecture, subarchitecture) for
+            architecture, subarchitecture in arches_commissioning)
+        arches_install = BootImage.objects.all().filter(
             purpose="install",
-            nodegroup=nodegroup).values_list('architecture', flat=True))
+            nodegroup=nodegroup).values_list(
+                'architecture', 'subarchitecture')
+        arches_install = set(
+            "%s/%s" % (architecture, subarchitecture) for
+            architecture, subarchitecture in arches_install)
         return arches_commissioning & arches_install
 
 

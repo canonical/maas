@@ -104,7 +104,8 @@ from testtools.matchers import (
 
 class TestHelpers(MAASServerTestCase):
 
-    def make_usable_boot_images(self, nodegroup=None, arch=None):
+    def make_usable_boot_images(self, nodegroup=None, arch=None,
+                                subarchitecture=None):
         """Create a set of boot images, so the architecture becomes "usable".
 
         This will make the images' architecture show up in the list of usable
@@ -116,9 +117,12 @@ class TestHelpers(MAASServerTestCase):
             nodegroup = factory.make_node_group()
         if arch is None:
             arch = factory.make_name('arch')
+        if subarchitecture is None:
+            subarchitecture = factory.make_name('subarch')
         for purpose in ['install', 'commissioning']:
             factory.make_boot_image(
-                nodegroup=nodegroup, architecture=arch, purpose=purpose)
+                nodegroup=nodegroup, architecture=arch,
+                subarchitecture=subarchitecture, purpose=purpose)
 
     def test_initialize_node_group_leaves_nodegroup_reference_intact(self):
         preselected_nodegroup = factory.make_node_group()
@@ -141,22 +145,32 @@ class TestHelpers(MAASServerTestCase):
         self.assertEqual(NodeGroup.objects.ensure_master(), node.nodegroup)
 
     def test_list_all_usable_architectures_combines_nodegroups(self):
-        arches = [factory.make_name('arch') for _ in range(3)]
-        for arch in arches:
-            self.make_usable_boot_images(arch=arch)
-        self.assertItemsEqual(arches, list_all_usable_architectures())
+        arches = [
+            (factory.make_name('arch'), factory.make_name('subarch'))
+            for _ in range(3)]
+        for arch, subarch in arches:
+            self.make_usable_boot_images(arch=arch, subarchitecture=subarch)
+        expected = [
+            "%s/%s" % (arch, subarch) for arch, subarch in arches]
+        self.assertItemsEqual(expected, list_all_usable_architectures())
 
     def test_list_all_usable_architectures_sorts_output(self):
-        arches = [factory.make_name('arch') for _ in range(3)]
-        for arch in arches:
-            self.make_usable_boot_images(arch=arch)
-        self.assertEqual(sorted(arches), list_all_usable_architectures())
+        arches = [
+            (factory.make_name('arch'), factory.make_name('subarch'))
+            for _ in range(3)]
+        for arch, subarch in arches:
+            self.make_usable_boot_images(arch=arch, subarchitecture=subarch)
+        expected = [
+            "%s/%s" % (arch, subarch) for arch, subarch in arches]
+        self.assertEqual(sorted(expected), list_all_usable_architectures())
 
     def test_list_all_usable_architectures_returns_no_duplicates(self):
         arch = factory.make_name('arch')
-        self.make_usable_boot_images(arch=arch)
-        self.make_usable_boot_images(arch=arch)
-        self.assertEqual([arch], list_all_usable_architectures())
+        subarch = factory.make_name('subarch')
+        self.make_usable_boot_images(arch=arch, subarchitecture=subarch)
+        self.make_usable_boot_images(arch=arch, subarchitecture=subarch)
+        self.assertEqual(
+            ["%s/%s" %(arch, subarch)], list_all_usable_architectures())
 
     def test_pick_default_architecture_returns_empty_if_no_options(self):
         self.assertEqual('', pick_default_architecture([]))
