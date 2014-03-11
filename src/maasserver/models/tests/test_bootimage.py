@@ -58,11 +58,12 @@ class TestBootImageManager(MAASServerTestCase):
     def test_default_arch_image_returns_only_matching_image(self):
         nodegroup = factory.make_node_group()
         series = factory.make_name('series')
+        label = factory.make_name('label')
         arch = factory.make_name('arch')
         purpose = factory.make_name("purpose")
         factory.make_boot_image(
-            architecture=arch, release=series, nodegroup=nodegroup,
-            purpose=purpose)
+            architecture=arch, release=series, label=label,
+            nodegroup=nodegroup, purpose=purpose)
         result = BootImage.objects.get_default_arch_image_in_nodegroup(
             nodegroup, series, purpose=purpose)
         self.assertEqual(result.architecture, arch)
@@ -70,11 +71,12 @@ class TestBootImageManager(MAASServerTestCase):
     def test_default_arch_image_prefers_i386(self):
         nodegroup = factory.make_node_group()
         series = factory.make_name('series')
+        label = factory.make_name('label')
         purpose = factory.make_name("purpose")
         for arch in ['amd64', 'axp', 'i386', 'm88k']:
             factory.make_boot_image(
                 architecture=arch, release=series, nodegroup=nodegroup,
-                purpose=purpose)
+                purpose=purpose, label=label)
         result = BootImage.objects.get_default_arch_image_in_nodegroup(
             nodegroup, series, purpose=purpose)
         self.assertEqual(result.architecture, "i386")
@@ -82,11 +84,12 @@ class TestBootImageManager(MAASServerTestCase):
     def test_default_arch_image_returns_arbitrary_pick_if_all_else_fails(self):
         nodegroup = factory.make_node_group()
         series = factory.make_name('series')
+        label = factory.make_name('label')
         purpose = factory.make_name("purpose")
         images = [
             factory.make_boot_image(
                 architecture=factory.make_name('arch'), release=series,
-                nodegroup=nodegroup, purpose=purpose)
+                label=label, nodegroup=nodegroup, purpose=purpose)
             for _ in range(3)
             ]
         self.assertIn(
@@ -98,11 +101,13 @@ class TestBootImageManager(MAASServerTestCase):
         nodegroup = factory.make_node_group()
         arch = 'i386'
         series = factory.make_name('series')
+        label = factory.make_name('label')
         purpose = factory.make_name("purpose")
         images = [
             factory.make_boot_image(
                 architecture=arch, subarchitecture=factory.make_name('sub'),
-                release=series, nodegroup=nodegroup, purpose=purpose)
+                release=series, label=label, nodegroup=nodegroup,
+                purpose=purpose)
             for _ in range(3)
             ]
         self.assertIn(

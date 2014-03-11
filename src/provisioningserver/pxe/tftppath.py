@@ -142,9 +142,10 @@ def extract_image_params(path):
     purpose] that identify a kind of boot that we may need an image for.
     """
     arch, subarch, release, purpose = path
+    # XXX: the hard-coded label needs to be fixed in a future change.
     return dict(
         architecture=arch, subarchitecture=subarch, release=release,
-        purpose=purpose)
+        purpose=purpose, label="release")
 
 
 def list_boot_images(tftproot):

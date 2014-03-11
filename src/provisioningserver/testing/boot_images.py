@@ -22,13 +22,15 @@ from maastesting.factory import factory
 def make_boot_image_params():
     """Create an arbitrary dict of boot-image parameters.
 
-    These are the parameters that together describe a kind of boot that we
-    may need a kernel and initrd for: architecture, sub-architecture,
-    Ubuntu release, and boot purpose.  See the `tftppath` module for how
-    these fit together.
+    These are the parameters that together describe a kind of boot for
+    which we may need a kernel and initrd: architecture,
+    sub-architecture, Ubuntu release, boot purpose and simplestreams
+    label.  See the `tftppath` module for how these fit together.
     """
     return dict(
         architecture=factory.make_name('architecture'),
         subarchitecture=factory.make_name('subarchitecture'),
         release=factory.make_name('release'),
-        purpose=factory.make_name('purpose'))
+        purpose=factory.make_name('purpose'),
+        label=factory.make_name('label'),
+        )

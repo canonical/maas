@@ -428,7 +428,8 @@ class Factory(maastesting.factory.Factory):
             '%s="%s"' % (key, value) for key, value in items.items()])
 
     def make_boot_image(self, architecture=None, subarchitecture=None,
-                        release=None, purpose=None, nodegroup=None):
+                        release=None, purpose=None, nodegroup=None,
+                        label=None):
         if architecture is None:
             architecture = self.make_name('architecture')
         if subarchitecture is None:
@@ -439,12 +440,15 @@ class Factory(maastesting.factory.Factory):
             purpose = self.make_name('purpose')
         if nodegroup is None:
             nodegroup = self.make_node_group()
+        if label is None:
+            label = self.make_name('label')
         return BootImage.objects.create(
             nodegroup=nodegroup,
             architecture=architecture,
             subarchitecture=subarchitecture,
             release=release,
-            purpose=purpose)
+            purpose=purpose,
+            label=label)
 
     def make_commissioning_script(self, name=None, content=None):
         if name is None:

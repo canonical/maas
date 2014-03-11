@@ -35,29 +35,31 @@ class BootImageManager(Manager):
     """
 
     def get_by_natural_key(self, nodegroup, architecture, subarchitecture,
-                           release, purpose):
+                           release, purpose, label):
         """Look up a specific image."""
         return self.get(
             nodegroup=nodegroup, architecture=architecture,
             subarchitecture=subarchitecture, release=release,
-            purpose=purpose)
+            purpose=purpose, label=label)
 
     def register_image(self, nodegroup, architecture, subarchitecture,
-                       release, purpose):
+                       release, purpose, label):
         """Register an image if it wasn't already registered."""
         self.get_or_create(
             nodegroup=nodegroup, architecture=architecture,
             subarchitecture=subarchitecture, release=release,
-            purpose=purpose)
+            purpose=purpose, label=label)
 
     def have_image(self, nodegroup, architecture, subarchitecture, release,
-                   purpose):
+                   purpose, label=None):
         """Is an image for the given kind of boot available?"""
+        if label is None:
+            label = "release"
         try:
             self.get_by_natural_key(
                 nodegroup=nodegroup, architecture=architecture,
                 subarchitecture=subarchitecture, release=release,
-                purpose=purpose)
+                purpose=purpose, label=label)
             return True
         except BootImage.DoesNotExist:
             return False
@@ -122,7 +124,7 @@ class BootImage(Model):
     class Meta(DefaultMeta):
         unique_together = (
             ('nodegroup', 'architecture', 'subarchitecture', 'release',
-             'purpose'),
+             'purpose', 'label'),
             )
 
     objects = BootImageManager()
@@ -144,10 +146,15 @@ class BootImage(Model):
     # Boot purpose (e.g. "commissioning" or "install") that the image is for.
     purpose = CharField(max_length=255, blank=False, editable=False)
 
+    # "Label" as in simplestreams parlance. (e.g. "release", "beta1")
+    label = CharField(
+        max_length=255, blank=False, editable=False, default="release")
+
     def __repr__(self):
-        return "<BootImage %s/%s-%s-%s>" % (
+        return "<BootImage %s/%s-%s-%s-%s>" % (
             self.architecture,
             self.subarchitecture,
             self.release,
             self.purpose,
+            self.label,
             )

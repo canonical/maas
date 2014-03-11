@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the tftppath module."""
@@ -117,12 +117,20 @@ class TestTFTPPath(MAASTestCase):
 
     def test_list_boot_images_finds_boot_image(self):
         image = make_boot_image_params()
+        # XXX jtv 2014-03-11 bug=1290822: The directory hierarchy for boot
+        # images doesn't actually support labels yet.  Hard-code "release"
+        # as the label for now, to make the test pass during transition.
+        image['label'] = 'release'
         self.make_image_dir(image, self.tftproot)
         self.assertItemsEqual([image], list_boot_images(self.tftproot))
 
     def test_list_boot_images_enumerates_boot_images(self):
         images = [make_boot_image_params() for counter in range(3)]
         for image in images:
+            # XXX jtv 2014-03-11 bug=1290822: The directory hierarchy for boot
+            # images doesn't actually support labels yet.  Hard-code "release"
+            # as the label for now, to make the test pass during transition.
+            image['label'] = 'release'
             self.make_image_dir(image, self.tftproot)
         self.assertItemsEqual(images, list_boot_images(self.tftproot))
 
