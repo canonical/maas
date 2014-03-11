@@ -19,19 +19,29 @@ from mock import (
     Mock,
     sentinel,
     )
-from provisioningserver import driver
+from provisioningserver.driver.registry import _registry
 from provisioningserver.driver import (
+    ArchitectureRegistry,
     BootResourceRegistry,
     Registry,
+    PowerTypeRegistry,
     )
 
 
 class TestRegistry(MAASTestCase):
 
+    def setUp(self):
+        # Ensure the registry global is empty for each test run.
+        global _registry
+        super(TestRegistry, self).setUp()
+        self.saved_registry = _registry.copy()
+        _registry.clear()
+
     def tearDown(self):
-        # Clear out the registry global for the next test.
+        global _registry
         super(TestRegistry, self).tearDown()
-        driver._registry = {}
+        _registry.clear()
+        _registry.update(self.saved_registry)
 
     def test_is_singleton_over_multiple_imports(self):
         resource = Mock()
@@ -47,5 +57,18 @@ class TestRegistry(MAASTestCase):
 
     def test_bootresource_registry(self):
         resource = Mock()
+        self.assertEqual([], BootResourceRegistry.get_items())
         BootResourceRegistry.register_item(resource)
         self.assertIn(resource, BootResourceRegistry.get_items())
+
+    def test_architecture_registry(self):
+        resource = Mock()         
+        self.assertEqual([], ArchitectureRegistry.get_items())
+        ArchitectureRegistry.register_item(resource)
+        self.assertIn(resource, ArchitectureRegistry.get_items())
+
+    def test_power_type_registry(self):
+        resource = Mock()         
+        self.assertEqual([], PowerTypeRegistry.get_items())
+        PowerTypeRegistry.register_item(resource)
+        self.assertIn(resource, PowerTypeRegistry.get_items())

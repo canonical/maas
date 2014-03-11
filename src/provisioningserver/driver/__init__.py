@@ -26,6 +26,7 @@ from abc import (
     )
 
 from provisioningserver.driver.registry import Registry
+from provisioningserver.power_schema import JSON_POWER_TYPE_PARAMETERS
 
 
 class HardwareDriver:
@@ -146,6 +147,8 @@ BootResourceRegistry = type(
     b"BootResourceRegistry", (Registry,), dict(registry_name="bootresource"))
 ArchitectureRegistry = type(
     b"ArchitectureRegistry", (Registry,), dict(registry_name="architecture"))
+PowerTypeRegistry = type(
+    b"PowerTypeRegistry", (Registry,), dict(registry_name="power_type"))
 
 
 builtin_architectures = [
@@ -157,8 +160,11 @@ for arch in builtin_architectures:
     ArchitectureRegistry.register_item(arch)
 
 
+builtin_power_types = JSON_POWER_TYPE_PARAMETERS
+for power_type in builtin_power_types:
+    PowerTypeRegistry.register_item(power_type)
+
 
 # TODO:
-#  * registry for power types
 #  * registry for actual drivers
 #  * hook RPC calls to registry data

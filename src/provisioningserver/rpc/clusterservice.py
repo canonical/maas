@@ -27,8 +27,10 @@ from provisioningserver.cluster_config import (
     get_maas_url,
     )
 from provisioningserver.config import Config
-from provisioningserver.driver import ArchitectureRegistry
-from provisioningserver.power_schema import JSON_POWER_TYPE_PARAMETERS
+from provisioningserver.driver import (
+    ArchitectureRegistry,
+    PowerTypeRegistry,
+    )
 from provisioningserver.pxe import tftppath
 from provisioningserver.rpc import (
     cluster,
@@ -91,7 +93,9 @@ class Cluster(amp.AMP, object):
         Implementation of
         :py:class:`~provisioningserver.rpc.cluster.DescribePowerTypes`.
         """
-        return {'power_types': JSON_POWER_TYPE_PARAMETERS}
+        return {
+            'power_types': PowerTypeRegistry.get_items(),
+        }
 
     @cluster.ListSupportedArchitectures.responder
     def list_supported_architectures(self):
