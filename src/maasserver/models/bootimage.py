@@ -79,26 +79,29 @@ class BootImageManager(Manager):
         images = images.order_by('architecture')
         return get_first(images)
 
+    def _get_bootable_architectures(self, nodegroup, purpose):
+        """Return architecture/subarchitecture pairs with boot images.
+
+        :param nodegroup: The `NodeGroup` whose boot images should be queried.
+        :param purpose: Boot purpose, e.g. `install` or `commissioning`.
+            Only consider architectures for which `nodegroup` has images whose
+            `purpose` matches.
+        :return: A set of architecture names, in `arch/subarch` format.
+        """
+        query = BootImage.objects.filter(nodegroup=nodegroup, purpose=purpose)
+        arch_pairs = query.values_list('architecture', 'subarchitecture')
+        return {'%s/%s' % pair for pair in arch_pairs}
+
     def get_usable_architectures(self, nodegroup):
         """Return the list of usable architectures for a nodegroup.
 
-        Return the architectures for which we have both a commissioning and
-        an install image.
+        Return the architectures for which the nodegroup has at least one
+        commissioning image and at least one install image.
         """
-        arches_commissioning = BootImage.objects.all().filter(
-            purpose="commissioning",
-            nodegroup=nodegroup).values_list(
-                'architecture', 'subarchitecture')
-        arches_commissioning = set(
-            "%s/%s" % (architecture, subarchitecture) for
-            architecture, subarchitecture in arches_commissioning)
-        arches_install = BootImage.objects.all().filter(
-            purpose="install",
-            nodegroup=nodegroup).values_list(
-                'architecture', 'subarchitecture')
-        arches_install = set(
-            "%s/%s" % (architecture, subarchitecture) for
-            architecture, subarchitecture in arches_install)
+        arches_commissioning = self._get_bootable_architectures(
+            nodegroup, 'commissioning')
+        arches_install = self._get_bootable_architectures(
+            nodegroup, 'install')
         return arches_commissioning & arches_install
 
 

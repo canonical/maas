@@ -171,7 +171,7 @@ class TestHelpers(MAASServerTestCase):
         self.make_usable_boot_images(arch=arch, subarchitecture=subarch)
         self.make_usable_boot_images(arch=arch, subarchitecture=subarch)
         self.assertEqual(
-            ["%s/%s" %(arch, subarch)], list_all_usable_architectures())
+            ["%s/%s" % (arch, subarch)], list_all_usable_architectures())
 
     def test_pick_default_architecture_returns_empty_if_no_options(self):
         self.assertEqual('', pick_default_architecture([]))

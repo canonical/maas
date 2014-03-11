@@ -145,7 +145,7 @@ def get_power_type_choices():
 
     :return: list of (name, description) tuples
     """
-    return[
+    return [
         (power_type['name'], power_type['description'])
         for power_type in get_all_power_types_from_clusters()]
 

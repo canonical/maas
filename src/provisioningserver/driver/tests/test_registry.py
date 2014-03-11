@@ -62,13 +62,13 @@ class TestRegistry(MAASTestCase):
         self.assertIn(resource, BootResourceRegistry.get_items())
 
     def test_architecture_registry(self):
-        resource = Mock()         
+        resource = Mock()
         self.assertEqual([], ArchitectureRegistry.get_items())
         ArchitectureRegistry.register_item(resource)
         self.assertIn(resource, ArchitectureRegistry.get_items())
 
     def test_power_type_registry(self):
-        resource = Mock()         
+        resource = Mock()
         self.assertEqual([], PowerTypeRegistry.get_items())
         PowerTypeRegistry.register_item(resource)
         self.assertIn(resource, PowerTypeRegistry.get_items())
