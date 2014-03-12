@@ -187,6 +187,11 @@ class NodeGroup(TimestampedModel):
     maas_url = CharField(
         blank=True, editable=False, max_length=255, default='')
 
+    # The simplestreams filter used when this cluster imports its images.
+    # e.g. "arch~(i386|amd64) label=beta2"
+    simplestreams_filter = CharField(
+        blank=True, editable=False, max_length=255, default='')
+
     def __repr__(self):
         return "<NodeGroup %s>" % self.uuid
 
