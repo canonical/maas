@@ -27,12 +27,11 @@ class Registry:
     @classmethod
     def get_items(cls):
         global _registry
-        return _registry.get(cls.registry_name, [])
+        return _registry.get(cls.registry_name, {})
 
     @classmethod
-    def register_item(cls, item):
+    def register_item(cls, item, name):
         global _registry
-        _registry.setdefault(cls.registry_name, [])
+        _registry.setdefault(cls.registry_name, {})
         registry = _registry[cls.registry_name]
-        if item not in registry:
-            registry.append(item)
+        registry[name] = item

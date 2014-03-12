@@ -157,12 +157,12 @@ builtin_architectures = [
     Architecture("armhf/highbank", "armhf/highbank", ["arm"]),
 ]
 for arch in builtin_architectures:
-    ArchitectureRegistry.register_item(arch)
+    ArchitectureRegistry.register_item(arch, arch.name)
 
 
 builtin_power_types = JSON_POWER_TYPE_PARAMETERS
 for power_type in builtin_power_types:
-    PowerTypeRegistry.register_item(power_type)
+    PowerTypeRegistry.register_item(power_type, power_type['name'])
 
 
 # TODO:

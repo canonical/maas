@@ -46,29 +46,29 @@ class TestRegistry(MAASTestCase):
     def test_is_singleton_over_multiple_imports(self):
         resource = Mock()
         Registry.registry_name = sentinel.registry_name
-        Registry.register_item(resource)
+        Registry.register_item(resource, "resource")
         from provisioningserver.driver import Registry as Registry2
         Registry2.registry_name = sentinel.registry_name
         resource2 = Mock()
-        Registry2.register_item(resource2)
+        Registry2.register_item(resource2, "resource2")
         self.assertItemsEqual(
             [resource, resource2],
-            Registry2.get_items())
+            Registry2.get_items().values())
 
     def test_bootresource_registry(self):
         resource = Mock()
-        self.assertEqual([], BootResourceRegistry.get_items())
-        BootResourceRegistry.register_item(resource)
-        self.assertIn(resource, BootResourceRegistry.get_items())
+        self.assertEqual({}, BootResourceRegistry.get_items())
+        BootResourceRegistry.register_item(resource, "resource")
+        self.assertIn(resource, BootResourceRegistry.get_items().values())
 
     def test_architecture_registry(self):
         resource = Mock()
-        self.assertEqual([], ArchitectureRegistry.get_items())
-        ArchitectureRegistry.register_item(resource)
-        self.assertIn(resource, ArchitectureRegistry.get_items())
+        self.assertEqual({}, ArchitectureRegistry.get_items())
+        ArchitectureRegistry.register_item(resource, "resource")
+        self.assertIn(resource, ArchitectureRegistry.get_items().values())
 
     def test_power_type_registry(self):
         resource = Mock()
-        self.assertEqual([], PowerTypeRegistry.get_items())
-        PowerTypeRegistry.register_item(resource)
-        self.assertIn(resource, PowerTypeRegistry.get_items())
+        self.assertEqual({}, PowerTypeRegistry.get_items())
+        PowerTypeRegistry.register_item(resource, "resource")
+        self.assertIn(resource, PowerTypeRegistry.get_items().values())

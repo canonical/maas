@@ -94,7 +94,7 @@ class Cluster(amp.AMP, object):
         :py:class:`~provisioningserver.rpc.cluster.DescribePowerTypes`.
         """
         return {
-            'power_types': PowerTypeRegistry.get_items(),
+            'power_types': PowerTypeRegistry.get_items().values(),
         }
 
     @cluster.ListSupportedArchitectures.responder
@@ -102,7 +102,7 @@ class Cluster(amp.AMP, object):
         return {
             'architectures': [
                 {'name': arch.name, 'description': arch.description}
-                for arch in ArchitectureRegistry.get_items()
+                for arch in ArchitectureRegistry.get_items().values()
                 ],
             }
 
