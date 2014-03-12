@@ -27,6 +27,9 @@ from maasserver import api
 from maasserver.api import (
     DISPLAYED_NODEGROUPINTERFACE_FIELDS,
     store_node_power_parameters,
+    summarise_boot_image_dict,
+    summarise_boot_image_object,
+    warn_if_missing_boot_images,
     )
 from maasserver.enum import (
     COMPONENT,
@@ -60,6 +63,7 @@ from maasserver.tests.test_forms import make_interface_settings
 from maasserver.utils.orm import get_one
 from maastesting.celery import CeleryFixture
 from maastesting.djangotestcase import TransactionTestCase
+from maastesting.matchers import MockCalledOnceWith
 from mock import (
     ANY,
     Mock,
@@ -772,6 +776,48 @@ class TestBootImagesAPI(APITestCase):
                 'op': 'report_boot_images',
                 })
 
+    def test_summarise_boot_image_object_returns_tuple(self):
+        image = factory.make_boot_image()
+        self.assertEqual(
+            (
+                image.architecture,
+                image.subarchitecture,
+                image.release,
+                image.label,
+                image.purpose,
+            ),
+            summarise_boot_image_object(image))
+
+    def test_summarise_boot_image_dict_returns_tuple(self):
+        image = make_boot_image_params()
+        self.assertEqual(
+            (
+                image['architecture'],
+                image['subarchitecture'],
+                image['release'],
+                image['label'],
+                image['purpose'],
+            ),
+            summarise_boot_image_dict(image))
+
+    def test_summarise_boot_image_dict_substitutes_defaults(self):
+        image = make_boot_image_params()
+        del image['subarchitecture']
+        del image['label']
+        _, subarchitecture, _, label, _ = summarise_boot_image_dict(image)
+        self.assertEqual(('generic', 'release'), (subarchitecture, label))
+
+    def test_summarise_boot_image_functions_are_compatible(self):
+        image_dict = make_boot_image_params()
+        image_obj = factory.make_boot_image(
+            architecture=image_dict['architecture'],
+            subarchitecture=image_dict['subarchitecture'],
+            release=image_dict['release'], label=image_dict['label'],
+            purpose=image_dict['purpose'])
+        self.assertEqual(
+            summarise_boot_image_dict(image_dict),
+            summarise_boot_image_object(image_obj))
+
     def test_report_boot_images_does_not_work_for_normal_user(self):
         nodegroup = NodeGroup.objects.ensure_master()
         log_in_as_normal_user(self.client)
@@ -796,6 +842,34 @@ class TestBootImagesAPI(APITestCase):
         self.assertTrue(
             BootImage.objects.have_image(nodegroup=nodegroup, **image))
 
+    def test_report_boot_images_removes_unreported_images(self):
+        deleted_image = factory.make_boot_image()
+        nodegroup = deleted_image.nodegroup
+        client = make_worker_client(nodegroup)
+        response = self.report_images(nodegroup, [], client=client)
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertIsNone(reload_object(deleted_image))
+
+    def test_report_boot_images_keeps_known_images(self):
+        nodegroup = factory.make_node_group()
+        image = make_boot_image_params()
+        client = make_worker_client(nodegroup)
+        response = self.report_images(nodegroup, [image], client=client)
+        self.assertEqual(httplib.OK, response.status_code)
+        known_image = BootImage.objects.get(nodegroup=nodegroup)
+        response = self.report_images(nodegroup, [image], client=client)
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(known_image, reload_object(known_image))
+
+    def test_report_boot_images_ignores_images_for_other_nodegroups(self):
+        unrelated_image = factory.make_boot_image()
+        deleted_image = factory.make_boot_image()
+        nodegroup = deleted_image.nodegroup
+        client = make_worker_client(nodegroup)
+        response = self.report_images(nodegroup, [], client=client)
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertIsNotNone(reload_object(unrelated_image))
+
     def test_report_boot_images_ignores_unknown_image_properties(self):
         nodegroup = NodeGroup.objects.ensure_master()
         image = make_boot_image_params()
@@ -806,68 +880,15 @@ class TestBootImagesAPI(APITestCase):
             (httplib.OK, "OK"),
             (response.status_code, response.content))
 
-    def test_report_boot_images_warns_if_no_images_found(self):
-        nodegroup = NodeGroup.objects.ensure_master()
-        factory.make_node_group()  # Second nodegroup with no images.
-        recorder = self.patch(api, 'register_persistent_error')
-        client = make_worker_client(nodegroup)
-        response = self.report_images(nodegroup, [], client=client)
-        self.assertEqual(
-            (httplib.OK, "OK"),
-            (response.status_code, response.content))
-
-        self.assertIn(
-            COMPONENT.IMPORT_PXE_FILES,
-            [args[0][0] for args in recorder.call_args_list])
-        # Check that the persistent error message contains a link to the
-        # clusters listing.
-        self.assertIn(
-            "/settings/#accepted-clusters", recorder.call_args_list[0][0][1])
-
-    def test_report_boot_images_warns_if_any_nodegroup_has_no_images(self):
-        nodegroup = NodeGroup.objects.ensure_master()
-        # Second nodegroup with no images.
-        factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
-        recorder = self.patch(api, 'register_persistent_error')
-        client = make_worker_client(nodegroup)
-        image = make_boot_image_params()
-        response = self.report_images(nodegroup, [image], client=client)
-        self.assertEqual(
-            (httplib.OK, "OK"),
-            (response.status_code, response.content))
-
-        self.assertIn(
-            COMPONENT.IMPORT_PXE_FILES,
-            [args[0][0] for args in recorder.call_args_list])
-
-    def test_report_boot_images_ignores_non_accepted_groups(self):
+    def test_report_boot_images_warns_about_missing_boot_images(self):
+        register_error = self.patch(api, 'register_persistent_error')
         nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
-        factory.make_node_group(status=NODEGROUP_STATUS.PENDING)
-        factory.make_node_group(status=NODEGROUP_STATUS.REJECTED)
-        recorder = self.patch(api, 'register_persistent_error')
-        client = make_worker_client(nodegroup)
-        image = make_boot_image_params()
-        response = self.report_images(nodegroup, [image], client=client)
+        response = self.report_images(
+            nodegroup, [], client=make_worker_client(nodegroup))
         self.assertEqual(httplib.OK, response.status_code)
-        self.assertEqual(0, recorder.call_count)
-
-    def test_report_boot_images_removes_warning_if_images_found(self):
-        self.patch(api, 'register_persistent_error')
-        self.patch(api, 'discard_persistent_error')
-        nodegroup = factory.make_node_group()
-        image = make_boot_image_params()
-        client = make_worker_client(nodegroup)
-
-        response = self.report_images(nodegroup, [image], client=client)
-        self.assertEqual(
-            (httplib.OK, "OK"),
-            (response.status_code, response.content))
-
-        self.assertItemsEqual(
-            [],
-            api.register_persistent_error.call_args_list)
-        api.discard_persistent_error.assert_called_once_with(
-            COMPONENT.IMPORT_PXE_FILES)
+        self.assertThat(
+            register_error,
+            MockCalledOnceWith(COMPONENT.IMPORT_PXE_FILES, ANY))
 
     def test_worker_calls_report_boot_images(self):
         # report_boot_images() uses the report_boot_images op on the nodes
@@ -886,3 +907,45 @@ class TestBootImagesAPI(APITestCase):
         MAASClient.post.assert_called_once_with(
             reverse('boot_images_handler').lstrip('/'), 'report_boot_images',
             images=ANY, nodegroup=ANY)
+
+
+class TestWarnIfMissingBootImages(MAASServerTestCase):
+    """Test `warn_if_missing_boot_images`."""
+
+    def test_warns_if_no_images_found(self):
+        factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
+        recorder = self.patch(api, 'register_persistent_error')
+        warn_if_missing_boot_images()
+        self.assertIn(
+            COMPONENT.IMPORT_PXE_FILES,
+            [args[0][0] for args in recorder.call_args_list])
+        # The persistent error message links to the clusters listing.
+        self.assertIn(
+            "/settings/#accepted-clusters", recorder.call_args_list[0][0][1])
+
+    def test_warns_if_any_nodegroup_has_no_images(self):
+        factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
+        recorder = self.patch(api, 'register_persistent_error')
+        warn_if_missing_boot_images()
+        self.assertIn(
+            COMPONENT.IMPORT_PXE_FILES,
+            [args[0][0] for args in recorder.call_args_list])
+
+    def test_ignores_non_accepted_groups(self):
+        factory.make_node_group(status=NODEGROUP_STATUS.PENDING)
+        factory.make_node_group(status=NODEGROUP_STATUS.REJECTED)
+        recorder = self.patch(api, 'register_persistent_error')
+        warn_if_missing_boot_images()
+        self.assertEqual([], recorder.mock_calls)
+
+    def test_removes_warning_if_images_found(self):
+        self.patch(api, 'register_persistent_error')
+        self.patch(api, 'discard_persistent_error')
+        factory.make_boot_image(
+            nodegroup=factory.make_node_group(
+                status=NODEGROUP_STATUS.ACCEPTED))
+        warn_if_missing_boot_images()
+        self.assertEqual([], api.register_persistent_error.mock_calls)
+        self.assertThat(
+            api.discard_persistent_error,
+            MockCalledOnceWith(COMPONENT.IMPORT_PXE_FILES))
