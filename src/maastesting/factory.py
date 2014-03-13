@@ -257,7 +257,7 @@ class Factory:
         tarball = os.path.join(location, '%s.tar.gz' % self.make_name())
         with TempDirectory() as working_dir:
             source = working_dir.path
-            for name, content in contents.iteritems():
+            for name, content in contents.items():
                 self.make_file(source, name, content)
 
             subprocess.check_call(['tar', '-C', source, '-czf', tarball, '.'])

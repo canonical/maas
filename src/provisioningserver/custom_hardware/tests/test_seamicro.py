@@ -19,20 +19,20 @@ import json
 import urlparse
 
 from maastesting.factory import factory
-from maastesting.testcase import MAASTestCase
 from maastesting.matchers import (
-    MockCalledWith,
     MockCalledOnceWith,
+    MockCalledWith,
     )
+from maastesting.testcase import MAASTestCase
 from mock import Mock
-import provisioningserver.custom_hardware.utils
 from provisioningserver.custom_hardware.seamicro import (
+    power_control_seamicro15k,
     POWER_STATUS,
+    probe_seamicro15k_and_enlist,
     SeaMicroAPI,
     SeaMicroAPIError,
-    probe_seamicro15k_and_enlist,
-    power_control_seamicro15k,
     )
+import provisioningserver.custom_hardware.utils
 
 
 class FakeResponse(object):
@@ -107,7 +107,7 @@ class TestSeaMicroAPI(MAASTestCase):
             }
         response = FakeResponse(200, data, is_json=True)
         result = api.parse_response(url, response)
-        self.assertEqual(result['result']['data'], output)
+        self.assertEqual(output, result['result']['data'])
 
     def configure_get_result(self, result=None):
         self.patch(
@@ -120,9 +120,9 @@ class TestSeaMicroAPI(MAASTestCase):
         url = 'http://%s/' % factory.getRandomString()
         api = SeaMicroAPI(url)
         api.login('username', 'password')
-        self.assertEqual(api.token, token)
+        self.assertEqual(token, api.token)
         api.logout()
-        self.assertEqual(api.token, None)
+        self.assertIsNone(api.token)
 
     def test_get_server_index(self):
         result = {
@@ -135,10 +135,10 @@ class TestSeaMicroAPI(MAASTestCase):
         self.configure_get_result(result)
         url = 'http://%s/' % factory.getRandomString()
         api = SeaMicroAPI(url)
-        self.assertEqual(api.server_index('0/0'), 0)
-        self.assertEqual(api.server_index('1/0'), 1)
-        self.assertEqual(api.server_index('2/0'), 2)
-        self.assertEqual(api.server_index('3/0'), None)
+        self.assertEqual(0, api.server_index('0/0'))
+        self.assertEqual(1, api.server_index('1/0'))
+        self.assertEqual(2, api.server_index('2/0'))
+        self.assertIsNone(api.server_index('3/0'))
 
     def configure_put_server_power(self, token=None):
         result = {
@@ -240,7 +240,7 @@ class TestSeaMicroAPI(MAASTestCase):
 
         probe_seamicro15k_and_enlist(
             ip, username, password, power_control='ipmi')
-        self.assertEqual(mock_create_node.call_count, 3)
+        self.assertEqual(3, mock_create_node.call_count)
 
         last = result[2]
         power_params = {
@@ -289,7 +289,7 @@ class TestSeaMicroAPI(MAASTestCase):
         power_control_seamicro15k(
             ip, username, password, '25', 'on',
             retry_count=5, retry_wait=0)
-        self.assertEqual(mock.call_count, 5)
+        self.assertEqual(5, mock.call_count)
 
     def test_power_control_seamicro15k_exception_failure(self):
         ip = factory.getRandomString()

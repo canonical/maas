@@ -140,9 +140,9 @@ from maasserver.api_utils import (
     extract_oauth_key,
     get_list_from_dict_or_multidict,
     get_mandatory_param,
-    get_optional_param,
     get_oauth_token,
     get_optional_list,
+    get_optional_param,
     )
 from maasserver.apidoc import (
     describe_resource,
@@ -474,7 +474,7 @@ class NodeHandler(OperationsHandler):
         probe_details = get_single_probed_details(node.system_id)
         probe_details_report = {
             name: None if data is None else bson.Binary(data)
-            for name, data in probe_details.iteritems()
+            for name, data in probe_details.items()
         }
         return HttpResponse(
             bson.BSON.encode(probe_details_report),

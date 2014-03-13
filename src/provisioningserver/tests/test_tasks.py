@@ -654,7 +654,7 @@ class TestImportPxeFiles(PservTestCase):
         env = tasks.call_and_check.call_args[1]['env']
         archive_settings = {
             variable: value
-            for variable, value in env.iteritems()
+            for variable, value in env.items()
             if variable.endswith('_ARCHIVE')
         }
         self.assertEqual(expected_settings, archive_settings)

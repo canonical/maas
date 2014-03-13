@@ -13,8 +13,8 @@ __metaclass__ = type
 
 import httplib
 import json
-import time
 import logging
+import time
 import urllib2
 import urlparse
 

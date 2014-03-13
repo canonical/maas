@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Populate what nodes are associated with a tag."""
@@ -38,7 +38,7 @@ from provisioningserver.utils import (
 # ensure that expressions like //lshw:something will work correctly.
 tag_nsmap = {
     namespace: namespace
-    for namespace in script_output_nsmap.itervalues()
+    for namespace in script_output_nsmap.values()
 }
 
 
