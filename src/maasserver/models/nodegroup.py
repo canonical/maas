@@ -24,6 +24,7 @@ from django.db.models import (
     IntegerField,
     Manager,
     )
+import djorm_pgarray.fields
 from maasserver import DefaultMeta
 from maasserver.enum import (
     NODEGROUP_STATUS,
@@ -187,10 +188,18 @@ class NodeGroup(TimestampedModel):
     maas_url = CharField(
         blank=True, editable=False, max_length=255, default='')
 
-    # The simplestreams filter used when this cluster imports its images.
-    # e.g. "arch~(i386|amd64) label=beta2"
+    # The list of architectures this cluster supports (i.e. the architectures for which
+    # ephemeral and install images should be downloaded).
+    architectures = djorm_pgarray.fields.ArrayField(dbtype="text", editable=True)
+
+    # The list of releases this cluster supports (i.e. the releases for which
+    # ephemeral and install images should be downloaded).
+    releases = djorm_pgarray.fields.ArrayField(dbtype="text", editable=True)
+
+    # Additional simplestreams filter used when this cluster imports its
+    # images. e.g. "label=beta2"
     simplestreams_filter = CharField(
-        blank=True, editable=False, max_length=255, default='')
+        blank=True, editable=True, max_length=255, default='')
 
     def __repr__(self):
         return "<NodeGroup %s>" % self.uuid
