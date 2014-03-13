@@ -1,5 +1,5 @@
 #!/usr/bin/env python2.7
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Command-line interface for the MAAS provisioning component."""
@@ -19,6 +19,7 @@ import provisioningserver.dhcp.writer
 import provisioningserver.pxe.install_bootloader
 import provisioningserver.pxe.install_image
 import provisioningserver.start_cluster_controller
+import provisioningserver.upgrade_cluster
 from provisioningserver.utils import (
     AtomicWriteScript,
     MainScript,
@@ -32,6 +33,7 @@ script_commands = {
     'install-pxe-bootloader': provisioningserver.pxe.install_bootloader,
     'install-pxe-image': provisioningserver.pxe.install_image,
     'start-cluster-controller': provisioningserver.start_cluster_controller,
+    'upgrade-cluster': provisioningserver.upgrade_cluster,
 }
 
 
