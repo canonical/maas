@@ -466,10 +466,12 @@ def import_boot_images(http_proxy=None, main_archive=None, ports_archive=None,
 
 @task
 @log_exception_text
-def add_seamicro15k(mac, username, password):
+def add_seamicro15k(mac, username, password, power_control=None):
     """ See `maasserver.api.NodeGroupsHandler.add_seamicro15k`. """
     ip = find_ip_via_arp(mac)
     if ip is not None:
-        probe_seamicro15k_and_enlist(ip, username, password)
+        probe_seamicro15k_and_enlist(
+            ip, username, password,
+            power_control=power_control)
     else:
         logger.warning("Couldn't find IP address for MAC %s" % mac)

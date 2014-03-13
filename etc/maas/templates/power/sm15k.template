@@ -2,9 +2,40 @@
 #
 # Control a system via ipmipower, sending the seamicro specific hex codes
 #
-{{py: power_mode = 1 if power_change == 'on' else 6 }}
 
-{{ipmitool}} -I lanplus \
-    -H {{power_address}} -U {{power_user}} \
-    -P {{power_pass}} raw 0x2E 1 0x00 0x7d 0xab \
-    {{power_mode}} 0 {{system_id}}
+# Parameters
+power_change={{power_change}}
+power_address={{power_address}}
+power_user={{power_user}}
+power_pass={{power_pass}}
+power_control={{power_control}}
+system_id={{system_id}}
+ipmitool={{ipmitool}}
+
+# IPMI power mode
+{{py: power_mode = 1 if power_change == 'on' else 6 }}
+power_mode={{power_mode}}
+
+# Control power using IPMI
+issue_ipmi_command() {
+    ${ipmitool} -I lanplus \
+        -H ${power_address} -U ${power_user}\
+        -P ${power_pass} raw 0x2E 1 0x00 0x7d 0xab \
+        ${power_mode} 0 ${system_id}
+}
+
+# Control power using REST
+issue_rest_command() {
+python - << END
+from provisioningserver.custom_hardware.seamicro import power_control_seamicro15k
+power_control_seamicro15k("${power_address}", "${power_user}", "${power_pass}", "${system_id}", "${power_change}")
+END
+}
+
+if [ "${power_control}" = "ipmi" ]
+then
+    issue_ipmi_command
+elif [ "${power_control}" = "restapi" ]
+then
+    issue_rest_command
+fi

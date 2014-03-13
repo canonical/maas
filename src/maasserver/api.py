@@ -140,6 +140,7 @@ from maasserver.api_utils import (
     extract_oauth_key,
     get_list_from_dict_or_multidict,
     get_mandatory_param,
+    get_optional_param,
     get_oauth_token,
     get_optional_list,
     )
@@ -1680,6 +1681,12 @@ class NodeGroupHandler(OperationsHandler):
         :type username: unicode
         :param password: The password for the chassis.
         :type password: unicode
+
+        The following are optional if you are probing a seamicro15k:
+
+        :param power_control: The power_control to use, either ipmi (default)
+            or restapi.
+        :type power_control: unicode
         """
         nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
 
@@ -1688,8 +1695,12 @@ class NodeGroupHandler(OperationsHandler):
             mac = get_mandatory_param(request.data, 'mac')
             username = get_mandatory_param(request.data, 'username')
             password = get_mandatory_param(request.data, 'password')
+            power_control = get_optional_param(
+                request.data, 'power_control', default='ipmi',
+                validator=validators.OneOf(['impi', 'restapi']))
 
-            nodegroup.add_seamicro15k(mac, username, password)
+            nodegroup.add_seamicro15k(
+                mac, username, password, power_control=power_control)
         else:
             return HttpResponse(status=httplib.BAD_REQUEST)
 

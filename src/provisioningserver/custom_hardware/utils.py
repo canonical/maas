@@ -13,6 +13,7 @@ __metaclass__ = type
 
 from logging import getLogger
 
+import simplejson as json
 from apiclient.maas_client import (
     MAASClient,
     MAASDispatcher,
@@ -34,10 +35,10 @@ def create_node(mac, arch, power_type, power_parameters):
         get_maas_url())
 
     data = {
-        'op': 'new',
         'architecture': arch,
         'power_type': power_type,
-        'power_parameters': power_parameters,
-        'mac_addresses': mac
+        'power_parameters': json.dumps(power_parameters),
+        'mac_addresses': mac,
+        'autodetect_nodegroup': 'true'
     }
-    return client.post('/api/1.0/nodes/', data)
+    return client.post('/api/1.0/nodes/', 'new', **data)

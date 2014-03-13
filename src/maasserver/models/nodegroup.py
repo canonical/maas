@@ -280,10 +280,17 @@ class NodeGroup(TimestampedModel):
         }
         import_boot_images.apply_async(queue=self.uuid, kwargs=task_kwargs)
 
-    def add_seamicro15k(self, mac, username, password):
+    def add_seamicro15k(self, mac, username, password, power_control=None):
         """ Add all of the specified cards the Seamicro SM15000 chassis at the
-        specified MAC. """
-        args = (mac, username, password)
+        specified MAC.
+
+        :param mac: MAC address of the card.
+        :param username: username for power controller
+        :param password: password for power controller
+        :param power_control: optional specify the power control method,
+            either ipmi (default) or restapi.
+        """
+        args = (mac, username, password, power_control)
         add_seamicro15k.apply_async(queue=self.uuid, args=args)
 
     def add_dhcp_host_maps(self, new_leases):

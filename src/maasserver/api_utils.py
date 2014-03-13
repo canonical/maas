@@ -78,6 +78,35 @@ def get_mandatory_param(data, key, validator=None):
         return value
 
 
+def get_optional_param(data, key, default=None, validator=None):
+    """Get the optional parameter from the provided data dict if exists.
+    If it exists it validates if validator given.
+
+    :param data: The data dict (usually request.data or request.GET where
+        request is a django.http.HttpRequest).
+    :param data: dict
+    :param key: The parameter's key.
+    :type key: unicode
+    :param default: The default value, if not present.
+    :type default: object
+    :param validator: An optional validator that will be used to validate the
+         retrieved value.
+    :type validator: formencode.validators.Validator
+    :return: The value of the parameter.
+    :raises: ValidationError
+    """
+    value = data.get(key, None)
+    if value is None:
+        return default
+    if validator is not None:
+        try:
+            return validator.to_python(value)
+        except Invalid as e:
+            raise ValidationError("Invalid %s: %s" % (key, e.msg))
+    else:
+        return value
+
+
 def get_optional_list(data, key, default=None):
     """Get the list from the provided data dict or return a default value.
     """

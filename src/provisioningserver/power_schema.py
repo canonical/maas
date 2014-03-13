@@ -91,6 +91,13 @@ JSON_POWER_TYPE_SCHEMA = {
 }
 
 
+# Power control choices for sm15k power type
+SM15K_POWER_CONTROL_CHOICES = [
+    ["ipmi", "IPMI"],
+    ["restapi", "REST API v0.9"],
+    ]
+
+
 def make_json_field(
         name, label, field_type=None, choices=None, default=None,
         required=False):
@@ -191,6 +198,9 @@ JSON_POWER_TYPE_PARAMETERS = [
             make_json_field('power_address', "Power address"),
             make_json_field('power_user', "Power user"),
             make_json_field('power_pass', "Power password"),
+            make_json_field(
+                'power_control', "Power control type", field_type='choice',
+                choices=SM15K_POWER_CONTROL_CHOICES, default='ipmi'),
         ],
     },
     {
