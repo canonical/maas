@@ -188,9 +188,10 @@ class NodeGroup(TimestampedModel):
     maas_url = CharField(
         blank=True, editable=False, max_length=255, default='')
 
-    # The list of architectures this cluster supports (i.e. the architectures for which
-    # ephemeral and install images should be downloaded).
-    architectures = djorm_pgarray.fields.ArrayField(dbtype="text", editable=True)
+    # The list of architectures this cluster supports (i.e. the architectures
+    # for which ephemeral and install images should be downloaded).
+    architectures = djorm_pgarray.fields.ArrayField(
+        dbtype="text", editable=True)
 
     # The list of releases this cluster supports (i.e. the releases for which
     # ephemeral and install images should be downloaded).
