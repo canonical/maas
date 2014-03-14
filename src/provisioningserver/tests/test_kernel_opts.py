@@ -44,7 +44,7 @@ from testtools.matchers import (
 
 def make_kernel_parameters(testcase=None, **parms):
     """Make a randomly populated `KernelParameters` instance.
-    
+
     If testcase is passed, we poke the generated arch/subarch into the
     ArchitectureRegistry and call addCleanup on the testcase to make sure
     it is removed after the test completes.
@@ -63,6 +63,7 @@ def make_kernel_parameters(testcase=None, **parms):
             return params
         resource = Architecture(name, name)
         ArchitectureRegistry.register_item(resource, name)
+
         def cleanup():
             del ArchitectureRegistry.get_items()[name]
         testcase.addCleanup(cleanup)

@@ -82,11 +82,6 @@ class Architecture:
         self.pxealiases = pxealiases
         self.kernel_options = kernel_options
 
-    def map_to_maas_name(self, alias):
-        if alias in self.pxealiases:
-            return self.name
-        return alias
-
 
 class BootResource:
     """Abstraction of ephemerals and pxe resources required for a hardware
@@ -148,12 +143,23 @@ class HardwareDiscoverContext:
         """TBD"""
 
 
-BootResourceRegistry = type(
-    b"BootResourceRegistry", (Registry,), dict(registry_name="bootresource"))
-ArchitectureRegistry = type(
-    b"ArchitectureRegistry", (Registry,), dict(registry_name="architecture"))
-PowerTypeRegistry = type(
-    b"PowerTypeRegistry", (Registry,), dict(registry_name="power_type"))
+class ArchitectureRegistry(Registry):
+    registry_name = "architecture"
+
+    @classmethod
+    def get_by_pxealias(cls, alias):
+        for arch in cls.get_items().values():
+            if alias in arch.pxealiases:
+                return arch
+        return None
+
+
+class BootResourceRegistry(Registry):
+    registry_name = "bootresource"
+
+
+class PowerTypeRegistry(Registry):
+    registry_name = "power_type"
 
 
 builtin_architectures = [

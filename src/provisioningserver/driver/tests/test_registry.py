@@ -21,6 +21,7 @@ from mock import (
     )
 from provisioningserver.driver.registry import _registry
 from provisioningserver.driver import (
+    Architecture,
     ArchitectureRegistry,
     BootResourceRegistry,
     Registry,
@@ -84,6 +85,30 @@ class TestRegistry(MAASTestCase):
         self.assertEqual({}, ArchitectureRegistry.get_items())
         ArchitectureRegistry.register_item(resource, "resource")
         self.assertIn(resource, ArchitectureRegistry.get_items().values())
+
+    def test_get_by_pxealias_returns_valid_arch(self):
+        arch1 = Architecture(
+            name="arch1", description="arch1",
+            pxealiases=["archibald", "reginald"])
+        arch2 = Architecture(
+            name="arch2", description="arch2",
+            pxealiases=["fake", "foo"])
+        ArchitectureRegistry.register_item(arch1, "arch1")
+        ArchitectureRegistry.register_item(arch2, "arch2")
+        self.assertEqual(
+            arch1, ArchitectureRegistry.get_by_pxealias("archibald"))
+
+    def test_get_by_pxealias_returns_None_if_none_matching(self):
+        arch1 = Architecture(
+            name="arch1", description="arch1",
+            pxealiases=["archibald", "reginald"])
+        arch2 = Architecture(
+            name="arch2", description="arch2",
+            pxealiases=["fake", "foo"])
+        ArchitectureRegistry.register_item(arch1, "arch1")
+        ArchitectureRegistry.register_item(arch2, "arch2")
+        self.assertEqual(
+            None, ArchitectureRegistry.get_by_pxealias("stinkywinky"))
 
     def test_power_type_registry(self):
         resource = Mock()

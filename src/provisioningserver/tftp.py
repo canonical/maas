@@ -29,6 +29,7 @@ from urlparse import (
     )
 
 from provisioningserver.cluster_config import get_cluster_uuid
+from provisioningserver.driver import ArchitectureRegistry
 from provisioningserver.enum import ARP_HTYPE
 from provisioningserver.kernel_opts import KernelParameters
 from provisioningserver.pxe.config import render_pxe_config
@@ -222,11 +223,12 @@ class TFTPBackend(FilesystemSynchronousBackend):
                 if value is not None
                 }
 
-            # XXX: hard-coded for now but move to a driver when they are
-            # ready.  Map pxe namespace architecture names to maas's.
+            # Map pxe namespace architecture names to MAAS's.
             arch = params.get("arch")
-            if arch is not None and arch == "arm":
-                params["arch"] = "armhf"
+            if arch is not None:
+                maasarch = ArchitectureRegistry.get_by_pxealias(arch)
+                if maasarch is not None:
+                    params["arch"] = maasarch.name.split("/")[0]
 
             # Send the local and remote endpoint addresses.
             local_host, local_port = get("local", (None, None))
