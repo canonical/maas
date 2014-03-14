@@ -164,7 +164,7 @@ class TestRenderPXEConfig(MAASTestCase):
     def test_render(self):
         # Given the right configuration options, the PXE configuration is
         # correctly rendered.
-        params = make_kernel_parameters(purpose="install")
+        params = make_kernel_parameters(self, purpose="install")
         output = render_pxe_config(kernel_params=params)
         # The output is always a Unicode string.
         self.assertThat(output, IsInstance(unicode))
@@ -190,7 +190,7 @@ class TestRenderPXEConfig(MAASTestCase):
     def test_render_with_extra_arguments_does_not_affect_output(self):
         # render_pxe_config() allows any keyword arguments as a safety valve.
         options = {
-            "kernel_params": make_kernel_parameters(purpose="install"),
+            "kernel_params": make_kernel_parameters(self, purpose="install"),
         }
         # Capture the output before sprinking in some random options.
         output_before = render_pxe_config(**options)
@@ -288,7 +288,8 @@ class TestRenderPXEConfigScenarios(MAASTestCase):
         get_ephemeral_name = self.patch(kernel_opts, "get_ephemeral_name")
         get_ephemeral_name.return_value = factory.make_name("ephemeral")
         options = {
-            "kernel_params": make_kernel_parameters(purpose=self.purpose),
+            "kernel_params": make_kernel_parameters(
+                testcase=self, subarch="generic", purpose=self.purpose),
         }
         output = render_pxe_config(**options)
         config = parse_pxe_config(output)

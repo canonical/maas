@@ -55,6 +55,24 @@ class TestRegistry(MAASTestCase):
             [resource, resource2],
             Registry2.get_items().values())
 
+    def test___getitem__(self):
+        resource = Mock()
+        Registry.registry_name = sentinel.registry_name
+        Registry.register_item(resource, "resource")
+        self.assertEqual(resource, Registry["resource"])
+
+    def test_get_item(self):
+        resource = Mock()
+        Registry.registry_name = sentinel.registry_name
+        Registry.register_item(resource, "resource")
+        self.assertEqual(resource, Registry.get_item("resource"))
+
+    def test__contains__(self):
+        resource = Mock()
+        Registry.registry_name = sentinel.registry_name
+        Registry.register_item(resource, "resource")
+        self.assertIn("resource", Registry)
+
     def test_bootresource_registry(self):
         resource = Mock()
         self.assertEqual({}, BootResourceRegistry.get_items())

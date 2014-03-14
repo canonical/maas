@@ -21,6 +21,10 @@ import os
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver import kernel_opts
+from provisioningserver.driver import (
+    Architecture,
+    ArchitectureRegistry,
+    )
 from provisioningserver.kernel_opts import (
     compose_kernel_command_line,
     compose_preseed_opt,
@@ -38,13 +42,32 @@ from testtools.matchers import (
     )
 
 
-def make_kernel_parameters(**parms):
-    """Make a randomly populated `KernelParameters` instance."""
+def make_kernel_parameters(testcase=None, **parms):
+    """Make a randomly populated `KernelParameters` instance.
+    
+    If testcase is passed, we poke the generated arch/subarch into the
+    ArchitectureRegistry and call addCleanup on the testcase to make sure
+    it is removed after the test completes.
+    """
     parms.update(
         {field: factory.make_name(field)
          for field in KernelParameters._fields
          if field not in parms})
-    return KernelParameters(**parms)
+    params = KernelParameters(**parms)
+
+    if testcase is not None:
+        name = "%s/%s" % (params.arch, params.subarch)
+        if name in ArchitectureRegistry:
+            # It's already there, no need to patch and risk overwriting
+            # preset kernel options.
+            return params
+        resource = Architecture(name, name)
+        ArchitectureRegistry.register_item(resource, name)
+        def cleanup():
+            del ArchitectureRegistry.get_items()[name]
+        testcase.addCleanup(cleanup)
+
+    return params
 
 
 class TestUtilitiesKernelOpts(MAASTestCase):
@@ -85,14 +108,17 @@ class TestUtilitiesKernelOpts(MAASTestCase):
 
 class TestKernelOpts(MAASTestCase):
 
+    def make_kernel_parameters(self, *args, **kwargs):
+        return make_kernel_parameters(self, *args, **kwargs)
+
     def test_compose_kernel_command_line_includes_preseed_url(self):
-        params = make_kernel_parameters()
+        params = self.make_kernel_parameters()
         self.assertIn(
             "auto url=%s" % params.preseed_url,
             compose_kernel_command_line(params))
 
     def test_install_compose_kernel_command_line_includes_name_domain(self):
-        params = make_kernel_parameters(purpose="install")
+        params = self.make_kernel_parameters(purpose="install")
         self.assertThat(
             compose_kernel_command_line(params),
             ContainsAll([
@@ -101,20 +127,20 @@ class TestKernelOpts(MAASTestCase):
                 ]))
 
     def test_install_compose_kernel_command_line_omits_domain_if_omitted(self):
-        params = make_kernel_parameters(purpose="install", domain=None)
+        params = self.make_kernel_parameters(purpose="install", domain=None)
         kernel_command_line = compose_kernel_command_line(params)
         self.assertIn("hostname=%s" % params.hostname, kernel_command_line)
         self.assertNotIn('domain=', kernel_command_line)
 
     def test_install_compose_kernel_command_line_includes_locale(self):
-        params = make_kernel_parameters(purpose="install")
+        params = self.make_kernel_parameters(purpose="install")
         locale = "en_US"
         self.assertIn(
             "locale=%s" % locale,
             compose_kernel_command_line(params))
 
     def test_install_compose_kernel_command_line_includes_log_settings(self):
-        params = make_kernel_parameters(purpose="install")
+        params = self.make_kernel_parameters(purpose="install")
         # Port 514 (UDP) is syslog.
         log_port = "514"
         self.assertThat(
@@ -125,7 +151,7 @@ class TestKernelOpts(MAASTestCase):
                 ]))
 
     def test_install_compose_kernel_command_line_includes_di_settings(self):
-        params = make_kernel_parameters(purpose="install")
+        params = self.make_kernel_parameters(purpose="install")
         self.assertThat(
             compose_kernel_command_line(params),
             Contains("text priority=critical"))
@@ -133,7 +159,7 @@ class TestKernelOpts(MAASTestCase):
     def test_install_compose_kernel_command_line_inc_purpose_opts(self):
         # The result of compose_kernel_command_line includes the purpose
         # options for a non "commissioning" node.
-        params = make_kernel_parameters(purpose="install")
+        params = self.make_kernel_parameters(purpose="install")
         self.assertIn(
             "netcfg/choose_interface=auto",
             compose_kernel_command_line(params))
@@ -143,7 +169,7 @@ class TestKernelOpts(MAASTestCase):
         # options for a non "xinstall" node.
         get_ephemeral_name = self.patch(kernel_opts, "get_ephemeral_name")
         get_ephemeral_name.return_value = "RELEASE-ARCH"
-        params = make_kernel_parameters(purpose="xinstall")
+        params = self.make_kernel_parameters(purpose="xinstall")
         cmdline = compose_kernel_command_line(params)
         self.assertThat(
             cmdline,
@@ -158,7 +184,7 @@ class TestKernelOpts(MAASTestCase):
         # options for a non "commissioning" node.
         get_ephemeral_name = self.patch(kernel_opts, "get_ephemeral_name")
         get_ephemeral_name.return_value = "RELEASE-ARCH"
-        params = make_kernel_parameters(purpose="commissioning")
+        params = self.make_kernel_parameters(purpose="commissioning")
         cmdline = compose_kernel_command_line(params)
         self.assertThat(
             cmdline,
@@ -170,14 +196,14 @@ class TestKernelOpts(MAASTestCase):
 
     def test_commissioning_compose_kernel_command_line_inc_extra_opts(self):
         extra_opts = "special console=ABCD -- options to pass"
-        params = make_kernel_parameters(extra_opts=extra_opts)
+        params = self.make_kernel_parameters(extra_opts=extra_opts)
         cmdline = compose_kernel_command_line(params)
         # There should be a double dash (--) surrounded by spaces before
         # the options, but otherwise added verbatim.
         self.assertThat(cmdline, Contains(' -- ' + extra_opts))
 
     def test_commissioning_compose_kernel_handles_extra_opts_None(self):
-        params = make_kernel_parameters(extra_opts=None)
+        params = self.make_kernel_parameters(extra_opts=None)
         cmdline = compose_kernel_command_line(params)
         self.assertNotIn(cmdline, "None")
 
@@ -188,17 +214,17 @@ class TestKernelOpts(MAASTestCase):
         get_ephemeral_name.return_value = "RELEASE-ARCH"
         expected = ["nomodeset"]
 
-        params = make_kernel_parameters(
+        params = self.make_kernel_parameters(
             purpose="commissioning", arch="i386")
         cmdline = compose_kernel_command_line(params)
         self.assertThat(cmdline, ContainsAll(expected))
 
-        params = make_kernel_parameters(
+        params = self.make_kernel_parameters(
             purpose="xinstall", arch="i386")
         cmdline = compose_kernel_command_line(params)
         self.assertThat(cmdline, ContainsAll(expected))
 
-        params = make_kernel_parameters(
+        params = self.make_kernel_parameters(
             purpose="install", arch="i386")
         cmdline = compose_kernel_command_line(params)
         self.assertThat(cmdline, ContainsAll(expected))
@@ -226,7 +252,7 @@ class TestKernelOpts(MAASTestCase):
         # The result of compose_kernel_command_line includes the purpose
         # options for a "xinstall" node.
         ephemeral_name = factory.make_name("ephemeral")
-        params = make_kernel_parameters(purpose="xinstall")
+        params = self.make_kernel_parameters(purpose="xinstall")
         self.create_ephemeral_info(
             ephemeral_name, params.arch, params.release)
         self.assertThat(
@@ -242,7 +268,7 @@ class TestKernelOpts(MAASTestCase):
         # The result of compose_kernel_command_line includes the purpose
         # options for a "commissioning" node.
         ephemeral_name = factory.make_name("ephemeral")
-        params = make_kernel_parameters(purpose="commissioning")
+        params = self.make_kernel_parameters(purpose="commissioning")
         self.create_ephemeral_info(
             ephemeral_name, params.arch, params.release)
         self.assertThat(
@@ -255,7 +281,7 @@ class TestKernelOpts(MAASTestCase):
                 ]))
 
     def test_compose_kernel_command_line_reports_error_about_missing_dir(self):
-        params = make_kernel_parameters(purpose="commissioning")
+        params = self.make_kernel_parameters(purpose="commissioning")
         missing_dir = factory.make_name('missing-dir')
         config = {"boot": {"ephemeral": {"images_directory": missing_dir}}}
         self.useFixture(ConfigFixture(config))
@@ -270,13 +296,13 @@ class TestKernelOpts(MAASTestCase):
             compose_preseed_opt(dummy_preseed_url))
 
     def test_compose_kernel_command_line_inc_arm_specific_option(self):
-        params = make_kernel_parameters(arch="armhf", subarch="highbank")
+        params = self.make_kernel_parameters(arch="armhf", subarch="highbank")
         self.assertThat(
             compose_kernel_command_line(params),
             Contains("console=ttyAMA0"))
 
     def test_compose_kernel_command_line_not_inc_arm_specific_option(self):
-        params = make_kernel_parameters(arch="i386")
+        params = self.make_kernel_parameters(arch="i386")
         self.assertThat(
             compose_kernel_command_line(params),
             Not(Contains("console=ttyAMA0")))

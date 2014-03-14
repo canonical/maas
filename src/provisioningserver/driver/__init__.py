@@ -63,7 +63,8 @@ class HardwareDriver:
 
 class Architecture:
 
-    def __init__(self, name, description, pxealiases=None):
+    def __init__(self, name, description, pxealiases=None,
+                 kernel_options=None):
         """Represents an architecture in the driver context.
 
         :param name: The architecture name as used in MAAS.
@@ -72,10 +73,14 @@ class Architecture:
             architecture.
         :param pxealiases: The optional list of names used if the
             hardware uses a different name when requesting its bootloader.
+        :param kernel_options: The optional list of kernel options for this
+            architecture.  Anything supplied here supplements the options
+            provided by MAAS core.
         """
         self.name = name
         self.description = description
         self.pxealiases = pxealiases
+        self.kernel_options = kernel_options
 
     def map_to_maas_name(self, alias):
         if alias in self.pxealiases:
@@ -152,9 +157,14 @@ PowerTypeRegistry = type(
 
 
 builtin_architectures = [
-    Architecture("i386/generic", 'i386'),
-    Architecture("amd64/generic", 'amd64'),
-    Architecture("armhf/highbank", "armhf/highbank", ["arm"]),
+    Architecture(name="i386/generic", description="i386"),
+    Architecture(name="amd64/generic", description="amd64"),
+    Architecture(
+        name="armhf/highbank", description="armhf/highbank",
+        pxealiases=["arm"], kernel_options=["console=ttyAMA0"]),
+    Architecture(
+        name="armhf/generic", description="armhf/generic",
+        pxealiases=["arm"], kernel_options=["console=ttyAMA0"]),
 ]
 for arch in builtin_architectures:
     ArchitectureRegistry.register_item(arch, arch.name)
@@ -163,8 +173,3 @@ for arch in builtin_architectures:
 builtin_power_types = JSON_POWER_TYPE_PARAMETERS
 for power_type in builtin_power_types:
     PowerTypeRegistry.register_item(power_type, power_type['name'])
-
-
-# TODO:
-#  * registry for actual drivers
-#  * hook RPC calls to registry data

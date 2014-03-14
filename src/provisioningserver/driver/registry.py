@@ -20,14 +20,29 @@ __all__ = [
 _registry = {}
 
 
+class MetaRegistry(type):
+    """This exists to subvert "type"s builtins."""
+    def __getitem__(self, item):
+        return self.get_item(item)
+
+    def __contains__(self, item):
+        return item in self.get_items()
+
+
 class Registry:
     """Base class for singleton registries."""
+    __metaclass__ = MetaRegistry
     registry_name = ''
 
     @classmethod
     def get_items(cls):
         global _registry
         return _registry.get(cls.registry_name, {})
+
+    @classmethod
+    def get_item(cls, item):
+        global _registry
+        return cls.get_items()[item]
 
     @classmethod
     def register_item(cls, item, name):

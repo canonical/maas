@@ -23,6 +23,7 @@ import os
 
 from provisioningserver.config import Config
 from provisioningserver.utils import parse_key_value_file
+from provisioningserver.driver import ArchitectureRegistry
 
 
 class EphemeralImagesDirectoryNotFound(Exception):
@@ -167,11 +168,11 @@ def compose_purpose_opts(params):
 
 def compose_arch_opts(params):
     """Return any architecture-specific options required"""
-    if (params.arch, params.subarch) == ("armhf", "highbank"):
-        return ["console=ttyAMA0"]
-    else:
-        # On Intel there are no working sane console= defaults (LP: #1061977)
-        return []
+    resource = ArchitectureRegistry['%s/%s' % (params.arch, params.subarch)]
+    opts = resource.kernel_options
+    if opts is None:
+        opts = []
+    return opts
 
 
 def compose_kernel_command_line(params):
