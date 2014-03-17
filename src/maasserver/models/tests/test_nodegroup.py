@@ -66,15 +66,13 @@ def make_dhcp_settings():
 
 class TestNodeGroupManager(MAASServerTestCase):
 
-    def test_new_creates_nodegroup_with_interface(self):
+    def test_new_does_not_create_nodegroup_with_no_interface(self):
         name = factory.make_name('nodegroup')
         uuid = factory.getRandomUUID()
         ip = factory.getRandomIPAddress()
         nodegroup = NodeGroup.objects.new(name, uuid, ip)
         interface = get_one(nodegroup.nodegroupinterface_set.all())
-        self.assertEqual(
-            (name, uuid, ip),
-            (nodegroup.name, nodegroup.uuid, interface.ip))
+        self.assertEqual(None, interface)
 
     def test_new_requires_all_dhcp_settings_or_none(self):
         name = factory.make_name('nodegroup')
@@ -118,20 +116,6 @@ class TestNodeGroupManager(MAASServerTestCase):
             factory.getRandomIPAddress(),
             dhcp_key=key)
         self.assertEqual(key, nodegroup.dhcp_key)
-
-    def test_ensure_master_creates_minimal_interface(self):
-        master = NodeGroup.objects.ensure_master()
-        interface = get_one(master.nodegroupinterface_set.all())
-        self.assertThat(
-            interface,
-            MatchesStructure.byEquality(
-                ip='127.0.0.1',
-                subnet_mask=None,
-                broadcast_ip=None,
-                router_ip=None,
-                ip_range_low=None,
-                ip_range_high=None,
-            ))
 
     def test_ensure_master_writes_master_nodegroup_to_database(self):
         master = NodeGroup.objects.ensure_master()

@@ -61,7 +61,7 @@ class NodeGroupManager(Manager):
         """Create a :class:`NodeGroup` with the given parameters.
 
         This method will:
-        - create the related NodeGroupInterface.
+        - create the related NodeGroupInterface if `interface` is provided
         - generate API credentials for the nodegroup's worker to use.
         """
         dhcp_values = [
@@ -81,12 +81,13 @@ class NodeGroupManager(Manager):
             name=name, uuid=uuid, cluster_name=cluster_name, dhcp_key=dhcp_key,
             status=status, maas_url=maas_url)
         nodegroup.save()
-        nginterface = NodeGroupInterface(
-            nodegroup=nodegroup, ip=ip, subnet_mask=subnet_mask,
-            broadcast_ip=broadcast_ip, router_ip=router_ip,
-            interface=interface, ip_range_low=ip_range_low,
-            ip_range_high=ip_range_high, management=management)
-        nginterface.save()
+        if interface != '':
+            nginterface = NodeGroupInterface(
+                nodegroup=nodegroup, ip=ip, subnet_mask=subnet_mask,
+                broadcast_ip=broadcast_ip, router_ip=router_ip,
+                interface=interface, ip_range_low=ip_range_low,
+                ip_range_high=ip_range_high, management=management)
+            nginterface.save()
         return nodegroup
 
     def ensure_master(self):
