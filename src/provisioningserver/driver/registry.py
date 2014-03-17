@@ -22,6 +22,7 @@ _registry = {}
 
 class MetaRegistry(type):
     """This exists to subvert "type"s builtins."""
+
     def __getitem__(self, item):
         return self.get_item(item)
 
@@ -40,9 +41,12 @@ class Registry:
         return _registry.get(cls.registry_name, {})
 
     @classmethod
-    def get_item(cls, item):
+    def get_item(cls, item, default=None):
         global _registry
-        return cls.get_items()[item]
+        if item in cls.get_items():
+            return cls.get_items()[item]
+        else:
+            return default
 
     @classmethod
     def register_item(cls, item, name):

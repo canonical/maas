@@ -22,8 +22,8 @@ from collections import namedtuple
 import os
 
 from provisioningserver.config import Config
-from provisioningserver.utils import parse_key_value_file
 from provisioningserver.driver import ArchitectureRegistry
+from provisioningserver.utils import parse_key_value_file
 
 
 class EphemeralImagesDirectoryNotFound(Exception):
@@ -168,11 +168,12 @@ def compose_purpose_opts(params):
 
 def compose_arch_opts(params):
     """Return any architecture-specific options required"""
-    resource = ArchitectureRegistry['%s/%s' % (params.arch, params.subarch)]
-    opts = resource.kernel_options
-    if opts is None:
-        opts = []
-    return opts
+    arch_subarch = '%s/%s' % (params.arch, params.subarch)
+    resource = ArchitectureRegistry.get_item(arch_subarch)
+    if resource is not None and resource.kernel_options is not None:
+        return resource.kernel_options
+    else:
+        return []
 
 
 def compose_kernel_command_line(params):

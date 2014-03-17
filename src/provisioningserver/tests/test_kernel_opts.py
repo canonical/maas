@@ -26,6 +26,7 @@ from provisioningserver.driver import (
     ArchitectureRegistry,
     )
 from provisioningserver.kernel_opts import (
+    compose_arch_opts,
     compose_kernel_command_line,
     compose_preseed_opt,
     EphemeralImagesDirectoryNotFound,
@@ -307,3 +308,12 @@ class TestKernelOpts(MAASTestCase):
         self.assertThat(
             compose_kernel_command_line(params),
             Not(Contains("console=ttyAMA0")))
+
+    def test_compose_arch_opts_copes_with_unknown_subarch(self):
+         # Pass a None testcase so that the architecture doesn't get
+         # registered.
+        params = make_kernel_parameters(
+            testcase=None,
+            arch=factory.make_name("arch"),
+            subarch=factory.make_name("subarch"))
+        self.assertEquals([], compose_arch_opts(params))

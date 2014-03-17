@@ -19,14 +19,14 @@ from mock import (
     Mock,
     sentinel,
     )
-from provisioningserver.driver.registry import _registry
 from provisioningserver.driver import (
     Architecture,
     ArchitectureRegistry,
     BootResourceRegistry,
-    Registry,
     PowerTypeRegistry,
+    Registry,
     )
+from provisioningserver.driver.registry import _registry
 
 
 class TestRegistry(MAASTestCase):
@@ -67,6 +67,15 @@ class TestRegistry(MAASTestCase):
         Registry.registry_name = sentinel.registry_name
         Registry.register_item(resource, "resource")
         self.assertEqual(resource, Registry.get_item("resource"))
+
+    def test_get_item_returns_default_if_value_not_present(self):
+        default = Mock()
+        Registry.registry_name = sentinel.registry_name
+        self.assertEqual(default, Registry.get_item("resource", default))
+
+    def test_get_item_returns_None_default(self):
+        Registry.registry_name = sentinel.registry_name
+        self.assertIsNone(Registry.get_item("resource"))
 
     def test__contains__(self):
         resource = Mock()
