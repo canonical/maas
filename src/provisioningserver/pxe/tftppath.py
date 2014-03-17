@@ -13,6 +13,7 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    'ARP_HTYPE',
     'compose_bootloader_path',
     'compose_config_path',
     'compose_image_path',
@@ -22,7 +23,11 @@ __all__ = [
 
 import os.path
 
-from provisioningserver.enum import ARP_HTYPE
+
+class ARP_HTYPE:
+    """ARP Hardware Type codes."""
+
+    ETHERNET = 0x01
 
 
 def compose_bootloader_path():

@@ -4,7 +4,7 @@ from south.db import db
 from south.v2 import DataMigration
 from django.db import models
 
-from provisioningserver.enum import IPMI_DRIVER
+from provisioningserver.power_schema import IPMI_DRIVER
 
 class Migration(DataMigration):
 

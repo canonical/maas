@@ -18,8 +18,8 @@ import os.path
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
-from provisioningserver.enum import ARP_HTYPE
 from provisioningserver.pxe.tftppath import (
+    ARP_HTYPE,
     compose_bootloader_path,
     compose_config_path,
     compose_image_path,

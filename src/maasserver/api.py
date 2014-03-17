@@ -242,7 +242,7 @@ from metadataserver.models import (
 from piston.emitters import JSONEmitter
 from piston.handler import typemapper
 from piston.utils import rc
-from provisioningserver.enum import UNKNOWN_POWER_TYPE
+from provisioningserver.power_schema import UNKNOWN_POWER_TYPE
 from provisioningserver.kernel_opts import KernelParameters
 import simplejson as json
 

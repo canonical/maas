@@ -20,10 +20,26 @@ __all__ = [
 
 
 from jsonschema import validate
-from provisioningserver.enum import (
-    IPMI_DRIVER,
-    IPMI_DRIVER_CHOICES,
-    )
+
+
+# We specifically declare this here so that a node not knowing its own
+# powertype won't fail to enlist. However, we don't want it in the list
+# of power types since setting a node's power type to "I don't know"
+# from another type doens't make any sense.
+UNKNOWN_POWER_TYPE = ''
+
+
+class IPMI_DRIVER:
+    DEFAULT = ''
+    LAN = 'LAN'
+    LAN_2_0 = 'LAN_2_0'
+
+
+IPMI_DRIVER_CHOICES = [
+    [IPMI_DRIVER.LAN, "LAN [IPMI 1.5]"],
+    [IPMI_DRIVER.LAN_2_0, "LAN_2_0 [IPMI 2.0]"],
+    ]
+
 
 # Represent the Django choices format as JSON; an array of 2-item
 # arrays.
