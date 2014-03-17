@@ -220,8 +220,7 @@ read | update <system_id>
            Sets the distro series of Ubuntu to use (e.g. "precise").
 
       power_type=<value>
-           Apply the given dotted decimal value as the broadcast IP address
-           for this subnet.
+           Set the given power type on the node. (e.g. "ipmi")
 
       power_parameters_{param1}... =<value>
            Set the given power parameters. Note that the valid options for these
