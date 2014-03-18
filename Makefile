@@ -38,6 +38,7 @@ build: \
     bin/maas bin/test.maascli \
     bin/test.maastesting \
     bin/twistd.pserv bin/test.pserv \
+    bin/test.config \
     bin/maas-probe-dhcp \
     bin/twistd.txlongpoll \
     bin/celeryd.cluster bin/celeryd.region \
@@ -94,6 +95,10 @@ bin/maas-provision bin/twistd.pserv bin/celeryd.cluster: \
 
 bin/test.pserv: bin/buildout buildout.cfg versions.cfg setup.py
 	$(buildout) install pserv-test
+	@touch --no-create $@
+
+bin/test.config: bin/buildout buildout.cfg versions.cfg setup.py
+	$(buildout) install config-test
 	@touch --no-create $@
 
 bin/maas-probe-dhcp: bin/buildout buildout.cfg versions.cfg setup.py
