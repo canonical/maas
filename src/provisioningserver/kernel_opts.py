@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Generate kernel command-line options for inclusion in PXE configs."""
@@ -35,6 +35,7 @@ KernelParametersBase = namedtuple(
         "arch",  # Machine architecture, e.g. "i386"
         "subarch",  # Machine subarchitecture, e.g. "generic"
         "release",  # Ubuntu release, e.g. "precise"
+        "label",  # Image label, e.g. "release"
         "purpose",  # Boot purpose, e.g. "commissioning"
         "hostname",  # Machine hostname, e.g. "coleman"
         "domain",  # Machine domain name, e.g. "example.com"

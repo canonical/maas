@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Install a netboot image directory for TFTP download."""
@@ -33,7 +33,7 @@ from provisioningserver.pxe.tftppath import (
 from twisted.python.filepath import FilePath
 
 
-def make_destination(tftproot, arch, subarch, release, purpose):
+def make_destination(tftproot, arch, subarch, release, label, purpose):
     """Locate an image's destination.  Create containing directory if needed.
 
     :param tftproot: The root directory served up by the TFTP server,
@@ -41,13 +41,15 @@ def make_destination(tftproot, arch, subarch, release, purpose):
     :param arch: Main architecture to locate the destination for.
     :param subarch: Sub-architecture of the main architecture.
     :param release: OS release name, e.g. "precise".
+    :param label: Image label, e.g. for a beta release, or "release" for the
+        default images.
     :param purpose: Purpose of this image, e.g. "install".
     :return: Full path describing the image directory's new location and
         name.  In other words, a file "linux" in the image directory should
         become os.path.join(make_destination(...), 'linux').
     """
     dest = locate_tftp_path(
-        compose_image_path(arch, subarch, release, purpose),
+        compose_image_path(arch, subarch, release, label, purpose),
         tftproot=tftproot)
     parent = os.path.dirname(dest)
     if not os.path.isdir(parent):
@@ -157,8 +159,8 @@ def install_symlink(new, old):
     rmtree('%s.old' % old, ignore_errors=True)
 
 
-def install_image(image_dir, arch, subarch, release, purpose, config_file=None,
-                  alternate_purpose=None):
+def install_image(image_dir, arch, subarch, release, label, purpose,
+                  config_file=None, alternate_purpose=None):
     """Install a PXE boot image.
 
     This is the function-call equivalent to a command-line invocation calling
@@ -166,7 +168,8 @@ def install_image(image_dir, arch, subarch, release, purpose, config_file=None,
     """
     config = Config.load_from_cache(config_file)
     tftproot = config["tftp"]["root"]
-    destination = make_destination(tftproot, arch, subarch, release, purpose)
+    destination = make_destination(
+        tftproot, arch, subarch, release, label, purpose)
     if not are_identical_dirs(destination, image_dir):
         # Image has changed.  Move the new version into place.
         install_dir(image_dir, destination)
@@ -174,7 +177,7 @@ def install_image(image_dir, arch, subarch, release, purpose, config_file=None,
     if alternate_purpose is not None:
         # Symlink the new image directory under the alternate purpose name.
         alternate_destination = make_destination(
-            tftproot, arch, subarch, release, alternate_purpose)
+            tftproot, arch, subarch, release, label, alternate_purpose)
         install_symlink(destination, alternate_destination)
 
     rmtree(image_dir, ignore_errors=True)
@@ -190,6 +193,9 @@ def add_arguments(parser):
     parser.add_argument(
         '--release', dest='release', default=None,
         help="Ubuntu release that the image is for.")
+    parser.add_argument(
+        '--label', dest='label', default='release',
+        help="Image label, for specific pre-release images."),
     parser.add_argument(
         '--purpose', dest='purpose', default=None,
         help="Purpose of the image (e.g. 'install' or 'commissioning').")
@@ -211,5 +217,5 @@ def run(args):
     """
     install_image(
         args.image, arch=args.arch, subarch=args.subarch, release=args.release,
-        purpose=args.purpose, config_file=args.config_file,
+        label=args.label, purpose=args.purpose, config_file=args.config_file,
         alternate_purpose=args.symlink)

@@ -53,6 +53,7 @@ class TestTFTPPath(MAASTestCase):
                 arch=image_params['architecture'],
                 subarch=image_params['subarchitecture'],
                 release=image_params['release'],
+                label=image_params['label'],
                 purpose=image_params['purpose']),
             tftproot)
         os.makedirs(image_dir)
@@ -75,18 +76,20 @@ class TestTFTPPath(MAASTestCase):
         arch = factory.make_name('arch')
         subarch = factory.make_name('subarch')
         release = factory.make_name('release')
+        label = factory.make_name('label')
         purpose = factory.make_name('purpose')
         self.assertEqual(
-            '%s/%s/%s/%s' % (arch, subarch, release, purpose),
-            compose_image_path(arch, subarch, release, purpose))
+            '%s/%s/%s/%s/%s' % (arch, subarch, release, label, purpose),
+            compose_image_path(arch, subarch, release, label, purpose))
 
     def test_compose_image_path_does_not_include_tftp_root(self):
         arch = factory.make_name('arch')
         subarch = factory.make_name('subarch')
         release = factory.make_name('release')
+        label = factory.make_name('label')
         purpose = factory.make_name('purpose')
         self.assertThat(
-            compose_image_path(arch, subarch, release, purpose),
+            compose_image_path(arch, subarch, release, label, purpose),
             Not(StartsWith(self.tftproot)))
 
     def test_compose_bootloader_path_follows_maas_pxe_directory_layout(self):
@@ -117,20 +120,12 @@ class TestTFTPPath(MAASTestCase):
 
     def test_list_boot_images_finds_boot_image(self):
         image = make_boot_image_params()
-        # XXX jtv 2014-03-11 bug=1290822: The directory hierarchy for boot
-        # images doesn't actually support labels yet.  Hard-code "release"
-        # as the label for now, to make the test pass during transition.
-        image['label'] = 'release'
         self.make_image_dir(image, self.tftproot)
         self.assertItemsEqual([image], list_boot_images(self.tftproot))
 
     def test_list_boot_images_enumerates_boot_images(self):
         images = [make_boot_image_params() for counter in range(3)]
         for image in images:
-            # XXX jtv 2014-03-11 bug=1290822: The directory hierarchy for boot
-            # images doesn't actually support labels yet.  Hard-code "release"
-            # as the label for now, to make the test pass during transition.
-            image['label'] = 'release'
             self.make_image_dir(image, self.tftproot)
         self.assertItemsEqual(images, list_boot_images(self.tftproot))
 

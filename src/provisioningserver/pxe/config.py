@@ -1,4 +1,4 @@
-# Copyright 2012-2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Generating PXE configuration files.
@@ -101,7 +101,7 @@ def render_pxe_config(kernel_params, **extra):
     def image_dir(params):
         return compose_image_path(
             params.arch, params.subarch,
-            params.release, params.purpose)
+            params.release, params.label, params.purpose)
 
     def initrd_path(params):
         return "%s/initrd.gz" % image_dir(params)

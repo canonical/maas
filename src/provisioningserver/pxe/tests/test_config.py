@@ -1,4 +1,4 @@
-# Copyright 2012-2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `provisioningserver.pxe.config`."""
@@ -174,7 +174,7 @@ class TestRenderPXEConfig(MAASTestCase):
         # The PXE parameters are all set according to the options.
         image_dir = compose_image_path(
             arch=params.arch, subarch=params.subarch,
-            release=params.release, purpose=params.purpose)
+            release=params.release, label=params.label, purpose=params.purpose)
         self.assertThat(
             output, MatchesAll(
                 MatchesRegex(

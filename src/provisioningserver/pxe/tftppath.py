@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Construct TFTP paths for PXE files."""
@@ -60,7 +60,7 @@ def compose_config_path(mac):
         htype=ARP_HTYPE.ETHERNET, mac=mac)
 
 
-def compose_image_path(arch, subarch, release, purpose):
+def compose_image_path(arch, subarch, release, label, purpose):
     """Compose the TFTP path for a PXE kernel/initrd directory.
 
     The path returned is relative to the TFTP root, as it would be
@@ -69,12 +69,14 @@ def compose_image_path(arch, subarch, release, purpose):
     :param arch: Main machine architecture.
     :param subarch: Sub-architecture, or "generic" if there is none.
     :param release: Operating system release, e.g. "precise".
+    :param label: An image label, e.g. for a beta version, or "release" for
+        the default images.
     :param purpose: Purpose of the image, e.g. "install" or
         "commissioning".
     :return: Path for the corresponding image directory (containing a
         kernel and initrd) as exposed over TFTP.
     """
-    return '/'.join([arch, subarch, release, purpose])
+    return '/'.join([arch, subarch, release, label, purpose])
 
 
 def locate_tftp_path(path, tftproot):
@@ -146,11 +148,10 @@ def extract_image_params(path):
     The path must consist of a full [architecture, subarchitecture, release,
     purpose] that identify a kind of boot that we may need an image for.
     """
-    arch, subarch, release, purpose = path
-    # XXX: the hard-coded label needs to be fixed in a future change.
+    arch, subarch, release, label, purpose = path
     return dict(
         architecture=arch, subarchitecture=subarch, release=release,
-        purpose=purpose, label="release")
+        label=label, purpose=purpose)
 
 
 def list_boot_images(tftproot):
@@ -171,7 +172,7 @@ def list_boot_images(tftproot):
     # Extend paths deeper into the filesystem, through the levels that
     # represent sub-architecture, release, and purpose.  Any directory
     # that doesn't extend this deep isn't a boot image.
-    for level in ['subarch', 'release', 'purpose']:
+    for level in ['subarch', 'release', 'label', 'purpose']:
         paths = drill_down(tftproot, paths)
 
     # Each path we find this way should be a boot image.

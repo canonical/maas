@@ -161,6 +161,7 @@ class TestClusterProtocol_ListBootImages(MAASTestCase):
 
         self.assertEqual({"images": []}, response)
 
+    @inlineCallbacks
     def test_list_boot_images_with_things_to_report(self):
         # tftppath.list_boot_images()'s return value matches the
         # response schema that ListBootImages declares, and is
@@ -170,11 +171,12 @@ class TestClusterProtocol_ListBootImages(MAASTestCase):
         archs = "i386", "amd64"
         subarchs = "generic", "special"
         releases = "precise", "trusty"
+        labels = "beta-1", "release"
         purposes = "commission", "install"
 
         # Create a TFTP file tree with a variety of subdirectories.
         tftpdir = self.make_dir()
-        for options in product(archs, subarchs, releases, purposes):
+        for options in product(archs, subarchs, releases, labels, purposes):
             os.makedirs(os.path.join(tftpdir, *options))
 
         # Ensure that list_boot_images() uses the above TFTP file tree.
@@ -182,19 +184,21 @@ class TestClusterProtocol_ListBootImages(MAASTestCase):
         load_from_cache.return_value = {"tftp": {"root": tftpdir}}
 
         expected_images = [
-            {"architecture": arch, "subarchitecture": subarch,
-             "release": release, "purpose": purpose}
-            for arch, subarch, release, purpose in product(
-                archs, subarchs, releases, purposes)
-        ]
+            {
+                "architecture": arch,
+                "subarchitecture": subarch,
+                "release": release,
+                "label": label,
+                "purpose": purpose,
+            }
+            for arch, subarch, release, label, purpose in product(
+                archs, subarchs, releases, labels, purposes)
+            ]
 
-        d = call_responder(Cluster(), cluster.ListBootImages, {})
+        response = yield call_responder(Cluster(), cluster.ListBootImages, {})
 
-        def check(response):
-            self.assertThat(response, KeysEqual("images"))
-            self.assertItemsEqual(expected_images, response["images"])
-
-        return d.addCallback(check)
+        self.assertThat(response, KeysEqual("images"))
+        self.assertItemsEqual(expected_images, response["images"])
 
 
 class TestClusterProtocol_DescribePowerTypes(MAASTestCase):

@@ -2358,9 +2358,8 @@ def pxeconfig(request):
         hostname = 'maas-enlist'
         domain = Config.objects.get_config('enlistment_domain')
 
-        try:
-            arch = request.GET['arch']
-        except KeyError:
+        arch = get_optional_param(request.GET, 'arch')
+        if arch is None:
             if 'mac' in request.GET:
                 # Request was pxelinux.cfg/01-<mac>, so attempt fall back
                 # to pxelinux.cfg/default-<arch>-<subarch> for arch detection.
@@ -2376,11 +2375,9 @@ def pxeconfig(request):
                 else:
                     arch = image.architecture
 
-        # Use subarch if supplied; otherwise assume 'generic'.
-        try:
-            subarch = request.GET['subarch']
-        except KeyError:
-            subarch = 'generic'
+        subarch = get_optional_param(request.GET, 'subarch', 'generic')
+
+    label = get_optional_param(request.GET, 'label', 'release')
 
     if node is not None:
         # We don't care if the kernel opts is from the global setting or a tag,
@@ -2395,10 +2392,10 @@ def pxeconfig(request):
     cluster_address = get_mandatory_param(request.GET, "local")
 
     params = KernelParameters(
-        arch=arch, subarch=subarch, release=series, purpose=purpose,
-        hostname=hostname, domain=domain, preseed_url=preseed_url,
-        log_host=server_address, fs_host=cluster_address,
-        extra_opts=extra_kernel_opts)
+        arch=arch, subarch=subarch, release=series, label=label,
+        purpose=purpose, hostname=hostname, domain=domain,
+        preseed_url=preseed_url, log_host=server_address,
+        fs_host=cluster_address, extra_opts=extra_kernel_opts)
 
     return HttpResponse(
         json.dumps(params._asdict()),

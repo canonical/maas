@@ -1,4 +1,4 @@
-# Copyright 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `ephemerals_script`."""
@@ -323,13 +323,15 @@ class TestInstallImageFromSimplestreams(PservTestCase):
         self.patch_config(tftp_root)
         storage_dir = self.prepare_storage_dir()
         release = factory.make_name('release')
+        label = factory.make_name('label')
         arch = factory.make_name('arch')
 
         install_image_from_simplestreams(
-            storage_dir, release=release, arch=arch)
+            storage_dir, release=release, label=label, arch=arch)
 
         install_dir = locate_tftp_path(
-            compose_image_path(arch, 'generic', release, 'commissioning'),
+            compose_image_path(
+                arch, 'generic', release, label, 'commissioning'),
             tftproot=tftp_root)
         self.assertItemsEqual(
             ['linux', 'initrd.gz', 'root.tar.gz'],
@@ -345,7 +347,8 @@ class TestInstallImageFromSimplestreams(PservTestCase):
 
         install_image_from_simplestreams(
             storage_dir, release=factory.make_name('release'),
-            arch=factory.make_name('arch'), temp_location=temp_location)
+            label=factory.make_name('label'), arch=factory.make_name('arch'),
+            temp_location=temp_location)
 
         self.assertItemsEqual([], listdir(temp_location))
 
@@ -362,7 +365,8 @@ class TestInstallImageFromSimplestreams(PservTestCase):
             DeliberateFailure,
             install_image_from_simplestreams,
             storage_dir, release=factory.make_name('release'),
-            arch=factory.make_name('arch'), temp_location=temp_location)
+            label=factory.make_name('label'), arch=factory.make_name('arch'),
+            temp_location=temp_location)
 
         self.assertItemsEqual([], listdir(temp_location))
 

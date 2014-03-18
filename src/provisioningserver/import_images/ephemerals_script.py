@@ -1,4 +1,4 @@
-# Copyright 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Script code for `maas-import-ephemerals.py`."""
@@ -157,7 +157,7 @@ def create_symlinked_image_dir(original_dir, temp_location=None):
     return image_dir
 
 
-def install_image_from_simplestreams(storage_dir, release, arch,
+def install_image_from_simplestreams(storage_dir, release, label, arch,
                                      subarch='generic',
                                      purpose='commissioning',
                                      alternate_purpose='xinstall',
@@ -168,6 +168,7 @@ def install_image_from_simplestreams(storage_dir, release, arch,
         `initrd.gz`, `dist-root.tar.gz`).  The image that will be installed is
         a directory of symlinks to these files.
     :param release: Release name to install, e.g. "precise".
+    :param label: Image label, e.g. "release" or an alpha or beta version.
     :param arch: Architecture for the image, e.g. "i386".
     :param subarch: Sub-architecture.  Defaults to "generic".
     :param purpose: Boot purpose for the image.  Defaults to `commissioning`.
@@ -183,7 +184,8 @@ def install_image_from_simplestreams(storage_dir, release, arch,
 
     try:
         install_image(
-            provision_tmp, release=release, arch=arch, subarch=subarch,
+            provision_tmp, arch=arch, subarch=subarch,
+            release=release, label=label,
             purpose=purpose, alternate_purpose=alternate_purpose)
     finally:
         shutil.rmtree(provision_tmp, ignore_errors=True)
@@ -280,7 +282,9 @@ class MAASMirrorWriter(mirrors.ObjectStoreMirrorWriter):
         release = metadata['release']
         version = metadata['version']
         version_name = metadata['version_name']
-        label = metadata['label']
+        # XXX jtv 2014-03-14: At the time of writing we don't know whether
+        # simplestreams will pass the release label in this way.
+        label = metadata.get('label', 'release')
         target_dir = self._target_dir(metadata)
         name = get_target_name(
             release=release, version=version, arch=arch,

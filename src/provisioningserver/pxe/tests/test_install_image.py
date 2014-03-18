@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the install_pxe_image command."""
@@ -41,14 +41,15 @@ from testtools.matchers import (
 from twisted.python.filepath import FilePath
 
 
-def make_arch_subarch_release_purpose():
-    """Create arbitrary architecture/subarchitecture/release names.
+def make_arch_subarch_release_label_purpose():
+    """Create arbitrary architecture/subarchitecture/release etc. names.
 
-    :return: A triplet of three identifiers for these respective items.
+    :return: A tuple of architecture, subarchitecture, release, label, and
+        purpose.
     """
     return tuple(
         factory.make_name(item)
-        for item in ('arch', 'subarch', 'release', 'purpose'))
+        for item in ('arch', 'subarch', 'release', 'label', 'purpose'))
 
 
 class TestInstallPXEImage(MAASTestCase):
@@ -63,20 +64,21 @@ class TestInstallPXEImage(MAASTestCase):
         image_dir = os.path.join(download_dir, 'image')
         os.makedirs(image_dir)
         factory.make_file(image_dir, 'kernel')
-        arch, subarch, release, purpose = make_arch_subarch_release_purpose()
+        arch, subarch, release, label, purpose = (
+            make_arch_subarch_release_label_purpose())
 
         action = factory.make_name("action")
         script = MainScript(action)
         script.register(action, provisioningserver.pxe.install_image)
         script.execute(
             ("--config-file", config_fixture.filename, action, "--arch", arch,
-             "--subarch", subarch, "--release", release, "--purpose", purpose,
-             "--image", image_dir))
+             "--subarch", subarch, "--release", release, "--label", label,
+             "--purpose", purpose, "--image", image_dir))
 
         self.assertThat(
             os.path.join(
                 locate_tftp_path(
-                    compose_image_path(arch, subarch, release, purpose),
+                    compose_image_path(arch, subarch, release, label, purpose),
                     tftproot=tftproot),
                 'kernel'),
             FileExists())
@@ -88,31 +90,35 @@ class TestInstallPXEImage(MAASTestCase):
         # (Where the /var/lib/maas/tftp/ part is configurable, so we
         # can test this without overwriting system files).
         tftproot = self.make_dir()
-        arch, subarch, release, purpose = make_arch_subarch_release_purpose()
+        arch, subarch, release, label, purpose = (
+            make_arch_subarch_release_label_purpose())
         self.assertEqual(
-            os.path.join(tftproot, arch, subarch, release, purpose),
-            make_destination(tftproot, arch, subarch, release, purpose))
+            os.path.join(tftproot, arch, subarch, release, label, purpose),
+            make_destination(tftproot, arch, subarch, release, label, purpose))
 
     def test_make_destination_creates_directory_if_not_present(self):
         tftproot = self.make_dir()
-        arch, subarch, release, purpose = make_arch_subarch_release_purpose()
+        arch, subarch, release, label, purpose = (
+            make_arch_subarch_release_label_purpose())
         expected_destination = os.path.dirname(locate_tftp_path(
-            compose_image_path(arch, subarch, release, purpose),
+            compose_image_path(arch, subarch, release, label, purpose),
             tftproot=tftproot))
-        make_destination(tftproot, arch, subarch, release, purpose)
+        make_destination(tftproot, arch, subarch, release, label, purpose)
         self.assertThat(expected_destination, DirExists())
 
     def test_make_destination_returns_existing_directory(self):
         tftproot = self.make_dir()
-        arch, subarch, release, purpose = make_arch_subarch_release_purpose()
+        arch, subarch, release, label, purpose = (
+            make_arch_subarch_release_label_purpose())
         expected_dest = locate_tftp_path(
-            compose_image_path(arch, subarch, release, purpose),
+            compose_image_path(arch, subarch, release, label, purpose),
             tftproot=tftproot)
         os.makedirs(expected_dest)
         contents = factory.getRandomString()
         testfile = factory.make_name('testfile')
         factory.make_file(expected_dest, contents=contents, name=testfile)
-        dest = make_destination(tftproot, arch, subarch, release, purpose)
+        dest = make_destination(
+            tftproot, arch, subarch, release, label, purpose)
         self.assertThat(os.path.join(dest, testfile), FileContains(contents))
 
     def test_are_identical_dirs_sees_missing_old_dir_as_different(self):
@@ -293,19 +299,21 @@ class TestInstallPXEImage(MAASTestCase):
         arch = factory.make_name('arch')
         subarch = factory.make_name('subarch')
         release = factory.make_name('release')
+        label = factory.make_name('label')
         purpose = factory.make_name('purpose')
         alternate_purpose = factory.make_name('alt')
 
         install_image(
-            downloaded_image, arch, subarch, release, purpose,
+            downloaded_image, arch, subarch, release, label, purpose,
             alternate_purpose=alternate_purpose)
 
-        main_image = os.path.join(tftp_root, arch, subarch, release, purpose)
+        main_image = os.path.join(
+            tftp_root, arch, subarch, release, label, purpose)
         self.assertThat(
             os.path.join(main_image, 'linux'),
             FileContains(kernel_content))
         alternate_image = os.path.join(
-            tftp_root, arch, subarch, release, alternate_purpose)
+            tftp_root, arch, subarch, release, label, alternate_purpose)
         self.assertTrue(os.path.islink(os.path.join(alternate_image)))
         self.assertThat(
             os.path.join(alternate_image, 'linux'),

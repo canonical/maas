@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Helpers for Piston-based MAAS APIs."""
@@ -19,6 +19,7 @@ __all__ = [
     'get_mandatory_param',
     'get_oauth_token',
     'get_optional_list',
+    'get_optional_param',
     'get_overridden_query_dict',
     ]
 
@@ -95,7 +96,7 @@ def get_optional_param(data, key, default=None, validator=None):
     :return: The value of the parameter.
     :raises: ValidationError
     """
-    value = data.get(key, None)
+    value = data.get(key)
     if value is None:
         return default
     if validator is not None:

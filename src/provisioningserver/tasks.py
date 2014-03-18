@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Provisioning server tasks that are run in Celery workers."""
@@ -16,6 +16,7 @@ __all__ = [
     'power_off',
     'power_on',
     'refresh_secrets',
+    'report_boot_images',
     'rndc_command',
     'setup_rndc_configuration',
     'restart_dhcp_server',

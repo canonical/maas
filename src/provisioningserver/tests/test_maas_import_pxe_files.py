@@ -119,7 +119,7 @@ def compose_tftp_bootloader_path(tftproot):
         tftppath.compose_bootloader_path(), tftproot)
 
 
-def compose_tftp_path(tftproot, arch, release, purpose, *path):
+def compose_tftp_path(tftproot, arch, release, label, purpose, *path):
     """Compose path for MAAS TFTP files for given architecture.
 
     After the TFTP root directory and the architecture, just append any path
@@ -128,7 +128,8 @@ def compose_tftp_path(tftproot, arch, release, purpose, *path):
     """
     return os.path.join(
         tftppath.locate_tftp_path(
-            tftppath.compose_image_path(arch[0], arch[1], release, purpose),
+            tftppath.compose_image_path(
+                arch[0], arch[1], release, label, purpose),
             tftproot),
         *path)
 
@@ -235,7 +236,7 @@ class TestImportPXEFiles(MAASTestCase):
         archive = self.make_downloads(arch=arch, release=release)
         self.call_script(archive, self.tftproot, arch=arch, release=release)
         tftp_path = compose_tftp_path(
-            self.tftproot, arch, release, 'install', 'linux')
+            self.tftproot, arch, release, 'release', 'install', 'linux')
         _, download_path = compose_download_dir(archive, arch, release)
         expected_contents = read_file(
             download_path, compose_download_kernel_name(arch, release))
@@ -245,7 +246,7 @@ class TestImportPXEFiles(MAASTestCase):
         arch = self.get_arch()
         release = 'precise'
         tftp_path = compose_tftp_path(
-            self.tftproot, arch, release, 'install', 'linux')
+            self.tftproot, arch, release, 'release', 'install', 'linux')
         os.makedirs(os.path.dirname(tftp_path))
         with open(tftp_path, 'w') as existing_file:
             existing_file.write(factory.getRandomString())
@@ -262,7 +263,7 @@ class TestImportPXEFiles(MAASTestCase):
         archive = self.make_downloads(arch=arch, release=release)
         self.call_script(archive, self.tftproot, arch=arch, release=release)
         tftp_path = compose_tftp_path(
-            self.tftproot, arch, release, 'install', 'linux')
+            self.tftproot, arch, release, 'release', 'install', 'linux')
         backdate(tftp_path)
         original_timestamp = get_write_time(tftp_path)
         self.call_script(archive, self.tftproot, arch=arch, release=release)
@@ -280,5 +281,5 @@ class TestImportPXEFiles(MAASTestCase):
 
         # The script does not install the broken image, and does not fail.
         installed_kernel = compose_tftp_path(
-            self.tftproot, arch, release, 'initrd.gz')
+            self.tftproot, arch, release, 'release', 'initrd.gz')
         self.assertThat(installed_kernel, Not(DirExists()))
