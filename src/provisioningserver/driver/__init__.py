@@ -77,6 +77,8 @@ class Architecture:
             architecture.  Anything supplied here supplements the options
             provided by MAAS core.
         """
+        if pxealiases is None:
+            pxealiases = ()
         self.name = name
         self.description = description
         self.pxealiases = pxealiases

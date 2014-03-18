@@ -111,9 +111,7 @@ class TestRegistry(MAASTestCase):
         arch1 = Architecture(
             name="arch1", description="arch1",
             pxealiases=["archibald", "reginald"])
-        arch2 = Architecture(
-            name="arch2", description="arch2",
-            pxealiases=["fake", "foo"])
+        arch2 = Architecture(name="arch2", description="arch2")
         ArchitectureRegistry.register_item(arch1, "arch1")
         ArchitectureRegistry.register_item(arch2, "arch2")
         self.assertEqual(
