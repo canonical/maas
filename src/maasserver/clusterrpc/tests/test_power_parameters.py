@@ -33,6 +33,7 @@ from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTestCase,
     )
+from maasserver.utils.forms import compose_invalid_choice_text
 from maastesting.matchers import MockCalledOnceWith
 from mock import sentinel
 from provisioningserver.power.poweraction import PowerAction
@@ -142,6 +143,10 @@ class TestMakeFormField(MAASServerTestCase):
         django_field = make_form_field(json_field)
         self.assertIsInstance(django_field, forms.ChoiceField)
         self.assertEqual(json_field['choices'], django_field.choices)
+        invalid_msg = compose_invalid_choice_text(
+            json_field['name'], json_field['choices'])
+        self.assertEqual(
+            invalid_msg, django_field.error_messages['invalid_choice'])
         self.assertEqual(json_field['default'], django_field.initial)
 
     def test_creates_mac_address_field_for_mac_addresses(self):

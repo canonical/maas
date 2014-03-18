@@ -40,6 +40,7 @@ from jsonschema import validate
 from maasserver.clusterrpc.utils import call_clusters
 from maasserver.config_forms import DictCharField
 from maasserver.fields import MACAddressFormField
+from maasserver.utils.forms import compose_invalid_choice_text
 from provisioningserver.power_schema import (
     JSON_POWER_TYPE_SCHEMA,
     POWER_TYPE_PARAMETER_FIELD_SCHEMA,
@@ -66,9 +67,13 @@ def make_form_field(json_field):
     field_class = FIELD_TYPE_MAPPINGS.get(
         json_field['field_type'], forms.CharField)
     if json_field['field_type'] == 'choice':
+        invalid_choice_message = compose_invalid_choice_text(
+            json_field['name'], json_field['choices'])
         extra_parameters = {
             'choices': json_field['choices'],
             'initial': json_field['default'],
+            'error_messages': {
+                'invalid_choice': invalid_choice_message},
             }
     else:
         extra_parameters = {}

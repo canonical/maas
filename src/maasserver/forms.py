@@ -83,7 +83,6 @@ from maasserver.fields import (
     NodeGroupFormField,
     )
 from maasserver.forms_settings import (
-    compose_invalid_choice_text,
     CONFIG_ITEMS_KEYS,
     get_config_field,
     INVALID_DISTRO_SERIES_MESSAGE,
@@ -109,6 +108,7 @@ from maasserver.node_action import (
     compile_node_actions,
     )
 from maasserver.utils import strip_domain
+from maasserver.utils.forms import compose_invalid_choice_text
 from maasserver.utils.network import make_network
 from metadataserver.fields import Bin
 from metadataserver.models import CommissioningScript

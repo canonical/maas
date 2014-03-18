@@ -13,7 +13,6 @@ str = None
 
 __metaclass__ = type
 __all__ = [
-    'compose_invalid_choice_text',
     'CONFIG_ITEMS',
     'CONFIG_ITEMS_KEYS',
     'get_config_field',
@@ -29,26 +28,7 @@ from maasserver.enum import (
     DISTRO_SERIES,
     DISTRO_SERIES_CHOICES,
     )
-
-
-def compose_invalid_choice_text(choice_of_what, valid_choices):
-    """Compose an "invalid choice" string for form error messages.
-
-    This returns a template string that is intended to be used as the
-    argument to the 'error_messages' parameter in a Django form.
-
-    :param choice_of_what: The name for what the selected item is supposed
-        to be, to be inserted into the error string.
-    :type choice_of_what: unicode
-    :param valid_choices: Valid choices, in Django choices format:
-        (name, value).
-    :type valid_choices: sequence
-    """
-    return "%s is not a valid %s.  It should be one of: %s." % (
-        "%(value)s",
-        choice_of_what,
-        ", ".join(name for name, value in valid_choices),
-    )
+from maasserver.utils.forms import compose_invalid_choice_text
 
 
 INVALID_URL_MESSAGE = "Enter a valid url (e.g. http://host.example.com)."
