@@ -38,7 +38,10 @@ from maasserver.fields import MAC
 from maasserver.models.tag import Tag
 from maasserver.testing import reload_object
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.testing.testcase import (
+    MAASServerTestCase,
+    TestWithoutCrochetMixin,
+    )
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.utils import sample_binary_data
 from metadataserver.fields import Bin
@@ -222,7 +225,7 @@ def isolate_function(function):
     return namespace[function.__name__]
 
 
-class TestLLDPScripts(MAASServerTestCase):
+class TestLLDPScripts(TestWithoutCrochetMixin, MAASServerTestCase):
 
     def test_install_script_installs_configures_and_restarts(self):
         config_file = self.make_file("config", "# ...")

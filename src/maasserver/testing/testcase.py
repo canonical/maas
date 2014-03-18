@@ -15,20 +15,23 @@ __metaclass__ = type
 __all__ = [
     'MAASServerTestCase',
     'SeleniumTestCase',
+    'TestWithoutCrochetMixin',
     ]
 
 import SocketServer
+import threading
 from unittest import SkipTest
 import wsgiref
 
+import crochet
 import django
 from django.core.cache import cache as django_cache
 from django.core.urlresolvers import reverse
 from django.db import connection
 from django.test.client import encode_multipart
 from fixtures import Fixture
-from maasserver.fields import register_mac_type
 from maasserver.clusterrpc import power_parameters
+from maasserver.fields import register_mac_type
 from maasserver.testing.factory import factory
 from maastesting.celery import CeleryFixture
 from maastesting.djangotestcase import (
@@ -41,6 +44,7 @@ from mock import Mock
 import provisioningserver
 from provisioningserver.testing.tags import TagCachedKnowledgeFixture
 from provisioningserver.testing.worker_cache import WorkerCacheFixture
+from subunit import run_isolated
 
 
 MIME_BOUNDARY = 'BoUnDaRyStRiNg'
@@ -192,3 +196,42 @@ class SeleniumTestCase(MAASTestCase, LiveServerTestCase):
         """GET a page.  Arguments are passed on to `reverse`."""
         path = reverse(*reverse_args, **reverse_kwargs)
         return self.selenium.get("%s%s" % (self.live_server_url, path))
+
+
+class TestWithoutCrochetMixin:
+    """Ensure that Crochet's event-loop is not running.
+
+    Crochet's event-loop cannot easily be resurrected, so this runs each
+    test in a new subprocess. There we can stop Crochet without worrying
+    about how to get it going again.
+
+    Use this where tests must, for example, patch out global state
+    during testing, where those patches coincide with things that
+    Crochet expects to use too, ``time.sleep`` for example.
+    """
+
+    _dead_thread = threading.Thread()
+    _dead_thread.start()
+    _dead_thread.join()
+
+    def __call__(self, result=None):
+        if result is None:
+            result = self.defaultTestResult()
+        # nose.proxy.ResultProxy.assertMyTest() is weird, and makes
+        # things break, so we neutralise it here.
+        result.assertMyTest = lambda test: None
+        # Finally, run the test in a subprocess.
+        up = super(TestWithoutCrochetMixin, self.__class__)
+        run_isolated(up, self, result)
+
+    run = __call__
+
+    def setUp(self):
+        super(TestWithoutCrochetMixin, self).setUp()
+        # Ensure that Crochet's event-loop has shutdown. The following
+        # runs in the child process started by run_isolated() so we
+        # don't need to repair the damage we do.
+        if crochet._watchdog.is_alive():
+            crochet._watchdog._canary = self._dead_thread
+            crochet._watchdog.join()  # Wait for the watchdog to stop.
+            self.assertFalse(crochet.reactor.running)
