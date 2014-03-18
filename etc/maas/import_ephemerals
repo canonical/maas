@@ -15,5 +15,6 @@
 # The 14.04 release of MAAS can only enlist/commission using Ubuntu 14.04
 # (Trusty Tahr) ephemeral boot images.  The ephemeral images are quite large,
 # much larger than the install images, so there is little point downloading
-# them for older releases.
+# them for older releases by default.  However, if you wish you can add older
+# releases here for node installation.
 RELEASES="trusty"
