@@ -341,3 +341,16 @@ class TestPXEConfigAPI(MAASServerTestCase):
         params['mac'] = mac.mac_address
         pxe_config = self.get_pxeconfig(params)
         self.assertEqual(None, pxe_config['extra_opts'])
+
+    def test_pxeconfig_sets_nonsense_label_for_insane_state(self):
+        # If pxeconfig() encounters a state where there is no relevant
+        # BootImage for a given set of (nodegroup, arch, subarch,
+        # release, purpose) it sets the label to no-such-image. This is
+        # clearly nonsensical, but this state only arises during tests
+        # or an insane environment.
+        mac = factory.make_mac_address()
+        params = self.get_default_params()
+        params['mac'] = mac.mac_address
+        params['arch'] = 'iHaveNoIdea'
+        pxe_config = self.get_pxeconfig(params)
+        self.assertEqual('no-such-image', pxe_config['label'])

@@ -162,3 +162,62 @@ class TestBootImageManager(MAASServerTestCase):
         self.assertItemsEqual(
             [],
             BootImage.objects.get_usable_architectures(nodegroup))
+
+    def test_get_latest_image_returns_latest_image_for_criteria(self):
+        arch = factory.make_name('arch')
+        subarch = factory.make_name('sub')
+        release = factory.make_name('release')
+        nodegroup = factory.make_node_group()
+        purpose = factory.make_name("purpose")
+        boot_image = factory.make_boot_image(
+            nodegroup=nodegroup, architecture=arch,
+            subarchitecture=subarch, release=release, purpose=purpose,
+            label=factory.make_name('label'))
+        self.assertEqual(
+            boot_image,
+            BootImage.objects.get_latest_image(
+                nodegroup, arch, subarch, release, purpose))
+
+    def test_get_latest_image_doesnt_return_images_for_other_purposes(self):
+        arch = factory.make_name('arch')
+        subarch = factory.make_name('sub')
+        release = factory.make_name('release')
+        nodegroup = factory.make_node_group()
+        purpose = factory.make_name("purpose")
+        relevant_image = factory.make_boot_image(
+            nodegroup=nodegroup, architecture=arch,
+            subarchitecture=subarch, release=release, purpose=purpose,
+            label=factory.make_name('label'))
+
+        # Create a bunch of more recent but irrelevant BootImages..
+        factory.make_boot_image(
+            nodegroup=factory.make_node_group(), architecture=arch,
+            subarchitecture=subarch, release=release,
+            purpose=purpose, label=factory.make_name('label'))
+        factory.make_boot_image(
+            nodegroup=nodegroup,
+            architecture=factory.make_name('arch'),
+            subarchitecture=subarch, release=release, purpose=purpose,
+            label=factory.make_name('label'))
+        factory.make_boot_image(
+            nodegroup=nodegroup, architecture=arch,
+            subarchitecture=factory.make_name('subarch'),
+            release=release, purpose=purpose,
+            label=factory.make_name('label'))
+        factory.make_boot_image(
+            nodegroup=nodegroup,
+            architecture=factory.make_name('arch'),
+            subarchitecture=subarch,
+            release=factory.make_name('release'), purpose=purpose,
+            label=factory.make_name('label'))
+        factory.make_boot_image(
+            nodegroup=nodegroup,
+            architecture=factory.make_name('arch'),
+            subarchitecture=subarch, release=release,
+            purpose=factory.make_name('purpose'),
+            label=factory.make_name('label'))
+
+        self.assertEqual(
+            relevant_image,
+            BootImage.objects.get_latest_image(
+                nodegroup, arch, subarch, release, purpose))

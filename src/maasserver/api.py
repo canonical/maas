@@ -2377,7 +2377,22 @@ def pxeconfig(request):
 
         subarch = get_optional_param(request.GET, 'subarch', 'generic')
 
-    label = get_optional_param(request.GET, 'label', 'release')
+    # We use as our default label the label of the most recent image for
+    # the criteria we've assembled above. If there is no latest image
+    # (which should never happen in reality but may happen in tests), we
+    # fall back to using 'no-such-image' as our default.
+    latest_image = BootImage.objects.get_latest_image(
+        nodegroup, arch, subarch, series, purpose)
+    if latest_image is None:
+        # XXX 2014-03-18 gmb bug=1294131:
+        #     We really ought to raise an exception here so that client
+        #     and server can handle it according to their needs. At the
+        #     moment, though, that breaks too many tests in awkward
+        #     ways.
+        latest_label = 'no-such-image'
+    else:
+        latest_label = latest_image.label
+    label = get_optional_param(request.GET, 'label', latest_label)
 
     if node is not None:
         # We don't care if the kernel opts is from the global setting or a tag,

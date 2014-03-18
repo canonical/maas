@@ -106,6 +106,14 @@ class BootImageManager(Manager):
             nodegroup, 'install')
         return arches_commissioning & arches_install
 
+    def get_latest_image(self, nodegroup, architecture, subarchitecture,
+                         release, purpose):
+        """Return the latest image for a set of criteria."""
+        return BootImage.objects.filter(
+            nodegroup=nodegroup, architecture=architecture,
+            subarchitecture=subarchitecture, release=release,
+            purpose=purpose).order_by('id').last()
+
 
 class BootImage(Model):
     """Available boot image (i.e. kernel and initrd).
