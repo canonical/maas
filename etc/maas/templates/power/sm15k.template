@@ -24,11 +24,19 @@ issue_ipmi_command() {
         ${power_mode} 0 ${system_id}
 }
 
-# Control power using REST
-issue_rest_command() {
+# Control power using REST v0.9
+issue_rest_v09_command() {
 python - << END
-from provisioningserver.custom_hardware.seamicro import power_control_seamicro15k
-power_control_seamicro15k("${power_address}", "${power_user}", "${power_pass}", "${system_id}", "${power_change}")
+from provisioningserver.custom_hardware.seamicro import power_control_seamicro15k_v09
+power_control_seamicro15k_v09("${power_address}", "${power_user}", "${power_pass}", "${system_id}", "${power_change}")
+END
+}
+
+# Control power using REST v2
+issue_rest_v2_command() {
+python - << END
+from provisioningserver.custom_hardware.seamicro import power_control_seamicro15k_v2
+power_control_seamicro15k_v2("${power_address}", "${power_user}", "${power_pass}", "${system_id}", "${power_change}")
 END
 }
 
@@ -37,5 +45,8 @@ then
     issue_ipmi_command
 elif [ "${power_control}" = "restapi" ]
 then
-    issue_rest_command
+    issue_rest_v09_command
+elif [ "${power_control}" = "restapi2" ]
+then
+    issue_rest_v2_command
 fi

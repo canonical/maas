@@ -111,6 +111,7 @@ JSON_POWER_TYPE_SCHEMA = {
 SM15K_POWER_CONTROL_CHOICES = [
     ["ipmi", "IPMI"],
     ["restapi", "REST API v0.9"],
+    ["restapi2", "REST API v2.0"],
     ]
 
 

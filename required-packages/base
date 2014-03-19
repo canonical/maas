@@ -36,6 +36,7 @@ python-oops-twisted
 python-oops-wsgi
 python-psycopg2
 python-pyinotify
+python-seamicroclient
 python-simplestreams
 python-tempita
 python-twisted

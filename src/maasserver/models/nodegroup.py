@@ -284,7 +284,7 @@ class NodeGroup(TimestampedModel):
         :param username: username for power controller
         :param password: password for power controller
         :param power_control: optional specify the power control method,
-            either ipmi (default) or restapi.
+            either ipmi (default), restapi, or restapi2.
         """
         args = (mac, username, password, power_control)
         add_seamicro15k.apply_async(queue=self.uuid, args=args)
