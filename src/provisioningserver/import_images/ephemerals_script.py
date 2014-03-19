@@ -311,11 +311,12 @@ class MAASMirrorWriter(mirrors.ObjectStoreMirrorWriter):
             # right now, although it might some day for HWE
             # kernels.
             install_image_from_simplestreams(
-                target_dir, release=release, arch=arch,
+                target_dir, release=release, label=label, arch=arch,
                 temp_location=self._simplestreams_path())
             if arch == 'armhf':
                 install_image_from_simplestreams(
-                    target_dir, release=release, arch=arch, subarch='highbank',
+                    target_dir, release=release, label=label, arch=arch,
+                    subarch='highbank',
                     temp_location=self._simplestreams_path())
 
             tgt_conf_path = os.path.join(target_dir, 'tgt.conf')
