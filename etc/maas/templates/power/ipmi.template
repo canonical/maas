@@ -13,9 +13,11 @@ ipmipower={{ipmipower}}
 ipmi_chassis_config={{ipmi_chassis_config}}
 config={{config_dir}}/{{ipmi_config}}
 
-# If ip_address was supplied, use it in preference to the power_address,
-# because it gets discovered on-the-fly based on mac_address.
-{{if ip_address}}
+# If ip_address was supplied and power_address is not explicitly set then
+# use ip_address because it gets discovered on-the-fly based on mac_address.
+# We don't want to use it unilaterally because mac_address may be the host's
+# MAC, so only fall back if someone deliberately left power_address empty.
+{{if ip_address and not power_address}}
 power_address={{ip_address}}
 {{endif}}
 
