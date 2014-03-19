@@ -192,8 +192,8 @@ JSON_POWER_TYPE_PARAMETERS = [
             make_json_field('power_pass', "Power password"),
             make_json_field(
                 'mac_address',
-                "MAC address - the IP is looked up with ARP and overrides "
-                "IP address"),
+                "MAC address - the IP is looked up with ARP and is used if "
+                "IP address is empty. This is better when the BMC uses DHCP."),
         ],
     },
     {
