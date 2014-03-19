@@ -110,6 +110,7 @@ class TestEditNamedOptionsCommand(MAASServerTestCase):
             stdout=self.stdout)
         expected_path = os.path.join(
             os.path.dirname(options_file),
+            "maas",
             MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME)
 
         # Check that the file was re-written with the include statement.

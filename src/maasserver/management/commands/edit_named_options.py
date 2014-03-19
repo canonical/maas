@@ -81,9 +81,9 @@ class Command(BaseCommand):
 
     def set_up_include_statement(self, options_block, config_path):
         """Insert the 'include' directive into the iscpy-parsed options."""
-        dir = os.path.dirname(config_path)
-        options_block['include'] = '"%s/%s"' % (
-            dir, MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME)
+        dir = os.path.join(os.path.dirname(config_path), "maas")
+        options_block['include'] = '"%s%s%s"' % (
+            dir, os.path.sep, MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME)
 
     def remove_forwarders(self, options_block):
         """Remove existing forwarders from the options block.
