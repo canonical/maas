@@ -19,6 +19,7 @@ __all__ = [
     "get_write_time",
     "preexec_fn",
     "retries",
+    "run_isolated",
     "sample_binary_data",
     ]
 
@@ -26,11 +27,17 @@ import codecs
 import os
 import re
 import signal
+from sys import (
+    stderr,
+    stdout,
+    )
 from time import (
     sleep,
     time,
     )
+from traceback import print_exc
 
+import subunit
 from testtools.content import Content
 from testtools.content_type import UTF8_TEXT
 
@@ -94,6 +101,45 @@ def retries(timeout=30, delay=1):
             sleep(min(delay, end - now))
         else:
             break
+
+
+def run_isolated(cls, self, result):
+    """Run a test suite or case in a subprocess.
+
+    This is derived from ``subunit.run_isolated``. Subunit's version
+    clobbers stdout by dup'ing the subunit's stream over the top, which
+    prevents effective debugging at the terminal. This variant does not
+    suffer from the same issue.
+    """
+    c2pread, c2pwrite = os.pipe()
+    pid = os.fork()
+    if pid == 0:
+        # Child: runs test and writes subunit to c2pwrite.
+        try:
+            os.close(c2pread)
+            stream = os.fdopen(c2pwrite, 'wb')
+            sender = subunit.TestProtocolClient(stream)
+            cls.run(self, sender)
+            stream.flush()
+            stdout.flush()
+            stderr.flush()
+        except:
+            # Print error and exit hard.
+            try:
+                print_exc(file=stderr)
+                stderr.flush()
+            finally:
+                os._exit(2)
+        finally:
+            # Exit hard.
+            os._exit(0)
+    else:
+        # Parent: receives subunit from c2pread.
+        os.close(c2pwrite)
+        stream = os.fdopen(c2pread, 'rb')
+        receiver = subunit.TestProtocolServer(result)
+        receiver.readFrom(stream)
+        os.waitpid(pid, 0)
 
 
 # Some horrible binary data that could never, ever, under any encoding

@@ -40,11 +40,11 @@ from maastesting.djangotestcase import (
     )
 from maastesting.fixtures import DisplayFixture
 from maastesting.testcase import MAASTestCase
+from maastesting.utils import run_isolated
 from mock import Mock
 import provisioningserver
 from provisioningserver.testing.tags import TagCachedKnowledgeFixture
 from provisioningserver.testing.worker_cache import WorkerCacheFixture
-from subunit import run_isolated
 
 
 MIME_BOUNDARY = 'BoUnDaRyStRiNg'
