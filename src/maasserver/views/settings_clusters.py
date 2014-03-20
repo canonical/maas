@@ -49,6 +49,11 @@ class ClusterEdit(UpdateView):
         context = super(ClusterEdit, self).get_context_data(**kwargs)
         context['interfaces'] = (
             self.object.nodegroupinterface_set.all().order_by('interface'))
+        # A sorted bootimages list.
+        context['bootimages'] = (
+            self.object.bootimage_set.all().order_by(
+                '-release', 'architecture', 'subarchitecture', 'purpose',
+                'label'))
         return context
 
     def get_success_url(self):

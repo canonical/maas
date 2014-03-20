@@ -80,8 +80,8 @@ class TestBootImageAPI(APITestCase):
         # The returned object contains a 'resource_uri' field.
         self.assertEqual(
             reverse(
-                    'boot_image_handler',
-                    args=[boot_image.nodegroup.uuid, boot_image.id]
+                'boot_image_handler',
+                args=[boot_image.nodegroup.uuid, boot_image.id]
             ),
             returned_boot_image['resource_uri'])
         # The other fields are the boot image's fields.

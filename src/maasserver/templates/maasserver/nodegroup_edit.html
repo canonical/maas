@@ -81,20 +81,20 @@
           <thead>
             <tr>
               <th>Id</th>
+              <th>Release</th>
               <th>Architecture</th>
               <th>Subarchitecture</th>
-              <th>Release</th>
               <th>Purpose</th>
               <th>Label</th>
             </tr>
           </thead>
           <tbody>
-        {% for bootimage in cluster.bootimage_set.all %}
+        {% for bootimage in bootimages %}
           <tr class="bootimage {% cycle 'even' 'odd' %}">
             <td>{{ bootimage.id }}</td>
+            <td>{{ bootimage.release }}</td>
             <td>{{ bootimage.architecture }}</td>
             <td>{{ bootimage.subarchitecture }}</td>
-            <td>{{ bootimage.release }}</td>
             <td>{{ bootimage.purpose }}</td>
             <td>{{ bootimage.label }}</td>
           </tr>
