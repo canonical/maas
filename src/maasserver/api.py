@@ -61,6 +61,7 @@ __all__ = [
     "AnonNodesHandler",
     "api_doc",
     "api_doc_title",
+    "BootImageHandler",
     "BootImagesHandler",
     "CommissioningScriptHandler",
     "CommissioningScriptsHandler",
@@ -242,8 +243,8 @@ from metadataserver.models import (
 from piston.emitters import JSONEmitter
 from piston.handler import typemapper
 from piston.utils import rc
-from provisioningserver.power_schema import UNKNOWN_POWER_TYPE
 from provisioningserver.kernel_opts import KernelParameters
+from provisioningserver.power_schema import UNKNOWN_POWER_TYPE
 import simplejson as json
 
 # Node's fields exposed on the API.
@@ -2541,26 +2542,76 @@ def prune_boot_images(nodegroup, reported_images, stored_images):
         db_images.delete()
 
 
+DISPLAYED_BOOTIMAGE_FIELDS = (
+    'id',
+    'release',
+    'architecture',
+    'subarchitecture',
+    'purpose',
+    'label',
+)
+
+
+class BootImageHandler(OperationsHandler):
+    """API for boot images."""
+    create = replace = update = delete = None
+
+    model = BootImage
+    fields = DISPLAYED_BOOTIMAGE_FIELDS
+
+    def read(self, request, uuid, id):
+        """Read a boot image."""
+        nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
+        return get_object_or_404(
+            BootImage, nodegroup=nodegroup, id=id)
+
+    @classmethod
+    def resource_uri(cls, bootimage=None):
+        if bootimage is None:
+            id = 'id'
+            uuid = 'uuid'
+        else:
+            id = bootimage.id
+            uuid = bootimage.nodegroup.uuid
+        return ('boot_image_handler', (uuid, id))
+
+
 class BootImagesHandler(OperationsHandler):
 
     create = replace = update = delete = None
 
     @classmethod
-    def resource_uri(cls):
-        return ('boot_images_handler', [])
+    def resource_uri(cls, nodegroup=None):
+        if nodegroup is None:
+            uuid = 'uuid'
+        else:
+            uuid = nodegroup.uuid
+        return ('boot_images_handler', [uuid])
+
+    def read(self, request, uuid):
+        """List boot images.
+
+        Get a listing of a cluster's boot images.
+
+        :param uuid: The UUID of the cluster for which the images
+            should be listed.
+        """
+        nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
+        return BootImage.objects.filter(nodegroup=nodegroup)
 
     @operation(idempotent=False)
-    def report_boot_images(self, request):
+    def report_boot_images(self, request, uuid):
         """Report images available to net-boot nodes from.
 
+        :param uuid: The UUID of the cluster for which the images are
+            being reported.
         :param images: A list of dicts, each describing a boot image with
             these properties: `architecture`, `subarchitecture`, `release`,
             `purpose`, and optionally, `label` (which defaults to "release").
             These should match the code that determines TFTP paths for these
             images.
         """
-        nodegroup_uuid = get_mandatory_param(request.data, "nodegroup")
-        nodegroup = get_object_or_404(NodeGroup, uuid=nodegroup_uuid)
+        nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
         check_nodegroup_access(request, nodegroup)
         reported_images = summarise_reported_images(request)
         existing_images = summarise_stored_images(nodegroup)

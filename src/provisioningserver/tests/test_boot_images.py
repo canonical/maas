@@ -44,7 +44,12 @@ class TestBootImagesTasks(PservTestCase):
         self.patch(MAASClient, 'post')
         boot_images.report_to_server()
         args, kwargs = MAASClient.post.call_args
-        self.assertIs(sentinel.uuid, kwargs["nodegroup"])
+        self.assertEqual(
+            (
+                'api/1.0/nodegroups/%s/boot-images/' % sentinel.uuid,
+                'report_boot_images',
+            ),
+            (kwargs["path"], kwargs["op"]))
         self.assertItemsEqual([image], json.loads(kwargs['images']))
 
     def test_does_nothing_without_credentials(self):

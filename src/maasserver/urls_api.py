@@ -21,6 +21,7 @@ from django.conf.urls import (
 from maasserver.api import (
     AccountHandler,
     api_doc,
+    BootImageHandler,
     BootImagesHandler,
     CommissioningResultsHandler,
     CommissioningScriptHandler,
@@ -76,6 +77,8 @@ nodegroupinterfaces_handler = RestrictedResource(
     NodeGroupInterfacesHandler, authentication=api_auth)
 boot_images_handler = RestrictedResource(
     BootImagesHandler, authentication=api_auth)
+boot_image_handler = RestrictedResource(
+    BootImageHandler, authentication=api_auth)
 tag_handler = RestrictedResource(TagHandler, authentication=api_auth)
 tags_handler = RestrictedResource(TagsHandler, authentication=api_auth)
 commissioning_results_handler = RestrictedResource(
@@ -130,6 +133,10 @@ urlpatterns += patterns(
         nodegroupinterfaces_handler, name='nodegroupinterfaces_handler'),
     url(r'^nodegroups/(?P<uuid>[^/]+)/interfaces/(?P<interface>[^/]+)/$',
         nodegroupinterface_handler, name='nodegroupinterface_handler'),
+    url(r'^nodegroups/(?P<uuid>[^/]+)/boot-images/$',
+        boot_images_handler, name='boot_images_handler'),
+    url(r'^nodegroups/(?P<uuid>[^/]+)/boot-images/(?P<id>[^/]+)/$',
+        boot_image_handler, name='boot_image_handler'),
     url(
         r'^networks/(?P<name>[\w\-]+)/$',
         network_handler, name='network_handler'),
@@ -141,7 +148,6 @@ urlpatterns += patterns(
         r'^account/prefs/sshkeys/(?P<keyid>[^/]+)/$', sshkey_handler,
         name='sshkey_handler'),
     url(r'^account/prefs/sshkeys/$', sshkeys_handler, name='sshkeys_handler'),
-    url(r'^boot-images/$', boot_images_handler, name='boot_images_handler'),
     url(r'^tags/(?P<name>[\w\-]+)/$', tag_handler, name='tag_handler'),
     url(r'^tags/$', tags_handler, name='tags_handler'),
     url(

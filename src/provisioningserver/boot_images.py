@@ -57,9 +57,9 @@ def get_cached_knowledge():
 
 def submit(maas_url, api_credentials, images):
     """Submit images to server."""
+    path = 'api/1.0/nodegroups/%s/boot-images/' % get_cluster_uuid()
     MAASClient(MAASOAuth(*api_credentials), MAASDispatcher(), maas_url).post(
-        'api/1.0/boot-images/', 'report_boot_images',
-        nodegroup=get_cluster_uuid(), images=json.dumps(images))
+        path=path, op='report_boot_images', images=json.dumps(images))
 
 
 def report_to_server():
