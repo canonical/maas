@@ -62,6 +62,46 @@
       </table>
       <a class="button right"
          href="{% url 'cluster-interface-create' cluster.uuid %}">Add interface</a>
+
+      <div class="clear"></div>
+      <h2>Boot images</h2>
+      {% if not cluster.bootimage_set.count %}
+      <p>Warning: this cluster has no boot images!</p>
+      <p>
+        This cluster needs boot images to boot the nodes it controls.
+        You need to make sure the cluster's configuration (in
+        <span class="console">/etc/maas/import_ephemerals</span>
+        and <span class="console">/etc/maas/import_pxe_files</span> on the cluster's
+        machine) suits the configuration of the machines this cluster will have to
+        handle and then run the import script by clicking the "Import boot images"
+        button on the  <a href="{% url 'settings' %}#clusters">cluster's listing page</a>.
+      </p>
+      {% else %}
+        <table class="list">
+          <thead>
+            <tr>
+              <th>Id</th>
+              <th>Architecture</th>
+              <th>Subarchitecture</th>
+              <th>Release</th>
+              <th>Purpose</th>
+              <th>Label</th>
+            </tr>
+          </thead>
+          <tbody>
+        {% for bootimage in cluster.bootimage_set.all %}
+          <tr class="bootimage {% cycle 'even' 'odd' %}">
+            <td>{{ bootimage.id }}</td>
+            <td>{{ bootimage.architecture }}</td>
+            <td>{{ bootimage.subarchitecture }}</td>
+            <td>{{ bootimage.release }}</td>
+            <td>{{ bootimage.purpose }}</td>
+            <td>{{ bootimage.label }}</td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      {% endif %}         
     </form>
   </div>
   <div class="clear"></div>
