@@ -52,7 +52,7 @@ all: build doc
 install-dependencies:
 	sudo DEBIAN_FRONTEND=noninteractive apt-get -y \
 	    --no-install-recommends install $(shell sort -u \
-	        $(addprefix required-packages/,base dev doc))
+	        $(addprefix required-packages/,base build dev doc))
 	sudo DEBIAN_FRONTEND=noninteractive apt-get -y \
 	    purge $(shell sort -u required-packages/forbidden)
 
