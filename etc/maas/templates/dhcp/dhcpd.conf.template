@@ -5,9 +5,15 @@
 # will be present whenever MAAS rewrites the DHCP configuration.  Edit and save
 # the nodegroup's configuration in MAAS to trigger an update.
 
+option arch code 93 = unsigned integer 16; # RFC4578
 {{for dhcp_subnet in dhcp_subnets}}
 subnet {{dhcp_subnet['subnet']}} netmask {{dhcp_subnet['subnet_mask']}} {
-       filename "{{bootloader}}";
+       # EFI BC - Provide bootloader for EFI
+       if option arch = 00:07 {
+          filename "{{uefi_bootloader}}";
+       } else {
+          filename "{{bootloader}}";
+       }
        interface {{dhcp_subnet['interface']}};
        ignore-client-uids true;
        option subnet-mask {{dhcp_subnet['subnet_mask']}};

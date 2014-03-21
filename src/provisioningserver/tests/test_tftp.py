@@ -57,6 +57,31 @@ from twisted.python import context
 from zope.interface.verify import verifyObject
 
 
+def compose_uefi_config_path(mac=None, arch=None, subarch=None):
+    """Compose the TFTP path for a UEFI configuration file.
+
+    The path returned is relative to the TFTP root, as it would be
+    identified by clients on the network.
+
+    :param mac: A MAC address, in IEEE 802 colon-separated form,
+        corresponding to the machine for which this configuration is
+        relevant.
+    :param arch: Architecture for the booting machine, for UEFI this is
+        always amd64.
+    :param subarch: Sub-archtecture type, this is normally always generic.
+    :return: Path for the corresponding PXE config file as exposed over
+        TFTP.
+    """
+    if mac is not None:
+        return "grub/grub.cfg-{mac}".format(mac=mac)
+    if arch is not None:
+        if subarch is None:
+            subarch = "generic"
+        return "grub/grub.cfg-{arch}-{subarch}".format(
+            arch=arch, subarch=subarch)
+    return "grub/grub.cfg"
+
+
 class TestBytesReader(MAASTestCase):
     """Tests for `provisioningserver.tftp.BytesReader`."""
 
@@ -95,12 +120,35 @@ class TestTFTPBackendRegex(MAASTestCase):
         config_path = compose_config_path(components["mac"])
         return config_path, components
 
+    @staticmethod
+    def get_example_uefi_path_and_components():
+        """Return a plausible UEFI path and its components.
+
+        The path is intended to match `re_uefi_config_file`, and
+        the components are the expected groups from a match.
+        """
+        components = {"mac": factory.getRandomMACAddress(":"),
+                      "arch": None,
+                      "subarch": None}
+        config_path = compose_uefi_config_path(components["mac"])
+        return config_path, components
+
     def test_re_config_file_is_compatible_with_config_path_generator(self):
         # The regular expression for extracting components of the file path is
         # compatible with the PXE config path generator.
         regex = TFTPBackend.re_config_file
         for iteration in range(10):
             config_path, args = self.get_example_path_and_components()
+            match = regex.match(config_path)
+            self.assertIsNotNone(match, config_path)
+            self.assertEqual(args, match.groupdict())
+
+    def test_re_uefi_config_file_is_compatible_with_cfg_path_generator(self):
+        # The regular expression for extracting components of the file path is
+        # compatible with the PXE config path generator.
+        regex = TFTPBackend.re_uefi_config_file
+        for iteration in range(10):
+            config_path, args = self.get_example_uefi_path_and_components()
             match = regex.match(config_path)
             self.assertIsNotNone(match, config_path)
             self.assertEqual(args, match.groupdict())
@@ -116,6 +164,17 @@ class TestTFTPBackendRegex(MAASTestCase):
         self.assertIsNotNone(match, config_path)
         self.assertEqual(args, match.groupdict())
 
+    def test_re_uefi_config_file_with_leading_slash(self):
+        # The regular expression for extracting components of the file path
+        # doesn't care if there's a leading forward slash; the TFTP server is
+        # easy on this point, so it makes sense to be also.
+        config_path, args = self.get_example_uefi_path_and_components()
+        # Ensure there's a leading slash.
+        config_path = "/" + config_path.lstrip("/")
+        match = TFTPBackend.re_uefi_config_file.match(config_path)
+        self.assertIsNotNone(match, config_path)
+        self.assertEqual(args, match.groupdict())
+
     def test_re_config_file_without_leading_slash(self):
         # The regular expression for extracting components of the file path
         # doesn't care if there's no leading forward slash; the TFTP server is
@@ -124,6 +183,17 @@ class TestTFTPBackendRegex(MAASTestCase):
         # Ensure there's no leading slash.
         config_path = config_path.lstrip("/")
         match = TFTPBackend.re_config_file.match(config_path)
+        self.assertIsNotNone(match, config_path)
+        self.assertEqual(args, match.groupdict())
+
+    def test_re_uefi_config_file_without_leading_slash(self):
+        # The regular expression for extracting components of the file path
+        # doesn't care if there's no leading forward slash; the TFTP server is
+        # easy on this point, so it makes sense to be also.
+        config_path, args = self.get_example_uefi_path_and_components()
+        # Ensure there's no leading slash.
+        config_path = config_path.lstrip("/")
+        match = TFTPBackend.re_uefi_config_file.match(config_path)
         self.assertIsNotNone(match, config_path)
         self.assertEqual(args, match.groupdict())
 
@@ -136,9 +206,26 @@ class TestTFTPBackendRegex(MAASTestCase):
         self.assertEqual({'mac': mac, 'arch': None, 'subarch': None},
                          match.groupdict())
 
+    def test_re_uefi_config_file_matches_classic_grub_cfg(self):
+        # The default config path is simply "grub.cfg-{mac}" (without
+        # leading slash).  The regex matches this.
+        mac = 'aa:bb:cc:dd:ee:ff'
+        match = TFTPBackend.re_uefi_config_file.match('grub/grub.cfg-%s' % mac)
+        self.assertIsNotNone(match)
+        self.assertEqual({'mac': mac, 'arch': None, 'subarch': None},
+                         match.groupdict())
+
     def test_re_config_file_matches_pxelinux_cfg_with_leading_slash(self):
         mac = 'aa-bb-cc-dd-ee-ff'
         match = TFTPBackend.re_config_file.match('/pxelinux.cfg/01-%s' % mac)
+        self.assertIsNotNone(match)
+        self.assertEqual({'mac': mac, 'arch': None, 'subarch': None},
+                         match.groupdict())
+
+    def test_re_uefi_config_file_matches_grub_cfg_with_leading_slash(self):
+        mac = 'aa:bb:cc:dd:ee:ff'
+        match = TFTPBackend.re_uefi_config_file.match(
+            '/grub/grub.cfg-%s' % mac)
         self.assertIsNotNone(match)
         self.assertEqual({'mac': mac, 'arch': None, 'subarch': None},
                          match.groupdict())
@@ -154,6 +241,10 @@ class TestTFTPBackendRegex(MAASTestCase):
     def test_re_config_file_does_not_match_file_not_in_pxelinux_cfg(self):
         self.assertIsNone(
             TFTPBackend.re_config_file.match('foo/01-aa-bb-cc-dd-ee-ff'))
+
+    def test_re_uefi_config_file_does_not_match_default_grub_config_file(self):
+        self.assertIsNone(
+            TFTPBackend.re_uefi_config_file.match('grub/grub.cfg'))
 
     def test_re_config_file_with_default(self):
         match = TFTPBackend.re_config_file.match('pxelinux.cfg/default')
@@ -176,6 +267,32 @@ class TestTFTPBackendRegex(MAASTestCase):
         subarch = factory.make_name('subarch', sep='')
         match = TFTPBackend.re_config_file.match(
             'pxelinux.cfg/default.%s-%s' % (arch, subarch))
+        self.assertIsNotNone(match)
+        self.assertEqual(
+            {'mac': None, 'arch': arch, 'subarch': subarch},
+            match.groupdict())
+
+    def test_re_uefi_config_file_with_default(self):
+        match = TFTPBackend.re_uefi_config_file.match('grub/grub.cfg-default')
+        self.assertIsNotNone(match)
+        self.assertEqual(
+            {'mac': None, 'arch': None, 'subarch': None},
+            match.groupdict())
+
+    def test_re_uefi_config_file_with_default_arch(self):
+        arch = factory.make_name('arch', sep='')
+        match = TFTPBackend.re_uefi_config_file.match(
+            'grub/grub.cfg-default-%s' % arch)
+        self.assertIsNotNone(match)
+        self.assertEqual(
+            {'mac': None, 'arch': arch, 'subarch': None},
+            match.groupdict())
+
+    def test_re_uefi_config_file_with_default_arch_and_subarch(self):
+        arch = factory.make_name('arch', sep='')
+        subarch = factory.make_name('subarch', sep='')
+        match = TFTPBackend.re_uefi_config_file.match(
+            'grub/grub.cfg-default-%s-%s' % (arch, subarch))
         self.assertIsNotNone(match)
         self.assertEqual(
             {'mac': None, 'arch': arch, 'subarch': subarch},
@@ -249,7 +366,7 @@ class TestTFTPBackend(MAASTestCase):
                 factory.getRandomPort()),
             }
 
-        @partial(self.patch, backend, "get_config_reader")
+        @partial(self.patch, backend, "get_pxe_config_reader")
         def get_config_reader(params):
             params_json = json.dumps(params)
             params_json_reader = BytesReader(params_json)
@@ -291,7 +408,7 @@ class TestTFTPBackend(MAASTestCase):
 
         # Get the rendered configuration, which will actually be a JSON dump
         # of the render-time parameters.
-        reader = yield backend.get_config_reader(fake_params)
+        reader = yield backend.get_pxe_config_reader(fake_params)
         self.addCleanup(reader.finish)
         self.assertIsInstance(reader, BytesReader)
         output = reader.read(10000)
@@ -325,8 +442,8 @@ class TestTFTPBackend(MAASTestCase):
                 factory.getRandomPort()),
             }
 
-        @partial(self.patch, backend, "get_config_reader")
-        def get_config_reader(params):
+        @partial(self.patch, backend, "get_pxe_config_reader")
+        def get_pxe_config_reader(params):
             params_json = json.dumps(params)
             params_json_reader = BytesReader(params_json)
             return succeed(params_json_reader)

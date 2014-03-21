@@ -1,0 +1,8 @@
+set default="0"
+set timeout=0
+
+menuentry 'Local' {
+    echo 'Booting local disk ...'
+    set	 root=(hd0)
+    chainloader +1
+}

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 #
 # Download static files needed for net-booting nodes through TFTP:
@@ -36,7 +36,7 @@ SUPPORTED_RELEASES=$(distro-info --supported)
 RELEASES=${RELEASES:-$SUPPORTED_RELEASES}
 
 # The current Ubuntu release.
-STABLE_RELEASE=$(distro-info --stable)
+STABLE_RELEASE=${STABLE_RELEASE:-$(distro-info --stable)}
 
 # Supported architectures.
 ARCHES=${ARCHES:-amd64/generic i386/generic armhf/highbank armhf/generic}
@@ -48,6 +48,10 @@ DOWNLOAD=${DOWNLOAD:-wget --no-verbose}
 # Whether to download ephemeral images as well: "1" for yes, "0" for no.
 # Default is yes.
 IMPORT_EPHEMERALS=${IMPORT_EPHEMERALS:-1}
+
+# Whether to check for broken grub2 efinet: "1" for yes, "0" for no.
+# Default is yes.
+CHECK_BROKEN_EFINET=${CHECK_BROKEN_EFINET:-1}
 
 fail() {
     local msg=$1
@@ -231,6 +235,55 @@ update_pre_boot_loader() {
 }
 
 
+# Copy the signed efi and grubnet loader. Install it into the TFTP tree
+# for UEFI netbooting.
+update_uefi_boot_loader() {
+    local download_dir=$(mktemp -d)
+    pushd "$download_dir" >/dev/null
+    trap 'popd >/dev/null; rm -rf -- "$download_dir"' RETURN
+
+    local shim="/usr/lib/shim/shim.efi.signed"
+    if [ ! -e "$shim" ]
+    then
+        echo "Missing $shim, shim-signed needs to be installed." >&2
+        return 1
+    fi
+    cp $shim bootx64.efi
+    maas-provision install-pxe-bootloader --loader="bootx64.efi"
+
+    local grub_version=$STABLE_RELEASE
+    if test "$CHECK_BROKEN_EFINET" != "0"
+    then
+        # grubnetx64 will not work below version trusty, as efinet is broken
+        # when loading kernel, warn and force trusty
+        if [ $grub_version == "saucy" -o $grub_version == "quantal" -o $grub_version == "precise" ];
+        then
+            echo "Warning: ${grub_version} and ${grub_version}-updates doesn't support UEFI, switching to trusty."
+            grub_version="trusty"
+        fi
+    fi
+
+    local grubnet_url="$MAIN_ARCHIVE/dists/$grub_version-updates/main/uefi/grub2-amd64/current/grubnetx64.efi.signed"
+    if ! $DOWNLOAD $grubnet_url
+    then
+        echo "$grub_version-updates not available, falling back to $grub_version"
+        grubnet_url="$MAIN_ARCHIVE/dists/$grub_version/main/uefi/grub2-amd64/current/grubnetx64.efi.signed"
+        if ! $DOWNLOAD $grubnet_url
+        then
+            echo "Failed to download $grubnet_url" >&2
+            return 1
+        fi
+    fi
+    mv "grubnetx64.efi.signed" "grubx64.efi"
+    maas-provision install-pxe-bootloader --loader="grubx64.efi"
+    maas-provision install-uefi-config
+    
+    trap - RETURN
+    popd >/dev/null
+    rm -rf -- "$download_dir"
+}
+
+
 # Download kernel/initrd for installing Ubuntu release $2 for
 # architecture $1.
 download_install_files() {
@@ -329,6 +382,7 @@ main() {
     umask a+r
 
     update_pre_boot_loader
+    update_uefi_boot_loader
     import_install_images
     import_ephemeral_images
 }

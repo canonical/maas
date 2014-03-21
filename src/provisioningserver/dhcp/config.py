@@ -1,4 +1,4 @@
-# Copyright 2012-2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Write config output for ISC DHCPD."""
@@ -21,6 +21,7 @@ __all__ = [
 from platform import linux_distribution
 
 from provisioningserver.pxe.tftppath import compose_bootloader_path
+from provisioningserver.uefi.tftppath import compose_uefi_bootloader_path
 from provisioningserver.utils import locate_config
 import tempita
 
@@ -36,6 +37,7 @@ def get_config(**params):
     """Return a DHCP config file based on the supplied parameters."""
     template_file = locate_config(TEMPLATES_DIR, 'dhcpd.conf.template')
     params['bootloader'] = compose_bootloader_path()
+    params['uefi_bootloader'] = compose_uefi_bootloader_path()
     params['platform_codename'] = linux_distribution()[2]
     params.setdefault("ntp_server")
     try:

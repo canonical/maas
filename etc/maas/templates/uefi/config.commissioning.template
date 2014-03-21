@@ -1,0 +1,10 @@
+set default="0"
+set timeout=0
+
+# Force AMD64 for commissioning as UEFI only supports AMD64 currently.
+menuentry 'Commission' {
+    echo   'Booting under MAAS direction...'
+    echo   '{{kernel_params() | kernel_command}} BOOTIF=01-'${net_default_mac}
+    linux  {{kernel_params(arch="amd64") | kernel_path }} {{kernel_params(arch="amd64") | kernel_command}} BOOTIF=01-${net_default_mac}
+    initrd {{kernel_params(arch="amd64") | initrd_path }}
+}

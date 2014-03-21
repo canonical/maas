@@ -25,6 +25,7 @@ from maastesting.utils import (
     get_write_time,
     )
 from provisioningserver.pxe import tftppath
+from provisioningserver.uefi.tftppath import compose_uefi_bootloader_path
 from provisioningserver.testing.config import ConfigFixture
 from testtools.content import text_content
 from testtools.matchers import (
@@ -103,6 +104,21 @@ def compose_download_filenames(arch, release):
     return [compose_download_kernel_name(arch, release), 'initrd.gz']
 
 
+def compose_uefi_dir(archive, release):
+    """File locations expected to be found in the archive for UEFI netboot.
+
+    :param archive: Archive directory (corresponding to the script's ARCHIVE
+        setting, except here it's a filesystem path not a URL).
+    :param release: distro release
+    :return: A 2-tuple of:
+        * Base path of the current/ dir.
+        * Requisite files for this archive.
+    """
+    basepath = os.path.join(
+        archive, 'dists', release, 'main', 'uefi', 'grub2-amd64', 'current')
+    return basepath, ['grubnetx64.efi.signed']
+
+
 def generate_md5sums(basepath):
     """Write MD5SUMS file at basepath."""
     script = [
@@ -117,6 +133,12 @@ def compose_tftp_bootloader_path(tftproot):
     """Compose path for MAAS TFTP bootloader."""
     return tftppath.locate_tftp_path(
         tftppath.compose_bootloader_path(), tftproot)
+
+
+def compose_tftp_uefi_bootloader_path(tftproot):
+    """Compose path for MAAS UEFI TFTP bootloader."""
+    return tftppath.locate_tftp_path(
+        compose_uefi_bootloader_path(), tftproot)
 
 
 def compose_tftp_path(tftproot, arch, release, label, purpose, *path):
@@ -169,6 +191,10 @@ class TestImportPXEFiles(MAASTestCase):
         for filename in compose_download_filenames(arch, release):
             factory.make_file(download, filename)
         generate_md5sums(basepath)
+        uefi_archive, uefi_filenames = compose_uefi_dir(archive, release)
+        os.makedirs(uefi_archive)
+        for uefi in uefi_filenames:
+            factory.make_file(uefi_archive, uefi)
         return archive
 
     def call_script(self, archive_dir, tftproot, arch=None, release=None):
@@ -186,6 +212,7 @@ class TestImportPXEFiles(MAASTestCase):
         env = {
             'MAIN_ARCHIVE': 'file://%s' % archive_dir,
             'PORTS_ARCHIVE': 'file://%s' % archive_dir,
+            'STABLE_RELEASE': release,
             # Substitute curl for wget; it accepts file:// URLs.
             'DOWNLOAD': 'curl -O --silent',
             'PATH': os.pathsep.join(path),
@@ -195,6 +222,9 @@ class TestImportPXEFiles(MAASTestCase):
             # Suppress GPG checks as we can't sign the file from
             # here.
             'IGNORE_GPG': '1',
+            # Don't check for broken efinet, so arch will be
+            # correct for the download.
+            'CHECK_BROKEN_EFINET': '0',
         }
         env.update(self.config_fixture.environ)
         if arch is not None:
@@ -219,6 +249,15 @@ class TestImportPXEFiles(MAASTestCase):
         expected_contents = read_file('/usr/lib/syslinux', 'pxelinux.0')
         self.assertThat(tftp_path, FileContains(expected_contents))
 
+    def test_procures_pre_uefi_boot_loader(self):
+        arch = self.get_arch()
+        release = 'precise'
+        archive = self.make_downloads(arch=arch, release=release)
+        self.call_script(archive, self.tftproot, arch=arch, release=release)
+        tftp_path = compose_tftp_uefi_bootloader_path(self.tftproot)
+        expected_contents = read_file('/usr/lib/shim/', 'shim.efi.signed')
+        self.assertThat(tftp_path, FileContains(expected_contents))
+
     def test_updates_pre_boot_loader(self):
         arch = self.get_arch()
         release = 'precise'
@@ -228,6 +267,39 @@ class TestImportPXEFiles(MAASTestCase):
         archive = self.make_downloads(arch=arch, release=release)
         self.call_script(archive, self.tftproot, arch=arch, release=release)
         expected_contents = read_file('/usr/lib/syslinux', 'pxelinux.0')
+        self.assertThat(tftp_path, FileContains(expected_contents))
+
+    def test_updates_pre_uefi_boot_loader(self):
+        arch = self.get_arch()
+        release = 'precise'
+        tftp_path = compose_tftp_uefi_bootloader_path(self.tftproot)
+        with open(tftp_path, 'w') as existing_file:
+            existing_file.write(factory.getRandomString())
+        archive = self.make_downloads(arch=arch, release=release)
+        self.call_script(archive, self.tftproot, arch=arch, release=release)
+        expected_contents = read_file('/usr/lib/shim/', 'shim.efi.signed')
+        self.assertThat(tftp_path, FileContains(expected_contents))
+
+    def test_procures_uefi_grubnet(self):
+        arch = self.get_arch()
+        release = 'precise'
+        archive = self.make_downloads(arch=arch, release=release)
+        self.call_script(archive, self.tftproot, arch=arch, release=release)
+        tftp_path = os.path.join(self.tftproot, 'grubx64.efi')
+        uefi_archive, _ = compose_uefi_dir(archive, release)
+        expected_contents = read_file(uefi_archive, 'grubnetx64.efi.signed')
+        self.assertThat(tftp_path, FileContains(expected_contents))
+
+    def test_updates_uefi_grubnet(self):
+        arch = self.get_arch()
+        release = 'precise'
+        archive = self.make_downloads(arch=arch, release=release)
+        tftp_path = os.path.join(self.tftproot, 'grubx64.efi')
+        with open(tftp_path, 'w') as existing_file:
+            existing_file.write(factory.getRandomString())
+        self.call_script(archive, self.tftproot, arch=arch, release=release)
+        uefi_archive, _ = compose_uefi_dir(archive, release)
+        expected_contents = read_file(uefi_archive, 'grubnetx64.efi.signed')
         self.assertThat(tftp_path, FileContains(expected_contents))
 
     def test_procures_install_image(self):

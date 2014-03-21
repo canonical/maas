@@ -46,6 +46,7 @@ python-txtftp
 python-yaml
 rabbitmq-server
 syslinux-common
+shim-signed
 tgt
 ubuntu-cloudimage-keyring
 wget

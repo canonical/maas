@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Twisted Application Plugin for the MAAS TFTP server."""
@@ -32,6 +32,7 @@ from provisioningserver.cluster_config import get_cluster_uuid
 from provisioningserver.driver import ArchitectureRegistry
 from provisioningserver.kernel_opts import KernelParameters
 from provisioningserver.pxe.config import render_pxe_config
+from provisioningserver.uefi.config import render_uefi_config
 from provisioningserver.utils import (
     deferred,
     get_all_interface_addresses,
@@ -89,6 +90,7 @@ class TFTPBackend(FilesystemSynchronousBackend):
 
     get_page = staticmethod(getPage)
     render_pxe_config = staticmethod(render_pxe_config)
+    render_uefi_config = staticmethod(render_uefi_config)
 
     # PXELINUX represents a MAC address in IEEE 802 hyphen-separated
     # format.  See http://www.syslinux.org/wiki/index.php/PXELINUX.
@@ -117,9 +119,38 @@ class TFTPBackend(FilesystemSynchronousBackend):
         )
         $
     '''
+
     re_config_file = re_config_file.format(
         htype=ARP_HTYPE.ETHERNET, re_mac_address=re_mac_address)
     re_config_file = re.compile(re_config_file, re.VERBOSE)
+
+    # GRUB EFINET represents a MAC address in IEEE 802 colon-seperated
+    # format. Required for UEFI as GRUB2 only presents the MAC address
+    # in colon-seperated format.
+    re_uefi_mac_address = re.compile(
+        ':'.join(repeat(re_mac_address_octet, 6)))
+
+    # Match the grub/grub.cfg-* request for UEFI (aka. GRUB2)
+    re_uefi_config_file = r'''
+        # Optional leading slash(es).
+        ^/*
+        grub/grub[.]cfg   # UEFI (aka. GRUB2) expects this.
+        -
+        (?: # either a MAC
+            (?P<mac>{re_mac_address.pattern}) # Capture UEFI MAC.
+        | # or "default"
+            default
+              (?: # perhaps with specified arch, with a separator of '-'
+                [-](?P<arch>\w+) # arch
+                (?:-(?P<subarch>\w+))? # optional subarch
+              )?
+        )
+        $
+    '''
+
+    re_uefi_config_file = re_uefi_config_file.format(
+        re_mac_address=re_uefi_mac_address)
+    re_uefi_config_file = re.compile(re_uefi_config_file, re.VERBOSE)
 
     def __init__(self, base_path, generator_url):
         """
@@ -150,6 +181,12 @@ class TFTPBackend(FilesystemSynchronousBackend):
         # apiclient.utils.ascii_url() for inspiration.
         return url.geturl().encode("ascii")
 
+    def normalise_mac_address(self, mac):
+        """Converts MAC address from colon-seperated to hyphen-separated."""
+        if ':' in mac:
+            return mac.replace(':', '-')
+        return mac
+
     @deferred
     def get_kernel_params(self, params):
         """Return kernel parameters obtained from the API.
@@ -169,7 +206,7 @@ class TFTPBackend(FilesystemSynchronousBackend):
         return d
 
     @deferred
-    def get_config_reader(self, params):
+    def get_pxe_config_reader(self, params):
         """Return an `IReader` for a PXE config.
 
         :param params: Parameters so far obtained, typically from the file
@@ -177,6 +214,23 @@ class TFTPBackend(FilesystemSynchronousBackend):
         """
         def generate_config(kernel_params):
             config = self.render_pxe_config(
+                kernel_params=kernel_params, **params)
+            return config.encode("utf-8")
+
+        d = self.get_kernel_params(params)
+        d.addCallback(generate_config)
+        d.addCallback(BytesReader)
+        return d
+
+    @deferred
+    def get_uefi_config_reader(self, params):
+        """Return an `IReader` for a UEFI config.
+
+        :param params: Parameters so far obtained, typically from the file
+            path requested.
+        """
+        def generate_config(kernel_params):
+            config = self.render_uefi_config(
                 kernel_params=kernel_params, **params)
             return config.encode("utf-8")
 
@@ -208,37 +262,46 @@ class TFTPBackend(FilesystemSynchronousBackend):
     def get_reader(self, file_name):
         """See `IBackend.get_reader()`.
 
-        If `file_name` matches `re_config_file` then the response is obtained
-        from a server. Otherwise the filesystem is used to service the
-        response.
+        If `file_name` matches `re_config_file` or `re_uefi_config_file`
+        then the response is obtained from a server. Otherwise the
+        filesystem is used to service the response.
         """
+        config_reader = self.get_pxe_config_reader
         config_file_match = self.re_config_file.match(file_name)
         if config_file_match is None:
-            return super(TFTPBackend, self).get_reader(file_name)
-        else:
-            # Do not include any element that has not matched (ie. is None)
-            params = {
-                key: value
-                for key, value in config_file_match.groupdict().items()
-                if value is not None
-                }
+            config_reader = self.get_uefi_config_reader
+            config_file_match = self.re_uefi_config_file.match(file_name)
+            if config_file_match is None:
+                return super(TFTPBackend, self).get_reader(file_name)
 
-            # Map pxe namespace architecture names to MAAS's.
-            arch = params.get("arch")
-            if arch is not None:
-                maasarch = ArchitectureRegistry.get_by_pxealias(arch)
-                if maasarch is not None:
-                    params["arch"] = maasarch.name.split("/")[0]
+        # Do not include any element that has not matched (ie. is None)
+        params = {
+            key: value
+            for key, value in config_file_match.groupdict().items()
+            if value is not None
+            }
 
-            # Send the local and remote endpoint addresses.
-            local_host, local_port = get("local", (None, None))
-            params["local"] = local_host
-            remote_host, remote_port = get("remote", (None, None))
-            params["remote"] = remote_host
-            params["cluster_uuid"] = get_cluster_uuid()
-            d = self.get_config_reader(params)
-            d.addErrback(self.get_page_errback, file_name)
-            return d
+        # Map pxe namespace architecture names to MAAS's.
+        arch = params.get("arch")
+        if arch is not None:
+            maasarch = ArchitectureRegistry.get_by_pxealias(arch)
+            if maasarch is not None:
+                params["arch"] = maasarch.name.split("/")[0]
+
+        # Normalise the MAC address for UEFI
+        mac = params.get('mac')
+        if mac is not None:
+            params['mac'] = self.normalise_mac_address(params['mac'])
+
+        # Send the local and remote endpoint addresses.
+        local_host, local_port = get("local", (None, None))
+        params["local"] = local_host
+        remote_host, remote_port = get("remote", (None, None))
+        params["remote"] = remote_host
+        params["cluster_uuid"] = get_cluster_uuid()
+        d = config_reader(params)
+        d.addErrback(self.get_page_errback, file_name)
+        return d
 
 
 class TFTPService(MultiService, object):

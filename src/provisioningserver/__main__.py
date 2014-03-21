@@ -18,6 +18,7 @@ import provisioningserver.customize_config
 import provisioningserver.dhcp.writer
 import provisioningserver.pxe.install_bootloader
 import provisioningserver.pxe.install_image
+import provisioningserver.uefi.install_grub
 import provisioningserver.start_cluster_controller
 import provisioningserver.upgrade_cluster
 from provisioningserver.utils import (
@@ -32,6 +33,7 @@ script_commands = {
     'generate-dhcp-config': provisioningserver.dhcp.writer,
     'install-pxe-bootloader': provisioningserver.pxe.install_bootloader,
     'install-pxe-image': provisioningserver.pxe.install_image,
+    'install-uefi-config': provisioningserver.uefi.install_grub,
     'start-cluster-controller': provisioningserver.start_cluster_controller,
     'upgrade-cluster': provisioningserver.upgrade_cluster,
 }
