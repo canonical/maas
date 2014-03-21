@@ -14,13 +14,14 @@ python-amqplib
 python-bzrlib
 python-celery
 python-convoy
+python-crochet
 python-curtin
 python-dev
+python-distro-info
 python-django
 python-django-piston
 python-django-south
 python-djorm-ext-pgarray
-python-distro-info
 python-docutils
 python-formencode
 python-httplib2
@@ -45,8 +46,8 @@ python-txlongpoll
 python-txtftp
 python-yaml
 rabbitmq-server
-syslinux-common
 shim-signed
+syslinux-common
 tgt
 ubuntu-cloudimage-keyring
 wget
