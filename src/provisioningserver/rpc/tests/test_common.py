@@ -21,6 +21,7 @@ from mock import (
     sentinel,
     )
 from provisioningserver.rpc import common
+from provisioningserver.rpc.testing.doubles import DummyConnection
 from testtools.matchers import (
     Equals,
     Is,
@@ -32,13 +33,19 @@ from twisted.protocols import amp
 class TestClient(MAASTestCase):
 
     def test_init(self):
-        client = common.Client(sentinel.connection)
-        self.assertThat(client._conn, Is(sentinel.connection))
+        conn = DummyConnection()
+        client = common.Client(conn)
+        self.assertThat(client._conn, Is(conn))
 
     def make_connection_and_client(self):
         conn = create_autospec(amp.AMP())
         client = common.Client(conn)
         return conn, client
+
+    def test_ident(self):
+        conn, client = self.make_connection_and_client()
+        conn.ident = self.getUniqueString()
+        self.assertThat(client.ident, Equals(conn.ident))
 
     def test_call(self):
         conn, client = self.make_connection_and_client()

@@ -39,7 +39,7 @@ class IdentifyingRegionServer(RegionServer):
         if commandType is cluster.Identify:
             if self.cluster_uuid is None:
                 self.cluster_uuid = factory.getRandomUUID()
-            return succeed({b"uuid": self.cluster_uuid})
+            return succeed({b"ident": self.cluster_uuid})
         else:
             return super(IdentifyingRegionServer, self).callRemote(
                 commandType, *args, **kwargs)

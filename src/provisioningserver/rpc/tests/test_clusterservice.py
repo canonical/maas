@@ -49,11 +49,13 @@ from provisioningserver.rpc.clusterservice import (
     ClusterClientService,
     ClusterService,
     )
+from provisioningserver.rpc.interfaces import IConnection
 from provisioningserver.rpc.testing import (
     are_valid_tls_parameters,
     call_responder,
     TwistedLoggerFixture,
     )
+from provisioningserver.rpc.testing.doubles import DummyConnection
 from testtools.deferredruntest import AsynchronousDeferredRunTest
 from testtools.matchers import (
     Equals,
@@ -86,6 +88,7 @@ from twisted.internet.protocol import Factory
 from twisted.internet.task import Clock
 from twisted.protocols import amp
 from twisted.test.proto_helpers import StringTransportWithDisconnection
+from zope.interface.verify import verifyObject
 
 
 class TestClusterProtocol_Identify(MAASTestCase):
@@ -98,7 +101,7 @@ class TestClusterProtocol_Identify(MAASTestCase):
         self.assertIsNot(responder, None)
 
     def test_identify_reports_cluster_uuid(self):
-        example_uuid = b"uuid-%d" % self.getUniqueInteger()
+        example_uuid = factory.getRandomUUID()
 
         get_cluster_uuid = self.patch(clusterservice, "get_cluster_uuid")
         get_cluster_uuid.return_value = example_uuid
@@ -106,7 +109,7 @@ class TestClusterProtocol_Identify(MAASTestCase):
         d = call_responder(Cluster(), cluster.Identify, {})
 
         def check(response):
-            self.assertEqual({"uuid": example_uuid}, response)
+            self.assertEqual({"ident": example_uuid}, response)
         return d.addCallback(check)
 
 
@@ -474,9 +477,9 @@ class TestClusterClientService(MAASTestCase):
     def test_getClient(self):
         service = ClusterClientService(Clock())
         service.connections = {
-            sentinel.eventloop01: sentinel.client01,
-            sentinel.eventloop02: sentinel.client02,
-            sentinel.eventloop03: sentinel.client03,
+            sentinel.eventloop01: DummyConnection(),
+            sentinel.eventloop02: DummyConnection(),
+            sentinel.eventloop03: DummyConnection(),
         }
         self.assertIn(
             service.getClient(), {
@@ -502,6 +505,15 @@ class TestClusterClient(MAASTestCase):
             service=ClusterClientService(Clock()))
         client.service.running = True
         return client
+
+    def test_interfaces(self):
+        client = self.make_running_client()
+        verifyObject(IConnection, client)
+
+    def test_ident(self):
+        client = self.make_running_client()
+        client.eventloop = self.getUniqueString()
+        self.assertThat(client.ident, Equals(client.eventloop))
 
     def test_connecting(self):
         client = self.make_running_client()

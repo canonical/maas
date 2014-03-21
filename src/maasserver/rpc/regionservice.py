@@ -38,6 +38,7 @@ from provisioningserver.rpc import (
     exceptions,
     region,
     )
+from provisioningserver.rpc.interfaces import IConnection
 from provisioningserver.utils import (
     asynchronous,
     get_all_interface_addresses,
@@ -58,6 +59,7 @@ from twisted.python import (
     filepath,
     log,
     )
+from zope.interface import implementer
 
 
 class Region(amp.AMP):
@@ -74,7 +76,7 @@ class Region(amp.AMP):
         Implementation of
         :py:class:`~provisioningserver.rpc.region.Identify`.
         """
-        return {b"name": eventloop.loop.name}
+        return {b"ident": eventloop.loop.name}
 
     @region.ReportBootImages.responder
     def report_boot_images(self, uuid, images):
@@ -105,6 +107,7 @@ class Region(amp.AMP):
         }
 
 
+@implementer(IConnection)
 class RegionServer(Region):
     """The RPC protocol supported by a region controller, server version.
 
@@ -115,11 +118,11 @@ class RegionServer(Region):
         factory. The factory must also have a reference back to the
         service that created it.
 
-    :ivar uuid: The UUID of the remote cluster.
+    :ivar ident: The identity (e.g. UUID) of the remote cluster.
     """
 
     factory = None
-    uuid = None
+    ident = None
 
     def connectionMade(self):
         super(RegionServer, self).connectionMade()
@@ -127,8 +130,8 @@ class RegionServer(Region):
             d = self.callRemote(cluster.Identify)
 
             def cb_identify(response):
-                self.uuid = response.get("uuid")
-                self.factory.service.connections[self.uuid].add(self)
+                self.ident = response.get("ident")
+                self.factory.service.connections[self.ident].add(self)
 
             def eb_identify(failure):
                 log.err(failure)
@@ -139,7 +142,7 @@ class RegionServer(Region):
             self.transport.loseConnection()
 
     def connectionLost(self, reason):
-        self.factory.service.connections[self.uuid].discard(self)
+        self.factory.service.connections[self.ident].discard(self)
         super(RegionServer, self).connectionLost(reason)
 
 

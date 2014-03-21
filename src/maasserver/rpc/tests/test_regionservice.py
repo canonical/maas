@@ -33,14 +33,13 @@ from maasserver.rpc.regionservice import (
     RegionServer,
     RegionService,
     )
-from maasserver.rpc.testing import doubles
+from maasserver.rpc.testing.doubles import IdentifyingRegionServer
 from maastesting.factory import factory
 from maastesting.matchers import (
     MockCalledOnceWith,
     Provides,
     )
 from maastesting.testcase import MAASTestCase
-from mock import sentinel
 from provisioningserver.config import Config
 from provisioningserver.rpc import (
     cluster,
@@ -56,6 +55,7 @@ from provisioningserver.rpc.testing import (
     call_responder,
     TwistedLoggerFixture,
     )
+from provisioningserver.rpc.testing.doubles import DummyConnection
 from provisioningserver.utils import asynchronous
 from testtools.matchers import (
     AfterPreprocessing,
@@ -92,7 +92,7 @@ class TestRegionProtocol_Identify(MAASTestCase):
         d = call_responder(Region(), Identify, {})
 
         def check(response):
-            self.assertEqual({"name": eventloop.loop.name}, response)
+            self.assertEqual({"ident": eventloop.loop.name}, response)
 
         return d.addCallback(check)
 
@@ -192,7 +192,15 @@ class TestRegionProtocol_ReportBootImages(MAASTestCase):
         return d.addCallback(check)
 
 
+from provisioningserver.rpc.interfaces import IConnection
+from zope.interface.verify import verifyObject
+
+
 class TestRegionServer(MAASTestCase):
+
+    def test_interfaces(self):
+        protocol = RegionServer()
+        verifyObject(IConnection, protocol)
 
     def test_connectionMade_identifies_the_remote_cluster(self):
         service = RegionService()
@@ -200,12 +208,12 @@ class TestRegionServer(MAASTestCase):
         protocol = service.factory.buildProtocol(addr=None)  # addr is unused.
         example_uuid = factory.getRandomUUID()
         callRemote = self.patch(protocol, "callRemote")
-        callRemote.return_value = succeed({b"uuid": example_uuid})
+        callRemote.return_value = succeed({b"ident": example_uuid})
         protocol.connectionMade()
         # The Identify command was called on the cluster.
         self.assertThat(callRemote, MockCalledOnceWith(cluster.Identify))
         # The UUID has been saved on the protocol instance.
-        self.assertThat(protocol.uuid, Equals(example_uuid))
+        self.assertThat(protocol.ident, Equals(example_uuid))
 
     def test_connectionMade_drops_the_connection_on_ident_failure(self):
         service = RegionService()
@@ -232,18 +240,18 @@ class TestRegionServer(MAASTestCase):
     def test_connectionMade_updates_services_connection_set(self):
         service = RegionService()
         service.running = True  # Pretend it's running.
-        service.factory.protocol = doubles.IdentifyingRegionServer
+        service.factory.protocol = IdentifyingRegionServer
         protocol = service.factory.buildProtocol(addr=None)  # addr is unused.
         self.assertDictEqual({}, service.connections)
         protocol.connectionMade()
         self.assertDictEqual(
-            {protocol.uuid: {protocol}},
+            {protocol.ident: {protocol}},
             service.connections)
 
     def test_connectionMade_drops_connection_if_service_not_running(self):
         service = RegionService()
         service.running = False  # Pretend it's not running.
-        service.factory.protocol = doubles.IdentifyingRegionServer
+        service.factory.protocol = IdentifyingRegionServer
         protocol = service.factory.buildProtocol(addr=None)  # addr is unused.
         transport = self.patch(protocol, "transport")
         self.assertDictEqual({}, service.connections)
@@ -256,16 +264,16 @@ class TestRegionServer(MAASTestCase):
     def test_connectionLost_updates_services_connection_set(self):
         service = RegionService()
         service.running = True  # Pretend it's running.
-        service.factory.protocol = doubles.IdentifyingRegionServer
+        service.factory.protocol = IdentifyingRegionServer
         protocol = service.factory.buildProtocol(addr=None)  # addr is unused.
         protocol.connectionMade()
         connectionLost_up_call = self.patch(amp.AMP, "connectionLost")
         self.assertDictEqual(
-            {protocol.uuid: {protocol}},
+            {protocol.ident: {protocol}},
             service.connections)
         protocol.connectionLost(reason=None)
         # The connection is removed from the set, but the key remains.
-        self.assertDictEqual({protocol.uuid: set()}, service.connections)
+        self.assertDictEqual({protocol.ident: set()}, service.connections)
         # connectionLost() is called on the superclass.
         self.assertThat(connectionLost_up_call, MockCalledOnceWith(None))
 
@@ -366,14 +374,14 @@ class TestRegionService(MAASTestCase):
     def test_stopping_closes_connections_cleanly(self):
         service = RegionService()
         service.starting = Deferred()
-        service.factory.protocol = doubles.IdentifyingRegionServer
+        service.factory.protocol = IdentifyingRegionServer
         connections = {
             service.factory.buildProtocol(None),
             service.factory.buildProtocol(None),
         }
         for conn in connections:
             # Pretend it's already connected.
-            service.connections[conn.uuid].add(conn)
+            service.connections[conn.ident].add(conn)
         transports = {
             self.patch(conn, "transport")
             for conn in connections
@@ -390,7 +398,7 @@ class TestRegionService(MAASTestCase):
     def test_stopping_logs_errors_when_closing_connections(self):
         service = RegionService()
         service.starting = Deferred()
-        service.factory.protocol = doubles.IdentifyingRegionServer
+        service.factory.protocol = IdentifyingRegionServer
         connections = {
             service.factory.buildProtocol(None),
             service.factory.buildProtocol(None),
@@ -399,7 +407,7 @@ class TestRegionService(MAASTestCase):
             transport = self.patch(conn, "transport")
             transport.loseConnection.side_effect = IOError("broken")
             # Pretend it's already connected.
-            service.connections[conn.uuid].add(conn)
+            service.connections[conn.ident].add(conn)
         logger = self.useFixture(TwistedLoggerFixture())
         # stopService() completes without returning an error.
         yield service.stopService()
@@ -451,19 +459,23 @@ class TestRegionService(MAASTestCase):
 
     @wait_for_reactor
     def test_getClientFor_returns_random_connection(self):
+        c1 = DummyConnection()
+        c2 = DummyConnection()
+        chosen = DummyConnection()
+
         service = RegionService()
         uuid = factory.getRandomUUID()
         conns_for_uuid = service.connections[uuid]
-        conns_for_uuid.update({sentinel.c1, sentinel.c2})
+        conns_for_uuid.update({c1, c2})
 
         def check_choice(choices):
             self.assertItemsEqual(choices, conns_for_uuid)
-            return sentinel.chosen
+            return chosen
         self.patch(random, "choice", check_choice)
 
         self.assertThat(
             service.getClientFor(uuid),
-            Equals(common.Client(sentinel.chosen)))
+            Equals(common.Client(chosen)))
 
     @wait_for_reactor
     def test_getAllClients_empty(self):
@@ -475,13 +487,17 @@ class TestRegionService(MAASTestCase):
     def test_getAllClients(self):
         service = RegionService()
         uuid1 = factory.getRandomUUID()
-        service.connections[uuid1].update({sentinel.c1, sentinel.c2})
+        c1 = DummyConnection()
+        c2 = DummyConnection()
+        service.connections[uuid1].update({c1, c2})
         uuid2 = factory.getRandomUUID()
-        service.connections[uuid2].update({sentinel.c3, sentinel.c4})
+        c3 = DummyConnection()
+        c4 = DummyConnection()
+        service.connections[uuid2].update({c3, c4})
         clients = service.getAllClients()
         self.assertItemsEqual(clients, {
-            common.Client(sentinel.c1), common.Client(sentinel.c2),
-            common.Client(sentinel.c3), common.Client(sentinel.c4),
+            common.Client(c1), common.Client(c2),
+            common.Client(c3), common.Client(c4),
         })
 
 
