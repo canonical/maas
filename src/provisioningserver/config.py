@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """MAAS Provisioning Configuration.
@@ -64,7 +64,10 @@ import os.path
 from shutil import copyfile
 from threading import RLock
 
-from formencode import Schema
+from formencode import (
+    ForEach,
+    Schema,
+    )
 from formencode.declarative import DeclarativeMeta
 from formencode.validators import (
     Int,
@@ -117,6 +120,8 @@ class ConfigRPC(Schema):
     if_key_missing = None
 
 
+# XXX jtv 2014-03-21, bug=1295479: Obsolete once we start using the new import
+# script.
 class ConfigBootEphemeral(Schema):
     """Configuration validator for ephemeral boot configuration."""
 
@@ -126,13 +131,47 @@ class ConfigBootEphemeral(Schema):
     releases = Set(if_missing=None)
 
 
+# XXX jtv 2014-03-21, bug=1295479: Unused until we start using the new import
+# script.
+class ConfigBootSourceSelection(Schema):
+    """Configuration validator for boot source election onfiguration."""
+
+    if_key_missing = None
+
+    release = String(if_missing="*")
+    arch = String(if_missing="*")
+    subarches = Set(if_missing=['*'])
+
+
+# XXX jtv 2014-03-21, bug=1295479: Unused until we start using the new import
+# script.
+class ConfigBootSource(Schema):
+    """Configuration validator for boot source configuration."""
+
+    if_key_missing = None
+
+    path = String(
+        if_missing="http://maas.ubuntu.com/images/ephemeral/releases/")
+    selections = ForEach(
+        ConfigBootSourceSelection,
+        if_missing=[ConfigBootSourceSelection.to_python({})])
+
+
 class ConfigBoot(Schema):
     """Configuration validator for boot configuration."""
 
     if_key_missing = None
 
+    # XXX jtv 2014-03-21, bug=1295479: Obsolete once we start using the new
+    # import script.
     ephemeral = ConfigBootEphemeral
     architectures = Set(if_missing=None)
+
+    # XXX jtv 2014-03-21, bug=1295479: Unused until we start using the new
+    # import script.
+    storage = String(if_missing="/var/lib/maas/boot-resources/")
+    sources = ForEach(
+        ConfigBootSource, if_missing=[ConfigBootSource.to_python({})])
 
 
 class ConfigMeta(DeclarativeMeta):
