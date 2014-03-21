@@ -46,7 +46,6 @@ python-txlongpoll
 python-txtftp
 python-yaml
 rabbitmq-server
-shim-signed
 syslinux-common
 tgt
 ubuntu-cloudimage-keyring

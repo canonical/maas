@@ -382,7 +382,8 @@ main() {
     umask a+r
 
     update_pre_boot_loader
-    update_uefi_boot_loader
+    # XXX: GavinPanella 2014-03-21 bug=1295644: UEFI support disabled.
+    # update_uefi_boot_loader
     import_install_images
     import_ephemeral_images
 }

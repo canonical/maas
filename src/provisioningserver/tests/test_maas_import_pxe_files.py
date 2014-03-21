@@ -16,6 +16,7 @@ __all__ = []
 
 import os
 from subprocess import check_call
+from unittest import skip
 
 from maastesting import root
 from maastesting.factory import factory
@@ -249,6 +250,8 @@ class TestImportPXEFiles(MAASTestCase):
         expected_contents = read_file('/usr/lib/syslinux', 'pxelinux.0')
         self.assertThat(tftp_path, FileContains(expected_contents))
 
+    # XXX: GavinPanella 2014-03-21 bug=1295644: UEFI support disabled.
+    @skip("UEFI support temporarily disabled")
     def test_procures_pre_uefi_boot_loader(self):
         arch = self.get_arch()
         release = 'precise'
@@ -269,6 +272,8 @@ class TestImportPXEFiles(MAASTestCase):
         expected_contents = read_file('/usr/lib/syslinux', 'pxelinux.0')
         self.assertThat(tftp_path, FileContains(expected_contents))
 
+    # XXX: GavinPanella 2014-03-21 bug=1295644: UEFI support disabled.
+    @skip("UEFI support temporarily disabled")
     def test_updates_pre_uefi_boot_loader(self):
         arch = self.get_arch()
         release = 'precise'
@@ -280,6 +285,8 @@ class TestImportPXEFiles(MAASTestCase):
         expected_contents = read_file('/usr/lib/shim/', 'shim.efi.signed')
         self.assertThat(tftp_path, FileContains(expected_contents))
 
+    # XXX: GavinPanella 2014-03-21 bug=1295644: UEFI support disabled.
+    @skip("UEFI support temporarily disabled")
     def test_procures_uefi_grubnet(self):
         arch = self.get_arch()
         release = 'precise'
@@ -290,6 +297,8 @@ class TestImportPXEFiles(MAASTestCase):
         expected_contents = read_file(uefi_archive, 'grubnetx64.efi.signed')
         self.assertThat(tftp_path, FileContains(expected_contents))
 
+    # XXX: GavinPanella 2014-03-21 bug=1295644: UEFI support disabled.
+    @skip("UEFI support temporarily disabled")
     def test_updates_uefi_grubnet(self):
         arch = self.get_arch()
         release = 'precise'
