@@ -53,6 +53,10 @@ IMPORT_EPHEMERALS=${IMPORT_EPHEMERALS:-1}
 # Default is yes.
 CHECK_BROKEN_EFINET=${CHECK_BROKEN_EFINET:-1}
 
+# Whether to skip getting shim-signed from amd64-binary archive: "1" for yes, "0" for no.
+# This is used for testing, Default is no.
+SKIP_SHIM_SIGNED=${SKIP_SHIM_SIGNED:-0}
+
 fail() {
     local msg=$1
 
@@ -234,22 +238,63 @@ update_pre_boot_loader() {
     done
 }
 
+# Download load the archive package list, and check that it contains
+# the needed package.
+download_archive_package_list() {
+    local archive_url="$MAIN_ARCHIVE/dists/$1/main/binary-amd64/Packages.gz"
+    if $DOWNLOAD $archive_url
+    then
+        gunzip "Packages.gz"
+        if grep -Fxq "Package: $2" "Packages"
+        then
+            return 0
+        fi
+    fi
+    return 1
+}
 
 # Copy the signed efi and grubnet loader. Install it into the TFTP tree
 # for UEFI netbooting.
 update_uefi_boot_loader() {
     local download_dir=$(mktemp -d)
     pushd "$download_dir" >/dev/null
-    trap 'popd >/dev/null; rm -rf -- "$download_dir"' RETURN
 
-    local shim="/usr/lib/shim/shim.efi.signed"
-    if [ ! -e "$shim" ]
+    # Resolves bug=1295644 - Download the package manually from the
+    # archive giving support for other architectures.
+    if test "$SKIP_SHIM_SIGNED" != "1"
     then
-        echo "Missing $shim, shim-signed needs to be installed." >&2
-        return 1
+        if ! download_archive_package_list "$STABLE_RELEASE-updates" "shim-signed"
+        then
+            if ! download_archive_package_list "$STABLE_RELEASE" "shim-signed"
+            then
+                echo "Failed to obtain shim-signed." >&2
+                popd >/dev/null
+                rm -rf -- "$download_dir"
+                return 1
+            fi
+        fi
+
+        # Extract the shim-signed package information.
+        local package="$(awk "/^Package: shim-signed$/{f=1}f;/MD5sum: .+$/{f=0}" Packages)"
+        local filepath="$(echo "${package}" | sed -n "s/^Filename: \(.*\)$/\1/p")"
+        local filename="${filepath##*/}"
+        local md5sum="$(echo "${package}" | sed -n "s/^MD5sum: \(.*\)$/\1/p")"
+        local url="${MAIN_ARCHIVE}${filepath}"
+        
+        # Download the package from the pool and check that md5sum match.
+        trap 'popd >/dev/null; rm -rf -- "$download_dir"' RETURN
+        if ! $DOWNLOAD $url
+        then
+            echo "Failed to download ${filename}." >&2
+            return 1
+        fi
+        check_checksum "$md5sum" "$filename"
+
+        # Extract the shim.efi.signed file from the package, and install it for maas to use.
+        dpkg -x "$filename" .
+        mv "usr/lib/shim/shim.efi.signed" "bootx64.efi"
+        maas-provision install-pxe-bootloader --loader="bootx64.efi"
     fi
-    cp $shim bootx64.efi
-    maas-provision install-pxe-bootloader --loader="bootx64.efi"
 
     local grub_version=$STABLE_RELEASE
     if test "$CHECK_BROKEN_EFINET" != "0"
@@ -382,8 +427,7 @@ main() {
     umask a+r
 
     update_pre_boot_loader
-    # XXX: GavinPanella 2014-03-21 bug=1295644: UEFI support disabled.
-    # update_uefi_boot_loader
+    update_uefi_boot_loader
     import_install_images
     import_ephemeral_images
 }

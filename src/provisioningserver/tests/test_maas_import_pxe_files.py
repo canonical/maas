@@ -16,7 +16,6 @@ __all__ = []
 
 import os
 from subprocess import check_call
-from unittest import skip
 
 from maastesting import root
 from maastesting.factory import factory
@@ -226,6 +225,9 @@ class TestImportPXEFiles(MAASTestCase):
             # Don't check for broken efinet, so arch will be
             # correct for the download.
             'CHECK_BROKEN_EFINET': '0',
+            # Skip shim.efi.sifned, as we don't want it to really
+            # download the package
+            'SKIP_SHIM_SIGNED': '1',
         }
         env.update(self.config_fixture.environ)
         if arch is not None:
@@ -250,17 +252,6 @@ class TestImportPXEFiles(MAASTestCase):
         expected_contents = read_file('/usr/lib/syslinux', 'pxelinux.0')
         self.assertThat(tftp_path, FileContains(expected_contents))
 
-    # XXX: GavinPanella 2014-03-21 bug=1295644: UEFI support disabled.
-    @skip("UEFI support temporarily disabled")
-    def test_procures_pre_uefi_boot_loader(self):
-        arch = self.get_arch()
-        release = 'precise'
-        archive = self.make_downloads(arch=arch, release=release)
-        self.call_script(archive, self.tftproot, arch=arch, release=release)
-        tftp_path = compose_tftp_uefi_bootloader_path(self.tftproot)
-        expected_contents = read_file('/usr/lib/shim/', 'shim.efi.signed')
-        self.assertThat(tftp_path, FileContains(expected_contents))
-
     def test_updates_pre_boot_loader(self):
         arch = self.get_arch()
         release = 'precise'
@@ -272,21 +263,6 @@ class TestImportPXEFiles(MAASTestCase):
         expected_contents = read_file('/usr/lib/syslinux', 'pxelinux.0')
         self.assertThat(tftp_path, FileContains(expected_contents))
 
-    # XXX: GavinPanella 2014-03-21 bug=1295644: UEFI support disabled.
-    @skip("UEFI support temporarily disabled")
-    def test_updates_pre_uefi_boot_loader(self):
-        arch = self.get_arch()
-        release = 'precise'
-        tftp_path = compose_tftp_uefi_bootloader_path(self.tftproot)
-        with open(tftp_path, 'w') as existing_file:
-            existing_file.write(factory.getRandomString())
-        archive = self.make_downloads(arch=arch, release=release)
-        self.call_script(archive, self.tftproot, arch=arch, release=release)
-        expected_contents = read_file('/usr/lib/shim/', 'shim.efi.signed')
-        self.assertThat(tftp_path, FileContains(expected_contents))
-
-    # XXX: GavinPanella 2014-03-21 bug=1295644: UEFI support disabled.
-    @skip("UEFI support temporarily disabled")
     def test_procures_uefi_grubnet(self):
         arch = self.get_arch()
         release = 'precise'
@@ -297,8 +273,6 @@ class TestImportPXEFiles(MAASTestCase):
         expected_contents = read_file(uefi_archive, 'grubnetx64.efi.signed')
         self.assertThat(tftp_path, FileContains(expected_contents))
 
-    # XXX: GavinPanella 2014-03-21 bug=1295644: UEFI support disabled.
-    @skip("UEFI support temporarily disabled")
     def test_updates_uefi_grubnet(self):
         arch = self.get_arch()
         release = 'precise'
