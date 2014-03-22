@@ -62,8 +62,15 @@ class Command(dbshell.Command):
         else:
             # Don't call up to Django's dbshell, because that ends up exec'ing
             # the shell, preventing this from clearing down the fixture.
+
             # Import fixture here, because installed systems won't have it.
-            from maasserver.testing import database
+            try:
+                from maasserver.testing import database
+            except ImportError as e:
+                raise ImportError(
+                    unicode(e) + "\n"
+                    "If this is an installed MAAS, use the --installed "
+                    "option.")
             cluster = database.MAASClusterFixture(options.get('database'))
             with cluster:
                 cluster.shell(cluster.dbname)
