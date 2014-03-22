@@ -18,9 +18,9 @@ import re
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
-from provisioningserver.uefi.config import render_uefi_config
 from provisioningserver.pxe.tftppath import compose_image_path
 from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
+from provisioningserver.uefi.config import render_uefi_config
 from testtools.matchers import (
     IsInstance,
     MatchesAll,

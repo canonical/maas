@@ -20,9 +20,8 @@ __all__ = [
 import os.path
 
 from provisioningserver.config import Config
-from provisioningserver.pxe.install_bootloader import (
-    make_destination,
-    )
+from provisioningserver.pxe.install_bootloader import make_destination
+
 
 CONFIG_FILE = """
 # MAAS GRUB2 pre-loader configuration file

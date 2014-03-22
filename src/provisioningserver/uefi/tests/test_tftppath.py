@@ -15,8 +15,8 @@ __metaclass__ = type
 __all__ = []
 
 from maastesting.testcase import MAASTestCase
-from provisioningserver.uefi.tftppath import compose_uefi_bootloader_path
 from provisioningserver.testing.config import ConfigFixture
+from provisioningserver.uefi.tftppath import compose_uefi_bootloader_path
 from testtools.matchers import (
     Not,
     StartsWith,

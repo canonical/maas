@@ -32,6 +32,7 @@ from provisioningserver.cluster_config import get_cluster_uuid
 from provisioningserver.driver import ArchitectureRegistry
 from provisioningserver.kernel_opts import KernelParameters
 from provisioningserver.pxe.config import render_pxe_config
+from provisioningserver.pxe.tftppath import ARP_HTYPE
 from provisioningserver.uefi.config import render_uefi_config
 from provisioningserver.utils import (
     deferred,
@@ -41,7 +42,6 @@ from tftp.backend import (
     FilesystemSynchronousBackend,
     IReader,
     )
-from provisioningserver.pxe.tftppath import ARP_HTYPE
 from tftp.errors import FileNotFound
 from tftp.protocol import TFTP
 from twisted.application import internet

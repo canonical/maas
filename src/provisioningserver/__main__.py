@@ -18,8 +18,8 @@ import provisioningserver.customize_config
 import provisioningserver.dhcp.writer
 import provisioningserver.pxe.install_bootloader
 import provisioningserver.pxe.install_image
-import provisioningserver.uefi.install_grub
 import provisioningserver.start_cluster_controller
+import provisioningserver.uefi.install_grub
 import provisioningserver.upgrade_cluster
 from provisioningserver.utils import (
     AtomicWriteScript,

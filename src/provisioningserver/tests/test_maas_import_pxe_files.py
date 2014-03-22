@@ -25,8 +25,8 @@ from maastesting.utils import (
     get_write_time,
     )
 from provisioningserver.pxe import tftppath
-from provisioningserver.uefi.tftppath import compose_uefi_bootloader_path
 from provisioningserver.testing.config import ConfigFixture
+from provisioningserver.uefi.tftppath import compose_uefi_bootloader_path
 from testtools.content import text_content
 from testtools.matchers import (
     DirExists,

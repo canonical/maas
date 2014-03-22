@@ -18,10 +18,9 @@ import os.path
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
-
-import provisioningserver.uefi.install_grub
 from provisioningserver.pxe.tftppath import locate_tftp_path
 from provisioningserver.testing.config import ConfigFixture
+import provisioningserver.uefi.install_grub
 from provisioningserver.utils import MainScript
 from testtools.matchers import FileExists
 
