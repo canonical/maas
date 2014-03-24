@@ -16,49 +16,15 @@ __all__ = [
     "Architecture",
     "ArchitectureRegistry",
     "BootResource",
-    "HardwareDriver",
     ]
 
 from abc import (
     ABCMeta,
     abstractmethod,
-    abstractproperty,
     )
 
 from provisioningserver.driver.registry import Registry
 from provisioningserver.power_schema import JSON_POWER_TYPE_PARAMETERS
-
-
-class HardwareDriver:
-    """A rough skeleton for a hardware driver.
-
-    """
-
-    __metaclass__ = ABCMeta
-
-    @abstractmethod
-    def __init__(self, architecture_driver, power_type):  # release series?
-        """Constructor for every hardware driver.
-        TODO params.
-        """
-
-    @abstractproperty
-    def architecture(self):
-        """The :class:`ArchitectureDriver` instance for this driver."""
-
-    @abstractproperty
-    def power_action(self):
-        """The :class:`PowerAction` instance for this driver."""
-
-    @abstractmethod
-    def kernel_options(self, purpose):
-        """Custom kernel options for kernels booted by this driver."""
-        # Used by kernel_opts.py
-
-    @abstractmethod
-    def get_ephemeral_name(self, release):
-        """Return the ephemeral image name used for iscsi target."""
-        # Used by kernel_opts.py
 
 
 class Architecture:
