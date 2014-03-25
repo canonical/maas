@@ -65,6 +65,7 @@
           {% endfor %}
         </tbody>
       </table>
+      {% include "maasserver/pagination.html" %}
       {% if user.is_superuser %}
       <a class="button right space-top-small" href="{% url 'zone-add' %}">
         Add zone

@@ -30,7 +30,10 @@ from maasserver.testing import (
     )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.views.zones import ZoneAdd
+from maasserver.views.zones import (
+    ZoneAdd,
+    ZoneListView,
+    )
 from testtools.matchers import (
     Contains,
     ContainsAll,
@@ -117,6 +120,18 @@ class ZoneListingViewTestNonAdmin(MAASServerTestCase):
         response = self.client.get(reverse('zone-list'))
         add_link = reverse('zone-add')
         self.assertNotIn(add_link, get_content_links(response))
+
+    def test_zone_listing_is_paginated(self):
+        self.patch(ZoneListView, "paginate_by", 3)
+        self.client_log_in(as_admin=True)
+        # Create 4 zones.
+        [factory.make_zone() for _ in range(4)]
+        response = self.client.get(reverse('zone-list'))
+        self.assertEqual(httplib.OK, response.status_code)
+        doc = fromstring(response.content)
+        self.assertEqual(
+            1, len(doc.cssselect('div.pagination')),
+            "Couldn't find pagination tag.")
 
 
 class ZoneListingViewTestAdmin(MAASServerTestCase):
