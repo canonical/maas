@@ -279,7 +279,7 @@ update_uefi_boot_loader() {
         local filepath="$(echo "${package}" | sed -n "s/^Filename: \(.*\)$/\1/p")"
         local filename="${filepath##*/}"
         local md5sum="$(echo "${package}" | sed -n "s/^MD5sum: \(.*\)$/\1/p")"
-        local url="${MAIN_ARCHIVE}${filepath}"
+        local url="${MAIN_ARCHIVE}/${filepath}"
         
         # Download the package from the pool and check that md5sum match.
         trap 'popd >/dev/null; rm -rf -- "$download_dir"' RETURN
