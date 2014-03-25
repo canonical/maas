@@ -32,6 +32,7 @@ from maasserver.enum import (
 from maasserver.forms import (
     AdminNodeForm,
     AdminNodeWithMACAddressesForm,
+    BLANK_CHOICE,
     BulkNodeActionForm,
     CommissioningScriptForm,
     ConfigForm,
@@ -47,6 +48,7 @@ from maasserver.forms import (
     MACAddressForm,
     NetworkForm,
     NewUserCreationForm,
+    NO_ARCHITECTURES_AVAILABLE,
     NodeActionForm,
     NodeForm,
     NodeGroupEdit,
@@ -454,6 +456,21 @@ class TestNodeForm(MAASServerTestCase):
         self.assertEqual(
             pick_default_architecture(arches),
             form.fields['architecture'].initial)
+
+    def test_adds_blank_default_when_no_arches_available(self):
+        patch_usable_architectures(self, [])
+        form = NodeForm()
+        self.assertEqual(
+            [BLANK_CHOICE],
+            form.fields['architecture'].choices)
+
+    def test_adds_error_when_no_arches_available(self):
+        patch_usable_architectures(self, [])
+        form = NodeForm()
+        self.assertFalse(form.is_valid())
+        self.assertEqual(
+            [NO_ARCHITECTURES_AVAILABLE],
+            form.errors['architecture'])
 
 
 class TestAdminNodeForm(MAASServerTestCase):

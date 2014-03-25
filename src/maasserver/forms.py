@@ -114,6 +114,10 @@ from metadataserver.fields import Bin
 from metadataserver.models import CommissioningScript
 
 
+# A reusable null-option for choice fields.
+BLANK_CHOICE = ('', '-------')
+
+
 def remove_None_values(data):
     """Return a new dictionary without the keys corresponding to None values.
     """
@@ -219,7 +223,10 @@ class NodeForm(ModelForm):
         """
         architectures = list_all_usable_architectures()
         default_arch = pick_default_architecture(architectures)
-        choices = list_architecture_choices(architectures)
+        if len(architectures) == 0:
+            choices = [BLANK_CHOICE]
+        else:
+            choices = list_architecture_choices(architectures)
         invalid_arch_message = compose_invalid_choice_text(
             'architecture', choices)
         self.fields['architecture'] = forms.ChoiceField(
@@ -238,6 +245,14 @@ class NodeForm(ModelForm):
                 "Can't change hostname to %s: node is in use." % new_hostname)
 
         return new_hostname
+
+    def is_valid(self):
+        is_valid = super(NodeForm, self).is_valid()
+        if len(list_all_usable_architectures()) == 0:
+            self.errors['architecture'] = (
+                [NO_ARCHITECTURES_AVAILABLE])
+            is_valid = False
+        return is_valid
 
     distro_series = forms.ChoiceField(
         choices=DISTRO_SERIES_CHOICES, required=False,
@@ -270,6 +285,14 @@ CLUSTER_NOT_AVAILABLE = mark_safe("""
 The cluster controller for this node is not responding; power type
 validation is not available.
 """)
+
+
+NO_ARCHITECTURES_AVAILABLE = mark_safe("""
+No architectures are available to use for this node; boot images may not
+have been imported on the selected cluster controller, or it may be
+unavailable.
+""")
+
 
 
 class AdminNodeForm(NodeForm):
@@ -365,7 +388,7 @@ class AdminNodeForm(NodeForm):
         be generated on the fly by get_power_type_choices().
         """
         power_type = self.get_power_type(data, node)
-        choices = [('', '-------')] + get_power_type_choices()
+        choices = [BLANK_CHOICE] + get_power_type_choices()
         self.fields['power_type'] = forms.ChoiceField(
             required=False, choices=choices, initial=power_type)
         self.fields['power_parameters'] = get_power_type_parameters()[
