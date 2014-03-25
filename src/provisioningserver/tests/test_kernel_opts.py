@@ -29,13 +29,12 @@ from provisioningserver.kernel_opts import (
     compose_arch_opts,
     compose_kernel_command_line,
     compose_preseed_opt,
-    EphemeralImagesDirectoryNotFound,
+    get_ephemeral_name,
     get_last_directory,
     ISCSI_TARGET_NAME_PREFIX,
     KernelParameters,
     prefix_target_name,
     )
-from provisioningserver.testing.config import ConfigFixture
 from testtools.matchers import (
     Contains,
     ContainsAll,
@@ -169,8 +168,6 @@ class TestKernelOpts(MAASTestCase):
     def test_xinstall_compose_kernel_command_line_inc_purpose_opts(self):
         # The result of compose_kernel_command_line includes the purpose
         # options for a non "xinstall" node.
-        get_ephemeral_name = self.patch(kernel_opts, "get_ephemeral_name")
-        get_ephemeral_name.return_value = "RELEASE-ARCH"
         params = self.make_kernel_parameters(purpose="xinstall")
         cmdline = compose_kernel_command_line(params)
         self.assertThat(
@@ -184,8 +181,6 @@ class TestKernelOpts(MAASTestCase):
     def test_commissioning_compose_kernel_command_line_inc_purpose_opts(self):
         # The result of compose_kernel_command_line includes the purpose
         # options for a non "commissioning" node.
-        get_ephemeral_name = self.patch(kernel_opts, "get_ephemeral_name")
-        get_ephemeral_name.return_value = "RELEASE-ARCH"
         params = self.make_kernel_parameters(purpose="commissioning")
         cmdline = compose_kernel_command_line(params)
         self.assertThat(
@@ -212,8 +207,6 @@ class TestKernelOpts(MAASTestCase):
     def test_compose_kernel_command_line_inc_common_opts(self):
         # Test that some kernel arguments appear on commissioning, install
         # and xinstall command lines.
-        get_ephemeral_name = self.patch(kernel_opts, "get_ephemeral_name")
-        get_ephemeral_name.return_value = "RELEASE-ARCH"
         expected = ["nomodeset"]
 
         params = self.make_kernel_parameters(
@@ -231,32 +224,12 @@ class TestKernelOpts(MAASTestCase):
         cmdline = compose_kernel_command_line(params)
         self.assertThat(cmdline, ContainsAll(expected))
 
-    def create_ephemeral_info(self, name, arch, release):
-        """Create a pseudo-real ephemeral info file."""
-        ephemeral_info = """
-            release=%s
-            stream=ephemeral
-            label=release
-            serial=20120424
-            arch=%s
-            name=%s
-            """ % (release, arch, name)
-        ephemeral_root = self.make_dir()
-        config = {"boot": {"ephemeral": {"images_directory": ephemeral_root}}}
-        self.useFixture(ConfigFixture(config))
-        ephemeral_dir = os.path.join(
-            ephemeral_root, release, 'ephemeral', arch, release)
-        os.makedirs(ephemeral_dir)
-        factory.make_file(
-            ephemeral_dir, name='info', contents=ephemeral_info)
-
     def test_compose_kernel_command_line_inc_purpose_opts_xinstall_node(self):
         # The result of compose_kernel_command_line includes the purpose
         # options for a "xinstall" node.
-        ephemeral_name = factory.make_name("ephemeral")
         params = self.make_kernel_parameters(purpose="xinstall")
-        self.create_ephemeral_info(
-            ephemeral_name, params.arch, params.release)
+        ephemeral_name = get_ephemeral_name(
+            params.arch, params.subarch, params.release, params.label)
         self.assertThat(
             compose_kernel_command_line(params),
             ContainsAll([
@@ -269,10 +242,9 @@ class TestKernelOpts(MAASTestCase):
     def test_compose_kernel_command_line_inc_purpose_opts_comm_node(self):
         # The result of compose_kernel_command_line includes the purpose
         # options for a "commissioning" node.
-        ephemeral_name = factory.make_name("ephemeral")
         params = self.make_kernel_parameters(purpose="commissioning")
-        self.create_ephemeral_info(
-            ephemeral_name, params.arch, params.release)
+        ephemeral_name = get_ephemeral_name(
+            params.arch, params.subarch, params.release, params.label)
         self.assertThat(
             compose_kernel_command_line(params),
             ContainsAll([
@@ -281,15 +253,6 @@ class TestKernelOpts(MAASTestCase):
                 "iscsi_target_port=3260",
                 "iscsi_target_ip=%s" % params.fs_host,
                 ]))
-
-    def test_compose_kernel_command_line_reports_error_about_missing_dir(self):
-        params = self.make_kernel_parameters(purpose="commissioning")
-        missing_dir = factory.make_name('missing-dir')
-        config = {"boot": {"ephemeral": {"images_directory": missing_dir}}}
-        self.useFixture(ConfigFixture(config))
-        self.assertRaises(
-            EphemeralImagesDirectoryNotFound,
-            compose_kernel_command_line, params)
 
     def test_compose_preseed_kernel_opt_returns_kernel_option(self):
         dummy_preseed_url = factory.make_name("url")

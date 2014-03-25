@@ -95,19 +95,22 @@ def render_pxe_config(kernel_params, **extra):
         kernel_params.purpose, kernel_params.arch,
         kernel_params.subarch)
 
-    # The locations of the kernel image and the initrd are defined by
-    # update_install_files(), in scripts/maas-import-pxe-files.
-
     def image_dir(params):
         return compose_image_path(
             params.arch, params.subarch,
-            params.release, params.label, params.purpose)
+            params.release, params.label)
 
     def initrd_path(params):
-        return "%s/initrd.gz" % image_dir(params)
+        if params.purpose == "install":
+            return "%s/di-initrd" % image_dir(params)
+        else:
+            return "%s/boot-initrd" % image_dir(params)
 
     def kernel_path(params):
-        return "%s/linux" % image_dir(params)
+        if params.purpose == "install":
+            return "%s/di-kernel" % image_dir(params)
+        else:
+            return "%s/boot-kernel" % image_dir(params)
 
     def kernel_command(params):
         return compose_kernel_command_line(params)

@@ -27,6 +27,7 @@ from maasserver.enum import (
     NODEGROUPINTERFACE_MANAGEMENT,
     PRESEED_TYPE,
     )
+from maasserver.exceptions import MAASAPIException
 from maasserver.models import Config
 from maasserver.preseed import (
     compose_enlistment_preseed_url,
@@ -574,6 +575,11 @@ class TestGetCurtinUserData(MAASServerTestCase):
 
     def test_get_curtin_userdata(self):
         node = factory.make_node()
+        arch, subarch = node.architecture.split('/')
+        factory.make_boot_image(
+            architecture=arch, subarchitecture=subarch,
+            release=node.get_distro_series(), purpose='xinstall',
+            nodegroup=node.nodegroup)
         node.use_fastpath_installer()
         user_data = get_curtin_userdata(node)
         # Just check that the user data looks good.
@@ -603,19 +609,50 @@ class TestCurtinUtilities(MAASServerTestCase):
         self.assertItemsEqual(['curtin_preseed'], context)
         self.assertIn('cloud-init', context['curtin_preseed'])
 
-    def test_get_curtin_installer_url(self):
+    def test_get_curtin_installer_url_returns_url(self):
         # Exclude DISTRO_SERIES.default. It's a special value that defers
         # to a run-time setting which we don't provide in this test.
         series = factory.getRandomEnum(
             DISTRO_SERIES, but_not=DISTRO_SERIES.default)
-        arch = make_usable_architecture(self)
-        node = factory.make_node(architecture=arch, distro_series=series)
+        architecture = make_usable_architecture(self)
+        node = factory.make_node(
+            architecture=architecture, distro_series=series)
+        arch, subarch = architecture.split('/')
+        boot_image = factory.make_boot_image(
+            architecture=arch, subarchitecture=subarch, release=series,
+            purpose='xinstall', nodegroup=node.nodegroup)
+
         installer_url = get_curtin_installer_url(node)
+
         [interface] = node.nodegroup.get_managed_interfaces()
         self.assertEqual(
-            'http://%s/MAAS/static/images/%s/%s/xinstall/root.tar.gz' % (
-                interface.ip, arch, series),
+            'http://%s/MAAS/static/images/%s/%s/%s/%s/root-tgz' % (
+                interface.ip, arch, subarch, series, boot_image.label),
             installer_url)
+
+    def test_get_curtin_installer_url_fails_if_no_boot_image(self):
+        series = factory.getRandomEnum(
+            DISTRO_SERIES, but_not=DISTRO_SERIES.default)
+        architecture = make_usable_architecture(self)
+        node = factory.make_node(
+            architecture=architecture, distro_series=series)
+        # Generate a boot image with a different arch/subarch.
+        factory.make_boot_image(
+            architecture=factory.make_name('arch'),
+            subarchitecture=factory.make_name('subarch'), release=series,
+            purpose='xinstall', nodegroup=node.nodegroup)
+
+        error = self.assertRaises(
+            MAASAPIException, get_curtin_installer_url, node)
+        arch, subarch = architecture.split('/')
+        msg = (
+            "No image could be found for the given selection: "
+            "arch=%s, subarch=%s, series=%s, purpose=xinstall." % (
+                arch,
+                subarch,
+                node.get_distro_series(),
+            ))
+        self.assertIn(msg, "%s" % error)
 
     def test_get_preseed_type_for(self):
         normal = factory.make_node()

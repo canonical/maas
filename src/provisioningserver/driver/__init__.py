@@ -71,7 +71,7 @@ class BootResource:
         :param at_location: URL to a Simplestreams index or a local path
             to a directory containing boot resources.
         :param filter: A simplestreams filter.
-            e.g. "release=trusty label=beta2 arch=amd64"
+            e.g. "release=trusty label=beta-2 arch=amd64"
             This is ignored if the location is a local path, all resources
             at the location will be imported.
         TBD: How to provide progress information.
@@ -90,7 +90,7 @@ class BootResource:
             {
                 "release": "trusty",
                 "arch": "amd64",
-                "label": "beta2",
+                "label": "beta-2",
                 "size": 12344556,
             }
             ,

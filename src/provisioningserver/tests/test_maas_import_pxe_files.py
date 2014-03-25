@@ -16,6 +16,7 @@ __all__ = []
 
 import os
 from subprocess import check_call
+import unittest
 
 from maastesting import root
 from maastesting.factory import factory
@@ -168,6 +169,11 @@ class TestImportPXEFiles(MAASTestCase):
 
     def setUp(self):
         super(TestImportPXEFiles, self).setUp()
+        raise unittest.SkipTest(
+            "XXX rvb 2014-03-21 bug=1295479: Disabled.  The "
+            "maas-import-pxe-files script has been replaced with a "
+            "new version to use simplestreams v2's data.  These tests need "
+            "to be completely refactored.")
         self.tftproot = self.make_dir()
         self.config = {"tftp": {"root": self.tftproot}}
         self.config_fixture = ConfigFixture(self.config)

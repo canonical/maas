@@ -70,6 +70,7 @@ from formencode import (
     )
 from formencode.declarative import DeclarativeMeta
 from formencode.validators import (
+    Bool,
     Int,
     RequireIfPresent,
     Set,
@@ -109,7 +110,7 @@ class ConfigTFTP(Schema):
 
     if_key_missing = None
 
-    root = String(if_missing="/var/lib/maas/tftp")
+    root = String(if_missing="/var/lib/maas/boot-resources/current/")
     port = Int(min=1, max=65535, if_missing=69)
     generator = String(if_missing=b"http://localhost/MAAS/api/1.0/pxeconfig/")
 
@@ -131,20 +132,16 @@ class ConfigBootEphemeral(Schema):
     releases = Set(if_missing=None)
 
 
-# XXX jtv 2014-03-21, bug=1295479: Unused until we start using the new import
-# script.
 class ConfigBootSourceSelection(Schema):
     """Configuration validator for boot source election onfiguration."""
 
     if_key_missing = None
 
     release = String(if_missing="*")
-    arch = String(if_missing="*")
+    arches = Set(if_missing=["*"])
     subarches = Set(if_missing=['*'])
 
 
-# XXX jtv 2014-03-21, bug=1295479: Unused until we start using the new import
-# script.
 class ConfigBootSource(Schema):
     """Configuration validator for boot source configuration."""
 
@@ -152,6 +149,8 @@ class ConfigBootSource(Schema):
 
     path = String(
         if_missing="http://maas.ubuntu.com/images/ephemeral/releases/")
+    keyring = String(
+        if_missing="/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg")
     selections = ForEach(
         ConfigBootSourceSelection,
         if_missing=[ConfigBootSourceSelection.to_python({})])
@@ -167,11 +166,14 @@ class ConfigBoot(Schema):
     ephemeral = ConfigBootEphemeral
     architectures = Set(if_missing=None)
 
-    # XXX jtv 2014-03-21, bug=1295479: Unused until we start using the new
-    # import script.
     storage = String(if_missing="/var/lib/maas/boot-resources/")
     sources = ForEach(
         ConfigBootSource, if_missing=[ConfigBootSource.to_python({})])
+
+    # Marker in the bootresources.yaml file: if True, the file has not been
+    # edited yet and needs to be either configured with initial choices, or
+    # rewritten based on previously downloaded boot images.
+    configure_me = Bool(if_missing=False)
 
 
 class ConfigMeta(DeclarativeMeta):

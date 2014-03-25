@@ -39,9 +39,9 @@ from maasserver.models import (
     Tag,
     )
 from maasserver.testing import reload_object
-from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.testing.factory import factory
 from maasserver.testing.oauthclient import OAuthAuthenticatedClient
+from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.djangotestcase import DjangoTestCase
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.utils import sample_binary_data
@@ -392,6 +392,11 @@ class TestCurtinMetadataUserData(DjangoTestCase):
 
     def test_curtin_user_data_view_returns_curtin_data(self):
         node = factory.make_node()
+        arch, subarch = node.architecture.split('/')
+        factory.make_boot_image(
+            architecture=arch, subarchitecture=subarch,
+            release=node.get_distro_series(), purpose='xinstall',
+            nodegroup=node.nodegroup)
         client = make_node_client(node)
         response = client.get(
             reverse('curtin-metadata-user-data', args=['latest']))

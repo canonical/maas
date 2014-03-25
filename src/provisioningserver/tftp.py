@@ -329,6 +329,8 @@ class TFTPService(MultiService, object):
         :param root: The root directory for this TFTP server.
         :param port: The port on which each server should be started.
         :param generator: The URL to be queried for PXE configuration.
+            This will normally point to the `pxeconfig` endpoint on the
+            region-controller API.
         """
         super(TFTPService, self).__init__()
         self.backend, self.port = TFTPBackend(root, generator), port

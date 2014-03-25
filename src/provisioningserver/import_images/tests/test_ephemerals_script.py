@@ -14,22 +14,15 @@ str = None
 __metaclass__ = type
 __all__ = []
 
-from argparse import ArgumentParser
-from copy import deepcopy
 from os import (
     listdir,
     readlink,
     )
 import os.path
-from pipes import quote
 import subprocess
-from textwrap import dedent
 
-from fixtures import EnvironmentVariableFixture
 from maastesting.factory import factory
-from provisioningserver.config import Config
 from provisioningserver.import_images import (
-    config as config_module,
     ephemerals_script,
     )
 from provisioningserver.import_images.ephemerals_script import (
@@ -37,7 +30,6 @@ from provisioningserver.import_images.ephemerals_script import (
     create_symlinked_image_dir,
     extract_image_tarball,
     install_image_from_simplestreams,
-    make_arg_parser,
     move_file_by_glob,
     )
 from provisioningserver.pxe.tftppath import (
@@ -369,112 +361,3 @@ class TestInstallImageFromSimplestreams(PservTestCase):
             temp_location=temp_location)
 
         self.assertItemsEqual([], listdir(temp_location))
-
-
-def make_legacy_config(data_dir=None, arches=None, releases=None):
-    """Create contents for a legacy, shell-script config file."""
-    if data_dir is None:
-        data_dir = factory.make_name('datadir')
-    if arches is None:
-        arches = [factory.make_name('arch') for counter in range(2)]
-    if releases is None:
-        releases = [factory.make_name('release') for counter in range(2)]
-    return dedent("""\
-    DATA_DIR=%s
-    ARCHES=%s
-    RELEASES=%s
-    """) % (
-        quote(data_dir),
-        quote(' '.join(arches)),
-        quote(' '.join(releases)),
-    )
-
-
-def install_legacy_config(testcase, contents):
-    """Set up a legacy config file with the given contents.
-
-    Returns the config file's path.
-    """
-    legacy_file = testcase.make_file(contents=contents)
-    testcase.patch(config_module, 'EPHEMERALS_LEGACY_CONFIG', legacy_file)
-    return legacy_file
-
-
-class TestMakeArgParser(PservTestCase):
-
-    def test_creates_parser(self):
-        self.useFixture(ConfigFixture({'boot': {'ephemeral': {}}}))
-        documentation = factory.getRandomString()
-
-        parser = make_arg_parser(documentation)
-
-        self.assertIsInstance(parser, ArgumentParser)
-        self.assertEqual(documentation, parser.description)
-
-    def test_defaults_to_config(self):
-        images_directory = self.make_dir()
-        arches = [factory.make_name('arch1'), factory.make_name('arch2')]
-        releases = [factory.make_name('rel1'), factory.make_name('rel2')]
-        self.useFixture(ConfigFixture({
-            'boot': {
-                'architectures': arches,
-                'ephemeral': {
-                    'images_directory': images_directory,
-                    'releases': releases,
-                },
-            },
-        }))
-
-        parser = make_arg_parser(factory.getRandomString())
-
-        args = parser.parse_args('')
-        self.assertEqual(images_directory, args.output)
-        self.assertItemsEqual(
-            [
-                compose_filter('arch', arches),
-                compose_filter('release', releases),
-            ],
-            args.filters)
-
-    def test_does_not_require_config(self):
-        defaults = Config.get_defaults()
-        no_file = os.path.join(self.make_dir(), factory.make_name() + '.yaml')
-        self.useFixture(
-            EnvironmentVariableFixture('MAAS_PROVISIONING_SETTINGS', no_file))
-
-        parser = make_arg_parser(factory.getRandomString())
-
-        args = parser.parse_args('')
-        self.assertEqual(
-            defaults['boot']['ephemeral']['images_directory'],
-            args.output)
-        self.assertItemsEqual([], args.filters)
-
-    def test_does_not_modify_config(self):
-        self.useFixture(ConfigFixture({
-            'boot': {
-                'architectures': [factory.make_name('arch')],
-                'ephemeral': {
-                    'images_directory': self.make_dir(),
-                    'releases': [factory.make_name('release')],
-                },
-            },
-        }))
-        original_boot_config = deepcopy(Config.load_from_cache()['boot'])
-        install_legacy_config(self, make_legacy_config())
-
-        make_arg_parser(factory.getRandomString())
-
-        self.assertEqual(
-            original_boot_config,
-            Config.load_from_cache()['boot'])
-
-    def test_uses_legacy_config(self):
-        data_dir = self.make_dir()
-        self.useFixture(ConfigFixture({}))
-        install_legacy_config(self, make_legacy_config(data_dir=data_dir))
-
-        parser = make_arg_parser(factory.getRandomString())
-
-        args = parser.parse_args('')
-        self.assertEqual(data_dir, args.output)

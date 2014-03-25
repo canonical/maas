@@ -1,0 +1,62 @@
+##
+## Boot image download configuration.
+##
+
+boot:
+  ## Marker: this configuration has not been initialised yet.
+  #
+  # If this is set to True during installation or a later upgrade, it means
+  # that this configuration file has not been edited by a human or by MAAS
+  # itself.  When you edit this configuration to suit your needs, be sure to
+  # remove this setting, or change it to False, so that a future upgrade will
+  # know not to overwrite the configuration file.
+  #
+  # If the setting is True, the upgrade procedure will look for downloaded
+  # boot images that predate the current, Simplestreams-based import
+  # mechanism, and rewrite the configuration based on what it finds.  The new
+  # configuration will import the new-style equivalents of the images that
+  # were imported in the old setup.
+  configure_me: True
+
+  ## Storage location for boot images.
+  #
+  # These images can get quite large: some files are hundreds of megabytes,
+  # and you may need multiple copies for different architectures, OS releases,
+  # etc.
+  storage: "/var/lib/maas/boot-resources/"
+
+  ## Sources of downloadable boot images.
+  #
+  # Each source downloads from one simplestreams URL, though it is possible to
+  # have multiple sources using the same URL.  For example, if you want to
+  # download "release" images for one OS release and just the "beta-2" images
+  # for another, specify two separate selections.  Otherwise, the importer
+  # would have to download both kinds of images for both releases.
+  sources:
+    - path: "http://maas.ubuntu.com/images/ephemeral-v2/daily/"
+      keyring: "/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg"
+
+      ## Filters for this source's imports.
+      #
+      # Be careful: these items will multiply.  For example if you specify
+      # architectures "i386" and "amd64", and subarchitectures "generic",
+      # "hwe-s", and "hwe-t", the import script will need to import 6 images,
+      # for each possible combination.  If you only want some of those
+      # combinations, keep them as separate sources and/or selections.
+      selections:
+        - release: "trusty"
+          arches: ["i386", "amd64"]
+          subarches: ["generic"]
+        - release: "precise"
+          arches: ["i386", "amd64"]
+          subarches: ["generic"]
+      #selections:
+      #  - release: "*"
+      #    arches: ["*"]
+      #    subarches: ["*"]
+## other source example:
+#    - path: "http://hyperscale.ubuntu.com/images/"
+#      selections:
+#        - release: "*"
+#          arches: ["*"]
+#          subarches: ['*']

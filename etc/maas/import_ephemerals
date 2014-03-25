@@ -1,13 +1,13 @@
 # Legacy configuration file for the maas-import-ephemerals script.
 #
 # This file is obsolete, but the script will still read it for compatibility.
-# Configure /etc/maas/pserv.yaml by preference.
+# Configure /etc/maas/bootresources.yaml by preference.
 
 ## Include settings from import_pxe_files.
 [ ! -f /etc/maas/import_pxe_files ] || . /etc/maas/import_pxe_files
 
 # These options can be defined here, although for future compatibility they
-# should be set in pserv.yaml instead:
+# should be set in bootresources.yaml instead:
 
 #DATA_DIR="/var/lib/maas/ephemeral"
 #ARCHES="amd64/generic i386/generic"

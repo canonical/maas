@@ -175,11 +175,11 @@ class TestClusterProtocol_ListBootImages(MAASTestCase):
         subarchs = "generic", "special"
         releases = "precise", "trusty"
         labels = "beta-1", "release"
-        purposes = "commission", "install"
+        purposes = "commissioning", "install", "xinstall"
 
         # Create a TFTP file tree with a variety of subdirectories.
         tftpdir = self.make_dir()
-        for options in product(archs, subarchs, releases, labels, purposes):
+        for options in product(archs, subarchs, releases, labels):
             os.makedirs(os.path.join(tftpdir, *options))
 
         # Ensure that list_boot_images() uses the above TFTP file tree.

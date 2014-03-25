@@ -154,7 +154,7 @@ class BootImage(Model):
     # Boot purpose (e.g. "commissioning" or "install") that the image is for.
     purpose = CharField(max_length=255, blank=False, editable=False)
 
-    # "Label" as in simplestreams parlance. (e.g. "release", "beta1")
+    # "Label" as in simplestreams parlance. (e.g. "release", "beta-1")
     label = CharField(
         max_length=255, blank=False, editable=False, default="release")
 

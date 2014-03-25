@@ -21,9 +21,7 @@ __all__ = [
 from collections import namedtuple
 import os
 
-from provisioningserver.config import Config
 from provisioningserver.driver import ArchitectureRegistry
-from provisioningserver.utils import parse_key_value_file
 
 
 class EphemeralImagesDirectoryNotFound(Exception):
@@ -92,26 +90,9 @@ def get_last_directory(root):
 ISCSI_TARGET_NAME_PREFIX = "iqn.2004-05.com.ubuntu:maas"
 
 
-def get_ephemeral_name(release, arch):
-    """Return the name of the most recent ephemeral image.
-
-    That information is read from the config file named 'info' in the
-    ephemeral directory e.g:
-    /var/lib/maas/ephemeral/precise/ephemeral/i386/20120424/info
-    """
-    config = Config.load_from_cache()
-    root = os.path.join(
-        config["boot"]["ephemeral"]["images_directory"],
-        release, 'ephemeral', arch)
-    try:
-        filename = os.path.join(get_last_directory(root), 'info')
-    except OSError:
-        raise EphemeralImagesDirectoryNotFound(
-            "The directory containing the ephemeral images/info is missing "
-            "(%r).  Make sure to run the script "
-            "'maas-import-pxe-files'." % root)
-    name = parse_key_value_file(filename, separator="=")['name']
-    return name
+def get_ephemeral_name(arch, subarch, release, label):
+    """Return the name of the most recent ephemeral image."""
+    return "ephemeral-%s-%s-%s-%s" % (arch, subarch, release, label)
 
 
 def compose_hostname_opts(params):
@@ -137,7 +118,8 @@ def compose_purpose_opts(params):
     if params.purpose == "commissioning" or params.purpose == "xinstall":
         # These are kernel parameters read by the ephemeral environment.
         tname = prefix_target_name(
-            get_ephemeral_name(params.release, params.arch))
+            get_ephemeral_name(
+                params.arch, params.subarch, params.release, params.label))
         kernel_params = [
             # Read by the open-iscsi initramfs code.
             "iscsi_target_name=%s" % tname,

@@ -1,4 +1,4 @@
-# Copyright 2005-2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2005-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for provisioning configuration."""
@@ -136,15 +136,15 @@ class TestConfig(MAASTestCase):
                 'images_directory': '/var/lib/maas/ephemeral',
                 'releases': None,
                 },
-            # XXX jtv 2014-03-21, bug=1295479: Unused until we start using
-            # the new import script.
             'sources': [
                 {
                     'path': (
                         'http://maas.ubuntu.com/images/ephemeral/releases/'),
+                    'keyring': (
+                        '/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg'),
                     'selections': [
                         {
-                            'arch': '*',
+                            'arches': ['*'],
                             'release': '*',
                             'subarches': ['*'],
                         },
@@ -152,6 +152,7 @@ class TestConfig(MAASTestCase):
                 },
             ],
             'storage': '/var/lib/maas/boot-resources/',
+            'configure_me': False,
         },
         'broker': {
             'host': 'localhost',
@@ -169,7 +170,7 @@ class TestConfig(MAASTestCase):
         'tftp': {
             'generator': 'http://localhost/MAAS/api/1.0/pxeconfig/',
             'port': 69,
-            'root': "/var/lib/maas/tftp",
+            'root': "/var/lib/maas/boot-resources/current/",
             },
         }
 
@@ -266,10 +267,10 @@ class TestConfig(MAASTestCase):
         self.assertNotEqual(first_load['logfile'], second_load['logfile'])
         self.assertEqual(logfile, second_load['logfile'])
         self.assertIsNot(first_load['boot'], second_load['boot'])
-        first_load['boot']['architectures'] = [factory.make_name('otherarch')]
+        first_load['boot']['storage'] = [factory.make_name('otherstorage')]
         self.assertNotEqual(
-            first_load['boot']['architectures'],
-            second_load['boot']['architectures'])
+            first_load['boot']['storage'],
+            second_load['boot']['storage'])
 
     def test_oops_directory_without_reporter(self):
         # It is an error to omit the OOPS reporter if directory is specified.

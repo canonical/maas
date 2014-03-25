@@ -38,31 +38,3 @@ tftp:
   # generator: http://localhost/MAAS/api/1.0/pxeconfig/
   generator: http://localhost:5243/api/1.0/pxeconfig/
 
-## Boot configuration.
-boot:
-  ## CPU architectures for which boot images should be downloaded from the
-  ## server, e.g. ['i386/generic', 'amd64/generic'].  MAAS needs these images
-  ## in order to boot nodes up.
-  ##
-  ## Leave this option out to download images for all architectures.
-  #
-  # architectures:
-
-  ## Settings for ephemeral boot images.  These images are used when
-  ## commissioning nodes, and during fast-path installation.
-  #
-  ephemeral:
-
-    ## Directory where ephemeral boot images and related state should be
-    ## stored.
-    #
-    #   images_directory: /var/lib/maas/ephemeral
-    images_directory: /var/lib/maas/ephemeral
-
-    ## Releases for which ephemeral images should be downloaded.
-    ## These images are quite large (about a quarter GB each), so you may want
-    ## to restrict these separately even if you do want the regular install
-    ## images for all releases.  Leave this out to download all currently
-    ## supported releases.
-    #
-    # releases:

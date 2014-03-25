@@ -25,10 +25,17 @@ from os import (
 import os.path
 
 from maastesting.factory import factory
-from maastesting.matchers import MockCalledOnceWith
+from maastesting.matchers import (
+    MockCalledOnceWith,
+    MockNotCalled,
+    )
 from maastesting.testcase import MAASTestCase
-from mock import Mock
+from mock import (
+    ANY,
+    Mock,
+    )
 from provisioningserver import upgrade_cluster
+from provisioningserver.config import Config
 from provisioningserver.pxe.install_image import install_image
 from provisioningserver.testing.config import ConfigFixture
 from testtools.matchers import (
@@ -580,3 +587,50 @@ class TestHookAddLabelDirectoryLevelToBootImages(MAASTestCase):
         entries_before = listdir(tftproot)
         upgrade_cluster.add_label_directory_level_to_boot_images()
         self.assertItemsEqual(entries_before, listdir(tftproot))
+
+
+class TestGenerateBootResourcesConfig(MAASTestCase):
+    """Tests for the `generate_boot_resources_config` upgrade."""
+
+    def patch_rewrite_boot_resources_config(self):
+        """Patch `rewrite_boot_resources_config` with a mock."""
+        return self.patch(upgrade_cluster, 'rewrite_boot_resources_config')
+
+    def patch_config(self, config):
+        """Patch the `bootresources.yaml` config with a given dict."""
+        original_load = Config.load_from_cache
+
+        @classmethod
+        def fake_config_load(cls, filename=None):
+            """Fake `Config.load_from_cache`.
+
+            Returns a susbtitute for `bootresources.yaml`, but defers to the
+            original implementation for other files.  This means we can still
+            patch the original, and it means we'll probably get a tell-tale
+            error if any code underneath the tests accidentally tries to
+            load pserv.yaml.
+            """
+            if os.path.basename(filename) == 'bootresources.yaml':
+                return config
+            else:
+                return original_load(Config, filename=filename)
+
+        self.patch(Config, 'load_from_cache', fake_config_load)
+
+    def test_does_nothing_if_configure_me_is_False(self):
+        self.patch_config({'boot': {'configure_me': False}})
+        rewrite_config = self.patch_rewrite_boot_resources_config()
+        upgrade_cluster.generate_boot_resources_config()
+        self.assertThat(rewrite_config, MockNotCalled())
+
+    def test_does_nothing_if_configure_me_is_missing(self):
+        self.patch_config({'boot': {}})
+        rewrite_config = self.patch_rewrite_boot_resources_config()
+        upgrade_cluster.generate_boot_resources_config()
+        self.assertThat(rewrite_config, MockNotCalled())
+
+    def test_rewrites_if_configure_me_is_True(self):
+        self.patch_config({'boot': {'configure_me': True}})
+        rewrite_config = self.patch_rewrite_boot_resources_config()
+        upgrade_cluster.generate_boot_resources_config()
+        self.assertThat(rewrite_config, MockCalledOnceWith(ANY))

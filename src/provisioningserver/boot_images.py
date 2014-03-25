@@ -1,11 +1,7 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Dealing with boot images.
-
-Most of the lower-level logic is in the `tftppath` module, because it must
-correspond closely to the structure of the TFTP filesystem hierarchy.
-"""
+"""Dealing with boot images."""
 
 from __future__ import (
     absolute_import,
@@ -69,6 +65,6 @@ def report_to_server():
         return
 
     images = tftppath.list_boot_images(
-        Config.load_from_cache()['tftp']['root'])
+        Config.load_from_cache()['boot']['storage'] + '/current/')
 
     submit(maas_url, api_credentials, images)

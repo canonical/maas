@@ -39,7 +39,9 @@ from maasserver.enum import (
     PRESEED_TYPE,
     USERDATA_TYPE,
     )
+from maasserver.exceptions import MAASAPIException
 from maasserver.models import (
+    BootImage,
     Config,
     DHCPLease,
     )
@@ -94,10 +96,29 @@ def get_curtin_installer_url(node):
     cluster_host = pick_cluster_controller_address(node)
     # XXX rvb(?): The path shouldn't be hardcoded like this, but rather synced
     # somehow with the content of contrib/maas-cluster-http.conf.
+    arch, subarch = node.architecture.split('/')
+    purpose = 'xinstall'
+    image = BootImage.objects.get_latest_image(
+        node.nodegroup, arch, subarch, series, purpose)
+    if image is None:
+        raise MAASAPIException(
+            "Error generating the URL of curtin's root-tgz file.  "
+            "No image could be found for the given selection: "
+            "arch=%s, subarch=%s, series=%s, purpose=%s." % (
+                arch,
+                subarch,
+                series,
+                purpose
+            ))
+    dyn_uri = '/'.join([
+        arch,
+        subarch,
+        series,
+        image.label,
+        'root-tgz'
+        ])
     return (
-        "http://" + cluster_host + "/MAAS/static/images/" +
-        node.architecture + "/" + series +
-        "/xinstall/root.tar.gz")
+        "http://" + cluster_host + "/MAAS/static/images/" + dyn_uri)
 
 
 def get_curtin_config(node):

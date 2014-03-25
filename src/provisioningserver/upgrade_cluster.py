@@ -44,7 +44,10 @@ import os.path
 from shutil import rmtree
 
 from provisioningserver.config import Config
-from provisioningserver.utils import ensure_dir
+from provisioningserver.utils import (
+    ensure_dir,
+    locate_config,
+    )
 
 
 logger = getLogger(__name__)
@@ -246,6 +249,25 @@ def add_label_directory_level_to_boot_images():
             move_real_boot_image(tftproot, image)
 
 
+def rewrite_boot_resources_config(config_file):
+    """Rewrite the `bootresources.yaml` configuration."""
+
+
+def generate_boot_resources_config():
+    """Upgrade hook: rewrite `bootresources.yaml` based on boot images.
+
+    This finds boot images downloaded into the old, pre-Simplestreams tftp
+    root, and writes a boot-resources configuration to import a similar set of
+    images using Simplestreams.
+    """
+    config_file = locate_config('bootresources.yaml')
+    boot_resources = Config.load_from_cache(config_file)
+    if not boot_resources['boot'].get('configure_me', False):
+        # Already configured.
+        return
+    rewrite_boot_resources_config(config_file)
+
+
 # Upgrade hooks, from oldest to newest.  The hooks are callables, taking no
 # arguments.  They are called in order.
 #
@@ -253,6 +275,7 @@ def add_label_directory_level_to_boot_images():
 # no record of previous upgrades.
 UPGRADE_HOOKS = [
     add_label_directory_level_to_boot_images,
+    generate_boot_resources_config,
     ]
 
 

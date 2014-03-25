@@ -30,12 +30,24 @@ from provisioningserver.pxe.tftppath import (
     list_subdirs,
     locate_tftp_path,
     )
-from provisioningserver.testing.boot_images import make_boot_image_params
+from provisioningserver.testing.boot_images import (
+    make_boot_image_storage_params,
+    )
 from provisioningserver.testing.config import ConfigFixture
 from testtools.matchers import (
     Not,
     StartsWith,
     )
+
+
+def make_image(params, purpose):
+    """Describe an image as a dict similar to what `list_boot_images` returns.
+
+    The `params` are as returned from `make_boot_image_storage_params`.
+    """
+    image = params.copy()
+    image['purpose'] = purpose
+    return image
 
 
 class TestTFTPPath(MAASTestCase):
@@ -53,8 +65,7 @@ class TestTFTPPath(MAASTestCase):
                 arch=image_params['architecture'],
                 subarch=image_params['subarchitecture'],
                 release=image_params['release'],
-                label=image_params['label'],
-                purpose=image_params['purpose']),
+                label=image_params['label']),
             tftproot)
         os.makedirs(image_dir)
         factory.make_file(image_dir, 'linux')
@@ -111,23 +122,32 @@ class TestTFTPPath(MAASTestCase):
             self.tftproot, locate_tftp_path(None, tftproot=self.tftproot))
 
     def test_list_boot_images_copes_with_empty_directory(self):
-        self.assertItemsEqual([], list_boot_images(self.tftproot))
+        self.assertEqual([], list_boot_images(self.tftproot))
 
     def test_list_boot_images_copes_with_unexpected_files(self):
         os.makedirs(os.path.join(self.tftproot, factory.make_name('empty')))
         factory.make_file(self.tftproot)
-        self.assertItemsEqual([], list_boot_images(self.tftproot))
+        self.assertEqual([], list_boot_images(self.tftproot))
 
     def test_list_boot_images_finds_boot_image(self):
-        image = make_boot_image_params()
-        self.make_image_dir(image, self.tftproot)
-        self.assertItemsEqual([image], list_boot_images(self.tftproot))
+        params = make_boot_image_storage_params()
+        self.make_image_dir(params, self.tftproot)
+        purposes = ['install', 'commissioning', 'xinstall']
+        self.assertItemsEqual(
+            [make_image(params, purpose) for purpose in purposes],
+            list_boot_images(self.tftproot))
 
     def test_list_boot_images_enumerates_boot_images(self):
-        images = [make_boot_image_params() for counter in range(3)]
-        for image in images:
-            self.make_image_dir(image, self.tftproot)
-        self.assertItemsEqual(images, list_boot_images(self.tftproot))
+        params = [make_boot_image_storage_params() for counter in range(3)]
+        for param in params:
+            self.make_image_dir(param, self.tftproot)
+        self.assertItemsEqual(
+            [
+                make_image(param, purpose)
+                for param in params
+                for purpose in ['install', 'commissioning', 'xinstall']
+            ],
+            list_boot_images(self.tftproot))
 
     def test_is_visible_subdir_ignores_regular_files(self):
         plain_file = self.make_file()

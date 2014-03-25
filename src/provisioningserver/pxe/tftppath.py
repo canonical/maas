@@ -40,7 +40,7 @@ def compose_bootloader_path():
     return "pxelinux.0"
 
 
-# TODO: move this; it is now only used for testing.
+# XXX allenap: move this; it is now only used for testing.
 def compose_config_path(mac):
     """Compose the TFTP path for a PXE configuration file.
 
@@ -60,7 +60,11 @@ def compose_config_path(mac):
         htype=ARP_HTYPE.ETHERNET, mac=mac)
 
 
-def compose_image_path(arch, subarch, release, label, purpose):
+# XXX rvb 2014-03-21 bug=1235479: The 'purpose' is made optional for now so
+# that this method can cope with both the old layout (which had the 'purpose'
+# as part of the images' path) and the new one.  Once the old script is
+# removed, this parameter should be removed as well.
+def compose_image_path(arch, subarch, release, label, purpose=None):
     """Compose the TFTP path for a PXE kernel/initrd directory.
 
     The path returned is relative to the TFTP root, as it would be
@@ -69,14 +73,16 @@ def compose_image_path(arch, subarch, release, label, purpose):
     :param arch: Main machine architecture.
     :param subarch: Sub-architecture, or "generic" if there is none.
     :param release: Operating system release, e.g. "precise".
-    :param label: An image label, e.g. for a beta version, or "release" for
-        the default images.
+    :param label: Release label, e.g. "release" or "alpha-2".
     :param purpose: Purpose of the image, e.g. "install" or
         "commissioning".
     :return: Path for the corresponding image directory (containing a
         kernel and initrd) as exposed over TFTP.
     """
-    return '/'.join([arch, subarch, release, label, purpose])
+    elements = [arch, subarch, release, label]
+    if purpose is not None:
+        elements.append(purpose)
+    return '/'.join(elements)
 
 
 def locate_tftp_path(path, tftproot):
@@ -143,23 +149,32 @@ def drill_down(directory, paths):
 
 
 def extract_image_params(path):
-    """Represent a list of TFTP path elements as a boot-image dict.
+    """Represent a list of TFTP path elements as a list of boot-image dicts.
 
-    The path must consist of a full [architecture, subarchitecture, release,
-    purpose] that identify a kind of boot that we may need an image for.
+    The path must consist of a full [architecture, subarchitecture, release]
+    that identify a kind of boot that we may need an image for.
     """
-    arch, subarch, release, label, purpose = path
-    return dict(
-        architecture=arch, subarchitecture=subarch, release=release,
-        label=label, purpose=purpose)
+    arch, subarch, release, label = path
+    # XXX: rvb 2014-03-24: The images import script currently imports all the
+    # images for the configured selections (where a selection is an
+    # arch/subarch/series/label combination).  When the import script grows the
+    # ability to import the images for a particular purpose, we need to change
+    # this code to report what is actually present.
+    purposes = ['commissioning', 'install', 'xinstall']
+    return [
+        dict(
+            architecture=arch, subarchitecture=subarch,
+            release=release, label=label, purpose=purpose)
+        for purpose in purposes
+        ]
 
 
 def list_boot_images(tftproot):
     """List the available boot images.
 
     :param tftproot: TFTP root directory.
-    :return: An iterable of dicts, describing boot images as consumed by
-        the report_boot_images API call.
+    :return: A list of dicts, describing boot images as consumed by the
+        `report_boot_images` API call.
     """
     # The sub-directories directly under tftproot, if they contain
     # images, represent architectures.
@@ -170,10 +185,12 @@ def list_boot_images(tftproot):
     paths = [[subdir] for subdir in potential_archs]
 
     # Extend paths deeper into the filesystem, through the levels that
-    # represent sub-architecture, release, and purpose.  Any directory
+    # represent sub-architecture, release, and label.  Any directory
     # that doesn't extend this deep isn't a boot image.
-    for level in ['subarch', 'release', 'label', 'purpose']:
+    for level in ['subarch', 'release', 'label']:
         paths = drill_down(tftproot, paths)
 
     # Each path we find this way should be a boot image.
-    return [extract_image_params(path) for path in paths]
+    # This gets serialised to JSON, so we really have to return a list, not
+    # just any iterable.
+    return sum([extract_image_params(path) for path in paths], [])
