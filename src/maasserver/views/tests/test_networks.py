@@ -30,7 +30,10 @@ from maasserver.testing import (
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import get_one
-from maasserver.views.networks import NetworkAdd
+from maasserver.views.networks import (
+    NetworkAdd,
+    NetworkListView,
+    )
 from testtools.matchers import (
     Contains,
     ContainsAll,
@@ -100,6 +103,17 @@ class NetworkListingViewTest(MAASServerTestCase):
             network_node_links,
             [link for link in get_content_links(response)
                 if link.startswith('/nodes/')])
+
+    def test_network_listing_is_paginated(self):
+        self.patch(NetworkListView, "paginate_by", 3)
+        self.client_log_in(as_admin=True)
+        factory.make_networks(4)
+        response = self.client.get(reverse('network-list'))
+        self.assertEqual(httplib.OK, response.status_code)
+        doc = fromstring(response.content)
+        self.assertEqual(
+            1, len(doc.cssselect('div.pagination')),
+            "Couldn't find pagination tag.")
 
 
 class NetworkListingViewTestNonAdmin(MAASServerTestCase):
