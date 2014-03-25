@@ -61,6 +61,7 @@ from maasserver.views.settings import (
     settings,
     )
 from maasserver.views.settings_clusters import (
+    BootImagesListView,
     ClusterDelete,
     ClusterEdit,
     ClusterInterfaceCreate,
@@ -163,6 +164,9 @@ urlpatterns += patterns(
     adminurl(
         r'^clusters/(?P<uuid>[\w\-]+)/delete/$', ClusterDelete.as_view(),
         name='cluster-delete'),
+    adminurl(
+        r'^clusters/(?P<uuid>[\w\-]+)/bootimages/$',
+        BootImagesListView.as_view(), name='cluster-bootimages-list'),
     adminurl(
         r'^clusters/(?P<uuid>[\w\-]+)/interfaces/add/$',
         ClusterInterfaceCreate.as_view(), name='cluster-interface-create'),

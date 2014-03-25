@@ -1,0 +1,10 @@
+<p id="no_boot_images_warning">Warning: this cluster has no boot images!</p>
+<p>
+  This cluster needs boot images to boot the nodes it controls.
+  You need to make sure the cluster's configuration (in
+  <span class="console">/etc/maas/import_ephemerals</span>
+  and <span class="console">/etc/maas/import_pxe_files</span> on the cluster's
+  machine) suits the configuration of the machines this cluster will have to
+  handle and then run the import script by clicking the "Import boot images"
+  button on the  <a href="{% url 'settings' %}#clusters">cluster's listing page</a>.
+</p>

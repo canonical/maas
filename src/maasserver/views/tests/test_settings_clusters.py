@@ -15,9 +15,9 @@ __metaclass__ = type
 __all__ = []
 
 import httplib
-import itertools
 
 from django.core.urlresolvers import reverse
+from lxml.html import fromstring
 from maasserver.enum import (
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
@@ -127,37 +127,33 @@ class ClusterEditTest(MAASServerTestCase):
         self.assertIn(
             reverse('cluster-interface-create', args=[nodegroup.uuid]), links)
 
-    def test_contains_boot_images_list(self):
+    def test_contains_link_to_boot_image_list(self):
         self.client_log_in(as_admin=True)
         nodegroup = factory.make_node_group()
-        images = [
-            factory.make_boot_image(nodegroup=nodegroup) for _ in range(3)]
+        [factory.make_boot_image(nodegroup=nodegroup) for _ in range(3)]
         response = self.client.get(
             reverse('cluster-edit', args=[nodegroup.uuid]))
         self.assertEqual(
             httplib.OK, response.status_code, response.content)
-        items_in_page = [
-            [
-                '%s' % image.id,
-                image.label,
-                image.purpose,
-                image.release,
-                image.subarchitecture,
-                image.architecture,
-            ] for image in images]
-        self.assertThat(
-            response.content, ContainsAll(itertools.chain(*items_in_page)))
+        links = get_content_links(response)
+        self.assertIn(
+            reverse('cluster-bootimages-list', args=[nodegroup.uuid]), links)
 
-    def test_displays_warning_if_boot_images_list_is_empty(self):
+    def test_displays_warning_if_boot_image_list_is_empty(self):
         # Create boot images in another nodegroup.
         [factory.make_boot_image() for _ in range(3)]
         self.client_log_in(as_admin=True)
         nodegroup = factory.make_node_group()
         response = self.client.get(
             reverse('cluster-edit', args=[nodegroup.uuid]))
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        self.assertIn(
-            "Warning: this cluster has no boot images!", response.content)
+        self.assertEqual(httplib.OK, response.status_code)
+        doc = fromstring(response.content)
+        self.assertEqual(
+            1, len(doc.cssselect('#no_boot_images_warning')),
+            "Warning about missing images not present")
+        links = get_content_links(response)
+        self.assertNotIn(
+            reverse('cluster-bootimages-list', args=[nodegroup.uuid]), links)
 
 
 class ClusterInterfaceDeleteTest(MAASServerTestCase):

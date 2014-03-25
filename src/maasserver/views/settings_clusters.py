@@ -13,6 +13,7 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    "BootImagesListView",
     "ClusterDelete",
     "ClusterEdit",
     "ClusterInterfaceCreate",
@@ -37,6 +38,7 @@ from maasserver.models import (
     NodeGroup,
     NodeGroupInterface,
     )
+from maasserver.views import PaginatedListView
 
 
 class ClusterEdit(UpdateView):
@@ -49,11 +51,6 @@ class ClusterEdit(UpdateView):
         context = super(ClusterEdit, self).get_context_data(**kwargs)
         context['interfaces'] = (
             self.object.nodegroupinterface_set.all().order_by('interface'))
-        # A sorted bootimages list.
-        context['bootimages'] = (
-            self.object.bootimage_set.all().order_by(
-                '-release', 'architecture', 'subarchitecture', 'purpose',
-                'label'))
         return context
 
     def get_success_url(self):
@@ -157,3 +154,26 @@ class ClusterInterfaceCreate(CreateView):
             ClusterInterfaceCreate, self).get_context_data(**kwargs)
         context['nodegroup'] = self.get_nodegroup()
         return context
+
+
+class BootImagesListView(PaginatedListView):
+
+    template_name = 'maasserver/bootimage-list.html'
+    context_object_name = 'bootimage_list'
+
+    def get_nodegroup(self):
+        nodegroup_uuid = self.kwargs.get('uuid', None)
+        return get_object_or_404(NodeGroup, uuid=nodegroup_uuid)
+
+    def get_context_data(self, **kwargs):
+        context = super(
+            BootImagesListView, self).get_context_data(**kwargs)
+        context['nodegroup'] = self.get_nodegroup()
+        return context
+
+    def get_queryset(self):
+        nodegroup = self.get_nodegroup()
+        # A sorted bootimages list.
+        return nodegroup.bootimage_set.all().order_by(
+            '-release', 'architecture', 'subarchitecture', 'purpose',
+            'label')
