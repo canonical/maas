@@ -244,6 +244,16 @@ class ConfigBase(Schema):
             return deepcopy(cls._cache[filename])
 
     @classmethod
+    def flush_cache(cls, filename=None):
+        """Evict a config file, or any cached config files, from cache."""
+        with cls._cache_lock:
+            if filename is None:
+                cls._cache.clear()
+            else:
+                if filename in cls._cache:
+                    del cls._cache[filename]
+
+    @classmethod
     def field(target, *steps):
         """Obtain a field by following `steps`."""
         for step in steps:

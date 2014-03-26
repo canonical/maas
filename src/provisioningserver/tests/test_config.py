@@ -15,6 +15,7 @@ __metaclass__ = type
 __all__ = []
 
 from copy import deepcopy
+import errno
 from functools import partial
 from getpass import getuser
 import os
@@ -154,13 +155,25 @@ class TestConfigMeta_DEFAULT_FILENAME(MAASTestCase):
 class TestConfigBase(MAASTestCase):
     """Tests for `provisioningserver.config.ConfigBase`."""
 
+    def make_config_data(self):
+        """Return random config data for `ExampleConfig`."""
+        return {'something': factory.make_name('value')}
+
+    def make_config_file(self, name=None, data=None):
+        """Write a YAML config file, and return its path."""
+        if name is None:
+            name = factory.make_name('config') + '.yaml'
+        if data is None:
+            data = self.make_config_data()
+        return self.make_file(name=name, contents=yaml.safe_dump(data))
+
     def test_get_defaults_returns_default_config(self):
         # The default configuration is production-ready.
         observed = ExampleConfig.get_defaults()
         self.assertEqual({"something": "*missing*"}, observed)
 
     def test_get_defaults_ignores_settings(self):
-        self.useFixture(ExampleConfigFixture({'something': self.make_file()}))
+        self.useFixture(ExampleConfigFixture(self.make_config_data()))
         observed = ExampleConfig.get_defaults()
         self.assertEqual({"something": "*missing*"}, observed)
 
@@ -174,26 +187,23 @@ class TestConfigBase(MAASTestCase):
         config = dedent("""
             something: "important"
             """)
-        filename = self.make_file(name="config.yaml", contents=config)
+        filename = self.make_file(contents=config)
         observed = ExampleConfig.load(filename)
         self.assertEqual({"something": "important"}, observed)
 
     def test_load_defaults_to_default_filename(self):
-        something = self.getUniqueString()
-        config = yaml.safe_dump({'something': something})
-        filename = self.make_file(name="config.yaml", contents=config)
+        data = self.make_config_data()
+        filename = self.make_config_file(name='config.yaml', data=data)
         self.patch(ExampleConfig, 'DEFAULT_FILENAME', filename)
-        observed = ExampleConfig.load()
-        self.assertEqual({"something": something}, observed)
+        self.assertEqual(data, ExampleConfig.load())
 
     def test_load_from_cache_loads_config(self):
-        contents = yaml.safe_dump({'something': 'or other'})
-        filename = self.make_file(name="config.yaml", contents=contents)
-        loaded_config = ExampleConfig.load_from_cache(filename)
-        self.assertEqual({"something": "or other"}, loaded_config)
+        data = self.make_config_data()
+        filename = self.make_config_file(data=data)
+        self.assertEqual(data, ExampleConfig.load_from_cache(filename))
 
     def test_load_from_cache_uses_defaults(self):
-        filename = self.make_file(name='config.yaml', contents='')
+        filename = self.make_file(contents='')
         self.assertEqual(
             ExampleConfig.get_defaults(),
             ExampleConfig.load_from_cache(filename))
@@ -211,16 +221,14 @@ class TestConfigBase(MAASTestCase):
 
     def test_load_from_cache_reloads_from_cache_not_from_file(self):
         # A config loaded by Config.load_from_cache() is never reloaded.
-        filename = self.make_file(name="config.yaml", contents='')
+        filename = self.make_config_file()
         config_before = ExampleConfig.load_from_cache(filename)
         os.unlink(filename)
         config_after = ExampleConfig.load_from_cache(filename)
         self.assertEqual(config_before, config_after)
 
     def test_load_from_cache_caches_immutable_copy(self):
-        filename = self.make_file(
-            name="config.yaml", contents=yaml.safe_dump(
-                {"something": "somewhere"}))
+        filename = self.make_config_file()
 
         first_load = ExampleConfig.load_from_cache(filename)
         second_load = ExampleConfig.load_from_cache(filename)
@@ -229,6 +237,43 @@ class TestConfigBase(MAASTestCase):
         self.assertIsNot(first_load, second_load)
         first_load['something'] = factory.make_name('newthing')
         self.assertNotEqual(first_load['something'], second_load['something'])
+
+    def test_flush_cache_without_filename_empties_cache(self):
+        filename = self.make_config_file()
+        ExampleConfig.load_from_cache(filename)
+        os.unlink(filename)
+        ExampleConfig.flush_cache()
+        error = self.assertRaises(
+            IOError,
+            ExampleConfig.load_from_cache, filename)
+        self.assertEqual(errno.ENOENT, error.errno)
+
+    def test_flush_cache_flushes_specific_file(self):
+        filename = self.make_config_file()
+        ExampleConfig.load_from_cache(filename)
+        os.unlink(filename)
+        ExampleConfig.flush_cache(filename)
+        error = self.assertRaises(
+            IOError,
+            ExampleConfig.load_from_cache, filename)
+        self.assertEqual(errno.ENOENT, error.errno)
+
+    def test_flush_cache_retains_other_files(self):
+        flushed_file = self.make_config_file()
+        cached_file = self.make_config_file()
+        ExampleConfig.load_from_cache(flushed_file)
+        cached_config = ExampleConfig.load_from_cache(cached_file)
+        os.unlink(cached_file)
+        ExampleConfig.flush_cache(flushed_file)
+        self.assertEqual(
+            cached_config,
+            ExampleConfig.load_from_cache(cached_file))
+
+    def test_flush_cache_ignores_uncached_files(self):
+        data = self.make_config_data()
+        filename = self.make_config_file(data=data)
+        ExampleConfig.flush_cache(filename)
+        self.assertEqual(data, ExampleConfig.load_from_cache(filename))
 
     def test_field(self):
         self.assertIs(ExampleConfig, ExampleConfig.field())
