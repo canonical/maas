@@ -45,6 +45,11 @@ import yaml
 
 
 class ExampleConfig(ConfigBase):
+    """An example configuration schema.
+
+    It derives from :class:`ConfigBase` and has a metaclass derived from
+    :class:`ConfigMeta`, just as a "real" schema must.
+    """
 
     class __metaclass__(ConfigMeta):
         envvar = "MAAS_TESTING_SETTINGS"
@@ -54,6 +59,7 @@ class ExampleConfig(ConfigBase):
 
 
 class ExampleConfigFixture(ConfigFixtureBase):
+    """A fixture to help with testing :class:`ExampleConfig`."""
 
     schema = ExampleConfig
 

@@ -33,6 +33,14 @@ import yaml
 
 
 class ConfigFixtureBase(Fixture):
+    """Base class for creating configuration testing fixtures.
+
+    Subclass this to create a fixture class that'll help with testing
+    configuration schemas.
+
+    :cvar schema: A subclass of
+        :class:`provisioningserver.config.ConfigBase`.
+    """
 
     schema = None  # Customise this in subclasses.
 
@@ -57,10 +65,12 @@ class ConfigFixtureBase(Fixture):
 
 
 class ConfigFixture(ConfigFixtureBase):
+    """Fixture to help with testing :class:`Config`."""
 
     schema = Config
 
 
 class BootConfigFixture(ConfigFixtureBase):
+    """Fixture to help with testing :class:`BootConfig`."""
 
     schema = BootConfig
