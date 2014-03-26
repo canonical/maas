@@ -42,6 +42,7 @@ from provisioningserver.tasks import (
     add_new_dhcp_host_map,
     add_seamicro15k,
     import_boot_images,
+    report_boot_images,
     )
 
 
@@ -274,6 +275,8 @@ class NodeGroup(TimestampedModel):
             for name in config_parameters
             if Config.objects.get_config(name) is not None
         }
+        task_kwargs['callback'] = report_boot_images.subtask(
+            options={'queue': self.uuid})
         import_boot_images.apply_async(queue=self.uuid, kwargs=task_kwargs)
 
     def add_seamicro15k(self, mac, username, password, power_control=None):

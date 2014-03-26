@@ -436,6 +436,7 @@ class TestNodeGroup(MAASServerTestCase):
 
     def test_import_boot_images_calls_script_with_proxy(self):
         recorder = self.patch(tasks, 'call_and_check')
+        self.patch(nodegroup_module, 'report_boot_images', Mock())
         proxy = factory.make_name('proxy')
         Config.objects.set_config('http_proxy', proxy)
         nodegroup = factory.make_node_group()
@@ -465,10 +466,28 @@ class TestNodeGroup(MAASServerTestCase):
         self.assertEqual(archives, archive_options)
 
     def test_import_boot_images_sent_to_nodegroup_queue(self):
-        recorder = self.patch(nodegroup_module, 'import_boot_images', Mock())
+        recorder = self.patch(nodegroup_module, 'import_boot_images')
         nodegroup = factory.make_node_group()
         proxy = factory.make_name('proxy')
         Config.objects.set_config('http_proxy', proxy)
         nodegroup.import_boot_images()
         args, kwargs = recorder.apply_async.call_args
         self.assertEqual(nodegroup.uuid, kwargs['queue'])
+
+    def test_import_boot_images_reports_boot_images(self):
+        recorder = self.patch(nodegroup_module, 'import_boot_images')
+        report_recorder = self.patch(
+            nodegroup_module, 'report_boot_images')
+        nodegroup = factory.make_node_group()
+        nodegroup.import_boot_images()
+
+        # The 'import_boot_images' subtask is called with queue=nodegroup's
+        # UUID.  This means the task will be executed by the cluster's celery.
+        self.assertEqual(
+            dict(options={'queue': nodegroup.uuid}),
+            report_recorder.subtask.call_args[1],
+        )
+        self.assertEqual(
+            report_recorder.subtask(),
+            recorder.apply_async.call_args[1]['kwargs']['callback'],
+        )

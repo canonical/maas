@@ -42,6 +42,7 @@ from maastesting.matchers import (
     )
 from mock import (
     ANY,
+    call,
     Mock,
     sentinel,
     )
@@ -658,3 +659,9 @@ class TestImportPxeFiles(PservTestCase):
             if variable.endswith('_ARCHIVE')
         }
         self.assertEqual(expected_settings, archive_settings)
+
+    def test_import_boot_images_calls_callback(self):
+        self.patch(tasks, 'call_and_check')
+        mock_callback = Mock()
+        import_boot_images(callback=mock_callback)
+        self.assertEqual([call()], mock_callback.delay.mock_calls)

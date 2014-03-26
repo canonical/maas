@@ -552,6 +552,7 @@ class TestNodeGroupAPIAuth(MAASServerTestCase):
 
     def test_nodegroup_import_boot_images_calls_script(self):
         recorder = self.patch(tasks, 'call_and_check')
+        self.patch(nodegroup_module, 'report_boot_images')
         proxy = factory.getRandomString()
         Config.objects.set_config('http_proxy', proxy)
         nodegroup = factory.make_node_group()

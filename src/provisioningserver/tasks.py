@@ -447,7 +447,7 @@ def update_node_tags(tag_name, tag_definition, tag_nsmap, retry=True):
 @task
 @log_exception_text
 def import_boot_images(http_proxy=None, main_archive=None, ports_archive=None,
-                       cloud_images_archive=None):
+                       cloud_images_archive=None, callback=None):
     env = dict(os.environ)
     if http_proxy is not None:
         env['http_proxy'] = http_proxy
@@ -459,6 +459,8 @@ def import_boot_images(http_proxy=None, main_archive=None, ports_archive=None,
     if cloud_images_archive is not None:
         env['CLOUD_IMAGES_ARCHIVE'] = cloud_images_archive
     call_and_check(['sudo', '-n', '-E', 'maas-import-pxe-files'], env=env)
+    if callback is not None:
+        callback.delay()
 
 
 # =====================================================================
