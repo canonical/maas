@@ -17,7 +17,9 @@ __all__ = [
     'compose_bootloader_path',
     'compose_config_path',
     'compose_image_path',
+    'drill_down',
     'list_boot_images',
+    'list_subdirs',
     'locate_tftp_path',
     ]
 

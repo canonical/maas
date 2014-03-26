@@ -113,7 +113,6 @@ from maasserver.utils.network import make_network
 from metadataserver.fields import Bin
 from metadataserver.models import CommissioningScript
 
-
 # A reusable null-option for choice fields.
 BLANK_CHOICE = ('', '-------')
 
@@ -292,7 +291,6 @@ No architectures are available to use for this node; boot images may not
 have been imported on the selected cluster controller, or it may be
 unavailable.
 """)
-
 
 
 class AdminNodeForm(NodeForm):
