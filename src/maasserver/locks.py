@@ -13,6 +13,7 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    "security",
     "startup",
 ]
 
@@ -20,3 +21,7 @@ from maasserver.utils.dblocks import DatabaseLock
 
 # Lock around starting-up a MAAS region.
 startup = DatabaseLock(1)
+
+# Lock around performing critical security-related operations, like
+# generating or signing certificates.
+security = DatabaseLock(2)
