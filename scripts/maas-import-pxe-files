@@ -1,4 +1,5 @@
 #!/usr/bin/env python2.7
+# -*- mode: python -*-
 # Copyright 2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
@@ -14,13 +15,13 @@ str = None
 
 __metaclass__ = type
 
-import sys
 from provisioningserver.import_images.boot_resources import (
+    logger,
     main,
     make_arg_parser,
     NoConfigFile,
-    logger,
     )
+
 
 if __name__ == "__main__":
     parser = make_arg_parser(__doc__)
@@ -29,7 +30,7 @@ if __name__ == "__main__":
         main(args)
     except NoConfigFile:
         logger.error("Config file %s not found." % args.config_file)
-        sys.exit(1)
+        raise SystemExit(1)
     except Exception:
         # logger.exception() will log the error message, followed by the
         # exception's stack trace. Using it here rather than allowing
@@ -37,4 +38,4 @@ if __name__ == "__main__":
         # sure about where the exception ends up, rather than it
         # potentially vanishing.
         logger.exception("Unhandled exception; unable to continue.")
-        sys.exit(1)
+        raise SystemExit(2)

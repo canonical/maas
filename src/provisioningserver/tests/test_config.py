@@ -22,11 +22,17 @@ from textwrap import dedent
 
 from fixtures import EnvironmentVariableFixture
 import formencode
+import formencode.validators
 from maastesting import root
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
-from provisioningserver.config import Config
-from provisioningserver.testing.config import ConfigFixture
+from provisioningserver.config import (
+    BootConfig,
+    Config,
+    ConfigBase,
+    ConfigMeta,
+    )
+from provisioningserver.testing.config import ConfigFixtureBase
 from testtools.matchers import (
     DirExists,
     FileContains,
@@ -37,123 +43,246 @@ from testtools.matchers import (
 import yaml
 
 
-class TestConfigFixture(MAASTestCase):
-    """Tests for `provisioningserver.testing.config.ConfigFixture`."""
+class ExampleConfig(ConfigBase):
+
+    class __metaclass__(ConfigMeta):
+        envvar = "MAAS_TESTING_SETTINGS"
+        default = "example.yaml"
+
+    something = formencode.validators.String(if_missing="*missing*")
+
+
+class ExampleConfigFixture(ConfigFixtureBase):
+
+    schema = ExampleConfig
+
+
+class TestConfigFixtureBase(MAASTestCase):
+    """Tests for `ConfigFixtureBase`."""
 
     def exercise_fixture(self, fixture):
-        # ConfigFixture arranges a minimal configuration on disk, and exports
-        # the configuration filename to the environment so that subprocesses
-        # can find it.
+        # ConfigFixtureBase arranges a minimal configuration on disk,
+        # and exports the configuration filename to the environment so
+        # that subprocesses can find it.
         with fixture:
             self.assertThat(fixture.dir, DirExists())
             self.assertThat(fixture.filename, FileExists())
             self.assertEqual(
-                {"MAAS_PROVISIONING_SETTINGS": fixture.filename},
+                {fixture.schema.envvar: fixture.filename},
                 fixture.environ)
             self.assertEqual(
-                fixture.filename, os.environ["MAAS_PROVISIONING_SETTINGS"])
+                fixture.filename, os.environ[fixture.schema.envvar])
             with open(fixture.filename, "rb") as stream:
                 self.assertEqual(fixture.config, yaml.safe_load(stream))
 
     def test_use_minimal(self):
-        # With no arguments, ConfigFixture arranges a minimal configuration.
-        fixture = ConfigFixture()
+        # With no arguments, ConfigFixtureBase arranges a minimal
+        # configuration.
+        fixture = ExampleConfigFixture()
         self.exercise_fixture(fixture)
 
     def test_use_with_config(self):
-        # Given a configuration, ConfigFixture can arrange a minimal global
-        # configuration with the additional options merged in.
-        dummy_logfile = factory.make_name("logfile")
-        fixture = ConfigFixture({"logfile": dummy_logfile})
-        self.assertEqual(dummy_logfile, fixture.config["logfile"])
+        # Given a configuration, ConfigFixtureBase can arrange a minimal
+        # global configuration with the additional options merged in.
+        something = self.getUniqueString("something")
+        fixture = ExampleConfigFixture({"something": something})
+        self.assertEqual(something, fixture.config["something"])
         self.exercise_fixture(fixture)
 
 
-class TestConfig_DEFAULT_FILENAME(MAASTestCase):
-    """Tests for `provisioningserver.config.Config.DEFAULT_FILENAME`."""
+class TestConfigMeta_DEFAULT_FILENAME(MAASTestCase):
+    """Tests for `provisioningserver.config.ConfigBase.DEFAULT_FILENAME`."""
 
-    def set_MAAS_PROVISIONING_SETTINGS(self, filepath=None):
-        """Continue this test with a given `MAAS_PROVISIONING_SETTINGS`."""
+    def set_envvar(self, filepath=None):
+        """Continue this test with a given environment variable."""
         self.useFixture(EnvironmentVariableFixture(
-            "MAAS_PROVISIONING_SETTINGS", filepath))
+            ExampleConfig.envvar, filepath))
 
     def set_MAAS_CONFIG_DIR(self, dirpath=None):
         """Continue this test with a given `MAAS_CONFIG_DIR`."""
         self.useFixture(EnvironmentVariableFixture("MAAS_CONFIG_DIR", dirpath))
 
-    def make_config(self, name='pserv.yaml'):
-        """Create a `pserv.yaml` in a directory of its own."""
-        return self.make_file(name=name)
+    def make_config(self):
+        """Create a config file in a directory of its own."""
+        return self.make_file(name=ExampleConfig.default)
 
     def test_gets_filename_from_MAAS_PROVISIONING_SETTNGS(self):
         dummy_filename = factory.make_name("config")
         self.set_MAAS_CONFIG_DIR(None)
-        self.set_MAAS_PROVISIONING_SETTINGS(dummy_filename)
-        self.assertEqual(dummy_filename, Config.DEFAULT_FILENAME)
+        self.set_envvar(dummy_filename)
+        self.assertEqual(dummy_filename, ExampleConfig.DEFAULT_FILENAME)
 
     def test_falls_back_to_MAAS_CONFIG_DIR(self):
         config_file = self.make_config()
         self.set_MAAS_CONFIG_DIR(os.path.dirname(config_file))
-        self.set_MAAS_PROVISIONING_SETTINGS(None)
-        self.assertEqual(config_file, Config.DEFAULT_FILENAME)
+        self.set_envvar(None)
+        self.assertEqual(config_file, ExampleConfig.DEFAULT_FILENAME)
 
     def test_MAAS_PROVISIONING_SETTINGS_trumps_MAAS_CONFIG_DIR(self):
         provisioning_settings = factory.make_name("config")
         self.set_MAAS_CONFIG_DIR(os.path.dirname(self.make_config()))
-        self.set_MAAS_PROVISIONING_SETTINGS(provisioning_settings)
-        self.assertEqual(provisioning_settings, Config.DEFAULT_FILENAME)
+        self.set_envvar(provisioning_settings)
+        self.assertEqual(
+            provisioning_settings,
+            ExampleConfig.DEFAULT_FILENAME)
 
     def test_defaults_to_global_config(self):
         self.set_MAAS_CONFIG_DIR(None)
-        self.set_MAAS_PROVISIONING_SETTINGS(None)
-        self.assertEqual('/etc/maas/pserv.yaml', Config.DEFAULT_FILENAME)
+        self.set_envvar(None)
+        self.assertEqual(
+            '/etc/maas/%s' % ExampleConfig.default,
+            ExampleConfig.DEFAULT_FILENAME)
 
     def test_set(self):
         dummy_filename = factory.make_name("config")
-        Config.DEFAULT_FILENAME = dummy_filename
-        self.assertEqual(dummy_filename, Config.DEFAULT_FILENAME)
+        ExampleConfig.DEFAULT_FILENAME = dummy_filename
+        self.assertEqual(dummy_filename, ExampleConfig.DEFAULT_FILENAME)
 
     def test_delete(self):
         self.set_MAAS_CONFIG_DIR(None)
-        self.set_MAAS_PROVISIONING_SETTINGS(None)
-        Config.DEFAULT_FILENAME = factory.make_name("config")
-        del Config.DEFAULT_FILENAME
+        self.set_envvar(None)
+        ExampleConfig.DEFAULT_FILENAME = factory.make_name("config")
+        del ExampleConfig.DEFAULT_FILENAME
         # The filename reverts; see test_get_with_environment_empty.
-        self.assertEqual("/etc/maas/pserv.yaml", Config.DEFAULT_FILENAME)
+        self.assertEqual(
+            "/etc/maas/%s" % ExampleConfig.default,
+            ExampleConfig.DEFAULT_FILENAME)
         # The delete does not fail when called multiple times.
-        del Config.DEFAULT_FILENAME
+        del ExampleConfig.DEFAULT_FILENAME
+
+
+class TestConfigBase(MAASTestCase):
+    """Tests for `provisioningserver.config.ConfigBase`."""
+
+    def test_get_defaults_returns_default_config(self):
+        # The default configuration is production-ready.
+        observed = ExampleConfig.get_defaults()
+        self.assertEqual({"something": "*missing*"}, observed)
+
+    def test_get_defaults_ignores_settings(self):
+        self.useFixture(ExampleConfigFixture({'something': self.make_file()}))
+        observed = ExampleConfig.get_defaults()
+        self.assertEqual({"something": "*missing*"}, observed)
+
+    def test_parse(self):
+        # Configuration can be parsed from a snippet of YAML.
+        observed = ExampleConfig.parse(b'something: "important"\n')
+        self.assertEqual("important", observed["something"])
+
+    def test_load(self):
+        # Configuration can be loaded and parsed from a file.
+        config = dedent("""
+            something: "important"
+            """)
+        filename = self.make_file(name="config.yaml", contents=config)
+        observed = ExampleConfig.load(filename)
+        self.assertEqual({"something": "important"}, observed)
+
+    def test_load_defaults_to_default_filename(self):
+        something = self.getUniqueString()
+        config = yaml.safe_dump({'something': something})
+        filename = self.make_file(name="config.yaml", contents=config)
+        self.patch(ExampleConfig, 'DEFAULT_FILENAME', filename)
+        observed = ExampleConfig.load()
+        self.assertEqual({"something": something}, observed)
+
+    def test_load_from_cache_loads_config(self):
+        contents = yaml.safe_dump({'something': 'or other'})
+        filename = self.make_file(name="config.yaml", contents=contents)
+        loaded_config = ExampleConfig.load_from_cache(filename)
+        self.assertEqual({"something": "or other"}, loaded_config)
+
+    def test_load_from_cache_uses_defaults(self):
+        filename = self.make_file(name='config.yaml', contents='')
+        self.assertEqual(
+            ExampleConfig.get_defaults(),
+            ExampleConfig.load_from_cache(filename))
+
+    def test_load_from_cache_caches_each_file_separately(self):
+        config1 = self.make_file(contents=yaml.safe_dump({'something': "1"}))
+        config2 = self.make_file(contents=yaml.safe_dump({'something': "2"}))
+
+        self.assertEqual(
+            {"something": "1"},
+            ExampleConfig.load_from_cache(config1))
+        self.assertEqual(
+            {"something": "2"},
+            ExampleConfig.load_from_cache(config2))
+
+    def test_load_from_cache_reloads_from_cache_not_from_file(self):
+        # A config loaded by Config.load_from_cache() is never reloaded.
+        filename = self.make_file(name="config.yaml", contents='')
+        config_before = ExampleConfig.load_from_cache(filename)
+        os.unlink(filename)
+        config_after = ExampleConfig.load_from_cache(filename)
+        self.assertEqual(config_before, config_after)
+
+    def test_load_from_cache_caches_immutable_copy(self):
+        filename = self.make_file(
+            name="config.yaml", contents=yaml.safe_dump(
+                {"something": "somewhere"}))
+
+        first_load = ExampleConfig.load_from_cache(filename)
+        second_load = ExampleConfig.load_from_cache(filename)
+
+        self.assertEqual(first_load, second_load)
+        self.assertIsNot(first_load, second_load)
+        first_load['something'] = factory.make_name('newthing')
+        self.assertNotEqual(first_load['something'], second_load['something'])
+
+    def test_field(self):
+        self.assertIs(ExampleConfig, ExampleConfig.field())
+        self.assertIs(
+            ExampleConfig.fields["something"],
+            ExampleConfig.field("something"))
+
+    def test_save_and_load_interoperate(self):
+        something = self.getUniqueString()
+        saved_file = self.make_file()
+
+        ExampleConfig.save({'something': something}, saved_file)
+        loaded_config = ExampleConfig.load(saved_file)
+        self.assertEqual(something, loaded_config['something'])
+
+    def test_save_saves_yaml_file(self):
+        config = {'something': self.getUniqueString()}
+        saved_file = self.make_file()
+
+        ExampleConfig.save(config, saved_file)
+
+        with open(saved_file, 'rb') as written_file:
+            loaded_config = yaml.safe_load(written_file)
+        self.assertEqual(config, loaded_config)
+
+    def test_save_defaults_to_default_filename(self):
+        something = self.getUniqueString()
+        filename = self.make_file(name="config.yaml")
+        self.patch(ExampleConfig, 'DEFAULT_FILENAME', filename)
+
+        ExampleConfig.save({'something': something})
+
+        self.assertEqual(
+            {'something': something},
+            ExampleConfig.load(filename))
+
+    def test_create_backup_creates_backup(self):
+        something = self.getUniqueString()
+        filename = self.make_file(name="config.yaml")
+        config = {'something': something}
+        yaml_config = yaml.safe_dump(config)
+        self.patch(ExampleConfig, 'DEFAULT_FILENAME', filename)
+        ExampleConfig.save(config)
+
+        ExampleConfig.create_backup('test')
+
+        backup_name = "%s.%s.bak" % (filename, 'test')
+        self.assertThat(backup_name, FileContains(yaml_config))
 
 
 class TestConfig(MAASTestCase):
     """Tests for `provisioningserver.config.Config`."""
 
     default_production_config = {
-        'boot': {
-            # XXX jtv 2014-03-21, bug=1295479: Obsolete once we start using
-            # the new import script.
-            'architectures': None,
-            'ephemeral': {
-                'images_directory': '/var/lib/maas/ephemeral',
-                'releases': None,
-                },
-            'sources': [
-                {
-                    'path': (
-                        'http://maas.ubuntu.com/images/ephemeral/releases/'),
-                    'keyring': (
-                        '/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg'),
-                    'selections': [
-                        {
-                            'arches': ['*'],
-                            'release': '*',
-                            'subarches': ['*'],
-                        },
-                    ],
-                },
-            ],
-            'storage': '/var/lib/maas/boot-resources/',
-            'configure_me': False,
-        },
         'broker': {
             'host': 'localhost',
             'port': 5673,
@@ -186,91 +315,12 @@ class TestConfig(MAASTestCase):
         observed = Config.get_defaults()
         self.assertEqual(self.default_production_config, observed)
 
-    def test_get_defaults_ignores_settings(self):
-        self.useFixture(ConfigFixture({'logfile': self.make_file()}))
-
-        self.assertEqual(
-            self.default_production_config['logfile'],
-            Config.get_defaults()['logfile'])
-
-    def test_parse(self):
-        # Configuration can be parsed from a snippet of YAML.
-        observed = Config.parse(b'logfile: "/some/where.log"\n')
-        self.assertEqual("/some/where.log", observed["logfile"])
-
-    def test_load(self):
-        # Configuration can be loaded and parsed from a file.
-        config = dedent("""
-            logfile: "/some/where.log"
-            """)
-        filename = self.make_file(name="config.yaml", contents=config)
-        observed = Config.load(filename)
-        self.assertEqual("/some/where.log", observed["logfile"])
-
-    def test_load_defaults_to_default_filename(self):
-        logfile = self.make_file(name='test.log')
-        config = yaml.safe_dump({'logfile': logfile})
-        filename = self.make_file(name="config.yaml", contents=config)
-        self.patch(Config, 'DEFAULT_FILENAME', filename)
-
-        observed = Config.load()
-
-        self.assertEqual(logfile, observed['logfile'])
-
     def test_load_example(self):
         # The example configuration is designed for development.
         filename = os.path.join(root, "etc", "maas", "pserv.yaml")
         self.assertEqual(
             self.default_development_config,
             Config.load(filename))
-
-    def test_load_from_cache_loads_config(self):
-        logfile = self.make_file()
-        filename = self.make_file(
-            name="config.yaml", contents=yaml.safe_dump({'logfile': logfile}))
-        loaded_config = Config.load_from_cache(filename)
-        self.assertEqual(logfile, loaded_config['logfile'])
-
-    def test_load_from_cache_uses_defaults(self):
-        filename = self.make_file(name='config.yaml', contents='')
-        self.assertEqual(
-            Config.get_defaults(),
-            Config.load_from_cache(filename))
-
-    def test_load_from_cache_caches_each_file_separately(self):
-        log1, log2 = self.make_file(), self.make_file()
-        config1 = self.make_file(contents=yaml.safe_dump({'logfile': log1}))
-        config2 = self.make_file(contents=yaml.safe_dump({'logfile': log2}))
-
-        self.assertEqual(log1, Config.load_from_cache(config1)['logfile'])
-        self.assertEqual(log2, Config.load_from_cache(config2)['logfile'])
-
-    def test_load_from_cache_reloads_from_cache_not_from_file(self):
-        # A config loaded by Config.load_from_cache() is never reloaded.
-        filename = self.make_file(name="config.yaml", contents='')
-        config_before = Config.load_from_cache(filename)
-        os.unlink(filename)
-        config_after = Config.load_from_cache(filename)
-        self.assertEqual(config_before, config_after)
-
-    def test_load_from_cache_caches_immutable_copy(self):
-        logfile = self.make_file()
-        filename = self.make_file(
-            name="config.yaml", contents=yaml.safe_dump({'logfile': logfile}))
-
-        first_load = Config.load_from_cache(filename)
-        second_load = Config.load_from_cache(filename)
-
-        self.assertEqual(first_load, second_load)
-        self.assertIsNot(first_load, second_load)
-        first_load['logfile'] = factory.make_name('otherlog')
-        self.assertNotEqual(first_load['logfile'], second_load['logfile'])
-        self.assertEqual(logfile, second_load['logfile'])
-        self.assertIsNot(first_load['boot'], second_load['boot'])
-        first_load['boot']['storage'] = [factory.make_name('otherstorage')]
-        self.assertNotEqual(
-            first_load['boot']['storage'],
-            second_load['boot']['storage'])
 
     def test_oops_directory_without_reporter(self):
         # It is an error to omit the OOPS reporter if directory is specified.
@@ -284,49 +334,79 @@ class TestConfig(MAASTestCase):
             partial(Config.parse, config),
             Raises(expected))
 
-    def test_field(self):
-        self.assertIs(Config, Config.field())
-        self.assertIs(Config.fields["tftp"], Config.field("tftp"))
-        self.assertIs(
-            Config.fields["tftp"].fields["root"],
-            Config.field("tftp", "root"))
 
-    def test_save_and_load_interoperate(self):
-        logfile = self.make_file(name='test.log')
-        saved_file = self.make_file()
+class TestBootConfig(MAASTestCase):
+    """Tests for `provisioningserver.config.BootConfig`."""
 
-        Config.save({'logfile': logfile}, saved_file)
-        loaded_config = Config.load(saved_file)
-        self.assertEqual(logfile, loaded_config['logfile'])
+    default_production_config = {
+        'boot': {
+            # XXX jtv 2014-03-21, bug=1295479: Obsolete once we start using
+            # the new import script.
+            'architectures': None,
+            'ephemeral': {
+                'images_directory': '/var/lib/maas/ephemeral',
+                'releases': None,
+            },
+            'sources': [
+                {
+                    'path': (
+                        'http://maas.ubuntu.com/images/ephemeral/releases/'),
+                    'keyring': (
+                        '/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg'),
+                    'selections': [
+                        {
+                            'arches': ['*'],
+                            'release': '*',
+                            'subarches': ['*'],
+                        },
+                    ],
+                },
+            ],
+            'storage': '/var/lib/maas/boot-resources/',
+            'configure_me': False,
+        },
+    }
 
-    def test_save_saves_yaml_file(self):
-        config = {'logfile': self.make_file()}
-        saved_file = self.make_file()
+    default_development_config = {
+        'boot': {
+            'architectures': None,
+            'ephemeral': {
+                'images_directory': '/var/lib/maas/ephemeral',
+                'releases': None,
+            },
+            'sources': [
+                {
+                    'path': (
+                        'http://maas.ubuntu.com/images/ephemeral-v2/daily/'),
+                    'keyring': (
+                        '/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg'),
+                    'selections': [
+                        {
+                            'arches': ['i386', 'amd64'],
+                            'release': 'trusty',
+                            'subarches': ['generic'],
+                        },
+                        {
+                            'arches': ['i386', 'amd64'],
+                            'release': 'precise',
+                            'subarches': ['generic'],
+                        },
+                    ],
+                },
+            ],
+            'storage': '/var/lib/maas/boot-resources/',
+            'configure_me': True,
+        },
+    }
 
-        Config.save(config, saved_file)
+    def test_get_defaults_returns_default_config(self):
+        # The default configuration is production-ready.
+        observed = BootConfig.get_defaults()
+        self.assertEqual(self.default_production_config, observed)
 
-        with open(saved_file, 'rb') as written_file:
-            loaded_config = yaml.load(written_file)
-        self.assertEqual(config, loaded_config)
-
-    def test_save_defaults_to_default_filename(self):
-        logfile = self.make_file(name='test.log')
-        filename = self.make_file(name="config.yaml")
-        self.patch(Config, 'DEFAULT_FILENAME', filename)
-
-        Config.save({'logfile': logfile})
-
-        self.assertEqual(logfile, Config.load(filename)['logfile'])
-
-    def test_create_backup_creates_backup(self):
-        logfile = self.make_file(name='test.log')
-        filename = self.make_file(name="config.yaml")
-        config = {'logfile': logfile}
-        yaml_config = yaml.safe_dump(config)
-        self.patch(Config, 'DEFAULT_FILENAME', filename)
-        Config.save(config)
-
-        Config.create_backup('test')
-
-        backup_name = "%s.%s.bak" % (filename, 'test')
-        self.assertThat(backup_name, FileContains(yaml_config))
+    def test_load_example(self):
+        # The example configuration is designed for development.
+        filename = os.path.join(root, "etc", "maas", "bootresources.yaml")
+        self.assertEqual(
+            self.default_development_config,
+            BootConfig.load(filename))

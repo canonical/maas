@@ -19,6 +19,7 @@ __all__ = [
 from argparse import ArgumentParser
 from collections import defaultdict
 from datetime import datetime
+import errno
 import functools
 import glob
 from gzip import GzipFile
@@ -28,7 +29,7 @@ from logging import getLogger
 import os
 from textwrap import dedent
 
-from provisioningserver.config import Config
+from provisioningserver.config import BootConfig
 from provisioningserver.pxe.install_bootloader import install_bootloader
 from provisioningserver.pxe.tftppath import list_boot_images
 from provisioningserver.utils import (
@@ -59,7 +60,6 @@ def init_logger():
     logger.addHandler(handler)
     logger.setLevel(logging.INFO)
     return logger
-import errno
 
 
 logger = init_logger()
@@ -467,7 +467,7 @@ def main(args):
     # The config file is required.  We do not fall back to defaults if it's
     # not there.
     try:
-        config = Config.load_from_cache(filename=args.config_file)
+        config = BootConfig.load_from_cache(filename=args.config_file)
     except IOError as ex:
         if ex.errno == errno.ENOENT:
             # No config file. We have helpful error output for this.

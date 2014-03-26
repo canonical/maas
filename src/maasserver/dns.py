@@ -201,8 +201,8 @@ class ZoneGenerator:
         forward_nodegroups = sorted(nodegroups, key=get_domain)
         for domain, nodegroups in groupby(forward_nodegroups, get_domain):
             nodegroups = list(nodegroups)
-            domain_networks = sum(
-                [networks[nodegroup] for nodegroup in nodegroups], [])
+            domain_networks = chain.from_iterable(
+                networks[nodegroup] for nodegroup in nodegroups)
             # A forward zone encompassing all nodes in the same domain.
             yield DNSForwardZoneConfig(
                 domain, serial=serial, dns_ip=dns_ip,

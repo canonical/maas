@@ -23,6 +23,7 @@ __all__ = [
     'locate_tftp_path',
     ]
 
+from itertools import chain
 import os.path
 
 
@@ -147,7 +148,8 @@ def drill_down(directory, paths):
     :return: A list of paths, each of which drills one level deeper down into
         the filesystem hierarchy than the originals in `paths`.
     """
-    return sum([extend_path(directory, path) for path in paths], [])
+    return list(chain.from_iterable(
+        extend_path(directory, path) for path in paths))
 
 
 def extract_image_params(path):
@@ -195,4 +197,5 @@ def list_boot_images(tftproot):
     # Each path we find this way should be a boot image.
     # This gets serialised to JSON, so we really have to return a list, not
     # just any iterable.
-    return sum([extract_image_params(path) for path in paths], [])
+    return list(chain.from_iterable(
+        extract_image_params(path) for path in paths))

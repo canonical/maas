@@ -20,6 +20,7 @@ __all__ = [
     'discover_networks',
     ]
 
+from itertools import chain
 
 from netifaces import (
     AF_INET,
@@ -72,8 +73,8 @@ def get_interface_info(interface):
 
 def discover_networks():
     """Find the networks attached to this system."""
-    infos = sum(
-        [get_interface_info(interface) for interface in interfaces()], [])
+    infos = chain.from_iterable(
+        get_interface_info(interface) for interface in interfaces())
     return [
         info.as_dict()
         for info in infos

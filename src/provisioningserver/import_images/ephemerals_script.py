@@ -30,7 +30,7 @@ import re
 import shutil
 import tempfile
 
-from provisioningserver.config import Config
+from provisioningserver.config import BootConfig
 from provisioningserver.import_images.config import (
     merge_legacy_ephemerals_config,
     )
@@ -360,12 +360,12 @@ def make_arg_parser(doc):
     :param doc: Description of the script, for help output.
     """
     try:
-        config = Config.load_from_cache()
+        config = BootConfig.load_from_cache()
     except IOError as e:
         if e.errno != errno.ENOENT:
             raise
         # Plod on with defaults.  There may be a legacy shell-script config.
-        config = Config.get_defaults()
+        config = BootConfig.get_defaults()
     # Merge legacy settings into our copy of the config.
     merge_legacy_ephemerals_config(config)
 

@@ -76,10 +76,8 @@ def generate_boot_resources_config():
     """
     config_file = locate_config('bootresources.yaml')
     boot_resources = Config.load_from_cache(config_file)
-    if not boot_resources['boot'].get('configure_me', False):
-        # Already configured.
-        return
-    rewrite_boot_resources_config(config_file)
+    if boot_resources['boot'].get('configure_me', False):
+        rewrite_boot_resources_config(config_file)
 
 
 # Upgrade hooks, from oldest to newest.  The hooks are callables, taking no

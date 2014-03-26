@@ -54,6 +54,7 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    "BootConfig",
     "Config",
     ]
 
@@ -176,48 +177,8 @@ class ConfigBoot(Schema):
     configure_me = Bool(if_missing=False)
 
 
-class ConfigMeta(DeclarativeMeta):
-    """Metaclass for the root configuration schema."""
-
-    def _get_default_filename(cls):
-        # Avoid circular imports.
-        from provisioningserver.utils import locate_config
-
-        # Get the configuration filename from the environment. Failing that,
-        # look for the configuration in its default locations.
-        return environ.get(
-            "MAAS_PROVISIONING_SETTINGS",
-            locate_config('pserv.yaml'))
-
-    def _set_default_filename(cls, filename):
-        # Set the configuration filename in the environment.
-        environ["MAAS_PROVISIONING_SETTINGS"] = filename
-
-    def _delete_default_filename(cls):
-        # Remove any setting of the configuration filename from the
-        # environment.
-        environ.pop("MAAS_PROVISIONING_SETTINGS", None)
-
-    DEFAULT_FILENAME = property(
-        _get_default_filename, _set_default_filename,
-        _delete_default_filename, doc=(
-            "The default config file to load. Refers to "
-            "MAAS_PROVISIONING_SETTINGS in the environment."))
-
-
-class Config(Schema):
-    """Configuration validator."""
-
-    __metaclass__ = ConfigMeta
-
-    if_key_missing = None
-
-    logfile = String(if_empty=b"pserv.log", if_missing=b"pserv.log")
-    oops = ConfigOops
-    broker = ConfigBroker
-    tftp = ConfigTFTP
-    rpc = ConfigRPC
-    boot = ConfigBoot
+class ConfigBase(Schema):
+    """Base configuration validator."""
 
     @classmethod
     def parse(cls, stream):
@@ -293,3 +254,61 @@ class Config(Schema):
     def get_defaults(cls):
         """Return the default configuration."""
         return cls.to_python({})
+
+
+class ConfigMeta(DeclarativeMeta):
+    """Metaclass for the root configuration schema."""
+
+    envvar = None  # Set this in subtypes.
+    default = None  # Set this in subtypes.
+
+    def _get_default_filename(cls):
+        # Avoid circular imports.
+        from provisioningserver.utils import locate_config
+
+        # Get the configuration filename from the environment. Failing that,
+        # look for the configuration in its default locations.
+        return environ.get(cls.envvar, locate_config(cls.default))
+
+    def _set_default_filename(cls, filename):
+        # Set the configuration filename in the environment.
+        environ[cls.envvar] = filename
+
+    def _delete_default_filename(cls):
+        # Remove any setting of the configuration filename from the
+        # environment.
+        environ.pop(cls.envvar, None)
+
+    DEFAULT_FILENAME = property(
+        _get_default_filename, _set_default_filename,
+        _delete_default_filename, doc=(
+            "The default config file to load. Refers to "
+            "`cls.envvar` in the environment."))
+
+
+class Config(ConfigBase):
+    """Configuration for the provisioning server."""
+
+    class __metaclass__(ConfigMeta):
+        envvar = "MAAS_PROVISIONING_SETTINGS"
+        default = "pserv.yaml"
+
+    if_key_missing = None
+
+    logfile = String(if_empty=b"pserv.log", if_missing=b"pserv.log")
+    oops = ConfigOops
+    broker = ConfigBroker
+    tftp = ConfigTFTP
+    rpc = ConfigRPC
+
+
+class BootConfig(ConfigBase):
+    """Configuration for boot resources."""
+
+    class __metaclass__(ConfigMeta):
+        envvar = "MAAS_BOOT_RESOURCES_SETTINGS"
+        default = "bootresources.yaml"
+
+    if_key_missing = None
+
+    boot = ConfigBoot

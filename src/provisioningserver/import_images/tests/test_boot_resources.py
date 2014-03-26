@@ -21,7 +21,7 @@ from random import randint
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from mock import MagicMock
-from provisioningserver.config import Config
+from provisioningserver.config import BootConfig
 from provisioningserver.import_images import boot_resources
 from provisioningserver.import_images.boot_resources import (
     main,
@@ -45,7 +45,7 @@ class TestMain(MAASTestCase):
         # ENOENT IOError, but will otherwise just re-raise the original
         # IOError.
         args = MagicMock()
-        mock_load_from_cache = self.patch(Config, 'load_from_cache')
+        mock_load_from_cache = self.patch(BootConfig, 'load_from_cache')
         other_error = IOError(randint(errno.ENOENT + 1, 1000))
         mock_load_from_cache.side_effect = other_error
         # Suppress log output.

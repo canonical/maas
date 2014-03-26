@@ -25,6 +25,7 @@ __all__ = [
 import collections
 from contextlib import contextmanager
 import httplib
+from itertools import chain
 import os
 from urlparse import urlparse
 
@@ -137,11 +138,11 @@ def get_content_links(response, element='#content'):
         in the document.
     """
     doc = fromstring(response.content)
-    links_per_matching_node = [
+    links_per_matching_node = chain.from_iterable(
         [elem.get('href') for elem in matching_node.cssselect('a')]
         for matching_node in doc.cssselect(element)
-        ]
-    return sum(links_per_matching_node, [])
+    )
+    return list(links_per_matching_node)
 
 
 @contextmanager
