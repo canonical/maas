@@ -14,14 +14,9 @@ str = None
 __metaclass__ = type
 __all__ = []
 
-import atexit
-
-from lockfile import (
-    FileLock,
-    LockTimeout,
-    )
 from maasserver import (
     eventloop,
+    locks,
     start_up,
     )
 from maasserver.components import (
@@ -38,11 +33,7 @@ from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.celery import CeleryFixture
 from maastesting.fakemethod import FakeMethod
 from maastesting.matchers import MockCalledOnceWith
-from mock import (
-    call,
-    MagicMock,
-    Mock,
-    )
+from mock import Mock
 from provisioningserver import tasks
 from testresources import FixtureResource
 
@@ -56,8 +47,7 @@ class LockChecker:
 
     def __call__(self):
         self.call_count += 1
-        lock = FileLock(start_up.LOCK_FILE_NAME)
-        self.lock_was_held = lock.is_locked()
+        self.lock_was_held = locks.startup.is_locked()
 
 
 class TestStartUp(MAASServerTestCase):
@@ -66,12 +56,6 @@ class TestStartUp(MAASServerTestCase):
     resources = (
         ('celery', FixtureResource(CeleryFixture())),
         )
-
-    def setUp(self):
-        super(TestStartUp, self).setUp()
-        self.patch(start_up, 'LOCK_FILE_NAME', self.make_file())
-        # Prevent tests from leaving broken atexit handlers behind.
-        self.patch(atexit, "_exithandlers", [])
 
     def tearDown(self):
         super(TestStartUp, self).tearDown()
@@ -110,17 +94,6 @@ class TestStartUp(MAASServerTestCase):
         start_up.start_up()
         self.assertEqual(1, lock_checker.call_count)
         self.assertEqual(True, lock_checker.lock_was_held)
-
-    def test_start_up_respects_timeout_to_acquire_lock(self):
-        recorder = FakeMethod()
-        self.patch(start_up, 'inner_start_up', recorder)
-        # Use a timeout more suitable for automated testing.
-        self.patch(start_up, 'LOCK_TIMEOUT', 0.1)
-        # Manually create a lock.
-        self.make_file(FileLock(start_up.LOCK_FILE_NAME).lock_file)
-
-        self.assertRaises(LockTimeout, start_up.start_up)
-        self.assertEqual(0, recorder.call_count)
 
     def test_start_up_warns_about_missing_boot_images(self):
         # If no boot images have been registered yet, that may mean that
@@ -164,17 +137,3 @@ class TestStartUp(MAASServerTestCase):
         self.assertNotIn(
             COMPONENT.IMPORT_PXE_FILES,
             [args[0][0] for args in recorder.call_args_list])
-
-    def test_start_up_registers_atexit_lock_cleanup(self):
-        filelock_mock = MagicMock()
-        self.patch(start_up, 'FileLock', Mock(side_effect=filelock_mock))
-        # Patch atexit.register to assert it's called with the right
-        # argument.
-        atexit_mock = self.patch(start_up, 'atexit')
-
-        start_up.start_up()
-
-        self.assertEqual(
-            [call.register(
-                filelock_mock(start_up.LOCK_FILE_NAME).break_lock)],
-            atexit_mock.mock_calls)

@@ -13,7 +13,7 @@ str = None
 
 __metaclass__ = type
 __all__ = [
-    "startup",
+    "DatabaseLock",
 ]
 
 from contextlib import closing
@@ -74,6 +74,3 @@ class DatabaseLock(tuple):
         with closing(connection.cursor()) as cursor:
             cursor.execute(stmt, self)
             return len(cursor.fetchall()) >= 1
-
-
-startup = DatabaseLock(1)

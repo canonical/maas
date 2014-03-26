@@ -16,13 +16,13 @@ __all__ = [
     'start_up'
     ]
 
-
-import atexit
 from textwrap import dedent
 
 from django.db import connection
-from lockfile import FileLock
-from maasserver import eventloop
+from maasserver import (
+    eventloop,
+    locks,
+    )
 from maasserver.components import (
     get_persistent_error,
     register_persistent_error,
@@ -34,13 +34,6 @@ from maasserver.models import (
     BootImage,
     NodeGroup,
     )
-
-# Lock file used to prevent concurrent runs of the start_up() method.
-LOCK_FILE_NAME = '/run/lock/' + __name__
-
-
-# Timeout used to grab the filed-based lock used by the start_up() method.
-LOCK_TIMEOUT = 60
 
 
 def start_up():
@@ -58,15 +51,8 @@ def start_up():
     but this method uses file-based locking to ensure that the methods it calls
     internally are not ran concurrently.
     """
-    lock = FileLock(LOCK_FILE_NAME)
-    # In case this process gets shut down, clean up the lock.
-    atexit.register(lock.break_lock)
-
-    lock.acquire(timeout=LOCK_TIMEOUT)
-    try:
+    with locks.startup:
         inner_start_up()
-    finally:
-        lock.release()
 
     eventloop.start().wait(10)
 
