@@ -2206,6 +2206,35 @@ class UserHandler(OperationsHandler):
     def read(self, request, username):
         return get_object_or_404(User, username=username)
 
+# A description of the API's capabilities.
+API_CAPABILITIES = {
+    'networks-management': 'Documentation'
+}
+
+
+API_CAPABILITIES_LIST = sorted(API_CAPABILITIES)
+
+
+class VersionHandler(AnonymousOperationsHandler):
+    """Information about this MAAS instance.
+
+    This returns a JSON dictionary with information about this
+    MAAS instance.
+    {
+        'capabilities': ['capability1', 'capability2', ...]
+    }
+    """
+    api_doc_section_name = "MAAS version"
+    create = update = delete = None
+
+    def read(self, request):
+        version_info = {
+            'capabilities': API_CAPABILITIES_LIST,
+        }
+        return HttpResponse(
+            version_info, mimetype='application/json; charset=utf-8',
+            status=httplib.OK)
+
 
 # Title section for the API documentation.  Matches in style, format,
 # etc. whatever render_api_docs() produces, so that you can concatenate

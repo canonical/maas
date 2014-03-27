@@ -47,6 +47,7 @@ from maasserver.api import (
     TagsHandler,
     UserHandler,
     UsersHandler,
+    VersionHandler,
     ZoneHandler,
     ZonesHandler,
     )
@@ -81,6 +82,7 @@ boot_image_handler = RestrictedResource(
     BootImageHandler, authentication=api_auth)
 tag_handler = RestrictedResource(TagHandler, authentication=api_auth)
 tags_handler = RestrictedResource(TagsHandler, authentication=api_auth)
+version_handler = RestrictedResource(VersionHandler)
 commissioning_results_handler = RestrictedResource(
     CommissioningResultsHandler, authentication=api_auth)
 sshkey_handler = RestrictedResource(SSHKeyHandler, authentication=api_auth)
@@ -105,6 +107,7 @@ urlpatterns = patterns(
     url(r'doc/$', api_doc, name='api-doc'),
     url(r'describe/$', describe, name='describe'),
     url(r'pxeconfig/$', pxeconfig, name='pxeconfig'),
+    url(r'version/$', version_handler, name='version'),
 )
 
 
