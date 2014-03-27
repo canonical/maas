@@ -44,6 +44,7 @@ class BootImageListTest(MAASServerTestCase):
                 image.release,
                 image.subarchitecture,
                 image.architecture,
+                '%s' % image.updated.year,
             ] for image in images]
         self.assertThat(
             response.content, ContainsAll(itertools.chain(*items_in_page)))

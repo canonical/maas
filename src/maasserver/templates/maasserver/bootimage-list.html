@@ -25,6 +25,7 @@ in cluster {{ nodegroup.cluster_name }}
               <th>Subarchitecture</th>
               <th>Purpose</th>
               <th>Label</th>
+              <th>Imported on</th>
             </tr>
           </thead>
           <tbody>
@@ -36,6 +37,7 @@ in cluster {{ nodegroup.cluster_name }}
             <td>{{ bootimage.subarchitecture }}</td>
             <td>{{ bootimage.purpose }}</td>
             <td>{{ bootimage.label }}</td>
+            <td>{{ bootimage.updated }}</td>
           </tr>
           {% endfor %}
           </tbody>

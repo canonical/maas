@@ -21,10 +21,10 @@ from django.db.models import (
     CharField,
     ForeignKey,
     Manager,
-    Model,
     )
 from maasserver import DefaultMeta
 from maasserver.models.nodegroup import NodeGroup
+from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.orm import get_first
 
 
@@ -115,7 +115,7 @@ class BootImageManager(Manager):
             purpose=purpose).order_by('id').last()
 
 
-class BootImage(Model):
+class BootImage(TimestampedModel):
     """Available boot image (i.e. kernel and initrd).
 
     Each `BootImage` represents a type of boot for which a boot image is
