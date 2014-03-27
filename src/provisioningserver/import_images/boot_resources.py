@@ -32,9 +32,9 @@ from logging import getLogger
 import os
 from textwrap import dedent
 
-from provisioningserver.config import BootConfig
 from provisioningserver.boot import BootMethodRegistry
 from provisioningserver.boot.tftppath import list_boot_images
+from provisioningserver.config import BootConfig
 from provisioningserver.utils import (
     atomic_write,
     call_and_check,
@@ -216,7 +216,7 @@ def boot_reverse(boot):
         content_id = boot_resource['content_id']
         product_name = boot_resource['product_name']
         version_name = boot_resource['version_name']
-        existent = list(reverse[content_id][product_name])
+        existent = list(reverse[content_id][product_name][version_name])
         reverse[content_id][product_name][version_name] = [subarch] + existent
 
     return reverse
