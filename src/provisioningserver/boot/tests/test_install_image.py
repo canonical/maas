@@ -18,15 +18,15 @@ import os
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
-import provisioningserver.pxe.install_image
-from provisioningserver.pxe.install_image import (
+import provisioningserver.boot.install_image
+from provisioningserver.boot.install_image import (
     are_identical_dirs,
     install_dir,
     install_image,
     install_symlink,
     make_destination,
     )
-from provisioningserver.pxe.tftppath import (
+from provisioningserver.boot.tftppath import (
     compose_image_path,
     locate_tftp_path,
     )
@@ -69,7 +69,7 @@ class TestInstallPXEImage(MAASTestCase):
 
         action = factory.make_name("action")
         script = MainScript(action)
-        script.register(action, provisioningserver.pxe.install_image)
+        script.register(action, provisioningserver.boot.install_image)
         script.execute(
             ("--config-file", config_fixture.filename, action, "--arch", arch,
              "--subarch", subarch, "--release", release, "--label", label,

@@ -69,7 +69,7 @@ from provisioningserver.dns.config import (
     MAAS_RNDC_CONF_NAME,
     )
 from provisioningserver.power.poweraction import PowerActionFail
-from provisioningserver.pxe import tftppath
+from provisioningserver.boot import tftppath
 from provisioningserver.tags import MissingCredentials
 from provisioningserver.tasks import (
     add_new_dhcp_host_map,

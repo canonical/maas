@@ -39,7 +39,7 @@ from provisioningserver.config import (
     BootConfig,
     Config,
     )
-from provisioningserver.pxe.tftppath import drill_down
+from provisioningserver.boot.tftppath import drill_down
 from provisioningserver.utils import (
     atomic_write,
     locate_config,

@@ -1,7 +1,7 @@
 # Copyright 2012 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Install a PXE pre-boot loader for TFTP download."""
+"""Install a pre-boot loader for TFTP download."""
 
 from __future__ import (
     absolute_import,
@@ -22,10 +22,7 @@ import os.path
 from shutil import copyfile
 
 from provisioningserver.config import Config
-from provisioningserver.pxe.tftppath import (
-    compose_bootloader_path,
-    locate_tftp_path,
-    )
+from provisioningserver.boot.tftppath import locate_tftp_path
 
 
 def make_destination(tftproot):
@@ -36,9 +33,7 @@ def make_destination(tftproot):
     :return: Full path describing the directory that the installed loader
         should end up having.
     """
-    path = locate_tftp_path(
-        compose_bootloader_path(),
-        tftproot=tftproot)
+    path = locate_tftp_path('', tftproot=tftproot)
     directory = os.path.dirname(path)
     if not os.path.isdir(directory):
         os.makedirs(directory)
@@ -88,11 +83,11 @@ def install_bootloader(loader, destination):
 def add_arguments(parser):
     parser.add_argument(
         '--loader', dest='loader', default=None,
-        help="PXE pre-boot loader to install.")
+        help="Pre-boot loader to install.")
 
 
 def run(args):
-    """Install a PXE pre-boot loader into the TFTP directory structure.
+    """Install a pre-boot loader into the TFTP directory structure.
 
     This won't overwrite an existing loader if its contents are unchanged.
     """

@@ -18,26 +18,42 @@ __all__ = [
 ]
 
 
+from itertools import chain, repeat
 from platform import linux_distribution
 
-from provisioningserver.pxe.tftppath import compose_bootloader_path
-from provisioningserver.uefi.tftppath import compose_uefi_bootloader_path
+from provisioningserver.boot import BootMethodRegistry
 from provisioningserver.utils import locate_config
 import tempita
 
 # Location of DHCP templates, relative to the configuration directory.
 TEMPLATES_DIR = "templates/dhcp"
 
+# Used to generate the conditional bootloader behaviour
+CONDITIONAL_BOOTLOADER = """
+{behaviour} option arch = {arch_octet} {{
+          filename \"{bootloader}\";
+       }}
+"""
+
 
 class DHCPConfigError(Exception):
     """Exception raised for errors processing the DHCP config."""
 
 
+def compose_conditional_bootloader():
+    output = ""
+    behaviour = chain(["if"], repeat("elsif"))
+    for method in BootMethodRegistry.get_items().values():
+        output += CONDITIONAL_BOOTLOADER.format(
+            behaviour=next(behaviour), arch_octet=method.arch_octet,
+            bootloader=method.bootloader_path).strip() + ' '
+    return output.strip()
+
+
 def get_config(**params):
     """Return a DHCP config file based on the supplied parameters."""
     template_file = locate_config(TEMPLATES_DIR, 'dhcpd.conf.template')
-    params['bootloader'] = compose_bootloader_path()
-    params['uefi_bootloader'] = compose_uefi_bootloader_path()
+    params['bootloader'] = compose_conditional_bootloader()
     params['platform_codename'] = linux_distribution()[2]
     params.setdefault("ntp_server")
     try:

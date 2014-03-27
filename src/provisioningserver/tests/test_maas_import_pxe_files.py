@@ -25,9 +25,10 @@ from maastesting.utils import (
     age_file,
     get_write_time,
     )
-from provisioningserver.pxe import tftppath
+from provisioningserver.boot import tftppath
+from provisioningserver.boot.pxe import PXEBootMethod
+from provisioningserver.boot.uefi import UEFIBootMethod
 from provisioningserver.testing.config import ConfigFixture
-from provisioningserver.uefi.tftppath import compose_uefi_bootloader_path
 from testtools.content import text_content
 from testtools.matchers import (
     DirExists,
@@ -132,14 +133,16 @@ def generate_md5sums(basepath):
 
 def compose_tftp_bootloader_path(tftproot):
     """Compose path for MAAS TFTP bootloader."""
+    pxe_method = PXEBootMethod()
     return tftppath.locate_tftp_path(
-        tftppath.compose_bootloader_path(), tftproot)
+        pxe_method.bootloader_path, tftproot)
 
 
 def compose_tftp_uefi_bootloader_path(tftproot):
     """Compose path for MAAS UEFI TFTP bootloader."""
+    uefi_method = UEFIBootMethod()
     return tftppath.locate_tftp_path(
-        compose_uefi_bootloader_path(), tftproot)
+        uefi_method.bootloader_path, tftproot)
 
 
 def compose_tftp_path(tftproot, arch, release, label, purpose, *path):

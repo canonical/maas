@@ -22,7 +22,7 @@ from mock import (
     sentinel,
     )
 from provisioningserver import boot_images
-from provisioningserver.pxe import tftppath
+from provisioningserver.boot import tftppath
 from provisioningserver.testing.boot_images import make_boot_image_params
 from provisioningserver.testing.config import ConfigFixture
 from provisioningserver.testing.testcase import PservTestCase

@@ -22,8 +22,8 @@ from textwrap import dedent
 
 from fixtures import EnvironmentVariableFixture
 from maastesting.factory import factory
+from provisioningserver.boot import BootMethodRegistry
 from provisioningserver.dhcp import config
-from provisioningserver.pxe.tftppath import compose_bootloader_path
 from provisioningserver.testing.testcase import PservTestCase
 import tempita
 from testtools.matchers import (
@@ -114,10 +114,16 @@ class TestDHCPConfig(PservTestCase):
                 "subnet at line \d+ column \d+ "
                 "in file %s" % template.name))
 
-    def test_config_refers_to_bootloader(self):
+    def test_compose_conditional_bootloader(self):
+        output = config.compose_conditional_bootloader()
+        for method in BootMethodRegistry.get_items().values():
+            self.assertThat(output, Contains(method.arch_octet))
+            self.assertThat(output, Contains(method.bootloader_path))
+
+    def test_config_contains_compose_conditional_bootloader(self):
         params = make_sample_params()
-        output = config.get_config(**params)
-        self.assertThat(output, Contains(compose_bootloader_path()))
+        bootloader = config.compose_conditional_bootloader()
+        self.assertThat(config.get_config(**params), Contains(bootloader))
 
     def test_renders_without_ntp_servers_set(self):
         params = make_sample_params()

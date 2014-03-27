@@ -31,7 +31,7 @@ from provisioningserver.driver import (
     ArchitectureRegistry,
     PowerTypeRegistry,
     )
-from provisioningserver.pxe import tftppath
+from provisioningserver.boot import tftppath
 from provisioningserver.rpc import (
     cluster,
     common,

@@ -52,7 +52,7 @@ from provisioningserver import (
     boot_images,
     tasks,
     )
-from provisioningserver.pxe import tftppath
+from provisioningserver.boot import tftppath
 from provisioningserver.testing.boot_images import make_boot_image_params
 from testresources import FixtureResource
 from testtools.matchers import MatchesStructure

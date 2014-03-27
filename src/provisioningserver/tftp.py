@@ -19,21 +19,17 @@ __all__ = [
 
 import httplib
 from io import BytesIO
-from itertools import repeat
 import json
-import re
 from urllib import urlencode
 from urlparse import (
     parse_qsl,
     urlparse,
     )
 
+from provisioningserver.boot import BootMethodRegistry
 from provisioningserver.cluster_config import get_cluster_uuid
 from provisioningserver.driver import ArchitectureRegistry
 from provisioningserver.kernel_opts import KernelParameters
-from provisioningserver.pxe.config import render_pxe_config
-from provisioningserver.pxe.tftppath import ARP_HTYPE
-from provisioningserver.uefi.config import render_uefi_config
 from provisioningserver.utils import (
     deferred,
     get_all_interface_addresses,
@@ -89,68 +85,6 @@ class TFTPBackend(FilesystemSynchronousBackend):
     """
 
     get_page = staticmethod(getPage)
-    render_pxe_config = staticmethod(render_pxe_config)
-    render_uefi_config = staticmethod(render_uefi_config)
-
-    # PXELINUX represents a MAC address in IEEE 802 hyphen-separated
-    # format.  See http://www.syslinux.org/wiki/index.php/PXELINUX.
-    re_mac_address_octet = r'[0-9a-f]{2}'
-    re_mac_address = re.compile(
-        "-".join(repeat(re_mac_address_octet, 6)))
-
-    # We assume that the ARP HTYPE (hardware type) that PXELINUX sends is
-    # always Ethernet.
-    re_config_file = r'''
-        # Optional leading slash(es).
-        ^/*
-        pxelinux[.]cfg    # PXELINUX expects this.
-        /
-        (?: # either a MAC
-            {htype:02x}    # ARP HTYPE.
-            -
-            (?P<mac>{re_mac_address.pattern})    # Capture MAC.
-        | # or "default"
-            default
-              (?: # perhaps with specified arch, with a separator of either '-'
-                # or '.', since the spec was changed and both are unambiguous
-                [.-](?P<arch>\w+) # arch
-                (?:-(?P<subarch>\w+))? # optional subarch
-              )?
-        )
-        $
-    '''
-
-    re_config_file = re_config_file.format(
-        htype=ARP_HTYPE.ETHERNET, re_mac_address=re_mac_address)
-    re_config_file = re.compile(re_config_file, re.VERBOSE)
-
-    # GRUB EFINET represents a MAC address in IEEE 802 colon-seperated
-    # format. Required for UEFI as GRUB2 only presents the MAC address
-    # in colon-seperated format.
-    re_uefi_mac_address = re.compile(
-        ':'.join(repeat(re_mac_address_octet, 6)))
-
-    # Match the grub/grub.cfg-* request for UEFI (aka. GRUB2)
-    re_uefi_config_file = r'''
-        # Optional leading slash(es).
-        ^/*
-        grub/grub[.]cfg   # UEFI (aka. GRUB2) expects this.
-        -
-        (?: # either a MAC
-            (?P<mac>{re_mac_address.pattern}) # Capture UEFI MAC.
-        | # or "default"
-            default
-              (?: # perhaps with specified arch, with a separator of '-'
-                [-](?P<arch>\w+) # arch
-                (?:-(?P<subarch>\w+))? # optional subarch
-              )?
-        )
-        $
-    '''
-
-    re_uefi_config_file = re_uefi_config_file.format(
-        re_mac_address=re_uefi_mac_address)
-    re_uefi_config_file = re.compile(re_uefi_config_file, re.VERBOSE)
 
     def __init__(self, base_path, generator_url):
         """
@@ -181,11 +115,13 @@ class TFTPBackend(FilesystemSynchronousBackend):
         # apiclient.utils.ascii_url() for inspiration.
         return url.geturl().encode("ascii")
 
-    def normalise_mac_address(self, mac):
-        """Converts MAC address from colon-seperated to hyphen-separated."""
-        if ':' in mac:
-            return mac.replace(':', '-')
-        return mac
+    def get_boot_method(self, file_name):
+        """Finds the correct boot method."""
+        for method in BootMethodRegistry.get_items().values():
+            params = method.match_config_path(file_name)
+            if params is not None:
+                return method, params
+        return None, None
 
     @deferred
     def get_kernel_params(self, params):
@@ -206,31 +142,15 @@ class TFTPBackend(FilesystemSynchronousBackend):
         return d
 
     @deferred
-    def get_pxe_config_reader(self, params):
-        """Return an `IReader` for a PXE config.
+    def get_config_reader(self, boot_method, params):
+        """Return an `IReader` for a boot method.
 
+        :param boot_method: Boot method that is generating the config
         :param params: Parameters so far obtained, typically from the file
             path requested.
         """
         def generate_config(kernel_params):
-            config = self.render_pxe_config(
-                kernel_params=kernel_params, **params)
-            return config.encode("utf-8")
-
-        d = self.get_kernel_params(params)
-        d.addCallback(generate_config)
-        d.addCallback(BytesReader)
-        return d
-
-    @deferred
-    def get_uefi_config_reader(self, params):
-        """Return an `IReader` for a UEFI config.
-
-        :param params: Parameters so far obtained, typically from the file
-            path requested.
-        """
-        def generate_config(kernel_params):
-            config = self.render_uefi_config(
+            config = boot_method.render_config(
                 kernel_params=kernel_params, **params)
             return config.encode("utf-8")
 
@@ -262,24 +182,13 @@ class TFTPBackend(FilesystemSynchronousBackend):
     def get_reader(self, file_name):
         """See `IBackend.get_reader()`.
 
-        If `file_name` matches `re_config_file` or `re_uefi_config_file`
-        then the response is obtained from a server. Otherwise the
-        filesystem is used to service the response.
+        If `file_name` matches a boot method then the response is obtained
+        from that boot method. Otherwise the filesystem is used to service
+        the response.
         """
-        config_reader = self.get_pxe_config_reader
-        config_file_match = self.re_config_file.match(file_name)
-        if config_file_match is None:
-            config_reader = self.get_uefi_config_reader
-            config_file_match = self.re_uefi_config_file.match(file_name)
-            if config_file_match is None:
-                return super(TFTPBackend, self).get_reader(file_name)
-
-        # Do not include any element that has not matched (ie. is None)
-        params = {
-            key: value
-            for key, value in config_file_match.groupdict().items()
-            if value is not None
-            }
+        boot_method, params = self.get_boot_method(file_name)
+        if boot_method is None:
+            return super(TFTPBackend, self).get_reader(file_name)
 
         # Map pxe namespace architecture names to MAAS's.
         arch = params.get("arch")
@@ -288,18 +197,13 @@ class TFTPBackend(FilesystemSynchronousBackend):
             if maasarch is not None:
                 params["arch"] = maasarch.name.split("/")[0]
 
-        # Normalise the MAC address for UEFI
-        mac = params.get('mac')
-        if mac is not None:
-            params['mac'] = self.normalise_mac_address(params['mac'])
-
         # Send the local and remote endpoint addresses.
         local_host, local_port = get("local", (None, None))
         params["local"] = local_host
         remote_host, remote_port = get("remote", (None, None))
         params["remote"] = remote_host
         params["cluster_uuid"] = get_cluster_uuid()
-        d = config_reader(params)
+        d = self.get_config_reader(boot_method, params)
         d.addErrback(self.get_page_errback, file_name)
         return d
 

@@ -16,10 +16,10 @@ __metaclass__ = type
 
 import provisioningserver.customize_config
 import provisioningserver.dhcp.writer
-import provisioningserver.pxe.install_bootloader
-import provisioningserver.pxe.install_image
+import provisioningserver.boot.install_bootloader
+import provisioningserver.boot.install_image
+import provisioningserver.boot.install_grub
 import provisioningserver.start_cluster_controller
-import provisioningserver.uefi.install_grub
 import provisioningserver.upgrade_cluster
 from provisioningserver.utils import (
     AtomicWriteScript,
@@ -31,9 +31,9 @@ script_commands = {
     'atomic-write': AtomicWriteScript,
     'customize-config': provisioningserver.customize_config,
     'generate-dhcp-config': provisioningserver.dhcp.writer,
-    'install-pxe-bootloader': provisioningserver.pxe.install_bootloader,
-    'install-pxe-image': provisioningserver.pxe.install_image,
-    'install-uefi-config': provisioningserver.uefi.install_grub,
+    'install-pxe-bootloader': provisioningserver.boot.install_bootloader,
+    'install-pxe-image': provisioningserver.boot.install_image,
+    'install-uefi-config': provisioningserver.boot.install_grub,
     'start-cluster-controller': provisioningserver.start_cluster_controller,
     'upgrade-cluster': provisioningserver.upgrade_cluster,
 }

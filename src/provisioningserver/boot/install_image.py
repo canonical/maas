@@ -26,7 +26,7 @@ from shutil import (
     )
 
 from provisioningserver.config import Config
-from provisioningserver.pxe.tftppath import (
+from provisioningserver.boot.tftppath import (
     compose_image_path,
     locate_tftp_path,
     )
@@ -161,7 +161,7 @@ def install_symlink(new, old):
 
 def install_image(image_dir, arch, subarch, release, label, purpose,
                   config_file=None, alternate_purpose=None):
-    """Install a PXE boot image.
+    """Install a boot image.
 
     This is the function-call equivalent to a command-line invocation calling
     `add_arguments` and `run`.

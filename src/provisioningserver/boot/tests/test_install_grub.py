@@ -18,9 +18,10 @@ import os.path
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
-from provisioningserver.pxe.tftppath import locate_tftp_path
+
+import provisioningserver.boot.install_grub
+from provisioningserver.boot.tftppath import locate_tftp_path
 from provisioningserver.testing.config import ConfigFixture
-import provisioningserver.uefi.install_grub
 from provisioningserver.utils import MainScript
 from testtools.matchers import FileExists
 
@@ -35,7 +36,7 @@ class TestInstallGrub(MAASTestCase):
 
         action = factory.make_name("action")
         script = MainScript(action)
-        script.register(action, provisioningserver.uefi.install_grub)
+        script.register(action, provisioningserver.boot.install_grub)
         script.execute(
             ("--config-file", config_fixture.filename, action))
 

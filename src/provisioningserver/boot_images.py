@@ -30,7 +30,7 @@ from provisioningserver.cluster_config import (
     get_maas_url,
     )
 from provisioningserver.config import BootConfig
-from provisioningserver.pxe import tftppath
+from provisioningserver.boot import tftppath
 
 
 logger = getLogger(__name__)

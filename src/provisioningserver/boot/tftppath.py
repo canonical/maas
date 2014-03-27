@@ -1,7 +1,7 @@
 # Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Construct TFTP paths for PXE files."""
+"""Construct TFTP paths for boot files."""
 
 from __future__ import (
     absolute_import,
@@ -13,9 +13,6 @@ str = None
 
 __metaclass__ = type
 __all__ = [
-    'ARP_HTYPE',
-    'compose_bootloader_path',
-    'compose_config_path',
     'compose_image_path',
     'drill_down',
     'list_boot_images',
@@ -25,42 +22,6 @@ __all__ = [
 
 from itertools import chain
 import os.path
-
-
-class ARP_HTYPE:
-    """ARP Hardware Type codes."""
-
-    ETHERNET = 0x01
-
-
-def compose_bootloader_path():
-    """Compose the TFTP path for a PXE pre-boot loader.
-
-    All Intel-like architectures will use `pxelinux.0`. Other architectures
-    simulate PXELINUX and don't actually load `pxelinux.0`, but use its path
-    to figure out where configuration files are located.
-    """
-    return "pxelinux.0"
-
-
-# XXX allenap: move this; it is now only used for testing.
-def compose_config_path(mac):
-    """Compose the TFTP path for a PXE configuration file.
-
-    The path returned is relative to the TFTP root, as it would be
-    identified by clients on the network.
-
-    :param mac: A MAC address, in IEEE 802 hyphen-separated form,
-        corresponding to the machine for which this configuration is
-        relevant. This relates to PXELINUX's lookup protocol.
-    :return: Path for the corresponding PXE config file as exposed over
-        TFTP.
-    """
-    # Not using os.path.join: this is a TFTP path, not a native path. Yes, in
-    # practice for us they're the same. We always assume that the ARP HTYPE
-    # (hardware type) that PXELINUX sends is Ethernet.
-    return "pxelinux.cfg/{htype:02x}-{mac}".format(
-        htype=ARP_HTYPE.ETHERNET, mac=mac)
 
 
 # XXX rvb 2014-03-21 bug=1235479: The 'purpose' is made optional for now so

@@ -33,8 +33,8 @@ import os
 from textwrap import dedent
 
 from provisioningserver.config import BootConfig
-from provisioningserver.pxe.install_bootloader import install_bootloader
-from provisioningserver.pxe.tftppath import list_boot_images
+from provisioningserver.boot import BootMethodRegistry
+from provisioningserver.boot.tftppath import list_boot_images
 from provisioningserver.utils import (
     atomic_write,
     call_and_check,
@@ -379,22 +379,12 @@ def available_boot_resources(root):
         yield (arch, subarch, release, label)
 
 
-BOOTLOADERS = ['pxelinux.0', 'chain.c32', 'ifcpu64.c32']
-
-BOOTLOADER_DIR = '/usr/lib/syslinux'
-
-
 def install_boot_loaders(destination):
-    """Install the bootloaders into the specified directory.
-
-    The already-present bootloaders are left untouched.
-
+    """Install the all the required file from each bootloader method.
     :param destination: Directory where the loaders should be stored.
     """
-    for bootloader in BOOTLOADERS:
-        bootloader_src = os.path.join(BOOTLOADER_DIR, bootloader)
-        bootloader_dst = os.path.join(destination, bootloader)
-        install_bootloader(bootloader_src, bootloader_dst)
+    for method in BootMethodRegistry.get_items().values():
+        method.install_bootloader(destination)
 
 
 def call_uec2roottar(*args):

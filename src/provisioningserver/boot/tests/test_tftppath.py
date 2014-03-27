@@ -18,10 +18,7 @@ import os.path
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
-from provisioningserver.pxe.tftppath import (
-    ARP_HTYPE,
-    compose_bootloader_path,
-    compose_config_path,
+from provisioningserver.boot.tftppath import (
     compose_image_path,
     drill_down,
     extend_path,
@@ -71,18 +68,6 @@ class TestTFTPPath(MAASTestCase):
         factory.make_file(image_dir, 'linux')
         factory.make_file(image_dir, 'initrd.gz')
 
-    def test_compose_config_path_follows_maas_pxe_directory_layout(self):
-        name = factory.make_name('config')
-        self.assertEqual(
-            'pxelinux.cfg/%02x-%s' % (ARP_HTYPE.ETHERNET, name),
-            compose_config_path(name))
-
-    def test_compose_config_path_does_not_include_tftp_root(self):
-        name = factory.make_name('config')
-        self.assertThat(
-            compose_config_path(name),
-            Not(StartsWith(self.tftproot)))
-
     def test_compose_image_path_follows_maas_pxe_directory_layout(self):
         arch = factory.make_name('arch')
         subarch = factory.make_name('subarch')
@@ -101,14 +86,6 @@ class TestTFTPPath(MAASTestCase):
         purpose = factory.make_name('purpose')
         self.assertThat(
             compose_image_path(arch, subarch, release, label, purpose),
-            Not(StartsWith(self.tftproot)))
-
-    def test_compose_bootloader_path_follows_maas_pxe_directory_layout(self):
-        self.assertEqual('pxelinux.0', compose_bootloader_path())
-
-    def test_compose_bootloader_path_does_not_include_tftp_root(self):
-        self.assertThat(
-            compose_bootloader_path(),
             Not(StartsWith(self.tftproot)))
 
     def test_locate_tftp_path_prefixes_tftp_root(self):

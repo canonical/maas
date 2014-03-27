@@ -35,7 +35,7 @@ from mock import (
     )
 from provisioningserver.config import Config
 from provisioningserver.power_schema import JSON_POWER_TYPE_PARAMETERS
-from provisioningserver.pxe import tftppath
+from provisioningserver.boot import tftppath
 from provisioningserver.rpc import (
     cluster,
     clusterservice,
