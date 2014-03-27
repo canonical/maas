@@ -13,7 +13,6 @@ __metaclass__ = type
 
 from logging import getLogger
 
-import simplejson as json
 from apiclient.maas_client import (
     MAASClient,
     MAASDispatcher,
@@ -21,6 +20,7 @@ from apiclient.maas_client import (
     )
 from provisioningserver.auth import get_recorded_api_credentials
 from provisioningserver.cluster_config import get_maas_url
+import simplejson as json
 
 
 logger = getLogger(__name__)

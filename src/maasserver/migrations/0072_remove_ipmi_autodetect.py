@@ -1,10 +1,10 @@
+from django.db import models
+from provisioningserver.power_schema import IPMI_DRIVER
+from south.db import db
 # -*- coding: utf-8 -*-
 from south.utils import datetime_utils as datetime
-from south.db import db
 from south.v2 import DataMigration
-from django.db import models
 
-from provisioningserver.power_schema import IPMI_DRIVER
 
 class Migration(DataMigration):
 

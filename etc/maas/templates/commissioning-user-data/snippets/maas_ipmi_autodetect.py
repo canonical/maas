@@ -29,6 +29,7 @@ str = None
 
 __metaclass__ = type
 
+from collections import OrderedDict
 import json
 import os
 import random
@@ -36,8 +37,6 @@ import re
 import string
 import subprocess
 import time
-
-from collections import OrderedDict
 
 
 class IPMIError(Exception):

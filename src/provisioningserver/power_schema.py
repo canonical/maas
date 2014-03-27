@@ -21,7 +21,6 @@ __all__ = [
 
 from jsonschema import validate
 
-
 # We specifically declare this here so that a node not knowing its own
 # powertype won't fail to enlist. However, we don't want it in the list
 # of power types since setting a node's power type to "I don't know"

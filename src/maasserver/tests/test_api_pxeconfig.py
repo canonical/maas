@@ -24,9 +24,7 @@ from maasserver import (
     server_address,
     )
 from maasserver.api import find_nodegroup_for_pxeconfig_request
-from maasserver.enum import (
-    NODE_STATUS,
-    )
+from maasserver.enum import NODE_STATUS
 from maasserver.models import (
     Config,
     MACAddress,

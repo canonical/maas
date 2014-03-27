@@ -23,9 +23,11 @@ import time
 import urllib2
 import urlparse
 
-from seamicroclient import client as seamicro_client
-from seamicroclient import exceptions as seamicro_exceptions
 import provisioningserver.custom_hardware.utils as utils
+from seamicroclient import (
+    client as seamicro_client,
+    exceptions as seamicro_exceptions,
+    )
 
 
 logger = logging.getLogger(__name__)

@@ -48,6 +48,7 @@ from django.views.generic.edit import (
     )
 from lxml import etree
 from maasserver import logger
+from maasserver.clusterrpc.power_parameters import get_power_types
 from maasserver.enum import (
     NODE_PERMISSION,
     NODE_STATUS,
@@ -75,7 +76,6 @@ from maasserver.node_constraint_filter_forms import (
     AcquireNodeForm,
     JUJU_ACQUIRE_FORM_FIELDS_MAPPING,
     )
-from maasserver.clusterrpc.power_parameters import get_power_types
 from maasserver.preseed import (
     get_enlist_preseed,
     get_preseed,

@@ -22,9 +22,7 @@ import os.path
 import subprocess
 
 from maastesting.factory import factory
-from provisioningserver.import_images import (
-    ephemerals_script,
-    )
+from provisioningserver.import_images import ephemerals_script
 from provisioningserver.import_images.ephemerals_script import (
     compose_filter,
     create_symlinked_image_dir,

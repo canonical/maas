@@ -19,10 +19,10 @@ __all__ = [
     ]
 
 from django.conf import settings
+from maasserver.clusterrpc.power_parameters import get_power_type_parameters
 from maasserver.components import get_persistent_errors
 from maasserver.forms import get_node_edit_form
 from maasserver.models import Config
-from maasserver.clusterrpc.power_parameters import get_power_type_parameters
 
 
 def yui(context):

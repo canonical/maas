@@ -18,6 +18,7 @@ from datetime import timedelta
 import random
 
 from django.core.exceptions import ValidationError
+from maasserver.clusterrpc.power_parameters import get_power_types
 from maasserver.enum import (
     DISTRO_SERIES,
     NODE_PERMISSION,
@@ -41,7 +42,6 @@ from maasserver.models.node import (
     NODE_TRANSITIONS,
     )
 from maasserver.models.user import create_auth_token
-from maasserver.clusterrpc.power_parameters import get_power_types
 from maasserver.testing import reload_object
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
