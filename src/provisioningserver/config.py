@@ -129,6 +129,7 @@ class ConfigBootSourceSelection(Schema):
     release = String(if_missing="*")
     arches = Set(if_missing=["*"])
     subarches = Set(if_missing=['*'])
+    labels = Set(if_missing=['*'])
 
 
 class ConfigBootSource(Schema):

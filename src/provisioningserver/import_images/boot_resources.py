@@ -129,7 +129,7 @@ def value_passes_filter(filter_value, property_value):
     return filter_value in ('*', property_value)
 
 
-def image_passes_filter(filters, arch, subarch, release):
+def image_passes_filter(filters, arch, subarch, release, label):
     """Filter a boot image against configured import filters.
 
     :param filters: A list of dicts describing the filters, as in `boot_merge`.
@@ -139,16 +139,17 @@ def image_passes_filter(filters, arch, subarch, release):
     :param arch: The given boot image's architecture.
     :param subarch: The given boot image's subarchitecture.
     :param release: The given boot image's OS release.
+    :param label: The given boot image's label.
     :return: Whether the image matches any of the dicts in `filters`.
     """
-    # XXX jtv 2014-03-24: add label parameter?
     if filters is None or len(filters) == 0:
         return True
     for filter_dict in filters:
         item_matches = (
             value_passes_filter(filter_dict['release'], release) and
             value_passes_filter_list(filter_dict['arches'], arch) and
-            value_passes_filter_list(filter_dict['subarches'], subarch)
+            value_passes_filter_list(filter_dict['subarches'], subarch) and
+            value_passes_filter_list(filter_dict['labels'], label)
         )
         if item_matches:
             return True
@@ -173,12 +174,17 @@ def boot_merge(boot1, boot2, filters=None):
         passes.
     """
     for arch, subarch, release, label in iterate_boot_resources(boot2):
-        if image_passes_filter(filters, arch, subarch, release):
+        if image_passes_filter(filters, arch, subarch, release, label):
             logger.debug(
                 "Merging boot resource for %s/%s/%s/%s.",
                 arch, subarch, release, label)
             boot_resource = boot2[arch][subarch][release][label]
             boot1[arch][subarch][release][label] = boot_resource
+            # Do not override an existing entry with the same
+            # arch/subarch/release/label: the first entry found takes
+            # precedence.
+            if not boot1[arch][subarch][release][label]:
+                boot1[arch][subarch][release][label] = boot_resource
 
 
 def boot_reverse(boot):
@@ -209,8 +215,9 @@ def boot_reverse(boot):
         boot_resource = boot[arch][subarch][release][label]
         content_id = boot_resource['content_id']
         product_name = boot_resource['product_name']
+        version_name = boot_resource['version_name']
         existent = list(reverse[content_id][product_name])
-        reverse[content_id][product_name] = [subarch] + existent
+        reverse[content_id][product_name][version_name] = [subarch] + existent
 
     return reverse
 
@@ -263,9 +270,6 @@ def mirror_info_for_path(path, unsigned_policy=None, keyring=None):
 
 class RepoDumper(BasicMirrorWriter):
 
-    def __init__(self):
-        super(RepoDumper, self).__init__({'max_items': 1})
-
     def dump(self, path, keyring=None):
         self._boot = create_empty_hierarchy()
         (mirror, rpath, policy) = mirror_info_for_path(path, keyring=keyring)
@@ -288,7 +292,8 @@ class RepoDumper(BasicMirrorWriter):
         label = item['label']
         compact_item = self.item_cleanup(item)
         for subarch in subarches.split(','):
-            self._boot[arch][subarch][release][label] = compact_item
+            if not self._boot[arch][subarch][release][label]:
+                self._boot[arch][subarch][release][label] = compact_item
 
 
 class RepoWriter(BasicMirrorWriter):
@@ -297,7 +302,7 @@ class RepoWriter(BasicMirrorWriter):
         self._root_path = os.path.abspath(root_path)
         self._info = info
         self._cache = FileStore(os.path.abspath(cache_path))
-        super(RepoWriter, self).__init__({'max_items': 1})
+        super(RepoWriter, self).__init__()
 
     def write(self, path, keyring=None):
         (mirror, rpath, policy) = mirror_info_for_path(path, keyring=keyring)
@@ -307,12 +312,14 @@ class RepoWriter(BasicMirrorWriter):
     def load_products(self, path=None, content_id=None):
         return
 
-    def filter_product(self, data, src, target, pedigree):
+    def filter_version(self, data, src, target, pedigree):
         item = products_exdata(src, pedigree)
         content_id, product_name = item['content_id'], item['product_name']
+        version_name = item['version_name']
         return (
             content_id in self._info and
-            product_name in self._info[content_id]
+            product_name in self._info[content_id] and
+            version_name in self._info[content_id][product_name]
         )
 
     def insert_file(self, name, tag, checksums, size, contentsource):
@@ -350,7 +357,10 @@ class RepoWriter(BasicMirrorWriter):
         else:
             links = self.insert_file(
                 ftype, tag, checksums, size, contentsource)
-        for subarch in self._info[item['content_id']][item['product_name']]:
+        content_id = item['content_id']
+        prod_name = item['product_name']
+        version_name = item['version_name']
+        for subarch in self._info[content_id][prod_name][version_name]:
             dst_folder = os.path.join(
                 self._root_path, item['arch'], subarch, item['release'],
                 item['label'])
@@ -490,7 +500,7 @@ def main(args):
     boot = create_empty_hierarchy()
     dumper = RepoDumper()
 
-    for source in reversed(config['boot']['sources']):
+    for source in config['boot']['sources']:
         repo_boot = dumper.dump(source['path'], keyring=source['keyring'])
         boot_merge(boot, repo_boot, source['selections'])
 

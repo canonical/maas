@@ -59,6 +59,8 @@ boot:
         - release: "trusty"
           arches: ["i386", "amd64"]
           subarches: ["generic"]
+          labels: ["daily"]
         - release: "precise"
           arches: ["i386", "amd64"]
           subarches: ["generic"]
+          labels: ["daily"]
