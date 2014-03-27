@@ -257,6 +257,8 @@ class ClusterClientService(TimerService, object):
             info = json.loads(info_page)
             eventloops = info["eventloops"]
             yield self._update_connections(eventloops)
+        except ConnectError as error:
+            log.msg("Region not available: %s" % (error,))
         except:
             log.err()
 

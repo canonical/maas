@@ -289,6 +289,24 @@ class TestClusterClientService(MAASTestCase):
         self.assertThat(service.step, MatchesAll(
             Equals(service._loop.interval), IsInstance(int)))
 
+    def test_update_connect_error_is_logged_tersely(self):
+        getPage = self.patch(clusterservice, "getPage")
+        getPage.side_effect = error.ConnectionRefusedError()
+
+        logger = self.useFixture(TwistedLoggerFixture())
+
+        service = ClusterClientService(Clock())
+        _get_rpc_info_url = self.patch(service, "_get_rpc_info_url")
+        _get_rpc_info_url.return_value = sentinel.rpc_info_url
+
+        # Starting the service causes the first update to be performed.
+        service.startService()
+
+        self.assertThat(getPage, MockCalledOnceWith(sentinel.rpc_info_url))
+        self.assertEqual(
+            "Region not available: Connection was refused by other side.",
+            logger.dump())
+
     # The following represents an example response from the RPC info
     # view in maasserver. Event-loops listen on ephemeral ports, and
     # it's up to the RPC info view to direct clients to them.
