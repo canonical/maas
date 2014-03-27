@@ -130,8 +130,11 @@ class TestGeneratingDocs(MAASServerTestCase):
         # handlers passed in.
         resources = [self.make_resource() for _ in range(5)]
         docs = list(generate_api_docs(resources))
-        self.assertEqual(
+        sorted_handlers = sorted(
             [type(resource.handler) for resource in resources],
+            key=lambda handler_class: handler_class.__name__)
+        self.assertEqual(
+            sorted_handlers,
             [doc.handler for doc in docs])
 
     def test_handler_without_resource_uri(self):

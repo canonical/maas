@@ -78,7 +78,9 @@ def generate_api_docs(resources):
     :return: Generates :class:`piston.doc.HandlerDocumentation` instances.
     """
     sentinel = object()
-    for resource in resources:
+    resource_key = (
+        lambda resource: resource.handler.__class__.__name__)
+    for resource in sorted(resources, key=resource_key):
         handler = type(resource.handler)
         if getattr(handler, "resource_uri", sentinel) is sentinel:
             raise AssertionError(
