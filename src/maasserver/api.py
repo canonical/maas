@@ -298,6 +298,8 @@ class NodeHandler(OperationsHandler):
 
     The Node is identified by its system_id.
     """
+    api_doc_section_name = "Node"
+
     create = None  # Disable create.
     model = Node
     fields = DISPLAYED_NODE_FIELDS
@@ -599,7 +601,8 @@ class AnonNodesHandler(AnonymousOperationsHandler):
 
 
 class NodesHandler(OperationsHandler):
-    """Manage the collection of all Nodes in the MAAS."""
+    """Manage the collection of all the nodes in the MAAS."""
+    api_doc_section_name = "Nodes"
     create = read = update = delete = None
     anonymous = AnonNodesHandler
 
@@ -919,6 +922,7 @@ class NodeMacsHandler(OperationsHandler):
 
     The Node is identified by its system_id.
     """
+    api_doc_section_name = "Node MAC addresses"
     update = delete = None
 
     def read(self, request, system_id):
@@ -941,11 +945,12 @@ class NodeMacsHandler(OperationsHandler):
 
 
 class NodeMacHandler(OperationsHandler):
-    """Manage a MAC address.
+    """Manage a Node MAC address.
 
     The MAC address object is identified by the system_id for the Node it
     is attached to, plus the MAC address itself.
     """
+    api_doc_section_name = "Node MAC address"
     create = update = None
     fields = ('mac_address',)
     model = MACAddress
@@ -1060,7 +1065,9 @@ DISPLAY_SSHKEY_FIELDS = ("id", "key")
 
 
 class SSHKeysHandler(OperationsHandler):
-    """Operations on multiple keys."""
+    """Manage the collection of all the SSH keys in this MAAS."""
+    api_doc_section_name = "SSH Keys"
+
     create = read = update = delete = None
 
     @operation(idempotent=True)
@@ -1097,6 +1104,8 @@ class SSHKeyHandler(OperationsHandler):
 
     SSH keys can be retrieved or deleted.
     """
+    api_doc_section_name = "SSH Key"
+
     fields = DISPLAY_SSHKEY_FIELDS
     model = SSHKey
     create = update = None
@@ -1129,6 +1138,7 @@ class FileHandler(OperationsHandler):
 
     The file is identified by its filename and owner.
     """
+    api_doc_section_name = "File"
     model = FileStorage
     fields = DISPLAYED_FILES_FIELDS
     create = update = None
@@ -1170,7 +1180,8 @@ class FileHandler(OperationsHandler):
 
 
 class FilesHandler(OperationsHandler):
-    """File management operations."""
+    """Manage the collection of all the files in this MAAS."""
+    api_doc_section_name = "Files"
     create = read = update = delete = None
     anonymous = AnonFilesHandler
 
@@ -1387,14 +1398,16 @@ def update_nodegroup_maas_url(nodegroup, request):
 
 
 class NodeGroupsHandler(OperationsHandler):
-    """Manage NodeGroups."""
+    """Manage the collection of all the nodegroups in this MAAS."""
+
+    api_doc_section_name = "Nodegroups"
     anonymous = AnonNodeGroupsHandler
     create = read = update = delete = None
     fields = DISPLAYED_NODEGROUP_FIELDS
 
     @operation(idempotent=True)
     def list(self, request):
-        """List of node groups."""
+        """List nodegroups."""
         return NodeGroup.objects.all()
 
     @admin_method
@@ -1480,6 +1493,7 @@ class NodeGroupHandler(OperationsHandler):
 
     Each NodeGroup has its own uuid.
     """
+    api_doc_section_name = "Nodegroup"
 
     create = delete = None
     fields = DISPLAYED_NODEGROUP_FIELDS
@@ -1713,11 +1727,13 @@ DISPLAYED_NODEGROUPINTERFACE_FIELDS = (
 
 
 class NodeGroupInterfacesHandler(OperationsHandler):
-    """Manage NodeGroupInterfaces.
+    """Manage the collection of all the NodeGroupInterfaces in this MAAS.
 
     A NodeGroupInterface is a network interface attached to a cluster
     controller, with its network properties.
     """
+    api_doc_section_name = "Nodegroup interfaces"
+
     create = read = update = delete = None
     fields = DISPLAYED_NODEGROUPINTERFACE_FIELDS
 
@@ -1775,6 +1791,8 @@ class NodeGroupInterfaceHandler(OperationsHandler):
     A NodeGroupInterface is identified by the uuid for its NodeGroup, and
     the name of the network interface it represents: "eth0" for example.
     """
+    api_doc_section_name = "Nodegroup interface"
+
     create = delete = None
     fields = DISPLAYED_NODEGROUPINTERFACE_FIELDS
 
@@ -1864,6 +1882,7 @@ class NodeGroupInterfaceHandler(OperationsHandler):
 
 class AccountHandler(OperationsHandler):
     """Manage the current logged-in user."""
+    api_doc_section_name = "Logged-in user"
     create = read = update = delete = None
 
     @operation(idempotent=False)
@@ -1902,13 +1921,14 @@ class AccountHandler(OperationsHandler):
 
 
 class TagHandler(OperationsHandler):
-    """Manage individual Tags.
+    """Manage a Tag.
 
     Tags are properties that can be associated with a Node and serve as
     criteria for selecting and allocating nodes.
 
     A Tag is identified by its name.
     """
+    api_doc_section_name = "Tag"
     create = None
     model = Tag
     fields = (
@@ -2034,7 +2054,8 @@ class TagHandler(OperationsHandler):
 
 
 class TagsHandler(OperationsHandler):
-    """Manage collection of Tags."""
+    """Manage the collection of all the Tags in this MAAS."""
+    api_doc_section_name = "Tags"
     create = read = update = delete = None
 
     @operation(idempotent=False)
@@ -2076,6 +2097,7 @@ class TagsHandler(OperationsHandler):
 
 class MaasHandler(OperationsHandler):
     """Manage the MAAS server."""
+    api_doc_section_name = "MAAS server"
     create = read = update = delete = None
 
     @operation(idempotent=False)
@@ -2126,7 +2148,8 @@ class MaasHandler(OperationsHandler):
 
 
 class UsersHandler(OperationsHandler):
-    """API for user accounts."""
+    """Manage the user accounts of this MAAS."""
+    api_doc_section_name = "Users"
     update = delete = None
 
     @classmethod
@@ -2169,7 +2192,8 @@ class UsersHandler(OperationsHandler):
 
 
 class UserHandler(OperationsHandler):
-    """API for a user account."""
+    """Manage a user account."""
+    api_doc_section_name = "User"
     create = update = delete = None
 
     model = User
@@ -2221,6 +2245,13 @@ def render_api_docs():
     for doc in generate_api_docs(resources):
         uri_template = doc.resource_uri_template
         exports = doc.handler.exports.items()
+        # Derive a section title from the name of the handler class.
+        section_name = doc.handler.api_doc_section_name
+        line(section_name)
+        line('=' * len(section_name))
+        line(doc.handler.__doc__)
+        line()
+        line()
         for (http_method, operation), function in sorted(exports):
             line("``%s %s``" % (http_method, uri_template), end="")
             if operation is not None:
@@ -2553,7 +2584,8 @@ DISPLAYED_BOOTIMAGE_FIELDS = (
 
 
 class BootImageHandler(OperationsHandler):
-    """API for boot images."""
+    """Manage a boot image."""
+    api_doc_section_name = "Boot image"
     create = replace = update = delete = None
 
     model = BootImage
@@ -2577,6 +2609,8 @@ class BootImageHandler(OperationsHandler):
 
 
 class BootImagesHandler(OperationsHandler):
+    """Manage the collection of boot images."""
+    api_doc_section_name = "Boot images"
 
     create = replace = update = delete = None
 
@@ -2632,6 +2666,7 @@ class CommissioningScriptsHandler(OperationsHandler):
 
     This functionality is only available to administrators.
     """
+    api_doc_section_name = "Commissioning script"
 
     update = delete = None
 
@@ -2687,6 +2722,7 @@ class CommissioningScriptHandler(OperationsHandler):
 
     This functionality is only available to administrators.
     """
+    api_doc_section_name = "Commissioning script"
 
     model = CommissioningScript
     fields = ('name', 'content')
@@ -2723,6 +2759,7 @@ class CommissioningScriptHandler(OperationsHandler):
 
 class CommissioningResultsHandler(OperationsHandler):
     """Read the collection of NodeCommissionResult in the MAAS."""
+    api_doc_section_name = "Commissioning results"
     create = read = update = delete = None
 
     model = NodeCommissionResult
@@ -2808,6 +2845,7 @@ class ZoneHandler(OperationsHandler):
     This functionality is only available to administrators.  Other users can
     view physical zones, but not modify them.
     """
+    api_doc_section_name = "Zone"
     model = Zone
     fields = ('name', 'description')
 
@@ -2846,7 +2884,8 @@ class ZoneHandler(OperationsHandler):
 
 
 class ZonesHandler(OperationsHandler):
-    """API for physical zones."""
+    """Manage physical zones."""
+    api_doc_section_name = "Zones"
     update = delete = None
 
     @classmethod
@@ -2877,6 +2916,9 @@ class ZonesHandler(OperationsHandler):
 
 
 class NetworkHandler(OperationsHandler):
+    """Manage a network."""
+    api_doc_section_name = "Network"
+
     model = Network
     fields = ('name', 'ip', 'netmask', 'vlan_tag', 'description')
 
@@ -2980,7 +3022,8 @@ class NetworkHandler(OperationsHandler):
 
 
 class NetworksHandler(OperationsHandler):
-    """API for networks."""
+    """Manage the networks."""
+    api_doc_section_name = "Networks"
 
     update = delete = None
 

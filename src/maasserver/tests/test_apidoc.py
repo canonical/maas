@@ -145,6 +145,28 @@ class TestGeneratingDocs(MAASServerTestCase):
             unicode(error))
 
 
+class TestHandlers(MAASServerTestCase):
+    """Test that the handlers have all the details needed to generate the
+    API documentation.
+    """
+
+    def test_handlers_have_section_title(self):
+        from maasserver import urls_api as urlconf
+        resources = find_api_resources(urlconf)
+        handlers = []
+        for doc in generate_api_docs(resources):
+            handlers.append(doc.handler)
+        handlers_missing_section_name = [
+            handler.__name__
+            for handler in handlers
+            if not hasattr(handler, 'api_doc_section_name')
+        ]
+        self.assertEqual(
+            [], handlers_missing_section_name,
+            "%d handlers are missing an api_doc_section_name field." % len(
+                handlers_missing_section_name))
+
+
 class ExampleHandler(OperationsHandler):
     """An example handler."""
 
