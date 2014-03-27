@@ -126,10 +126,7 @@ bin/py bin/ipy: bin/buildout buildout.cfg versions.cfg setup.py
 test: build
 	echo $(wildcard bin/test.*) | xargs -n1 env
 
-lint: sources = $(wildcard *.py contrib/*.py) src templates twisted utilities etc
-lint: bin/flake8 lint-js lint-doc
-	@find $(sources) -name '*.py' ! -path '*/migrations/*' \
-	    -print0 | xargs -r0 bin/flake8 --ignore=E123 --config=/dev/null
+lint: lint-py lint-js lint-doc
 
 pocketlint = $(call available,pocketlint,python-pocket-lint)
 
@@ -139,12 +136,22 @@ lint-css:
 	@find $(sources) -type f \
 	    -print0 | xargs -r0 $(pocketlint) --max-length=120
 
+lint-py: sources = $(wildcard *.py contrib/*.py) src templates twisted utilities etc
+lint-py: bin/flake8
+	@find $(sources) -name '*.py' ! -path '*/migrations/*' \
+	    -print0 | xargs -r0 bin/flake8 --ignore=E123 --config=/dev/null
+
 lint-doc:
 	@./utilities/doc-lint
 
 lint-js: sources = src/maasserver/static/js
 lint-js:
 	@find $(sources) -type f -print0 | xargs -r0 $(pocketlint)
+
+# Apply automated formatting to all Python files.
+format: sources = $(wildcard *.py contrib/*.py) src templates twisted utilities etc
+format:
+	@find $(sources) -name '*.py' -print0 | xargs -r0 ./utilities/format-imports
 
 check: clean test
 
@@ -206,12 +213,14 @@ define phony_targets
   distclean
   doc
   enums
+  format
   harness
   install-dependencies
   lint
   lint-css
   lint-doc
   lint-js
+  lint-py
   man
   package
   sampledata
