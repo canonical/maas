@@ -391,13 +391,6 @@ class TestBootConfig(MAASTestCase):
 
     default_production_config = {
         'boot': {
-            # XXX jtv 2014-03-21, bug=1295479: Obsolete once we start using
-            # the new import script.
-            'architectures': None,
-            'ephemeral': {
-                'images_directory': '/var/lib/maas/ephemeral',
-                'releases': None,
-            },
             'sources': [
                 {
                     'path': (
@@ -420,11 +413,6 @@ class TestBootConfig(MAASTestCase):
 
     default_development_config = {
         'boot': {
-            'architectures': None,
-            'ephemeral': {
-                'images_directory': '/var/lib/maas/ephemeral',
-                'releases': None,
-            },
             'sources': [
                 {
                     'path': (

@@ -122,17 +122,6 @@ class ConfigRPC(Schema):
     if_key_missing = None
 
 
-# XXX jtv 2014-03-21, bug=1295479: Obsolete once we start using the new import
-# script.
-class ConfigBootEphemeral(Schema):
-    """Configuration validator for ephemeral boot configuration."""
-
-    if_key_missing = None
-
-    images_directory = String(if_missing="/var/lib/maas/ephemeral")
-    releases = Set(if_missing=None)
-
-
 class ConfigBootSourceSelection(Schema):
     """Configuration validator for boot source election onfiguration."""
 
@@ -161,11 +150,6 @@ class ConfigBoot(Schema):
     """Configuration validator for boot configuration."""
 
     if_key_missing = None
-
-    # XXX jtv 2014-03-21, bug=1295479: Obsolete once we start using the new
-    # import script.
-    ephemeral = ConfigBootEphemeral
-    architectures = Set(if_missing=None)
 
     storage = String(if_missing="/var/lib/maas/boot-resources/")
     sources = ForEach(
