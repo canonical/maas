@@ -44,15 +44,16 @@ class ConfigFixtureBase(Fixture):
 
     schema = None  # Customise this in subclasses.
 
-    def __init__(self, config=None):
+    def __init__(self, config=None, name='pserv.yaml'):
         super(ConfigFixtureBase, self).__init__()
         self.config = {} if config is None else config
+        self.name = name
 
     def setUp(self):
         super(ConfigFixtureBase, self).setUp()
         # Create a real configuration file, and populate it.
         self.dir = self.useFixture(TempDirectory()).path
-        self.filename = path.join(self.dir, "config.yaml")
+        self.filename = path.join(self.dir, self.name)
         with open(self.filename, "wb") as stream:
             yaml.safe_dump(self.config, stream=stream)
         # Export this filename to the environment, so that subprocesses will

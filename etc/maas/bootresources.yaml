@@ -1,6 +1,37 @@
 ##
 ## Boot image download configuration.
 ##
+#
+# Items in this configuration:
+#
+# boot - the root for these settings.
+#
+#   storage - location on the filesystem where boot images are stored.
+#
+# These images can get quite large: some files are hundreds of megabytes,
+# and you may need multiple copies for different architectures, OS releases,
+# etc.
+#
+#   sources - one or more sources of downloadable boot images.
+#
+# Each source downloads from one simplestreams URL, though it is possible to
+# have multiple sources using the same URL.
+#
+#     path - for each source, the path to its (online) Simplestreams data.
+#
+#     keyring - for each source, a GPG keyring to verify images' signatures.
+#
+#     selections - for each source, one or more sets of constraints for images.
+#
+# From each source, only those images are imported which match at least one of
+# the source's selections.  A selection can specify an OS release, a CPU
+# architecture, and so on.
+#
+# Be careful: the items in a selection will multiply.  For example if you
+# specify architectures "i386" and "amd64", and subarchitectures "generic",
+# "hwe-s", and "hwe-t", the import script will need to import 6 images, for
+# each possible combination.  If you only want some of those combinations,
+# keep them as separate sources and/or selections.
 
 boot:
   ## Marker: this configuration has not been initialised yet.
@@ -18,31 +49,12 @@ boot:
   # were imported in the old setup.
   configure_me: True
 
-  ## Storage location for boot images.
-  #
-  # These images can get quite large: some files are hundreds of megabytes,
-  # and you may need multiple copies for different architectures, OS releases,
-  # etc.
   storage: "/var/lib/maas/boot-resources/"
 
-  ## Sources of downloadable boot images.
-  #
-  # Each source downloads from one simplestreams URL, though it is possible to
-  # have multiple sources using the same URL.  For example, if you want to
-  # download "release" images for one OS release and just the "beta-2" images
-  # for another, specify two separate selections.  Otherwise, the importer
-  # would have to download both kinds of images for both releases.
   sources:
     - path: "http://maas.ubuntu.com/images/ephemeral-v2/daily/"
       keyring: "/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg"
 
-      ## Filters for this source's imports.
-      #
-      # Be careful: these items will multiply.  For example if you specify
-      # architectures "i386" and "amd64", and subarchitectures "generic",
-      # "hwe-s", and "hwe-t", the import script will need to import 6 images,
-      # for each possible combination.  If you only want some of those
-      # combinations, keep them as separate sources and/or selections.
       selections:
         - release: "trusty"
           arches: ["i386", "amd64"]
@@ -50,13 +62,3 @@ boot:
         - release: "precise"
           arches: ["i386", "amd64"]
           subarches: ["generic"]
-      #selections:
-      #  - release: "*"
-      #    arches: ["*"]
-      #    subarches: ["*"]
-## other source example:
-#    - path: "http://hyperscale.ubuntu.com/images/"
-#      selections:
-#        - release: "*"
-#          arches: ["*"]
-#          subarches: ['*']

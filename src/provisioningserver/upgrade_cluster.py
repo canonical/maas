@@ -35,9 +35,17 @@ __all__ = [
 from logging import getLogger
 import os.path
 
-from provisioningserver.config import Config
+from provisioningserver.config import (
+    BootConfig,
+    Config,
+    )
 from provisioningserver.pxe.tftppath import drill_down
-from provisioningserver.utils import locate_config
+from provisioningserver.utils import (
+    atomic_write,
+    locate_config,
+    read_text_file,
+    )
+import yaml
 
 
 logger = getLogger(__name__)
@@ -60,11 +68,100 @@ def find_old_imports(tftproot):
         }
 
 
+def generate_selections(images):
+    """Generate `selections` stanzas to match pre-existing boot images.
+
+    Supports the `generate_boot_resources_config` upgrade hook.
+
+    :param images: An iterable of (arch, subarch, release) tuples as returned
+        by `find_old_imports`.
+    :return: A list of dicts, each describing one `selections` stanza for the
+        `bootresources.yaml` file.
+    """
+    if len(images) == 0:
+        # No old images found.
+        return None
+    else:
+        # Return one "selections" stanza per image.  This could be cleverer
+        # and combine multiple architectures/subarchitectures, but there would
+        # have to be a clear gain.  Simple is good.
+        return [
+            {
+                'release': release,
+                'arches': [arch],
+                'subarches': [subarch],
+            }
+            for arch, subarch, release in sorted(images)
+            ]
+
+
+def generate_updated_config(config, old_images):
+    """Return an updated version of a config dict.
+
+    Supports the `generate_boot_resources_config` upgrade hook.
+
+    This clears the `configure_me` flag, and replaces all sources'
+    `selections` stanzas with ones based on the old boot images.
+
+    :param config: A config dict, as loaded from `bootresources.yaml`.
+    :param old_images: Old-style boot images, as returned by
+        `find_old_imports`.  If `None`, the existing `selections` are left
+        unchanged.
+    :return: An updated version of `config` with the above changes.
+    """
+    config = config.copy()
+    # Remove the configure_me item.  It's there exactly to tell us that we
+    # haven't done this rewrite yet.
+    del config['boot']['configure_me']
+    # If we found old images, rewrite the selections.
+    if old_images is not None:
+        new_selections = generate_selections(old_images)
+        for source in config['boot']['sources']:
+            source['selections'] = new_selections
+    return config
+
+
+def extract_top_comment(input_file):
+    """Return just the comment at the top of `input_file`.
+
+    Supports the `generate_boot_resources_config` upgrade hook.
+    """
+    lines = []
+    for line in read_text_file(input_file).splitlines():
+        stripped_line = line.lstrip()
+        if stripped_line != '' and not stripped_line.startswith('#'):
+            # Not an empty line or comment any more.  Stop.
+            break
+        lines.append(line)
+    return '\n'.join(lines) + '\n'
+
+
+def update_config_file(config_file, new_config):
+    """Replace configuration data in `config_file` with `new_config`.
+
+    Supports the `generate_boot_resources_config` upgrade hook.
+
+    The first part of the config file, up to the first text that isn't a
+    comment, is kept intact.  The part after that is overwritten with YAML
+    for the new configuration.
+    """
+    header = extract_top_comment(config_file)
+    data = yaml.safe_dump(new_config, default_flow_style=False)
+    content = (header + data).encode('utf-8')
+    atomic_write(content, config_file, mode=0644)
+    BootConfig.flush_cache(config_file)
+
+
 def rewrite_boot_resources_config(config_file):
-    """Rewrite the `bootresources.yaml` configuration."""
+    """Rewrite the `bootresources.yaml` configuration.
+
+    Supports the `generate_boot_resources_config` upgrade hook.
+    """
     tftproot = Config.load_from_cache()['tftp']['root']
+    config = BootConfig.load_from_cache(config_file)
     old_images = find_old_imports(tftproot)
-    old_images  # XXX jtv 2014-03-26: Turn into new config.
+    new_config = generate_updated_config(config, old_images)
+    update_config_file(config_file, new_config)
 
 
 def generate_boot_resources_config():
@@ -75,7 +172,7 @@ def generate_boot_resources_config():
     images using Simplestreams.
     """
     config_file = locate_config('bootresources.yaml')
-    boot_resources = Config.load_from_cache(config_file)
+    boot_resources = BootConfig.load_from_cache(config_file)
     if boot_resources['boot'].get('configure_me', False):
         rewrite_boot_resources_config(config_file)
 
