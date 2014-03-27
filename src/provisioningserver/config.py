@@ -3,12 +3,11 @@
 
 """MAAS Provisioning Configuration.
 
-Configuration for most elements of a Cluster Controller can and be obtained by
-using this module's `Config` class. At the time of writing the exceptions are
-the Celery worker's configuration, the `CLUSTER_UUID` and `MAAS_URL`
-environment variables (see `provisioningserver.cluster_config`), and the
-configuration for ``maas-import-pxe-files`` (soon to be deprecated) and
-``maas-import-ephemerals`` (deprecated).
+Configuration for most elements of a Cluster Controller can be obtained
+through this module's `Config` and `BootConfig` classes.  At the time of
+writing the exceptions are the Celery worker's configuration, as well as the
+`CLUSTER_UUID` and `MAAS_URL` environment variables
+(see `provisioningserver.cluster_config`).
 
 It's pretty simple. Typical usage is::
 
