@@ -17,7 +17,10 @@ __all__ = [
     ]
 
 from argparse import ArgumentParser
-from collections import defaultdict
+from collections import (
+    defaultdict,
+    namedtuple,
+    )
 from datetime import datetime
 import errno
 import functools
@@ -52,13 +55,13 @@ from simplestreams.util import (
     )
 
 
-def init_logger():
+def init_logger(log_level=logging.INFO):
     logger = getLogger(__name__)
     formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
     handler = logging.StreamHandler()
     handler.setFormatter(formatter)
     logger.addHandler(handler)
-    logger.setLevel(logging.INFO)
+    logger.setLevel(log_level)
     return logger
 
 
@@ -80,24 +83,32 @@ def create_empty_hierarchy():
     return defaultdict(create_empty_hierarchy)
 
 
-def boot_walk(boot, func):
-    """Walk over multi-level depth dict and call callback func for every leaf.
+# A tuple of the items that together select a boot image.
+ImageSpec = namedtuple(b'ImageSpec', [
+    'arch',
+    'subarch',
+    'release',
+    'label',
+    ])
 
-    Function walks over three level depth dictionary organized in a form of
-    d[arch][subarch][release]=value and passes control to a callback function
-    for each arch/subarch/release triplet available. Stored value is passed
-    to a callback function as an additional parameter.
 
-    :param boot: Hierarchy of dicts with a depth equals to three.
-    :param func: Callback function f(arch, subarch, release, value).
+def iterate_boot_resources(boot_dict):
+    """Iterate a multi-level dict of boot images.
+
+    Yields each combination of architecture, subarchitecture, release, and
+    label for which `boot` has an entry, as an `ImageSpec`.
+
+    :param boot: Four-level dict of dicts representing boot images: the top
+        level maps the architectures to sub-dicts, each of which maps
+        subarchitectures to further dicts, each of which in turn maps
+        releases to yet more dicts, each of which maps release labels to any
+        kind of item it likes.
     """
-    for arch in boot:
-        for subarch in boot[arch]:
-            for release in boot[arch][subarch]:
-                for label in boot[arch][subarch][release]:
-                    func(
-                        arch, subarch, release, label,
-                        boot[arch][subarch][release][label])
+    for arch, subarches in sorted(boot_dict.items()):
+        for subarch, releases in sorted(subarches.items()):
+            for release, labels in sorted(releases.items()):
+                for label in sorted(labels.keys()):
+                    yield ImageSpec(arch, subarch, release, label)
 
 
 def value_passes_filter_list(filter_list, property_value):
@@ -161,15 +172,13 @@ def boot_merge(boot1, boot2, filters=None):
         member of 'subarch' list -- in that case key-specific check always
         passes.
     """
-    def merge_func(arch, subarch, release, label, boot_resource):
-        """Merge a boot resource into `boot1`, if it passes filters."""
+    for arch, subarch, release, label in iterate_boot_resources(boot2):
         if image_passes_filter(filters, arch, subarch, release):
             logger.debug(
                 "Merging boot resource for %s/%s/%s/%s.",
                 arch, subarch, release, label)
+            boot_resource = boot2[arch][subarch][release][label]
             boot1[arch][subarch][release][label] = boot_resource
-
-    boot_walk(boot2, merge_func)
 
 
 def boot_reverse(boot):
@@ -196,13 +205,13 @@ def boot_reverse(boot):
     """
     reverse = create_empty_hierarchy()
 
-    def reverse_func(arch, subarch, release, label, boot_resource):
+    for arch, subarch, release, label in iterate_boot_resources(boot):
+        boot_resource = boot[arch][subarch][release][label]
         content_id = boot_resource['content_id']
         product_name = boot_resource['product_name']
         existent = list(reverse[content_id][product_name])
         reverse[content_id][product_name] = [subarch] + existent
 
-    boot_walk(boot, reverse_func)
     return reverse
 
 
