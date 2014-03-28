@@ -113,8 +113,11 @@ def generate_updated_config(config, old_images):
     # Remove the configure_me item.  It's there exactly to tell us that we
     # haven't done this rewrite yet.
     del config['boot']['configure_me']
+    if old_images is None:
+        return config
+
     # If we found old images, rewrite the selections.
-    if old_images is not None:
+    if len(old_images) != 0:
         new_selections = generate_selections(old_images)
         for source in config['boot']['sources']:
             source['selections'] = new_selections

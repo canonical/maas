@@ -260,7 +260,8 @@ class TestGenerateBootResourcesConfig(MAASTestCase):
                     ],
                 },
             }
-        result = upgrade_cluster.generate_updated_config(config, None)
+        no_images = set()
+        result = upgrade_cluster.generate_updated_config(config, no_images)
         self.assertEqual(
             [
                 {
