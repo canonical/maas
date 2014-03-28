@@ -32,6 +32,11 @@ __all__ = [
 
 from collections import OrderedDict
 
+# *** IMPORTANT ***
+# Note to all ye who enter here: comments beginning with #: are special
+# to Sphinx. They are extracted and form part of the documentation of
+# the field they directly precede.
+
 
 class COMPONENT:
     """Major moving parts of the application that may have failure states."""
@@ -42,7 +47,7 @@ class COMPONENT:
 class NODE_STATUS:
     """The vocabulary of a `Node`'s possible statuses."""
     # A node starts out as READY.
-    DEFAULT_STATUS = 0
+    DEFAULT = 0
 
     #: The node has been created and has a system ID assigned to it.
     DECLARED = 0
@@ -134,12 +139,14 @@ class USERDATA_TYPE:
 
 class NODEGROUP_STATUS:
     """The vocabulary of a `NodeGroup`'s possible statuses."""
-    # A nodegroup starts out as PENDING.
-    DEFAULT_STATUS = 0
+    #: A nodegroup starts out as ``PENDING``.
+    DEFAULT = 0
 
     #: The nodegroup has been created and awaits approval.
     PENDING = 0
+    #:
     ACCEPTED = 1
+    #:
     REJECTED = 2
 
 
@@ -157,11 +164,11 @@ class NODEGROUPINTERFACE_MANAGEMENT:
     # A nodegroupinterface starts out as UNMANAGED.
     DEFAULT = 0
 
-    # Do not manage DHCP or DNS for this interface.
+    #: Do not manage DHCP or DNS for this interface.
     UNMANAGED = 0
-    # Manage DHCP for this interface.
+    #: Manage DHCP for this interface.
     DHCP = 1
-    # Manage DHCP and DNS for this interface.
+    #: Manage DHCP and DNS for this interface.
     DHCP_AND_DNS = 2
 
 

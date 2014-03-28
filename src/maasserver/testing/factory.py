@@ -165,7 +165,7 @@ class Factory(maastesting.factory.Factory):
         if sortable_name:
             hostname = hostname.lower()
         if status is None:
-            status = NODE_STATUS.DEFAULT_STATUS
+            status = NODE_STATUS.DEFAULT
         if nodegroup is None:
             nodegroup = self.make_node_group()
         if routers is None:

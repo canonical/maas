@@ -432,7 +432,7 @@ class Node(CleanSave, TimestampedModel):
 
     status = IntegerField(
         max_length=10, choices=NODE_STATUS_CHOICES, editable=False,
-        default=NODE_STATUS.DEFAULT_STATUS)
+        default=NODE_STATUS.DEFAULT)
 
     owner = ForeignKey(
         User, default=None, blank=True, null=True, editable=False)

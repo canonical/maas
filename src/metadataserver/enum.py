@@ -20,7 +20,7 @@ __all__ = [
 
 class COMMISSIONING_STATUS:
     """The vocabulary of a commissioning script's possible statuses."""
-    DEFAULT_STATUS = "OK"
+    DEFAULT = "OK"
 
     OK = "OK"
     FAILED = "FAILED"

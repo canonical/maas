@@ -56,7 +56,7 @@ class NodeGroupManager(Manager):
     def new(self, name, uuid, ip, subnet_mask=None,
             broadcast_ip=None, router_ip=None, ip_range_low=None,
             ip_range_high=None, dhcp_key='', interface='',
-            status=NODEGROUP_STATUS.DEFAULT_STATUS,
+            status=NODEGROUP_STATUS.DEFAULT,
             management=NODEGROUPINTERFACE_MANAGEMENT.DEFAULT,
             cluster_name=None, maas_url=''):
         """Create a :class:`NodeGroup` with the given parameters.
@@ -169,7 +169,7 @@ class NodeGroup(TimestampedModel):
 
     status = IntegerField(
         choices=NODEGROUP_STATUS_CHOICES, editable=True,
-        default=NODEGROUP_STATUS.DEFAULT_STATUS)
+        default=NODEGROUP_STATUS.DEFAULT)
 
     # Credentials for the worker to access the API with.
     api_token = ForeignKey(Token, null=False, editable=False, unique=True)
