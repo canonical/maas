@@ -73,6 +73,8 @@ setup(
              'contrib/maas-http.conf',
              'contrib/maas-cluster-http.conf',
              'contrib/maas_local_settings.py']),
+        ('/etc/maas/templates/uefi',
+            glob('etc/maas/templates/uefi/*.template')),
         ('/etc/maas/templates/dhcp',
             glob('etc/maas/templates/dhcp/*.template')),
         ('/etc/maas/templates/dns',
