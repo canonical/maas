@@ -54,13 +54,17 @@ boot:
   sources:
     - path: "http://maas.ubuntu.com/images/ephemeral-v2/daily/"
       keyring: "/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg"
-
       selections:
         - release: "trusty"
           arches: ["i386", "amd64"]
           subarches: ["generic"]
           labels: ["daily"]
+
+    - path: "http://maas.ubuntu.com/images/ephemeral-v2/releases/"
+      keyring: "/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg"
+      selections:
         - release: "precise"
           arches: ["i386", "amd64"]
           subarches: ["generic"]
-          labels: ["daily"]
+          labels: ["release"]
+

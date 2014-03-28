@@ -429,14 +429,22 @@ class TestBootConfig(MAASTestCase):
                             'subarches': ['generic'],
                             'labels': ['daily'],
                         },
+                    ],
+                },
+                {
+                    'path': (
+                        'http://maas.ubuntu.com/images/ephemeral-v2/releases/'),
+                    'keyring': (
+                        '/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg'),
+                    'selections': [
                         {
                             'arches': ['i386', 'amd64'],
                             'release': 'precise',
                             'subarches': ['generic'],
-                            'labels': ['daily'],
+                            'labels': ['release'],
                         },
                     ],
-                },
+                },                
             ],
             'storage': '/var/lib/maas/boot-resources/',
             'configure_me': True,
