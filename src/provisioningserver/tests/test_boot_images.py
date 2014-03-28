@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for reporting of boot images."""
@@ -24,7 +24,7 @@ from mock import (
 from provisioningserver import boot_images
 from provisioningserver.boot import tftppath
 from provisioningserver.testing.boot_images import make_boot_image_params
-from provisioningserver.testing.config import ConfigFixture
+from provisioningserver.testing.config import set_tftp_root
 from provisioningserver.testing.testcase import PservTestCase
 
 
@@ -32,7 +32,7 @@ class TestBootImagesTasks(PservTestCase):
 
     def setUp(self):
         super(TestBootImagesTasks, self).setUp()
-        self.useFixture(ConfigFixture({'tftp': {'root': self.make_dir()}}))
+        self.useFixture(set_tftp_root(self.make_dir()))
 
     def test_sends_boot_images_to_server(self):
         self.set_maas_url()

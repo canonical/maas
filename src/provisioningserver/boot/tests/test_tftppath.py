@@ -30,7 +30,7 @@ from provisioningserver.boot.tftppath import (
 from provisioningserver.testing.boot_images import (
     make_boot_image_storage_params,
     )
-from provisioningserver.testing.config import ConfigFixture
+from provisioningserver.testing.config import set_tftp_root
 from testtools.matchers import (
     Not,
     StartsWith,
@@ -52,8 +52,7 @@ class TestTFTPPath(MAASTestCase):
     def setUp(self):
         super(TestTFTPPath, self).setUp()
         self.tftproot = self.make_dir()
-        self.config = {"tftp": {"root": self.tftproot}}
-        self.useFixture(ConfigFixture(self.config))
+        self.useFixture(set_tftp_root(self.tftproot))
 
     def make_image_dir(self, image_params, tftproot):
         """Fake a boot image matching `image_params` under `tftproot`."""

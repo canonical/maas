@@ -30,7 +30,7 @@ from provisioningserver import upgrade_cluster
 from provisioningserver.config import BootConfig
 from provisioningserver.testing.config import (
     BootConfigFixture,
-    ConfigFixture,
+    set_tftp_root,
     )
 from testtools.matchers import (
     FileContains,
@@ -311,7 +311,7 @@ class TestGenerateBootResourcesConfig(MAASTestCase):
 
     def test_rewrite_boot_resources_config_integrates(self):
         tftproot = self.make_dir()
-        self.useFixture(ConfigFixture({'tftp': {'root': tftproot}}))
+        self.useFixture(set_tftp_root(tftproot))
         arch = factory.make_name('arch')
         subarch = factory.make_name('subarch')
         release = factory.make_name('release')

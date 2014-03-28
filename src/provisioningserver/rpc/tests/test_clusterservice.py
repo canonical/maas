@@ -34,7 +34,6 @@ from mock import (
     sentinel,
     )
 from provisioningserver.boot import tftppath
-from provisioningserver.config import Config
 from provisioningserver.power_schema import JSON_POWER_TYPE_PARAMETERS
 from provisioningserver.rpc import (
     cluster,
@@ -56,6 +55,7 @@ from provisioningserver.rpc.testing import (
     TwistedLoggerFixture,
     )
 from provisioningserver.rpc.testing.doubles import DummyConnection
+from provisioningserver.testing.config import set_tftp_root
 from testtools.deferredruntest import AsynchronousDeferredRunTest
 from testtools.matchers import (
     Equals,
@@ -183,8 +183,7 @@ class TestClusterProtocol_ListBootImages(MAASTestCase):
             os.makedirs(os.path.join(tftpdir, *options))
 
         # Ensure that list_boot_images() uses the above TFTP file tree.
-        load_from_cache = self.patch(Config, "load_from_cache")
-        load_from_cache.return_value = {"tftp": {"root": tftpdir}}
+        self.useFixture(set_tftp_root(tftpdir))
 
         expected_images = [
             {

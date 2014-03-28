@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the install_pxe_bootloader command."""
@@ -28,7 +28,7 @@ from provisioningserver.boot.install_bootloader import (
     make_destination,
     )
 from provisioningserver.boot.tftppath import locate_tftp_path
-from provisioningserver.testing.config import ConfigFixture
+from provisioningserver.testing.config import set_tftp_root
 from provisioningserver.utils import MainScript
 from testtools.matchers import (
     DirExists,
@@ -41,9 +41,7 @@ class TestInstallBootloader(MAASTestCase):
 
     def test_integration(self):
         tftproot = self.make_dir()
-        config = {"tftp": {"root": tftproot}}
-        config_fixture = ConfigFixture(config)
-        self.useFixture(config_fixture)
+        config_fixture = self.useFixture(set_tftp_root(tftproot))
 
         loader = self.make_file()
 

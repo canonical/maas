@@ -93,7 +93,7 @@ from provisioningserver.tasks import (
     write_full_dns_config,
     )
 from provisioningserver.testing.boot_images import make_boot_image_params
-from provisioningserver.testing.config import ConfigFixture
+from provisioningserver.testing.config import set_tftp_root
 from provisioningserver.testing.testcase import PservTestCase
 from testresources import FixtureResource
 from testtools.matchers import (
@@ -558,7 +558,7 @@ class TestBootImagesTasks(PservTestCase):
         )
 
     def test_sends_boot_images_to_server(self):
-        self.useFixture(ConfigFixture({'tftp': {'root': self.make_dir()}}))
+        self.useFixture(set_tftp_root(self.make_dir()))
         self.set_maas_url()
         auth.record_api_credentials(':'.join(make_api_credentials()))
         image = make_boot_image_params()

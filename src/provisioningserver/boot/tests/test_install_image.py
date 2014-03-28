@@ -30,7 +30,10 @@ from provisioningserver.boot.tftppath import (
     compose_image_path,
     locate_tftp_path,
     )
-from provisioningserver.testing.config import ConfigFixture
+from provisioningserver.testing.config import (
+    ConfigFixture,
+    set_tftp_root,
+    )
 from provisioningserver.utils import MainScript
 from testtools.matchers import (
     DirExists,
@@ -56,9 +59,7 @@ class TestInstallPXEImage(MAASTestCase):
 
     def test_integration(self):
         tftproot = self.make_dir()
-        config = {"tftp": {"root": tftproot}}
-        config_fixture = ConfigFixture(config)
-        self.useFixture(config_fixture)
+        config_fixture = self.useFixture(set_tftp_root(tftproot))
 
         download_dir = self.make_dir()
         image_dir = os.path.join(download_dir, 'image')

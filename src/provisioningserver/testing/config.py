@@ -16,6 +16,7 @@ __all__ = [
     "BootConfigFixture",
     "ConfigFixture",
     "ConfigFixtureBase",
+    "set_tftp_root",
     ]
 
 from os import path
@@ -75,3 +76,11 @@ class BootConfigFixture(ConfigFixtureBase):
     """Fixture to help with testing :class:`BootConfig`."""
 
     schema = BootConfig
+
+
+def set_tftp_root(tftproot):
+    """Create a `ConfigFixture` fixture that sets the TFTP root directory.
+
+    Add the resulting fixture to your test using `self.useFixture`.
+    """
+    return ConfigFixture({'tftp': {'root': tftproot}})

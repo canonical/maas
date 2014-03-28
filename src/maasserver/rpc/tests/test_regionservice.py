@@ -40,7 +40,6 @@ from maastesting.matchers import (
     Provides,
     )
 from maastesting.testcase import MAASTestCase
-from provisioningserver.config import Config
 from provisioningserver.rpc import (
     cluster,
     common,
@@ -56,6 +55,7 @@ from provisioningserver.rpc.testing import (
     TwistedLoggerFixture,
     )
 from provisioningserver.rpc.testing.doubles import DummyConnection
+from provisioningserver.testing.config import set_tftp_root
 from provisioningserver.utils import asynchronous
 from testtools.matchers import (
     AfterPreprocessing,
@@ -172,8 +172,7 @@ class TestRegionProtocol_ReportBootImages(MAASTestCase):
             os.makedirs(os.path.join(tftpdir, *options))
 
         # Ensure that report_boot_images() uses the above TFTP file tree.
-        load_from_cache = self.patch(Config, "load_from_cache")
-        load_from_cache.return_value = {"tftp": {"root": tftpdir}}
+        self.useFixture(set_tftp_root(tftpdir))
 
         images = [
             {"architecture": arch, "subarchitecture": subarch,

@@ -26,7 +26,7 @@ from provisioningserver.boot.pxe import (
     re_config_file,
     )
 from provisioningserver.boot.tftppath import compose_image_path
-from provisioningserver.testing.config import ConfigFixture
+from provisioningserver.testing.config import set_tftp_root
 from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
 from testtools.matchers import (
     Contains,
@@ -60,11 +60,11 @@ def compose_config_path(mac):
 
 class TestPXEBootMethod(MAASTestCase):
 
-    def setUp(self):
-        super(TestPXEBootMethod, self).setUp()
-        self.tftproot = self.make_dir()
-        self.config = {"tftp": {"root": self.tftproot}}
-        self.useFixture(ConfigFixture(self.config))
+    def make_tftp_root(self):
+        """Set, and return, a temporary TFTP root directory."""
+        tftproot = self.make_dir()
+        self.useFixture(set_tftp_root(tftproot))
+        return tftproot
 
     def test_compose_config_path_follows_maas_pxe_directory_layout(self):
         name = factory.make_name('config')
@@ -73,20 +73,22 @@ class TestPXEBootMethod(MAASTestCase):
             compose_config_path(name))
 
     def test_compose_config_path_does_not_include_tftp_root(self):
+        tftproot = self.make_tftp_root()
         name = factory.make_name('config')
         self.assertThat(
             compose_config_path(name),
-            Not(StartsWith(self.tftproot)))
+            Not(StartsWith(tftproot)))
 
     def test_bootloader_path(self):
         method = PXEBootMethod()
         self.assertEqual('pxelinux.0', method.bootloader_path)
 
     def test_bootloader_path_does_not_include_tftp_root(self):
+        tftproot = self.make_tftp_root()
         method = PXEBootMethod()
         self.assertThat(
             method.bootloader_path,
-            Not(StartsWith(self.tftproot)))
+            Not(StartsWith(tftproot)))
 
     def test_name(self):
         method = PXEBootMethod()
