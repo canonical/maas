@@ -22,6 +22,7 @@ import random
 from urlparse import urlparse
 
 from apiclient.utils import ascii_url
+from provisioningserver.boot import tftppath
 from provisioningserver.cluster_config import (
     get_cluster_uuid,
     get_maas_url,
@@ -31,7 +32,6 @@ from provisioningserver.driver import (
     ArchitectureRegistry,
     PowerTypeRegistry,
     )
-from provisioningserver.boot import tftppath
 from provisioningserver.rpc import (
     cluster,
     common,

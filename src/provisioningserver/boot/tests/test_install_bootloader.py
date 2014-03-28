@@ -27,9 +27,7 @@ from provisioningserver.boot.install_bootloader import (
     install_bootloader,
     make_destination,
     )
-from provisioningserver.boot.tftppath import (
-    locate_tftp_path,
-    )
+from provisioningserver.boot.tftppath import locate_tftp_path
 from provisioningserver.testing.config import ConfigFixture
 from provisioningserver.utils import MainScript
 from testtools.matchers import (

@@ -18,7 +18,6 @@ import os.path
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
-
 import provisioningserver.boot.install_grub
 from provisioningserver.boot.tftppath import locate_tftp_path
 from provisioningserver.testing.config import ConfigFixture

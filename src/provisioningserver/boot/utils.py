@@ -18,14 +18,14 @@ __all__ = [
     'get_updates_package',
     ]
 
-import os
-import re
 import gzip
 import hashlib
-import urllib2
+import os
+from platform import linux_distribution
+import re
 import StringIO
 import subprocess
-from platform import linux_distribution
+import urllib2
 
 from provisioningserver.utils import (
     call_capture_and_check,

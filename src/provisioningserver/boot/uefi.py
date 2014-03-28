@@ -16,22 +16,22 @@ __all__ = [
     'UEFIBootMethod',
     ]
 
+from itertools import repeat
 import os.path
 import re
-import urllib2
-from itertools import repeat
 from textwrap import dedent
+import urllib2
 
 from provisioningserver.boot import (
     BootMethod,
     BootMethodInstallError,
     get_parameters,
+    utils,
     )
 from provisioningserver.boot.install_bootloader import (
     install_bootloader,
     make_destination,
     )
-from provisioningserver.boot import utils
 from provisioningserver.utils import (
     call_and_check,
     tempdir,

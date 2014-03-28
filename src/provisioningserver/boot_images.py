@@ -25,12 +25,12 @@ from apiclient.maas_client import (
     MAASOAuth,
     )
 from provisioningserver.auth import get_recorded_api_credentials
+from provisioningserver.boot import tftppath
 from provisioningserver.cluster_config import (
     get_cluster_uuid,
     get_maas_url,
     )
 from provisioningserver.config import BootConfig
-from provisioningserver.boot import tftppath
 
 
 logger = getLogger(__name__)

@@ -21,8 +21,8 @@ import filecmp
 import os.path
 from shutil import copyfile
 
-from provisioningserver.config import Config
 from provisioningserver.boot.tftppath import locate_tftp_path
+from provisioningserver.config import Config
 
 
 def make_destination(tftproot):

@@ -14,11 +14,11 @@ str = None
 
 __metaclass__ = type
 
+import provisioningserver.boot.install_bootloader
+import provisioningserver.boot.install_grub
+import provisioningserver.boot.install_image
 import provisioningserver.customize_config
 import provisioningserver.dhcp.writer
-import provisioningserver.boot.install_bootloader
-import provisioningserver.boot.install_image
-import provisioningserver.boot.install_grub
 import provisioningserver.start_cluster_controller
 import provisioningserver.upgrade_cluster
 from provisioningserver.utils import (

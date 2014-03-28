@@ -25,11 +25,11 @@ from shutil import (
     rmtree,
     )
 
-from provisioningserver.config import Config
 from provisioningserver.boot.tftppath import (
     compose_image_path,
     locate_tftp_path,
     )
+from provisioningserver.config import Config
 from twisted.python.filepath import FilePath
 
 

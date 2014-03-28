@@ -35,11 +35,11 @@ __all__ = [
 from logging import getLogger
 import os.path
 
+from provisioningserver.boot.tftppath import drill_down
 from provisioningserver.config import (
     BootConfig,
     Config,
     )
-from provisioningserver.boot.tftppath import drill_down
 from provisioningserver.utils import (
     atomic_write,
     locate_config,

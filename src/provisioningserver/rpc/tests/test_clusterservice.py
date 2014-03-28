@@ -33,9 +33,9 @@ from mock import (
     Mock,
     sentinel,
     )
+from provisioningserver.boot import tftppath
 from provisioningserver.config import Config
 from provisioningserver.power_schema import JSON_POWER_TYPE_PARAMETERS
-from provisioningserver.boot import tftppath
 from provisioningserver.rpc import (
     cluster,
     clusterservice,

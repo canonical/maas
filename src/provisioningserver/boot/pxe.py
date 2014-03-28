@@ -16,15 +16,16 @@ __all__ = [
     'PXEBootMethod',
     ]
 
+from itertools import repeat
 import os.path
 import re
-from itertools import repeat
 
 from provisioningserver.boot import (
     BootMethod,
     get_parameters,
     )
 from provisioningserver.boot.install_bootloader import install_bootloader
+
 
 BOOTLOADERS = ['pxelinux.0', 'chain.c32', 'ifcpu64.c32']
 

@@ -18,11 +18,10 @@ import re
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
-
 from provisioningserver.boot.tftppath import compose_image_path
 from provisioningserver.boot.uefi import (
+    re_config_file,
     UEFIBootMethod,
-    re_config_file
     )
 from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
 from testtools.matchers import (

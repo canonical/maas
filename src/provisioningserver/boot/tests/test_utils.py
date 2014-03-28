@@ -21,7 +21,6 @@ from maastesting.matchers import (
     )
 from maastesting.testcase import MAASTestCase
 from mock import call
-
 from provisioningserver.boot import utils
 
 

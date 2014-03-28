@@ -23,7 +23,7 @@ from provisioningserver import kernel_opts
 from provisioningserver.boot.pxe import (
     ARP_HTYPE,
     PXEBootMethod,
-    re_config_file
+    re_config_file,
     )
 from provisioningserver.boot.tftppath import compose_image_path
 from provisioningserver.testing.config import ConfigFixture

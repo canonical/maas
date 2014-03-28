@@ -17,14 +17,13 @@ __all__ = [
     "BootMethodRegistry",
     ]
 
-from errno import ENOENT
-from os import path
-
 from abc import (
     ABCMeta,
     abstractmethod,
     abstractproperty,
     )
+from errno import ENOENT
+from os import path
 
 from provisioningserver.boot.tftppath import compose_image_path
 from provisioningserver.driver.registry import Registry
