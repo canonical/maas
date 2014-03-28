@@ -16,7 +16,6 @@ __metaclass__ = type
 
 import provisioningserver.boot.install_bootloader
 import provisioningserver.boot.install_grub
-import provisioningserver.boot.install_image
 import provisioningserver.customize_config
 import provisioningserver.dhcp.writer
 import provisioningserver.start_cluster_controller
@@ -32,7 +31,6 @@ script_commands = {
     'customize-config': provisioningserver.customize_config,
     'generate-dhcp-config': provisioningserver.dhcp.writer,
     'install-pxe-bootloader': provisioningserver.boot.install_bootloader,
-    'install-pxe-image': provisioningserver.boot.install_image,
     'install-uefi-config': provisioningserver.boot.install_grub,
     'start-cluster-controller': provisioningserver.start_cluster_controller,
     'upgrade-cluster': provisioningserver.upgrade_cluster,

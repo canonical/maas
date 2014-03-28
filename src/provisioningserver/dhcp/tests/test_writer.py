@@ -55,6 +55,7 @@ class TestScript(MAASTestCase):
         cmd = Popen(
             script, stdout=PIPE, env=dict(PYTHONPATH=":".join(sys.path)))
         output, err = cmd.communicate()
+        self.assertEqual(0, cmd.returncode, err)
         contains_all_params = ContainsAll(
             ['subnet', 'subnet-mask', 'broadcast-ip',
              'omapi-key', 'dns-servers', 'ntp-server', 'domain-name',

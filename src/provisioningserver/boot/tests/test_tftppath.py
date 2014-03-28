@@ -67,24 +67,22 @@ class TestTFTPPath(MAASTestCase):
         factory.make_file(image_dir, 'linux')
         factory.make_file(image_dir, 'initrd.gz')
 
-    def test_compose_image_path_follows_maas_pxe_directory_layout(self):
+    def test_compose_image_path_follows_storage_directory_layout(self):
         arch = factory.make_name('arch')
         subarch = factory.make_name('subarch')
         release = factory.make_name('release')
         label = factory.make_name('label')
-        purpose = factory.make_name('purpose')
         self.assertEqual(
-            '%s/%s/%s/%s/%s' % (arch, subarch, release, label, purpose),
-            compose_image_path(arch, subarch, release, label, purpose))
+            '%s/%s/%s/%s' % (arch, subarch, release, label),
+            compose_image_path(arch, subarch, release, label))
 
     def test_compose_image_path_does_not_include_tftp_root(self):
         arch = factory.make_name('arch')
         subarch = factory.make_name('subarch')
         release = factory.make_name('release')
         label = factory.make_name('label')
-        purpose = factory.make_name('purpose')
         self.assertThat(
-            compose_image_path(arch, subarch, release, label, purpose),
+            compose_image_path(arch, subarch, release, label),
             Not(StartsWith(self.tftproot)))
 
     def test_locate_tftp_path_prefixes_tftp_root(self):

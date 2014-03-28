@@ -24,11 +24,7 @@ from itertools import chain
 import os.path
 
 
-# XXX rvb 2014-03-21 bug=1235479: The 'purpose' is made optional for now so
-# that this method can cope with both the old layout (which had the 'purpose'
-# as part of the images' path) and the new one.  Once the old script is
-# removed, this parameter should be removed as well.
-def compose_image_path(arch, subarch, release, label, purpose=None):
+def compose_image_path(arch, subarch, release, label):
     """Compose the TFTP path for a PXE kernel/initrd directory.
 
     The path returned is relative to the TFTP root, as it would be
@@ -38,15 +34,11 @@ def compose_image_path(arch, subarch, release, label, purpose=None):
     :param subarch: Sub-architecture, or "generic" if there is none.
     :param release: Operating system release, e.g. "precise".
     :param label: Release label, e.g. "release" or "alpha-2".
-    :param purpose: Purpose of the image, e.g. "install" or
-        "commissioning".
     :return: Path for the corresponding image directory (containing a
         kernel and initrd) as exposed over TFTP.
     """
-    elements = [arch, subarch, release, label]
-    if purpose is not None:
-        elements.append(purpose)
-    return '/'.join(elements)
+    # This is a TFTP path, not a local filesystem path, so hard-code the slash.
+    return '/'.join([arch, subarch, release, label])
 
 
 def locate_tftp_path(path, tftproot):
