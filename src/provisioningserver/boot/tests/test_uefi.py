@@ -110,7 +110,7 @@ class TestRenderUEFIConfig(MAASTestCase):
             "kernel_params": make_kernel_parameters(purpose="local"),
             }
         output = method.render_config(**options)
-        self.assertIn("chainloader +1", output)
+        self.assertIn("configfile /efi/ubuntu/grub.cfg", output)
 
 
 class TestUEFIBootMethodRegex(MAASTestCase):
