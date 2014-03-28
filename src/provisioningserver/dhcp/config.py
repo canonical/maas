@@ -46,7 +46,7 @@ class DHCPConfigError(Exception):
 def compose_conditional_bootloader():
     output = ""
     behaviour = chain(["if"], repeat("elsif"))
-    for method in BootMethodRegistry.get_items().values():
+    for _, method in BootMethodRegistry:
         output += CONDITIONAL_BOOTLOADER.format(
             behaviour=next(behaviour), arch_octet=method.arch_octet,
             bootloader=method.bootloader_path).strip() + ' '

@@ -117,7 +117,7 @@ class TFTPBackend(FilesystemSynchronousBackend):
 
     def get_boot_method(self, file_name):
         """Finds the correct boot method."""
-        for method in BootMethodRegistry.get_items().values():
+        for _, method in BootMethodRegistry:
             params = method.match_config_path(file_name)
             if params is not None:
                 return method, params

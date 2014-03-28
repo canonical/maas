@@ -26,9 +26,9 @@ from errno import ENOENT
 from os import path
 
 from provisioningserver.boot.tftppath import compose_image_path
-from provisioningserver.driver.registry import Registry
 from provisioningserver.kernel_opts import compose_kernel_command_line
 from provisioningserver.utils import locate_config
+from provisioningserver.utils.registry import Registry
 import tempita
 
 
@@ -196,7 +196,7 @@ class BootMethod:
 
 
 class BootMethodRegistry(Registry):
-    registry_name = "boot_method"
+    """Registry for boot method classes."""
 
 
 # Import the supported boot methods after defining BootMethod.
@@ -209,4 +209,4 @@ builtin_boot_methods = [
     UEFIBootMethod(),
 ]
 for method in builtin_boot_methods:
-    BootMethodRegistry.register_item(method, method.name)
+    BootMethodRegistry.register_item(method.name, method)

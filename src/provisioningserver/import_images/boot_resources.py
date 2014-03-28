@@ -383,7 +383,7 @@ def install_boot_loaders(destination):
     """Install the all the required file from each bootloader method.
     :param destination: Directory where the loaders should be stored.
     """
-    for method in BootMethodRegistry.get_items().values():
+    for _, method in BootMethodRegistry:
         method.install_bootloader(destination)
 
 

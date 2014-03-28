@@ -62,11 +62,10 @@ def make_kernel_parameters(testcase=None, **parms):
             # preset kernel options.
             return params
         resource = Architecture(name, name)
-        ArchitectureRegistry.register_item(resource, name)
+        ArchitectureRegistry.register_item(name, resource)
 
-        def cleanup():
-            del ArchitectureRegistry.get_items()[name]
-        testcase.addCleanup(cleanup)
+        testcase.addCleanup(
+            ArchitectureRegistry.unregister_item, name)
 
     return params
 

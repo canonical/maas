@@ -23,8 +23,8 @@ from abc import (
     abstractmethod,
     )
 
-from provisioningserver.driver.registry import Registry
 from provisioningserver.power_schema import JSON_POWER_TYPE_PARAMETERS
+from provisioningserver.utils.registry import Registry
 
 
 class Architecture:
@@ -112,22 +112,22 @@ class HardwareDiscoverContext:
 
 
 class ArchitectureRegistry(Registry):
-    registry_name = "architecture"
+    """Registry for architecture classes."""
 
     @classmethod
     def get_by_pxealias(cls, alias):
-        for arch in cls.get_items().values():
+        for _, arch in cls:
             if alias in arch.pxealiases:
                 return arch
         return None
 
 
 class BootResourceRegistry(Registry):
-    registry_name = "bootresource"
+    """Registry for boot resource classes."""
 
 
 class PowerTypeRegistry(Registry):
-    registry_name = "power_type"
+    """Registry for power type classes."""
 
 
 builtin_architectures = [
@@ -141,9 +141,9 @@ builtin_architectures = [
         pxealiases=["arm"], kernel_options=["console=ttyAMA0"]),
 ]
 for arch in builtin_architectures:
-    ArchitectureRegistry.register_item(arch, arch.name)
+    ArchitectureRegistry.register_item(arch.name, arch)
 
 
 builtin_power_types = JSON_POWER_TYPE_PARAMETERS
 for power_type in builtin_power_types:
-    PowerTypeRegistry.register_item(power_type, power_type['name'])
+    PowerTypeRegistry.register_item(power_type['name'], power_type)
