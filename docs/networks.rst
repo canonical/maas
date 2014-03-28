@@ -1,11 +1,16 @@
 .. -*- mode: rst -*-
 
+.. _networks:
+
 Networks
 ========
 
 .. note::
+
   This feature is available in MAAS versions 1.5 and above, starting with
-  revision 1961.
+  revision 1961. If you're writing a client application, you can check if MAAS
+  supports this feature via the web API; see the documentation for the
+  ``networks-management`` capability :ref:`here<cap-networks-management>`.
 
 A MAAS cluster controller can manage nodes on one or more networks.  The
 cluster controller must have direct interfaces connected to these networks,

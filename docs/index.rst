@@ -80,6 +80,7 @@ API / CLI Documentation
 
    api
    maascli
+   capabilities
 
 
 ***************

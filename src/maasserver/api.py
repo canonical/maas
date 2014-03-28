@@ -2206,13 +2206,13 @@ class UserHandler(OperationsHandler):
     def read(self, request, username):
         return get_object_or_404(User, username=username)
 
-# A description of the API's capabilities.
-API_CAPABILITIES = {
-    'networks-management': 'Documentation'
-}
 
+# MAAS capabilities. See docs/capabilities.rst for documentation.
+CAP_NETWORKS_MANAGEMENT = 'networks-management'
 
-API_CAPABILITIES_LIST = sorted(API_CAPABILITIES)
+API_CAPABILITIES_LIST = [
+    CAP_NETWORKS_MANAGEMENT,
+]
 
 
 class VersionHandler(AnonymousOperationsHandler):
