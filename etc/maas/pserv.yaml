@@ -31,7 +31,12 @@ broker:
 ## TFTP configuration.
 #
 tftp:
-  # root: /var/lib/maas/tftp
+  # The "root" setting has been replaced by "resource_root".  The old setting
+  # is used one final time when upgrading a pre-14.04 cluster controller to a
+  # 14.04 version.  After that upgrade, it can be removed.
+  #
+  # resource_root: /var/lib/maas/boot-resources/current/
+
   # port: 69
   port: 5244
   ## The URL to be contacted to generate PXE configurations.

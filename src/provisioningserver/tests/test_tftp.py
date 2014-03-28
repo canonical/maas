@@ -252,7 +252,7 @@ class TestTFTPService(MAASTestCase):
         example_generator = "http://example.com/generator"
         example_port = factory.getRandomPort()
         tftp_service = TFTPService(
-            root=example_root, generator=example_generator,
+            resource_root=example_root, generator=example_generator,
             port=example_port)
         tftp_service.updateServers()
         # The "tftp" service is a multi-service containing UDP servers for
@@ -304,7 +304,7 @@ class TestTFTPService(MAASTestCase):
             lambda: interfaces)
 
         tftp_service = TFTPService(
-            root=self.make_dir(), generator="http://mighty/wind",
+            resource_root=self.make_dir(), generator="http://mighty/wind",
             port=factory.getRandomPort())
         tftp_service.updateServers()
 

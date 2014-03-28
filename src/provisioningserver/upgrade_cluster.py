@@ -160,6 +160,11 @@ def rewrite_boot_resources_config(config_file):
 
     Supports the `generate_boot_resources_config` upgrade hook.
     """
+    # Look for images using the old tftp root setting, not the tftp
+    # resource_root setting.  The latter points to where the newer,
+    # Simplestreams-based boot images live.
+    # This should be the final use of the old tftp root setting.  After this
+    # has run, it serves no more purpose.
     tftproot = Config.load_from_cache()['tftp']['root']
     config = BootConfig.load_from_cache(config_file)
     old_images = find_old_imports(tftproot)

@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Install a pre-boot loader for TFTP download."""
@@ -92,7 +92,7 @@ def run(args):
     This won't overwrite an existing loader if its contents are unchanged.
     """
     config = Config.load(args.config_file)
-    tftproot = config["tftp"]["root"]
+    tftproot = config["tftp"]["resource_root"]
     destination_path = make_destination(tftproot)
     destination = os.path.join(destination_path, os.path.basename(args.loader))
     install_bootloader(args.loader, destination)

@@ -21,6 +21,7 @@ import os.path
 
 from provisioningserver.boot.install_bootloader import make_destination
 from provisioningserver.config import Config
+from provisioningserver.utils import write_text_file
 
 
 CONFIG_FILE = """
@@ -44,8 +45,6 @@ def run(args):
     directory structure.
     """
     config = Config.load(args.config_file)
-    grubroot = os.path.join(config["tftp"]["root"], 'grub')
+    grubroot = os.path.join(config["tftp"]["resource_root"], 'grub')
     destination_path = make_destination(grubroot)
-    destination = os.path.join(destination_path, 'grub.cfg')
-    with open(destination, 'wb') as stream:
-        stream.write(CONFIG_FILE.encode("utf-8"))
+    write_text_file(os.path.join(destination_path, 'grub.cfg'), CONFIG_FILE)

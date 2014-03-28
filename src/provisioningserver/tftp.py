@@ -228,16 +228,17 @@ class TFTPService(MultiService, object):
 
     """
 
-    def __init__(self, root, port, generator):
+    def __init__(self, resource_root, port, generator):
         """
-        :param root: The root directory for this TFTP server.
+        :param resource_root: The root directory for this TFTP server.
         :param port: The port on which each server should be started.
         :param generator: The URL to be queried for PXE configuration.
             This will normally point to the `pxeconfig` endpoint on the
             region-controller API.
         """
         super(TFTPService, self).__init__()
-        self.backend, self.port = TFTPBackend(root, generator), port
+        self.backend = TFTPBackend(resource_root, generator)
+        self.port = port
         # Establish a periodic call to self.updateServers() every 45
         # seconds, so that this service eventually converges on truth.
         # TimerService ensures that a call is made to it's target

@@ -28,7 +28,7 @@ from maastesting.utils import (
 from provisioningserver.boot import tftppath
 from provisioningserver.boot.pxe import PXEBootMethod
 from provisioningserver.boot.uefi import UEFIBootMethod
-from provisioningserver.testing.config import ConfigFixture
+from provisioningserver.testing.config import set_tftp_root
 from testtools.content import text_content
 from testtools.matchers import (
     DirExists,
@@ -178,9 +178,7 @@ class TestImportPXEFiles(MAASTestCase):
             "new version to use simplestreams v2's data.  These tests need "
             "to be completely refactored.")
         self.tftproot = self.make_dir()
-        self.config = {"tftp": {"root": self.tftproot}}
-        self.config_fixture = ConfigFixture(self.config)
-        self.useFixture(self.config_fixture)
+        self.config_fixture = self.useFixture(set_tftp_root(self.tftproot))
 
     def get_arch(self):
         """Return an existing, supported architecture/subarchitecture pair."""

@@ -110,7 +110,20 @@ class ConfigTFTP(Schema):
 
     if_key_missing = None
 
-    root = String(if_missing="/var/lib/maas/boot-resources/current/")
+    # Obsolete: old TFTP root directory.  This is retained for the purpose of
+    # deriving new, Simplestreams-based import configuration from previously
+    # imported boot images.
+    # The last time this is needed is for upgrading an older cluster
+    # controller to the Ubuntu 14.04 version of MAAS.  After installation of
+    # the 14.04 version, this setting is never used.
+    root = String(if_missing="/var/lib/maas/tftp")
+
+    # TFTP root directory, managed by the Simplestreams-based import script.
+    # Equates to $storage/current.  The import script maintains "current" as a
+    # symlink pointing to the most recent images.
+    resource_root = String(
+        if_missing="/var/lib/maas/boot-resources/current/")
+
     port = Int(min=1, max=65535, if_missing=69)
     generator = String(if_missing=b"http://localhost/MAAS/api/1.0/pxeconfig/")
 

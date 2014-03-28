@@ -350,7 +350,9 @@ class TestConfig(MAASTestCase):
         'tftp': {
             'generator': 'http://localhost/MAAS/api/1.0/pxeconfig/',
             'port': 69,
-            'root': "/var/lib/maas/boot-resources/current/",
+            # The "root" setting is obsolete; resource_root replaces it.
+            'root': "/var/lib/maas/tftp",
+            'resource_root': "/var/lib/maas/boot-resources/current/",
             },
         }
 

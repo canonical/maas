@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Twisted Application Plugin code for the MAAS provisioning server"""
@@ -151,7 +151,9 @@ class ProvisioningServiceMaker(object):
 
     def _makeTFTPService(self, tftp_config):
         """Create the dynamic TFTP service."""
-        tftp_service = TFTPService(**tftp_config)
+        tftp_service = TFTPService(
+            resource_root=tftp_config['resource_root'],
+            port=tftp_config['port'], generator=tftp_config['generator'])
         tftp_service.setName("tftp")
         return tftp_service
 

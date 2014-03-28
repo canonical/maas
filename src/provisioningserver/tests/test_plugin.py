@@ -1,4 +1,4 @@
-# Copyright 2005-2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2005-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the psmaas TAP."""
@@ -131,7 +131,7 @@ class TestProvisioningServiceMaker(MAASTestCase):
         config = {
             "tftp": {
                 "generator": "http://candlemass/solitude",
-                "root": self.tempdir,
+                "resource_root": self.tempdir,
                 "port": factory.getRandomPort(),
                 },
             }
@@ -146,7 +146,7 @@ class TestProvisioningServiceMaker(MAASTestCase):
             IsInstance(TFTPBackend),
             AfterPreprocessing(
                 lambda backend: backend.base.path,
-                Equals(config["tftp"]["root"])),
+                Equals(config["tftp"]["resource_root"])),
             AfterPreprocessing(
                 lambda backend: backend.generator_url.geturl(),
                 Equals(config["tftp"]["generator"])))

@@ -1,4 +1,4 @@
-# Copyright 2005-2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2005-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the psmaas TAP."""
@@ -83,4 +83,4 @@ def set_tftp_root(tftproot):
 
     Add the resulting fixture to your test using `self.useFixture`.
     """
-    return ConfigFixture({'tftp': {'root': tftproot}})
+    return ConfigFixture({'tftp': {'resource_root': tftproot}})

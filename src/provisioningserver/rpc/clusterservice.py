@@ -85,7 +85,7 @@ class Cluster(amp.AMP, object):
         :py:class:`~provisioningserver.rpc.cluster.ListBootImages`.
         """
         images = tftppath.list_boot_images(
-            Config.load_from_cache()['tftp']['root'])
+            Config.load_from_cache()['tftp']['resource_root'])
         return {"images": images}
 
     @cluster.DescribePowerTypes.responder
