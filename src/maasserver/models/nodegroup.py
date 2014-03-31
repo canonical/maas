@@ -68,13 +68,13 @@ class NodeGroupManager(Manager):
         dhcp_values = [
             interface,
             subnet_mask,
-            broadcast_ip,
             router_ip,
             ip_range_low,
             ip_range_high,
             ]
         assert all(dhcp_values) or not any(dhcp_values), (
-            "Provide all DHCP settings, or none at all.")
+            "Provide all DHCP settings, or none at all. "
+            "Only the broadcast address is optional.")
 
         if cluster_name is None:
             cluster_name = NODEGROUP_CLUSTER_NAME_TEMPLATE % {'uuid': uuid}

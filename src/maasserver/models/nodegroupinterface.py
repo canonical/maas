@@ -86,22 +86,19 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
 
     @property
     def network(self):
-        """Return the network defined by the broadcast address and net mask.
+        """Return the network defined by the interface's address and netmask.
 
-        If either the broadcast address or the subnet mask is unset, returns
-        None.
-
-        :return: :class:`IPNetwork`
-        :raise AddrFormatError: If the combination of broadcast address and
+        :return: :class:`IPNetwork`, or `None` if the netmask is unset.
+        :raise AddrFormatError: If the combination of interface address and
             subnet mask is malformed.
         """
-        broadcast = self.broadcast_ip
+        ip = self.ip
         netmask = self.subnet_mask
         # Nullness check for GenericIPAddress fields is deliberately kept
         # vague: GenericIPAddressField seems to represent nulls as empty
         # strings.
-        if broadcast and netmask:
-            return make_network(broadcast, netmask).cidr
+        if netmask:
+            return make_network(ip, netmask).cidr
         else:
             return None
 
@@ -116,20 +113,17 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
     def clean_network_valid(self):
         """Validate the network.
 
-        This validates that the network defined by broadcast_ip and
-        subnet_mask is valid.
+        This validates that the network defined by `ip` and `subnet_mask` is
+        valid.
         """
         try:
             self.network
-        except AddrFormatError, e:
-            # Technically, this should be a global error but it's
-            # more user-friendly to precisely point out where the error
-            # comes from.
-            raise ValidationError(
-                {
-                    'broadcast_ip': [e.message],
-                    'subnet_mask': [e.message],
-                })
+        except AddrFormatError as e:
+            # The interface's address is validated separately.  If the
+            # combination with the netmask is invalid, either there's already
+            # going to be a specific validation error for the IP address, or
+            # the failure is due to an invalid netmask.
+            raise ValidationError({'subnet_mask': [e.message]})
 
     def clean_network_not_too_big(self):
         # If management is not 'UNMANAGED', refuse huge networks.
@@ -141,10 +135,7 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
                         "Cannot create an address space bigger than "
                         "a /%d network.  This network is a /%d network." % (
                             MINIMUM_NETMASK_BITS, network.prefixlen))
-                    raise ValidationError({
-                        'broadcast_ip': [message],
-                        'subnet_mask': [message],
-                    })
+                    raise ValidationError({'subnet_mask': [message]})
 
     def clean_network_config_if_managed(self):
         # If management is not 'UNMANAGED', all the network information
@@ -152,7 +143,6 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
         if self.management != NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED:
             mandatory_fields = [
                 'interface',
-                'broadcast_ip',
                 'subnet_mask',
                 'router_ip',
                 'ip_range_low',
@@ -170,15 +160,18 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
     def clean_ips_in_network(self):
         """Ensure that the network settings are all congruent.
 
-        Specifically, it ensures that the interface address, router address,
-        and the address range, all fall within the network defined by the
-        broadcast address and subnet mask.
+        Specifically, it ensures that the router address, the DHCP address
+        range, and the broadcast address if given, all fall within the network
+        defined by the interface's IP address and the subnet mask.
+
+        If no broadcast address is given, the network's default broadcast
+        address will be used.
         """
         network = self.network
         if network is None:
             return
         network_settings = (
-            ("ip", self.ip),
+            ("broadcast_ip", self.broadcast_ip),
             ("router_ip", self.router_ip),
             ("ip_range_low", self.ip_range_low),
             ("ip_range_high", self.ip_range_high),
@@ -190,6 +183,12 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
                     "%s not in the %s network" % (address, network))
         if len(network_errors) != 0:
             raise ValidationError(network_errors)
+
+        # Deliberately vague nullness check.  A null IP address seems to be
+        # None in some situations, or an empty string in others.
+        if not self.broadcast_ip:
+            # No broadcast address given.  Set the default.
+            self.broadcast_ip = network.broadcast
 
     def clean_fields(self, *args, **kwargs):
         super(NodeGroupInterface, self).clean_fields(*args, **kwargs)

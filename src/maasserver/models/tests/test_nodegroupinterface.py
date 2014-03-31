@@ -20,7 +20,10 @@ from maasserver.enum import (
     NODEGROUPINTERFACE_MANAGEMENT,
     NODEGROUPINTERFACE_MANAGEMENT_CHOICES_DICT,
     )
-from maasserver.models import NodeGroup
+from maasserver.models import (
+    NodeGroup,
+    NodeGroupInterface,
+    )
 from maasserver.models.nodegroupinterface import MINIMUM_NETMASK_BITS
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -44,28 +47,28 @@ class TestNodeGroupInterface(MAASServerTestCase):
         interface = make_interface(network=network)
         self.assertEqual(IPNetwork("10.0.0.0/24"), interface.network)
 
-    def test_network_is_defined_when_broadcast_and_mask_are(self):
+    def test_network_is_defined_when_netmask_is(self):
         interface = make_interface()
-        interface.broadcast = "10.0.0.255"
+        interface.ip = "10.0.0.9"
         interface.subnet_mask = "255.255.255.0"
         self.assertIsInstance(interface.network, IPNetwork)
 
-    def test_network_is_undefined_when_broadcast_is_None(self):
+    def test_network_does_not_require_broadcast_address(self):
         interface = make_interface()
         interface.broadcast_ip = None
-        self.assertIsNone(interface.network)
+        self.assertIsInstance(interface.network, IPNetwork)
 
-    def test_network_is_undefined_when_broadcast_is_empty(self):
+    def test_network_does_not_require_nonempty_broadcast_address(self):
         interface = make_interface()
         interface.broadcast_ip = ""
-        self.assertIsNone(interface.network)
+        self.assertIsInstance(interface.network, IPNetwork)
 
     def test_network_is_undefined_when_subnet_mask_is_None(self):
         interface = make_interface()
         interface.subnet_mask = None
         self.assertIsNone(interface.network)
 
-    def test_network_is_undefined_subnet_mask_is_empty(self):
+    def test_network_is_undefined_when_subnet_mask_is_empty(self):
         interface = make_interface()
         interface.subnet_mask = ""
         self.assertIsNone(interface.network)
@@ -78,8 +81,9 @@ class TestNodeGroupInterface(MAASServerTestCase):
 
     def test_clean_ips_in_network_validates_IP(self):
         network = IPNetwork('192.168.0.3/24')
+        ip_outside_network = '192.168.2.1'
         checked_fields = [
-            'ip',
+            'broadcast_ip',
             'router_ip',
             'ip_range_low',
             'ip_range_high',
@@ -87,14 +91,14 @@ class TestNodeGroupInterface(MAASServerTestCase):
         for field in checked_fields:
             nodegroup = factory.make_node_group(network=network)
             [interface] = nodegroup.get_managed_interfaces()
-            ip = '192.168.2.1'
-            setattr(interface, field, '192.168.2.1')
-            message = (
-                "%s not in the %s network" % (ip, '192.168.0.0/24'))
+            setattr(interface, field, ip_outside_network)
+            message = "%s not in the %s network" % (
+                ip_outside_network,
+                '192.168.0.0/24',
+                )
             exception = self.assertRaises(
                 ValidationError, interface.full_clean)
-            self.assertEqual(
-                {field: [message]}, exception.message_dict)
+            self.assertEqual({field: [message]}, exception.message_dict)
 
     def test_clean_network(self):
         nodegroup = factory.make_node_group(
@@ -102,13 +106,10 @@ class TestNodeGroupInterface(MAASServerTestCase):
         [interface] = nodegroup.get_managed_interfaces()
         # Set a bogus subnet mask.
         interface.subnet_mask = '0.9.0.4'
-        message = 'invalid IPNetwork 192.168.0.255/0.9.0.4'
+        message = "invalid IPNetwork %s/0.9.0.4" % interface.ip
         exception = self.assertRaises(ValidationError, interface.full_clean)
         self.assertEqual(
-            {
-                'subnet_mask': [message],
-                'broadcast_ip': [message],
-            },
+            {'subnet_mask': [message]},
             exception.message_dict)
 
     def test_clean_network_rejects_huge_network(self):
@@ -120,10 +121,7 @@ class TestNodeGroupInterface(MAASServerTestCase):
             "This network is a /%d network." % (
                 MINIMUM_NETMASK_BITS, MINIMUM_NETMASK_BITS - 1))
         self.assertEqual(
-            {
-                'subnet_mask': [message],
-                'broadcast_ip': [message],
-            },
+            {'subnet_mask': [message]},
             exception.message_dict)
 
     def test_clean_network_accepts_network_if_not_too_big(self):
@@ -142,7 +140,6 @@ class TestNodeGroupInterface(MAASServerTestCase):
         network = IPNetwork('192.168.0.3/24')
         checked_fields = [
             'interface',
-            'broadcast_ip',
             'subnet_mask',
             'router_ip',
             'ip_range_low',
@@ -160,3 +157,23 @@ class TestNodeGroupInterface(MAASServerTestCase):
                 "That field cannot be empty (unless that interface is "
                 "'unmanaged')")
             self.assertEqual({field: [message]}, exception.message_dict)
+
+    def test_clean_network_config_sets_default_if_netmask_not_given(self):
+        network = factory.getRandomNetwork()
+        nodegroup = factory.make_node_group(
+            network=network,
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
+        [interface] = nodegroup.get_managed_interfaces()
+        interface.full_clean()
+        self.assertEqual(unicode(network.broadcast), interface.broadcast_ip)
+
+    def test_clean_network_config_sets_no_broadcast_without_netmask(self):
+        network = factory.getRandomNetwork()
+        nodegroup = factory.make_node_group(
+            network=network,
+            management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
+        interface = NodeGroupInterface.objects.get(nodegroup=nodegroup)
+        interface.subnet_mask = None
+        interface.broadcast_ip = None
+        interface.full_clean()
+        self.assertIsNone(interface.broadcast_ip)

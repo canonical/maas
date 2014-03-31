@@ -34,6 +34,7 @@ from maasserver.rpc.regionservice import (
     RegionService,
     )
 from maasserver.rpc.testing.doubles import IdentifyingRegionServer
+from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.factory import factory
 from maastesting.matchers import (
     MockCalledOnceWith,
@@ -195,7 +196,7 @@ from provisioningserver.rpc.interfaces import IConnection
 from zope.interface.verify import verifyObject
 
 
-class TestRegionServer(MAASTestCase):
+class TestRegionServer(MAASServerTestCase):
 
     def test_interfaces(self):
         protocol = RegionServer()
