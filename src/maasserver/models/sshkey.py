@@ -17,7 +17,6 @@ __all__ = [
     ]
 
 
-import binascii
 from cgi import escape
 
 from django.contrib.auth.models import User
@@ -28,13 +27,13 @@ from django.db.models import (
     TextField,
     )
 from django.utils.safestring import mark_safe
-from maasserver import DefaultMeta
+from maasserver import (
+    DefaultMeta,
+    logger,
+    )
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
-from twisted.conch.ssh.keys import (
-    BadKeyError,
-    Key,
-    )
+from twisted.conch.ssh.keys import Key
 
 
 class SSHKeyManager(Manager):
@@ -49,11 +48,17 @@ def validate_ssh_public_key(value):
     """Validate that the given value contains a valid SSH public key."""
     try:
         key = Key.fromString(value)
+    except Exception:
+        # twisted.conch.ssh.keys.Key.fromString raises all sorts of exceptions.
+        # Here, we catch them all and return a ValidationError since this
+        # method only aims at validating keys and not return the exact cause of
+        # the failure.
+        logger.exception("Invalid SSH public key")
+        raise ValidationError("Invalid SSH public key.")
+    else:
         if not key.isPublic():
             raise ValidationError(
                 "Invalid SSH public key (this key is a private key).")
-    except (BadKeyError, binascii.Error, UnicodeEncodeError):
-        raise ValidationError("Invalid SSH public key.")
 
 
 HELLIPSIS = '&hellip;'

@@ -23,11 +23,13 @@ from maasserver.models import SSHKey
 from maasserver.models.sshkey import (
     get_html_display_for_key,
     HELLIPSIS,
+    Key,
     validate_ssh_public_key,
     )
 from maasserver.testing import get_data
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from mock import Mock
 from testtools.matchers import EndsWith
 
 
@@ -62,6 +64,13 @@ class SSHKeyValidatorTest(MAASServerTestCase):
             factory.getRandomString())
         self.assertRaises(
             ValidationError, validate_ssh_public_key, key_string)
+
+    def test_does_not_validate_wrong_key(self):
+        # If twisted.conch.ssh.keys.Key raises an exception, the validation
+        # fails.
+        self.patch(Key, 'fromString', Mock(side_effect=Exception()))
+        self.assertRaises(
+            ValidationError, validate_ssh_public_key, factory.make_name('key'))
 
     def test_does_not_validate_rsa_private_key(self):
         key_string = get_data('data/test_rsa')
