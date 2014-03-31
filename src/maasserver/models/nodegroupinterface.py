@@ -187,8 +187,9 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
         # Deliberately vague nullness check.  A null IP address seems to be
         # None in some situations, or an empty string in others.
         if not self.broadcast_ip:
-            # No broadcast address given.  Set the default.
-            self.broadcast_ip = network.broadcast
+            # No broadcast address given.  Set the default.  Set it in string
+            # form; validation breaks if we pass an IPAddress.
+            self.broadcast_ip = unicode(network.broadcast)
 
     def clean_fields(self, *args, **kwargs):
         super(NodeGroupInterface, self).clean_fields(*args, **kwargs)

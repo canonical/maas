@@ -25,6 +25,7 @@ from maasserver.models import (
     NodeGroupInterface,
     )
 from maasserver.models.nodegroupinterface import MINIMUM_NETMASK_BITS
+from maasserver.testing import reload_object
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.network import make_network
@@ -177,3 +178,17 @@ class TestNodeGroupInterface(MAASServerTestCase):
         interface.broadcast_ip = None
         interface.full_clean()
         self.assertIsNone(interface.broadcast_ip)
+
+    def test_default_broadcast_ip_saves_cleanly(self):
+        # When the default value for broadcast_ip was introduced, it broke
+        # the form but not tests.  The reason: the default was an IPAddress,
+        # but GenericIPAddressValidation expects a string.
+        nodegroup = factory.make_node_group()
+        # Can't use the factory for this one; it may hide the problem.
+        interface = NodeGroupInterface(
+            nodegroup=nodegroup, ip='10.1.1.1', router_ip='10.1.1.254',
+            subnet_mask='255.255.255.0', ip_range_low='10.1.1.100',
+            ip_range_high='10.1.1.200', interface='eth99',
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
+        interface.save()
+        self.assertEqual(interface, reload_object(interface))
