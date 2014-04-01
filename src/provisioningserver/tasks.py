@@ -452,12 +452,6 @@ def import_boot_images(http_proxy=None, main_archive=None, ports_archive=None,
     if http_proxy is not None:
         env['http_proxy'] = http_proxy
         env['https_proxy'] = http_proxy
-    if main_archive is not None:
-        env['MAIN_ARCHIVE'] = main_archive
-    if ports_archive is not None:
-        env['PORTS_ARCHIVE'] = ports_archive
-    if cloud_images_archive is not None:
-        env['CLOUD_IMAGES_ARCHIVE'] = cloud_images_archive
     call_and_check(['sudo', '-n', '-E', 'maas-import-pxe-files'], env=env)
     if callback is not None:
         callback.delay()

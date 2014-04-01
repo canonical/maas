@@ -641,25 +641,6 @@ class TestImportPxeFiles(PservTestCase):
         self.assertThat(recorder, MockCalledOnceWith(
             ['sudo', '-n', '-E', 'maas-import-pxe-files'], env=expected_env))
 
-    def test_import_boot_images_sets_archive_locations(self):
-        self.patch(tasks, 'call_and_check')
-        archives = {
-            'main_archive': self.make_archive_url('main'),
-            'ports_archive': self.make_archive_url('ports'),
-            'cloud_images_archive': self.make_archive_url('cloud-images'),
-        }
-        expected_settings = {
-            parameter.upper(): value
-            for parameter, value in archives.items()}
-        import_boot_images(**archives)
-        env = tasks.call_and_check.call_args[1]['env']
-        archive_settings = {
-            variable: value
-            for variable, value in env.items()
-            if variable.endswith('_ARCHIVE')
-        }
-        self.assertEqual(expected_settings, archive_settings)
-
     def test_import_boot_images_calls_callback(self):
         self.patch(tasks, 'call_and_check')
         mock_callback = Mock()
