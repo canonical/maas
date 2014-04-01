@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MAAS-IMPORT-PXE-FILES" "8" "February 28, 2014" "1.5" "MAAS"
+.TH "MAAS-IMPORT-PXE-FILES" "8" "April 01, 2014" "1.5" "MAAS"
 .SH NAME
 maas-import-pxe-files \- MAAS helper script
 .
@@ -40,25 +40,29 @@ images and organises them for use by MAAS in commissioning nodes.
 The script is usually run regularly by a cron task, though it
 needs to be run manually the first time a MAAS system is installed.
 Images that are already in place are kept unchanged, unless the
-version in the archive has since been updated.
+version in the archive has since been updated.  Only new data is
+downloaded, so routine runs will not be costly.
 .sp
-The script reads a configuration file /etc/maas/import_pxe_files in
+An easier way to run the script is to trigger it from the MAAS web user
+interface.  To do that, log in to your MAAS as an administrator using a
+web browser, click the cogwheel icon in the top right of the page to go
+to the Settings page, and click "Import boot images."  This will start
+imports on all cluster controllers simultaneously.  The same thing can
+also be done through the region\-controller API, or through the
+command\-line interface.
+.sp
+The script reads a configuration file \fI/etc/maas/bootresources.yaml\fP in
 order to determine:
-.sp
-\fBARCHIVE:\fP
-Location of the Ubuntu download archive
-.sp
-\fBRELEASES:\fP
-Ubuntu releases to download
-.sp
-\fBARCHES:\fP
-Architectures for which images should be downloaded
-.sp
-The script uses \fIwget\fP to download the kernel and initrd image for
-each architecture in ARCHES and each release in RELEASES.  In addition
-it copies the Intel\-architecture pre\-boot loader \fIpxelinux.0\fP (plus
-some of its modules such as \fIchain.c32\fP) from its installed location in
-/usr/lib/syslinux/.
+.INDENT 0.0
+.IP \(bu 2
+the location in the filesystem where downloaded images should be stored,
+and made available to nodes through TFTP and iSCSI;
+.IP \(bu 2
+where boot images should be downloaded; and
+.IP \(bu 2
+which kinds of images are needed: architecture, operating system
+release, etc.
+.UNINDENT
 .sp
 These images are the minimum that\(aqs required to start installing a node.
 During installation, a node may download its packages over the network.
