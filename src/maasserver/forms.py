@@ -1512,18 +1512,3 @@ class NetworkDisconnectMACsForm(MACsForm):
     def save(self):
         """Disconnect the MAC addresses from the form's network."""
         self.network.macaddress_set.remove(*self.get_macs())
-
-
-class NetworkListForm(forms.Form):
-    """Form to list networks."""
-
-    networks = InstanceListField(
-        model_class=Network, field_name='name',
-        label="List of network names.", required=True, error_messages={
-            'invalid_list':
-            "Invalid parameter: list of node system IDs required.",
-            })
-
-    def get_networks(self):
-        """Return the networks whose names were passed in."""
-        return self.cleaned_data.get('networks')
