@@ -336,5 +336,11 @@ class Network(CleanSave, Model):
             for other in Network.objects.all().exclude(id=self.id):
                 other_net = other.get_network()
                 if my_net in other_net or other_net in my_net:
-                    raise ValidationError(
+                    # This has to get an error dict, not a simple error string,
+                    # or Django throws a fit (bug 1299114).
+                    message = (
                         "IP range clashes with network '%s'." % other.name)
+                    raise ValidationError({
+                        'ip': [message],
+                        'netmask': [message],
+                        })

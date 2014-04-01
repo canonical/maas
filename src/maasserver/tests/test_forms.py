@@ -1731,6 +1731,29 @@ class TestNetworkForm(MAASServerTestCase):
         network = reload_object(network)
         self.assertItemsEqual(new_macs, network.macaddress_set.all())
 
+    def test_reports_clashes(self):
+        # The uniqueness test on the Network model raises a ValidationError
+        # when it finds a clash, but Django is prone to crashing when the
+        # exception doesn't take the expected form (bug 1299114).
+        big_network = IPNetwork('10.9.0.0/16')
+        nested_network = IPNetwork('10.9.9.0/24')
+
+        existing_network = factory.make_network(network=big_network)
+        form = NetworkForm(data={
+            'name': factory.make_name('clashing-network'),
+            'ip': "%s" % nested_network.cidr.ip,
+            'netmask': "%s" % nested_network.netmask,
+            'vlan_tag': factory.make_vlan_tag(),
+            })
+        self.assertFalse(form.is_valid())
+        message = "IP range clashes with network '%s'." % existing_network.name
+        self.assertEqual(
+            {
+                'ip': [message],
+                'netmask': [message],
+            },
+            form.errors)
+
 
 class TestInstanceListField(MAASServerTestCase):
     """Tests for `InstanceListingField`."""
