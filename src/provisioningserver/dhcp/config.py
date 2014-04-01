@@ -38,6 +38,13 @@ CONDITIONAL_BOOTLOADER = """
        }}
 """
 
+# Used to generate the PXEBootLoader special case
+PXE_BOOTLOADER = """
+else {{
+          filename \"{bootloader}\";
+       }}
+"""
+
 
 class DHCPConfigError(Exception):
     """Exception raised for errors processing the DHCP config."""
@@ -46,10 +53,20 @@ class DHCPConfigError(Exception):
 def compose_conditional_bootloader():
     output = ""
     behaviour = chain(["if"], repeat("elsif"))
-    for _, method in BootMethodRegistry:
-        output += CONDITIONAL_BOOTLOADER.format(
-            behaviour=next(behaviour), arch_octet=method.arch_octet,
-            bootloader=method.bootloader_path).strip() + ' '
+    for name, method in BootMethodRegistry:
+        if name != "pxe":
+            output += CONDITIONAL_BOOTLOADER.format(
+                behaviour=next(behaviour), arch_octet=method.arch_octet,
+                bootloader=method.bootloader_path).strip() + ' '
+
+    # The PXEBootMethod is used in an else statement for the generated
+    # dhcpd config. This ensures that a booting node that does not
+    # provide an architecture octet, or architectures that emulate
+    # pxelinux can still boot.
+    pxe_method = BootMethodRegistry.get_item('pxe')
+    if pxe_method is not None:
+        output += PXE_BOOTLOADER.format(
+            bootloader=pxe_method.bootloader_path).strip()
     return output.strip()
 
 

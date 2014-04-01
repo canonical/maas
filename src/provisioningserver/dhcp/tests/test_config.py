@@ -116,8 +116,11 @@ class TestDHCPConfig(PservTestCase):
 
     def test_compose_conditional_bootloader(self):
         output = config.compose_conditional_bootloader()
-        for _, method in BootMethodRegistry:
-            self.assertThat(output, Contains(method.arch_octet))
+        for name, method in BootMethodRegistry:
+            if name == "pxe":
+                self.assertThat(output, Contains("else"))
+            else:
+                self.assertThat(output, Contains(method.arch_octet))
             self.assertThat(output, Contains(method.bootloader_path))
 
     def test_config_contains_compose_conditional_bootloader(self):
