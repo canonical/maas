@@ -13,8 +13,8 @@ str = None
 
 __metaclass__ = type
 __all__ = [
-    "add_arguments",
-    "run",
+    "install_bootloader",
+    "make_destination",
     ]
 
 import filecmp
@@ -22,7 +22,6 @@ import os.path
 from shutil import copyfile
 
 from provisioningserver.boot.tftppath import locate_tftp_path
-from provisioningserver.config import Config
 
 
 def make_destination(tftproot):
@@ -78,21 +77,3 @@ def install_bootloader(loader, destination):
         os.remove(temp_file)
     copyfile(loader, temp_file)
     os.rename(temp_file, destination)
-
-
-def add_arguments(parser):
-    parser.add_argument(
-        '--loader', dest='loader', default=None,
-        help="Pre-boot loader to install.")
-
-
-def run(args):
-    """Install a pre-boot loader into the TFTP directory structure.
-
-    This won't overwrite an existing loader if its contents are unchanged.
-    """
-    config = Config.load(args.config_file)
-    tftproot = config["tftp"]["resource_root"]
-    destination_path = make_destination(tftproot)
-    destination = os.path.join(destination_path, os.path.basename(args.loader))
-    install_bootloader(args.loader, destination)

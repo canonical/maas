@@ -22,41 +22,24 @@ from maastesting.utils import (
     age_file,
     get_write_time,
     )
-import provisioningserver.boot.install_bootloader
 from provisioningserver.boot.install_bootloader import (
     install_bootloader,
     make_destination,
     )
-from provisioningserver.boot.tftppath import locate_tftp_path
-from provisioningserver.testing.config import set_tftp_root
-from provisioningserver.utils import MainScript
 from testtools.matchers import (
     DirExists,
     FileContains,
-    FileExists,
     )
 
 
 class TestInstallBootloader(MAASTestCase):
 
     def test_integration(self):
-        tftproot = self.make_dir()
-        config_fixture = self.useFixture(set_tftp_root(tftproot))
-
-        loader = self.make_file()
-
-        action = factory.make_name("action")
-        script = MainScript(action)
-        script.register(action, provisioningserver.boot.install_bootloader)
-        script.execute(
-            ("--config-file", config_fixture.filename, action,
-             "--loader", loader))
-
-        bootloader_filename = os.path.basename(loader)
-        self.assertThat(
-            locate_tftp_path(
-                bootloader_filename, tftproot=tftproot),
-            FileExists())
+        loader_contents = factory.getRandomString()
+        loader = self.make_file(contents=loader_contents)
+        destination = self.make_file()
+        install_bootloader(loader, destination)
+        self.assertThat(destination, FileContains(loader_contents))
 
     def test_make_destination_creates_directory_if_not_present(self):
         tftproot = self.make_dir()
