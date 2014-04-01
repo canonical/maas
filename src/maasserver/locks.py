@@ -13,6 +13,7 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    "eventloop",
     "security",
     "startup",
 ]
@@ -25,3 +26,6 @@ startup = DatabaseLock(1)
 # Lock around performing critical security-related operations, like
 # generating or signing certificates.
 security = DatabaseLock(2)
+
+# Lock used when starting up the event-loop.
+eventloop = DatabaseLock(3)

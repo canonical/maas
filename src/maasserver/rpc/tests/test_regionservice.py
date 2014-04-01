@@ -25,7 +25,10 @@ import threading
 from crochet import wait_for_reactor
 from django.db import connection
 from django.db.utils import ProgrammingError
-from maasserver import eventloop
+from maasserver import (
+    eventloop,
+    locks,
+    )
 from maasserver.rpc import regionservice
 from maasserver.rpc.regionservice import (
     Region,
@@ -637,6 +640,34 @@ class TestRegionAdvertisingService(MAASTestCase):
             with closing(connection.cursor()) as cursor:
                 cursor.execute("SELECT * FROM eventloops")
                 self.assertEqual([], list(cursor))
+
+    def test_prepare_holds_startup_lock(self):
+        # Creating tables in PostgreSQL is a transactional operation
+        # like any other. If the isolation level is not sufficient - the
+        # default in Django - it is susceptible to races. Using a higher
+        # isolation level may lead to serialisation failures, for
+        # example. However, PostgreSQL provides advisory locking
+        # functions, and that's what RegionAdvertisingService.prepare
+        # takes advantage of to prevent concurrent creation of the
+        # eventloops table.
+
+        # A record of the lock's status, populated when a custom
+        # patched-in _do_create() is called.
+        locked = []
+
+        def _do_create(cursor):
+            locked.append(locks.eventloop.is_locked())
+
+        service = RegionAdvertisingService()
+        service._do_create = _do_create
+
+        # The lock is not held before and after prepare() is called.
+        self.assertFalse(locks.eventloop.is_locked())
+        service.prepare()
+        self.assertFalse(locks.eventloop.is_locked())
+
+        # The lock was held when _do_create() was called.
+        self.assertEqual([True], locked)
 
     def test_update(self):
         example_addresses = [

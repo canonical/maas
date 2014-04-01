@@ -70,7 +70,10 @@ class DatabaseLock(tuple):
             self.__class__.__name__, self[0], self[1])
 
     def is_locked(self):
-        stmt = "SELECT 1 FROM pg_locks WHERE classid = %s AND objid = %s"
+        stmt = (
+            "SELECT 1 FROM pg_locks"
+            " WHERE classid = %s AND objid = %s AND granted"
+        )
         with closing(connection.cursor()) as cursor:
             cursor.execute(stmt, self)
             return len(cursor.fetchall()) >= 1

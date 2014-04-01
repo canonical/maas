@@ -30,7 +30,10 @@ from django.db import (
     connection,
     transaction,
     )
-from maasserver import eventloop
+from maasserver import (
+    eventloop,
+    locks,
+    )
 from maasserver.utils import synchronised
 from provisioningserver.rpc import (
     cluster,
@@ -322,6 +325,7 @@ class RegionAdvertisingService(TimerService, object):
 
     @synchronous
     @synchronised(lock)
+    @synchronised(locks.eventloop)
     @transactional
     def prepare(self):
         """Ensure that the ``eventloops`` table exists.
