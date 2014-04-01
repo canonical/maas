@@ -25,16 +25,18 @@ from provisioningserver.config import BootConfig
 from provisioningserver.import_images import boot_resources
 
 
+def make_image_spec():
+    """Return an `ImageSpec` with random values."""
+    return boot_resources.ImageSpec(
+        factory.make_name('arch'),
+        factory.make_name('subarch'),
+        factory.make_name('release'),
+        factory.make_name('label'),
+        )
+
+
 class TestIterateBootResources(MAASTestCase):
     """Tests for `iterate_boot_resources`."""
-
-    def make_image_spec(self):
-        return boot_resources.ImageSpec(
-            factory.make_name('arch'),
-            factory.make_name('subarch'),
-            factory.make_name('release'),
-            factory.make_name('label'),
-            )
 
     def test_empty_hierarchy_yields_nothing(self):
         self.assertItemsEqual(
@@ -43,7 +45,7 @@ class TestIterateBootResources(MAASTestCase):
                 boot_resources.create_empty_hierarchy()))
 
     def test_finds_boot_resource(self):
-        image_spec = self.make_image_spec()
+        image_spec = make_image_spec()
         arch, subarch, release, label = image_spec
         self.assertItemsEqual(
             [image_spec],
@@ -102,6 +104,155 @@ class TestValuePassesFilter(MAASTestCase):
         self.assertTrue(
             boot_resources.value_passes_filter(
                 '*', factory.make_name('value')))
+
+
+class TestImagePassesFilter(MAASTestCase):
+    """Tests for `image_passes_filter`."""
+
+    def make_filter_from_image(self, image_spec=None):
+        """Create a filter dict that matches the given `ImageSpec`.
+
+        If `image_spec` is not given, creates a random value.
+        """
+        if image_spec is None:
+            image_spec = make_image_spec()
+        return {
+            'arches': [image_spec.arch],
+            'subarches': [image_spec.subarch],
+            'release': image_spec.release,
+            'labels': [image_spec.label],
+            }
+
+    def test_any_image_passes_none_filter(self):
+        arch, subarch, release, label = make_image_spec()
+        self.assertTrue(
+            boot_resources.image_passes_filter(
+                None, arch, subarch, release, label))
+
+    def test_any_image_passes_empty_filter(self):
+        arch, subarch, release, label = make_image_spec()
+        self.assertTrue(
+            boot_resources.image_passes_filter(
+                [], arch, subarch, release, label))
+
+    def test_image_passes_matching_filter(self):
+        image = make_image_spec()
+        self.assertTrue(
+            boot_resources.image_passes_filter(
+                [self.make_filter_from_image(image)],
+                image.arch, image.subarch, image.release, image.label))
+
+    def test_image_does_not_pass_nonmatching_filter(self):
+        image = make_image_spec()
+        self.assertFalse(
+            boot_resources.image_passes_filter(
+                [self.make_filter_from_image()],
+                image.arch, image.subarch, image.release, image.label))
+
+    def test_image_passes_if_one_filter_matches(self):
+        image = make_image_spec()
+        self.assertTrue(
+            boot_resources.image_passes_filter(
+                [
+                    self.make_filter_from_image(),
+                    self.make_filter_from_image(image),
+                    self.make_filter_from_image(),
+                ], image.arch, image.subarch, image.release, image.label))
+
+    def test_filter_checks_release(self):
+        image = make_image_spec()
+        self.assertFalse(
+            boot_resources.image_passes_filter(
+                [
+                    self.make_filter_from_image(image._replace(
+                        release=factory.make_name('other-release')))
+                ], image.arch, image.subarch, image.release, image.label))
+
+    def test_filter_checks_arches(self):
+        image = make_image_spec()
+        self.assertFalse(
+            boot_resources.image_passes_filter(
+                [
+                    self.make_filter_from_image(image._replace(
+                        arch=factory.make_name('other-arch')))
+                ], image.arch, image.subarch, image.release, image.label))
+
+    def test_filter_checks_subarches(self):
+        image = make_image_spec()
+        self.assertFalse(
+            boot_resources.image_passes_filter(
+                [
+                    self.make_filter_from_image(image._replace(
+                        subarch=factory.make_name('other-subarch')))
+                ], image.arch, image.subarch, image.release, image.label))
+
+    def test_filter_checks_labels(self):
+        image = make_image_spec()
+        self.assertFalse(
+            boot_resources.image_passes_filter(
+                [
+                    self.make_filter_from_image(image._replace(
+                        label=factory.make_name('other-label')))
+                ], image.arch, image.subarch, image.release, image.label))
+
+
+class TestBootMerge(MAASTestCase):
+    """Tests for `boot_merge`."""
+
+    def make_resource(self, boot_dict=None, image_spec=None, resource=None):
+        """Add a boot resource to `boot_dict`, creating it if necessary."""
+        if boot_dict is None:
+            boot_dict = {}
+        if image_spec is None:
+            image_spec = make_image_spec()
+        if resource is None:
+            resource = factory.make_name('boot-resource')
+        arch, subarch, release, label = image_spec
+        # Drill down into the dict; along the way, create any missing levels of
+        # nested dicts.
+        nested_dict = boot_dict
+        for level in (arch, subarch, release):
+            nested_dict.setdefault(level, {})
+            nested_dict = nested_dict[level]
+        # At the bottom level, indexed by "label," insert "resource" as the
+        # value.
+        nested_dict[label] = resource
+        return boot_dict
+
+    def test_integrates(self):
+        # End-to-end scenario for boot_merge: start with an empty boot
+        # resources dict, and receive one resource from Simplestreams.
+        total_resources = boot_resources.create_empty_hierarchy()
+        resources_from_repo = self.make_resource()
+        boot_resources.boot_merge(total_resources, resources_from_repo.copy())
+        # Since we started with an empty dict, the result contains the same
+        # item that we got from Simplestreams, and nothing else.
+        self.assertEqual(resources_from_repo, total_resources)
+
+    def test_obeys_filters(self):
+        filters = [
+            {
+                'arches': [factory.make_name('other-arch')],
+                'subarches': [factory.make_name('other-subarch')],
+                'release': factory.make_name('other-release'),
+                'label': [factory.make_name('other-label')],
+            },
+            ]
+        total_resources = boot_resources.create_empty_hierarchy()
+        resources_from_repo = self.make_resource()
+        boot_resources.boot_merge(
+            total_resources, resources_from_repo, filters=filters)
+        self.assertEqual({}, total_resources)
+
+    def test_does_not_overwrite_existing_entry(self):
+        image = make_image_spec()
+        original_resources = self.make_resource(
+            resource="Original resource", image_spec=image)
+        total_resources = original_resources.copy()
+        resources_from_repo = self.make_resource(
+            resource="New resource", image_spec=image)
+        boot_resources.boot_merge(total_resources, resources_from_repo.copy())
+        self.assertEqual(original_resources, total_resources)
 
 
 class TestMain(MAASTestCase):

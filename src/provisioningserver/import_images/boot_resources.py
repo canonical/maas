@@ -179,7 +179,6 @@ def boot_merge(boot1, boot2, filters=None):
                 "Merging boot resource for %s/%s/%s/%s.",
                 arch, subarch, release, label)
             boot_resource = boot2[arch][subarch][release][label]
-            boot1[arch][subarch][release][label] = boot_resource
             # Do not override an existing entry with the same
             # arch/subarch/release/label: the first entry found takes
             # precedence.
