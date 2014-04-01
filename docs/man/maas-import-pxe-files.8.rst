@@ -30,7 +30,7 @@ order to determine:
 
 * the location in the filesystem where downloaded images should be stored,
   and made available to nodes through TFTP and iSCSI;
-* where boot images should be downloaded; and
+* Simplestream sources from where boot images should be downloaded; and
 * which kinds of images are needed: architecture, operating system
   release, etc.
 
