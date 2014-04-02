@@ -837,8 +837,8 @@ class Node(CleanSave, TimestampedModel):
         if uti_tag.is_defined:
             raise RuntimeError(
                 "The use-fastpath-installer tag is defined with an "
-                "expression. This expression must be updated to prevent "
-                "this node from booting with the Fast Path installer.")
+                "expression. This expression must instead be updated to set "
+                "this node to install with the default installer.")
         self.tags.remove(uti_tag)
 
     def use_fastpath_installer(self):
@@ -856,6 +856,6 @@ class Node(CleanSave, TimestampedModel):
         if uti_tag.is_defined:
             raise RuntimeError(
                 "The use-fastpath-installer tag is defined with an "
-                "expression. This expression must be updated to make this "
-                "node boot with the Fast Path Installer.")
+                "expression. This expression must instead be updated to set "
+                "this node to install with the fast installer.")
         self.tags.add(uti_tag)

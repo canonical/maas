@@ -23,6 +23,7 @@ from maasserver.enum import (
     NODE_STATUS_CHOICES_DICT,
     )
 from maasserver.exceptions import Redirect
+from maasserver.models import Tag
 from maasserver.node_action import (
     Commission,
     compile_node_actions,
@@ -264,6 +265,11 @@ class TestStopNodeNodeAction(MAASServerTestCase):
             self.celery.tasks[0]['task'].name)
 
 
+def make_use_fastpath_installer_tag_with_expression():
+    Tag.objects.get_or_create(
+        name="use-fastpath-installer", definition="true()")
+
+
 class TestUseCurtinNodeAction(MAASServerTestCase):
 
     def test_sets_tag(self):
@@ -286,6 +292,18 @@ class TestUseCurtinNodeAction(MAASServerTestCase):
         node.use_fastpath_installer()
         user = factory.make_admin()
         self.assertFalse(UseCurtin(node, user).is_permitted())
+
+    def test_inhibited_if_use_fastpath_installer_tag_uses_expr(self):
+        make_use_fastpath_installer_tag_with_expression()
+        node = factory.make_node()
+        user = factory.make_admin()
+        self.assertDocTestMatches(
+            """\
+            The use-fastpath-installer tag is defined with an
+            expression. This expression must instead be updated to set
+            this node to install with the fast installer.
+            """,
+            UseCurtin(node, user).inhibit())
 
 
 class TestUseDINodeAction(MAASServerTestCase):
@@ -310,3 +328,15 @@ class TestUseDINodeAction(MAASServerTestCase):
         node.use_traditional_installer()
         user = factory.make_admin()
         self.assertFalse(UseDI(node, user).is_permitted())
+
+    def test_inhibited_if_use_fastpath_installer_tag_uses_expr(self):
+        make_use_fastpath_installer_tag_with_expression()
+        node = factory.make_node()
+        user = factory.make_admin()
+        self.assertDocTestMatches(
+            """\
+            The use-fastpath-installer tag is defined with an
+            expression. This expression must instead be updated to set
+            this node to install with the default installer.
+            """,
+            UseDI(node, user).inhibit())
