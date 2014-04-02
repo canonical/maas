@@ -106,6 +106,60 @@ class TestValuePassesFilter(MAASTestCase):
                 '*', factory.make_name('value')))
 
 
+class TestBootReverse(MAASTestCase):
+    """Tests for `boot_reverse`."""
+
+    def make_boot_resource(self):
+        return {
+            'content_id': factory.make_name('content_id'),
+            'product_name': factory.make_name('product_name'),
+            'version_name': factory.make_name('version_name'),
+            }
+
+    def test_maps_empty_dict_to_empty_dict(self):
+        self.assertEqual(
+            {},
+            boot_resources.boot_reverse(
+                boot_resources.create_empty_hierarchy()))
+
+    def test_maps_boot_resource_by_content_id_product_name_and_version(self):
+        image = make_image_spec()
+        resource = self.make_boot_resource()
+        boot_dict = set_resource(resource=resource.copy(), image_spec=image)
+        self.assertEqual(
+            {
+                resource['content_id']: {
+                    resource['product_name']: {
+                        resource['version_name']: [image.subarch],
+                    },
+                },
+            },
+            boot_resources.boot_reverse(boot_dict))
+
+    def test_concatenates_similar_resources(self):
+        image1 = make_image_spec()
+        image2 = make_image_spec()
+        resource = self.make_boot_resource()
+        boot_dict = {}
+        # Create two images in boot_dict, both containing the same resource.
+        for image in [image1, image2]:
+            set_resource(
+                boot_dict=boot_dict, resource=resource.copy(),
+                image_spec=image)
+
+        reverse_dict = boot_resources.boot_reverse(boot_dict)
+        content_id = resource['content_id']
+        product_name = resource['product_name']
+        version_name = resource['version_name']
+        self.assertItemsEqual([content_id], reverse_dict.keys())
+        self.assertItemsEqual([product_name], reverse_dict[content_id].keys())
+        self.assertItemsEqual(
+            [version_name],
+            reverse_dict[content_id][product_name].keys())
+        subarches = reverse_dict[content_id][product_name][version_name]
+        self.assertItemsEqual([image1.subarch, image2.subarch], subarches)
+
+
 class TestImagePassesFilter(MAASTestCase):
     """Tests for `image_passes_filter`."""
 
@@ -196,34 +250,35 @@ class TestImagePassesFilter(MAASTestCase):
                 ], image.arch, image.subarch, image.release, image.label))
 
 
+def set_resource(boot_dict=None, image_spec=None, resource=None):
+    """Add a boot resource to `boot_dict`, creating it if necessary."""
+    if boot_dict is None:
+        boot_dict = {}
+    if image_spec is None:
+        image_spec = make_image_spec()
+    if resource is None:
+        resource = factory.make_name('boot-resource')
+    arch, subarch, release, label = image_spec
+    # Drill down into the dict; along the way, create any missing levels of
+    # nested dicts.
+    nested_dict = boot_dict
+    for level in (arch, subarch, release):
+        nested_dict.setdefault(level, {})
+        nested_dict = nested_dict[level]
+    # At the bottom level, indexed by "label," insert "resource" as the
+    # value.
+    nested_dict[label] = resource
+    return boot_dict
+
+
 class TestBootMerge(MAASTestCase):
     """Tests for `boot_merge`."""
-
-    def make_resource(self, boot_dict=None, image_spec=None, resource=None):
-        """Add a boot resource to `boot_dict`, creating it if necessary."""
-        if boot_dict is None:
-            boot_dict = {}
-        if image_spec is None:
-            image_spec = make_image_spec()
-        if resource is None:
-            resource = factory.make_name('boot-resource')
-        arch, subarch, release, label = image_spec
-        # Drill down into the dict; along the way, create any missing levels of
-        # nested dicts.
-        nested_dict = boot_dict
-        for level in (arch, subarch, release):
-            nested_dict.setdefault(level, {})
-            nested_dict = nested_dict[level]
-        # At the bottom level, indexed by "label," insert "resource" as the
-        # value.
-        nested_dict[label] = resource
-        return boot_dict
 
     def test_integrates(self):
         # End-to-end scenario for boot_merge: start with an empty boot
         # resources dict, and receive one resource from Simplestreams.
         total_resources = boot_resources.create_empty_hierarchy()
-        resources_from_repo = self.make_resource()
+        resources_from_repo = set_resource()
         boot_resources.boot_merge(total_resources, resources_from_repo.copy())
         # Since we started with an empty dict, the result contains the same
         # item that we got from Simplestreams, and nothing else.
@@ -239,17 +294,17 @@ class TestBootMerge(MAASTestCase):
             },
             ]
         total_resources = boot_resources.create_empty_hierarchy()
-        resources_from_repo = self.make_resource()
+        resources_from_repo = set_resource()
         boot_resources.boot_merge(
             total_resources, resources_from_repo, filters=filters)
         self.assertEqual({}, total_resources)
 
     def test_does_not_overwrite_existing_entry(self):
         image = make_image_spec()
-        original_resources = self.make_resource(
+        original_resources = set_resource(
             resource="Original resource", image_spec=image)
         total_resources = original_resources.copy()
-        resources_from_repo = self.make_resource(
+        resources_from_repo = set_resource(
             resource="New resource", image_spec=image)
         boot_resources.boot_merge(total_resources, resources_from_repo.copy())
         self.assertEqual(original_resources, total_resources)
