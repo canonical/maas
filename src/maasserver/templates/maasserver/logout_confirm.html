@@ -1,0 +1,21 @@
+{% extends "maasserver/base.html" %}
+
+{% block nav-active-settings %}active{% endblock %}
+{% block title %}Logout{% endblock %}
+{% block page-title %}Logout{% endblock %}
+
+{% block content %}
+    <div class="block auto-width">
+        <h2>
+          Are you sure you want to log out?
+        </h2>
+        <p>
+          <form action="." method="post">{% csrf_token %}
+            <input type="hidden" name="post" value="yes" />
+            <input type="submit" value="Log out" class="right" />
+            <a href="{% url 'index' %}">Cancel</a>
+          </form>
+        </p>
+    </div>
+{% endblock %}
+
