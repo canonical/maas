@@ -47,9 +47,6 @@ CONFIG_ITEMS = {
             'label': "Check component compatibility and certification"
         }
     },
-    #'fallback_master_archive': {},
-    #'keep_mirror_list_uptodate': {},
-    #'fetch_new_releases': {},
     'main_archive': {
         'default': 'http://archive.ubuntu.com/ubuntu',
         'form': forms.URLField,
@@ -57,8 +54,8 @@ CONFIG_ITEMS = {
             'label': "Main archive",
             'error_messages': {'invalid': INVALID_URL_MESSAGE},
             'help_text': (
-                "Archive used by nodes to retrieve packages and by cluster "
-                "controllers to retrieve boot images (Intel architectures). "
+                "Archive used by nodes to retrieve packages for Intel "
+                "architectures. "
                 "E.g. http://archive.ubuntu.com/ubuntu."
             )
         }
@@ -70,21 +67,9 @@ CONFIG_ITEMS = {
             'label': "Ports archive",
             'error_messages': {'invalid': INVALID_URL_MESSAGE},
             'help_text': (
-                "Archive used by cluster controllers to retrieve boot "
-                "images (non-Intel architectures). "
+                "Archive used by nodes to retrieve packages for non-Intel "
+                "architectures. "
                 "E.g. http://ports.ubuntu.com/ubuntu-ports."
-            )
-        }
-    },
-    'cloud_images_archive': {
-        'default': 'https://maas.ubuntu.com/images',
-        'form': forms.URLField,
-        'form_kwargs': {
-            'label': "Cloud images archive",
-            'error_messages': {'invalid': INVALID_URL_MESSAGE},
-            'help_text': (
-                "Archive used by the nodes to retrieve ephemeral images. "
-                "E.g. https://maas.ubuntu.com/images."
             )
         }
     },

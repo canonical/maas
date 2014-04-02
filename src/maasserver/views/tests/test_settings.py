@@ -145,7 +145,6 @@ class SettingsTest(MAASServerTestCase):
         self.client_log_in(as_admin=True)
         new_main_archive = 'http://test.example.com/archive'
         new_ports_archive = 'http://test2.example.com/archive'
-        new_cloud_images_archive = 'http://test3.example.com/archive'
         new_default_distro_series = factory.getRandomEnum(DISTRO_SERIES)
         response = self.client.post(
             reverse('settings'),
@@ -154,7 +153,6 @@ class SettingsTest(MAASServerTestCase):
                 data={
                     'main_archive': new_main_archive,
                     'ports_archive': new_ports_archive,
-                    'cloud_images_archive': new_cloud_images_archive,
                     'default_distro_series': new_default_distro_series,
                 }))
 
@@ -163,13 +161,11 @@ class SettingsTest(MAASServerTestCase):
             (
                 new_main_archive,
                 new_ports_archive,
-                new_cloud_images_archive,
                 new_default_distro_series,
             ),
             (
                 Config.objects.get_config('main_archive'),
                 Config.objects.get_config('ports_archive'),
-                Config.objects.get_config('cloud_images_archive'),
                 Config.objects.get_config('default_distro_series'),
             ))
 

@@ -252,14 +252,6 @@ class TestNodeGroupManager(MAASServerTestCase):
             for args, kwargs in recorder.apply_async.call_args_list]
         self.assertItemsEqual(expected_queues, actual_queues)
 
-
-def make_archive_url(name):
-    """Create a fake archive URL."""
-    return "http://%s.example.com/%s/" % (
-        factory.make_name(name),
-        factory.make_name('path'),
-        )
-
     def test_refresh_workers_refreshes_accepted_cluster_controllers(self):
         self.patch(nodegroup_module, 'refresh_worker')
         nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
@@ -446,24 +438,6 @@ class TestNodeGroup(MAASServerTestCase):
         self.assertEqual(
             (proxy, proxy),
             (env.get('http_proxy'), env.get('https_proxy')))
-
-    def test_import_boot_images_selects_archive_locations_from_config(self):
-        recorder = self.patch(nodegroup_module, 'import_boot_images')
-        nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
-
-        archives = {
-            'main_archive': make_archive_url('main'),
-            'ports_archive': make_archive_url('ports'),
-            'cloud_images_archive': make_archive_url('cloud_images'),
-        }
-        for key, value in archives.items():
-            Config.objects.set_config(key, value)
-
-        nodegroup.import_boot_images()
-
-        kwargs = recorder.apply_async.call_args[1]['kwargs']
-        archive_options = {arg: kwargs.get(arg) for arg in archives}
-        self.assertEqual(archives, archive_options)
 
     def test_import_boot_images_sent_to_nodegroup_queue(self):
         recorder = self.patch(nodegroup_module, 'import_boot_images')

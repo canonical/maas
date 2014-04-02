@@ -38,17 +38,13 @@ def get_default_config():
         # Commissioning section configuration.
         'check_compatibility': False,
         # Ubuntu section configuration.
-        'fallback_master_archive': False,
-        'keep_mirror_list_uptodate': False,
-        'fetch_new_releases': False,
         'main_archive': 'http://archive.ubuntu.com/ubuntu',
         'ports_archive': 'http://ports.ubuntu.com/ubuntu-ports',
-        'cloud_images_archive': 'https://maas.ubuntu.com/images',
+        'commissioning_distro_series': DISTRO_SERIES.trusty,
         # Network section configuration.
         'maas_name': gethostname(),
         'enlistment_domain': b'local',
         'default_distro_series': DISTRO_SERIES.trusty,
-        'commissioning_distro_series': DISTRO_SERIES.trusty,
         'http_proxy': None,
         'upstream_dns': None,
         'ntp_server': '91.189.94.4',  # ntp.ubuntu.com

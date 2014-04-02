@@ -833,7 +833,6 @@ class UbuntuForm(ConfigForm):
     default_distro_series = get_config_field('default_distro_series')
     main_archive = get_config_field('main_archive')
     ports_archive = get_config_field('ports_archive')
-    cloud_images_archive = get_config_field('cloud_images_archive')
 
 
 class GlobalKernelOptsForm(ConfigForm):

@@ -446,8 +446,7 @@ def update_node_tags(tag_name, tag_definition, tag_nsmap, retry=True):
 
 @task
 @log_exception_text
-def import_boot_images(http_proxy=None, main_archive=None, ports_archive=None,
-                       cloud_images_archive=None, callback=None):
+def import_boot_images(http_proxy=None, callback=None):
     env = dict(os.environ)
     if http_proxy is not None:
         env['http_proxy'] = http_proxy
