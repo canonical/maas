@@ -15,14 +15,23 @@ __metaclass__ = type
 __all__ = []
 
 import errno
+import hashlib
+import json
 import os
 from random import randint
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
-from mock import MagicMock
+import mock
+from provisioningserver.boot.uefi import UEFIBootMethod
 from provisioningserver.config import BootConfig
 from provisioningserver.import_images import boot_resources
+from provisioningserver.utils import write_text_file
+from testtools.matchers import (
+    DirExists,
+    FileExists,
+    )
+import yaml
 
 
 def make_image_spec():
@@ -310,28 +319,216 @@ class TestBootMerge(MAASTestCase):
         self.assertEqual(original_resources, total_resources)
 
 
+def checksum_sha256(data):
+    """Return the SHA256 checksum for `data`, as a hex string."""
+    assert isinstance(data, bytes)
+    summer = hashlib.sha256()
+    summer.update(data)
+    return summer.hexdigest()
+
+
 class TestMain(MAASTestCase):
 
+    def patch_logger(self):
+        """Suppress log output from the import code."""
+        self.patch(boot_resources, 'logger')
+
+    def make_args(self, **kwargs):
+        """Fake an `argumentparser` parse result."""
+        args = mock.Mock()
+        for key, value in kwargs.items():
+            setattr(args, key, value)
+        return args
+
+    def make_simplestreams_index(self, index_dir, stream, product):
+        """Write a fake simplestreams index file.  Return its path."""
+        index_file = os.path.join(index_dir, 'index.json')
+        index = {
+            'format': 'index:1.0',
+            'updated': 'Tue, 25 Mar 2014 16:19:49 +0000',
+            'index': {
+                stream: {
+                    'datatype': 'image-ids',
+                    'path': 'streams/v1/%s.json' % stream,
+                    'updated': 'Tue, 25 Mar 2014 16:19:49 +0000',
+                    'format': 'products:1.0',
+                    'products': [product],
+                    },
+                },
+            }
+        write_text_file(index_file, json.dumps(index))
+        return index_file
+
+    def make_download_file(self, repo, image_spec, version,
+                           filename='boot-kernel'):
+        """Fake a downloadable file in `repo`.
+
+        Return the new file's POSIX path, and its contents.
+        """
+        path = [
+            image_spec.release,
+            image_spec.arch,
+            version,
+            image_spec.release,
+            image_spec.subarch,
+            filename,
+            ]
+        native_path = os.path.join(repo, *path)
+        os.makedirs(os.path.dirname(native_path))
+        contents = ("Contents: %s" % filename).encode('utf-8')
+        write_text_file(native_path, contents)
+        # Return POSIX path for inclusion in Simplestreams data, not
+        # system-native path for filesystem access.
+        return '/'.join(path), contents
+
+    def make_simplestreams_product_index(self, index_dir, stream, product,
+                                         image_spec, os_release,
+                                         download_file, contents, version):
+        """Write a fake Simplestreams product index file.
+
+        The image is written into the directory that holds the indexes.  It
+        contains one downloadable file, as specified by the arguments.
+        """
+        index = {
+            'format': 'products:1.0',
+            'data-type': 'image-ids',
+            'updated': 'Tue, 25 Mar 2014 16:19:49 +0000',
+            'content_id': stream,
+            'products': {
+                product: {
+                    'versions': {
+                        version: {
+                            'items': {
+                                'boot-kernel': {
+                                    'ftype': 'boot-kernel',
+                                    '_fake': 'fake-data: %s' % download_file,
+                                    'version': os_release,
+                                    'release': image_spec.release,
+                                    'path': download_file,
+                                    'sha256': checksum_sha256(contents),
+                                    'arch': image_spec.arch,
+                                    'subarches': image_spec.subarch,
+                                    'size': len(contents),
+                                },
+                            },
+                        },
+                    },
+                    'subarch': image_spec.subarch,
+                    'krel': image_spec.release,
+                    'label': image_spec.label,
+                    'kflavor': image_spec.subarch,
+                    'version': os_release,
+                    'subarches': [image_spec.subarch],
+                    'release': image_spec.release,
+                    'arch': image_spec.arch,
+                },
+            },
+        }
+        write_text_file(
+            os.path.join(index_dir, '%s.json' % stream),
+            json.dumps(index))
+
+    def make_simplestreams_repo(self, image_spec):
+        """Fake a local simplestreams repository containing the given image.
+
+        This creates a temporary directory that looks like a realistic
+        Simplestreams repository, containing one downloadable file for the
+        given `image_spec`.
+        """
+        os_release = '%d.%.2s' % (
+            randint(1, 99),
+            ('04' if randint(0, 1) == 0 else '10'),
+            )
+        repo = self.make_dir()
+        index_dir = os.path.join(repo, 'streams', 'v1')
+        os.makedirs(index_dir)
+        stream = 'com.ubuntu.maas:daily:v2:download'
+        product = 'com.ubuntu.maas:boot:%s:%s:%s' % (
+            os_release,
+            image_spec.arch,
+            image_spec.subarch,
+            )
+        version = '20140317'
+        download_file, sha = self.make_download_file(repo, image_spec, version)
+        self.make_simplestreams_product_index(
+            index_dir, stream, product, image_spec, os_release, download_file,
+            sha, version)
+        index = self.make_simplestreams_index(index_dir, stream, product)
+        return index
+
+    def test_successful_run(self):
+        """Integration-test a successful run of the importer.
+
+        This runs as much realistic code as it can, exercising most of the
+        integration points for a real import.
+        """
+        # Patch out things that we don't want running during the test.  Patch
+        # at a low level, so that we exercise all the function calls that a
+        # unit test might not put to the test.
+        self.patch_logger()
+        self.patch(boot_resources, 'call_and_check').return_code = 0
+        self.patch(UEFIBootMethod, 'install_bootloader')
+
+        # Prepare a fake repository, storage directory, and configuration.
+        storage = self.make_dir()
+        image = make_image_spec()
+        repo = self.make_simplestreams_repo(image)
+        config = {
+            'boot': {
+                'storage': storage,
+                'sources': [
+                    {
+                        'path': repo,
+                        'selections': [
+                            {
+                                'release': image.release,
+                                'arches': [image.arch],
+                                'subarches': [image.subarch],
+                                'labels': [image.label],
+                            },
+                            ],
+                    },
+                    ],
+                },
+            }
+        args = self.make_args(
+            config_file=self.make_file(
+                'bootresources.yaml', contents=yaml.safe_dump(config)))
+
+        # Run the import code.
+        boot_resources.main(args)
+
+        # Verify the reuslts.
+        self.assertThat(os.path.join(storage, 'cache'), DirExists())
+        current = os.path.join(storage, 'current')
+        self.assertTrue(os.path.islink(current))
+        self.assertThat(current, DirExists())
+        self.assertThat(os.path.join(current, 'pxelinux.0'), FileExists())
+        self.assertThat(os.path.join(current, 'maas.meta'), FileExists())
+        self.assertThat(os.path.join(current, 'maas.tgt'), FileExists())
+        self.assertThat(
+            os.path.join(
+                current, image.arch, image.subarch, image.release,
+                image.label),
+            DirExists())
+
     def test_raises_ioerror_when_no_config_file_found(self):
-        # Suppress log output.
-        self.logger = self.patch(boot_resources, 'logger')
-        filename = "/tmp/%s" % factory.make_name("config")
-        self.assertFalse(os.path.exists(filename))
-        args = MagicMock()
-        args.config_file = filename
+        self.patch_logger()
+        no_config = os.path.join(
+            self.make_dir(), '%s.yaml' % factory.make_name('no-config'))
         self.assertRaises(
             boot_resources.NoConfigFile,
-            boot_resources.main, args)
+            boot_resources.main, self.make_args(config_file=no_config))
 
     def test_raises_non_ENOENT_IOErrors(self):
         # main() will raise a NoConfigFile error when it encounters an
         # ENOENT IOError, but will otherwise just re-raise the original
         # IOError.
-        args = MagicMock()
         mock_load_from_cache = self.patch(BootConfig, 'load_from_cache')
         other_error = IOError(randint(errno.ENOENT + 1, 1000))
         mock_load_from_cache.side_effect = other_error
-        # Suppress log output.
-        self.logger = self.patch(boot_resources, 'logger')
-        raised_error = self.assertRaises(IOError, boot_resources.main, args)
+        self.patch_logger()
+        raised_error = self.assertRaises(
+            IOError,
+            boot_resources.main, self.make_args())
         self.assertEqual(other_error, raised_error)
