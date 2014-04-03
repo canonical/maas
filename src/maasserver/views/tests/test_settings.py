@@ -23,11 +23,9 @@ from lxml.html import fromstring
 from maasserver.enum import (
     COMMISSIONING_DISTRO_SERIES_CHOICES,
     DISTRO_SERIES,
-    NODEGROUP_STATUS,
     )
 from maasserver.models import (
     Config,
-    nodegroup as nodegroup_module,
     UserProfile,
     )
 from maasserver.testing import (
@@ -37,10 +35,6 @@ from maasserver.testing import (
     )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from mock import (
-    ANY,
-    call,
-    )
 
 
 class SettingsTest(MAASServerTestCase):
@@ -184,73 +178,6 @@ class SettingsTest(MAASServerTestCase):
         self.assertEqual(
             new_kernel_opts,
             Config.objects.get_config('kernel_opts'))
-
-    def test_settings_contains_form_to_accept_all_nodegroups(self):
-        self.client_log_in(as_admin=True)
-        factory.make_node_group(status=NODEGROUP_STATUS.PENDING),
-        response = self.client.get(reverse('settings'))
-        doc = fromstring(response.content)
-        forms = doc.cssselect('form#accept_all_pending_nodegroups')
-        self.assertEqual(1, len(forms))
-
-    def test_settings_contains_form_to_reject_all_nodegroups(self):
-        self.client_log_in(as_admin=True)
-        factory.make_node_group(status=NODEGROUP_STATUS.PENDING),
-        response = self.client.get(reverse('settings'))
-        doc = fromstring(response.content)
-        forms = doc.cssselect('form#reject_all_pending_nodegroups')
-        self.assertEqual(1, len(forms))
-
-    def test_settings_accepts_all_pending_nodegroups_POST(self):
-        self.client_log_in(as_admin=True)
-        nodegroups = {
-            factory.make_node_group(status=NODEGROUP_STATUS.PENDING),
-            factory.make_node_group(status=NODEGROUP_STATUS.PENDING),
-        }
-        response = self.client.post(
-            reverse('settings'), {'mass_accept_submit': 1})
-        self.assertEqual(httplib.FOUND, response.status_code)
-        self.assertEqual(
-            [reload_object(nodegroup).status for nodegroup in nodegroups],
-            [NODEGROUP_STATUS.ACCEPTED] * 2)
-
-    def test_settings_rejects_all_pending_nodegroups_POST(self):
-        self.client_log_in(as_admin=True)
-        nodegroups = {
-            factory.make_node_group(status=NODEGROUP_STATUS.PENDING),
-            factory.make_node_group(status=NODEGROUP_STATUS.PENDING),
-        }
-        response = self.client.post(
-            reverse('settings'), {'mass_reject_submit': 1})
-        self.assertEqual(httplib.FOUND, response.status_code)
-        self.assertEqual(
-            [reload_object(nodegroup).status for nodegroup in nodegroups],
-            [NODEGROUP_STATUS.REJECTED] * 2)
-
-    def test_settings_import_boot_images_calls_tasks(self):
-        self.client_log_in(as_admin=True)
-        recorder = self.patch(nodegroup_module, 'import_boot_images')
-        accepted_nodegroups = [
-            factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED),
-            factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED),
-        ]
-        response = self.client.post(
-            reverse('settings'), {'import_all_boot_images': 1})
-        self.assertEqual(httplib.FOUND, response.status_code)
-        calls = [
-            call(queue=nodegroup.work_queue, kwargs=ANY)
-            for nodegroup in accepted_nodegroups
-        ]
-        self.assertItemsEqual(calls, recorder.apply_async.call_args_list)
-
-    def test_cluster_no_boot_images_message_displayed_if_no_boot_images(self):
-        self.client_log_in(as_admin=True)
-        nodegroup = factory.make_node_group(
-            status=NODEGROUP_STATUS.ACCEPTED)
-        response = self.client.get(reverse('settings'))
-        document = fromstring(response.content)
-        nodegroup_row = document.xpath("//tr[@id='%s']" % nodegroup.uuid)[0]
-        self.assertIn('no boot images', nodegroup_row.text_content())
 
 
 class NonAdminSettingsTest(MAASServerTestCase):

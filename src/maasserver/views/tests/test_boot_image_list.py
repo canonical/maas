@@ -21,7 +21,7 @@ from django.core.urlresolvers import reverse
 from lxml.html import fromstring
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.views.settings_clusters import BootImagesListView
+from maasserver.views.clusters import BootImagesListView
 from testtools.matchers import ContainsAll
 
 

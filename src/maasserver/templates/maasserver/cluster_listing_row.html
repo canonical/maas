@@ -1,0 +1,35 @@
+<tr class="cluster {{ cycle }} {% if warning_no_images and cluster.bootimage_set.count == 0 %}warning{% endif %}"
+    id="{{ cluster.uuid }}">
+  <td>
+    <a href="{% url 'cluster-edit' cluster.uuid %}">{{ cluster.cluster_name }}</a>
+  </td>
+  <td>
+  {{ cluster.get_managed_interfaces|length }}
+  </td>
+  <td>
+  {% if warning_no_images and cluster.bootimage_set.count == 0 %}
+    0 <img src="{{ STATIC_URL }}img/warning.png" title="Warning: this cluster has no boot images."/>
+  {% else %}
+    {% if cluster.bootimage_set.count == 0 %}
+      0
+    {% else %}
+      <a title="View boot images"
+         href="{% url 'cluster-bootimages-list' cluster.uuid %}">{{ cluster.bootimage_set.count }}</a>
+    {% endif %}
+  {% endif %}
+  </td>
+  <td>{{ cluster.node_set.count }}</td>
+  <td class="icon-controls">
+    <a href="{% url 'cluster-edit' cluster.uuid %}"
+       class="icon"
+       title="Edit cluster {{ cluster.cluster_name }}">
+      <img src="{{ STATIC_URL }}img/edit.png"
+           alt="edit"
+           class="space-right-small" />
+    </a>
+    <a title="Delete cluster {{ cluster.cluster_name }}"
+       href="{% url 'cluster-delete' cluster.uuid %}">
+       <img src="{{ STATIC_URL }}img/delete.png" alt="delete" />
+    </a>
+  </td>
+</tr>

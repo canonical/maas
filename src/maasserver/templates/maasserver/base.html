@@ -72,6 +72,11 @@
                 <li class="{% block nav-active-node-list %}{% endblock %}">
                   <a href="{% url 'node-list' %}">Nodes</a>
                 </li>
+                {% if user.is_superuser %}
+                  <li class="{% block nav-active-cluster-list %}{% endblock %}">
+                    <a href="{% url 'cluster-list' %}">Clusters</a>
+                  </li>
+                {% endif %}
                 <li class="{% block nav-active-zone-list %}{% endblock %}">
                   <a href="{% url 'zone-list' %}">Zones</a>
                 </li>
