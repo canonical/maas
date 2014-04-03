@@ -44,6 +44,7 @@ from maasserver.models import (
     Node,
     SSHKey,
     )
+from maasserver.models.tag import Tag
 from maasserver.utils import map_enum
 
 # All node statuses.
@@ -198,6 +199,18 @@ class UseCurtin(NodeAction):
         self.node.use_fastpath_installer()
         return "Node marked as using curtin for install."
 
+    def inhibit(self):
+        """Inhibit if ``use-fastpath-installer`` uses an expression."""
+        tag, _ = Tag.objects.get_or_create(name="use-fastpath-installer")
+        if tag.is_defined:
+            return dedent("""\
+            The use-fastpath-installer tag is defined with an
+            expression. This expression must instead be updated to set
+            this node to install with the fast installer.
+            """)
+        else:
+            return None
+
 
 class UseDI(NodeAction):
     """Set this node to use d-i for installation."""
@@ -215,6 +228,18 @@ class UseDI(NodeAction):
         """See `NodeAction.execute`."""
         self.node.use_traditional_installer()
         return "Node marked as using the default installer."
+
+    def inhibit(self):
+        """Inhibit if ``use-fastpath-installer`` uses an expression."""
+        tag, _ = Tag.objects.get_or_create(name="use-fastpath-installer")
+        if tag.is_defined:
+            return dedent("""\
+            The use-fastpath-installer tag is defined with an
+            expression. This expression must instead be updated to set
+            this node to install with the default installer.
+            """)
+        else:
+            return None
 
 
 class StartNode(NodeAction):
