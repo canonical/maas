@@ -503,14 +503,12 @@ class TestNodeAPI(APITestCase):
             hostname='diane', owner=self.logged_in_user,
             architecture=make_usable_architecture(self))
         response = self.client_put(
-            self.get_node_uri(node), {'hostname': 'too long' * 100})
+            self.get_node_uri(node), {'hostname': '.'})
         parsed_result = json.loads(response.content)
 
         self.assertEqual(httplib.BAD_REQUEST, response.status_code)
         self.assertEqual(
-            {'hostname':
-                ['Ensure this value has at most 255 characters '
-                 '(it has 800).']},
+            {'hostname': ["Hostname contains empty name."]},
             parsed_result)
 
     def test_PUT_refuses_to_update_invisible_node(self):
