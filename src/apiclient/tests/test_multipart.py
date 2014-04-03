@@ -85,18 +85,20 @@ class TestMultiPart(MAASTestCase):
             ahem_django_ahem)
 
     def test_encode_multipart_data_multiple_params(self):
-        # Sequences of parameters and files can be passed to
-        # encode_multipart_data() so that multiple parameters/files with the
-        # same name can be provided.
+        # Sequences of parameters and files passed to
+        # encode_multipart_data() permit use of the same name for
+        # multiple parameters and/or files. See `make_payloads` to
+        # understand how it processes different types of parameter
+        # values.
         params_in = [
             ("one", "ABC"),
             ("one", "XYZ"),
-            ("two", "DEF"),
-            ("two", "UVW"),
+            ("two", ["DEF", "UVW"]),
             ]
         files_in = [
-            ("f-one", BytesIO(urandom(32))),
-            ("f-two", BytesIO(urandom(32))),
+            ("f-one", BytesIO(b"f1")),
+            ("f-two", open(self.make_file(contents=b"f2"), "rb")),
+            ("f-three", lambda: open(self.make_file(contents=b"f3"), "rb")),
             ]
         body, headers = encode_multipart_data(params_in, files_in)
         self.assertEqual("%s" % len(body), headers["Content-Length"])
@@ -107,13 +109,14 @@ class TestMultiPart(MAASTestCase):
         params_out, files_out = (
             parse_headers_and_body_with_django(headers, body))
         params_out_expected = MultiValueDict()
-        for name, value in params_in:
-            params_out_expected.appendlist(name, value)
+        params_out_expected.appendlist("one", "ABC")
+        params_out_expected.appendlist("one", "XYZ")
+        params_out_expected.appendlist("two", "DEF")
+        params_out_expected.appendlist("two", "UVW")
         self.assertEqual(
             params_out_expected, params_out,
             ahem_django_ahem)
-        self.assertSetEqual({"f-one", "f-two"}, set(files_out))
-        files_expected = {name: buf.getvalue() for name, buf in files_in}
+        files_expected = {"f-one": b"f1", "f-two": b"f2", "f-three": b"f3"}
         files_observed = {name: buf.read() for name, buf in files_out.items()}
         self.assertEqual(
             files_expected, files_observed,

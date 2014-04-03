@@ -65,11 +65,31 @@ def make_file_payload(name, content):
 
 
 def make_payloads(name, content):
+    """Constructs payload(s) for the given `name` and `content`.
+
+    If `content` is a byte string, this calls `make_bytes_payload` to
+    construct the payload, which this then yields.
+
+    If `content` is a unicode string, this calls `make_string_payload`.
+
+    If `content` is file-like -- it inherits from `IOBase` or `file` --
+    this calls `make_file_payload`.
+
+    If `content` is iterable, this calls `make_payloads` for each item,
+    with the same name, and then re-yields each payload generated.
+
+    If `content` is callable, this calls it with no arguments, and then
+    uses the result as a context manager. This can be useful if the
+    callable returns an open file, for example, because the context
+    protocol means it will be closed after use.
+
+    This raises `AssertionError` if it encounters anything else.
+    """
     if isinstance(content, bytes):
         yield make_bytes_payload(name, content)
     elif isinstance(content, unicode):
         yield make_string_payload(name, content)
-    elif isinstance(content, IOBase):
+    elif isinstance(content, (IOBase, file)):
         yield make_file_payload(name, content)
     elif callable(content):
         with content() as content:

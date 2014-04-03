@@ -15,6 +15,7 @@ __metaclass__ = type
 __all__ = []
 
 import collections
+from functools import partial
 import httplib
 import io
 import json
@@ -515,25 +516,26 @@ class TestPayloadPreparation(MAASTestCase):
          {"method": "POST", "data": [],
           "expected_uri": uri_base,
           "expected_body": None,
-          "expected_headers": {}}),
+          "expected_headers": []}),
         ("read",
          {"method": "GET", "data": [],
           "expected_uri": uri_base,
           "expected_body": None,
-          "expected_headers": {}}),
+          "expected_headers": []}),
         ("update",
          {"method": "PUT", "data": [],
           "expected_uri": uri_base,
           "expected_body": None,
-          "expected_headers": {}}),
+          "expected_headers": []}),
         ("delete",
          {"method": "DELETE", "data": [],
           "expected_uri": uri_base,
           "expected_body": None,
-          "expected_headers": {}}),
-        # With data, PUT, POST, and DELETE requests have their body and extra
-        # headers prepared by encode_multipart_data. For GET requests, the
-        # data is encoded into the query string, and both the request body and
+          "expected_headers": []}),
+        # With data, PUT, POST, and DELETE requests have their body and
+        # extra headers prepared by build_multipart_message and
+        # encode_multipart_message. For GET requests, the data is
+        # encoded into the query string, and both the request body and
         # extra headers are empty.
         ("create-with-data",
          {"method": "POST", "data": [("foo", "bar"), ("foo", "baz")],
@@ -544,7 +546,7 @@ class TestPayloadPreparation(MAASTestCase):
          {"method": "GET", "data": [("foo", "bar"), ("foo", "baz")],
           "expected_uri": uri_base + "?foo=bar&foo=baz",
           "expected_body": None,
-          "expected_headers": {}}),
+          "expected_headers": []}),
         ("update-with-data",
          {"method": "PUT", "data": [("foo", "bar"), ("foo", "baz")],
           "expected_uri": uri_base,
@@ -565,27 +567,28 @@ class TestPayloadPreparation(MAASTestCase):
          {"method": "POST", "data": [],
           "expected_uri": uri_base + "?op=something",
           "expected_body": None,
-          "expected_headers": {}}),
+          "expected_headers": []}),
         ("read",
          {"method": "GET", "data": [],
           "expected_uri": uri_base + "?op=something",
           "expected_body": None,
-          "expected_headers": {}}),
+          "expected_headers": []}),
         ("update",
          {"method": "PUT", "data": [],
           "expected_uri": uri_base + "?op=something",
           "expected_body": None,
-          "expected_headers": {}}),
+          "expected_headers": []}),
         ("delete",
          {"method": "DELETE", "data": [],
           "expected_uri": uri_base + "?op=something",
           "expected_body": None,
-          "expected_headers": {}}),
-        # With data, PUT, POST, and DELETE requests have their body and extra
-        # headers prepared by encode_multipart_data. For GET requests, the
-        # data is encoded into the query string, and both the request body and
-        # extra headers are empty. The operation is encoded into the query
-        # string.
+          "expected_headers": []}),
+        # With data, PUT, POST, and DELETE requests have their body and
+        # extra headers prepared by build_multipart_message and
+        # encode_multipart_message. For GET requests, the data is
+        # encoded into the query string, and both the request body and
+        # extra headers are empty. The operation is encoded into the
+        # query string.
         ("create-with-data",
          {"method": "POST", "data": [("foo", "bar"), ("foo", "baz")],
           "expected_uri": uri_base + "?op=something",
@@ -595,7 +598,7 @@ class TestPayloadPreparation(MAASTestCase):
          {"method": "GET", "data": [("foo", "bar"), ("foo", "baz")],
           "expected_uri": uri_base + "?op=something&foo=bar&foo=baz",
           "expected_body": None,
-          "expected_headers": {}}),
+          "expected_headers": []}),
         ("update-with-data",
          {"method": "PUT", "data": [("foo", "bar"), ("foo", "baz")],
           "expected_uri": uri_base + "?op=something",
@@ -619,9 +622,12 @@ class TestPayloadPreparation(MAASTestCase):
     scenarios = scenarios_without_op + scenarios_with_op
 
     def test_prepare_payload(self):
-        # Patch encode_multipart_data to match the scenarios.
-        encode_multipart_data = self.patch(api, "encode_multipart_data")
-        encode_multipart_data.return_value = sentinel.body, sentinel.headers
+        # Patch build_multipart_message and encode_multipart_message to
+        # match the scenarios.
+        build_multipart_message = self.patch(api, "build_multipart_message")
+        build_multipart_message.return_value = sentinel.message
+        encode_multipart_message = self.patch(api, "encode_multipart_message")
+        encode_multipart_message.return_value = sentinel.headers, sentinel.body
         # The payload returned is a 3-tuple of (uri, body, headers).
         payload = api.Action.prepare_payload(
             op=self.op, method=self.method,
@@ -632,8 +638,43 @@ class TestPayloadPreparation(MAASTestCase):
             Equals(self.expected_headers),
             )
         self.assertThat(payload, MatchesListwise(expected))
-        # encode_multipart_data, when called, is passed the data
+        # encode_multipart_message, when called, is passed the data
         # unadulterated.
         if self.expected_body is sentinel.body:
             self.assertThat(
-                api.encode_multipart_data, MockCalledOnceWith(self.data))
+                api.build_multipart_message,
+                MockCalledOnceWith(self.data))
+            self.assertThat(
+                api.encode_multipart_message,
+                MockCalledOnceWith(sentinel.message))
+
+
+class TestPayloadPreparationWithFiles(MAASTestCase):
+    """Tests for `maascli.api.Action.prepare_payload` involving files."""
+
+    def test_files_are_included(self):
+        parameter = factory.make_name("param")
+        contents = factory.getRandomBytes()
+        filename = self.make_file(contents=contents)
+        # Writing the parameter as "parameter@=filename" on the
+        # command-line causes name_value_pair() to return a `name,
+        # opener` tuple, where `opener` is a callable that returns an
+        # open file handle.
+        data = [(parameter, partial(open, filename, "rb"))]
+        uri, body, headers = api.Action.prepare_payload(
+            op=None, method="POST", uri="http://localhost", data=data)
+
+        expected_body_template = """\
+            --...
+            Content-Transfer-Encoding: base64
+            Content-Disposition: form-data; name="%s"; filename="%s"
+            MIME-Version: 1.0
+            Content-Type: application/octet-stream
+
+            %s
+            --...--
+            """
+        expected_body = expected_body_template % (
+            parameter, parameter, contents.encode("base64"))
+
+        self.assertDocTestMatches(expected_body, body)

@@ -19,10 +19,12 @@ __all__ = [
 import argparse
 from collections import defaultdict
 from email.message import Message
+from functools import partial
 import httplib
 from itertools import chain
 import json
 from operator import itemgetter
+import re
 import sys
 from textwrap import (
     dedent,
@@ -34,7 +36,10 @@ from urlparse import (
     )
 
 from apiclient.maas_client import MAASOAuth
-from apiclient.multipart import encode_multipart_data
+from apiclient.multipart import (
+    build_multipart_message,
+    encode_multipart_message,
+    )
 from apiclient.utils import (
     ascii_url,
     urlencode,
@@ -166,6 +171,10 @@ class Action(Command):
         uri, body, headers = self.prepare_payload(
             self.op, self.method, uri, options.data)
 
+        # Headers are returned as a list, but they must be a dict for
+        # the signing machinery.
+        headers = dict(headers)
+
         # Sign request if credentials have been provided.
         if self.credentials is not None:
             self.sign(uri, headers, self.credentials)
@@ -190,15 +199,32 @@ class Action(Command):
 
     @staticmethod
     def name_value_pair(string):
-        parts = string.split("=", 1)
-        if len(parts) == 2:
-            return tuple(parts)
+        """Ensure that `string` is a valid ``name:value`` pair.
+
+        When `string` is of the form ``name=value``, this returns a
+        2-tuple of ``name, value``.
+
+        However, when `string` is of the form ``name@=value``, this
+        returns a ``name, opener`` tuple, where ``opener`` is a function
+        that will return an open file handle when called. The file will
+        be opened in binary mode for reading only.
+        """
+        parts = re.split(r'(=|@=)', string, 1)
+        if len(parts) == 3:
+            name, what, value = parts
+            if what == "=":
+                return name, value
+            elif what == "@=":
+                return name, partial(open, value, "rb")
+            else:
+                raise AssertionError(
+                    "Unrecognised separator %r" % what)
         else:
             raise CommandError(
-                "%r is not a name=value pair" % string)
+                "%r is not a name=value or name@=filename pair" % string)
 
-    @staticmethod
-    def prepare_payload(op, method, uri, data):
+    @classmethod
+    def prepare_payload(cls, op, method, uri, data):
         """Return the URI (modified perhaps) and body and headers.
 
         - For GET requests, encode parameters in the query string.
@@ -209,18 +235,27 @@ class Action(Command):
 
         :param method: The HTTP method.
         :param uri: The URI of the action.
-        :param data: A dict or iterable of name=value pairs to pack into the
-            body or headers, depending on the type of request.
+        :param data: An iterable of ``name, value`` or ``name, opener``
+            tuples (see `name_value_pair`) to pack into the body or
+            query, depending on the type of request.
         """
+        query = [] if op is None else [("op", op)]
+
+        def slurp(opener):
+            with opener() as fd:
+                return fd.read()
+
         if method == "GET":
-            query = data if op is None else chain([("op", op)], data)
-            body, headers = None, {}
+            query.extend(
+                (name, slurp(value) if callable(value) else value)
+                for name, value in data)
+            body, headers = None, []
         else:
-            query = [] if op is None else [("op", op)]
-            if data:
-                body, headers = encode_multipart_data(data)
+            if data is None or len(data) == 0:
+                body, headers = None, []
             else:
-                body, headers = None, {}
+                message = build_multipart_message(data)
+                headers, body = encode_multipart_message(message)
 
         uri = urlparse(uri)._replace(query=urlencode(query)).geturl()
         return uri, body, headers
