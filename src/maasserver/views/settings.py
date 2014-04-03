@@ -38,7 +38,6 @@ from django.views.generic import (
 from django.views.generic.base import TemplateView
 from django.views.generic.detail import SingleObjectTemplateResponseMixin
 from django.views.generic.edit import ModelFormMixin
-from maasserver.enum import NODEGROUP_STATUS
 from maasserver.exceptions import CannotDeleteUserException
 from maasserver.forms import (
     CommissioningForm,
@@ -48,10 +47,7 @@ from maasserver.forms import (
     NewUserCreationForm,
     UbuntuForm,
     )
-from maasserver.models import (
-    NodeGroup,
-    UserProfile,
-    )
+from maasserver.models import UserProfile
 from maasserver.views import process_form
 from metadataserver.models import CommissioningScript
 
@@ -186,36 +182,6 @@ def settings(request):
     if response is not None:
         return response
 
-    # Process accept clusters en masse.
-    if 'mass_accept_submit' in request.POST:
-        number = NodeGroup.objects.accept_all_pending()
-        messages.info(request, "Accepted %d cluster(s)." % number)
-        return HttpResponseRedirect(reverse('settings'))
-
-    # Process reject clusters en masse.
-    if 'mass_reject_submit' in request.POST:
-        number = NodeGroup.objects.reject_all_pending()
-        messages.info(request, "Rejected %d cluster(s)." % number)
-        return HttpResponseRedirect(reverse('settings'))
-
-    # Import PXE files for all the accepted clusters.
-    if 'import_all_boot_images' in request.POST:
-        NodeGroup.objects.import_boot_images_accepted_clusters()
-        message = (
-            "Import of boot images started on all cluster controllers.  "
-            "Importing the boot images can take a long time depending on "
-            "the available bandwidth.")
-        messages.info(request, message)
-        return HttpResponseRedirect(reverse('settings'))
-
-    # Cluster listings.
-    accepted_clusters = NodeGroup.objects.filter(
-        status=NODEGROUP_STATUS.ACCEPTED).order_by('cluster_name')
-    pending_clusters = NodeGroup.objects.filter(
-        status=NODEGROUP_STATUS.PENDING).order_by('cluster_name')
-    rejected_clusters = NodeGroup.objects.filter(
-        status=NODEGROUP_STATUS.REJECTED).order_by('cluster_name')
-
     # Commissioning scripts.
     commissioning_scripts = CommissioningScript.objects.all()
 
@@ -224,9 +190,6 @@ def settings(request):
         {
             'user_list': user_list,
             'commissioning_scripts': commissioning_scripts,
-            'accepted_clusters': accepted_clusters,
-            'pending_clusters': pending_clusters,
-            'rejected_clusters': rejected_clusters,
             'maas_and_network_form': maas_and_network_form,
             'commissioning_form': commissioning_form,
             'ubuntu_form': ubuntu_form,

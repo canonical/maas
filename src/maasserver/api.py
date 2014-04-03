@@ -2492,8 +2492,7 @@ def warn_if_missing_boot_images():
     nodegroups_without_images = nodegroups_without_images.filter(
         status=NODEGROUP_STATUS.ACCEPTED)
     if nodegroups_without_images.exists():
-        accepted_clusters_url = (
-            "%s#accepted-clusters" % absolute_reverse("settings"))
+        accepted_clusters_url = absolute_reverse("cluster-list")
         warning = dedent("""\
             Some cluster controllers are missing boot images.  Either the
             import task has not been initiated (for each cluster, the task

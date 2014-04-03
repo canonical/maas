@@ -15,7 +15,7 @@
       </ul>
       <input type="submit" value="Save cluster controller"
              class="button right" />
-      <a class="link-button" href="{% url 'settings' %}">Cancel</a>
+      <a class="link-button" href="{% url 'cluster-list' %}">Cancel</a>
       <h2>Interfaces</h2>
       {% with nb_interfaces=cluster.nodegroupinterface_set.count %}
       This cluster controller has {{ nb_interfaces }}

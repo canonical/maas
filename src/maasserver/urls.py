@@ -21,11 +21,21 @@ from django.conf.urls import (
     url,
     )
 from django.contrib.auth.decorators import user_passes_test
+from maasserver.enum import NODEGROUP_STATUS
 from maasserver.models import Node
 from maasserver.views import TextTemplateView
 from maasserver.views.account import (
     login,
     logout,
+    )
+from maasserver.views.clusters import (
+    BootImagesListView,
+    ClusterDelete,
+    ClusterEdit,
+    ClusterInterfaceCreate,
+    ClusterInterfaceDelete,
+    ClusterInterfaceEdit,
+    ClusterListView,
     )
 from maasserver.views.networks import (
     NetworkAdd,
@@ -59,14 +69,6 @@ from maasserver.views.settings import (
     AccountsEdit,
     AccountsView,
     settings,
-    )
-from maasserver.views.settings_clusters import (
-    BootImagesListView,
-    ClusterDelete,
-    ClusterEdit,
-    ClusterInterfaceCreate,
-    ClusterInterfaceDelete,
-    ClusterInterfaceEdit,
     )
 from maasserver.views.settings_commissioning_scripts import (
     CommissioningScriptCreate,
@@ -116,7 +118,6 @@ urlpatterns += patterns(
         r'^account/prefs/sshkey/delete/(?P<keyid>\d*)/$',
         SSHKeyDeleteView.as_view(), name='prefs-delete-sshkey'),
     )
-
 # Logout view.
 urlpatterns += patterns(
     'maasserver.views',
@@ -158,6 +159,18 @@ urlpatterns += patterns(
 # Settings views.
 urlpatterns += patterns(
     'maasserver.views',
+    adminurl(
+        r'^clusters/$',
+        ClusterListView.as_view(status=NODEGROUP_STATUS.ACCEPTED),
+        name='cluster-list'),
+    adminurl(
+        r'^clusters/pending/$',
+        ClusterListView.as_view(status=NODEGROUP_STATUS.PENDING),
+        name='cluster-list-pending'),
+    adminurl(
+        r'^clusters/rejected/$',
+        ClusterListView.as_view(status=NODEGROUP_STATUS.REJECTED),
+        name='cluster-list-rejected'),
     adminurl(
         r'^clusters/(?P<uuid>[\w\-]+)/edit/$', ClusterEdit.as_view(),
         name='cluster-edit'),

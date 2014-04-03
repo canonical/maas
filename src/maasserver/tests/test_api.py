@@ -53,6 +53,7 @@ from maasserver.testing.factory import factory
 from maasserver.testing.oauthclient import OAuthAuthenticatedClient
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.tests.test_forms import make_interface_settings
+from maasserver.utils import absolute_reverse
 from maasserver.utils.orm import get_one
 from maastesting.djangotestcase import TransactionTestCase
 from maastesting.matchers import MockCalledOnceWith
@@ -754,7 +755,8 @@ class TestWarnIfMissingBootImages(MAASServerTestCase):
             [args[0][0] for args in recorder.call_args_list])
         # The persistent error message links to the clusters listing.
         self.assertIn(
-            "/settings/#accepted-clusters", recorder.call_args_list[0][0][1])
+            absolute_reverse("cluster-list"),
+            recorder.call_args_list[0][0][1])
 
     def test_warns_if_any_nodegroup_has_no_images(self):
         factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
