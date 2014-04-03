@@ -14,10 +14,13 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+import errno
 import os.path
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
+from mock import Mock
+from provisioningserver.boot import tftppath
 from provisioningserver.boot.tftppath import (
     compose_image_path,
     drill_down,
@@ -35,6 +38,7 @@ from testtools.matchers import (
     Not,
     StartsWith,
     )
+from testtools.testcase import ExpectedException
 
 
 def make_image(params, purpose):
@@ -94,6 +98,15 @@ class TestTFTPPath(MAASTestCase):
     def test_locate_tftp_path_returns_root_when_path_is_None(self):
         self.assertEqual(
             self.tftproot, locate_tftp_path(None, tftproot=self.tftproot))
+
+    def test_list_boot_images_copes_with_missing_directory(self):
+        self.assertEqual([], list_boot_images(factory.getRandomString()))
+
+    def test_list_boot_images_passes_on_other_exceptions(self):
+        error = OSError(errno.EACCES, "Deliberate error for testing.")
+        self.patch(tftppath, 'list_subdirs', Mock(side_effect=error))
+        with ExpectedException(OSError):
+            list_boot_images(factory.getRandomString())
 
     def test_list_boot_images_copes_with_empty_directory(self):
         self.assertEqual([], list_boot_images(self.tftproot))

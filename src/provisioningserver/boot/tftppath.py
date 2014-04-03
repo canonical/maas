@@ -20,8 +20,13 @@ __all__ = [
     'locate_tftp_path',
     ]
 
+import errno
 from itertools import chain
+from logging import getLogger
 import os.path
+
+
+logger = getLogger(__name__)
 
 
 def compose_image_path(arch, subarch, release, label):
@@ -135,7 +140,16 @@ def list_boot_images(tftproot):
     """
     # The sub-directories directly under tftproot, if they contain
     # images, represent architectures.
-    potential_archs = list_subdirs(tftproot)
+    try:
+        potential_archs = list_subdirs(tftproot)
+    except OSError as exception:
+        if exception.errno == errno.ENOENT:
+            # Directory does not exist, so return empty list.
+            logger.warning("No boot images have been imported yet.")
+            return []
+        else:
+            # Other error. Propagate.
+            raise
 
     # Starting point for iteration: paths that contain only the
     # top-level subdirectory of tftproot, i.e. the architecture name.
