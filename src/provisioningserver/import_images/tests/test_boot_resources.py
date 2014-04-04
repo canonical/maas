@@ -21,12 +21,14 @@ import os
 from random import randint
 
 from maastesting.factory import factory
+from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 import mock
 from provisioningserver.boot.uefi import UEFIBootMethod
 from provisioningserver.config import BootConfig
 from provisioningserver.import_images import boot_resources
 from provisioningserver.utils import write_text_file
+from simplestreams.util import SignatureMissingException
 from testtools.matchers import (
     DirExists,
     FileExists,
@@ -317,6 +319,45 @@ class TestBootMerge(MAASTestCase):
             resource="New resource", image_spec=image)
         boot_resources.boot_merge(total_resources, resources_from_repo.copy())
         self.assertEqual(original_resources, total_resources)
+
+
+class TestGetSigningPolicy(MAASTestCase):
+    """Tests for `get_signing_policy`."""
+
+    def test_picks_nonchecking_policy_for_json_index(self):
+        path = 'streams/v1/index.json'
+        policy = boot_resources.get_signing_policy(path)
+        content = factory.getRandomString()
+        self.assertEqual(
+            content,
+            policy(content, path, factory.make_name('keyring')))
+
+    def test_picks_checking_policy_for_sjson_index(self):
+        path = 'streams/v1/index.sjson'
+        content = factory.getRandomString()
+        policy = boot_resources.get_signing_policy(path)
+        self.assertRaises(
+            SignatureMissingException,
+            policy, content, path, factory.make_name('keyring'))
+
+    def test_picks_checking_policy_for_json_gpg_index(self):
+        path = 'streams/v1/index.json.gpg'
+        content = factory.getRandomString()
+        policy = boot_resources.get_signing_policy(path)
+        self.assertRaises(
+            SignatureMissingException,
+            policy, content, path, factory.make_name('keyring'))
+
+    def test_injects_default_keyring_if_passed(self):
+        path = 'streams/v1/index.json.gpg'
+        content = factory.getRandomString()
+        keyring = factory.make_name('keyring')
+        self.patch(boot_resources, 'policy_read_signed')
+        policy = boot_resources.get_signing_policy(path, keyring)
+        policy(content, path)
+        self.assertThat(
+            boot_resources.policy_read_signed,
+            MockCalledOnceWith(mock.ANY, mock.ANY, keyring=keyring))
 
 
 def checksum_sha256(data):

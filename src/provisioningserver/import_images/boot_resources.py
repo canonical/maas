@@ -255,23 +255,39 @@ def tgt_entry(arch, subarch, release, label, image):
     return entry
 
 
-def mirror_info_for_path(path, unsigned_policy=None, keyring=None):
-    if unsigned_policy is None:
-        unsigned_policy = lambda content, path, keyring: content
-    (mirror, rpath) = path_from_mirror_url(path, None)
-    policy = policy_read_signed
-    if rpath.endswith(".json"):
-        policy = unsigned_policy
-    if keyring:
+def get_signing_policy(path, keyring=None):
+    """Return Simplestreams signing policy for the given path.
+
+    :param path: Path to the Simplestreams index file.
+    :param keyring: Optional keyring file for verifying signatures.
+    :return: A "signing policy" callable.  It accepts a file's content, path,
+        and optional keyring as arguments, and if the signature verifies
+        correctly, returns the content.  The keyring defaults to the one you
+        pass.
+    """
+    if path.endswith('.json'):
+        # The configuration deliberately selected an un-signed index.  A signed
+        # index would have a suffix of '.sjson'.  Use a policy that doesn't
+        # check anything.
+        policy = lambda content, path, keyring: content
+    else:
+        # Otherwise: use default Simplestreams policy for verifying signatures.
+        policy = policy_read_signed
+
+    if keyring is not None:
+        # Pass keyring to the policy, to use if the caller inside Simplestreams
+        # does not provide one.
         policy = functools.partial(policy, keyring=keyring)
-    return(mirror, rpath, policy)
+
+    return policy
 
 
 class RepoDumper(BasicMirrorWriter):
 
     def dump(self, path, keyring=None):
         self._boot = create_empty_hierarchy()
-        (mirror, rpath, policy) = mirror_info_for_path(path, keyring=keyring)
+        (mirror, rpath) = path_from_mirror_url(path, None)
+        policy = get_signing_policy(rpath, keyring)
         reader = UrlMirrorReader(mirror, policy=policy)
         super(RepoDumper, self).sync(reader, rpath)
         return self._boot
@@ -304,7 +320,8 @@ class RepoWriter(BasicMirrorWriter):
         super(RepoWriter, self).__init__()
 
     def write(self, path, keyring=None):
-        (mirror, rpath, policy) = mirror_info_for_path(path, keyring=keyring)
+        (mirror, rpath) = path_from_mirror_url(path, None)
+        policy = get_signing_policy(rpath, keyring)
         reader = UrlMirrorReader(mirror, policy=policy)
         super(RepoWriter, self).sync(reader, rpath)
 
