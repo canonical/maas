@@ -262,11 +262,11 @@ class ClusterEditTest(MAASServerTestCase):
         self.client_log_in(as_admin=True)
         nodegroup = factory.make_node_group()
         interfaces = set()
-        for i in range(3):
-            interface = factory.make_node_group_interface(
-                nodegroup=nodegroup,
-                management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
-            interfaces.add(interface)
+        for _ in range(3):
+            interfaces.add(
+                factory.make_node_group_interface(
+                    nodegroup=nodegroup,
+                    management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED))
         links = get_content_links(
             self.client.get(reverse('cluster-edit', args=[nodegroup.uuid])))
         interface_edit_links = [

@@ -418,8 +418,7 @@ class PermanentErrorDisplayTest(MAASServerTestCase):
             # to display all the errors.
             component = factory.make_name('component')
             error_message = factory.make_name('error')
-            error = Fault(fault, error_message)
-            errors.append(error)
+            errors.append(Fault(fault, error_message))
             register_persistent_error(component, error_message)
         links = [
             reverse('index'),
