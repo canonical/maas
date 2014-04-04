@@ -513,6 +513,7 @@ class TestMain(MAASTestCase):
         # Prepare a fake repository, storage directory, and configuration.
         storage = self.make_dir()
         image = make_image_spec()
+        arch, subarch, release, label = image
         repo = self.make_simplestreams_repo(image)
         config = {
             'boot': {
@@ -522,10 +523,10 @@ class TestMain(MAASTestCase):
                         'path': repo,
                         'selections': [
                             {
-                                'release': image.release,
-                                'arches': [image.arch],
-                                'subarches': [image.subarch],
-                                'labels': [image.label],
+                                'release': release,
+                                'arches': [arch],
+                                'subarches': [subarch],
+                                'labels': [label],
                             },
                             ],
                     },
@@ -548,10 +549,23 @@ class TestMain(MAASTestCase):
         self.assertThat(os.path.join(current, 'maas.meta'), FileExists())
         self.assertThat(os.path.join(current, 'maas.tgt'), FileExists())
         self.assertThat(
-            os.path.join(
-                current, image.arch, image.subarch, image.release,
-                image.label),
+            os.path.join(current, arch, subarch, release, label),
             DirExists())
+
+        # Verify the contents of the "meta" file.
+        with open(os.path.join(current, 'maas.meta'), 'rb') as meta_file:
+            meta_data = json.load(meta_file)
+        self.assertEqual([arch], meta_data.keys())
+        self.assertEqual([subarch], meta_data[arch].keys())
+        self.assertEqual(
+            [release],
+            meta_data[arch][subarch].keys())
+        self.assertEqual(
+            [label],
+            meta_data[arch][subarch][release].keys())
+        self.assertItemsEqual(
+            ['content_id', 'path', 'product_name', 'version_name'],
+            meta_data[arch][subarch][release][label].keys())
 
     def test_raises_ioerror_when_no_config_file_found(self):
         self.patch_logger()
