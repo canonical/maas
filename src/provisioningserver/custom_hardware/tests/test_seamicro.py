@@ -60,10 +60,15 @@ class FakeResponse(object):
 
 class FakeServer(object):
 
-    def __init__(self, id, serverNIC='0'):
+    def __init__(self, id):
         self.id = id
-        self.serverNIC = serverNIC
-        self.serverMacAddr = factory.getRandomMACAddress()
+        self.nic = {}
+
+    def add_fake_nic(self, id):
+        self.nic[id] = {'macAddr': factory.getRandomMACAddress()}
+
+    def get_fake_macs(self):
+        return [nic['macAddr'] for nic in self.nic.values()]
 
 
 class FakeSeaMicroServerManager(object):
@@ -398,14 +403,16 @@ class TestSeaMicro(MAASTestCase):
         username = factory.getRandomString()
         password = factory.getRandomString()
 
-        fake_server_0 = FakeServer('0')
-        fake_server_1 = FakeServer('1')
-        fake_server_invalid_nic = FakeServer('2', serverNIC='1')
+        fake_server_0 = FakeServer('0/0')
+        fake_server_0.add_fake_nic('0')
+        fake_server_0.add_fake_nic('1')
+        fake_server_1 = FakeServer('1/0')
+        fake_server_1.add_fake_nic('0')
+        fake_server_1.add_fake_nic('1')
         fake_client = FakeSeaMicroClient()
         fake_client.servers = FakeSeaMicroServerManager()
         fake_client.servers.servers.append(fake_server_0)
         fake_client.servers.servers.append(fake_server_1)
-        fake_client.servers.servers.append(fake_server_invalid_nic)
         mock_get_api = self.patch(
             provisioningserver.custom_hardware.seamicro,
             'get_seamicro15k_api')
@@ -422,19 +429,19 @@ class TestSeaMicro(MAASTestCase):
             mock_create_node,
             MockCallsMatch(
                 call(
-                    fake_server_0.serverMacAddr, 'amd64', 'sm15k',
+                    fake_server_0.get_fake_macs(), 'amd64', 'sm15k',
                     {
                         'power_control': 'restapi2',
-                        'system_id': fake_server_0.id,
+                        'system_id': '0',
                         'power_address': ip,
                         'power_pass': password,
                         'power_user': username
                     }),
                 call(
-                    fake_server_1.serverMacAddr, 'amd64', 'sm15k',
+                    fake_server_1.get_fake_macs(), 'amd64', 'sm15k',
                     {
                         'power_control': 'restapi2',
-                        'system_id': fake_server_1.id,
+                        'system_id': '1',
                         'power_address': ip,
                         'power_pass': password,
                         'power_user': username
@@ -445,7 +452,7 @@ class TestSeaMicro(MAASTestCase):
         username = factory.getRandomString()
         password = factory.getRandomString()
 
-        fake_server = FakeServer('0')
+        fake_server = FakeServer('0/0')
         fake_client = FakeSeaMicroClient()
         fake_client.servers = FakeSeaMicroServerManager()
         fake_client.servers.servers.append(fake_server)
