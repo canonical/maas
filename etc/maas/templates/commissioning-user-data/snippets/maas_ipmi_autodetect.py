@@ -165,12 +165,10 @@ def verify_ipmi_user_settings(user_number, user_settings):
 
     for key, expected_value in user_settings.iteritems():
         # Password isn't included in checkout.
-        if key == 'Password':
-            continue
-
-        actual_value = bmc_user_get(user_number, key)
-        if expected_value != actual_value:
-            bad_values[key] = actual_value
+        if key != 'Password':
+            value = bmc_user_get(user_number, key)
+            if value != expected_value:
+                bad_values[key] = value
 
     if len(bad_values) == 0:
         return
@@ -179,8 +177,8 @@ def verify_ipmi_user_settings(user_number, user_settings):
         "for '%s', expected '%s', actual '%s';" % (
             key, user_settings[key], actual_value)
         for key, actual_value in bad_values.iteritems()
-    ]).rstrip(';')
-    message = 'IPMI user setting verification failures: %s.' % (errors_string)
+        ]).rstrip(';')
+    message = "IPMI user setting verification failures: %s." % (errors_string)
     raise IPMIError(message)
 
 

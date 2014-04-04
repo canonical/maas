@@ -645,8 +645,8 @@ class Factory(maastesting.factory.Factory):
         else:
             vlan_tags = [None] * number
         return [
-            self.make_network(vlan_tag=vlan_tag, **kwargs)
-            for vlan_tag in vlan_tags
+            self.make_network(vlan_tag=tag, **kwargs)
+            for tag in vlan_tags
             ]
 
 # Create factory singleton.
