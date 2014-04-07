@@ -354,6 +354,14 @@ class TestConfig(MAASTestCase):
             'root': "/var/lib/maas/tftp",
             'resource_root': "/var/lib/maas/boot-resources/current/",
             },
+        # Legacy section.  Became unused in MAAS 1.5.
+        'boot': {
+            'architectures': None,
+            'ephemeral': {
+                'images_directory': None,
+                'releases': None,
+                },
+            },
         }
 
     default_development_config = deepcopy(default_production_config)
@@ -386,6 +394,34 @@ class TestConfig(MAASTestCase):
         self.assertThat(
             partial(Config.parse, config),
             Raises(expected))
+
+    def test_accepts_1_4_config_file(self):
+        # A config file that was valid with MAAS 1.4 still loads, even though
+        # its "boot" section is no longer used.
+        broker_password = factory.make_name('pass')
+        config = Config.parse(dedent("""\
+            logfile: "/dev/null"
+            oops:
+              directory: "logs/oops"
+              reporter: "maas-pserv"
+            broker:
+              host: "localhost"
+              port: 5673
+              username: brokeruser
+              password: "%s"
+              vhost: "/"
+            tftp:
+              root: /var/lib/maas/tftp
+              port: 5244
+              generator: http://localhost:5243/api/1.0/pxeconfig/
+            boot:
+              architectures: ['i386', 'armhf']
+              ephemeral:
+                images_directory: /var/lib/maas/ephemeral
+                releases: ['precise', 'saucy']
+            """) % broker_password)
+        # This does not fail.
+        self.assertEqual(broker_password, config['broker']['password'])
 
 
 class TestBootConfig(MAASTestCase):

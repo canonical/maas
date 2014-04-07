@@ -128,6 +128,28 @@ class ConfigTFTP(Schema):
     generator = String(if_missing=b"http://localhost/MAAS/api/1.0/pxeconfig/")
 
 
+class ConfigLegacyEphemeral(Schema):
+    """Legacy `eephemeral` section in `pserv.yaml` prior to MAAS 1.5.
+
+    This has been replaced with boot-source selection in `bootresources.yaml`.
+    It is still accepted in `pserv.yaml`, but not used.
+    """
+    if_key_missing = None
+    images_directory = String(if_missing=None)
+    releases = Set(if_missing=None)
+
+
+class ConfigLegacyBoot(Schema):
+    """Legacy `boot` section in `pserv.yaml` prior to MAAS 1.5.
+
+    The new version of this config section lives in `bootresources.yaml`.  It
+    is still accepted in `pserv.yaml`, but not used.
+    """
+    if_key_missing = None
+    architectures = Set(if_missing=None)
+    ephemeral = ConfigLegacyEphemeral
+
+
 class ConfigRPC(Schema):
     """Configuration validator for the RPC service."""
 
@@ -307,6 +329,7 @@ class Config(ConfigBase):
     broker = ConfigBroker
     tftp = ConfigTFTP
     rpc = ConfigRPC
+    boot = ConfigLegacyBoot
 
 
 class BootConfig(ConfigBase):
