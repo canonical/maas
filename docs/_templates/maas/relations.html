@@ -1,3 +1,15 @@
+<script type="text/javascript">
+$(document).ready(function () {
+  if ({{ add_version_switcher }}) {
+    $.ajaxSetup({cache: true});
+    $.getScript('{{ versions_json_path }}', function() {
+      console.log( "Versions script loaded." );
+      set_up_version_switcher('#version_switcher', '{{ doc_prefix }}');
+    });
+}
+});
+</script>
+
 <h3>Related Topics</h3>
 <ul>
   <li><a href="{{ pathto(master_doc) }}">Documentation overview</a><ul>

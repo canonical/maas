@@ -139,6 +139,9 @@ sampledata: bin/maas bin/database syncdb
 doc: bin/sphinx docs/api.rst
 	bin/sphinx
 
+doc-with-versions: bin/sphinx
+	cd docs/_build; make SPHINXOPTS="-A add_version_switcher=true" html
+
 man: $(patsubst docs/man/%.rst,man/%,$(wildcard docs/man/*.rst))
 
 man/%: docs/man/%.rst | bin/sphinx-build
