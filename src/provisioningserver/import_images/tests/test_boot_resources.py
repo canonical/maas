@@ -46,22 +46,75 @@ def make_image_spec():
         )
 
 
-class TestIterateBootResources(MAASTestCase):
-    """Tests for `iterate_boot_resources`."""
+class TestBootImageMapping(MAASTestCase):
+    """Tests for `BootImageMapping`."""
 
-    def test_empty_hierarchy_yields_nothing(self):
-        self.assertItemsEqual(
-            [],
-            boot_resources.iterate_boot_resources(
-                boot_resources.create_empty_hierarchy()))
+    def test_initially_empty(self):
+        self.assertItemsEqual([], boot_resources.BootImageMapping().items())
 
-    def test_finds_boot_resource(self):
-        image_spec = make_image_spec()
-        arch, subarch, release, label = image_spec
-        self.assertItemsEqual(
-            [image_spec],
-            boot_resources.iterate_boot_resources(
-                {arch: {subarch: {release: {label: factory.make_name()}}}}))
+    def test_items_returns_items(self):
+        image = make_image_spec()
+        resource = factory.make_name('resource')
+        image_dict = set_resource(image_spec=image, resource=resource)
+        self.assertItemsEqual([(image, resource)], image_dict.items())
+
+    def test_setdefault_sets_unset_item(self):
+        image_dict = boot_resources.BootImageMapping()
+        image = make_image_spec()
+        resource = factory.make_name('resource')
+        image_dict.setdefault(image, resource)
+        self.assertItemsEqual([(image, resource)], image_dict.items())
+
+    def test_setdefault_leaves_set_item_unchanged(self):
+        image = make_image_spec()
+        old_resource = factory.make_name('resource')
+        image_dict = set_resource(image_spec=image, resource=old_resource)
+        image_dict.setdefault(image, factory.make_name('newresource'))
+        self.assertItemsEqual([(image, old_resource)], image_dict.items())
+
+    def test_dump_json_is_consistent(self):
+        image = make_image_spec()
+        resource = factory.make_name('resource')
+        image_dict_1 = set_resource(image_spec=image, resource=resource)
+        image_dict_2 = set_resource(image_spec=image, resource=resource)
+        self.assertEqual(image_dict_1.dump_json(), image_dict_2.dump_json())
+
+    def test_dump_json_represents_empty_dict_as_empty_object(self):
+        self.assertEqual('{}', boot_resources.BootImageMapping().dump_json())
+
+    def test_dump_json_represents_entry(self):
+        image = make_image_spec()
+        resource = factory.make_name('resource')
+        image_dict = set_resource(image_spec=image, resource=resource)
+        self.assertEqual(
+            {
+                image.arch: {
+                    image.subarch: {
+                        image.release: {image.label: resource},
+                    },
+                },
+            },
+            json.loads(image_dict.dump_json()))
+
+    def test_dump_json_combines_similar_entries(self):
+        image = make_image_spec()
+        other_release = factory.make_name('other-release')
+        resource1 = factory.make_name('resource')
+        resource2 = factory.make_name('other-resource')
+        image_dict = boot_resources.BootImageMapping()
+        set_resource(image_dict, image, resource1)
+        set_resource(
+            image_dict, image._replace(release=other_release), resource2)
+        self.assertEqual(
+            {
+                image.arch: {
+                    image.subarch: {
+                        image.release: {image.label: resource1},
+                        other_release: {image.label: resource2},
+                    },
+                },
+            },
+            json.loads(image_dict.dump_json()))
 
 
 class TestValuePassesFilterList(MAASTestCase):
@@ -151,7 +204,7 @@ class TestBootReverse(MAASTestCase):
         image1 = make_image_spec()
         image2 = make_image_spec()
         resource = self.make_boot_resource()
-        boot_dict = {}
+        boot_dict = boot_resources.BootImageMapping()
         # Create two images in boot_dict, both containing the same resource.
         for image in [image1, image2]:
             set_resource(
@@ -262,23 +315,14 @@ class TestImagePassesFilter(MAASTestCase):
 
 
 def set_resource(boot_dict=None, image_spec=None, resource=None):
-    """Add a boot resource to `boot_dict`, creating it if necessary."""
+    """Add boot resource to a `BootImageMapping`, creating it if necessary."""
     if boot_dict is None:
-        boot_dict = {}
+        boot_dict = boot_resources.BootImageMapping()
     if image_spec is None:
         image_spec = make_image_spec()
     if resource is None:
         resource = factory.make_name('boot-resource')
-    arch, subarch, release, label = image_spec
-    # Drill down into the dict; along the way, create any missing levels of
-    # nested dicts.
-    nested_dict = boot_dict
-    for level in (arch, subarch, release):
-        nested_dict.setdefault(level, {})
-        nested_dict = nested_dict[level]
-    # At the bottom level, indexed by "label," insert "resource" as the
-    # value.
-    nested_dict[label] = resource
+    boot_dict.mapping[image_spec] = resource
     return boot_dict
 
 
@@ -288,12 +332,12 @@ class TestBootMerge(MAASTestCase):
     def test_integrates(self):
         # End-to-end scenario for boot_merge: start with an empty boot
         # resources dict, and receive one resource from Simplestreams.
-        total_resources = boot_resources.create_empty_hierarchy()
+        total_resources = boot_resources.BootImageMapping()
         resources_from_repo = set_resource()
-        boot_resources.boot_merge(total_resources, resources_from_repo.copy())
+        boot_resources.boot_merge(total_resources, resources_from_repo)
         # Since we started with an empty dict, the result contains the same
         # item that we got from Simplestreams, and nothing else.
-        self.assertEqual(resources_from_repo, total_resources)
+        self.assertEqual(resources_from_repo.mapping, total_resources.mapping)
 
     def test_obeys_filters(self):
         filters = [
@@ -312,13 +356,13 @@ class TestBootMerge(MAASTestCase):
 
     def test_does_not_overwrite_existing_entry(self):
         image = make_image_spec()
-        original_resources = set_resource(
+        total_resources = set_resource(
             resource="Original resource", image_spec=image)
-        total_resources = original_resources.copy()
+        original_resources = total_resources.mapping.copy()
         resources_from_repo = set_resource(
             resource="New resource", image_spec=image)
-        boot_resources.boot_merge(total_resources, resources_from_repo.copy())
-        self.assertEqual(original_resources, total_resources)
+        boot_resources.boot_merge(total_resources, resources_from_repo)
+        self.assertEqual(original_resources, total_resources.mapping)
 
 
 class TestGetSigningPolicy(MAASTestCase):

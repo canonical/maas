@@ -92,23 +92,44 @@ ImageSpec = namedtuple(b'ImageSpec', [
     ])
 
 
-def iterate_boot_resources(boot_dict):
-    """Iterate a multi-level dict of boot images.
+class BootImageMapping:
+    """Mapping of boot-image data.
 
-    Yields each combination of architecture, subarchitecture, release, and
-    label for which `boot` has an entry, as an `ImageSpec`.
+    Maps `ImageSpec` tuples to metadata for Simplestreams products.
 
-    :param boot: Four-level dict of dicts representing boot images: the top
-        level maps the architectures to sub-dicts, each of which maps
-        subarchitectures to further dicts, each of which in turn maps
-        releases to yet more dicts, each of which maps release labels to any
-        kind of item it likes.
+    This class is deliberately a bit more restrictive and less ad-hoc than a
+    dict.  It helps keep a clear view of the data structures in this module.
     """
-    for arch, subarches in sorted(boot_dict.items()):
-        for subarch, releases in sorted(subarches.items()):
-            for release, labels in sorted(releases.items()):
-                for label in sorted(labels.keys()):
-                    yield ImageSpec(arch, subarch, release, label)
+
+    def __init__(self):
+        self.mapping = {}
+
+    def items(self):
+        """Iterate over `ImageSpec` keys, and their stored values."""
+        for image_spec, item in sorted(self.mapping.items()):
+            yield image_spec, item
+
+    def setdefault(self, image_spec, item):
+        """Set metadata for `image_spec` to item, if not already set."""
+        assert isinstance(image_spec, ImageSpec)
+        self.mapping.setdefault(image_spec, item)
+
+    def dump_json(self):
+        """Produce JSON representing the mapped boot images.
+
+        Tries to keep the output deterministic, so that identical data is
+        likely to produce identical JSON.
+        """
+        # The meta files represent the mapping as a nested hierarchy of dicts.
+        # Keep that format.
+        data = {}
+        for image, resource in self.items():
+            arch, subarch, release, label = image
+            data.setdefault(arch, {})
+            data[arch].setdefault(subarch, {})
+            data[arch][subarch].setdefault(release, {})
+            data[arch][subarch][release][label] = resource
+        return json.dumps(data, sort_keys=True)
 
 
 def value_passes_filter_list(filter_list, property_value):
@@ -156,67 +177,70 @@ def image_passes_filter(filters, arch, subarch, release, label):
     return False
 
 
-def boot_merge(boot1, boot2, filters=None):
-    """Add entries from the second multi-level dict to the first one.
+def boot_merge(destination, additions, filters=None):
+    """Complement one `BootImageMapping` with entries from another.
 
-    Function copies d[arch][subarch][release]=value chains from the second
-    dictionary to the first one if they don't exist there and pass optional
-    check done by filters.
+    This adds entries from `additions` (that match `filters`, if given) to
+    `destination`, but only for those image specs for which `destination` does
+    not have entries yet.
 
-    :param boot1: first dict which will be extended in-place.
-    :param boot2: second dict which will be used as a source of new entries.
-    :param filters: list of dicts each of which contains 'arch', 'subarch',
-        'release' keys; function takes d[arch][subarch][release] chain to the
-        first dict only if filters contain at least one dict with
-        arch in d['arches'], subarch in d['subarch'], d['release'] == release;
-        dict may have '*' as a value for 'arch' and 'release' keys and as a
-        member of 'subarch' list -- in that case key-specific check always
-        passes.
+    :param destination: `BootImageMapping` to be updated.  It will be extended
+        in-place.
+    :param additions: A second `BootImageMapping`, which will be used as a
+        source of additional entries.
+    :param filters: List of dicts, each of which contains 'arch', 'subarch',
+        and 'release' keys.  If given, entries are only considered for copying
+        from `additions` to `destination` if they match at least one of the
+        filters.  Entries in the filter may be the string `*` (or for entries
+        that are lists, may contain the string `*`) to make them match any
+        value.
     """
-    for arch, subarch, release, label in iterate_boot_resources(boot2):
+    for image, resource in additions.items():
+        arch, subarch, release, label = image
         if image_passes_filter(filters, arch, subarch, release, label):
             logger.debug(
                 "Merging boot resource for %s/%s/%s/%s.",
                 arch, subarch, release, label)
-            boot_resource = boot2[arch][subarch][release][label]
             # Do not override an existing entry with the same
             # arch/subarch/release/label: the first entry found takes
             # precedence.
-            if not boot1[arch][subarch][release][label]:
-                boot1[arch][subarch][release][label] = boot_resource
+            destination.setdefault(image, resource)
 
 
-def boot_reverse(boot):
-    """Determine a set of subarches which should be deployed by boot resource.
+def boot_reverse(boot_images_dict):
+    """Determine the subarches supported by each boot resource.
 
-    Function reverses h[arch][subarch][release]=boot_resource hierarchy to form
-    boot resource to subarch relation. Many subarches may be deployed by a
-    single boot resource (in which case boot_resource=[subarch1, subarch2]
-    relation will be created). We note only subarchitectures and ignore
-    architectures because boot resource is tightly coupled with architecture
-    it can deploy according to metadata format. We can figure out for which
-    architecture we need to use a specific boot resource by looking at its
-    description in metadata. We can't do the same with subarch because we may
-    want to use boot resource only for a specific subset of subarches it can be
-    used for. To represent boot resource to subarch relation we generate the
-    following multi-level dictionary: d[content_id][product_name]=[subarches]
-    where 'content_id' and 'product_name' values come from metadata information
-    and allow us to uniquely identify a specific boot resource.
+    Many subarches may be deployed by a single boot resource.  We note only
+    subarchitectures here and ignore architectures because the metadata format
+    tightly couples a boot resource to its architecture.
 
-    :param boot: Hierarchy of dicts d[arch][subarch][release]=boot_resource
+    We can figure out for which architecture we need to use a specific boot
+    resource by looking at its description in the metadata.  We can't do the
+    same with subarch, because we may want to use a boot resource only for a
+    specific subset of subarches.
+
+    This function represents the relationship between boot resources and
+    subarchitectures as a multi-level dictionary::
+
+        d[content_id][product_name] = [subarches]
+
+    Here, `content_id` and `product_name` come from the metadata information
+    and uniquely identify a specific boot resource.
+
+    :param boot: A `BootImageMapping` containing the images' metadata.
     :return Hierarchy of dictionaries d[content_id][product_name]=[subarches]
         which describes boot resource to subarches relation for all available
         boot resources (products).
     """
     reverse = create_empty_hierarchy()
 
-    for arch, subarch, release, label in iterate_boot_resources(boot):
-        boot_resource = boot[arch][subarch][release][label]
+    for image, boot_resource in boot_images_dict.items():
         content_id = boot_resource['content_id']
         product_name = boot_resource['product_name']
         version_name = boot_resource['version_name']
         existent = list(reverse[content_id][product_name][version_name])
-        reverse[content_id][product_name][version_name] = [subarch] + existent
+        reverse[content_id][product_name][version_name] = (
+            [image.subarch] + existent)
 
     return reverse
 
@@ -293,15 +317,15 @@ class RepoDumper(BasicMirrorWriter):
     """Gather metadata about boot images available in a Simplestreams repo.
 
     Used inside `download_image_descriptions`.  Stores basic metadata about
-    each image it finds upstream in a given dict, indexed by arch, subarch,
-    release, and label.  Each item is a dict containing the basic metadata
-    for retrieving a boot image.
+    each image it finds upstream in a given `BootImageMapping`.  Each stored
+    item is a dict containing the basic metadata for retrieving a boot image.
 
-    :ivar boot_images_dict: A nested `defaultdict` for boot images.
-        Image metadata will be stored here as it is discovered.  Simplestreams
-        does not interact with this variable, and `BasicMirrorWriter` in itself
-        is stateless.  It relies on a subclass (such as this one) to store
-        data.
+    Simplestreams' `BasicMirrorWriter` in itself is stateless.  It relies on
+    a subclass (such as this one) to store data.
+
+    :ivar boot_images_dict: A `BootImageMapping`.  Image metadata will be
+        stored here as it is discovered.  Simplestreams does not interact with
+        this variable.
     """
 
     def __init__(self, boot_images_dict):
@@ -321,11 +345,11 @@ class RepoDumper(BasicMirrorWriter):
         arch, subarches = item['arch'], item['subarches']
         release = item['release']
         label = item['label']
+        base_image = ImageSpec(arch, None, release, label)
         compact_item = clean_up_repo_item(item)
         for subarch in subarches.split(','):
-            if not self.boot_images_dict[arch][subarch][release][label]:
-                self.boot_images_dict[arch][subarch][release][label] = (
-                    compact_item)
+            self.boot_images_dict.setdefault(
+                base_image._replace(subarch=subarch), compact_item)
 
 
 def download_image_descriptions(path, keyring=None):
@@ -339,7 +363,7 @@ def download_image_descriptions(path, keyring=None):
     mirror, rpath = path_from_mirror_url(path, None)
     policy = get_signing_policy(rpath, keyring)
     reader = UrlMirrorReader(mirror, policy=policy)
-    boot_images_dict = create_empty_hierarchy()
+    boot_images_dict = BootImageMapping()
     dumper = RepoDumper(boot_images_dict)
     dumper.sync(reader, rpath)
     return boot_images_dict
@@ -347,7 +371,7 @@ def download_image_descriptions(path, keyring=None):
 
 def download_all_image_descriptions(config):
     """Download image metadata for all sources in `config`."""
-    boot = create_empty_hierarchy()
+    boot = BootImageMapping()
     for source in config['boot']['sources']:
         repo_boot = download_image_descriptions(
             source['path'], keyring=source['keyring'])
@@ -548,7 +572,7 @@ def main(args):
     storage = config['boot']['storage']
 
     boot = download_all_image_descriptions(config)
-    meta_file_content = json.dumps(boot, sort_keys=True)
+    meta_file_content = boot.dump_json()
     if meta_contains(storage, meta_file_content):
         # The current maas.meta already contains the new config.  No need to
         # rewrite anything.
