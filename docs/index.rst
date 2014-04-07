@@ -1,11 +1,10 @@
 .. MAAS documentation master file
 
 ########################
-Metal As A Service: MAAS
+MAAS: Metal As A Service
 ########################
 
 This is the documentation for the MAAS project http://maas.ubuntu.com
-
 
 ************
 Introduction
@@ -15,13 +14,13 @@ Introduction
    :maxdepth: 2
 
    about
-   changelog
    orientation
+   changelog
 
 
-***************
-Getting started
-***************
+************************
+Setting up a MAAS server
+************************
 
 .. toctree::
    :maxdepth: 2
@@ -44,14 +43,25 @@ Deploying services
    tags
 
 
-******************************
-Using the maas-cli commandline
-******************************
+***********************
+API / CLI Documentation
+***********************
 
 .. toctree::
    :maxdepth: 2
 
+   api
    maascli
+
+
+***************
+Troubleshooting
+***************
+
+.. toctree::
+   :maxdepth: 2
+
+   troubleshooting
 
 
 ***************
@@ -62,6 +72,9 @@ Developing MAAS
    :maxdepth: 2
 
    development/philosophy
+   hacking
+   models
+   enum
    development/security
    development/building-packages
    development/cluster-registration
@@ -70,22 +83,12 @@ Developing MAAS
    development/preseeds
 
 
-**********
-Appendices
-**********
+******************
+Indices and tables
+******************
 
 .. toctree::
    :maxdepth: 2
-
-   troubleshooting
-   hacking
-   api
-   models
-   enum
-
-
-Indices and tables
-==================
 
 * :ref:`genindex`
 * :ref:`modindex`
