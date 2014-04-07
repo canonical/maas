@@ -22,6 +22,23 @@ environ.setdefault("DJANGO_SETTINGS_MODULE", "maas.settings")
 
 # -- General configuration -----------------------------------------------------
 
+# Add a widget to switch between different versions of the documentation to
+# each generated page.
+add_version_switcher = False
+
+# In order for the version widget to be able to redirect correctly to the
+# other versions of the documentation, each version of the documentation
+# has to be accessible at the following addresses:
+# /<doc_prefix>/ -> documentation for trunk.
+# /<doc_prefix>1.4/ ->  documentation for 1.4.
+# etc.
+doc_prefix = 'docs'
+
+# Path of the JSON document, relative to homepage of the documentation for trunk
+# (i.e. '/<doc_prefix>/'), with the list of the versions to include in the
+# version switcher widget.
+versions_path = '_static/versions.js'
+
 # If your documentation needs a minimal Sphinx version, state it here.
 #needs_sphinx = '1.0'
 
@@ -240,3 +257,11 @@ man_pages = [
 
 # Example configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {'http://docs.python.org/': None}
+
+# Populate html_context with the variables used in the templates.
+html_context = {
+    'add_version_switcher': 'true' if add_version_switcher else 'false',
+    'versions_json_path': '/'.join(['', doc_prefix, versions_path]),
+    'doc_prefix': doc_prefix,
+}
+
