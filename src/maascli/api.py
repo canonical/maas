@@ -21,6 +21,7 @@ from collections import defaultdict
 from email.message import Message
 from functools import partial
 import httplib
+from itertools import chain
 import json
 from operator import itemgetter
 import re

@@ -24,10 +24,8 @@ import urllib2
 import urlparse
 
 import provisioningserver.custom_hardware.utils as utils
-from seamicroclient.v2 import (
-    client as seamicro_client,
-    )
 from seamicroclient import (
+    client as seamicro_client,
     exceptions as seamicro_exceptions,
     )
 
@@ -214,10 +212,10 @@ def get_seamicro15k_api(version, ip, username, password):
             return None
         return api
     elif version == 'v2.0':
-        url = 'http://%s/v2.0' % ip
+        url = 'http://%s' % ip
         try:
             api = seamicro_client.Client(
-                auth_url=url, username=username, password=password)
+                '2', auth_url=url, username=username, password=password)
         except seamicro_exceptions.ConnectionRefused:
             # Cannot reach using v2.0, might no be supported
             return None
@@ -242,12 +240,14 @@ def get_seamicro15k_servers(version, ip, username, password):
                 if server['serverNIC'] == '0'
             )
         elif version == 'v2.0':
-            servers = []
-            for server in api.servers.list():
-                id = server.id.split('/')[0]
-                macs = [nic['macAddr'] for nic in server.nic.values()]
-                servers.append((id, macs))
-            return servers
+            return (
+                (server.id, server.serverMacAddr)
+                for server in
+                api.servers.list()
+                # There are 8 network cards attached to these boxes, we only
+                # use NIC 0 for PXE booting.
+                if server.serverNIC == '0'
+            )
     return None
 
 
@@ -316,7 +316,6 @@ def power_control_seamicro15k_v09(ip, username, password, server_id,
 
 def power_control_seamicro15k_v2(ip, username, password, server_id,
                                  power_change):
-    server_id = '%s/0' % server_id
     api = get_seamicro15k_api('v2.0', ip, username, password)
     if api:
         server = api.servers.get(server_id)

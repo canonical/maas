@@ -156,18 +156,14 @@ class TestFunctions(MAASServerTestCase):
         self.assertEqual(get_legacy_user(), get_destination_user())
 
     def test_get_destination_user_with_user_from_juju_state(self):
-        user = factory.make_user()
-        # Also create another user.
-        factory.make_user()
-        node = factory.make_node(owner=user)
+        user1, user2 = factory.make_user(), factory.make_user()
+        node = factory.make_node(owner=user1)
         make_provider_state_file(node)
-        self.assertEqual(user, get_destination_user())
+        self.assertEqual(user1, get_destination_user())
 
     def test_get_destination_user_with_orphaned_juju_state(self):
-        user = factory.make_user()
-        # Also create another user.
-        factory.make_user()
-        node = factory.make_node(owner=user)
+        user1, user2 = factory.make_user(), factory.make_user()
+        node = factory.make_node(owner=user1)
         make_provider_state_file(node)
         node.delete()  # Orphan the state.
         self.assertEqual(get_legacy_user(), get_destination_user())

@@ -23,7 +23,6 @@ from itertools import (
     repeat,
     )
 import random
-import re
 from string import whitespace
 from uuid import uuid1
 
@@ -151,43 +150,6 @@ NODE_TRANSITIONS = {
 
 class UnknownPowerType(Exception):
     """Raised when a node has an unknown power type."""
-
-
-def validate_hostname(hostname):
-    """Validator for hostnames.
-
-    :param hostname: Input value for a host name.  May include domain.
-    :raise ValidationError: If the hostname is not valid according to RFCs 952
-        and 1123.
-    """
-    # Valid characters within a hostname label: ASCII letters, ASCII digits,
-    # hyphens, and underscores.  Not all are always valid.
-    # Technically we could write all of this as a single regex, but it's not
-    # very good for code maintenance.
-    label_chars = re.compile('[a-zA-Z0-9_-]*$')
-
-    if len(hostname) > 255:
-        raise ValidationError(
-            "Hostname is too long.  Maximum allowed is 255 characters.")
-    # A hostname consists of "labels" separated by dots.
-    labels = hostname.split('.')
-    if '_' in labels[0]:
-        # The host label cannot contain underscores; the rest of the name can.
-        raise ValidationError(
-            "Host label cannot contain underscore: %r." % labels[0])
-    for label in labels:
-        if len(label) == 0:
-            raise ValidationError("Hostname contains empty name.")
-        if len(label) > 63:
-            raise ValidationError(
-                "Name is too long: %r.  Maximum allowed is 63 characters."
-                % label)
-        if label.startswith('-') or label.endswith('-'):
-            raise ValidationError(
-                "Name cannot start or end with hyphen: %r." % label)
-        if not label_chars.match(label):
-            raise ValidationError(
-                "Name contains disallowed characters: %r." % label)
 
 
 class NodeManager(Manager):
@@ -446,7 +408,7 @@ class Node(CleanSave, TimestampedModel):
 
     :ivar system_id: The unique identifier for this `Node`.
         (e.g. 'node-41eba45e-4cfa-11e1-a052-00225f89f211').
-    :ivar hostname: This `Node`'s hostname.  Must conform to RFCs 952 and 1123.
+    :ivar hostname: This `Node`'s hostname.
     :ivar status: This `Node`'s status. See the vocabulary
         :class:`NODE_STATUS`.
     :ivar owner: This `Node`'s owner if it's in use, None otherwise.
@@ -466,9 +428,7 @@ class Node(CleanSave, TimestampedModel):
         max_length=41, unique=True, default=generate_node_system_id,
         editable=False)
 
-    hostname = CharField(
-        max_length=255, default='', blank=True, unique=True,
-        validators=[validate_hostname])
+    hostname = CharField(max_length=255, default='', blank=True, unique=True)
 
     status = IntegerField(
         max_length=10, choices=NODE_STATUS_CHOICES, editable=False,

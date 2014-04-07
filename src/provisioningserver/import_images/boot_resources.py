@@ -255,104 +255,44 @@ def tgt_entry(arch, subarch, release, label, image):
     return entry
 
 
-def get_signing_policy(path, keyring=None):
-    """Return Simplestreams signing policy for the given path.
-
-    :param path: Path to the Simplestreams index file.
-    :param keyring: Optional keyring file for verifying signatures.
-    :return: A "signing policy" callable.  It accepts a file's content, path,
-        and optional keyring as arguments, and if the signature verifies
-        correctly, returns the content.  The keyring defaults to the one you
-        pass.
-    """
-    if path.endswith('.json'):
-        # The configuration deliberately selected an un-signed index.  A signed
-        # index would have a suffix of '.sjson'.  Use a policy that doesn't
-        # check anything.
-        policy = lambda content, path, keyring: content
-    else:
-        # Otherwise: use default Simplestreams policy for verifying signatures.
-        policy = policy_read_signed
-
-    if keyring is not None:
-        # Pass keyring to the policy, to use if the caller inside Simplestreams
-        # does not provide one.
+def mirror_info_for_path(path, unsigned_policy=None, keyring=None):
+    if unsigned_policy is None:
+        unsigned_policy = lambda content, path, keyring: content
+    (mirror, rpath) = path_from_mirror_url(path, None)
+    policy = policy_read_signed
+    if rpath.endswith(".json"):
+        policy = unsigned_policy
+    if keyring:
         policy = functools.partial(policy, keyring=keyring)
-
-    return policy
-
-
-def clean_up_repo_item(item):
-    """Return a subset of dict `item` for storing in a boot images dict."""
-    keys_to_keep = ['content_id', 'product_name', 'version_name', 'path']
-    compact_item = {key: item[key] for key in keys_to_keep}
-    return compact_item
+    return(mirror, rpath, policy)
 
 
 class RepoDumper(BasicMirrorWriter):
-    """Gather metadata about boot images available in a Simplestreams repo.
 
-    Used inside `download_image_descriptions`.  Stores basic metadata about
-    each image it finds upstream in a given dict, indexed by arch, subarch,
-    release, and label.  Each item is a dict containing the basic metadata
-    for retrieving a boot image.
-
-    :ivar boot_images_dict: A nested `defaultdict` for boot images.
-        Image metadata will be stored here as it is discovered.  Simplestreams
-        does not interact with this variable, and `BasicMirrorWriter` in itself
-        is stateless.  It relies on a subclass (such as this one) to store
-        data.
-    """
-
-    def __init__(self, boot_images_dict):
-        super(RepoDumper, self).__init__()
-        self.boot_images_dict = boot_images_dict
+    def dump(self, path, keyring=None):
+        self._boot = create_empty_hierarchy()
+        (mirror, rpath, policy) = mirror_info_for_path(path, keyring=keyring)
+        reader = UrlMirrorReader(mirror, policy=policy)
+        super(RepoDumper, self).sync(reader, rpath)
+        return self._boot
 
     def load_products(self, path=None, content_id=None):
-        """Overridable from `BasicMirrorWriter`."""
-        # It looks as if this method only makes sense for MirrorReaders, not
-        # for MirrorWriters.  The default MirrorWriter implementation just
-        # raises NotImplementedError.  Stop it from doing that.
         return
 
+    def item_cleanup(self, item):
+        keys_to_keep = ['content_id', 'product_name', 'version_name', 'path']
+        compact_item = {key: item[key] for key in keys_to_keep}
+        return compact_item
+
     def insert_item(self, data, src, target, pedigree, contentsource):
-        """Overridable from `BasicMirrorWriter`."""
         item = products_exdata(src, pedigree)
         arch, subarches = item['arch'], item['subarches']
         release = item['release']
         label = item['label']
-        compact_item = clean_up_repo_item(item)
+        compact_item = self.item_cleanup(item)
         for subarch in subarches.split(','):
-            if not self.boot_images_dict[arch][subarch][release][label]:
-                self.boot_images_dict[arch][subarch][release][label] = (
-                    compact_item)
-
-
-def download_image_descriptions(path, keyring=None):
-    """Download image metadata from upstream Simplestreams repo.
-
-    :param path: The path to a Simplestreams repo.
-    :param keyring: Optional keyring for verifying the repo's signatures.
-    :return: A nested dict of data, indexed by image arch, subarch, release,
-        and label.
-    """
-    mirror, rpath = path_from_mirror_url(path, None)
-    policy = get_signing_policy(rpath, keyring)
-    reader = UrlMirrorReader(mirror, policy=policy)
-    boot_images_dict = create_empty_hierarchy()
-    dumper = RepoDumper(boot_images_dict)
-    dumper.sync(reader, rpath)
-    return boot_images_dict
-
-
-def download_all_image_descriptions(config):
-    """Download image metadata for all sources in `config`."""
-    boot = create_empty_hierarchy()
-    for source in config['boot']['sources']:
-        repo_boot = download_image_descriptions(
-            source['path'], keyring=source['keyring'])
-        boot_merge(boot, repo_boot, source['selections'])
-    return boot
+            if not self._boot[arch][subarch][release][label]:
+                self._boot[arch][subarch][release][label] = compact_item
 
 
 class RepoWriter(BasicMirrorWriter):
@@ -364,8 +304,7 @@ class RepoWriter(BasicMirrorWriter):
         super(RepoWriter, self).__init__()
 
     def write(self, path, keyring=None):
-        (mirror, rpath) = path_from_mirror_url(path, None)
-        policy = get_signing_policy(rpath, keyring)
+        (mirror, rpath, policy) = mirror_info_for_path(path, keyring=keyring)
         reader = UrlMirrorReader(mirror, policy=policy)
         super(RepoWriter, self).sync(reader, rpath)
 
@@ -547,7 +486,13 @@ def main(args):
 
     storage = config['boot']['storage']
 
-    boot = download_all_image_descriptions(config)
+    boot = create_empty_hierarchy()
+    dumper = RepoDumper()
+
+    for source in config['boot']['sources']:
+        repo_boot = dumper.dump(source['path'], keyring=source['keyring'])
+        boot_merge(boot, repo_boot, source['selections'])
+
     meta_file_content = json.dumps(boot, sort_keys=True)
     if meta_contains(storage, meta_file_content):
         # The current maas.meta already contains the new config.  No need to

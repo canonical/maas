@@ -2281,10 +2281,10 @@ def render_api_docs():
         line(doc.handler.__doc__)
         line()
         line()
-        for (http_method, op), function in sorted(exports):
+        for (http_method, operation), function in sorted(exports):
             line("``%s %s``" % (http_method, uri_template), end="")
-            if op is not None:
-                line(" ``op=%s``" % op)
+            if operation is not None:
+                line(" ``op=%s``" % operation)
             line()
             docstring = getdoc(function)
             if docstring is not None:
