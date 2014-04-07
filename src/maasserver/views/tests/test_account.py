@@ -17,7 +17,10 @@ __all__ = []
 from django.conf import settings
 from django.contrib.auth import SESSION_KEY
 from django.core.urlresolvers import reverse
-from lxml.html import fromstring
+from lxml.html import (
+    fromstring,
+    tostring,
+    )
 from maasserver.testing import (
     extract_redirect,
     get_content_links,
@@ -50,6 +53,21 @@ class TestLogin(MAASServerTestCase):
         response = self.client.get('/accounts/login/')
         self.assertEqual('/', extract_redirect(response))
 
+    def test_login_sets_autocomplete_off_in_production(self):
+        self.patch(settings, 'DEBUG', False)
+        factory.make_user()
+        response = self.client.get('/accounts/login/')
+        doc = fromstring(response.content)
+        form = doc.cssselect("form")[0]
+        self.assertIn('autocomplete="off"', tostring(form))
+
+    def test_login_sets_autocomplete_on_in_debug_mode(self):
+        self.patch(settings, 'DEBUG', True)
+        factory.make_user()
+        response = self.client.get('/accounts/login/')
+        doc = fromstring(response.content)
+        form = doc.cssselect("form")[0]
+        self.assertNotIn('autocomplete="off"', tostring(form))
 
 class TestLogout(MAASServerTestCase):
 

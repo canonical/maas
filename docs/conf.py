@@ -13,6 +13,8 @@
 
 # Import maas' settings.
 from os import environ
+
+
 environ.setdefault("DJANGO_SETTINGS_MODULE", "maas.settings")
 
 # If extensions (or modules to document with autodoc) are in another directory,

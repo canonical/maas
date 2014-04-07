@@ -24,12 +24,8 @@ import urllib2
 import urlparse
 
 import provisioningserver.custom_hardware.utils as utils
-from seamicroclient.v2 import (
-    client as seamicro_client,
-    )
-from seamicroclient import (
-    exceptions as seamicro_exceptions,
-    )
+from seamicroclient import exceptions as seamicro_exceptions
+from seamicroclient.v2 import client as seamicro_client
 
 
 logger = logging.getLogger(__name__)

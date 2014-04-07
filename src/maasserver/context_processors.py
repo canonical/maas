@@ -80,5 +80,6 @@ def global_options(context):
         ],
         'global_options': {
             'site_name': Config.objects.get_config('maas_name'),
-        }
+        },
+        'debug': settings.DEBUG,
     }
