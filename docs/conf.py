@@ -20,7 +20,42 @@ environ.setdefault("DJANGO_SETTINGS_MODULE", "maas.settings")
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
-#sys.path.insert(0, os.path.abspath('.'))
+
+import sys, os
+# Include '.' in the path so that our custom extension, 'versions', can
+# be found.
+sys.path.insert(0, os.path.abspath('.'))
+
+# -- Multiple documentation options.
+
+# Add a widget to switch between different versions of the documentation to
+# each generated page.
+add_version_switcher = False
+
+# In order for the version widget to be able to redirect correctly to the
+# other versions of the documentation, each version of the documentation
+# has to be accessible at the following addresses:
+# /<doc_prefix>/ -> documentation for trunk.
+# /<doc_prefix>1.4/ ->  documentation for 1.4.
+# etc.
+doc_prefix = 'docs'
+
+# Path of the JSON document, relative to homepage of the documentation for trunk
+# (i.e. '/<doc_prefix>/'), with the list of the versions to include in the
+# version switcher widget.
+versions_path = '_static/versions.js'
+
+# Versions to include in the version switcher.
+# Note that the version switcher fetches the list of the documentation versions
+# from the list published by the trunk documentation (i.e. in '/<doc_prefix>/').
+# This means the following list is meaningful only for trunk.   
+# The first item should be the development version.
+from collections import OrderedDict
+doc_versions = OrderedDict([
+    ('1.6', 'Development trunk'),
+    ('1.5', 'MAAS 1.5'),
+    ('1.4', 'MAAS 1.4'),
+])
 
 # -- General configuration -----------------------------------------------------
 
@@ -36,6 +71,7 @@ extensions = [
     'sphinx.ext.intersphinx',
     'sphinx.ext.pngmath',
     'sphinx.ext.viewcode',
+    'versions',
     ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -242,3 +278,10 @@ man_pages = [
 
 # Example configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {'http://docs.python.org/': None}
+
+# Populate html_context with the variables used in the templates.
+html_context = {
+    'add_version_switcher': 'true' if add_version_switcher else 'false',
+    'versions_json_path': '/'.join(['', doc_prefix, versions_path]),
+    'doc_prefix': doc_prefix,
+}
