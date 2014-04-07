@@ -1712,7 +1712,7 @@ class NodeGroupHandler(OperationsHandler):
             password = get_mandatory_param(request.data, 'password')
             power_control = get_optional_param(
                 request.data, 'power_control', default='ipmi',
-                validator=validators.OneOf(['impi', 'restapi', 'restapi2']))
+                validator=validators.OneOf(['ipmi', 'restapi', 'restapi2']))
 
             nodegroup.add_seamicro15k(
                 mac, username, password, power_control=power_control)
