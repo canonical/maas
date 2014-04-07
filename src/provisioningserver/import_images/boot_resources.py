@@ -17,10 +17,7 @@ __all__ = [
     ]
 
 from argparse import ArgumentParser
-from collections import (
-    defaultdict,
-    namedtuple,
-    )
+from collections import namedtuple
 from datetime import datetime
 import errno
 import functools
@@ -70,17 +67,6 @@ logger = init_logger()
 
 class NoConfigFile(Exception):
     """Raised when the config file for the script doesn't exist."""
-
-
-def create_empty_hierarchy():
-    """Create hierarchy of dicts which supports h[key1]...[keyN] accesses.
-
-    Generated object automatically creates nonexistent levels of hierarchy
-    when accessed the following way: h[arch][subarch][release]=something.
-
-    :return Generated hierarchy of dicts.
-    """
-    return defaultdict(create_empty_hierarchy)
 
 
 # A tuple of the items that together select a boot image.
@@ -207,6 +193,54 @@ def boot_merge(destination, additions, filters=None):
             destination.setdefault(image, resource)
 
 
+class ProductMapping:
+    """Mapping of product data.
+
+    Maps a combination of boot resource metadata (`content_id`, `product_name`,
+    `version_name`) to a list of subarchitectures supported by that boot
+    resource.
+    """
+
+    def __init__(self):
+        self.mapping = {}
+
+    @staticmethod
+    def make_key(resource):
+        """Extract a key tuple from `resource`.
+
+        The key is used for indexing `mapping`.
+
+        :param resource: A dict describing a boot resource.  It must contain
+            the keys `content_id`, `product_name`, and `version_name`.
+        :return: A tuple of the resource's content ID, product name, and
+            version name.
+        """
+        return (
+            resource['content_id'],
+            resource['product_name'],
+            resource['version_name'],
+            )
+
+    def add(self, resource, subarch):
+        """Add `subarch` to the list of subarches supported by a boot resource.
+
+        The `resource` is a dict as returned by `products_exdata`.  The method
+        will use the values identified by keys `content_id`, `product_name`,
+        and `version_name`.
+        """
+        key = self.make_key(resource)
+        self.mapping.setdefault(key, [])
+        self.mapping[key].append(subarch)
+
+    def contains(self, resource):
+        """Does the dict contain a mapping for the given resource?"""
+        return self.make_key(resource) in self.mapping
+
+    def get(self, resource):
+        """Return the mapped subarchitectures for `resource`."""
+        return self.mapping[self.make_key(resource)]
+
+
 def boot_reverse(boot_images_dict):
     """Determine the subarches supported by each boot resource.
 
@@ -219,29 +253,15 @@ def boot_reverse(boot_images_dict):
     same with subarch, because we may want to use a boot resource only for a
     specific subset of subarches.
 
-    This function represents the relationship between boot resources and
-    subarchitectures as a multi-level dictionary::
-
-        d[content_id][product_name] = [subarches]
-
-    Here, `content_id` and `product_name` come from the metadata information
-    and uniquely identify a specific boot resource.
+    This function returns the relationship between boot resources and
+    subarchitectures as a `ProductMapping`.
 
     :param boot: A `BootImageMapping` containing the images' metadata.
-    :return Hierarchy of dictionaries d[content_id][product_name]=[subarches]
-        which describes boot resource to subarches relation for all available
-        boot resources (products).
+    :return: A `ProductMapping` mapping products to subarchitectures.
     """
-    reverse = create_empty_hierarchy()
-
+    reverse = ProductMapping()
     for image, boot_resource in boot_images_dict.items():
-        content_id = boot_resource['content_id']
-        product_name = boot_resource['product_name']
-        version_name = boot_resource['version_name']
-        existent = list(reverse[content_id][product_name][version_name])
-        reverse[content_id][product_name][version_name] = (
-            [image.subarch] + existent)
-
+        reverse.add(boot_resource, image.subarch)
     return reverse
 
 
@@ -380,10 +400,17 @@ def download_all_image_descriptions(config):
 
 
 class RepoWriter(BasicMirrorWriter):
+    """Download boot resources from an upstream Simplestreams repo.
+
+    :ivar root_path:
+    :ivar cache_path:
+    :ivar product_dict: A `ProductMapping` describing the desired boot
+        resources.
+    """
 
     def __init__(self, root_path, cache_path, info):
         self._root_path = os.path.abspath(root_path)
-        self._info = info
+        self.product_dict = info
         self._cache = FileStore(os.path.abspath(cache_path))
         super(RepoWriter, self).__init__()
 
@@ -397,14 +424,7 @@ class RepoWriter(BasicMirrorWriter):
         return
 
     def filter_version(self, data, src, target, pedigree):
-        item = products_exdata(src, pedigree)
-        content_id, product_name = item['content_id'], item['product_name']
-        version_name = item['version_name']
-        return (
-            content_id in self._info and
-            product_name in self._info[content_id] and
-            version_name in self._info[content_id][product_name]
-        )
+        return self.product_dict.contains(products_exdata(src, pedigree))
 
     def insert_file(self, name, tag, checksums, size, contentsource):
         logger.info("Inserting file %s (tag=%s, size=%s).", name, tag, size)
@@ -441,10 +461,7 @@ class RepoWriter(BasicMirrorWriter):
         else:
             links = self.insert_file(
                 ftype, tag, checksums, size, contentsource)
-        content_id = item['content_id']
-        prod_name = item['product_name']
-        version_name = item['version_name']
-        for subarch in self._info[content_id][prod_name][version_name]:
+        for subarch in self.product_dict.get(item):
             dst_folder = os.path.join(
                 self._root_path, item['arch'], subarch, item['release'],
                 item['label'])

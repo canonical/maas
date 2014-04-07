@@ -170,40 +170,145 @@ class TestValuePassesFilter(MAASTestCase):
                 '*', factory.make_name('value')))
 
 
+def make_boot_resource():
+    """Create a fake resource dict."""
+    return {
+        'content_id': factory.make_name('content_id'),
+        'product_name': factory.make_name('product_name'),
+        'version_name': factory.make_name('version_name'),
+        }
+
+
+class TestProductMapping(MAASTestCase):
+    """Tests for `ProductMapping`."""
+
+    def test_initially_empty(self):
+        self.assertEqual({}, boot_resources.ProductMapping().mapping)
+
+    def test_make_key_extracts_identifying_items(self):
+        resource = make_boot_resource()
+        content_id = resource['content_id']
+        product_name = resource['product_name']
+        version_name = resource['version_name']
+        self.assertEqual(
+            (content_id, product_name, version_name),
+            boot_resources.ProductMapping.make_key(resource))
+
+    def test_make_key_ignores_other_items(self):
+        resource = make_boot_resource()
+        resource['other_item'] = factory.make_name('other')
+        self.assertEqual(
+            (
+                resource['content_id'],
+                resource['product_name'],
+                resource['version_name'],
+            ),
+            boot_resources.ProductMapping.make_key(resource))
+
+    def test_make_key_fails_if_key_missing(self):
+        resource = make_boot_resource()
+        del resource['version_name']
+        self.assertRaises(
+            KeyError,
+            boot_resources.ProductMapping.make_key, resource)
+
+    def test_add_creates_subarches_list_if_needed(self):
+        product_dict = boot_resources.ProductMapping()
+        resource = make_boot_resource()
+        subarch = factory.make_name('subarch')
+        product_dict.add(resource, subarch)
+        self.assertEqual(
+            {product_dict.make_key(resource): [subarch]},
+            product_dict.mapping)
+
+    def test_add_appends_to_existing_list(self):
+        product_dict = boot_resources.ProductMapping()
+        resource = make_boot_resource()
+        subarches = [factory.make_name('subarch') for _ in range(2)]
+        for subarch in subarches:
+            product_dict.add(resource, subarch)
+        self.assertEqual(
+            {product_dict.make_key(resource): subarches},
+            product_dict.mapping)
+
+    def test_contains_returns_true_for_stored_item(self):
+        product_dict = boot_resources.ProductMapping()
+        resource = make_boot_resource()
+        subarch = factory.make_name('subarch')
+        product_dict.add(resource, subarch)
+        self.assertTrue(product_dict.contains(resource))
+
+    def test_contains_returns_false_for_unstored_item(self):
+        self.assertFalse(
+            boot_resources.ProductMapping().contains(make_boot_resource()))
+
+    def test_contains_ignores_similar_items(self):
+        product_dict = boot_resources.ProductMapping()
+        resource = make_boot_resource()
+        subarch = factory.make_name('subarch')
+        product_dict.add(resource.copy(), subarch)
+        resource['product_name'] = factory.make_name('other')
+        self.assertFalse(product_dict.contains(resource))
+
+    def test_contains_ignores_extraneous_keys(self):
+        product_dict = boot_resources.ProductMapping()
+        resource = make_boot_resource()
+        subarch = factory.make_name('subarch')
+        product_dict.add(resource.copy(), subarch)
+        resource['other_item'] = factory.make_name('other')
+        self.assertTrue(product_dict.contains(resource))
+
+    def test_get_returns_stored_item(self):
+        product_dict = boot_resources.ProductMapping()
+        resource = make_boot_resource()
+        subarch = factory.make_name('subarch')
+        product_dict.add(resource, subarch)
+        self.assertEqual([subarch], product_dict.get(resource))
+
+    def test_get_fails_for_unstored_item(self):
+        product_dict = boot_resources.ProductMapping()
+        resource = make_boot_resource()
+        subarch = factory.make_name('subarch')
+        product_dict.add(resource.copy(), subarch)
+        resource['content_id'] = factory.make_name('other')
+        self.assertRaises(KeyError, product_dict.get, resource)
+
+    def test_get_ignores_extraneous_keys(self):
+        product_dict = boot_resources.ProductMapping()
+        resource = make_boot_resource()
+        subarch = factory.make_name('subarch')
+        product_dict.add(resource, subarch)
+        resource['other_item'] = factory.make_name('other')
+        self.assertEqual([subarch], product_dict.get(resource))
+
+
 class TestBootReverse(MAASTestCase):
     """Tests for `boot_reverse`."""
 
-    def make_boot_resource(self):
-        return {
-            'content_id': factory.make_name('content_id'),
-            'product_name': factory.make_name('product_name'),
-            'version_name': factory.make_name('version_name'),
-            }
-
     def test_maps_empty_dict_to_empty_dict(self):
+        empty_boot_image_dict = boot_resources.BootImageMapping()
         self.assertEqual(
             {},
-            boot_resources.boot_reverse(
-                boot_resources.create_empty_hierarchy()))
+            boot_resources.boot_reverse(empty_boot_image_dict).mapping)
 
     def test_maps_boot_resource_by_content_id_product_name_and_version(self):
         image = make_image_spec()
-        resource = self.make_boot_resource()
+        resource = make_boot_resource()
         boot_dict = set_resource(resource=resource.copy(), image_spec=image)
         self.assertEqual(
             {
-                resource['content_id']: {
-                    resource['product_name']: {
-                        resource['version_name']: [image.subarch],
-                    },
-                },
+                (
+                    resource['content_id'],
+                    resource['product_name'],
+                    resource['version_name'],
+                ): [image.subarch],
             },
-            boot_resources.boot_reverse(boot_dict))
+            boot_resources.boot_reverse(boot_dict).mapping)
 
     def test_concatenates_similar_resources(self):
         image1 = make_image_spec()
         image2 = make_image_spec()
-        resource = self.make_boot_resource()
+        resource = make_boot_resource()
         boot_dict = boot_resources.BootImageMapping()
         # Create two images in boot_dict, both containing the same resource.
         for image in [image1, image2]:
@@ -212,16 +317,15 @@ class TestBootReverse(MAASTestCase):
                 image_spec=image)
 
         reverse_dict = boot_resources.boot_reverse(boot_dict)
-        content_id = resource['content_id']
-        product_name = resource['product_name']
-        version_name = resource['version_name']
-        self.assertItemsEqual([content_id], reverse_dict.keys())
-        self.assertItemsEqual([product_name], reverse_dict[content_id].keys())
+        key = (
+            resource['content_id'],
+            resource['product_name'],
+            resource['version_name'],
+            )
+        self.assertEqual([key], reverse_dict.mapping.keys())
         self.assertItemsEqual(
-            [version_name],
-            reverse_dict[content_id][product_name].keys())
-        subarches = reverse_dict[content_id][product_name][version_name]
-        self.assertItemsEqual([image1.subarch, image2.subarch], subarches)
+            [image1.subarch, image2.subarch],
+            reverse_dict.get(resource))
 
 
 class TestImagePassesFilter(MAASTestCase):
@@ -348,11 +452,11 @@ class TestBootMerge(MAASTestCase):
                 'label': [factory.make_name('other-label')],
             },
             ]
-        total_resources = boot_resources.create_empty_hierarchy()
+        total_resources = boot_resources.BootImageMapping()
         resources_from_repo = set_resource()
         boot_resources.boot_merge(
             total_resources, resources_from_repo, filters=filters)
-        self.assertEqual({}, total_resources)
+        self.assertEqual({}, total_resources.mapping)
 
     def test_does_not_overwrite_existing_entry(self):
         image = make_image_spec()
