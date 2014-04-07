@@ -19,9 +19,9 @@ power_mode={{power_mode}}
 # Control power using IPMI
 issue_ipmi_command() {
     ${ipmitool} -I lanplus \
-        -H ${power_address} -U ${power_user}\
-        -P ${power_pass} raw 0x2E 1 0x00 0x7d 0xab \
-        ${power_mode} 0 ${system_id}
+        -H ${power_address} -U ${power_user}\
+        -P ${power_pass} raw 0x2E 1 0x00 0x7d 0xab \
+        ${power_mode} 0 ${system_id}
 }
 
 # Control power using REST v0.9
