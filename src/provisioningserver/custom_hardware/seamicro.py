@@ -317,6 +317,6 @@ def power_control_seamicro15k_v2(ip, username, password, server_id,
     if api:
         server = api.servers.get(server_id)
         if power_change == "on":
-            server.power_on()
+            server.power_on(using_pxe=True)
         elif power_change == "off":
-            server.power_off()
+            server.power_off(force=True)
