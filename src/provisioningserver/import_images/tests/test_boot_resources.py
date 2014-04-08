@@ -19,6 +19,9 @@ import hashlib
 import json
 import os
 from random import randint
+from subprocess import Popen, PIPE
+from testtools.content import Content
+from testtools.content_type import UTF8_TEXT
 
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
@@ -506,6 +509,47 @@ class TestGetSigningPolicy(MAASTestCase):
         self.assertThat(
             boot_resources.policy_read_signed,
             MockCalledOnceWith(mock.ANY, mock.ANY, keyring=keyring))
+
+
+class TestTgtEntry(MAASTestCase):
+    """Tests for `tgt_entry`."""
+
+    def test_generates_one_target(self):
+        spec = make_image_spec()
+        image = self.make_file()
+        entry = boot_resources.tgt_entry(
+            spec.arch, spec.subarch, spec.release, spec.label, image)
+        # The entry looks a bit like XML, but isn't well-formed.  So don't try
+        # to parse it as such!
+        self.assertIn('<target iqn.2004-05.com.ubuntu:maas:', entry)
+        self.assertIn('backing-store "%s"' % image, entry)
+        self.assertEqual(1, entry.count('</target>'))
+
+    def test_produces_suitable_output_for_tgt_admin(self):
+        spec = make_image_spec()
+        image = self.make_file()
+        entry = boot_resources.tgt_entry(
+            spec.arch, spec.subarch, spec.release, spec.label, image)
+        config = self.make_file(contents=entry)
+        # Pretend to be root, but without requiring the actual privileges and
+        # without prompting for a password.  In that state, run tgt-admin.
+        # It has to think it's root, even for a "pretend" run.
+        # Make it read the config we just produced, and pretend to update its
+        # iSCSI targets based on what it finds in the config.
+        #
+        # The only real test is that this succeed.
+        cmd = Popen(
+            [
+                'fakeroot', 'tgt-admin',
+                '--conf', config,
+                '--pretend',
+                '--update', 'ALL',
+            ],
+            stdout=PIPE, stderr=PIPE)
+        stdout, stderr = cmd.communicate()
+        self.addDetail('tgt-stderr', Content(UTF8_TEXT, lambda: [stderr]))
+        self.addDetail('tgt-stdout', Content(UTF8_TEXT, lambda: [stdout]))
+        self.assertEqual(0, cmd.returncode)
 
 
 def checksum_sha256(data):

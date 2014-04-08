@@ -289,13 +289,13 @@ def tgt_entry(arch, subarch, release, label, image):
     prefix = 'iqn.2004-05.com.ubuntu:maas'
     target_name = 'ephemeral-%s-%s-%s-%s' % (arch, subarch, release, label)
     entry = dedent("""\
-    <target {prefix}:{target_name}>
-        readonly 1
-        allow-in-use yes
-        backing-store "{image}"
-        driver iscsi
-    </target>
-    """).format(prefix=prefix, target_name=target_name, image=image)
+        <target {prefix}:{target_name}>
+            readonly 1
+            allow-in-use yes
+            backing-store "{image}"
+            driver iscsi
+        </target>
+        """).format(prefix=prefix, target_name=target_name, image=image)
     return entry
 
 
