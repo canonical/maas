@@ -69,6 +69,7 @@ class TestLogin(MAASServerTestCase):
         form = doc.cssselect("form")[0]
         self.assertNotIn('autocomplete="off"', tostring(form))
 
+
 class TestLogout(MAASServerTestCase):
 
     def test_logout_link_present_on_homepage(self):

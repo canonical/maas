@@ -10,8 +10,8 @@ What are hardware-enablement kernels?
 
 Brand new hardware gets released all the time. We want that hardware to
 work well wih Ubuntu and MAAS, even if it was released after the latest
-release of MAAS or Ubuntu. Hardware Enablement (HWE) is all about making
-keeping pace with the new hardware. 
+release of MAAS or Ubuntu. Hardware Enablement (HWE) is all about keeping
+pace with the new hardware.
 
 Ubuntu's solution to this is to offer newer kernels for older releases.
 There are at least two kernels on offer for Ubuntu releases: the
@@ -28,7 +28,7 @@ releases, for example running Precise with a Saucy (hwe-s) kernel.
 For more information see the `LTS Enablement Stack`_ page on the Ubuntu
 wiki.
 
-.. _LTS Enablement Stack: 
+.. _LTS Enablement Stack:
    https://wiki.ubuntu.com/Kernel/LTSEnablementStack
 
 Importing hardware-enablement kernels
@@ -58,7 +58,7 @@ re-import its boot images using the ``maas`` command (You will need to
 :ref:`be logged in to the API first <api-key>`)::
 
  $ maas <profile-name> node-group import-boot-images \
-   <cluster-controller-uuid> 
+   <cluster-controller-uuid>
 
 You can also tell the cluster controller to re-import its boot images by
 clicking the ``Import boot images`` button for the cluster in the

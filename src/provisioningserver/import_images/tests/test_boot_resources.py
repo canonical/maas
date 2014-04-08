@@ -19,9 +19,10 @@ import hashlib
 import json
 import os
 from random import randint
-from subprocess import Popen, PIPE
-from testtools.content import Content
-from testtools.content_type import UTF8_TEXT
+from subprocess import (
+    PIPE,
+    Popen,
+    )
 
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
@@ -32,6 +33,8 @@ from provisioningserver.config import BootConfig
 from provisioningserver.import_images import boot_resources
 from provisioningserver.utils import write_text_file
 from simplestreams.util import SignatureMissingException
+from testtools.content import Content
+from testtools.content_type import UTF8_TEXT
 from testtools.matchers import (
     DirExists,
     FileExists,
