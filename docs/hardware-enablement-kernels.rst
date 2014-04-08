@@ -1,6 +1,14 @@
+.. -*- mode: rst -*-
+
+.. _hardware-enablement-kernels:
+
 =================================
 Using hardware-enablement kernels
 =================================
+
+.. note::
+
+  This feature is available in MAAS versions 1.5 and above.
 
 MAAS allows you to use hardware enablement kernels when booting nodes
 that require them.
