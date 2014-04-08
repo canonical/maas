@@ -1,0 +1,56 @@
+# Copyright 2014 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
+"""Factory helpers for the `import_images` package."""
+
+from __future__ import (
+    absolute_import,
+    print_function,
+    unicode_literals,
+    )
+
+str = None
+
+__metaclass__ = type
+__all__ = [
+    'make_boot_resource',
+    'make_image_spec',
+    'set_resource',
+    ]
+
+from maastesting.factory import factory
+from provisioningserver.import_images.boot_image_mapping import (
+    BootImageMapping,
+    )
+from provisioningserver.import_images.helpers import ImageSpec
+
+
+def make_boot_resource():
+    """Create a fake resource dict."""
+    return {
+        'content_id': factory.make_name('content_id'),
+        'product_name': factory.make_name('product_name'),
+        'version_name': factory.make_name('version_name'),
+        }
+
+
+def make_image_spec():
+    """Return an `ImageSpec` with random values."""
+    return ImageSpec(
+        factory.make_name('arch'),
+        factory.make_name('subarch'),
+        factory.make_name('release'),
+        factory.make_name('label'),
+        )
+
+
+def set_resource(boot_dict=None, image_spec=None, resource=None):
+    """Add boot resource to a `BootImageMapping`, creating it if necessary."""
+    if boot_dict is None:
+        boot_dict = BootImageMapping()
+    if image_spec is None:
+        image_spec = make_image_spec()
+    if resource is None:
+        resource = factory.make_name('boot-resource')
+    boot_dict.mapping[image_spec] = resource
+    return boot_dict
