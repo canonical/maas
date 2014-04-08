@@ -1,9 +1,8 @@
-from django.db import models
 from provisioningserver.power_schema import IPMI_DRIVER
-from south.db import db
 # -*- coding: utf-8 -*-
-from south.utils import datetime_utils as datetime
 from south.v2 import DataMigration
+from django.db.utils import ProgrammingError
+from maasserver import logger
 
 
 class Migration(DataMigration):
@@ -12,10 +11,20 @@ class Migration(DataMigration):
         """Change IPMI nodes with default power_driver to LAN 2.0."""
         ipmi_nodes = orm['maasserver.Node'].objects.filter(power_type=u'ipmi')
         for node in ipmi_nodes:
-            if node.power_parameters.get('power_driver') != '':
-                continue
-            node.power_parameters['power_driver'] = IPMI_DRIVER.LAN_2_0
-            node.save() 
+            if node.power_parameters.get('power_driver') == IPMI_DRIVER.DEFAULT:
+                node.power_parameters['power_driver'] = IPMI_DRIVER.LAN_2_0
+                try:
+                    node.save() 
+                except ProgrammingError:
+                    # We catch django.db.utils.ProgrammingError here because of
+                    # the failure described on bug 1302156.  Although we didn't
+                    # manage to recreate the failure in a controlled environment,
+                    # this try/except statement will prevent the migration from
+                    # crashing if the failure reappears.
+                    logger.exception(
+                        "Failed to apply migration 0072_remove_ipmi_autodetect. "
+                         "See bug 1302156 "
+                         "(https://bugs.launchpad.net/maas/+bug/1302156).")
 
     def backwards(self, orm):
         """LAN 2.0 is valid either way, no need for backwards migration."""
