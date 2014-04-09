@@ -432,7 +432,8 @@ class TestBootConfig(MAASTestCase):
             'sources': [
                 {
                     'path': (
-                        'http://maas.ubuntu.com/images/ephemeral/releases/'),
+                        'http://maas.ubuntu.com/images/ephemeral-v2/releases/'
+                        ),
                     'keyring': (
                         '/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg'),
                     'selections': [
