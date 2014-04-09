@@ -36,7 +36,7 @@ releases, for example running Precise with a Saucy (hwe-s) kernel.
 For more information see the `LTS Enablement Stack`_ page on the Ubuntu
 wiki.
 
-.. _Hardware Enablement Stack: 
+.. _LTS Enablement Stack:
    https://wiki.ubuntu.com/Kernel/LTSEnablementStack
 
 Importing hardware-enablement kernels
@@ -88,6 +88,6 @@ If you specify an architecture that doesn't exist (e.g.
 
 
 It's also possible to use HWE kernels from the MAAS web UI, by visiting
-the Node's page and click ``Edit node``. Under the Architecture field,
+the Node's page and clicking ``Edit node``. Under the Architecture field,
 you will be able to select any HWE kernels that have been imported onto
 that node's cluster controller.
