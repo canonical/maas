@@ -488,8 +488,9 @@ class TestNodePreseedContext(MAASServerTestCase):
         release = factory.getRandomString()
         context = get_node_preseed_context(node, release)
         self.assertItemsEqual(
-            ['node', 'preseed_data', 'node_disable_pxe_url',
-             'node_disable_pxe_data',
+            ['driver', 'driver_package', 'node',
+             'node_disable_pxe_data', 'node_disable_pxe_url',
+             'preseed_data',
              ],
             context)
 

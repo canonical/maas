@@ -224,6 +224,7 @@ from maasserver.preseed import (
     compose_preseed_url,
     )
 from maasserver.server_address import get_maas_facing_server_address
+from maasserver.third_party_drivers import get_third_party_driver
 from maasserver.utils import (
     absolute_reverse,
     build_absolute_uri,
@@ -2458,7 +2459,16 @@ def pxeconfig(request):
     if node is not None:
         # We don't care if the kernel opts is from the global setting or a tag,
         # just get the options
-        _, extra_kernel_opts = node.get_effective_kernel_options()
+        _, effective_kernel_opts = node.get_effective_kernel_options()
+
+        # Add any extra options from a third party driver.
+        driver = get_third_party_driver(node)
+        driver_kernel_opts = driver.get('kernel_opts', '')
+        combined_opts = ('%s %s' % (
+            '' if effective_kernel_opts is None else effective_kernel_opts,
+            driver_kernel_opts)).strip()
+
+        extra_kernel_opts = combined_opts if len(combined_opts) > 0 else None
     else:
         # If there's no node defined then we must be enlisting here, but
         # we still need to return the global kernel options.
