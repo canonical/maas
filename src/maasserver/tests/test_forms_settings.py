@@ -24,6 +24,7 @@ from maasserver.forms_settings import (
 from maasserver.models import Config
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.forms import compose_invalid_choice_text
 
 
 class TestGetConfigField(MAASServerTestCase):
@@ -59,3 +60,13 @@ class TestGetConfigDoc(MAASServerTestCase):
         doc = get_config_doc()
         # Just make sure that the doc looks okay.
         self.assertIn('maas_name', doc)
+
+
+class TestSpecificConfigSettings(MAASServerTestCase):
+
+    def test_commissioning_distro_series_config(self):
+        field = get_config_field('commissioning_distro_series')
+        self.assertEqual(
+            compose_invalid_choice_text(
+                'commissioning_distro_series', field.choices),
+            field.error_messages['invalid_choice'])

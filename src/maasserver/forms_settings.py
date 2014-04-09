@@ -158,7 +158,9 @@ CONFIG_ITEMS = {
             'choices': COMMISSIONING_DISTRO_SERIES_CHOICES,
             'required': False,
             'error_messages': {
-                'invalid_choice': INVALID_DISTRO_SERIES_MESSAGE},
+                'invalid_choice': compose_invalid_choice_text(
+                    'commissioning_distro_series',
+                    COMMISSIONING_DISTRO_SERIES_CHOICES)},
         }
     },
 }

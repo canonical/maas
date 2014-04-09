@@ -825,7 +825,9 @@ class CommissioningForm(ConfigForm):
     commissioning_distro_series = forms.ChoiceField(
         choices=COMMISSIONING_DISTRO_SERIES_CHOICES, required=False,
         label="Default distro series used for commissioning",
-        error_messages={'invalid_choice': INVALID_DISTRO_SERIES_MESSAGE})
+        error_messages={'invalid_choice': compose_invalid_choice_text(
+            'commissioning_distro_series',
+            COMMISSIONING_DISTRO_SERIES_CHOICES)})
 
 
 class UbuntuForm(ConfigForm):

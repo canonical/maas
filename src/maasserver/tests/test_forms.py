@@ -34,6 +34,7 @@ from maasserver.forms import (
     AdminNodeWithMACAddressesForm,
     BLANK_CHOICE,
     BulkNodeActionForm,
+    CommissioningForm,
     CommissioningScriptForm,
     ConfigForm,
     DownloadProgressForm,
@@ -90,6 +91,7 @@ from maasserver.testing.architecture import (
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import map_enum
+from maasserver.utils.forms import compose_invalid_choice_text
 from metadataserver.models import CommissioningScript
 from netaddr import IPNetwork
 from provisioningserver import tasks
@@ -1268,6 +1270,17 @@ class TestNodeGroupEdit(MAASServerTestCase):
         self.assertTrue(form.is_valid())
         form.save()
         self.assertEqual(data['name'], reload_object(nodegroup).name)
+
+
+class TestCommissioningFormForm(MAASServerTestCase):
+
+    def test_commissioningform_error_msg_lists_series_choices(self):
+        form = CommissioningForm()
+        field = form.fields['commissioning_distro_series']
+        self.assertEqual(
+            compose_invalid_choice_text(
+                'commissioning_distro_series', field.choices),
+            field.error_messages['invalid_choice'])
 
 
 class TestCommissioningScriptForm(MAASServerTestCase):
