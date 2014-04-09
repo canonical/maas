@@ -17,11 +17,27 @@ d-i     mirror/http/proxy string http://{{server_host}}:8000/
 {{enddef}}
 
 {{def client_packages}}
-d-i     pkgsel/include string cloud-init openssh-server python-software-properties vim avahi-daemon server^
+d-i     pkgsel/include string cloud-init openssh-server python-software-properties vim avahi-daemon server^ {{driver_package}}
+{{enddef}}
+
+{{def driver_preseed_data}}
+{{if driver}}
+# Third party driver support.
+d-i preseed/early_command \
+    string wget -O - {{driver['repository']}}/dists/trusty/main/debian-installer/binary-amd64/Packages \
+    | wget -O /tmp/driver.udeb {{driver['repository']}}/$(grep ^Filename.*$(uname -r) \
+    | cut -f 2 -d ' ' | sort -ru | head -n 1) \
+    && udpkg -i /tmp/driver.udeb && depmod && modprobe {{driver['module']}}
+
+d-i apt-setup/local0/repository string deb {{driver['repository']}} trusty main
+d-i apt-setup/local0/comment string {{driver['comment']}}
+d-i apt-setup/local0/key string {{driver['key']}}
+{{endif}}
 {{enddef}}
 
 {{def preseed}}
 {{preseed_data}}
+{{driver_preseed_data}}
 {{enddef}}
 
 {{def post_scripts}}
@@ -29,5 +45,10 @@ d-i     pkgsel/include string cloud-init openssh-server python-software-properti
 d-i     preseed/late_command string true && \
     in-target sh -c 'f=$1; shift; echo $0 > $f && chmod 0440 $f $*' 'ubuntu ALL=(ALL) NOPASSWD: ALL' /etc/sudoers.d/maas && \
     in-target wget --no-proxy "{{node_disable_pxe_url|escape.shell}}" --post-data "{{node_disable_pxe_data|escape.shell}}" -O /dev/null && \
+{{if driver}}
+    in-target sh -c "echo blacklist {{driver['blacklist']}} >> /etc/modprobe.d/maas-{{driver['module']}}.conf" && \
+    in-target sh -c "for file in /lib/modules/*; do depmod ${file##*/}; done"; \
+    in-target update-initramfs -u; \
+{{endif}}
     true
 {{enddef}}

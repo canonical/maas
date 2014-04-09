@@ -46,6 +46,7 @@ from maasserver.models import (
     DHCPLease,
     )
 from maasserver.server_address import get_maas_facing_server_host
+from maasserver.third_party_drivers import get_third_party_driver
 from maasserver.utils import absolute_reverse
 from metadataserver.commissioning.snippets import get_snippet_context
 from metadataserver.models import NodeKey
@@ -395,7 +396,10 @@ def get_node_preseed_context(node, release=''):
         'metadata-node-by-id', args=['latest', node.system_id],
         base_url=node.nodegroup.maas_url)
     node_disable_pxe_data = urlencode({'op': 'netboot_off'})
+    driver = get_third_party_driver(node)
     return {
+        'driver': driver,
+        'driver_package': driver.get('package', ''),
         'node': node,
         'preseed_data': compose_preseed(node),
         'node_disable_pxe_url': node_disable_pxe_url,

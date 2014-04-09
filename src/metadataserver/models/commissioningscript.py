@@ -19,6 +19,7 @@ __all__ = [
     'inject_lldp_result',
     'inject_lshw_result',
     'inject_result',
+    'LIST_MODALIASES_OUTPUT_NAME',
     'LLDP_OUTPUT_NAME',
     'LSHW_OUTPUT_NAME',
     ]
@@ -319,6 +320,10 @@ def set_node_routers(node, output, exit_status):
         node.routers = [MAC(router) for router in routers]
     node.save()
 
+LIST_MODALIASES_OUTPUT_NAME = '00-maas-04-list-modaliases.out'
+LIST_MODALIASES_SCRIPT = \
+    'find /sys -name modalias -print0 | xargs -0 cat | sort -u'
+
 
 def null_hook(node, output, exit_status):
     """Intentionally do nothing.
@@ -357,6 +362,10 @@ BUILTIN_COMMISSIONING_SCRIPTS = {
     '00-maas-03-install-lldpd.out': {
         'content': make_function_call_script(
             lldpd_install, config_file="/etc/default/lldpd"),
+        'hook': null_hook,
+    },
+    LIST_MODALIASES_OUTPUT_NAME: {
+        'content': LIST_MODALIASES_SCRIPT.encode('ascii'),
         'hook': null_hook,
     },
     '99-maas-01-wait-for-lldpd.out': {
