@@ -50,6 +50,8 @@ def get_default_config():
         'ntp_server': '91.189.94.4',  # ntp.ubuntu.com
         # RPC configuration.
         'rpc_region_certificate': None,
+        # Third Party
+        'enable_third_party_drivers': False,
         ## /settings
         }
 

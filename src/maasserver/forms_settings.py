@@ -163,6 +163,15 @@ CONFIG_ITEMS = {
                     COMMISSIONING_DISTRO_SERIES_CHOICES)},
         }
     },
+    'enable_third_party_drivers': {
+        'default': False,
+        'form': forms.BooleanField,
+        'form_kwargs': {
+            'required': False,
+            'label': (
+                "Enable the installation of proprietary drivers (i.e. HPVSA)")
+        }
+    },
 }
 
 
