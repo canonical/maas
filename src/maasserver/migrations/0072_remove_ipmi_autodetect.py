@@ -1,8 +1,7 @@
-from provisioningserver.power_schema import IPMI_DRIVER
-# -*- coding: utf-8 -*-
-from south.v2 import DataMigration
 from django.db.utils import ProgrammingError
 from maasserver import logger
+from provisioningserver.power_schema import IPMI_DRIVER
+from south.v2 import DataMigration
 
 
 class Migration(DataMigration):
