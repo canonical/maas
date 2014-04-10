@@ -49,7 +49,7 @@ d-i apt-setup/local0/key string {{driver['key']}}
 d-i     preseed/late_command string true && \
     in-target sh -c 'f=$1; shift; echo $0 > $f && chmod 0440 $f $*' 'ubuntu ALL=(ALL) NOPASSWD: ALL' /etc/sudoers.d/maas && \
     in-target wget --no-proxy "{{node_disable_pxe_url|escape.shell}}" --post-data "{{node_disable_pxe_data|escape.shell}}" -O /dev/null && \
-{{if driver}}
+{{if third_party_drivers and driver}}
     in-target sh -c "echo blacklist {{driver['blacklist']}} >> /etc/modprobe.d/maas-{{driver['module']}}.conf" && \
     in-target sh -c "for file in /lib/modules/*; do depmod ${file##*/}; done"; \
     in-target update-initramfs -u; \
