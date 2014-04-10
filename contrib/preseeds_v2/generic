@@ -17,11 +17,15 @@ d-i     mirror/http/proxy string http://{{server_host}}:8000/
 {{enddef}}
 
 {{def client_packages}}
+{{if third_party_drivers and driver}}
 d-i     pkgsel/include string cloud-init openssh-server python-software-properties vim avahi-daemon server^ {{driver_package}}
+{{else}}
+d-i     pkgsel/include string cloud-init openssh-server python-software-properties vim avahi-daemon server^
+{{endif}}
 {{enddef}}
 
 {{def driver_preseed_data}}
-{{if driver}}
+{{if third_party_drivers and driver}}
 # Third party driver support.
 d-i preseed/early_command \
     string wget -O - {{driver['repository']}}/dists/trusty/main/debian-installer/binary-amd64/Packages \

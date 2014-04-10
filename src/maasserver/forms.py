@@ -36,6 +36,7 @@ __all__ = [
     "NodeWithMACAddressesForm",
     "SSHKeyForm",
     "TagForm",
+    "ThirdPartyDriversForm",
     "UbuntuForm",
     "ZoneForm",
     ]
@@ -817,6 +818,11 @@ class MAASAndNetworkForm(ConfigForm):
     http_proxy = get_config_field('http_proxy')
     upstream_dns = get_config_field('upstream_dns')
     ntp_server = get_config_field('ntp_server')
+
+
+class ThirdPartyDriversForm(ConfigForm):
+    """Settings page, Third Party Drivers section."""
+    enable_third_party_drivers = get_config_field('enable_third_party_drivers')
 
 
 class CommissioningForm(ConfigForm):

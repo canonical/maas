@@ -45,6 +45,7 @@ from maasserver.forms import (
     GlobalKernelOptsForm,
     MAASAndNetworkForm,
     NewUserCreationForm,
+    ThirdPartyDriversForm,
     UbuntuForm,
     )
 from maasserver.models import UserProfile
@@ -154,6 +155,14 @@ class AccountsEdit(TemplateView, ModelFormMixin,
 
 def settings(request):
     user_list = UserProfile.objects.all_users().order_by('username')
+
+    # Process Third Party Drivers form.
+    third_party_drivers_form, response = process_form(
+        request, ThirdPartyDriversForm, reverse('settings'),
+        'third_party_drivers', "Configuration updated.")
+    if response is not None:
+        return response
+
     # Process the MAAS & network form.
     maas_and_network_form, response = process_form(
         request, MAASAndNetworkForm, reverse('settings'), 'maas_and_network',
@@ -191,6 +200,7 @@ def settings(request):
             'user_list': user_list,
             'commissioning_scripts': commissioning_scripts,
             'maas_and_network_form': maas_and_network_form,
+            'third_party_drivers_form': third_party_drivers_form,
             'commissioning_form': commissioning_form,
             'ubuntu_form': ubuntu_form,
             'kernelopts_form': kernelopts_form,

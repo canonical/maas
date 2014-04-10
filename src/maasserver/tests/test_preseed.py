@@ -490,9 +490,20 @@ class TestNodePreseedContext(MAASServerTestCase):
         self.assertItemsEqual(
             ['driver', 'driver_package', 'node',
              'node_disable_pxe_data', 'node_disable_pxe_url',
-             'preseed_data',
+             'preseed_data', 'third_party_drivers',
              ],
             context)
+
+    def test_context_contains_third_party_drivers(self):
+        node = factory.make_node()
+        release = factory.getRandomString()
+        enable_third_party_drivers = factory.getRandomBoolean()
+        Config.objects.set_config(
+            'enable_third_party_drivers', enable_third_party_drivers)
+        context = get_node_preseed_context(node, release)
+        self.assertEqual(
+            enable_third_party_drivers,
+            context['third_party_drivers'])
 
 
 class TestPreseedTemplate(MAASServerTestCase):

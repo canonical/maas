@@ -135,6 +135,27 @@ class SettingsTest(MAASServerTestCase):
                 Config.objects.get_config('commissioning_distro_series'),
             ))
 
+    def test_settings_third_party_drivers_POST(self):
+        self.client_log_in(as_admin=True)
+        new_enable_third_party_drivers = factory.getRandomBoolean()
+        response = self.client.post(
+            reverse('settings'),
+            get_prefixed_form_data(
+                prefix='third_party_drivers',
+                data={
+                    'enable_third_party_drivers': (
+                        new_enable_third_party_drivers),
+                }))
+
+        self.assertEqual(httplib.FOUND, response.status_code)
+        self.assertEqual(
+            (
+                new_enable_third_party_drivers,
+            ),
+            (
+                Config.objects.get_config('enable_third_party_drivers'),
+            ))
+
     def test_settings_ubuntu_POST(self):
         self.client_log_in(as_admin=True)
         new_main_archive = 'http://test.example.com/archive'
