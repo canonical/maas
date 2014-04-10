@@ -33,14 +33,20 @@ __all__ = [
 from copy import deepcopy
 import fnmatch
 
+from formencode import (
+    ForEach,
+    Schema,
+    )
+from formencode.validators import String
 from metadataserver.models import commissioningscript
+from provisioningserver.config import (
+    ConfigBase,
+    ConfigMeta,
+    )
 
 
 """
-The third_party_drivers dict field below is hardcoded now, but
-eventually will be pulled from an external source.
-
-Here's a description of fields for each entry.
+Here's a description of fields for each entry for a third_party_driver.
 
 blacklist - The name of a module to blacklist when using this driver.
 The driver will be blacklisted via the kernel command line during
@@ -64,26 +70,31 @@ repository contain both deb and udeb packages for the driver.
 packages - The name of the deb package to retrieve from the repository.
 """
 
-third_party_drivers = [
-    {
-        'blacklist': 'ahci',
-        'comment': 'HPVSA driver',
-        'key': ('http://keyserver.ubuntu.com/pks/lookup?search='
-                '0x509C5B70C2755E20F737DC27933312C3CF700356&op=get'),
-        'modaliases': [
-            'pci:v00001590d00000047sv00001590sd00000047bc*sc*i*',
-            'pci:v00001590d00000045sv00001590sd00000045bc*sc*i*',
-            'pci:v00008086d00001D04sv00001590sd00000048bc*sc*i*',
-            'pci:v00008086d00008C04sv00001590sd00000084bc*sc*i*',
-            'pci:v00008086d00008C06sv00001590sd00000084bc*sc*i*',
-            'pci:v00008086d00001C04sv00001590sd0000006Cbc*sc*i*',
-        ],
-        'module': 'hpvsa',
-        'repository':
-        'http://ppa.launchpad.net/hp-iss-team/hpvsa-update/ubuntu',
-        'package': 'hpvsa',
-    },
-]
+
+class ConfigDriver(Schema):
+    """Configuration validator for a driver."""
+
+    if_key_missing = None
+
+    blacklist = String()
+    comment = String()
+    key = String()
+    modaliases = ForEach(String)
+    module = String()
+    package = String()
+    repository = String()
+
+
+class DriversConfig(ConfigBase):
+    """Configuration for third party drivers."""
+
+    class __metaclass__(ConfigMeta):
+        envvar = "MAAS_THIRD_PARTY_DRIVER_SETTINGS"
+        default = "drivers.yaml"
+
+    if_key_missing = None
+
+    drivers = ForEach(ConfigDriver)
 
 
 def node_modaliases(node):
@@ -125,6 +136,10 @@ def get_third_party_driver(node):
     driver is required.
     """
     detected_aliases = node_modaliases(node)
+
+    third_party_drivers_config = DriversConfig.load_from_cache()
+    third_party_drivers = third_party_drivers_config['drivers']
+
     matched_driver = match_aliases_to_driver(detected_aliases,
                                              third_party_drivers)
 

@@ -55,6 +55,8 @@ __metaclass__ = type
 __all__ = [
     "BootConfig",
     "Config",
+    "ConfigBase",
+    "ConfigMeta",
     ]
 
 from copy import deepcopy
