@@ -66,6 +66,7 @@ setup(
         ('/etc/maas',
             ['etc/maas/pserv.yaml',
              'etc/maas/bootresources.yaml',
+             'etc/maas/drivers.yaml',
              'etc/maas_cluster.conf',
              'etc/txlongpoll.yaml',
              'contrib/maas_local_celeryconfig.py',
