@@ -38,6 +38,10 @@ class BootImageMapping:
         for image_spec, item in sorted(self.mapping.items()):
             yield image_spec, item
 
+    def is_empty(self):
+        """Is this mapping empty?"""
+        return len(self.mapping) == 0
+
     def setdefault(self, image_spec, item):
         """Set metadata for `image_spec` to item, if not already set."""
         assert isinstance(image_spec, ImageSpec)

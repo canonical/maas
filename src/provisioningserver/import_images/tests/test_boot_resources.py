@@ -25,6 +25,7 @@ from subprocess import (
     )
 
 from maastesting.factory import factory
+from maastesting.matchers import MockAnyCall
 from maastesting.testcase import MAASTestCase
 import mock
 from provisioningserver.boot.uefi import UEFIBootMethod
@@ -38,6 +39,7 @@ from provisioningserver.import_images.testing.factory import (
     make_image_spec,
     set_resource,
     )
+from provisioningserver.testing.config import BootConfigFixture
 from provisioningserver.utils import write_text_file
 from testtools.content import Content
 from testtools.content_type import UTF8_TEXT
@@ -341,6 +343,55 @@ class TestMain(MAASTestCase):
         self.assertItemsEqual(
             ['content_id', 'path', 'product_name', 'version_name'],
             meta_data[arch][subarch][release][label].keys())
+
+    def test_warns_if_no_sources_configured(self):
+        self.patch_logger()
+        config_fixture = self.useFixture(BootConfigFixture({
+            'boot': {
+                'storage': self.make_dir(),
+                'sources': [],
+                },
+            }))
+        args = self.make_args(config_file=config_fixture.filename)
+
+        boot_resources.main(args)
+
+        self.assertThat(
+            boot_resources.logger.warn,
+            MockAnyCall("Can't import: no Simplestreams sources configured."))
+
+    def test_warns_if_no_boot_resources_found(self):
+        # The import code used to crash when no resources were found in the
+        # Simplestreams repositories (bug 1305758).  This could happen easily
+        # with mistakes in the config.  Now, you just get a logged warning.
+        config_fixture = self.useFixture(BootConfigFixture({
+            'boot': {
+                'storage': self.make_dir(),
+                'sources': [
+                    {
+                        'path': self.make_dir(),
+                        'keyring': factory.make_name('keyring'),
+                        'selections': [
+                            {'release': factory.make_name('release')},
+                            ],
+                    },
+                    ],
+                },
+            }))
+        self.patch(boot_resources, 'download_all_image_descriptions')
+        boot_resources.download_all_image_descriptions.return_value = (
+            BootImageMapping())
+        self.patch_logger()
+        self.patch(boot_resources, 'RepoWriter')
+        args = self.make_args(config_file=config_fixture.filename)
+
+        boot_resources.main(args)
+
+        self.assertThat(
+            boot_resources.logger.warn,
+            MockAnyCall(
+                "No boot resources found.  "
+                "Check configuration and connectivity."))
 
     def test_raises_ioerror_when_no_config_file_found(self):
         self.patch_logger()

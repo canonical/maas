@@ -126,6 +126,8 @@ class RepoWriter(BasicMirrorWriter):
     def __init__(self, root_path, cache_path, info):
         self._root_path = os.path.abspath(root_path)
         self.product_dict = info
+        # XXX jtv 2014-04-11: FileStore now also takes an argument called
+        # complete_callback, which can be used for progress reporting.
         self._cache = FileStore(os.path.abspath(cache_path))
         super(RepoWriter, self).__init__()
 
@@ -295,9 +297,18 @@ def main(args):
             # Unexpected error.
             raise
 
-    storage = config['boot']['storage']
+    sources = config['boot']['sources']
+    if len(sources) == 0:
+        logger.warn("Can't import: no Simplestreams sources configured.")
+        return
 
     boot = download_all_image_descriptions(config)
+    if boot.is_empty():
+        logger.warn(
+            "No boot resources found.  Check configuration and connectivity.")
+        return
+
+    storage = config['boot']['storage']
     meta_file_content = boot.dump_json()
     if meta_contains(storage, meta_file_content):
         # The current maas.meta already contains the new config.  No need to
@@ -310,7 +321,7 @@ def main(args):
     targets_conf = os.path.join(snapshot_path, 'maas.tgt')
     writer = RepoWriter(snapshot_path, cache_path, reverse_boot)
 
-    for source in config['boot']['sources']:
+    for source in sources:
         writer.write(source['path'], source['keyring'])
 
     targets_conf_content = compose_targets_conf(snapshot_path)

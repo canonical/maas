@@ -39,6 +39,14 @@ class TestBootImageMapping(MAASTestCase):
         image_dict = set_resource(image_spec=image, resource=resource)
         self.assertItemsEqual([(image, resource)], image_dict.items())
 
+    def test_is_empty_returns_True_if_empty(self):
+        self.assertTrue(BootImageMapping().is_empty())
+
+    def test_is_empty_returns_False_if_not_empty(self):
+        mapping = BootImageMapping()
+        mapping.setdefault(make_image_spec(), factory.make_name('resource'))
+        self.assertFalse(mapping.is_empty())
+
     def test_setdefault_sets_unset_item(self):
         image_dict = BootImageMapping()
         image = make_image_spec()

@@ -174,6 +174,11 @@ def download_image_descriptions(path, keyring=None):
     boot_images_dict = BootImageMapping()
     dumper = RepoDumper(boot_images_dict)
     dumper.sync(reader, rpath)
+    if boot_images_dict.is_empty():
+        logger.warn(
+            "No resources found in Simplestreams repository %r.  "
+            "Is it correctly configured?",
+            path)
     return boot_images_dict
 
 
