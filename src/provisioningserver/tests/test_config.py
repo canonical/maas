@@ -456,7 +456,8 @@ class TestBootConfig(MAASTestCase):
             'sources': [
                 {
                     'path': (
-                        'http://maas.ubuntu.com/images/ephemeral-v2/daily/'),
+                        'http://maas.ubuntu.com/'
+                        'images/ephemeral-v2/releases/'),
                     'keyring': (
                         '/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg'),
                     'selections': [
@@ -464,17 +465,8 @@ class TestBootConfig(MAASTestCase):
                             'arches': ['i386', 'amd64'],
                             'release': 'trusty',
                             'subarches': ['generic'],
-                            'labels': ['daily'],
+                            'labels': ['release', 'rc'],
                         },
-                    ],
-                },
-                {
-                    'path': (
-                        'http://maas.ubuntu.com/'
-                        'images/ephemeral-v2/releases/'),
-                    'keyring': (
-                        '/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg'),
-                    'selections': [
                         {
                             'arches': ['i386', 'amd64'],
                             'release': 'precise',

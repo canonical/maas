@@ -52,17 +52,13 @@ boot:
   storage: "/var/lib/maas/boot-resources/"
 
   sources:
-    - path: "http://maas.ubuntu.com/images/ephemeral-v2/daily/"
+    - path: "http://maas.ubuntu.com/images/ephemeral-v2/releases/"
       keyring: "/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg"
       selections:
         - release: "trusty"
           arches: ["i386", "amd64"]
           subarches: ["generic"]
-          labels: ["daily"]
-
-    - path: "http://maas.ubuntu.com/images/ephemeral-v2/releases/"
-      keyring: "/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg"
-      selections:
+          labels: ["release", "rc"]
         - release: "precise"
           arches: ["i386", "amd64"]
           subarches: ["generic"]
