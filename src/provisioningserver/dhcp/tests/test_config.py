@@ -101,6 +101,15 @@ class TestDHCPConfig(PservTestCase):
             template.substitute(params),
             config.get_config(**params))
 
+    def test_quotes_interface(self):
+        # The interface name doesn't normally need to be quoted, but the
+        # template does quote it, in case it contains dots or other weird
+        # but legal characters (bug 1306335).
+        params = make_sample_params()
+        self.assertIn(
+            'interface "%s";' % params['dhcp_subnets'][0]['interface'],
+            config.get_config(**params))
+
     def test_get_config_with_too_few_parameters(self):
         template = self.patch_template()
         params = make_sample_params()
