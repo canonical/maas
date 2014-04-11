@@ -14,7 +14,12 @@
 <footer class="global clearfix">
   <div class="legal clearfix">
     <p>&copy; Copyright {{ copyright }}. Ubuntu and Canonical are registered trademarks of
-      <a href="http://canonical.com">Canonical Ltd</a></p>
+      <a href="http://canonical.com">Canonical Ltd</a>.
+    </p>
+    <p>
+      Revision {{ bzr_last_revision_number}} ({{ bzr_last_revision_date }}).
+      Documentation generation date: {{ bzr_build_date }}.
+    </p>
   </div>
 </footer>
 {%- endblock %}

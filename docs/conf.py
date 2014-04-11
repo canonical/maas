@@ -279,9 +279,18 @@ man_pages = [
 # Example configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {'http://docs.python.org/': None}
 
+# Gather information about the branch and the build date.
+from subprocess import check_output
+bzr_last_revision_number = check_output(['bzr', 'revno'])
+bzr_last_revision_date = check_output(['bzr', 'version-info', '--template={date}', '--custom'])
+bzr_build_date = check_output(['bzr', 'version-info', '--template={build_date}', '--custom'])
+
 # Populate html_context with the variables used in the templates.
 html_context = {
     'add_version_switcher': 'true' if add_version_switcher else 'false',
     'versions_json_path': '/'.join(['', doc_prefix, versions_path]),
     'doc_prefix': doc_prefix,
+    'bzr_last_revision_date': bzr_last_revision_date,
+    'bzr_last_revision_number': bzr_last_revision_number,
+    'bzr_build_date': bzr_build_date,
 }
