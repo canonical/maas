@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
@@ -1254,8 +1253,9 @@ class TestExternalProcessError(MAASTestCase):
             unicode(self), ExternalProcessError._to_unicode(self))
 
     def test_to_ascii_encodes_to_bytes(self):
-        unicode_string = u"Thîs nøn-åßçií s†ring will be cönvërted"
-        expected_byte_string = b"Th?s n?n-???i? s?ring will be c?nv?rted"
+        # Yes, this is how you really spell "smorgasbord."  Look it up.
+        unicode_string = u"Sm\xf6rg\xe5sbord"
+        expected_byte_string = b"Sm?rg?sbord"
         converted_string = ExternalProcessError._to_ascii(unicode_string)
         self.assertIsInstance(converted_string, bytes)
         self.assertEqual(expected_byte_string, converted_string)
@@ -1285,14 +1285,14 @@ class TestExternalProcessError(MAASTestCase):
         self.assertIsInstance(error.__unicode__(), unicode)
 
     def test__str__contains_output(self):
-        output = u"Hëré's søme øu†pût"
-        ascii_output = "H?r?'s s?me ?u?p?t"
+        output = u"Joyeux No\xebl"
+        ascii_output = "Joyeux No?l"
         error = ExternalProcessError(
             returncode=-1, cmd="foo-bar", output=output)
         self.assertIn(ascii_output, error.__str__())
 
     def test__unicode__contains_output(self):
-        output = "Hëré's søme øu†pût"
+        output = "Mot\xf6rhead"
         error = ExternalProcessError(
             returncode=-1, cmd="foo-bar", output=output)
         self.assertIn(output, error.__unicode__())
