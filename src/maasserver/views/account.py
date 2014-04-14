@@ -15,6 +15,7 @@ __all__ = [
     "logout",
     ]
 
+from django import forms
 from django.conf import settings as django_settings
 from django.contrib import messages
 from django.contrib.auth.views import (
@@ -22,6 +23,8 @@ from django.contrib.auth.views import (
     logout as dj_logout,
     )
 from django.core.urlresolvers import reverse
+from django.shortcuts import render_to_response
+from django.template import RequestContext
 from maasserver.models import UserProfile
 
 
@@ -33,6 +36,25 @@ def login(request):
     return dj_login(request, extra_context=extra_context)
 
 
+class LogoutForm(forms.Form):
+    """Log-out confirmation form.
+
+    There is nothing interesting in this form, but it's needed in order
+    to get Django's CSRF protection during logout.
+    """
+
+
 def logout(request):
-    messages.info(request, "You have been logged out.")
-    return dj_logout(request, next_page=reverse('login'))
+    if request.method == 'POST':
+        form = LogoutForm(request.POST)
+        if form.is_valid():
+            messages.info(request, "You have been logged out.")
+            return dj_logout(request, next_page=reverse('login'))
+    else:
+        form = LogoutForm()
+
+    return render_to_response(
+        'maasserver/logout_confirm.html',
+        {'form': form},
+        context_instance=RequestContext(request),
+    )

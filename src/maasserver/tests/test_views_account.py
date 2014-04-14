@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test maasserver account views."""
@@ -13,9 +13,15 @@ __metaclass__ = type
 __all__ = []
 
 from django.conf import settings
+from django.contrib.auth import SESSION_KEY
+from django.core.urlresolvers import reverse
 from lxml.html import fromstring
+from maasserver.testing import get_content_links
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import TestCase
+from maasserver.testing.testcase import (
+    LoggedInTestCase,
+    TestCase,
+    )
 
 
 class TestLogin(TestCase):
@@ -34,3 +40,20 @@ class TestLogin(TestCase):
         response = self.client.get('/accounts/login/')
         self.assertTrue(response.context['no_users'])
         self.assertEqual(path, response.context['create_command'])
+
+
+class TestLogout(LoggedInTestCase):
+
+    def test_logout_link_present_on_homepage(self):
+        response = self.client.get(reverse('index'))
+        logout_link = reverse('logout')
+        self.assertIn(
+            logout_link,
+            get_content_links(response, element='#user-options'))
+
+    def test_loggout_uses_POST(self):
+        # Using POST for logging out, along with Django's csrf_token
+        # tag, guarantees that we're protected against CSRF attacks on
+        # the loggout page.
+        self.client.post(reverse('logout'))
+        self.assertNotIn(SESSION_KEY, self.client.session.keys())
