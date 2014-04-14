@@ -32,7 +32,7 @@ d-i preseed/early_command string \
     chmod +x /tmp/install_udeb.sh && \
     /tmp/install_udeb.sh
 
-d-i apt-setup/local0/repository string deb {{driver['repository']}} trusty main
+d-i apt-setup/local0/repository string deb {{driver['repository']}} {{node.get_distro_series()}} main
 d-i apt-setup/local0/comment string {{driver['comment']}}
 d-i apt-setup/local0/key string file:///tmp/maas-{{driver['package']}}/repo_key.gpg
 {{endif}}
@@ -67,15 +67,19 @@ KERNEL_VERSION=`uname -r`
 TMPDIR=/tmp/maas-{{driver['package']}}
 mkdir $TMPDIR
 
+{{if http_proxy}}
+export http_proxy={{http_proxy}} https_proxy={{http_proxy}}
+{{endif}}
+
 echo -en '{{''.join(['\\x%x' % x for x in map(ord, driver['key_binary'])])}}' > $TMPDIR/repo_key.gpg
 
 # Retrieve the Release file and verify it against the repository's key.
-wget -O $TMPDIR/Release $REPO/dists/trusty/Release
-wget -O $TMPDIR/Release.gpg $REPO/dists/trusty/Release.gpg
+wget -O $TMPDIR/Release $REPO/dists/{{node.get_distro_series()}}/Release
+wget -O $TMPDIR/Release.gpg $REPO/dists/{{node.get_distro_series()}}/Release.gpg
 gpgv --keyring $TMPDIR/repo_key.gpg $TMPDIR/Release.gpg $TMPDIR/Release
 
 # Retrieve the Packages file and verify it against the Releases file.
-wget -O $TMPDIR/Packages $REPO/dists/trusty/main/debian-installer/binary-amd64/Packages
+wget -O $TMPDIR/Packages $REPO/dists/{{node.get_distro_series()}}/main/debian-installer/binary-amd64/Packages
 expected_sha256=`sed -n -e '/^SHA256:$/,$p' $TMPDIR/Release | grep 'main/debian-installer/binary-amd64/Packages$' | cut -f 2 -d ' '`
 actual_sha256=`sha256sum $TMPDIR/Packages | cut -f 1 -d ' '`
 if [ "$expected_sha256" != "$actual_sha256" ]
