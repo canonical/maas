@@ -66,10 +66,15 @@ function set_up_version_switcher(selector, doc_prefix) {
         });
     });
 
-    jqxhr.fail(function(jqXHR) {
-        console.log("error requesting versions file");
-        console.log(jqXHR);
-    });
+    // jqxhr.fail only exists in recent versions of jQuery;
+    // it's not there with the version shipped with Sphinx
+    // on Precise.
+    if ($.isFunction(jqxhr.fail)) {
+    	jqxhr.fail(function(jqXHR) {
+	        console.log("error requesting versions file");
+	        console.log(jqXHR);
+	    });
+    }
 
     // Handle version switcher change: redirect to the equivalent page in the
     // selected version of the documentation if that page exists, redirects to the
