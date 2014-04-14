@@ -51,7 +51,7 @@ def get_default_config():
         # RPC configuration.
         'rpc_region_certificate': None,
         # Third Party
-        'enable_third_party_drivers': False,
+        'enable_third_party_drivers': True,
         ## /settings
         }
 
