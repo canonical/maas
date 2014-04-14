@@ -58,6 +58,7 @@ Setting up a MAAS server
    hardware-enablement-kernels
    networks
    kernel-options
+   installing-ubuntu
 
 
 ******************

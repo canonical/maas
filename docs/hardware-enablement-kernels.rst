@@ -69,8 +69,8 @@ re-import its boot images using the ``maas`` command (You will need to
    <cluster-controller-uuid>
 
 You can also tell the cluster controller to re-import its boot images by
-clicking the ``Import boot images`` button for the cluster in the
-``Settings`` page of the MAAS web UI.
+clicking the ``Import boot images`` button in the ``Clusters`` page of
+the MAAS web UI.
 
 Using hardware-enablement kernels in MAAS
 -----------------------------------------

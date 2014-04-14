@@ -3,9 +3,15 @@ Adding nodes to the system
 
 Now that the MAAS controller is running, we need to make the nodes
 aware of MAAS and vice-versa. If you have set up DHCP correctly, and
-your nodes can boot via PXE then things really couldn't be much easier
-and you can use :ref:`the automatic discovery procedure <auto-enlist>`
+your nodes can boot via PXE_ then things really couldn't be much easier
+and you can use :ref:`the automatic discovery procedure <auto-enlist>`.
+You do not need to install Ubuntu on nodes that you wish to add to MAAS
+prior to enlistment.
 
+To learn more about setting up DHCP, read the :ref:`cluster configuration
+documentation <cluster-configuration>`.
+
+.. _PXE: http://en.wikipedia.org/wiki/Preboot_Execution_Environment
 
 .. _auto-enlist:
 
@@ -36,7 +42,10 @@ Manually add nodes
 ------------------
 
 If you know the MAC address of a node, you can manually enter details
-about the node through the web interface.
+about the node through the web interface. Click the ``Add Node`` button
+to be taken to the "Add Node" form:
+
+.. image:: media/add-node.png
 
 
 Virtual machine nodes

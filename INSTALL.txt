@@ -241,9 +241,9 @@ the images.
 There are two ways to start the import: through the web user interface, or
 through the remote API.
 
-To do it in the web user interface, go to the Settings page (the cogwheel on
-the right-hand side of the top bar) and look for the "Cluster controllers"
-section.  Click "Import boot images."
+To do it in the web user interface, go to the Clusters tab and click the
+"Import boot images" button at the bottom of the list of cluster
+controllers.
 
 .. image:: media/import-images.*
 
