@@ -1,7 +1,14 @@
 drivers:
 - blacklist: ahci
   comment: HPVSA driver
-  key: http://keyserver.ubuntu.com/pks/lookup?search=0x509C5B70C2755E20F737DC27933312C3CF700356&op=get
+  key_binary: !!binary |
+         mI0EUXBVgAEEAMMuSjjc/OYlR76O9dRcMBipKp5/gTUoYovm0dxVDb+JnyOqsVlad+pZbUhTiQnl
+         ogoZdbt4i/yffP/8TydipLd3emw6xjyN5wkhGZfVvnslopZcPsjvXIdnC1sSbdWe/NwOLGn9svc+
+         FimbIrwvVx4sL/Z50QK1/4Cu6Gaxh531ABEBAAG0I0xhdW5jaHBhZCBQUEEgZm9yIEhQIElTUyBM
+         aW51eCBUZWFtiLgEEwECACIFAlFwVYACGwMGCwkIBwMCBhUIAgkKCwQWAgMBAh4BAheAAAoJEJMz
+         EsPPcANWfQ8D/RYq9u2QfyQej+2r7nGlETXl79xvaFzqwfkzuYwrUnxDuxUGTZz+yrLRBdPmYN4y
+         d7neu+9NsDAoHkpL5wyCgC7FSVSXZOT7PsMvj5IncQQc4ktnBp6vKTdfoQ1bIGaQEPrbliz6whxP
+         YfNe1eT+RyB4YP5/lclGsj+dtOdLzKh9sAIAAw==
   modaliases: 
   - 'pci:v00001590d00000047sv00001590sd00000047bc*sc*i*'
   - 'pci:v00001590d00000045sv00001590sd00000045bc*sc*i*'

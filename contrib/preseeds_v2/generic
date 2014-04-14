@@ -27,15 +27,14 @@ d-i     pkgsel/include string cloud-init openssh-server python-software-properti
 {{def driver_preseed_data}}
 {{if third_party_drivers and driver}}
 # Third party driver support.
-d-i preseed/early_command \
-    string wget -O - {{driver['repository']}}/dists/trusty/main/debian-installer/binary-amd64/Packages \
-    | wget -O /tmp/driver.udeb {{driver['repository']}}/$(grep ^Filename.*$(uname -r) \
-    | cut -f 2 -d ' ' | sort -ru | head -n 1) \
-    && udpkg -i /tmp/driver.udeb && depmod && modprobe {{driver['module']}}
+d-i preseed/early_command string \
+    echo -en '{{''.join(['\\x%x' % x for x in map(ord, str(install_udeb))])}}' > /tmp/install_udeb.sh && \
+    chmod +x /tmp/install_udeb.sh && \
+    /tmp/install_udeb.sh
 
 d-i apt-setup/local0/repository string deb {{driver['repository']}} trusty main
 d-i apt-setup/local0/comment string {{driver['comment']}}
-d-i apt-setup/local0/key string {{driver['key']}}
+d-i apt-setup/local0/key string file:///tmp/maas-{{driver['package']}}/repo_key.gpg
 {{endif}}
 {{enddef}}
 
@@ -55,4 +54,57 @@ d-i     preseed/late_command string true && \
     in-target update-initramfs -u; \
 {{endif}}
     true
+{{enddef}}
+
+{{def install_udeb}}
+{{if third_party_drivers and driver}}
+#!/usr/bin/env sh
+
+set -eu
+
+REPO={{driver['repository']}}
+KERNEL_VERSION=`uname -r`
+TMPDIR=/tmp/maas-{{driver['package']}}
+mkdir $TMPDIR
+
+echo -en '{{''.join(['\\x%x' % x for x in map(ord, driver['key_binary'])])}}' > $TMPDIR/repo_key.gpg
+
+# Retrieve the Release file and verify it against the repository's key.
+wget -O $TMPDIR/Release $REPO/dists/trusty/Release
+wget -O $TMPDIR/Release.gpg $REPO/dists/trusty/Release.gpg
+gpgv --keyring $TMPDIR/repo_key.gpg $TMPDIR/Release.gpg $TMPDIR/Release
+
+# Retrieve the Packages file and verify it against the Releases file.
+wget -O $TMPDIR/Packages $REPO/dists/trusty/main/debian-installer/binary-amd64/Packages
+expected_sha256=`sed -n -e '/^SHA256:$/,$p' $TMPDIR/Release | grep 'main/debian-installer/binary-amd64/Packages$' | cut -f 2 -d ' '`
+actual_sha256=`sha256sum $TMPDIR/Packages | cut -f 1 -d ' '`
+if [ "$expected_sha256" != "$actual_sha256" ]
+then
+    echo "Packages sha256 value mismatch."
+    echo "expected: $expected_sha256, actual: $actual_sha256"
+    exit 1
+fi
+
+# Retrieve the udeb and verify it against the Packages file. This method
+# of locating the sha256 sum for the udeb within the Packages file
+# relies on the SHA256 line coming after the Filename line in the udeb's
+# record in the Packages file.
+filename=`grep ^Filename.*$KERNEL_VERSION $TMPDIR/Packages  | cut -f 2 -d ' ' | sort -ru | head -n 1`
+wget -O $TMPDIR/driver.udeb $REPO/$filename
+basename=${filename##*/}
+sed_expression="/$basename"'$/,$p'
+expected_udeb_sha256=`sed -n -e $sed_expression $TMPDIR/Packages | grep ^SHA256: | cut -f 2 -d ' ' | head -n 1`
+actual_udeb_sha256=`sha256sum $TMPDIR/driver.udeb | cut -f 1 -d ' '`
+if [ "$expected_udeb_sha256" != "$actual_udeb_sha256" ]
+then
+    echo "udeb sha256 value mismatch."
+    echo "expected: $expected_udeb_sha256, actual: $actual_udeb_sha256"
+    exit 1
+fi
+
+# Install the udeb and load the kernel module.
+udpkg -i $TMPDIR/driver.udeb
+depmod
+modprobe {{driver['module']}}
+{{endif}}
 {{enddef}}

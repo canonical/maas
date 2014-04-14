@@ -3,8 +3,7 @@
 
 """Third party driver support.
 
-The current implementation is limited in a number of ways.
-
+The current implementation is limited in a number of ways:
 - Third party driver locations are currently hardcoded. Eventually,
   they will be fetched from a stream.
 - Only one third party driver can be matched per system.
@@ -55,7 +54,31 @@ installation, and via a modprobe.d entry afterwards.
 comment - A comment string that will be added to the sources.list file
 on the target.
 
-key - The URL to the public key for the repository.
+key_binary - The public key for the repository in binary. Starting with a
+binary gpg key file (NOT ascii armored) containing the key for a repository,
+you can generate the key binary string like this:
+
+>>>> import yaml
+>>>> key_text = open('my_key.gpg').read()
+>>>> print yaml.dump(key_text)
+
+NOTE: If you start off with an ascii armored key, you can convert it into
+a binary key by importing it into a gpg keyring, then exporting it into
+a file without using -a/--armor.
+
+You can inspect a key from drivers.yaml by dumping it back into a file
+and using gpg to manipulate it:
+
+>>> import yaml
+>>> drivers_config = yaml.load(open('etc/maas/drivers.yaml').read())
+>>> drivers_list = drivers_config['drivers']
+>>> first_driver = drivers_list[0]
+>>> open('some_key.gpg', 'w').write(first_driver['key_binary'])
+
+$ gpg --import -n some_key.gpg
+gpg: key CF700356: "Launchpad PPA for Some Driver" not changed
+gpg: Total number processed: 1
+gpg:              unchanged: 1
 
 modaliases - The list of modaliases patterns to match when deciding when
 to use this driver. MAAS collects modalias strings for nodes during
@@ -78,7 +101,7 @@ class ConfigDriver(Schema):
 
     blacklist = String()
     comment = String()
-    key = String()
+    key_binary = String()
     modaliases = ForEach(String)
     module = String()
     package = String()
