@@ -24,6 +24,8 @@ __all__ = [
     'prefetch_nodes_listing',
     ]
 
+from cgi import escape
+from textwrap import dedent
 from urllib import urlencode
 
 from django.conf import settings as django_settings
@@ -70,6 +72,7 @@ from maasserver.models import (
     Node,
     Tag,
     )
+from maasserver.models.config import Config
 from maasserver.models.nodeprobeddetails import get_single_probed_details
 from maasserver.node_action import ACTIONS_DICT
 from maasserver.node_constraint_filter_forms import (
@@ -80,6 +83,7 @@ from maasserver.preseed import (
     get_enlist_preseed,
     get_preseed,
     )
+from maasserver.third_party_drivers import get_third_party_driver
 from maasserver.views import (
     HelpfulDeleteView,
     PaginatedListView,
@@ -203,6 +207,15 @@ class NodeListView(PaginatedListView, FormMixin, ProcessFormView):
     def get(self, request, *args, **kwargs):
         """Handle a GET request."""
         self.populate_modifiers(request)
+
+        if Config.objects.get_config("enable_third_party_drivers"):
+            messages.info(request, mark_safe(dedent("""\
+                Third party drivers may be used when booting or installing
+                nodes. These may be proprietary and closed-source. The
+                installation of third party drivers can be disable on the
+                <a href="%s">settings</a> page.
+                """) % escape(reverse("settings"), quote=True)))
+
         return super(NodeListView, self).get(request, *args, **kwargs)
 
     def get_preserved_params(self):
@@ -460,6 +473,10 @@ class NodeView(NodeViewMixin, UpdateView):
 
         results = NodeCommissionResult.objects.filter(node=node).count()
         context['nodecommissionresults'] = results
+
+        context['third_party_drivers'] = Config.objects.get_config(
+            'enable_third_party_drivers')
+        context['drivers'] = get_third_party_driver(node)
 
         return context
 

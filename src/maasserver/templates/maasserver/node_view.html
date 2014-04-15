@@ -171,6 +171,14 @@
       </span>
     </li>
     {% endif %}
+    {%if third_party_drivers and drivers %}
+    <li class="block size10 first">
+      <h4>Third Party Drivers</h4>
+      <span>
+        {{ drivers.module }} ({{ drivers.comment }})
+      </span>
+    </li>
+    {% endif %}
     {% if error_text %}
     <li class="block first">
       <h4>Error output</h4>
