@@ -15,6 +15,7 @@ __metaclass__ = type
 __all__ = []
 
 import httplib
+from cgi import escape
 from operator import attrgetter
 import os
 from random import randint
@@ -29,6 +30,7 @@ from django.core.urlresolvers import reverse
 from lxml.etree import XPath
 from lxml.html import fromstring
 import maasserver.api
+from maasserver.third_party_drivers import get_third_party_driver
 from maasserver.enum import (
     NODE_STATUS,
     NODEGROUP_STATUS,
@@ -66,7 +68,10 @@ from maasserver.utils.orm import get_one
 from maasserver.views import nodes as nodes_views
 from maasserver.views.nodes import message_from_form_stats
 from maastesting.djangotestcase import count_queries
-from metadataserver.models.commissioningscript import LLDP_OUTPUT_NAME
+from metadataserver.models.commissioningscript import (
+    LLDP_OUTPUT_NAME,
+    LIST_MODALIASES_OUTPUT_NAME,
+    )
 from testtools.matchers import ContainsAll
 
 
@@ -1061,6 +1066,95 @@ class NodeViewsTest(MAASServerTestCase):
             "//form[@id='node_listing_form']/@action")
         query_string_params = parse_qsl(urlparse(form_action).query)
         self.assertEqual(params.items(), query_string_params)
+
+    def test_node_list_view_shows_third_party_drivers_warning(self):
+        self.client_log_in()
+        factory.make_node()
+        Config.objects.set_config(
+            name='enable_third_party_drivers', value=True)
+        response = self.client.get(reverse('node-list'))
+        document = fromstring(response.content)
+        self.assertIn(
+            nodes_views.construct_third_party_drivers_notice(False).strip(),
+            document.xpath(
+                "string(//div[@id='body']/ul/li[@class='info'])").strip())
+
+    def test_node_list_view_shows_third_party_drivers_admin_warning(self):
+        self.client_log_in(as_admin=True)
+        factory.make_node()
+        Config.objects.set_config(
+            name='enable_third_party_drivers', value=True)
+        response = self.client.get(reverse('node-list'))
+        # We'll check in response.content directly here. It's not ideal
+        # but using fromstring() strips out the link-y goodness and
+        # causes the test to fail.
+        self.assertIn(
+            nodes_views.construct_third_party_drivers_notice(True).strip(),
+            response.content)
+
+    def test_node_list_view_hides_drivers_warning_if_drivers_disabled(self):
+        self.client_log_in()
+        factory.make_node()
+        Config.objects.set_config(
+            name='enable_third_party_drivers', value=False)
+        response = self.client.get(reverse('node-list'))
+        self.assertNotIn(
+            nodes_views.construct_third_party_drivers_notice(False).strip(),
+            response.content)
+
+    def test_node_view_hides_third_party_drivers_section_if_no_drivers(self):
+        self.client_log_in()
+        Config.objects.set_config(
+            name='enable_third_party_drivers', value=True)
+        node = factory.make_node(status=NODE_STATUS.READY)
+        response = self.client.get(reverse('node-view', args=[node.system_id]))
+        self.assertNotIn("Third Party Drivers", response.content)
+
+    def test_node_view_shows_third_party_drivers(self):
+        self.client_log_in()
+        Config.objects.set_config(
+            name='enable_third_party_drivers', value=True)
+        node = factory.make_node(status=NODE_STATUS.READY)
+        data = "pci:v00001590d00000047sv00001590sd00000047bc*sc*i*"
+        factory.make_node_commission_result(
+            node=node, name=LIST_MODALIASES_OUTPUT_NAME, script_result=0,
+            data=data.encode("utf-8"))
+        response = self.client.get(reverse('node-view', args=[node.system_id]))
+        document = fromstring(response.content)
+        driver = get_third_party_driver(node)
+        self.assertIn(
+            "%s (%s)" % (driver['module'], driver['comment']),
+            document.xpath("string(//span[@id='third_party_drivers'])"))
+
+    def test_node_view_hides_drivers_section_if_drivers_disabled(self):
+        self.client_log_in()
+        Config.objects.set_config(
+            name='enable_third_party_drivers', value=False)
+        node = factory.make_node(status=NODE_STATUS.READY)
+        data = "pci:v00001590d00000047sv00001590sd00000047bc*sc*i*"
+        factory.make_node_commission_result(
+            node=node, name=LIST_MODALIASES_OUTPUT_NAME, script_result=0,
+            data=data.encode("utf-8"))
+        response = self.client.get(reverse('node-view', args=[node.system_id]))
+        self.assertNotIn("Third Party Drivers", response.content)
+
+
+class ConstructThirdPartyDriversNoticeTest(MAASServerTestCase):
+
+    def test_constructs_notice_without_link_for_normal_users(self):
+        expected_notice = nodes_views.THIRD_PARTY_DRIVERS_NOTICE
+        self.assertEqual(
+            expected_notice.strip(),
+            nodes_views.construct_third_party_drivers_notice(False).strip())
+
+    def test_constructs_notice_with_link_for_admin_users(self):
+        expected_notice = (
+            nodes_views.THIRD_PARTY_DRIVERS_NOTICE +
+            nodes_views.THIRD_PARTY_DRIVERS_ADMIN_NOTICE % escape(
+                reverse('settings')))
+        self.assertEqual(
+            expected_notice.strip(),
+            nodes_views.construct_third_party_drivers_notice(True).strip())
 
 
 class NodeCommissionResultsDisplayTest(MAASServerTestCase):
