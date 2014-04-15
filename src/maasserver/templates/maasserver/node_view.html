@@ -171,10 +171,10 @@
       </span>
     </li>
     {% endif %}
-    {%if third_party_drivers and drivers %}
+    {% if third_party_drivers_enabled and drivers %}
     <li class="block size10 first">
       <h4>Third Party Drivers</h4>
-      <span>
+      <span id="third_party_drivers">
         {{ drivers.module }} ({{ drivers.comment }})
       </span>
     </li>

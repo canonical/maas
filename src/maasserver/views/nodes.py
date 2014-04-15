@@ -25,7 +25,6 @@ __all__ = [
     ]
 
 from cgi import escape
-from textwrap import dedent
 from urllib import urlencode
 
 from django.conf import settings as django_settings
@@ -90,6 +89,7 @@ from maasserver.views import (
     )
 from metadataserver.models import NodeCommissionResult
 from provisioningserver.tags import merge_details_cleanly
+from textwrap import dedent
 
 
 def get_longpoll_context():
@@ -209,12 +209,12 @@ class NodeListView(PaginatedListView, FormMixin, ProcessFormView):
         self.populate_modifiers(request)
 
         if Config.objects.get_config("enable_third_party_drivers"):
-            messages.info(request, mark_safe(dedent("""\
-                Third party drivers may be used when booting or installing
-                nodes. These may be proprietary and closed-source. The
-                installation of third party drivers can be disable on the
-                <a href="%s">settings</a> page.
-                """) % escape(reverse("settings"), quote=True)))
+            # Show a notice to all users that third-party drivers are
+            # enabled. Administrative users also get a link to the
+            # settings page where they can disable this feature.
+            notice = construct_third_party_drivers_notice(
+                request.user.is_superuser)
+            messages.info(request, notice)
 
         return super(NodeListView, self).get(request, *args, **kwargs)
 
@@ -429,6 +429,36 @@ control it. Click 'Edit node' and set one.
 """)
 
 
+THIRD_PARTY_DRIVERS_NOTICE = dedent("""
+    Third party drivers may be used when booting or installing nodes.
+    These may be proprietary and closed-source.
+    """)
+
+
+THIRD_PARTY_DRIVERS_ADMIN_NOTICE = dedent("""
+    The installation of third party drivers can be disabled on the <a
+    href="%s#third_party_drivers">settings</a> page.
+    """)
+
+
+def construct_third_party_drivers_notice(user_is_admin):
+    """Build and return the notice about third party drivers.
+
+    If `user_is_admin` is True, a link to the settings page will be
+    included in the message.
+
+    :param user_is_admin: True if the user is an administrator, False
+        otherwise.
+    """
+    if user_is_admin:
+        return mark_safe(
+            THIRD_PARTY_DRIVERS_NOTICE +
+            THIRD_PARTY_DRIVERS_ADMIN_NOTICE %
+            escape(reverse("settings"), quote=True))
+    else:
+        return mark_safe(THIRD_PARTY_DRIVERS_NOTICE)
+
+
 class NodeView(NodeViewMixin, UpdateView):
     """View class to display a node's information and buttons for the actions
     which can be performed on this node.
@@ -474,7 +504,7 @@ class NodeView(NodeViewMixin, UpdateView):
         results = NodeCommissionResult.objects.filter(node=node).count()
         context['nodecommissionresults'] = results
 
-        context['third_party_drivers'] = Config.objects.get_config(
+        context['third_party_drivers_enabled'] = Config.objects.get_config(
             'enable_third_party_drivers')
         context['drivers'] = get_third_party_driver(node)
 
