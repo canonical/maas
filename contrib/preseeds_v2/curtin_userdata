@@ -4,8 +4,26 @@ debconf_selections:
   {{for line in str(curtin_preseed).splitlines()}}
   {{line}}
   {{endfor}}
+{{if third_party_drivers and driver}}
+early_commands:
+  {{py: key_string = ''.join(['\\x%x' % x for x in map(ord, driver['key_binary'])])}}
+  driver_00_get_key: /bin/echo -en '{{key_string}}' > /tmp/maas-{{driver['package']}}.gpg
+  driver_01_add_key: ["apt-key", "add", "/tmp/maas-{{driver['package']}}.gpg"]
+  driver_02_add: ["add-apt-repository", "-y", "deb {{driver['repository']}} {{node.get_distro_series()}} main"]
+  driver_03_update_install: ["sh", "-c", "apt-get update --quiet && apt-get --assume-yes install {{driver['package']}}"]
+  driver_04_load: ["sh", "-c", "depmod && modprobe {{driver['module']}}"]
+{{endif}}
 late_commands:
   maas: [wget, '--no-proxy', '{{node_disable_pxe_url|escape.shell}}', '--post-data', '{{node_disable_pxe_data|escape.shell}}', '-O', '/dev/null']
+{{if third_party_drivers and driver}}
+  driver_00_key_get: curtin in-target -- sh -c "/bin/echo -en '{{key_string}}' > /tmp/maas-{{driver['package']}}.gpg"
+  driver_02_key_add: ["curtin", "in-target", "--", "apt-key", "add", "/tmp/maas-{{driver['package']}}.gpg"]
+  driver_03_add: ["curtin", "in-target", "--", "add-apt-repository", "-y", "deb {{driver['repository']}} {{node.get_distro_series()}} main"]
+  driver_04_update_install: ["curtin", "in-target", "--", "apt-get", "update", "--quiet"]
+  driver_05_install: ["curtin", "in-target", "--", "apt-get", "-y", "install", "{{driver['package']}}"]
+  driver_06_depmod: ["curtin", "in-target", "--", "depmod"]
+  driver_07_update_initramfs: ["curtin", "in-target", "--", "update-initramfs", "-u"]
+{{endif}}
 
 power_state:
   mode: reboot
