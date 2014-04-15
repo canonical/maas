@@ -82,6 +82,7 @@ from twisted.internet.protocol import Factory
 from twisted.internet.threads import deferToThread
 from twisted.protocols import amp
 from twisted.python import log
+from unittest import skip
 
 
 class TestRegionProtocol_Identify(MAASTestCase):
@@ -641,6 +642,7 @@ class TestRegionAdvertisingService(MAASTestCase):
                 cursor.execute("SELECT * FROM eventloops")
                 self.assertEqual([], list(cursor))
 
+    @skip("XXX gmb 2014-04-15 bug=1308069: Fails spuriously.")
     def test_prepare_holds_startup_lock(self):
         # Creating tables in PostgreSQL is a transactional operation
         # like any other. If the isolation level is not sufficient - the
