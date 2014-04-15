@@ -2462,13 +2462,20 @@ def pxeconfig(request):
         _, effective_kernel_opts = node.get_effective_kernel_options()
 
         # Add any extra options from a third party driver.
-        driver = get_third_party_driver(node)
-        driver_kernel_opts = driver.get('kernel_opts', '')
-        combined_opts = ('%s %s' % (
-            '' if effective_kernel_opts is None else effective_kernel_opts,
-            driver_kernel_opts)).strip()
+        use_driver = Config.objects.get_config('enable_third_party_drivers')
+        if use_driver:
+            driver = get_third_party_driver(node)
+            driver_kernel_opts = driver.get('kernel_opts', '')
 
-        extra_kernel_opts = combined_opts if len(combined_opts) > 0 else None
+            combined_opts = ('%s %s' % (
+                '' if effective_kernel_opts is None else effective_kernel_opts,
+                driver_kernel_opts)).strip()
+            if len(combined_opts):
+                extra_kernel_opts = combined_opts
+            else:
+                extra_kernel_opts = None
+        else:
+            extra_kernel_opts = effective_kernel_opts
     else:
         # If there's no node defined then we must be enlisting here, but
         # we still need to return the global kernel options.
