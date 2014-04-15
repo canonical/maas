@@ -86,11 +86,11 @@ def inner_start_up():
     # Regenerate MAAS's DNS configuration.  This should be reentrant, really.
     write_full_dns_config(reload_retry=True)
 
-
-def post_start_up():
-    """Startup jobs that can run after the critical section."""
     # Check whether we have boot images yet.
     update_import_script_error()
 
+
+def post_start_up():
+    """Startup jobs that can run after the critical section."""
     # Send secrets etc. to workers.
     NodeGroup.objects.refresh_workers()
