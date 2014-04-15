@@ -83,5 +83,3 @@ For more information about the fast installer, see the `curtin project`_
 on Launchpad.
 
 .. _curtin project: https://launchpad.net/curtin
-
-.. [1] Except where the node only supports manual power management.
