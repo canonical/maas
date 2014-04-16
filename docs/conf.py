@@ -55,6 +55,7 @@ doc_versions = OrderedDict([
     ('1.6', 'Development trunk'),
     ('1.5', 'MAAS 1.5'),
     ('1.4', 'MAAS 1.4'),
+    ('1.2', 'MAAS 1.2'),
 ])
 
 # -- General configuration -----------------------------------------------------
