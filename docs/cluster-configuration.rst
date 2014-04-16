@@ -48,8 +48,8 @@ it will be automatically accepted by default (but not yet configured, see
 below).  Any other cluster controllers you set up will show up in the user
 interface as "pending," until you manually accept them into the MAAS.
 
-To accept a cluster controller, click on the settings "cog" icon at the top
-right to visit the settings page:
+To accept a cluster controller, visit the "pending clusters" section of the
+Clusters page:
 
 .. image:: media/cluster-accept.png
 
