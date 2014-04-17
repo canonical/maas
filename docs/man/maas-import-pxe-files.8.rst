@@ -19,8 +19,8 @@ downloaded, so routine runs will not be costly.
 
 An easier way to run the script is to trigger it from the MAAS web user
 interface.  To do that, log in to your MAAS as an administrator using a
-web browser, click the cogwheel icon in the top right of the page to go
-to the Clusters page, and click "Import boot images."  This will start
+web browser, click the "Clusters" tab at the top of the page to go to
+the Clusters page, and click "Import boot images."  This will start
 imports on all cluster controllers simultaneously.  The same thing can
 also be done through the region-controller API, or through the
 command-line interface.
