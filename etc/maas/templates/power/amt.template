@@ -2,9 +2,16 @@
 # -*- mode: shell-script -*-
 #
 # Control a system via amttool
+power_address='{{power_address}}'
 power_change='{{power_change}}'
 power_pass='{{power_pass}}'
 ip_address='{{ip_address}}'
+
+# The user specified power_address overrides any automatically determined
+# ip_address.
+if [ -n "$power_address" ]; then
+  ip_address=$power_address
+fi
 
 echo amt.template starting $*
 
