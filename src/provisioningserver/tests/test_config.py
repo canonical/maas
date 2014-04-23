@@ -465,7 +465,7 @@ class TestBootConfig(MAASTestCase):
                             'arches': ['i386', 'amd64'],
                             'release': 'trusty',
                             'subarches': ['generic'],
-                            'labels': ['release', 'rc'],
+                            'labels': ['release'],
                         },
                         {
                             'arches': ['i386', 'amd64'],

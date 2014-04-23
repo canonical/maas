@@ -58,7 +58,7 @@ boot:
         - release: "trusty"
           arches: ["i386", "amd64"]
           subarches: ["generic"]
-          labels: ["release", "rc"]
+          labels: ["release"]
         - release: "precise"
           arches: ["i386", "amd64"]
           subarches: ["generic"]
