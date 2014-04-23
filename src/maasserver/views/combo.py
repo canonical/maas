@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Combo view."""
@@ -16,7 +16,10 @@ __all__ = [
     'get_combo_view',
     ]
 
-from functools import partial
+from functools import (
+    partial,
+    update_wrapper,
+    )
 import os
 
 from convoy.combo import (
@@ -76,8 +79,12 @@ def get_combo_view(location='', default_redirect=None):
     :rtype: callable
     """
     location = get_absolute_location(location)
-    return partial(
+    # Work around bug 1311433: returning a "partial" as a view causes an
+    # AttributeError about a missing __module__ attribute.  The update_wrapper
+    # solves this.
+    partial_view = partial(
         combo_view, location=location, default_redirect=default_redirect)
+    return update_wrapper(partial_view, combo_view)
 
 
 def combo_view(request, location, default_redirect=None, encoding='utf8'):
