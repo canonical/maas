@@ -45,7 +45,7 @@ IPMI_DRIVER_CHOICES = [
 CHOICE_FIELD_SCHEMA = {
     'type': 'array',
     'items': {
-        'title': "Power type paramter field choice",
+        'title': "Power type parameter field choice",
         'type': 'array',
         'minItems': 2,
         'maxItems': 2,

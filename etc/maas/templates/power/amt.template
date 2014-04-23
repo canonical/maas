@@ -25,10 +25,16 @@ amt() {
 }
 
 state() {
-  state=`{
-    # Retry the state if it fails because it often fails the first time.
-    amt 2> /dev/null || amt
-  } | grep '^Powerstate:' | awk '{print $2}'`
+  # Retry the state if it fails because it often fails the first time.
+  local count=0
+  local state=
+  while true; do
+    state=$(amt info | grep '^Powerstate:' | awk '{print $2}')
+    [ -n "$state" ] && break
+    count=$((count+1))
+    [ $count -gt 10 ] && break
+    sleep 1
+  done
   echo $state
 }
 
@@ -46,7 +52,7 @@ fi
 echo desired $desired_state
 
 current_state=`state`
-for i in `seq 0 1`; do
+for i in `seq 0 10`; do
   echo found current_state $current_state
   if [ "$current_state" '=' "" ]; then
     echo Cannot get current state
