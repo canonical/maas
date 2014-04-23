@@ -62,6 +62,7 @@ from testtools.matchers import (
     AllMatch,
     Contains,
     ContainsAll,
+    HasLength,
     IsInstance,
     MatchesAll,
     Not,
@@ -613,6 +614,60 @@ class TestCurtinUtilities(MAASServerTestCase):
                     "debconf_selections:",
                 ]
             ))
+
+    def make_fastpath_node(self, main_arch=None):
+        """Return a `Node`, with FPI enabled, and the given main architecture.
+
+        :param main_arch: A main architecture, such as `i386` or `armhf`.  A
+            subarchitecture will be made up.
+        """
+        if main_arch is None:
+            main_arch = factory.make_name('arch')
+        arch = '%s/%s' % (main_arch, factory.make_name('subarch'))
+        node = factory.make_node(architecture=arch)
+        node.use_fastpath_installer()
+        return node
+
+    def extract_archive_setting(self, userdata):
+        """Extract the `ubuntu_archive` setting from `userdata`."""
+        userdata_lines = []
+        for line in userdata.splitlines():
+            line = line.strip()
+            if line.startswith('ubuntu_archive'):
+                userdata_lines.append(line)
+        self.assertThat(userdata_lines, HasLength(1))
+        [userdata_line] = userdata_lines
+        key, value = userdata_line.split(':', 1)
+        return value.strip()
+
+    def summarise_url(self, url):
+        """Return just the hostname and path from `url`, normalised."""
+        # This is needed because the userdata deliberately makes some minor
+        # changes to the archive URLs, making it harder to recognise which
+        # archive they use: slashes are added, schemes are hard-coded.
+        parsed_result = urlparse(url)
+        return parsed_result.netloc, parsed_result.path.strip('/')
+
+    def test_get_curtin_config_uses_main_archive_for_i386(self):
+        node = self.make_fastpath_node('i386')
+        userdata = get_curtin_config(node)
+        self.assertEqual(
+            self.summarise_url(Config.objects.get_config('main_archive')),
+            self.summarise_url(self.extract_archive_setting(userdata)))
+
+    def test_get_curtin_config_uses_main_archive_for_amd64(self):
+        node = self.make_fastpath_node('amd64')
+        userdata = get_curtin_config(node)
+        self.assertEqual(
+            self.summarise_url(Config.objects.get_config('main_archive')),
+            self.summarise_url(self.extract_archive_setting(userdata)))
+
+    def test_get_curtin_config_uses_ports_archive_for_other_arch(self):
+        node = self.make_fastpath_node()
+        userdata = get_curtin_config(node)
+        self.assertEqual(
+            self.summarise_url(Config.objects.get_config('ports_archive')),
+            self.summarise_url(self.extract_archive_setting(userdata)))
 
     def test_get_curtin_context(self):
         node = factory.make_node()

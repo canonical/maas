@@ -28,7 +28,7 @@ late_commands:
 power_state:
   mode: reboot
 
-{{if node.architecture in {'i386/generic', 'amd64/generic'} }}
+{{if node.split_arch()[0] in {'i386', 'amd64'} }}
 apt_mirrors:
   ubuntu_archive: http://{{main_archive_hostname}}/{{main_archive_directory}}
   ubuntu_security: http://{{main_archive_hostname}}/{{main_archive_directory}}

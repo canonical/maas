@@ -755,6 +755,13 @@ class NodeTest(MAASServerTestCase):
             "The use-fastpath-installer tag is defined with an expression",
             unicode(error))
 
+    def test_split_arch_returns_arch_as_tuple(self):
+        main_arch = factory.make_name('arch')
+        sub_arch = factory.make_name('subarch')
+        full_arch = '%s/%s' % (main_arch, sub_arch)
+        node = factory.make_node(architecture=full_arch)
+        self.assertEqual((main_arch, sub_arch), node.split_arch())
+
 
 class NodeRoutersTest(MAASServerTestCase):
 
