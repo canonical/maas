@@ -25,6 +25,7 @@ __all__ = [
     ]
 
 from cgi import escape
+from textwrap import dedent
 from urllib import urlencode
 
 from django.conf import settings as django_settings
@@ -89,7 +90,6 @@ from maasserver.views import (
     )
 from metadataserver.models import NodeCommissionResult
 from provisioningserver.tags import merge_details_cleanly
-from textwrap import dedent
 
 
 def get_longpoll_context():
