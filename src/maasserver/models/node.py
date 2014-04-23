@@ -899,3 +899,8 @@ class Node(CleanSave, TimestampedModel):
                 "expression. This expression must instead be updated to set "
                 "this node to install with the fast installer.")
         self.tags.add(uti_tag)
+
+    def split_arch(self):
+        """Return architecture and subarchitecture, as a tuple."""
+        arch, subarch = self.architecture.split('/')
+        return (arch, subarch)
