@@ -28,6 +28,8 @@ from maasserver.fields import (
     NodeGroupFormField,
     register_mac_type,
     validate_mac,
+    VerboseRegexField,
+    VerboseRegexValidator,
     )
 from maasserver.models import (
     MACAddress,
@@ -220,6 +222,35 @@ class TestMAC(MAASServerTestCase):
         register_mac_type(connection.cursor())
         # The test is that we get here without crashing.
         pass
+
+
+class TestVerboseRegexValidator(MAASServerTestCase):
+
+    def test_VerboseRegexValidator_validates_value(self):
+        validator = VerboseRegexValidator(
+            regex="test", message="Unknown value")
+        self.assertIsNone(validator('test'))
+
+    def test_VerboseRegexValidator_validation_error_includes_value(self):
+        message = "Unknown value: %(value)s"
+        validator = VerboseRegexValidator(regex="test", message=message)
+        value = factory.make_name('value')
+        error = self.assertRaises(ValidationError, validator, value)
+        self.assertEqual(message % {'value': value}, error.message)
+
+
+class TestVerboseRegexField(MAASServerTestCase):
+
+    def test_VerboseRegexField_accepts_valid_value(self):
+        field = VerboseRegexField(regex="test", message="Unknown value")
+        self.assertEqual('test', field.clean('test'))
+
+    def test_VerboseRegexField_validation_error_includes_value(self):
+        message = "Unknown value: %(value)s"
+        field = VerboseRegexField(regex="test", message=message)
+        value = factory.make_name('value')
+        error = self.assertRaises(ValidationError, field.clean, value)
+        self.assertEqual([message % {'value': value}], error.messages)
 
 
 class TestMACAddressField(MAASServerTestCase):

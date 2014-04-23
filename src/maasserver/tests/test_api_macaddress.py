@@ -120,7 +120,7 @@ class MACAddressAPITest(APITestCase):
         self.assertEqual(400, response.status_code)
         self.assertEqual(['mac_address'], list(parsed_result))
         self.assertEqual(
-            ["Enter a valid MAC address (e.g. AA:BB:CC:DD:EE:FF)."],
+            ["'invalid-mac' is not a valid MAC address."],
             parsed_result['mac_address'])
 
     def test_macs_DELETE_mac(self):

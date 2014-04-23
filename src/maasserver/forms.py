@@ -532,6 +532,33 @@ def initialize_node_group(node, form_value=None):
 
 IP_BASED_HOSTNAME_REGEXP = re.compile('\d{1,3}-\d{1,3}-\d{1,3}-\d{1,3}')
 
+MAX_MESSAGES = 10
+
+
+def merge_error_messages(summary, errors, limit=MAX_MESSAGES):
+    """Merge a collection of errors into a summary message of limited size.
+
+    :param summary: The message summarizing the error.
+    :type summary: unicode
+    :param errors: The list of errors to merge.
+    :type errors: iterable
+    :param limit: The maximum number of individual error messages to include in
+        the summary error message.
+    :type limit: int
+    """
+    ellipsis_msg = ''
+    if len(errors) > limit:
+        nb_errors = len(errors) - limit
+        ellipsis_msg = (
+            " and %d more error%s" % (
+                nb_errors,
+                's' if nb_errors > 1 else ''))
+    return "%s (%s%s)" % (
+        summary,
+        ' \u2014 '.join(errors[:limit]),
+        ellipsis_msg
+    )
+
 
 class WithMACAddressesMixin:
     """A form mixin which dynamically adds a MultipleMACAddressField to the
@@ -558,17 +585,19 @@ class WithMACAddressesMixin:
             self.errors.get('mac_addresses', None) is not None and
             len(self.data['mac_addresses']) > 1)
         if reformat_mac_address_error:
-            self.errors['mac_addresses'] = (
-                ['One or more MAC addresses is invalid.'])
+            self.errors['mac_addresses'] = [merge_error_messages(
+                "One or more MAC addresses is invalid.",
+                self.errors['mac_addresses'])]
         return valid
 
     def clean_mac_addresses(self):
         data = self.cleaned_data['mac_addresses']
+        errors = []
         for mac in data:
             if MACAddress.objects.filter(mac_address=mac.lower()).exists():
-                raise ValidationError(
-                    {'mac_addresses': [
-                        'Mac address %s already in use.' % mac]})
+                errors.append('MAC address %s already in use.' % mac)
+        if errors:
+            raise ValidationError({'mac_addresses': errors})
         return data
 
     def save(self):

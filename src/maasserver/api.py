@@ -172,7 +172,7 @@ from maasserver.exceptions import (
     Unauthorized,
     )
 from maasserver.fields import (
-    mac_re,
+    MAC_RE,
     validate_mac,
     )
 from maasserver.forms import (
@@ -785,7 +785,7 @@ class NodesHandler(OperationsHandler):
         match_macs = get_optional_list(request.GET, 'mac_address')
         if match_macs is not None:
             invalid_macs = [
-                mac for mac in match_macs if mac_re.match(mac) is None]
+                mac for mac in match_macs if MAC_RE.match(mac) is None]
             if len(invalid_macs) != 0:
                 raise ValidationError(
                     "Invalid MAC address(es): %s" % ", ".join(invalid_macs))

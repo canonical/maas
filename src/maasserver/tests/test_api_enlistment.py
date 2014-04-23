@@ -280,7 +280,7 @@ class EnlistmentAPITest(MultipleUsersScenarios,
         self.assertEqual(httplib.BAD_REQUEST, response.status_code)
         self.assertIn('application/json', response['Content-Type'])
         self.assertEqual(
-            ["Mac address %s already in use." % mac],
+            ["MAC address %s already in use." % mac],
             parsed_result['mac_addresses'])
 
     def test_POST_fails_with_bad_operation(self):
@@ -316,7 +316,10 @@ class EnlistmentAPITest(MultipleUsersScenarios,
         self.assertEqual(httplib.BAD_REQUEST, response.status_code)
         self.assertIn('application/json', response['Content-Type'])
         self.assertEqual(
-            ["One or more MAC addresses is invalid."],
+            [
+                "One or more MAC addresses is invalid. "
+                "('invalid' is not a valid MAC address.)"
+            ],
             parsed_result['mac_addresses'])
 
     def test_POST_invalid_architecture_returns_bad_request(self):

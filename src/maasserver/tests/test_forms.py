@@ -47,6 +47,8 @@ from maasserver.forms import (
     INTERFACES_VALIDATION_ERROR_MESSAGE,
     list_all_usable_architectures,
     MACAddressForm,
+    MAX_MESSAGES,
+    merge_error_messages,
     NetworkForm,
     NewUserCreationForm,
     NO_ARCHITECTURES_AVAILABLE,
@@ -274,7 +276,7 @@ class NodeWithMACAddressesFormTest(MAASServerTestCase):
         self.assertFalse(form.is_valid())
         self.assertEqual(['mac_addresses'], list(form.errors))
         self.assertEqual(
-            ['Enter a valid MAC address (e.g. AA:BB:CC:DD:EE:FF).'],
+            ["'invalid' is not a valid MAC address."],
             form.errors['mac_addresses'])
 
     def test_NodeWithMACAddressesForm_multiple_invalid(self):
@@ -287,7 +289,11 @@ class NodeWithMACAddressesFormTest(MAASServerTestCase):
         self.assertFalse(form.is_valid())
         self.assertEqual(['mac_addresses'], list(form.errors))
         self.assertEqual(
-            ['One or more MAC addresses is invalid.'],
+            [
+                "One or more MAC addresses is invalid. "
+                "('invalid_1' is not a valid MAC address. \u2014"
+                " 'invalid_2' is not a valid MAC address.)"
+            ],
             form.errors['mac_addresses'])
 
     def test_NodeWithMACAddressesForm_empty(self):
@@ -780,6 +786,38 @@ class TestNewUserCreationForm(MAASServerTestCase):
             ['username', 'last_name', 'email', 'password1', 'password2',
                 'is_superuser'],
             list(form.fields))
+
+
+class TestMergeErrorMessages(MAASServerTestCase):
+
+    def test_merge_error_messages_returns_summary_message(self):
+        summary = factory.make_name('summary')
+        errors = [factory.make_name('error') for _ in range(2)]
+        result = merge_error_messages(summary, errors, 5)
+        self.assertEqual(
+            "%s (%s)" % (summary, ' \u2014 '.join(errors)), result)
+
+    def test_merge_error_messages_includes_limited_number_of_msgs(self):
+        summary = factory.make_name('summary')
+        errors = [
+            factory.make_name('error')
+            for _ in range(MAX_MESSAGES + 2)]
+        result = merge_error_messages(summary, errors)
+        self.assertEqual(
+            "%s (%s and 2 more errors)" % (
+                summary, ' \u2014 '.join(errors[:MAX_MESSAGES])),
+            result)
+
+    def test_merge_error_messages_with_one_more_error(self):
+        summary = factory.make_name('summary')
+        errors = [
+            factory.make_name('error')
+            for _ in range(MAX_MESSAGES + 1)]
+        result = merge_error_messages(summary, errors)
+        self.assertEqual(
+            "%s (%s and 1 more error)" % (
+                summary, ' \u2014 '.join(errors[:MAX_MESSAGES])),
+            result)
 
 
 class TestMACAddressForm(MAASServerTestCase):

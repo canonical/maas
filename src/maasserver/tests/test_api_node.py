@@ -29,7 +29,7 @@ from maasserver.enum import (
     )
 from maasserver.fields import (
     MAC,
-    mac_error_msg,
+    MAC_ERROR_MSG,
     )
 from maasserver.models import Node
 from maasserver.testing import (
@@ -574,11 +574,11 @@ class TestNodeAPI(APITestCase):
         response = self.client_put(
             self.get_node_uri(node),
             {'power_parameters_mac_address': new_power_address})
-
+        error_msg = MAC_ERROR_MSG % {'value': new_power_address}
         self.assertEqual(
             (
                 httplib.BAD_REQUEST,
-                {'power_parameters': ["MAC Address: %s" % mac_error_msg]},
+                {'power_parameters': ["MAC Address: %s" % error_msg]},
             ),
             (response.status_code, json.loads(response.content)))
 
