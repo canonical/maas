@@ -83,8 +83,9 @@ misc_bucket:
    # thanks to 'IPAPPEND' (http://www.syslinux.org/wiki/index.php/SYSLINUX)
    url="{{server_url}}"
    host=""
+   dig_output=""
    ip=$(ifconfig eth0 | awk '$1 == "inet" { sub("addr:","",$2); print $2; }') &&
-     [ -n "${ip}" ] && host=$(dig +short -x $ip)  && host=${host%.}
+     [ -n "${ip}" ] && dig_output=$(dig +short -x $ip) && host=${dig_output%.}
    # load ipmi modules
    load_modules
    pargs=""
