@@ -78,6 +78,7 @@ get_server_name() {
 	_RET=${_RET%%/*};
 	echo "$_RET";
 }
+
 enlist_node() {
 	serverurl="${1}"
 	mac="${2}"
@@ -91,6 +92,7 @@ enlist_node() {
 	macparms=$(get_mac_address_curl_parms "$mac")
 
 	curl \
+	    --fail \
 	    --data-urlencode "op=new" \
 	    --data-urlencode "autodetect_nodegroup=1" \
 	    --data-urlencode "hostname=${hostname}" \
