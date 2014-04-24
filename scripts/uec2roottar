@@ -1,59 +1,27 @@
-#!/bin/sh
+#!/usr/bin/env python2.7
+# Copyright 2014 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
 
-TEMP_D=""
-MP=""
+"""Convert a "UEC" root image file to a root tarball.
 
-Usage() {
-cat <<EOF
-   Usage: ${0##*/} uec-tarball [output]
+This requires root privileges, because it needs to loop-mount the image file
+in order to read its contents.
+"""
 
-   Supports converting from uec tarball or raw unpartitioned disk image.
-EOF
-}
-error() { echo "$(date -R):" "$@" 1>&2; }
-fail() { [ $# -eq 0 ] || error "$@"; exit 1; }
-cleanup() { 
-  [ -z "$MP" ] || umount "$MP"
-  [ -z "$TEMP_D" -o ! -d "$TEMP_D" ] || rm -Rf "${TEMP_D}";
-}
+from __future__ import (
+    absolute_import,
+    print_function,
+    unicode_literals,
+    )
 
-[ "$1" = "-h" -o "$1" = "--help" ] && { Usage; exit 0; }
-[ $# -eq 1 -o $# -eq 2 ] || { Usage 1>&2; exit 1; }
-[ -f "$1" ] || { Usage 1>&2; error "$1: not a file"; exit 1; }
+str = None
 
-[ "$(id -u)" = "0" ] || fail "must be root"
+__metaclass__ = type
 
-TEMP_D=$(mktemp -d "${TMPDIR:-/tmp}/${0##*/}.XXXXXX") || fail "failed mktemp"
-trap cleanup EXIT
+from provisioningserver.import_images import uec2roottar
 
-uec="$1"
-output=${2}
 
-if $(LANG=C file "$uec" | grep -qi "filesystem data"); then
-   [ -n "$output" ] || output="${uec%.img}-root.tar.gz"; 
-   img="$uec"
-else
-   [ -n "$output" ] || output="${uec%.tar.gz}-root.tar.gz"; 
-   error "extracting *.img from ${uec}"
-   tar -C ${TEMP_D} --wildcards "*.img" -Sxvzf "$uec" ||
-      fail "failed extract $uec"
-
-   img=""
-   for cand in "${TEMP_D}/"*.img; do
-      [ -z "$img" ] || fail "multiple .img files in $uec"
-      [ -f "$cand" ] && img="$cand"
-   done
-
-   [ -n "$img" ] || fail "failed to find image in $uec"
-fi
-
-error "converting ${img} to ${output}"
-mkdir "${TEMP_D}/mp" && mount -o ro "$img" "${TEMP_D}/mp" &&
-  MP="$TEMP_D/mp" || fail "failed to mount $img"
-
-error "copying contents of ${img#${TEMP_D}/} in ${uec} to ${output}"
-tar -C "$MP" -cpSzf "${output}" --numeric-owner . ||
-  fail "failed to create ${output}"
-
-error "finished. wrote to ${output}"
-exit 0
+if __name__ == "__main__":
+    parser = uec2roottar.make_argparser(__doc__)
+    args = parser.parse_args()
+    uec2roottar.main(args)
