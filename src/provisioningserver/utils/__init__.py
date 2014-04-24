@@ -819,7 +819,7 @@ def find_ip_via_arp(mac):
 
     output = call_capture_and_check(['arp', '-n']).split('\n')
 
-    for line in output:
+    for line in sorted(output):
         columns = line.split()
         if len(columns) == 5 and columns[2] == mac:
             return columns[0]

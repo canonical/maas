@@ -1299,8 +1299,16 @@ class TestExternalProcessError(MAASTestCase):
 
 
 class TestFindIPViaARP(MAASTestCase):
-    def test_find_ip_via_arp(self):
-        sample = """Address HWtype  HWaddress Flags Mask            Iface
+
+    def patch_call(self, output):
+        """Replace `call_capture_and_check` with one that returns `output`."""
+        fake = self.patch(provisioningserver.utils, 'call_capture_and_check')
+        fake.return_value = output
+        return fake
+
+    def test__resolves_MAC_address_to_IP(self):
+        sample = """\
+        Address HWtype  HWaddress Flags Mask            Iface
         192.168.100.20 (incomplete)                              virbr1
         192.168.0.104 (incomplete)                              eth0
         192.168.0.5 (incomplete)                              eth0
@@ -1311,14 +1319,27 @@ class TestFindIPViaARP(MAASTestCase):
         192.168.0.1 ether   90:f6:52:f6:17:92   C                     eth0
         """
 
-        call_capture_and_check = self.patch(
-            provisioningserver.utils, 'call_capture_and_check')
-        call_capture_and_check.return_value = sample
+        call_capture_and_check = self.patch_call(sample)
         ip_address_observed = find_ip_via_arp("90:f6:52:f6:17:92")
         self.assertThat(
             call_capture_and_check,
             MockCalledOnceWith(['arp', '-n']))
         self.assertEqual("192.168.0.1", ip_address_observed)
+
+    def test__returns_consistent_output(self):
+        mac = factory.getRandomMACAddress()
+        ips = [
+            '10.0.0.11',
+            '10.0.0.99',
+            ]
+        lines = ['%s ether %s C eth0' % (ip, mac) for ip in ips]
+        self.patch_call('\n'.join(lines))
+        one_result = find_ip_via_arp(mac)
+        self.patch_call('\n'.join(reversed(lines)))
+        other_result = find_ip_via_arp(mac)
+
+        self.assertIn(one_result, ips)
+        self.assertEqual(one_result, other_result)
 
 
 class TestAsynchronousDecorator(MAASTestCase):
