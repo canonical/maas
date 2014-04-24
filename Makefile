@@ -164,7 +164,7 @@ sampledata: bin/maas-region-admin bin/database syncdb
 doc: bin/sphinx docs/api.rst
 	bin/sphinx
 
-doc-with-versions: bin/sphinx
+doc-with-versions: bin/sphinx docs/api.rst
 	cd docs/_build; make SPHINXOPTS="-A add_version_switcher=true" html
 
 man: $(patsubst docs/man/%.rst,man/%,$(wildcard docs/man/*.rst))
