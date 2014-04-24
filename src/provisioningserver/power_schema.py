@@ -164,7 +164,7 @@ JSON_POWER_TYPE_PARAMETERS = [
     },
     {
         'name': 'virsh',
-        'description': 'virsh (virtual systems)',
+        'description': 'Virsh (virtual systems)',
         'fields': [
             make_json_field('power_address', "Power address"),
             make_json_field('power_id', "Power ID"),

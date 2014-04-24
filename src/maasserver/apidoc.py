@@ -19,6 +19,8 @@ __all__ = [
     "generate_api_docs",
     ]
 
+from cStringIO import StringIO
+from functools import partial
 from inspect import getdoc
 from itertools import izip_longest
 
@@ -32,6 +34,7 @@ from piston.authentication import NoAuthentication
 from piston.doc import generate_doc
 from piston.handler import BaseHandler
 from piston.resource import Resource
+from provisioningserver.power_schema import JSON_POWER_TYPE_PARAMETERS
 
 
 def accumulate_api_resources(resolver, accumulator):
@@ -65,6 +68,49 @@ def find_api_resources(urlconf=None):
     resolver, accumulator = get_resolver(urlconf), set()
     accumulate_api_resources(resolver, accumulator)
     return accumulator
+
+
+def generate_power_types_doc():
+    """Generate ReST documentation for the supported power types.
+
+    The documentation is derived from the `JSON_POWER_TYPE_PARAMETERS`
+    object.
+    """
+    output = StringIO()
+    line = partial(print, file=output)
+
+    line('Power types')
+    line('-----------')
+    line()
+    line("This is the list of the supported power types and their "
+         "associated power parameters.  Note that the list of usable "
+         "power types for a particular cluster might be a subset of this "
+         "list if the cluster in question is from an older version of "
+         "MAAS.")
+    line()
+    for item in JSON_POWER_TYPE_PARAMETERS:
+        title = "%s (%s)" % (item['name'], item['description'])
+        line(title)
+        line('=' * len(title))
+        line('')
+        line("Power parameters:")
+        line('')
+        for field in item['fields']:
+            field_description = []
+            field_description.append(
+                "* %s (%s)." % (field['name'], field['label']))
+            choices = field.get('choices', [])
+            if len(choices) > 0:
+                field_description.append(
+                    " Choices: %s" % ', '.join(
+                        "'%s' (%s)" % (choice[0], choice[1])
+                        for choice in choices))
+            default = field.get('default', '')
+            if default is not '':
+                field_description.append("  Default: '%s'." % default)
+            line(''.join(field_description))
+        line('')
+    return output.getvalue()
 
 
 def generate_api_docs(resources):

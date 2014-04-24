@@ -149,6 +149,7 @@ from maasserver.apidoc import (
     describe_resource,
     find_api_resources,
     generate_api_docs,
+    generate_power_types_doc,
     )
 from maasserver.clusterrpc.power_parameters import (
     get_all_power_types_from_clusters,
@@ -334,6 +335,8 @@ class NodeHandler(OperationsHandler):
         :param power_type: The new power type for this node. If you use the
             default value, power_parameters will be set to the empty string.
             Available to admin users.
+            See the `Power types`_ section for a list of the available power
+            types.
         :type power_type: unicode
         :param power_parameters_{param1}: The new value for the 'param1'
             power parameter.  Note that this is dynamic as the available
@@ -342,6 +345,8 @@ class NodeHandler(OperationsHandler):
             parameter is 'power_address' so one would want to pass 'myaddress'
             as the value of the 'power_parameters_power_address' parameter.
             Available to admin users.
+            See the `Power types`_ section for a list of the available power
+            parameters for each power type.
         :type power_parameters_{param1}: unicode
         :param power_parameters_skip_check: Whether or not the new power
             parameters for this node should be checked against the expected
@@ -2292,6 +2297,10 @@ def render_api_docs():
                 for docline in docstring.splitlines():
                     line("  ", docline, sep="")
                 line()
+
+    line()
+    line()
+    line(generate_power_types_doc())
 
     return output.getvalue()
 

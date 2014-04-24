@@ -25,6 +25,7 @@ from django.conf.urls import (
     )
 from django.core.exceptions import ImproperlyConfigured
 from django.core.urlresolvers import reverse
+from maasserver import apidoc
 from maasserver.api_support import (
     operation,
     OperationsHandler,
@@ -35,6 +36,7 @@ from maasserver.apidoc import (
     describe_resource,
     find_api_resources,
     generate_api_docs,
+    generate_power_types_doc,
     )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -42,6 +44,8 @@ from mock import sentinel
 from piston.doc import HandlerDocumentation
 from piston.handler import BaseHandler
 from piston.resource import Resource
+from provisioningserver.power_schema import make_json_field
+from testtools.matchers import ContainsAll
 
 
 class TestFindingResources(MAASServerTestCase):
@@ -306,3 +310,29 @@ class TestDescribingAPI(MAASServerTestCase):
             "name": "ExampleHandler",
             }
         self.assertEqual(expected, describe_resource(resource))
+
+
+class TestGeneratePowerTypesDoc(MAASServerTestCase):
+    """Tests for `generate_power_types_doc`."""
+
+    def test__generate_power_types_doc_generates_doc(self):
+        doc = generate_power_types_doc()
+        self.assertThat(doc, ContainsAll(["Power types", "IPMI"]))
+
+    def test__generate_power_types_doc_generates_describes_power_type(self):
+        name = factory.make_name('name')
+        description = factory.make_name('description')
+        param_name = factory.make_name('param_name')
+        param_description = factory.make_name('param_description')
+        json_fields = [{
+            'name': name,
+            'description': description,
+            'fields': [
+                make_json_field(param_name, param_description),
+            ],
+        }]
+        self.patch(apidoc, "JSON_POWER_TYPE_PARAMETERS", json_fields)
+        doc = generate_power_types_doc()
+        self.assertThat(
+            doc,
+            ContainsAll([name, description, param_name, param_description]))
