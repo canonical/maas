@@ -33,9 +33,11 @@ __all__ = [
     ]
 
 from logging import getLogger
+from os import makedirs
 import os.path
 from subprocess import check_call
 
+from provisioningserver.auth import MAAS_USER_GPGHOME
 from provisioningserver.boot.tftppath import drill_down
 from provisioningserver.config import (
     BootConfig,
@@ -196,6 +198,13 @@ def make_maas_own_boot_resources():
         check_call(['chown', '-R', 'maas', storage_dir])
 
 
+def create_gnupg_home():
+    """Upgrade hook: create maas user's GNUPG home directory."""
+    if not os.path.isdir(MAAS_USER_GPGHOME):
+        makedirs(MAAS_USER_GPGHOME)
+        check_call(['chown', 'maas:maas', MAAS_USER_GPGHOME])
+
+
 # Upgrade hooks, from oldest to newest.  The hooks are callables, taking no
 # arguments.  They are called in order.
 #
@@ -204,6 +213,7 @@ def make_maas_own_boot_resources():
 UPGRADE_HOOKS = [
     generate_boot_resources_config,
     make_maas_own_boot_resources,
+    create_gnupg_home,
     ]
 
 

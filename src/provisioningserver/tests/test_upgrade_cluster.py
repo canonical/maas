@@ -15,7 +15,10 @@ __metaclass__ = type
 __all__ = []
 
 from argparse import ArgumentParser
-from os import makedirs
+from os import (
+    listdir,
+    makedirs,
+    )
 import os.path
 from textwrap import dedent
 
@@ -34,6 +37,7 @@ from provisioningserver.testing.config import (
     ConfigFixture,
     )
 from testtools.matchers import (
+    DirExists,
     FileContains,
     StartsWith,
     )
@@ -376,3 +380,41 @@ class TestMakeMAASOwnBootResources(MAASTestCase):
         self.configure_storage(storage_dir)
         upgrade_cluster.make_maas_own_boot_resources()
         self.assertThat(upgrade_cluster.check_call, MockNotCalled())
+
+
+class TestCreateGNUPGHome(MAASTestCase):
+    """Tests for `create_gnupg_home`."""
+
+    def make_nonexistent_path(self, parent_dir):
+        """Return an as-yet nonexistent path, inside `parent_dir`."""
+        return os.path.join(parent_dir, factory.make_name('gpghome'))
+
+    def patch_gnupg_home(self, gpghome):
+        self.patch(upgrade_cluster, 'MAAS_USER_GPGHOME', gpghome)
+
+    def patch_call(self):
+        return self.patch(upgrade_cluster, 'check_call')
+
+    def test__succeeds_if_directory_exists(self):
+        existing_home = self.make_dir()
+        self.patch_gnupg_home(existing_home)
+        self.patch_call()
+        upgrade_cluster.create_gnupg_home()
+        self.assertEqual([], listdir(existing_home))
+
+    def test__creates_directory(self):
+        parent = self.make_dir()
+        new_home = self.make_nonexistent_path(parent)
+        self.patch_gnupg_home(new_home)
+        self.patch_call()
+        upgrade_cluster.create_gnupg_home()
+        self.assertThat(new_home, DirExists())
+
+    def test__sets_ownership_to_maas(self):
+        parent = self.make_dir()
+        new_home = self.make_nonexistent_path(parent)
+        self.patch_gnupg_home(new_home)
+        call = self.patch_call()
+        upgrade_cluster.create_gnupg_home()
+        self.assertThat(
+            call, MockCalledOnceWith(['chown', 'maas:maas', new_home]))
