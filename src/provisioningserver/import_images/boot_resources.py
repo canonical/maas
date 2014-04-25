@@ -11,8 +11,10 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    'import_images',
     'main',
     'make_arg_parser',
+    'read_config',
     ]
 
 from argparse import ArgumentParser
@@ -199,12 +201,20 @@ def install_boot_loaders(destination):
         method.install_bootloader(destination)
 
 
-def call_uec2roottar(*args):
+def call_uec2roottar(root_image_path, root_tgz_path):
     """Invoke `uec2roottar` with the given arguments.
 
     Here only so tests can stub it out.
+
+    :param root_image_path: Input file.
+    :param root_tgz_path: Output file.
     """
-    call_and_check(["uec2roottar"] + list(args))
+    call_and_check([
+        'sudo', '/usr/bin/uec2roottar',
+        '--user=maas',
+        root_image_path,
+        root_tgz_path,
+        ])
 
 
 def make_arg_parser(doc):
@@ -283,12 +293,20 @@ def write_snapshot_metadata(snapshot, meta_file_content, targets_conf,
     atomic_write(targets_conf_content, targets_conf, mode=0644)
 
 
-def main(args):
-    logger.info("Importing boot resources.")
+def read_config(config_file=None):
+    """Read boot resources config file.
+
+    :param config_file: Path to the config file.  Defaults to
+        `bootresources.yaml` in the configuration directory.
+    :return: A dict representing the boot-resources configuration.
+    :raise NoConfigFile: If the configuration file was not present.
+    """
     # The config file is required.  We do not fall back to defaults if it's
     # not there.
+    if config_file is None:
+        config_file = locate_config("bootresources.yaml")
     try:
-        config = BootConfig.load_from_cache(filename=args.config_file)
+        return BootConfig.load_from_cache(filename=config_file)
     except IOError as ex:
         if ex.errno == errno.ENOENT:
             # No config file. We have helpful error output for this.
@@ -297,6 +315,13 @@ def main(args):
             # Unexpected error.
             raise
 
+
+def import_images(config):
+    """Import images.  Callable from both command line and Celery task.
+
+    :param config: A dict representing the boot-resources configuration.
+    """
+    logger.info("Importing boot resources.")
     sources = config['boot']['sources']
     if len(sources) == 0:
         logger.warn("Can't import: no Simplestreams sources configured.")
@@ -329,7 +354,12 @@ def main(args):
     logger.info("Writing metadata and updating iSCSI targets.")
     write_snapshot_metadata(
         snapshot_path, meta_file_content, targets_conf, targets_conf_content)
-    call_and_check(['tgt-admin', '--conf', targets_conf, '--update', 'ALL'])
+    call_and_check([
+        'sudo',
+        '/usr/sbin/tgt-admin',
+        '--conf', targets_conf,
+        '--update', 'ALL',
+        ])
 
     logger.info("Installing boot images snapshot %s.", snapshot_path)
     install_boot_loaders(snapshot_path)
@@ -337,3 +367,12 @@ def main(args):
     # If we got here, all went well.  This is now truly the "current" snapshot.
     update_current_symlink(storage, snapshot_path)
     logger.info("Import done.")
+
+
+def main(args):
+    """Entry point for the command-line import script.
+
+    :param args: Command-line arguments as parsed by the `ArgumentParser`
+        returned by `make_arg_parser`.
+    """
+    import_images(config=read_config(args.config_file))

@@ -38,7 +38,6 @@ from mock import (
     call,
     Mock,
     )
-from provisioningserver import tasks
 from provisioningserver.omshell import (
     generate_omapi_key,
     Omshell,
@@ -426,18 +425,16 @@ class TestNodeGroup(MAASServerTestCase):
         nodegroup2.ensure_dhcp_key()
         self.assertNotEqual(nodegroup1.dhcp_key, nodegroup2.dhcp_key)
 
-    def test_import_boot_images_calls_script_with_proxy(self):
-        recorder = self.patch(tasks, 'call_and_check')
+    def test_import_boot_images_calls_import_code_with_proxy(self):
+        recorder = self.patch(nodegroup_module, 'import_boot_images')
         self.patch(nodegroup_module, 'report_boot_images', Mock())
         proxy = factory.make_name('proxy')
         Config.objects.set_config('http_proxy', proxy)
         nodegroup = factory.make_node_group()
         nodegroup.import_boot_images()
-        args, kwargs = recorder.call_args
-        env = kwargs['env']
-        self.assertEqual(
-            (proxy, proxy),
-            (env.get('http_proxy'), env.get('https_proxy')))
+        [call] = recorder.mock_calls
+        _, _, kwargs = call
+        self.assertEqual(proxy, kwargs['kwargs'].get('http_proxy'))
 
     def test_import_boot_images_sent_to_nodegroup_queue(self):
         recorder = self.patch(nodegroup_module, 'import_boot_images')

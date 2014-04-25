@@ -41,8 +41,6 @@ from maastesting.matchers import (
     MockCalledOnceWith,
     )
 from mock import (
-    ANY,
-    call,
     Mock,
     sentinel,
     )
@@ -69,6 +67,7 @@ from provisioningserver.dns.config import (
     MAAS_NAMED_RNDC_CONF_NAME,
     MAAS_RNDC_CONF_NAME,
     )
+from provisioningserver.import_images import boot_resources
 from provisioningserver.power.poweraction import PowerActionFail
 from provisioningserver.tags import MissingCredentials
 from provisioningserver.tasks import (
@@ -93,7 +92,10 @@ from provisioningserver.tasks import (
     write_full_dns_config,
     )
 from provisioningserver.testing.boot_images import make_boot_image_params
-from provisioningserver.testing.config import set_tftp_root
+from provisioningserver.testing.config import (
+    BootConfigFixture,
+    set_tftp_root,
+    )
 from provisioningserver.testing.testcase import PservTestCase
 from testresources import FixtureResource
 from testtools.matchers import (
@@ -613,36 +615,64 @@ class TestTagTasks(PservTestCase):
             '//node', tag_nsmap=None, retry=True)
 
 
-class TestImportPxeFiles(PservTestCase):
+class TestImportBootImages(PservTestCase):
 
     def make_archive_url(self, name=None):
         if name is None:
             name = factory.make_name('archive')
         return 'http://%s.example.com/%s' % (name, factory.make_name('path'))
 
-    def test_import_boot_images(self):
-        recorder = self.patch(tasks, 'call_and_check')
+    def patch_boot_resources_function(self):
+        """Patch out `boot_resources.import_images`.
+
+        Returns the installed fake.  After the fake has been called, but not
+        before, its `env` attribute will have a copy of the environment dict.
+        """
+
+        class CaptureEnv:
+            """Fake function; records a copy of the environment."""
+
+            def __call__(self, *args, **kwargs):
+                self.env = os.environ.copy()
+
+        return self.patch(boot_resources, 'import_images', CaptureEnv())
+
+    def test_import_boot_images_integrates_with_boot_resources_function(self):
+        # If the config specifies no sources, nothing will be imported.  But
+        # the task succeeds without errors.
+        fixture = self.useFixture(BootConfigFixture({'boot': {'sources': []}}))
+        self.patch(boot_resources, 'logger')
+        self.patch(boot_resources, 'locate_config').return_value = (
+            fixture.filename)
         import_boot_images()
-        self.assertThat(recorder, MockCalledOnceWith(
-            ['sudo', '-n', '-E', 'maas-import-pxe-files'], env=ANY))
         self.assertIsInstance(import_boot_images, Task)
 
-    def test_import_boot_images_preserves_environment(self):
-        recorder = self.patch(tasks, 'call_and_check')
+    def test_import_boot_images_sets_GPGHOME(self):
+        home = factory.make_name('home')
+        self.patch(tasks, 'MAAS_USER_GPGHOME', home)
+        fake = self.patch_boot_resources_function()
         import_boot_images()
-        self.assertThat(recorder, MockCalledOnceWith(
-            ['sudo', '-n', '-E', 'maas-import-pxe-files'], env=os.environ))
+        self.assertEqual(home, fake.env['GNUPGHOME'])
 
-    def test_import_boot_images_sets_proxy(self):
-        recorder = self.patch(tasks, 'call_and_check')
-        proxy = factory.getRandomString()
+    def test_import_boot_images_sets_proxy_if_given(self):
+        proxy = 'http://%s.example.com' % factory.make_name('proxy')
+        proxy_vars = ['http_proxy', 'https_proxy']
+        fake = self.patch_boot_resources_function()
         import_boot_images(http_proxy=proxy)
-        expected_env = dict(os.environ, http_proxy=proxy, https_proxy=proxy)
-        self.assertThat(recorder, MockCalledOnceWith(
-            ['sudo', '-n', '-E', 'maas-import-pxe-files'], env=expected_env))
+        self.assertEqual(
+            {
+                var: proxy
+                for var in proxy_vars
+            }, utils.filter_dict(fake.env, proxy_vars))
+
+    def test_import_boot_images_leaves_proxy_unchanged_if_not_given(self):
+        proxy_vars = ['http_proxy', 'https_proxy']
+        fake = self.patch_boot_resources_function()
+        import_boot_images()
+        self.assertEqual({}, utils.filter_dict(fake.env, proxy_vars))
 
     def test_import_boot_images_calls_callback(self):
-        self.patch(tasks, 'call_and_check')
+        self.patch_boot_resources_function()
         mock_callback = Mock()
         import_boot_images(callback=mock_callback)
-        self.assertEqual([call()], mock_callback.delay.mock_calls)
+        self.assertThat(mock_callback.delay, MockCalledOnceWith())

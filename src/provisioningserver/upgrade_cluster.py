@@ -34,12 +34,14 @@ __all__ = [
 
 from logging import getLogger
 import os.path
+from subprocess import check_call
 
 from provisioningserver.boot.tftppath import drill_down
 from provisioningserver.config import (
     BootConfig,
     Config,
     )
+from provisioningserver.import_images import boot_resources
 from provisioningserver.utils import (
     atomic_write,
     locate_config,
@@ -185,6 +187,15 @@ def generate_boot_resources_config():
         rewrite_boot_resources_config(config_file)
 
 
+def make_maas_own_boot_resources():
+    """Upgrade hook: make the `maas` user the owner of the boot resources."""
+    # This reduces the privileges required for importing and managing images.
+    config = boot_resources.read_config()
+    storage_dir = config['boot']['storage']
+    if os.path.isdir(storage_dir):
+        check_call(['chown', '-R', 'maas', storage_dir])
+
+
 # Upgrade hooks, from oldest to newest.  The hooks are callables, taking no
 # arguments.  They are called in order.
 #
@@ -192,6 +203,7 @@ def generate_boot_resources_config():
 # no record of previous upgrades.
 UPGRADE_HOOKS = [
     generate_boot_resources_config,
+    make_maas_own_boot_resources,
     ]
 
 

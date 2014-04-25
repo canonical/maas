@@ -28,6 +28,7 @@ from maastesting.testcase import MAASTestCase
 from mock import Mock
 from provisioningserver import upgrade_cluster
 from provisioningserver.config import BootConfig
+from provisioningserver.import_images import boot_resources
 from provisioningserver.testing.config import (
     BootConfigFixture,
     ConfigFixture,
@@ -349,3 +350,29 @@ class TestGenerateBootResourcesConfig(MAASTestCase):
 
                 boot:
                 """))))
+
+
+class TestMakeMAASOwnBootResources(MAASTestCase):
+    """Tests for the `make_maas_own_boot_resources` upgrade."""
+
+    def configure_storage(self, storage_dir):
+        """Create a storage config."""
+        self.patch(boot_resources, 'read_config').return_value = {
+            'boot': {'storage': storage_dir},
+            }
+
+    def test__calls_chown_if_boot_resources_dir_exists(self):
+        self.patch(upgrade_cluster, 'check_call')
+        storage_dir = self.make_dir()
+        self.configure_storage(storage_dir)
+        upgrade_cluster.make_maas_own_boot_resources()
+        self.assertThat(
+            upgrade_cluster.check_call,
+            MockCalledOnceWith(['chown', '-R', 'maas', storage_dir]))
+
+    def test__skips_chown_if_boot_resources_dir_does_not_exist(self):
+        self.patch(upgrade_cluster, 'check_call')
+        storage_dir = os.path.join(self.make_dir(), factory.make_name('none'))
+        self.configure_storage(storage_dir)
+        upgrade_cluster.make_maas_own_boot_resources()
+        self.assertThat(upgrade_cluster.check_call, MockNotCalled())

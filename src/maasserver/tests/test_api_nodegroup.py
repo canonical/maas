@@ -57,10 +57,7 @@ from metadataserver.models import (
     commissioningscript,
     NodeCommissionResult,
     )
-from mock import (
-    ANY,
-    Mock,
-    )
+from mock import Mock
 from provisioningserver import tasks
 from provisioningserver.auth import get_recorded_nodegroup_uuid
 from provisioningserver.dhcp.leases import send_leases
@@ -69,6 +66,7 @@ from testresources import FixtureResource
 from testtools.matchers import (
     AllMatch,
     Equals,
+    HasLength,
     )
 
 
@@ -550,12 +548,12 @@ class TestNodeGroupAPIAuth(MAASServerTestCase):
         parsed_result = json.loads(response.content)
         self.assertItemsEqual([node.system_id], parsed_result)
 
-    def test_nodegroup_import_boot_images_calls_script(self):
-        recorder = self.patch(tasks, 'call_and_check')
+    def test_nodegroup_import_boot_images_calls_importer(self):
+        recorder = self.patch(nodegroup_module, 'import_boot_images')
         self.patch(nodegroup_module, 'report_boot_images')
         proxy = factory.getRandomString()
         Config.objects.set_config('http_proxy', proxy)
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
         admin = factory.make_admin()
         client = OAuthAuthenticatedClient(admin)
 
@@ -566,8 +564,7 @@ class TestNodeGroupAPIAuth(MAASServerTestCase):
         self.assertEqual(
             httplib.OK, response.status_code,
             explain_unexpected_response(httplib.OK, response))
-        recorder.assert_called_once_with(
-            ['sudo', '-n', '-E', 'maas-import-pxe-files'], env=ANY)
+        self.assertThat(recorder.apply_async.mock_calls, HasLength(1))
 
     def test_nodegroup_import_boot_images_denied_if_not_admin(self):
         nodegroup = factory.make_node_group()

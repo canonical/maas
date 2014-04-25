@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """API credentials for node-group workers."""
@@ -15,6 +15,7 @@ __metaclass__ = type
 __all__ = [
     'get_recorded_api_credentials',
     'get_recorded_nodegroup_uuid',
+    'MAAS_USER_GPGHOME',
     'record_api_credentials',
     'record_nodegroup_uuid',
     ]
@@ -24,6 +25,10 @@ from provisioningserver import cache
 
 # Cache key for the API credentials as last sent by the server.
 API_CREDENTIALS_CACHE_KEY = 'api_credentials'
+
+# GPG directory for the "maas" user.  Set $GPGHOME to this value ad-hoc when
+# needed.
+MAAS_USER_GPGHOME = '/var/lib/maas/gnupg'
 
 # Cache key for the uuid of the nodegroup that this worker manages.
 NODEGROUP_UUID_CACHE_KEY = 'nodegroup_uuid'

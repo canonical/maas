@@ -29,7 +29,6 @@ __all__ = [
 
 from functools import wraps
 from logging import getLogger
-import os
 from subprocess import CalledProcessError
 
 from celery.app import app_or_default
@@ -39,6 +38,7 @@ from provisioningserver import (
     tags,
     )
 from provisioningserver.auth import (
+    MAAS_USER_GPGHOME,
     record_api_credentials,
     record_nodegroup_uuid,
     )
@@ -56,6 +56,7 @@ from provisioningserver.dns.config import (
     set_up_options_conf,
     setup_rndc,
     )
+from provisioningserver.import_images import boot_resources
 from provisioningserver.omshell import Omshell
 from provisioningserver.power.poweraction import (
     PowerAction,
@@ -66,6 +67,7 @@ from provisioningserver.utils import (
     find_ip_via_arp,
     sudo_write_file,
     )
+from provisioningserver.utils.env import environment_variables
 
 # For each item passed to refresh_secrets, a refresh function to give it to.
 refresh_functions = {
@@ -447,11 +449,15 @@ def update_node_tags(tag_name, tag_definition, tag_nsmap, retry=True):
 @task
 @log_exception_text
 def import_boot_images(http_proxy=None, callback=None):
-    env = dict(os.environ)
+    config = boot_resources.read_config()
+    variables = {
+        'GNUPGHOME': MAAS_USER_GPGHOME,
+        }
     if http_proxy is not None:
-        env['http_proxy'] = http_proxy
-        env['https_proxy'] = http_proxy
-    call_and_check(['sudo', '-n', '-E', 'maas-import-pxe-files'], env=env)
+        variables['http_proxy'] = http_proxy
+        variables['https_proxy'] = http_proxy
+    with environment_variables(variables):
+        boot_resources.import_images(config)
     if callback is not None:
         callback.delay()
 
