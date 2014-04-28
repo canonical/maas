@@ -34,11 +34,7 @@ from provisioningserver.import_images import boot_resources
 from provisioningserver.import_images.boot_image_mapping import (
     BootImageMapping,
     )
-from provisioningserver.import_images.testing.factory import (
-    make_boot_resource,
-    make_image_spec,
-    set_resource,
-    )
+from provisioningserver.import_images.testing.factory import make_image_spec
 from provisioningserver.testing.config import BootConfigFixture
 from provisioningserver.utils import write_text_file
 from testtools.content import Content
@@ -48,52 +44,6 @@ from testtools.matchers import (
     FileExists,
     )
 import yaml
-
-
-class TestBootReverse(MAASTestCase):
-    """Tests for `boot_reverse`."""
-
-    def test_maps_empty_dict_to_empty_dict(self):
-        empty_boot_image_dict = BootImageMapping()
-        self.assertEqual(
-            {},
-            boot_resources.boot_reverse(empty_boot_image_dict).mapping)
-
-    def test_maps_boot_resource_by_content_id_product_name_and_version(self):
-        image = make_image_spec()
-        resource = make_boot_resource()
-        boot_dict = set_resource(resource=resource.copy(), image_spec=image)
-        self.assertEqual(
-            {
-                (
-                    resource['content_id'],
-                    resource['product_name'],
-                    resource['version_name'],
-                ): [image.subarch],
-            },
-            boot_resources.boot_reverse(boot_dict).mapping)
-
-    def test_concatenates_similar_resources(self):
-        image1 = make_image_spec()
-        image2 = make_image_spec()
-        resource = make_boot_resource()
-        boot_dict = BootImageMapping()
-        # Create two images in boot_dict, both containing the same resource.
-        for image in [image1, image2]:
-            set_resource(
-                boot_dict=boot_dict, resource=resource.copy(),
-                image_spec=image)
-
-        reverse_dict = boot_resources.boot_reverse(boot_dict)
-        key = (
-            resource['content_id'],
-            resource['product_name'],
-            resource['version_name'],
-            )
-        self.assertEqual([key], reverse_dict.mapping.keys())
-        self.assertItemsEqual(
-            [image1.subarch, image2.subarch],
-            reverse_dict.get(resource))
 
 
 class TestTgtEntry(MAASTestCase):

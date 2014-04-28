@@ -16,9 +16,17 @@ __all__ = []
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
-from provisioningserver.import_images.product_mapping import ProductMapping
+from provisioningserver.import_images.boot_image_mapping import (
+    BootImageMapping,
+    )
+from provisioningserver.import_images.product_mapping import (
+    map_products,
+    ProductMapping,
+    )
 from provisioningserver.import_images.testing.factory import (
     make_boot_resource,
+    make_image_spec,
+    set_resource,
     )
 
 
@@ -123,3 +131,47 @@ class TestProductMapping(MAASTestCase):
         product_dict.add(resource, subarch)
         resource['other_item'] = factory.make_name('other')
         self.assertEqual([subarch], product_dict.get(resource))
+
+
+class TestMapProducts(MAASTestCase):
+    """Tests for `map_products`."""
+
+    def test_maps_empty_dict_to_empty_dict(self):
+        empty_boot_image_dict = BootImageMapping()
+        self.assertEqual({}, map_products(empty_boot_image_dict).mapping)
+
+    def test_maps_boot_resource_by_content_id_product_name_and_version(self):
+        image = make_image_spec()
+        resource = make_boot_resource()
+        boot_dict = set_resource(resource=resource.copy(), image_spec=image)
+        self.assertEqual(
+            {
+                (
+                    resource['content_id'],
+                    resource['product_name'],
+                    resource['version_name'],
+                ): [image.subarch],
+            },
+            map_products(boot_dict).mapping)
+
+    def test_concatenates_similar_resources(self):
+        image1 = make_image_spec()
+        image2 = make_image_spec()
+        resource = make_boot_resource()
+        boot_dict = BootImageMapping()
+        # Create two images in boot_dict, both containing the same resource.
+        for image in [image1, image2]:
+            set_resource(
+                boot_dict=boot_dict, resource=resource.copy(),
+                image_spec=image)
+
+        products_mapping = map_products(boot_dict)
+        key = (
+            resource['content_id'],
+            resource['product_name'],
+            resource['version_name'],
+            )
+        self.assertEqual([key], products_mapping.mapping.keys())
+        self.assertItemsEqual(
+            [image1.subarch, image2.subarch],
+            products_mapping.get(resource))

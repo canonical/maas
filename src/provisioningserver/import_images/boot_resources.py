@@ -18,9 +18,7 @@ __all__ = [
     ]
 
 from argparse import ArgumentParser
-from datetime import datetime
 import errno
-from gzip import GzipFile
 import os
 from textwrap import dedent
 
@@ -30,56 +28,21 @@ from provisioningserver.config import BootConfig
 from provisioningserver.import_images.download_descriptions import (
     download_all_image_descriptions,
     )
-from provisioningserver.import_images.helpers import (
-    get_signing_policy,
-    logger,
+from provisioningserver.import_images.download_resources import (
+    download_all_boot_resources,
     )
-from provisioningserver.import_images.product_mapping import ProductMapping
+from provisioningserver.import_images.helpers import logger
+from provisioningserver.import_images.product_mapping import map_products
 from provisioningserver.utils import (
     atomic_write,
     call_and_check,
     locate_config,
     read_text_file,
     )
-from simplestreams.contentsource import FdContentSource
-from simplestreams.mirrors import (
-    BasicMirrorWriter,
-    UrlMirrorReader,
-    )
-from simplestreams.objectstores import FileStore
-from simplestreams.util import (
-    item_checksums,
-    path_from_mirror_url,
-    products_exdata,
-    )
 
 
 class NoConfigFile(Exception):
     """Raised when the config file for the script doesn't exist."""
-
-
-def boot_reverse(boot_images_dict):
-    """Determine the subarches supported by each boot resource.
-
-    Many subarches may be deployed by a single boot resource.  We note only
-    subarchitectures here and ignore architectures because the metadata format
-    tightly couples a boot resource to its architecture.
-
-    We can figure out for which architecture we need to use a specific boot
-    resource by looking at its description in the metadata.  We can't do the
-    same with subarch, because we may want to use a boot resource only for a
-    specific subset of subarches.
-
-    This function returns the relationship between boot resources and
-    subarchitectures as a `ProductMapping`.
-
-    :param boot: A `BootImageMapping` containing the images' metadata.
-    :return: A `ProductMapping` mapping products to subarchitectures.
-    """
-    reverse = ProductMapping()
-    for image, boot_resource in boot_images_dict.items():
-        reverse.add(boot_resource, image.subarch)
-    return reverse
 
 
 def tgt_entry(arch, subarch, release, label, image):
@@ -116,105 +79,12 @@ def tgt_entry(arch, subarch, release, label, image):
     return entry
 
 
-class RepoWriter(BasicMirrorWriter):
-    """Download boot resources from an upstream Simplestreams repo.
-
-    :ivar root_path:
-    :ivar cache_path:
-    :ivar product_dict: A `ProductMapping` describing the desired boot
-        resources.
-    """
-
-    def __init__(self, root_path, cache_path, info):
-        self._root_path = os.path.abspath(root_path)
-        self.product_dict = info
-        # XXX jtv 2014-04-11: FileStore now also takes an argument called
-        # complete_callback, which can be used for progress reporting.
-        self._cache = FileStore(os.path.abspath(cache_path))
-        super(RepoWriter, self).__init__()
-
-    def write(self, path, keyring=None):
-        (mirror, rpath) = path_from_mirror_url(path, None)
-        policy = get_signing_policy(rpath, keyring)
-        reader = UrlMirrorReader(mirror, policy=policy)
-        super(RepoWriter, self).sync(reader, rpath)
-
-    def load_products(self, path=None, content_id=None):
-        return
-
-    def filter_version(self, data, src, target, pedigree):
-        return self.product_dict.contains(products_exdata(src, pedigree))
-
-    def insert_file(self, name, tag, checksums, size, contentsource):
-        logger.info("Inserting file %s (tag=%s, size=%s).", name, tag, size)
-        self._cache.insert(
-            tag, contentsource, checksums, mutable=False, size=size)
-        return [(self._cache._fullpath(tag), name)]
-
-    def insert_root_image(self, tag, checksums, size, contentsource):
-        root_image_tag = 'root-image-%s' % tag
-        root_image_path = self._cache._fullpath(root_image_tag)
-        root_tgz_tag = 'root-tgz-%s' % tag
-        root_tgz_path = self._cache._fullpath(root_tgz_tag)
-        if not os.path.isfile(root_image_path):
-            logger.info("New root image: %s.", root_image_path)
-            self._cache.insert(
-                tag, contentsource, checksums, mutable=False, size=size)
-            uncompressed = FdContentSource(
-                GzipFile(self._cache._fullpath(tag)))
-            self._cache.insert(root_image_tag, uncompressed, mutable=False)
-            self._cache.remove(tag)
-        if not os.path.isfile(root_tgz_path):
-            logger.info("Converting root tarball: %s.", root_tgz_path)
-            call_uec2roottar(root_image_path, root_tgz_path)
-        return [(root_image_path, 'root-image'), (root_tgz_path, 'root-tgz')]
-
-    def insert_item(self, data, src, target, pedigree, contentsource):
-        item = products_exdata(src, pedigree)
-        checksums = item_checksums(data)
-        tag = checksums['sha256']
-        size = data['size']
-        ftype = item['ftype']
-        if ftype == 'root-image.gz':
-            links = self.insert_root_image(tag, checksums, size, contentsource)
-        else:
-            links = self.insert_file(
-                ftype, tag, checksums, size, contentsource)
-        for subarch in self.product_dict.get(item):
-            dst_folder = os.path.join(
-                self._root_path, item['arch'], subarch, item['release'],
-                item['label'])
-            if not os.path.exists(dst_folder):
-                os.makedirs(dst_folder)
-            for src, link_name in links:
-                link_path = os.path.join(dst_folder, link_name)
-                if os.path.isfile(link_path):
-                    os.remove(link_path)
-                os.link(src, link_path)
-
-
 def install_boot_loaders(destination):
     """Install the all the required file from each bootloader method.
     :param destination: Directory where the loaders should be stored.
     """
     for _, method in BootMethodRegistry:
         method.install_bootloader(destination)
-
-
-def call_uec2roottar(root_image_path, root_tgz_path):
-    """Invoke `uec2roottar` with the given arguments.
-
-    Here only so tests can stub it out.
-
-    :param root_image_path: Input file.
-    :param root_tgz_path: Output file.
-    """
-    call_and_check([
-        'sudo', '/usr/bin/uec2roottar',
-        '--user=maas',
-        root_image_path,
-        root_tgz_path,
-        ])
 
 
 def make_arg_parser(doc):
@@ -232,7 +102,8 @@ def make_arg_parser(doc):
 def compose_targets_conf(snapshot_path):
     """Produce the contents of a snapshot's tgt conf file.
 
-    :param snasphot_path: Filesystem path to a snapshot of boot images.
+    :param snapshot_path: Filesystem path to a snapshot of current upstream
+        boot resources.
     :return: Contents for a `targets.conf` file.
     :rtype: bytes
     """
@@ -265,16 +136,6 @@ def meta_contains(storage, content):
         os.path.isfile(current_meta) and
         content == read_text_file(current_meta)
         )
-
-
-def compose_snapshot_path(storage):
-    """Put together a path for a new snapshot.
-
-    A snapshot is a directory in `storage` containing images.  The name
-    contains the date in a sortable format.
-    """
-    snapshot_name = 'snapshot-%s' % datetime.now().strftime('%Y%m%d-%H%M%S')
-    return os.path.join(storage, snapshot_name)
 
 
 def update_current_symlink(storage, latest_snapshot):
@@ -327,27 +188,24 @@ def import_images(config):
         logger.warn("Can't import: no Simplestreams sources configured.")
         return
 
-    boot = download_all_image_descriptions(config)
-    if boot.is_empty():
+    image_descriptions = download_all_image_descriptions(config)
+    if image_descriptions.is_empty():
         logger.warn(
             "No boot resources found.  Check configuration and connectivity.")
         return
 
     storage = config['boot']['storage']
-    meta_file_content = boot.dump_json()
+    meta_file_content = image_descriptions.dump_json()
     if meta_contains(storage, meta_file_content):
         # The current maas.meta already contains the new config.  No need to
         # rewrite anything.
         return
 
-    reverse_boot = boot_reverse(boot)
-    snapshot_path = compose_snapshot_path(storage)
-    cache_path = os.path.join(storage, 'cache')
-    targets_conf = os.path.join(snapshot_path, 'maas.tgt')
-    writer = RepoWriter(snapshot_path, cache_path, reverse_boot)
+    product_mapping = map_products(image_descriptions)
 
-    for source in sources:
-        writer.write(source['path'], source['keyring'])
+    snapshot_path = download_all_boot_resources(
+        sources, storage, product_mapping)
+    targets_conf = os.path.join(snapshot_path, 'maas.tgt')
 
     targets_conf_content = compose_targets_conf(snapshot_path)
 

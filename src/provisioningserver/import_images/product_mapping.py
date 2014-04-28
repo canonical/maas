@@ -13,7 +13,7 @@ str = None
 
 __metaclass__ = type
 __all__ = [
-    'ProductMapping',
+    'map_products',
     ]
 
 
@@ -63,3 +63,28 @@ class ProductMapping:
     def get(self, resource):
         """Return the mapped subarchitectures for `resource`."""
         return self.mapping[self.make_key(resource)]
+
+
+def map_products(image_descriptions):
+    """Determine the subarches supported by each boot resource.
+
+    Many subarches may be deployed by a single boot resource.  We note only
+    subarchitectures here and ignore architectures because the metadata format
+    tightly couples a boot resource to its architecture.
+
+    We can figure out for which architecture we need to use a specific boot
+    resource by looking at its description in the metadata.  We can't do the
+    same with subarch, because we may want to use a boot resource only for a
+    specific subset of subarches.
+
+    This function returns the relationship between boot resources and
+    subarchitectures as a `ProductMapping`.
+
+    :param image_descriptions: A `BootImageMapping` containing the images'
+        metadata.
+    :return: A `ProductMapping` mapping products to subarchitectures.
+    """
+    mapping = ProductMapping()
+    for image, boot_resource in image_descriptions.items():
+        mapping.add(boot_resource, image.subarch)
+    return mapping
