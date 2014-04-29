@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test MAAS HTTP API client."""
@@ -346,3 +346,10 @@ class TestMAASClient(MAASTestCase):
         self.assertEqual(client._make_url(path), request['request_url'])
         self.assertIn('Authorization', request['headers'])
         self.assertEqual('DELETE', request['method'])
+
+    def test_delete_passes_body(self):
+        # A DELETE request should have an empty body.  But we can't just leave
+        # the body out altogether, or the request will hang (bug 1313556).
+        client = make_client()
+        client.delete(make_path())
+        self.assertIsNotNone(client.dispatcher.last_call['data'])

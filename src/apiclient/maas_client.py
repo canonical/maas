@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """MAAS OAuth API connection library."""
@@ -240,5 +240,7 @@ class MAASClient:
     def delete(self, path):
         """Dispatch a DELETE on the resource at `path`."""
         url, headers, body = self._formulate_change(path, {})
+        # The body will be empty, but it must be passed.  Otherwise, the
+        # request will hang while trying to read a response (bug 1313556).
         return self.dispatcher.dispatch_query(
-            url, method="DELETE", headers=headers)
+            url, method="DELETE", headers=headers, data=body)
