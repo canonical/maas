@@ -2720,7 +2720,7 @@ class CommissioningScriptsHandler(OperationsHandler):
 
     This functionality is only available to administrators.
     """
-    api_doc_section_name = "Commissioning script"
+    api_doc_section_name = "Commissioning scripts"
 
     update = delete = None
 
