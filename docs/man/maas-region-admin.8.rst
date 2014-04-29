@@ -5,7 +5,7 @@ maas-region-admin
 Usage
 ^^^^^
 
-maas-region-admin  [-h, --help] createsuperuser | changepassword | shell
+maas-region-admin  [-h, --help] createadmin | changepassword | shell
 
 
 Description
@@ -17,7 +17,7 @@ be run with root privileges.
 
 For the end user, there are only three subcommands of interest.
 
-**createsuperuser**
+**createadmin**
   This subcommand is used to create a superuser for the
   MAAS install. The suggested username is "root". This command usually only
   needs to be run when installing MAAS for the first time.
