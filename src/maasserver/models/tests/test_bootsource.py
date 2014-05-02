@@ -19,8 +19,8 @@ from maasserver.models.bootsource import (
     BootSource,
     BootSourceSelection,
     )
-from maastesting.testcase import MAASTestCase
 from maasserver.testing.factory import factory
+from maastesting.testcase import MAASTestCase
 
 
 class TestBootSource(MAASTestCase):
