@@ -16,36 +16,34 @@ deployed to it, either manually or by using a tool like Juju_.
 
 There are two ways to install Ubuntu on a node:
 
-1. :ref:`The default installer <default-installer>`.
+1. :ref:`The Debian installer <debian-installer>`.
 2. :ref:`The fast installer <fast-installer>`.
 
 .. _Juju: http://juju.ubuntu.com
 
-.. _default-installer:
+.. _debian-installer:
 
-The default installer
+The Debian Installer
 ----------------------
 
-The default installer installs Ubuntu on a node in exactly the same way
+The Debian Installer installs Ubuntu on a node in exactly the same way
 as you would install it manually: using the `Debian Installer`_.
-Installation is handled by the Debian installer. Answers to the
-questions asked by the installer are provided in a 'preseed' file. For
-more information on preseed files, see the :ref:`Additional
+Answers to the questions asked by the installer are provided in a 'preseed'
+file. For more information on preseed files, see the :ref:`Additional
 Configuration <preseed>` page.
 
-As the name suggests, the default installer is enabled by default for
-all new nodes. To enable the default installer for a node that's been
-configured to use the fast installer, visit the node's page as an
-administrator and click the ``Use the default installer`` button.
+The Debian installer is not enabled by default.  To enable it for a node that's
+been configured to use the fast installer, visit the node's page as an
+administrator and click the ``Use the Debian installer`` button.
 
 .. image:: media/node-page-use-default-installer.png
 
-To set multiple nodes to use the default installer, select the ``Mark
-nodes as using the default installer`` option from the bulk action menu
+To set multiple nodes to use the Debian installer, select the ``Mark
+nodes as using the Debian installer`` option from the bulk action menu
 on the ``Nodes`` page in the MAAS web UI.
 
 Because it installs Ubuntu from scratch, downloading packages as
-required, the default installer is slower than the :ref:`fast installer
+required, the Debian installer is slower than the :ref:`fast installer
 <fast-installer>`.
 
 .. _Debian Installer: http://www.debian.org/devel/debian-installer/
@@ -57,22 +55,21 @@ The fast installer
 
 The fast installer is, as the name suggests, a means of installing
 Ubuntu on a node more quickly than would be possible using the
-:ref:`default installer <default-installer>`.
+:ref:`Debian installer <debian-installer>`.
 
-To enable the fast installer for a node, visit the node's page as an
-administrator and click the ``Use the fast installer`` button.
+The fast installer is enabled by default for newly enlisted nodes.
 
 .. image:: media/node-page-use-fast-installer.png
 
 To set multiple nodes to use the fast installer, select the ``Mark nodes
-as using the fase installer`` option from the bulk action menu on the
+as using the fast installer`` option from the bulk action menu on the
 ``Nodes`` page in the MAAS web UI.
 
 The fast installer copies a pre-built Ubuntu image to the node, with all
 the packages installed that would be normally found in an Ubuntu
 installation.
 
-The fast installer is much quicker than the default installer, but has
+The fast installer is much quicker than the Debian installer, but has
 the disadvantage that it's less easy to configure a node at install
 time, since the fast installer doesn't use a :ref:`preseed file
 <preseed>`. In addition, the packages that are initially installed on a

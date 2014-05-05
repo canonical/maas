@@ -878,7 +878,7 @@ class Node(CleanSave, TimestampedModel):
             raise RuntimeError(
                 "The use-fastpath-installer tag is defined with an "
                 "expression. This expression must instead be updated to set "
-                "this node to install with the default installer.")
+                "this node to install with the Debian installer.")
         self.tags.remove(uti_tag)
 
     def use_fastpath_installer(self):

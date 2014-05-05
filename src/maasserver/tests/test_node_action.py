@@ -337,6 +337,6 @@ class TestUseDINodeAction(MAASServerTestCase):
             """\
             The use-fastpath-installer tag is defined with an
             expression. This expression must instead be updated to set
-            this node to install with the default installer.
+            this node to install with the Debian installer.
             """,
             UseDI(node, user).inhibit())

@@ -215,8 +215,8 @@ class UseCurtin(NodeAction):
 class UseDI(NodeAction):
     """Set this node to use d-i for installation."""
     name = "usedi"
-    display = "Use the default installer"
-    display_bulk = "Mark nodes as using the default installer"
+    display = "Use the Debian installer"
+    display_bulk = "Mark nodes as using the Debian installer"
     actionable_statuses = map_enum(NODE_STATUS).values()
     permission = NODE_PERMISSION.EDIT
 
@@ -227,7 +227,7 @@ class UseDI(NodeAction):
     def execute(self, allow_redirect=True):
         """See `NodeAction.execute`."""
         self.node.use_traditional_installer()
-        return "Node marked as using the default installer."
+        return "Node marked as using the Debian installer."
 
     def inhibit(self):
         """Inhibit if ``use-fastpath-installer`` uses an expression."""
@@ -236,7 +236,7 @@ class UseDI(NodeAction):
             return dedent("""\
             The use-fastpath-installer tag is defined with an
             expression. This expression must instead be updated to set
-            this node to install with the default installer.
+            this node to install with the Debian installer.
             """)
         else:
             return None

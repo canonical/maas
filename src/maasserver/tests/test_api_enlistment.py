@@ -67,6 +67,7 @@ class EnlistmentAPITest(MultipleUsersScenarios,
         self.assertNotEqual(0, len(parsed_result.get('system_id')))
         [diane] = Node.objects.filter(hostname='diane')
         self.assertEqual(architecture, diane.architecture)
+        self.assertTrue(diane.should_use_fastpath_installer())
 
     def test_POST_new_generates_hostname_if_ip_based_hostname(self):
         hostname = '192-168-5-19.domain'
