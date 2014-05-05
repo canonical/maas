@@ -23,6 +23,7 @@ import time
 from django.contrib.auth.models import User
 from maasserver.clusterrpc.power_parameters import get_power_types
 from maasserver.enum import (
+    DISTRO_SERIES_CHOICES,
     NODE_STATUS,
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
@@ -58,7 +59,6 @@ from metadataserver.models import (
     NodeCommissionResult,
     )
 from netaddr import IPAddress
-from maasserver.enum import DISTRO_SERIES_CHOICES
 
 # We have a limited number of public keys:
 # src/maasserver/tests/data/test_rsa{0, 1, 2, 3, 4}.pub
@@ -653,7 +653,7 @@ class Factory(maastesting.factory.Factory):
             ]
 
     def make_boot_source(self, cluster=None, url=None,
-            keyring_filename=None, keyring_data=None):
+                         keyring_filename=None, keyring_data=None):
         """Create a new `BootSource`."""
         if cluster is None:
             cluster = self.make_node_group()
@@ -670,7 +670,7 @@ class Factory(maastesting.factory.Factory):
         return boot_source
 
     def make_boot_source_selection(self, boot_source=None, release=None,
-            arches=None, subarches=None, labels=None):
+                                   arches=None, subarches=None, labels=None):
         """Create a `BootSourceSelection`."""
         if boot_source is None:
             boot_source = self.make_boot_source()
@@ -681,7 +681,10 @@ class Factory(maastesting.factory.Factory):
             arches = [self.make_name("arch") for i in range(arch_count)]
         if subarches is None:
             subarch_count = random.randint(1, 10)
-            subarches = [self.make_name("subarch") for i in range(subarch_count)]
+            subarches = [
+                self.make_name("subarch")
+                for i in range(subarch_count)
+                ]
         if labels is None:
             label_count = random.randint(1, 10)
             labels = [self.make_name("label") for i in range(label_count)]

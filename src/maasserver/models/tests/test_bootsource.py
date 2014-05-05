@@ -65,6 +65,7 @@ class TestBootSource(MAASTestCase):
             boot_source.id,
             [source.id for source in BootSource.objects.all()])
 
+
 class TestBootSourceSelection(MAASTestCase):
     """Tests for the `BootSourceSelection` model."""
 
