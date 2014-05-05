@@ -54,6 +54,16 @@ class TestBootSource(MAASTestCase):
             keyring_filename="", keyring_data=b"")
         self.assertRaises(ValidationError, boot_source.clean)
 
+    def test_deleting_cluster_deletes_its_boot_sources(self):
+        # Cluster deletion cascade-deletes the BootSource. This is
+        # implicit in Django but it's worth adding a test for it all
+        # the same.
+        cluster = factory.make_node_group()
+        boot_source = factory.make_boot_source(cluster=cluster)
+        cluster.delete()
+        self.assertNotIn(
+            boot_source.id,
+            [source.id for source in BootSource.objects.all()])
 
 class TestBootSourceSelection(MAASTestCase):
     """Tests for the `BootSourceSelection` model."""
@@ -83,3 +93,15 @@ class TestBootSourceSelection(MAASTestCase):
                 selection.subarches,
                 selection.labels,
             ))
+
+    def test_deleting_boot_source_deletes_its_selections(self):
+        # BootSource deletion cascade-deletes related
+        # BootSourceSelections. This is implicit in Django but it's
+        # worth adding a test for it all the same.
+        boot_source = factory.make_boot_source()
+        boot_source_selection = factory.make_boot_source_selection(
+            boot_source=boot_source)
+        boot_source.delete()
+        self.assertNotIn(
+            boot_source_selection.id,
+            [selection.id for selection in BootSourceSelection.objects.all()])

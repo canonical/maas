@@ -30,6 +30,8 @@ from maasserver.enum import (
 from maasserver.fields import MAC
 from maasserver.models import (
     BootImage,
+    BootSource,
+    BootSourceSelection,
     DHCPLease,
     DownloadProgress,
     FileStorage,
@@ -56,6 +58,7 @@ from metadataserver.models import (
     NodeCommissionResult,
     )
 from netaddr import IPAddress
+from maasserver.enum import DISTRO_SERIES_CHOICES
 
 # We have a limited number of public keys:
 # src/maasserver/tests/data/test_rsa{0, 1, 2, 3, 4}.pub
@@ -648,6 +651,46 @@ class Factory(maastesting.factory.Factory):
             self.make_network(vlan_tag=tag, **kwargs)
             for tag in vlan_tags
             ]
+
+    def make_boot_source(self, cluster=None, url=None,
+            keyring_filename=None, keyring_data=None):
+        """Create a new `BootSource`."""
+        if cluster is None:
+            cluster = self.make_node_group()
+        if url is None:
+            url = "http://%s.com" % self.make_name('source-url')
+        # Only set _one_ of keyring_filename and keyring_data.
+        if keyring_filename is None and keyring_data is None:
+            keyring_filename = self.make_name("keyring")
+            keyring_data = b''
+        boot_source = BootSource(
+            cluster=cluster, url=url, keyring_filename=keyring_filename,
+            keyring_data=keyring_data)
+        boot_source.save()
+        return boot_source
+
+    def make_boot_source_selection(self, boot_source=None, release=None,
+            arches=None, subarches=None, labels=None):
+        """Create a `BootSourceSelection`."""
+        if boot_source is None:
+            boot_source = self.make_boot_source()
+        if release is None:
+            release = self.getRandomChoice(DISTRO_SERIES_CHOICES)
+        if arches is None:
+            arch_count = random.randint(1, 10)
+            arches = [self.make_name("arch") for i in range(arch_count)]
+        if subarches is None:
+            subarch_count = random.randint(1, 10)
+            subarches = [self.make_name("subarch") for i in range(subarch_count)]
+        if labels is None:
+            label_count = random.randint(1, 10)
+            labels = [self.make_name("label") for i in range(label_count)]
+        boot_source_selection = BootSourceSelection(
+            boot_source=boot_source, release=release, arches=arches,
+            subarches=subarches, labels=labels)
+        boot_source_selection.save()
+        return boot_source_selection
+
 
 # Create factory singleton.
 factory = Factory()
