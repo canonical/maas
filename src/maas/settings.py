@@ -249,6 +249,7 @@ MIDDLEWARE_CLASSES = (
     'maasserver.middleware.ExternalComponentsMiddleware',
     'metadataserver.middleware.MetadataErrorsMiddleware',
     'django.middleware.transaction.TransactionMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'maasserver.middleware.ExceptionLoggerMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
