@@ -242,4 +242,14 @@ JSON_POWER_TYPE_PARAMETERS = [
             make_json_field('power_pass', "Power password"),
         ],
     },
+    {
+        'name': 'ucsm',
+        'description': "Cisco UCS Manager",
+        'fields': [
+            make_json_field('uuid', "Server UUID"),
+            make_json_field('power_address', "URL for XML API"),
+            make_json_field('power_user', "API user"),
+            make_json_field('power_pass', "API password"),
+        ],
+    },
 ]

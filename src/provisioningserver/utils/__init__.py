@@ -512,6 +512,11 @@ class Safe:
             self.__class__.__name__, self.value)
 
 
+def escape_py_literal(string):
+    """Escape and quote a string for use as a python literal."""
+    return repr(string).decode('ascii')
+
+
 class ShellTemplate(tempita.Template):
     """A Tempita template specialised for writing shell scripts.
 

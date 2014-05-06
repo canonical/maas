@@ -1722,6 +1722,29 @@ class NodeGroupHandler(OperationsHandler):
 
         return HttpResponse(status=httplib.OK)
 
+    @admin_method
+    @operation(idempotent=False)
+    def probe_and_enlist_ucsm(self, request, uuid):
+        """Add the nodes from a Cisco UCS Manager.
+
+        :param : The URL of the UCS Manager API.
+        :type url: unicode
+        :param username: The username for the API.
+        :type username: unicode
+        :param password: The password for the API.
+        :type password: unicode
+
+        """
+        nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
+
+        url = get_mandatory_param(request.data, 'url')
+        username = get_mandatory_param(request.data, 'username')
+        password = get_mandatory_param(request.data, 'password')
+
+        nodegroup.enlist_nodes_from_ucsm(url, username, password)
+
+        return HttpResponse(status=httplib.OK)
+
 DISPLAYED_NODEGROUPINTERFACE_FIELDS = (
     'ip', 'management', 'interface', 'subnet_mask',
     'broadcast_ip', 'ip_range_low', 'ip_range_high')
