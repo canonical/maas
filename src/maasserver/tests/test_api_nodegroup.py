@@ -52,6 +52,7 @@ from maasserver.testing.oauthclient import OAuthAuthenticatedClient
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.celery import CeleryFixture
 from maastesting.fakemethod import FakeMethod
+from maastesting.matchers import MockCalledOnceWith
 from metadataserver.fields import Bin
 from metadataserver.models import (
     commissioningscript,
@@ -430,6 +431,32 @@ class TestNodeGroupAPI(APITestCase):
         self.assertEqual(
             httplib.BAD_REQUEST, response.status_code,
             explain_unexpected_response(httplib.BAD_REQUEST, response))
+
+    def test_probe_and_enlist_ucsm_adds_ucsm(self):
+        nodegroup = factory.make_node_group()
+        url = 'http://url'
+        username = factory.make_name('user')
+        password = factory.make_name('password')
+        self.become_admin()
+
+        mock = self.patch(nodegroup_module, 'enlist_nodes_from_ucsm')
+
+        response = self.client.post(
+            reverse('nodegroup_handler', args=[nodegroup.uuid]),
+            {
+                'op': 'probe_and_enlist_ucsm',
+                'url': url,
+                'username': username,
+                'password': password,
+            })
+
+        self.assertEqual(
+            httplib.OK, response.status_code,
+            explain_unexpected_response(httplib.OK, response))
+
+        args = (url, username, password)
+        matcher = MockCalledOnceWith(queue=nodegroup.uuid, args=args)
+        self.assertThat(mock.apply_async, matcher)
 
 
 class TestNodeGroupAPIAuth(MAASServerTestCase):

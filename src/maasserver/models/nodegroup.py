@@ -41,6 +41,7 @@ from provisioningserver.omshell import generate_omapi_key
 from provisioningserver.tasks import (
     add_new_dhcp_host_map,
     add_seamicro15k,
+    enlist_nodes_from_ucsm,
     import_boot_images,
     report_boot_images,
     )
@@ -285,6 +286,16 @@ class NodeGroup(TimestampedModel):
         """
         args = (mac, username, password, power_control)
         add_seamicro15k.apply_async(queue=self.uuid, args=args)
+
+    def enlist_nodes_from_ucsm(self, url, username, password):
+        """ Add the servers from a Cicso UCS Manager.
+
+        :param URL: URL of the Cisco UCS Manager HTTP-XML API.
+        :param username: username for UCS Manager.
+        :param password: password for UCS Manager.
+        """
+        args = (url, username, password)
+        enlist_nodes_from_ucsm.apply_async(queue=self.uuid, args=args)
 
     def add_dhcp_host_maps(self, new_leases):
         if len(new_leases) > 0 and len(self.get_managed_interfaces()) > 0:

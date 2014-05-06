@@ -82,6 +82,7 @@ from provisioningserver.utils import (
     MainScript,
     parse_key_value_file,
     pick_new_mtime,
+    escape_py_literal,
     read_text_file,
     Safe,
     ShellTemplate,
@@ -1393,3 +1394,22 @@ class TestSynchronousDecorator(MAASTestCase):
         # modification. The arguments passed back match those passed in
         # from do_stuff_in_thread().
         self.assertEqual(((3, 4), {"five": 5}), result)
+
+
+class TestQuotePyLiteral(MAASTestCase):
+    def test_uses_repr(self):
+        string = factory.make_name('string')
+        repr_mock = self.patch(provisioningserver.utils, 'repr')
+        escape_py_literal(string)
+        self.assertThat(repr_mock, MockCalledOnceWith(string))
+
+    def test_decodes_ascii(self):
+        string = factory.make_name('string')
+        output = factory.make_name('output')
+        repr_mock = self.patch(provisioningserver.utils, 'repr')
+        ascii_value = Mock()
+        ascii_value.decode = Mock(return_value=output)
+        repr_mock.return_value = ascii_value
+        value = escape_py_literal(string)
+        self.assertThat(ascii_value.decode, MockCalledOnceWith('ascii'))
+        self.assertEqual(value, output)

@@ -45,6 +45,7 @@ from provisioningserver.auth import (
 from provisioningserver.custom_hardware.seamicro import (
     probe_seamicro15k_and_enlist,
     )
+from provisioningserver.custom_hardware.ucsm import probe_and_enlist_ucsm
 from provisioningserver.dhcp import (
     config,
     detect,
@@ -477,3 +478,10 @@ def add_seamicro15k(mac, username, password, power_control=None):
             power_control=power_control)
     else:
         logger.warning("Couldn't find IP address for MAC %s" % mac)
+
+
+@task
+@log_exception_text
+def enlist_nodes_from_ucsm(url, username, password):
+    """ See `maasserver.api.NodeGroupsHandler.enlist_nodes_from_ucsm`. """
+    probe_and_enlist_ucsm(url, username, password)

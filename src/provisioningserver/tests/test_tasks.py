@@ -72,6 +72,7 @@ from provisioningserver.power.poweraction import PowerActionFail
 from provisioningserver.tags import MissingCredentials
 from provisioningserver.tasks import (
     add_new_dhcp_host_map,
+    enlist_nodes_from_ucsm,
     import_boot_images,
     Omshell,
     power_off,
@@ -676,3 +677,14 @@ class TestImportBootImages(PservTestCase):
         mock_callback = Mock()
         import_boot_images(callback=mock_callback)
         self.assertThat(mock_callback.delay, MockCalledOnceWith())
+
+
+class TestAddUCSM(PservTestCase):
+
+    def test_enlist_nodes_from_ucsm(self):
+        url = 'url'
+        username = 'username'
+        password = 'password'
+        mock = self.patch(tasks, 'probe_and_enlist_ucsm')
+        enlist_nodes_from_ucsm(url, username, password)
+        self.assertThat(mock, MockCalledOnceWith(url, username, password))
