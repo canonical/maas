@@ -837,6 +837,7 @@ class Node(CleanSave, TimestampedModel):
         self.token = None
         self.agent_name = ''
         self.set_netboot()
+        self.distro_series = ''
         self.save()
 
     def set_netboot(self, on=True):

@@ -586,6 +586,13 @@ class NodeTest(MAASServerTestCase):
         node.release()
         self.assertTrue(node.netboot)
 
+    def test_release_clears_distro_series(self):
+        node = factory.make_node(
+            status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
+        node.set_distro_series(series=DISTRO_SERIES.quantal)
+        node.release()
+        self.assertEqual("", node.distro_series)
+
     def test_release_powers_off_node(self):
         # Test that releasing a node causes a 'power_off' celery job.
         node = factory.make_node(
