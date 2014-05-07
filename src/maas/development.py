@@ -24,6 +24,7 @@ from maas import (
     )
 from metadataserver.address import guess_server_address
 import provisioningserver.config
+from psycopg2.extensions import ISOLATION_LEVEL_SERIALIZABLE
 
 # We expect the following settings to be overridden. They are mentioned here
 # to silence lint warnings.
@@ -68,7 +69,10 @@ DATABASES = {
         # For PostgreSQL, a "hostname" starting with a slash indicates a
         # Unix socket directory.
         'HOST': abspath('db'),
-    }
+        'OPTIONS': {
+            'isolation_level': ISOLATION_LEVEL_SERIALIZABLE,
+        },
+    },
 }
 
 # Absolute filesystem path to the directory that will hold user-uploaded files.
