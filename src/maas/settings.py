@@ -21,6 +21,7 @@ from urlparse import urljoin
 import django.template
 from maas import import_local_settings
 from metadataserver.address import guess_server_address
+from psycopg2.extensions import ISOLATION_LEVEL_SERIALIZABLE
 
 
 django.template.add_to_builtins('django.templatetags.future')
@@ -138,7 +139,10 @@ DATABASES = {
         # Unix socket directory.
         'HOST': '',
         'PORT': '',
-    }
+        'OPTIONS': {
+            'isolation_level': ISOLATION_LEVEL_SERIALIZABLE,
+        },
+    },
 }
 
 # Local time zone for this installation. Choices can be found here:
