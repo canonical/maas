@@ -40,8 +40,10 @@ d-i     partman/confirm boolean true
 d-i     partman/confirm_nooverwrite boolean true
 d-i     partman/default_filesystem string ext4
 
-# Use server kernel
-d-i     base-installer/kernel/image     string linux-server
+# Enable this if you want to override to a specific kernel, such as
+# linux-generic-lts-saucy, but Debian Installer should pick the right one based
+# on the boot kernel.
+#d-i     base-installer/kernel/image     string linux-server
 
 # User Setup
 d-i     passwd/root-login       boolean false
