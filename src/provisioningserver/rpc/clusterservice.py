@@ -221,9 +221,13 @@ class ClusterClientService(TimerService, object):
         instances connected to it.
     """
 
+    INTERVAL_LOW = 2  # seconds.
+    INTERVAL_MID = 10  # seconds.
+    INTERVAL_HIGH = 30  # seconds.
+
     def __init__(self, reactor):
         super(ClusterClientService, self).__init__(
-            self._get_random_interval(), self.update)
+            self._calculate_interval(None, None), self.update)
         self.connections = {}
         self.clock = reactor
 
@@ -248,9 +252,6 @@ class ClusterClientService(TimerService, object):
         This obtains a list of endpoints from the region then connects
         to new ones and drops connections to those no longer used.
         """
-        # 0. Update interval.
-        self._update_interval()
-        # 1. Obtain RPC endpoints.
         try:
             info_url = self._get_rpc_info_url()
             info_page = yield getPage(info_url)
@@ -258,9 +259,13 @@ class ClusterClientService(TimerService, object):
             eventloops = info["eventloops"]
             yield self._update_connections(eventloops)
         except ConnectError as error:
+            self._update_interval(None, len(self.connections))
             log.msg("Region not available: %s" % (error,))
         except:
+            self._update_interval(None, len(self.connections))
             log.err()
+        else:
+            self._update_interval(len(eventloops), len(self.connections))
 
     @staticmethod
     def _get_rpc_info_url():
@@ -270,14 +275,39 @@ class ClusterClientService(TimerService, object):
         url = url.geturl()
         return ascii_url(url)
 
-    @staticmethod
-    def _get_random_interval():
-        """Return a random interval between 30 and 90 seconds."""
-        return random.randint(30, 90)
+    def _calculate_interval(self, num_eventloops, num_connections):
+        """Calculate the update interval.
 
-    def _update_interval(self):
-        """Change the interval randomly to avoid stampedes of clusters."""
-        self._loop.interval = self.step = self._get_random_interval()
+        The interval is `INTERVAL_LOW` seconds when there are no
+        connections, so that this can quickly obtain its first
+        connection.
+
+        The interval changes to `INTERVAL_MID` seconds when there are
+        some connections, but fewer than there are event-loops.
+
+        After that it drops back to `INTERVAL_HIGH` seconds.
+        """
+        if num_eventloops is None:
+            # The region is not available; keep trying regularly.
+            return self.INTERVAL_LOW
+        elif num_eventloops == 0:
+            # The region is coming up; keep trying regularly.
+            return self.INTERVAL_LOW
+        elif num_connections == 0:
+            # No connections to the region; keep trying regularly.
+            return self.INTERVAL_LOW
+        elif num_connections < num_eventloops:
+            # Some connections to the region, but not to all event
+            # loops; keep updating reasonably frequently.
+            return self.INTERVAL_MID
+        else:
+            # Fully connected to the region; update every so often.
+            return self.INTERVAL_HIGH
+
+    def _update_interval(self, num_eventloops, num_connections):
+        """Change the update interval."""
+        self._loop.interval = self.step = self._calculate_interval(
+            num_eventloops, num_connections)
 
     @inlineCallbacks
     def _update_connections(self, eventloops):

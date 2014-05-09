@@ -254,40 +254,6 @@ class TestClusterClientService(MAASTestCase):
         observed_rpc_info_url = ClusterClientService._get_rpc_info_url()
         self.assertThat(observed_rpc_info_url, Equals(expected_rpc_info_url))
 
-    def test__get_random_interval(self):
-        # _get_random_interval() returns a random number between 30 and
-        # 90 inclusive.
-        is_between_30_and_90_inclusive = MatchesAll(
-            MatchesAny(GreaterThan(30), Equals(30)),
-            MatchesAny(LessThan(90), Equals(90)))
-        for _ in range(100):
-            self.assertThat(
-                ClusterClientService._get_random_interval(),
-                is_between_30_and_90_inclusive)
-
-    def test__get_random_interval_calls_into_standard_library(self):
-        # _get_random_interval() depends entirely on the standard library.
-        random = self.patch(clusterservice, "random")
-        random.randint.return_value = sentinel.randint
-        self.assertIs(
-            sentinel.randint,
-            ClusterClientService._get_random_interval())
-        self.assertThat(random.randint, MockCalledOnceWith(30, 90))
-
-    def test__update_interval(self):
-        service = ClusterClientService(Clock())
-        # ClusterClientService's superclass, TimerService, creates a
-        # LoopingCall with now=True. We neuter it here because we only
-        # want to observe the behaviour of _update_interval().
-        service.call = (lambda: None, (), {})
-        service.startService()
-        self.assertThat(service.step, MatchesAll(
-            Equals(service._loop.interval), IsInstance(int)))
-        service.step = service._loop.interval = sentinel.undefined
-        service._update_interval()
-        self.assertThat(service.step, MatchesAll(
-            Equals(service._loop.interval), IsInstance(int)))
-
     def test_update_connect_error_is_logged_tersely(self):
         getPage = self.patch(clusterservice, "getPage")
         getPage.side_effect = error.ConnectionRefusedError()
@@ -510,6 +476,53 @@ class TestClusterClientService(MAASTestCase):
         self.assertRaises(
             exceptions.NoConnectionsAvailable,
             service.getClient)
+
+
+class TestClusterClientServiceIntervals(MAASTestCase):
+
+    scenarios = (
+        ("initial", {
+            "num_eventloops": None,
+            "num_connections": None,
+            "expected": ClusterClientService.INTERVAL_LOW,
+        }),
+        ("no-event-loops", {
+            "num_eventloops": 0,
+            "num_connections": sentinel.undefined,
+            "expected": ClusterClientService.INTERVAL_LOW,
+        }),
+        ("no-connections", {
+            "num_eventloops": 1,  # anything > 1.
+            "num_connections": 0,
+            "expected": ClusterClientService.INTERVAL_LOW,
+        }),
+        ("fewer-connections-than-event-loops", {
+            "num_eventloops": 2,  # anything > num_connections.
+            "num_connections": 1,  # anything > 0.
+            "expected": ClusterClientService.INTERVAL_MID,
+        }),
+        ("default", {
+            "num_eventloops": 3,  # same as num_connections.
+            "num_connections": 3,  # same as num_eventloops.
+            "expected": ClusterClientService.INTERVAL_HIGH,
+        }),
+    )
+
+    def make_inert_client_service(self):
+        service = ClusterClientService(Clock())
+        # ClusterClientService's superclass, TimerService, creates a
+        # LoopingCall with now=True. We neuter it here to allow
+        # observation of the behaviour of _update_interval() for
+        # example.
+        service.call = (lambda: None, (), {})
+        return service
+
+    def test__calculate_interval(self):
+        service = self.make_inert_client_service()
+        service.startService()
+        self.assertEqual(
+            self.expected, service._calculate_interval(
+                self.num_eventloops, self.num_connections))
 
 
 class TestClusterClient(MAASTestCase):
