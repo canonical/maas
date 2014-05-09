@@ -2,6 +2,27 @@
 Changelog
 =========
 
+1.5.1
+=====
+
+Bug fix update
+--------------
+
+For full details see https://launchpad.net/maas/+milestone/1.5.1
+
+#1303915    Powering SM15k RESTAPI v2.0 doesn't force PXE boot
+#1307780    no armhf commissioning template
+#1310076    lost connectivity to a node when using fastpath-installer with precise+hwe-s
+#1310082    d-i with precise+hwe-s stops at "Architecture not supported"
+#1311151    MAAS imports Trusty's 'rc' images by default.
+#1311433    REGRESSION: AttributeError: 'functools.partial' object has no attribute '__module__'
+#1313556    API client blocks when deleting a resource
+#1314409    parallel juju deployments race on the same maas
+#1316396    When stopping a node from the web UI that was started from the API, distro_series is not cleared
+#1298784    Vulnerable to user-interface redressing (e.g. clickjacking)
+#1308772    maas has no way to specify alternate IP addresses for AMT template
+#1300476    Unable to setup BMC/UCS user on Cisco B200 M3
+
 1.5
 ===
 
