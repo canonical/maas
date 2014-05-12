@@ -418,6 +418,17 @@ class NodeTest(MAASServerTestCase):
         successful_types = [node_power_types[node] for node in started_nodes]
         self.assertItemsEqual(configless_power_types, successful_types)
 
+    def test_get_effective_power_type_no_default_power_address_if_not_virsh(
+            self):
+        node = factory.make_node(power_type="ether_wake")
+        params = node.get_effective_power_parameters()
+        self.assertEqual("", params["power_address"])
+
+    def test_get_effective_power_type_defaults_power_address_if_virsh(self):
+        node = factory.make_node(power_type="virsh")
+        params = node.get_effective_power_parameters()
+        self.assertEqual("qemu://localhost/system", params["power_address"])
+
     def test_get_effective_kernel_options_with_nothing_set(self):
         node = factory.make_node()
         self.assertEqual((None, None), node.get_effective_kernel_options())
