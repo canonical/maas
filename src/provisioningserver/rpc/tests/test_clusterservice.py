@@ -59,14 +59,11 @@ from provisioningserver.testing.config import set_tftp_root
 from testtools.deferredruntest import AsynchronousDeferredRunTest
 from testtools.matchers import (
     Equals,
-    GreaterThan,
     HasLength,
     Is,
     IsInstance,
     KeysEqual,
-    LessThan,
     MatchesAll,
-    MatchesAny,
     MatchesListwise,
     MatchesStructure,
     )

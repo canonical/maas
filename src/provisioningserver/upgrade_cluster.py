@@ -184,8 +184,8 @@ def generate_boot_resources_config():
     images using Simplestreams.
     """
     config_file = locate_config('bootresources.yaml')
-    boot_resources = BootConfig.load_from_cache(config_file)
-    if boot_resources['boot'].get('configure_me', False):
+    boot_resource_config = BootConfig.load_from_cache(config_file)
+    if boot_resource_config['boot'].get('configure_me', False):
         rewrite_boot_resources_config(config_file)
 
 
