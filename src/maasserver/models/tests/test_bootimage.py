@@ -50,69 +50,79 @@ class TestBootImageManager(MAASServerTestCase):
         self.assertTrue(BootImage.objects.have_image(nodegroup, **params))
 
     def test_default_arch_image_returns_None_if_no_images_match(self):
+        osystem = Config.objects.get_config('commissioning_osystem')
         series = Config.objects.get_config('commissioning_distro_series')
         result = BootImage.objects.get_default_arch_image_in_nodegroup(
-            factory.make_node_group(), series, factory.make_name('purpose'))
+            factory.make_node_group(), osystem, series,
+            factory.make_name('purpose'))
         self.assertIsNone(result)
 
     def test_default_arch_image_returns_only_matching_image(self):
         nodegroup = factory.make_node_group()
+        osystem = factory.make_name('os')
         series = factory.make_name('series')
         label = factory.make_name('label')
         arch = factory.make_name('arch')
         purpose = factory.make_name("purpose")
         factory.make_boot_image(
-            architecture=arch, release=series, label=label,
+            osystem=osystem, architecture=arch,
+            release=series, label=label,
             nodegroup=nodegroup, purpose=purpose)
         result = BootImage.objects.get_default_arch_image_in_nodegroup(
-            nodegroup, series, purpose=purpose)
+            nodegroup, osystem, series, purpose=purpose)
         self.assertEqual(result.architecture, arch)
 
     def test_default_arch_image_prefers_i386(self):
         nodegroup = factory.make_node_group()
+        osystem = factory.make_name('os')
         series = factory.make_name('series')
         label = factory.make_name('label')
         purpose = factory.make_name("purpose")
         for arch in ['amd64', 'axp', 'i386', 'm88k']:
             factory.make_boot_image(
-                architecture=arch, release=series, nodegroup=nodegroup,
+                osystem=osystem, architecture=arch,
+                release=series, nodegroup=nodegroup,
                 purpose=purpose, label=label)
         result = BootImage.objects.get_default_arch_image_in_nodegroup(
-            nodegroup, series, purpose=purpose)
+            nodegroup, osystem, series, purpose=purpose)
         self.assertEqual(result.architecture, "i386")
 
     def test_default_arch_image_returns_arbitrary_pick_if_all_else_fails(self):
         nodegroup = factory.make_node_group()
+        osystem = factory.make_name('os')
         series = factory.make_name('series')
         label = factory.make_name('label')
         purpose = factory.make_name("purpose")
         images = [
             factory.make_boot_image(
-                architecture=factory.make_name('arch'), release=series,
-                label=label, nodegroup=nodegroup, purpose=purpose)
-            for _ in range(3)
-            ]
-        self.assertIn(
-            BootImage.objects.get_default_arch_image_in_nodegroup(
-                nodegroup, series, purpose=purpose),
-            images)
-
-    def test_default_arch_image_copes_with_subarches(self):
-        nodegroup = factory.make_node_group()
-        arch = 'i386'
-        series = factory.make_name('series')
-        label = factory.make_name('label')
-        purpose = factory.make_name("purpose")
-        images = [
-            factory.make_boot_image(
-                architecture=arch, subarchitecture=factory.make_name('sub'),
+                osystem=osystem, architecture=factory.make_name('arch'),
                 release=series, label=label, nodegroup=nodegroup,
                 purpose=purpose)
             for _ in range(3)
             ]
         self.assertIn(
             BootImage.objects.get_default_arch_image_in_nodegroup(
-                nodegroup, series, purpose=purpose),
+                nodegroup, osystem, series, purpose=purpose),
+            images)
+
+    def test_default_arch_image_copes_with_subarches(self):
+        nodegroup = factory.make_node_group()
+        arch = 'i386'
+        osystem = factory.make_name('os')
+        series = factory.make_name('series')
+        label = factory.make_name('label')
+        purpose = factory.make_name("purpose")
+        images = [
+            factory.make_boot_image(
+                osystem=osystem, architecture=arch,
+                subarchitecture=factory.make_name('sub'),
+                release=series, label=label, nodegroup=nodegroup,
+                purpose=purpose)
+            for _ in range(3)
+            ]
+        self.assertIn(
+            BootImage.objects.get_default_arch_image_in_nodegroup(
+                nodegroup, osystem, series, purpose=purpose),
             images)
 
     def test_get_usable_architectures_returns_supported_arches(self):
@@ -164,54 +174,62 @@ class TestBootImageManager(MAASServerTestCase):
             BootImage.objects.get_usable_architectures(nodegroup))
 
     def test_get_latest_image_returns_latest_image_for_criteria(self):
+        osystem = factory.make_name('os')
         arch = factory.make_name('arch')
         subarch = factory.make_name('sub')
         release = factory.make_name('release')
         nodegroup = factory.make_node_group()
         purpose = factory.make_name("purpose")
         boot_image = factory.make_boot_image(
-            nodegroup=nodegroup, architecture=arch,
+            nodegroup=nodegroup, osystem=osystem, architecture=arch,
             subarchitecture=subarch, release=release, purpose=purpose,
             label=factory.make_name('label'))
         self.assertEqual(
             boot_image,
             BootImage.objects.get_latest_image(
-                nodegroup, arch, subarch, release, purpose))
+                nodegroup, osystem, arch, subarch, release, purpose))
 
     def test_get_latest_image_doesnt_return_images_for_other_purposes(self):
+        osystem = factory.make_name('os')
         arch = factory.make_name('arch')
         subarch = factory.make_name('sub')
         release = factory.make_name('release')
         nodegroup = factory.make_node_group()
         purpose = factory.make_name("purpose")
         relevant_image = factory.make_boot_image(
-            nodegroup=nodegroup, architecture=arch,
+            nodegroup=nodegroup, osystem=osystem, architecture=arch,
             subarchitecture=subarch, release=release, purpose=purpose,
             label=factory.make_name('label'))
 
         # Create a bunch of more recent but irrelevant BootImages..
         factory.make_boot_image(
-            nodegroup=factory.make_node_group(), architecture=arch,
-            subarchitecture=subarch, release=release,
+            nodegroup=factory.make_node_group(), osystem=osystem,
+            architecture=arch, subarchitecture=subarch, release=release,
             purpose=purpose, label=factory.make_name('label'))
         factory.make_boot_image(
-            nodegroup=nodegroup,
+            nodegroup=nodegroup, osystem=osystem,
             architecture=factory.make_name('arch'),
             subarchitecture=subarch, release=release, purpose=purpose,
             label=factory.make_name('label'))
         factory.make_boot_image(
-            nodegroup=nodegroup, architecture=arch,
+            nodegroup=nodegroup, osystem=osystem, architecture=arch,
             subarchitecture=factory.make_name('subarch'),
             release=release, purpose=purpose,
             label=factory.make_name('label'))
         factory.make_boot_image(
-            nodegroup=nodegroup,
+            nodegroup=nodegroup, osystem=osystem,
             architecture=factory.make_name('arch'),
             subarchitecture=subarch,
             release=factory.make_name('release'), purpose=purpose,
             label=factory.make_name('label'))
         factory.make_boot_image(
-            nodegroup=nodegroup,
+            nodegroup=nodegroup, osystem=osystem,
+            architecture=factory.make_name('arch'),
+            subarchitecture=subarch, release=release,
+            purpose=factory.make_name('purpose'),
+            label=factory.make_name('label'))
+        factory.make_boot_image(
+            nodegroup=nodegroup, osystem=factory.make_name('os'),
             architecture=factory.make_name('arch'),
             subarchitecture=subarch, release=release,
             purpose=factory.make_name('purpose'),
@@ -220,4 +238,66 @@ class TestBootImageManager(MAASServerTestCase):
         self.assertEqual(
             relevant_image,
             BootImage.objects.get_latest_image(
-                nodegroup, arch, subarch, release, purpose))
+                nodegroup, osystem, arch, subarch, release, purpose))
+
+    def test_get_usable_osystems_returns_supported_osystems(self):
+        nodegroup = factory.make_node_group()
+        osystems = [
+            factory.make_name('os'),
+            factory.make_name('os'),
+            ]
+        for osystem in osystems:
+            factory.make_boot_image(
+                osystem=osystem,
+                nodegroup=nodegroup)
+        self.assertItemsEqual(
+            osystems,
+            BootImage.objects.get_usable_osystems(nodegroup))
+
+    def test_get_usable_osystems_uses_given_nodegroup(self):
+        nodegroup = factory.make_node_group()
+        osystem = factory.make_name('os')
+        factory.make_boot_image(
+            osystem=osystem, nodegroup=nodegroup)
+        self.assertItemsEqual(
+            [],
+            BootImage.objects.get_usable_osystems(
+                factory.make_node_group()))
+
+    def test_get_usable_releases_returns_supported_releases(self):
+        nodegroup = factory.make_node_group()
+        osystem = factory.make_name('os')
+        releases = [
+            factory.make_name('release'),
+            factory.make_name('release'),
+            ]
+        for release in releases:
+            factory.make_boot_image(
+                osystem=osystem,
+                release=release,
+                nodegroup=nodegroup)
+        self.assertItemsEqual(
+            releases,
+            BootImage.objects.get_usable_releases(nodegroup, osystem))
+
+    def test_get_usable_releases_uses_given_nodegroup(self):
+        nodegroup = factory.make_node_group()
+        osystem = factory.make_name('os')
+        release = factory.make_name('release')
+        factory.make_boot_image(
+            osystem=osystem, release=release, nodegroup=nodegroup)
+        self.assertItemsEqual(
+            [],
+            BootImage.objects.get_usable_releases(
+                factory.make_node_group(), osystem))
+
+    def test_get_usable_releases_uses_given_osystem(self):
+        nodegroup = factory.make_node_group()
+        osystem = factory.make_name('os')
+        release = factory.make_name('release')
+        factory.make_boot_image(
+            osystem=osystem, release=release, nodegroup=nodegroup)
+        self.assertItemsEqual(
+            [],
+            BootImage.objects.get_usable_releases(
+                factory.make_node_group(), factory.make_name('os')))

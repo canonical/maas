@@ -228,7 +228,8 @@ class TestKernelOpts(MAASTestCase):
         # options for a "xinstall" node.
         params = self.make_kernel_parameters(purpose="xinstall")
         ephemeral_name = get_ephemeral_name(
-            params.arch, params.subarch, params.release, params.label)
+            params.osystem, params.arch, params.subarch,
+            params.release, params.label)
         self.assertThat(
             compose_kernel_command_line(params),
             ContainsAll([
@@ -243,7 +244,8 @@ class TestKernelOpts(MAASTestCase):
         # options for a "commissioning" node.
         params = self.make_kernel_parameters(purpose="commissioning")
         ephemeral_name = get_ephemeral_name(
-            params.arch, params.subarch, params.release, params.label)
+            params.osystem, params.arch, params.subarch,
+            params.release, params.label)
         self.assertThat(
             compose_kernel_command_line(params),
             ContainsAll([

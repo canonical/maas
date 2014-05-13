@@ -20,6 +20,7 @@ in cluster {{ nodegroup.cluster_name }}
           <thead>
             <tr>
               <th>ID</th>
+              <th>OS</th>
               <th>Release</th>
               <th>Architecture</th>
               <th>Subarchitecture</th>
@@ -32,6 +33,7 @@ in cluster {{ nodegroup.cluster_name }}
         {% for bootimage in bootimage_list %}
           <tr class="bootimage {% cycle 'even' 'odd' %}">
             <td>{{ bootimage.id }}</td>
+            <td>{{ bootimage.osystem }}</td>
             <td>{{ bootimage.release }}</td>
             <td>{{ bootimage.architecture }}</td>
             <td>{{ bootimage.subarchitecture }}</td>

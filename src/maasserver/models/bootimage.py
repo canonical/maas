@@ -34,44 +34,47 @@ class BootImageManager(Manager):
     Don't import or instantiate this directly; access as `BootImage.objects`.
     """
 
-    def get_by_natural_key(self, nodegroup, architecture, subarchitecture,
-                           release, purpose, label):
+    def get_by_natural_key(self, nodegroup, osystem, architecture,
+                           subarchitecture, release, purpose, label):
         """Look up a specific image."""
         return self.get(
-            nodegroup=nodegroup, architecture=architecture,
+            nodegroup=nodegroup, osystem=osystem, architecture=architecture,
             subarchitecture=subarchitecture, release=release,
             purpose=purpose, label=label)
 
-    def register_image(self, nodegroup, architecture, subarchitecture,
+    def register_image(self, nodegroup, osystem, architecture, subarchitecture,
                        release, purpose, label):
         """Register an image if it wasn't already registered."""
         self.get_or_create(
-            nodegroup=nodegroup, architecture=architecture,
+            nodegroup=nodegroup, osystem=osystem, architecture=architecture,
             subarchitecture=subarchitecture, release=release,
             purpose=purpose, label=label)
 
-    def have_image(self, nodegroup, architecture, subarchitecture, release,
-                   purpose, label=None):
+    def have_image(self, nodegroup, osystem, architecture, subarchitecture,
+                   release, purpose, label=None):
         """Is an image for the given kind of boot available?"""
         if label is None:
             label = "release"
         try:
             self.get_by_natural_key(
-                nodegroup=nodegroup, architecture=architecture,
-                subarchitecture=subarchitecture, release=release,
-                purpose=purpose, label=label)
+                nodegroup=nodegroup, osystem=osystem,
+                architecture=architecture, subarchitecture=subarchitecture,
+                release=release, purpose=purpose, label=label)
             return True
         except BootImage.DoesNotExist:
             return False
 
-    def get_default_arch_image_in_nodegroup(self, nodegroup, series, purpose):
-        """Return any image for the given nodegroup, series, and purpose.
+    def get_default_arch_image_in_nodegroup(self, nodegroup, osystem, series,
+                                            purpose):
+        """Return any image for the given nodegroup, osystem, series,
+        and purpose.
 
         Prefers `i386` images if available.  Returns `None` if no images match
         requirements.
         """
         images = BootImage.objects.filter(
-            release=series, nodegroup=nodegroup, purpose=purpose)
+            osystem=osystem, release=series, nodegroup=nodegroup,
+            purpose=purpose)
         for image in images:
             # Prefer i386, any available subarchitecture (usually just
             # "generic").  It will work for most cases where we don't know
@@ -106,13 +109,27 @@ class BootImageManager(Manager):
             nodegroup, 'install')
         return arches_commissioning & arches_install
 
-    def get_latest_image(self, nodegroup, architecture, subarchitecture,
-                         release, purpose):
+    def get_latest_image(self, nodegroup, osystem, architecture,
+                         subarchitecture, release, purpose):
         """Return the latest image for a set of criteria."""
         return BootImage.objects.filter(
-            nodegroup=nodegroup, architecture=architecture,
+            nodegroup=nodegroup, osystem=osystem, architecture=architecture,
             subarchitecture=subarchitecture, release=release,
             purpose=purpose).order_by('id').last()
+
+    def get_usable_osystems(self, nodegroup):
+        """Return the list of usable operating systems for a nodegroup.
+        """
+        query = BootImage.objects.filter(nodegroup=nodegroup)
+        return set(query.values_list('osystem', flat=True))
+
+    def get_usable_releases(self, nodegroup, osystem):
+        """Return the list of usable releases for a nodegroup and
+        operating system.
+        """
+        query = BootImage.objects.filter(nodegroup=nodegroup, osystem=osystem)
+        releases = query.values_list('release', flat=True)
+        return set(releases)
 
 
 class BootImage(TimestampedModel):
@@ -131,14 +148,17 @@ class BootImage(TimestampedModel):
 
     class Meta(DefaultMeta):
         unique_together = (
-            ('nodegroup', 'architecture', 'subarchitecture', 'release',
-             'purpose', 'label'),
+            ('nodegroup', 'osystem', 'architecture', 'subarchitecture',
+             'release', 'purpose', 'label'),
             )
 
     objects = BootImageManager()
 
     # Nodegroup (cluster controller) that has the images.
     nodegroup = ForeignKey(NodeGroup, null=False, editable=False, unique=False)
+
+    # Operating system (e.g. "ubuntu") that the image boots.
+    osystem = CharField(max_length=255, blank=False, editable=False)
 
     # System architecture (e.g. "i386") that the image is for.
     architecture = CharField(max_length=255, blank=False, editable=False)
@@ -148,7 +168,7 @@ class BootImage(TimestampedModel):
     # such as i386 and amd64, we use "generic").
     subarchitecture = CharField(max_length=255, blank=False, editable=False)
 
-    # Ubuntu release (e.g. "precise") that the image boots.
+    # OS release (e.g. "precise") that the image boots.
     release = CharField(max_length=255, blank=False, editable=False)
 
     # Boot purpose (e.g. "commissioning" or "install") that the image is for.
@@ -159,7 +179,8 @@ class BootImage(TimestampedModel):
         max_length=255, blank=False, editable=False, default="release")
 
     def __repr__(self):
-        return "<BootImage %s/%s-%s-%s-%s>" % (
+        return "<BootImage %s-%s/%s-%s-%s-%s>" % (
+            self.osystem,
             self.architecture,
             self.subarchitecture,
             self.release,

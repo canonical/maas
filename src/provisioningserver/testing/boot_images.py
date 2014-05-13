@@ -23,10 +23,11 @@ def make_boot_image_params():
     """Create an arbitrary dict of boot-image parameters.
 
     These are the parameters that together describe a kind of boot for
-    which we may need a kernel and initrd: architecture,
+    which we may need a kernel and initrd: operating system, architecture,
     sub-architecture, Ubuntu release, boot purpose, and release label.
     """
     return dict(
+        osystem=factory.make_name('osystem'),
         architecture=factory.make_name('architecture'),
         subarchitecture=factory.make_name('subarchitecture'),
         release=factory.make_name('release'),
@@ -39,9 +40,11 @@ def make_boot_image_storage_params():
     """Create a dict of boot-image parameters as used to store the image.
 
     These are the parameters that together describe a path to store a boot
-    image: architecture, sub-architecture, Ubuntu release, and release label.
+    image: operating system, architecture, sub-architecture, Ubuntu release,
+    and release label.
     """
     return dict(
+        osystem=factory.make_name('osystem'),
         architecture=factory.make_name('architecture'),
         subarchitecture=factory.make_name('subarchitecture'),
         release=factory.make_name('release'),

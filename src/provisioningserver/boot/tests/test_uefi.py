@@ -73,7 +73,7 @@ class TestRenderUEFIConfig(MAASTestCase):
         self.assertThat(output, StartsWith("set default=\"0\""))
         # The UEFI parameters are all set according to the options.
         image_dir = compose_image_path(
-            arch=params.arch, subarch=params.subarch,
+            osystem='ubuntu', arch=params.arch, subarch=params.subarch,
             release=params.release, label=params.label)
 
         self.assertThat(

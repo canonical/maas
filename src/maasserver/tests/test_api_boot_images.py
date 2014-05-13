@@ -134,6 +134,7 @@ class TestBootImagesReportImagesAPI(APITestCase):
         image = factory.make_boot_image()
         self.assertEqual(
             (
+                image.osystem,
                 image.architecture,
                 image.subarchitecture,
                 image.release,
@@ -146,6 +147,7 @@ class TestBootImagesReportImagesAPI(APITestCase):
         image = make_boot_image_params()
         self.assertEqual(
             (
+                image['osystem'],
                 image['architecture'],
                 image['subarchitecture'],
                 image['release'],
@@ -158,12 +160,13 @@ class TestBootImagesReportImagesAPI(APITestCase):
         image = make_boot_image_params()
         del image['subarchitecture']
         del image['label']
-        _, subarchitecture, _, label, _ = summarise_boot_image_dict(image)
+        _, _, subarchitecture, _, label, _ = summarise_boot_image_dict(image)
         self.assertEqual(('generic', 'release'), (subarchitecture, label))
 
     def test_summarise_boot_image_functions_are_compatible(self):
         image_dict = make_boot_image_params()
         image_obj = factory.make_boot_image(
+            osystem=image_dict['osystem'],
             architecture=image_dict['architecture'],
             subarchitecture=image_dict['subarchitecture'],
             release=image_dict['release'], label=image_dict['label'],

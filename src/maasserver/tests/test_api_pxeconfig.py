@@ -133,9 +133,11 @@ class TestPXEConfigAPI(MAASServerTestCase):
         self.assertEqual(value, response_dict['extra_opts'])
 
     def test_pxeconfig_uses_present_boot_image(self):
+        osystem = 'ubuntu'
         release = Config.objects.get_config('commissioning_distro_series')
         nodegroup = factory.make_node_group()
         factory.make_boot_image(
+            osystem=osystem,
             architecture="amd64", release=release, nodegroup=nodegroup,
             purpose="commissioning")
         params = self.get_default_params()

@@ -29,12 +29,13 @@ import os.path
 logger = getLogger(__name__)
 
 
-def compose_image_path(arch, subarch, release, label):
+def compose_image_path(osystem, arch, subarch, release, label):
     """Compose the TFTP path for a PXE kernel/initrd directory.
 
     The path returned is relative to the TFTP root, as it would be
     identified by clients on the network.
 
+    :param osystem: Operating system.
     :param arch: Main machine architecture.
     :param subarch: Sub-architecture, or "generic" if there is none.
     :param release: Operating system release, e.g. "precise".
@@ -43,7 +44,7 @@ def compose_image_path(arch, subarch, release, label):
         kernel and initrd) as exposed over TFTP.
     """
     # This is a TFTP path, not a local filesystem path, so hard-code the slash.
-    return '/'.join([arch, subarch, release, label])
+    return '/'.join([osystem, arch, subarch, release, label])
 
 
 def locate_tftp_path(path, tftproot):
@@ -116,7 +117,7 @@ def extract_image_params(path):
     The path must consist of a full [architecture, subarchitecture, release]
     that identify a kind of boot that we may need an image for.
     """
-    arch, subarch, release, label = path
+    osystem, arch, subarch, release, label = path
     # XXX: rvb 2014-03-24: The images import script currently imports all the
     # images for the configured selections (where a selection is an
     # arch/subarch/series/label combination).  When the import script grows the
@@ -125,7 +126,7 @@ def extract_image_params(path):
     purposes = ['commissioning', 'install', 'xinstall']
     return [
         dict(
-            architecture=arch, subarchitecture=subarch,
+            osystem=osystem, architecture=arch, subarchitecture=subarch,
             release=release, label=label, purpose=purpose)
         for purpose in purposes
         ]
@@ -139,9 +140,9 @@ def list_boot_images(tftproot):
         `report_boot_images` API call.
     """
     # The sub-directories directly under tftproot, if they contain
-    # images, represent architectures.
+    # images, represent operating systems.
     try:
-        potential_archs = list_subdirs(tftproot)
+        potential_osystems = list_subdirs(tftproot)
     except OSError as exception:
         if exception.errno == errno.ENOENT:
             # Directory does not exist, so return empty list.
@@ -153,12 +154,12 @@ def list_boot_images(tftproot):
 
     # Starting point for iteration: paths that contain only the
     # top-level subdirectory of tftproot, i.e. the architecture name.
-    paths = [[subdir] for subdir in potential_archs]
+    paths = [[subdir] for subdir in potential_osystems]
 
     # Extend paths deeper into the filesystem, through the levels that
-    # represent sub-architecture, release, and label.  Any directory
-    # that doesn't extend this deep isn't a boot image.
-    for level in ['subarch', 'release', 'label']:
+    # represent architecture, sub-architecture, release, and label.
+    # Any directory that doesn't extend this deep isn't a boot image.
+    for level in ['arch', 'subarch', 'release', 'label']:
         paths = drill_down(tftproot, paths)
 
     # Each path we find this way should be a boot image.

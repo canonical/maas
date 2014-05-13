@@ -168,7 +168,7 @@ class BootMethod:
         """
         def image_dir(params):
             return compose_image_path(
-                params.arch, params.subarch,
+                'ubuntu', params.arch, params.subarch,
                 params.release, params.label)
 
         def initrd_path(params):

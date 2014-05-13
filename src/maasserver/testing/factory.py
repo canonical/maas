@@ -430,9 +430,11 @@ class Factory(maastesting.factory.Factory):
         return "OAuth " + ", ".join([
             '%s="%s"' % (key, value) for key, value in items.items()])
 
-    def make_boot_image(self, architecture=None, subarchitecture=None,
-                        release=None, purpose=None, nodegroup=None,
-                        label=None):
+    def make_boot_image(self, osystem=None, architecture=None,
+                        subarchitecture=None, release=None, purpose=None,
+                        nodegroup=None, label=None):
+        if osystem is None:
+            osystem = self.make_name('os')
         if architecture is None:
             architecture = self.make_name('architecture')
         if subarchitecture is None:
@@ -447,6 +449,7 @@ class Factory(maastesting.factory.Factory):
             label = self.make_name('label')
         return BootImage.objects.create(
             nodegroup=nodegroup,
+            osystem=osystem,
             architecture=architecture,
             subarchitecture=subarchitecture,
             release=release,

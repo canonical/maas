@@ -251,6 +251,7 @@ def download_all_boot_resources(sources, storage_path, product_mapping):
     """
     storage_path = os.path.abspath(storage_path)
     snapshot_path = compose_snapshot_path(storage_path)
+    ubuntu_path = os.path.join(snapshot_path, 'ubuntu')
     # Use a FileStore as our ObjectStore implementation.  It will write to the
     # cache directory.
     cache_path = os.path.join(storage_path, 'cache')
@@ -260,7 +261,7 @@ def download_all_boot_resources(sources, storage_path, product_mapping):
 
     for source in sources:
         download_boot_resources(
-            source['path'], store, snapshot_path, product_mapping,
+            source['path'], store, ubuntu_path, product_mapping,
             keyring=source['keyring'])
 
     return snapshot_path

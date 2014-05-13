@@ -2463,7 +2463,7 @@ def pxeconfig(request):
                 # current series. If nothing is found, fall back to i386 like
                 # we used to. LP #1181334
                 image = BootImage.objects.get_default_arch_image_in_nodegroup(
-                    nodegroup, series, purpose=purpose)
+                    nodegroup, 'ubuntu', series, purpose=purpose)
                 if image is None:
                     arch = 'i386'
                 else:
@@ -2476,7 +2476,7 @@ def pxeconfig(request):
     # (which should never happen in reality but may happen in tests), we
     # fall back to using 'no-such-image' as our default.
     latest_image = BootImage.objects.get_latest_image(
-        nodegroup, arch, subarch, series, purpose)
+        nodegroup, 'ubuntu', arch, subarch, series, purpose)
     if latest_image is None:
         # XXX 2014-03-18 gmb bug=1294131:
         #     We really ought to raise an exception here so that client
@@ -2517,8 +2517,8 @@ def pxeconfig(request):
     cluster_address = get_mandatory_param(request.GET, "local")
 
     params = KernelParameters(
-        arch=arch, subarch=subarch, release=series, label=label,
-        purpose=purpose, hostname=hostname, domain=domain,
+        osystem='ubuntu', arch=arch, subarch=subarch, release=series,
+        label=label, purpose=purpose, hostname=hostname, domain=domain,
         preseed_url=preseed_url, log_host=server_address,
         fs_host=cluster_address, extra_opts=extra_kernel_opts)
 
@@ -2559,10 +2559,11 @@ def summarise_boot_image_object(image_object):
     This function has a counterpart, `summarise_boot_image_dict`.  The two
     return the same value for the same boot image.
 
-    :return: A tuple of the image's architecture, subarchitecture, release,
-        label, and purpose.
+    :return: A tuple of the image's osystem, architecture, subarchitecture,
+        release, label, and purpose.
     """
     return (
+        image_object.osystem,
         image_object.architecture,
         image_object.subarchitecture,
         image_object.release,
@@ -2577,10 +2578,11 @@ def summarise_boot_image_dict(image_dict):
     This is the counterpart to `summarise_boot_image_object`.  The two return
     the same value for the same boot image.
 
-    :return: A tuple of the image's architecture, subarchitecture, release,
-        label, and purpose.
+    :return: A tuple of the image's osystem, architecture, subarchitecture,
+        release, label, and purpose.
     """
     return (
+        image_dict['osystem'],
         image_dict['architecture'],
         image_dict.get('subarchitecture', 'generic'),
         image_dict['release'],
@@ -2623,10 +2625,11 @@ def store_boot_images(nodegroup, reported_images, stored_images):
         `summarise_stored_images`.
     """
     new_images = reported_images - stored_images
-    for arch, subarch, release, label, purpose in new_images:
+    for osystem, arch, subarch, release, label, purpose in new_images:
         BootImage.objects.register_image(
-            nodegroup=nodegroup, architecture=arch, subarchitecture=subarch,
-            release=release, purpose=purpose, label=label)
+            nodegroup=nodegroup, osystem=osystem, architecture=arch,
+            subarchitecture=subarch, release=release, purpose=purpose,
+            label=label)
 
 
 def prune_boot_images(nodegroup, reported_images, stored_images):
@@ -2643,15 +2646,16 @@ def prune_boot_images(nodegroup, reported_images, stored_images):
         `summarise_stored_images`.
     """
     removed_images = stored_images - reported_images
-    for arch, subarch, release, label, purpose in removed_images:
+    for osystem, arch, subarch, release, label, purpose in removed_images:
         db_images = BootImage.objects.filter(
-            architecture=arch, subarchitecture=subarch,
+            osystem=osystem, architecture=arch, subarchitecture=subarch,
             release=release, label=label, purpose=purpose)
         db_images.delete()
 
 
 DISPLAYED_BOOTIMAGE_FIELDS = (
     'id',
+    'osystem',
     'release',
     'architecture',
     'subarchitecture',
@@ -2717,10 +2721,10 @@ class BootImagesHandler(OperationsHandler):
         :param uuid: The UUID of the cluster for which the images are
             being reported.
         :param images: A list of dicts, each describing a boot image with
-            these properties: `architecture`, `subarchitecture`, `release`,
-            `purpose`, and optionally, `label` (which defaults to "release").
-            These should match the code that determines TFTP paths for these
-            images.
+            these properties: `os`, `architecture`, `subarchitecture`,
+            `release`, `purpose`, and optionally, `label` (which defaults
+            to "release"). These should match the code that determines TFTP
+            paths for these images.
         """
         nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
         check_nodegroup_access(request, nodegroup)

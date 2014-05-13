@@ -280,5 +280,5 @@ class BootImagesListView(PaginatedListView):
         nodegroup = self.get_nodegroup()
         # A sorted bootimages list.
         return nodegroup.bootimage_set.all().order_by(
-            '-release', 'architecture', 'subarchitecture', 'purpose',
-            'label')
+            'osystem', '-release', 'architecture', 'subarchitecture',
+            'purpose', 'label')

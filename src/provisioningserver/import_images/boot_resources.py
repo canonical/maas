@@ -45,7 +45,7 @@ class NoConfigFile(Exception):
     """Raised when the config file for the script doesn't exist."""
 
 
-def tgt_entry(arch, subarch, release, label, image):
+def tgt_entry(osystem, arch, subarch, release, label, image):
     """Generate tgt target used to commission arch/subarch with release
 
     Tgt target used to commission arch/subarch machine with a specific Ubuntu
@@ -59,6 +59,7 @@ def tgt_entry(arch, subarch, release, label, image):
     use the same inode for different tgt targets (even read-only targets which
     looks like a bug to me) without this option enabled.
 
+    :param osystem: Operating System name we generate tgt target for
     :param arch: Architecture name we generate tgt target for
     :param subarch: Subarchitecture name we generate tgt target for
     :param release: Ubuntu release we generate tgt target for
@@ -67,7 +68,13 @@ def tgt_entry(arch, subarch, release, label, image):
     :return Tgt entry which can be written to tgt-admin configuration file
     """
     prefix = 'iqn.2004-05.com.ubuntu:maas'
-    target_name = 'ephemeral-%s-%s-%s-%s' % (arch, subarch, release, label)
+    target_name = 'ephemeral-%s-%s-%s-%s-%s' % (
+        osystem,
+        arch,
+        subarch,
+        release,
+        label
+        )
     entry = dedent("""\
         <target {prefix}:{target_name}>
             readonly 1
@@ -110,17 +117,20 @@ def compose_targets_conf(snapshot_path):
     # Use a set to make sure we don't register duplicate entries in tgt.
     entries = set()
     for item in list_boot_images(snapshot_path):
+        osystem = item['osystem']
         arch = item['architecture']
         subarch = item['subarchitecture']
         release = item['release']
         label = item['label']
-        entries.add((arch, subarch, release, label))
+        entries.add((osystem, arch, subarch, release, label))
     tgt_entries = []
-    for arch, subarch, release, label in sorted(entries):
+    for osystem, arch, subarch, release, label in sorted(entries):
         root_image = os.path.join(
-            snapshot_path, arch, subarch, release, label, 'root-image')
+            snapshot_path, osystem, arch, subarch,
+            release, label, 'root-image')
         if os.path.isfile(root_image):
-            entry = tgt_entry(arch, subarch, release, label, root_image)
+            entry = tgt_entry(
+                osystem, arch, subarch, release, label, root_image)
             tgt_entries.append(entry)
     text = ''.join(tgt_entries)
     return text.encode('utf-8')

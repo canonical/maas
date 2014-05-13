@@ -62,6 +62,7 @@ class TestTFTPPath(MAASTestCase):
         """Fake a boot image matching `image_params` under `tftproot`."""
         image_dir = locate_tftp_path(
             compose_image_path(
+                osystem=image_params['osystem'],
                 arch=image_params['architecture'],
                 subarch=image_params['subarchitecture'],
                 release=image_params['release'],
@@ -72,21 +73,23 @@ class TestTFTPPath(MAASTestCase):
         factory.make_file(image_dir, 'initrd.gz')
 
     def test_compose_image_path_follows_storage_directory_layout(self):
+        osystem = factory.make_name('osystem')
         arch = factory.make_name('arch')
         subarch = factory.make_name('subarch')
         release = factory.make_name('release')
         label = factory.make_name('label')
         self.assertEqual(
-            '%s/%s/%s/%s' % (arch, subarch, release, label),
-            compose_image_path(arch, subarch, release, label))
+            '%s/%s/%s/%s/%s' % (osystem, arch, subarch, release, label),
+            compose_image_path(osystem, arch, subarch, release, label))
 
     def test_compose_image_path_does_not_include_tftp_root(self):
+        osystem = factory.make_name('osystem')
         arch = factory.make_name('arch')
         subarch = factory.make_name('subarch')
         release = factory.make_name('release')
         label = factory.make_name('label')
         self.assertThat(
-            compose_image_path(arch, subarch, release, label),
+            compose_image_path(osystem, arch, subarch, release, label),
             Not(StartsWith(self.tftproot)))
 
     def test_locate_tftp_path_prefixes_tftp_root(self):

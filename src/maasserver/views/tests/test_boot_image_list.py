@@ -54,8 +54,7 @@ class BootImageListTest(MAASServerTestCase):
         self.client_log_in(as_admin=True)
         nodegroup = factory.make_node_group()
         # Create 4 images.
-        [
-            factory.make_boot_image(nodegroup=nodegroup) for _ in range(4)]
+        [factory.make_boot_image(nodegroup=nodegroup) for _ in range(4)]
         response = self.client.get(
             reverse('cluster-bootimages-list', args=[nodegroup.uuid]))
         self.assertEqual(httplib.OK, response.status_code)

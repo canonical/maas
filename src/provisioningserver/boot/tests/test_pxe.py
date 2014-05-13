@@ -163,7 +163,7 @@ class TestPXEBootMethodRenderConfig(MAASTestCase):
         self.assertThat(output, StartsWith("DEFAULT "))
         # The PXE parameters are all set according to the options.
         image_dir = compose_image_path(
-            arch=params.arch, subarch=params.subarch,
+            osystem='ubuntu', arch=params.arch, subarch=params.subarch,
             release=params.release, label=params.label)
         self.assertThat(
             output, MatchesAll(
@@ -268,7 +268,8 @@ class TestPXEBootMethodRenderConfigScenarios(MAASTestCase):
             section = config[section_label]
             self.assertThat(
                 section, ContainsAll(("KERNEL", "INITRD", "APPEND")))
-            contains_arch_path = StartsWith("%s/" % section_label)
+            contains_arch_path = StartsWith(
+                "ubuntu/%s/" % section_label)
             self.assertThat(section["KERNEL"], contains_arch_path)
             self.assertThat(section["INITRD"], contains_arch_path)
             self.assertIn("APPEND", section)

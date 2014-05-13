@@ -51,9 +51,10 @@ class TestTgtEntry(MAASTestCase):
 
     def test_generates_one_target(self):
         spec = make_image_spec()
+        osystem = factory.make_name('osystem')
         image = self.make_file()
         entry = boot_resources.tgt_entry(
-            spec.arch, spec.subarch, spec.release, spec.label, image)
+            osystem, spec.arch, spec.subarch, spec.release, spec.label, image)
         # The entry looks a bit like XML, but isn't well-formed.  So don't try
         # to parse it as such!
         self.assertIn('<target iqn.2004-05.com.ubuntu:maas:', entry)
@@ -63,8 +64,9 @@ class TestTgtEntry(MAASTestCase):
     def test_produces_suitable_output_for_tgt_admin(self):
         spec = make_image_spec()
         image = self.make_file()
+        osystem = factory.make_name('osystem')
         entry = boot_resources.tgt_entry(
-            spec.arch, spec.subarch, spec.release, spec.label, image)
+            osystem, spec.arch, spec.subarch, spec.release, spec.label, image)
         config = self.make_file(contents=entry)
         # Pretend to be root, but without requiring the actual privileges and
         # without prompting for a password.  In that state, run tgt-admin.
@@ -276,7 +278,7 @@ class TestMain(MAASTestCase):
         self.assertThat(os.path.join(current, 'maas.meta'), FileExists())
         self.assertThat(os.path.join(current, 'maas.tgt'), FileExists())
         self.assertThat(
-            os.path.join(current, arch, subarch, release, label),
+            os.path.join(current, 'ubuntu', arch, subarch, release, label),
             DirExists())
 
         # Verify the contents of the "meta" file.

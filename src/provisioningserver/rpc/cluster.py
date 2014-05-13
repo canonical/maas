@@ -33,7 +33,8 @@ class ListBootImages(amp.Command):
     arguments = []
     response = [
         (b"images", amp.AmpList(
-            [(b"architecture", amp.Unicode()),
+            [(b"osystem", amp.Unicode()),
+             (b"architecture", amp.Unicode()),
              (b"subarchitecture", amp.Unicode()),
              (b"release", amp.Unicode()),
              (b"label", amp.Unicode()),

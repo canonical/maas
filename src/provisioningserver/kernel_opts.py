@@ -30,9 +30,10 @@ class EphemeralImagesDirectoryNotFound(Exception):
 
 KernelParametersBase = namedtuple(
     "KernelParametersBase", (
+        "osystem",  # Operating system, e.g. "ubuntu"
         "arch",  # Machine architecture, e.g. "i386"
         "subarch",  # Machine subarchitecture, e.g. "generic"
-        "release",  # Ubuntu release, e.g. "precise"
+        "release",  # OS release, e.g. "precise"
         "label",  # Image label, e.g. "release"
         "purpose",  # Boot purpose, e.g. "commissioning"
         "hostname",  # Machine hostname, e.g. "coleman"
@@ -90,9 +91,15 @@ def get_last_directory(root):
 ISCSI_TARGET_NAME_PREFIX = "iqn.2004-05.com.ubuntu:maas"
 
 
-def get_ephemeral_name(arch, subarch, release, label):
+def get_ephemeral_name(osystem, arch, subarch, release, label):
     """Return the name of the most recent ephemeral image."""
-    return "ephemeral-%s-%s-%s-%s" % (arch, subarch, release, label)
+    return "ephemeral-%s-%s-%s-%s-%s" % (
+        osystem,
+        arch,
+        subarch,
+        release,
+        label
+        )
 
 
 def compose_hostname_opts(params):
@@ -119,7 +126,8 @@ def compose_purpose_opts(params):
         # These are kernel parameters read by the ephemeral environment.
         tname = prefix_target_name(
             get_ephemeral_name(
-                params.arch, params.subarch, params.release, params.label))
+                params.osystem, params.arch, params.subarch,
+                params.release, params.label))
         kernel_params = [
             # Read by the open-iscsi initramfs code.
             "iscsi_target_name=%s" % tname,

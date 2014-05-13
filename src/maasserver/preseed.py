@@ -93,6 +93,7 @@ def get_curtin_userdata(node):
 
 def get_curtin_installer_url(node):
     """Return the URL where curtin on the node can download its installer."""
+    osystem = 'ubuntu'
     series = node.get_distro_series()
     cluster_host = pick_cluster_controller_address(node)
     # XXX rvb(?): The path shouldn't be hardcoded like this, but rather synced
@@ -100,18 +101,20 @@ def get_curtin_installer_url(node):
     arch, subarch = node.architecture.split('/')
     purpose = 'xinstall'
     image = BootImage.objects.get_latest_image(
-        node.nodegroup, arch, subarch, series, purpose)
+        node.nodegroup, osystem, arch, subarch, series, purpose)
     if image is None:
         raise MAASAPIException(
             "Error generating the URL of curtin's root-tgz file.  "
             "No image could be found for the given selection: "
-            "arch=%s, subarch=%s, series=%s, purpose=%s." % (
+            "os=%s, arch=%s, subarch=%s, series=%s, purpose=%s." % (
+                osystem,
                 arch,
                 subarch,
                 series,
                 purpose
             ))
     dyn_uri = '/'.join([
+        osystem,
         arch,
         subarch,
         series,

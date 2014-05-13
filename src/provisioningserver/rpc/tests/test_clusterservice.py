@@ -168,6 +168,7 @@ class TestClusterProtocol_ListBootImages(MAASTestCase):
         # serialised correctly.
 
         # Example boot image definitions.
+        osystems = "ubuntu", "centos"
         archs = "i386", "amd64"
         subarchs = "generic", "special"
         releases = "precise", "trusty"
@@ -176,7 +177,7 @@ class TestClusterProtocol_ListBootImages(MAASTestCase):
 
         # Create a TFTP file tree with a variety of subdirectories.
         tftpdir = self.make_dir()
-        for options in product(archs, subarchs, releases, labels):
+        for options in product(osystems, archs, subarchs, releases, labels):
             os.makedirs(os.path.join(tftpdir, *options))
 
         # Ensure that list_boot_images() uses the above TFTP file tree.
@@ -184,14 +185,15 @@ class TestClusterProtocol_ListBootImages(MAASTestCase):
 
         expected_images = [
             {
+                "osystem": osystem,
                 "architecture": arch,
                 "subarchitecture": subarch,
                 "release": release,
                 "label": label,
                 "purpose": purpose,
             }
-            for arch, subarch, release, label, purpose in product(
-                archs, subarchs, releases, labels, purposes)
+            for osystem, arch, subarch, release, label, purpose in product(
+                osystems, archs, subarchs, releases, labels, purposes)
             ]
 
         response = yield call_responder(Cluster(), cluster.ListBootImages, {})
