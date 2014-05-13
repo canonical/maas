@@ -163,7 +163,7 @@ class TestPXEBootMethodRenderConfig(MAASTestCase):
         self.assertThat(output, StartsWith("DEFAULT "))
         # The PXE parameters are all set according to the options.
         image_dir = compose_image_path(
-            osystem='ubuntu', arch=params.arch, subarch=params.subarch,
+            osystem=params.osystem, arch=params.arch, subarch=params.subarch,
             release=params.release, label=params.label)
         self.assertThat(
             output, MatchesAll(
@@ -243,9 +243,11 @@ class TestPXEBootMethodRenderConfigScenarios(MAASTestCase):
         method = PXEBootMethod()
         get_ephemeral_name = self.patch(kernel_opts, "get_ephemeral_name")
         get_ephemeral_name.return_value = factory.make_name("ephemeral")
+        osystem = factory.make_name('osystem')
         options = {
             "kernel_params": make_kernel_parameters(
-                testcase=self, subarch="generic", purpose=self.purpose),
+                testcase=self, osystem=osystem, subarch="generic",
+                purpose=self.purpose),
         }
         output = method.render_config(**options)
         config = parse_pxe_config(output)
@@ -269,7 +271,7 @@ class TestPXEBootMethodRenderConfigScenarios(MAASTestCase):
             self.assertThat(
                 section, ContainsAll(("KERNEL", "INITRD", "APPEND")))
             contains_arch_path = StartsWith(
-                "ubuntu/%s/" % section_label)
+                "%s/%s/" % (osystem, section_label))
             self.assertThat(section["KERNEL"], contains_arch_path)
             self.assertThat(section["INITRD"], contains_arch_path)
             self.assertIn("APPEND", section)

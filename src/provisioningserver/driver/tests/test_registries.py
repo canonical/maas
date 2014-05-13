@@ -20,6 +20,7 @@ from provisioningserver.driver import (
     Architecture,
     ArchitectureRegistry,
     BootResourceRegistry,
+    OperatingSystemRegistry,
     PowerTypeRegistry,
     )
 from provisioningserver.utils.testing import RegistryFixture
@@ -67,6 +68,13 @@ class TestRegistries(MAASTestCase):
         ArchitectureRegistry.register_item("arch2", arch2)
         self.assertEqual(
             None, ArchitectureRegistry.get_by_pxealias("stinkywinky"))
+
+    def test_operating_system_registry(self):
+        self.assertItemsEqual([], OperatingSystemRegistry)
+        OperatingSystemRegistry.register_item("resource", sentinel.resource)
+        self.assertIn(
+            sentinel.resource,
+            (item for name, item in OperatingSystemRegistry))
 
     def test_power_type_registry(self):
         self.assertItemsEqual([], PowerTypeRegistry)

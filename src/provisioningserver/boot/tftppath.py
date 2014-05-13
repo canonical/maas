@@ -25,6 +25,7 @@ from itertools import chain
 from logging import getLogger
 import os.path
 
+from provisioningserver.driver import OperatingSystemRegistry
 
 logger = getLogger(__name__)
 
@@ -114,16 +115,16 @@ def drill_down(directory, paths):
 def extract_image_params(path):
     """Represent a list of TFTP path elements as a list of boot-image dicts.
 
-    The path must consist of a full [architecture, subarchitecture, release]
-    that identify a kind of boot that we may need an image for.
+    The path must consist of a full [osystem, architecture, subarchitecture,
+    release] that identify a kind of boot that we may need an image for.
     """
     osystem, arch, subarch, release, label = path
-    # XXX: rvb 2014-03-24: The images import script currently imports all the
-    # images for the configured selections (where a selection is an
-    # arch/subarch/series/label combination).  When the import script grows the
-    # ability to import the images for a particular purpose, we need to change
-    # this code to report what is actually present.
-    purposes = ['commissioning', 'install', 'xinstall']
+    osystem_obj = OperatingSystemRegistry.get_item(osystem, default=None)
+    if osystem_obj is None:
+        return []
+
+    purposes = osystem_obj.get_boot_image_purposes(
+        arch, subarch, release, label)
     return [
         dict(
             osystem=osystem, architecture=arch, subarchitecture=subarch,

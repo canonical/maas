@@ -60,6 +60,10 @@ from metadataserver.models import (
     )
 from netaddr import IPAddress
 
+# XXX 2014-05-13 blake-rouse bug=1319143
+# Need to not import directly, use RPC to info from cluster.
+from provisioningserver.driver import OperatingSystemRegistry
+
 # We have a limited number of public keys:
 # src/maasserver/tests/data/test_rsa{0, 1, 2, 3, 4}.pub
 MAX_PUBLIC_KEYS = 5
@@ -139,6 +143,21 @@ class Factory(maastesting.factory.Factory):
         return random.choice(
             [choice for choice in list(get_power_types().keys())
                 if choice not in but_not])
+
+    def getRandomOS(self):
+        """Pick a random operating system from the registry."""
+        osystems = [obj for _, obj in OperatingSystemRegistry]
+        return random.choice(osystems)
+
+    def getRandomRelease(self, osystem):
+        """Pick a random release from operating system."""
+        releases = osystem.get_supported_releases()
+        return random.choice(releases)
+
+    def getRandomCommissioningRelease(self, osystem):
+        """Pick a random commissioning release from operating system."""
+        releases = osystem.get_supported_commissioning_releases()
+        return random.choice(releases)
 
     def _save_node_unchecked(self, node):
         """Save a :class:`Node`, but circumvent status transition checks."""

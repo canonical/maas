@@ -34,6 +34,7 @@ from mock import (
     sentinel,
     )
 from provisioningserver.boot import tftppath
+from provisioningserver.boot.tests.test_tftppath import make_osystem
 from provisioningserver.power_schema import JSON_POWER_TYPE_PARAMETERS
 from provisioningserver.rpc import (
     cluster,
@@ -179,6 +180,7 @@ class TestClusterProtocol_ListBootImages(MAASTestCase):
         tftpdir = self.make_dir()
         for options in product(osystems, archs, subarchs, releases, labels):
             os.makedirs(os.path.join(tftpdir, *options))
+            make_osystem(self, options[0], purposes)
 
         # Ensure that list_boot_images() uses the above TFTP file tree.
         self.useFixture(set_tftp_root(tftpdir))

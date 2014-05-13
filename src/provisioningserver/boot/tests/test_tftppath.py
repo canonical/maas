@@ -30,6 +30,10 @@ from provisioningserver.boot.tftppath import (
     list_subdirs,
     locate_tftp_path,
     )
+from provisioningserver.driver import (
+    OperatingSystem,
+    OperatingSystemRegistry,
+    )
 from provisioningserver.testing.boot_images import (
     make_boot_image_storage_params,
     )
@@ -41,6 +45,40 @@ from testtools.matchers import (
 from testtools.testcase import ExpectedException
 
 
+class FakeOS(OperatingSystem):
+
+    name = ""
+    title = ""
+
+    def __init__(self, name, purpose, releases=None):
+        self.name = name
+        self.title = name
+        self.purpose = purpose
+        if releases is None:
+            self.fake_list = [
+                factory.getRandomString()
+                for _ in range(3)
+                ]
+        else:
+            self.fake_list = releases
+
+    def get_boot_image_purposes(self, *args):
+        return self.purpose
+
+    def get_supported_releases(self):
+        return self.fake_list
+
+    def get_default_release(self):
+        return self.fake_list[0]
+
+    def format_release_choices(self, releases):
+        return [
+            (release, release)
+            for release in releases
+            if release in self.fake_list
+            ]
+
+
 def make_image(params, purpose):
     """Describe an image as a dict similar to what `list_boot_images` returns.
 
@@ -49,6 +87,29 @@ def make_image(params, purpose):
     image = params.copy()
     image['purpose'] = purpose
     return image
+
+
+def make_osystem(testcase, osystem, purpose):
+    """Makes the operating system class and registers it."""
+    if osystem not in OperatingSystemRegistry:
+        fake = FakeOS(osystem, purpose)
+        OperatingSystemRegistry.register_item(fake.name, fake)
+        testcase.addCleanup(
+            OperatingSystemRegistry.unregister_item, osystem)
+        return fake
+
+    else:
+
+        obj = OperatingSystemRegistry[osystem]
+        old_func = obj.get_boot_image_purposes
+        testcase.patch(obj, 'get_boot_image_purposes').return_value = purpose
+
+        def reset_func(obj, old_func):
+            obj.get_boot_image_purposes = old_func
+
+        testcase.addCleanup(reset_func, obj, old_func)
+
+        return obj
 
 
 class TestTFTPPath(MAASTestCase):
@@ -123,21 +184,30 @@ class TestTFTPPath(MAASTestCase):
         params = make_boot_image_storage_params()
         self.make_image_dir(params, self.tftproot)
         purposes = ['install', 'commissioning', 'xinstall']
+        make_osystem(self, params['osystem'], purposes)
         self.assertItemsEqual(
             [make_image(params, purpose) for purpose in purposes],
             list_boot_images(self.tftproot))
 
     def test_list_boot_images_enumerates_boot_images(self):
+        purposes = ['install', 'commissioning', 'xinstall']
         params = [make_boot_image_storage_params() for counter in range(3)]
         for param in params:
             self.make_image_dir(param, self.tftproot)
+            make_osystem(self, param['osystem'], purposes)
         self.assertItemsEqual(
             [
                 make_image(param, purpose)
                 for param in params
-                for purpose in ['install', 'commissioning', 'xinstall']
+                for purpose in purposes
             ],
             list_boot_images(self.tftproot))
+
+    def test_list_boot_images_empty_on_missing_osystems(self):
+        params = [make_boot_image_storage_params() for counter in range(3)]
+        for param in params:
+            self.make_image_dir(param, self.tftproot)
+        self.assertItemsEqual([], list_boot_images(self.tftproot))
 
     def test_is_visible_subdir_ignores_regular_files(self):
         plain_file = self.make_file()

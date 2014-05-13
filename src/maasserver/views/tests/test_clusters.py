@@ -41,6 +41,7 @@ from mock import (
     ANY,
     call,
     )
+from provisioningserver.boot.tests.test_tftppath import make_osystem
 from testtools.matchers import (
     AllMatch,
     Contains,
@@ -309,7 +310,12 @@ class ClusterEditTest(MAASServerTestCase):
     def test_contains_link_to_boot_image_list(self):
         self.client_log_in(as_admin=True)
         nodegroup = factory.make_node_group()
-        [factory.make_boot_image(nodegroup=nodegroup) for _ in range(3)]
+        boot_images = [
+            factory.make_boot_image(nodegroup=nodegroup)
+            for _ in range(3)
+            ]
+        for bi in boot_images:
+            make_osystem(self, bi.osystem, ['install'])
         response = self.client.get(
             reverse('cluster-edit', args=[nodegroup.uuid]))
         self.assertEqual(
@@ -320,7 +326,9 @@ class ClusterEditTest(MAASServerTestCase):
 
     def test_displays_warning_if_boot_image_list_is_empty(self):
         # Create boot images in another nodegroup.
-        [factory.make_boot_image() for _ in range(3)]
+        boot_images = [factory.make_boot_image() for _ in range(3)]
+        for bi in boot_images:
+            make_osystem(self, bi.osystem, ['install'])
         self.client_log_in(as_admin=True)
         nodegroup = factory.make_node_group()
         response = self.client.get(

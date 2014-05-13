@@ -16,15 +16,28 @@ __all__ = [
     "Architecture",
     "ArchitectureRegistry",
     "BootResource",
+    "OperatingSystem",
+    "OperatingSystemRegistry",
     ]
 
 from abc import (
     ABCMeta,
     abstractmethod,
+    abstractproperty,
     )
 
 from provisioningserver.power_schema import JSON_POWER_TYPE_PARAMETERS
 from provisioningserver.utils.registry import Registry
+
+
+class BOOT_IMAGE_PURPOSE:
+    """The vocabulary of a `BootImage`'s purpose."""
+    #: Usable for commissioning
+    COMMISSIONING = 'commissioning'
+    #: Usable for install
+    INSTALL = 'install'
+    #: Usable for fast-path install
+    XINSTALL = 'xinstall'
 
 
 class Architecture:
@@ -98,6 +111,54 @@ class BootResource:
         """
 
 
+class OperatingSystem:
+    """Skeleton for an operating system."""
+
+    __metaclass__ = ABCMeta
+
+    @abstractproperty
+    def name(self):
+        """Name of the operating system."""
+
+    @abstractproperty
+    def title(self):
+        """Title of the operating system."""
+
+    @abstractmethod
+    def get_supported_releases(self):
+        """Gets list of supported releases for Ubuntu.
+
+        :returns: list of supported releases
+        """
+
+    @abstractmethod
+    def get_default_release(self):
+        """Gets the default release to use when a release is not
+        explicit.
+
+        :returns: default release to use
+        """
+
+    @abstractmethod
+    def format_release_choices(self, releases):
+        """Formats the release choices that are presented to the user.
+
+        :param releases: list of installed boot image releases
+        :returns: Return Django "choices" list
+        """
+
+    @abstractmethod
+    def get_boot_image_purposes(self, arch, subarch, release, label):
+        """Returns the supported purposes of a boot image.
+
+        :param arch: Architecture of boot image.
+        :param subarch: Sub-architecture of boot image.
+        :param release: Release of boot image.
+        :param label: Label of boot image.
+        :returns: list of supported purposes
+        """
+
+
 class HardwareDiscoverContext:
 
     __metaclass__ = ABCMeta
@@ -126,6 +187,10 @@ class BootResourceRegistry(Registry):
     """Registry for boot resource classes."""
 
 
+class OperatingSystemRegistry(Registry):
+    """Registry for operating system classes."""
+
+
 class PowerTypeRegistry(Registry):
     """Registry for power type classes."""
 
@@ -147,3 +212,11 @@ for arch in builtin_architectures:
 builtin_power_types = JSON_POWER_TYPE_PARAMETERS
 for power_type in builtin_power_types:
     PowerTypeRegistry.register_item(power_type['name'], power_type)
+
+
+from provisioningserver.driver.os_ubuntu import UbuntuOS
+builtin_osystems = [
+    UbuntuOS(),
+    ]
+for osystem in builtin_osystems:
+    OperatingSystemRegistry.register_item(osystem.name, osystem)

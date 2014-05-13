@@ -22,16 +22,22 @@ from lxml.html import fromstring
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.views.clusters import BootImagesListView
+from provisioningserver.boot.tests.test_tftppath import make_osystem
 from testtools.matchers import ContainsAll
 
 
 class BootImageListTest(MAASServerTestCase):
 
+    def setUp(self):
+        super(BootImageListTest, self).setUp()
+
     def test_contains_boot_image_list(self):
         self.client_log_in(as_admin=True)
         nodegroup = factory.make_node_group()
-        images = [
+        boot_images = [
             factory.make_boot_image(nodegroup=nodegroup) for _ in range(3)]
+        for bi in boot_images:
+            make_osystem(self, bi.osystem, ['install'])
         response = self.client.get(
             reverse('cluster-bootimages-list', args=[nodegroup.uuid]))
         self.assertEqual(
@@ -44,8 +50,9 @@ class BootImageListTest(MAASServerTestCase):
                 image.release,
                 image.subarchitecture,
                 image.architecture,
+                image.osystem,
                 '%s' % image.updated.year,
-            ] for image in images]
+            ] for image in boot_images]
         self.assertThat(
             response.content, ContainsAll(itertools.chain(*items_in_page)))
 
@@ -54,7 +61,12 @@ class BootImageListTest(MAASServerTestCase):
         self.client_log_in(as_admin=True)
         nodegroup = factory.make_node_group()
         # Create 4 images.
-        [factory.make_boot_image(nodegroup=nodegroup) for _ in range(4)]
+        boot_images = [
+            factory.make_boot_image(nodegroup=nodegroup)
+            for _ in range(4)
+            ]
+        for bi in boot_images:
+            make_osystem(self, bi.osystem, ['install'])
         response = self.client.get(
             reverse('cluster-bootimages-list', args=[nodegroup.uuid]))
         self.assertEqual(httplib.OK, response.status_code)
@@ -65,7 +77,9 @@ class BootImageListTest(MAASServerTestCase):
 
     def test_displays_warning_if_boot_image_list_is_empty(self):
         # Create boot images in another nodegroup.
-        [factory.make_boot_image() for _ in range(3)]
+        boot_images = [factory.make_boot_image() for _ in range(3)]
+        for bi in boot_images:
+            make_osystem(self, bi.osystem, ['install'])
         self.client_log_in(as_admin=True)
         nodegroup = factory.make_node_group()
         response = self.client.get(
