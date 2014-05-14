@@ -450,6 +450,10 @@ class Node(CleanSave, TimestampedModel):
     :ivar status: This `Node`'s status. See the vocabulary
         :class:`NODE_STATUS`.
     :ivar owner: This `Node`'s owner if it's in use, None otherwise.
+    :ivar osystem: This `Node`'s booting operating system, if it's blank then
+        the default_osystem will be used.
+    :ivar distro_series: This `Node`'s booting distro series, if
+        it's blank then the default_distro_series will be used.
     :ivar power_type: The power type that determines how this
         node will be powered on. Its value must match a power driver template
         name.
@@ -477,9 +481,11 @@ class Node(CleanSave, TimestampedModel):
     owner = ForeignKey(
         User, default=None, blank=True, null=True, editable=False)
 
+    osystem = CharField(
+        max_length=20, blank=True, default='')
+
     distro_series = CharField(
-        max_length=20, choices=DISTRO_SERIES_CHOICES, null=True,
-        blank=True, default='')
+        max_length=20, choices=DISTRO_SERIES_CHOICES, blank=True, default='')
 
     architecture = CharField(max_length=31, blank=False)
 

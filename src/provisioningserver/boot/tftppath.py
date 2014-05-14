@@ -27,6 +27,7 @@ import os.path
 
 from provisioningserver.driver import OperatingSystemRegistry
 
+
 logger = getLogger(__name__)
 
 

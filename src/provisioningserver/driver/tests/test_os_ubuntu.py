@@ -15,6 +15,7 @@ __metaclass__ = type
 __all__ = []
 
 from itertools import product
+
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver.driver import BOOT_IMAGE_PURPOSE

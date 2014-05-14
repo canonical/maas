@@ -59,7 +59,6 @@ from metadataserver.models import (
     NodeCommissionResult,
     )
 from netaddr import IPAddress
-
 # XXX 2014-05-13 blake-rouse bug=1319143
 # Need to not import directly, use RPC to info from cluster.
 from provisioningserver.driver import OperatingSystemRegistry

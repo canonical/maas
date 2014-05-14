@@ -8,14 +8,22 @@ from south.v2 import SchemaMigration
 class Migration(SchemaMigration):
 
     def forwards(self, orm):
+        # Adding field 'Node.osystem'
+        db.add_column(u'maasserver_node', 'osystem',
+                      self.gf('django.db.models.fields.CharField')(default=u'', max_length=20, blank=True),
+                      keep_default=False)
 
-        # Changing field 'BootSourceSelection.release'
-        db.alter_column(u'maasserver_bootsourceselection', 'release', self.gf('django.db.models.fields.CharField')(max_length=20))
+
+        # Changing field 'Node.distro_series'
+        db.alter_column(u'maasserver_node', 'distro_series', self.gf('django.db.models.fields.CharField')(max_length=20))
 
     def backwards(self, orm):
+        # Deleting field 'Node.osystem'
+        db.delete_column(u'maasserver_node', 'osystem')
 
-        # Changing field 'BootSourceSelection.release'
-        db.alter_column(u'maasserver_bootsourceselection', 'release', self.gf('django.db.models.fields.CharField')(max_length=20, null=True))
+
+        # Changing field 'Node.distro_series'
+        db.alter_column(u'maasserver_node', 'distro_series', self.gf('django.db.models.fields.CharField')(max_length=20, null=True))
 
     models = {
         u'auth.group': {
@@ -125,7 +133,7 @@ class Migration(SchemaMigration):
             'content': ('metadataserver.fields.BinaryField', [], {'blank': 'True'}),
             'filename': ('django.db.models.fields.CharField', [], {'max_length': '255'}),
             u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
-            'key': ('django.db.models.fields.CharField', [], {'default': "u'12dcb760-db42-11e3-8a8d-000c29177973'", 'unique': 'True', 'max_length': '36'}),
+            'key': ('django.db.models.fields.CharField', [], {'default': "u'ab43bb24-db7a-11e3-81cc-bcee7b78dc5b'", 'unique': 'True', 'max_length': '36'}),
             'owner': ('django.db.models.fields.related.ForeignKey', [], {'default': 'None', 'to': u"orm['auth.User']", 'null': 'True', 'blank': 'True'})
         },
         u'maasserver.macaddress': {
@@ -152,20 +160,21 @@ class Migration(SchemaMigration):
             'architecture': ('django.db.models.fields.CharField', [], {'max_length': '31'}),
             'cpu_count': ('django.db.models.fields.IntegerField', [], {'default': '0'}),
             'created': ('django.db.models.fields.DateTimeField', [], {}),
-            'distro_series': ('django.db.models.fields.CharField', [], {'default': "u''", 'max_length': '20', 'null': 'True', 'blank': 'True'}),
+            'distro_series': ('django.db.models.fields.CharField', [], {'default': "u''", 'max_length': '20', 'blank': 'True'}),
             'error': ('django.db.models.fields.CharField', [], {'default': "u''", 'max_length': '255', 'blank': 'True'}),
             'hostname': ('django.db.models.fields.CharField', [], {'default': "u''", 'unique': 'True', 'max_length': '255', 'blank': 'True'}),
             u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
             'memory': ('django.db.models.fields.IntegerField', [], {'default': '0'}),
             'netboot': ('django.db.models.fields.BooleanField', [], {'default': 'True'}),
             'nodegroup': ('django.db.models.fields.related.ForeignKey', [], {'to': u"orm['maasserver.NodeGroup']", 'null': 'True'}),
+            'osystem': ('django.db.models.fields.CharField', [], {'default': "u''", 'max_length': '20', 'blank': 'True'}),
             'owner': ('django.db.models.fields.related.ForeignKey', [], {'default': 'None', 'to': u"orm['auth.User']", 'null': 'True', 'blank': 'True'}),
             'power_parameters': ('maasserver.fields.JSONObjectField', [], {'default': "u''", 'blank': 'True'}),
             'power_type': ('django.db.models.fields.CharField', [], {'default': "u''", 'max_length': '10', 'blank': 'True'}),
             'routers': ('djorm_pgarray.fields.ArrayField', [], {'default': 'None', 'dbtype': "u'macaddr'", 'null': 'True', 'blank': 'True'}),
             'status': ('django.db.models.fields.IntegerField', [], {'default': '0', 'max_length': '10'}),
             'storage': ('django.db.models.fields.IntegerField', [], {'default': '0'}),
-            'system_id': ('django.db.models.fields.CharField', [], {'default': "u'node-12d62e40-db42-11e3-8a8d-000c29177973'", 'unique': 'True', 'max_length': '41'}),
+            'system_id': ('django.db.models.fields.CharField', [], {'default': "u'node-ab42b030-db7a-11e3-81cc-bcee7b78dc5b'", 'unique': 'True', 'max_length': '41'}),
             'tags': ('django.db.models.fields.related.ManyToManyField', [], {'to': u"orm['maasserver.Tag']", 'symmetrical': 'False'}),
             'token': ('django.db.models.fields.related.ForeignKey', [], {'to': u"orm['piston.Token']", 'null': 'True'}),
             'updated': ('django.db.models.fields.DateTimeField', [], {}),
@@ -251,7 +260,7 @@ class Migration(SchemaMigration):
             'is_approved': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
             'key': ('django.db.models.fields.CharField', [], {'max_length': '18'}),
             'secret': ('django.db.models.fields.CharField', [], {'max_length': '32'}),
-            'timestamp': ('django.db.models.fields.IntegerField', [], {'default': '1400056257L'}),
+            'timestamp': ('django.db.models.fields.IntegerField', [], {'default': '1400080565L'}),
             'token_type': ('django.db.models.fields.IntegerField', [], {}),
             'user': ('django.db.models.fields.related.ForeignKey', [], {'blank': 'True', 'related_name': "'tokens'", 'null': 'True', 'to': u"orm['auth.User']"}),
             'verifier': ('django.db.models.fields.CharField', [], {'max_length': '10'})
