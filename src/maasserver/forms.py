@@ -425,7 +425,7 @@ class AdminNodeForm(NodeForm):
                     [CLUSTER_NOT_AVAILABLE + e.args[0]])
         # If power_type is not set and power_parameters_skip_check is not
         # on, reset power_parameters (set it to the empty string).
-        no_power_type = cleaned_data['power_type'] == ''
+        no_power_type = cleaned_data.get('power_type', '') == ''
         if no_power_type and not skip_check:
             cleaned_data['power_parameters'] = ''
         return cleaned_data

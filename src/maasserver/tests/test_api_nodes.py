@@ -19,12 +19,14 @@ import json
 import random
 
 from django.core.urlresolvers import reverse
+from maasserver import forms
 from maasserver.enum import (
     NODE_STATUS,
     NODE_STATUS_CHOICES_DICT,
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
     )
+from maasserver.exceptions import ClusterUnavailable
 from maasserver.fields import MAC
 from maasserver.models import Node
 from maasserver.models.user import (
@@ -174,6 +176,32 @@ class TestNodesAPI(APITestCase):
         self.assertEqual(
             NODE_STATUS.DECLARED,
             Node.objects.get(system_id=system_id).status)
+
+    def test_POST_new_when_no_RPC_to_cluster_defaults_empty_power(self):
+        # Test for bug 1305061, if there is no cluster RPC connection
+        # then make sure that power_type is defaulted to the empty
+        # string rather than being entirely absent, which results in a
+        # crash.
+        cluster_error = factory.make_name("cluster error")
+        self.patch(forms, 'get_power_types').side_effect = (
+            ClusterUnavailable(cluster_error))
+        self.become_admin()
+        # The patching behind the scenes to avoid *real* RPC is
+        # complex and the available power types is actually a
+        # valid set, so use an invalid type to trigger the bug here.
+        power_type = factory.make_name("power_type")
+        response = self.client.post(
+            reverse('nodes_handler'),
+            {
+                'op': 'new',
+                'autodetect_nodegroup': '1',
+                'architecture': make_usable_architecture(self),
+                'mac_addresses': ['aa:bb:cc:dd:ee:ff'],
+                'power_type': power_type,
+            })
+        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+        validation_errors = json.loads(response.content)['power_type']
+        self.assertIn(cluster_error, validation_errors[0])
 
     def test_GET_list_lists_nodes(self):
         # The api allows for fetching the list of Nodes.
