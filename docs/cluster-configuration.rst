@@ -1,3 +1,7 @@
+.. -*- mode: rst -*-
+
+.. _cluster-configuration:
+
 Cluster Configuration
 =====================
 
