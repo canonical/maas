@@ -42,7 +42,7 @@ issue_virsh_command() {
 # Get the given system's power state: 'on' or 'off'.
 get_power_state() {
     virsh_state=$(issue_virsh_command domstate)
-    formulate_power_state ${virsh_state}
+    formulate_power_state "${virsh_state}"
 }
 
 
