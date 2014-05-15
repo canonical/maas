@@ -1,0 +1,8 @@
+set default="0"
+set timeout=0
+
+menuentry 'Local' {
+    echo 'Booting local disk...'
+    search --set=root --file /boot/grub/grub.cfg
+    configfile /boot/grub/grub.cfg
+}

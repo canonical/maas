@@ -204,6 +204,7 @@ builtin_architectures = [
     Architecture(
         name="armhf/generic", description="armhf/generic",
         pxealiases=["arm"], kernel_options=["console=ttyAMA0"]),
+    Architecture(name="ppc64el/generic", description="ppc64el"),
 ]
 for arch in builtin_architectures:
     ArchitectureRegistry.register_item(arch.name, arch)

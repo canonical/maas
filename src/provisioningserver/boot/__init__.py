@@ -202,11 +202,13 @@ class BootMethodRegistry(Registry):
 # Import the supported boot methods after defining BootMethod.
 from provisioningserver.boot.pxe import PXEBootMethod
 from provisioningserver.boot.uefi import UEFIBootMethod
+from provisioningserver.boot.ppc64el import PPC64ELBootMethod
 
 
 builtin_boot_methods = [
     PXEBootMethod(),
     UEFIBootMethod(),
+    PPC64ELBootMethod(),
 ]
 for method in builtin_boot_methods:
     BootMethodRegistry.register_item(method.name, method)

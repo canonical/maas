@@ -107,7 +107,8 @@ class TestRenderUEFIConfig(MAASTestCase):
         # used.
         method = UEFIBootMethod()
         options = {
-            "kernel_params": make_kernel_parameters(purpose="local"),
+            "kernel_params": make_kernel_parameters(
+                purpose="local", arch="amd64"),
             }
         output = method.render_config(**options)
         self.assertIn("configfile /efi/ubuntu/grub.cfg", output)
