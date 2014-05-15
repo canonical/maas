@@ -33,6 +33,7 @@ def make_boot_image_params():
         release=factory.make_name('release'),
         label=factory.make_name('label'),
         purpose=factory.make_name('purpose'),
+        supported_subarches=factory.make_name("sup_subarches"),
         )
 
 

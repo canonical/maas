@@ -43,19 +43,28 @@ class BootImageManager(Manager):
             purpose=purpose, label=label)
 
     def register_image(self, nodegroup, osystem, architecture, subarchitecture,
-                       release, purpose, label):
+                       release, purpose, label, supported_subarches):
         """Register an image if it wasn't already registered."""
-        self.get_or_create(
+        image, created = self.get_or_create(
             nodegroup=nodegroup, osystem=osystem, architecture=architecture,
             subarchitecture=subarchitecture, release=release,
-            purpose=purpose, label=label)
+            purpose=purpose, label=label,
+            defaults={'supported_subarches': supported_subarches})
+        if not created:
+            if image.supported_subarches != supported_subarches:
+                # Update the non-key field data if it changed.
+                image.supported_subarches = supported_subarches
+                image.save()
+        return image
 
     def have_image(self, nodegroup, osystem, architecture, subarchitecture,
-                   release, purpose, label=None):
+                   release, purpose, label=None, supported_subarches=None):
         """Is an image for the given kind of boot available?"""
         if label is None:
             label = "release"
         try:
+            # supported_subarches is currently not a key field so is
+            # ignored.
             self.get_by_natural_key(
                 nodegroup=nodegroup, osystem=osystem,
                 architecture=architecture, subarchitecture=subarchitecture,

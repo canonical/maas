@@ -469,6 +469,8 @@ class Factory(maastesting.factory.Factory):
             supported_subarches = [
                 self.make_name("supportedsubarch1"),
                 self.make_name("supportedsubarch2")]
+        if isinstance(supported_subarches, list):
+            supported_subarches = ",".join(supported_subarches)
         return BootImage.objects.create(
             nodegroup=nodegroup,
             osystem=osystem,
@@ -477,7 +479,7 @@ class Factory(maastesting.factory.Factory):
             release=release,
             purpose=purpose,
             label=label,
-            supported_subarches=",".join(supported_subarches),
+            supported_subarches=supported_subarches,
             )
 
     def make_commissioning_script(self, name=None, content=None):

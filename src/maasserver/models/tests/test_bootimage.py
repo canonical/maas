@@ -18,6 +18,7 @@ from maasserver.models import (
     BootImage,
     Config,
     )
+from maasserver.testing import reload_object
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from provisioningserver.testing.boot_images import make_boot_image_params
@@ -48,6 +49,16 @@ class TestBootImageManager(MAASServerTestCase):
         factory.make_boot_image(nodegroup=nodegroup, **params)
         BootImage.objects.register_image(nodegroup, **params)
         self.assertTrue(BootImage.objects.have_image(nodegroup, **params))
+
+    def test_register_image_updates_subarches_for_existing_image(self):
+        nodegroup = factory.make_node_group()
+        params = make_boot_image_params()
+        image = factory.make_boot_image(nodegroup=nodegroup, **params)
+        params['supported_subarches'] = factory.make_name("subarch")
+        BootImage.objects.register_image(nodegroup, **params)
+        image = reload_object(image)
+        self.assertEqual(
+            params['supported_subarches'], image.supported_subarches)
 
     def test_default_arch_image_returns_None_if_no_images_match(self):
         osystem = Config.objects.get_config('commissioning_osystem')

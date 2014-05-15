@@ -140,6 +140,7 @@ class TestBootImagesReportImagesAPI(APITestCase):
                 image.release,
                 image.label,
                 image.purpose,
+                image.supported_subarches,
             ),
             summarise_boot_image_object(image))
 
@@ -153,6 +154,7 @@ class TestBootImagesReportImagesAPI(APITestCase):
                 image['release'],
                 image['label'],
                 image['purpose'],
+                image['supported_subarches'],
             ),
             summarise_boot_image_dict(image))
 
@@ -160,7 +162,9 @@ class TestBootImagesReportImagesAPI(APITestCase):
         image = make_boot_image_params()
         del image['subarchitecture']
         del image['label']
-        _, _, subarchitecture, _, label, _ = summarise_boot_image_dict(image)
+        del image['supported_subarches']
+        (_, _, subarchitecture, _, label, _,
+            supported_subarches) = summarise_boot_image_dict(image)
         self.assertEqual(('generic', 'release'), (subarchitecture, label))
 
     def test_summarise_boot_image_functions_are_compatible(self):
@@ -170,7 +174,8 @@ class TestBootImagesReportImagesAPI(APITestCase):
             architecture=image_dict['architecture'],
             subarchitecture=image_dict['subarchitecture'],
             release=image_dict['release'], label=image_dict['label'],
-            purpose=image_dict['purpose'])
+            purpose=image_dict['purpose'],
+            supported_subarches=[image_dict['supported_subarches']])
         self.assertEqual(
             summarise_boot_image_dict(image_dict),
             summarise_boot_image_object(image_obj))

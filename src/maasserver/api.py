@@ -2569,6 +2569,7 @@ def summarise_boot_image_object(image_object):
         image_object.release,
         image_object.label,
         image_object.purpose,
+        image_object.supported_subarches,
         )
 
 
@@ -2588,6 +2589,7 @@ def summarise_boot_image_dict(image_dict):
         image_dict['release'],
         image_dict.get('label', 'release'),
         image_dict['purpose'],
+        image_dict.get('supported_subarches', ''),
         )
 
 
@@ -2625,11 +2627,12 @@ def store_boot_images(nodegroup, reported_images, stored_images):
         `summarise_stored_images`.
     """
     new_images = reported_images - stored_images
-    for osystem, arch, subarch, release, label, purpose in new_images:
+    for (osystem, arch, subarch, release, label, purpose,
+            supported_subarches) in new_images:
         BootImage.objects.register_image(
             nodegroup=nodegroup, osystem=osystem, architecture=arch,
             subarchitecture=subarch, release=release, purpose=purpose,
-            label=label)
+            label=label, supported_subarches=supported_subarches)
 
 
 def prune_boot_images(nodegroup, reported_images, stored_images):
@@ -2646,7 +2649,8 @@ def prune_boot_images(nodegroup, reported_images, stored_images):
         `summarise_stored_images`.
     """
     removed_images = stored_images - reported_images
-    for osystem, arch, subarch, release, label, purpose in removed_images:
+    # supported_subarches is not a key field, so ignore it here.
+    for osystem, arch, subarch, release, label, purpose, _ in removed_images:
         db_images = BootImage.objects.filter(
             osystem=osystem, architecture=arch, subarchitecture=subarch,
             release=release, label=label, purpose=purpose)
