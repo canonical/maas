@@ -189,6 +189,33 @@ class TestBootImageManager(MAASServerTestCase):
             BootImage.objects.get_latest_image(
                 nodegroup, osystem, arch, subarch, release, purpose))
 
+    def test_get_latest_image_falls_back_to_supported_subarches(self):
+        # If the required subarch is not the primary subarch,
+        # get_latest_image should fall back to examining the list of
+        # supported_subarches.
+        osystem = factory.make_name('os')
+        arch = factory.make_name('arch')
+        primary_subarch = factory.make_name('primary_subarch')
+        release = factory.make_name('release')
+        nodegroup = factory.make_node_group()
+        purpose = factory.make_name("purpose")
+        supported_subarches = [
+            factory.make_name("supported1"), factory.make_name("supported2")]
+
+        boot_image = factory.make_boot_image(
+            nodegroup=nodegroup, osystem=osystem, architecture=arch,
+            subarchitecture=primary_subarch, release=release, purpose=purpose,
+            label=factory.make_name('label'),
+            supported_subarches=supported_subarches)
+
+        # Now check that get_latest_image() finds an image with a
+        # subarch that is only in supported_subarches.
+        required_subarch = supported_subarches[0]
+        self.assertEqual(
+            boot_image,
+            BootImage.objects.get_latest_image(
+                nodegroup, osystem, arch, required_subarch, release, purpose))
+
     def test_get_latest_image_doesnt_return_images_for_other_purposes(self):
         osystem = factory.make_name('os')
         arch = factory.make_name('arch')

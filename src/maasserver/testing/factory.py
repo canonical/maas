@@ -450,7 +450,7 @@ class Factory(maastesting.factory.Factory):
 
     def make_boot_image(self, osystem=None, architecture=None,
                         subarchitecture=None, release=None, purpose=None,
-                        nodegroup=None, label=None):
+                        nodegroup=None, label=None, supported_subarches=None):
         if osystem is None:
             osystem = self.make_name('os')
         if architecture is None:
@@ -465,6 +465,10 @@ class Factory(maastesting.factory.Factory):
             nodegroup = self.make_node_group()
         if label is None:
             label = self.make_name('label')
+        if supported_subarches is None:
+            supported_subarches = [
+                self.make_name("supportedsubarch1"),
+                self.make_name("supportedsubarch2")]
         return BootImage.objects.create(
             nodegroup=nodegroup,
             osystem=osystem,
@@ -472,7 +476,9 @@ class Factory(maastesting.factory.Factory):
             subarchitecture=subarchitecture,
             release=release,
             purpose=purpose,
-            label=label)
+            label=label,
+            supported_subarches=",".join(supported_subarches),
+            )
 
     def make_commissioning_script(self, name=None, content=None):
         if name is None:

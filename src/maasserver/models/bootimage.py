@@ -112,10 +112,17 @@ class BootImageManager(Manager):
     def get_latest_image(self, nodegroup, osystem, architecture,
                          subarchitecture, release, purpose):
         """Return the latest image for a set of criteria."""
-        return BootImage.objects.filter(
+        image = BootImage.objects.filter(
             nodegroup=nodegroup, osystem=osystem, architecture=architecture,
             subarchitecture=subarchitecture, release=release,
             purpose=purpose).order_by('id').last()
+        if image is not None:
+            return image
+        images = BootImage.objects.filter(
+            nodegroup=nodegroup, osystem=osystem, architecture=architecture,
+            release=release, purpose=purpose,
+            supported_subarches__icontains=subarchitecture)
+        return images.order_by('id').last()
 
     def get_usable_osystems(self, nodegroup):
         """Return the list of usable operating systems for a nodegroup.
@@ -167,6 +174,12 @@ class BootImage(TimestampedModel):
     # different treatment.  (For architectures that don't need these
     # such as i386 and amd64, we use "generic").
     subarchitecture = CharField(max_length=255, blank=False, editable=False)
+
+    # Historic subarchitectures that this image implicitly supports.
+    # For example, trusty's image also supports hwe-s, hwe-r, ... and so on.
+    # This should be a comma separated list.
+    supported_subarches = CharField(
+        max_length=255, blank=True, editable=False)
 
     # OS release (e.g. "precise") that the image boots.
     release = CharField(max_length=255, blank=False, editable=False)
