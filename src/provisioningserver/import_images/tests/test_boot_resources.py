@@ -293,7 +293,8 @@ class TestMain(MAASTestCase):
             [label],
             meta_data[arch][subarch][release].keys())
         self.assertItemsEqual(
-            ['content_id', 'path', 'product_name', 'version_name'],
+            ['content_id', 'path', 'product_name', 'version_name',
+                'subarches'],
             meta_data[arch][subarch][release][label].keys())
 
     def test_warns_if_no_sources_configured(self):
