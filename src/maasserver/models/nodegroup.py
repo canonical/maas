@@ -30,6 +30,8 @@ from maasserver.enum import (
     NODEGROUP_STATUS_CHOICES,
     NODEGROUPINTERFACE_MANAGEMENT,
     )
+from maasserver.models.bootsource import BootSource
+from maasserver.models.bootsourceselection import BootSourceSelection
 from maasserver.models.nodegroupinterface import NodeGroupInterface
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.refresh_worker import refresh_worker
@@ -223,6 +225,26 @@ class NodeGroup(TimestampedModel):
             for itf in self.nodegroupinterface_set.all()
             if itf.management != NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED
             ]
+
+    def ensure_boot_source_definition(self):
+        """Set default boot source if none is currently defined."""
+        source, created = BootSource.objects.get_or_create(
+            cluster=self,
+            defaults={
+                'url': 'http://maas.ubuntu.com/images/ephemeral-v2/releases/',
+                'keyring_filename': (
+                    '/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg'),
+            })
+        if created:
+            # Cluster did not have any sources defined yet.  That means we
+            # just created the default BootSource; now add its default
+            # BootSourceSelections.
+            # Default is to import supported Ubuntu LTS releases, for all
+            # architectures, release versions only.
+            for os_release in ('precise', 'trusty'):
+                BootSourceSelection.objects.create(
+                    boot_source=source, release=os_release,
+                    arches=['*'], subarches=['*'], labels=['release'])
 
     def manages_dns(self):
         """Does this `NodeGroup` manage DNS on any interfaces?

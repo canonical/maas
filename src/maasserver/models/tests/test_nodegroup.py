@@ -22,6 +22,8 @@ from maasserver.enum import (
     NODEGROUPINTERFACE_MANAGEMENT,
     )
 from maasserver.models import (
+    BootSource,
+    BootSourceSelection,
     Config,
     NodeGroup,
     nodegroup as nodegroup_module,
@@ -46,6 +48,7 @@ from testresources import FixtureResource
 from testtools.matchers import (
     EndsWith,
     GreaterThan,
+    HasLength,
     MatchesStructure,
     )
 
@@ -462,3 +465,46 @@ class TestNodeGroup(MAASServerTestCase):
             report_recorder.subtask(),
             recorder.apply_async.call_args[1]['kwargs']['callback'],
         )
+
+    def test_ensure_boot_source_definition_creates_default_source(self):
+        cluster = factory.make_node_group()
+        cluster.ensure_boot_source_definition()
+        sources = BootSource.objects.filter(cluster=cluster)
+        self.assertThat(sources, HasLength(1))
+        [source] = sources
+        self.assertAttributes(
+            source,
+            {
+                'url': 'http://maas.ubuntu.com/images/ephemeral-v2/releases/',
+                'keyring_filename': (
+                    '/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg'),
+            })
+        selections = BootSourceSelection.objects.filter(boot_source=source)
+        by_release = {
+            selection.release: selection
+            for selection in selections
+            }
+        self.assertItemsEqual(['precise', 'trusty'], by_release.keys())
+        self.assertAttributes(
+            by_release['precise'],
+            {
+                'release': 'precise',
+                'arches': ['*'],
+                'subarches': ['*'],
+                'labels': ['release'],
+            })
+        self.assertAttributes(
+            by_release['trusty'],
+            {
+                'release': 'trusty',
+                'arches': ['*'],
+                'subarches': ['*'],
+                'labels': ['release'],
+            })
+
+    def test_ensure_boot_source_definition_skips_if_already_present(self):
+        cluster = factory.make_node_group()
+        source = factory.make_boot_source(cluster=cluster)
+        cluster.ensure_boot_source_definition()
+        self.assertItemsEqual(
+            [source], BootSource.objects.filter(cluster=cluster))
