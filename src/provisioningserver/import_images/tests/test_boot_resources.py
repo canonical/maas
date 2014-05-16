@@ -285,6 +285,10 @@ class TestMain(MAASTestCase):
         self.patch(UEFIBootMethod, 'install_bootloader')
 
         args = self.make_working_args()
+        arch = self.arch
+        subarch = self.subarch
+        release = self.release
+        label = self.label
 
         # Run the import code.
         boot_resources.main(args)
@@ -298,25 +302,26 @@ class TestMain(MAASTestCase):
         self.assertThat(os.path.join(current, 'maas.meta'), FileExists())
         self.assertThat(os.path.join(current, 'maas.tgt'), FileExists())
         self.assertThat(
-            os.path.join(current, 'ubuntu', self.arch, self.subarch,
-                self.release, self.label),
+            os.path.join(
+                current, 'ubuntu', arch, subarch, self.release, self.label),
             DirExists())
 
         # Verify the contents of the "meta" file.
         with open(os.path.join(current, 'maas.meta'), 'rb') as meta_file:
             meta_data = json.load(meta_file)
-        self.assertEqual([self.arch], meta_data.keys())
-        self.assertEqual([self.subarch], meta_data[self.arch].keys())
-        self.assertEqual(
-            [self.release],
-            meta_data[self.arch][self.subarch].keys())
-        self.assertEqual(
-            [self.label],
-            meta_data[self.arch][self.subarch][self.release].keys())
+        self.assertEqual([arch], meta_data.keys())
+        self.assertEqual([subarch], meta_data[arch].keys())
+        self.assertEqual([release], meta_data[arch][subarch].keys())
+        self.assertEqual([label], meta_data[arch][subarch][release].keys())
         self.assertItemsEqual(
-            ['content_id', 'path', 'product_name', 'version_name',
-                'subarches'],
-            meta_data[self.arch][self.subarch][self.release][self.label].keys())
+            [
+                'content_id',
+                'path',
+                'product_name',
+                'version_name',
+                'subarches',
+            ],
+            meta_data[arch][subarch][release][label].keys())
 
     def test_warns_if_no_sources_configured(self):
         self.patch_logger()
