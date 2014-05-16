@@ -1,7 +1,7 @@
 # Copyright 2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Models for boot resource sources."""
+"""Model for a source of boot resources."""
 
 from __future__ import (
     absolute_import,
@@ -14,25 +14,18 @@ str = None
 __metaclass__ = type
 __all__ = [
     'BootSource',
-    'BootSourceSelection',
     ]
 
 
 from django.core.exceptions import ValidationError
 from django.db.models import (
     BinaryField,
-    CharField,
     FilePathField,
     ForeignKey,
     Manager,
     URLField,
     )
-import djorm_pgarray.fields
 from maasserver import DefaultMeta
-from maasserver.enum import (
-    DISTRO_SERIES,
-    DISTRO_SERIES_CHOICES,
-    )
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 
@@ -60,7 +53,7 @@ class BootSource(CleanSave, TimestampedModel):
 
     keyring_data = BinaryField(
         blank=True,
-        help_text="The GPG keyring  for this BootSource, as a binary blob.")
+        help_text="The GPG keyring for this BootSource, as a binary blob.")
 
     def clean(self, *args, **kwargs):
         super(BootSource, self).clean(*args, **kwargs)
@@ -76,29 +69,3 @@ class BootSource(CleanSave, TimestampedModel):
             raise ValidationError(
                 "Only one of keyring_filename or keyring_data can be "
                 "specified.")
-
-
-class BootSourceSelectionManager(Manager):
-    """Manager for `BootSourceSelection` class."""
-
-
-class BootSourceSelection(CleanSave, TimestampedModel):
-    """A set of selections for a single `BootSource`."""
-
-    class Meta(DefaultMeta):
-        """Needed for South to recognize this model."""
-
-    objects = BootSourceSelectionManager()
-
-    boot_source = ForeignKey('maasserver.BootSource', blank=False)
-
-    release = CharField(
-        max_length=20, choices=DISTRO_SERIES_CHOICES, blank=True,
-        default=DISTRO_SERIES.default,
-        help_text="The Ubuntu release for which to import resources.")
-
-    arches = djorm_pgarray.fields.ArrayField(dbtype="text")
-
-    subarches = djorm_pgarray.fields.ArrayField(dbtype="text")
-
-    labels = djorm_pgarray.fields.ArrayField(dbtype="text")

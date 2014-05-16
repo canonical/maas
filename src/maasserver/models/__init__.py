@@ -44,10 +44,8 @@ from django.db.models.signals import post_save
 from maasserver import logger
 from maasserver.enum import NODE_PERMISSION
 from maasserver.models.bootimage import BootImage
-from maasserver.models.bootsource import (
-    BootSource,
-    BootSourceSelection,
-    )
+from maasserver.models.bootsource import BootSource
+from maasserver.models.bootsourceselection import BootSourceSelection
 from maasserver.models.component_error import ComponentError
 from maasserver.models.config import Config
 from maasserver.models.dhcplease import DHCPLease
