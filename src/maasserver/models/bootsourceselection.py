@@ -56,3 +56,12 @@ class BootSourceSelection(CleanSave, TimestampedModel):
     subarches = djorm_pgarray.fields.ArrayField(dbtype="text")
 
     labels = djorm_pgarray.fields.ArrayField(dbtype="text")
+
+    def to_dict(self):
+        """Return the current `BootSourceSelection` as a dict."""
+        return {
+            "release": self.release,
+            "arches": self.arches,
+            "subarches": self.subarches,
+            "labels": self.labels,
+            }

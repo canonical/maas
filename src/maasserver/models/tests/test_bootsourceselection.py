@@ -62,3 +62,13 @@ class TestBootSourceSelection(MAASTestCase):
         self.assertNotIn(
             boot_source_selection.id,
             [selection.id for selection in BootSourceSelection.objects.all()])
+
+    def test_to_dict_returns_dict(self):
+        boot_source_selection = factory.make_boot_source_selection()
+        expected = {
+            "release": boot_source_selection.release,
+            "arches": boot_source_selection.arches,
+            "subarches": boot_source_selection.subarches,
+            "labels": boot_source_selection.labels,
+            }
+        self.assertEqual(expected, boot_source_selection.to_dict())

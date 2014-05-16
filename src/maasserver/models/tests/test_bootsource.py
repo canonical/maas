@@ -14,6 +14,9 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+import os
+import tempfile
+from base64 import b64encode
 from django.core.exceptions import ValidationError
 from maasserver.models import BootSource
 from maasserver.testing.factory import factory
@@ -30,9 +33,8 @@ class TestBootSource(MAASTestCase):
             url="http://example.com",
             keyring_filename="/path/to/something")
         boot_source.save()
-        self.assertEqual(
-            [boot_source.id],
-            [source.id for source in BootSource.objects.all()])
+        self.assertTrue(
+            BootSource.objects.filter(id=boot_source.id).exists())
 
     def test_cannot_set_keyring_data_and_filename(self):
         # A BootSource cannot have both a keyring filename and keyring
@@ -61,3 +63,42 @@ class TestBootSource(MAASTestCase):
         self.assertNotIn(
             boot_source.id,
             [source.id for source in BootSource.objects.all()])
+
+    def test_get_boot_sources_for_cluster(self):
+        cluster = factory.make_node_group()
+        boot_source = factory.make_boot_source(cluster=cluster)
+        self.assertEqual(
+            [boot_source],
+            list(BootSource.objects.get_boot_sources_for_cluster(cluster)))
+
+    def test_to_dict_returns_dict(self):
+        boot_source = factory.make_boot_source(
+            keyring_data=b"123445", keyring_filename='')
+        boot_source_selection = factory.make_boot_source_selection(
+            boot_source=boot_source)
+        boot_source_dict = boot_source.to_dict()
+        self.assertEqual(boot_source.url, boot_source_dict['path'])
+        self.assertEqual(
+            [boot_source_selection.to_dict()],
+            boot_source_dict['selections'])
+
+    def test_to_dict_handles_keyring_file(self):
+        keyring_data = b"Some Keyring Data"
+        keyring_file = self.make_file(contents=keyring_data)
+        self.addCleanup(os.remove, keyring_file)
+
+        boot_source = factory.make_boot_source(
+            keyring_data=b"", keyring_filename=keyring_file)
+        source = boot_source.to_dict()
+        self.assertEqual(
+            source['keyring_data'],
+            b64encode(keyring_data))
+
+    def test_to_dict_handles_keyring_data(self):
+        keyring_data = b"Some Keyring Data"
+        boot_source = factory.make_boot_source(
+            keyring_data=keyring_data, keyring_filename="")
+        source = boot_source.to_dict()
+        self.assertEqual(
+            source['keyring_data'],
+            b64encode(keyring_data))

@@ -17,6 +17,7 @@ __all__ = [
     ]
 
 
+from base64 import b64encode
 from django.core.exceptions import ValidationError
 from django.db.models import (
     BinaryField,
@@ -33,6 +34,13 @@ from maasserver.models.timestampedmodel import TimestampedModel
 class BootSourceManager(Manager):
     """Manager for `BootSource` class."""
 
+    def get_boot_sources_for_cluster(self, cluster):
+        """Return all the `BootSource`s for a given cluster.
+
+        :param cluster: A `NodeGroup` object.
+        :return: A `BootSource` `QuerySet`.
+        """
+        return self.filter(cluster=cluster)
 
 class BootSource(CleanSave, TimestampedModel):
     """A source for boot resources."""
@@ -69,3 +77,27 @@ class BootSource(CleanSave, TimestampedModel):
             raise ValidationError(
                 "Only one of keyring_filename or keyring_data can be "
                 "specified.")
+
+    def to_dict(self):
+        """Return the current `BootSource` as a dict.
+
+        The dict will contain the details of the `BootSource` and all
+        its `BootSourceSelection`s.
+
+        If the `BootSource` has keyring_data, that data will be returned
+        base64 encoded. Otherwise the `BootSource` will have a value in
+        its keyring_filename field, and that file's contents will be
+        base64 encoded and returned.
+        """
+        if len(self.keyring_data) > 0:
+            keyring_data = self.keyring_data
+        else:
+            with open(self.keyring_filename, 'rb') as keyring_file:
+                keyring_data = keyring_file.read()
+        return {
+            "path": self.url,
+            "keyring_data": b64encode(keyring_data),
+            "selections": [
+                selection.to_dict()
+                for selection in self.bootsourceselection_set.all()],
+            }
