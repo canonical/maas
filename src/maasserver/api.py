@@ -187,10 +187,10 @@ from maasserver.forms import (
     NetworkForm,
     NetworksListingForm,
     NodeActionForm,
+    NodeGroupDefineForm,
     NodeGroupEdit,
     NodeGroupInterfaceForeignDHCPForm,
     NodeGroupInterfaceForm,
-    NodeGroupWithInterfacesForm,
     SSHKeyForm,
     TagForm,
     ZoneForm,
@@ -1287,7 +1287,7 @@ def register_nodegroup(request, uuid):
         update_instance = None
         status = NODEGROUP_STATUS.PENDING
 
-    form = NodeGroupWithInterfacesForm(
+    form = NodeGroupDefineForm(
         data=request.data, status=status, instance=update_instance)
 
     if not form.is_valid():

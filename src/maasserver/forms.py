@@ -32,7 +32,7 @@ __all__ = [
     "NodeGroupEdit",
     "NodeGroupInterfaceForeignDHCPForm",
     "NodeGroupInterfaceForm",
-    "NodeGroupWithInterfacesForm",
+    "NodeGroupDefineForm",
     "NodeWithMACAddressesForm",
     "SSHKeyForm",
     "TagForm",
@@ -944,8 +944,8 @@ def validate_nodegroupinterfaces_json(interfaces):
     """Check `NodeGroupInterface` definitions as found in a requst.
 
     This validates that the `NodeGroupInterface` definitions found in a
-    request to `NodeGroupWithInterfacesForm` conforms to the expected basic
-    structure: a list of dicts.
+    request to `NodeGroupDefineForm` conforms to the expected basic structure:
+    a list of dicts.
 
     :type interface: `dict` extracted from JSON request body.
     :raises ValidationError: If the interfaces definition is not a list of
@@ -1006,8 +1006,12 @@ def validate_nonoverlapping_networks(interfaces):
                 % (networks[index - 1]['name'], networks[index]['name']))
 
 
-class NodeGroupWithInterfacesForm(ModelForm):
-    """Create a NodeGroup with unmanaged interfaces."""
+class NodeGroupDefineForm(ModelForm):
+    """Define a `NodeGroup`, along with its interfaces.
+
+    This form can create a new `NodeGroup`, or in the case where a cluster
+    automatically becomes the master, updating an existing one.
+    """
 
     interfaces = forms.CharField(required=False)
     cluster_name = forms.CharField(required=False)
@@ -1021,7 +1025,7 @@ class NodeGroupWithInterfacesForm(ModelForm):
             )
 
     def __init__(self, status=None, *args, **kwargs):
-        super(NodeGroupWithInterfacesForm, self).__init__(*args, **kwargs)
+        super(NodeGroupDefineForm, self).__init__(*args, **kwargs)
         self.status = status
 
     def clean_name(self):
@@ -1032,7 +1036,7 @@ class NodeGroupWithInterfacesForm(ModelForm):
             return data
 
     def clean(self):
-        cleaned_data = super(NodeGroupWithInterfacesForm, self).clean()
+        cleaned_data = super(NodeGroupDefineForm, self).clean()
         cluster_name = cleaned_data.get("cluster_name")
         uuid = cleaned_data.get("uuid")
         if uuid and not cluster_name:
@@ -1058,7 +1062,7 @@ class NodeGroupWithInterfacesForm(ModelForm):
         return interfaces
 
     def save(self):
-        nodegroup = super(NodeGroupWithInterfacesForm, self).save()
+        nodegroup = super(NodeGroupDefineForm, self).save()
         for interface in self.cleaned_data['interfaces']:
             instance = NodeGroupInterface(nodegroup=nodegroup)
             form = NodeGroupInterfaceForm(data=interface, instance=instance)

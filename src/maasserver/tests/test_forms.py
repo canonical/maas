@@ -54,10 +54,10 @@ from maasserver.forms import (
     NO_ARCHITECTURES_AVAILABLE,
     NodeActionForm,
     NodeForm,
+    NodeGroupDefineForm,
     NodeGroupEdit,
     NodeGroupInterfaceForeignDHCPForm,
     NodeGroupInterfaceForm,
-    NodeGroupWithInterfacesForm,
     NodeWithMACAddressesForm,
     pick_default_architecture,
     ProfileForm,
@@ -1031,13 +1031,12 @@ class TestValidateNonoverlappingNetworks(TestCase):
         self.assertThat(error.messages[0], StartsWith("Conflicting networks"))
 
 
-class TestNodeGroupWithInterfacesForm(MAASServerTestCase):
+class TestNodeGroupDefineForm(MAASServerTestCase):
 
     def test_creates_pending_nodegroup(self):
         name = factory.make_name('name')
         uuid = factory.getRandomUUID()
-        form = NodeGroupWithInterfacesForm(
-            data={'name': name, 'uuid': uuid})
+        form = NodeGroupDefineForm(data={'name': name, 'uuid': uuid})
         self.assertTrue(form.is_valid(), form._errors)
         nodegroup = form.save()
         self.assertEqual(
@@ -1052,7 +1051,7 @@ class TestNodeGroupWithInterfacesForm(MAASServerTestCase):
     def test_creates_nodegroup_with_status(self):
         name = factory.make_name('name')
         uuid = factory.getRandomUUID()
-        form = NodeGroupWithInterfacesForm(
+        form = NodeGroupDefineForm(
             status=NODEGROUP_STATUS.ACCEPTED,
             data={'name': name, 'uuid': uuid})
         self.assertTrue(form.is_valid(), form._errors)
@@ -1062,7 +1061,7 @@ class TestNodeGroupWithInterfacesForm(MAASServerTestCase):
     def test_validates_parameters(self):
         name = factory.make_name('name')
         too_long_uuid = 'test' * 30
-        form = NodeGroupWithInterfacesForm(
+        form = NodeGroupDefineForm(
             data={'name': name, 'uuid': too_long_uuid})
         self.assertFalse(form.is_valid())
         self.assertEquals(
@@ -1074,7 +1073,7 @@ class TestNodeGroupWithInterfacesForm(MAASServerTestCase):
         name = factory.make_name('name')
         uuid = factory.getRandomUUID()
         invalid_interfaces = factory.make_name('invalid_json_interfaces')
-        form = NodeGroupWithInterfacesForm(
+        form = NodeGroupDefineForm(
             data={
                 'name': name, 'uuid': uuid, 'interfaces': invalid_interfaces})
         self.assertFalse(form.is_valid())
@@ -1086,7 +1085,7 @@ class TestNodeGroupWithInterfacesForm(MAASServerTestCase):
         name = factory.make_name('name')
         uuid = factory.getRandomUUID()
         invalid_interfaces = json.dumps('invalid interface list')
-        form = NodeGroupWithInterfacesForm(
+        form = NodeGroupDefineForm(
             data={
                 'name': name, 'uuid': uuid, 'interfaces': invalid_interfaces})
         self.assertFalse(form.is_valid())
@@ -1101,7 +1100,7 @@ class TestNodeGroupWithInterfacesForm(MAASServerTestCase):
         # Make the interface invalid.
         interface['ip_range_high'] = 'invalid IP address'
         interfaces = json.dumps([interface])
-        form = NodeGroupWithInterfacesForm(
+        form = NodeGroupDefineForm(
             data={'name': name, 'uuid': uuid, 'interfaces': interfaces})
         self.assertFalse(form.is_valid())
         self.assertIn(
@@ -1113,7 +1112,7 @@ class TestNodeGroupWithInterfacesForm(MAASServerTestCase):
         uuid = factory.getRandomUUID()
         interface = make_interface_settings()
         interfaces = json.dumps([interface])
-        form = NodeGroupWithInterfacesForm(
+        form = NodeGroupDefineForm(
             data={'name': name, 'uuid': uuid, 'interfaces': interfaces})
         self.assertTrue(form.is_valid(), form._errors)
         form.save()
@@ -1126,7 +1125,7 @@ class TestNodeGroupWithInterfacesForm(MAASServerTestCase):
         big_network = IPNetwork('10.0.0.0/255.255.0.0')
         nested_network = IPNetwork('10.0.100.0/255.255.255.0')
         managed = NODEGROUPINTERFACE_MANAGEMENT.DHCP
-        form = NodeGroupWithInterfacesForm(
+        form = NodeGroupDefineForm(
             data={
                 'name': factory.make_name('cluster'),
                 'uuid': factory.getRandomUUID(),
@@ -1148,7 +1147,7 @@ class TestNodeGroupWithInterfacesForm(MAASServerTestCase):
         nested_network = IPNetwork('10.100.100.0/255.255.255.0')
         managed = NODEGROUPINTERFACE_MANAGEMENT.DHCP
         unmanaged = NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED
-        form = NodeGroupWithInterfacesForm(
+        form = NodeGroupDefineForm(
             data={
                 'name': factory.make_name('cluster'),
                 'uuid': factory.getRandomUUID(),
@@ -1171,7 +1170,7 @@ class TestNodeGroupWithInterfacesForm(MAASServerTestCase):
             make_interface_settings(management=management)
             for management in map_enum(NODEGROUPINTERFACE_MANAGEMENT).values()
             ]
-        form = NodeGroupWithInterfacesForm(
+        form = NodeGroupDefineForm(
             data={
                 'name': name,
                 'uuid': uuid,
@@ -1186,7 +1185,7 @@ class TestNodeGroupWithInterfacesForm(MAASServerTestCase):
     def test_populates_cluster_name_default(self):
         name = factory.make_name('name')
         uuid = factory.getRandomUUID()
-        form = NodeGroupWithInterfacesForm(
+        form = NodeGroupDefineForm(
             status=NODEGROUP_STATUS.ACCEPTED,
             data={'name': name, 'uuid': uuid})
         self.assertTrue(form.is_valid(), form._errors)
@@ -1196,7 +1195,7 @@ class TestNodeGroupWithInterfacesForm(MAASServerTestCase):
     def test_populates_cluster_name(self):
         cluster_name = factory.make_name('cluster_name')
         uuid = factory.getRandomUUID()
-        form = NodeGroupWithInterfacesForm(
+        form = NodeGroupDefineForm(
             status=NODEGROUP_STATUS.ACCEPTED,
             data={'cluster_name': cluster_name, 'uuid': uuid})
         self.assertTrue(form.is_valid(), form._errors)
@@ -1209,7 +1208,7 @@ class TestNodeGroupWithInterfacesForm(MAASServerTestCase):
         interface = make_interface_settings()
         del interface['management']
         interfaces = json.dumps([interface])
-        form = NodeGroupWithInterfacesForm(
+        form = NodeGroupDefineForm(
             data={'name': name, 'uuid': uuid, 'interfaces': interfaces})
         self.assertTrue(form.is_valid(), form._errors)
         form.save()
