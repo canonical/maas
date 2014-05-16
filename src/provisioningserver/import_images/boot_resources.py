@@ -41,6 +41,10 @@ from provisioningserver.utils import (
     )
 
 
+class NoConfig(Exception):
+    """Raised when no configuration for the script has been specified."""
+
+
 class NoConfigFile(Exception):
     """Raised when the config file for the script doesn't exist."""
 
@@ -187,6 +191,13 @@ def read_config(config_file=None):
             raise
 
 
+def parse_config(config):
+    """Given a YAML `config` string, return a `BootConfig` for it."""
+    from StringIO import StringIO
+    config_stream = StringIO(config)
+    return BootConfig.parse(config_stream)
+
+
 def import_images(config):
     """Import images.  Callable from both command line and Celery task.
 
@@ -242,5 +253,14 @@ def main(args):
 
     :param args: Command-line arguments as parsed by the `ArgumentParser`
         returned by `make_arg_parser`.
+    :raise NoConfigFile: If a config file is specified but doesn't exist.
+    :raise NoConfig: If no config is specified at the command line and
+        no config file is provided.
     """
-    import_images(config=read_config(args.config_file))
+    if args.config:
+        config = parse_config(args.config)
+    elif args.config_file:
+        config = read_config(args.config_file)
+    else:
+        raise NoConfig()
+    import_images(config=config)

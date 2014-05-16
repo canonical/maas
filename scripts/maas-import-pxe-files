@@ -19,6 +19,7 @@ from provisioningserver.import_images.boot_resources import (
     logger,
     main,
     make_arg_parser,
+    NoConfig,
     NoConfigFile,
     )
 
@@ -31,6 +32,11 @@ if __name__ == "__main__":
     except NoConfigFile:
         logger.error("Config file %s not found." % args.config_file)
         raise SystemExit(1)
+    except NoConfig:
+        logger.error(
+            "No config specified. You must pass configuration as a string "
+            "in --config or pass a config file using --config-file.")
+        raise SystemExit(3)
     except Exception:
         # logger.exception() will log the error message, followed by the
         # exception's stack trace. Using it here rather than allowing

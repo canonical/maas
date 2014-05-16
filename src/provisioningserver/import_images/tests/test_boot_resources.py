@@ -99,13 +99,28 @@ def checksum_sha256(data):
 
 class TestMain(MAASTestCase):
 
+    scenarios = (
+        ('using-config-file', {'use_config_file': True}),
+        ('using-config-blob', {'use_config_file': False}),
+        )
+
+    def setUp(self):
+        super(TestMain, self).setUp()
+        self.storage = self.make_dir()
+        self.image = make_image_spec()
+        self.arch, self.subarch, self.release, self.label = self.image
+        self.repo = self.make_simplestreams_repo(self.image)
+
     def patch_logger(self):
         """Suppress log output from the import code."""
         self.patch(boot_resources, 'logger')
 
-    def make_args(self, **kwargs):
+    def make_args(self, config="", **kwargs):
         """Fake an `argumentparser` parse result."""
         args = mock.Mock()
+        # Set config explicitly, otherwise boot_resources.main() gets
+        # confused.
+        args.config = config
         for key, value in kwargs.items():
             setattr(args, key, value)
         return args
@@ -226,6 +241,36 @@ class TestMain(MAASTestCase):
         index = self.make_simplestreams_index(index_dir, stream, product)
         return index
 
+    def make_working_args(self):
+        """Create a set of working arguments for the script."""
+        # Prepare a fake repository, storage directory, and configuration.
+        config = {
+            'boot': {
+                'storage': self.storage,
+                'sources': [
+                    {
+                        'path': self.repo,
+                        'selections': [
+                            {
+                                'release': self.release,
+                                'arches': [self.arch],
+                                'subarches': [self.subarch],
+                                'labels': [self.label],
+                            },
+                            ],
+                    },
+                    ],
+                },
+            }
+
+        if self.use_config_file:
+            args = self.make_args(
+                config_file=self.make_file(
+                    'bootresources.yaml', contents=yaml.safe_dump(config)))
+        else:
+            args = self.make_args(config=yaml.safe_dump(config))
+        return args
+
     def test_successful_run(self):
         """Integration-test a successful run of the importer.
 
@@ -239,63 +284,39 @@ class TestMain(MAASTestCase):
         self.patch(boot_resources, 'call_and_check').return_code = 0
         self.patch(UEFIBootMethod, 'install_bootloader')
 
-        # Prepare a fake repository, storage directory, and configuration.
-        storage = self.make_dir()
-        image = make_image_spec()
-        arch, subarch, release, label = image
-        repo = self.make_simplestreams_repo(image)
-        config = {
-            'boot': {
-                'storage': storage,
-                'sources': [
-                    {
-                        'path': repo,
-                        'selections': [
-                            {
-                                'release': release,
-                                'arches': [arch],
-                                'subarches': [subarch],
-                                'labels': [label],
-                            },
-                            ],
-                    },
-                    ],
-                },
-            }
-        args = self.make_args(
-            config_file=self.make_file(
-                'bootresources.yaml', contents=yaml.safe_dump(config)))
+        args = self.make_working_args()
 
         # Run the import code.
         boot_resources.main(args)
 
         # Verify the reuslts.
-        self.assertThat(os.path.join(storage, 'cache'), DirExists())
-        current = os.path.join(storage, 'current')
+        self.assertThat(os.path.join(self.storage, 'cache'), DirExists())
+        current = os.path.join(self.storage, 'current')
         self.assertTrue(os.path.islink(current))
         self.assertThat(current, DirExists())
         self.assertThat(os.path.join(current, 'pxelinux.0'), FileExists())
         self.assertThat(os.path.join(current, 'maas.meta'), FileExists())
         self.assertThat(os.path.join(current, 'maas.tgt'), FileExists())
         self.assertThat(
-            os.path.join(current, 'ubuntu', arch, subarch, release, label),
+            os.path.join(current, 'ubuntu', self.arch, self.subarch,
+                self.release, self.label),
             DirExists())
 
         # Verify the contents of the "meta" file.
         with open(os.path.join(current, 'maas.meta'), 'rb') as meta_file:
             meta_data = json.load(meta_file)
-        self.assertEqual([arch], meta_data.keys())
-        self.assertEqual([subarch], meta_data[arch].keys())
+        self.assertEqual([self.arch], meta_data.keys())
+        self.assertEqual([self.subarch], meta_data[self.arch].keys())
         self.assertEqual(
-            [release],
-            meta_data[arch][subarch].keys())
+            [self.release],
+            meta_data[self.arch][self.subarch].keys())
         self.assertEqual(
-            [label],
-            meta_data[arch][subarch][release].keys())
+            [self.label],
+            meta_data[self.arch][self.subarch][self.release].keys())
         self.assertItemsEqual(
             ['content_id', 'path', 'product_name', 'version_name',
                 'subarches'],
-            meta_data[arch][subarch][release][label].keys())
+            meta_data[self.arch][self.subarch][self.release][self.label].keys())
 
     def test_warns_if_no_sources_configured(self):
         self.patch_logger()
@@ -366,3 +387,39 @@ class TestMain(MAASTestCase):
             IOError,
             boot_resources.main, self.make_args())
         self.assertEqual(other_error, raised_error)
+
+    def test_raises_error_when_no_config_passed(self):
+        # main() will raise an error when no config has been passed in
+        # the --config option *and* no config file has been specified.
+        self.patch_logger()
+        self.assertRaises(
+            boot_resources.NoConfig,
+            boot_resources.main, self.make_args(config="", config_file=""))
+
+
+class TestParseConfig(MAASTestCase):
+    """Tests for the `parse_config` function."""
+
+    def test_parses_config(self):
+        config = {
+            'boot': {
+                'configure_me': False,
+                'storage': factory.make_name("storage"),
+                'sources': [
+                    {
+                        'keyring': factory.make_name("keyring"),
+                        'path': factory.make_name("something"),
+                        'selections': [
+                            {
+                                'release': factory.make_name("release"),
+                                'arches': [factory.make_name("arch")],
+                                'subarches': [factory.make_name("subarch")],
+                                'labels': [factory.make_name("label")],
+                            },
+                            ],
+                    },
+                    ],
+                },
+            }
+        parsed_config = boot_resources.parse_config(yaml.safe_dump(config))
+        self.assertEqual(config, parsed_config)
