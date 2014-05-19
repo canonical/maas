@@ -60,6 +60,17 @@ class TestBootImageManager(MAASServerTestCase):
         self.assertEqual(
             params['supported_subarches'], image.supported_subarches)
 
+    def test_register_image_ignores_empty_subarches_for_existing_image(self):
+        nodegroup = factory.make_node_group()
+        params = make_boot_image_params()
+        image = factory.make_boot_image(nodegroup=nodegroup, **params)
+        original_supported_subarches = params['supported_subarches']
+        params['supported_subarches'] = ''
+        BootImage.objects.register_image(nodegroup, **params)
+        image = reload_object(image)
+        self.assertEqual(
+            image.supported_subarches, original_supported_subarches)
+
     def test_default_arch_image_returns_None_if_no_images_match(self):
         osystem = Config.objects.get_config('commissioning_osystem')
         series = Config.objects.get_config('commissioning_distro_series')
