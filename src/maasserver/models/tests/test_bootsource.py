@@ -14,9 +14,9 @@ str = None
 __metaclass__ = type
 __all__ = []
 
-import os
-import tempfile
 from base64 import b64encode
+import os
+
 from django.core.exceptions import ValidationError
 from maasserver.models import BootSource
 from maasserver.testing.factory import factory

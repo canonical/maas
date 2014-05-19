@@ -18,6 +18,7 @@ __all__ = [
 
 
 from base64 import b64encode
+
 from django.core.exceptions import ValidationError
 from django.db.models import (
     BinaryField,
@@ -41,6 +42,7 @@ class BootSourceManager(Manager):
         :return: A `BootSource` `QuerySet`.
         """
         return self.filter(cluster=cluster)
+
 
 class BootSource(CleanSave, TimestampedModel):
     """A source for boot resources."""

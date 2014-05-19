@@ -51,8 +51,10 @@ class BootImageManager(Manager):
             purpose=purpose, label=label,
             defaults={'supported_subarches': supported_subarches})
         if not created:
-            if (supported_subarches != '' and
-                image.supported_subarches != supported_subarches):
+            updates_subarches = (
+                supported_subarches != '' and
+                image.supported_subarches != supported_subarches)
+            if updates_subarches:
                 # Update the non-key field data if it changed and the
                 # new value contains data (ie. not blank).
                 image.supported_subarches = supported_subarches
