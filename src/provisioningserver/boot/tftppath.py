@@ -14,7 +14,6 @@ str = None
 __metaclass__ = type
 __all__ = [
     'compose_image_path',
-    'drill_down',
     'list_boot_images',
     'list_subdirs',
     'locate_tftp_path',

@@ -28,7 +28,7 @@ from maastesting.factory import factory
 from maastesting.matchers import MockAnyCall
 from maastesting.testcase import MAASTestCase
 import mock
-from provisioningserver.boot.uefi import UEFIBootMethod
+from provisioningserver.boot import BootMethodRegistry
 from provisioningserver.config import BootConfig
 from provisioningserver.import_images import boot_resources
 from provisioningserver.import_images.boot_image_mapping import (
@@ -282,7 +282,13 @@ class TestMain(MAASTestCase):
         # unit test might not put to the test.
         self.patch_logger()
         self.patch(boot_resources, 'call_and_check').return_code = 0
-        self.patch(UEFIBootMethod, 'install_bootloader')
+
+        # We'll go through installation of a PXE boot loader here, but skip
+        # all other boot loader types.  Testing them all is a job for proper
+        # unit tests.
+        for method_name, boot_method in BootMethodRegistry:
+            if method_name != 'pxe':
+                self.patch(boot_method, 'install_bootloader')
 
         args = self.make_working_args()
         arch = self.arch
