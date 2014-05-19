@@ -228,17 +228,12 @@ class NodeGroup(TimestampedModel):
 
     def ensure_boot_source_definition(self):
         """Set default boot source if none is currently defined."""
-        source, created = BootSource.objects.get_or_create(
-            cluster=self,
-            defaults={
-                'url': 'http://maas.ubuntu.com/images/ephemeral-v2/releases/',
-                'keyring_filename': (
-                    '/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg'),
-            })
-        if created:
-            # Cluster did not have any sources defined yet.  That means we
-            # just created the default BootSource; now add its default
-            # BootSourceSelections.
+        if not self.bootsource_set.exists():
+            source = BootSource.objects.create(
+                cluster=self,
+                url='http://maas.ubuntu.com/images/ephemeral-v2/releases/',
+                keyring_filename=(
+                    '/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg'))
             # Default is to import supported Ubuntu LTS releases, for all
             # architectures, release versions only.
             for os_release in ('precise', 'trusty'):

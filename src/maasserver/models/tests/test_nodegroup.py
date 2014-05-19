@@ -504,7 +504,9 @@ class TestNodeGroup(MAASServerTestCase):
 
     def test_ensure_boot_source_definition_skips_if_already_present(self):
         cluster = factory.make_node_group()
-        source = factory.make_boot_source(cluster=cluster)
+        sources = [
+            factory.make_boot_source(cluster=cluster)
+            for _ in range(3)
+            ]
         cluster.ensure_boot_source_definition()
-        self.assertItemsEqual(
-            [source], BootSource.objects.filter(cluster=cluster))
+        self.assertItemsEqual(sources, cluster.bootsource_set.all())
