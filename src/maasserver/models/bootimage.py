@@ -53,7 +53,8 @@ class BootImageManager(Manager):
         if not created:
             if (supported_subarches != '' and
                 image.supported_subarches != supported_subarches):
-                # Update the non-key field data if it changed.
+                # Update the non-key field data if it changed and the
+                # new value contains data (ie. not blank).
                 image.supported_subarches = supported_subarches
                 image.save()
         return image

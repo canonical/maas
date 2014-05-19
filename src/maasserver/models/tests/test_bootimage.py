@@ -69,7 +69,7 @@ class TestBootImageManager(MAASServerTestCase):
         BootImage.objects.register_image(nodegroup, **params)
         image = reload_object(image)
         self.assertEqual(
-            image.supported_subarches, original_supported_subarches)
+            original_supported_subarches, image.supported_subarches)
 
     def test_default_arch_image_returns_None_if_no_images_match(self):
         osystem = Config.objects.get_config('commissioning_osystem')

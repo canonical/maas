@@ -214,13 +214,8 @@ class TestBootImagesReportImagesAPI(APITestCase):
 
     def test_report_boot_images_pruning_ignores_non_key_field(self):
         image_dict = make_boot_image_params()
-        existing_image = factory.make_boot_image(
-            osystem=image_dict['osystem'],
-            architecture=image_dict['architecture'],
-            subarchitecture=image_dict['subarchitecture'],
-            release=image_dict['release'], label=image_dict['label'],
-            purpose=image_dict['purpose'],
-            supported_subarches=[image_dict['supported_subarches']])
+        image_dict_copy = image_dict.copy()
+        existing_image = factory.make_boot_image(**image_dict_copy)
         image_dict['supported_subarches'] = 'foo'
         nodegroup = existing_image.nodegroup
         client = make_worker_client(nodegroup)
