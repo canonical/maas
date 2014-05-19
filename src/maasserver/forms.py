@@ -1063,6 +1063,7 @@ class NodeGroupDefineForm(ModelForm):
 
     def save(self):
         nodegroup = super(NodeGroupDefineForm, self).save()
+        nodegroup.ensure_boot_source_definition()
         for interface in self.cleaned_data['interfaces']:
             instance = NodeGroupInterface(nodegroup=nodegroup)
             form = NodeGroupInterfaceForm(data=interface, instance=instance)

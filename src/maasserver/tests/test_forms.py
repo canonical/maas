@@ -69,6 +69,7 @@ from maasserver.forms import (
     ZoneForm,
     )
 from maasserver.models import (
+    BootSource,
     Config,
     MACAddress,
     Network,
@@ -102,6 +103,7 @@ from testtools.matchers import (
     AllMatch,
     Contains,
     Equals,
+    HasLength,
     MatchesAll,
     MatchesRegex,
     MatchesStructure,
@@ -1219,6 +1221,31 @@ class TestNodeGroupDefineForm(MAASServerTestCase):
                 nodegroup.management for nodegroup in
                 uuid_nodegroup.nodegroupinterface_set.all()
             ])
+
+    def test_ensures_boot_sources_when_creating_cluster(self):
+        form = NodeGroupDefineForm(
+            data={
+                'name': factory.make_name('cluster'),
+                'uuid': factory.getRandomUUID(),
+            })
+        self.assertTrue(form.is_valid(), form._errors)
+        cluster = form.save()
+        self.assertThat(
+            BootSource.objects.get_boot_sources_for_cluster(cluster),
+            HasLength(1))
+
+    def test_ensures_boot_sources_when_updating_cluster(self):
+        form = NodeGroupDefineForm(
+            instance=NodeGroup.objects.ensure_master(),
+            data={
+                'name': factory.make_name('cluster'),
+                'uuid': factory.getRandomUUID(),
+            })
+        self.assertTrue(form.is_valid(), form._errors)
+        cluster = form.save()
+        self.assertThat(
+            BootSource.objects.get_boot_sources_for_cluster(cluster),
+            HasLength(1))
 
 
 class TestNodeGroupEdit(MAASServerTestCase):

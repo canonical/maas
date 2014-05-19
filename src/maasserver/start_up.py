@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Start up utilities for the MAAS server."""
@@ -82,6 +82,11 @@ def inner_start_up():
     # Make sure that the master nodegroup is created.
     # This must be serialized or we may initialize the master more than once.
     NodeGroup.objects.ensure_master()
+
+    # If any clusters have no boot-source definitions yet, provide them
+    # with the default definition.
+    for cluster in NodeGroup.objects.all():
+        cluster.ensure_boot_source_definition()
 
     # Regenerate MAAS's DNS configuration.  This should be reentrant, really.
     write_full_dns_config(reload_retry=True)
