@@ -1014,6 +1014,7 @@ class TestTempDir(MAASTestCase):
         fake_dir = os.path.join(self.make_dir(), factory.make_name('tempdir'))
         self.patch(tempfile, 'mkdtemp').return_value = fake_dir.encode(
             encoding)
+        self.patch(provisioningserver.utils, 'rmtree')
 
         with tempdir() as directory:
             pass
