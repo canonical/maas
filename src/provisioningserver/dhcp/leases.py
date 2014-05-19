@@ -54,7 +54,7 @@ from provisioningserver.auth import (
     get_recorded_nodegroup_uuid,
     )
 from provisioningserver.cluster_config import get_maas_url
-from provisioningserver.dhcp.leases_parser import parse_leases
+from provisioningserver.dhcp.leases_parser_fast import parse_leases
 
 
 logger = getLogger(__name__)
