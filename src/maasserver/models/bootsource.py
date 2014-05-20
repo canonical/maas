@@ -21,12 +21,12 @@ from base64 import b64encode
 
 from django.core.exceptions import ValidationError
 from django.db.models import (
-    BinaryField,
     FilePathField,
     ForeignKey,
     URLField,
     )
 from maasserver import DefaultMeta
+from maasserver.fields import EditableBinaryField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 
@@ -46,7 +46,7 @@ class BootSource(CleanSave, TimestampedModel):
         blank=True,
         help_text="The path to the keyring file for this BootSource.")
 
-    keyring_data = BinaryField(
+    keyring_data = EditableBinaryField(
         blank=True,
         help_text="The GPG keyring for this BootSource, as a binary blob.")
 
