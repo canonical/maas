@@ -24,7 +24,6 @@ from django.db.models import (
     BinaryField,
     FilePathField,
     ForeignKey,
-    Manager,
     URLField,
     )
 from maasserver import DefaultMeta
@@ -32,25 +31,11 @@ from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 
 
-class BootSourceManager(Manager):
-    """Manager for `BootSource` class."""
-
-    def get_boot_sources_for_cluster(self, cluster):
-        """Return all the `BootSource`s for a given cluster.
-
-        :param cluster: A `NodeGroup` object.
-        :return: A `BootSource` `QuerySet`.
-        """
-        return self.filter(cluster=cluster)
-
-
 class BootSource(CleanSave, TimestampedModel):
     """A source for boot resources."""
 
     class Meta(DefaultMeta):
         """Needed for South to recognize this model."""
-
-    objects = BootSourceManager()
 
     cluster = ForeignKey(
         'maasserver.NodeGroup', editable=True, null=True, blank=False)

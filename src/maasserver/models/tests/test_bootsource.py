@@ -64,13 +64,6 @@ class TestBootSource(MAASTestCase):
             boot_source.id,
             [source.id for source in BootSource.objects.all()])
 
-    def test_get_boot_sources_for_cluster(self):
-        cluster = factory.make_node_group()
-        boot_source = factory.make_boot_source(cluster=cluster)
-        self.assertEqual(
-            [boot_source],
-            list(BootSource.objects.get_boot_sources_for_cluster(cluster)))
-
     def test_to_dict_returns_dict(self):
         boot_source = factory.make_boot_source(
             keyring_data=b"123445", keyring_filename='')

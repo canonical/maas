@@ -69,7 +69,6 @@ from maasserver.forms import (
     ZoneForm,
     )
 from maasserver.models import (
-    BootSource,
     Config,
     MACAddress,
     Network,
@@ -1230,9 +1229,7 @@ class TestNodeGroupDefineForm(MAASServerTestCase):
             })
         self.assertTrue(form.is_valid(), form._errors)
         cluster = form.save()
-        self.assertThat(
-            BootSource.objects.get_boot_sources_for_cluster(cluster),
-            HasLength(1))
+        self.assertThat(cluster.bootsource_set.all(), HasLength(1))
 
     def test_ensures_boot_sources_when_updating_cluster(self):
         form = NodeGroupDefineForm(
@@ -1243,9 +1240,7 @@ class TestNodeGroupDefineForm(MAASServerTestCase):
             })
         self.assertTrue(form.is_valid(), form._errors)
         cluster = form.save()
-        self.assertThat(
-            BootSource.objects.get_boot_sources_for_cluster(cluster),
-            HasLength(1))
+        self.assertThat(cluster.bootsource_set.all(), HasLength(1))
 
 
 class TestNodeGroupEdit(MAASServerTestCase):

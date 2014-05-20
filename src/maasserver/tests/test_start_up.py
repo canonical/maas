@@ -104,13 +104,9 @@ class TestInnerStartUp(MAASServerTestCase):
 
     def test__initialises_boot_source_config(self):
         cluster = factory.make_node_group()
-        self.assertItemsEqual(
-            [],
-            BootSource.objects.get_boot_sources_for_cluster(cluster))
+        self.assertItemsEqual([], cluster.bootsource_set.all())
         start_up.inner_start_up()
-        self.assertThat(
-            BootSource.objects.get_boot_sources_for_cluster(cluster),
-            HasLength(1))
+        self.assertThat(cluster.bootsource_set.all(), HasLength(1))
 
     def test__creates_master_with_boot_source_config(self):
         NodeGroup.objects.all().delete()
