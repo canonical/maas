@@ -363,12 +363,12 @@ package_export: package_branch
 	@bzr export --root=maas-$(VER).orig ../build-area/$(TARBALL) $(CURDIR)
 
 package: package_export
-	bzr bd --merge $(PACKAGING) -- -uc -us
-	@echo Binary packages built, see parent directory.
+	bzr bd --merge $(PACKAGING) --result-dir=../build-area -- -uc -us
+	@echo Binary packages built, see ../build-area/ directory.
 
 source_package: package_export
-	bzr bd --merge $(PACKAGING) -- -S -uc -us
-	@echo Source package built, see parent directory.
+	bzr bd --merge $(PACKAGING) --result-dir=../build-area -- -S -uc -us
+	@echo Source package built, see ../build-area/ directory.
 
 #
 # Phony stuff.
