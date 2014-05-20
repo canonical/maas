@@ -23,6 +23,8 @@ from maasserver.api import (
     api_doc,
     BootImageHandler,
     BootImagesHandler,
+    BootSourceHandler,
+    BootSourcesHandler,
     CommissioningResultsHandler,
     CommissioningScriptHandler,
     CommissioningScriptsHandler,
@@ -99,6 +101,10 @@ commissioning_script_handler = AdminRestrictedResource(
     CommissioningScriptHandler, authentication=api_auth)
 commissioning_scripts_handler = AdminRestrictedResource(
     CommissioningScriptsHandler, authentication=api_auth)
+boot_source_handler = AdminRestrictedResource(
+    BootSourceHandler, authentication=api_auth)
+boot_sources_handler = AdminRestrictedResource(
+    BootSourcesHandler, authentication=api_auth)
 
 
 # API URLs accessible to anonymous users.
@@ -173,4 +179,8 @@ urlpatterns += patterns(
     url(
         r'^commissioning-scripts/(?P<name>[^/]+)$',
         commissioning_script_handler, name='commissioning_script_handler'),
+    url(r'^nodegroups/(?P<uuid>[^/]+)/boot-sources/$',
+        boot_sources_handler, name='boot_sources_handler'),
+    url(r'^nodegroups/(?P<uuid>[^/]+)/boot-sources/(?P<id>[^/]+)/$',
+        boot_source_handler, name='boot_source_handler'),
 )

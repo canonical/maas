@@ -177,6 +177,7 @@ from maasserver.fields import (
     validate_mac,
     )
 from maasserver.forms import (
+    BootSourceForm,
     BulkNodeActionForm,
     DownloadProgressForm,
     get_action_form,
@@ -202,6 +203,7 @@ from maasserver.forms_settings import (
     )
 from maasserver.models import (
     BootImage,
+    BootSource,
     Config,
     DHCPLease,
     FileStorage,
@@ -2754,6 +2756,139 @@ class BootImagesHandler(OperationsHandler):
         prune_boot_images(nodegroup, reported_images, existing_images)
         warn_if_missing_boot_images()
         return HttpResponse("OK")
+
+
+DISPLAYED_BOOTSOURCE_FIELDS = (
+    'id',
+    'url',
+    'keyring_filename',
+    'keyring_data',
+)
+
+
+def json_boot_source(boot_source, request):
+    """Convert boot_source into a json object.
+
+    Use the same fields used when serialising objects, but base64-encode
+    keyring_data.
+    """
+    dict_representation = {
+        fieldname: getattr(boot_source, fieldname)
+        for fieldname in DISPLAYED_BOOTSOURCE_FIELDS
+        }
+    # Encode the keyring_data as base64.
+    keyring_data = getattr(boot_source, 'keyring_data')
+    dict_representation['keyring_data'] = b64encode(keyring_data)
+    dict_representation['resource_uri'] = reverse(
+        'boot_source_handler',
+        args=[boot_source.cluster.uuid, boot_source.id])
+    emitter = JSONEmitter(dict_representation, typemapper, None)
+    stream = emitter.render(request)
+    return stream
+
+
+class BootSourceHandler(OperationsHandler):
+    """Manage a boot source."""
+    api_doc_section_name = "Boot source"
+    create = replace = None
+
+    model = BootSource
+    fields = DISPLAYED_BOOTSOURCE_FIELDS
+
+    def read(self, request, uuid, id):
+        """Read a boot source."""
+        nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
+        boot_source = get_object_or_404(
+            BootSource, cluster=nodegroup, id=id)
+        stream = json_boot_source(boot_source, request)
+        return HttpResponse(
+            stream, mimetype='application/json; charset=utf-8',
+            status=httplib.OK)
+
+    def update(self, request, uuid, id):
+        """Update a specific boot source.
+
+        :param url: The URL of the BootSource.
+        :param keyring_filename: The path to the keyring file for this
+            BootSource.
+        :param keyring_filename: The GPG keyring for this BootSource,
+            base64-encoded data.
+        """
+        nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
+        boot_source = get_object_or_404(
+            BootSource, cluster=nodegroup, id=id)
+        form = BootSourceForm(
+            data=request.data, files=request.FILES, instance=boot_source)
+        if form.is_valid():
+            return form.save()
+        else:
+            raise ValidationError(form.errors)
+
+    def delete(self, request, uuid, id):
+        """Delete a specific boot source."""
+        nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
+        boot_source = get_object_or_404(
+            BootSource, cluster=nodegroup, id=id)
+        boot_source.delete()
+        return rc.DELETED
+
+    @classmethod
+    def resource_uri(cls, bootsource=None):
+        if bootsource is None:
+            id = 'id'
+            uuid = 'uuid'
+        else:
+            id = bootsource.id
+            uuid = bootsource.cluster.uuid
+        return ('boot_source_handler', (uuid, id))
+
+
+class BootSourcesHandler(OperationsHandler):
+    """Manage the collection of boot sources."""
+    api_doc_section_name = "Boot sources"
+
+    create = replace = update = delete = None
+
+    @classmethod
+    def resource_uri(cls, nodegroup=None):
+        if nodegroup is None:
+            uuid = 'uuid'
+        else:
+            uuid = nodegroup.uuid
+        return ('boot_sources_handler', [uuid])
+
+    def read(self, request, uuid):
+        """List boot sources.
+
+        Get a listing of a cluster's boot sources.
+
+        :param uuid: The UUID of the cluster for which the images
+            should be listed.
+        """
+        nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
+        return BootSource.objects.filter(cluster=nodegroup)
+
+    def create(self, request, uuid):
+        """Create a new boot source.
+
+        :param url: The URL of the BootSource.
+        :param keyring_filename: The path to the keyring file for
+            this BootSource.
+        :param keyring_data: The GPG keyring for this BootSource,
+            base64-encoded.
+        """
+        nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
+        form = BootSourceForm(
+            data=request.data, files=request.FILES,
+            nodegroup=nodegroup)
+        if form.is_valid():
+            boot_source = form.save()
+            stream = json_boot_source(boot_source, request)
+            return HttpResponse(
+                stream, mimetype='application/json; charset=utf-8',
+                status=httplib.CREATED)
+        else:
+            raise ValidationError(form.errors)
 
 
 def get_content_parameter(request):
