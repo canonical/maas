@@ -13,6 +13,7 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    "EditableBinaryField",
     "MAC",
     "MACAddressField",
     "MACAddressFormField",
@@ -30,6 +31,7 @@ import re
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
 from django.db.models import (
+    BinaryField,
     Field,
     SubfieldBase,
     )
@@ -87,6 +89,7 @@ add_introspection_rules(
         "^maasserver\.fields\.MACAddressField",
         "^maasserver\.fields\.JSONObjectField",
         "^maasserver\.fields\.XMLField",
+        "^maasserver\.fields\.EditableBinaryField",
     ])
 
 
@@ -371,3 +374,14 @@ class XMLField(Field):
             raise TypeError("Lookup type %s is not supported." % lookup_type)
         return super(XMLField, self).get_db_prep_lookup(
             lookup_type, value, **kwargs)
+
+
+class EditableBinaryField(BinaryField):
+    """An editable binary field.
+
+    An editable version of Django's BinaryField.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super(EditableBinaryField, self).__init__(*args, **kwargs)
+        self.editable = True

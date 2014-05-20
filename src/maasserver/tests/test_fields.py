@@ -23,7 +23,9 @@ from django.db import (
     connection,
     DatabaseError,
     )
+from django.db.models import BinaryField
 from maasserver.fields import (
+    EditableBinaryField,
     MAC,
     NodeGroupFormField,
     register_mac_type,
@@ -375,3 +377,12 @@ class TestXMLField(TestModelMixin, MAASServerTestCase):
 
     def test_lookup_exact_unsupported(self):
         self.assertRaises(TypeError, XMLFieldModel.objects.get, value="")
+
+
+class TestEditableBinaryField(MAASServerTestCase):
+
+    def test_is_BinaryField(self):
+        self.assertIsInstance(EditableBinaryField(), BinaryField)
+
+    def test_is_editable(self):
+        self.assertTrue(EditableBinaryField().editable)
