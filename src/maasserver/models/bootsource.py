@@ -82,7 +82,7 @@ class BootSource(CleanSave, TimestampedModel):
             with open(self.keyring_filename, 'rb') as keyring_file:
                 keyring_data = keyring_file.read()
         return {
-            "path": self.url,
+            "url": self.url,
             "keyring_data": b64encode(keyring_data),
             "selections": [
                 selection.to_dict()

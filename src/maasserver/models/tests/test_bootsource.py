@@ -70,7 +70,7 @@ class TestBootSource(MAASTestCase):
         boot_source_selection = factory.make_boot_source_selection(
             boot_source=boot_source)
         boot_source_dict = boot_source.to_dict()
-        self.assertEqual(boot_source.url, boot_source_dict['path'])
+        self.assertEqual(boot_source.url, boot_source_dict['url'])
         self.assertEqual(
             [boot_source_selection.to_dict()],
             boot_source_dict['selections'])
