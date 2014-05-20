@@ -25,6 +25,8 @@ from provisioningserver.boot.tftppath import (
     compose_image_path,
     drill_down,
     extend_path,
+    extract_image_params,
+    extract_metadata,
     is_visible_subdir,
     list_boot_images,
     list_subdirs,
@@ -33,6 +35,14 @@ from provisioningserver.boot.tftppath import (
 from provisioningserver.driver import (
     OperatingSystem,
     OperatingSystemRegistry,
+    )
+from provisioningserver.import_images.boot_image_mapping import (
+    BootImageMapping,
+    )
+from provisioningserver.import_images.helpers import ImageSpec
+from provisioningserver.import_images.testing.factory import (
+    make_image_spec,
+    set_resource,
     )
 from provisioningserver.testing.boot_images import (
     make_boot_image_storage_params,
@@ -79,13 +89,15 @@ class FakeOS(OperatingSystem):
             ]
 
 
-def make_image(params, purpose):
+def make_image(params, purpose, metadata=None):
     """Describe an image as a dict similar to what `list_boot_images` returns.
 
     The `params` are as returned from `make_boot_image_storage_params`.
     """
     image = params.copy()
     image['purpose'] = purpose
+    if metadata is not None:
+        image.update(metadata)
     return image
 
 
@@ -132,6 +144,17 @@ class TestTFTPPath(MAASTestCase):
         os.makedirs(image_dir)
         factory.make_file(image_dir, 'linux')
         factory.make_file(image_dir, 'initrd.gz')
+
+    def make_meta_file(self, image_params, image_resource, tftproot):
+        image = ImageSpec(
+            arch=image_params["architecture"],
+            subarch=image_params["subarchitecture"],
+            release=image_params["release"], label=image_params["label"])
+        mapping = BootImageMapping()
+        mapping.setdefault(image, image_resource)
+        maas_meta = mapping.dump_json()
+        with open(os.path.join(tftproot, "maas.meta"), "wb") as f:
+            f.write(maas_meta)
 
     def test_compose_image_path_follows_storage_directory_layout(self):
         osystem = factory.make_name('osystem')
@@ -201,6 +224,21 @@ class TestTFTPPath(MAASTestCase):
                 for param in params
                 for purpose in purposes
             ],
+            list_boot_images(self.tftproot))
+
+    def test_list_boot_images_merges_maas_meta_data(self):
+        params = make_boot_image_storage_params()
+        self.make_image_dir(params, self.tftproot)
+        # The required metadata is called "subarches" in maas.meta
+        metadata = dict(subarches=factory.make_name("subarches"))
+        self.make_meta_file(params, metadata, self.tftproot)
+        purposes = ['install', 'commissioning', 'xinstall']
+        make_osystem(self, params['osystem'], purposes)
+        # The API requires "supported_subarches".
+        expected_metadata = dict(supported_subarches=metadata["subarches"])
+        self.assertItemsEqual(
+            [make_image(params, purpose, expected_metadata)
+                for purpose in purposes],
             list_boot_images(self.tftproot))
 
     def test_list_boot_images_empty_on_missing_osystems(self):
@@ -296,3 +334,118 @@ class TestTFTPPath(MAASTestCase):
         self.assertEqual(
             [[deep_dir, subdir]],
             drill_down(base_dir, [[shallow_dir], [deep_dir]]))
+
+    def test_extract_metadata(self):
+        resource = dict(
+            subarches=factory.make_name("subarch"),
+            other_item=factory.make_name("other"),
+            )
+        image = make_image_spec()
+        mapping = set_resource(image_spec=image, resource=resource)
+        metadata = mapping.dump_json()
+
+        # Lack of consistency across maas in naming arch vs architecture
+        # and subarch vs subarchitecture means I can't just do a simple
+        # dict parameter expansion here.
+        params = {
+            "architecture": image.arch,
+            "subarchitecture": image.subarch,
+            "release": image.release,
+            "label": image.label,
+            }
+        extracted_data = extract_metadata(metadata, params)
+
+        # We only expect the supported_subarches key from the resource data.
+        expected = dict(supported_subarches=resource["subarches"])
+        self.assertEqual(expected, extracted_data)
+
+    def _make_path(self):
+        osystem = factory.make_name("os")
+        arch = factory.make_name("arch")
+        subarch = factory.make_name("subarch")
+        release = factory.make_name("release")
+        label = factory.make_name("label")
+        path = (osystem, arch, subarch, release, label)
+        return path, osystem, arch, subarch, release, label
+
+    def _patch_osystem_registry(self, values):
+        get_item = self.patch(OperatingSystemRegistry, "get_item")
+        item_mock = Mock()
+        item_mock.get_boot_image_purposes.return_value = values
+        get_item.return_value = item_mock
+
+    def test_extract_image_params_with_no_metadata(self):
+        path, osystem, arch, subarch, release, label = self._make_path()
+
+        # Patch OperatingSystemRegistry to return a fixed list of
+        # values.
+        purpose1 = factory.make_name("purpose")
+        purpose2 = factory.make_name("purpose")
+        purposes = [purpose1, purpose2]
+        self._patch_osystem_registry(purposes)
+
+        params = extract_image_params(path, "")
+
+        self.assertItemsEqual(
+            [
+                {
+                    "osystem": osystem,
+                    "architecture": arch,
+                    "subarchitecture": subarch,
+                    "release": release,
+                    "label": label,
+                    "purpose": purpose1,
+                },
+                {
+                    "osystem": osystem,
+                    "architecture": arch,
+                    "subarchitecture": subarch,
+                    "release": release,
+                    "label": label,
+                    "purpose": purpose2,
+                },
+            ],
+            params)
+
+    def test_extract_image_params_with_metadata(self):
+        path, osystem, arch, subarch, release, label = self._make_path()
+
+        # Patch OperatingSystemRegistry to return a fixed list of
+        # values.
+        purpose1 = factory.make_name("purpose")
+        purpose2 = factory.make_name("purpose")
+        purposes = [purpose1, purpose2]
+        self._patch_osystem_registry(purposes)
+
+        # Create some maas.meta content.
+        image = ImageSpec(
+            arch=arch, subarch=subarch, release=release, label=label)
+        image_resource = dict(subarches=factory.make_name("subarches"))
+        mapping = BootImageMapping()
+        mapping.setdefault(image, image_resource)
+        maas_meta = mapping.dump_json()
+
+        params = extract_image_params(path, maas_meta)
+
+        self.assertItemsEqual(
+            [
+                {
+                    "osystem": osystem,
+                    "architecture": arch,
+                    "subarchitecture": subarch,
+                    "release": release,
+                    "label": label,
+                    "purpose": purpose1,
+                    "supported_subarches": image_resource["subarches"],
+                },
+                {
+                    "osystem": osystem,
+                    "architecture": arch,
+                    "subarchitecture": subarch,
+                    "release": release,
+                    "label": label,
+                    "purpose": purpose2,
+                    "supported_subarches": image_resource["subarches"],
+                },
+            ],
+            params)

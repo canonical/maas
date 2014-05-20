@@ -15,14 +15,23 @@ __metaclass__ = type
 __all__ = [
     'make_boot_resource',
     'make_image_spec',
+    'make_maas_meta',
     'set_resource',
     ]
+
+from textwrap import dedent
 
 from maastesting.factory import factory
 from provisioningserver.import_images.boot_image_mapping import (
     BootImageMapping,
     )
 from provisioningserver.import_images.helpers import ImageSpec
+
+
+def make_maas_meta():
+    """Return fake maas.meta data."""
+    return dedent("""\
+        {"amd64": {"generic": {"precise": {"release": {"content_id": "com.ubuntu.maas:v2:download", "path": "precise/amd64/20140410/raring/generic/boot-kernel", "product_name": "com.ubuntu.maas:v2:boot:12.04:amd64:hwe-r", "subarches": "generic,hwe-p,hwe-q,hwe-r", "version_name": "20140410"}}, "trusty": {"release": {"content_id": "com.ubuntu.maas:v2:download", "path": "trusty/amd64/20140416.1/root-image.gz", "product_name": "com.ubuntu.maas:v2:boot:14.04:amd64:hwe-t", "subarches": "generic,hwe-p,hwe-q,hwe-r,hwe-s,hwe-t", "version_name": "20140416.1"}}}, "hwe-s": {"precise": {"release": {"content_id": "com.ubuntu.maas:v2:download", "path": "precise/amd64/20140410/saucy/generic/boot-kernel", "product_name": "com.ubuntu.maas:v2:boot:12.04:amd64:hwe-s", "subarches": "generic,hwe-p,hwe-q,hwe-r,hwe-s", "version_name": "20140410"}}}}}""")  # NOQA
 
 
 def make_boot_resource():

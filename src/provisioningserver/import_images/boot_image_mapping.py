@@ -63,3 +63,30 @@ class BootImageMapping:
             data[arch][subarch].setdefault(release, {})
             data[arch][subarch][release][label] = resource
         return json.dumps(data, sort_keys=True)
+
+    @staticmethod
+    def load_json(json_data):
+        """Take a JSON representation and deserialize into an object.
+
+        :param json_data: string produced by dump_json(), above.
+        :return: A BootImageMapping
+
+        If the json data is invalid, an empty BootImageMapping is returned.
+        """
+        mapping = BootImageMapping()
+        try:
+            data = json.loads(json_data)
+        except ValueError:
+            return mapping
+
+        for arch in data:
+            for subarch in data[arch]:
+                for release in data[arch][subarch]:
+                    for label in data[arch][subarch][release]:
+                        image = ImageSpec(
+                            arch=arch, subarch=subarch, release=release,
+                            label=label)
+                        resource = data[arch][subarch][release][label]
+                        mapping.setdefault(image, resource)
+
+        return mapping

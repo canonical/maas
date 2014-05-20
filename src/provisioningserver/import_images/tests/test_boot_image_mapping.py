@@ -23,6 +23,7 @@ from provisioningserver.import_images.boot_image_mapping import (
     )
 from provisioningserver.import_images.testing.factory import (
     make_image_spec,
+    make_maas_meta,
     set_resource,
     )
 
@@ -104,3 +105,16 @@ class TestBootImageMapping(MAASTestCase):
                 },
             },
             json.loads(image_dict.dump_json()))
+
+    def test_load_json_result_matches_dump_of_own_data(self):
+        # Loading the test data and dumping it again should result in
+        # identical test data.
+        test_meta_file_content = make_maas_meta()
+        mapping = BootImageMapping.load_json(test_meta_file_content)
+        dumped = mapping.dump_json()
+        self.assertEqual(test_meta_file_content, dumped)
+
+    def test_load_json_returns_empty_mapping_for_invalid_json(self):
+        bad_json = ""
+        mapping = BootImageMapping.load_json(bad_json)
+        self.assertEqual({}, mapping.mapping)

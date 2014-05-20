@@ -25,6 +25,10 @@ from logging import getLogger
 import os.path
 
 from provisioningserver.driver import OperatingSystemRegistry
+from provisioningserver.import_images.boot_image_mapping import (
+    BootImageMapping,
+    )
+from provisioningserver.import_images.helpers import ImageSpec
 
 
 logger = getLogger(__name__)
@@ -112,11 +116,43 @@ def drill_down(directory, paths):
         extend_path(directory, path) for path in paths))
 
 
-def extract_image_params(path):
+def extract_metadata(metadata, params):
+    """Examine the maas.meta file for any required metadata.
+
+    :param metadata: contents of the maas.meta file
+    :param params: A dict of path components for the image
+        (architecture, subarchitecture, release and label).
+    :return: a dict of name/value metadata pairs.  Currently, only
+        "subarches" is extracted.
+    """
+    mapping = BootImageMapping.load_json(metadata)
+
+    image = ImageSpec(
+        arch=params["architecture"],
+        subarch=params["subarchitecture"],
+        release=params["release"],
+        label=params["label"],
+        )
+    try:
+        resource = mapping.mapping[image]
+    except KeyError:
+        return {}
+
+    return dict(supported_subarches=resource["subarches"])
+
+
+def extract_image_params(path, maas_meta):
     """Represent a list of TFTP path elements as a list of boot-image dicts.
 
-    The path must consist of a full [osystem, architecture, subarchitecture,
-    release] that identify a kind of boot that we may need an image for.
+    :param path: Tuple or list that consists of a full [osystem, architecture,
+        subarchitecture, release] that identify a kind of boot for which we
+        may need an image.
+    :param maas_meta: Contents of the maas.meta file.  This may be an
+        empty string.
+
+    :return: A list of dicts, each of which may also include additional
+        items of meta-data that are not elements in the path, such as
+        "subarches".
     """
     osystem, arch, subarch, release, label = path
     osystem_obj = OperatingSystemRegistry.get_item(osystem, default=None)
@@ -125,12 +161,26 @@ def extract_image_params(path):
 
     purposes = osystem_obj.get_boot_image_purposes(
         arch, subarch, release, label)
-    return [
+
+    # Expand the path into a list of dicts, one for each boot purpose.
+    params = [
         dict(
             osystem=osystem, architecture=arch, subarchitecture=subarch,
             release=release, label=label, purpose=purpose)
         for purpose in purposes
         ]
+
+    # Merge in the meta-data.
+    for image_dict in params:
+        metadata = extract_metadata(maas_meta, image_dict)
+        image_dict.update(metadata)
+
+    return params
+
+
+def maas_meta_file_path(tftproot):
+    """Return a string containing the full path to maas.meta."""
+    return os.path.join(tftproot, 'maas.meta')
 
 
 def list_boot_images(tftproot):
@@ -149,9 +199,9 @@ def list_boot_images(tftproot):
             # Directory does not exist, so return empty list.
             logger.warning("No boot images have been imported yet.")
             return []
-        else:
-            # Other error. Propagate.
-            raise
+
+        # Other error. Propagate.
+        raise
 
     # Starting point for iteration: paths that contain only the
     # top-level subdirectory of tftproot, i.e. the architecture name.
@@ -163,8 +213,21 @@ def list_boot_images(tftproot):
     for level in ['arch', 'subarch', 'release', 'label']:
         paths = drill_down(tftproot, paths)
 
+    # Get hold of image meta-data stored in the maas.meta file.
+    meta_file_path = maas_meta_file_path(tftproot)
+    try:
+        with open(meta_file_path, "rb") as f:
+            metadata = f.read()
+    except IOError as e:
+        if e.errno != errno.ENOENT:
+            # Unexpected error, propagate.
+            raise
+        # No meta file (yet), it means no import has run so just skip
+        # it.
+        metadata = ""
+
     # Each path we find this way should be a boot image.
     # This gets serialised to JSON, so we really have to return a list, not
     # just any iterable.
     return list(chain.from_iterable(
-        extract_image_params(path) for path in paths))
+        extract_image_params(path, metadata) for path in paths))
