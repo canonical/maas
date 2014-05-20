@@ -2486,6 +2486,12 @@ def pxeconfig(request):
         latest_label = 'no-such-image'
     else:
         latest_label = latest_image.label
+        # subarch may be different from the request because newer images
+        # support older hardware enablement, e.g. trusty/generic
+        # supports trusty/hwe-s. We must override the subarch to the one
+        # on the image otherwise the config path will be wrong if
+        # get_latest_image() returned an image with a different subarch.
+        subarch = latest_image.subarchitecture
     label = get_optional_param(request.GET, 'label', latest_label)
 
     if node is not None:

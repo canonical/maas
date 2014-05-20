@@ -354,3 +354,29 @@ class TestPXEConfigAPI(MAASServerTestCase):
         params['arch'] = 'iHaveNoIdea'
         pxe_config = self.get_pxeconfig(params)
         self.assertEqual('no-such-image', pxe_config['label'])
+
+    def test_pxeconfig_returns_image_subarch_not_node_subarch(self):
+        # In the scenario such as deploying trusty on an hwe-s subarch
+        # node, the code will have fallen back to using trusty's generic
+        # image as per the supported_subarches on the image. However,
+        # pxeconfig needs to make sure the image path refers to the
+        # subarch from the image, rather than the requested one.
+        osystem = 'ubuntu'
+        release = Config.objects.get_config('default_distro_series')
+        nodegroup = factory.make_node_group()
+        factory.make_boot_image(
+            osystem=osystem,
+            architecture="amd64", subarchitecture="generic",
+            supported_subarches="hwe-s", release=release, nodegroup=nodegroup,
+            purpose="install")
+        node = factory.make_node(
+            mac=True, nodegroup=nodegroup, status=NODE_STATUS.ALLOCATED,
+            architecture="amd64/hwe-s")
+        params = self.get_default_params()
+        params['cluster_uuid'] = nodegroup.uuid
+        params['mac'] = node.get_primary_mac()
+        params['arch'] = "amd64"
+        params['subarch'] = "hwe-s"
+
+        params_out = self.get_pxeconfig(params)
+        self.assertEqual("generic", params_out["subarch"])
