@@ -15,6 +15,7 @@ __metaclass__ = type
 __all__ = [
     "AdminNodeForm",
     "AdminNodeWithMACAddressesForm",
+    "BootSourceForm",
     "BulkNodeActionForm",
     "CommissioningForm",
     "CommissioningScriptForm",
@@ -91,6 +92,7 @@ from maasserver.forms_settings import (
     )
 from maasserver.models import (
     BootImage,
+    BootSource,
     Config,
     DownloadProgress,
     MACAddress,
@@ -1553,3 +1555,48 @@ class NetworkDisconnectMACsForm(MACsForm):
     def save(self):
         """Disconnect the MAC addresses from the form's network."""
         self.network.macaddress_set.remove(*self.get_macs())
+
+
+class BootSourceForm(ModelForm):
+    """Form for the Boot Source API."""
+
+    class Meta:
+        model = BootSource
+        fields = (
+            'url',
+            'keyring_filename',
+            'keyring_data',
+            )
+
+    keyring_filename = forms.CharField(
+        label="The path to the keyring file for this BootSource.",
+        required=False)
+
+    keyring_data = forms.FileField(
+        label="The GPG keyring for this BootSource, as a binary blob.",
+        required=False)
+
+    def __init__(self, nodegroup=None, **kwargs):
+        super(BootSourceForm, self).__init__(**kwargs)
+        if 'instance' in kwargs:
+            self.nodegroup = kwargs['instance'].cluster
+        else:
+            self.nodegroup = nodegroup
+
+    def clean_keyring_data(self):
+        """Process 'keyring_data' field.
+
+        Return the InMemoryUploadedFile's content so that it can be
+        stored in the boot source's 'keyring_data' binary field.
+        """
+        data = self.cleaned_data.get('keyring_data', None)
+        if data is not None:
+            return data.read()
+        return data
+
+    def save(self, *args, **kwargs):
+        boot_source = super(BootSourceForm, self).save(commit=False)
+        boot_source.cluster = self.nodegroup
+        if kwargs.get('commit', True):
+            boot_source.save(*args, **kwargs)
+        return boot_source
