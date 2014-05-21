@@ -804,7 +804,6 @@ class Node(CleanSave, TimestampedModel):
             power_params = {}
 
         power_params.setdefault('system_id', self.system_id)
-        power_params.setdefault('virsh', '/usr/bin/virsh')
         power_params.setdefault('fence_cdu', '/usr/sbin/fence_cdu')
         power_params.setdefault('ipmipower', '/usr/sbin/ipmipower')
         power_params.setdefault('ipmitool', '/usr/bin/ipmitool')
@@ -819,6 +818,7 @@ class Node(CleanSave, TimestampedModel):
         power_params.setdefault('username', '')
         power_params.setdefault('power_id', self.system_id)
         power_params.setdefault('power_driver', '')
+        power_params.setdefault('power_pass', '')
 
         # The "mac" parameter defaults to the node's primary MAC
         # address, but only if not already set.

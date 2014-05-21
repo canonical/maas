@@ -1698,8 +1698,8 @@ class NodeGroupHandler(OperationsHandler):
     def probe_and_enlist_hardware(self, request, uuid):
         """Add special hardware types.
 
-        :param model: The type of special hardware, currently only
-            'seamicro15k' is supported.
+        :param model: The type of special hardware, 'seamicro15k' and
+            'virsh' is supported.
         :type model: unicode
 
         The following are only required if you are probing a seamicro15k:
@@ -1716,6 +1716,17 @@ class NodeGroupHandler(OperationsHandler):
         :param power_control: The power_control to use, either ipmi (default)
             or restapi.
         :type power_control: unicode
+
+        The following are only required if you are probing a virsh:
+
+        :param power_address: The connection string to virsh.
+        :type power_address: unicode
+
+        The following are optional if you are probing a virsh:
+
+        :param power_pass: The password to use, when qemu+ssh is given as a
+            connection string and ssh key authentication is not being used.
+        :type power_pass: unicode
         """
         nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
 
@@ -1730,6 +1741,12 @@ class NodeGroupHandler(OperationsHandler):
 
             nodegroup.add_seamicro15k(
                 mac, username, password, power_control=power_control)
+        elif model == 'powerkvm' or model == 'virsh':
+            poweraddr = get_mandatory_param(request.data, 'power_address')
+            password = get_optional_param(
+                request.data, 'power_pass', default=None)
+
+            nodegroup.add_virsh(poweraddr, password=password)
         else:
             return HttpResponse(status=httplib.BAD_REQUEST)
 

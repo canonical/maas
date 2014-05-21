@@ -46,6 +46,7 @@ from provisioningserver.custom_hardware.seamicro import (
     probe_seamicro15k_and_enlist,
     )
 from provisioningserver.custom_hardware.ucsm import probe_and_enlist_ucsm
+from provisioningserver.custom_hardware.virsh import probe_virsh_and_enlist
 from provisioningserver.dhcp import (
     config,
     detect,
@@ -470,7 +471,7 @@ def import_boot_images(http_proxy=None, callback=None):
 @task
 @log_exception_text
 def add_seamicro15k(mac, username, password, power_control=None):
-    """ See `maasserver.api.NodeGroupsHandler.add_seamicro15k`. """
+    """ See `maasserver.api.NodeGroup.add_seamicro15k`. """
     ip = find_ip_via_arp(mac)
     if ip is not None:
         probe_seamicro15k_and_enlist(
@@ -478,6 +479,13 @@ def add_seamicro15k(mac, username, password, power_control=None):
             power_control=power_control)
     else:
         logger.warning("Couldn't find IP address for MAC %s" % mac)
+
+
+@task
+@log_exception_text
+def add_virsh(poweraddr, password=None):
+    """ See `maasserver.api.NodeGroup.add_virsh`. """
+    probe_virsh_and_enlist(poweraddr, password=password)
 
 
 @task

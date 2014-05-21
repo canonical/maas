@@ -43,6 +43,7 @@ from provisioningserver.omshell import generate_omapi_key
 from provisioningserver.tasks import (
     add_new_dhcp_host_map,
     add_seamicro15k,
+    add_virsh,
     enlist_nodes_from_ucsm,
     import_boot_images,
     report_boot_images,
@@ -303,6 +304,15 @@ class NodeGroup(TimestampedModel):
         """
         args = (mac, username, password, power_control)
         add_seamicro15k.apply_async(queue=self.uuid, args=args)
+
+    def add_virsh(self, poweraddr, password=None):
+        """ Add all of the virtual machines inside a virsh controller.
+
+        :param poweraddr: virsh connection string
+        :param password: ssh password
+        """
+        args = (poweraddr, password)
+        add_virsh.apply_async(queue=self.uuid, args=args)
 
     def enlist_nodes_from_ucsm(self, url, username, password):
         """ Add the servers from a Cicso UCS Manager.
