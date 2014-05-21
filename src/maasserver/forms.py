@@ -16,6 +16,7 @@ __all__ = [
     "AdminNodeForm",
     "AdminNodeWithMACAddressesForm",
     "BootSourceForm",
+    "BootSourceSelectionForm",
     "BulkNodeActionForm",
     "CommissioningForm",
     "CommissioningScriptForm",
@@ -93,6 +94,7 @@ from maasserver.forms_settings import (
 from maasserver.models import (
     BootImage,
     BootSource,
+    BootSourceSelection,
     Config,
     DownloadProgress,
     MACAddress,
@@ -1600,3 +1602,39 @@ class BootSourceForm(ModelForm):
         if kwargs.get('commit', True):
             boot_source.save(*args, **kwargs)
         return boot_source
+
+
+class BootSourceSelectionForm(ModelForm):
+    """Form for the Boot Source Selection API."""
+
+    class Meta:
+        model = BootSourceSelection
+        fields = (
+            'release',
+            'arches',
+            'subarches',
+            'labels',
+            )
+
+    # Use UnconstrainedMultipleChoiceField fields for multiple-choices
+    # fields instead of the default (djorm-ext-pgarray's ArrayFormField):
+    # ArrayFormField deals with comma-separated lists and here we want to
+    # handle multiple-values submissions.
+    arches = UnconstrainedMultipleChoiceField(label="Architecture list")
+    subarches = UnconstrainedMultipleChoiceField(label="Subarchitecture list")
+    labels = UnconstrainedMultipleChoiceField(label="Label list")
+
+    def __init__(self, boot_source=None, **kwargs):
+        super(BootSourceSelectionForm, self).__init__(**kwargs)
+        if 'instance' in kwargs:
+            self.boot_source = kwargs['instance'].boot_source
+        else:
+            self.boot_source = boot_source
+
+    def save(self, *args, **kwargs):
+        boot_source_selection = super(
+            BootSourceSelectionForm, self).save(commit=False)
+        boot_source_selection.boot_source = self.boot_source
+        if kwargs.get('commit', True):
+            boot_source_selection.save(*args, **kwargs)
+        return boot_source_selection
