@@ -35,6 +35,7 @@ python-oops-amqp
 python-oops-datedir-repo
 python-oops-twisted
 python-oops-wsgi
+python-pexpect
 python-psycopg2
 python-pyinotify
 python-seamicroclient

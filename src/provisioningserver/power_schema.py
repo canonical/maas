@@ -168,6 +168,9 @@ JSON_POWER_TYPE_PARAMETERS = [
         'fields': [
             make_json_field('power_address', "Power address"),
             make_json_field('power_id', "Power ID"),
+            make_json_field(
+                'power_pass', "Power password (optional)",
+                required=False),
         ],
     },
     {

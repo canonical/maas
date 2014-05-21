@@ -42,3 +42,7 @@ def create_node(mac, arch, power_type, power_parameters):
         'autodetect_nodegroup': 'true'
     }
     return client.post('/api/1.0/nodes/', 'new', **data)
+
+
+def escape_string(data):
+    return repr(data).decode("ascii")
