@@ -24,6 +24,8 @@ from maasserver.api import (
     BootImageHandler,
     BootImagesHandler,
     BootSourceHandler,
+    BootSourceSelectionHandler,
+    BootSourceSelectionsHandler,
     BootSourcesHandler,
     CommissioningResultsHandler,
     CommissioningScriptHandler,
@@ -105,6 +107,10 @@ boot_source_handler = AdminRestrictedResource(
     BootSourceHandler, authentication=api_auth)
 boot_sources_handler = AdminRestrictedResource(
     BootSourcesHandler, authentication=api_auth)
+boot_source_selection_handler = AdminRestrictedResource(
+    BootSourceSelectionHandler, authentication=api_auth)
+boot_source_selections_handler = AdminRestrictedResource(
+    BootSourceSelectionsHandler, authentication=api_auth)
 
 
 # API URLs accessible to anonymous users.
@@ -183,4 +189,12 @@ urlpatterns += patterns(
         boot_sources_handler, name='boot_sources_handler'),
     url(r'^nodegroups/(?P<uuid>[^/]+)/boot-sources/(?P<id>[^/]+)/$',
         boot_source_handler, name='boot_source_handler'),
+    url(r'^nodegroups/(?P<uuid>[^/]+)/boot-sources/(?P<boot_source_id>[^/]+)/'
+        'selections/$',
+        boot_source_selections_handler,
+        name='boot_source_selections_handler'),
+    url(r'^nodegroups/(?P<uuid>[^/]+)/boot-sources/(?P<boot_source_id>[^/]+)/'
+        'selections/(?P<id>[^/]+)/$',
+        boot_source_selection_handler,
+        name='boot_source_selection_handler'),
 )

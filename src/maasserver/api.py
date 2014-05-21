@@ -63,6 +63,10 @@ __all__ = [
     "api_doc_title",
     "BootImageHandler",
     "BootImagesHandler",
+    "BootSourceHandler",
+    "BootSourcesHandler",
+    "BootSourceSelectionHandler",
+    "BootSourceSelectionsHandler",
     "CommissioningScriptHandler",
     "CommissioningScriptsHandler",
     "CommissioningResultsHandler",
@@ -178,6 +182,7 @@ from maasserver.fields import (
     )
 from maasserver.forms import (
     BootSourceForm,
+    BootSourceSelectionForm,
     BulkNodeActionForm,
     DownloadProgressForm,
     get_action_form,
@@ -204,6 +209,7 @@ from maasserver.forms_settings import (
 from maasserver.models import (
     BootImage,
     BootSource,
+    BootSourceSelection,
     Config,
     DHCPLease,
     FileStorage,
@@ -2887,6 +2893,119 @@ class BootSourcesHandler(OperationsHandler):
             return HttpResponse(
                 stream, mimetype='application/json; charset=utf-8',
                 status=httplib.CREATED)
+        else:
+            raise ValidationError(form.errors)
+
+
+DISPLAYED_BOOTSOURCESELECTION_FIELDS = (
+    'id',
+    'release',
+    'arches',
+    'subarches',
+    'label',
+)
+
+
+class BootSourceSelectionHandler(OperationsHandler):
+    """Manage a boot source selection."""
+    api_doc_section_name = "Boot source selection"
+    create = replace = None
+
+    model = BootSourceSelection
+    fields = DISPLAYED_BOOTSOURCESELECTION_FIELDS
+
+    def read(self, request, uuid, boot_source_id, id):
+        """Read a boot source selection."""
+        boot_source = get_object_or_404(
+            BootSource, cluster__uuid=uuid, id=boot_source_id)
+        return get_object_or_404(
+            BootSourceSelection, boot_source=boot_source, id=id)
+
+    def update(self, request, uuid, boot_source_id, id):
+        """Update a specific boot source.
+
+        :param url: The URL of the BootSource.
+        :param keyring_filename: The path to the keyring file for this
+            BootSource.
+        :param keyring_filename: The GPG keyring for this BootSource,
+            base64-encoded data.
+        """
+        boot_source = get_object_or_404(
+            BootSource, cluster__uuid=uuid, id=boot_source_id)
+        boot_source_selection = get_object_or_404(
+            BootSourceSelection, boot_source=boot_source, id=id)
+        form = BootSourceSelectionForm(
+            data=request.data, instance=boot_source_selection)
+        if form.is_valid():
+            return form.save()
+        else:
+            raise ValidationError(form.errors)
+
+    def delete(self, request, uuid, boot_source_id, id):
+        """Delete a specific boot source."""
+        boot_source = get_object_or_404(
+            BootSource, cluster__uuid=uuid, id=boot_source_id)
+        boot_source_selection = get_object_or_404(
+            BootSourceSelection, boot_source=boot_source, id=id)
+        boot_source_selection.delete()
+        return rc.DELETED
+
+    @classmethod
+    def resource_uri(cls, bootsourceselection=None):
+        if bootsourceselection is None:
+            id = 'id'
+            uuid = 'uuid'
+            boot_source_id = 'boot_source_id'
+        else:
+            id = bootsourceselection.id
+            boot_source = bootsourceselection.boot_source
+            uuid = boot_source.cluster.uuid
+            boot_source_id = boot_source.id
+        return ('boot_source_selection_handler', (uuid, boot_source_id, id))
+
+
+class BootSourceSelectionsHandler(OperationsHandler):
+    """Manage the collection of boot source selections."""
+    api_doc_section_name = "Boot source selections"
+
+    create = replace = update = delete = None
+
+    @classmethod
+    def resource_uri(cls, nodegroup=None, boot_source=None):
+        if nodegroup is None:
+            uuid = 'uuid'
+        else:
+            uuid = nodegroup.uuid
+        if boot_source is None:
+            boot_source_id = 'boot_source_id'
+        else:
+            boot_source_id = boot_source.id
+        return ('boot_source_selections_handler', [uuid, boot_source_id])
+
+    def read(self, request, uuid, boot_source_id):
+        """List boot source selections.
+
+        Get a listing of a boot source's selections.
+        """
+        boot_source = get_object_or_404(
+            BootSource, cluster__uuid=uuid, id=boot_source_id)
+        return BootSourceSelection.objects.filter(boot_source=boot_source)
+
+    def create(self, request, uuid, boot_source_id):
+        """Create a new boot source selection.
+
+        :param release: The Ubuntu release for which to import resources.
+        :param arches: The architecture list for which to import resources.
+        :param subarches: The subarchitecture list for which to import
+            resources.
+        :param labels: The label lists for which to import resources.
+        """
+        boot_source = get_object_or_404(
+            BootSource, cluster__uuid=uuid, id=boot_source_id)
+        form = BootSourceSelectionForm(
+            data=request.data, boot_source=boot_source)
+        if form.is_valid():
+            return form.save()
         else:
             raise ValidationError(form.errors)
 
