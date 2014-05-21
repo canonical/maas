@@ -127,13 +127,13 @@ password to your images::
  sudo apt-get install --assume-yes bzr
  bzr branch lp:~maas-maintainers/maas/backdoor-image backdoor-image
 
- imgs=$(echo /var/lib/maas/ephemeral/*/*/*/*/*.img)
+ imgs=$(echo /var/lib/maas/boot-resources/*/*/*/*/*/root-image)
  for img in $imgs; do
      [ -f "$img.dist" ] || cp -a --sparse=always $img $img.dist
  done
 
  for img in $imgs; do
-     sudo ./backdoor-image -v --user=backdoor --password-auth --password=ubuntu $img
+     sudo ./backdoor-image/backdoor-image -v --user=backdoor --password-auth --password=ubuntu $img
  done
 
 Inside the ephemeral image
