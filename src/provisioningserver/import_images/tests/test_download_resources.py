@@ -178,7 +178,7 @@ class TestCalculateKeyringName(MAASTestCase):
     """Tests for `calculate_keyring_name()`."""
 
     def test_creates_name_from_url(self):
-        parts = [self.getUniqueString() for i in range(1,5)]
+        parts = [self.getUniqueString() for i in range(1, 5)]
         source_url = "http://example.com/%s/" % "/".join(parts)
         expected_keyring_name = "example.com-%s.gpg" % "-".join(parts)
         self.assertEqual(
