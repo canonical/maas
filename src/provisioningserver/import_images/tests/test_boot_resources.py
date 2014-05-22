@@ -410,6 +410,7 @@ class TestParseConfig(MAASTestCase):
     """Tests for the `parse_config` function."""
 
     def test_parses_config(self):
+        self.patch(boot_resources, 'logger')
         config = {
             'boot': {
                 'configure_me': False,
@@ -417,6 +418,7 @@ class TestParseConfig(MAASTestCase):
                 'sources': [
                     {
                         'keyring': factory.make_name("keyring"),
+                        'keyring_data': '',
                         'path': factory.make_name("something"),
                         'selections': [
                             {

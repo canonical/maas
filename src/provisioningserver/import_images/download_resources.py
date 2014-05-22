@@ -16,6 +16,9 @@ __all__ = [
     'download_all_boot_resources',
     ]
 
+import tempfile
+from urlparse import urlsplit
+from base64 import b64decode
 from datetime import datetime
 from gzip import GzipFile
 import os.path
@@ -36,6 +39,9 @@ from simplestreams.util import (
     path_from_mirror_url,
     products_exdata,
     )
+
+
+DEFAULT_KEYRING_PATH = "/usr/share/keyrings"
 
 
 def insert_file(store, name, tag, checksums, size, content_source):
@@ -199,7 +205,7 @@ class RepoWriter(BasicMirrorWriter):
 
 
 def download_boot_resources(path, store, snapshot_path, product_mapping,
-                            keyring=None):
+                            keyring_file=None, keyring_data=None):
     """Download boot resources for one simplestreams source.
 
     :param path: The Simplestreams URL for this source.
@@ -209,11 +215,29 @@ def download_boot_resources(path, store, snapshot_path, product_mapping,
         boot resources.
     :param product_mapping: A `ProductMapping` describing the resources to be
         downloaded.
-    :param keyring: Optional path to a keyring file for verifying signatures.
+    :param keyring_file: Optional path to a keyring file for verifying
+        signatures.  If both keyring and keyring_data are provided, the
+        value in keyring_data will take precedence and a warning will be
+        logged.
+    :param keyring_data: Optional keyring data as a base64-encoded string.
+        If provided, will be written to a file under `keyring_path`, as
+        determined by `calculate_keyring_name`
     """
+    if keyring_file is not None and keyring_data is not None:
+        logger.warning(
+            "Both a keyring file and keyring data were specified; "
+            "ignoring the keyring file.")
+
+    # If we have keyring_data, that means we have to write it to disk.
+    keyring_dir = tempfile.mkdtemp("maas-keyrings")
+    if keyring_data is not None:
+        keyring_file = os.path.join(
+            keyring_dir, calculate_keyring_name(path))
+        write_keyring(keyring_file, keyring_data)
+
     writer = RepoWriter(snapshot_path, store, product_mapping)
     (mirror, rpath) = path_from_mirror_url(path, None)
-    policy = get_signing_policy(rpath, keyring)
+    policy = get_signing_policy(rpath, keyring_file)
     reader = UrlMirrorReader(mirror, policy=policy)
     writer.sync(reader, rpath)
 
@@ -223,12 +247,18 @@ def compose_snapshot_path(storage_path):
 
     A snapshot is a directory in `storage_path` containing boot resources.
     The snapshot's name contains the date in a sortable format.
+
+    :param storage_path: Root storage directory,
+        usually `/var/lib/maas/boot-resources`.
+    :return: Path to the snapshot directory.
     """
-    snapshot_name = 'snapshot-%s' % datetime.now().strftime('%Y%m%d-%H%M%S')
+    now = datetime.utcnow()
+    snapshot_name = 'snapshot-%s' % now.strftime('%Y%m%d-%H%M%S')
     return os.path.join(storage_path, snapshot_name)
 
 
-def download_all_boot_resources(sources, storage_path, product_mapping):
+def download_all_boot_resources(
+        sources, storage_path, product_mapping, store=None):
     """Download the actual boot resources.
 
     Local copies of boot resources are downloaded into a "cache" directory.
@@ -247,6 +277,7 @@ def download_all_boot_resources(sources, storage_path, product_mapping):
     :param snapshot_path:
     :param product_mapping: A `ProductMapping` describing the resources to be
         downloaded.
+    :param store: A `FileStore` instance. Used only for testing.
     :return: Path to the snapshot directory.
     """
     storage_path = os.path.abspath(storage_path)
@@ -254,14 +285,37 @@ def download_all_boot_resources(sources, storage_path, product_mapping):
     ubuntu_path = os.path.join(snapshot_path, 'ubuntu')
     # Use a FileStore as our ObjectStore implementation.  It will write to the
     # cache directory.
-    cache_path = os.path.join(storage_path, 'cache')
-    store = FileStore(cache_path)
+    if store is None:
+        cache_path = os.path.join(storage_path, 'cache')
+        store = FileStore(cache_path)
     # XXX jtv 2014-04-11: FileStore now also takes an argument called
     # complete_callback, which can be used for progress reporting.
 
     for source in sources:
         download_boot_resources(
             source['path'], store, ubuntu_path, product_mapping,
-            keyring=source['keyring'])
+            keyring_file=source.get('keyring'),
+            keyring_data=source.get('keyring_data'))
 
     return snapshot_path
+
+
+def write_keyring(keyring_path, keyring_data):
+    """Write a keyring blob to a file.
+
+    :param path: The path to the keyring file.
+    :param keyring_data: The data to write to the keyring_file, as a
+        base64-encoded string.
+    """
+    logger.debug("Writing keyring %s to disk.", keyring_path)
+    decoded_data = b64decode(keyring_data)
+    with open(keyring_path, 'wb') as keyring_file:
+        keyring_file.write(decoded_data)
+
+
+def calculate_keyring_name(source_url):
+    """Return a name for a keyring based on a URL."""
+    split_url = urlsplit(source_url)
+    cleaned_path = split_url.path.strip('/').replace('/', '-')
+    keyring_name = "%s-%s.gpg" % (split_url.netloc, cleaned_path)
+    return keyring_name

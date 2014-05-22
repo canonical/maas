@@ -436,6 +436,7 @@ class TestBootConfig(MAASTestCase):
                         ),
                     'keyring': (
                         '/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg'),
+                    'keyring_data': '',
                     'selections': [
                         {
                             'arches': ['*'],
@@ -460,6 +461,7 @@ class TestBootConfig(MAASTestCase):
                         'images/ephemeral-v2/releases/'),
                     'keyring': (
                         '/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg'),
+                    'keyring_data': '',
                     'selections': [
                         {
                             'arches': ['i386', 'amd64'],
