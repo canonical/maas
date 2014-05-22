@@ -450,8 +450,10 @@ def update_node_tags(tag_name, tag_definition, tag_nsmap, retry=True):
 
 @task
 @log_exception_text
-def import_boot_images(http_proxy=None, callback=None):
-    config = boot_resources.read_config()
+def import_boot_images(http_proxy=None, callback=None, sources=None):
+    if sources is None:
+        config = boot_resources.read_config()
+        sources = config['boot']['sources']
     variables = {
         'GNUPGHOME': MAAS_USER_GPGHOME,
         }
@@ -459,7 +461,7 @@ def import_boot_images(http_proxy=None, callback=None):
         variables['http_proxy'] = http_proxy
         variables['https_proxy'] = http_proxy
     with environment_variables(variables):
-        boot_resources.import_images(config['boot']['sources'])
+        boot_resources.import_images(sources)
     if callback is not None:
         callback.delay()
 

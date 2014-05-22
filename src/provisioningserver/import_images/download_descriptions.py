@@ -188,6 +188,6 @@ def download_all_image_descriptions(sources):
     boot = BootImageMapping()
     for source in sources:
         repo_boot = download_image_descriptions(
-            source['path'], keyring=source['keyring'])
+            source['url'], keyring=source['keyring'])
         boot_merge(boot, repo_boot, source['selections'])
     return boot

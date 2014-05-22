@@ -251,7 +251,7 @@ class TestMain(MAASTestCase):
             'boot': {
                 'sources': [
                     {
-                        'path': self.repo,
+                        'url': self.repo,
                         'selections': [
                             {
                                 'release': self.release,
@@ -352,7 +352,7 @@ class TestMain(MAASTestCase):
             'boot': {
                 'sources': [
                     {
-                        'path': self.make_dir(),
+                        'url': self.make_dir(),
                         'keyring': factory.make_name('keyring'),
                         'selections': [
                             {'release': factory.make_name('release')},
@@ -419,7 +419,7 @@ class TestParseConfig(MAASTestCase):
                     {
                         'keyring': factory.make_name("keyring"),
                         'keyring_data': '',
-                        'path': factory.make_name("something"),
+                        'url': factory.make_name("something"),
                         'selections': [
                             {
                                 'release': factory.make_name("release"),

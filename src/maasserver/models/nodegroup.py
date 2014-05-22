@@ -283,9 +283,12 @@ class NodeGroup(TimestampedModel):
         """
         # Avoid circular imports.
         from maasserver.models import Config
+        sources = [
+            source.to_dict() for source in self.bootsource_set.all()]
         task_kwargs = {
             'callback': report_boot_images.subtask(
                 options={'queue': self.uuid}),
+            'sources': sources,
             }
         http_proxy = Config.objects.get_config('http_proxy')
         if http_proxy is not None:

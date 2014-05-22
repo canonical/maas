@@ -466,6 +466,18 @@ class TestNodeGroup(MAASServerTestCase):
             recorder.apply_async.call_args[1]['kwargs']['callback'],
         )
 
+    def test_import_boot_images_passes_sources_list(self):
+        recorder = self.patch(nodegroup_module, 'import_boot_images')
+        self.patch(nodegroup_module, 'report_boot_images', Mock())
+        nodegroup = factory.make_node_group()
+        nodegroup.ensure_boot_source_definition()
+        sources = [
+            source.to_dict() for source in nodegroup.bootsource_set.all()]
+        nodegroup.import_boot_images()
+        [call] = recorder.mock_calls
+        _, _, kwargs = call
+        self.assertEqual(sources, kwargs['kwargs'].get('sources'))
+
     def test_ensure_boot_source_definition_creates_default_source(self):
         cluster = factory.make_node_group()
         cluster.ensure_boot_source_definition()

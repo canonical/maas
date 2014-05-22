@@ -181,7 +181,7 @@ class ConfigBootSource(Schema):
 
     if_key_missing = None
 
-    path = String(
+    url = String(
         if_missing="http://maas.ubuntu.com/images/ephemeral-v2/releases/")
     keyring = String(
         if_missing="/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg")

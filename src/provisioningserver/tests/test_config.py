@@ -431,7 +431,7 @@ class TestBootConfig(MAASTestCase):
         'boot': {
             'sources': [
                 {
-                    'path': (
+                    'url': (
                         'http://maas.ubuntu.com/images/ephemeral-v2/releases/'
                         ),
                     'keyring': (
@@ -456,7 +456,7 @@ class TestBootConfig(MAASTestCase):
         'boot': {
             'sources': [
                 {
-                    'path': (
+                    'url': (
                         'http://maas.ubuntu.com/'
                         'images/ephemeral-v2/releases/'),
                     'keyring': (

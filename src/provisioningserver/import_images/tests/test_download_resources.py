@@ -42,7 +42,7 @@ class TestDownloadAllBootResources(MAASTestCase):
     def test_accepts_keyring_data_in_sources(self):
         keyring_data = b64encode("A keyring!")
         source = {
-            'path': 'http://example.com',
+            'url': 'http://example.com',
             'keyring_data': keyring_data,
             'selections': [{
                 'release': 'trusty',
@@ -67,7 +67,7 @@ class TestDownloadAllBootResources(MAASTestCase):
         self.assertThat(
             fake,
             MockCalledWith(
-                source['path'], file_store, ubuntu_path, None,
+                source['url'], file_store, ubuntu_path, None,
                 keyring_file=None, keyring_data=keyring_data))
 
     def test_returns_snapshot_path(self):
@@ -91,7 +91,7 @@ class TestDownloadAllBootResources(MAASTestCase):
         cache_path = os.path.join(storage_path, 'cache')
         file_store = FileStore(cache_path)
         source = {
-            'path': 'http://example.com',
+            'url': 'http://example.com',
             'keyring': self.make_file("keyring"),
             }
         product_mapping = ProductMapping()
@@ -102,7 +102,7 @@ class TestDownloadAllBootResources(MAASTestCase):
         self.assertThat(
             fake,
             MockCalledWith(
-                source['path'], file_store, ubuntu_path, product_mapping,
+                source['url'], file_store, ubuntu_path, product_mapping,
                 keyring_file=source['keyring'], keyring_data=None))
 
 

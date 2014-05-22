@@ -293,7 +293,7 @@ def download_all_boot_resources(
 
     for source in sources:
         download_boot_resources(
-            source['path'], store, ubuntu_path, product_mapping,
+            source['url'], store, ubuntu_path, product_mapping,
             keyring_file=source.get('keyring'),
             keyring_data=source.get('keyring_data'))
 

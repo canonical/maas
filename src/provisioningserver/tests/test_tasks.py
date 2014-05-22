@@ -634,6 +634,7 @@ class TestImportBootImages(PservTestCase):
             """Fake function; records a copy of the environment."""
 
             def __call__(self, *args, **kwargs):
+                self.args = args
                 self.env = os.environ.copy()
 
         return self.patch(boot_resources, 'import_images', CaptureEnv())
@@ -677,6 +678,24 @@ class TestImportBootImages(PservTestCase):
         mock_callback = Mock()
         import_boot_images(callback=mock_callback)
         self.assertThat(mock_callback.delay, MockCalledOnceWith())
+
+    def test_import_boot_images_accepts_sources_parameter(self):
+        fake = self.patch(boot_resources, 'import_images')
+        sources = [
+                {
+                    'path': "http://example.com",
+                    'selections': [
+                        {
+                            'release': "trusty",
+                            'arches': ["amd64"],
+                            'subarches': ["generic"],
+                            'labels': ["release"]
+                        },
+                        ],
+                },
+            ],
+        import_boot_images(sources=sources)
+        self.assertThat(fake, MockCalledOnceWith(sources))
 
 
 class TestAddUCSM(PservTestCase):
