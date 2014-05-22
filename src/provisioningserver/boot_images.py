@@ -30,7 +30,7 @@ from provisioningserver.cluster_config import (
     get_cluster_uuid,
     get_maas_url,
     )
-from provisioningserver.config import BootConfig
+from provisioningserver.config import Config
 
 
 logger = getLogger(__name__)
@@ -65,6 +65,6 @@ def report_to_server():
         return
 
     images = tftppath.list_boot_images(
-        BootConfig.load_from_cache()['boot']['storage'] + '/current/')
+        Config.load_from_cache()['tftp']['resource_root'])
 
     submit(maas_url, api_credentials, images)

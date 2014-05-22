@@ -54,6 +54,7 @@ str = None
 __metaclass__ = type
 __all__ = [
     "BootConfig",
+    "BOOT_RESOURCES_STORAGE",
     "Config",
     "ConfigBase",
     "ConfigMeta",
@@ -80,6 +81,11 @@ from formencode.validators import (
     )
 from provisioningserver.utils import atomic_write
 import yaml
+
+# Path to the directory on the cluster controller where boot resources are
+# stored.  This used to be configurable in bootresources.yaml, and may become
+# configurable again in the future.
+BOOT_RESOURCES_STORAGE = '/var/lib/maas/boot-resources/'
 
 
 class ConfigOops(Schema):
@@ -121,10 +127,11 @@ class ConfigTFTP(Schema):
     root = String(if_missing="/var/lib/maas/tftp")
 
     # TFTP root directory, managed by the Simplestreams-based import script.
-    # Equates to $storage/current.  The import script maintains "current" as a
-    # symlink pointing to the most recent images.
+    # The import script maintains "current" as a symlink pointing to the most
+    # recent images.
+    # XXX jtv 2014-05-22: Redundant with BOOT_RESOURCES_STORAGE.
     resource_root = String(
-        if_missing="/var/lib/maas/boot-resources/current/")
+        if_missing=os.path.join(BOOT_RESOURCES_STORAGE, 'current/'))
 
     port = Int(min=1, max=65535, if_missing=69)
     generator = String(if_missing=b"http://localhost/MAAS/api/1.0/pxeconfig/")
@@ -188,7 +195,8 @@ class ConfigBoot(Schema):
 
     if_key_missing = None
 
-    storage = String(if_missing="/var/lib/maas/boot-resources/")
+    # This setting is no longer used.
+    storage = String(if_missing=BOOT_RESOURCES_STORAGE)
     sources = ForEach(
         ConfigBootSource, if_missing=[ConfigBootSource.to_python({})])
 

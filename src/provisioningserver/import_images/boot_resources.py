@@ -22,6 +22,7 @@ import errno
 import os
 from textwrap import dedent
 
+import provisioningserver
 from provisioningserver.boot import BootMethodRegistry
 from provisioningserver.boot.tftppath import list_boot_images
 from provisioningserver.config import BootConfig
@@ -215,7 +216,7 @@ def import_images(config):
             "No boot resources found.  Check configuration and connectivity.")
         return
 
-    storage = config['boot']['storage']
+    storage = provisioningserver.config.BOOT_RESOURCES_STORAGE
     meta_file_content = image_descriptions.dump_json()
     if meta_contains(storage, meta_file_content):
         # The current maas.meta already contains the new config.  No need to

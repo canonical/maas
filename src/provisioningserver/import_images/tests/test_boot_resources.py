@@ -28,6 +28,7 @@ from maastesting.factory import factory
 from maastesting.matchers import MockAnyCall
 from maastesting.testcase import MAASTestCase
 import mock
+import provisioningserver
 from provisioningserver.boot import BootMethodRegistry
 from provisioningserver.config import BootConfig
 from provisioningserver.import_images import boot_resources
@@ -107,6 +108,8 @@ class TestMain(MAASTestCase):
     def setUp(self):
         super(TestMain, self).setUp()
         self.storage = self.make_dir()
+        self.patch(
+            provisioningserver.config, 'BOOT_RESOURCES_STORAGE', self.storage)
         self.image = make_image_spec()
         self.arch, self.subarch, self.release, self.label = self.image
         self.repo = self.make_simplestreams_repo(self.image)
@@ -243,10 +246,9 @@ class TestMain(MAASTestCase):
 
     def make_working_args(self):
         """Create a set of working arguments for the script."""
-        # Prepare a fake repository, storage directory, and configuration.
+        # Prepare a fake repository and configuration.
         config = {
             'boot': {
-                'storage': self.storage,
                 'sources': [
                     {
                         'path': self.repo,
@@ -332,10 +334,7 @@ class TestMain(MAASTestCase):
     def test_warns_if_no_sources_configured(self):
         self.patch_logger()
         config_fixture = self.useFixture(BootConfigFixture({
-            'boot': {
-                'storage': self.make_dir(),
-                'sources': [],
-                },
+            'boot': {'sources': []},
             }))
         args = self.make_args(config_file=config_fixture.filename)
 
@@ -351,7 +350,6 @@ class TestMain(MAASTestCase):
         # with mistakes in the config.  Now, you just get a logged warning.
         config_fixture = self.useFixture(BootConfigFixture({
             'boot': {
-                'storage': self.make_dir(),
                 'sources': [
                     {
                         'path': self.make_dir(),
@@ -415,7 +413,7 @@ class TestParseConfig(MAASTestCase):
         config = {
             'boot': {
                 'configure_me': False,
-                'storage': factory.make_name("storage"),
+                'storage': '/var/lib/maas/boot-resources/',
                 'sources': [
                     {
                         'keyring': factory.make_name("keyring"),

@@ -37,8 +37,8 @@ from os import makedirs
 import os.path
 from subprocess import check_call
 
+from provisioningserver import config
 from provisioningserver.auth import MAAS_USER_GPGHOME
-from provisioningserver.import_images import boot_resources
 
 
 logger = getLogger(__name__)
@@ -47,10 +47,8 @@ logger = getLogger(__name__)
 def make_maas_own_boot_resources():
     """Upgrade hook: make the `maas` user the owner of the boot resources."""
     # This reduces the privileges required for importing and managing images.
-    config = boot_resources.read_config()
-    storage_dir = config['boot']['storage']
-    if os.path.isdir(storage_dir):
-        check_call(['chown', '-R', 'maas', storage_dir])
+    if os.path.isdir(config.BOOT_RESOURCES_STORAGE):
+        check_call(['chown', '-R', 'maas', config.BOOT_RESOURCES_STORAGE])
 
 
 def create_gnupg_home():

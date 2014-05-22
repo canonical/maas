@@ -25,8 +25,10 @@ from maastesting.matchers import (
     )
 from maastesting.testcase import MAASTestCase
 from mock import Mock
-from provisioningserver import upgrade_cluster
-from provisioningserver.import_images import boot_resources
+from provisioningserver import (
+    config,
+    upgrade_cluster,
+    )
 from testtools.matchers import DirExists
 
 
@@ -76,9 +78,7 @@ class TestMakeMAASOwnBootResources(MAASTestCase):
 
     def configure_storage(self, storage_dir):
         """Create a storage config."""
-        self.patch(boot_resources, 'read_config').return_value = {
-            'boot': {'storage': storage_dir},
-            }
+        self.patch(config, 'BOOT_RESOURCES_STORAGE', storage_dir)
 
     def test__calls_chown_if_boot_resources_dir_exists(self):
         self.patch(upgrade_cluster, 'check_call')
