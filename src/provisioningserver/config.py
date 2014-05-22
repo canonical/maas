@@ -185,7 +185,7 @@ class ConfigBootSource(Schema):
         if_missing="http://maas.ubuntu.com/images/ephemeral-v2/releases/")
     keyring = String(
         if_missing="/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg")
-    keyring_data = String(if_missing="")
+    keyring_data = String(if_missing=None)
     selections = ForEach(
         ConfigBootSourceSelection,
         if_missing=[ConfigBootSourceSelection.to_python({})])
