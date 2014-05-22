@@ -183,10 +183,10 @@ def download_image_descriptions(path, keyring=None):
     return boot_images_dict
 
 
-def download_all_image_descriptions(config):
+def download_all_image_descriptions(sources):
     """Download image metadata for all sources in `config`."""
     boot = BootImageMapping()
-    for source in config['boot']['sources']:
+    for source in sources:
         repo_boot = download_image_descriptions(
             source['path'], keyring=source['keyring'])
         boot_merge(boot, repo_boot, source['selections'])

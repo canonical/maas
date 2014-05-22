@@ -199,18 +199,18 @@ def parse_config(config):
     return BootConfig.parse(config_stream)
 
 
-def import_images(config):
+def import_images(sources):
     """Import images.  Callable from both command line and Celery task.
 
-    :param config: A dict representing the boot-resources configuration.
+    :param config: An iterable of dicts representing the sources from
+        which boot images will be downloaded.
     """
     logger.info("Importing boot resources.")
-    sources = config['boot']['sources']
     if len(sources) == 0:
         logger.warn("Can't import: no Simplestreams sources configured.")
         return
 
-    image_descriptions = download_all_image_descriptions(config)
+    image_descriptions = download_all_image_descriptions(sources)
     if image_descriptions.is_empty():
         logger.warn(
             "No boot resources found.  Check configuration and connectivity.")
@@ -264,4 +264,4 @@ def main(args):
         config = read_config(args.config_file)
     else:
         raise NoConfig()
-    import_images(config=config)
+    import_images(sources=config['boot']['sources'])

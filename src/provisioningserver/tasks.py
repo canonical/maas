@@ -459,7 +459,7 @@ def import_boot_images(http_proxy=None, callback=None):
         variables['http_proxy'] = http_proxy
         variables['https_proxy'] = http_proxy
     with environment_variables(variables):
-        boot_resources.import_images(config)
+        boot_resources.import_images(config['boot']['sources'])
     if callback is not None:
         callback.delay()
 
