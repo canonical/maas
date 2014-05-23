@@ -1,7 +1,7 @@
 # Copyright 2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for `provisioningserver.boot.ppc64el`."""
+"""Tests for `provisioningserver.boot.powerkvm`."""
 
 from __future__ import (
     absolute_import,
@@ -22,39 +22,39 @@ from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from provisioningserver.boot import (
     BootMethodInstallError,
-    ppc64el as ppc64el_module,
+    powerkvm as powerkvm_module,
     utils,
     )
-from provisioningserver.boot.ppc64el import (
+from provisioningserver.boot.powerkvm import (
     GRUB_CONFIG,
-    PPC64ELBootMethod,
+    PowerKVMBootMethod,
     )
 from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
 
 
-class TestPPC64ELBootMethod(MAASTestCase):
-    """Tests `provisioningserver.boot.ppc64el.PPC64ELBootMethod`."""
+class TestPowerKVMBootMethod(MAASTestCase):
+    """Tests `provisioningserver.boot.powerkvm.PowerKVMBootMethod`."""
 
     def test_match_config_path_returns_none(self):
-        method = PPC64ELBootMethod()
+        method = PowerKVMBootMethod()
         paths = [factory.getRandomString() for _ in range(3)]
         for path in paths:
             self.assertEqual(None, method.match_config_path(path))
 
     def test_render_config_returns_empty_string(self):
-        method = PPC64ELBootMethod()
+        method = PowerKVMBootMethod()
         params = [make_kernel_parameters() for _ in range(3)]
         for param in params:
             self.assertEqual("", method.render_config(params))
 
     def test_install_bootloader_get_package_raises_error(self):
-        method = PPC64ELBootMethod()
+        method = PowerKVMBootMethod()
         self.patch(utils, 'get_updates_package').return_value = (None, None)
         self.assertRaises(
             BootMethodInstallError, method.install_bootloader, None)
 
     def test_install_bootloader(self):
-        method = PPC64ELBootMethod()
+        method = PowerKVMBootMethod()
         filename = factory.make_name('dpkg')
         data = factory.getRandomString()
         tmp = self.make_dir()
@@ -69,11 +69,11 @@ class TestPPC64ELBootMethod(MAASTestCase):
 
         mock_get_updates_package = self.patch(utils, 'get_updates_package')
         mock_get_updates_package.return_value = (data, filename)
-        self.patch(ppc64el_module, 'call_and_check')
-        self.patch(ppc64el_module, 'tempdir').side_effect = tempdir
+        self.patch(powerkvm_module, 'call_and_check')
+        self.patch(powerkvm_module, 'tempdir').side_effect = tempdir
 
         mock_install_bootloader = self.patch(
-            ppc64el_module, 'install_bootloader')
+            powerkvm_module, 'install_bootloader')
 
         method.install_bootloader(dest)
 
