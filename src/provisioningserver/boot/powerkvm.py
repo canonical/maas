@@ -1,7 +1,7 @@
 # Copyright 2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""PPC64EL Boot Method"""
+"""PowerKVM Boot Method"""
 
 from __future__ import (
     absolute_import,
@@ -13,7 +13,7 @@ str = None
 
 __metaclass__ = type
 __all__ = [
-    'PPC64ELBootMethod',
+    'PowerKVMBootMethod',
     ]
 
 import glob
@@ -38,10 +38,10 @@ GRUB_CONFIG = dedent("""\
     """)
 
 
-class PPC64ELBootMethod(BootMethod):
+class PowerKVMBootMethod(BootMethod):
 
-    name = "ppc64el"
-    template_subdir = "ppc64el"
+    name = "powerkvm"
+    template_subdir = None
     bootloader_path = "bootppc64.bin"
     arch_octet = "00:0C"
 
@@ -58,7 +58,7 @@ class PPC64ELBootMethod(BootMethod):
         return ""
 
     def install_bootloader(self, destination):
-        """Installs the required files for PPC64EL booting into the
+        """Installs the required files for PowerKVM booting into the
         tftproot.
         """
         with tempdir() as tmp:
