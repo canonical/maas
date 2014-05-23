@@ -42,10 +42,6 @@ from provisioningserver.utils import (
     )
 from provisioningserver.import_images.keyrings import write_all_keyrings
 
-class NoConfig(Exception):
-    """Raised when no configuration for the script has been specified."""
-
-
 class NoConfigFile(Exception):
     """Raised when the config file for the script doesn't exist."""
 
@@ -263,10 +259,5 @@ def main(args):
     :raise NoConfig: If no config is specified at the command line and
         no config file is provided.
     """
-    if args.config:
-        config = parse_config(args.config)
-    elif args.config_file:
-        config = read_config(args.config_file)
-    else:
-        raise NoConfig()
+    config = read_config(args.config_file)
     import_images(sources=config['boot']['sources'])

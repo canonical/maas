@@ -100,11 +100,6 @@ def checksum_sha256(data):
 
 class TestMain(MAASTestCase):
 
-    scenarios = (
-        ('using-config-file', {'use_config_file': True}),
-        ('using-config-blob', {'use_config_file': False}),
-        )
-
     def setUp(self):
         super(TestMain, self).setUp()
         self.storage = self.make_dir()
@@ -265,12 +260,9 @@ class TestMain(MAASTestCase):
                 },
             }
 
-        if self.use_config_file:
-            args = self.make_args(
-                config_file=self.make_file(
-                    'bootresources.yaml', contents=yaml.safe_dump(config)))
-        else:
-            args = self.make_args(config=yaml.safe_dump(config))
+        args = self.make_args(
+            config_file=self.make_file(
+                'bootresources.yaml', contents=yaml.safe_dump(config)))
         return args
 
     def test_successful_run(self):
@@ -396,14 +388,6 @@ class TestMain(MAASTestCase):
             IOError,
             boot_resources.main, self.make_args())
         self.assertEqual(other_error, raised_error)
-
-    def test_raises_error_when_no_config_passed(self):
-        # main() will raise an error when no config has been passed in
-        # the --config option *and* no config file has been specified.
-        self.patch_logger()
-        self.assertRaises(
-            boot_resources.NoConfig,
-            boot_resources.main, self.make_args(config="", config_file=""))
 
 
 class TestParseConfig(MAASTestCase):
