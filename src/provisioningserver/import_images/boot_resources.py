@@ -40,7 +40,7 @@ from provisioningserver.utils import (
     locate_config,
     read_text_file,
     )
-
+from provisioningserver.import_images.keyrings import write_all_keyrings
 
 class NoConfig(Exception):
     """Raised when no configuration for the script has been specified."""
@@ -209,6 +209,11 @@ def import_images(sources):
     if len(sources) == 0:
         logger.warn("Can't import: no Simplestreams sources configured.")
         return
+
+    # We download the keyrings now  because we need them for both
+    # download_all_image_descriptions() and
+    # download_all_boot_resources() later. 
+    sources = write_all_keyrings(sources)
 
     image_descriptions = download_all_image_descriptions(sources)
     if image_descriptions.is_empty():

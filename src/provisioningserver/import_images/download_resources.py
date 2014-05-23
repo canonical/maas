@@ -16,9 +16,6 @@ __all__ = [
     'download_all_boot_resources',
     ]
 
-import tempfile
-from urlparse import urlsplit
-from base64 import b64decode
 from datetime import datetime
 from gzip import GzipFile
 import os.path
@@ -205,7 +202,7 @@ class RepoWriter(BasicMirrorWriter):
 
 
 def download_boot_resources(path, store, snapshot_path, product_mapping,
-                            keyring_file=None, keyring_data=None):
+                            keyring_file=None):
     """Download boot resources for one simplestreams source.
 
     :param path: The Simplestreams URL for this source.
@@ -216,25 +213,8 @@ def download_boot_resources(path, store, snapshot_path, product_mapping,
     :param product_mapping: A `ProductMapping` describing the resources to be
         downloaded.
     :param keyring_file: Optional path to a keyring file for verifying
-        signatures.  If both keyring and keyring_data are provided, the
-        value in keyring_data will take precedence and a warning will be
-        logged.
-    :param keyring_data: Optional keyring data as a base64-encoded string.
-        If provided, will be written to a file under `keyring_path`, as
-        determined by `calculate_keyring_name`
+        signatures.
     """
-    if keyring_file is not None and keyring_data is not None:
-        logger.warning(
-            "Both a keyring file and keyring data were specified; "
-            "ignoring the keyring file.")
-
-    # If we have keyring_data, that means we have to write it to disk.
-    keyring_dir = tempfile.mkdtemp("maas-keyrings")
-    if keyring_data is not None:
-        keyring_file = os.path.join(
-            keyring_dir, calculate_keyring_name(path))
-        write_keyring(keyring_file, keyring_data)
-
     writer = RepoWriter(snapshot_path, store, product_mapping)
     (mirror, rpath) = path_from_mirror_url(path, None)
     policy = get_signing_policy(rpath, keyring_file)
@@ -294,28 +274,6 @@ def download_all_boot_resources(
     for source in sources:
         download_boot_resources(
             source['url'], store, ubuntu_path, product_mapping,
-            keyring_file=source.get('keyring'),
-            keyring_data=source.get('keyring_data'))
+            keyring_file=source.get('keyring')),
 
     return snapshot_path
-
-
-def write_keyring(keyring_path, keyring_data):
-    """Write a keyring blob to a file.
-
-    :param path: The path to the keyring file.
-    :param keyring_data: The data to write to the keyring_file, as a
-        base64-encoded string.
-    """
-    logger.debug("Writing keyring %s to disk.", keyring_path)
-    decoded_data = b64decode(keyring_data)
-    with open(keyring_path, 'wb') as keyring_file:
-        keyring_file.write(decoded_data)
-
-
-def calculate_keyring_name(source_url):
-    """Return a name for a keyring based on a URL."""
-    split_url = urlsplit(source_url)
-    cleaned_path = split_url.path.strip('/').replace('/', '-')
-    keyring_name = "%s-%s.gpg" % (split_url.netloc, cleaned_path)
-    return keyring_name

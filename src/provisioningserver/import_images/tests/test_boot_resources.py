@@ -25,7 +25,7 @@ from subprocess import (
     )
 
 from maastesting.factory import factory
-from maastesting.matchers import MockAnyCall
+from maastesting.matchers import MockAnyCall, MockCalledWith
 from maastesting.testcase import MAASTestCase
 import mock
 import provisioningserver
@@ -434,3 +434,37 @@ class TestParseConfig(MAASTestCase):
             }
         parsed_config = boot_resources.parse_config(yaml.safe_dump(config))
         self.assertEqual(config, parsed_config)
+
+
+class TestImportImages(MAASTestCase):
+    """Tests for the `import_images`() function."""
+
+    def test_writes_source_keyrings(self):
+        # Stop import_images() from actually doing anything.
+        self.patch(boot_resources, 'logger')
+        self.patch(boot_resources, 'call_and_check')
+        self.patch(boot_resources, 'download_all_boot_resources')
+        self.patch(boot_resources, 'download_all_image_descriptions')
+        self.patch(boot_resources, 'install_boot_loaders')
+        self.patch(boot_resources, 'update_current_symlink')
+        self.patch(boot_resources, 'write_snapshot_metadata')
+
+        fake_write_all_keyrings = self.patch(
+            boot_resources, 'write_all_keyrings')
+        sources = [
+            {
+                'keyring_data': self.getUniqueString(),
+                'url': factory.make_name("something"),
+                'selections': [
+                    {
+                        'release': factory.make_name("release"),
+                        'arches': [factory.make_name("arch")],
+                        'subarches': [factory.make_name("subarch")],
+                        'labels': [factory.make_name("label")],
+                    },
+                    ],
+            },
+            ],
+        boot_resources.import_images(sources)
+        self.assertThat(
+            fake_write_all_keyrings, MockCalledWith(sources))
