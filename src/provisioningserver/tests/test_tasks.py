@@ -646,21 +646,21 @@ class TestImportBootImages(PservTestCase):
         self.patch(boot_resources, 'logger')
         self.patch(boot_resources, 'locate_config').return_value = (
             fixture.filename)
-        import_boot_images()
+        import_boot_images(sources=[])
         self.assertIsInstance(import_boot_images, Task)
 
     def test_import_boot_images_sets_GPGHOME(self):
         home = factory.make_name('home')
         self.patch(tasks, 'MAAS_USER_GPGHOME', home)
         fake = self.patch_boot_resources_function()
-        import_boot_images()
+        import_boot_images(sources=[])
         self.assertEqual(home, fake.env['GNUPGHOME'])
 
     def test_import_boot_images_sets_proxy_if_given(self):
         proxy = 'http://%s.example.com' % factory.make_name('proxy')
         proxy_vars = ['http_proxy', 'https_proxy']
         fake = self.patch_boot_resources_function()
-        import_boot_images(http_proxy=proxy)
+        import_boot_images(sources=[], http_proxy=proxy)
         self.assertEqual(
             {
                 var: proxy
@@ -670,13 +670,13 @@ class TestImportBootImages(PservTestCase):
     def test_import_boot_images_leaves_proxy_unchanged_if_not_given(self):
         proxy_vars = ['http_proxy', 'https_proxy']
         fake = self.patch_boot_resources_function()
-        import_boot_images()
+        import_boot_images(sources=[])
         self.assertEqual({}, utils.filter_dict(fake.env, proxy_vars))
 
     def test_import_boot_images_calls_callback(self):
         self.patch_boot_resources_function()
         mock_callback = Mock()
-        import_boot_images(callback=mock_callback)
+        import_boot_images(sources=[], callback=mock_callback)
         self.assertThat(mock_callback.delay, MockCalledOnceWith())
 
     def test_import_boot_images_accepts_sources_parameter(self):
