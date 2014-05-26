@@ -14,14 +14,15 @@ str = None
 __metaclass__ = type
 __all__ = []
 
-import os
 from datetime import datetime
+import os
+
+from maastesting.matchers import MockCalledWith
 from maastesting.testcase import MAASTestCase
+import mock
 from provisioningserver.import_images import download_resources
 from provisioningserver.import_images.product_mapping import ProductMapping
-from maastesting.matchers import MockCalledWith
 from simplestreams.objectstores import FileStore
-import mock
 
 
 class MockDateTime(mock.MagicMock):

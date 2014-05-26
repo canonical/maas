@@ -13,13 +13,12 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+from base64 import b64decode
 import os
 import tempfile
 from urlparse import urlsplit
-from base64 import b64decode
-from provisioningserver.import_images.helpers import (
-    logger,
-    )
+
+from provisioningserver.import_images.helpers import logger
 
 
 def write_keyring(keyring_path, keyring_data):

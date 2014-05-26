@@ -33,6 +33,7 @@ from provisioningserver.import_images.download_resources import (
     download_all_boot_resources,
     )
 from provisioningserver.import_images.helpers import logger
+from provisioningserver.import_images.keyrings import write_all_keyrings
 from provisioningserver.import_images.product_mapping import map_products
 from provisioningserver.utils import (
     atomic_write,
@@ -40,7 +41,6 @@ from provisioningserver.utils import (
     locate_config,
     read_text_file,
     )
-from provisioningserver.import_images.keyrings import write_all_keyrings
 
 
 class NoConfigFile(Exception):

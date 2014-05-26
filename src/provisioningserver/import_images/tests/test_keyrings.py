@@ -13,11 +13,15 @@ str = None
 __metaclass__ = type
 __all__ = []
 
-import os
-import mock
 from base64 import b64encode
+import os
+
+from maastesting.matchers import (
+    MockCalledWith,
+    MockCallsMatch,
+    )
 from maastesting.testcase import MAASTestCase
-from maastesting.matchers import MockCallsMatch, MockCalledWith
+import mock
 from provisioningserver.import_images import keyrings
 from testtools.matchers import FileContains
 

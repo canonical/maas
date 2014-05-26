@@ -25,7 +25,10 @@ from subprocess import (
     )
 
 from maastesting.factory import factory
-from maastesting.matchers import MockAnyCall, MockCalledWith
+from maastesting.matchers import (
+    MockAnyCall,
+    MockCalledWith,
+    )
 from maastesting.testcase import MAASTestCase
 import mock
 import provisioningserver
