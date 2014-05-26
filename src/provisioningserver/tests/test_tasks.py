@@ -682,18 +682,18 @@ class TestImportBootImages(PservTestCase):
     def test_import_boot_images_accepts_sources_parameter(self):
         fake = self.patch(boot_resources, 'import_images')
         sources = [
-                {
-                    'path': "http://example.com",
-                    'selections': [
-                        {
-                            'release': "trusty",
-                            'arches': ["amd64"],
-                            'subarches': ["generic"],
-                            'labels': ["release"]
-                        },
-                        ],
-                },
-            ],
+            {
+                'path': "http://example.com",
+                'selections': [
+                    {
+                        'release': "trusty",
+                        'arches': ["amd64"],
+                        'subarches': ["generic"],
+                        'labels': ["release"]
+                    },
+                ],
+            },
+        ]
         import_boot_images(sources=sources)
         self.assertThat(fake, MockCalledOnceWith(sources))
 

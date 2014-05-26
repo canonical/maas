@@ -42,6 +42,7 @@ from provisioningserver.utils import (
     )
 from provisioningserver.import_images.keyrings import write_all_keyrings
 
+
 class NoConfigFile(Exception):
     """Raised when the config file for the script doesn't exist."""
 
@@ -208,7 +209,7 @@ def import_images(sources):
 
     # We download the keyrings now  because we need them for both
     # download_all_image_descriptions() and
-    # download_all_boot_resources() later. 
+    # download_all_boot_resources() later.
     sources = write_all_keyrings(sources)
 
     image_descriptions = download_all_image_descriptions(sources)
