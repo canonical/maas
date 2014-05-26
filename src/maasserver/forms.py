@@ -122,6 +122,17 @@ from metadataserver.models import CommissioningScript
 BLANK_CHOICE = ('', '-------')
 
 
+def set_form_error(form, field_name, error_value):
+    """Set an error on a form's field.
+
+    This utility method encapsulates Django's arguably awkward way
+    of settings errors inside a form's clean()/is_valid() method.  This
+    method will override any previously-registered error for 'field_name'.
+    """
+    # Hey Django devs, this is a crap API to set errors.
+    form.errors[field_name] = form.error_class([error_value])
+
+
 def remove_None_values(data):
     """Return a new dictionary without the keys corresponding to None values.
     """
@@ -253,8 +264,8 @@ class NodeForm(ModelForm):
     def is_valid(self):
         is_valid = super(NodeForm, self).is_valid()
         if len(list_all_usable_architectures()) == 0:
-            self.errors['architecture'] = (
-                [NO_ARCHITECTURES_AVAILABLE])
+            set_form_error(
+                self, "architecture", NO_ARCHITECTURES_AVAILABLE)
             is_valid = False
         return is_valid
 
@@ -424,9 +435,8 @@ class AdminNodeForm(NodeForm):
             try:
                 get_power_types([self._get_nodegroup()])
             except ClusterUnavailable as e:
-                # Hey Django devs, this is a crap API to set errors.
-                self._errors["power_type"] = self.error_class(
-                    [CLUSTER_NOT_AVAILABLE + e.args[0]])
+                set_form_error(
+                    self, "power_type", CLUSTER_NOT_AVAILABLE + e.args[0])
         # If power_type is not set and power_parameters_skip_check is not
         # on, reset power_parameters (set it to the empty string).
         no_power_type = cleaned_data.get('power_type', '') == ''
