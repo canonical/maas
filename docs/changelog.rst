@@ -2,6 +2,27 @@
 Changelog
 =========
 
+1.5.2
+=====
+
+Bug fix update
+--------------
+
+- Remove workaround for fixed Django bug 1311433 (LP: #1311433)
+- Ensure that validation errors are returned when adding a node over
+  the API and its cluster controller is not contactable. (LP: #1305061)
+- Hardware enablement support for PowerKVM
+- Shorten the time taken for a cluster to initially connect to the region
+  via RPC to around 2 seconds (LP: #1317682)
+- Faster DHCP leases parser (LP: #1305102)
+- Documentation fixed explaining how to enable an ephemeral backdoor
+  (LP: #1321696)
+- Use probe-and-enlist-hardware to enlist all virtual machine inside
+  a libvirt machine, allow password qemu+ssh connections.
+  (LP: #1315155, LP: #1315157)
+- Rename ppc64el boot loader to PowerKVM (LP: #1315154)
+
+
 1.5.1
 =====
 
