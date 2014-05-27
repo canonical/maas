@@ -18,6 +18,7 @@ import httplib
 import json
 
 from django.core.urlresolvers import reverse
+from maasserver.api import DISPLAYED_BOOTSOURCESELECTION_FIELDS
 from maasserver.enum import DISTRO_SERIES_CHOICES
 from maasserver.models import BootSourceSelection
 from maasserver.testing import reload_object
@@ -66,6 +67,10 @@ class TestBootSourceSelectionAPI(APITestCase):
             returned_boot_source_selection['resource_uri'])
         # The other fields are the boot source selection's fields.
         del returned_boot_source_selection['resource_uri']
+        # All the fields are present.
+        self.assertItemsEqual(
+            DISPLAYED_BOOTSOURCESELECTION_FIELDS,
+            returned_boot_source_selection.keys())
         self.assertThat(
             boot_source_selection,
             MatchesStructure.byEquality(**returned_boot_source_selection))

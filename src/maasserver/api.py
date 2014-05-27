@@ -2919,7 +2919,7 @@ DISPLAYED_BOOTSOURCESELECTION_FIELDS = (
     'release',
     'arches',
     'subarches',
-    'label',
+    'labels',
 )
 
 
@@ -2939,13 +2939,13 @@ class BootSourceSelectionHandler(OperationsHandler):
             BootSourceSelection, boot_source=boot_source, id=id)
 
     def update(self, request, uuid, boot_source_id, id):
-        """Update a specific boot source.
+        """Update a specific boot source selection.
 
-        :param url: The URL of the BootSource.
-        :param keyring_filename: The path to the keyring file for this
-            BootSource.
-        :param keyring_filename: The GPG keyring for this BootSource,
-            base64-encoded data.
+        :param release: The Ubuntu release for which to import resources.
+        :param arches: The list of architectures for which to import resources.
+        :param subarches: The list of subarchitectures for which to import
+            resources.
+        :param labels: The list of labels for which to import resources.
         """
         boot_source = get_object_or_404(
             BootSource, cluster__uuid=uuid, id=boot_source_id)

@@ -18,6 +18,7 @@ import httplib
 import json
 
 from django.core.urlresolvers import reverse
+from maasserver.api import DISPLAYED_BOOTSOURCE_FIELDS
 from maasserver.models import BootSource
 from maasserver.testing import reload_object
 from maasserver.testing.api import APITestCase
@@ -55,6 +56,9 @@ class TestBootSourceAPI(APITestCase):
             returned_boot_source['resource_uri'])
         # The other fields are the boot source's fields.
         del returned_boot_source['resource_uri']
+        # All the fields are present.
+        self.assertItemsEqual(
+            DISPLAYED_BOOTSOURCE_FIELDS, returned_boot_source.keys())
         self.assertThat(
             boot_source,
             MatchesStructure.byEquality(**returned_boot_source))
