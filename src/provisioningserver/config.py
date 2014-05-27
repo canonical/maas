@@ -165,7 +165,7 @@ class ConfigRPC(Schema):
     if_key_missing = None
 
 
-class ConfigBootSourceSelection(Schema):
+class BootSourceSelection(Schema):
     """Configuration validator for boot source election onfiguration."""
 
     if_key_missing = None
@@ -176,7 +176,7 @@ class ConfigBootSourceSelection(Schema):
     labels = Set(if_missing=['*'])
 
 
-class ConfigBootSource(Schema):
+class BootSource(Schema):
     """Configuration validator for boot source configuration."""
 
     if_key_missing = None
@@ -187,8 +187,8 @@ class ConfigBootSource(Schema):
         if_missing="/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg")
     keyring_data = String(if_missing=None)
     selections = ForEach(
-        ConfigBootSourceSelection,
-        if_missing=[ConfigBootSourceSelection.to_python({})])
+        BootSourceSelection,
+        if_missing=[BootSourceSelection.to_python({})])
 
 
 class ConfigBoot(Schema):
@@ -199,7 +199,7 @@ class ConfigBoot(Schema):
     # This setting is no longer used.
     storage = String(if_missing=BOOT_RESOURCES_STORAGE)
     sources = ForEach(
-        ConfigBootSource, if_missing=[ConfigBootSource.to_python({})])
+        BootSource, if_missing=[BootSource.to_python({})])
 
     # Marker in the bootresources.yaml file: if True, the file has not been
     # edited yet and needs to be either configured with initial choices, or
