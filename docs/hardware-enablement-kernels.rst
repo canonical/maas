@@ -39,53 +39,26 @@ wiki.
 .. _LTS Enablement Stack:
    https://wiki.ubuntu.com/Kernel/LTSEnablementStack
 
-Importing hardware-enablement kernels
--------------------------------------
 
-Hardware-enablement kernels need to be imported to a cluster controller
-before that cluster's nodes can use them.
+Booting hardware-enablement kernels
+-----------------------------------
 
-In order to import HWE kernels to a cluster controller you need to edit
-the controller's ``/etc/maas/bootresources.yaml`` file, and update the
-subarches that you want to import, like this::
+MAAS imports hardware-enablement kernels along with its generic boot images,
+but as different "sub-architectures" to the default "generic" one.
 
-  boot:
-    storage: "/var/lib/maas/boot-resources/"
+So, for example, a common server might have architecture and sub-architecture
+of ``amd64/generic``, but some newer system chassis which doesn't become
+fully functional with the default kernel for Ubuntu 14.04 Trusty Tahr, for
+example, may require ``amd64/hwe-t``.
 
-    sources:
-      - path: "http://maas.ubuntu.com/images/ephemeral-v2/releases/"
-        keyring: "/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg"
-        selections:
-          - release: "precise"
-            arches: ["i386", "amd64"]
-            subarches: ["generic", "hwe-q", "hwe-r", "hwe-s", "hwe-t"]
-            labels: ["release"]
-
-Once you've updated ``bootresources.yaml``, you can tell the cluster to
-re-import its boot images using the ``maas`` command (You will need to
-:ref:`be logged in to the API first <api-key>`)::
-
- $ maas <profile-name> node-group import-boot-images \
-   <cluster-controller-uuid>
-
-You can also tell the cluster controller to re-import its boot images by
-clicking the ``Import boot images`` button in the ``Clusters`` page of
-the MAAS web UI.
-
-Using hardware-enablement kernels in MAAS
------------------------------------------
-
-A MAAS administrator can choose to use HWE kernels on a per-node basis
-in MAAS.
-
-The quickest way to do this is using the MAAS command, like this::
+The quickest way to make a node use a hardware-enablement kernel is by using
+the MAAS command, like this::
 
   $ maas <profile-name> node update <system-id>
     architecture=amd64/hwe-t
 
-If you specify an architecture that doesn't exist (e.g.
-``amd64/hwe-z``), the ``maas`` command will return an error.
-
+If you specify an architecture that doesn't exist (e.g.  ``amd64/hwe-zz``),
+the ``maas`` command will return an error.
 
 It's also possible to use HWE kernels from the MAAS web UI, by visiting
 the Node's page and clicking ``Edit node``. Under the Architecture field,

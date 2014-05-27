@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MAAS-IMPORT-PXE-FILES" "8" "May 22, 2014" "1.6" "MAAS"
+.TH "MAAS-IMPORT-PXE-FILES" "8" "May 27, 2014" "1.6" "MAAS"
 .SH NAME
 maas-import-pxe-files \- MAAS helper script
 .
@@ -33,6 +33,8 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .SH USAGE
 .sp
 maas\-import\-pxe\-files [\-h, \-\-help]
+.sp
+maas\-import\-pxe\-files \-\-sources\-file <sources>
 .SH DESCRIPTION
 .sp
 This is a helper script for MAAS (Metal As A Service). It downloads operating
@@ -95,7 +97,8 @@ importing images for one particular cluster.
 .sp
 Downloaded images are stored in \fB/var/lib/maas/boot\-resources\fP\&.  In order to
 know what to download, you must pass the script a list of image "sources," in
-the form of a YAML\-encoded list.
+the form of a YAML\-encoded list.  Pass the name of that YAML file to the
+\fB\-\-sources\-file\fP option.
 .sp
 Each "source" defines a Simplestreams repository location (\fBurl\fP) from
 which images can be downloaded; a \fBkeyring\fP for validating index and image

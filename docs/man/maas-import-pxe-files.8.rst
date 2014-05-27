@@ -6,6 +6,9 @@ USAGE
 
 maas-import-pxe-files [-h, --help]
 
+maas-import-pxe-files --sources-file <sources>
+
+
 DESCRIPTION
 ^^^^^^^^^^^
 
@@ -74,7 +77,8 @@ Configuration
 
 Downloaded images are stored in ``/var/lib/maas/boot-resources``.  In order to
 know what to download, you must pass the script a list of image "sources," in
-the form of a YAML-encoded list.
+the form of a YAML-encoded list.  Pass the name of that YAML file to the
+``--sources-file`` option.
 
 Each "source" defines a Simplestreams repository location (``url``) from
 which images can be downloaded; a ``keyring`` for validating index and image
