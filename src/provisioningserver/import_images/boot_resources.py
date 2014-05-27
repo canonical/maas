@@ -99,7 +99,7 @@ def make_arg_parser(doc):
 
     parser = ArgumentParser(description=doc)
     parser.add_argument(
-        '--sources-file', action="store",
+        '--sources-file', action="store", required=True,
         help=(
             "Path to YAML file defining import sources. "
             "See this script's man page for a description of "
@@ -256,8 +256,6 @@ def main(args):
     :param args: Command-line arguments as parsed by the `ArgumentParser`
         returned by `make_arg_parser`.
     :raise NoConfigFile: If a config file is specified but doesn't exist.
-    :raise NoConfig: If no config is specified at the command line and
-        no config file is provided.
     """
     sources = read_sources(args.sources_file)
     import_images(sources=sources)
