@@ -204,7 +204,7 @@ def import_images(sources):
     """
     logger.info("Importing boot resources.")
     if len(sources) == 0:
-        logger.warn("Can't import: no Simplestreams sources configured.")
+        logger.warn("Can't import: no Simplestreams sources selected.")
         return
 
     # We download the keyrings now  because we need them for both
@@ -215,7 +215,8 @@ def import_images(sources):
     image_descriptions = download_all_image_descriptions(sources)
     if image_descriptions.is_empty():
         logger.warn(
-            "No boot resources found.  Check configuration and connectivity.")
+            "No boot resources found.  "
+            "Check sources specification and connectivity.")
         return
 
     storage = provisioningserver.config.BOOT_RESOURCES_STORAGE

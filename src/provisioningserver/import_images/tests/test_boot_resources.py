@@ -326,7 +326,7 @@ class TestMain(MAASTestCase):
             ],
             meta_data[arch][subarch][release][label].keys())
 
-    def test_warns_if_no_sources_configured(self):
+    def test_warns_if_no_sources_selected(self):
         self.patch_logger()
         config_fixture = self.useFixture(BootConfigFixture({
             'boot': {'sources': []},
@@ -337,7 +337,7 @@ class TestMain(MAASTestCase):
 
         self.assertThat(
             boot_resources.logger.warn,
-            MockAnyCall("Can't import: no Simplestreams sources configured."))
+            MockAnyCall("Can't import: no Simplestreams sources selected."))
 
     def test_warns_if_no_boot_resources_found(self):
         # The import code used to crash when no resources were found in the
@@ -369,7 +369,7 @@ class TestMain(MAASTestCase):
             boot_resources.logger.warn,
             MockAnyCall(
                 "No boot resources found.  "
-                "Check configuration and connectivity."))
+                "Check sources specification and connectivity."))
 
     def test_raises_ioerror_when_no_config_file_found(self):
         self.patch_logger()
