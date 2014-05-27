@@ -138,9 +138,9 @@ class ConfigTFTP(Schema):
 
 
 class ConfigLegacyEphemeral(Schema):
-    """Legacy `eephemeral` section in `pserv.yaml` prior to MAAS 1.5.
+    """Legacy `ephemeral` section in `pserv.yaml` prior to MAAS 1.5.
 
-    This has been replaced with boot-source selection in `bootresources.yaml`.
+    This has been superseded by boot sources.
     It is still accepted in `pserv.yaml`, but not used.
     """
     if_key_missing = None
@@ -151,8 +151,8 @@ class ConfigLegacyEphemeral(Schema):
 class ConfigLegacyBoot(Schema):
     """Legacy `boot` section in `pserv.yaml` prior to MAAS 1.5.
 
-    The new version of this config section lives in `bootresources.yaml`.  It
-    is still accepted in `pserv.yaml`, but not used.
+    This has been superseded by boot sources.
+    It is still accepted in `pserv.yaml`, but not used.
     """
     if_key_missing = None
     architectures = Set(if_missing=None)
