@@ -100,7 +100,12 @@ def make_arg_parser(doc):
     parser = ArgumentParser(description=doc)
     parser.add_argument(
         '--sources-file', action="store",
-        help="Path to YAML file defining import sources.")
+        help=(
+            "Path to YAML file defining import sources. "
+            "See this script's man page for a description of "
+            "that YAML file's format."
+        )
+    )
     return parser
 
 
