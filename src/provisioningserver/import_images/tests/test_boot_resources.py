@@ -31,15 +31,15 @@ from maastesting.matchers import (
     )
 from maastesting.testcase import MAASTestCase
 import mock
-import provisioningserver
 from provisioningserver.boot import BootMethodRegistry
-from provisioningserver.config import BootConfig
+import provisioningserver.config
+from provisioningserver.config import BootSources
 from provisioningserver.import_images import boot_resources
 from provisioningserver.import_images.boot_image_mapping import (
     BootImageMapping,
     )
 from provisioningserver.import_images.testing.factory import make_image_spec
-from provisioningserver.testing.config import BootConfigFixture
+from provisioningserver.testing.config import BootSourcesFixture
 from provisioningserver.utils import write_text_file
 from testtools.content import Content
 from testtools.content_type import UTF8_TEXT
@@ -116,12 +116,12 @@ class TestMain(MAASTestCase):
         """Suppress log output from the import code."""
         self.patch(boot_resources, 'logger')
 
-    def make_args(self, config="", **kwargs):
+    def make_args(self, sources="", **kwargs):
         """Fake an `argumentparser` parse result."""
         args = mock.Mock()
-        # Set config explicitly, otherwise boot_resources.main() gets
+        # Set sources explicitly, otherwise boot_resources.main() gets
         # confused.
-        args.config = config
+        args.sources = sources
         for key, value in kwargs.items():
             setattr(args, key, value)
         return args
@@ -244,29 +244,23 @@ class TestMain(MAASTestCase):
 
     def make_working_args(self):
         """Create a set of working arguments for the script."""
-        # Prepare a fake repository and configuration.
-        config = {
-            'boot': {
-                'sources': [
+        # Prepare a fake repository and sources.
+        sources = [
+            {
+                'url': self.repo,
+                'selections': [
                     {
-                        'url': self.repo,
-                        'selections': [
-                            {
-                                'release': self.release,
-                                'arches': [self.arch],
-                                'subarches': [self.subarch],
-                                'labels': [self.label],
-                            },
-                            ],
+                        'release': self.release,
+                        'arches': [self.arch],
+                        'subarches': [self.subarch],
+                        'labels': [self.label],
                     },
                     ],
-                },
-            }
-
-        args = self.make_args(
-            config_file=self.make_file(
-                'bootresources.yaml', contents=yaml.safe_dump(config)))
-        return args
+            },
+            ]
+        sources_file = self.make_file(
+            'sources.yaml', contents=yaml.safe_dump(sources))
+        return self.make_args(sources_file=sources_file)
 
     def test_successful_run(self):
         """Integration-test a successful run of the importer.
@@ -328,10 +322,8 @@ class TestMain(MAASTestCase):
 
     def test_warns_if_no_sources_selected(self):
         self.patch_logger()
-        config_fixture = self.useFixture(BootConfigFixture({
-            'boot': {'sources': []},
-            }))
-        args = self.make_args(config_file=config_fixture.filename)
+        sources_fixture = self.useFixture(BootSourcesFixture([]))
+        args = self.make_args(sources_file=sources_fixture.filename)
 
         boot_resources.main(args)
 
@@ -342,26 +334,21 @@ class TestMain(MAASTestCase):
     def test_warns_if_no_boot_resources_found(self):
         # The import code used to crash when no resources were found in the
         # Simplestreams repositories (bug 1305758).  This could happen easily
-        # with mistakes in the config.  Now, you just get a logged warning.
-        config_fixture = self.useFixture(BootConfigFixture({
-            'boot': {
-                'sources': [
-                    {
-                        'url': self.make_dir(),
-                        'keyring': factory.make_name('keyring'),
-                        'selections': [
-                            {'release': factory.make_name('release')},
-                            ],
-                    },
-                    ],
+        # with mistakes in the sources.  Now, you just get a logged warning.
+        sources_fixture = self.useFixture(BootSourcesFixture(
+            [
+                {
+                    'url': self.make_dir(),
+                    'keyring': factory.make_name('keyring'),
+                    'selections': [{'release': factory.make_name('release')}],
                 },
-            }))
+            ]))
         self.patch(boot_resources, 'download_all_image_descriptions')
         boot_resources.download_all_image_descriptions.return_value = (
             BootImageMapping())
         self.patch_logger()
         self.patch(boot_resources, 'RepoWriter')
-        args = self.make_args(config_file=config_fixture.filename)
+        args = self.make_args(sources_file=sources_fixture.filename)
 
         boot_resources.main(args)
 
@@ -371,56 +358,58 @@ class TestMain(MAASTestCase):
                 "No boot resources found.  "
                 "Check sources specification and connectivity."))
 
-    def test_raises_ioerror_when_no_config_file_found(self):
+    def test_raises_ioerror_when_no_sources_file_found(self):
         self.patch_logger()
-        no_config = os.path.join(
-            self.make_dir(), '%s.yaml' % factory.make_name('no-config'))
+        no_sources = os.path.join(
+            self.make_dir(), '%s.yaml' % factory.make_name('no-sources'))
         self.assertRaises(
             boot_resources.NoConfigFile,
-            boot_resources.main, self.make_args(config_file=no_config))
+            boot_resources.main, self.make_args(sources_file=no_sources))
 
     def test_raises_non_ENOENT_IOErrors(self):
         # main() will raise a NoConfigFile error when it encounters an
         # ENOENT IOError, but will otherwise just re-raise the original
         # IOError.
-        mock_load_from_cache = self.patch(BootConfig, 'load_from_cache')
+        mock_load = self.patch(BootSources, 'load')
         other_error = IOError(randint(errno.ENOENT + 1, 1000))
-        mock_load_from_cache.side_effect = other_error
+        mock_load.side_effect = other_error
         self.patch_logger()
         raised_error = self.assertRaises(
             IOError,
             boot_resources.main, self.make_args())
         self.assertEqual(other_error, raised_error)
 
+    def test_raises_error_when_no_sources_passed(self):
+        # main() raises an error when neither a sources file nor a sources
+        # listing is specified.
+        self.patch_logger()
+        self.assertRaises(
+            boot_resources.NoConfigFile,
+            boot_resources.main, self.make_args(sources="", sources_file=""))
 
-class TestParseConfig(MAASTestCase):
-    """Tests for the `parse_config` function."""
 
-    def test_parses_config(self):
+class TestParseSources(MAASTestCase):
+    """Tests for the `parse_sources` function."""
+
+    def test_parses_sources(self):
         self.patch(boot_resources, 'logger')
-        config = {
-            'boot': {
-                'configure_me': False,
-                'storage': '/var/lib/maas/boot-resources/',
-                'sources': [
+        sources = [
+            {
+                'keyring': factory.make_name("keyring"),
+                'keyring_data': '',
+                'url': factory.make_name("something"),
+                'selections': [
                     {
-                        'keyring': factory.make_name("keyring"),
-                        'keyring_data': '',
-                        'url': factory.make_name("something"),
-                        'selections': [
-                            {
-                                'release': factory.make_name("release"),
-                                'arches': [factory.make_name("arch")],
-                                'subarches': [factory.make_name("subarch")],
-                                'labels': [factory.make_name("label")],
-                            },
-                            ],
+                        'release': factory.make_name("release"),
+                        'arches': [factory.make_name("arch")],
+                        'subarches': [factory.make_name("subarch")],
+                        'labels': [factory.make_name("label")],
                     },
                     ],
-                },
-            }
-        parsed_config = boot_resources.parse_config(yaml.safe_dump(config))
-        self.assertEqual(config, parsed_config)
+            },
+            ]
+        parsed_sources = boot_resources.parse_sources(yaml.safe_dump(sources))
+        self.assertEqual(sources, parsed_sources)
 
 
 class TestImportImages(MAASTestCase):

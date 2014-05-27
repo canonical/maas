@@ -13,7 +13,7 @@ str = None
 
 __metaclass__ = type
 __all__ = [
-    "BootConfigFixture",
+    "BootSourcesFixture",
     "ConfigFixture",
     "ConfigFixtureBase",
     "set_tftp_root",
@@ -26,10 +26,7 @@ from fixtures import (
     Fixture,
     )
 from maastesting.fixtures import TempDirectory
-from provisioningserver.config import (
-    BootConfig,
-    Config,
-    )
+from provisioningserver.config import Config
 import yaml
 
 
@@ -67,15 +64,31 @@ class ConfigFixtureBase(Fixture):
 
 
 class ConfigFixture(ConfigFixtureBase):
-    """Fixture to help with testing :class:`Config`."""
+    """Fixture to substitute for :class:`Config` in tests."""
 
     schema = Config
 
 
-class BootConfigFixture(ConfigFixtureBase):
-    """Fixture to help with testing :class:`BootConfig`."""
+class BootSourcesFixture(Fixture):
+    """Fixture to substitute for :class:`BootSources` in tests.
 
-    schema = BootConfig
+    :ivar sources: A list of dicts defining boot sources.
+    :ivar name: Base name for the file that will hold the YAML
+        representation of `sources`.  It will be in a temporary directory.
+    :ivar filename: Full path to the YAML file.
+    """
+
+    def __init__(self, sources, name='sources.yaml'):
+        super(BootSourcesFixture, self).__init__()
+        self.sources = sources
+        self.name = name
+
+    def setUp(self):
+        super(BootSourcesFixture, self).setUp()
+        self.dir = self.useFixture(TempDirectory()).path
+        self.filename = path.join(self.dir, self.name)
+        with open(self.filename, 'wb') as stream:
+            yaml.safe_dump(self.sources, stream=stream)
 
 
 def set_tftp_root(tftproot):

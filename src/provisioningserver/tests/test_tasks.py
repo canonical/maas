@@ -94,7 +94,7 @@ from provisioningserver.tasks import (
     )
 from provisioningserver.testing.boot_images import make_boot_image_params
 from provisioningserver.testing.config import (
-    BootConfigFixture,
+    BootSourcesFixture,
     set_tftp_root,
     )
 from provisioningserver.testing.testcase import PservTestCase
@@ -642,7 +642,7 @@ class TestImportBootImages(PservTestCase):
     def test_import_boot_images_integrates_with_boot_resources_function(self):
         # If the config specifies no sources, nothing will be imported.  But
         # the task succeeds without errors.
-        fixture = self.useFixture(BootConfigFixture({'boot': {'sources': []}}))
+        fixture = self.useFixture(BootSourcesFixture([]))
         self.patch(boot_resources, 'logger')
         self.patch(boot_resources, 'locate_config').return_value = (
             fixture.filename)

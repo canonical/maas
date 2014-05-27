@@ -18,6 +18,7 @@ from copy import deepcopy
 import errno
 from functools import partial
 from getpass import getuser
+from io import BytesIO
 import os
 from textwrap import dedent
 
@@ -28,7 +29,7 @@ from maastesting import root
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver.config import (
-    BootConfig,
+    BootSources,
     Config,
     ConfigBase,
     ConfigMeta,
@@ -424,73 +425,59 @@ class TestConfig(MAASTestCase):
         self.assertEqual(broker_password, config['broker']['password'])
 
 
-class TestBootConfig(MAASTestCase):
-    """Tests for `provisioningserver.config.BootConfig`."""
+class TestBootSources(MAASTestCase):
+    """Tests for `provisioningserver.config.BootSources`."""
 
-    default_production_config = {
-        'boot': {
-            'sources': [
-                {
-                    'url': (
-                        'http://maas.ubuntu.com/images/ephemeral-v2/releases/'
-                        ),
-                    'keyring': (
-                        '/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg'),
-                    'keyring_data': None,
-                    'selections': [
-                        {
-                            'arches': ['*'],
-                            'release': '*',
-                            'subarches': ['*'],
-                            'labels': ['*'],
-                        },
-                    ],
-                },
-            ],
-            'storage': '/var/lib/maas/boot-resources/',
-            'configure_me': False,
-        },
-    }
+    default_source = {
+        'url': (
+            'http://maas.ubuntu.com/images/ephemeral-v2/releases/'
+            ),
+        'keyring': (
+            '/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg'),
+        'keyring_data': None,
+        'selections': [
+            {
+                'release': '*',
+                'labels': ['*'],
+                'arches': ['*'],
+                'subarches': ['*'],
+            },
+        ],
+        }
 
-    default_development_config = {
-        'boot': {
-            'sources': [
-                {
-                    'url': (
-                        'http://maas.ubuntu.com/'
-                        'images/ephemeral-v2/releases/'),
-                    'keyring': (
-                        '/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg'),
-                    'keyring_data': None,
-                    'selections': [
-                        {
-                            'arches': ['i386', 'amd64'],
-                            'release': 'trusty',
-                            'subarches': ['generic'],
-                            'labels': ['release'],
-                        },
-                        {
-                            'arches': ['i386', 'amd64'],
-                            'release': 'precise',
-                            'subarches': ['generic'],
-                            'labels': ['release'],
-                        },
-                    ],
-                },
-            ],
-            'storage': '/var/lib/maas/boot-resources/',
-            'configure_me': True,
-        },
-    }
+    def make_source(self):
+        """Create a dict defining an arbitrary `BootSource`."""
+        return {
+            'url': 'http://example.com/' + factory.make_name('path'),
+            'keyring': factory.make_name('keyring'),
+            'keyring_data': factory.getRandomString(),
+            'selections': [{
+                'release': factory.make_name('release'),
+                'labels': [factory.make_name('label')],
+                'arches': [factory.make_name('arch')],
+                'subarches': [factory.make_name('sub') for _ in range(3)],
+                }],
+            }
 
-    def test_get_defaults_returns_default_config(self):
-        # The default configuration is production-ready.
-        observed = BootConfig.get_defaults()
-        self.assertEqual(self.default_production_config, observed)
-
-    def test_load_example(self):
-        # The example configuration is designed for development.
-        filename = os.path.join(root, "etc", "maas", "bootresources.yaml")
+    def test_parse_parses_source(self):
+        sources = [self.make_source()]
         self.assertEqual(
-            self.default_development_config,
-            BootConfig.load(filename))
+            sources,
+            BootSources.parse(BytesIO(yaml.safe_dump(sources))))
+
+    def test_parse_parses_multiple_sources(self):
+        sources = [self.make_source() for _ in range(2)]
+        self.assertEqual(
+            sources,
+            BootSources.parse(BytesIO(yaml.safe_dump(sources))))
+
+    def test_parse_uses_defaults(self):
+        self.assertEqual(
+            [self.default_source],
+            BootSources.parse(BytesIO(b'[{}]')))
+
+    def test_load_parses_file(self):
+        sources = [self.make_source()]
+        self.assertEqual(
+            sources,
+            BootSources.load(self.make_file(contents=yaml.safe_dump(sources))))

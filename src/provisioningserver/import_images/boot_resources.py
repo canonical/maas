@@ -14,7 +14,6 @@ __all__ = [
     'import_images',
     'main',
     'make_arg_parser',
-    'read_config',
     ]
 
 from argparse import ArgumentParser
@@ -25,7 +24,7 @@ from textwrap import dedent
 import provisioningserver
 from provisioningserver.boot import BootMethodRegistry
 from provisioningserver.boot.tftppath import list_boot_images
-from provisioningserver.config import BootConfig
+from provisioningserver.config import BootSources
 from provisioningserver.import_images.download_descriptions import (
     download_all_image_descriptions,
     )
@@ -38,7 +37,6 @@ from provisioningserver.import_images.product_mapping import map_products
 from provisioningserver.utils import (
     atomic_write,
     call_and_check,
-    locate_config,
     read_text_file,
     )
 
@@ -100,11 +98,9 @@ def make_arg_parser(doc):
     """Create an `argparse.ArgumentParser` for this script."""
 
     parser = ArgumentParser(description=doc)
-    default_config = locate_config("bootresources.yaml")
     parser.add_argument(
-        '--config-file', action="store", default=default_config,
-        help="Path to config file "
-             "(defaults to %s)" % default_config)
+        '--sources-file', action="store",
+        help="Path to YAML file defining import sources.")
     return parser
 
 
@@ -166,20 +162,18 @@ def write_snapshot_metadata(snapshot, meta_file_content, targets_conf,
     atomic_write(targets_conf_content, targets_conf, mode=0644)
 
 
-def read_config(config_file=None):
+def read_sources(sources_yaml):
     """Read boot resources config file.
 
-    :param config_file: Path to the config file.  Defaults to
-        `bootresources.yaml` in the configuration directory.
+    :param sources_yaml: Path to a YAML file containing a list of boot
+        resource definitions.
     :return: A dict representing the boot-resources configuration.
     :raise NoConfigFile: If the configuration file was not present.
     """
     # The config file is required.  We do not fall back to defaults if it's
     # not there.
-    if config_file is None:
-        config_file = locate_config("bootresources.yaml")
     try:
-        return BootConfig.load_from_cache(filename=config_file)
+        return BootSources.load(filename=sources_yaml)
     except IOError as ex:
         if ex.errno == errno.ENOENT:
             # No config file. We have helpful error output for this.
@@ -189,11 +183,10 @@ def read_config(config_file=None):
             raise
 
 
-def parse_config(config):
-    """Given a YAML `config` string, return a `BootConfig` for it."""
+def parse_sources(sources_yaml):
+    """Given a YAML `config` string, return a `BootSources` for it."""
     from StringIO import StringIO
-    config_stream = StringIO(config)
-    return BootConfig.parse(config_stream)
+    return BootSources.parse(StringIO(sources_yaml))
 
 
 def import_images(sources):
@@ -261,5 +254,5 @@ def main(args):
     :raise NoConfig: If no config is specified at the command line and
         no config file is provided.
     """
-    config = read_config(args.config_file)
-    import_images(sources=config['boot']['sources'])
+    sources = read_sources(args.sources_file)
+    import_images(sources=sources)

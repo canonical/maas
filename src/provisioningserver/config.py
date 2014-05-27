@@ -4,8 +4,8 @@
 """MAAS Provisioning Configuration.
 
 Configuration for most elements of a Cluster Controller can be obtained
-through this module's `Config` and `BootConfig` classes.  At the time of
-writing the exceptions are the Celery worker's configuration, as well as the
+through this module's `Config` validator class.  At the time of writing the
+exceptions are the Celery worker's configuration, as well as the
 `CLUSTER_UUID` and `MAAS_URL` environment variables
 (see `provisioningserver.cluster_config`).
 
@@ -53,8 +53,8 @@ str = None
 
 __metaclass__ = type
 __all__ = [
-    "BootConfig",
     "BOOT_RESOURCES_STORAGE",
+    "BootSources",
     "Config",
     "ConfigBase",
     "ConfigMeta",
@@ -73,7 +73,6 @@ from formencode import (
     )
 from formencode.declarative import DeclarativeMeta
 from formencode.validators import (
-    Bool,
     Int,
     RequireIfPresent,
     Set,
@@ -166,7 +165,7 @@ class ConfigRPC(Schema):
 
 
 class BootSourceSelection(Schema):
-    """Configuration validator for boot source election onfiguration."""
+    """Configuration validator for boot source selection configuration."""
 
     if_key_missing = None
 
@@ -189,22 +188,6 @@ class BootSource(Schema):
     selections = ForEach(
         BootSourceSelection,
         if_missing=[BootSourceSelection.to_python({})])
-
-
-class ConfigBoot(Schema):
-    """Configuration validator for boot configuration."""
-
-    if_key_missing = None
-
-    # This setting is no longer used.
-    storage = String(if_missing=BOOT_RESOURCES_STORAGE)
-    sources = ForEach(
-        BootSource, if_missing=[BootSource.to_python({})])
-
-    # Marker in the bootresources.yaml file: if True, the file has not been
-    # edited yet and needs to be either configured with initial choices, or
-    # rewritten based on previously downloaded boot images.
-    configure_me = Bool(if_missing=False)
 
 
 class ConfigBase(Schema):
@@ -343,13 +326,24 @@ class Config(ConfigBase):
     boot = ConfigLegacyBoot
 
 
-class BootConfig(ConfigBase):
-    """Configuration for boot resources."""
+class BootSources:
+    """Validator for a list of boot-source entries."""
 
-    class __metaclass__(ConfigMeta):
-        envvar = "MAAS_BOOT_RESOURCES_SETTINGS"
-        default = "bootresources.yaml"
+    # Validator for a list of BootSource definitions.  We can't make our own
+    # class for this.  ForEach (which is how you construct a validator for a
+    # list of items) and our own ConfigBase each have their own metaclass,
+    # ruling out a combined inheritance pattern.  So instead we duplicate
+    # small bits of ConfigBase code here, and make __getitem__ forward to the
+    # list validator.
+    sources = ForEach(BootSource())
 
-    if_key_missing = None
+    @classmethod
+    def parse(cls, stream):
+        """Load sources spec from `stream`, as YAML, and validate."""
+        return cls.sources.to_python(yaml.safe_load(stream))
 
-    boot = ConfigBoot
+    @classmethod
+    def load(cls, filename):
+        """Load sources spec from `filename`, as YAML, and validate."""
+        with open(filename, "rb") as stream:
+            return cls.parse(stream)
