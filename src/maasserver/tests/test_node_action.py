@@ -25,6 +25,7 @@ from maasserver.enum import (
 from maasserver.exceptions import Redirect
 from maasserver.models import Tag
 from maasserver.node_action import (
+    AbortCommissioning,
     Commission,
     compile_node_actions,
     Delete,
@@ -213,6 +214,21 @@ class TestCommissionNodeAction(MAASServerTestCase):
             self.assertEqual(
                 'provisioningserver.tasks.power_on',
                 self.celery.tasks[0]['task'].name)
+
+
+class TestAbortCommissioningNodeAction(MAASServerTestCase):
+
+    def test_AbortCommissioning_aborts_commissioning(self):
+        self.patch(PowerAction, 'run_shell').return_value = ('', '')
+        node = factory.make_node(
+            mac=True, status=NODE_STATUS.COMMISSIONING,
+            power_type='virsh')
+        action = AbortCommissioning(node, factory.make_admin())
+        action.execute()
+        self.assertEqual(NODE_STATUS.DECLARED, node.status)
+        self.assertEqual(
+            'provisioningserver.tasks.power_off',
+            self.celery.tasks[0]['task'].name)
 
 
 class TestStartNodeNodeAction(MAASServerTestCase):

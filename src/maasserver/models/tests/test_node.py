@@ -734,6 +734,39 @@ class NodeTest(MAASServerTestCase):
         self.assertEqual(
             data, NodeCommissionResult.objects.get_data(node, filename))
 
+    def test_abort_commissioning_changes_status_and_stops_node(self):
+        self.patch(PowerAction, 'run_shell').return_value = ('', '')
+        node = factory.make_node(
+            status=NODE_STATUS.COMMISSIONING, power_type='virsh')
+        node.abort_commissioning(factory.make_admin())
+        expected_attrs = {
+            'status': NODE_STATUS.DECLARED,
+        }
+        self.assertAttributes(node, expected_attrs)
+        self.assertEqual(
+            ['provisioningserver.tasks.power_off'],
+            [task['task'].name for task in self.celery.tasks])
+
+    def test_abort_commisssioning_doesnt_stop_nodes_for_non_admin_users(self):
+        node = factory.make_node(
+            status=NODE_STATUS.COMMISSIONING, power_type='virsh')
+        node.abort_commissioning(factory.make_user())
+        expected_attrs = {
+            'status': NODE_STATUS.COMMISSIONING,
+        }
+        self.assertAttributes(node, expected_attrs)
+        self.assertEqual([], self.celery.tasks)
+
+    def test_abort_commisssioning_errors_if_node_is_not_commissioning(self):
+        unaccepted_statuses = set(map_enum(NODE_STATUS).values())
+        unaccepted_statuses.remove(NODE_STATUS.COMMISSIONING)
+        for status in unaccepted_statuses:
+            node = factory.make_node(
+                status=status, power_type='virsh')
+            self.assertRaises(
+                NodeStateViolation, node.abort_commissioning,
+                factory.make_admin())
+
     def test_full_clean_checks_status_transition_and_raises_if_invalid(self):
         # RETIRED -> ALLOCATED is an invalid transition.
         node = factory.make_node(

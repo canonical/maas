@@ -111,6 +111,7 @@ NODE_TRANSITIONS = {
         NODE_STATUS.READY,
         NODE_STATUS.RETIRED,
         NODE_STATUS.MISSING,
+        NODE_STATUS.DECLARED,
         ],
     NODE_STATUS.FAILED_TESTS: [
         NODE_STATUS.COMMISSIONING,
@@ -685,6 +686,18 @@ class Node(CleanSave, TimestampedModel):
         # The commissioning profile is handled in start_nodes.
         Node.objects.start_nodes(
             [self.system_id], user, user_data=commissioning_user_data)
+
+    def abort_commissioning(self, user):
+        """Power off a commissioning node and set its status to 'declared'."""
+        if self.status != NODE_STATUS.COMMISSIONING:
+            raise NodeStateViolation(
+                "Cannot abort commissioning of a non-commissioning node: "
+                "node %s is in state %s."
+                % (self.system_id, NODE_STATUS_CHOICES_DICT[self.status]))
+        stopped_node = Node.objects.stop_nodes([self.system_id], user)
+        if len(stopped_node) == 1:
+            self.status = NODE_STATUS.DECLARED
+            self.save()
 
     def delete(self):
         # Allocated nodes can't be deleted.

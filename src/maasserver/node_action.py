@@ -182,6 +182,21 @@ class Commission(NodeAction):
         return "Node commissioning started."
 
 
+class AbortCommissioning(NodeAction):
+    """Abort the commissioning process."""
+    name = "abort commissioning"
+    display = "Abort commissioning"
+    display_bulk = "Abort commissioning"
+    actionable_statuses = (
+        NODE_STATUS.COMMISSIONING,)
+    permission = NODE_PERMISSION.ADMIN
+
+    def execute(self, allow_redirect=True):
+        """See `NodeAction.execute`."""
+        self.node.abort_commissioning(self.user)
+        return "Node commissioning aborted."
+
+
 class UseCurtin(NodeAction):
     """Set this node to use curtin for installation."""
     name = "usecurtin"
@@ -294,6 +309,7 @@ class StopNode(NodeAction):
 
 
 ACTION_CLASSES = (
+    AbortCommissioning,
     Delete,
     Commission,
     StartNode,
