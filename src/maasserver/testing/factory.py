@@ -620,7 +620,8 @@ class Factory(maastesting.factory.Factory):
                 "Could not find an available VLAN tag.")
 
     def make_network(self, name=None, network=None, vlan_tag=NO_VALUE,
-                     description=None, sortable_name=False):
+                     description=None, sortable_name=False,
+                     disjoint_from=None):
         """Create a `Network`.
 
         :param network: An `IPNetwork`.  If given, the `ip` and `netmask`
@@ -633,6 +634,8 @@ class Factory(maastesting.factory.Factory):
             by name, where the database and the python code may have different
             ideas about collation orders, especially when it comes to case
             differences.
+        :param disjoint_from: List of other `Network` or `IPNetwork` objects
+            whose IP ranges the new network must not overlap with.
         """
         if name is None:
             name = factory.make_name()
@@ -641,8 +644,16 @@ class Factory(maastesting.factory.Factory):
             # case-sensitive and case-insensitive ordering, so use lower-case
             # only.
             name = name.lower()
+        if disjoint_from is None:
+            disjoint_from = []
+        # disjoint_from may contain both Network and IPNetwork.  Normalise to
+        # all IPNetwork objects.
+        disjoint_from = [
+            entry.get_network() if isinstance(entry, Network) else entry
+            for entry in disjoint_from
+            ]
         if network is None:
-            network = self.getRandomNetwork()
+            network = self.getRandomNetwork(disjoint_from=disjoint_from)
         ip = unicode(network.ip)
         netmask = unicode(network.netmask)
         if description is None:
@@ -676,10 +687,12 @@ class Factory(maastesting.factory.Factory):
                     "Could not generate %d non-clashing VLAN tags" % number)
         else:
             vlan_tags = [None] * number
-        return [
-            self.make_network(vlan_tag=tag, **kwargs)
-            for tag in vlan_tags
-            ]
+        networks = []
+        for tag in vlan_tags:
+            networks.append(
+                self.make_network(
+                    vlan_tag=tag, disjoint_from=networks, **kwargs))
+        return networks
 
     def make_boot_source(self, cluster=None, url=None,
                          keyring_filename=None, keyring_data=None):

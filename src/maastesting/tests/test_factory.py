@@ -20,7 +20,10 @@ import os.path
 from random import randint
 import subprocess
 
-from maastesting.factory import factory
+from maastesting.factory import (
+    factory,
+    TooManyRandomRetries,
+    )
 from maastesting.testcase import MAASTestCase
 from netaddr import (
     IPAddress,
@@ -78,6 +81,54 @@ class TestFactory(MAASTestCase):
     def test_getRandomNetwork(self):
         network = factory.getRandomNetwork()
         self.assertIsInstance(network, IPNetwork)
+
+    def test_getRandomNetwork_respects_but_not(self):
+        self.patch(factory, 'getRandomIPAddress').return_value = IPAddress(
+            '10.1.1.0')
+        self.assertRaises(
+            TooManyRandomRetries,
+            factory.getRandomNetwork,
+            slash=24, but_not=[IPNetwork('10.1.1.0/24')])
+
+    def test_getRandomNetwork_returns_network_not_in_but_not(self):
+        self.patch(factory, 'getRandomIPAddress').return_value = IPAddress(
+            '10.1.1.0')
+        self.assertEqual(
+            IPNetwork('10.1.1.0/24'),
+            factory.getRandomNetwork(
+                slash=24, but_not=[IPNetwork('10.9.9.0/24')]))
+
+    def test_getRandomNetwork_may_overlap_but_not(self):
+        self.patch(factory, 'getRandomIPAddress').return_value = IPAddress(
+            '10.1.1.0')
+        self.assertEqual(
+            IPNetwork('10.1.1.0/24'),
+            factory.getRandomNetwork(
+                slash=24, but_not=[IPNetwork('10.1.0.0/16')]))
+
+    def test_getRandomNetwork_avoids_network_in_disjoint_from(self):
+        self.patch(factory, 'getRandomIPAddress').return_value = IPAddress(
+            '10.1.1.0')
+        self.assertRaises(
+            TooManyRandomRetries,
+            factory.getRandomNetwork,
+            slash=24, disjoint_from=[IPNetwork('10.1.1.0/24')])
+
+    def test_getRandomNetwork_avoids_network_overlapping_disjoint_from(self):
+        self.patch(factory, 'getRandomIPAddress').return_value = IPAddress(
+            '10.1.1.0')
+        self.assertRaises(
+            TooManyRandomRetries,
+            factory.getRandomNetwork,
+            slash=24, disjoint_from=[IPNetwork('10.1.0.0/16')])
+
+    def test_getRandomNetwork_returns_network_disjoint_from(self):
+        existing_network = factory.getRandomNetwork()
+        new_network = factory.getRandomNetwork(
+            disjoint_from=[existing_network])
+        self.assertNotEqual(existing_network, new_network)
+        self.assertNotIn(new_network, existing_network)
+        self.assertNotIn(existing_network, new_network)
 
     def test_getRandomIPInNetwork(self):
         network = factory.getRandomNetwork()

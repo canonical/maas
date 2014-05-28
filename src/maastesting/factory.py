@@ -55,6 +55,20 @@ class TooManyRandomRetries(Exception):
     """
 
 
+def network_clashes(network, other_networks):
+    """Does the IP range for `network` clash with any in `other_networks`?
+
+    :param network: An `IPNetwork`.
+    :param other_networks: An iterable of `IPNetwork` items.
+    :return: Whether the IP range for `network` overlaps with any of those
+        for the networks in `other_networks`.
+    """
+    for other_network in other_networks:
+        if network in other_network or other_network in network:
+            return True
+    return False
+
+
 class Factory:
 
     random_letters = imap(
@@ -106,7 +120,7 @@ class Factory:
     def getRandomUUID(self):
         return unicode(uuid1())
 
-    def getRandomNetwork(self, slash=None, but_not=None):
+    def getRandomNetwork(self, slash=None, but_not=None, disjoint_from=None):
         """Generate a random IP network.
 
         :param slash: Netmask or bit width of the network, e.g. 24 or
@@ -115,17 +129,24 @@ class Factory:
             should not be returned.  Use this when you need a different network
             from any returned previously.  The new network may overlap any of
             these, but it won't be identical.
+        :param disjoint_from: Optional iterable of `IPNetwork` objects whose
+            IP ranges the new network must not overlap.
         :return: A network spanning at least 8 IP addresses (at most 29 bits).
         :rtype: :class:`IPNetwork`
         """
         if but_not is None:
             but_not = []
+        but_not = frozenset(but_not)
+        if disjoint_from is None:
+            disjoint_from = []
         if slash is None:
             slash = random.randint(16, 29)
-        but_not = set(but_not)
+        # Look randomly for a network that matches our criteria.
         for _ in range(100):
             network = IPNetwork('%s/%s' % (self.getRandomIPAddress(), slash))
-            if network not in but_not:
+            forbidden = (network in but_not)
+            clashes = network_clashes(network, disjoint_from)
+            if not forbidden and not clashes:
                 return network
         raise TooManyRandomRetries("Could not find available network")
 
