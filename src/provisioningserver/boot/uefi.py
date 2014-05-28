@@ -25,6 +25,7 @@ import urllib2
 from provisioningserver.boot import (
     BootMethod,
     BootMethodInstallError,
+    BytesReader,
     get_parameters,
     utils,
     )
@@ -120,10 +121,11 @@ class UEFIBootMethod(BootMethod):
     bootloader_path = "bootx64.efi"
     arch_octet = "00:07"  # AMD64 EFI
 
-    def match_config_path(self, path):
+    def match_path(self, backend, path):
         """Checks path for the configuration file that needs to be
         generated.
 
+        :param backend: requesting backend
         :param path: requested path
         :returns: dict of match params from path, None if no match
         """
@@ -139,19 +141,20 @@ class UEFIBootMethod(BootMethod):
 
         return params
 
-    def render_config(self, kernel_params, **extra):
+    def get_reader(self, backend, kernel_params, **extra):
         """Render a configuration file as a unicode string.
 
+        :param backend: requesting backend
         :param kernel_params: An instance of `KernelParameters`.
         :param extra: Allow for other arguments. This is a safety valve;
             parameters generated in another component (for example, see
-            `TFTPBackend.get_config_reader`) won't cause this to break.
+            `TFTPBackend.get_boot_method_reader`) won't cause this to break.
         """
         template = self.get_template(
             kernel_params.purpose, kernel_params.arch,
             kernel_params.subarch)
         namespace = self.compose_template_namespace(kernel_params)
-        return template.substitute(namespace)
+        return BytesReader(template.substitute(namespace).encode("utf-8"))
 
     def install_bootloader(self, destination):
         """Installs the required files for UEFI booting into the

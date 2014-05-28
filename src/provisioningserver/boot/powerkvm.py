@@ -45,17 +45,17 @@ class PowerKVMBootMethod(BootMethod):
     bootloader_path = "bootppc64.bin"
     arch_octet = "00:0C"
 
-    def match_config_path(self, path):
+    def match_path(self, backend, path):
         """Doesn't need to do anything, as the UEFIBootMethod provides
         the grub implementation needed.
         """
         return None
 
-    def render_config(self, kernel_params, **extra):
+    def get_reader(self, backend, kernel_params, **extra):
         """Doesn't need to do anything, as the UEFIBootMethod provides
         the grub implementation needed.
         """
-        return ""
+        return None
 
     def install_bootloader(self, destination):
         """Installs the required files for PowerKVM booting into the

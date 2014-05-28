@@ -28,11 +28,11 @@ from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 import mock
 from provisioningserver import tftp as tftp_module
+from provisioningserver.boot import BytesReader
 from provisioningserver.boot.pxe import PXEBootMethod
 from provisioningserver.boot.tests.test_pxe import compose_config_path
 from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
 from provisioningserver.tftp import (
-    BytesReader,
     TFTPBackend,
     TFTPService,
     )
@@ -127,9 +127,9 @@ class TestTFTPBackend(MAASTestCase):
         self.assertEqual(b"", reader.read(1))
 
     @inlineCallbacks
-    def test_get_reader_config_file(self):
-        # For paths matching re_config_file, TFTPBackend.get_reader() returns
-        # a Deferred that will yield a BytesReader.
+    def test_get_render_file(self):
+        # For paths matching PXEBootMethod.match_path, TFTPBackend.get_reader()
+        # returns a Deferred that will yield a BytesReader.
         cluster_uuid = factory.getRandomUUID()
         self.patch(tftp_module, 'get_cluster_uuid').return_value = (
             cluster_uuid)
@@ -147,8 +147,8 @@ class TestTFTPBackend(MAASTestCase):
                 factory.getRandomPort()),
             }
 
-        @partial(self.patch, backend, "get_config_reader")
-        def get_config_reader(boot_method, params):
+        @partial(self.patch, backend, "get_boot_method_reader")
+        def get_boot_method_reader(boot_method, params):
             params_json = json.dumps(params)
             params_json_reader = BytesReader(params_json)
             return succeed(params_json_reader)
@@ -168,9 +168,10 @@ class TestTFTPBackend(MAASTestCase):
         self.assertEqual(expected_params, observed_params)
 
     @inlineCallbacks
-    def test_get_config_reader_returns_rendered_params(self):
-        # get_config_reader() takes a dict() of parameters and returns an
-        # `IReader` of a PXE configuration, rendered by `render_pxe_config`.
+    def test_get_boot_method_reader_returns_rendered_params(self):
+        # get_boot_method_reader() takes a dict() of parameters and returns an
+        # `IReader` of a PXE configuration, rendered by
+        # `PXEBootMethod.get_reader`.
         backend = TFTPBackend(self.make_dir(), b"http://example.com/")
         # Fake configuration parameters, as discovered from the file path.
         fake_params = {"mac": factory.getRandomMACAddress("-")}
@@ -182,15 +183,15 @@ class TestTFTPBackend(MAASTestCase):
         get_page_patch = self.patch(backend, "get_page")
         get_page_patch.return_value = succeed(fake_get_page_result)
 
-        # Stub render_config to return the render parameters.
+        # Stub get_reader to return the render parameters.
         method = PXEBootMethod()
-        fake_render_result = factory.make_name("render")
-        render_patch = self.patch(method, "render_config")
-        render_patch.return_value = fake_render_result
+        fake_render_result = factory.make_name("render").encode("utf-8")
+        render_patch = self.patch(method, "get_reader")
+        render_patch.return_value = BytesReader(fake_render_result)
 
         # Get the rendered configuration, which will actually be a JSON dump
         # of the render-time parameters.
-        reader = yield backend.get_config_reader(method, fake_params)
+        reader = yield backend.get_boot_method_reader(method, fake_params)
         self.addCleanup(reader.finish)
         self.assertIsInstance(reader, BytesReader)
         output = reader.read(10000)
@@ -198,13 +199,13 @@ class TestTFTPBackend(MAASTestCase):
         # The kernel parameters were fetched using `backend.get_page`.
         self.assertThat(backend.get_page, MockCalledOnceWith(mock.ANY))
 
-        # The result has been rendered by `backend.render_config`.
+        # The result has been rendered by `method.get_reader`.
         self.assertEqual(fake_render_result.encode("utf-8"), output)
-        self.assertThat(method.render_config, MockCalledOnceWith(
-            kernel_params=fake_kernel_params, **fake_params))
+        self.assertThat(method.get_reader, MockCalledOnceWith(
+            backend, kernel_params=fake_kernel_params, **fake_params))
 
     @inlineCallbacks
-    def test_get_config_reader_substitutes_armhf_in_params(self):
+    def test_get_boot_method_render_substitutes_armhf_in_params(self):
         # get_config_reader() should substitute "arm" for "armhf" in the
         # arch field of the parameters (mapping from pxe to maas
         # namespace).
@@ -224,8 +225,8 @@ class TestTFTPBackend(MAASTestCase):
                 factory.getRandomPort()),
             }
 
-        @partial(self.patch, backend, "get_config_reader")
-        def get_config_reader(boot_method, params):
+        @partial(self.patch, backend, "get_boot_method_reader")
+        def get_boot_method_reader(boot_method, params):
             params_json = json.dumps(params)
             params_json_reader = BytesReader(params_json)
             return succeed(params_json_reader)

@@ -18,6 +18,7 @@ import re
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
+from provisioningserver.boot import BytesReader
 from provisioningserver.boot.tftppath import compose_image_path
 from provisioningserver.boot.uefi import (
     re_config_file,
@@ -60,14 +61,15 @@ def compose_config_path(mac=None, arch=None, subarch=None):
 class TestRenderUEFIConfig(MAASTestCase):
     """Tests for `provisioningserver.boot.uefi.UEFIBootMethod`."""
 
-    def test_render(self):
+    def test_get_reader(self):
         # Given the right configuration options, the UEFI configuration is
         # correctly rendered.
         method = UEFIBootMethod()
         params = make_kernel_parameters(purpose="install")
-        output = method.render_config(kernel_params=params)
-        # The output is always a Unicode string.
-        self.assertThat(output, IsInstance(unicode))
+        output = method.get_reader(backend=None, kernel_params=params)
+        # The output is a BytesReader.
+        self.assertThat(output, IsInstance(BytesReader))
+        output = output.read(10000)
         # The template has rendered without error. UEFI configurations
         # typically start with a DEFAULT line.
         self.assertThat(output, StartsWith("set default=\"0\""))
@@ -85,32 +87,34 @@ class TestRenderUEFIConfig(MAASTestCase):
                     r'.*^\s+initrd %s/di-initrd$' % re.escape(image_dir),
                     re.MULTILINE | re.DOTALL)))
 
-    def test_render_with_extra_arguments_does_not_affect_output(self):
-        # render_config() allows any keyword arguments as a safety valve.
+    def test_get_reader_with_extra_arguments_does_not_affect_output(self):
+        # get_reader() allows any keyword arguments as a safety valve.
         method = UEFIBootMethod()
         options = {
+            "backend": None,
             "kernel_params": make_kernel_parameters(purpose="install"),
         }
         # Capture the output before sprinking in some random options.
-        output_before = method.render_config(**options)
+        output_before = method.get_reader(**options).read(10000)
         # Sprinkle some magic in.
         options.update(
             (factory.make_name("name"), factory.make_name("value"))
             for _ in range(10))
         # Capture the output after sprinking in some random options.
-        output_after = method.render_config(**options)
+        output_after = method.get_reader(**options).read(10000)
         # The generated template is the same.
         self.assertEqual(output_before, output_after)
 
-    def test_render_config_with_local_purpose(self):
+    def test_get_reader_with_local_purpose(self):
         # If purpose is "local", the config.localboot.template should be
         # used.
         method = UEFIBootMethod()
         options = {
+            "backend": None,
             "kernel_params": make_kernel_parameters(
                 purpose="local", arch="amd64"),
             }
-        output = method.render_config(**options)
+        output = method.get_reader(**options).read(10000)
         self.assertIn("configfile /efi/ubuntu/grub.cfg", output)
 
 

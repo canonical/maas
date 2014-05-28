@@ -23,6 +23,7 @@ from abc import (
     abstractproperty,
     )
 from errno import ENOENT
+from io import BytesIO
 from os import path
 
 from provisioningserver.boot.tftppath import compose_image_path
@@ -30,6 +31,23 @@ from provisioningserver.kernel_opts import compose_kernel_command_line
 from provisioningserver.utils import locate_config
 from provisioningserver.utils.registry import Registry
 import tempita
+from tftp.backend import IReader
+from zope.interface import implementer
+
+
+@implementer(IReader)
+class BytesReader:
+
+    def __init__(self, data):
+        super(BytesReader, self).__init__()
+        self.buffer = BytesIO(data)
+        self.size = len(data)
+
+    def read(self, size):
+        return self.buffer.read(size)
+
+    def finish(self):
+        self.buffer.close()
 
 
 class BootMethodError(Exception):
@@ -100,22 +118,24 @@ class BootMethod:
         """
 
     @abstractmethod
-    def match_config_path(self, path):
-        """Checks path for the configuration file that needs to be
-        generated.
+    def match_path(self, backend, path):
+        """Checks path for a file the boot method needs to handle.
 
+        :param backend: requesting backend
         :param path: requested path
         :returns: dict of match params from path, None if no match
         """
 
     @abstractmethod
-    def render_config(self, kernel_params, **extra):
-        """Render a configuration file as a unicode string.
+    def get_reader(self, backend, kernel_params, **extra):
+        """Gets the reader the backend will use for this combination of
+        boot method, kernel parameters, and extra parameters.
 
+        :param backend: requesting backend
         :param kernel_params: An instance of `KernelParameters`.
         :param extra: Allow for other arguments. This is a safety valve;
             parameters generated in another component (for example, see
-            `TFTPBackend.get_config_reader`) won't cause this to break.
+            `TFTPBackend.get_boot_method_reader`) won't cause this to break.
         """
 
     @abstractmethod
