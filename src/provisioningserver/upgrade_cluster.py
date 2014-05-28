@@ -36,6 +36,7 @@ from logging import getLogger
 from os import makedirs
 import os.path
 from subprocess import check_call
+from textwrap import dedent
 
 from provisioningserver import config
 from provisioningserver.auth import MAAS_USER_GPGHOME
@@ -58,6 +59,81 @@ def create_gnupg_home():
         check_call(['chown', 'maas:maas', MAAS_USER_GPGHOME])
 
 
+# Path to obsolete boot-resources configuration.
+BOOTRESOURCES_FILE = '/etc/maas/bootresources.yaml'
+
+# Recognisable header, to be prefixed to BOOTRESOURCES_FILE as part of the
+# warning that the file is obsolete.  The retire_bootresources_yaml upgrade
+# hook will prefix this header and further details to the file, if and only
+# if this header is not yet present.
+BOOTRESOURCES_HEADER = "# THIS FILE IS OBSOLETE."
+
+# Warning, to be prefixed to BOOTRESOURCES_FILE as an indication that the
+# file is obsolete.
+BOOTRESOURCES_WARNING = BOOTRESOURCES_HEADER + '\n' + dedent("""\
+    #
+    # The configuration below is no longer in use, and can be removed.
+    # By default, cluster controllers now import images for all supported
+    # Ubuntu LTS releases in all supported architectures.
+    #
+    # Imports can now be configured through the MAAS region controller API:
+    # See http://maas.ubuntu.com/docs/api.html#boot-source
+    #
+    # To do this, define a boot source through a POST to the nodegroup's
+    # boot-sources endpoint
+    # (e.g. http://<server>/api/1.0/nodegroups/<uuid>/boot-sources), and then
+    # POST to the resulting boot source to define selections.  Each cluster
+    # can have any number of boot sources, and each boot source can have any
+    # number of selections, as in the old configuration.
+    #
+    # The same thing can be done using the command-line front-end for the API.
+    # After logging in to the MAAS to create a profile, run:
+    #
+    # maas <my-profile> boot-sources create <cluster-uuid>\
+    url=<path> keyring_filename=<keyring>
+    #
+    # Here,
+    #  * <my-profile> is your login profile in the 'maas' command.
+    #  * <cluster-uuid> is the UUID of the cluster.
+    #  * <path> is the source's path as found in this config file.
+    #  * <keyring> is the keyring entry as found in this config file.
+    #
+    # Full documentation can be found at http://maas.ubuntu.com/docs/
+    #
+    # The maas-import-pxe-files import script is now deprecated; use the
+    # MAAS web UI, region-controller, or the "maas" command to trigger any
+    # manual imports.
+    #
+    # If you do wish to continue using maas-import-pxe-files for the time
+    # being, the script now requires a sources definition consisting of
+    # just the contents of the "sources" section as found in this
+    # configuration file.  See the script's man page for an example.
+    """) + '\n'
+
+
+def retire_bootresources_yaml():
+    """Upgrade hook: mark `/etc/maas/bootresources.yaml` as obsolete.
+
+    Prefixes `BOOTRESOURCES_WARNING` to the config file, if present.
+
+    This file was temporarily used in MAAS 1.5 to let users restrict which
+    boot resources should be downloaded, where from, and to where in the
+    filesystem.  The settings have been replaced with model classes.
+    """
+    if not os.path.isfile(BOOTRESOURCES_FILE):
+        return
+    header = BOOTRESOURCES_HEADER.encode('ascii')
+    warning = BOOTRESOURCES_WARNING.encode('ascii')
+    with open(BOOTRESOURCES_FILE, 'r+b') as old_config:
+        old_contents = old_config.read()
+        if old_contents.startswith(header):
+            # Warning is already there.
+            return
+        old_config.seek(0)
+        old_config.write(warning)
+        old_config.write(old_contents)
+
+
 # Upgrade hooks, from oldest to newest.  The hooks are callables, taking no
 # arguments.  They are called in order.
 #
@@ -66,6 +142,7 @@ def create_gnupg_home():
 UPGRADE_HOOKS = [
     make_maas_own_boot_resources,
     create_gnupg_home,
+    retire_bootresources_yaml,
     ]
 
 

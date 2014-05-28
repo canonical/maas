@@ -24,12 +24,19 @@ from maastesting.matchers import (
     MockNotCalled,
     )
 from maastesting.testcase import MAASTestCase
+from maastesting.utils import sample_binary_data
 from mock import Mock
 from provisioningserver import (
     config,
     upgrade_cluster,
     )
-from testtools.matchers import DirExists
+from provisioningserver.utils import read_text_file
+from testtools.matchers import (
+    DirExists,
+    FileContains,
+    FileExists,
+    Not,
+    )
 
 
 class TestUpgradeCluster(MAASTestCase):
@@ -133,3 +140,47 @@ class TestCreateGNUPGHome(MAASTestCase):
         upgrade_cluster.create_gnupg_home()
         self.assertThat(
             call, MockCalledOnceWith(['chown', 'maas:maas', new_home]))
+
+
+class TestRetireBootResourcesYAML(MAASTestCase):
+    """Tests for `retire_bootresources_yaml`."""
+
+    def set_bootresources_yaml(self, contents):
+        """Write a fake `bootresources.yaml`, and return its path."""
+        path = self.make_file('bootresources.yaml', contents=contents)
+        self.patch(upgrade_cluster, 'BOOTRESOURCES_FILE', path)
+        return path
+
+    def test__does_nothing_if_file_not_present(self):
+        path = self.set_bootresources_yaml('')
+        os.remove(path)
+        upgrade_cluster.retire_bootresources_yaml()
+        self.assertThat(path, Not(FileExists()))
+
+    def test__prefixes_header_to_file_if_present(self):
+        content = factory.getRandomString()
+        path = self.set_bootresources_yaml(content)
+        upgrade_cluster.retire_bootresources_yaml()
+        self.assertThat(
+            path,
+            FileContains(upgrade_cluster.BOOTRESOURCES_WARNING + content))
+
+    def test__is_idempotent(self):
+        path = self.set_bootresources_yaml(factory.getRandomString())
+        upgrade_cluster.retire_bootresources_yaml()
+        content_after_upgrade = read_text_file(path)
+        upgrade_cluster.retire_bootresources_yaml()
+        self.assertThat(path, FileContains(content_after_upgrade))
+
+    def test__survives_encoding_problems(self):
+        path = os.path.join(self.make_dir(), 'bootresources.yaml')
+        content = b'[[%s]]' % sample_binary_data
+        with open(path, 'wb') as config:
+            config.write(content)
+        self.patch(upgrade_cluster, 'BOOTRESOURCES_FILE', path)
+        upgrade_cluster.retire_bootresources_yaml()
+        self.assertThat(
+            path,
+            FileContains(
+                upgrade_cluster.BOOTRESOURCES_WARNING.encode('ascii') +
+                content))
