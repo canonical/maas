@@ -20,6 +20,7 @@ import re
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver import kernel_opts
+from provisioningserver.boot import BytesReader
 from provisioningserver.boot.pxe import (
     ARP_HTYPE,
     PXEBootMethod,
@@ -150,14 +151,15 @@ class TestParsePXEConfig(MAASTestCase):
 class TestPXEBootMethodRenderConfig(MAASTestCase):
     """Tests for `provisioningserver.boot.pxe.PXEBootMethod.render_config`."""
 
-    def test_render_install(self):
+    def test_get_reader_install(self):
         # Given the right configuration options, the PXE configuration is
         # correctly rendered.
         method = PXEBootMethod()
         params = make_kernel_parameters(self, purpose="install")
-        output = method.render_config(kernel_params=params)
-        # The output is always a Unicode string.
-        self.assertThat(output, IsInstance(unicode))
+        output = method.get_reader(backend=None, kernel_params=params)
+        # The output is a BytesReader.
+        self.assertThat(output, IsInstance(BytesReader))
+        output = output.read(10000)
         # The template has rendered without error. PXELINUX configurations
         # typically start with a DEFAULT line.
         self.assertThat(output, StartsWith("DEFAULT "))
@@ -177,54 +179,58 @@ class TestPXEBootMethodRenderConfig(MAASTestCase):
                     r'.*^\s+APPEND .+?$',
                     re.MULTILINE | re.DOTALL)))
 
-    def test_render_with_extra_arguments_does_not_affect_output(self):
-        # render_config() allows any keyword arguments as a safety valve.
+    def test_get_reader_with_extra_arguments_does_not_affect_output(self):
+        # get_reader() allows any keyword arguments as a safety valve.
         method = PXEBootMethod()
         options = {
+            "backend": None,
             "kernel_params": make_kernel_parameters(self, purpose="install"),
         }
         # Capture the output before sprinking in some random options.
-        output_before = method.render_config(**options)
+        output_before = method.get_reader(**options).read(10000)
         # Sprinkle some magic in.
         options.update(
             (factory.make_name("name"), factory.make_name("value"))
             for _ in range(10))
         # Capture the output after sprinking in some random options.
-        output_after = method.render_config(**options)
+        output_after = method.get_reader(**options).read(10000)
         # The generated template is the same.
         self.assertEqual(output_before, output_after)
 
-    def test_render_config_with_local_purpose(self):
+    def test_get_reader_with_local_purpose(self):
         # If purpose is "local", the config.localboot.template should be
         # used.
         method = PXEBootMethod()
         options = {
+            "backend": None,
             "kernel_params": make_kernel_parameters(purpose="local"),
             }
-        output = method.render_config(**options)
+        output = method.get_reader(**options).read(10000)
         self.assertIn("LOCALBOOT 0", output)
 
-    def test_render_config_with_local_purpose_i386_arch(self):
+    def test_get_reader_with_local_purpose_i386_arch(self):
         # Intel i386 is a special case and needs to use the chain.c32
         # loader as the LOCALBOOT PXE directive is unreliable.
         method = PXEBootMethod()
         options = {
+            "backend": None,
             "kernel_params": make_kernel_parameters(
                 arch="i386", purpose="local"),
         }
-        output = method.render_config(**options)
+        output = method.get_reader(**options).read(10000)
         self.assertIn("chain.c32", output)
         self.assertNotIn("LOCALBOOT", output)
 
-    def test_render_config_with_local_purpose_amd64_arch(self):
+    def test_get_reader_with_local_purpose_amd64_arch(self):
         # Intel amd64 is a special case and needs to use the chain.c32
         # loader as the LOCALBOOT PXE directive is unreliable.
         method = PXEBootMethod()
         options = {
+            "backend": None,
             "kernel_params": make_kernel_parameters(
                 arch="amd64", purpose="local"),
         }
-        output = method.render_config(**options)
+        output = method.get_reader(**options).read(10000)
         self.assertIn("chain.c32", output)
         self.assertNotIn("LOCALBOOT", output)
 
@@ -237,7 +243,7 @@ class TestPXEBootMethodRenderConfigScenarios(MAASTestCase):
         ("xinstall", dict(purpose="xinstall")),
         ]
 
-    def test_render_config_scenarios(self):
+    def test_get_reader_scenarios(self):
         # The commissioning config uses an extra PXELINUX module to auto
         # select between i386 and amd64.
         method = PXEBootMethod()
@@ -245,11 +251,12 @@ class TestPXEBootMethodRenderConfigScenarios(MAASTestCase):
         get_ephemeral_name.return_value = factory.make_name("ephemeral")
         osystem = factory.make_name('osystem')
         options = {
+            "backend": None,
             "kernel_params": make_kernel_parameters(
                 testcase=self, osystem=osystem, subarch="generic",
                 purpose=self.purpose),
         }
-        output = method.render_config(**options)
+        output = method.get_reader(**options).read(10000)
         config = parse_pxe_config(output)
         # The default section is defined.
         default_section_label = config.header["DEFAULT"]

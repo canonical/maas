@@ -24,6 +24,7 @@ import mock
 from provisioningserver import boot
 from provisioningserver.boot import (
     BootMethod,
+    BytesReader,
     gen_template_filenames,
     )
 import tempita
@@ -36,11 +37,11 @@ class FakeBootMethod(BootMethod):
     bootloader_path = "fake.efi"
     arch_octet = "00:00"
 
-    def match_config_path(self, path):
+    def match_path(self, backend, path):
         return {}
 
-    def render_config(kernel_params, **extra):
-        return ""
+    def get_reader(backend, kernel_params, **extra):
+        return BytesReader("")
 
     def install_bootloader():
         pass

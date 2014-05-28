@@ -35,17 +35,17 @@ from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
 class TestPowerKVMBootMethod(MAASTestCase):
     """Tests `provisioningserver.boot.powerkvm.PowerKVMBootMethod`."""
 
-    def test_match_config_path_returns_none(self):
+    def test_match_path_returns_None(self):
         method = PowerKVMBootMethod()
         paths = [factory.getRandomString() for _ in range(3)]
         for path in paths:
-            self.assertEqual(None, method.match_config_path(path))
+            self.assertEqual(None, method.match_path(None, path))
 
-    def test_render_config_returns_empty_string(self):
+    def test_get_reader_returns_None(self):
         method = PowerKVMBootMethod()
         params = [make_kernel_parameters() for _ in range(3)]
         for param in params:
-            self.assertEqual("", method.render_config(params))
+            self.assertEqual(None, method.get_reader(None, params))
 
     def test_install_bootloader_get_package_raises_error(self):
         method = PowerKVMBootMethod()

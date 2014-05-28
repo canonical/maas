@@ -18,7 +18,6 @@ __all__ = [
     ]
 
 import httplib
-from io import BytesIO
 import json
 from urllib import urlencode
 from urlparse import (
@@ -34,10 +33,7 @@ from provisioningserver.utils import (
     deferred,
     get_all_interface_addresses,
     )
-from tftp.backend import (
-    FilesystemSynchronousBackend,
-    IReader,
-    )
+from tftp.backend import FilesystemSynchronousBackend
 from tftp.errors import FileNotFound
 from tftp.protocol import TFTP
 from twisted.application import internet
@@ -45,22 +41,6 @@ from twisted.application.service import MultiService
 from twisted.python.context import get
 from twisted.web.client import getPage
 import twisted.web.error
-from zope.interface import implementer
-
-
-@implementer(IReader)
-class BytesReader:
-
-    def __init__(self, data):
-        super(BytesReader, self).__init__()
-        self.buffer = BytesIO(data)
-        self.size = len(data)
-
-    def read(self, size):
-        return self.buffer.read(size)
-
-    def finish(self):
-        self.buffer.close()
 
 
 class TFTPBackend(FilesystemSynchronousBackend):
@@ -118,7 +98,7 @@ class TFTPBackend(FilesystemSynchronousBackend):
     def get_boot_method(self, file_name):
         """Finds the correct boot method."""
         for _, method in BootMethodRegistry:
-            params = method.match_config_path(file_name)
+            params = method.match_path(self, file_name)
             if params is not None:
                 return method, params
         return None, None
@@ -142,21 +122,19 @@ class TFTPBackend(FilesystemSynchronousBackend):
         return d
 
     @deferred
-    def get_config_reader(self, boot_method, params):
+    def get_boot_method_reader(self, boot_method, params):
         """Return an `IReader` for a boot method.
 
         :param boot_method: Boot method that is generating the config
         :param params: Parameters so far obtained, typically from the file
             path requested.
         """
-        def generate_config(kernel_params):
-            config = boot_method.render_config(
-                kernel_params=kernel_params, **params)
-            return config.encode("utf-8")
+        def generate(kernel_params):
+            return boot_method.get_reader(
+                self, kernel_params=kernel_params, **params)
 
         d = self.get_kernel_params(params)
-        d.addCallback(generate_config)
-        d.addCallback(BytesReader)
+        d.addCallback(generate)
         return d
 
     @staticmethod
@@ -203,7 +181,7 @@ class TFTPBackend(FilesystemSynchronousBackend):
         remote_host, remote_port = get("remote", (None, None))
         params["remote"] = remote_host
         params["cluster_uuid"] = get_cluster_uuid()
-        d = self.get_config_reader(boot_method, params)
+        d = self.get_boot_method_reader(boot_method, params)
         d.addErrback(self.get_page_errback, file_name)
         return d
 
