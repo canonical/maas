@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MAAS-IMPORT-PXE-FILES" "8" "May 27, 2014" "1.6" "MAAS"
+.TH "MAAS-IMPORT-PXE-FILES" "8" "May 29, 2014" "1.6" "MAAS"
 .SH NAME
 maas-import-pxe-files \- MAAS helper script
 .
@@ -100,10 +100,18 @@ know what to download, you must pass the script a list of image "sources," in
 the form of a YAML\-encoded list.  Pass the name of that YAML file to the
 \fB\-\-sources\-file\fP option.
 .sp
-Each "source" defines a Simplestreams repository location (\fBurl\fP) from
-which images can be downloaded; a \fBkeyring\fP for validating index and image
-signatures from that location; and a series of filters (\fBselections\fP)
-specifying which images should be downloaded from that source.
+Each "source" defines...
+.INDENT 0.0
+.IP \(bu 2
+a Simplestreams repository location (\fBurl\fP) from which images can be
+downloaded,
+.IP \(bu 2
+a \fBkeyring_file\fP path or \fBkeyring\fP data for validating index and image
+signatures from that location, and
+.IP \(bu 2
+a series of filters (\fBselections\fP) specifying which images should be
+downloaded from that source.
+.UNINDENT
 .sp
 Each "selection" can contain any of the following constraints:
 .INDENT 0.0
@@ -133,7 +141,7 @@ Here\(aqs an example of an import source description:
 .nf
 .ft C
 \- url "http://maas.ubuntu.com/images/ephemeral\-v2/releases/"
-  keyring: "/usr/share/keyrings/ubuntu\-cloudimage\-keyring.gpg"
+  keyring_file: "/usr/share/keyrings/ubuntu\-cloudimage\-keyring.gpg"
   selections:
     \- release: "precise"
       arches: ["i386", "amd64"]
@@ -151,6 +159,11 @@ Here\(aqs an example of an import source description:
 This uses one source, but imports multiple kinds of images from that source:
 Ubuntu 12.04 ("precise") release images for the i386 and amd64 architectures,
 plus Ubuntu 14.04 ("trusty") images for all supported architectures.
+.sp
+If you still have a \fBbootresources.yaml\fP configuration file from MAAS 1.5,
+these source descriptions were found under \fBboot\fP/\fBsources\fP, with small
+changes: the \fBurl\fP field corresponds to the old \fBpath\fP field, and
+\fBkeyring_file\fP has replaced \fBkeyring\fP\&.
 .SH FURTHER DOCUMENTATION
 .sp
 Full MAAS documentation is at \fI\%https://maas.ubuntu.com/docs\fP
