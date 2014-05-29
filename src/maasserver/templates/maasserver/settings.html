@@ -6,6 +6,23 @@
 {% block page-title %}Settings{% endblock %}
 
 {% block head %}
+  <script type="text/javascript">
+  <!--
+  YUI().use(
+    'maas.os_distro_select',
+    function (Y) {
+    Y.on('load', function() {
+      // Create OSDistroWidget so that the release field will be
+      // updated each time the value of the os field changes.
+      var releaseWidget = new Y.maas.os_distro_select.OSReleaseWidget({
+          srcNode: '#id_deploy-default_distro_series'
+          });
+      releaseWidget.bindTo(Y.one('#id_deploy-default_osystem'), 'change');
+      releaseWidget.render();
+    });
+  });
+  // -->
+  </script>
 {% endblock %}
 
 {% block content %}
@@ -85,6 +102,21 @@
         {% endfor %}
         </ul>
         <input type="hidden" name="commissioning_submit" value="1" />
+        <input type="submit" class="button right" value="Save" />
+      </form>
+      <div class="clear"></div>
+    </div>
+    <div class="divider"></div>
+    <div id="deploy" class="block size7 first">
+      <h2>Deploy</h2>
+      <form action="{% url "settings" %}" method="post">
+        {% csrf_token %}
+        <ul>
+        {% for field in deploy_form %}
+          {% include "maasserver/form_field.html" %}
+        {% endfor %}
+        </ul>
+        <input type="hidden" name="deploy_submit" value="1" />
         <input type="submit" class="button right" value="Save" />
       </form>
       <div class="clear"></div>

@@ -11,9 +11,17 @@
   <script type="text/javascript">
   <!--
   YUI().use(
-    'maas.enums', 'maas.power_parameters',
+    'maas.enums', 'maas.power_parameters', 'maas.os_distro_select',
     function (Y) {
     Y.on('load', function() {
+      // Create OSDistroWidget so that the release field will be
+      // updated each time the value of the os field changes.
+      var releaseWidget = new Y.maas.os_distro_select.OSReleaseWidget({
+          srcNode: '#id_distro_series'
+          });
+      releaseWidget.bindTo(Y.one('.osystem').one('select'), 'change');
+      releaseWidget.render();
+
       // Create LinkedContentWidget widget so that the power_parameter field
       // will be updated each time the value of the power_type field changes.
       var power_types = {{ power_types }};

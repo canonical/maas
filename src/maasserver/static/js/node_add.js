@@ -228,8 +228,25 @@ Y.extend(AddNodeWidget, Y.Widget, {
         var heading = Y.Node.create('<h2 />')
             .set('text', "Add node");
         this.get('srcNode').append(heading).append(this.createForm());
+        this.setUpDistroSeriesField();
         this.setUpPowerParameterField();
         this.initializeNodes();
+    },
+
+    /**
+     * If the 'distro_series' field is present, link it to operating
+     * system field.
+     *
+     * @method setUpDistroSeriesField
+     */
+    setUpDistroSeriesField: function() {
+        if (Y.Lang.isValue(Y.one('#id_distro_series'))) {
+            var widget = new Y.maas.os_distro_select.OSReleaseWidget({
+                srcNode: '#id_distro_series'
+                });
+            widget.bindTo(Y.one('#id_osystem'), 'change');
+            widget.render();
+        }
     },
 
     /**
@@ -415,5 +432,6 @@ module.showAddNodeWidget = function(cfg) {
 };
 
 }, '0.1', {'requires': ['io', 'node', 'widget', 'event', 'event-custom',
-                        'maas.morph', 'maas.enums', 'maas.power_parameters']}
+                        'maas.morph', 'maas.enums', 'maas.power_parameters',
+                        'maas.os_distro_select']}
 );
