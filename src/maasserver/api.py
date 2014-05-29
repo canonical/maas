@@ -253,6 +253,10 @@ from metadataserver.models import (
 from piston.emitters import JSONEmitter
 from piston.handler import typemapper
 from piston.utils import rc
+from provisioningserver.driver import (
+    BOOT_IMAGE_PURPOSE,
+    OperatingSystemRegistry,
+    )
 from provisioningserver.kernel_opts import KernelParameters
 from provisioningserver.power_schema import UNKNOWN_POWER_TYPE
 import simplejson as json
@@ -411,7 +415,7 @@ class NodeHandler(OperationsHandler):
             available to the nodes through the metadata service.
         :type user_data: base64-encoded unicode
         :param distro_series: If present, this parameter specifies the
-            Ubuntu Release the node will use.
+            OS release the node will use.
         :type distro_series: unicode
 
         Ideally we'd have MIME multipart and content-transfer-encoding etc.
@@ -427,7 +431,13 @@ class NodeHandler(OperationsHandler):
             node = Node.objects.get_node_or_404(
                 system_id=system_id, user=request.user,
                 perm=NODE_PERMISSION.EDIT)
-            node.set_distro_series(series=series)
+            Form = get_node_edit_form(request.user)
+            form = Form(instance=node)
+            form.set_distro_series(series=series)
+            if form.is_valid():
+                form.save()
+            else:
+                raise ValidationError(form.errors)
         nodes = Node.objects.start_nodes(
             [system_id], request.user, user_data=user_data)
         if len(nodes) == 0:
@@ -2369,7 +2379,7 @@ def api_doc(request):
         context_instance=RequestContext(request))
 
 
-def get_boot_purpose(node):
+def get_boot_purpose(node, osystem, arch, subarch, series, label):
     """Return a suitable "purpose" for this boot, e.g. "install"."""
     # XXX: allenap bug=1031406 2012-07-31: The boot purpose is still in
     # flux. It may be that there will just be an "ephemeral" environment and
@@ -2389,7 +2399,14 @@ def get_boot_purpose(node):
             if node.should_use_traditional_installer():
                 return "install"
             else:
-                return "xinstall"
+                # Return normal install if the booting operating system
+                # doesn't support xinstall.
+                osystem_obj = OperatingSystemRegistry[osystem]
+                purposes = osystem_obj.get_boot_image_purposes(
+                    arch, subarch, series, label)
+                if BOOT_IMAGE_PURPOSE.XINSTALL in purposes:
+                    return "xinstall"
+                return "install"
         else:
             return "local"  # TODO: Investigate.
     else:
@@ -2457,11 +2474,11 @@ def pxeconfig(request):
     node = get_node_from_mac_string(request.GET.get('mac', None))
 
     if node is None or node.status == NODE_STATUS.COMMISSIONING:
+        osystem = Config.objects.get_config('commissioning_osystem')
         series = Config.objects.get_config('commissioning_distro_series')
     else:
+        osystem = node.get_osystem()
         series = node.get_distro_series()
-
-    purpose = get_boot_purpose(node)
 
     if node:
         arch, subarch = node.architecture.split('/')
@@ -2488,7 +2505,7 @@ def pxeconfig(request):
                 # current series. If nothing is found, fall back to i386 like
                 # we used to. LP #1181334
                 image = BootImage.objects.get_default_arch_image_in_nodegroup(
-                    nodegroup, 'ubuntu', series, purpose=purpose)
+                    nodegroup, osystem, series, purpose='commissioning')
                 if image is None:
                     arch = 'i386'
                 else:
@@ -2496,12 +2513,16 @@ def pxeconfig(request):
 
         subarch = get_optional_param(request.GET, 'subarch', 'generic')
 
+    # Get the purpose, without a selected label
+    purpose = get_boot_purpose(
+        node, osystem, arch, subarch, series, label=None)
+
     # We use as our default label the label of the most recent image for
     # the criteria we've assembled above. If there is no latest image
     # (which should never happen in reality but may happen in tests), we
     # fall back to using 'no-such-image' as our default.
     latest_image = BootImage.objects.get_latest_image(
-        nodegroup, 'ubuntu', arch, subarch, series, purpose)
+        nodegroup, osystem, arch, subarch, series, purpose)
     if latest_image is None:
         # XXX 2014-03-18 gmb bug=1294131:
         #     We really ought to raise an exception here so that client
@@ -2518,6 +2539,9 @@ def pxeconfig(request):
         # get_latest_image() returned an image with a different subarch.
         subarch = latest_image.subarchitecture
     label = get_optional_param(request.GET, 'label', latest_label)
+
+    # Get the supported purpose with the boot label
+    purpose = get_boot_purpose(node, osystem, arch, subarch, series, label)
 
     if node is not None:
         # We don't care if the kernel opts is from the global setting or a tag,
@@ -2548,7 +2572,7 @@ def pxeconfig(request):
     cluster_address = get_mandatory_param(request.GET, "local")
 
     params = KernelParameters(
-        osystem='ubuntu', arch=arch, subarch=subarch, release=series,
+        osystem=osystem, arch=arch, subarch=subarch, release=series,
         label=label, purpose=purpose, hostname=hostname, domain=domain,
         preseed_url=preseed_url, log_host=server_address,
         fs_host=cluster_address, extra_opts=extra_kernel_opts)

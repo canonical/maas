@@ -23,19 +23,41 @@ __all__ = [
 from socket import gethostname
 
 from django import forms
-from maasserver.enum import (
-    COMMISSIONING_DISTRO_SERIES_CHOICES,
-    DISTRO_SERIES,
-    DISTRO_SERIES_CHOICES,
-    )
+from maasserver.models.config import DEFAULT_OS
 from maasserver.utils.forms import compose_invalid_choice_text
+from provisioningserver.driver import OperatingSystemRegistry
 
 
 INVALID_URL_MESSAGE = "Enter a valid url (e.g. http://host.example.com)."
 
 
-INVALID_DISTRO_SERIES_MESSAGE = compose_invalid_choice_text(
-    'distro_series', DISTRO_SERIES_CHOICES)
+def list_osystem_choices():
+    osystems = [osystem for _, osystem in OperatingSystemRegistry]
+    osystems = sorted(osystems, key=lambda osystem: osystem.title)
+    return [
+        (osystem.name, osystem.title)
+        for osystem in osystems
+        ]
+
+
+def list_release_choices():
+    osystems = [osystem for _, osystem in OperatingSystemRegistry]
+    choices = []
+    for osystem in osystems:
+        supported = sorted(osystem.get_supported_releases())
+        options = osystem.format_release_choices(supported)
+        options = [
+            ('%s/%s' % (osystem.name, name), title)
+            for name, title in options
+            ]
+        choices += options
+    return choices
+
+
+def list_commisioning_choices():
+    releases = DEFAULT_OS.get_supported_commissioning_releases()
+    options = DEFAULT_OS.format_release_choices(releases)
+    return list(options)
 
 
 CONFIG_ITEMS = {
@@ -139,28 +161,46 @@ CONFIG_ITEMS = {
                 "e.g. for ntp.ubuntu.com: '91.189.94.4'")
         }
     },
-    'default_distro_series': {
-        'default': DISTRO_SERIES.trusty,
+    'default_osystem': {
+        'default': DEFAULT_OS.name,
         'form': forms.ChoiceField,
         'form_kwargs': {
-            'label': "Default distro series used for deployment",
-            'choices': DISTRO_SERIES_CHOICES,
+            'label': "Default operating system used for deployment",
+            'choices': list_osystem_choices(),
             'required': False,
             'error_messages': {
-                'invalid_choice': INVALID_DISTRO_SERIES_MESSAGE},
+                'invalid_choice': compose_invalid_choice_text(
+                    'osystem',
+                    list_osystem_choices())},
+        }
+    },
+    'default_distro_series': {
+        'default': '%s/%s' % (
+            DEFAULT_OS.name,
+            DEFAULT_OS.get_default_release()
+            ),
+        'form': forms.ChoiceField,
+        'form_kwargs': {
+            'label': "Default OS release used for deployment",
+            'choices': list_release_choices(),
+            'required': False,
+            'error_messages': {
+                'invalid_choice': compose_invalid_choice_text(
+                    'distro_series',
+                    list_release_choices())},
         }
     },
     'commissioning_distro_series': {
-        'default': DISTRO_SERIES.trusty,
+        'default': DEFAULT_OS.get_default_commissioning_release(),
         'form': forms.ChoiceField,
         'form_kwargs': {
-            'label': "Default distro series used for commissioning",
-            'choices': COMMISSIONING_DISTRO_SERIES_CHOICES,
+            'label': "Default Ubuntu release used for commissioning",
+            'choices': list_commisioning_choices(),
             'required': False,
             'error_messages': {
                 'invalid_choice': compose_invalid_choice_text(
                     'commissioning_distro_series',
-                    COMMISSIONING_DISTRO_SERIES_CHOICES)},
+                    list_commisioning_choices())},
         }
     },
     'enable_third_party_drivers': {

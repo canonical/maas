@@ -20,7 +20,6 @@ import random
 from django.core.exceptions import ValidationError
 from maasserver.clusterrpc.power_parameters import get_power_types
 from maasserver.enum import (
-    DISTRO_SERIES,
     NODE_PERMISSION,
     NODE_STATUS,
     NODE_STATUS_CHOICES,
@@ -270,15 +269,14 @@ class NodeTest(MAASServerTestCase):
             offset += timedelta(1)
         self.assertEqual(macs[0], node.get_primary_mac().mac_address)
 
-    def test_get_distro_series_returns_default_series(self):
-        node = factory.make_node()
-        series = Config.objects.get_config('commissioning_distro_series')
-        self.assertEqual(series, node.get_distro_series())
+    def test_get_osystem_returns_default_osystem(self):
+        node = factory.make_node(osystem='')
+        osystem = Config.objects.get_config('default_osystem')
+        self.assertEqual(osystem, node.get_osystem())
 
-    def test_set_get_distro_series_returns_series(self):
-        node = factory.make_node()
-        series = DISTRO_SERIES.quantal
-        node.set_distro_series(series)
+    def test_get_distro_series_returns_default_series(self):
+        node = factory.make_node(distro_series='')
+        series = Config.objects.get_config('default_distro_series')
         self.assertEqual(series, node.get_distro_series())
 
     def test_delete_node_deletes_related_mac(self):
@@ -597,11 +595,15 @@ class NodeTest(MAASServerTestCase):
         node.release()
         self.assertTrue(node.netboot)
 
-    def test_release_clears_distro_series(self):
+    def test_release_clears_osystem_and_distro_series(self):
         node = factory.make_node(
             status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
-        node.set_distro_series(series=DISTRO_SERIES.quantal)
+        osystem = factory.getRandomOS()
+        release = factory.getRandomRelease(osystem)
+        node.osystem = osystem.name
+        node.distro_series = release
         node.release()
+        self.assertEqual("", node.osystem)
         self.assertEqual("", node.distro_series)
 
     def test_release_powers_off_node(self):

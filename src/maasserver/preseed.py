@@ -93,7 +93,7 @@ def get_curtin_userdata(node):
 
 def get_curtin_installer_url(node):
     """Return the URL where curtin on the node can download its installer."""
-    osystem = 'ubuntu'
+    osystem = node.get_osystem()
     series = node.get_distro_series()
     cluster_host = pick_cluster_controller_address(node)
     # XXX rvb(?): The path shouldn't be hardcoded like this, but rather synced

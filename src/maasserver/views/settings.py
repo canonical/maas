@@ -41,6 +41,7 @@ from django.views.generic.edit import ModelFormMixin
 from maasserver.exceptions import CannotDeleteUserException
 from maasserver.forms import (
     CommissioningForm,
+    DeployForm,
     EditUserForm,
     GlobalKernelOptsForm,
     MAASAndNetworkForm,
@@ -177,6 +178,13 @@ def settings(request):
     if response is not None:
         return response
 
+    # Process the Deploy form.
+    deploy_form, response = process_form(
+        request, DeployForm, reverse('settings'), 'deploy',
+        "Configuration updated.")
+    if response is not None:
+        return response
+
     # Process the Ubuntu form.
     ubuntu_form, response = process_form(
         request, UbuntuForm, reverse('settings'), 'ubuntu',
@@ -202,6 +210,7 @@ def settings(request):
             'maas_and_network_form': maas_and_network_form,
             'third_party_drivers_form': third_party_drivers_form,
             'commissioning_form': commissioning_form,
+            'deploy_form': deploy_form,
             'ubuntu_form': ubuntu_form,
             'kernelopts_form': kernelopts_form,
         },

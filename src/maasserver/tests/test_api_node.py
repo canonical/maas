@@ -23,7 +23,6 @@ import sys
 import bson
 from django.core.urlresolvers import reverse
 from maasserver.enum import (
-    DISTRO_SERIES,
     NODE_STATUS,
     NODE_STATUS_CHOICES_DICT,
     )
@@ -40,6 +39,7 @@ from maasserver.testing.api import APITestCase
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
 from maasserver.testing.oauthclient import OAuthAuthenticatedClient
+from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import map_enum
 from metadataserver.models import (
@@ -221,24 +221,31 @@ class TestNodeAPI(APITestCase):
         self.assertEqual(
             node.system_id, json.loads(response.content)['system_id'])
 
-    def test_POST_start_sets_distro_series(self):
+    def test_POST_start_sets_osystem_and_distro_series(self):
         node = factory.make_node(
             owner=self.logged_in_user, mac=True,
-            power_type='ether_wake')
-        distro_series = factory.getRandomEnum(DISTRO_SERIES)
+            power_type='ether_wake',
+            architecture=make_usable_architecture(self))
+        osystem = make_usable_osystem(self)
+        distro_series = factory.getRandomRelease(osystem)
         response = self.client.post(
-            self.get_node_uri(node),
-            {'op': 'start', 'distro_series': distro_series})
+            self.get_node_uri(node), {
+                'op': 'start',
+                'distro_series': distro_series
+                })
         self.assertEqual(
             (httplib.OK, node.system_id),
             (response.status_code, json.loads(response.content)['system_id']))
+        self.assertEqual(
+            osystem.name, reload_object(node).osystem)
         self.assertEqual(
             distro_series, reload_object(node).distro_series)
 
     def test_POST_start_validates_distro_series(self):
         node = factory.make_node(
             owner=self.logged_in_user, mac=True,
-            power_type='ether_wake')
+            power_type='ether_wake',
+            architecture=make_usable_architecture(self))
         invalid_distro_series = factory.getRandomString()
         response = self.client.post(
             self.get_node_uri(node),
@@ -247,7 +254,8 @@ class TestNodeAPI(APITestCase):
             (
                 httplib.BAD_REQUEST,
                 {'distro_series': [
-                    "Value u'%s' is not a valid choice." %
+                    "'%s' is not a valid distro_series.  "
+                    "It should be one of: ''." %
                     invalid_distro_series]}
             ),
             (response.status_code, json.loads(response.content)))
@@ -300,18 +308,23 @@ class TestNodeAPI(APITestCase):
         self.client.post(self.get_node_uri(node), {'op': 'release'})
         self.assertTrue(reload_object(node).netboot)
 
-    def test_POST_release_resets_distro_series(self):
+    def test_POST_release_resets_osystem_and_distro_series(self):
+        osystem = factory.getRandomOS()
+        release = factory.getRandomRelease(osystem)
         node = factory.make_node(
             status=NODE_STATUS.ALLOCATED, owner=self.logged_in_user,
-            distro_series=factory.getRandomEnum(DISTRO_SERIES))
+            osystem=osystem.name, distro_series=release)
         self.client.post(self.get_node_uri(node), {'op': 'release'})
+        self.assertEqual('', reload_object(node).osystem)
         self.assertEqual('', reload_object(node).distro_series)
 
     def test_POST_release_resets_agent_name(self):
         agent_name = factory.make_name('agent-name')
+        osystem = factory.getRandomOS()
+        release = factory.getRandomRelease(osystem)
         node = factory.make_node(
             status=NODE_STATUS.ALLOCATED, owner=self.logged_in_user,
-            distro_series=factory.getRandomEnum(DISTRO_SERIES),
+            osystem=osystem.name, distro_series=release,
             agent_name=agent_name)
         self.client.post(self.get_node_uri(node), {'op': 'release'})
         self.assertEqual('', reload_object(node).agent_name)

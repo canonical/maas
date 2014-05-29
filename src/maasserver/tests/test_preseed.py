@@ -22,7 +22,6 @@ from urlparse import urlparse
 from django.conf import settings
 from django.core.urlresolvers import reverse
 from maasserver.enum import (
-    DISTRO_SERIES,
     NODE_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
     PRESEED_TYPE,
@@ -590,7 +589,7 @@ class TestGetCurtinUserData(MAASServerTestCase):
         node = factory.make_node()
         arch, subarch = node.architecture.split('/')
         factory.make_boot_image(
-            osystem='ubuntu',
+            osystem=node.get_osystem(),
             architecture=arch, subarchitecture=subarch,
             release=node.get_distro_series(), purpose='xinstall',
             nodegroup=node.nodegroup)
@@ -678,18 +677,15 @@ class TestCurtinUtilities(MAASServerTestCase):
         self.assertIn('cloud-init', context['curtin_preseed'])
 
     def test_get_curtin_installer_url_returns_url(self):
-        osystem = 'ubuntu'
-        # Exclude DISTRO_SERIES.default. It's a special value that defers
-        # to a run-time setting which we don't provide in this test.
-        series = factory.getRandomEnum(
-            DISTRO_SERIES, but_not=DISTRO_SERIES.default)
+        osystem = factory.getRandomOS()
+        series = factory.getRandomRelease(osystem)
         architecture = make_usable_architecture(self)
         node = factory.make_node(
-            architecture=architecture,
+            osystem=osystem.name, architecture=architecture,
             distro_series=series)
         arch, subarch = architecture.split('/')
         boot_image = factory.make_boot_image(
-            osystem=osystem, architecture=arch,
+            osystem=osystem.name, architecture=arch,
             subarchitecture=subarch, release=series,
             purpose='xinstall', nodegroup=node.nodegroup)
 
@@ -698,20 +694,20 @@ class TestCurtinUtilities(MAASServerTestCase):
         [interface] = node.nodegroup.get_managed_interfaces()
         self.assertEqual(
             'http://%s/MAAS/static/images/%s/%s/%s/%s/%s/root-tgz' % (
-                interface.ip, osystem, arch, subarch,
+                interface.ip, osystem.name, arch, subarch,
                 series, boot_image.label),
             installer_url)
 
     def test_get_curtin_installer_url_fails_if_no_boot_image(self):
-        osystem = 'ubuntu'
-        series = factory.getRandomEnum(
-            DISTRO_SERIES, but_not=DISTRO_SERIES.default)
+        osystem = factory.getRandomOS()
+        series = factory.getRandomRelease(osystem)
         architecture = make_usable_architecture(self)
         node = factory.make_node(
+            osystem=osystem.name,
             architecture=architecture, distro_series=series)
         # Generate a boot image with a different arch/subarch.
         factory.make_boot_image(
-            osystem=osystem,
+            osystem=osystem.name,
             architecture=factory.make_name('arch'),
             subarchitecture=factory.make_name('subarch'), release=series,
             purpose='xinstall', nodegroup=node.nodegroup)
@@ -722,7 +718,7 @@ class TestCurtinUtilities(MAASServerTestCase):
         msg = (
             "No image could be found for the given selection: "
             "os=%s, arch=%s, subarch=%s, series=%s, purpose=xinstall." % (
-                osystem,
+                osystem.name,
                 arch,
                 subarch,
                 node.get_distro_series(),

@@ -28,8 +28,11 @@ from django.db.models import (
     )
 from django.db.models.signals import post_save
 from maasserver import DefaultMeta
-from maasserver.enum import DISTRO_SERIES
 from maasserver.fields import JSONObjectField
+from provisioningserver.driver.os_ubuntu import UbuntuOS
+
+
+DEFAULT_OS = UbuntuOS()
 
 
 def get_default_config():
@@ -40,11 +43,14 @@ def get_default_config():
         # Ubuntu section configuration.
         'main_archive': 'http://archive.ubuntu.com/ubuntu',
         'ports_archive': 'http://ports.ubuntu.com/ubuntu-ports',
-        'commissioning_distro_series': DISTRO_SERIES.trusty,
+        'commissioning_osystem': DEFAULT_OS.name,
+        'commissioning_distro_series':
+        DEFAULT_OS.get_default_commissioning_release(),
         # Network section configuration.
         'maas_name': gethostname(),
         'enlistment_domain': b'local',
-        'default_distro_series': DISTRO_SERIES.trusty,
+        'default_osystem': DEFAULT_OS.name,
+        'default_distro_series': DEFAULT_OS.get_default_release(),
         'http_proxy': None,
         'upstream_dns': None,
         'ntp_server': '91.189.94.4',  # ntp.ubuntu.com

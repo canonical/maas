@@ -73,9 +73,6 @@ from maasserver.clusterrpc.power_parameters import (
     )
 from maasserver.config_forms import SKIP_CHECK_NAME
 from maasserver.enum import (
-    COMMISSIONING_DISTRO_SERIES_CHOICES,
-    DISTRO_SERIES,
-    DISTRO_SERIES_CHOICES,
     NODE_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
     NODEGROUPINTERFACE_MANAGEMENT_CHOICES,
@@ -88,8 +85,8 @@ from maasserver.fields import (
 from maasserver.forms_settings import (
     CONFIG_ITEMS_KEYS,
     get_config_field,
-    INVALID_DISTRO_SERIES_MESSAGE,
     INVALID_SETTING_MSG_TEMPLATE,
+    list_commisioning_choices,
     )
 from maasserver.models import (
     BootImage,
@@ -117,6 +114,7 @@ from maasserver.utils.forms import compose_invalid_choice_text
 from maasserver.utils.network import make_network
 from metadataserver.fields import Bin
 from metadataserver.models import CommissioningScript
+from provisioningserver.driver import OperatingSystemRegistry
 
 # A reusable null-option for choice fields.
 BLANK_CHOICE = ('', '-------')
@@ -217,6 +215,106 @@ def pick_default_architecture(all_architectures):
         return all_architectures[0]
 
 
+def list_all_usable_osystems():
+    """Return all operating systems that can be used for nodes.
+
+    These are the operating systems for which any nodegroup has the boot images
+    required to boot the node.
+    """
+    # The Node edit form offers all usable operating systems as options for the
+    # osystem field.  Not all of these may be available in the node's
+    # nodegroup, but to represent that accurately in the UI would depend on
+    # the currently selected nodegroup.  Narrowing the options down further
+    # would have to happen browser-side.
+    osystems = set()
+    for nodegroup in NodeGroup.objects.all():
+        osystems = osystems.union(
+            BootImage.objects.get_usable_osystems(nodegroup))
+    osystems = [OperatingSystemRegistry[osystem] for osystem in osystems]
+    return sorted(osystems, key=lambda osystem: osystem.title)
+
+
+def list_osystem_choices(osystems):
+    """Return Django "choices" list for `osystem`."""
+    choices = [('', 'Default OS')]
+    choices += [
+        (osystem.name, osystem.title)
+        for osystem in osystems
+        ]
+    return choices
+
+
+def list_all_usable_releases(osystems):
+    """Return dictionary of usable `releases` for each opertaing system."""
+    distro_series = {}
+    nodegroups = list(NodeGroup.objects.all())
+    for osystem in osystems:
+        releases = set()
+        for nodegroup in nodegroups:
+            releases = releases.union(
+                BootImage.objects.get_usable_releases(nodegroup, osystem.name))
+        distro_series[osystem.name] = sorted(releases)
+    return distro_series
+
+
+def list_release_choices(releases):
+    """Return Django "choices" list for `releases`."""
+    choices = [('', 'Default OS Release')]
+    for key, value in releases.items():
+        osystem = OperatingSystemRegistry[key]
+        options = osystem.format_release_choices(value)
+        choices += [(
+            '%s/' % osystem.name,
+            'Latest %s Release' % osystem.title
+            )]
+        choices += [
+            ('%s/%s' % (osystem.name, name), title)
+            for name, title in options
+            ]
+    return choices
+
+
+def get_distro_series_inital(instance):
+    """Returns the distro_series initial value for the instance."""
+    osystem = instance.osystem
+    series = instance.distro_series
+    if osystem is not None and osystem != '':
+        if series is None:
+            series = ''
+        return '%s/%s' % (osystem, series)
+    return None
+
+
+def clean_distro_series_field(form, field, os_field):
+    """Cleans the distro_series field in the form. Validating that
+    the selected operating system matches the distro_series.
+
+    :param form: `Form` class
+    :param field: distro_series field name
+    :param os_field: osystem field name
+    :returns: clean distro_series field value
+    """
+    new_distro_series = form.cleaned_data.get(field)
+    if new_distro_series is None or '/' not in new_distro_series:
+        return new_distro_series
+    os, release = new_distro_series.split('/', 1)
+    if os_field in form.cleaned_data:
+        new_os = form.cleaned_data[os_field]
+        if os != new_os:
+            raise ValidationError(
+                "%s in %s does not match with "
+                "operating system %s" % (release, field, os))
+    return release
+
+
+def get_osystem_from_release(release):
+    """Returns the operating system that supports that release."""
+    for _, osystem in OperatingSystemRegistry:
+        if release in osystem.get_supported_releases():
+            return osystem
+    return None
+
+
 class NodeForm(ModelForm):
 
     def __init__(self, request=None, *args, **kwargs):
@@ -229,6 +327,7 @@ class NodeForm(ModelForm):
             self.fields['nodegroup'] = NodeGroupFormField(
                 required=False, empty_label="Default (master)")
         self.set_up_architecture_field()
+        self.set_up_osystem_and_distro_series_fields(kwargs.get('instance'))
 
     def set_up_architecture_field(self):
         """Create the `architecture` field.
@@ -248,6 +347,32 @@ class NodeForm(ModelForm):
             choices=choices, required=True, initial=default_arch,
             error_messages={'invalid_choice': invalid_arch_message})
 
+    def set_up_osystem_and_distro_series_fields(self, instance):
+        """Create the `osystem` and `distro_series` fields.
+
+        This needs to be done on the fly so that we can pass a dynamic list of
+        usable operating systems and distro_series.
+        """
+        osystems = list_all_usable_osystems()
+        releases = list_all_usable_releases(osystems)
+        os_choices = list_osystem_choices(osystems)
+        distro_choices = list_release_choices(releases)
+        invalid_osystem_message = compose_invalid_choice_text(
+            'osystem', os_choices)
+        invalid_distro_series_message = compose_invalid_choice_text(
+            'distro_series', distro_choices)
+        self.fields['osystem'] = forms.ChoiceField(
+            label="OS", choices=os_choices, required=False, initial='',
+            error_messages={'invalid_choice': invalid_osystem_message})
+        self.fields['distro_series'] = forms.ChoiceField(
+            label="Release", choices=distro_choices,
+            required=False, initial='',
+            error_messages={'invalid_choice': invalid_distro_series_message})
+        if instance is not None:
+            initial_value = get_distro_series_inital(instance)
+            if instance is not None:
+                self.initial['distro_series'] = initial_value
+
     def clean_hostname(self):
         # Don't allow the hostname to be changed if the node is
         # currently allocated.  Juju knows the node by its old name, so
@@ -261,6 +386,9 @@ class NodeForm(ModelForm):
 
         return new_hostname
 
+    def clean_distro_series(self):
+        return clean_distro_series_field(self, 'distro_series', 'osystem')
+
     def is_valid(self):
         is_valid = super(NodeForm, self).is_valid()
         if len(list_all_usable_architectures()) == 0:
@@ -269,11 +397,24 @@ class NodeForm(ModelForm):
             is_valid = False
         return is_valid
 
-    distro_series = forms.ChoiceField(
-        choices=DISTRO_SERIES_CHOICES, required=False,
-        initial=DISTRO_SERIES.default,
-        label="Release",
-        error_messages={'invalid_choice': INVALID_DISTRO_SERIES_MESSAGE})
+    def set_distro_series(self, series=''):
+        """Sets the osystem and distro_series, from the provided
+        distro_series.
+        """
+        # This implementation is used so that current API, is not broken. This
+        # makes the distro_series a flat namespace. The distro_series is used
+        # to search through the supporting operating systems, to find the
+        # correct operating system that supports this distro_series.
+        self.is_bound = True
+        self.data['osystem'] = ''
+        self.data['distro_series'] = ''
+        if series is not None and series != '':
+            osystem = get_osystem_from_release(series)
+            if osystem is not None:
+                self.data['osystem'] = osystem.name
+                self.data['distro_series'] = '%s/%s' % (osystem.name, series)
+            else:
+                self.data['distro_series'] = series
 
     hostname = forms.CharField(
         label="Host name", required=False, help_text=(
@@ -292,6 +433,7 @@ class NodeForm(ModelForm):
         fields = (
             'hostname',
             'architecture',
+            'osystem',
             'distro_series',
             )
 
@@ -872,16 +1014,34 @@ class CommissioningForm(ConfigForm):
     """Settings page, Commissioning section."""
     check_compatibility = get_config_field('check_compatibility')
     commissioning_distro_series = forms.ChoiceField(
-        choices=COMMISSIONING_DISTRO_SERIES_CHOICES, required=False,
-        label="Default distro series used for commissioning",
+        choices=list_commisioning_choices(), required=False,
+        label="Default Ubuntu release used for commissioning",
         error_messages={'invalid_choice': compose_invalid_choice_text(
             'commissioning_distro_series',
-            COMMISSIONING_DISTRO_SERIES_CHOICES)})
+            list_commisioning_choices())})
+
+
+class DeployForm(ConfigForm):
+    """Settings page, Deploy section."""
+    default_osystem = get_config_field('default_osystem')
+    default_distro_series = get_config_field('default_distro_series')
+
+    def _load_initials(self):
+        super(DeployForm, self)._load_initials()
+        initial_os = self.initial['default_osystem']
+        initial_series = self.initial['default_distro_series']
+        self.initial['default_distro_series'] = '%s/%s' % (
+            initial_os,
+            initial_series
+            )
+
+    def clean_default_distro_series(self):
+        return clean_distro_series_field(
+            self, 'default_distro_series', 'default_osystem')
 
 
 class UbuntuForm(ConfigForm):
     """Settings page, Ubuntu section."""
-    default_distro_series = get_config_field('default_distro_series')
     main_archive = get_config_field('main_archive')
     ports_archive = get_config_field('ports_archive')
 

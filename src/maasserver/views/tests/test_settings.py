@@ -20,14 +20,11 @@ from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse
 from lxml.html import fromstring
-from maasserver.enum import (
-    COMMISSIONING_DISTRO_SERIES_CHOICES,
-    DISTRO_SERIES,
-    )
 from maasserver.models import (
     Config,
     UserProfile,
     )
+from maasserver.models.config import DEFAULT_OS
 from maasserver.testing import (
     extract_redirect,
     get_prefixed_form_data,
@@ -112,8 +109,7 @@ class SettingsTest(MAASServerTestCase):
     def test_settings_commissioning_POST(self):
         self.client_log_in(as_admin=True)
         new_check_compatibility = factory.getRandomBoolean()
-        new_commissioning_distro_series = factory.getRandomChoice(
-            COMMISSIONING_DISTRO_SERIES_CHOICES)
+        new_commissioning = factory.getRandomCommissioningRelease(DEFAULT_OS)
         response = self.client.post(
             reverse('settings'),
             get_prefixed_form_data(
@@ -121,14 +117,14 @@ class SettingsTest(MAASServerTestCase):
                 data={
                     'check_compatibility': new_check_compatibility,
                     'commissioning_distro_series': (
-                        new_commissioning_distro_series),
+                        new_commissioning),
                 }))
 
         self.assertEqual(httplib.FOUND, response.status_code)
         self.assertEqual(
             (
                 new_check_compatibility,
-                new_commissioning_distro_series,
+                new_commissioning,
             ),
             (
                 Config.objects.get_config('check_compatibility'),
@@ -156,11 +152,38 @@ class SettingsTest(MAASServerTestCase):
                 Config.objects.get_config('enable_third_party_drivers'),
             ))
 
+    def test_settings_deploy_POST(self):
+        self.client_log_in(as_admin=True)
+        new_osystem = factory.getRandomOS()
+        new_default_osystem = new_osystem.name
+        new_default_distro_series = factory.getRandomRelease(new_osystem)
+        response = self.client.post(
+            reverse('settings'),
+            get_prefixed_form_data(
+                prefix='deploy',
+                data={
+                    'default_osystem': new_default_osystem,
+                    'default_distro_series': '%s/%s' % (
+                        new_default_osystem,
+                        new_default_distro_series
+                        ),
+                }))
+
+        self.assertEqual(httplib.FOUND, response.status_code, response.content)
+        self.assertEqual(
+            (
+                new_default_osystem,
+                new_default_distro_series,
+            ),
+            (
+                Config.objects.get_config('default_osystem'),
+                Config.objects.get_config('default_distro_series'),
+            ))
+
     def test_settings_ubuntu_POST(self):
         self.client_log_in(as_admin=True)
         new_main_archive = 'http://test.example.com/archive'
         new_ports_archive = 'http://test2.example.com/archive'
-        new_default_distro_series = factory.getRandomEnum(DISTRO_SERIES)
         response = self.client.post(
             reverse('settings'),
             get_prefixed_form_data(
@@ -168,7 +191,6 @@ class SettingsTest(MAASServerTestCase):
                 data={
                     'main_archive': new_main_archive,
                     'ports_archive': new_ports_archive,
-                    'default_distro_series': new_default_distro_series,
                 }))
 
         self.assertEqual(httplib.FOUND, response.status_code, response.content)
@@ -176,12 +198,10 @@ class SettingsTest(MAASServerTestCase):
             (
                 new_main_archive,
                 new_ports_archive,
-                new_default_distro_series,
             ),
             (
                 Config.objects.get_config('main_archive'),
                 Config.objects.get_config('ports_archive'),
-                Config.objects.get_config('default_distro_series'),
             ))
 
     def test_settings_kernelopts_POST(self):

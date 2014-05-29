@@ -394,7 +394,7 @@ class TestCurtinMetadataUserData(DjangoTestCase):
         node = factory.make_node()
         arch, subarch = node.architecture.split('/')
         factory.make_boot_image(
-            osystem='ubuntu',
+            osystem=node.get_osystem(),
             architecture=arch, subarchitecture=subarch,
             release=node.get_distro_series(), purpose='xinstall',
             nodegroup=node.nodegroup)

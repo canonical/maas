@@ -49,8 +49,6 @@ from maasserver import (
     logger,
     )
 from maasserver.enum import (
-    DISTRO_SERIES,
-    DISTRO_SERIES_CHOICES,
     NODE_PERMISSION,
     NODE_STATUS,
     NODE_STATUS_CHOICES,
@@ -72,6 +70,7 @@ from maasserver.utils import (
     strip_domain,
     )
 from piston.models import Token
+from provisioningserver.driver import OperatingSystemRegistry
 from provisioningserver.tasks import (
     power_off,
     power_on,
@@ -486,7 +485,7 @@ class Node(CleanSave, TimestampedModel):
         max_length=20, blank=True, default='')
 
     distro_series = CharField(
-        max_length=20, choices=DISTRO_SERIES_CHOICES, blank=True, default='')
+        max_length=20, blank=True, default='')
 
     architecture = CharField(max_length=31, blank=False)
 
@@ -793,20 +792,29 @@ class Node(CleanSave, TimestampedModel):
         """The name of the queue for tasks specific to this node."""
         return self.nodegroup.work_queue
 
+    def get_osystem(self):
+        """Return the operating system to install that node."""
+        use_default_osystem = (self.osystem is None or self.osystem == '')
+        if use_default_osystem:
+            return Config.objects.get_config('default_osystem')
+        else:
+            return self.osystem
+
     def get_distro_series(self):
         """Return the distro series to install that node."""
+        use_default_osystem = (
+            self.osystem is None or
+            self.osystem == '')
         use_default_distro_series = (
-            not self.distro_series or
-            self.distro_series == DISTRO_SERIES.default)
-        if use_default_distro_series:
+            self.distro_series is None or
+            self.distro_series == '')
+        if use_default_osystem and use_default_distro_series:
             return Config.objects.get_config('default_distro_series')
+        elif use_default_distro_series:
+            osystem = OperatingSystemRegistry[self.osystem]
+            return osystem.get_default_release()
         else:
             return self.distro_series
-
-    def set_distro_series(self, series=''):
-        """Set the distro series to install that node."""
-        self.distro_series = series
-        self.save()
 
     def get_effective_power_parameters(self):
         """Return effective power parameters, including any defaults."""
@@ -860,6 +868,7 @@ class Node(CleanSave, TimestampedModel):
         self.token = None
         self.agent_name = ''
         self.set_netboot()
+        self.osystem = ''
         self.distro_series = ''
         self.save()
 

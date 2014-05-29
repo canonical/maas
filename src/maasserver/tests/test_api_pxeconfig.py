@@ -35,11 +35,13 @@ from maasserver.preseed import (
     )
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
+from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.fakemethod import FakeMethod
 from mock import Mock
 from netaddr import IPNetwork
 from provisioningserver import kernel_opts
+from provisioningserver.driver import BOOT_IMAGE_PURPOSE
 from provisioningserver.kernel_opts import KernelParameters
 from testtools.matchers import (
     Contains,
@@ -133,7 +135,7 @@ class TestPXEConfigAPI(MAASServerTestCase):
         self.assertEqual(value, response_dict['extra_opts'])
 
     def test_pxeconfig_uses_present_boot_image(self):
-        osystem = 'ubuntu'
+        osystem = Config.objects.get_config('commissioning_osystem')
         release = Config.objects.get_config('commissioning_distro_series')
         nodegroup = factory.make_node_group()
         factory.make_boot_image(
@@ -284,7 +286,8 @@ class TestPXEConfigAPI(MAASServerTestCase):
     def test_get_boot_purpose_unknown_node(self):
         # A node that's not yet known to MAAS is assumed to be enlisting,
         # which uses a "commissioning" image.
-        self.assertEqual("commissioning", api.get_boot_purpose(None))
+        self.assertEqual("commissioning", api.get_boot_purpose(
+            None, None, None, None, None, None))
 
     def test_get_boot_purpose_known_node(self):
         # The following table shows the expected boot "purpose" for each set
@@ -307,11 +310,33 @@ class TestPXEConfigAPI(MAASServerTestCase):
                 node.use_fastpath_installer()
             for name, value in parameters.items():
                 setattr(node, name, value)
-            self.assertEqual(purpose, api.get_boot_purpose(node))
+            osystem = node.get_osystem()
+            series = node.get_distro_series()
+            arch, subarch = node.architecture.split('/')
+            self.assertEqual(
+                purpose,
+                api.get_boot_purpose(
+                    node, osystem, arch, subarch, series, None))
+
+    def test_get_boot_purpose_osystem_no_xinstall_support(self):
+        osystem = make_usable_osystem(
+            self, purposes=[BOOT_IMAGE_PURPOSE.INSTALL])
+        release = factory.getRandomRelease(osystem)
+        node = factory.make_node(
+            status=NODE_STATUS.ALLOCATED, netboot=True,
+            osystem=osystem.name, distro_series=release)
+        node.use_fastpath_installer()
+        node_os = node.get_osystem()
+        node_series = node.get_distro_series()
+        arch, subarch = node.architecture.split('/')
+        self.assertEqual(
+            'install',
+            api.get_boot_purpose(
+                node, node_os, arch, subarch, node_series, None))
 
     def test_pxeconfig_uses_boot_purpose(self):
         fake_boot_purpose = factory.make_name("purpose")
-        self.patch(api, "get_boot_purpose", lambda node: fake_boot_purpose)
+        self.patch(api, "get_boot_purpose").return_value = fake_boot_purpose
         response = self.client.get(reverse('pxeconfig'),
                                    self.get_default_params())
         self.assertEqual(

@@ -25,23 +25,27 @@ from provisioningserver.boot.tests.test_tftppath import make_osystem
 from provisioningserver.driver import BOOT_IMAGE_PURPOSE
 
 
-def make_osystem_with_releases(testcase, osystem_name=None, releases=None):
+def make_osystem_with_releases(testcase, osystem_name=None, releases=None,
+                               purposes=None):
     """Generate an arbitrary operating system.
 
     :param osystem_name: The operating system name. Useful in cases where
         we need to test that not supplying an os works correctly.
     :param releases: The list of releases name. Useful in cases where
         we need to test that not supplying a release works correctly.
+    :param purposes: The purpose's of the boot images.
     """
     if osystem_name is None:
         osystem_name = factory.make_name('os')
     if releases is None:
         releases = [factory.make_name('release') for _ in range(3)]
+    if purposes is None:
+        purposes = [BOOT_IMAGE_PURPOSE.INSTALL, BOOT_IMAGE_PURPOSE.XINSTALL]
 
     osystem = make_osystem(
         testcase,
         osystem_name,
-        [BOOT_IMAGE_PURPOSE.INSTALL, BOOT_IMAGE_PURPOSE.XINSTALL])
+        purposes)
     if releases is not None and releases != []:
         osystem.fake_list = releases
     return osystem
@@ -72,7 +76,8 @@ def patch_usable_osystems(testcase, osystems=None, allow_empty=True):
         forms, 'list_all_usable_releases').return_value = distro_series
 
 
-def make_usable_osystem(testcase, osystem_name=None, releases=None):
+def make_usable_osystem(testcase, osystem_name=None, releases=None,
+                        purposes=None):
     """Return arbitrary operating system, and make it "usable."
 
     A usable operating system is one for which boot images are available.
@@ -83,8 +88,11 @@ def make_usable_osystem(testcase, osystem_name=None, releases=None):
         we need to test that not supplying an os works correctly.
     :param releases: The list of releases name. Useful in cases where
         we need to test that not supplying a release works correctly.
+    :param purposse: The list of purposes. Useful in cases where
+        we need to test that not supplying a purpose works correctly.
     """
     osystem = make_osystem_with_releases(
-        testcase, osystem_name=osystem_name, releases=releases)
+        testcase, osystem_name=osystem_name, releases=releases,
+        purposes=purposes)
     patch_usable_osystems(testcase, [osystem])
     return osystem
