@@ -20,6 +20,7 @@ from urllib import urlencode
 
 from maasserver.enum import NODE_STATUS
 from maasserver.utils import absolute_reverse
+from provisioningserver.driver import OperatingSystemRegistry
 import yaml
 
 
@@ -104,6 +105,13 @@ def compose_preseed(node):
     if node.status == NODE_STATUS.COMMISSIONING:
         return compose_commissioning_preseed(token, base_url)
     else:
+        osystem = OperatingSystemRegistry[node.get_osystem()]
+        metadata_url = absolute_reverse('metadata', base_url=base_url)
+        try:
+            return osystem.compose_preseed(node, token, metadata_url)
+        except NotImplementedError:
+            pass
+
         if node.should_use_traditional_installer():
             return compose_cloud_init_preseed(token, base_url)
         else:

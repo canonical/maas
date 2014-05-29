@@ -19,11 +19,11 @@ import json
 
 from django.core.urlresolvers import reverse
 from maasserver.api import DISPLAYED_BOOTSOURCESELECTION_FIELDS
-from maasserver.enum import DISTRO_SERIES_CHOICES
 from maasserver.models import BootSourceSelection
 from maasserver.testing import reload_object
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
+from provisioningserver.driver.os_ubuntu import UbuntuOS
 from testtools.matchers import MatchesStructure
 
 
@@ -98,8 +98,8 @@ class TestBootSourceSelectionAPI(APITestCase):
     def test_PUT_updates_boot_source_selection(self):
         self.become_admin()
         boot_source_selection = factory.make_boot_source_selection()
-        new_release = factory.getRandomChoice(
-            DISTRO_SERIES_CHOICES)
+        ubuntu_os = UbuntuOS()
+        new_release = factory.getRandomRelease(ubuntu_os)
         new_values = {
             'release': new_release,
             'arches': [factory.make_name('arch'), factory.make_name('arch')],
@@ -160,8 +160,8 @@ class TestBootSourceSelectionsAPI(APITestCase):
     def test_POST_creates_boot_source_selection(self):
         self.become_admin()
         boot_source = factory.make_boot_source()
-        new_release = factory.getRandomChoice(
-            DISTRO_SERIES_CHOICES)
+        ubuntu_os = UbuntuOS()
+        new_release = factory.getRandomRelease(ubuntu_os)
         params = {
             'release': new_release,
             'arches': [factory.make_name('arch'), factory.make_name('arch')],
@@ -182,8 +182,8 @@ class TestBootSourceSelectionsAPI(APITestCase):
 
     def test_POST_requires_admin(self):
         boot_source = factory.make_boot_source()
-        new_release = factory.getRandomChoice(
-            DISTRO_SERIES_CHOICES)
+        ubuntu_os = UbuntuOS()
+        new_release = factory.getRandomRelease(ubuntu_os)
         params = {
             'release': new_release,
             'arches': [factory.make_name('arch'), factory.make_name('arch')],

@@ -23,7 +23,6 @@ import time
 from django.contrib.auth.models import User
 from maasserver.clusterrpc.power_parameters import get_power_types
 from maasserver.enum import (
-    DISTRO_SERIES_CHOICES,
     NODE_STATUS,
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
@@ -62,6 +61,7 @@ from netaddr import IPAddress
 # XXX 2014-05-13 blake-rouse bug=1319143
 # Need to not import directly, use RPC to info from cluster.
 from provisioningserver.driver import OperatingSystemRegistry
+from provisioningserver.driver.os_ubuntu import UbuntuOS
 
 # We have a limited number of public keys:
 # src/maasserver/tests/data/test_rsa{0, 1, 2, 3, 4}.pub
@@ -717,7 +717,8 @@ class Factory(maastesting.factory.Factory):
         if boot_source is None:
             boot_source = self.make_boot_source()
         if release is None:
-            release = self.getRandomChoice(DISTRO_SERIES_CHOICES)
+            ubuntu_os = UbuntuOS()
+            release = self.getRandomRelease(ubuntu_os)
         if arches is None:
             arch_count = random.randint(1, 10)
             arches = [self.make_name("arch") for i in range(arch_count)]

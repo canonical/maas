@@ -13,7 +13,6 @@ str = None
 
 __metaclass__ = type
 __all__ = [
-    'COMMISSIONING_DISTRO_SERIES_CHOICES',
     'COMPONENT',
     'NODEGROUP_STATUS',
     'NODEGROUP_STATUS_CHOICES',
@@ -25,8 +24,6 @@ __all__ = [
     'NODE_STATUS_CHOICES',
     'NODE_STATUS_CHOICES_DICT',
     'PRESEED_TYPE',
-    'DISTRO_SERIES',
-    'DISTRO_SERIES_CHOICES',
     'USERDATA_TYPE',
     ]
 
@@ -84,36 +81,6 @@ NODE_STATUS_CHOICES = (
 
 
 NODE_STATUS_CHOICES_DICT = OrderedDict(NODE_STATUS_CHOICES)
-
-
-class DISTRO_SERIES:
-    """List of supported ubuntu releases."""
-    #:
-    default = ''
-    #:
-    precise = 'precise'
-    #:
-    quantal = 'quantal'
-    #:
-    raring = 'raring'
-    #:
-    saucy = 'saucy'
-    #:
-    trusty = 'trusty'
-
-DISTRO_SERIES_CHOICES = (
-    (DISTRO_SERIES.default, 'Default Ubuntu Release'),
-    (DISTRO_SERIES.precise, 'Ubuntu 12.04 LTS "Precise Pangolin"'),
-    (DISTRO_SERIES.quantal, 'Ubuntu 12.10 "Quantal Quetzal"'),
-    (DISTRO_SERIES.raring, 'Ubuntu 13.04 "Raring Ringtail"'),
-    (DISTRO_SERIES.saucy, 'Ubuntu 13.10 "Saucy Salamander"'),
-    (DISTRO_SERIES.trusty, 'Ubuntu 14.04 LTS "Trusty Tahr"'),
-)
-
-
-COMMISSIONING_DISTRO_SERIES_CHOICES = (
-    (DISTRO_SERIES.trusty, dict(DISTRO_SERIES_CHOICES)[DISTRO_SERIES.trusty]),
-)
 
 
 class NODE_PERMISSION:

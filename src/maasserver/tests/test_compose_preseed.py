@@ -17,8 +17,10 @@ __all__ = []
 from maasserver.compose_preseed import compose_preseed
 from maasserver.enum import NODE_STATUS
 from maasserver.testing.factory import factory
+from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import absolute_reverse
+from maastesting.matchers import MockCalledOnceWith
 from metadataserver.models import NodeKey
 from testtools.matchers import (
     KeysEqual,
@@ -110,3 +112,16 @@ class TestComposePreseed(MAASServerTestCase):
         self.assertEqual(
             absolute_reverse('curtin-metadata'),
             preseed['datasource']['MAAS']['metadata_url'])
+
+    def test_compose_preseed_with_osystem_compose_preseed(self):
+        osystem = make_usable_osystem(self)
+        mock_compose = self.patch(osystem, 'compose_preseed')
+        node = factory.make_node(
+            osystem=osystem.name, status=NODE_STATUS.READY)
+
+        token = NodeKey.objects.get_token_for_node(node)
+        url = absolute_reverse('metadata')
+        compose_preseed(node)
+        self.assertThat(
+            mock_compose,
+            MockCalledOnceWith(node, token, url))

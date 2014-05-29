@@ -29,7 +29,6 @@ from django.core.validators import validate_email
 from django.http import QueryDict
 from maasserver.clusterrpc.power_parameters import get_power_type_choices
 from maasserver.enum import (
-    DISTRO_SERIES_CHOICES,
     NODE_STATUS,
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
@@ -112,6 +111,7 @@ from maastesting.utils import sample_binary_data
 from metadataserver.models import CommissioningScript
 from netaddr import IPNetwork
 from provisioningserver import tasks
+from provisioningserver.driver.os_ubuntu import UbuntuOS
 from testtools import TestCase
 from testtools.matchers import (
     AllMatch,
@@ -2062,8 +2062,8 @@ class TestBootSourceSelectionForm(MAASServerTestCase):
 
     def test_edits_boot_source_selection_object(self):
         boot_source_selection = factory.make_boot_source_selection()
-        new_release = factory.getRandomChoice(
-            DISTRO_SERIES_CHOICES)
+        ubuntu_os = UbuntuOS()
+        new_release = factory.getRandomRelease(ubuntu_os)
         params = {
             'release': new_release,
             'arches': [factory.make_name('arch'), factory.make_name('arch')],
@@ -2080,8 +2080,8 @@ class TestBootSourceSelectionForm(MAASServerTestCase):
 
     def test_creates_boot_source_selection_object(self):
         boot_source = factory.make_boot_source()
-        new_release = factory.getRandomChoice(
-            DISTRO_SERIES_CHOICES)
+        ubuntu_os = UbuntuOS()
+        new_release = factory.getRandomRelease(ubuntu_os)
         params = {
             'release': new_release,
             'arches': [factory.make_name('arch'), factory.make_name('arch')],

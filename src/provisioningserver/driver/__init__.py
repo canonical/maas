@@ -158,6 +158,18 @@ class OperatingSystem:
         :returns: list of supported purposes
         """
 
+    def compose_preseed(self, node, token, metadata_url):
+        """Composes the preseed for the given node.
+
+        :param node: Node preseed needs generating.
+        :param token: OAuth token for url.
+        :param metadata_url: Metdata url for node.
+        :returns: Preseed for node.
+        :raise:
+            NotImplementedError: doesn't implement a custom preseed
+        """
+        raise NotImplementedError()
+
 
 class HardwareDiscoverContext:
 
