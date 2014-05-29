@@ -282,7 +282,10 @@ def get_service_profile(api, server):
 
 def get_first_booter(boot_profile_response):
     """Find the device currently set to boot by default."""
-    ordinals = boot_profile_response.xpath('//outConfigs/*/@order')
+    # The 'order' attribue is a positive integer. The device with the
+    # lowest order gets booted first.
+    orders = boot_profile_response.xpath('//outConfigs/*/@order')
+    ordinals = map(int, orders)
     top_boot_order = min(ordinals)
     first_query = '//outConfigs/*[@order=%s]' % top_boot_order
     current_first = boot_profile_response.xpath(first_query)[0]

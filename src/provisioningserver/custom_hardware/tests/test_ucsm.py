@@ -537,6 +537,13 @@ class TestGetServiceProfile(MAASTestCase):
 
 
 def make_boot_order_scenarios(size):
+    """Produce test scenarios for testing get_first_booter.
+
+    Each scenario is one of the permutations of a set of ``size``
+    elements, where each element has an integer 'order' attribute
+    that get_first_booter will use to determine which device boots
+    first.
+    """
     minimum = random.randint(0, 500)
     ordinals = xrange(minimum, minimum + size)
 
@@ -558,10 +565,12 @@ class TestGetFirstBooter(MAASTestCase):
     scenarios, minimum = make_boot_order_scenarios(3)
 
     def test_first_booter(self):
+        """Ensure the boot device is picked according to the order
+        attribute, not the order of elements in the list of devices."""
         root = Element('outConfigs')
         root.extend(self.order)
         picked = get_first_booter(root)
-        self.assertEqual(picked.tag, 'Entry%d' % self.minimum)
+        self.assertEqual(self.minimum, int(picked.get('order')))
 
 
 class TestsForStripRoKeys(MAASTestCase):
