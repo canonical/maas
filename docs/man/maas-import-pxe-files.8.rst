@@ -84,8 +84,8 @@ Each "source" defines...
 
 * a Simplestreams repository location (``url``) from which images can be
   downloaded,
-* a ``keyring_file`` path or ``keyring`` data for validating index and image
-  signatures from that location, and
+* a ``keyring`` file path or ``keyring_data`` contents for validating index
+  and image signatures from that location, and
 * a series of filters (``selections``) specifying which images should be
   downloaded from that source.
 
@@ -107,8 +107,8 @@ value of ``"*"`` in the ``arches`` list.
 
 Here's an example of an import source description::
 
-    - url "http://maas.ubuntu.com/images/ephemeral-v2/releases/"
-      keyring_file: "/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg"
+    - url: "http://maas.ubuntu.com/images/ephemeral-v2/releases/"
+      keyring: "/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg"
       selections:
         - release: "precise"
           arches: ["i386", "amd64"]
@@ -124,9 +124,8 @@ Ubuntu 12.04 ("precise") release images for the i386 and amd64 architectures,
 plus Ubuntu 14.04 ("trusty") images for all supported architectures.
 
 If you still have a ``bootresources.yaml`` configuration file from MAAS 1.5,
-these source descriptions were found under ``boot``/``sources``, with small
-changes: the ``url`` field corresponds to the old ``path`` field, and
-``keyring_file`` has replaced ``keyring``.
+these source descriptions were found under ``boot``/``sources``, with a small
+change: the ``url`` field corresponds to the old ``path`` field.
 
 
 Further Documentation
