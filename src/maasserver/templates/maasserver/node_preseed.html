@@ -18,7 +18,7 @@
   This node is commissioning.  This is the commissioning preseed.
   {% endif %}
   <pre>
-{{ preseed }}
+{{ preseed|force_escape }}
   </pre>
   </div>
 {% endblock %}

@@ -101,43 +101,51 @@ class TestGetPreseedFilenames(MAASServerTestCase):
     def test_get_preseed_filenames_returns_filenames(self):
         hostname = factory.getRandomString()
         prefix = factory.getRandomString()
+        osystem = factory.getRandomString()
         release = factory.getRandomString()
         node = factory.make_node(hostname=hostname)
         arch, subarch = node.architecture.split('/')
         self.assertSequenceEqual(
             [
-                '%s_%s_%s_%s_%s' % (prefix, arch, subarch, release, hostname),
-                '%s_%s_%s_%s' % (prefix, arch, subarch, release),
-                '%s_%s_%s' % (prefix, arch, subarch),
-                '%s_%s' % (prefix, arch),
+                '%s_%s_%s_%s_%s_%s' % (
+                    prefix, osystem, arch, subarch, release, hostname),
+                '%s_%s_%s_%s_%s' % (prefix, osystem, arch, subarch, release),
+                '%s_%s_%s_%s' % (prefix, osystem, arch, subarch),
+                '%s_%s_%s' % (prefix, osystem, arch),
+                '%s_%s' % (prefix, osystem),
                 '%s' % prefix,
                 'generic',
             ],
-            list(get_preseed_filenames(node, prefix, release, default=True)))
+            list(get_preseed_filenames(
+                node, prefix, osystem, release, default=True)))
 
     def test_get_preseed_filenames_if_node_is_None(self):
+        osystem = factory.getRandomString()
         release = factory.getRandomString()
         prefix = factory.getRandomString()
         self.assertSequenceEqual(
             [
-                '%s_%s' % (prefix, release),
+                '%s_%s_%s' % (prefix, osystem, release),
+                '%s_%s' % (prefix, osystem),
                 '%s' % prefix,
             ],
-            list(get_preseed_filenames(None, prefix, release)))
+            list(get_preseed_filenames(None, prefix, osystem, release)))
 
     def test_get_preseed_filenames_supports_empty_prefix(self):
         hostname = factory.getRandomString()
+        osystem = factory.getRandomString()
         release = factory.getRandomString()
         node = factory.make_node(hostname=hostname)
         arch, subarch = node.architecture.split('/')
         self.assertSequenceEqual(
             [
-                '%s_%s_%s_%s' % (arch, subarch, release, hostname),
-                '%s_%s_%s' % (arch, subarch, release),
-                '%s_%s' % (arch, subarch),
-                '%s' % arch,
+                '%s_%s_%s_%s_%s' % (osystem, arch, subarch, release, hostname),
+                '%s_%s_%s_%s' % (osystem, arch, subarch, release),
+                '%s_%s_%s' % (osystem, arch, subarch),
+                '%s_%s' % (osystem, arch),
+                '%s' % osystem,
             ],
-            list(get_preseed_filenames(node, '', release)))
+            list(get_preseed_filenames(node, '', osystem, release)))
 
     def test_get_preseed_filenames_returns_list_without_default(self):
         # If default=False is passed to get_preseed_filenames, the
@@ -280,18 +288,19 @@ class TestLoadPreseedTemplate(MAASServerTestCase):
         # At the top of the lookup hierarchy is a template specific to this
         # node.  It will be used first if it's present.
         prefix = factory.getRandomString()
+        osystem = factory.getRandomString()
         release = factory.getRandomString()
         # Create the generic and 'prefix' templates.  They will be ignored
         # due to the presence of a more specific template.
         self.create_template(self.location, GENERIC_FILENAME)
         self.create_template(self.location, prefix)
         node = factory.make_node(hostname=factory.getRandomString())
-        node_template_name = "%s_%s_%s_%s" % (
-            prefix, node.architecture.replace('/', '_'),
+        node_template_name = "%s_%s_%s_%s_%s" % (
+            prefix, osystem, node.architecture.replace('/', '_'),
             release, node.hostname)
         # Create the node-specific template.
         content = self.create_template(self.location, node_template_name)
-        template = load_preseed_template(node, prefix, release)
+        template = load_preseed_template(node, prefix, osystem, release)
         self.assertEqual(content, template.substitute())
 
     def test_load_preseed_template_with_inherits(self):
@@ -448,8 +457,8 @@ class TestPreseedContext(MAASServerTestCase):
         nodegroup = factory.make_node_group(maas_url=factory.getRandomString())
         context = get_preseed_context(release, nodegroup)
         self.assertItemsEqual(
-            ['release', 'metadata_enlist_url', 'server_host', 'server_url',
-             'main_archive_hostname', 'main_archive_directory',
+            ['osystem', 'release', 'metadata_enlist_url', 'server_host',
+             'server_url', 'main_archive_hostname', 'main_archive_directory',
              'ports_archive_hostname', 'ports_archive_directory',
              'http_proxy'],
             context)

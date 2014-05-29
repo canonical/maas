@@ -27,6 +27,7 @@ from urlparse import (
 
 from django.conf import settings
 from django.core.urlresolvers import reverse
+from django.utils import html
 from lxml.etree import XPath
 from lxml.html import fromstring
 import maasserver.api
@@ -1437,7 +1438,8 @@ class NodePreseedViewTest(MAASServerTestCase):
         node = factory.make_node(owner=self.logged_in_user)
         node_preseed_link = reverse('node-preseed-view', args=[node.system_id])
         response = self.client.get(node_preseed_link)
-        self.assertIn(get_preseed(node), response.content)
+        escaped = html.escape(get_preseed(node))
+        self.assertIn(escaped, response.content)
 
     def test_preseedview_node_catches_template_error(self):
         self.client_log_in()
@@ -1456,9 +1458,10 @@ class NodePreseedViewTest(MAASServerTestCase):
             )
         node_preseed_link = reverse('node-preseed-view', args=[node.system_id])
         response = self.client.get(node_preseed_link)
+        escaped = html.escape(get_preseed(node))
         self.assertThat(
             response.content,
-            ContainsAll([get_preseed(node), "This node is commissioning."]))
+            ContainsAll([escaped, "This node is commissioning."]))
 
     def test_preseedview_node_displays_link_to_view_node(self):
         self.client_log_in()

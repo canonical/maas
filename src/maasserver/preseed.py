@@ -176,14 +176,16 @@ def get_preseed(node):
     if node.status == NODE_STATUS.COMMISSIONING:
         return render_preseed(
             node, PRESEED_TYPE.COMMISSIONING,
+            osystem=Config.objects.get_config('commissioning_osystem'),
             release=Config.objects.get_config('commissioning_distro_series'))
     else:
         return render_preseed(
             node, get_preseed_type_for(node),
-            release=node.get_distro_series())
+            osystem=node.get_osystem(), release=node.get_distro_series())
 
 
-def get_preseed_filenames(node, prefix='', release='', default=False):
+def get_preseed_filenames(node, prefix='', osystem='', release='',
+                          default=False):
     """List possible preseed template filenames for the given node.
 
     :param node: The node to return template preseed filenames for.
@@ -192,7 +194,9 @@ def get_preseed_filenames(node, prefix='', release='', default=False):
         a prefix in the template filenames).  Usually one of {'', 'enlist',
         'commissioning'}.
     :type prefix: unicode
-    :param release: The Ubuntu release to be used.
+    :param osystem: The operating system to be used.
+    :type osystem: unicode
+    :param release: The os release to be used.
     :type release: unicode
     :param default: Should we return the default ('generic') template as a
         last resort template?
@@ -200,10 +204,11 @@ def get_preseed_filenames(node, prefix='', release='', default=False):
 
     Returns a list of possible preseed template filenames using the following
     lookup order:
-    {prefix}_{node_architecture}_{node_subarchitecture}_{release}_{node_name}
-    {prefix}_{node_architecture}_{node_subarchitecture}_{release}
-    {prefix}_{node_architecture}_{node_subarchitecture}
-    {prefix}_{node_architecture}
+    {prefix}_{osystem}_{node_arch}_{node_subarch}_{release}_{node_name}
+    {prefix}_{osystem}_{node_arch}_{node_subarch}_{release}
+    {prefix}_{osystem}_{node_arch}_{node_subarch}
+    {prefix}_{osystem}_{node_arch}
+    {prefix}_{osystem}
     {prefix}
     'generic'
     """
@@ -211,6 +216,8 @@ def get_preseed_filenames(node, prefix='', release='', default=False):
     # Add prefix.
     if prefix != '':
         elements.append(prefix)
+    # Add osystem
+    elements.append(osystem)
     # Add architecture/sub-architecture.
     if node is not None:
         arch = split_subarch(node.architecture)
@@ -284,11 +291,12 @@ class TemplateNotFoundError(Exception):
         self.name = name
 
 
-def load_preseed_template(node, prefix, release=''):
+def load_preseed_template(node, prefix, osystem='', release=''):
     """Find and load a `PreseedTemplate` for the given node.
 
     :param node: See `get_preseed_filenames`.
     :param prefix: See `get_preseed_filenames`.
+    :param osystem: See `get_preseed_filenames`.
     :param release: See `get_preseed_filenames`.
     """
 
@@ -298,7 +306,8 @@ def load_preseed_template(node, prefix, release=''):
         It is defined to preserve the context (node, name, release, default)
         since this will be called (by Tempita) called out of scope.
         """
-        filenames = list(get_preseed_filenames(node, name, release, default))
+        filenames = list(get_preseed_filenames(
+            node, name, osystem, release, default))
         filepath, content = get_preseed_template(filenames)
         if filepath is None:
             raise TemplateNotFoundError(name)
@@ -353,10 +362,11 @@ def pick_cluster_controller_address(node):
         return interfaces[0].ip
 
 
-def get_preseed_context(release='', nodegroup=None):
+def get_preseed_context(osystem='', release='', nodegroup=None):
     """Return the node-independent context dictionary to be used to render
     preseed templates.
 
+    :param osystem: See `get_preseed_filenames`.
     :param release: See `get_preseed_filenames`.
     :param nodegroup: The nodegroup used to generate the preseed.
     :return: The context dictionary.
@@ -376,6 +386,7 @@ def get_preseed_context(release='', nodegroup=None):
         'main_archive_directory': main_archive_directory,
         'ports_archive_hostname': ports_archive_hostname,
         'ports_archive_directory': ports_archive_directory,
+        'osystem': osystem,
         'release': release,
         'server_host': server_host,
         'server_url': absolute_reverse('nodes_handler', base_url=base_url),
@@ -384,11 +395,12 @@ def get_preseed_context(release='', nodegroup=None):
         }
 
 
-def get_node_preseed_context(node, release=''):
+def get_node_preseed_context(node, osystem='', release=''):
     """Return the node-dependent context dictionary to be used to render
     preseed templates.
 
     :param node: See `get_preseed_filenames`.
+    :param osystem: See `get_preseed_filenames`.
     :param release: See `get_preseed_filenames`.
     :return: The context dictionary.
     :rtype: dict.
@@ -412,36 +424,38 @@ def get_node_preseed_context(node, release=''):
     }
 
 
-def render_enlistment_preseed(prefix, release='', nodegroup=None):
+def render_enlistment_preseed(prefix, osystem='', release='', nodegroup=None):
     """Return the enlistment preseed.
 
     :param prefix: See `get_preseed_filenames`.
+    :param osystem: See `get_preseed_filenames`.
     :param release: See `get_preseed_filenames`.
     :param nodegroup: The nodegroup used to generate the preseed.
     :return: The rendered preseed string.
     :rtype: unicode.
     """
-    template = load_preseed_template(None, prefix, release)
-    context = get_preseed_context(release, nodegroup=nodegroup)
+    template = load_preseed_template(None, prefix, osystem, release)
+    context = get_preseed_context(osystem, release, nodegroup=nodegroup)
     # Render the snippets in the main template.
     snippets = get_snippet_context()
     snippets.update(context)
     return template.substitute(**snippets)
 
 
-def render_preseed(node, prefix, release=''):
+def render_preseed(node, prefix, osystem='', release=''):
     """Return the preseed for the given node.
 
     :param node: See `get_preseed_filenames`.
     :param prefix: See `get_preseed_filenames`.
+    :param osystem: See `get_preseed_filenames`.
     :param release: See `get_preseed_filenames`.
     :return: The rendered preseed string.
     :rtype: unicode.
     """
-    template = load_preseed_template(node, prefix, release)
+    template = load_preseed_template(node, prefix, osystem, release)
     nodegroup = node.nodegroup
-    context = get_preseed_context(release, nodegroup=nodegroup)
-    context.update(get_node_preseed_context(node, release))
+    context = get_preseed_context(osystem, release, nodegroup=nodegroup)
+    context.update(get_node_preseed_context(node, osystem, release))
     return template.substitute(**context)
 
 
