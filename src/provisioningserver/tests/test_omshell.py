@@ -271,12 +271,13 @@ class TestCallDnsSecKeygen(MAASTestCase):
     """Tests for omshell.call_dnssec_keygen."""
 
     def test_runs_external_script(self):
-        check_output = self.patch(subprocess, 'check_output')
+        call_and_check = self.patch(
+            provisioningserver.omshell, 'call_and_check')
         target_dir = self.make_dir()
         path = os.environ.get("PATH", "").split(os.pathsep)
         path.append("/usr/sbin")
         call_dnssec_keygen(target_dir)
-        check_output.assert_called_once_with(
+        call_and_check.assert_called_once_with(
             ['dnssec-keygen', '-r', '/dev/urandom', '-a', 'HMAC-MD5',
              '-b', '512', '-n', 'HOST', '-K', target_dir, '-q', 'omapi_key'],
             env=ANY)

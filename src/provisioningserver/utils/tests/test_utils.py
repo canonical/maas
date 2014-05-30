@@ -68,7 +68,6 @@ from provisioningserver.utils import (
     atomic_write,
     AtomicWriteScript,
     call_and_check,
-    call_capture_and_check,
     classify,
     ensure_dir,
     escape_py_literal,
@@ -1204,33 +1203,39 @@ class TestClassify(MAASTestCase):
             classify(is_even, subjects))
 
 
-class TestSubprocessWrappers(MAASTestCase):
-    """Tests for the subprocess.* wrapper functions."""
+class TestCallAndCheck(MAASTestCase):
+    """Tests `call_and_check`."""
 
-    def test_call_and_check_returns_returncode(self):
-        self.patch(subprocess, 'check_call', FakeMethod(0))
-        self.assertEqual(0, call_and_check('some_command'))
+    def patch_popen(self, returncode=0, stderr=''):
+        """Replace `subprocess.Popen` with a mock."""
+        popen = self.patch(subprocess, 'Popen')
+        process = popen.return_value
+        process.communicate.return_value = (None, stderr)
+        process.returncode = returncode
+        return process
 
-    def test_call_and_check_raises_ExternalProcessError_on_failure(self):
-        self.patch(subprocess, 'check_call').side_effect = (
-            CalledProcessError('-1', 'some_command'))
+    def test__returns_standard_output(self):
+        output = factory.getRandomString()
+        self.assertEqual(output, call_and_check(['/bin/echo', '-n', output]))
+
+    def test__raises_ExternalProcessError_on_failure(self):
+        command = factory.make_name('command')
+        message = factory.getRandomString()
+        self.patch_popen(returncode=1, stderr=message)
         error = self.assertRaises(
-            ExternalProcessError, call_and_check, "some command")
-        self.assertEqual('-1', error.returncode)
-        self.assertEqual('some_command', error.cmd)
+            ExternalProcessError, call_and_check, command)
+        self.assertEqual(1, error.returncode)
+        self.assertEqual(command, error.cmd)
+        self.assertEqual(message, error.output)
 
-    def test_call_capture_and_check_returns_returncode(self):
-        self.patch(subprocess, 'check_output', FakeMethod("Some output"))
-        self.assertEqual("Some output", call_capture_and_check('some_command'))
-
-    def test_call_capture_and_check_raises_ExternalProcessError_on_fail(self):
-        self.patch(subprocess, 'check_output').side_effect = (
-            CalledProcessError('-1', 'some_command', "Some output"))
+    def test__reports_stderr_on_failure(self):
+        nonfile = os.path.join(self.make_dir(), factory.make_name('nonesuch'))
         error = self.assertRaises(
-            ExternalProcessError, call_capture_and_check, "some command")
-        self.assertEqual('-1', error.returncode)
-        self.assertEqual('some_command', error.cmd)
-        self.assertEqual("Some output", error.output)
+            ExternalProcessError,
+            call_and_check, ['/bin/cat', nonfile], env={'LC_ALL': 'C'})
+        self.assertEqual(
+            "/bin/cat: %s: No such file or directory" % nonfile,
+            error.output)
 
 
 class TestExternalProcessError(MAASTestCase):
@@ -1303,8 +1308,8 @@ class TestExternalProcessError(MAASTestCase):
 class TestFindIPViaARP(MAASTestCase):
 
     def patch_call(self, output):
-        """Replace `call_capture_and_check` with one that returns `output`."""
-        fake = self.patch(provisioningserver.utils, 'call_capture_and_check')
+        """Replace `call_and_check` with one that returns `output`."""
+        fake = self.patch(provisioningserver.utils, 'call_and_check')
         fake.return_value = output
         return fake
 
@@ -1321,11 +1326,9 @@ class TestFindIPViaARP(MAASTestCase):
         192.168.0.1 ether   90:f6:52:f6:17:92   C                     eth0
         """
 
-        call_capture_and_check = self.patch_call(sample)
+        call_and_check = self.patch_call(sample)
         ip_address_observed = find_ip_via_arp("90:f6:52:f6:17:92")
-        self.assertThat(
-            call_capture_and_check,
-            MockCalledOnceWith(['arp', '-n']))
+        self.assertThat(call_and_check, MockCalledOnceWith(['arp', '-n']))
         self.assertEqual("192.168.0.1", ip_address_observed)
 
     def test__returns_consistent_output(self):

@@ -15,14 +15,15 @@ __metaclass__ = type
 __all__ = [
     "ActionScript",
     "atomic_write",
+    "call_and_check",
     "deferred",
+    "ensure_dir",
     "filter_dict",
     "find_ip_via_arp",
     "import_settings",
     "incremental_write",
     "locate_config",
     "MainScript",
-    "ensure_dir",
     "parse_key_value_file",
     "read_text_file",
     "ShellTemplate",
@@ -115,25 +116,18 @@ class ExternalProcessError(CalledProcessError):
 def call_and_check(command, *args, **kwargs):
     """A wrapper around subprocess.check_call().
 
-    When an error occurs, raise an ExternalProcessError.
+    :param command: Command line, as a list of strings.
+    :return: The command's output from standard output.
+    :raise ExternalProcessError: If the command returns nonzero.
     """
-    try:
-        return subprocess.check_call(command, *args, **kwargs)
-    except subprocess.CalledProcessError as error:
-        error.__class__ = ExternalProcessError
-        raise
-
-
-def call_capture_and_check(command, *args, **kwargs):
-    """A wrapper around subprocess.check_output().
-
-    When an error occurs, raise an ExternalProcessError.
-    """
-    try:
-        return subprocess.check_output(command, *args, **kwargs)
-    except subprocess.CalledProcessError as error:
-        error.__class__ = ExternalProcessError
-        raise
+    process = subprocess.Popen(
+        command, *args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        **kwargs)
+    stdout, stderr = process.communicate()
+    stderr = stderr.strip()
+    if process.returncode != 0:
+        raise ExternalProcessError(process.returncode, command, output=stderr)
+    return stdout
 
 
 def locate_config(*path):
@@ -822,7 +816,7 @@ def find_ip_via_arp(mac):
     :param mac: The mac address, e.g. '1c:6f:65:d5:56:98'.
     """
 
-    output = call_capture_and_check(['arp', '-n']).split('\n')
+    output = call_and_check(['arp', '-n']).split('\n')
 
     for line in sorted(output):
         columns = line.split()

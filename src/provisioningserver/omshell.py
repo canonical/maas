@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Python wrapper around the `omshell` utility which amends objects
@@ -28,7 +28,7 @@ from subprocess import (
 from textwrap import dedent
 
 from provisioningserver.utils import (
-    call_capture_and_check,
+    call_and_check,
     ExternalProcessError,
     parse_key_value_file,
     tempdir,
@@ -42,7 +42,7 @@ def call_dnssec_keygen(tmpdir):
     path = os.environ.get("PATH", "").split(os.pathsep)
     path.append("/usr/sbin")
     env = dict(os.environ, PATH=os.pathsep.join(path))
-    return call_capture_and_check(
+    return call_and_check(
         ['dnssec-keygen', '-r', '/dev/urandom', '-a', 'HMAC-MD5',
          '-b', '512', '-n', 'HOST', '-K', tmpdir, '-q', 'omapi_key'],
         env=env)

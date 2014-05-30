@@ -272,7 +272,7 @@ class TestMain(MAASTestCase):
         # at a low level, so that we exercise all the function calls that a
         # unit test might not put to the test.
         self.patch_logger()
-        self.patch(boot_resources, 'call_and_check').return_code = 0
+        self.patch(boot_resources, 'call_and_check')
 
         # We'll go through installation of a PXE boot loader here, but skip
         # all other boot loader types.  Testing them all is a job for proper

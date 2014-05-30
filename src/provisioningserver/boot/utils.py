@@ -24,11 +24,10 @@ import os
 from platform import linux_distribution
 import re
 import StringIO
-import subprocess
 import urllib2
 
 from provisioningserver.utils import (
-    call_capture_and_check,
+    call_and_check,
     tempdir,
     )
 
@@ -71,14 +70,13 @@ def gpg_verify_data(signature, data_file):
         with open(data_out, 'wb') as stream:
             stream.write(data_file)
 
-        args = [
+        call_and_check([
             "gpgv",
             "--keyring",
             "/etc/apt/trusted.gpg",
             sig_out,
             data_out
-            ]
-        call_capture_and_check(args, stderr=subprocess.STDOUT)
+            ])
 
 
 def decompress_packages(packages):

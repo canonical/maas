@@ -39,7 +39,6 @@ from provisioningserver.dns.utils import generated_hostname
 from provisioningserver.utils import (
     atomic_write,
     call_and_check,
-    call_capture_and_check,
     incremental_write,
     locate_config,
     )
@@ -102,7 +101,7 @@ def generate_rndc(port=953, key_name='rndc-maas-key',
     # Generate the configuration:
     # - 256 bits is the recommended size for the key nowadays.
     # - Use urandom to avoid blocking on the random generator.
-    rndc_content = call_capture_and_check(
+    rndc_content = call_and_check(
         ['rndc-confgen', '-b', '256', '-r', '/dev/urandom',
          '-k', key_name, '-p', unicode(port).encode("ascii")])
     named_comment = extract_suggested_named_conf(rndc_content)
@@ -149,8 +148,7 @@ def execute_rndc_command(arguments):
     rndc_conf = get_rndc_conf_path()
     rndc_cmd = ['rndc', '-c', rndc_conf]
     rndc_cmd.extend(arguments)
-    with open(os.devnull, "ab") as devnull:
-        call_and_check(rndc_cmd, stdout=devnull)
+    call_and_check(rndc_cmd)
 
 
 # Location of DNS templates, relative to the configuration directory.
