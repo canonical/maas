@@ -1926,14 +1926,15 @@ class TestNetworkForm(MAASServerTestCase):
             list(form.fields['mac_addresses'].queryset))
 
     def test_macaddresses_widget_displays_MAC_and_node_hostname(self):
-        network = factory.make_network()
-        [
-            factory.make_mac_address(networks=[network])
-            for _ in range(3)]
+        networks = factory.make_networks(3)
+        same_network = networks[0]
+        misc_networks = networks[1:]
+        for _ in range(3):
+            factory.make_mac_address(networks=[same_network])
         # Create other MAC addresses.
-        for _ in range(2):
-            factory.make_mac_address(networks=[factory.make_network()])
-        form = NetworkForm(data={}, instance=network)
+        for network in misc_networks:
+            factory.make_mac_address(networks=[network])
+        form = NetworkForm(data={}, instance=same_network)
         self.assertItemsEqual(
             [(mac.mac_address, "%s (%s)" % (
                 mac.mac_address, mac.node.hostname))
