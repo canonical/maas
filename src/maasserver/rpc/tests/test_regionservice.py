@@ -49,6 +49,7 @@ from provisioningserver.rpc import (
     common,
     exceptions,
     )
+from provisioningserver.rpc.interfaces import IConnection
 from provisioningserver.rpc.region import (
     Identify,
     ReportBootImages,
@@ -82,6 +83,7 @@ from twisted.internet.protocol import Factory
 from twisted.internet.threads import deferToThread
 from twisted.protocols import amp
 from twisted.python import log
+from zope.interface.verify import verifyObject
 
 
 class TestRegionProtocol_Identify(MAASTestCase):
@@ -193,10 +195,6 @@ class TestRegionProtocol_ReportBootImages(MAASTestCase):
             self.assertEqual({}, response)
 
         return d.addCallback(check)
-
-
-from provisioningserver.rpc.interfaces import IConnection
-from zope.interface.verify import verifyObject
 
 
 class TestRegionServer(MAASServerTestCase):

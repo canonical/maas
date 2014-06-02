@@ -16,7 +16,10 @@ __all__ = []
 
 from contextlib import closing
 
-from django.db import connection
+from django.db import (
+    connection,
+    transaction,
+    )
 from maasserver.utils import dblocks
 from maastesting.testcase import MAASTestCase
 
@@ -40,6 +43,7 @@ class TestDatabaseLock(MAASTestCase):
         lock = dblocks.DatabaseLock(self.getUniqueInteger())
         self.assertEqual(lock, (lock.classid, lock.objid))
 
+    @transaction.atomic
     def test_lock_actually_locked(self):
         objid = self.getUniqueInteger()
         lock = dblocks.DatabaseLock(objid)
@@ -55,6 +59,7 @@ class TestDatabaseLock(MAASTestCase):
         locks_released = locks_held - locks_held_after
         self.assertEqual({objid}, locks_released)
 
+    @transaction.atomic
     def test_is_locked(self):
         objid = self.getUniqueInteger()
         lock = dblocks.DatabaseLock(objid)
@@ -63,6 +68,18 @@ class TestDatabaseLock(MAASTestCase):
         with lock:
             self.assertTrue(lock.is_locked())
         self.assertFalse(lock.is_locked())
+
+    def test_obtaining_lock_fails_when_outside_of_transaction(self):
+        objid = self.getUniqueInteger()
+        lock = dblocks.DatabaseLock(objid)
+        self.assertRaises(
+            dblocks.DatabaseLockAttemptOutsideTransaction,
+            lock.__enter__)
+
+    def test_releasing_lock_fails_when_lock_not_held(self):
+        objid = self.getUniqueInteger()
+        lock = dblocks.DatabaseLock(objid)
+        self.assertRaises(dblocks.DatabaseLockNotHeld, lock.__exit__)
 
     def test_repr(self):
         lock = dblocks.DatabaseLock(self.getUniqueInteger())

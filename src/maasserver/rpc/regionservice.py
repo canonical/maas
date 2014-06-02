@@ -325,8 +325,8 @@ class RegionAdvertisingService(TimerService, object):
 
     @synchronous
     @synchronised(lock)
-    @synchronised(locks.eventloop)
     @transactional
+    @synchronised(locks.eventloop)
     def prepare(self):
         """Ensure that the ``eventloops`` table exists.
 
