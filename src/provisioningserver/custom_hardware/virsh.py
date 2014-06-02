@@ -52,8 +52,9 @@ class VirshSSH(pexpect.spawn):
         PROMPT_PASSWORD,
         PROMPT,
         PROMPT_DENIED,
+        PROMPT_CLOSED,
         pexpect.TIMEOUT,
-        PROMPT_CLOSED
+        pexpect.EOF,
     ]
 
     I_PROMPT = PROMPTS.index(PROMPT)
@@ -65,24 +66,27 @@ class VirshSSH(pexpect.spawn):
             None, timeout=timeout, maxread=maxread)
         self.name = '<virssh>'
 
+    def _execute(self, poweraddr):
+        """Spawns the pexpect command."""
+        cmd = 'virsh --connect %s' % poweraddr
+        self._spawn(cmd)
+
     def login(self, poweraddr, password=None):
         """Starts connection to virsh."""
-        cmd = 'virsh --connect %s' % poweraddr
-        super(VirshSSH, self)._spawn(cmd)
-
+        self._execute(poweraddr)
         i = self.expect(self.PROMPTS, timeout=10)
         if i == self.I_PROMPT_SSHKEY:
             # New certificate, lets always accept but if
             # it changes it will fail to login.
             self.sendline("yes")
-            i = self.expect(self.EXPECT_PROMPTS)
+            i = self.expect(self.PROMPTS)
         elif i == self.I_PROMPT_PASSWORD:
             # Requesting password, give it if available.
             if password is None:
                 self.close()
                 return False
             self.sendline(password)
-            i = self.expect(self.EXPECT_PROMPTS)
+            i = self.expect(self.PROMPTS)
 
         if i != self.I_PROMPT:
             # Something bad happened, either disconnect,
@@ -100,7 +104,7 @@ class VirshSSH(pexpect.spawn):
         """Waits for virsh prompt."""
         if timeout is None:
             timeout = self.timeout
-        i = self.expect([self.VIRSH_PROMPT, pexpect.TIMEOUT], timeout=timeout)
+        i = self.expect([self.PROMPT, pexpect.TIMEOUT], timeout=timeout)
         if i == 1:
             return False
         return True
