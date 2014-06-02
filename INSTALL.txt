@@ -274,6 +274,13 @@ clicked "Import boot images" in the web user interface.
   If you are using an earlier version, you will need to run the shell command
   ``sudo maas-import-pxe-files`` on each of your cluster controllers.
 
+By default, each cluster is configured to download the images of the two most
+recent LTSes for all the supported architectures from the default location
+(http://maas.ubuntu.com/images/).  Although this should suit most needs,
+an advanced user might want to customize the sources from which the images are
+downloaded or which images should be downloaded.  Read
+:doc:`customize boot sources </bootsources>` to see examples on how to do that.
+
 
 Configure DHCP
 --------------
