@@ -823,3 +823,24 @@ def find_ip_via_arp(mac):
         if len(columns) == 5 and columns[2] == mac:
             return columns[0]
     return None
+
+
+def find_mac_via_arp(ip):
+    """Find the MAC address for `ip` by reading the output of arp -n.
+
+    Returns `None` if the IP is not found.
+
+    We do this because we aren't necessarily the only DHCP server on the
+    network, so we can't check our own leases file and be guaranteed to find an
+    IP that matches.
+
+    :param ip: The ip address, e.g. '192.168.1.1'.
+    """
+
+    output = call_capture_and_check(['arp', '-n']).split('\n')
+
+    for line in sorted(output):
+        columns = line.split()
+        if len(columns) == 5 and columns[0] == ip:
+            return columns[2]
+    return None

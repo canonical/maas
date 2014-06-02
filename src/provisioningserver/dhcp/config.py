@@ -33,16 +33,22 @@ TEMPLATES_DIR = "templates/dhcp"
 
 # Used to generate the conditional bootloader behaviour
 CONDITIONAL_BOOTLOADER = """
-{behaviour} option arch = {arch_octet} {{
-          filename \"{bootloader}\";
-       }}
+{{behaviour}} option arch = {{arch_octet}} {
+          filename \"{{bootloader}}\";
+          {{if path_prefix}}
+          option path-prefix \"{{path_prefix}}\";
+          {{endif}}
+       }
 """
 
 # Used to generate the PXEBootLoader special case
 PXE_BOOTLOADER = """
-else {{
-          filename \"{bootloader}\";
-       }}
+else {
+          filename \"{{bootloader}}\";
+          {{if path_prefix}}
+          option path-prefix \"{{path_prefix}}\";
+          {{endif}}
+       }
 """
 
 
@@ -55,9 +61,13 @@ def compose_conditional_bootloader():
     behaviour = chain(["if"], repeat("elsif"))
     for name, method in BootMethodRegistry:
         if name != "pxe":
-            output += CONDITIONAL_BOOTLOADER.format(
-                behaviour=next(behaviour), arch_octet=method.arch_octet,
-                bootloader=method.bootloader_path).strip() + ' '
+            output += tempita.sub(
+                CONDITIONAL_BOOTLOADER,
+                behaviour=next(behaviour),
+                arch_octet=method.arch_octet,
+                bootloader=method.bootloader_path,
+                path_prefix=method.path_prefix,
+                ).strip() + ' '
 
     # The PXEBootMethod is used in an else statement for the generated
     # dhcpd config. This ensures that a booting node that does not
@@ -65,8 +75,11 @@ def compose_conditional_bootloader():
     # pxelinux can still boot.
     pxe_method = BootMethodRegistry.get_item('pxe')
     if pxe_method is not None:
-        output += PXE_BOOTLOADER.format(
-            bootloader=pxe_method.bootloader_path).strip()
+        output += tempita.sub(
+            PXE_BOOTLOADER,
+            bootloader=pxe_method.bootloader_path,
+            path_prefix=pxe_method.path_prefix,
+            ).strip()
     return output.strip()
 
 
