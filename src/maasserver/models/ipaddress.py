@@ -1,7 +1,7 @@
 # Copyright 2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Model definition for IPAddress.
+"""Model definition for StaticIPAddress.
 
 Contains all the in-use static IP addresses that are allocated by MAAS.
 Generally speaking, these are written out to the DHCP server as "host"
@@ -20,7 +20,7 @@ str = None
 
 __metaclass__ = type
 __all__ = [
-    'IPAddress',
+    'StaticIPAddress',
     ]
 
 
@@ -34,11 +34,11 @@ from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 
 
-class IPAddress(CleanSave, TimestampedModel):
+class StaticIPAddress(CleanSave, TimestampedModel):
 
     class Meta(DefaultMeta):
-        verbose_name = "IP Address"
-        verbose_name_plural = "IP Addresses"
+        verbose_name = "Static IP Address"
+        verbose_name_plural = "Static IP Addresses"
 
     ip = GenericIPAddressField(
         unique=True, null=False, editable=False, blank=False)
@@ -46,7 +46,7 @@ class IPAddress(CleanSave, TimestampedModel):
     # The MACIPAddressLink table is used to link IPAddress to
     # MACAddress.  See MACAddress.ip_addresses.
 
-    type = IntegerField(
+    alloc_type = IntegerField(
         editable=False, null=False, blank=False, default=IPADDRESS_TYPE.AUTO)
 
     def __unicode__(self):

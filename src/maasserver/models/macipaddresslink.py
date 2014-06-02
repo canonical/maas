@@ -18,7 +18,7 @@ str = None
 
 __metaclass__ = type
 __all__ = [
-    'MACIPAddressLink',
+    'MACStaticIPAddressLink',
     ]
 
 
@@ -31,13 +31,13 @@ from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 
 
-class MACIPAddressLink(CleanSave, TimestampedModel):
+class MACStaticIPAddressLink(CleanSave, TimestampedModel):
 
     class Meta(DefaultMeta):
         unique_together = ('ip_address', 'mac_address')
 
     mac_address = ForeignKey('maasserver.MACAddress')
-    ip_address = ForeignKey('maasserver.IPAddress', unique=True)
+    ip_address = ForeignKey('maasserver.StaticIPAddress', unique=True)
 
     # Optional NIC alias for multi-homed NICs (e.g. 'eth0:1')
     nic_alias = IntegerField(

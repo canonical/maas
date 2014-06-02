@@ -8,29 +8,29 @@ from south.v2 import SchemaMigration
 class Migration(SchemaMigration):
 
     def forwards(self, orm):
-        # Adding model 'IPAddress'
-        db.create_table(u'maasserver_ipaddress', (
-            (u'id', self.gf('django.db.models.fields.AutoField')(primary_key=True)),
-            ('created', self.gf('django.db.models.fields.DateTimeField')()),
-            ('updated', self.gf('django.db.models.fields.DateTimeField')()),
-            ('ip', self.gf('django.db.models.fields.GenericIPAddressField')(unique=True, max_length=39)),
-            ('type', self.gf('django.db.models.fields.IntegerField')(default=0)),
-        ))
-        db.send_create_signal(u'maasserver', ['IPAddress'])
-
-        # Adding model 'MACIPAddressLink'
-        db.create_table(u'maasserver_macipaddresslink', (
+        # Adding model 'MACStaticIPAddressLink'
+        db.create_table(u'maasserver_macstaticipaddresslink', (
             (u'id', self.gf('django.db.models.fields.AutoField')(primary_key=True)),
             ('created', self.gf('django.db.models.fields.DateTimeField')()),
             ('updated', self.gf('django.db.models.fields.DateTimeField')()),
             ('mac_address', self.gf('django.db.models.fields.related.ForeignKey')(to=orm['maasserver.MACAddress'])),
-            ('ip_address', self.gf('django.db.models.fields.related.ForeignKey')(to=orm['maasserver.IPAddress'], unique=True)),
+            ('ip_address', self.gf('django.db.models.fields.related.ForeignKey')(to=orm['maasserver.StaticIPAddress'], unique=True)),
             ('nic_alias', self.gf('django.db.models.fields.IntegerField')(default=None, null=True, blank=True)),
         ))
-        db.send_create_signal(u'maasserver', ['MACIPAddressLink'])
+        db.send_create_signal(u'maasserver', ['MACStaticIPAddressLink'])
 
-        # Adding unique constraint on 'MACIPAddressLink', fields ['ip_address', 'mac_address']
-        db.create_unique(u'maasserver_macipaddresslink', ['ip_address_id', 'mac_address_id'])
+        # Adding unique constraint on 'MACStaticIPAddressLink', fields ['ip_address', 'mac_address']
+        db.create_unique(u'maasserver_macstaticipaddresslink', ['ip_address_id', 'mac_address_id'])
+
+        # Adding model 'StaticIPAddress'
+        db.create_table(u'maasserver_staticipaddress', (
+            (u'id', self.gf('django.db.models.fields.AutoField')(primary_key=True)),
+            ('created', self.gf('django.db.models.fields.DateTimeField')()),
+            ('updated', self.gf('django.db.models.fields.DateTimeField')()),
+            ('ip', self.gf('django.db.models.fields.GenericIPAddressField')(unique=True, max_length=39)),
+            ('alloc_type', self.gf('django.db.models.fields.IntegerField')(default=0)),
+        ))
+        db.send_create_signal(u'maasserver', ['StaticIPAddress'])
 
         # Adding field 'NodeGroupInterface.static_ip_range_low'
         db.add_column(u'maasserver_nodegroupinterface', 'static_ip_range_low',
@@ -44,14 +44,14 @@ class Migration(SchemaMigration):
 
 
     def backwards(self, orm):
-        # Removing unique constraint on 'MACIPAddressLink', fields ['ip_address', 'mac_address']
-        db.delete_unique(u'maasserver_macipaddresslink', ['ip_address_id', 'mac_address_id'])
+        # Removing unique constraint on 'MACStaticIPAddressLink', fields ['ip_address', 'mac_address']
+        db.delete_unique(u'maasserver_macstaticipaddresslink', ['ip_address_id', 'mac_address_id'])
 
-        # Deleting model 'IPAddress'
-        db.delete_table(u'maasserver_ipaddress')
+        # Deleting model 'MACStaticIPAddressLink'
+        db.delete_table(u'maasserver_macstaticipaddresslink')
 
-        # Deleting model 'MACIPAddressLink'
-        db.delete_table(u'maasserver_macipaddresslink')
+        # Deleting model 'StaticIPAddress'
+        db.delete_table(u'maasserver_staticipaddress')
 
         # Deleting field 'NodeGroupInterface.static_ip_range_low'
         db.delete_column(u'maasserver_nodegroupinterface', 'static_ip_range_low')
@@ -169,32 +169,24 @@ class Migration(SchemaMigration):
             'content': ('metadataserver.fields.BinaryField', [], {'blank': 'True'}),
             'filename': ('django.db.models.fields.CharField', [], {'max_length': '255'}),
             u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
-            'key': ('django.db.models.fields.CharField', [], {'default': "u'23d4ee34-ea01-11e3-8dfe-002215205ce8'", 'unique': 'True', 'max_length': '36'}),
+            'key': ('django.db.models.fields.CharField', [], {'default': "u'b46fe122-ea2b-11e3-b565-002215205ce8'", 'unique': 'True', 'max_length': '36'}),
             'owner': ('django.db.models.fields.related.ForeignKey', [], {'default': 'None', 'to': u"orm['auth.User']", 'null': 'True', 'blank': 'True'})
-        },
-        u'maasserver.ipaddress': {
-            'Meta': {'object_name': 'IPAddress'},
-            'created': ('django.db.models.fields.DateTimeField', [], {}),
-            u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
-            'ip': ('django.db.models.fields.GenericIPAddressField', [], {'unique': 'True', 'max_length': '39'}),
-            'type': ('django.db.models.fields.IntegerField', [], {'default': '0'}),
-            'updated': ('django.db.models.fields.DateTimeField', [], {})
         },
         u'maasserver.macaddress': {
             'Meta': {'object_name': 'MACAddress'},
             'created': ('django.db.models.fields.DateTimeField', [], {}),
             u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
-            'ip_addresses': ('django.db.models.fields.related.ManyToManyField', [], {'to': u"orm['maasserver.IPAddress']", 'through': u"orm['maasserver.MACIPAddressLink']", 'symmetrical': 'False'}),
+            'ip_addresses': ('django.db.models.fields.related.ManyToManyField', [], {'to': u"orm['maasserver.StaticIPAddress']", 'symmetrical': 'False', 'through': u"orm['maasserver.MACStaticIPAddressLink']", 'blank': 'True'}),
             'mac_address': ('maasserver.fields.MACAddressField', [], {'unique': 'True'}),
             'networks': ('django.db.models.fields.related.ManyToManyField', [], {'to': u"orm['maasserver.Network']", 'symmetrical': 'False', 'blank': 'True'}),
             'node': ('django.db.models.fields.related.ForeignKey', [], {'to': u"orm['maasserver.Node']"}),
             'updated': ('django.db.models.fields.DateTimeField', [], {})
         },
-        u'maasserver.macipaddresslink': {
-            'Meta': {'unique_together': "((u'ip_address', u'mac_address'),)", 'object_name': 'MACIPAddressLink'},
+        u'maasserver.macstaticipaddresslink': {
+            'Meta': {'unique_together': "((u'ip_address', u'mac_address'),)", 'object_name': 'MACStaticIPAddressLink'},
             'created': ('django.db.models.fields.DateTimeField', [], {}),
             u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
-            'ip_address': ('django.db.models.fields.related.ForeignKey', [], {'to': u"orm['maasserver.IPAddress']", 'unique': 'True'}),
+            'ip_address': ('django.db.models.fields.related.ForeignKey', [], {'to': u"orm['maasserver.StaticIPAddress']", 'unique': 'True'}),
             'mac_address': ('django.db.models.fields.related.ForeignKey', [], {'to': u"orm['maasserver.MACAddress']"}),
             'nic_alias': ('django.db.models.fields.IntegerField', [], {'default': 'None', 'null': 'True', 'blank': 'True'}),
             'updated': ('django.db.models.fields.DateTimeField', [], {})
@@ -228,7 +220,7 @@ class Migration(SchemaMigration):
             'routers': ('djorm_pgarray.fields.ArrayField', [], {'default': 'None', 'dbtype': "u'macaddr'", 'null': 'True', 'blank': 'True'}),
             'status': ('django.db.models.fields.IntegerField', [], {'default': '0', 'max_length': '10'}),
             'storage': ('django.db.models.fields.IntegerField', [], {'default': '0'}),
-            'system_id': ('django.db.models.fields.CharField', [], {'default': "u'node-23d247e2-ea01-11e3-8dfe-002215205ce8'", 'unique': 'True', 'max_length': '41'}),
+            'system_id': ('django.db.models.fields.CharField', [], {'default': "u'node-b46a9b7c-ea2b-11e3-b565-002215205ce8'", 'unique': 'True', 'max_length': '41'}),
             'tags': ('django.db.models.fields.related.ManyToManyField', [], {'to': u"orm['maasserver.Tag']", 'symmetrical': 'False'}),
             'token': ('django.db.models.fields.related.ForeignKey', [], {'to': u"orm['piston.Token']", 'null': 'True'}),
             'updated': ('django.db.models.fields.DateTimeField', [], {}),
@@ -274,6 +266,14 @@ class Migration(SchemaMigration):
             'updated': ('django.db.models.fields.DateTimeField', [], {}),
             'user': ('django.db.models.fields.related.ForeignKey', [], {'to': u"orm['auth.User']"})
         },
+        u'maasserver.staticipaddress': {
+            'Meta': {'object_name': 'StaticIPAddress'},
+            'alloc_type': ('django.db.models.fields.IntegerField', [], {'default': '0'}),
+            'created': ('django.db.models.fields.DateTimeField', [], {}),
+            u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
+            'ip': ('django.db.models.fields.GenericIPAddressField', [], {'unique': 'True', 'max_length': '39'}),
+            'updated': ('django.db.models.fields.DateTimeField', [], {})
+        },
         u'maasserver.tag': {
             'Meta': {'object_name': 'Tag'},
             'comment': ('django.db.models.fields.TextField', [], {'blank': 'True'}),
@@ -316,7 +316,7 @@ class Migration(SchemaMigration):
             'is_approved': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
             'key': ('django.db.models.fields.CharField', [], {'max_length': '18'}),
             'secret': ('django.db.models.fields.CharField', [], {'max_length': '32'}),
-            'timestamp': ('django.db.models.fields.IntegerField', [], {'default': '1401677636L'}),
+            'timestamp': ('django.db.models.fields.IntegerField', [], {'default': '1401695917L'}),
             'token_type': ('django.db.models.fields.IntegerField', [], {}),
             'user': ('django.db.models.fields.related.ForeignKey', [], {'blank': 'True', 'related_name': "'tokens'", 'null': 'True', 'to': u"orm['auth.User']"}),
             'verifier': ('django.db.models.fields.CharField', [], {'max_length': '10'})
