@@ -14,6 +14,7 @@ str = None
 __metaclass__ = type
 __all__ = [
     'COMPONENT',
+    'IPADDRESS_TYPE',
     'NODEGROUP_STATUS',
     'NODEGROUP_STATUS_CHOICES',
     'NODEGROUPINTERFACE_MANAGEMENT',
@@ -150,3 +151,18 @@ NODEGROUPINTERFACE_MANAGEMENT_CHOICES = (
 
 NODEGROUPINTERFACE_MANAGEMENT_CHOICES_DICT = (
     OrderedDict(NODEGROUPINTERFACE_MANAGEMENT_CHOICES))
+
+
+class IPADDRESS_TYPE:
+    """The vocabulary of possible types of `IPAddress`."""
+    # Automatically assigned.
+    AUTO = 0
+
+    # Pre-assigned and permanent until removed.
+    STICKY = 1
+
+    # Not associated to hardware managed by MAAS.
+    UNMANAGED = 2
+
+    # Additional IP requested by a user for a node.
+    EXTRA = 3

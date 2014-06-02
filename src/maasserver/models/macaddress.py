@@ -50,6 +50,12 @@ class MACAddress(CleanSave, TimestampedModel):
 
     networks = ManyToManyField('maasserver.Network', blank=True)
 
+    ip_addresses = ManyToManyField(
+        'maasserver.IPAddress', through='maasserver.MACIPAddressLink',
+        blank=True)
+
+    # future columns: tags, nic_name, metadata, bonding info
+
     objects = BulkManager()
 
     class Meta(DefaultMeta):

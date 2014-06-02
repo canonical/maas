@@ -78,6 +78,10 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
         editable=True, unique=False, blank=True, null=True, default=None)
     ip_range_high = GenericIPAddressField(
         editable=True, unique=False, blank=True, null=True, default=None)
+    static_ip_range_low = GenericIPAddressField(
+        editable=True, unique=False, blank=True, null=True, default=None)
+    static_ip_range_high = GenericIPAddressField(
+        editable=True, unique=False, blank=True, null=True, default=None)
 
     # Foreign DHCP server address, if any, that was detected on this
     # interface.
