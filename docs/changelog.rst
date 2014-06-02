@@ -2,6 +2,22 @@
 Changelog
 =========
 
+1.5.2
+=====
+
+Minor feature changes
+---------------------
+
+Boot resource download changes.
+  Further to the work done in the 1.5 (Ubuntu 14.04) release, MAAS no
+  longer stores the configuration for downloading boot resources in
+  ``/etc/maas/bootresources.yaml``; this file is now obsolete. The
+  sources list is now stored on the region controller and passed to the
+  cluster controller when the job to download boot resources is started.
+  It is still possible to pass a list of sources to
+  ``maas-import-pxe-files`` when running the script manually.
+
+
 1.5.1
 =====
 
