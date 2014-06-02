@@ -332,11 +332,14 @@ class TestDHCPTasks(PservTestCase):
         self.assertThat(tasks.call_and_check, MockCalledOnceWith(
             ['sudo', '-n', 'service', 'maas-dhcp-server', 'restart']))
 
-    def test_stop_dhcp_server_sends_command(self):
+    def test_stop_dhcp_server_sends_command_and_writes_empty_config(self):
         self.patch(tasks, 'call_and_check')
+        self.patch(tasks, 'sudo_write_file')
         stop_dhcp_server()
         self.assertThat(tasks.call_and_check, MockCalledOnceWith(
             ['sudo', '-n', 'service', 'maas-dhcp-server', 'stop']))
+        self.assertThat(tasks.sudo_write_file, MockCalledOnceWith(
+            celery_config.DHCP_CONFIG_FILE, tasks.DISABLED_DHCP_SERVER))
 
 
 def assertTaskRetried(runner, result, nb_retries, task_name):

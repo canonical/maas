@@ -387,10 +387,18 @@ def restart_dhcp_server():
     call_and_check(['sudo', '-n', 'service', 'maas-dhcp-server', 'restart'])
 
 
+# Message to put in the DHCP config file when the DHCP server gets stopped.
+DISABLED_DHCP_SERVER = "# DHCP server stopped."
+
+
 @task
 @log_exception_text
 def stop_dhcp_server():
-    """Stop a DHCP server."""
+    """Write a blank config file and stop a DHCP server."""
+    # Write an empty config file to avoid having an outdated config laying
+    # around.
+    sudo_write_file(
+        celery_config.DHCP_CONFIG_FILE, DISABLED_DHCP_SERVER)
     call_and_check(['sudo', '-n', 'service', 'maas-dhcp-server', 'stop'])
 
 

@@ -22,6 +22,7 @@ from maasserver.models import Config
 from netaddr import IPAddress
 from provisioningserver.tasks import (
     restart_dhcp_server,
+    stop_dhcp_server,
     write_dhcp_config,
     )
 
@@ -52,7 +53,15 @@ def configure_dhcp(nodegroup):
     from maasserver.dns import get_dns_server_address
 
     interfaces = get_interfaces_managed_by(nodegroup)
-    if interfaces is None:
+    if interfaces in [None, []]:
+        # interfaces being None means the cluster isn't accepted: stop
+        # the DHCP server in case it case started.
+        # interfaces being [] means there is no interface configured: stop
+        # the DHCP server;  Note that a config generated with this setup
+        # would not be valid and would result in the DHCP
+        # server failing with the error: "Not configured to listen on any
+        # interfaces!."
+        stop_dhcp_server.apply_async(queue=nodegroup.work_queue)
         return
 
     # Make sure this nodegroup has a key to communicate with the dhcp

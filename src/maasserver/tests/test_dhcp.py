@@ -33,7 +33,6 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import map_enum
 from maastesting.celery import CeleryFixture
-from mock import ANY
 from netaddr import (
     IPAddress,
     IPNetwork,
@@ -71,6 +70,16 @@ class TestDHCP(MAASServerTestCase):
         self.assertEqual(
             {status: None for status in unaccepted_statuses},
             managed_interfaces)
+
+    def test_configure_dhcp_stops_server_if_no_managed_interface(self):
+        self.patch(settings, "DHCP_CONNECT", True)
+        self.patch(dhcp, 'stop_dhcp_server')
+        nodegroup = factory.make_node_group(
+            status=NODEGROUP_STATUS.ACCEPTED,
+            management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED,
+            )
+        configure_dhcp(nodegroup)
+        self.assertEqual(1, dhcp.stop_dhcp_server.apply_async.call_count)
 
     def test_configure_dhcp_obeys_DHCP_CONNECT(self):
         self.patch(settings, "DHCP_CONNECT", False)
@@ -205,19 +214,6 @@ class TestDHCP(MAASServerTestCase):
         args, kwargs = task.subtask.call_args
         self.assertEqual(nodegroup.work_queue, kwargs['options']['queue'])
 
-    def test_write_dhcp_config_called_when_no_managed_interfaces(self):
-        nodegroup = factory.make_node_group(
-            status=NODEGROUP_STATUS.ACCEPTED,
-            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
-        [interface] = nodegroup.nodegroupinterface_set.all()
-        self.patch(settings, "DHCP_CONNECT", True)
-        self.patch(tasks, 'sudo_write_file')
-        self.patch(dhcp, 'write_dhcp_config')
-        interface.management = NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED
-        interface.save()
-        dhcp.write_dhcp_config.apply_async.assert_called_once_with(
-            queue=nodegroup.work_queue, kwargs=ANY)
-
     def test_dhcp_config_gets_written_when_interface_IP_changes(self):
         nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
         [interface] = nodegroup.nodegroupinterface_set.all()
@@ -318,6 +314,9 @@ class TestDHCP(MAASServerTestCase):
             factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
         for x in range(num_inactive_nodegroups):
             factory.make_node_group(status=NODEGROUP_STATUS.PENDING)
+        # Silence stop_dhcp_server: it will be called for the inactive
+        # nodegroups.
+        self.patch(dhcp, 'stop_dhcp_server')
 
         self.patch(settings, "DHCP_CONNECT", True)
         self.patch(dhcp, 'write_dhcp_config')
