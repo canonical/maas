@@ -26,7 +26,8 @@ class TestRabbitServerSettings(MAASTestCase):
     def test_patch(self):
         config = RabbitServerResources(
             hostname=factory.getRandomString(),
-            port=factory.getRandomPort())
+            port=factory.getRandomPort(),
+            dist_port=factory.getRandomPort())
         self.useFixture(config)
         self.useFixture(RabbitServerSettings(config))
         self.assertEqual(
